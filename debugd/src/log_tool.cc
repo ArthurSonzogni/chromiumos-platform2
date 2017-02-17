@@ -295,6 +295,8 @@ const std::vector<Log> kCommandLogs {
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kCommand, "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot},
   {kFile, "pagetypeinfo", "/proc/pagetypeinfo", kRoot},
+  {kCommand, "pchg_info", "/usr/share/userfeedback/scripts/pchg_info",
+    kRoot, kRoot},
   {kFile, "platform_identity_name",
     "/run/chromeos-config/v1/identity/platform-name"},
   {kFile, "platform_identity_model", "/run/chromeos-config/v1/name"},
