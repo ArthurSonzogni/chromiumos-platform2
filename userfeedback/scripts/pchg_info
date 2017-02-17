@@ -41,8 +41,8 @@ main() {
   fi
 
   port_count=$(${ECTOOL} pchg)
-  if [ "${port_count}" -eq 0 ]; then
-    error "No PCHG ports found."
+  if [ -z "${port_count}" ] || [ "${port_count}" -eq 0 ]; then
+    echo "No PCHG ports found."
     return 0
   fi
 
