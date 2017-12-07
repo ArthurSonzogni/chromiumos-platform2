@@ -253,9 +253,6 @@ class Platform2(object):
         We do this to set the various toolchain names for the target board.
         """
         varnames = ['CHOST', 'AR', 'CC', 'CXX', 'PKG_CONFIG']
-        if not self.host and not self.board:
-            for v in varnames:
-                os.environ.setdefault(v, '')
         board_env = self.get_portageq_envvars(varnames)
 
         tool_names = {
@@ -265,7 +262,7 @@ class Platform2(object):
             'PKG_CONFIG': 'pkg-config',
         }
 
-        env = os.environ.copy()
+        env = {}
         for var, tool in tool_names.items():
             env['%s_target' % var] = (board_env[var] if board_env[var] else \
                                       '%s-%s' % (board_env['CHOST'], tool))
@@ -414,7 +411,7 @@ class Platform2(object):
             self.get_products_path(),
         ]
         cros_build_lib.run(gn_args,
-                           env=self.get_build_environment(),
+                           extra_env=self.get_build_environment(),
                            cwd=self.get_platform2_root())
 
     def gn_desc(self, *args):
@@ -435,7 +432,7 @@ class Platform2(object):
         ]
         cmd += args
         result = cros_build_lib.run(cmd,
-                                    env=self.get_build_environment(),
+                                    extra_env=self.get_build_environment(),
                                     cwd=self.get_platform2_root(),
                                     stdout=True,
                                     encoding='utf-8')
