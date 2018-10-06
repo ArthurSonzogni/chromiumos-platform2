@@ -3386,8 +3386,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Disconnect) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: Disconnect")));
   EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
-  EXPECT_CALL(*this, RecordDarkResumeWakeReasonCallback(
-                         WakeOnWiFi::kWakeReasonStringDisconnect));
+  EXPECT_CALL(*this,
+              RecordDarkResumeWakeReasonCallback(kWakeOnWiFiReasonDisconnect));
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerDisconnect, GetLastWakeReason());
 
@@ -3407,8 +3407,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_SSID) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: SSID")));
   EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
-  EXPECT_CALL(*this, RecordDarkResumeWakeReasonCallback(
-                         WakeOnWiFi::kWakeReasonStringSSID));
+  EXPECT_CALL(*this, RecordDarkResumeWakeReasonCallback(kWakeOnWiFiReasonSSID));
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerSSID, GetLastWakeReason());
   EXPECT_EQ(base::size(kSSID1FreqMatches), GetLastSSIDMatchFreqs().size());
@@ -3438,8 +3437,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Pattern) {
           HasSubstr(base::StringPrintf("Wakeup reason: Pattern %d",
                                        kWakeReasonPatternNlMsg_PattIndex))));
   EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
-  EXPECT_CALL(*this, RecordDarkResumeWakeReasonCallback(
-                         WakeOnWiFi::kWakeReasonStringPattern));
+  EXPECT_CALL(*this,
+              RecordDarkResumeWakeReasonCallback(kWakeOnWiFiReasonPattern));
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerPattern, GetLastWakeReason());
 

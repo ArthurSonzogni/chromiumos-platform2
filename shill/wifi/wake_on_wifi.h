@@ -13,6 +13,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -336,12 +337,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   static int64_t DarkResumeActionsTimeoutMilliseconds;  // non-const for testing
   static const int kMaxFreqsForDarkResumeScanRetries;
   static const int kMaxDarkResumeScanRetries;
-  // Dark resume wake reason names. These will be sent to powerd via
-  // RecordDarkResumeWakeReason, to tell it the reason the system woke in the
-  // current dark resume.
-  static const char kWakeReasonStringPattern[];
-  static const char kWakeReasonStringDisconnect[];
-  static const char kWakeReasonStringSSID[];
 
   // Internal struct to hold the length and offset of sub-patterns that are
   // part of a bigger pattern that start at |offset| and are of |length| size in
@@ -357,6 +352,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   bool SetWakeOnWiFiAllowed(const bool& enabled, Error* error);
   std::string GetWakeOnWiFiFeaturesEnabled(Error* error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string& enabled, Error* error);
+  std::string GetLastWakeReason(Error* error);
   // Helper function to run and reset |suspend_actions_done_callback_|.
   void RunAndResetSuspendActionsDoneCallback(const Error& error);
   // Used for comparison of ByteString pairs in a set.

@@ -714,6 +714,17 @@ users of shill should use this property now
 			Possible errors: [service].Error.NotSupported (wake on WiFi not supported)
 					 [service].Error.InvalidArguments (invalid wake on WiFi feature)
 
+		string LastWakeReason [readonly]
+
+			(Defined in WiFi)
+
+			The reason of the last wake up.
+			Possible values of this property:
+				"WiFi.Disconnect": woke up by NL80211_WOWLAN_TRIG_DISCONNECT
+				"WiFi.Pattern":    woke up by NL80211_WOWLAN_TRIG_PKT_PATTERN
+				"WiFi.SSID":       woke up by NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS
+				"Unknown":         woke up by other reasons e.g. timer
+
 		uint32 WakeToScanPeriodSeconds [readwrite]
 
 			(Defined in WiFi)

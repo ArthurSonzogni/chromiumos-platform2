@@ -392,6 +392,7 @@ const char kBgscanMethodProperty[] = "BgscanMethod";
 const char kBgscanShortIntervalProperty[] = "BgscanShortInterval";
 const char kBgscanSignalThresholdProperty[] = "BgscanSignalThreshold";
 const char kForceWakeToScanTimerProperty[] = "ForceWakeToScanTimer";
+const char kLastWakeReasonProperty[] = "LastWakeReason";
 const char kLinkStatisticsProperty[] = "LinkStatistics";
 const char kMacAddressRandomizationEnabledProperty[] =
     "MACAddressRandomizationEnabled";
@@ -741,6 +742,15 @@ const char kWakeOnWiFiFeaturesEnabledDarkConnect[] = "darkconnect";
 const char kWakeOnWiFiFeaturesEnabledPacketDarkConnect[] =
     "packet_and_darkconnect";
 const char kWakeOnWiFiFeaturesEnabledNone[] = "none";
+
+// Wake on WiFi wake reasons.
+// These (except Unknown) will also be sent to powerd via
+// RecordDarkResumeWakeReason, to tell it the reason of the current dark
+// resume.
+const char kWakeOnWiFiReasonDisconnect[] = "WiFi.Disconnect";
+const char kWakeOnWiFiReasonPattern[] = "WiFi.Pattern";
+const char kWakeOnWiFiReasonSSID[] = "WiFi.SSID";
+const char kWakeOnWiFiReasonUnknown[] = "Unknown";
 
 // kEapKeyMgmtProperty values.
 const char kKeyManagementIEEE8021X[] = "IEEE8021X";
