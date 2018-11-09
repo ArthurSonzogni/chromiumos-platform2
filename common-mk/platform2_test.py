@@ -18,6 +18,7 @@ import os
 import pwd
 import re
 import signal
+import stat
 import sys
 import tempfile
 
@@ -116,7 +117,6 @@ class Platform2Test(object):
     """Framework for running platform2 tests"""
 
     _BIND_MOUNT_PATHS = (
-        "dev",
         "dev/pts",
         "dev/shm",
         "proc",
@@ -134,6 +134,7 @@ class Platform2Test(object):
         gtest_filter,
         user_gtest_filter,
         sysroot,
+        bind_mount_dev,
         env_vars,
         test_bin_args,
     ):
@@ -147,6 +148,7 @@ class Platform2Test(object):
         self.board = board
         self.host = host
         self.user = user
+        self.bind_mount_dev = bind_mount_dev
         (self.gtest_filter, self.user_gtest_filter) = self.generateGtestFilter(
             gtest_filter, user_gtest_filter
         )
@@ -381,6 +383,55 @@ class Platform2Test(object):
         Removes mounts/files copied during pre-test.
         """
 
+    def SetupDev(self):
+        """Initialize a pseudo /dev directory.
+
+        Unittests shouldn't need access to the real host /dev, especially since it
+        won't be the same as exists on builders.
+        """
+        NODES = {
+            "full": (1, 7, 0o666),
+            "null": (1, 3, 0o666),
+            "tty": (5, 0, 0o666),
+            "urandom": (1, 9, 0o444),
+            "zero": (1, 5, 0o666),
+        }
+
+        SYMLINKS = {
+            "ptmx": "pts/ptmx",
+            "fd": "/proc/self/fd",
+            "stdin": "fd/0",
+            "stdout": "fd/1",
+            "stderr": "fd/2",
+        }
+
+        # Create an empty scratch space for /dev.
+        path = os.path.join(self.sysroot, "dev")
+        osutils.SafeMakedirs(path)
+        osutils.Mount(
+            "/dev",
+            path,
+            "tmpfs",
+            osutils.MS_NOSUID | osutils.MS_NOEXEC,
+            "size=10M,mode=0755",
+        )
+
+        # Disable umask while we create paths.
+        with osutils.UmaskContext(0):
+            # Populate the few nodes we care about.
+            for node, (major, minor, perm) in NODES.items():
+                perm |= stat.S_IFCHR
+                os.mknod(
+                    os.path.join(path, node), perm, os.makedev(major, minor)
+                )
+
+            # Setup some symlinks for common paths.
+            for source, target in SYMLINKS.items():
+                os.symlink(target, os.path.join(path, source))
+
+            # Mount subpaths.
+            os.mkdir(os.path.join(path, "shm"), 0o1777)
+
     def run(self):
         """Runs the test in a proper environment (e.g. qemu)."""
 
@@ -389,7 +440,15 @@ class Platform2Test(object):
         # user if they test by hand.
         self.pre_test()
 
-        for mount in self._BIND_MOUNT_PATHS:
+        # Set up /dev first.
+        bind_mount_paths = []
+        if self.bind_mount_dev:
+            bind_mount_paths += ["dev"]
+        else:
+            self.SetupDev()
+        bind_mount_paths += self._BIND_MOUNT_PATHS
+
+        for mount in bind_mount_paths:
             path = os.path.join(self.sysroot, mount)
             osutils.SafeMakedirs(path)
             osutils.Mount("/" + mount, path, "none", osutils.MS_BIND)
@@ -644,6 +703,12 @@ def GetParser():
         default=False,
         help="specify that we're testing for the host",
     )
+    parser.add_argument(
+        "--bind-mount-dev",
+        action="store_true",
+        default=False,
+        help="bind mount /dev instead of creating a pseudo one",
+    )
     parser.add_argument("-u", "--user", help="user to run as (default: $USER)")
     parser.add_argument(
         "--run_as_root",
@@ -710,6 +775,7 @@ def main(argv):
         options.gtest_filter,
         options.user_gtest_filter,
         options.sysroot,
+        options.bind_mount_dev,
         env_vars,
         options.cmdline,
     )
