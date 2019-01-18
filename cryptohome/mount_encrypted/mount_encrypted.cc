@@ -101,7 +101,6 @@ static bool shall_use_tpm_for_system_key() {
 // being set up. If the system key is passed as an argument, use it, otherwise
 // attempt to query the TPM again.
 static result_code finalize_from_cmdline(
-    mount_encrypted::EncryptedFs* encrypted_fs,
     const base::FilePath& rootdir,
     const char* key) {
   // Load the system key.
@@ -131,15 +130,12 @@ static result_code finalize_from_cmdline(
     return RESULT_SUCCESS;
   }
 
-  // Load the encryption key.
-  brillo::SecureBlob encryption_key = encrypted_fs->GetKey();
-  if (encryption_key.empty()) {
+  // Load the encryption key and persist to disk.
+  rc = key_manager.LoadEncryptionKey();
+  if (rc != RESULT_SUCCESS) {
     LOG(ERROR) << "Could not get mount encryption key";
     return RESULT_FAIL_FATAL;
   }
-
-  // Persist the encryption key to disk.
-  key_manager.PersistEncryptionKey(encryption_key);
 
   return RESULT_SUCCESS;
 }
@@ -395,7 +391,7 @@ int main(int argc, const char* argv[]) {
       // Report info from the encrypted mount.
       return report_info(encrypted_fs.get(), rootdir);
     } else if (args[0] == "finalize") {
-      return finalize_from_cmdline(encrypted_fs.get(), rootdir,
+      return finalize_from_cmdline(rootdir,
                                    args.size() >= 2 ? args[1].c_str() : NULL);
     } else if (args[0] == "set") {
       return set_system_key(rootdir, args.size() >= 2 ? args[1].c_str() : NULL,

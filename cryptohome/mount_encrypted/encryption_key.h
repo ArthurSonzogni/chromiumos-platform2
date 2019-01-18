@@ -71,10 +71,6 @@ class EncryptionKey {
   // Load the encryption key from disk using the previously loaded system key.
   result_code LoadEncryptionKey();
 
-  // Set encryption key to the passed-in value and persist it to disk. Requires
-  // a usable system key to be present.
-  void PersistEncryptionKey(const brillo::SecureBlob& encryption_key);
-
   // Get a key derived from |system_key_| by performing an HMAC256 operation on
   // it with |label| being the data to do the HMAC operation on.
   // If |system_key_| is empty, it returns an empty blob.

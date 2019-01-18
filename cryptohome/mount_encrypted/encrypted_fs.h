@@ -91,10 +91,6 @@ class EncryptedFs {
   result_code CheckStates(void);
   // ReportInfo - Reports the paths and bind mounts.
   result_code ReportInfo(void) const;
-  // GetKey - Returns the key for the dmcrypt device. This is used
-  // for finalization in devices that do not have the TPM available
-  // initially while setting up the encrypted mount.
-  brillo::SecureBlob GetKey() const;
 
  private:
   friend class EncryptedFsTest;

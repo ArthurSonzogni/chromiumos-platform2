@@ -461,9 +461,4 @@ result_code EncryptedFs::ReportInfo(void) const {
   return RESULT_SUCCESS;
 }
 
-brillo::SecureBlob EncryptedFs::GetKey() const {
-  brillo::DevmapperTable dm_table = device_mapper_->GetTable(dmcrypt_name_);
-  return dm_table.CryptGetKey();
-}
-
 }  // namespace mount_encrypted

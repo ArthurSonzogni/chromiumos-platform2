@@ -355,13 +355,6 @@ result_code EncryptionKey::LoadEncryptionKey() {
   return RESULT_SUCCESS;
 }
 
-void EncryptionKey::PersistEncryptionKey(
-    const brillo::SecureBlob& encryption_key) {
-  encryption_key_ = encryption_key;
-  base::DeleteFile(key_path_);
-  Finalize();
-}
-
 brillo::SecureBlob EncryptionKey::GetDerivedSystemKey(
     const std::string& label) const {
   if (!system_key_.empty() &&
