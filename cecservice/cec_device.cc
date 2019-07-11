@@ -452,6 +452,8 @@ bool CecDeviceImpl::Impl::Init() {
 
 void CecDeviceImpl::Impl::GetTvPowerStatus(
     CecDevice::GetTvPowerStatusCallback callback) {
+  probe_tv_address_if_unknown_ = true;
+
   state_->GetTvPowerStatus(std::move(callback));
   RequestWriteWatch();
 }

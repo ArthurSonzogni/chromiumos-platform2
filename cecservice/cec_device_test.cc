@@ -69,6 +69,14 @@ class CecDeviceTest : public ::testing::Test {
   // Reads in a message initialized by provided function.
   void ReadMessageIn(struct cec_msg msg);
 
+  // Make a device object receive a NACK response to
+  // 'give physical address' message.
+  void ReadGivePhysicalAddressNack();
+
+  // Fails the probing process assuming that the device is in a state when it is
+  // about to probe the TV address.
+  void SimulateProbingFailure();
+
   CecFd::Callback event_callback_;
   CecFdMock* cec_fd_mock_;  // owned by |device_|
   std::unique_ptr<CecDeviceImpl> device_;
@@ -160,8 +168,33 @@ void CecDeviceTest::ReadMessageIn(struct cec_msg msg) {
       .WillOnce(Invoke([&](struct cec_msg* message) {
         *message = msg;
         return true;
-      }));
+      }))
+      .RetiresOnSaturation();
   event_callback_.Run(CecFd::EventType::kRead);
+}
+
+void CecDeviceTest::ReadGivePhysicalAddressNack() {
+  struct cec_msg msg;
+
+  cec_msg_init(&msg, kLogicalAddress, 0);
+  cec_msg_give_physical_addr(&msg, 0);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_NACK;
+
+  ReadMessageIn(msg);
+}
+
+void CecDeviceTest::SimulateProbingFailure() {
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  ReadGivePhysicalAddressNack();
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+
+  ReadGivePhysicalAddressNack();
 }
 
 void CecDeviceTest::SetActiveSource() {
@@ -603,16 +636,12 @@ TEST_F(CecDeviceTest, TestTvProbingSecondProbeSuceeds) {
   event_callback_.Run(CecFd::EventType::kWrite);
   event_callback_.Run(CecFd::EventType::kWrite);
 
-  struct cec_msg msg;
-  cec_msg_init(&msg, kLogicalAddress, 0);
-  cec_msg_give_physical_addr(&msg, 0);
-  msg.sequence = 1;
-  msg.tx_status = CEC_TX_STATUS_NACK;
-  ReadMessageIn(msg);
+  ReadGivePhysicalAddressNack();
 
   SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
                       CEC_MSG_GIVE_PHYSICAL_ADDR);
 
+  struct cec_msg msg;
   cec_msg_init(&msg, CEC_LOG_ADDR_SPECIFIC, CEC_LOG_ADDR_BROADCAST);
   cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
   msg.sequence = 1;
@@ -640,11 +669,7 @@ TEST_F(CecDeviceTest, TestTvProbingBroadcastTerminatesProbing) {
   ReadMessageIn(msg);
 
   // Response to the query.
-  cec_msg_init(&msg, kLogicalAddress, 0);
-  cec_msg_give_physical_addr(&msg, 0);
-  msg.sequence = 1;
-  msg.tx_status = CEC_TX_STATUS_NACK;
-  ReadMessageIn(msg);
+  ReadGivePhysicalAddressNack();
 
   SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
                       CEC_MSG_IMAGE_VIEW_ON);
@@ -676,24 +701,10 @@ TEST_F(CecDeviceTest, TestTvProbingAllRequestsFail) {
   Init();
   Connect();
 
-  struct cec_msg fail_msg;
-  cec_msg_init(&fail_msg, kLogicalAddress, 0);
-  cec_msg_give_physical_addr(&fail_msg, 0);
-  fail_msg.sequence = 1;
-  fail_msg.tx_status = CEC_TX_STATUS_NACK;
-
   device_->SetStandBy();
 
-  // Two 'ticks' are needed for the the CecDevice to send an initial
-  // 'give physical address' message.
-  event_callback_.Run(CecFd::EventType::kWrite);
-  event_callback_.Run(CecFd::EventType::kWrite);
+  SimulateProbingFailure();
 
-  ReadMessageIn(fail_msg);
-  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
-                      CEC_MSG_GIVE_PHYSICAL_ADDR);
-
-  ReadMessageIn(fail_msg);
   SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
 }
 
@@ -740,35 +751,65 @@ TEST_F(CecDeviceTest, TestTvProbingSendNonrecoverableError) {
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
 }
 
-TEST_F(CecDeviceTest, TestApiRequestRetriggersProbing) {
+TEST_F(CecDeviceTest, TestStandByRequestRetriggersProbing) {
   Init();
   Connect();
 
   device_->SetStandBy();
 
-  // Two 'ticks' are needed for the the CecDevice to send an initial
-  // 'give physical address' message.
-  event_callback_.Run(CecFd::EventType::kWrite);
-  event_callback_.Run(CecFd::EventType::kWrite);
+  SimulateProbingFailure();
 
-  struct cec_msg msg;
-  cec_msg_init(&msg, kLogicalAddress, 0);
-  cec_msg_give_physical_addr(&msg, 0);
-  msg.sequence = 1;
-  msg.tx_status = CEC_TX_STATUS_NACK;
-
-  ReadMessageIn(msg);
-  // Ignore the sent out message.
-  event_callback_.Run(CecFd::EventType::kWrite);
-
-  ReadMessageIn(msg);
-  // Ignore the sent out message.
-  event_callback_.Run(CecFd::EventType::kWrite);
+  // Read in fallback message.
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
 
   // Another request, should trigger requery.
   device_->SetStandBy();
 
-  // First spurious write.
+  // First extra tick.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+}
+
+TEST_F(CecDeviceTest, TestWakeUpTriggersProbing) {
+  Init();
+  Connect();
+
+  device_->SetWakeUp();
+
+  SimulateProbingFailure();
+
+  // Read in fallback message.
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_IMAGE_VIEW_ON);
+  // And broadcast.
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_BROADCAST,
+                      CEC_MSG_ACTIVE_SOURCE);
+
+  // Another request, should trigger requery.
+  device_->SetWakeUp();
+
+  // Extra tick.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+}
+
+TEST_F(CecDeviceTest, TestGivePowerStatusTriggersProbing) {
+  Init();
+  Connect();
+
+  device_->GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback());
+
+  SimulateProbingFailure();
+
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                      CEC_MSG_GIVE_DEVICE_POWER_STATUS);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  // Another request, should trigger requery.
+  device_->GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback());
+
+  // Extra tick.
   event_callback_.Run(CecFd::EventType::kWrite);
   SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
                       CEC_MSG_GIVE_PHYSICAL_ADDR);
