@@ -750,7 +750,8 @@ bool CecDeviceImpl::Impl::SetLogicalAddress() {
   memset(&addresses, 0, sizeof(addresses));
   addresses.cec_version = CEC_OP_CEC_VERSION_1_4;
   addresses.vendor_id = CEC_VENDOR_ID_NONE;
-  base::strlcpy(addresses.osd_name, "Chrome OS", sizeof(addresses.osd_name));
+  base::strlcpy(addresses.osd_name, CECSERVICE_OSD_NAME,
+                sizeof(addresses.osd_name));
   addresses.num_log_addrs = 1;
   addresses.log_addr_type[0] = CEC_LOG_ADDR_TYPE_PLAYBACK;
   addresses.primary_device_type[0] = CEC_OP_PRIM_DEVTYPE_PLAYBACK;

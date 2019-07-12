@@ -240,6 +240,10 @@ TEST_F(CecDeviceTest, TestLogicalAddressSetFail) {
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
 }
 
+TEST_F(CecDeviceTest, TestOsdNameLength) {
+  EXPECT_LE(strlen(CECSERVICE_OSD_NAME), 14);
+}
+
 // Test the basic logical address configuration flow.
 TEST_F(CecDeviceTest, TestConnect) {
   EXPECT_CALL(*cec_fd_mock_, GetLogicalAddresses(_))
@@ -255,7 +259,7 @@ TEST_F(CecDeviceTest, TestConnect) {
           Field(&cec_log_addrs::num_log_addrs, 1),
           Field(&cec_log_addrs::log_addr_type,
                 ElementsAre(uint8_t(CEC_LOG_ADDR_TYPE_PLAYBACK), _, _, _)),
-          Field(&cec_log_addrs::osd_name, StrEq("Chrome OS")),
+          Field(&cec_log_addrs::osd_name, StrEq(CECSERVICE_OSD_NAME)),
           Field(&cec_log_addrs::flags, CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK))))
       .WillOnce(Return(true));
 
