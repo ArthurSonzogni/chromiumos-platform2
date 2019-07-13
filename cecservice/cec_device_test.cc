@@ -836,6 +836,7 @@ TEST_F(CecDeviceTest, TestSendingToTVFailsReproesAddress) {
   event_callback_.Run(CecFd::EventType::kWrite);
   SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
                       CEC_MSG_GIVE_PHYSICAL_ADDR);
+  EXPECT_EQ(CEC_MSG_REPORT_PHYSICAL_ADDR, sent_message_.reply);
 }
 
 }  // namespace cecservice
