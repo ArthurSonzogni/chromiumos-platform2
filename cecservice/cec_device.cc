@@ -708,6 +708,9 @@ void CecDeviceImpl::Impl::ProcessIncomingMessage(struct cec_msg* msg) {
     case CEC_MSG_STANDBY:
       // Ignore standby.
       break;
+    case CEC_MSG_FEATURE_ABORT:
+      // Ignore.
+      break;
     default:
       if (!cec_msg_is_broadcast(msg)) {
         cec_msg_reply_feature_abort(msg, CEC_OP_ABORT_UNRECOGNIZED_OP);

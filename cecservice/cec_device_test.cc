@@ -423,6 +423,24 @@ TEST_F(CecDeviceTest, TestFeatureAbortResponse) {
   EXPECT_EQ(CEC_MSG_FEATURE_ABORT, cec_msg_opcode(&sent_message_));
 }
 
+TEST_F(CecDeviceTest, TestFeatureAbortDoesNotGenereateResponse) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  // We should not respond with feature abort to feature abort.
+  EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
+      .WillOnce(Invoke([](struct cec_msg* msg) {
+        cec_msg_init(msg, kOtherLogicalAddress, kLogicalAddress);
+        cec_msg_feature_abort(msg, 1, 1);
+        return true;
+      }));
+
+  // Make sure that we are not trying write anyhting in response.
+  EXPECT_CALL(*cec_fd_mock_, WriteWatch()).Times(0);
+  // Read the request in.
+  event_callback_.Run(CecFd::EventType::kRead);
+}
+
 TEST_F(CecDeviceTest, TestEventReadFailureDisablesDevice) {
   Init();
 
