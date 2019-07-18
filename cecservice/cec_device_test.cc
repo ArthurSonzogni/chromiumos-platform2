@@ -35,6 +35,7 @@ constexpr uint16_t kPhysicalAddress = 2;
 constexpr uint8_t kLogicalAddress = CEC_LOG_ADDR_PLAYBACK_1;
 constexpr uint8_t kOtherLogicalAddress = CEC_LOG_ADDR_PLAYBACK_3;
 constexpr uint16_t kLogicalAddressMask = (1 << kLogicalAddress);
+constexpr uint32_t kDefaultSentMessageId = 1;
 
 void Copy(TvPowerStatus* out, TvPowerStatus in) {
   *out = in;
@@ -94,8 +95,11 @@ CecDeviceTest::CecDeviceTest() {
                                             base::FilePath("/fake_path"));
 
   ON_CALL(*cec_fd_mock_, TransmitMessage(_))
-      .WillByDefault(DoAll(SaveArgPointee<0>(&sent_message_),
-                           Return(CecFd::TransmitResult::kOk)));
+      .WillByDefault(Invoke([&](struct cec_msg* msg) {
+        msg->sequence = kDefaultSentMessageId;
+        sent_message_ = *msg;
+        return CecFd::TransmitResult::kOk;
+      }));
 
   ON_CALL(*cec_fd_mock_, WriteWatch()).WillByDefault(Return(true));
 }
@@ -154,8 +158,11 @@ void CecDeviceTest::SendAndCheckMessage(uint16_t source_addr,
                                         uint8_t opcode) {
   sent_message_ = {};
   EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
-      .WillOnce(DoAll(SaveArgPointee<0>(&sent_message_),
-                      Return(CecFd::TransmitResult::kOk)))
+      .WillOnce(Invoke([&](struct cec_msg* msg) {
+        msg->sequence = kDefaultSentMessageId;
+        sent_message_ = *msg;
+        return CecFd::TransmitResult::kOk;
+      }))
       .RetiresOnSaturation();
   event_callback_.Run(CecFd::EventType::kWrite);
   EXPECT_EQ(source_addr, cec_msg_initiator(&sent_message_));
@@ -436,6 +443,23 @@ TEST_F(CecDeviceTest, TestFeatureAbortDoesNotGenereateResponse) {
       .WillOnce(Invoke([](struct cec_msg* msg) {
         cec_msg_init(msg, kOtherLogicalAddress, kLogicalAddress);
         cec_msg_feature_abort(msg, 1, 1);
+        return true;
+      }));
+
+  // Make sure that we are not trying write anyhting in response.
+  EXPECT_CALL(*cec_fd_mock_, WriteWatch()).Times(0);
+  // Read the request in.
+  event_callback_.Run(CecFd::EventType::kRead);
+}
+
+TEST_F(CecDeviceTest, TestLatePowerStatusResponseIsNotRejected) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
+      .WillOnce(Invoke([](struct cec_msg* msg) {
+        cec_msg_init(msg, kOtherLogicalAddress, kLogicalAddress);
+        cec_msg_report_power_status(msg, CEC_OP_POWER_STATUS_ON);
         return true;
       }));
 

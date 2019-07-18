@@ -338,6 +338,9 @@ class ProbingTvAddressState : public StateBase {
     kProbing0Completed,  // The probe for address 0 is completed.
     kProbing14,          // The probe for address 14 was sent.
   } subState_ = SubState::kStart;
+
+  // Sequence id of the ongoing transaction.
+  uint32_t sequence_id_;
 };
 
 class ReadyState : public StateBase {
@@ -711,6 +714,10 @@ void CecDeviceImpl::Impl::ProcessIncomingMessage(struct cec_msg* msg) {
     case CEC_MSG_FEATURE_ABORT:
       // Ignore.
       break;
+    case CEC_MSG_REPORT_POWER_STATUS:
+      // This is most likely a delayed response to our power status
+      // request. Ingore instead of rejecting.
+      break;
     default:
       if (!cec_msg_is_broadcast(msg)) {
         cec_msg_reply_feature_abort(msg, CEC_OP_ABORT_UNRECOGNIZED_OP);
@@ -929,13 +936,14 @@ void ProbingTvAddressState::Enter() {
 }
 
 bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
-  bool handled = false;
+  if (msg.sequence != sequence_id_)
+    return false;
 
   switch (cec_msg_opcode(&msg)) {
     case CEC_MSG_REPORT_PHYSICAL_ADDR:
       device_->ProcessReportPhysicalAddress(msg);
       FALLTHROUGH;
-    case CEC_MSG_GIVE_PHYSICAL_ADDR:
+    default:
       if (!cec_msg_status_is_ok(&msg)) {
         VLOG(1) << base::StringPrintf(
             "%s: power status query failed, rx_status: 0x%x tx_status: 0x%x",
@@ -958,10 +966,6 @@ bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
             device_->EnterState(CecDeviceImpl::Impl::State::kReady);
           }
       }
-      handled = true;
-      break;
-
-    default:
       break;
   }
 
@@ -969,7 +973,7 @@ bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
     device_->EnterState(CecDeviceImpl::Impl::State::kReady);
   }
 
-  return handled;
+  return true;
 }
 
 bool ProbingTvAddressState::ProcessWrite() {
@@ -994,6 +998,7 @@ bool ProbingTvAddressState::ProcessWrite() {
     case CecFd::TransmitResult::kError:
       return false;
     case CecFd::TransmitResult::kOk:
+      sequence_id_ = message.sequence;
       subState_ = (subState_ == SubState::kStart) ? SubState::kProbing0
                                                   : SubState::kProbing14;
       return true;
