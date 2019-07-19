@@ -30,7 +30,7 @@ config("target_defaults") {
   configs = [ ":target_defaults_pkg_deps" ]
   defines = []
   if (use.cfm) {
-    defines += [ "CECSERVICE_OSD_NAME=\"Meet Hardware\"" ]
+    defines += [ "CECSERVICE_OSD_NAME=\"Meet HW\"" ]
   } else {
     defines += [ "CECSERVICE_OSD_NAME=\"Chrome OS\"" ]
   }
