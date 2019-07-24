@@ -118,8 +118,7 @@ class CecDeviceImpl::Impl {
   // current state).
   void RequestWriteWatch();
 
-  // Processes messages lost event from CEC, just logs number of lost events
-  // and always returns true.
+  // Processes messages lost event from CEC. Always returns true.
   bool ProcessMessagesLostEvent(const struct cec_event_lost_msgs& event);
 
   // Acts on process update event from CEC core. If this method returns false
@@ -271,6 +270,9 @@ class StateBase {
   virtual bool ProcessResponse(const cec_msg& msg);
   // Called whenever fd is available for writing.
   virtual bool ProcessWrite();
+  // Called whenever an event saying that the kernel is dropping messages is
+  // recevied.
+  virtual void ProcessMessagesLostEvent();
 
   StateBase();
 
@@ -329,6 +331,7 @@ class ProbingTvAddressState : public StateBase {
   void SetWakeUp() override;
   bool ProcessResponse(const cec_msg& msg) override;
   bool ProcessWrite() override;
+  void ProcessMessagesLostEvent() override;
 
  private:
   // Represent state TV address querying op.
@@ -492,6 +495,24 @@ bool CecDeviceImpl::Impl::ProcessMessagesLostEvent(
     const struct cec_event_lost_msgs& event) {
   LOG(WARNING) << device_path_.value() << ": received event lost message, lost "
                << event.lost_msgs << " messages";
+
+  state_->ProcessMessagesLostEvent();
+
+  // Respond to all ongoing power status queries with an error.
+  std::list<RequestInFlight> ongoing;
+  std::list<RequestInFlight>::iterator i = requests_.begin();
+  while (i != requests_.end()) {
+    if (i->sequence_id != 0) {
+      ongoing.push_back(std::move(*i));
+      i = requests_.erase(i);
+    } else {
+      i++;
+    }
+  }
+  for (auto& request : ongoing) {
+    std::move(request.callback).Run(kTvPowerStatusError);
+  }
+
   return true;
 }
 
@@ -855,6 +876,8 @@ bool StateBase::ProcessWrite() {
   return true;
 }
 
+void StateBase::ProcessMessagesLostEvent() {}
+
 StateBase::StateBase() = default;
 
 StateBase::~StateBase() = default;
@@ -1022,6 +1045,13 @@ bool ProbingTvAddressState::NeedsWrite() {
     default:
       return false;
   }
+}
+
+void ProbingTvAddressState::ProcessMessagesLostEvent() {
+  LOG(WARNING) << device_->GetDevicePathString()
+               << ": losing messages, giving up on probing TV address";
+  device_->SetTvProbingCompleted();
+  device_->EnterState(CecDeviceImpl::Impl::State::kReady);
 }
 
 void ProbingTvAddressState::GetTvPowerStatus(

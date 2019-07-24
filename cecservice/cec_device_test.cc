@@ -885,4 +885,71 @@ TEST_F(CecDeviceTest, TestSendingToTVFailsReproesAddress) {
   EXPECT_EQ(CEC_MSG_REPORT_PHYSICAL_ADDR, sent_message_.reply);
 }
 
+TEST_F(CecDeviceTest, TestMessagesLostEventTriggersResponseToQuery) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  // Send 2 get power status queries.
+  TvPowerStatus power_status1 = kTvPowerStatusUnknown;
+  device_->GetTvPowerStatus(base::Bind(Copy, &power_status1));
+
+  TvPowerStatus power_status2 = kTvPowerStatusUnknown;
+  device_->GetTvPowerStatus(base::Bind(Copy, &power_status2));
+
+  // Make the fd write available, allowing the object to
+  // send the first request.
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(Invoke([](struct cec_msg* msg) {
+        msg->sequence = 1;
+        return CecFd::TransmitResult::kOk;
+      }));
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  // Emit messages lost event.
+  EXPECT_CALL(*cec_fd_mock_, ReceiveEvent(_))
+      .WillOnce(Invoke([=](struct cec_event* event) {
+        event->event = CEC_EVENT_LOST_MSGS;
+        event->lost_msgs.lost_msgs = 2;
+        event->flags = 0;
+
+        return true;
+      }));
+  event_callback_.Run(CecFd::EventType::kPriorityRead);
+
+  // The first query, that has been sent out should be responded
+  // with an error.
+  EXPECT_EQ(kTvPowerStatusError, power_status1);
+  // Nothing should happen to the second request.
+  EXPECT_EQ(kTvPowerStatusUnknown, power_status2);
+}
+
+TEST_F(CecDeviceTest, TestMessagesLostEventTerminatesTvProbing) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+
+  // The device will start by probing TV address.
+
+  // Provide the first 'write tick'.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+
+  // Emit an event saying that messages were lost.
+  EXPECT_CALL(*cec_fd_mock_, ReceiveEvent(_))
+      .WillOnce(Invoke([](struct cec_event* event) {
+        event->event = CEC_EVENT_LOST_MSGS;
+        event->lost_msgs.lost_msgs = 2;
+        event->flags = 0;
+
+        return true;
+      }));
+  event_callback_.Run(CecFd::EventType::kPriorityRead);
+
+  // The lost messages event should terminate probing, the next message
+  // should be the standby request sent the default TV's address.
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
+}
+
 }  // namespace cecservice
