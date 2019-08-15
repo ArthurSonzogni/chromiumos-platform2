@@ -368,6 +368,8 @@ TEST_F(CecDeviceTest, TestSendWakeUpWhileProbingTv) {
   cec_msg_init(&msg, 0, CEC_LOG_ADDR_BROADCAST);
   cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
   msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  msg.rx_status = CEC_RX_STATUS_OK;
   ReadMessageIn(msg);
 
   event_callback_.Run(CecFd::EventType::kWrite);
@@ -724,6 +726,8 @@ TEST_F(CecDeviceTest, TestTvProbingFirstProbeSuceedes) {
   cec_msg_init(&msg, 0, CEC_LOG_ADDR_BROADCAST);
   cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
   msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  msg.rx_status = CEC_RX_STATUS_OK;
   ReadMessageIn(msg);
 
   SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
@@ -749,6 +753,8 @@ TEST_F(CecDeviceTest, TestTvProbingSecondProbeSuceeds) {
   cec_msg_init(&msg, CEC_LOG_ADDR_SPECIFIC, CEC_LOG_ADDR_BROADCAST);
   cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
   msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  msg.rx_status = CEC_RX_STATUS_OK;
   ReadMessageIn(msg);
 
   SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC, CEC_MSG_STANDBY);
@@ -794,6 +800,8 @@ TEST_F(CecDeviceTest, TestTvProbingFirstResponseFromWrongPhysicalAddress) {
   cec_msg_init(&msg, 0, 0);
   cec_msg_report_physical_addr(&msg, 1, CEC_OP_PRIM_DEVTYPE_TV);
   msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  msg.rx_status = CEC_RX_STATUS_OK;
   ReadMessageIn(msg);
 
   // We should see another probe.

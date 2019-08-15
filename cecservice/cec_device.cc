@@ -963,38 +963,35 @@ bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
   if (msg.sequence != sequence_id_)
     return false;
 
-  switch (cec_msg_opcode(&msg)) {
-    case CEC_MSG_REPORT_PHYSICAL_ADDR:
-      device_->ProcessReportPhysicalAddress(msg);
-      FALLTHROUGH;
-    default:
-      if (!cec_msg_status_is_ok(&msg)) {
-        VLOG(1) << base::StringPrintf(
-            "%s: power status query failed, rx_status: 0x%x tx_status: 0x%x",
-            device_->GetDevicePathString().c_str(),
-            static_cast<uint32_t>(msg.rx_status),
-            static_cast<uint32_t>(msg.tx_status));
-      }
-      switch (subState_) {
-        case SubState::kStart:
-        case SubState::kProbing0Completed:
-          break;
-        case SubState::kProbing0:
-          subState_ = SubState::kProbing0Completed;
-          break;
-        case SubState::kProbing14:
-          if (!device_->HasTvAddress()) {
-            LOG(INFO) << device_->GetDevicePathString()
-                      << ": failed to find a TV";
-            device_->SetTvProbingCompleted();
-            device_->EnterState(CecDeviceImpl::Impl::State::kReady);
-          }
-      }
-      break;
+  if (cec_msg_status_is_ok(&msg) &&
+      cec_msg_opcode(&msg) == CEC_MSG_REPORT_PHYSICAL_ADDR) {
+    device_->ProcessReportPhysicalAddress(msg);
+  } else {
+    VLOG(1) << base::StringPrintf(
+        "%s: power status query failed, rx_status: 0x%x tx_status: 0x%x",
+        device_->GetDevicePathString().c_str(),
+        static_cast<uint32_t>(msg.rx_status),
+        static_cast<uint32_t>(msg.tx_status));
   }
 
   if (device_->HasTvAddress()) {
     device_->EnterState(CecDeviceImpl::Impl::State::kReady);
+    return true;
+  }
+
+  switch (subState_) {
+    case SubState::kStart:
+    case SubState::kProbing0Completed:
+      break;
+    case SubState::kProbing0:
+      subState_ = SubState::kProbing0Completed;
+      break;
+    case SubState::kProbing14:
+      if (!device_->HasTvAddress()) {
+        LOG(INFO) << device_->GetDevicePathString() << ": failed to find a TV";
+        device_->SetTvProbingCompleted();
+        device_->EnterState(CecDeviceImpl::Impl::State::kReady);
+      }
   }
 
   return true;
