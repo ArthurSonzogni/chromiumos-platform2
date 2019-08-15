@@ -952,6 +952,7 @@ void NoLogicalAddressState::SetStandBy() {
 
 void NoLogicalAddressState::SetWakeUp() {
   device_->EnqueueImageViewOnMessage();
+  device_->EnqueueActiveSourceMessage();
 }
 
 void ProbingTvAddressState::Enter() {
@@ -1065,6 +1066,7 @@ void ProbingTvAddressState::SetStandBy() {
 
 void ProbingTvAddressState::SetWakeUp() {
   device_->EnqueueImageViewOnMessage();
+  device_->EnqueueActiveSourceMessage();
 }
 
 void ReadyState::GetTvPowerStatus(

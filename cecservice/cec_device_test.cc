@@ -328,6 +328,64 @@ TEST_F(CecDeviceTest, TestSendWakeUpWhileDisconnected) {
   EXPECT_EQ(CEC_MSG_ACTIVE_SOURCE, cec_msg_opcode(&sent_message_));
 }
 
+TEST_F(CecDeviceTest, TestSendWakeUpWhileNoLogicalAddress) {
+  Init();
+
+  // No logical address.
+  SendStateUpdateEvent(kPhysicalAddress, 0);
+
+  device_->SetWakeUp();
+
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
+  EXPECT_EQ(CEC_LOG_ADDR_TV, cec_msg_destination(&sent_message_));
+  EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
+  EXPECT_EQ(CEC_LOG_ADDR_BROADCAST, cec_msg_destination(&sent_message_));
+  EXPECT_EQ(CEC_MSG_ACTIVE_SOURCE, cec_msg_opcode(&sent_message_));
+}
+
+TEST_F(CecDeviceTest, TestSendWakeUpWhileProbingTv) {
+  Init();
+  Connect();
+
+  // Put the device into TV address querying state.
+  device_->GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback());
+
+  // Transition the object to the TV probing state.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  // Request an wake up while in such state.
+  device_->SetWakeUp();
+
+  // Provide the TV address.
+  struct cec_msg msg;
+  cec_msg_init(&msg, 0, CEC_LOG_ADDR_BROADCAST);
+  cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
+  msg.sequence = 1;
+  ReadMessageIn(msg);
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
+  EXPECT_EQ(CEC_LOG_ADDR_TV, cec_msg_destination(&sent_message_));
+  EXPECT_EQ(CEC_MSG_GIVE_DEVICE_POWER_STATUS, cec_msg_opcode(&sent_message_));
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
+  EXPECT_EQ(CEC_LOG_ADDR_TV, cec_msg_destination(&sent_message_));
+  EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
+  EXPECT_EQ(CEC_LOG_ADDR_BROADCAST, cec_msg_destination(&sent_message_));
+  EXPECT_EQ(CEC_MSG_ACTIVE_SOURCE, cec_msg_opcode(&sent_message_));
+}
+
 TEST_F(CecDeviceTest, TestActiveSourceRequestResponse) {
   Init();
   ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
