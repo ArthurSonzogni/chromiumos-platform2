@@ -664,6 +664,41 @@ TEST_F(CecDeviceTest, TestGetTvStatusError) {
   EXPECT_EQ(kTvPowerStatusError, power_status);
 }
 
+TEST_F(CecDeviceTest, TestGetTvStatusOnDisconnect2) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  // If the EDID drops while after we sent 'give power status'
+  // query, we might get out own request back in response,
+  // instead of CEC_MSG_REPORT_POWER_STATUS. Report error
+  // in such case.
+  TvPowerStatus power_status = kTvPowerStatusUnknown;
+
+  CecDevice::GetTvPowerStatusCallback callback =
+      base::Bind(Copy, &power_status);
+  device_->GetTvPowerStatus(callback);
+
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(Invoke([](struct cec_msg* msg) {
+        msg->sequence = 1;
+        return CecFd::TransmitResult::kOk;
+      }));
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
+      .WillOnce(Invoke([](struct cec_msg* msg) {
+        cec_msg_init(msg, CEC_LOG_ADDR_TV, kLogicalAddress);
+        cec_msg_give_device_power_status(msg, 0);
+        msg->sequence = 1;
+        msg->tx_status = CEC_TX_STATUS_OK;
+        return true;
+      }));
+  // Read the request in.
+  event_callback_.Run(CecFd::EventType::kRead);
+
+  EXPECT_EQ(kTvPowerStatusError, power_status);
+}
+
 TEST_F(CecDeviceTest, TestMessageSendingWhenNoLogicalAddressIsConfigured) {
   Init();
 

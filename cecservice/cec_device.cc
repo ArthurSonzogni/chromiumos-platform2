@@ -635,7 +635,8 @@ bool CecDeviceImpl::Impl::ProcessPowerStatusResponse(
   }
 
   TvPowerStatus status;
-  if (cec_msg_status_is_ok(&msg)) {
+  if (cec_msg_status_is_ok(&msg) &&
+      cec_msg_opcode(&msg) == CEC_MSG_REPORT_POWER_STATUS) {
     status = GetPowerStatus(msg);
   } else {
     LOG(INFO) << base::StringPrintf(
