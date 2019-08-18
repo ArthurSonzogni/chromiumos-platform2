@@ -497,6 +497,24 @@ TEST_F(CecDeviceTest, TestFeatureAbortResponse) {
   EXPECT_EQ(CEC_MSG_FEATURE_ABORT, cec_msg_opcode(&sent_message_));
 }
 
+TEST_F(CecDeviceTest, TestNoFeatureAbortResponseToMessagesfromAddress15) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  // We should not respond to messages coming from 'unregistered' address.
+  EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
+      .WillOnce(Invoke([](struct cec_msg* msg) {
+        cec_msg_init(msg, CEC_LOG_ADDR_UNREGISTERED, kLogicalAddress);
+        cec_msg_record_off(msg, 1);
+        return true;
+      }));
+
+  // No response.
+  EXPECT_CALL(*cec_fd_mock_, WriteWatch()).Times(0);
+  // Read the request in.
+  event_callback_.Run(CecFd::EventType::kRead);
+}
+
 TEST_F(CecDeviceTest, TestFeatureAbortDoesNotGenereateResponse) {
   Init();
   ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);

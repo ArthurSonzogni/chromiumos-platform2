@@ -741,7 +741,8 @@ void CecDeviceImpl::Impl::ProcessIncomingMessage(struct cec_msg* msg) {
       // request. Ingore instead of rejecting.
       break;
     default:
-      if (!cec_msg_is_broadcast(msg)) {
+      if (!cec_msg_is_broadcast(msg) &&
+          cec_msg_initiator(msg) != CEC_LOG_ADDR_UNREGISTERED) {
         cec_msg_reply_feature_abort(msg, CEC_OP_ABORT_UNRECOGNIZED_OP);
         EnqueueMessage(std::move(*msg));
       }
