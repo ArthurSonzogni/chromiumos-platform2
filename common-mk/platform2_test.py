@@ -437,7 +437,12 @@ class Platform2Test(object):
 
       for name, value in self.env_vars.items():
         os.environ[name] = value
-      sys.exit(os.execvp(cmd, argv))
+      try:
+        sys.exit(os.execvp(cmd, argv))
+      except OSError as e:
+        # This is a common user error, so diagnose it better than a traceback.
+        print(f'error: execing {cmd} failed: {e}', file=sys.stderr)
+        sys.exit(127 if e.errno == errno.ENOENT else 1)
 
     if sys.stdin.isatty():
       # Make the child's process group the foreground process group.
