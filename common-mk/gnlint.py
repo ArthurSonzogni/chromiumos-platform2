@@ -553,6 +553,136 @@ def GnLintPkgConfigs(gndata):
   return ret
 
 
+# Helper functions for GnLintOrderingWithinTarget.
+def IsBinaryNode(node):
+  """Returns True if the node type is BINARY."""
+  if not isinstance(node, dict):
+    logging.warning('Reached non-dict node. Skipping: %s', node)
+    return False
+  return node.get('type') == 'BINARY'
+
+
+def IsConditionNode(node):
+  """Returns True if the node type is CONDITION."""
+  if not isinstance(node, dict):
+    logging.warning('Reached non-dict node. Skipping: %s', node)
+    return False
+  return node.get('type') == 'CONDITION'
+
+
+def GnLintOrderingWithinTarget(gndata):
+  """Enforce the order of identifiers within a target."""
+  ret = []
+  checked_function = {
+      'executable', 'group', 'shared_library', 'static_library',
+  }
+  order = [
+      {'output_name', 'visibility', 'testonly'},
+      {'sources'},
+      {'aliased_deps', 'all_dependent_configs', 'allow_circular_includes_from',
+       'arflags', 'args', 'asmflags', 'assert_no_deps', 'bundle_contents_dir',
+       'bundle_deps_filter', 'bundle_executable_dir', 'bundle_resources_dir',
+       'bundle_root_dir', 'cflags', 'cflags_c', 'cflags_cc', 'cflags_objc',
+       'cflags_objcc', 'check_includes', 'code_signing_args',
+       'code_signing_outputs', 'code_signing_script', 'code_signing_sources',
+       'complete_static_lib', 'configs', 'contents', 'crate_name', 'crate_root',
+       'crate_type', 'data', 'data_deps', 'data_keys', 'defines', 'depfile',
+       'friend', 'include_dirs', 'inputs', 'ldflags', 'lib_dirs', 'libs',
+       'metadata', 'output_conversion', 'output_dir', 'output_extension',
+       'output_prefix_override', 'outputs', 'partial_info_plist', 'pool',
+       'precompiled_header', 'precompiled_header_type', 'precompiled_source',
+       'product_type', 'public', 'public_configs', 'rebase', 'response_file',
+       'script', 'walk_keys', 'write_runtime_deps', 'xcode_extra_attributes',
+       'xcode_test_application_name'},
+      {'public_deps'},
+      {'deps'},
+  ]
+
+  def OrderStep(identifier):
+    # Find the order of the identifier.
+    for i, identifiers in enumerate(order):
+      if identifier in identifiers:
+        return i
+    return -1
+
+  def CheckFunction(node):
+    # Detect misordering of identifiers within a target.
+
+    def CheckCondition(node):
+      # Detect misordering of identifiers in conditionals.
+      if not IsConditionNode(node):
+        return
+      child = node.get('child', [])
+      if len(child) != 2:
+        return
+      _condition, block = child
+      CheckBlock(block)
+
+    def CheckBlock(node):
+      # Detect misordering of identifiers in blocks.
+      before_step = 0
+      for child in node.get('child', []):
+        CheckCondition(child)
+        if not IsBinaryNode(child):
+          continue
+        grandchild = child.get('child', [])
+        if len(grandchild) != 2:
+          continue
+
+        identifier = grandchild[0].get('value')
+        step = OrderStep(identifier)
+        if step == -1:
+          continue
+        if before_step > step:
+          ret.append(('wrong parameter order in %s(%s): '
+                      'put parameters in the following order: '
+                      'output_name/visibility/testonly, sources, '
+                      'other parameters, public_deps '
+                      'and deps') % (function, name))
+          return
+        before_step = step
+
+    if not IsFunctionNode(node):
+      return
+    function = node.get('value')
+    if function is None:
+      return
+
+    if function not in checked_function:
+      return
+    child = node.get('child', [])
+    if len(child) != 2:
+      return
+    # 1st child of FUNCTION node is the name of the function.
+    # For example:
+    #  FUNCTION(static_library)
+    #   LIST
+    #    LITERAL("my_static_library")
+    #   BLOCK
+    #    BINARY(+=)
+    #     IDENTIFIER(configs)
+    #     LIST
+    #      LITERAL("")
+    #    BINARY(-=)
+    #     IDENTIFIER(configs)
+    #     LIST
+    #      LITERAL("")
+    name_expression, block = child
+    if len(name_expression.get('child', [])) != 1:
+      return
+    name_literal = name_expression['child'][0]
+    if name_literal.get('type') != 'LITERAL':
+      return
+    name = name_literal.get('value')
+    if name is None:
+      return
+    name = Unquote(name)
+    CheckBlock(block)
+
+  WalkGn(CheckFunction, gndata)
+  return ret
+
+
 def ParseOptions(options, name=None):
   """Parse out the linter settings from |options|.
 
@@ -603,6 +733,7 @@ _ALL_LINTERS = {
     'GnLintStaticSharedLibMixing': GnLintStaticSharedLibMixing,
     'GnLintSourceFileNames': GnLintSourceFileNames,
     'GnLintPkgConfigs': GnLintPkgConfigs,
+    'GnLintOrderingWithinTarget' : GnLintOrderingWithinTarget,
 }
 
 

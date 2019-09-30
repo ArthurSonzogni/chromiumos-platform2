@@ -12,6 +12,8 @@ import os
 import sys
 import unittest
 
+import gnlint
+
 # Find chromite!
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 '..', '..', '..'))
@@ -21,7 +23,6 @@ from chromite.lib import commandline
 from chromite.lib import cros_logging as logging
 from chromite.lib import cros_test_lib
 from chromite.lib import osutils
-import gnlint
 # pylint: enable=wrong-import-position
 
 
@@ -389,6 +390,92 @@ class GnLintTests(LintTestCase):
         CreateTestData('libs', '=', 'z'),
         CreateTestData('libs', '=', 'ssl'),
     ])
+
+  def testGnLintOrderingWithinTarget(self):
+    """Verify GnLintOrderingWithinTarget catches bad inputs."""
+    # static_library("my_static_library") {
+    #   configs = [ "foo" ]
+    #   sources = [ "bar" ]
+    # }
+    self._CheckLinter(gnlint.GnLintOrderingWithinTarget, [{
+        'child': [{
+            'child': [{
+                'child': [{
+                    'type': 'LITERAL',
+                    'value': '\"my_static_library\"'
+                }],
+                'type': 'LIST'
+            }, {
+                'child': [{
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'configs'
+                    }, {
+                        'child': ['foo'],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '='
+                }, {
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'sources'
+                    }, {
+                        'child': ['bar'],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '='
+                }],
+                'type': 'BLOCK'
+            }],
+            'type': 'FUNCTION',
+            'value': 'static_library'
+        }],
+        'type': 'BLOCK'
+    }])
+
+    # static_library("my_static_library") {
+    #   sources = [ "foo" ]
+    #   configs = [ "bar" ]
+    # }
+    self._CheckLinter(gnlint.GnLintOrderingWithinTarget, [{
+        'child': [{
+            'child': [{
+                'child': [{
+                    'type': 'LITERAL',
+                    'value': '\"my_static_library\"'
+                }],
+                'type': 'LIST'
+            }, {
+                'child': [{
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'sources'
+                    }, {
+                        'child': ['foo'],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '='
+                }, {
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'configs'
+                    }, {
+                        'child': ['bar'],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '='
+                }],
+                'type': 'BLOCK'
+            }],
+            'type': 'FUNCTION',
+            'value': 'static_library'
+        }],
+        'type': 'BLOCK'
+    }], is_bad_input=False)
 
 
 if __name__ == '__main__':
