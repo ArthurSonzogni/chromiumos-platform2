@@ -11,10 +11,10 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <brillo/message_loops/message_loop.h>
 
 namespace cecservice {
 
@@ -64,7 +64,7 @@ class UdevImpl : public Udev {
   std::unique_ptr<udev, UdevDeleter> udev_;
   std::unique_ptr<udev_monitor, UdevMonitorDeleter> monitor_;
 
-  brillo::MessageLoop::TaskId taskid_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   base::WeakPtrFactory<UdevImpl> weak_factory_{this};
 

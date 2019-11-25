@@ -11,10 +11,10 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <base/memory/weak_ptr.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <brillo/message_loops/message_loop.h>
+#include <base/memory/weak_ptr.h>
 
 namespace cecservice {
 
@@ -108,12 +108,9 @@ class CecFdImpl : public CecFd {
   // Additional epoll FD used to wait for POLLPRI data.
   base::ScopedFD epoll_fd_;
 
-  const brillo::MessageLoop::TaskId kTaskIdNull =
-      brillo::MessageLoop::kTaskIdNull;
-
-  brillo::MessageLoop::TaskId priority_taskid_ = kTaskIdNull;
-  brillo::MessageLoop::TaskId read_taskid_ = kTaskIdNull;
-  brillo::MessageLoop::TaskId write_taskid_ = kTaskIdNull;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> priority_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> read_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> write_watcher_;
 
   Callback callback_;
 

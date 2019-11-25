@@ -20,11 +20,7 @@ namespace cecservice {
 CecFdImpl::CecFdImpl(base::ScopedFD fd, base::ScopedFD epoll_fd)
     : fd_(std::move(fd)), epoll_fd_(std::move(epoll_fd)) {}
 
-CecFdImpl::~CecFdImpl() {
-  brillo::MessageLoop::current()->CancelTask(read_taskid_);
-  brillo::MessageLoop::current()->CancelTask(priority_taskid_);
-  brillo::MessageLoop::current()->CancelTask(write_taskid_);
-}
+CecFdImpl::~CecFdImpl() = default;
 
 bool CecFdImpl::SetLogicalAddresses(struct cec_log_addrs* addresses) const {
   if (HANDLE_EINTR(ioctl(fd_.get(), CEC_ADAP_S_LOG_ADDRS, addresses))) {
@@ -93,23 +89,23 @@ bool CecFdImpl::SetMode(uint32_t mode) const {
 }
 
 bool CecFdImpl::SetEventCallback(const Callback& callback) {
-  DCHECK_EQ(read_taskid_, kTaskIdNull);
-  DCHECK_EQ(priority_taskid_, kTaskIdNull);
+  DCHECK(!read_watcher_);
+  DCHECK(!priority_watcher_);
 
   callback_ = callback;
 
-  priority_taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, epoll_fd_.get(), brillo::MessageLoop::kWatchRead, true,
+  priority_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      epoll_fd_.get(),
       base::Bind(&CecFdImpl::OnPriorityDataReady, weak_factory_.GetWeakPtr()));
 
-  read_taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, fd_.get(), brillo::MessageLoop::kWatchRead, true,
+  read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_.get(),
       base::Bind(&CecFdImpl::OnDataReady, weak_factory_.GetWeakPtr()));
 
-  if (priority_taskid_ == kTaskIdNull || read_taskid_ == kTaskIdNull) {
-    LOG_IF(ERROR, priority_taskid_ == kTaskIdNull)
+  if (!priority_watcher_ || !read_watcher_) {
+    LOG_IF(ERROR, !priority_watcher_)
         << "Failed to register watcher for epoll FD read readiness";
-    LOG_IF(ERROR, read_taskid_ == kTaskIdNull)
+    LOG_IF(ERROR, !read_watcher_)
         << "Failed to register watcher for FD read readiness";
 
     return false;
@@ -119,15 +115,15 @@ bool CecFdImpl::SetEventCallback(const Callback& callback) {
 }
 
 bool CecFdImpl::WriteWatch() {
-  if (write_taskid_ != kTaskIdNull) {
+  if (write_watcher_) {
     return true;
   }
 
-  write_taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, fd_.get(), brillo::MessageLoop::kWatchWrite, false,
+  write_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+      fd_.get(),
       base::Bind(&CecFdImpl::OnWriteReady, weak_factory_.GetWeakPtr()));
 
-  if (write_taskid_ == kTaskIdNull) {
+  if (!write_watcher_) {
     LOG(ERROR) << "Failed to register watcher for FD write readiness";
     return false;
   }
@@ -143,7 +139,7 @@ void CecFdImpl::OnDataReady() {
 }
 
 void CecFdImpl::OnWriteReady() {
-  write_taskid_ = brillo::MessageLoop::kTaskIdNull;
+  write_watcher_ = nullptr;
   callback_.Run(EventType::kWrite);
 }
 

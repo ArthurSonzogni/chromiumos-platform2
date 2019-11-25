@@ -53,11 +53,10 @@ bool UdevImpl::Init(const DeviceCallback& device_added_callback,
     return false;
   }
 
-  taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, udev_monitor_get_fd(monitor_.get()),
-      brillo::MessageLoop::kWatchRead, true,
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      udev_monitor_get_fd(monitor_.get()),
       base::Bind(&UdevImpl::OnDeviceAction, weak_factory_.GetWeakPtr()));
-  if (taskid_ == brillo::MessageLoop::kTaskIdNull) {
+  if (!watcher_) {
     LOG(ERROR) << "Failed to register listener on udev descriptor";
     return false;
   }
@@ -65,9 +64,7 @@ bool UdevImpl::Init(const DeviceCallback& device_added_callback,
   return true;
 }
 
-UdevImpl::~UdevImpl() {
-  brillo::MessageLoop::current()->CancelTask(taskid_);
-}
+UdevImpl::~UdevImpl() = default;
 
 bool UdevImpl::EnumerateDevices(
     std::vector<base::FilePath>* devices_out) const {
