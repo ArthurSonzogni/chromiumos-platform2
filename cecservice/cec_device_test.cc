@@ -904,7 +904,71 @@ TEST_F(CecDeviceTest, TestTvProbingAllSendsFail) {
   CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
 }
 
-TEST_F(CecDeviceTest, TestTvProbingSendNonrecoverableError) {
+TEST_F(CecDeviceTest, TestTVProbingFailsButTxIsAckedByAddr0) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  // Respond with ACK and timeout.
+  struct cec_msg msg;
+  cec_msg_init(&msg, 0, 0);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  msg.rx_status = CEC_RX_STATUS_TIMEOUT;
+  SendMessageToObject(msg);
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  SendGivePhysiacalAddressNack();
+
+  CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
+
+  // We will keep on probing.
+  device_->SetStandBy();
+  event_callback_.Run(CecFd::EventType::kWrite);
+  CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                          CEC_MSG_GIVE_PHYSICAL_ADDR);
+}
+
+TEST_F(CecDeviceTest, TestTVProbingFailsButTxIsAckedByAddr14) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  // NACK first request.
+  SendGivePhysiacalAddressNack();
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  // Respond to second one with ACK and timeout.
+  struct cec_msg msg;
+  cec_msg_init(&msg, 0, 0);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  msg.rx_status = CEC_RX_STATUS_TIMEOUT;
+  SendMessageToObject(msg);
+
+  CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
+                          CEC_MSG_STANDBY);
+
+  // We shall probe again.
+  device_->SetStandBy();
+  event_callback_.Run(CecFd::EventType::kWrite);
+  CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                          CEC_MSG_GIVE_PHYSICAL_ADDR);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingNonRecoverableErrorDisablesDevice) {
   Init();
   Connect();
 

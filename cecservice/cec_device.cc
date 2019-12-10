@@ -92,6 +92,9 @@ class CecDeviceImpl::Impl {
   // Sets the current TV address to invalid.
   void ResetTvAddress();
 
+  // Set assumed TV address.
+  void SetAssumedTVAddress(uint8_t address);
+
   // Returns true if there are any queued messages.
   bool MessagesInOutputQueue() const;
 
@@ -188,6 +191,10 @@ class CecDeviceImpl::Impl {
   // TV logical address.
   uint8_t tv_logical_address_ = CEC_LOG_ADDR_INVALID;
 
+  // In case we don't get a proper response from any tried TV addresses
+  // (0 or 14), we will fall back on that address.
+  uint8_t assummed_tv_logical_address_ = CEC_LOG_ADDR_TV;
+
   // Queue of messages we are about to send.
   std::deque<struct cec_msg> message_queue_;
 
@@ -212,20 +219,20 @@ class CecDeviceImpl::Impl {
 extern const size_t kCecDeviceMaxTxQueueSize = 250;
 
 namespace {
-struct cec_msg CreateMessage(uint16_t destination_address) {
+struct cec_msg CreateMessage(uint8_t destination_address) {
   struct cec_msg message;
   cec_msg_init(&message, CEC_LOG_ADDR_UNREGISTERED, destination_address);
   return message;
 }
 
-void SetMessageSourceAddress(uint16_t source_address, struct cec_msg* msg) {
+void SetMessageSourceAddress(uint8_t source_address, struct cec_msg* msg) {
   if (source_address == CEC_LOG_ADDR_INVALID) {
     source_address = CEC_LOG_ADDR_UNREGISTERED;
   }
   msg->msg[0] = (source_address << 4) | cec_msg_destination(msg);
 }
 
-void SetMessageDestinationAddress(uint16_t dest_address, struct cec_msg* msg) {
+void SetMessageDestinationAddress(uint8_t dest_address, struct cec_msg* msg) {
   msg->msg[0] = (cec_msg_initiator(msg) << 4) | dest_address;
 }
 
@@ -334,6 +341,9 @@ class ProbingTvAddressState : public StateBase {
   void ProcessMessagesLostEvent() override;
 
  private:
+  // Completes probing, setting appropriate assumed address (if needed).
+  void CompleteProbing();
+
   // Represent state TV address querying op.
   enum class SubState {
     kStart,              // Inital state.
@@ -344,6 +354,11 @@ class ProbingTvAddressState : public StateBase {
 
   // Sequence id of the ongoing transaction.
   uint32_t sequence_id_;
+
+  // In case a device has not responded but still ACKd our request, use that
+  // info to make a guess.
+  bool address_0_acked_ = false;
+  bool address_14_acked_ = false;
 };
 
 class ReadyState : public StateBase {
@@ -532,7 +547,10 @@ bool CecDeviceImpl::Impl::ProcessStateChangeEvent(
 
   if (physical_address_ == CEC_PHYS_ADDR_INVALID) {
     message_queue_.clear();
+
     tv_logical_address_ = CEC_LOG_ADDR_INVALID;
+    assummed_tv_logical_address_ = CEC_LOG_ADDR_TV;
+
     RespondToAllQueries(kTvPowerStatusAdapterNotConfigured);
 
     EnterState(State::kStart);
@@ -589,11 +607,12 @@ bool CecDeviceImpl::Impl::SendNextPendingMessage() {
 
   struct cec_msg message = message_queue_.front();
   if (IsMessageDirectedToTv(message)) {
-    uint16_t address = tv_logical_address_;
+    uint8_t address = tv_logical_address_;
     if (address == CEC_LOG_ADDR_INVALID) {
-      VLOG(1) << device_path_.value()
-              << ": Unknown TV logical address, falling back on 0.";
-      address = CEC_LOG_ADDR_TV;
+      address = assummed_tv_logical_address_;
+      VLOG(1) << base::StringPrintf(
+          "%s: Unknown TV logical address, falling back to: 0x%x",
+          device_path_.value().c_str(), static_cast<uint32_t>(address));
     }
 
     SetMessageDestinationAddress(address, &message);
@@ -676,6 +695,10 @@ bool CecDeviceImpl::Impl::HasTvAddress() const {
 
 void CecDeviceImpl::Impl::ResetTvAddress() {
   tv_logical_address_ = CEC_LOG_ADDR_INVALID;
+}
+
+void CecDeviceImpl::Impl::SetAssumedTVAddress(uint8_t address) {
+  assummed_tv_logical_address_ = address;
 }
 
 void CecDeviceImpl::Impl::ProcessSentMessage(const struct cec_msg& msg) {
@@ -959,18 +982,34 @@ void NoLogicalAddressState::SetWakeUp() {
 
 void ProbingTvAddressState::Enter() {
   subState_ = SubState::kStart;
+  address_0_acked_ = false;
+  address_14_acked_ = false;
 }
 
 bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
   if (msg.sequence != sequence_id_)
     return false;
 
+  if (msg.tx_status == CEC_TX_STATUS_OK) {
+    switch (subState_) {
+      case SubState::kProbing0:
+        address_0_acked_ = true;
+        break;
+      case SubState::kProbing14:
+        address_14_acked_ = true;
+        break;
+      default:
+        break;
+    }
+  }
+
   if (cec_msg_status_is_ok(&msg) &&
       cec_msg_opcode(&msg) == CEC_MSG_REPORT_PHYSICAL_ADDR) {
     device_->ProcessReportPhysicalAddress(msg);
   } else {
     VLOG(1) << base::StringPrintf(
-        "%s: power status query failed, rx_status: 0x%x tx_status: 0x%x",
+        "%s: give physical address status query failed, rx_status: 0x%x "
+        "tx_status: 0x%x",
         device_->GetDevicePathString().c_str(),
         static_cast<uint32_t>(msg.rx_status),
         static_cast<uint32_t>(msg.tx_status));
@@ -989,11 +1028,8 @@ bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
       subState_ = SubState::kProbing0Completed;
       break;
     case SubState::kProbing14:
-      if (!device_->HasTvAddress()) {
-        LOG(INFO) << device_->GetDevicePathString() << ": failed to find a TV";
-        device_->SetTvProbingCompleted();
-        device_->EnterState(CecDeviceImpl::Impl::State::kReady);
-      }
+      CompleteProbing();
+      break;
   }
 
   return true;
@@ -1029,12 +1065,24 @@ bool ProbingTvAddressState::ProcessWrite() {
       if (subState_ == SubState::kStart) {
         subState_ = SubState::kProbing0Completed;
       } else {
-        VLOG(1) << device_->GetDevicePathString() << ": failed to find a TV";
-        device_->SetTvProbingCompleted();
-        device_->EnterState(CecDeviceImpl::Impl::State::kReady);
+        CompleteProbing();
       }
       return true;
   }
+}
+
+void ProbingTvAddressState::CompleteProbing() {
+  if (!device_->HasTvAddress()) {
+    if (address_0_acked_) {
+      device_->SetAssumedTVAddress(CEC_LOG_ADDR_TV);
+    } else if (address_14_acked_) {
+      device_->SetAssumedTVAddress(CEC_LOG_ADDR_SPECIFIC);
+    } else {
+      VLOG(1) << device_->GetDevicePathString() << ": failed to find a TV";
+    }
+  }
+  device_->SetTvProbingCompleted();
+  device_->EnterState(CecDeviceImpl::Impl::State::kReady);
 }
 
 bool ProbingTvAddressState::NeedsWrite() {
