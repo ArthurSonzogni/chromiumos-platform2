@@ -40,8 +40,7 @@ constexpr char kDevString[] = "/dev/";
 
 class AccelerometerTest : public SensorTestBase {
  public:
-  AccelerometerTest()
-      : SensorTestBase("cros-ec-accel", kDeviceId, SensorKind::ACCELEROMETER) {
+  AccelerometerTest() : SensorTestBase("cros-ec-accel", kDeviceId) {
     mock_delegate_->AddGroup("chronos", kChronosGroupId);
     mock_delegate_->AddGroup(Configuration::GetGroupNameForSysfs(),
                              kIioserviceGroupId);

@@ -31,10 +31,9 @@ void FakeSysfsTrigger::AddMockTrigger() {
   mock_context_->AddTrigger(std::move(mock_trigger_));
 }
 
-SensorTestBase::SensorTestBase(const char* name, int id, SensorKind kind)
-    : mock_context_(new FakeIioContext),
-      mock_delegate_(new FakeDelegate),
-      sensor_kind_(kind) {
+SensorTestBase::SensorTestBase(const char* name, int id)
+    : mock_context_(new FakeIioContext), mock_delegate_(new FakeDelegate) {
+  sensor_kind_ = mems_setup::SensorKindFromString(name ? name : "");
   auto channel = std::make_unique<FakeIioChannel>("calibration", false);
   auto device = std::make_unique<FakeIioDevice>(mock_context_.get(), name, id);
   auto trigger =
@@ -153,7 +152,7 @@ void SensorTestBase::ConfigureVpd(
 Configuration* SensorTestBase::GetConfiguration() {
   if (config_ == nullptr) {
     config_.reset(new Configuration(mock_context_.get(), mock_device_,
-                                    sensor_kind_, mock_delegate_.get()));
+                                    mock_delegate_.get()));
   }
 
   return config_.get();

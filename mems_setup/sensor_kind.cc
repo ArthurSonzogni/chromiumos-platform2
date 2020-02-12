@@ -17,6 +17,16 @@ constexpr char kSyncName[] = "count";
 constexpr char kMagnName[] = "magn";
 constexpr char kLidAngleName[] = "angl";
 constexpr char kBaroName[] = "baro";
+constexpr char kOthersName[] = "";
+
+constexpr char kAccelDeviceName[] = "cros-ec-accel";
+constexpr char kGyroDeviceName[] = "cros-ec-gyro";
+constexpr char kLightDeviceName[] = "cros-ec-light";
+constexpr char kAlsDeviceName[] = "acpi-als";
+constexpr char kSyncDeviceName[] = "cros-ec-sync";
+constexpr char kMagnDeviceName[] = "cros-ec-mag";
+constexpr char kLidAngleDeviceName[] = "cros-ec-lid-angle";
+constexpr char kBaroDeviceName[] = "cros-ec-baro";
 }  // namespace
 
 std::string SensorKindToString(SensorKind kind) {
@@ -30,33 +40,35 @@ std::string SensorKindToString(SensorKind kind) {
     case SensorKind::SYNC:
       return kSyncName;
     case SensorKind::MAGNETOMETER:
-      return kAccelName;
+      return kMagnName;
     case SensorKind::LID_ANGLE:
       return kLidAngleName;
     case SensorKind::BAROMETER:
       return kBaroName;
+    case SensorKind::OTHERS:  // Shouldn't be used
+      return kOthersName;
   }
 
   NOTREACHED();
 }
 
-base::Optional<SensorKind> SensorKindFromString(const std::string& name) {
-  if (name == kAccelName)
+SensorKind SensorKindFromString(const std::string& name) {
+  if (name == kAccelDeviceName)
     return SensorKind::ACCELEROMETER;
-  if (name == kGyroName)
+  if (name == kGyroDeviceName)
     return SensorKind::GYROSCOPE;
-  if (name == kLightName)
+  if (name == kLightDeviceName || name == kAlsDeviceName)
     return SensorKind::LIGHT;
-  if (name == kSyncName)
+  if (name == kSyncDeviceName)
     return SensorKind::SYNC;
-  if (name == kMagnName)
+  if (name == kMagnDeviceName)
     return SensorKind::MAGNETOMETER;
-  if (name == kLidAngleName)
+  if (name == kLidAngleDeviceName)
     return SensorKind::LID_ANGLE;
-  if (name == kBaroName)
+  if (name == kBaroDeviceName)
     return SensorKind::BAROMETER;
 
-  return base::nullopt;
+  return SensorKind::OTHERS;
 }
 
 }  // namespace mems_setup

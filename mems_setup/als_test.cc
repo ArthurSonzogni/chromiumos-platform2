@@ -31,7 +31,7 @@ constexpr char kAcpiAlsTriggerName[] = "iioservice-acpi-als";
 
 class AlsTest : public SensorTestBase {
  public:
-  AlsTest() : SensorTestBase("acpi-als", 5, SensorKind::LIGHT) {
+  AlsTest() : SensorTestBase("acpi-als", 5) {
     mock_delegate_->AddGroup(Configuration::GetGroupNameForSysfs(),
                              kIioserviceGroupId);
     mock_delegate_->SetMockContext(mock_context_.get());

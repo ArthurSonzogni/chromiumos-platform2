@@ -18,11 +18,12 @@ enum class SensorKind {
   SYNC,
   MAGNETOMETER,
   LID_ANGLE,
-  BAROMETER
+  BAROMETER,
+  OTHERS,
 };
 
 std::string SensorKindToString(SensorKind kind);
-base::Optional<SensorKind> SensorKindFromString(const std::string& name);
+SensorKind SensorKindFromString(const std::string& name);
 
 }  // namespace mems_setup
 

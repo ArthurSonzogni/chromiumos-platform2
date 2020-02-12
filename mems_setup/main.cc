@@ -18,9 +18,6 @@
 #include "mems_setup/sensor_kind.h"
 
 int main(int argc, char** argv) {
-  DEFINE_string(sensor_kind, "",
-                "Kind of sensor being initialized. "
-                "One of anglvel, accel.");
   DEFINE_int32(device_id, -1,
                "The IIO device id for the sensor being "
                "initialized, such as iio:device0.");
@@ -35,26 +32,15 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS MEMS Setup");
 
-  if (FLAGS_sensor_kind.empty() ||
-      (FLAGS_device_id == -1 && FLAGS_device_name.empty())) {
-    LOG(ERROR) << "mems_setup must be called with sensor and type";
+  if ((FLAGS_device_id == -1 && FLAGS_device_name.empty())) {
+    LOG(ERROR) << "mems_setup must be called with sensor";
     exit(1);
   }
 
   if (FLAGS_device_name.empty()) {
-    LOG(INFO) << "Starting mems_setup [id=" << FLAGS_device_id
-              << ", kind=" << FLAGS_sensor_kind << "]";
+    LOG(INFO) << "Starting mems_setup [id=" << FLAGS_device_id << "]";
   } else {
-    LOG(INFO) << "Starting mems_setup [name=" << FLAGS_device_name
-              << ", kind=" << FLAGS_sensor_kind << "]";
-  }
-
-  mems_setup::SensorKind kind;
-  if (auto sk = mems_setup::SensorKindFromString(FLAGS_sensor_kind)) {
-    kind = sk.value();
-  } else {
-    LOG(ERROR) << FLAGS_sensor_kind << " is not a known type of sensor";
-    exit(1);
+    LOG(INFO) << "Starting mems_setup [name=" << FLAGS_device_name << "]";
   }
 
   std::unique_ptr<mems_setup::Delegate> delegate(
@@ -93,8 +79,7 @@ int main(int argc, char** argv) {
   }
 
   std::unique_ptr<mems_setup::Configuration> config(
-      new mems_setup::Configuration(context.get(), device, kind,
-                                    delegate.get()));
+      new mems_setup::Configuration(context.get(), device, delegate.get()));
 
   return config->Configure() ? 0 : 1;
 }

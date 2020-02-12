@@ -57,7 +57,7 @@ class SensorTestBase : public ::testing::Test {
 
   SensorKind sensor_kind_;
 
-  SensorTestBase(const char* name, int id, SensorKind kind);
+  SensorTestBase(const char* name, int id);
 
   void SetSingleSensor(const char* location);
   void SetSharedSensor();

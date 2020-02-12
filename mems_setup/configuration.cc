@@ -107,9 +107,13 @@ const char* Configuration::GetGroupNameForSysfs() {
 
 Configuration::Configuration(libmems::IioContext* context,
                              libmems::IioDevice* sensor,
-                             SensorKind kind,
                              Delegate* del)
-    : delegate_(del), kind_(kind), sensor_(sensor), context_(context) {}
+    : delegate_(del), sensor_(sensor), context_(context) {
+  DCHECK(sensor_);
+
+  kind_ = mems_setup::SensorKindFromString(
+      sensor_->GetName() ? sensor_->GetName() : "");
+}
 
 bool Configuration::Configure() {
   if (!SetupPermissions())
@@ -146,7 +150,8 @@ bool Configuration::Configure() {
       // TODO(chenghaoyang): Setup calibrations for the barometer.
       return true;
     default:
-      LOG(ERROR) << SensorKindToString(kind_) << " unimplemented";
+      CHECK(kind_ == SensorKind::OTHERS);
+      LOG(ERROR) << sensor_->GetName() << " unimplemented";
       return false;
   }
 }

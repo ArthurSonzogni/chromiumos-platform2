@@ -24,7 +24,6 @@ class Configuration {
 
   Configuration(libmems::IioContext* context,
                 libmems::IioDevice* sensor,
-                SensorKind kind,
                 Delegate* delegate);
   Configuration(const Configuration&) = delete;
   Configuration& operator=(const Configuration&) = delete;

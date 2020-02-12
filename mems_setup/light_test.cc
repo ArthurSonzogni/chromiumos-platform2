@@ -28,7 +28,7 @@ static gid_t kIioserviceGroupId = 777;
 
 class LightTest : public SensorTestBase {
  public:
-  LightTest() : SensorTestBase("cros-ec-light", 4, SensorKind::LIGHT) {
+  LightTest() : SensorTestBase("cros-ec-light", 4) {
     mock_delegate_->AddGroup(Configuration::GetGroupNameForSysfs(),
                              kIioserviceGroupId);
   }
