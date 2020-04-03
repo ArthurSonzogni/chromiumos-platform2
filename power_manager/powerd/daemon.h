@@ -85,6 +85,7 @@ class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
 class UserProximityWatcherInterface;
 class SuspendConfiguratorInterface;
+class SuspendFreezerInterface;
 class ThermalDeviceInterface;
 class UdevInterface;
 class WakeupSourceIdentifierInterface;
@@ -331,6 +332,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<policy::CellularController> cellular_controller_;
 #endif  // USE_TROGDOR_SAR_HACK
   std::unique_ptr<system::SuspendConfiguratorInterface> suspend_configurator_;
+  std::unique_ptr<system::SuspendFreezerInterface> suspend_freezer_;
   std::unique_ptr<system::WakeupSourceIdentifierInterface>
       wakeup_source_identifier_;
   std::vector<std::unique_ptr<system::ThermalDeviceInterface>> thermal_devices_;

@@ -54,6 +54,7 @@
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
+#include "power_manager/powerd/system/suspend_freezer.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/thermal/thermal_device_factory.h"
 #include "power_manager/powerd/system/udev.h"
@@ -258,6 +259,13 @@ class DaemonDelegateImpl : public DaemonDelegate {
     auto suspend_configurator = std::make_unique<system::SuspendConfigurator>();
     suspend_configurator->Init(prefs);
     return suspend_configurator;
+  }
+
+  std::unique_ptr<system::SuspendFreezerInterface> CreateSuspendFreezer(
+      PrefsInterface* prefs) override {
+    auto suspend_freezer = std::make_unique<system::SuspendFreezer>();
+    suspend_freezer->Init(prefs);
+    return suspend_freezer;
   }
 
   std::vector<std::unique_ptr<system::ThermalDeviceInterface>>
