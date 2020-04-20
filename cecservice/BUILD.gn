@@ -38,9 +38,7 @@ config("target_defaults") {
 
 executable("cecservice") {
   configs += [ ":target_defaults" ]
-  sources = [
-    "main.cc",
-  ]
+  sources = [ "main.cc" ]
   deps = [
     ":cecservice-adaptors",
     ":libcecservice",
@@ -61,9 +59,7 @@ static_library("libcecservice") {
 generate_dbus_adaptors("cecservice-adaptors") {
   dbus_service_config = "dbus_bindings/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/cecservice/dbus_adaptors"
-  sources = [
-    "dbus_bindings/org.chromium.CecService.xml",
-  ]
+  sources = [ "dbus_bindings/org.chromium.CecService.xml" ]
 }
 
 if (use.test) {
