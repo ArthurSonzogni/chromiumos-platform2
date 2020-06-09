@@ -385,7 +385,7 @@ struct sl_xdg_shell {
   struct sl_context* ctx;
   uint32_t id;
   struct sl_global* host_global;
-  struct zxdg_shell_v6* internal;
+  struct xdg_wm_base* internal;
 };
 
 struct sl_aura_shell {

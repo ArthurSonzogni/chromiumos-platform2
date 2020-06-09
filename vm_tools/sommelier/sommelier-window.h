@@ -59,9 +59,9 @@ struct sl_window {
   int max_height;
   struct sl_config next_config;
   struct sl_config pending_config;
-  struct zxdg_surface_v6* xdg_surface;
-  struct zxdg_toplevel_v6* xdg_toplevel;
-  struct zxdg_popup_v6* xdg_popup;
+  struct xdg_surface* xdg_surface;
+  struct xdg_toplevel* xdg_toplevel;
+  struct xdg_popup* xdg_popup;
   struct zaura_surface* aura_surface;
   struct wl_list link;
 };

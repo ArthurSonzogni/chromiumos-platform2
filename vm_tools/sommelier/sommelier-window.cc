@@ -10,7 +10,7 @@
 #include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
-#include "xdg-shell-unstable-v6-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 #define APPLICATION_ID_FORMAT_PREFIX "org.chromium.%s"
 #define XID_APPLICATION_ID_FORMAT APPLICATION_ID_FORMAT_PREFIX ".xid.%d"
@@ -122,8 +122,8 @@ int sl_process_pending_configure_acks(struct sl_window* window,
   }
 
   if (window->xdg_surface) {
-    zxdg_surface_v6_ack_configure(window->xdg_surface,
-                                  window->pending_config.serial);
+    xdg_surface_ack_configure(window->xdg_surface,
+                              window->pending_config.serial);
   }
   window->pending_config.serial = 0;
 
@@ -141,23 +141,24 @@ void sl_commit(struct sl_window* window, struct sl_host_surface* host_surface) {
 }
 
 static void sl_internal_xdg_popup_configure(void* data,
-                                            struct zxdg_popup_v6* xdg_popup,
+                                            struct xdg_popup* xdg_popup,
                                             int32_t x,
                                             int32_t y,
                                             int32_t width,
                                             int32_t height) {}
 
 static void sl_internal_xdg_popup_done(void* data,
-                                       struct zxdg_popup_v6* zxdg_popup_v6) {}
+                                       struct xdg_popup* xdg_popup) {}
 
-static const struct zxdg_popup_v6_listener sl_internal_xdg_popup_listener = {
+static const struct xdg_popup_listener sl_internal_xdg_popup_listener = {
     sl_internal_xdg_popup_configure, sl_internal_xdg_popup_done};
 
-static void sl_internal_xdg_surface_configure(
-    void* data, struct zxdg_surface_v6* xdg_surface, uint32_t serial) {
+static void sl_internal_xdg_surface_configure(void* data,
+                                              struct xdg_surface* xdg_surface,
+                                              uint32_t serial) {
   TRACE_EVENT("surface", "sl_internal_xdg_surface_configure");
   struct sl_window* window =
-      static_cast<sl_window*>(zxdg_surface_v6_get_user_data(xdg_surface));
+      static_cast<sl_window*>(xdg_surface_get_user_data(xdg_surface));
 
   window->next_config.serial = serial;
   if (!window->pending_config.serial) {
@@ -175,18 +176,18 @@ static void sl_internal_xdg_surface_configure(
   }
 }
 
-static const struct zxdg_surface_v6_listener sl_internal_xdg_surface_listener =
-    {sl_internal_xdg_surface_configure};
+static const struct xdg_surface_listener sl_internal_xdg_surface_listener = {
+    sl_internal_xdg_surface_configure};
 
 static void sl_internal_xdg_toplevel_configure(
     void* data,
-    struct zxdg_toplevel_v6* xdg_toplevel,
+    struct xdg_toplevel* xdg_toplevel,
     int32_t width,
     int32_t height,
     struct wl_array* states) {
   TRACE_EVENT("other", "sl_internal_xdg_toplevel_configure");
   struct sl_window* window =
-      static_cast<sl_window*>(zxdg_toplevel_v6_get_user_data(xdg_toplevel));
+      static_cast<sl_window*>(xdg_toplevel_get_user_data(xdg_toplevel));
   int activated = 0;
   uint32_t* state;
   int i = 0;
@@ -216,24 +217,24 @@ static void sl_internal_xdg_toplevel_configure(
 
   window->allow_resize = 1;
   sl_array_for_each(state, states) {
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_FULLSCREEN) {
+    if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
       window->allow_resize = 0;
       window->next_config.states[i++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
     }
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_MAXIMIZED) {
+    if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
       window->allow_resize = 0;
       window->next_config.states[i++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
       window->next_config.states[i++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
     }
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_ACTIVATED) {
+    if (*state == XDG_TOPLEVEL_STATE_ACTIVATED) {
       activated = 1;
       window->next_config.states[i++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value;
     }
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_RESIZING)
+    if (*state == XDG_TOPLEVEL_STATE_RESIZING)
       window->allow_resize = 0;
   }
 
@@ -248,11 +249,11 @@ static void sl_internal_xdg_toplevel_configure(
   window->next_config.states_length = i;
 }
 
-static void sl_internal_xdg_toplevel_close(
-    void* data, struct zxdg_toplevel_v6* xdg_toplevel) {
+static void sl_internal_xdg_toplevel_close(void* data,
+                                           struct xdg_toplevel* xdg_toplevel) {
   TRACE_EVENT("other", "sl_internal_xdg_toplevel_close");
   struct sl_window* window =
-      static_cast<sl_window*>(zxdg_toplevel_v6_get_user_data(xdg_toplevel));
+      static_cast<sl_window*>(xdg_toplevel_get_user_data(xdg_toplevel));
   xcb_client_message_event_t event = {};
   event.response_type = XCB_CLIENT_MESSAGE;
   event.format = 32;
@@ -265,9 +266,8 @@ static void sl_internal_xdg_toplevel_close(
                  XCB_EVENT_MASK_NO_EVENT, (const char*)&event);
 }
 
-static const struct zxdg_toplevel_v6_listener
-    sl_internal_xdg_toplevel_listener = {sl_internal_xdg_toplevel_configure,
-                                         sl_internal_xdg_toplevel_close};
+static const struct xdg_toplevel_listener sl_internal_xdg_toplevel_listener = {
+    sl_internal_xdg_toplevel_configure, sl_internal_xdg_toplevel_close};
 void sl_update_application_id(struct sl_context* ctx,
                               struct sl_window* window) {
   TRACE_EVENT("other", "sl_update_application_id");
@@ -324,15 +324,15 @@ void sl_window_update(struct sl_window* window) {
       window->aura_surface = NULL;
     }
     if (window->xdg_toplevel) {
-      zxdg_toplevel_v6_destroy(window->xdg_toplevel);
+      xdg_toplevel_destroy(window->xdg_toplevel);
       window->xdg_toplevel = NULL;
     }
     if (window->xdg_popup) {
-      zxdg_popup_v6_destroy(window->xdg_popup);
+      xdg_popup_destroy(window->xdg_popup);
       window->xdg_popup = NULL;
     }
     if (window->xdg_surface) {
-      zxdg_surface_v6_destroy(window->xdg_surface);
+      xdg_surface_destroy(window->xdg_surface);
       window->xdg_surface = NULL;
     }
     window->realized = 0;
@@ -408,11 +408,11 @@ void sl_window_update(struct sl_window* window) {
   }
 
   if (!window->xdg_surface) {
-    window->xdg_surface = zxdg_shell_v6_get_xdg_surface(
-        ctx->xdg_shell->internal, host_surface->proxy);
-    zxdg_surface_v6_set_user_data(window->xdg_surface, window);
-    zxdg_surface_v6_add_listener(window->xdg_surface,
-                                 &sl_internal_xdg_surface_listener, window);
+    window->xdg_surface = xdg_wm_base_get_xdg_surface(ctx->xdg_shell->internal,
+                                                      host_surface->proxy);
+    xdg_surface_set_user_data(window->xdg_surface, window);
+    xdg_surface_add_listener(window->xdg_surface,
+                             &sl_internal_xdg_surface_listener, window);
   }
 
   if (ctx->aura_shell) {
@@ -447,50 +447,46 @@ void sl_window_update(struct sl_window* window) {
   // window is closed.
   if (ctx->xwayland || !parent) {
     if (!window->xdg_toplevel) {
-      window->xdg_toplevel = zxdg_surface_v6_get_toplevel(window->xdg_surface);
-      zxdg_toplevel_v6_set_user_data(window->xdg_toplevel, window);
-      zxdg_toplevel_v6_add_listener(window->xdg_toplevel,
-                                    &sl_internal_xdg_toplevel_listener, window);
+      window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
+      xdg_toplevel_set_user_data(window->xdg_toplevel, window);
+      xdg_toplevel_add_listener(window->xdg_toplevel,
+                                &sl_internal_xdg_toplevel_listener, window);
     }
     if (parent)
-      zxdg_toplevel_v6_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
+      xdg_toplevel_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
     if (window->name)
-      zxdg_toplevel_v6_set_title(window->xdg_toplevel, window->name);
+      xdg_toplevel_set_title(window->xdg_toplevel, window->name);
     if (window->size_flags & P_MIN_SIZE) {
-      zxdg_toplevel_v6_set_min_size(window->xdg_toplevel,
-                                    window->min_width / ctx->scale,
-                                    window->min_height / ctx->scale);
+      xdg_toplevel_set_min_size(window->xdg_toplevel,
+                                window->min_width / ctx->scale,
+                                window->min_height / ctx->scale);
     }
     if (window->size_flags & P_MAX_SIZE) {
-      zxdg_toplevel_v6_set_max_size(window->xdg_toplevel,
-                                    window->max_width / ctx->scale,
-                                    window->max_height / ctx->scale);
+      xdg_toplevel_set_max_size(window->xdg_toplevel,
+                                window->max_width / ctx->scale,
+                                window->max_height / ctx->scale);
     }
     if (window->maximized) {
-      zxdg_toplevel_v6_set_maximized(window->xdg_toplevel);
+      xdg_toplevel_set_maximized(window->xdg_toplevel);
     }
   } else if (!window->xdg_popup) {
-    struct zxdg_positioner_v6* positioner;
+    struct xdg_positioner* positioner;
 
-    positioner = zxdg_shell_v6_create_positioner(ctx->xdg_shell->internal);
+    positioner = xdg_wm_base_create_positioner(ctx->xdg_shell->internal);
     assert(positioner);
-    zxdg_positioner_v6_set_anchor(
-        positioner,
-        ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT);
-    zxdg_positioner_v6_set_gravity(
-        positioner,
-        ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_RIGHT);
-    zxdg_positioner_v6_set_anchor_rect(
-        positioner, (window->x - parent->x) / ctx->scale,
-        (window->y - parent->y) / ctx->scale, 1, 1);
+    xdg_positioner_set_anchor(positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
+    xdg_positioner_set_gravity(positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    xdg_positioner_set_anchor_rect(positioner,
+                                   (window->x - parent->x) / ctx->scale,
+                                   (window->y - parent->y) / ctx->scale, 1, 1);
 
-    window->xdg_popup = zxdg_surface_v6_get_popup(
-        window->xdg_surface, parent->xdg_surface, positioner);
-    zxdg_popup_v6_set_user_data(window->xdg_popup, window);
-    zxdg_popup_v6_add_listener(window->xdg_popup,
-                               &sl_internal_xdg_popup_listener, window);
+    window->xdg_popup = xdg_surface_get_popup(window->xdg_surface,
+                                              parent->xdg_surface, positioner);
+    xdg_popup_set_user_data(window->xdg_popup, window);
+    xdg_popup_add_listener(window->xdg_popup, &sl_internal_xdg_popup_listener,
+                           window);
 
-    zxdg_positioner_v6_destroy(positioner);
+    xdg_positioner_destroy(positioner);
   }
 
   if ((window->size_flags & (US_POSITION | P_POSITION)) && parent &&
