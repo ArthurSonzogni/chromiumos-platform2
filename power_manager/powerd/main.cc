@@ -29,6 +29,10 @@
 #include <brillo/flag_helper.h>
 #include <cros_config/cros_config.h>
 #include <metrics/metrics_library.h>
+#if USE_IIOSERVICE
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
+#endif  // USE_IIOSERVICE
 
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/prefs.h"
@@ -40,7 +44,11 @@
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
+#if USE_IIOSERVICE
+#include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
+#else  // !USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
+#endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/cros_ec_helper.h"
@@ -98,9 +106,14 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
   CreateAmbientLightSensorManager(PrefsInterface* prefs) override {
+#if USE_IIOSERVICE
+    auto light_sensor_manager =
+        std::make_unique<system::AmbientLightSensorManagerMojo>(prefs);
+#else   // !USE_IIOSERVICE
     auto light_sensor_manager =
         std::make_unique<system::AmbientLightSensorManagerFile>(prefs);
     light_sensor_manager->Run(false /* read_immediately */);
+#endif  // USE_IIOSERVICE
     return light_sensor_manager;
   }
 
@@ -363,6 +376,14 @@ int main(int argc, char* argv[]) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   // This is used in AlarmTimer.
   base::FileDescriptorWatcher watcher{task_executor.task_runner()};
+
+#if USE_IIOSERVICE
+  mojo::core::Init();
+  mojo::core::ScopedIPCSupport ipc_support(
+      task_executor.task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+#endif  // USE_IIOSERVICE
+
   power_manager::DaemonDelegateImpl delegate;
   // Extra parens to avoid http://en.wikipedia.org/wiki/Most_vexing_parse.
   power_manager::Daemon daemon(&delegate, (base::FilePath(FLAGS_run_dir)));

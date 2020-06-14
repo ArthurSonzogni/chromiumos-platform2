@@ -19,8 +19,15 @@
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <dbus/bus.h>
+#if USE_IIOSERVICE
+#include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
+#endif  // USE_IIOSERVICE
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/power_constants.h"
@@ -29,7 +36,11 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
+#if USE_IIOSERVICE
+#include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
+#else  // !USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
+#endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -47,7 +58,11 @@ using power_manager::policy::BacklightController;
 using power_manager::policy::InternalBacklightController;
 using power_manager::policy::KeyboardBacklightController;
 using power_manager::system::AmbientLightSensorInterface;
+#if USE_IIOSERVICE
+using power_manager::system::AmbientLightSensorManagerMojo;
+#else   // !USE_IIOSERVICE
 using power_manager::system::AmbientLightSensorManagerFile;
+#endif  // USE_IIOSERVICE
 using power_manager::system::AmbientLightSensorStub;
 using power_manager::system::BacklightStub;
 using power_manager::system::DBusWrapperStub;
@@ -169,6 +184,30 @@ class Converter {
   std::unique_ptr<BacklightController> controller_;
 };
 
+#if USE_IIOSERVICE
+class SensorClientDbusImpl : public iioservice::SensorClientDbus {
+ public:
+  explicit SensorClientDbusImpl(
+      power_manager::system::AmbientLightSensorManagerMojo* manager)
+      : manager_(manager) {}
+
+ protected:
+  // SensorClientDbus overrides:
+  void OnClientReceived(
+      mojo::PendingReceiver<cros::mojom::SensorHalClient> client) override {
+    manager_->BindSensorHalClient(
+        std::move(client),
+        base::BindOnce(&SensorClientDbusImpl::OnMojoDisconnect,
+                       base::Unretained(this)));
+  }
+
+ private:
+  void OnMojoDisconnect() { LOG(ERROR) << "OnMojoDisconnect"; }
+
+  power_manager::system::AmbientLightSensorManagerMojo* manager_;
+};
+#endif  // USE_IIOSERVICE
+
 class ObserverImpl : public power_manager::system::AmbientLightObserver {
  public:
   ObserverImpl(const ObserverImpl&) = delete;
@@ -231,12 +270,32 @@ void GetAmbientLightLux(bool keyboard) {
     Abort("Ambient light sensor not enabled");
   }
 
-  AmbientLightSensorManagerFile als_manager(&prefs);
-  als_manager.Run(true /* read_immediately */);
+#if USE_IIOSERVICE
+  mojo::core::Init();
+  mojo::core::ScopedIPCSupport ipc_support(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
-  AmbientLightSensorInterface* sensor;
-  sensor = keyboard ? als_manager.GetSensorForKeyboardBacklight()
-                    : als_manager.GetSensorForInternalBacklight();
+  AmbientLightSensorManagerMojo manager(&prefs);
+
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  if (!bus->Connect())
+    Abort("GetAmbientLightLux: Cannot connect to D-Bus.");
+
+  SensorClientDbusImpl client_dbus(&manager);
+  client_dbus.SetBus(bus.get());
+  client_dbus.BootstrapMojoConnection();
+#else   // !USE_IIOSERVICE
+  AmbientLightSensorManagerFile manager(&prefs);
+  manager.Run(true /* read_immediately */);
+#endif  // USE_IIOSERVICE
+
+  AmbientLightSensorInterface* sensor =
+      keyboard ? manager.GetSensorForKeyboardBacklight()
+               : manager.GetSensorForInternalBacklight();
+
   if (!sensor)
     Abort("Ambient light sensor not found");
 
@@ -260,6 +319,9 @@ void GetAmbientLightLux(bool keyboard) {
 // would monitor and a trailing newline to stdout. Prints an error and aborts
 // with status code 1 if the ALS has been disabled or no path was found.
 void PrintAmbientLightPath(bool keyboard) {
+#if USE_IIOSERVICE
+  Abort("Ambient light sensor illuminance file path not available");
+#else   // !USE_IIOSERVICE
   Prefs prefs;
   CHECK(prefs.Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
   int64_t num_als = 0;
@@ -271,9 +333,9 @@ void PrintAmbientLightPath(bool keyboard) {
   AmbientLightSensorManagerFile als_manager(&prefs);
   als_manager.Run(true /* read_immediately */);
 
-  AmbientLightSensorInterface* sensor;
-  sensor = keyboard ? als_manager.GetSensorForKeyboardBacklight()
-                    : als_manager.GetSensorForInternalBacklight();
+  AmbientLightSensorInterface* sensor =
+      keyboard ? als_manager.GetSensorForKeyboardBacklight()
+               : als_manager.GetSensorForInternalBacklight();
   if (!sensor)
     Abort("Ambient light sensor not found");
 
@@ -282,6 +344,7 @@ void PrintAmbientLightPath(bool keyboard) {
     Abort("Ambient light sensor illuminance file not found");
 
   printf("%s\n", path.value().c_str());
+#endif  // USE_IIOSERVICE
 }
 
 }  // namespace
@@ -349,6 +412,8 @@ int main(int argc, char* argv[]) {
     Abort("At most one of -set_brightness* may be passed.");
 
   if (FLAGS_get_ambient_light_lux) {
+    // Needed for the D-Bus I/O that waits for fd without blocking.
+    base::FileDescriptorWatcher watcher{task_executor.task_runner()};
     GetAmbientLightLux(FLAGS_keyboard);
     return 0;
   }

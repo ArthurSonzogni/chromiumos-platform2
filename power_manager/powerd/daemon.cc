@@ -25,6 +25,7 @@
 #include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
+#include <dbus/bus.h>
 #include <dbus/message.h>
 
 #include "cryptohome/proto_bindings/rpc.pb.h"
@@ -47,6 +48,9 @@
 #include "power_manager/powerd/policy/thermal_event_handler.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
+#if USE_IIOSERVICE
+#include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
+#endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/arc_timer_manager.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
@@ -73,12 +77,6 @@
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
-
-#if USE_BUFFET
-namespace dbus {
-class Bus;
-}  // namespace dbus
-#endif  // USE_BUFFET
 
 namespace power_manager {
 namespace {
@@ -505,6 +503,25 @@ bool Daemon::TriggerRetryShutdownTimerForTesting() {
   retry_shutdown_for_lockfile_timer_.user_task().Run();
   return true;
 }
+
+#if USE_IIOSERVICE
+void Daemon::OnClientReceived(
+    mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
+  system::AmbientLightSensorManagerMojo* manager =
+      dynamic_cast<system::AmbientLightSensorManagerMojo*>(
+          light_sensor_manager_.get());
+
+  manager->BindSensorHalClient(
+      std::move(client),
+      base::BindOnce(&Daemon::OnMojoDisconnect, base::Unretained(this)));
+}
+
+void Daemon::OnMojoDisconnect() {
+  LOG(ERROR) << "Chromium crashed. Try to establish a new Mojo connection.";
+
+  ReconnectMojoWithDelay();
+}
+#endif  // USE_IIOSERVICE
 
 bool Daemon::BoolPrefIsTrue(const std::string& name) const {
   bool value = false;
@@ -970,15 +987,25 @@ void Daemon::InitDBus() {
                              base::Bind(it.second, base::Unretained(this))));
   }
 
-#if USE_BUFFET
-  // There's no underlying dbus::Bus object when we're being tested.
   const scoped_refptr<dbus::Bus>& bus = dbus_wrapper_->GetBus();
-  if (bus) {
-    buffet::InitCommandHandlers(
-        bus, base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(),
-                        ShutdownMode::REBOOT, ShutdownReason::USER_REQUEST));
-  }
+  // There's no underlying dbus::Bus object when we're being tested.
+  if (!bus)
+    return;
+
+#if USE_BUFFET
+  buffet::InitCommandHandlers(
+      bus, base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(),
+                      ShutdownMode::REBOOT, ShutdownReason::USER_REQUEST));
 #endif  // USE_BUFFET
+#if USE_IIOSERVICE
+  int64_t num_sensors = 0;
+  prefs_->GetInt64(kHasAmbientLightSensorPref, &num_sensors);
+  if (num_sensors <= 0)
+    return;
+
+  SetBus(bus.get());
+  BootstrapMojoConnection();
+#endif  // USE_IIOSERVICE
 }
 
 void Daemon::HandleDisplayServiceAvailableOrRestarted(bool available) {

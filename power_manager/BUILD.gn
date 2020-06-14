@@ -66,6 +66,7 @@ if (use.trogdor_sar_hack) {
 pkg_config("target_defaults") {
   defines = [
     "USE_BUFFET=${use.buffet}",
+    "USE_IIOSERVICE=${use.iioservice}",
     "USE_TROGDOR_SAR_HACK=${use.trogdor_sar_hack}",
   ]
 

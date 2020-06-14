@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
   mojo::core::Init();
-  auto ipc_support = std::make_unique<mojo::core::ScopedIPCSupport>(
+  mojo::core::ScopedIPCSupport ipc_support(
       task_environment.GetMainThreadTaskRunner(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 

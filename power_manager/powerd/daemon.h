@@ -18,6 +18,9 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
+#if USE_IIOSERVICE
+#include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
+#endif  // USE_IIOSERVICE
 
 #include "power_manager/common/prefs_observer.h"
 #if USE_TROGDOR_SAR_HACK
@@ -94,17 +97,21 @@ class WakeupSourceIdentifierInterface;
 class Daemon;
 
 // Main class within the powerd daemon that ties all other classes together.
-class Daemon : public policy::InputEventHandler::Delegate,
-               public policy::Suspender::Delegate,
-               public policy::WifiController::Delegate,
+class Daemon :
+#if USE_IIOSERVICE
+    public iioservice::SensorClientDbus,
+#endif  // USE_IIOSERVICE
+    public policy::InputEventHandler::Delegate,
+    public policy::Suspender::Delegate,
+    public policy::WifiController::Delegate,
 #if USE_TROGDOR_SAR_HACK
-               public policy::CellularControllerTrogdor::Delegate,
+    public policy::CellularControllerTrogdor::Delegate,
 #else   // USE_TROGDOR_SAR_HACK
-               public policy::CellularController::Delegate,
+    public policy::CellularController::Delegate,
 #endif  // USE_TROGDOR_SAR_HACK
-               public system::AudioObserver,
-               public system::DBusWrapperInterface::Observer,
-               public system::PowerSupplyObserver {
+    public system::AudioObserver,
+    public system::DBusWrapperInterface::Observer,
+    public system::PowerSupplyObserver {
  public:
   // File used to identify the first instantiation of powerd after a boot.
   // Presence of this file indicates that this is not the first run of powerd
@@ -197,6 +204,15 @@ class Daemon : public policy::InputEventHandler::Delegate,
     POWER_OFF,
     REBOOT,
   };
+
+#if USE_IIOSERVICE
+  // SensorClientDbus overrides:
+  void OnClientReceived(
+      mojo::PendingReceiver<cros::mojom::SensorHalClient> client) override;
+
+  // Try to reconnect to Chromium when Mojo disconnects.
+  void OnMojoDisconnect();
+#endif  // USE_IIOSERVICE
 
   // Convenience method that returns true if |name| exists and is true.
   bool BoolPrefIsTrue(const std::string& name) const;
