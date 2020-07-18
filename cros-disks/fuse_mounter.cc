@@ -113,10 +113,7 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
   sandbox->NewIpcNamespace();
   sandbox->NewPidNamespace();
 
-  // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
-  // kernel 3.8 supports it or no more supported devices use kernel
-  // 3.8.
-  // mount_process.NewCgroupNamespace();
+  sandbox->NewCgroupNamespace();
 
   // Add the sandboxed process to its cgroup that should be setup. Return an
   // error if it's not there.
