@@ -63,8 +63,6 @@ void ConfigureAndEnterMinijail() {
   minijail_mount_with_data(jail.get(), "tmpfs", "/run", "tmpfs", 0, "");
   minijail_bind(jail.get(), "/run/dbus", "/run/dbus",
                 0);  // Shared socket file for talking to the D-Bus daemon.
-  minijail_bind(jail.get(), "/run/systemd/journal", "/run/systemd/journal",
-                0);  // Needed for logging.
   minijail_bind(jail.get(), "/run/chromeos-config/v1",
                 "/run/chromeos-config/v1",
                 0);  // Needed for access to chromeos-config.
@@ -167,10 +165,6 @@ void NewMountNamespace() {
                                MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr)) {
     LOG(FATAL) << "minijail_mount_with_data(\"/run\") failed";
   }
-
-  // Mount /run/systemd/journal to be able to log to journald.
-  if (minijail_bind(j.get(), "/run/systemd/journal", "/run/systemd/journal", 0))
-    LOG(FATAL) << "minijail_bind(\"/run/systemd/journal\") failed";
 
   if (minijail_mount_with_data(j.get(), "/dev", "/dev", "bind",
                                MS_BIND | MS_REC, nullptr)) {

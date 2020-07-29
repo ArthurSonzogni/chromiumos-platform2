@@ -93,10 +93,6 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/run/shill", "/run/shill", 0))
     LOG(FATAL) << "minijail_bind(\"/run/shill\") failed";
 
-  // Mount /run/systemd/journal to be able to log to journald.
-  if (minijail_bind(j.get(), "/run/systemd/journal", "/run/systemd/journal", 0))
-    LOG(FATAL) << "minijail_bind(\"/run/systemd/journal\") failed";
-
   // Mount /dev to be able to inspect devices.
   if (minijail_mount_with_data(j.get(), "/dev", "/dev", "bind",
                                MS_BIND | MS_REC, nullptr)) {
