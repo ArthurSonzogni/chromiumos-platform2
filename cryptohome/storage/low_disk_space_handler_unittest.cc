@@ -77,7 +77,7 @@ class LowDiskSpaceHandlerTest : public ::testing::Test {
 };
 
 TEST_F(LowDiskSpaceHandlerTest, RunCleanupAtStartup) {
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
 }
 
 TEST_F(LowDiskSpaceHandlerTest, DontRunIfStopped) {
@@ -88,7 +88,7 @@ TEST_F(LowDiskSpaceHandlerTest, DontRunIfStopped) {
 }
 
 TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCheck) {
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
   task_runner_->RunUntilIdle();
 
   // Must check for low disk space.
@@ -100,14 +100,14 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCheck) {
 }
 
 TEST_F(LowDiskSpaceHandlerTest, CallPeriodicCallback) {
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
   task_runner_->RunUntilIdle();
 
   EXPECT_CALL(disk_cleanup_, GetFreeDiskSpaceState(_))
       .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kNeedNormalCleanup));
 
   // First call will perform cleanup.
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
 
   for (int i = 0; i < 10; i++) {
     uint64_t free_space = kFreeSpaceThresholdToTriggerCleanup - 115 - i;
@@ -131,7 +131,7 @@ TEST_F(LowDiskSpaceHandlerTest, CallPeriodicCallback) {
 }
 
 TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
   task_runner_->RunUntilIdle();
 
   // Allow cleanup to be triggered.
@@ -140,14 +140,14 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
   EXPECT_CALL(disk_cleanup_, GetFreeDiskSpaceState(_))
       .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kNeedNormalCleanup));
 
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
   task_runner_->FastForwardBy(handler_.low_disk_notification_period());
   task_runner_->RunUntilIdle();
 
   auto delta = base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS + 1);
 
   for (int i = 0; i < 50; i++) {
-    EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+    EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
     current_time_ += delta;
     task_runner_->FastForwardBy(delta);
     task_runner_->RunUntilIdle();
@@ -158,7 +158,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanupEnrolled) {
   EXPECT_CALL(disk_cleanup_, IsFreeableDiskSpaceAvailable())
       .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
   task_runner_->RunUntilIdle();
 
   // Allow cleanup to be triggered.
@@ -167,7 +167,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanupEnrolled) {
   EXPECT_CALL(disk_cleanup_, GetFreeDiskSpaceState(_))
       .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kNeedNormalCleanup));
 
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
   task_runner_->FastForwardBy(handler_.low_disk_notification_period());
   task_runner_->RunUntilIdle();
 
@@ -175,7 +175,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanupEnrolled) {
                base::TimeDelta::FromMilliseconds(1);
 
   for (int i = 0; i < 50; i++) {
-    EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return());
+    EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
     current_time_ += delta;
     task_runner_->FastForwardBy(delta);
     task_runner_->RunUntilIdle();
@@ -183,7 +183,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanupEnrolled) {
 }
 
 TEST_F(LowDiskSpaceHandlerTest, RunPeriodicLastActivityUpdate) {
-  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillRepeatedly(Return());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillRepeatedly(Return(true));
 
   for (int i = 0; i < 50; i++) {
     bool callback_called = false;

@@ -78,7 +78,7 @@ class DiskCleanup {
   // Frees disk space for unused cryptohomes. If the available disk space is
   // below normal_cleanup_threshold_, attempts to free space until
   // it goes up to cleanup_target_.
-  virtual void FreeDiskSpace();
+  virtual bool FreeDiskSpace();
 
   // Setters for cleanup thresholds.
   virtual void set_cleanup_threshold(uint64_t cleanup_threshold) {
@@ -98,7 +98,7 @@ class DiskCleanup {
 
  private:
   // Actually performs disk cleanup. Called by FreeDiskSpace.
-  void FreeDiskSpaceInternal();
+  bool FreeDiskSpaceInternal();
 
   // Removes all mounted homedirs from the vector
   void FilterMountedHomedirs(std::vector<HomeDirs::HomeDir>* homedirs);

@@ -63,7 +63,9 @@ void LowDiskSpaceHandler::FreeDiskSpace() {
   if (stopped_)
     return;
 
-  cleanup_->FreeDiskSpace();
+  if (!cleanup_->FreeDiskSpace()) {
+    LOG(ERROR) << "FreeDiskSpace encontered an error";
+  }
 
   last_auto_cleanup_time_ = platform_->GetCurrentTime();
 }

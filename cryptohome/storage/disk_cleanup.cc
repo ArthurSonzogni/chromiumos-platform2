@@ -81,14 +81,14 @@ bool DiskCleanup::IsFreeableDiskSpaceAvailable() {
   return unmounted_cryptohomes > 0;
 }
 
-void DiskCleanup::FreeDiskSpace() {
+bool DiskCleanup::FreeDiskSpace() {
   auto free_space = AmountOfFreeDiskSpace();
 
   switch (GetFreeDiskSpaceState(free_space)) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
       // Already have enough space. No need to clean up.
-      return;
+      return true;
 
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
@@ -97,10 +97,10 @@ void DiskCleanup::FreeDiskSpace() {
 
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free disk space";
-      return;
+      return false;
     default:
       LOG(ERROR) << "Unhandled free disk state";
-      return;
+      return false;
   }
 
   auto now = platform_->GetCurrentTime();
@@ -115,7 +115,7 @@ void DiskCleanup::FreeDiskSpace() {
 
   base::ElapsedTimer total_timer;
 
-  FreeDiskSpaceInternal();
+  bool result = FreeDiskSpaceInternal();
 
   int cleanup_time = total_timer.Elapsed().InMilliseconds();
   ReportFreeDiskSpaceTotalTime(cleanup_time);
@@ -124,20 +124,22 @@ void DiskCleanup::FreeDiskSpace() {
   auto after_cleanup = AmountOfFreeDiskSpace();
   if (!after_cleanup) {
     LOG(ERROR) << "Failed to get the amount of free disk space";
-    return;
+    return false;
   }
 
   ReportFreeDiskSpaceTotalFreedInMb(
       MAX(0, after_cleanup.value() - free_space.value()) / 1024 / 1024);
 
   LOG(INFO) << "Disk cleanup complete.";
+
+  return result;
 }
 
 void DiskCleanup::set_routines_for_testing(DiskCleanupRoutines* routines) {
   routines_.reset(routines);
 }
 
-void DiskCleanup::FreeDiskSpaceInternal() {
+bool DiskCleanup::FreeDiskSpaceInternal() {
   // If ephemeral users are enabled, remove all cryptohomes except those
   // currently mounted or belonging to the owner.
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
@@ -145,7 +147,7 @@ void DiskCleanup::FreeDiskSpaceInternal() {
     homedirs_->RemoveNonOwnerCryptohomes();
     ReportDiskCleanupProgress(
         DiskCleanupProgress::kEphemeralUserProfilesCleaned);
-    return;
+    return true;
   }
 
   auto homedirs = homedirs_->GetHomeDirs();
@@ -180,23 +182,26 @@ void DiskCleanup::FreeDiskSpaceInternal() {
     FilterHomedirsProcessedBeforeCutoff(cutoff, &normal_cleanup_homedirs);
   }
 
+  bool result = true;
+
   // Clean Cache directories for every unmounted user that has logged out after
   // the last normal cleanup happened.
   for (auto dir = normal_cleanup_homedirs.rbegin();
        dir != normal_cleanup_homedirs.rend(); dir++) {
-    routines_->DeleteUserCache(dir->obfuscated);
+    if (!routines_->DeleteUserCache(dir->obfuscated))
+      result = false;
 
     if (HasTargetFreeSpace()) {
       ReportDiskCleanupProgress(
           DiskCleanupProgress::kBrowserCacheCleanedAboveTarget);
-      return;
+      return result;
     }
   }
 
   auto freeDiskSpace = AmountOfFreeDiskSpace();
   if (!freeDiskSpace) {
     LOG(ERROR) << "Failed to get the amount of free space";
-    return;
+    return false;
   }
 
   bool earlyStop = false;
@@ -205,7 +210,8 @@ void DiskCleanup::FreeDiskSpaceInternal() {
   // after the last normal cleanup happened.
   for (auto dir = normal_cleanup_homedirs.rbegin();
        dir != normal_cleanup_homedirs.rend(); dir++) {
-    routines_->DeleteUserGCache(dir->obfuscated);
+    if (!routines_->DeleteUserGCache(dir->obfuscated))
+      result = false;
 
     if (HasTargetFreeSpace()) {
       earlyStop = true;
@@ -220,7 +226,7 @@ void DiskCleanup::FreeDiskSpaceInternal() {
   freeDiskSpace = AmountOfFreeDiskSpace();
   if (!freeDiskSpace) {
     LOG(ERROR) << "Failed to get the amount of free space";
-    return;
+    return false;
   }
 
   const int64_t freed_gcache_space =
@@ -234,21 +240,21 @@ void DiskCleanup::FreeDiskSpaceInternal() {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
       ReportDiskCleanupProgress(
           DiskCleanupProgress::kGoogleDriveCacheCleanedAboveTarget);
-      return;
+      return result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
       ReportDiskCleanupProgress(
           DiskCleanupProgress::kGoogleDriveCacheCleanedAboveMinimum);
-      return;
+      return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
       // continue cleanup
       break;
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free space";
-      return;
+      return false;
     default:
       LOG(ERROR) << "Unhandled free disk state";
-      return;
+      return false;
   }
 
   auto aggressive_cleanup_homedirs = unmounted_homedirs;
@@ -262,7 +268,8 @@ void DiskCleanup::FreeDiskSpaceInternal() {
   // out after after the last normal cleanup happened.
   for (auto dir = aggressive_cleanup_homedirs.rbegin();
        dir != aggressive_cleanup_homedirs.rend(); dir++) {
-    routines_->DeleteUserAndroidCache(dir->obfuscated);
+    if (!routines_->DeleteUserAndroidCache(dir->obfuscated))
+      result = false;
 
     if (HasTargetFreeSpace()) {
       earlyStop = true;
@@ -277,21 +284,21 @@ void DiskCleanup::FreeDiskSpaceInternal() {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
       ReportDiskCleanupProgress(
           DiskCleanupProgress::kAndroidCacheCleanedAboveTarget);
-      return;
+      return result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
       ReportDiskCleanupProgress(
           DiskCleanupProgress::kAndroidCacheCleanedAboveMinimum);
-      return;
+      return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
       // continue cleanup
       break;
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free space";
-      return;
+      return false;
     default:
       LOG(ERROR) << "Unhandled free disk state";
-      return;
+      return false;
   }
 
   // Delete old users, the oldest first. Count how many are deleted.
@@ -301,7 +308,7 @@ void DiskCleanup::FreeDiskSpaceInternal() {
   int deleted_users_count = 0;
   std::string owner;
   if (!homedirs_->enterprise_owned() && !homedirs_->GetOwner(&owner))
-    return;
+    return result;
 
   int mounted_cryptohomes_count =
       std::count_if(homedirs.begin(), homedirs.end(),
@@ -324,7 +331,8 @@ void DiskCleanup::FreeDiskSpaceInternal() {
     }
 
     LOG(INFO) << "Freeing disk space by deleting user " << dir->obfuscated;
-    routines_->DeleteUserProfile(dir->obfuscated);
+    if (!routines_->DeleteUserProfile(dir->obfuscated))
+      result = false;
     timestamp_cache_->RemoveUser(dir->obfuscated);
     ++deleted_users_count;
 
@@ -345,6 +353,8 @@ void DiskCleanup::FreeDiskSpaceInternal() {
   } else {
     ReportDiskCleanupProgress(DiskCleanupProgress::kNoUnmountedCryptohomes);
   }
+
+  return result;
 }
 
 void DiskCleanup::FilterMountedHomedirs(

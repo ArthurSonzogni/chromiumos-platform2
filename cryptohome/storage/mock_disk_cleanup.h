@@ -33,7 +33,7 @@ class MockDiskCleanup : public DiskCleanup {
               (override, const));
   MOCK_METHOD(bool, HasTargetFreeSpace, (), (override, const));
   MOCK_METHOD(bool, IsFreeableDiskSpaceAvailable, (), (override));
-  MOCK_METHOD(void, FreeDiskSpace, (), (override));
+  MOCK_METHOD(bool, FreeDiskSpace, (), (override));
   MOCK_METHOD(void, set_cleanup_threshold, (uint64_t), (override));
   MOCK_METHOD(void, set_aggressive_cleanup_threshold, (uint64_t), (override));
   MOCK_METHOD(void, set_target_free_space, (uint64_t), (override));
