@@ -37,6 +37,7 @@
 #include "cryptohome/storage/arc_disk_quota.h"
 #include "cryptohome/storage/disk_cleanup.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/storage/low_disk_space_handler.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_session.h"
@@ -165,9 +166,7 @@ class UserDataAuth {
 
   // Set the |low_disk_space_callback_| variable. This is usually called by the
   // DBus adaptor.
-  void SetLowDiskSpaceCallback(const base::Callback<void(uint64_t)>& callback) {
-    low_disk_space_callback_ = callback;
-  }
+  void SetLowDiskSpaceCallback(const base::Callback<void(uint64_t)>& callback);
 
   // =============== Key Related Public Utilities ===============
   // Add the key specified in the request, and return a CryptohomeErrorCode to
@@ -532,11 +531,6 @@ class UserDataAuth {
     arc_disk_quota_ = arc_disk_quota;
   }
 
-  // Override |disk_cleanup_| for testing purpose
-  void set_disk_cleanup(DiskCleanup* disk_cleanup) {
-    disk_cleanup_ = disk_cleanup;
-  }
-
   // Override |pkcs11_init_| for testing purpose
   void set_pkcs11_init(Pkcs11Init* pkcs11_init) { pkcs11_init_ = pkcs11_init; }
 
@@ -594,6 +588,11 @@ class UserDataAuth {
     boot_lockbox_ = boot_lockbox;
   }
 
+  // Override |low_disk_space_handler_| for testing purpose
+  void set_low_disk_space_handler(LowDiskSpaceHandler* low_disk_space_handler) {
+    low_disk_space_handler_ = low_disk_space_handler;
+  }
+
   // Retrieve the session associated with the given user, for testing purpose
   // only.
   UserSession* get_session_for_user(const std::string& username) {
@@ -606,13 +605,6 @@ class UserDataAuth {
   // |username| for testing purpose
   void set_session_for_user(const std::string& username, UserSession* session) {
     sessions_[username] = session;
-  }
-
-  // Override the time between each LowDiskCallback() for testing. This is so
-  // that we can finish the unit test in a shorter time. And we shouldn't call
-  // it on origin thread when mount thread is started.
-  void set_low_disk_notification_period_ms(int value) {
-    low_disk_notification_period_ms_ = value;
   }
 
   // Override the time between each run of UploadAlertsDataCallback() for
@@ -1086,6 +1078,25 @@ class UserDataAuth {
   // active.
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
 
+  // The low_disk_space_handler_ object in normal operation
+  std::unique_ptr<LowDiskSpaceHandler> default_low_disk_space_handler_;
+
+  // This holds the object that checks for low disk space and performs disk
+  // cleanup.
+  // This is to be accessed from the mount thread only because there's no
+  // guarantee on thread safety of the HomeDirs object.
+  LowDiskSpaceHandler* low_disk_space_handler_;
+
+  // TODO(dlunev): This three variables are a hack to pass cleanup parameters
+  // from main to the actual object. The reason it is done like this is that
+  // the object is created in UserDataAuth::Initialize, which is called from the
+  // daemonization function, but they are attempted to be set from the main,
+  // before the daemonization. Once service.cc is gone, we shall refactor the
+  // whole initialization process of UserDataAuth to avoid such hacks.
+  uint64_t disk_cleanup_threshold_;
+  uint64_t disk_cleanup_aggressive_threshold_;
+  uint64_t disk_cleanup_target_free_space_;
+
   // The default mount factory instance that is used for creating Mount objects.
   std::unique_ptr<cryptohome::MountFactory> default_mount_factory_;
 
@@ -1139,46 +1150,6 @@ class UserDataAuth {
   // The actual ARC Disk Quota object used by this class. Usually set to
   // default_arc_disk_quota_, but can be overridden for testing.
   ArcDiskQuota* arc_disk_quota_;
-
-  // =============== Low Disk Space/Cleanup Related Variables ===============
-
-  // The default disk cleanup service.
-  std::unique_ptr<DiskCleanup> default_disk_cleanup_;
-
-  // The actual disk cleaunp service. Usually set to default_disk_cleanup, but
-  // can be overridden for testing.
-  DiskCleanup* disk_cleanup_;
-
-  // TODO(dlunev): This three variables are a hack to pass cleanup parameters
-  // from main to the actual object. The reason it is done like this is that
-  // the object is created in UserDataAuth::Initialize, which is called from the
-  // deamonization function, but they are attempted to be set from the main,
-  // before the daemonization. Once service.cc is gone, we shall refactor the
-  // whole initialization process of UserDataAuth to avoid such hacks.
-  uint64_t disk_cleanup_threshold_;
-  uint64_t disk_cleanup_aggressive_threshold_;
-  uint64_t disk_cleanup_target_free_space_;
-
-  // The amount of time (in milliseconds) between each subsequent run of
-  // LowDiskCallback(). This is usually set to a constant value that is
-  // reasonably long, but will be overriden during testing.
-  int low_disk_notification_period_ms_;
-
-  // Records whether low_disk_space_callback_ was called (i.e. the signal was
-  // emitted by the DBus adaptor) when LowDiskCallback() last run.
-  bool low_disk_space_signal_was_emitted_;
-
-  // The last time when DoAutoCleanup() is called by LowDiskCallback().
-  base::Time last_auto_cleanup_time_;
-
-  // The last time when LowDiskCallback() called
-  // UpdateCurrentUserActivityTimestamp().
-  base::Time last_user_activity_timestamp_time_;
-
-  // The callback to call when we are running low on disk space. This is usually
-  // connected to the DBus signal emitter, so calling this will emit the DBus
-  // signal to notify various other services that we are low on disk space.
-  base::Callback<void(uint64_t)> low_disk_space_callback_;
 
   // Defines a type for tracking Auth Sessions by token.
   typedef std::map<const base::UnguessableToken, std::unique_ptr<AuthSession>>

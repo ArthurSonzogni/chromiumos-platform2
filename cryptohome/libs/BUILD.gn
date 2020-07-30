@@ -320,6 +320,7 @@ static_library("libcryptohome") {
     "../storage/disk_cleanup_routines.cc",
     "../storage/file_system_keyset.cc",
     "../storage/homedirs.cc",
+    "../storage/low_disk_space_handler.cc",
     "../storage/mount.cc",
     "../storage/mount_constants.cc",
     "../storage/mount_factory.cc",

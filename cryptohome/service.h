@@ -41,6 +41,7 @@
 #include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/arc_disk_quota.h"
 #include "cryptohome/storage/disk_cleanup.h"
+#include "cryptohome/storage/low_disk_space_handler.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/storage/mount_task.h"
@@ -145,8 +146,15 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual KeysetManagement* keyset_management() { return keyset_management_; }
 
   virtual void set_homedirs(cryptohome::HomeDirs* value) { homedirs_ = value; }
+  virtual void set_low_disk_space_handler(
+      cryptohome::LowDiskSpaceHandler* value) {
+    low_disk_space_handler_ = value;
+  }
 
   virtual cryptohome::HomeDirs* homedirs() { return homedirs_; }
+  virtual cryptohome::LowDiskSpaceHandler* low_disk_space_handler() {
+    return low_disk_space_handler_;
+  }
 
   virtual void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
     chaps_client_ = chaps_client;
@@ -164,10 +172,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   void set_key_challenge_service_factory(
       KeyChallengeServiceFactory* key_challenge_service_factory) {
     key_challenge_service_factory_ = key_challenge_service_factory;
-  }
-
-  void set_disk_cleanup(DiskCleanup* disk_cleanup) {
-    disk_cleanup_ = disk_cleanup;
   }
 
   // Checks if the given user is the system owner.
@@ -802,8 +806,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   bool low_disk_space_signal_was_emitted_;
   CryptohomeEventSource event_source_;
   CryptohomeEventSourceSink* event_source_sink_;
-  base::Time last_auto_cleanup_time_;
-  base::Time last_user_activity_timestamp_time_;
   std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
   cryptohome::InstallAttributes* install_attrs_;
   // Keeps track of whether a failure on PKCS#11 initialization was reported
@@ -823,15 +825,12 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   virtual GMainLoop* main_loop() { return loop_; }
 
-  // Called periodically from LowDiskCallback to initiate automatic disk
-  // cleanup if needed.
-  virtual void DoAutoCleanup();
-  // Called periodically from LowDiskCallback.
+  // Called periodically by LowDiskSpaceHandler.
   // Update current user's activity timestamp every day.
   virtual void UpdateCurrentUserActivityTimestamp();
-  // Called periodically on Mount thread to detect low disk space and emit a
-  // signal if detected.
-  virtual void LowDiskCallback();
+  // Called by LowDiskSpaceHandler when disk space is low.
+  // Emits a DBus signal.
+  virtual void EmitLowDiskSpaceSignal(uint64_t value);
   // Called periodically to fetch alerts data from TPM and upload it to UMA.
   virtual void UploadAlertsDataCallback();
   // Filters out active mounts from |mounts|, populating |active_mounts| set.
@@ -882,9 +881,15 @@ class Service : public brillo::dbus::AbstractDbusService,
   // This is used to clean up any stale loaded tokens after a cryptohome crash.
   virtual bool UnloadPkcs11Tokens(const std::vector<base::FilePath>& exclude);
 
-  // A wrapper for PostTask to mount_thread_ which also count some metrics
+  // A wrapper for PostTask to mount_thread_ which also count some metrics.
   virtual void PostTask(const base::Location& from_here,
                         base::OnceClosure task);
+
+  // A wrapper for PostDelayedTask to mount_thread_ which also count some
+  // metrics.
+  virtual bool PostDelayedTask(const base::Location& from_here,
+                               base::OnceClosure task,
+                               const base::TimeDelta& delay);
 
   // Posts a message back from the mount_thread_ to the main thread to
   // reply to a DBus message.  Only call from mount_thread_-based
@@ -1083,10 +1088,13 @@ class Service : public brillo::dbus::AbstractDbusService,
   KeysetManagement* keyset_management_;
   std::unique_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
+  std::unique_ptr<LowDiskSpaceHandler> default_low_disk_space_handler_;
+  LowDiskSpaceHandler* low_disk_space_handler_;
+  uint64_t disk_cleanup_threshold_;
+  uint64_t disk_cleanup_aggressive_threshold_;
+  uint64_t disk_cleanup_target_free_space_;
   std::unique_ptr<ArcDiskQuota> default_arc_disk_quota_;
   ArcDiskQuota* arc_disk_quota_;
-  std::unique_ptr<DiskCleanup> default_disk_cleanup_;
-  DiskCleanup* disk_cleanup_;
   std::string guest_user_;
   bool force_ecryptfs_;
   bool legacy_mount_;

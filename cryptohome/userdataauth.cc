@@ -32,6 +32,7 @@
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/storage/disk_cleanup.h"
+#include "cryptohome/storage/low_disk_space_handler.h"
 #include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_session.h"
@@ -195,6 +196,12 @@ UserDataAuth::UserDataAuth()
       default_homedirs_(nullptr),
       homedirs_(nullptr),
       user_timestamp_cache_(new UserOldestActivityTimestampCache()),
+      default_low_disk_space_handler_(nullptr),
+      low_disk_space_handler_(nullptr),
+      disk_cleanup_threshold_(kFreeSpaceThresholdToTriggerCleanup),
+      disk_cleanup_aggressive_threshold_(
+          kFreeSpaceThresholdToTriggerAggressiveCleanup),
+      disk_cleanup_target_free_space_(kTargetFreeSpaceAfterCleanup),
       default_mount_factory_(new cryptohome::MountFactory()),
       mount_factory_(default_mount_factory_.get()),
       public_mount_salt_(),
@@ -203,18 +210,12 @@ UserDataAuth::UserDataAuth()
       legacy_mount_(true),
       bind_mount_downloads_(true),
       default_arc_disk_quota_(nullptr),
-      arc_disk_quota_(nullptr),
-      default_disk_cleanup_(nullptr),
-      disk_cleanup_(nullptr),
-      disk_cleanup_threshold_(kFreeSpaceThresholdToTriggerCleanup),
-      disk_cleanup_aggressive_threshold_(
-          kFreeSpaceThresholdToTriggerAggressiveCleanup),
-      disk_cleanup_target_free_space_(kTargetFreeSpaceAfterCleanup),
-      low_disk_notification_period_ms_(kLowDiskNotificationPeriodMS),
-      low_disk_space_signal_was_emitted_(false),
-      low_disk_space_callback_(base::Bind([](uint64_t free_disk_space) {})) {}
+      arc_disk_quota_(nullptr) {}
 
 UserDataAuth::~UserDataAuth() {
+  if (low_disk_space_handler_) {
+    low_disk_space_handler_->Stop();
+  }
   if (mount_thread_) {
     mount_thread_->Stop();
   }
@@ -287,6 +288,18 @@ bool UserDataAuth::Initialize() {
     homedirs_ = default_homedirs_.get();
   }
 
+  if (!low_disk_space_handler_) {
+    default_low_disk_space_handler_ = std::make_unique<LowDiskSpaceHandler>(
+        homedirs_, platform_, user_timestamp_cache_.get());
+    low_disk_space_handler_ = default_low_disk_space_handler_.get();
+  }
+  low_disk_space_handler_->disk_cleanup()->set_cleanup_threshold(
+      disk_cleanup_threshold_);
+  low_disk_space_handler_->disk_cleanup()->set_aggressive_cleanup_threshold(
+      disk_cleanup_aggressive_threshold_);
+  low_disk_space_handler_->disk_cleanup()->set_target_free_space(
+      disk_cleanup_target_free_space_);
+
   if (!arc_disk_quota_) {
     default_arc_disk_quota_ = std::make_unique<ArcDiskQuota>(
         homedirs_, platform_, base::FilePath(kArcDiskHome));
@@ -294,16 +307,6 @@ bool UserDataAuth::Initialize() {
   }
   // Initialize ARC Disk Quota Service.
   arc_disk_quota_->Initialize();
-
-  if (!disk_cleanup_) {
-    default_disk_cleanup_ = std::make_unique<DiskCleanup>(
-        platform_, homedirs_, user_timestamp_cache_.get());
-    disk_cleanup_ = default_disk_cleanup_.get();
-  }
-  disk_cleanup_->set_cleanup_threshold(disk_cleanup_threshold_);
-  disk_cleanup_->set_aggressive_cleanup_threshold(
-      disk_cleanup_aggressive_threshold_);
-  disk_cleanup_->set_target_free_space(disk_cleanup_target_free_space_);
 
   if (!disable_threading_) {
     if (!mount_task_runner_) {
@@ -332,19 +335,19 @@ bool UserDataAuth::Initialize() {
   // Seed /dev/urandom
   SeedUrandom();
 
-  // Initialize the state used by LowDiskCallback(). Last user activity
-  // timestamp is set to the current time.
-  last_user_activity_timestamp_time_ = last_auto_cleanup_time_;
-
   if (!disable_threading_) {
-    // Clean up space on start (once).
-    PostTaskToMountThread(FROM_HERE, base::Bind(&UserDataAuth::DoAutoCleanup,
-                                                base::Unretained(this)));
+    low_disk_space_handler_->SetUpdateUserActivityTimestampCallback(
+        base::BindRepeating(
+            base::IgnoreResult(
+                &UserDataAuth::UpdateCurrentUserActivityTimestamp),
+            base::Unretained(this), 0));
 
-    // Start scheduling periodic check for low-disk space and cleanup events.
-    // Subsequent events are scheduled by the callback itself.
-    PostTaskToMountThread(FROM_HERE, base::Bind(&UserDataAuth::LowDiskCallback,
-                                                base::Unretained(this)));
+    low_disk_space_handler_->SetLowDiskSpaceCallback(
+        base::Bind([](uint64_t) {}));
+
+    if (!low_disk_space_handler_->Init(base::Bind(
+            &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
+      return false;
 
     // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
     // scheduled by the callback itself.
@@ -1022,6 +1025,11 @@ void UserDataAuth::set_aggressive_cleanup_threshold(
 
 void UserDataAuth::set_target_free_space(uint64_t target_free_space) {
   disk_cleanup_target_free_space_ = target_free_space;
+}
+
+void UserDataAuth::SetLowDiskSpaceCallback(
+    const base::Callback<void(uint64_t)>& callback) {
+  low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
 }
 
 void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
@@ -3001,68 +3009,6 @@ void UserDataAuth::ResetDictionaryAttackMitigation() {
   if (!tpm_->ResetDictionaryAttackMitigation(unused_blob, unused_blob)) {
     LOG(WARNING) << "Failed to reset DA";
   }
-}
-
-void UserDataAuth::DoAutoCleanup() {
-  AssertOnMountThread();
-  disk_cleanup_->FreeDiskSpace();
-  last_auto_cleanup_time_ = platform_->GetCurrentTime();
-}
-
-void UserDataAuth::LowDiskCallback() {
-  AssertOnMountThread();
-  DCHECK(!disable_threading_);
-
-  bool low_disk_space_signal_emitted = false;
-  auto free_disk_space = disk_cleanup_->AmountOfFreeDiskSpace();
-  auto free_space_state = disk_cleanup_->GetFreeDiskSpaceState(free_disk_space);
-  if (free_space_state == DiskCleanup::FreeSpaceState::kError) {
-    LOG(ERROR) << "Error getting free disk space";
-  } else if (free_space_state ==
-                 DiskCleanup::FreeSpaceState::kNeedNormalCleanup ||
-             free_space_state ==
-                 DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup) {
-    low_disk_space_callback_.Run(
-        static_cast<uint64_t>(free_disk_space.value()));
-    low_disk_space_signal_emitted = true;
-  }
-
-  const base::Time current_time = platform_->GetCurrentTime();
-
-  const bool time_for_auto_cleanup =
-      current_time - last_auto_cleanup_time_ >
-      base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS);
-
-  // We shouldn't repeat cleanups on every minute if the disk space
-  // stays below the threshold. Trigger it only if there was no notification
-  // previously or if enterprise owned and free space can be reclaimed.
-  const bool early_cleanup_needed =
-      low_disk_space_signal_emitted &&
-      (!low_disk_space_signal_was_emitted_ ||
-       disk_cleanup_->IsFreeableDiskSpaceAvailable());
-
-  if (time_for_auto_cleanup || early_cleanup_needed) {
-    DoAutoCleanup();
-  }
-
-  const bool time_for_user_activity_period_update =
-      current_time - last_user_activity_timestamp_time_ >
-      base::TimeDelta::FromHours(kUpdateUserActivityPeriodHours);
-
-  if (time_for_user_activity_period_update) {
-    last_user_activity_timestamp_time_ = current_time;
-    UpdateCurrentUserActivityTimestamp(0);
-  }
-
-  low_disk_space_signal_was_emitted_ = low_disk_space_signal_emitted;
-
-  // Schedule our next call. If the thread is terminating, we would
-  // not be called. We use base::Unretained here because the Service object is
-  // never destroyed.
-  PostTaskToMountThread(
-      FROM_HERE,
-      base::Bind(&UserDataAuth::LowDiskCallback, base::Unretained(this)),
-      base::TimeDelta::FromMilliseconds(low_disk_notification_period_ms_));
 }
 
 void UserDataAuth::UploadAlertsDataCallback() {

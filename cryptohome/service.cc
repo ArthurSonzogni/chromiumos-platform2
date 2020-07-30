@@ -73,6 +73,7 @@
 #include "cryptohome/service_distributed.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/storage/disk_cleanup.h"
+#include "cryptohome/storage/low_disk_space_handler.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/tpm.h"
@@ -282,7 +283,6 @@ Service::Service()
       tpm_init_signal_(-1),
       low_disk_space_signal_(-1),
       dircrypto_migration_progress_signal_(-1),
-      low_disk_space_signal_was_emitted_(false),
       event_source_(),
       event_source_sink_(this),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
@@ -296,10 +296,14 @@ Service::Service()
       keyset_management_(nullptr),
       default_homedirs_(nullptr),
       homedirs_(nullptr),
+      default_low_disk_space_handler_(nullptr),
+      low_disk_space_handler_(nullptr),
+      disk_cleanup_threshold_(kFreeSpaceThresholdToTriggerCleanup),
+      disk_cleanup_aggressive_threshold_(
+          kFreeSpaceThresholdToTriggerAggressiveCleanup),
+      disk_cleanup_target_free_space_(kTargetFreeSpaceAfterCleanup),
       default_arc_disk_quota_(nullptr),
       arc_disk_quota_(nullptr),
-      default_disk_cleanup_(nullptr),
-      disk_cleanup_(nullptr),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),
       legacy_mount_(true),
@@ -310,11 +314,13 @@ Service::Service()
       boot_lockbox_(nullptr),
       boot_attributes_(nullptr),
       firmware_management_parameters_(nullptr),
-      low_disk_notification_period_ms_(kLowDiskNotificationPeriodMS),
       upload_alerts_period_ms_(kUploadAlertsPeriodMS),
       ownership_callback_has_run_(false) {}
 
 Service::~Service() {
+  if (low_disk_space_handler_) {
+    low_disk_space_handler_->Stop();
+  }
   mount_thread_.Stop();
   if (loop_) {
     g_main_loop_unref(loop_);
@@ -406,6 +412,13 @@ void Service::PostTask(const base::Location& from_here,
     ReportParallelTasks(task_count);
   }
   mount_thread_.task_runner()->PostTask(from_here, std::move(task));
+}
+
+bool Service::PostDelayedTask(const base::Location& from_here,
+                              base::OnceClosure task,
+                              const base::TimeDelta& delay) {
+  return mount_thread_.task_runner()->PostDelayedTask(from_here,
+                                                      std::move(task), delay);
 }
 
 void Service::SendReply(DBusGMethodInvocation* context,
@@ -669,6 +682,19 @@ bool Service::Initialize() {
     homedirs_ = default_homedirs_.get();
   }
 
+  if (!low_disk_space_handler_) {
+    default_low_disk_space_handler_ = std::make_unique<LowDiskSpaceHandler>(
+        homedirs_, platform_, user_timestamp_cache_.get());
+    low_disk_space_handler_ = default_low_disk_space_handler_.get();
+  }
+
+  low_disk_space_handler_->disk_cleanup()->set_cleanup_threshold(
+      disk_cleanup_threshold_);
+  low_disk_space_handler_->disk_cleanup()->set_aggressive_cleanup_threshold(
+      disk_cleanup_aggressive_threshold_);
+  low_disk_space_handler_->disk_cleanup()->set_target_free_space(
+      disk_cleanup_target_free_space_);
+
   if (!arc_disk_quota_) {
     default_arc_disk_quota_ = std::make_unique<ArcDiskQuota>(
         homedirs_, platform_, base::FilePath(kArcDiskHome));
@@ -676,12 +702,6 @@ bool Service::Initialize() {
   }
   // Initialize ARC Disk Quota Service.
   arc_disk_quota_->Initialize();
-
-  if (!disk_cleanup_) {
-    default_disk_cleanup_ = std::make_unique<DiskCleanup>(
-        platform_, homedirs_, user_timestamp_cache_.get());
-    disk_cleanup_ = default_disk_cleanup_.get();
-  }
 
   // Install the type-info for the service with dbus.
   dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
@@ -779,25 +799,28 @@ bool Service::Initialize() {
     }
   }
 
-  last_user_activity_timestamp_time_ = platform_->GetCurrentTime();
-
-  // Clean up space on start (once).
-  PostTask(FROM_HERE,
-           base::Bind(&Service::DoAutoCleanup, base::Unretained(this)));
-
-  // Start scheduling periodic check for low-disk space and cleanup events.
-  // Subsequent events are scheduled by the callback itself.
-  PostTask(FROM_HERE,
-           base::Bind(&Service::LowDiskCallback, base::Unretained(this)));
-
   // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
   // scheduled by the callback itself.
   PostTask(FROM_HERE, base::Bind(&Service::UploadAlertsDataCallback,
                                  base::Unretained(this)));
 
-  // Create a FingerprintManager for talking to biod over dbus..
+  // Create a FingerprintManager for talking to biod over dbus.
   PostTask(FROM_HERE, base::Bind(&Service::CreateFingerprintManager,
                                  base::Unretained(this)));
+
+  void (Service::*update_current_user_activity_timestamp)() =
+      &Service::UpdateCurrentUserActivityTimestamp;
+  low_disk_space_handler_->SetUpdateUserActivityTimestampCallback(
+      base::BindRepeating(update_current_user_activity_timestamp,
+                          base::Unretained(this)));
+
+  low_disk_space_handler_->SetLowDiskSpaceCallback(base::BindRepeating(
+      &Service::EmitLowDiskSpaceSignal, base::Unretained(this)));
+
+  // Start the low disk space handler.
+  if (!low_disk_space_handler_->Init(
+          base::Bind(&Service::PostDelayedTask, base::Unretained(this))))
+    return false;
 
   // TODO(keescook,ellyjones) Make this mock-able.
   auto mountfn =
@@ -3762,11 +3785,6 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   return TRUE;
 }
 
-void Service::DoAutoCleanup() {
-  disk_cleanup_->FreeDiskSpace();
-  last_auto_cleanup_time_ = platform_->GetCurrentTime();
-}
-
 void Service::UpdateCurrentUserActivityTimestamp() {
   base::AutoLock _lock(sessions_lock_);
   for (const auto& session_pair : sessions_) {
@@ -3774,59 +3792,9 @@ void Service::UpdateCurrentUserActivityTimestamp() {
   }
 }
 
-// Called on Mount thread.
-void Service::LowDiskCallback() {
-  bool low_disk_space_signal_emitted = false;
-  auto free_disk_space = disk_cleanup_->AmountOfFreeDiskSpace();
-  auto free_space_state = disk_cleanup_->GetFreeDiskSpaceState(free_disk_space);
-  if (free_space_state == DiskCleanup::FreeSpaceState::kError) {
-    LOG(ERROR) << "Error getting free disk space";
-  } else if (free_space_state ==
-                 DiskCleanup::FreeSpaceState::kNeedNormalCleanup ||
-             free_space_state ==
-                 DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup) {
-    g_signal_emit(cryptohome_, low_disk_space_signal_,
-                  0 /* signal detail (not used) */,
-                  static_cast<uint64_t>(free_disk_space.value()));
-    low_disk_space_signal_emitted = true;
-  }
-
-  const base::Time current_time = platform_->GetCurrentTime();
-
-  const bool time_for_auto_cleanup =
-      current_time - last_auto_cleanup_time_ >
-      base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS);
-
-  // We shouldn't repeat cleanups on every minute if the disk space
-  // stays below the threshold. Trigger it only if there was no notification
-  // previously or if enterprise owned and free space can be reclaimed.
-  const bool early_cleanup_needed =
-      low_disk_space_signal_emitted &&
-      (!low_disk_space_signal_was_emitted_ ||
-       disk_cleanup_->IsFreeableDiskSpaceAvailable());
-
-  if (time_for_auto_cleanup || early_cleanup_needed)
-    DoAutoCleanup();
-
-  const bool time_for_user_activity_period_update =
-      current_time - last_user_activity_timestamp_time_ >
-      base::TimeDelta::FromHours(kUpdateUserActivityPeriodHours);
-
-  if (time_for_user_activity_period_update) {
-    last_user_activity_timestamp_time_ = current_time;
-    UpdateCurrentUserActivityTimestamp();
-  }
-
-  low_disk_space_signal_was_emitted_ = low_disk_space_signal_emitted;
-
-  // Schedule our next call. If the thread is terminating, we would
-  // not be called. We use base::Unretained here because the Service object is
-  // never destroyed.
-  // We don't care about the parallel delay tasks number. Don't increase the
-  // parallel tasks count here.
-  mount_thread_.task_runner()->PostDelayedTask(
-      FROM_HERE, base::Bind(&Service::LowDiskCallback, base::Unretained(this)),
-      base::TimeDelta::FromMilliseconds(low_disk_notification_period_ms_));
+void Service::EmitLowDiskSpaceSignal(uint64_t value) {
+  g_signal_emit(cryptohome_, low_disk_space_signal_,
+                0 /* signal detail (not used) */, value);
 }
 
 void Service::ResetDictionaryAttackMitigation() {
@@ -4317,16 +4285,16 @@ gboolean Service::CheckHealth(const GArray* request,
 }
 
 void Service::set_cleanup_threshold(uint64_t cleanup_threshold) {
-  disk_cleanup_->set_cleanup_threshold(cleanup_threshold);
+  disk_cleanup_threshold_ = cleanup_threshold;
 }
 
 void Service::set_aggressive_cleanup_threshold(
     uint64_t aggressive_cleanup_threshold) {
-  disk_cleanup_->set_aggressive_cleanup_threshold(aggressive_cleanup_threshold);
+  disk_cleanup_aggressive_threshold_ = aggressive_cleanup_threshold;
 }
 
 void Service::set_target_free_space(uint64_t target_free_space) {
-  disk_cleanup_->set_target_free_space(target_free_space);
+  disk_cleanup_target_free_space_ = target_free_space;
 }
 
 void Service::PostTaskToEventLoop(base::OnceClosure task) {

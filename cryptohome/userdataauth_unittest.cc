@@ -47,6 +47,7 @@
 #include "cryptohome/storage/mock_arc_disk_quota.h"
 #include "cryptohome/storage/mock_disk_cleanup.h"
 #include "cryptohome/storage/mock_homedirs.h"
+#include "cryptohome/storage/mock_low_disk_space_handler.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/tpm.h"
@@ -131,21 +132,16 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     userdataauth_->set_firmware_management_parameters(&fwmp_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
-    userdataauth_->set_disk_cleanup(&cleanup_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_mount_factory(&mount_factory_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
     userdataauth_->set_key_challenge_service_factory(
         &key_challenge_service_factory_);
+    userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
     userdataauth_->set_disable_threading(true);
     ON_CALL(homedirs_, keyset_management())
         .WillByDefault(Return(&keyset_management_));
-    // Return valid values for the amount of free space.
-    ON_CALL(cleanup_, AmountOfFreeDiskSpace())
-        .WillByDefault(Return(kFreeSpaceThresholdToTriggerCleanup));
-    ON_CALL(cleanup_, GetFreeDiskSpaceState(_))
-        .WillByDefault(Return(DiskCleanup::FreeSpaceState::kNeedNormalCleanup));
     // Empty token list by default.  The effect is that there are no attempts
     // to unload tokens unless a test explicitly sets up the token list.
     ON_CALL(chaps_client_, GetTokenList(_, _)).WillByDefault(Return(true));
@@ -157,6 +153,8 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
         .WillByDefault(WithArgs<1, 3>(Invoke(AssignSalt)));
     // ARC Disk Quota initialization will do nothing.
     ON_CALL(arc_disk_quota_, Initialize()).WillByDefault(Return());
+    // Low Disk space handler initialization will do nothing.
+    ON_CALL(low_disk_space_handler_, Init(_)).WillByDefault(Return(true));
   }
 
   // This is a utility function for tests to setup a mount for a particular
@@ -195,10 +193,6 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
 
   // Mock HomeDirs object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockHomeDirs> homedirs_;
-
-  // Mock DiskCleanup object, will be passed to UserDataAuth for its internal
-  // use.
-  NiceMock<MockDiskCleanup> cleanup_;
 
   // Mock InstallAttributes object, will be passed to UserDataAuth for its
   // internal use.
@@ -252,6 +246,10 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   // Mock Mount Factory object, will be passed to UserDataAuth for its internal
   // use.
   NiceMock<MockMountFactory> mount_factory_;
+
+  // Mock Low Disk Space handler object, will be passed to UserDataAuth for its
+  // internal use.
+  NiceMock<MockLowDiskSpaceHandler> low_disk_space_handler_;
 
   // Mock DBus object, will be passed to UserDataAuth for its internal use.
   scoped_refptr<NiceMock<dbus::MockBus>> bus_;
@@ -3368,111 +3366,6 @@ class UserDataAuthTestThreaded : public UserDataAuthTestNotInitialized {
   base::Thread origin_thread_;
 };
 
-TEST_F(UserDataAuthTestTasked, CheckUpdateActivityTimestampCalledDaily) {
-  // Note: This test is constructed similar to CheckAutoCleanupCallback test.
-  constexpr int kTimesUpdateUserActivityCalled = 5;
-  SetupMount("some-user-to-clean-up");
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
-  // Count the number of times UpdateActivityTimestamp happens.
-  EXPECT_CALL(homedirs_, UpdateActivityTimestamp(_, _, 0))
-      .Times(kTimesUpdateUserActivityCalled)
-      .WillRepeatedly(Return(true));
-
-  InitializeUserDataAuth();
-
-  FastForwardBy(base::TimeDelta::FromHours(kUpdateUserActivityPeriodHours) *
-                kTimesUpdateUserActivityCalled);
-
-  Mock::VerifyAndClear(&mount_);
-}
-
-TEST_F(UserDataAuthTestTasked, CheckAutoCleanupCallback) {
-  constexpr int kTimesFreeDiskSpaceCalled = 5;
-  // Checks that DoAutoCleanup() is called periodically.
-  // Service will schedule periodic clean-ups.
-  SetupMount("some-user-to-clean-up");
-
-  // These will be invoked from the mount thread.
-  EXPECT_CALL(cleanup_, FreeDiskSpace()).Times(kTimesFreeDiskSpaceCalled);
-  // Silence the GetFreeDiskSpaceState errors.
-  EXPECT_CALL(cleanup_, GetFreeDiskSpaceState(_))
-      .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kAboveTarget));
-
-  InitializeUserDataAuth();
-
-  FastForwardBy(base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS) *
-                kTimesFreeDiskSpaceCalled);
-
-  Mock::VerifyAndClear(&cleanup_);
-}
-
-TEST_F(UserDataAuthTestTasked, CheckAutoCleanupCallbackFirst) {
-  // Checks that DoAutoCleanup() is called first right after init.
-  // Service will schedule first cleanup right after its init.
-  EXPECT_CALL(cleanup_, FreeDiskSpace()).Times(1);
-  EXPECT_CALL(cleanup_, AmountOfFreeDiskSpace())
-      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup + 1));
-  EXPECT_CALL(cleanup_, GetFreeDiskSpaceState(_))
-      .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kAboveThreshold));
-
-  InitializeUserDataAuth();
-}
-
-TEST_F(UserDataAuthTestTasked, CheckLowDiskCallback) {
-  // Checks that LowDiskCallback is called periodically.
-  EXPECT_CALL(cleanup_, AmountOfFreeDiskSpace())
-      .Times(AtLeast(3))
-      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
-      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup - 1))
-      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup + 1));
-  EXPECT_CALL(cleanup_, GetFreeDiskSpaceState(_))
-      .Times(AtLeast(3))
-      .WillOnce(Return(DiskCleanup::FreeSpaceState::kAboveThreshold))
-      .WillOnce(Return(DiskCleanup::FreeSpaceState::kNeedNormalCleanup))
-      .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kAboveThreshold));
-
-  // DoAutoCleanup gets called once upon initialization, as verified by
-  // CheckAutoCleanupCallbackFirst test. Here we check that it's called a second
-  // time, and ahead of schedule (which is 1 hour, and this test is much
-  // shorter), if disk space goes below threshold and recovers back to normal.
-  EXPECT_CALL(cleanup_, FreeDiskSpace()).Times(2);
-
-  int count_signals = 0;
-  userdataauth_->SetLowDiskSpaceCallback(
-      base::Bind([](int* count_signals_ptr,
-                    uint64_t free_space) { (*count_signals_ptr)++; },
-                 &count_signals));
-
-  InitializeUserDataAuth();
-
-  FastForwardBy(
-      base::TimeDelta::FromMilliseconds(kLowDiskNotificationPeriodMS) * 10);
-
-  EXPECT_EQ(1, count_signals);
-}
-
-TEST_F(UserDataAuthTestTasked, CheckLowDiskCallbackFreeDiskSpaceOnce) {
-  EXPECT_CALL(cleanup_, AmountOfFreeDiskSpace())
-      .Times(AtLeast(4))
-      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
-      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
-  EXPECT_CALL(cleanup_, GetFreeDiskSpaceState(_))
-      .Times(AtLeast(4))
-      .WillOnce(Return(DiskCleanup::FreeSpaceState::kAboveThreshold))
-      .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kNeedNormalCleanup));
-
-  // Checks that DoAutoCleanup is called only once ahead of schedule if disk
-  // space goes below threshold and stays below forever. Note that it's 2 times
-  // here because it gets called once during Initialize(), see note in
-  // CheckLowDiskCallback test.
-  EXPECT_CALL(cleanup_, FreeDiskSpace()).Times(2);
-
-  InitializeUserDataAuth();
-
-  FastForwardBy(
-      base::TimeDelta::FromMilliseconds(kLowDiskNotificationPeriodMS) * 10);
-}
-
 TEST_F(UserDataAuthTestTasked, UploadAlertsCallback) {
   MetricsLibraryMock metrics;
   OverrideMetricsLibraryForTesting(&metrics);
@@ -3481,7 +3374,7 @@ TEST_F(UserDataAuthTestTasked, UploadAlertsCallback) {
   for (int i = 0; i < Tpm::kAlertsNumber; i++)
     alert_data.counters[i] = 1;
 
-  // Checks that LowDiskCallback is called during/after initialization.
+  // Checks that GetAlertsData is called during/after initialization.
   EXPECT_CALL(tpm_, GetAlertsData(_))
       .WillOnce(DoAll(SetArgPointee<0>(alert_data), Return(true)));
 
