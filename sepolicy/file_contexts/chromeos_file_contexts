@@ -97,7 +97,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/seneschal              u:object_r:cros_seneschal_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
-/usr/bin/systemd-cat            u:object_r:cros_systemd_cat_exec:s0
 /usr/bin/timberslide            u:object_r:cros_timberslide_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
 /usr/bin/tpm2-simulator         u:object_r:cros_tpm2_simulator_exec:s0
@@ -165,7 +164,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 
 /usr/local/bin/recover_duts     u:object_r:cros_recover_duts_script:s0
 
-/usr/lib/systemd/systemd-journald u:object_r:cros_journald_exec:s0
 /usr/libexec/bluetooth/bluetoothd u:object_r:cros_bluetoothd_exec:s0
 
 /usr/libexec/cryptohome/update_userdataauth_from_features.sh u:object_r:cros_update_userdataauth_shell_script:s0
@@ -231,7 +229,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/eventlog.txt           u:object_r:cros_var_log_eventlog:s0
 /var/log/faillog                u:object_r:cros_var_log_faillog:s0
 /var/log/hammerd.log            u:object_r:cros_hammerd_log:s0
-/var/log/journal(/.*)?          u:object_r:cros_var_log_journal:s0
 /var/log/messages               u:object_r:cros_syslog:s0
 /var/log/metrics(/.*)?          u:object_r:cros_var_log_metrics:s0
 /var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
@@ -296,9 +293,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/perfetto                   u:object_r:cros_run_perfetto:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
 /run/shill                      u:object_r:cros_run_shill:s0
-/run/systemd                    u:object_r:cros_run_systemd:s0
-/run/systemd/journal            u:object_r:cros_run_systemd_journal:s0
-/run/systemd/journal/pids       u:object_r:cros_run_systemd_journal_pids:s0
 /run/namespaces                 u:object_r:cros_run_namespaces:s0
 /run/namespaces/mnt_chrome      u:object_r:cros_run_namespaces_mnt_chrome:s0
 
