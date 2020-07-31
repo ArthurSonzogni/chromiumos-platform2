@@ -397,6 +397,10 @@ bool GetUserCrashDirectories(
 bool GetDaemonStoreCrashDirectories(
     org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
     std::vector<base::FilePath>* directories) {
+  if (!session_manager_proxy) {
+    LOG(ERROR) << "Can't get active sessions - no session manager proxy";
+    return false;
+  }
   brillo::ErrorPtr error;
   std::map<std::string, std::string> sessions;
   session_manager_proxy->RetrieveActiveSessions(&sessions, &error);

@@ -770,7 +770,7 @@ TEST_F(CrashCollectorTest, StripSerialNumbers) {
   EXPECT_EQ(kCrashWithUsbSerialNumbersStripped, crash_with_usb_serial_numbers);
 }
 
-TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
+TEST_F(CrashCollectorTest, GetCrashDirectoryInfoOld) {
   FilePath path;
   const int kRootUid = 0;
   const int kNtpUid = 5;
@@ -783,9 +783,8 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   gid_t directory_group;
 
   path = collector_
-             .GetCrashDirectoryInfo(
-                 kRootUid, kChronosUid, /*use_non_chronos_cryptohome=*/false,
-                 &directory_mode, &directory_owner, &directory_group)
+             .GetCrashDirectoryInfoOld(kRootUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
              .value();
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
@@ -793,9 +792,8 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   EXPECT_EQ(kCrashAccessGid, directory_group);
 
   path = collector_
-             .GetCrashDirectoryInfo(
-                 kNtpUid, kChronosUid, /*use_non_chronos_cryptohome=*/false,
-                 &directory_mode, &directory_owner, &directory_group)
+             .GetCrashDirectoryInfoOld(kNtpUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
              .value();
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
@@ -813,22 +811,24 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   test_util::SetActiveSessions(mock, {{"user", "hashcakes"}});
   collector_.session_manager_proxy_.reset(mock);
 
-  path = collector_
-             .GetCrashDirectoryInfo(
-                 kChronosUid, kChronosUid, /*use_non_chronos_cryptohome=*/false,
-                 &directory_mode, &directory_owner, &directory_group)
-             .value();
+  path =
+      collector_
+          .GetCrashDirectoryInfoOld(kChronosUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+          .value();
   EXPECT_EQ(test_dir_.Append("home/user/hashcakes/crash").value(),
             path.value());
   EXPECT_EQ(kExpectedUserMode, directory_mode);
   EXPECT_EQ(kChronosUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
 
-  path = collector_
-             .GetCrashDirectoryInfo(
-                 kChronosUid, kChronosUid, /*use_non_chronos_cryptohome=*/true,
-                 &directory_mode, &directory_owner, &directory_group)
-             .value();
+  collector_.crash_directory_selection_method_ =
+      CrashCollector::kAlwaysUseDaemonStore;
+  path =
+      collector_
+          .GetCrashDirectoryInfoOld(kChronosUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+          .value();
   EXPECT_EQ(test_dir_.Append("run/daemon-store/crash/hashcakes").value(),
             path.value());
   EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
@@ -837,7 +837,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
 #endif  // !USE_KVM_GUEST
 }
 
-TEST_F(CrashCollectorTest, GetCrashDirectoryInfoLoggedOut) {
+TEST_F(CrashCollectorTest, GetCrashDirectoryInfoOldLoggedOut) {
   FilePath path;
   const int kChronosUid = 1000;
   const mode_t kExpectedUserMode = 02770;
@@ -850,11 +850,11 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoLoggedOut) {
   test_util::SetActiveSessions(mock, {});
   collector_.session_manager_proxy_.reset(mock);
 
-  path = collector_
-             .GetCrashDirectoryInfo(
-                 kChronosUid, kChronosUid, /*use_non_chronos_cryptohome=*/false,
-                 &directory_mode, &directory_owner, &directory_group)
-             .value();
+  path =
+      collector_
+          .GetCrashDirectoryInfoOld(kChronosUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+          .value();
   EXPECT_EQ(kExpectedUserMode, directory_mode);
 #if USE_KVM_GUEST
   // Inside the VM, everything goes to /var/spool/crash.
@@ -867,6 +867,159 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoLoggedOut) {
   EXPECT_EQ("/home/chronos/crash", path.value());
   EXPECT_EQ(kChronosUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
+#endif  // USE_KVM_GUEST
+}
+
+TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNew) {
+  FilePath path;
+  const int kRootUid = 0;
+  const int kNtpUid = 5;
+  const int kChronosUid = 1000;
+
+  mode_t directory_mode;
+  uid_t directory_owner;
+  gid_t directory_group;
+
+  // all crashes will first look at daemon store
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  test_util::SetActiveSessions(mock, {{"user", "hashcakes"}});
+  collector_.session_manager_proxy_.reset(mock);
+
+#if USE_KVM_GUEST
+  const int kCrashAccessGid = 419;
+  const mode_t kExpectedSystemMode = 02770;
+  // In the guest, we use /var/spool/crash even though we're logged in
+  path = collector_
+             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
+  EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_EQ(kExpectedSystemMode, directory_mode);
+  EXPECT_EQ(kRootUid, directory_owner);
+  EXPECT_EQ(kCrashAccessGid, directory_group);
+
+  path = collector_
+             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
+  EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_EQ(kExpectedSystemMode, directory_mode);
+  EXPECT_EQ(kRootUid, directory_owner);
+  EXPECT_EQ(kCrashAccessGid, directory_group);
+#else   // USE_KVM_GUEST
+  const int kCrashUserUid = 20137;
+  const int kCrashUserAccessGid = 420;
+  const mode_t kExpectedDaemonStoreMode = 03770;
+  const FilePath kExpectedDir = paths::Get("/run/daemon-store/crash/hashcakes");
+
+  // Create crash-test-in-progress file to force deterministic
+  // (always-daemon-store) behavior, rather than randomizing.
+  FilePath test_in_prog = paths::GetAt(paths::kSystemRunStateDirectory,
+                                       paths::kCrashTestInProgress);
+  ASSERT_TRUE(test_util::CreateFile(test_in_prog, ""));
+
+  // In the host, we always use daemon_store when logged in.
+  path = collector_
+             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
+  EXPECT_EQ(kExpectedDir, path);
+  EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
+  EXPECT_EQ(kCrashUserUid, directory_owner);
+  EXPECT_EQ(kCrashUserAccessGid, directory_group);
+
+  path = collector_
+             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
+  EXPECT_EQ(kExpectedDir, path);
+  EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
+  EXPECT_EQ(kCrashUserUid, directory_owner);
+  EXPECT_EQ(kCrashUserAccessGid, directory_group);
+
+  path =
+      collector_
+          .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+          .value();
+  EXPECT_EQ(kExpectedDir, path);
+  EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
+  EXPECT_EQ(kCrashUserUid, directory_owner);
+  EXPECT_EQ(kCrashUserAccessGid, directory_group);
+
+  collector_.crash_directory_selection_method_ =
+      CrashCollector::kAlwaysUseDaemonStore;
+  path =
+      collector_
+          .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+          .value();
+  EXPECT_EQ(kExpectedDir, path);
+  EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
+  EXPECT_EQ(kCrashUserUid, directory_owner);
+  EXPECT_EQ(kCrashUserAccessGid, directory_group);
+#endif  // USE_KVM_GUEST
+}
+
+TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut) {
+  FilePath path;
+  const int kRootUid = 0;
+  const int kNtpUid = 5;
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1000;
+  const mode_t kExpectedSystemMode = 02770;
+
+  mode_t directory_mode;
+  uid_t directory_owner;
+  gid_t directory_group;
+
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  test_util::SetActiveSessions(mock, {});
+  collector_.session_manager_proxy_.reset(mock);
+
+  // When not logged in, system dirs should use /var/spool/crash/ (in VM or not)
+  path = collector_
+             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
+  EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_EQ(kExpectedSystemMode, directory_mode);
+  EXPECT_EQ(kRootUid, directory_owner);
+  EXPECT_EQ(kCrashAccessGid, directory_group);
+
+  path = collector_
+             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
+  EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_EQ(kExpectedSystemMode, directory_mode);
+  EXPECT_EQ(kRootUid, directory_owner);
+  EXPECT_EQ(kCrashAccessGid, directory_group);
+
+  path =
+      collector_
+          .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+          .value();
+#if USE_KVM_GUEST
+  // Inside the VM, everything goes to /var/spool/crash.
+  EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_EQ(0, directory_owner);
+  EXPECT_EQ(kCrashAccessGid, directory_group);
+  EXPECT_EQ(kExpectedSystemMode, directory_mode);
+#else
+  const int kCrashUserAccessGid = 420;
+  EXPECT_EQ(paths::Get("/home/chronos/crash"), path);
+  EXPECT_EQ(kChronosUid, directory_owner);
+  EXPECT_EQ(kCrashUserAccessGid, directory_group);
+  EXPECT_EQ(kExpectedSystemMode, directory_mode);
+
+  collector_.crash_directory_selection_method_ =
+      CrashCollector::kAlwaysUseDaemonStore;
+  base::Optional<FilePath> path_maybe = collector_.GetCrashDirectoryInfoNew(
+      kChronosUid, kChronosUid, &directory_mode, &directory_owner,
+      &directory_group);
+  EXPECT_FALSE(path_maybe.has_value());
 #endif  // USE_KVM_GUEST
 }
 

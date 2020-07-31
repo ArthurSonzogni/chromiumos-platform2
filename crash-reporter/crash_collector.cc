@@ -60,6 +60,7 @@ const char kDefaultUserName[] = "chronos";
 const char kShellPath[] = "/bin/sh";
 const char kCollectorNameKey[] = "collector";
 const char kCrashLoopModeKey[] = "crash_loop_mode";
+const char kDaemonStoreKey[] = "using_daemon_store";
 const char kEarlyCrashKey[] = "is_early_boot";
 const char kChannelKey[] = "channel";
 // These should be kept in sync with variations::kNumExperimentsKey and
@@ -90,9 +91,9 @@ constexpr char kEnvSeccompPolicyPath[] = "SECCOMP_POLICY_PATH=";
 // This is SGID so that files created in it are also accessible to the group.
 const mode_t kUserCrashPathMode = 02770;
 
-// Directory mode of the non-chronos cryptohome spool directory.  This has the
-// sticky bit set to prevent different crash collectors from messing with each
-// others files.
+// Directory mode of the daemon store spool directory.  This has the sticky bit
+// set to prevent different crash collectors from messing with each others
+// files.
 const mode_t kDaemonStoreCrashPathMode = 03770;
 #endif
 
@@ -400,8 +401,8 @@ CrashCollector::CrashCollector(
       max_log_size_(kMaxLogSize),
       device_policy_loaded_(false),
       device_policy_(std::make_unique<policy::DevicePolicyImpl>()),
-      crash_sending_mode_(crash_sending_mode),
       crash_directory_selection_method_(crash_directory_selection_method),
+      crash_sending_mode_(crash_sending_mode),
       is_finished_(false),
       bytes_written_(0),
       tag_(tag) {
@@ -421,6 +422,7 @@ void CrashCollector::Initialize(bool early) {
   // For early boot crash collectors, /var and /home will not be accessible.
   // Instead, collect the crashes into /run.
   if (early) {
+    early_ = true;
     AddCrashMetaUploadData(kEarlyCrashKey, "true");
     system_crash_path_ = base::FilePath(paths::kSystemRunCrashDirectory);
   }
@@ -499,10 +501,12 @@ int CrashCollector::WriteNewFile(const FilePath& filename,
                                  base::StringPiece data) {
   base::ScopedFD fd = GetNewFileHandle(filename);
   if (!fd.is_valid()) {
+    PLOG(ERROR) << "WriteNewFile: Cannot open " << filename.value();
     return -1;
   }
 
   if (!base::WriteFileDescriptor(fd.get(), data)) {
+    PLOG(ERROR) << "WriteNewFile: Cannot write " << filename.value();
     base::ScopedClearLastError restore_error;
     fd.reset();
     return -1;
@@ -854,10 +858,10 @@ FilePath CrashCollector::GetCrashPath(const FilePath& crash_directory,
       StringPrintf("%s.%s", basename.c_str(), extension.c_str()));
 }
 
-bool CrashCollector::GetUserCrashDirectories(std::vector<FilePath>* directories,
-                                             bool use_non_chronos_cryptohome) {
+bool CrashCollector::GetUserCrashDirectoriesOld(
+    std::vector<FilePath>* directories, bool use_daemon_store) {
   SetUpDBus();
-  if (use_non_chronos_cryptohome) {
+  if (use_daemon_store) {
     return util::GetDaemonStoreCrashDirectories(session_manager_proxy_.get(),
                                                 directories);
   } else {
@@ -866,22 +870,21 @@ bool CrashCollector::GetUserCrashDirectories(std::vector<FilePath>* directories,
   }
 }
 
-FilePath CrashCollector::GetUserCrashDirectory(
-    bool use_non_chronos_cryptohome) {
+FilePath CrashCollector::GetUserCrashDirectoryOld(bool use_daemon_store) {
   FilePath user_directory = FilePath(paths::kFallbackUserCrashDirectory);
   // When testing, store crashes in the fallback crash directory; otherwise, the
   // test framework can't get to them after logging the user out. We don't so
   // this when using the daemon-store crash directory because crash_reporter
   // won't be able to write to the fallback directory.
   if ((util::IsTestImage() || ShouldHandleChromeCrashes()) &&
-      !use_non_chronos_cryptohome) {
+      !use_daemon_store) {
     return user_directory;
   }
   // In this multiprofile world, there is no one-specific user dir anymore.
   // Ask the session manager for the active ones, then just run with the
   // first result we get back.
   std::vector<FilePath> directories;
-  if (!GetUserCrashDirectories(&directories, use_non_chronos_cryptohome) ||
+  if (!GetUserCrashDirectoriesOld(&directories, use_daemon_store) ||
       directories.empty()) {
     LOG(ERROR) << "Could not get user crash directories, using default.";
     return user_directory;
@@ -891,10 +894,45 @@ FilePath CrashCollector::GetUserCrashDirectory(
   return user_directory;
 }
 
-base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
+base::Optional<FilePath> CrashCollector::GetUserCrashDirectoryNew() {
+  if (util::IsTestImage() || ShouldHandleChromeCrashes()) {
+    // When testing, store crashes in the fallback crash directory
+    // (/var/spool/crash or /home/chronos/crash); otherwise,
+    // the test framework can't get to them after logging the user out.
+    return base::nullopt;
+  }
+  // In this multiprofile world, there is no one-specific user dir anymore.
+  // Ask the session manager for the active ones, then just run with the
+  // first result we get back.
+  std::vector<FilePath> directories;
+  SetUpDBus();
+  if (!util::GetDaemonStoreCrashDirectories(session_manager_proxy_.get(),
+                                            &directories) ||
+      directories.empty()) {
+    LOG(ERROR) << "Could not get user crash directories";
+    return base::nullopt;
+  }
+
+  return directories[0];
+}
+
+bool CrashCollector::UseDaemonStore() {
+  if (early_) {
+    // When early in boot, daemon-store isn't available, so don't try it.
+    return false;
+  }
+  if (util::IsCrashTestInProgress()) {
+    // Always test crash_reporter using daemon store, since we hope to migrate
+    // over to it.
+    LOG(WARNING) << "Crash test in progress. Using daemon-store";
+    return true;
+  }
+  return base::RandGenerator(2) == 0;
+}
+
+base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
     uid_t process_euid,
     uid_t default_user_id,
-    bool use_non_chronos_cryptohome,
     mode_t* mode,
     uid_t* directory_owner,
     gid_t* directory_group) {
@@ -903,8 +941,9 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
   // mounted, so we use the system crash path.
 #if !USE_KVM_GUEST
   if (process_euid == default_user_id ||
-      crash_directory_selection_method_ == kAlwaysUseUserCrashDirectory) {
-    if (use_non_chronos_cryptohome) {
+      crash_directory_selection_method_ == kAlwaysUseUserCrashDirectory ||
+      crash_directory_selection_method_ == kAlwaysUseDaemonStore) {
+    if (crash_directory_selection_method_ == kAlwaysUseDaemonStore) {
       *mode = kDaemonStoreCrashPathMode;
       if (!brillo::userdb::GetGroupInfo(constants::kCrashName,
                                         directory_owner)) {
@@ -921,7 +960,8 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
                   << constants::kCrashUserGroupName;
       return base::nullopt;
     }
-    return GetUserCrashDirectory(use_non_chronos_cryptohome);
+    return GetUserCrashDirectoryOld(crash_directory_selection_method_ ==
+                                    kAlwaysUseDaemonStore);
   }
 #endif  // !USE_KVM_GUEST
   *mode = kSystemCrashDirectoryMode;
@@ -934,11 +974,80 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
   return system_crash_path_;
 }
 
-bool CrashCollector::GetCreatedCrashDirectoryByEuid(
-    uid_t euid,
-    FilePath* crash_directory,
-    bool* out_of_capacity,
-    bool use_non_chronos_cryptohome) {
+base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
+    uid_t process_euid,
+    uid_t default_user_id,
+    mode_t* mode,
+    uid_t* directory_owner,
+    gid_t* directory_group) {
+  // Crashes that happen while a user is logged-in should go into the
+  // cryptohome, since they may contain PII.
+  // For crashes that occur when no one is logged in, or test device
+  // crashes:
+  // * For user crashes, we use /home/chronos/crash, as the cryptohome is
+  //   unavailable and we don't have access to /var/spool/crash.
+  // * For system crashes, we use the system crash path.
+  // For crashes that occur during integration tests of the crash reporter
+  // system itself, we use regular (non-test-device) behavior.
+#if USE_KVM_GUEST
+  // In the VM, there is no cryptohome or /home/chronos, so we'll fall back to
+  // the system crash directory after the #if.
+#else
+  if (crash_directory_selection_method_ != kAlwaysUseSystemCrashDirectory) {
+    *mode = kDaemonStoreCrashPathMode;
+    if (!brillo::userdb::GetGroupInfo(constants::kCrashName, directory_owner)) {
+      PLOG(ERROR) << "Couldn't look up user " << constants::kCrashName;
+      return base::nullopt;
+    }
+    if (!brillo::userdb::GetGroupInfo(constants::kCrashUserGroupName,
+                                      directory_group)) {
+      PLOG(ERROR) << "Couldn't look up group "
+                  << constants::kCrashUserGroupName;
+      return base::nullopt;
+    }
+    base::Optional<FilePath> maybe_path = GetUserCrashDirectoryNew();
+    if (maybe_path) {
+      return maybe_path;
+    }
+  }
+
+  if (crash_directory_selection_method_ == kAlwaysUseDaemonStore) {
+    LOG(ERROR) << "Using daemon-store failed but daemon-store was required";
+    return base::nullopt;
+  }
+
+  // Otherwise, we can't use daemon store, so try the fallback directory if
+  // appropriate.
+  if (process_euid == default_user_id ||
+      crash_directory_selection_method_ == kAlwaysUseUserCrashDirectory) {
+    if (!brillo::userdb::GetGroupInfo(constants::kCrashUserGroupName,
+                                      directory_group)) {
+      PLOG(ERROR) << "Couldn't look up group "
+                  << constants::kCrashUserGroupName;
+      return base::nullopt;
+    }
+    *mode = kUserCrashPathMode;
+    *directory_owner = default_user_id;
+
+    // Fall back to /home/chronos/crash
+    return paths::Get(paths::kFallbackUserCrashDirectory);
+  }
+#endif  // USE_KVM_GUEST
+  // Otherwise, no one is logged in and crash_reporter is running as something
+  // other than chronos, so fall back to the system directory.
+  *mode = kSystemCrashDirectoryMode;
+  *directory_owner = constants::kRootUid;
+  if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
+                                    directory_group)) {
+    PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
+    return base::nullopt;
+  }
+  return system_crash_path_;
+}
+
+bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
+                                                    FilePath* crash_directory,
+                                                    bool* out_of_capacity) {
   if (out_of_capacity)
     *out_of_capacity = false;
 
@@ -965,9 +1074,22 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
-  base::Optional<base::FilePath> maybe_path = GetCrashDirectoryInfo(
-      euid, default_user_id, use_non_chronos_cryptohome, &directory_mode,
-      &directory_owner, &directory_group);
+  base::Optional<base::FilePath> maybe_path;
+  // Roll a die to decide whether to attempt using daemon-store. Even if this
+  // comes up as true, we might not use daemon-store (for example if the user is
+  // logged out, or we otherwise fail to get the daemon-store directory)
+  // TODO(b/186659673): Validate daemon-store usage and always use it.
+  if (UseDaemonStore()) {
+    AddCrashMetaUploadData(kDaemonStoreKey, "true");
+    maybe_path =
+        GetCrashDirectoryInfoNew(euid, default_user_id, &directory_mode,
+                                 &directory_owner, &directory_group);
+  } else {
+    AddCrashMetaUploadData(kDaemonStoreKey, "false");
+    maybe_path =
+        GetCrashDirectoryInfoOld(euid, default_user_id, &directory_mode,
+                                 &directory_owner, &directory_group);
+  }
   if (!maybe_path) {
     return false;
   }
@@ -1193,7 +1315,8 @@ bool CrashCollector::GetMultipleLogContents(
   if (output_file.FinalExtension() == ".gz") {
     if (!WriteNewCompressedFile(output_file, collated_log_contents.data(),
                                 collated_log_contents.size())) {
-      LOG(WARNING) << "Error writing sanitized log to " << output_file.value();
+      LOG(WARNING) << "Error writing compressed sanitized log to "
+                   << output_file.value();
       return false;
     }
   } else {
@@ -1266,7 +1389,8 @@ bool CrashCollector::GetProcessTree(pid_t pid,
   StripSensitiveData(&log);
 
   if (WriteNewFile(output_file, log) != static_cast<int>(log.size())) {
-    PLOG(WARNING) << "Error writing sanitized log to " << output_file.value();
+    PLOG(WARNING) << "Error writing sanitized PStree to "
+                  << output_file.value();
     return false;
   }
 
@@ -1518,7 +1642,7 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   // do not want to write with root access to a symlink that an attacker
   // might have created.
   if (WriteNewFile(meta_path, meta_data) < 0) {
-    PLOG(ERROR) << "Unable to write " << meta_path.value();
+    PLOG(ERROR) << "Unable to write meta " << meta_path.value();
   }
 
   // Record report created metric in UMA.

@@ -15,9 +15,12 @@
 
 #include "crash-reporter/constants.h"
 
+// Disallow fallback directory -- VM collector is run in a sandbox without
+// access to /home/chronos. (vm_collector is invoked via cicerone, with a
+// minijail configured in platform2/vm_tools/init/vm_cicerone.conf)
 VmCollector::VmCollector()
     : CrashCollector(
-          "vm_collector", kAlwaysUseUserCrashDirectory, kNormalCrashSendMode) {}
+          "vm_collector", kAlwaysUseDaemonStore, kNormalCrashSendMode) {}
 
 bool VmCollector::Collect(pid_t pid) {
   vm_tools::cicerone::CrashReport crash_report;
@@ -28,8 +31,7 @@ bool VmCollector::Collect(pid_t pid) {
   }
 
   base::FilePath crash_path;
-  if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_path, nullptr,
-                                      /*use_non_chronos_cryptohome=*/true)) {
+  if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_path, nullptr)) {
     LOG(ERROR) << "Failed to create or find crash directory";
     return false;
   }

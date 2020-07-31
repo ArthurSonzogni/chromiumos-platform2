@@ -48,10 +48,16 @@ class CrashCollector {
     // Force reports to be stored in the user crash directory, even if we are
     // not running as the "chronos" user.
     kAlwaysUseUserCrashDirectory,
-    // Use the normal crash directory selection process: Store in the user crash
-    // directory if running as the "chronos" user, otherwise store in the system
-    // crash directory.
-    kUseNormalCrashDirectorySelectionMethod
+    // Use the normal crash directory selection process: Store in the
+    // daemon-store crash directory if a user is logged in, otherwise store in
+    // the system crash directory or /home/chronos/crash.
+    kUseNormalCrashDirectorySelectionMethod,
+    // Force reports to be stored in daemon store, even if we are not
+    // running as the "chronos" user, in the daemon-store experiment, or logged
+    // in. If not logged in, methods to get the crash directory will fail.
+    kAlwaysUseDaemonStore,
+    // Always use the system crash directory.
+    kAlwaysUseSystemCrashDirectory
   };
 
   enum CrashSendingMode {
@@ -201,8 +207,10 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest,
               CreateDirectoryWithSettings_FixSubdirPermissions);
   FRIEND_TEST(CrashCollectorTest, FormatDumpBasename);
-  FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfo);
-  FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoLoggedOut);
+  FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoOld);
+  FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoOldLoggedOut);
+  FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoNew);
+  FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut);
   FRIEND_TEST(CrashCollectorTest, GetCrashPath);
   FRIEND_TEST(CrashCollectorTest, GetLogContents);
   FRIEND_TEST(CrashCollectorTest, GetMultipleLogContents);
@@ -308,13 +316,20 @@ class CrashCollector {
   void StripEmailAddresses(std::string* contents);
   void StripSerialNumbers(std::string* contents);
 
-  bool GetUserCrashDirectories(std::vector<base::FilePath>* directories,
-                               bool use_non_chronos_cryptohome);
-  base::FilePath GetUserCrashDirectory(bool use_non_chronos_cryptohome);
-  base::Optional<base::FilePath> GetCrashDirectoryInfo(
+  // This is going away once the experiment is done.
+  // TODO(b/186659673): Validate daemon-store usage and remove this
+  base::Optional<base::FilePath> GetCrashDirectoryInfoOld(
       uid_t process_euid,
       uid_t default_user_id,
-      bool use_non_chronos_cryptohome,
+      mode_t* mode,
+      uid_t* directory_owner,
+      gid_t* directory_group);
+  // Once the daemon-store experiment is done, rename to just
+  // GetCrashDirectoryInfo
+  // TODO(b/186659673): Validate daemon-store usage and rename this.
+  base::Optional<base::FilePath> GetCrashDirectoryInfoNew(
+      uid_t process_euid,
+      uid_t default_user_id,
       mode_t* mode,
       uid_t* directory_owner,
       gid_t* directory_group);
@@ -324,12 +339,10 @@ class CrashCollector {
   // nullptr, it is set to indicate if the call failed due to not having
   // capacity in the crash directory. Returns true whether or not directory
   // needed to be created, false on any failure.  If the crash directory is at
-  // capacity, returns false.  If |use_non_chronos_cryptohome| is set, use the
-  // new crash directory under /run/daemon-store/crash/<user-hash>.
+  // capacity, returns false.
   bool GetCreatedCrashDirectoryByEuid(uid_t euid,
                                       base::FilePath* crash_file_path,
-                                      bool* out_of_capacity,
-                                      bool use_non_chronos_cryptohome = false);
+                                      bool* out_of_capacity);
 
   // Create a directory using the specified mode/user/group, and make sure it
   // is actually a directory with the specified permissions.
@@ -456,6 +469,10 @@ class CrashCollector {
   bool device_policy_loaded_;
   std::unique_ptr<policy::DevicePolicy> device_policy_;
 
+  // Should reports always be stored in the user crash directory, or can they be
+  // stored in the system directory if we are not running as "chronos"?
+  CrashDirectorySelectionMethod crash_directory_selection_method_;
+
   scoped_refptr<dbus::Bus> bus_;
 
   // D-Bus proxy for session manager interface.
@@ -488,9 +505,10 @@ class CrashCollector {
   // Adds variations (experiment IDs) to crash reports. Returns true on success.
   bool AddVariations();
 
-  // Should reports always be stored in the user crash directory, or can they be
-  // stored in the system directory if we are not running as "chronos"?
-  const CrashDirectorySelectionMethod crash_directory_selection_method_;
+  bool GetUserCrashDirectoriesOld(std::vector<base::FilePath>* directories,
+                                  bool use_daemon_store);
+  base::FilePath GetUserCrashDirectoryOld(bool use_daemon_store);
+  base::Optional<base::FilePath> GetUserCrashDirectoryNew();
 
   // True when FinishCrash has been called. Once true, no new files should be
   // created.
@@ -530,6 +548,11 @@ class CrashCollector {
                                          base::ScopedFD fd_dup,
                                          const base::FilePath& filename);
 
+  // Determine whether to attempt to use daemon-store.
+  // This is for a temporary experiment and will be removed.
+  // TODO(b/186659673): Validate daemon-store usage and always use it.
+  bool UseDaemonStore();
+
   // Returns an error type signature for a given |error_type| value,
   // which is reported to the crash server along with the
   // crash_reporter-user-collection signature.
@@ -539,6 +562,9 @@ class CrashCollector {
   const std::string tag_;
 
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
+
+  // Is this an early-boot crash collection?
+  bool early_ = false;
 };
 
 // Information to invoke a specific call on a collector.

@@ -151,32 +151,34 @@ For more details, see the [core(5)] man page.
 
 We store reports in a couple of different places.
 
-*   `/var/spool/crash/`: Non-user (i.e. system) queued reports.
+*   `/var/spool/crash/`: Non-user (i.e. system) queued reports, when not logged
+    in or half of the time when logged in.
+    *** promo
+    When on a test build, all system crashes are written to `/var/spool/crash`
+    instead of `/run/daemon-store/crash/<user_hash>`. This avoids having crashes
+    become inaccessible if a test logs the user out.
+    ***
 *   `/home/chronos/<user_hash>/crash/`: User-specific queued reports.
     Used when invoked as the user (e.g. by Chrome as `chronos` while logged in).
+    Only used half of the time -- otherwise we use daemon-store (see below).
 *   `/home/chronos/crash`: Crashes from the `chronos` user when not logged in,
     for instance, if Chrome crashes while not logged in.
     *** promo
     When on a test build, all user crashes are written to `/home/chronos/crash`
-    instead of `/home/chronos/<user_hash>/crash/`. This avoids having crashes
+    instead of `/home/chronos/<user_hash>/crash/` or
+    `/run/daemon-store/crash/<user_hash>`. This avoids having crashes
     become inaccessible if a test logs the user out.
     ***
 *   `/run/daemon-store/crash/<user_hash>`: Some crashes from the `chronos` user
-    are sent here.  In the long term. All `chronos` user crashes should go here
-    when the user is logged in.
+    are sent here.  In addition, **half** of all crashes that occur when a user
+    is logged in are sent here. In the long term, all crashes should go here
+    when the user is logged in. (We send half of crashes now as part of an
+    experiment to validate usage of daemon-store.)
 *   `/mnt/stateful_partition/unencrypted/preserve/crash`: Crashes found early in
     the boot process (before `/var/spool/crash` is available) are stored here if
     we wish to preserve them across clobbers.
 *   `/run/crash_reporter/crash`: Crashes found early in the boot process (before
     `/var/spool/crash` is available) are stored here.
-*   `/home/root/<user_hash>/crash-reporter/`: User-specific queued reports.
-    Used when invoked as root (e.g. by the kernel to handle crashes for
-    processes that were running as `chronos`).
-
-    *** promo
-    The `/home/root/...` support is in progress.
-    See https://chromium-review.googlesource.com/1155107 for more details.
-    ***
 
 These directories are only written to by the crash-reporter at collection time.
 The [crash_sender] program will also delete reports after it uploads them.

@@ -211,7 +211,6 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   if (!log_to_stderr)
     minijail_bind(j, "/dev/log", "/dev/log", 0);
   minijail_no_new_privs(j);
-  minijail_new_session_keyring(j);
 
   // If we're initializing the system, we need to write to /proc/sys/.
   if (!write_proc) {

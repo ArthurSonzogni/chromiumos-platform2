@@ -27,6 +27,7 @@ void EphemeralCrashCollector::Initialize(bool preserve_across_clobber) {
     system_crash_path_ =
         base::FilePath(paths::kEncryptedRebootVaultCrashDirectory);
     skip_consent_ = true;
+    crash_directory_selection_method_ = kAlwaysUseSystemCrashDirectory;
   } else {
     // In case of powerwash, there is a chance that the powerwash was a result
     // of failure to mount the partition: in such situations, we may have crash
