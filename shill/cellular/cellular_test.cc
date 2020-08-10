@@ -2543,7 +2543,7 @@ TEST_P(CellularTest, BuildApnTryList) {
   EXPECT_EQ(apn_try_list[1], apn1);
   EXPECT_EQ(apn_try_list[2], apn2);
 
-  // Set the last good APN
+  // Set the last good APN to an APN not in the current list
   Stringmap last_good_apn;
   last_good_apn[kApnProperty] = "last_good_apn";
   service->SetLastGoodApn(last_good_apn);
@@ -2553,6 +2553,21 @@ TEST_P(CellularTest, BuildApnTryList) {
   EXPECT_EQ(apn_try_list[1], last_good_apn);
   EXPECT_EQ(apn_try_list[2], apn1);
   EXPECT_EQ(apn_try_list[3], apn2);
+
+  // Set the last good APN to an existing APN
+  service->SetLastGoodApn(apn2);
+  apn_try_list = device_->BuildApnTryList();
+  ASSERT_EQ(apn_try_list.size(), apn_list.size() + 1u);
+  EXPECT_EQ(apn_try_list[0], custom_apn);
+  EXPECT_EQ(apn_try_list[1], apn2);
+  EXPECT_EQ(apn_try_list[2], apn1);
+
+  // Set the custom APN to an existing APN
+  service->set_apn_info_for_testing(apn1);
+  apn_try_list = device_->BuildApnTryList();
+  ASSERT_EQ(apn_try_list.size(), apn_list.size());
+  EXPECT_EQ(apn_try_list[0], apn1);
+  EXPECT_EQ(apn_try_list[1], apn2);
 }
 
 INSTANTIATE_TEST_SUITE_P(CellularTest,

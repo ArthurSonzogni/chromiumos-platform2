@@ -2050,27 +2050,36 @@ void Cellular::SetSimProperties(
 std::deque<Stringmap> Cellular::BuildApnTryList() const {
   std::deque<Stringmap> apn_try_list;
 
+  const Stringmap* custom_apn_info = nullptr;
+  const Stringmap* last_good_apn_info = nullptr;
   if (service_) {
-    const Stringmap* apn_info = service_->GetUserSpecifiedApn();
-    if (apn_info) {
-      apn_try_list.push_back(*apn_info);
+    custom_apn_info = service_->GetUserSpecifiedApn();
+    if (custom_apn_info) {
+      apn_try_list.push_back(*custom_apn_info);
       SLOG(this, 3) << __func__ << " Adding User Specified APN:"
-                    << GetStringmapValue(*apn_info, kApnProperty)
+                    << GetStringmapValue(*custom_apn_info, kApnProperty)
                     << " Is attach:"
-                    << GetStringmapValue(*apn_info, kApnAttachProperty);
+                    << GetStringmapValue(*custom_apn_info, kApnAttachProperty);
     }
-
-    apn_info = service_->GetLastGoodApn();
-    if (apn_info) {
-      apn_try_list.push_back(*apn_info);
+    last_good_apn_info = service_->GetLastGoodApn();
+    if (last_good_apn_info &&
+        (!custom_apn_info || *last_good_apn_info != *custom_apn_info)) {
+      apn_try_list.push_back(*last_good_apn_info);
       SLOG(this, 3) << __func__ << " Adding last good APN:"
-                    << GetStringmapValue(*apn_info, kApnProperty)
+                    << GetStringmapValue(*last_good_apn_info, kApnProperty)
                     << " Is attach:"
-                    << GetStringmapValue(*apn_info, kApnAttachProperty);
+                    << GetStringmapValue(*last_good_apn_info,
+                                         kApnAttachProperty);
     }
   }
 
-  apn_try_list.insert(apn_try_list.end(), apn_list_.begin(), apn_list_.end());
+  for (auto apn : apn_list_) {
+    if ((custom_apn_info && *custom_apn_info == apn) ||
+        (last_good_apn_info && *last_good_apn_info == apn)) {
+      continue;
+    }
+    apn_try_list.push_back(apn);
+  }
   return apn_try_list;
 }
 
