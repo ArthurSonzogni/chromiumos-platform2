@@ -1,3 +1,6 @@
+# The SafeSetID LSM uses this list to record which UID’s/GID’s to restrict, look here for more information:
+# https://www.kernel.org/doc/html/latest/admin-guide/LSM/SafeSetID.html
+
 # authpolicyd sets its saved UID to the 'authpolicyd-exec' user
 254:607
 # We can't allow the 'authpolicyd-exec' user to switch to other UIDs, or

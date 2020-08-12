@@ -1,3 +1,6 @@
+# The SafeSetID LSM uses this list to record which UID’s/GID’s to restrict, look here for more information:
+# https://www.kernel.org/doc/html/latest/admin-guide/LSM/SafeSetID.html
+
 # shill spawns dhcpcd as 'dhcp' user
 20104:224
 # shill spawns openvpn as 'openvpn' user now. We plan to replace it with
