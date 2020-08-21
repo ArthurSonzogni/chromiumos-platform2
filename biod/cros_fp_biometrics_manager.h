@@ -40,7 +40,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   BiometricsManager::EnrollSession StartEnrollSession(
       std::string user_id, std::string label) override;
   BiometricsManager::AuthSession StartAuthSession() override;
-  std::vector<std::unique_ptr<BiometricsManager::Record>> GetRecords() override;
+  std::vector<std::unique_ptr<BiometricsManagerRecord>> GetRecords() override;
   bool DestroyAllRecords() override;
   void RemoveRecordsFromMemory() override;
   bool ReadRecordsForSingleUser(const std::string& user_id) override;
@@ -65,7 +65,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void EndAuthSession() override;
 
   virtual void OnMaintenanceTimerFired();
-  virtual bool WriteRecord(const BiometricsManager::Record& record,
+  virtual bool WriteRecord(const BiometricsManagerRecord& record,
                            uint8_t* tmpl_data,
                            size_t tmpl_size);
 
@@ -88,7 +88,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   using SessionAction = base::Callback<void(const uint32_t event)>;
 
-  class Record : public BiometricsManager::Record {
+  class Record : public BiometricsManagerRecord {
    public:
     Record(const base::WeakPtr<CrosFpBiometricsManager>& biometrics_manager,
            int index)

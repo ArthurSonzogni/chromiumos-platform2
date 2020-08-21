@@ -21,7 +21,7 @@ class Environment {
   Environment() { logging::SetMinLogLevel(logging::LOGGING_FATAL); }
 };
 
-class TestRecord : public biod::BiometricsManager::Record {
+class TestRecord : public biod::BiometricsManagerRecord {
  public:
   TestRecord(const std::string& id,
              const std::string& user_id,

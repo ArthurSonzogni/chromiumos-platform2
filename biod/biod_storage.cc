@@ -51,7 +51,7 @@ void BiodStorage::SetRootPathForTesting(const base::FilePath& root_path) {
   root_path_ = root_path;
 }
 
-bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
+bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
                               base::Value data) {
   if (!allow_access_) {
     LOG(ERROR) << "Access to the storage mounts not allowed.";
@@ -296,7 +296,7 @@ std::string BiodStorage::GenerateNewRecordId() {
 }
 
 base::FilePath BiodStorage::GetRecordFilename(
-    const BiometricsManager::Record& record) {
+    const BiometricsManagerRecord& record) {
   std::vector<FilePath> paths = {FilePath(kBiod), FilePath(record.GetUserId()),
                                  FilePath(biometrics_manager_name_),
                                  FilePath(kRecordFileName + record.GetId())};

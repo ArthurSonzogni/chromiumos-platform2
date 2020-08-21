@@ -58,11 +58,11 @@ class BiodStorage {
    * @param record
    * @return Full path on success. Empty path on failure.
    */
-  base::FilePath GetRecordFilename(const BiometricsManager::Record& record);
+  base::FilePath GetRecordFilename(const BiometricsManagerRecord& record);
 
   // Write one record to file in per user stateful. This is called whenever
   // we enroll a new record.
-  bool WriteRecord(const BiometricsManager::Record& record, base::Value data);
+  bool WriteRecord(const BiometricsManagerRecord& record, base::Value data);
 
   // Read validation value from |record_dictionary| and store in |output|.
   static std::unique_ptr<std::vector<uint8_t>> ReadValidationValueFromRecord(

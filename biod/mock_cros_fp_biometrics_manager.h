@@ -30,7 +30,7 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
               (std::string user_id, std::string label),
               (override));
   MOCK_METHOD(BiometricsManager::AuthSession, StartAuthSession, (), (override));
-  MOCK_METHOD(std::vector<std::unique_ptr<BiometricsManager::Record>>,
+  MOCK_METHOD(std::vector<std::unique_ptr<BiometricsManagerRecord>>,
               GetRecords,
               (),
               (override));
@@ -64,7 +64,7 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
   MOCK_METHOD(void, OnMaintenanceTimerFired, (), (override));
   MOCK_METHOD(bool,
               WriteRecord,
-              (const BiometricsManager::Record& record,
+              (const BiometricsManagerRecord& record,
                uint8_t* tmpl_data,
                size_t tmpl_size),
               (override));

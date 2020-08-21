@@ -79,7 +79,7 @@ constexpr int kRlimitMemlockBytes = 65536;
 // TestRecord class in anonymous namespace.
 bool test_record_supports_positive_match_secret = true;
 
-class TestRecord : public BiometricsManager::Record {
+class TestRecord : public BiometricsManagerRecord {
  public:
   TestRecord(const std::string& id,
              const std::string& user_id,

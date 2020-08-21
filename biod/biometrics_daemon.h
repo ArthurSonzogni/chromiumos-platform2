@@ -45,7 +45,7 @@ class BiometricsManagerWrapper {
   class RecordWrapper {
    public:
     RecordWrapper(BiometricsManagerWrapper* biometrics_manager,
-                  std::unique_ptr<BiometricsManager::Record> record,
+                  std::unique_ptr<BiometricsManagerRecord> record,
                   brillo::dbus_utils::ExportedObjectManager* object_manager,
                   const dbus::ObjectPath& object_path);
     RecordWrapper(const RecordWrapper&) = delete;
@@ -62,7 +62,7 @@ class BiometricsManagerWrapper {
     bool Remove(brillo::ErrorPtr* error);
 
     BiometricsManagerWrapper* biometrics_manager_;
-    std::unique_ptr<BiometricsManager::Record> record_;
+    std::unique_ptr<BiometricsManagerRecord> record_;
     brillo::dbus_utils::DBusObject dbus_object_;
     dbus::ObjectPath object_path_;
     brillo::dbus_utils::ExportedProperty<std::string> property_label_;

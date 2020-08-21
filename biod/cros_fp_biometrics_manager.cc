@@ -196,9 +196,9 @@ BiometricsManager::AuthSession CrosFpBiometricsManager::StartAuthSession() {
   return BiometricsManager::AuthSession(session_weak_factory_.GetWeakPtr());
 }
 
-std::vector<std::unique_ptr<BiometricsManager::Record>>
+std::vector<std::unique_ptr<BiometricsManagerRecord>>
 CrosFpBiometricsManager::GetRecords() {
-  std::vector<std::unique_ptr<BiometricsManager::Record>> records;
+  std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
   for (int i = 0; i < records_.size(); i++)
     records.emplace_back(
         std::make_unique<Record>(weak_factory_.GetWeakPtr(), i));
@@ -740,10 +740,9 @@ bool CrosFpBiometricsManager::LoadRecord(const BiodStorage::Record record) {
   return true;
 }
 
-bool CrosFpBiometricsManager::WriteRecord(
-    const BiometricsManager::Record& record,
-    uint8_t* tmpl_data,
-    size_t tmpl_size) {
+bool CrosFpBiometricsManager::WriteRecord(const BiometricsManagerRecord& record,
+                                          uint8_t* tmpl_data,
+                                          size_t tmpl_size) {
   base::StringPiece tmpl_sp(reinterpret_cast<char*>(tmpl_data), tmpl_size);
   std::string tmpl_base64;
   base::Base64Encode(tmpl_sp, &tmpl_base64);

@@ -104,7 +104,7 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
 
 BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
     BiometricsManagerWrapper* biometrics_manager,
-    std::unique_ptr<BiometricsManager::Record> record,
+    std::unique_ptr<BiometricsManagerRecord> record,
     ExportedObjectManager* object_manager,
     const ObjectPath& object_path)
     : biometrics_manager_(biometrics_manager),
@@ -396,13 +396,13 @@ bool BiometricsManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
 
 void BiometricsManagerWrapper::RefreshRecordObjects() {
   records_.clear();
-  std::vector<std::unique_ptr<BiometricsManager::Record>> records =
+  std::vector<std::unique_ptr<BiometricsManagerRecord>> records =
       biometrics_manager_->GetRecords();
 
   ExportedObjectManager* object_manager = dbus_object_.GetObjectManager().get();
   std::string records_root_path = object_path_.value() + std::string("/Record");
 
-  for (std::unique_ptr<BiometricsManager::Record>& record : records) {
+  for (std::unique_ptr<BiometricsManagerRecord>& record : records) {
     ObjectPath record_path(records_root_path + record->GetId());
     records_.emplace_back(std::make_unique<RecordWrapper>(
         this, std::move(record), object_manager, record_path));
