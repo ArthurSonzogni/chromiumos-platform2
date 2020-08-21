@@ -34,15 +34,17 @@ void FederatedServiceImpl::ReportExample(
     const std::string& client_name,
     chromeos::federated::mojom::ExamplePtr example) {
   DCHECK(storage_manager_) << "storage_manager_ is not ready!";
+  // TODO(alanlxl): check if the client_name is registered.
+
   if (!example || !example->features || !example->features->feature.size()) {
-    LOG(ERROR) << "Invalid/empty example received from client " << client_name;
+    VLOG(1) << "Invalid/empty example received from client " << client_name;
     return;
   }
+
   if (!storage_manager_->OnExampleReceived(
           client_name,
           ConvertToTensorFlowExampleProto(example).SerializeAsString())) {
-    // TODO(alanlxl): maybe a VLOG(1)
-    LOG(ERROR) << "Failed to insert the example from client " << client_name;
+    VLOG(1) << "Failed to insert the example from client " << client_name;
   }
 }
 

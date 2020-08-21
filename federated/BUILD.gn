@@ -17,8 +17,9 @@ pkg_config("federated_common_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "libmetrics",
     "libmojo",
+    "libsession_manager-client",
+    "sqlite3",
   ]
 }
 
@@ -31,7 +32,7 @@ generate_mojom_bindings("federated_mojo_bindings") {
 }
 
 proto_library("tf_example_proto") {
-  proto_in_dir = "${sysroot}/usr/include/chromeos/federated/protos"
+  proto_in_dir = "./protos"
   proto_out_dir = "chrome/knowledge/federated/"
   sources = [
     "${proto_in_dir}/example.proto",
@@ -42,7 +43,9 @@ proto_library("tf_example_proto") {
 static_library("federated_common") {
   sources = [
     "daemon.cc",
+    "example_database.cc",
     "federated_service_impl.cc",
+    "session_manager_proxy.cc",
     "storage_manager_impl.cc",
     "utils.cc",
   ]
@@ -62,7 +65,11 @@ executable("federated_service") {
 if (use.test) {
   executable("federated_service_test") {
     sources = [
+      "example_database_test.cc",
+      "example_database_test_utils.cc",
       "federated_service_impl_test.cc",
+      "mock_example_database.cc",
+      "storage_manager_impl_test.cc",
       "test_utils.cc",
       "testrunner.cc",
       "utils_test.cc",

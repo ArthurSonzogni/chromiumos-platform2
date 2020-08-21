@@ -5,11 +5,29 @@
 #ifndef FEDERATED_UTILS_H_
 #define FEDERATED_UTILS_H_
 
+#include <string>
+
+#include <base/files/file_path.h>
+
 #include "chrome/knowledge/federated/example.pb.h"
 #include "chrome/knowledge/federated/feature.pb.h"
 #include "federated/mojom/example.mojom.h"
 
 namespace federated {
+
+// The maximum of example count that are consumed in one federated computation
+// round.
+extern const size_t kMaxStreamingExampleCount;
+// The minimum of example count that are required in one federated computation
+// round.
+extern const size_t kMinExampleCount;
+extern const char kSessionStartedState[];
+extern const char kSessionStoppedState[];
+extern const char kUserDatabasePath[];
+extern const char kDatabaseFileName[];
+
+// Gets the database file path with the given sanitized_username.
+base::FilePath GetDatabasePath(const std::string& sanitized_username);
 
 // Converts the mojom Example struct to a TensorFlow Example proto.
 tensorflow::Example ConvertToTensorFlowExampleProto(

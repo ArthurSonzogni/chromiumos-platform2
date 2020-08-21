@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/stringprintf.h>
+
 namespace federated {
 
 namespace {
@@ -15,6 +17,22 @@ using chromeos::federated::mojom::FloatList;
 using chromeos::federated::mojom::Int64List;
 using chromeos::federated::mojom::ValueList;
 }  // namespace
+
+// TODO(alanlxl):  just random numbers, need a discussion
+constexpr size_t kMaxStreamingExampleCount = 4000;
+constexpr size_t kMinExampleCount = 1;
+
+constexpr char kSessionStartedState[] = "started";
+constexpr char kSessionStoppedState[] = "stopped";
+constexpr char kUserDatabasePath[] = "/run/daemon-store/federated";
+constexpr char kDatabaseFileName[] = "examples.db";
+
+// Get the database file path with the given sanitized_username.
+base::FilePath GetDatabasePath(const std::string& sanitized_username) {
+  return base::FilePath(base::StringPrintf("%s/%s/%s", kUserDatabasePath,
+                                           sanitized_username.c_str(),
+                                           kDatabaseFileName));
+}
 
 tensorflow::Example ConvertToTensorFlowExampleProto(const ExamplePtr& example) {
   tensorflow::Example tf_example;

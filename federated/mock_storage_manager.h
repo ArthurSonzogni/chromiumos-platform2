@@ -22,6 +22,7 @@ class MockStorageManager : public StorageManager {
 
   ~MockStorageManager() override = default;
 
+  MOCK_METHOD(void, InitializeSessionManagerProxy, (dbus::Bus*), (override));
   MOCK_METHOD(bool,
               OnExampleReceived,
               (const std::string&, const std::string&),
@@ -30,8 +31,8 @@ class MockStorageManager : public StorageManager {
               PrepareStreamingForClient,
               (const std::string&),
               (override));
-  MOCK_METHOD(bool, GetNextExample, (std::string*), (override));
-  MOCK_METHOD(bool, CloseStreaming, (), (override));
+  MOCK_METHOD(bool, GetNextExample, (std::string*, bool*), (override));
+  MOCK_METHOD(bool, CloseStreaming, (bool), (override));
 };
 
 }  // namespace federated
