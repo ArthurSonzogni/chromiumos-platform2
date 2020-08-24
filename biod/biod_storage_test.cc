@@ -447,4 +447,21 @@ TEST_F(BiodStorageInvalidRecordTest, MissingValidationValue) {
   EXPECT_EQ(read_result.invalid_records.size(), 1);
 }
 
+TEST_F(BiodStorageInvalidRecordTest, ValidationValueNotBase64) {
+  auto record = R"({
+    "record_id": "1234",
+    "label": "some_label",
+    "data": "some_data",
+    "match_validation_value": "not valid base64",
+    "version": 2
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
 }  // namespace biod

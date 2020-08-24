@@ -133,7 +133,11 @@ BiodStorage::ReadValidationValueFromRecord(int record_format_version,
       return nullptr;
     }
     validation_val_str = *validation_val_str_ptr;
-    base::Base64Decode(validation_val_str, &validation_val_str);
+    if (!base::Base64Decode(validation_val_str, &validation_val_str)) {
+      LOG(ERROR) << "Unable to base64 decode validation value from "
+                 << record_path.value() << ".";
+      return nullptr;
+    }
   } else if (record_format_version == kRecordFormatVersionNoValidationValue) {
     // If the record has format version 1, it should have no validation value
     // field. In that case, load an empty validation value.
