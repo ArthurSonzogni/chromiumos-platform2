@@ -16,6 +16,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <testing/gtest/include/gtest/gtest.h>
 #include <base/strings/string_util.h>
+#include <base/files/important_file_writer.h>
 
 namespace biod {
 
@@ -326,4 +327,124 @@ TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecordInvalidVersion) {
 INSTANTIATE_TEST_SUITE_P(RecordsSupportPositiveMatchSecret,
                          BiodStorageTest,
                          ::testing::Values(true, false));
+
+/**
+ * Tests for invalid records. In general records will be correctly formatted
+ * since we follow a specific format when writing them, but we should be able
+ * to handle invalid records from bugs, disk corruption, etc.
+ */
+class BiodStorageInvalidRecordTest : public ::testing::Test {
+ public:
+  BiodStorageInvalidRecordTest() {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    root_path_ = temp_dir_.GetPath().AppendASCII(
+        "biod_storage_invalid_record_test_root");
+    biod_storage_ = std::make_unique<BiodStorage>(kBiometricsManagerName);
+    // Since there is no session manager, allow accesses by default.
+    biod_storage_->set_allow_access(true);
+    biod_storage_->SetRootPathForTesting(root_path_);
+
+    auto record =
+        TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1);
+    record_name_ = biod_storage_->GetRecordFilename(record);
+    EXPECT_FALSE(record_name_.empty());
+    EXPECT_TRUE(base::CreateDirectory(record_name_.DirName()));
+  }
+
+ protected:
+  base::ScopedTempDir temp_dir_;
+  base::FilePath root_path_;
+  base::FilePath record_name_;
+  std::unique_ptr<BiodStorage> biod_storage_;
+};
+
+TEST_F(BiodStorageInvalidRecordTest, InvalidJSON) {
+  EXPECT_TRUE(base::ImportantFileWriter::WriteFileAtomically(record_name_,
+                                                             "this is not "
+                                                             "JSON"));
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, MissingFormatVersion) {
+  auto record = R"({
+    "record_id": "1234",
+    "label": "some_label",
+    "data": "some_data",
+    "match_validation_value": "4567"
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, MissingRecordId) {
+  auto record = R"({
+    "label": "some_label",
+    "data": "some_data",
+    "match_validation_value": "4567",
+    "version": 2
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, MissingRecordLabel) {
+  auto record = R"({
+    "record_id": "1234",
+    "data": "some_data",
+    "match_validation_value": "4567",
+    "version": 2
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, MissingRecordData) {
+  auto record = R"({
+    "record_id": "1234",
+    "label": "some_label",
+    "match_validation_value": "4567",
+    "version": 2
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, MissingValidationValue) {
+  auto record = R"({
+    "record_id": "1234",
+    "label": "some_label",
+    "data": "some_data",
+    "version": 2
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
 }  // namespace biod

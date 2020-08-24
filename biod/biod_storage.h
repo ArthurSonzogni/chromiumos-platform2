@@ -51,6 +51,14 @@ class BiodStorage {
   // Set root path to a different path for testing purpose only
   void SetRootPathForTesting(const base::FilePath& root_path);
 
+  /**
+   * Get the file name for a given record. Intended to be used for testing.
+   *
+   * @param record
+   * @return Full path on success. Empty path on failure.
+   */
+  base::FilePath GetRecordFilename(const BiometricsManager::Record& record);
+
   // Write one record to file in per user stateful. This is called whenever
   // we enroll a new record.
   bool WriteRecord(const BiometricsManager::Record& record, base::Value data);

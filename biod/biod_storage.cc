@@ -87,17 +87,10 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
     return false;
   }
 
-  std::vector<FilePath> paths = {FilePath(kBiod), FilePath(record.GetUserId()),
-                                 FilePath(biometrics_manager_name_),
-                                 FilePath(kRecordFileName + record_id)};
-
-  FilePath record_storage_filename = root_path_;
-  for (const auto& path : paths) {
-    if (path.IsAbsolute()) {
-      LOG(ERROR) << "Path component must not be absolute: '" << path << "'";
-      return false;
-    }
-    record_storage_filename = record_storage_filename.Append(path);
+  FilePath record_storage_filename = GetRecordFilename(record);
+  if (record_storage_filename.empty()) {
+    LOG(ERROR) << "Unable to get filename for record.";
+    return false;
   }
 
   {
@@ -298,4 +291,23 @@ std::string BiodStorage::GenerateNewRecordId() {
   std::replace(record_id.begin(), record_id.end(), '-', '_');
   return record_id;
 }
+
+base::FilePath BiodStorage::GetRecordFilename(
+    const BiometricsManager::Record& record) {
+  std::vector<FilePath> paths = {FilePath(kBiod), FilePath(record.GetUserId()),
+                                 FilePath(biometrics_manager_name_),
+                                 FilePath(kRecordFileName + record.GetId())};
+
+  FilePath record_storage_filename = root_path_;
+  for (const auto& path : paths) {
+    if (path.IsAbsolute()) {
+      LOG(ERROR) << "Path component must not be absolute: '" << path << "'";
+      return base::FilePath();
+    }
+    record_storage_filename = record_storage_filename.Append(path);
+  }
+
+  return record_storage_filename;
+}
+
 }  // namespace biod
