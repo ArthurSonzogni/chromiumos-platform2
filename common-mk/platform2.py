@@ -115,6 +115,8 @@ _IUSE = [
     'ubsan',
     'udev',
     'user_session_isolation',
+    'v4l2_codec',
+    'vaapi',
     'vm_borealis',
     'vpn',
     'vtpm_proxy',
