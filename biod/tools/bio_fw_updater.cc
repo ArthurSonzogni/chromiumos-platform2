@@ -171,13 +171,13 @@ int main(int argc, char* argv[]) {
   biod::CrosFpDeviceUpdate ec_device;
   biod::CrosFpBootUpdateCtrl boot_ctrl;
 
-  biod::CrosFpDevice::EcVersion ecver;
-  if (!ec_device.GetVersion(&ecver)) {
+  auto ecver = ec_device.GetVersion();
+  if (!ecver) {
     LOG(INFO) << "Failed to fetch EC version, aborting.";
     metrics.Finished(FwUpdaterStatus::kFailurePreUpdateVersionCheck);
     return EXIT_FAILURE;
   }
-  LogFPMCUVersion(ecver);
+  LogFPMCUVersion(*ecver);
 
   auto result = biod::updater::DoUpdate(ec_device, boot_ctrl, fw);
   metrics.SetUpdateReason(result.reason);
@@ -199,12 +199,13 @@ int main(int argc, char* argv[]) {
       metrics.Finished(FwUpdaterStatus::kFailureUpdateRW);
       return EXIT_FAILURE;
     case UpdateStatus::kUpdateSucceeded:
-      if (!ec_device.GetVersion(&ecver)) {
+      ecver = ec_device.GetVersion();
+      if (!ecver) {
         LOG(ERROR) << "Failed to fetch final EC version, update failed.";
         metrics.Finished(FwUpdaterStatus::kFailurePostUpdateVersionCheck);
         return EXIT_FAILURE;
       }
-      LogFPMCUVersion(ecver);
+      LogFPMCUVersion(*ecver);
       LOG(INFO) << "The update was successful.";
       metrics.Finished(FwUpdaterStatus::kSuccessful);
       return EXIT_SUCCESS;

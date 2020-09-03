@@ -12,6 +12,7 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
+#include <base/optional.h>
 
 #include "biod/biod_metrics.h"
 #include "biod/cros_fp_device_interface.h"
@@ -45,9 +46,7 @@ class CrosFpDevice : public CrosFpDeviceInterface {
                            ec_current_image expected_image);
 
   // Run a simple command to get the version information from FP MCU.
-  // The retrieved version is written to |ver|.
-  // Returns true if successfully retrieved the version.
-  static bool GetVersion(const base::ScopedFD& cros_fp_fd, EcVersion* ver);
+  static base::Optional<EcVersion> GetVersion(const base::ScopedFD& cros_fp_fd);
 
   // CrosFpDeviceInterface overrides:
   ~CrosFpDevice() override;

@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/optional.h>
 #include <base/process/launch.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
@@ -87,20 +88,20 @@ std::string CrosFpDeviceUpdate::EcCurrentImageToString(
   NOTREACHED();
 }
 
-bool CrosFpDeviceUpdate::GetVersion(CrosFpDevice::EcVersion* ecver) const {
-  DCHECK(ecver != nullptr);
-
+base::Optional<CrosFpDeviceInterface::EcVersion>
+CrosFpDeviceUpdate::GetVersion() const {
   auto fd = base::ScopedFD(open(CrosFpDevice::kCrosFpPath, O_RDWR | O_CLOEXEC));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open fingerprint device, while fetching version.";
-    return false;
+    return base::nullopt;
   }
 
-  if (!biod::CrosFpDevice::GetVersion(fd, ecver)) {
+  auto version = biod::CrosFpDevice::GetVersion(fd);
+  if (!version) {
     LOG(ERROR) << "Failed to read fingerprint version.";
-    return false;
+    return base::nullopt;
   }
-  return true;
+  return version;
 }
 
 bool CrosFpDeviceUpdate::IsFlashProtectEnabled(bool* status) const {
@@ -218,8 +219,8 @@ UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
   CrosFpFirmware::ImageVersion fw_version = fw.GetVersion();
 
   // Grab the FPMCU's current firmware version and current active image.
-  CrosFpDevice::EcVersion ecver;
-  if (!ec_dev.GetVersion(&ecver)) {
+  auto ecver = ec_dev.GetVersion();
+  if (!ecver) {
     result.status = UpdateStatus::kUpdateFailedGetVersion;
     return result;
   }
@@ -239,7 +240,7 @@ UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
   }
   if (!flashprotect_enabled) {
     LOG(INFO) << "Flashprotect is disabled.";
-    if (ecver.ro_version != fw_version.ro_version) {
+    if (ecver->ro_version != fw_version.ro_version) {
       result.reason |= UpdateReason::kMismatchROVersion;
       attempted = true;
       LOG(INFO) << "FPMCU RO firmware mismatch, updating.";
@@ -263,8 +264,8 @@ UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
 
   // The firmware should be updated if RO is active (i.e. RW is corrupted) or if
   // the firmware version available on the rootfs is different from the RW.
-  bool active_image_ro = ecver.current_image != EC_IMAGE_RW;
-  bool rw_mismatch = ecver.rw_version != fw_version.rw_version;
+  bool active_image_ro = ecver->current_image != EC_IMAGE_RW;
+  bool rw_mismatch = ecver->rw_version != fw_version.rw_version;
   if (active_image_ro) {
     result.reason |= UpdateReason::kActiveImageRO;
   }

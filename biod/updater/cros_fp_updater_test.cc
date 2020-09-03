@@ -45,9 +45,9 @@ const std::vector<enum ec_current_image> kEcCurrentImageEnums = {
 
 class MockCrosFpDeviceUpdate : public biod::CrosFpDeviceUpdate {
  public:
-  MOCK_METHOD(bool,
+  MOCK_METHOD(base::Optional<biod::CrosFpDeviceInterface::EcVersion>,
               GetVersion,
-              (biod::CrosFpDevice::EcVersion*),
+              (),
               (const, override));
   MOCK_METHOD(bool, IsFlashProtectEnabled, (bool*), (const, override));
   MOCK_METHOD(bool,
@@ -80,7 +80,7 @@ class CrosFpUpdaterTest : public ::testing::Test {
     DefaultValue<bool>::Set(true);
     // Lay down default rules to ensure an error is logged if an interface
     // if called without explicitly specifying it.
-    EXPECT_CALL(dev_update_, GetVersion(_)).Times(0);
+    EXPECT_CALL(dev_update_, GetVersion()).Times(0);
     EXPECT_CALL(dev_update_, IsFlashProtectEnabled(_)).Times(0);
     EXPECT_CALL(dev_update_, Flash(_, _)).Times(0);
     EXPECT_CALL(boot_ctrl_, TriggerBootUpdateSplash()).Times(0);
@@ -98,8 +98,6 @@ class CrosFpUpdaterTest : public ::testing::Test {
                         enum ec_current_image ec_image = EC_IMAGE_RW) {
     CrosFpFirmware::ImageVersion img_ver = {kTestImageROVersion,
                                             kTestImageRWVersion};
-    biod::CrosFpDevice::EcVersion ec_ver = {kTestImageROVersion,
-                                            kTestImageRWVersion, ec_image};
 
     if (ro_mismatch) {
       img_ver.ro_version += "NEW";
@@ -109,8 +107,12 @@ class CrosFpUpdaterTest : public ::testing::Test {
     }
     fw_.SetMockFwVersion(img_ver);
 
-    EXPECT_CALL(dev_update_, GetVersion(NotNull()))
-        .WillOnce(DoAll(SetArgPointee<0>(ec_ver), Return(true)));
+    EXPECT_CALL(dev_update_, GetVersion())
+        .WillOnce(Return(biod::CrosFpDeviceInterface::EcVersion{
+            .ro_version = kTestImageROVersion,
+            .rw_version = kTestImageRWVersion,
+            .current_image = ec_image,
+        }));
     EXPECT_CALL(dev_update_, IsFlashProtectEnabled(NotNull()))
         .WillOnce(DoAll(SetArgPointee<0>(flash_protect), Return(true)));
   }
@@ -160,7 +162,7 @@ TEST(CrosFpDeviceUpdateTest, UniqueEcCurrentImageString) {
 
 TEST_F(CrosFpUpdaterTest, GetDeviceVersionFails) {
   // Given a device which fails to report its version,
-  EXPECT_CALL(dev_update_, GetVersion(NotNull())).WillOnce(Return(false));
+  EXPECT_CALL(dev_update_, GetVersion()).WillOnce(Return(base::nullopt));
 
   // expect the updater to report a get version failure with no update reason.
   auto result = RunUpdater();
@@ -171,7 +173,8 @@ TEST_F(CrosFpUpdaterTest, GetDeviceVersionFails) {
 TEST_F(CrosFpUpdaterTest, GetFlashProtectFails) {
   // Given a device which reports its version, but fails to
   // report its flash protect status,
-  EXPECT_CALL(dev_update_, GetVersion(NotNull())).WillOnce(Return(true));
+  EXPECT_CALL(dev_update_, GetVersion())
+      .WillOnce(Return(biod::CrosFpDeviceInterface::EcVersion()));
   EXPECT_CALL(dev_update_, IsFlashProtectEnabled(NotNull()))
       .WillOnce(Return(false));
 

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/optional.h>
 #include <brillo/enum_flags.h>
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config_interface.h>
@@ -24,7 +25,7 @@ namespace biod {
 class CrosFpDeviceUpdate {
  public:
   virtual ~CrosFpDeviceUpdate() = default;
-  virtual bool GetVersion(biod::CrosFpDevice::EcVersion* ecver) const;
+  virtual base::Optional<CrosFpDeviceInterface::EcVersion> GetVersion() const;
   virtual bool IsFlashProtectEnabled(bool* status) const;
   virtual bool Flash(const CrosFpFirmware& fw,
                      enum ec_current_image image) const;

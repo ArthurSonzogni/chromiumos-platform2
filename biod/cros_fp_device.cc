@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/ec/cros_ec_dev.h>
@@ -294,14 +295,12 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
 }
 
 // static
-bool CrosFpDevice::GetVersion(const base::ScopedFD& cros_fp_fd,
-                              EcVersion* ver) {
-  CHECK(ver);
-
+base::Optional<CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
+    const base::ScopedFD& cros_fp_fd) {
   EcCommand<EmptyParam, struct ec_response_get_version> cmd(EC_CMD_GET_VERSION);
   if (!cmd.Run(cros_fp_fd.get())) {
     LOG(ERROR) << "Failed to fetch cros_fp firmware version.";
-    return false;
+    return base::nullopt;
   }
 
   // buffers should already be null terminated -- this is a safeguard
@@ -310,10 +309,11 @@ bool CrosFpDevice::GetVersion(const base::ScopedFD& cros_fp_fd,
   cmd.Resp()->version_string_rw[sizeof(cmd.Resp()->version_string_rw) - 1] =
       '\0';
 
-  ver->ro_version = std::string(cmd.Resp()->version_string_ro);
-  ver->rw_version = std::string(cmd.Resp()->version_string_rw);
-  ver->current_image = static_cast<ec_current_image>(cmd.Resp()->current_image);
-  return true;
+  return EcVersion{
+      .ro_version = std::string(cmd.Resp()->version_string_ro),
+      .rw_version = std::string(cmd.Resp()->version_string_rw),
+      .current_image = static_cast<ec_current_image>(cmd.Resp()->current_image),
+  };
 }
 
 bool CrosFpDevice::EcReboot(ec_current_image to_image) {
