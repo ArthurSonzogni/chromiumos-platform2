@@ -502,32 +502,38 @@ base::Optional<std::bitset<32>> CrosFpDevice::GetDirtyMap() {
   return info_->template_info()->dirty;
 }
 
-bool CrosFpDevice::GetIndexOfLastTemplate(int* index) {
-  if (!UpdateFpInfo())
-    return false;
-  *index = info_->template_info()->num_valid - 1;
-  if (*index < 0 || *index >= MaxTemplateCount()) {
-    LOG(ERROR) << "Invalid index of last template: " << *index << ".";
-    return false;
+base::Optional<int> CrosFpDevice::GetIndexOfLastTemplate() {
+  if (!UpdateFpInfo()) {
+    return base::nullopt;
   }
-  return true;
+  int index = info_->template_info()->num_valid - 1;
+  if (index < 0 || index >= MaxTemplateCount()) {
+    LOG(ERROR) << "Invalid index of last template: " << index << ".";
+    return base::nullopt;
+  }
+  return index;
 }
 
 base::Optional<brillo::SecureVector> CrosFpDevice::GetPositiveMatchSecret(
     int index) {
-  if (index == kLastTemplate) {
-    if (!GetIndexOfLastTemplate(&index)) {
+  auto opt_index = base::make_optional<int>(index);
+  if (opt_index == kLastTemplate) {
+    opt_index = GetIndexOfLastTemplate();
+    if (!opt_index) {
       return base::nullopt;
     }
   }
-  return FpReadMatchSecret(static_cast<uint16_t>(index));
+  return FpReadMatchSecret(static_cast<uint16_t>(*opt_index));
 }
 
 std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
   if (index == kLastTemplate) {
-    if (!GetIndexOfLastTemplate(&index)) {
+    auto opt_index = GetIndexOfLastTemplate();
+    if (!opt_index) {
       return nullptr;
     }
+    index = *opt_index;
+
     // Is the last one really a new created one ?
     const auto& dirty = info_->template_info()->dirty;
     if (index >= dirty.size() || !dirty.test(index)) {
