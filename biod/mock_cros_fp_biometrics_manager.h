@@ -62,6 +62,12 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
   MOCK_METHOD(void, EndEnrollSession, (), (override));
   MOCK_METHOD(void, EndAuthSession, (), (override));
   MOCK_METHOD(void, OnMaintenanceTimerFired, (), (override));
+  MOCK_METHOD(bool,
+              WriteRecord,
+              (const BiometricsManager::Record& record,
+               uint8_t* tmpl_data,
+               size_t tmpl_size),
+              (override));
 
   // Delegate to the real implementation in the base class:
   // https://github.com/google/googletest/blob/HEAD/googlemock/docs/cook_book.md#delegating-calls-to-a-parent-class
@@ -71,6 +77,7 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
 
   // Expose protected methods for testing
   using CrosFpBiometricsManager::GetDirtyList;
+  using CrosFpBiometricsManager::UpdateTemplatesOnDisk;
 };
 
 }  // namespace biod

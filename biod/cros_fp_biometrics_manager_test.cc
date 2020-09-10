@@ -85,7 +85,6 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
   brillo::SecureVector positive_match_secret_;
 };
 
-
 // Using a peer class to control access to the class under test is better than
 // making the text fixture a friend class.
 class CrosFpBiometricsManagerPeer {
@@ -340,6 +339,51 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestGetDirtyList) {
       .WillOnce(Return(std::bitset<32>("1001")));
   auto dirty_list = mock_->GetDirtyList();
   EXPECT_EQ(dirty_list, (std::vector<int>{0, 3}));
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
+  const std::vector<int> dirty_list = {0};
+  const std::unordered_set<uint32_t> suspicious_templates;
+
+  EXPECT_CALL(*mock_cros_dev_, GetTemplate).WillOnce([](int) {
+    return std::make_unique<VendorTemplate>();
+  });
+  EXPECT_CALL(*mock_, WriteRecord).WillOnce(Return(true));
+
+  EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest,
+       TestUpdateTemplatesOnDisk_NoDirtyTemplates) {
+  const std::vector<int> dirty_list;
+  const std::unordered_set<uint32_t> suspicious_templates;
+
+  EXPECT_CALL(*mock_, WriteRecord).Times(0);
+
+  EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest,
+       TestUpdateTemplatesOnDisk_SkipSuspiciousTemplates) {
+  const std::vector<int> dirty_list = {0};
+  const std::unordered_set<uint32_t> suspicious_templates = {0};
+
+  EXPECT_CALL(*mock_, WriteRecord).Times(0);
+
+  EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest,
+       TestUpdateTemplatesOnDisk_ErrorFetchingTemplate) {
+  const std::vector<int> dirty_list = {0};
+  const std::unordered_set<uint32_t> suspicious_templates;
+
+  EXPECT_CALL(*mock_cros_dev_, GetTemplate).WillOnce([](int) {
+    return nullptr;
+  });
+  EXPECT_CALL(*mock_, WriteRecord).Times(0);
+
+  EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
 }
 
 }  // namespace biod

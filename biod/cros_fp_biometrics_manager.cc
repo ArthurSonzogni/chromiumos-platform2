@@ -700,24 +700,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
 
   // Record updated templates
   // TODO(vpalatin): this is slow, move to end of session ?
-  for (int i : dirty_list) {
-    // If the template previously came with wrong validation value, do not
-    // accept it until it comes with correct validation value.
-    if (suspicious_templates_.find(i) != suspicious_templates_.end())
-      continue;
-
-    std::unique_ptr<VendorTemplate> templ = cros_dev_->GetTemplate(i);
-    LOG(INFO) << "Retrieve updated template " << i << " -> " << std::boolalpha
-              << templ.get();
-    if (!templ)
-      continue;
-
-    Record current_record(weak_factory_.GetWeakPtr(), i);
-    if (!WriteRecord(current_record, templ->data(), templ->size())) {
-      LOG(ERROR) << "Cannot update record " << records_[i].record_id
-                 << " in storage during AuthSession because writing failed.";
-    }
-  }
+  UpdateTemplatesOnDisk(dirty_list, suspicious_templates_);
 }
 
 void CrosFpBiometricsManager::OnTaskComplete() {
@@ -804,6 +787,35 @@ std::vector<int> CrosFpBiometricsManager::GetDirtyList() {
   }
 
   return dirty_list;
+}
+
+bool CrosFpBiometricsManager::UpdateTemplatesOnDisk(
+    const std::vector<int>& dirty_list,
+    const std::unordered_set<uint32_t>& suspicious_templates) {
+  bool ret = true;
+  for (int i : dirty_list) {
+    // If the template previously came with wrong validation value, do not
+    // accept it until it comes with correct validation value.
+    if (suspicious_templates.find(i) != suspicious_templates.end()) {
+      continue;
+    }
+
+    std::unique_ptr<VendorTemplate> templ = cros_dev_->GetTemplate(i);
+    LOG(INFO) << "Retrieve updated template " << i << " -> " << std::boolalpha
+              << templ.get();
+    if (!templ) {
+      continue;
+    }
+
+    Record current_record(weak_factory_.GetWeakPtr(), i);
+    if (!WriteRecord(current_record, templ->data(), templ->size())) {
+      LOG(ERROR) << "Cannot update record " << records_[i].record_id
+                 << " in storage during AuthSession because writing failed.";
+      ret = false;
+    }
+  }
+
+  return ret;
 }
 
 }  // namespace biod

@@ -65,8 +65,22 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void EndAuthSession() override;
 
   virtual void OnMaintenanceTimerFired();
+  virtual bool WriteRecord(const BiometricsManager::Record& record,
+                           uint8_t* tmpl_data,
+                           size_t tmpl_size);
 
   std::vector<int> GetDirtyList();
+  /**
+   * @param dirty_list            templates that have been updated on the
+   * FPMCU, but not written to disk.
+   * @param suspicious_templates  templates that have incorrect validation
+   * values.
+   * @return True if all templates were successfully written to disk. False
+   * otherwise.
+   */
+  bool UpdateTemplatesOnDisk(
+      const std::vector<int>& dirty_list,
+      const std::unordered_set<uint32_t>& suspicious_templates);
 
  private:
   // For testing.
@@ -124,9 +138,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void OnTaskComplete();
 
   bool LoadRecord(const BiodStorage::Record record);
-  bool WriteRecord(const BiometricsManager::Record& record,
-                   uint8_t* tmpl_data,
-                   size_t tmpl_size);
   // Clear FPMCU context and re-upload all records from storage.
   bool ReloadAllRecords(std::string user_id);
 
