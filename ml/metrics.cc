@@ -13,6 +13,7 @@
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
 
+#include "ml/process.h"
 #include "ml/util.h"
 
 namespace ml {
@@ -55,6 +56,35 @@ void RecordCumulativeMetrics(
       kMemoryUsageMinKb, kMemoryUsageMaxKb, kMemoryUsageBuckets);
 }
 
+// Returns true if getting the RAM of control process succeeds. Otherwise
+// returns false in which case the value of `total_mem_usage` should be
+// ignored.
+// Here we ignore the return status of getting worker processes's RAM usage
+// because there may be a case that the worker process has disappeared but it
+// has not been removed from Process::GetWorkerPidInfoMap(). We do not want this
+// to block the overall metric report. In the future, we may implement some
+// dedicated metrics to report such cases.
+bool GetControlAndWorkerProcessMemoryUsage(size_t* total_mem_usage) {
+  DCHECK(total_mem_usage != nullptr);
+  *total_mem_usage = 0;
+  MemoryUsage usage;
+  // Collect RAM usage for worker processes.
+  // Do not crash if `GetProcessMemoryUsage` fails for worker processes because
+  // maybe some worker process terminates before it is unregistered.
+  for (const auto& pid_info : Process::GetInstance()->GetWorkerPidInfoMap()) {
+    if (GetProcessMemoryUsage(&usage, pid_info.first)) {
+      *total_mem_usage += usage.VmRSSKb + usage.VmSwapKb;
+    }
+  }
+  // Collect RAM usage for control processes.
+  if (GetProcessMemoryUsage(&usage)) {
+    *total_mem_usage += usage.VmRSSKb + usage.VmSwapKb;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace
 
 Metrics::Metrics()
@@ -92,7 +122,7 @@ void Metrics::UpdateAndRecordMetrics(
     const bool record_current_metrics,
     chromeos_metrics::CumulativeMetrics* const cumulative_metrics) {
   size_t usage = 0;
-  if (!GetTotalProcessMemoryUsage(&usage)) {
+  if (!GetControlAndWorkerProcessMemoryUsage(&usage)) {
     LOG(DFATAL) << "Getting process memory usage failed";
     return;
   }
@@ -103,9 +133,16 @@ void Metrics::UpdateAndRecordMetrics(
 
   if (record_current_metrics) {
     // Record CPU usage (units = milli-percent i.e. 0.001%):
+    // First get the CPU usage of the control process.
+    auto cpu_usage = process_metrics_->GetPlatformIndependentCPUUsage();
+    // Then get the CPU usages of the worker processes.
+    for (const auto& pid_info : Process::GetInstance()->GetWorkerPidInfoMap()) {
+      cpu_usage +=
+          pid_info.second.process_metrics->GetPlatformIndependentCPUUsage();
+    }
+
     const int cpu_usage_milli_percent = static_cast<int>(
-        1000. * process_metrics_->GetPlatformIndependentCPUUsage() /
-        base::SysInfo::NumberOfProcessors());
+        1000. * cpu_usage / base::SysInfo::NumberOfProcessors());
     metrics_library_.SendToUMA(kCpuUsageMetricName, cpu_usage_milli_percent,
                                kCpuUsageMinMilliPercent,
                                kCpuUsageMaxMilliPercent, kCpuUsageBuckets);

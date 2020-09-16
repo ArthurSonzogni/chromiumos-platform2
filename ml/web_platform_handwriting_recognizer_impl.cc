@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <brillo/message_loops/message_loop.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
@@ -36,13 +37,11 @@ bool WebPlatformHandwritingRecognizerImpl::Create(
   auto recognizer_impl = new WebPlatformHandwritingRecognizerImpl(
       std::move(constraint), std::move(receiver));
 
-  // Set the disconnection handler to strongly bind `recognizer_impl` to delete
-  // `recognizer_impl` when the connection is gone.
-  recognizer_impl->receiver_.set_disconnect_handler(base::Bind(
-      [](const WebPlatformHandwritingRecognizerImpl* const recognizer_impl) {
-        delete recognizer_impl;
-      },
-      base::Unretained(recognizer_impl)));
+  //  Set the disconnection handler to quit the message loop (i.e. exits the
+  //  process) when the connection is gone, because this model is always run in
+  //  a dedicated process.
+  recognizer_impl->receiver_.set_disconnect_handler(
+      base::Bind([]() { brillo::MessageLoop::current()->BreakLoop(); }));
 
   return recognizer_impl->successfully_loaded_;
 }

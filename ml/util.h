@@ -26,6 +26,10 @@ struct MemoryUsage {
 bool GetProcessMemoryUsageFromFile(MemoryUsage* memory_usage,
                                    const base::FilePath& file_path);
 
+// Get the memory usage of a process whose PID is `pid`.
+// Return true if successful, false otherwise.
+bool GetProcessMemoryUsage(MemoryUsage* memory_usage, pid_t pid);
+
 // Same as GetProcessMemoryUsageFromFile(memory_usage, "/prod/[pid]/status")
 // for the calling process's pid.
 // Return true if successful, false otherwise.

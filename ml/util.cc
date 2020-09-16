@@ -80,12 +80,15 @@ bool GetProcessMemoryUsageFromFile(MemoryUsage* memory_usage,
   return vmrss_found && vmswap_found;
 }
 
-bool GetProcessMemoryUsage(MemoryUsage* memory_usage) {
-  const base::FilePath status_file_path =
-      base::FilePath("/proc")
-          .Append(base::NumberToString(base::Process::Current().Pid()))
-          .Append("status");
+bool GetProcessMemoryUsage(MemoryUsage* memory_usage, pid_t pid) {
+  const base::FilePath status_file_path = base::FilePath("/proc")
+                                              .Append(base::NumberToString(pid))
+                                              .Append("status");
   return GetProcessMemoryUsageFromFile(memory_usage, status_file_path);
+}
+
+bool GetProcessMemoryUsage(MemoryUsage* memory_usage) {
+  return GetProcessMemoryUsage(memory_usage, base::Process::Current().Pid());
 }
 
 bool GetTotalProcessMemoryUsage(size_t* total_memory) {

@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
@@ -15,6 +16,7 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
+#include <mojo/public/cpp/platform/platform_channel.h>
 
 #include "ml/dlcservice_client.h"
 #include "ml/model_metadata.h"
@@ -112,6 +114,16 @@ class MachineLearningServiceImpl
   // Additional receivers bound via `Clone`.
   mojo::ReceiverSet<chromeos::machine_learning::mojom::MachineLearningService>
       clone_receivers_;
+
+  // Primordial remotes to the worker process.
+  // Can not use `mojo::RemoteSet` in Chrome OS for the moment.
+  std::vector<
+      mojo::Remote<chromeos::machine_learning::mojom::MachineLearningService>>
+      worker_remotes_;
+
+  // Holds the platform channels used in bootstrapping mojo connection
+  // between the manager and worker processes.
+  std::vector<mojo::PlatformChannel> internal_channels;
 };
 
 }  // namespace ml

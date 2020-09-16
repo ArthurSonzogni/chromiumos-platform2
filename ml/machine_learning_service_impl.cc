@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <unistd.h>
+
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
@@ -27,6 +29,7 @@
 #include "ml/mojom/model.mojom.h"
 #include "ml/mojom/soda.mojom.h"
 #include "ml/mojom/web_platform_handwriting.mojom.h"
+#include "ml/process.h"
 #include "ml/request_metrics.h"
 #include "ml/soda_recognizer_impl.h"
 #include "ml/text_classifier_impl.h"
@@ -95,6 +98,7 @@ struct RecognizerTraits<HandwritingRecognizer> {
   using SpecPtr = HandwritingRecognizerSpecPtr;
   using Callback = MachineLearningServiceImpl::LoadHandwritingModelCallback;
   using Impl = HandwritingRecognizerImpl;
+  static constexpr char kModelName[] = "HandwritingModel";
 };
 
 template <>
@@ -105,6 +109,7 @@ struct RecognizerTraits<
   using Callback =
       MachineLearningServiceImpl::LoadWebPlatformHandwritingModelCallback;
   using Impl = WebPlatformHandwritingRecognizerImpl;
+  static constexpr char kModelName[] = "WebPlatformHandwritingModel";
 };
 
 }  // namespace
@@ -246,7 +251,8 @@ void LoadHandwritingModelFromDir(
     mojo::PendingReceiver<Recognizer> receiver,
     typename RecognizerTraits<Recognizer>::Callback callback,
     const std::string& root_path) {
-  RequestMetrics request_metrics("HandwritingModel", kMetricsRequestName);
+  RequestMetrics request_metrics(RecognizerTraits<Recognizer>::kModelName,
+                                 kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
   // Returns error if root_path is empty.
@@ -497,6 +503,28 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
         chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>
         receiver,
     LoadWebPlatformHandwritingModelCallback callback) {
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->GetType() == Process::Type::kControl) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "WebPlatformHandwritingModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // TODO(https://crbug.com/1202545): may need a better error code here.
+      std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadWebPlatformHandwritingModel(
+            std::move(constraint), std::move(receiver), std::move(callback));
+    return;
+  }
+
+  // From here below is in the worker process.
+
   // If handwriting is installed on rootfs, load it from there.
   if (ml::HandwritingLibrary::IsUseLibHandwritingEnabled()) {
     LoadHandwritingModelFromDir<

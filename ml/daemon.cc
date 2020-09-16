@@ -4,10 +4,12 @@
 
 #include "ml/daemon.h"
 
-#include <sysexits.h>
-
 #include <memory>
 #include <utility>
+
+#include <sys/types.h>
+#include <sysexits.h>
+#include <unistd.h>
 
 #include <base/bind.h>
 #include <base/check.h>
@@ -30,8 +32,18 @@ Daemon::~Daemon() {}
 
 int Daemon::OnInit() {
   int exit_code = DBusDaemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
+    LOG(ERROR) << "DBusDaemon::OnInit() failed";
     return exit_code;
+  }
+  // For control process, we need to change euid back to 0. We need the control
+  // process to be root in the user namespace because it needs to spawn worker
+  // processes and sandbox them.
+  if (seteuid(0) != 0) {
+    // TODO(https://crbug.com/1202545): report this error to UMA.
+    LOG(ERROR) << "Unable to change effective uid back to 0";
+    exit(EX_OSERR);
+  }
 
   metrics_.StartCollectingProcessMetrics();
   mojo::core::Init();
