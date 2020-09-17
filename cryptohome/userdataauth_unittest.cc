@@ -3519,6 +3519,12 @@ TEST_F(UserDataAuthTestTasked, UploadAlertsCallback) {
       .WillOnce(DoAll(SetArgPointee<0>(alert_data), Return(true)));
 
   // Checks that the metrics are reported.
+  constexpr char kDiskCleanupResultsHistogram[] =
+      "Cryptohome.DiskCleanupResult";
+  EXPECT_CALL(metrics, SendEnumToUMA(kDiskCleanupResultsHistogram, _, _))
+      .WillRepeatedly(Return(true));
+
+  // Checks that the metrics are reported.
   constexpr char kTpmAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
   EXPECT_CALL(metrics, SendEnumToUMA(kTpmAlertsHistogram, _, _))
       .Times(Tpm::kAlertsNumber);

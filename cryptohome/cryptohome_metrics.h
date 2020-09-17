@@ -209,6 +209,15 @@ enum class DiskCleanupProgress {
   kNumBuckets
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class DiskCleanupResult {
+  kDiskCleanupSuccess = 1,
+  kDiskCleanupError = 2,
+  kDiskCleanupSkip = 3,
+  kNumBuckets
+};
+
 // Add new deprecated function event here.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -400,6 +409,10 @@ void ReportDircryptoMigrationTotalFileCount(int total_file_count);
 // Reports which topmost priority was reached to fulfill a cleanup request
 // to the "Cryptohome.DiskCleanupProgress" enum histogram.
 void ReportDiskCleanupProgress(DiskCleanupProgress progress);
+
+// Report if the automatic disk cleanup encountered an error to the
+// "Cryptohome.DiskCleanupResult" enum histogram.
+void ReportDiskCleanupResult(DiskCleanupResult result);
 
 // The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
 // histogram.

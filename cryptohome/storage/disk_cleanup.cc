@@ -88,6 +88,7 @@ bool DiskCleanup::FreeDiskSpace() {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
       // Already have enough space. No need to clean up.
+      ReportDiskCleanupResult(DiskCleanupResult::kDiskCleanupSkip);
       return true;
 
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
@@ -116,6 +117,12 @@ bool DiskCleanup::FreeDiskSpace() {
   base::ElapsedTimer total_timer;
 
   bool result = FreeDiskSpaceInternal();
+
+  if (result) {
+    ReportDiskCleanupResult(DiskCleanupResult::kDiskCleanupSuccess);
+  } else {
+    ReportDiskCleanupResult(DiskCleanupResult::kDiskCleanupError);
+  }
 
   int cleanup_time = total_timer.Elapsed().InMilliseconds();
   ReportFreeDiskSpaceTotalTime(cleanup_time);

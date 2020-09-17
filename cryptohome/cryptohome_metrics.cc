@@ -62,6 +62,8 @@ constexpr char kCryptohomeDircryptoMigrationTotalFileCountHistogram[] =
     "Cryptohome.DircryptoMigrationTotalFileCount";
 constexpr char kCryptohomeDiskCleanupProgressHistogram[] =
     "Cryptohome.DiskCleanupProgress";
+constexpr char kCryptohomeDiskCleanupResultHistogram[] =
+    "Cryptohome.DiskCleanupResult";
 constexpr char kCryptohomeLEResultHistogramPrefix[] = "Cryptohome.LECredential";
 constexpr char kCryptohomeAsyncDBusRequestsPrefix[] =
     "Cryptohome.AsyncDBusRequest.";
@@ -399,6 +401,15 @@ void ReportDiskCleanupProgress(DiskCleanupProgress progress) {
   g_metrics->SendEnumToUMA(kCryptohomeDiskCleanupProgressHistogram,
                            static_cast<int>(progress),
                            static_cast<int>(DiskCleanupProgress::kNumBuckets));
+}
+
+void ReportDiskCleanupResult(DiskCleanupResult result) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kCryptohomeDiskCleanupResultHistogram,
+                           static_cast<int>(result),
+                           static_cast<int>(DiskCleanupResult::kNumBuckets));
 }
 
 void ReportHomedirEncryptionType(HomedirEncryptionType type) {
