@@ -49,10 +49,6 @@ class Daemon : public brillo::DBusDaemon, public SensorServerDbus {
   SensorHalServerImpl::ScopedSensorHalServerImpl sensor_hal_server_ = {
       nullptr, SensorHalServerImpl::SensorHalServerImplDeleter};
 
-  // TODO(chenghaoyang): Add metrics
-  // For periodic and on-demand UMA metrics logging.
-  // Metrics metrics_;
-
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_factory_{this};
 };

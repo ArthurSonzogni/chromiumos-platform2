@@ -14,6 +14,7 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "iioservice/daemon/sensor_device_impl.h"
+#include "iioservice/daemon/sensor_metrics_mock.h"
 #include "iioservice/daemon/test_fakes.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
@@ -35,6 +36,8 @@ constexpr char kDummyChnAttrName2[] = "DummyChnAttr2";
 class SensorDeviceImplTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    SensorMetricsMock::InitializeForTesting();
+
     ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
         task_environment_.GetMainThreadTaskRunner(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
@@ -81,6 +84,11 @@ class SensorDeviceImplTest : public ::testing::Test {
     sensor_device_->AddReceiver(
         fakes::kAccelDeviceId, remote_.BindNewPipeAndPassReceiver(),
         std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+  }
+
+  void TearDown() override {
+    sensor_device_.reset();
+    SensorMetrics::Shutdown();
   }
 
   void OnSensorDeviceDisconnect() { remote_.reset(); }

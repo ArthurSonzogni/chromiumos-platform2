@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/memory/weak_ptr.h>
 #include <base/sequenced_task_runner.h>
 #include <libmems/iio_context.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
@@ -29,6 +30,8 @@ class SensorServiceImpl : public cros::mojom::SensorService {
   static ScopedSensorServiceImpl Create(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       std::unique_ptr<libmems::IioContext> context);
+
+  ~SensorServiceImpl();
 
   virtual void AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorService> request);
@@ -54,6 +57,8 @@ class SensorServiceImpl : public cros::mojom::SensorService {
  private:
   void AddDevice(libmems::IioDevice* device);
 
+  void OnSensorServiceDisconnect();
+
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
   std::unique_ptr<libmems::IioContext> context_;
 
@@ -65,6 +70,8 @@ class SensorServiceImpl : public cros::mojom::SensorService {
   mojo::ReceiverSet<cros::mojom::SensorService> receiver_set_;
   std::vector<mojo::Remote<cros::mojom::SensorServiceNewDevicesObserver>>
       observers_;
+
+  base::WeakPtrFactory<SensorServiceImpl> weak_factory_{this};
 };
 
 }  // namespace iioservice

@@ -22,17 +22,22 @@
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "iioservice/daemon/sensor_hal_server_impl.h"
+#include "iioservice/daemon/sensor_metrics.h"
 #include "iioservice/include/common.h"
 #include "iioservice/include/dbus-constants.h"
 
 namespace iioservice {
 
-Daemon::~Daemon() = default;
+Daemon::~Daemon() {
+  SensorMetrics::Shutdown();
+}
 
 int Daemon::OnInit() {
   int exit_code = DBusDaemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
+
+  SensorMetrics::Initialize();
 
   InitDBus();
 

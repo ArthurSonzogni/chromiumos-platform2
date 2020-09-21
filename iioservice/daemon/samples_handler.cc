@@ -20,6 +20,7 @@
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 
+#include "iioservice/daemon/sensor_metrics.h"
 #include "iioservice/include/common.h"
 
 namespace iioservice {
@@ -111,6 +112,9 @@ SamplesHandler::~SamplesHandler() {
   if (requested_frequency_ > 0.0 &&
       !iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0))
     LOGF(ERROR) << "Failed to set frequency";
+
+  for (int i = 0; i < observers_.size(); ++i)
+    SensorMetrics::GetInstance()->SendSensorObserverClosed();
 }
 
 void SamplesHandler::AddClient(
@@ -304,6 +308,8 @@ void SamplesHandler::AddClientOnThread(
       base::BindOnce(&SamplesHandler::OnSamplesObserverDisconnect,
                      weak_factory_.GetWeakPtr(), client_data));
 
+  SensorMetrics::GetInstance()->SendSensorObserverOpened();
+
   bool active = true;
 
   client_data->frequency = FixFrequency(client_data->frequency);
@@ -364,6 +370,7 @@ void SamplesHandler::RemoveClientOnThread(ClientData* client_data) {
   DCHECK_EQ(client_data->iio_device, iio_device_);
 
   observers_.erase(client_data);
+  SensorMetrics::GetInstance()->SendSensorObserverClosed();
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
@@ -400,6 +407,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
   DCHECK_EQ(client_data->iio_device, iio_device_);
 
   frequency = FixFrequency(frequency);
+
   double orig_freq = client_data->frequency;
   client_data->frequency = frequency;
   ipc_task_runner_->PostTask(FROM_HERE,
@@ -463,6 +471,9 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
 
   if (frequency == requested_frequency_)
     return true;
+
+  SensorMetrics::GetInstance()->SendSensorUsage(iio_device_->GetId(),
+                                                frequency);
 
   requested_frequency_ = frequency;
 

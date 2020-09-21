@@ -13,6 +13,7 @@
 #include <base/test/task_environment.h>
 #include <libmems/test_fakes.h>
 
+#include "iioservice/daemon/sensor_metrics_mock.h"
 #include "iioservice/daemon/sensor_service_impl.h"
 
 namespace iioservice {
@@ -75,6 +76,8 @@ class FakeSensorServiceNewDevicesObserver
 class SensorServiceImplTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    SensorMetricsMock::InitializeForTesting();
+
     auto context = std::make_unique<libmems::fakes::FakeIioContext>();
     context_ = context.get();
 
@@ -95,6 +98,8 @@ class SensorServiceImplTest : public ::testing::Test {
         task_environment_.GetMainThreadTaskRunner(), std::move(context));
     EXPECT_TRUE(sensor_service_);
   }
+
+  void TearDown() override { SensorMetrics::Shutdown(); }
 
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -168,6 +173,8 @@ TEST_F(SensorServiceImplTest, OnDeviceAdded) {
 class SensorServiceImplInvalidContextTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    SensorMetricsMock::InitializeForTesting();
+
     auto context = std::make_unique<libmems::fakes::FakeIioContext>();
     context_ = context.get();
     EXPECT_FALSE(context_->IsValid());
@@ -188,6 +195,8 @@ class SensorServiceImplInvalidContextTest : public ::testing::Test {
 
     sensor_service_->OnDeviceAdded(kFakeAccelId);
   }
+
+  void TearDown() override { SensorMetrics::Shutdown(); }
 
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -223,6 +232,8 @@ class SensorServiceImplTestDeviceTypesWithParam
                     std::vector<cros::mojom::DeviceType>>> {
  protected:
   void SetUp() override {
+    SensorMetricsMock::InitializeForTesting();
+
     std::unique_ptr<libmems::fakes::FakeIioContext> context =
         std::make_unique<libmems::fakes::FakeIioContext>();
 
@@ -239,6 +250,11 @@ class SensorServiceImplTestDeviceTypesWithParam
     sensor_service_ = SensorServiceImpl::Create(
         task_environment_.GetMainThreadTaskRunner(), std::move(context));
     EXPECT_TRUE(sensor_service_.get());
+  }
+
+  void TearDown() override {
+    sensor_service_.reset();
+    SensorMetrics::Shutdown();
   }
 
   base::test::SingleThreadTaskEnvironment task_environment_{

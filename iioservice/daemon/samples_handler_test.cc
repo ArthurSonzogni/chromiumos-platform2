@@ -21,6 +21,7 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "iioservice/daemon/samples_handler.h"
+#include "iioservice/daemon/sensor_metrics_mock.h"
 #include "iioservice/daemon/test_fakes.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
@@ -192,9 +193,17 @@ class SamplesHandlerTestBase : cros::mojom::SensorDeviceSamplesObserver {
 class SamplesHandlerTest : public ::testing::Test,
                            public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpAccelBase(/*with_hrtimer=*/false); }
+  void SetUp() override {
+    SensorMetricsMock::InitializeForTesting();
 
-  void TearDown() override { TearDownBase(); }
+    SetUpAccelBase(/*with_hrtimer=*/false);
+  }
+
+  void TearDown() override {
+    TearDownBase();
+
+    SensorMetrics::Shutdown();
+  }
 };
 
 TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
@@ -332,9 +341,17 @@ class SamplesHandlerTestWithParam
     : public ::testing::TestWithParam<std::vector<std::pair<double, double>>>,
       public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpAccelBase(/*with_hrtimer=*/false); }
+  void SetUp() override {
+    SensorMetricsMock::InitializeForTesting();
 
-  void TearDown() override { TearDownBase(); }
+    SetUpAccelBase(/*with_hrtimer=*/false);
+  }
+
+  void TearDown() override {
+    TearDownBase();
+
+    SensorMetrics::Shutdown();
+  }
 };
 
 // Add clients with the first frequencies set, update clients with the second
@@ -547,9 +564,17 @@ INSTANTIATE_TEST_SUITE_P(
 class SamplesHandlerWithTriggerTest : public ::testing::Test,
                                       public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpAccelBase(/*with_hrtimer=*/true); }
+  void SetUp() override {
+    SensorMetricsMock::InitializeForTesting();
 
-  void TearDown() override { TearDownBase(); }
+    SetUpAccelBase(/*with_hrtimer=*/true);
+  }
+
+  void TearDown() override {
+    TearDownBase();
+
+    SensorMetrics::Shutdown();
+  }
 };
 
 TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
@@ -577,7 +602,13 @@ TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
 class SamplesHandlerLightTest : public ::testing::Test,
                                 public SamplesHandlerTestBase {
  protected:
-  void TearDown() override { TearDownBase(); }
+  void SetUp() override { SensorMetricsMock::InitializeForTesting(); }
+
+  void TearDown() override {
+    TearDownBase();
+
+    SensorMetrics::Shutdown();
+  }
 };
 
 TEST_F(SamplesHandlerLightTest, CrosECLight) {

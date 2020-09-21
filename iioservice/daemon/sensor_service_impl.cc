@@ -16,6 +16,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
+#include "iioservice/daemon/sensor_metrics.h"
 #include "iioservice/include/common.h"
 
 namespace iioservice {
@@ -104,11 +105,18 @@ SensorServiceImpl::ScopedSensorServiceImpl SensorServiceImpl::Create(
       SensorServiceImplDeleter);
 }
 
+SensorServiceImpl::~SensorServiceImpl() {
+  for (int i = 0; i < receiver_set_.size(); ++i)
+    SensorMetrics::GetInstance()->SendSensorClientDisconnected();
+}
+
 void SensorServiceImpl::AddReceiver(
     mojo::PendingReceiver<cros::mojom::SensorService> request) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   receiver_set_.Add(this, std::move(request), ipc_task_runner_);
+
+  SensorMetrics::GetInstance()->SendSensorClientConnected();
 }
 
 void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {
@@ -210,6 +218,10 @@ SensorServiceImpl::SensorServiceImpl(
     for (auto device : context_->GetAllDevices())
       AddDevice(device);
   }
+
+  receiver_set_.set_disconnect_handler(
+      base::BindRepeating(&SensorServiceImpl::OnSensorServiceDisconnect,
+                          weak_factory_.GetWeakPtr()));
 }
 
 void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
@@ -232,8 +244,20 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
 
   device_types_map_.emplace(id, types);
 
+  auto location = device->ReadStringAttribute(cros::mojom::kLocation);
+  SensorMetrics::GetInstance()->SetConfigForDevice(id, types,
+                                                   location.value_or(""));
   for (auto& observer : observers_)
     observer->OnNewDeviceAdded(id, types);
+}
+
+void SensorServiceImpl::OnSensorServiceDisconnect() {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  LOGF(INFO) << "SensorDevice disconnected. ReceiverId: "
+             << receiver_set_.current_receiver();
+
+  SensorMetrics::GetInstance()->SendSensorClientDisconnected();
 }
 
 }  // namespace iioservice
