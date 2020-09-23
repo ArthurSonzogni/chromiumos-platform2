@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/timer/lap_timer.h>
 #include <gtest/gtest.h>
 
 namespace brillo {
@@ -74,6 +75,46 @@ TEST(SecureMemcmp, Different) {
 TEST(SecureMemcmp, Same) {
   EXPECT_EQ(SecureMemcmp(str1, str3, sizeof(str1)), 0);
   EXPECT_EQ(std::memcmp(str1, str3, sizeof(str1)), 0);
+}
+
+// Even when increasing kAbsoluteError to 0.25, this test flakes too much when
+// run on the CQ: https://crrev.com/c/2427403. It should pass if you enable and
+// run it locally.
+TEST(SecureMemcmp, DISABLED_ConstantTime) {
+  // Compare two large vectors that are completely different (0x00 and 0xFF)
+  // The "secure" comparison should take roughly the same amount of time for
+  // both, as opposed to exiting early on the first byte.
+  // Caveats: different compilation flags (e.g., around optimizations) may
+  // significantly change the behavior of the "secure" version, so the fact
+  // that this test passes in the testing environment does not guarantee that
+  // it behaves the same in a release build (or different architectures /
+  // compilers).
+
+  constexpr double kAbsoluteError = 0.01;
+  constexpr size_t kBufSizeBytes = 1000;
+  std::vector<uint8_t> all_zero(kBufSizeBytes, 0x00);
+  std::vector<uint8_t> all_one(kBufSizeBytes, 0xFF);
+  int memcmp_ret = 0;
+
+  base::LapTimer timer_different_data(
+      base::LapTimer::TimerMethod::kUseThreadTicks);
+  do {
+    memcmp_ret = SecureMemcmp(all_zero.data(), all_one.data(), all_zero.size());
+    timer_different_data.NextLap();
+  } while (!timer_different_data.HasTimeLimitExpired());
+  EXPECT_EQ(memcmp_ret, 1);
+
+  base::LapTimer timer_same_data(base::LapTimer::TimerMethod::kUseThreadTicks);
+  do {
+    memcmp_ret =
+        SecureMemcmp(all_zero.data(), all_zero.data(), all_zero.size());
+    timer_same_data.NextLap();
+  } while (!timer_same_data.HasTimeLimitExpired());
+  EXPECT_EQ(memcmp_ret, 0);
+
+  double lap_ratio = static_cast<double>(timer_same_data.NumLaps()) /
+                     static_cast<double>(timer_different_data.NumLaps());
+  EXPECT_NEAR(lap_ratio, 1.0, kAbsoluteError);
 }
 
 }  // namespace brillo
