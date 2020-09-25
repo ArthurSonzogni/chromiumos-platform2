@@ -23,7 +23,6 @@
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service_test_utils.h"
-#include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 
@@ -35,7 +34,6 @@ using testing::StrictMock;
 
 using EcEvent = EcService::EcEvent;
 using EcEventReason = EcService::EcEvent::Reason;
-using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 
 // Tests for EcEvent.
 //
