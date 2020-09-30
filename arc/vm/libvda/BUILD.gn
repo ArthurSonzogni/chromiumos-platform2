@@ -70,7 +70,10 @@ source_set("libvda_source_set") {
 
 shared_library("libvda") {
   output_name = "libvda"
-  sources = [ "at_exit_util.cc" ]
+  sources = [
+    "at_exit_util.cc",
+    "log_util.cc",
+  ]
   pkg_deps = [ "gbm" ]
   deps = [ ":libvda_source_set" ]
 }
