@@ -96,5 +96,17 @@ TEST(VMUtilTest, RemoveParametersWithKeyReturnsDefaultValue) {
   EXPECT_THAT(resolved_kernel_path, "default_path");
 }
 
+TEST(VMUtilTest, ConvertCpusetToStringSupportsMultipleRtVcpus) {
+  Cpus cpus;
+  for (auto c : {2, 4, 6})
+    cpus.set(c);
+  EXPECT_EQ(ConvertCpusetToString(cpus), "2,4,6");
+}
+
+TEST(VMUtilTest, ConvertCpusetToStringSupportsZeroRtVcpu) {
+  Cpus cpus;
+  EXPECT_EQ(ConvertCpusetToString(cpus), "");
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

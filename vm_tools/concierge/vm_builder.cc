@@ -39,6 +39,11 @@ VmBuilder& VmBuilder::SetCpus(int32_t cpus) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetRtCpus(Cpus rtcpus) {
+  rtcpus_ = rtcpus;
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetVsockCid(uint32_t vsock_cid) {
   vsock_cid_ = vsock_cid;
   return *this;
@@ -149,7 +154,9 @@ VmBuilder& VmBuilder::EnableSmt(bool enable) {
 base::StringPairs VmBuilder::BuildVmArgs() const {
   base::StringPairs args = {{kCrosvmBin, "run"}};
 
-  args.emplace_back("--cpus", std::to_string(cpus_));
+  args.emplace_back("--cpus", std::to_string(cpus_ + rtcpus_.count()));
+
+  args.emplace_back("--rt-cpus", ConvertCpusetToString(rtcpus_));
 
   if (!memory_in_mib_.empty())
     args.emplace_back("--mem", memory_in_mib_);

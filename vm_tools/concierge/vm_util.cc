@@ -428,5 +428,18 @@ std::string CreateSharedDataParam(const base::FilePath& data_dir,
       ascii_casefold ? "true" : "false", enable_caches ? "true" : "false");
 }
 
+std::string ConvertCpusetToString(Cpus cpus) {
+  std::string s;
+  for (int cnt = 0, i = 0; i < cpus.size(); i++) {
+    if (cpus.test(i)) {
+      s += std::to_string(i);
+      cnt++;
+      if (cnt < cpus.count())
+        s += ",";
+    }
+  }
+  return s;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

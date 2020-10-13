@@ -39,6 +39,7 @@ class VmBuilder {
   VmBuilder& SetInitrd(base::FilePath initrd);
   VmBuilder& SetRootfs(const struct Rootfs& rootfs);
   VmBuilder& SetCpus(int32_t cpus);
+  VmBuilder& SetRtCpus(Cpus rtcpus);
   VmBuilder& SetVsockCid(uint32_t vsock_cid);
   VmBuilder& AppendDisks(std::vector<Disk> disks);
   VmBuilder& SetMemory(const std::string& memory_in_mb);
@@ -72,6 +73,7 @@ class VmBuilder {
   base::FilePath initrd_;
   base::Optional<Rootfs> rootfs_;
   int32_t cpus_ = 0;
+  Cpus rtcpus_;
   base::Optional<uint32_t> vsock_cid_;
   std::string memory_in_mib_;
   std::string balloon_bias_mib_;
