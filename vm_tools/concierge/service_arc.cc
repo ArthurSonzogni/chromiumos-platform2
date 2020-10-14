@@ -178,6 +178,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   Cpus rt_vcpus;
   for (int i = 0; i < rt_vcpu_num; i++)
     rt_vcpus.set(request.cpus() + i);
+  std::string s_rt_vcpus = ConvertCpusetToString(rt_vcpus);
+  params.emplace_back(base::StringPrintf("isolcpus=%s", s_rt_vcpus.c_str()));
 
   VmBuilder vm_builder;
   vm_builder.AppendDisks(std::move(disks))
