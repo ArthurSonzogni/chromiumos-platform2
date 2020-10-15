@@ -307,11 +307,11 @@ RequestID PatchJson(const std::string& url,
                      error_callback);
 }
 
-std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
-    Response* response, int* status_code, brillo::ErrorPtr* error) {
-  std::unique_ptr<base::DictionaryValue> result;
+base::Optional<base::Value> ParseJsonResponse(Response* response,
+                                              int* status_code,
+                                              brillo::ErrorPtr* error) {
   if (!response)
-    return result;
+    return base::nullopt;
 
   if (status_code)
     *status_code = response->GetStatusCode();
@@ -324,7 +324,7 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::json::kDomain,
                          "non_json_content_type",
                          "Unexpected response content type: " + content_type);
-    return result;
+    return base::nullopt;
   }
 
   std::string json = response->ExtractDataAsString();
@@ -335,17 +335,16 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
                                brillo::errors::json::kParseError,
                                "Error '%s' occurred parsing JSON string '%s'",
                                json_result.error_message.c_str(), json.c_str());
-    return result;
+    return base::nullopt;
   }
-  result = base::DictionaryValue::From(
-      std::make_unique<base::Value>(std::move(*json_result.value)));
-  if (!result) {
+  if (!json_result.value->is_dict()) {
     brillo::Error::AddToPrintf(error, FROM_HERE, brillo::errors::json::kDomain,
                                brillo::errors::json::kObjectExpected,
-                               "Response is not a valid JSON object: '%s'",
+                               "Response is not a valid dictionary: '%s'",
                                json.c_str());
+    return base::nullopt;
   }
-  return result;
+  return std::move(json_result.value);
 }
 
 std::string GetCanonicalHeaderName(const std::string& name) {

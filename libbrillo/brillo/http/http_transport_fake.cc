@@ -258,9 +258,9 @@ void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
 
 void ServerResponse::ReplyJson(int status_code,
                                const http::FormFieldList& fields) {
-  base::DictionaryValue json;
+  base::Value json(base::Value::Type::DICTIONARY);
   for (const auto& pair : fields) {
-    json.SetString(pair.first, pair.second);
+    json.SetStringPath(pair.first, pair.second);
   }
   ReplyJson(status_code, &json);
 }

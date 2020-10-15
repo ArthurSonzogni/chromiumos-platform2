@@ -126,35 +126,34 @@ int ConvertDayOfWeekStringToInt(const std::string& day_of_week_str) {
   return -1;
 }
 
-bool DecodeWeeklyTimeFromValue(const base::DictionaryValue& dict_value,
+bool DecodeWeeklyTimeFromValue(const base::Value& dict_value,
                                int* day_of_week_out,
                                base::TimeDelta* time_out) {
-  std::string day_of_week_str;
-  if (!dict_value.GetString("day_of_week", &day_of_week_str)) {
+  const std::string* day_of_week_str = dict_value.FindStringKey("day_of_week");
+  if (!day_of_week_str) {
     LOG(ERROR) << "Day of the week is absent.";
     return false;
   }
-  *day_of_week_out = ConvertDayOfWeekStringToInt(day_of_week_str);
+  *day_of_week_out = ConvertDayOfWeekStringToInt(*day_of_week_str);
   if (*day_of_week_out == -1) {
-    LOG(ERROR) << "Undefined day of the week: " << day_of_week_str;
+    LOG(ERROR) << "Undefined day of the week: " << *day_of_week_str;
     return false;
   }
 
-  int hours;
-  if (!dict_value.GetInteger("hours", &hours) || hours < 0 || hours > 23) {
+  base::Optional<int> hours = dict_value.FindIntKey("hours");
+  if (!hours.has_value() || hours < 0 || hours > 23) {
     LOG(ERROR) << "Hours are absent or are outside of the range [0, 24).";
     return false;
   }
 
-  int minutes;
-  if (!dict_value.GetInteger("minutes", &minutes) || minutes < 0 ||
-      minutes > 59) {
+  base::Optional<int> minutes = dict_value.FindIntKey("minutes");
+  if (!minutes.has_value() || minutes < 0 || minutes > 59) {
     LOG(ERROR) << "Minutes are absent or are outside the range [0, 60)";
     return false;
   }
 
-  *time_out =
-      base::TimeDelta::FromMinutes(minutes) + base::TimeDelta::FromHours(hours);
+  *time_out = base::TimeDelta::FromMinutes(*minutes) +
+              base::TimeDelta::FromHours(*hours);
   return true;
 }
 
@@ -615,16 +614,15 @@ bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
     return false;
 
   for (const auto& pair_value : list_val->GetList()) {
-    const base::DictionaryValue* day_percentage_pair;
-    if (!pair_value.GetAsDictionary(&day_percentage_pair))
+    if (!pair_value.is_dict())
       return false;
-    int days, percentage;
-    if (!day_percentage_pair->GetInteger("days", &days) ||
-        !day_percentage_pair->GetInteger("percentage", &percentage))
+    base::Optional<int> days = pair_value.FindIntKey("days");
+    base::Optional<int> percentage = pair_value.FindIntKey("percentage");
+    if (!days.has_value() || !percentage.has_value())
       return false;
     // Limit the percentage to [0, 100] and days to [1, 28];
-    staging_schedule_out->push_back({std::max(std::min(days, 28), 1),
-                                     std::max(std::min(percentage, 100), 0)});
+    staging_schedule_out->push_back({std::max(std::min(*days, 28), 1),
+                                     std::max(std::min(*percentage, 100), 0)});
   }
 
   return true;
@@ -709,15 +707,13 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
     return false;
 
   for (const auto& interval_value : list_val->GetList()) {
-    const base::DictionaryValue* interval_dict;
-    if (!interval_value.GetAsDictionary(&interval_dict)) {
+    if (!interval_value.is_dict()) {
       LOG(ERROR) << "Invalid JSON string given. Interval is not a dict.";
       return false;
     }
-    const base::DictionaryValue* start;
-    const base::DictionaryValue* end;
-    if (!interval_dict->GetDictionary("start", &start) ||
-        !interval_dict->GetDictionary("end", &end)) {
+    const base::Value* start = interval_value.FindDictKey("start");
+    const base::Value* end = interval_value.FindDictKey("end");
+    if (!start || !end) {
       LOG(ERROR) << "Interval is missing start/end.";
       return false;
     }

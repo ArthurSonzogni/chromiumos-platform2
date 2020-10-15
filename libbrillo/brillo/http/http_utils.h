@@ -17,7 +17,6 @@
 
 namespace base {
 class Value;
-class DictionaryValue;
 }  // namespace base
 
 namespace brillo {
@@ -293,8 +292,8 @@ BRILLO_EXPORT RequestID PatchJson(const std::string& url,
 // Given an http::Response object, parse the body data into Json object.
 // Returns null if failed. Optional |error| can be passed in to
 // get the extended error information as to why the parse failed.
-// TODO(crbug.com/1099111): change return type to base::Optional<base::Value>
-BRILLO_EXPORT std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
+
+BRILLO_EXPORT base::Optional<base::Value> ParseJsonResponse(
     Response* response, int* status_code, brillo::ErrorPtr* error);
 
 // Converts a request header name to canonical form (lowercase with uppercase
