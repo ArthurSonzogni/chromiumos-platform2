@@ -9,7 +9,7 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include <cryptohome/aes_deprecated_password_verifier.h>
+#include <cryptohome/scrypt_password_verifier.h>
 
 namespace cryptohome {
 
@@ -21,10 +21,9 @@ class VerifierTest : public ::testing::TestWithParam<PasswordVerifier*> {
   std::unique_ptr<PasswordVerifier> password_verifier_;
 };
 
-INSTANTIATE_TEST_SUITE_P(
-    AesDeprecated,
-    VerifierTest,
-    ::testing::Values(new AesDeprecatedPasswordVerifier()));
+INSTANTIATE_TEST_SUITE_P(Scrypt,
+                         VerifierTest,
+                         ::testing::Values(new ScryptPasswordVerifier()));
 
 TEST_P(VerifierTest, Ok) {
   brillo::SecureBlob secret("good");

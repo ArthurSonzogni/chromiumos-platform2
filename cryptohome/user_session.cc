@@ -9,7 +9,8 @@
 
 #include <base/memory/ref_counted.h>
 
-#include <cryptohome/aes_deprecated_password_verifier.h>
+#include <cryptohome/scrypt_password_verifier.h>
+
 #include "cryptohome/credentials.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/storage/mount.h"
@@ -108,7 +109,7 @@ bool UserSession::SetCredentials(const Credentials& credentials,
   key_data_ = credentials.key_data();
   key_index_ = key_index;
 
-  password_verifier_.reset(new AesDeprecatedPasswordVerifier());
+  password_verifier_.reset(new ScryptPasswordVerifier());
   return password_verifier_->Set(credentials.passkey());
 }
 
