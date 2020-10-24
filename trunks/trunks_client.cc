@@ -22,6 +22,7 @@
 #include <brillo/syslog_logging.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <openssl/sha.h>
 
 #include "trunks/error_codes.h"
 #include "trunks/hmac_session.h"
@@ -39,6 +40,33 @@ namespace {
 using trunks::CommandTransceiver;
 using trunks::TrunksFactory;
 using trunks::TrunksFactoryImpl;
+
+// Initial PCR0 value at boot (all zeroes).
+constexpr unsigned char kPcr0ValueZero[SHA256_DIGEST_SIZE] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+// PCR0 value for Recovery mode.
+// Equals to SHA256(initial_value | extended_value), where
+//   - initial_value = 0..0 (32 bytes),
+//   - extended_value = SHA1(0x00|0x01|0x00) + 00s to 32 bytes.
+constexpr unsigned char kPcr0ValueRec[SHA256_DIGEST_SIZE] = {
+    0x9F, 0x9E, 0xA8, 0x66, 0xD3, 0xF3, 0x4F, 0xE3, 0xA3, 0x11, 0x2A,
+    0xE9, 0xCB, 0x1F, 0xBA, 0xBC, 0x6F, 0xFE, 0x8C, 0xD2, 0x61, 0xD4,
+    0x24, 0x93, 0xBC, 0x68, 0x42, 0xA9, 0xE4, 0xF9, 0x3B, 0x3D,
+};
+
+// PCR0 value for Recovery+Developer mode.
+// Equals to SHA256(initial_value | extended_value), where
+//   - initial_value = 0..0 (32 bytes),
+//   - extended_value = SHA1(0x01|0x01|0x00) + 00s to 32 bytes.
+constexpr unsigned char kPcr0ValueRecDev[SHA256_DIGEST_SIZE] = {
+    0x2A, 0x75, 0x80, 0xE5, 0xDA, 0x28, 0x95, 0x46, 0xF4, 0xD2, 0xE0,
+    0x50, 0x9C, 0xC6, 0xDE, 0x15, 0x5E, 0xA1, 0x31, 0x81, 0x89, 0x54,
+    0xD3, 0x6D, 0x49, 0xE0, 0x27, 0xFD, 0x42, 0xB8, 0xC8, 0xF8,
+};
 
 void PrintUsage() {
   puts("Options:");
@@ -78,6 +106,17 @@ void PrintUsage() {
   puts("  --index_name --index=<N> - print the name of NV index N in hex");
   puts("                             format.");
   puts("  --ext_command_test - Runs regression tests on extended commands.");
+  puts("  --uds_calc [(--zero|--rec|--recdev)]");
+  puts("      - Calculate UnDefineSpecial(UDS) digest for the PCR0 value");
+  puts("        (use current value, if none of the perdefined is specified)");
+  puts("  --policy_or=<val1>,<val2>,<val3>");
+  puts("      - Calculate PolicyOR digest for the specified digests");
+  puts("  --uds_create --index=<index> --size=<size> --digest=<digest>");
+  puts("      - Create test nvmem space with UDS digest.");
+  puts("  --uds_delete --index=<index> [(--zero|--rec|--recdev)]");
+  puts("               [--or=<val1>,<val2>,<val3>]");
+  puts("      - Delete test nvmem space with UDS digest and");
+  puts("        optional PolicyOR using current PCR0 value.");
 }
 
 std::string HexEncode(const std::string& bytes) {
@@ -137,6 +176,83 @@ trunks::TPM_RC CallTpmUtility(bool print_time,
                     << trunks::GetErrorString(rc);
   return rc;
 }
+
+// An authorization delegate to manage multiple authorization sessions for a
+// single command.
+// Copied from attestaion/common/tpm_utility_v2.cc
+class MultipleAuthorizations : public trunks::AuthorizationDelegate {
+ public:
+  MultipleAuthorizations() = default;
+  ~MultipleAuthorizations() override = default;
+
+  void AddAuthorizationDelegate(trunks::AuthorizationDelegate* delegate) {
+    delegates_.push_back(delegate);
+  }
+
+  bool GetCommandAuthorization(const std::string& command_hash,
+                               bool is_command_parameter_encryption_possible,
+                               bool is_response_parameter_encryption_possible,
+                               std::string* authorization) override {
+    std::string combined_authorization;
+    for (auto delegate : delegates_) {
+      std::string authorization;
+      if (!delegate->GetCommandAuthorization(
+              command_hash, is_command_parameter_encryption_possible,
+              is_response_parameter_encryption_possible, &authorization)) {
+        return false;
+      }
+      combined_authorization += authorization;
+    }
+    *authorization = combined_authorization;
+    return true;
+  }
+
+  bool CheckResponseAuthorization(const std::string& response_hash,
+                                  const std::string& authorization) override {
+    std::string mutable_authorization = authorization;
+    for (auto delegate : delegates_) {
+      if (!delegate->CheckResponseAuthorization(
+              response_hash,
+              ExtractSingleAuthorizationResponse(&mutable_authorization))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool EncryptCommandParameter(std::string* parameter) override {
+    for (auto delegate : delegates_) {
+      if (!delegate->EncryptCommandParameter(parameter)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool DecryptResponseParameter(std::string* parameter) override {
+    for (auto delegate : delegates_) {
+      if (!delegate->DecryptResponseParameter(parameter)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool GetTpmNonce(std::string* nonce) override { return false; }
+
+ private:
+  std::string ExtractSingleAuthorizationResponse(std::string* all_responses) {
+    std::string response;
+    trunks::TPMS_AUTH_RESPONSE not_used;
+    if (trunks::TPM_RC_SUCCESS !=
+        trunks::Parse_TPMS_AUTH_RESPONSE(all_responses, &not_used, &response)) {
+      return std::string();
+    }
+    return response;
+  }
+
+  std::vector<trunks::AuthorizationDelegate*> delegates_;
+};
 
 int Startup(const TrunksFactory& factory) {
   factory.GetTpmUtility()->Shutdown();
@@ -508,6 +624,79 @@ int PrintIndexNameInHex(const TrunksFactory& factory, int index) {
   return 0;
 }
 
+std::string DigestString(const unsigned char* digest_value) {
+  auto ptr = reinterpret_cast<const char*>(digest_value);
+  return std::string(ptr, SHA256_DIGEST_SIZE);
+}
+
+std::string GetPcr0Digest(const TrunksFactory& factory, base::CommandLine* cl) {
+  if (cl->HasSwitch("zero")) {
+    return DigestString(kPcr0ValueZero);
+  } else if (cl->HasSwitch("rec")) {
+    return DigestString(kPcr0ValueRec);
+  } else if (cl->HasSwitch("recdev")) {
+    return DigestString(kPcr0ValueRecDev);
+  }
+  std::string pcr_digest;
+  if (CallTpmUtility(false, factory, "ReadPCR", &trunks::TpmUtility::ReadPCR, 0,
+                     &pcr_digest)) {
+    return std::string();
+  }
+  return pcr_digest;
+}
+
+std::unique_ptr<trunks::PolicySession> GetUDSSession(
+    const TrunksFactory& factory, base::CommandLine* cl, bool trial) {
+  auto session = trial ? factory.GetTrialSession() : factory.GetPolicySession();
+  if (!session) {
+    LOG(ERROR) << "Error during Get" << (trial ? "Trial" : "Policy")
+               << "Session";
+    return nullptr;
+  }
+
+  trunks::TPM_RC rc = session->StartUnboundSession(false, false);
+  if (rc) {
+    LOG(ERROR) << "Error during StartUnboundSession: "
+               << trunks::GetErrorString(rc);
+    return nullptr;
+  }
+
+  rc = session->PolicyCommandCode(trunks::TPM_CC_NV_UndefineSpaceSpecial);
+  if (rc) {
+    LOG(ERROR) << "Error during PolicyCommandCode: "
+               << trunks::GetErrorString(rc);
+    return nullptr;
+  }
+
+  const std::string pcr_digest = GetPcr0Digest(factory, cl);
+  if (pcr_digest.empty()) {
+    return nullptr;
+  }
+
+  const std::map<uint32_t, std::string> pcrs{{0, pcr_digest}};
+  rc = session->PolicyPCR(pcrs);
+  if (rc) {
+    LOG(ERROR) << "Error during PolicyPCR: " << trunks::GetErrorString(rc);
+    return nullptr;
+  }
+
+  return session;
+}
+
+std::vector<std::string> BreakByDelim(const std::string& value,
+                                      const std::string& delim) {
+  std::vector<std::string> result;
+  size_t beg = 0;
+  size_t end = value.find(delim);
+  while (end != std::string::npos) {
+    result.emplace_back(value, beg, end - beg);
+    beg = end + delim.size();
+    end = value.find(delim, beg);
+  }
+  result.emplace_back(value, beg);
+  return result;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -810,6 +999,201 @@ int main(int argc, char** argv) {
     uint32_t nv_index =
         std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 16);
     return PrintIndexNameInHex(factory, nv_index);
+  }
+
+  if (cl->HasSwitch("uds_calc")) {
+    auto session = GetUDSSession(factory, cl, true);
+
+    std::string digest;
+    trunks::TPM_RC rc = session->GetDigest(&digest);
+    if (rc) {
+      LOG(ERROR) << "Error during GetDigest: " << trunks::GetErrorString(rc);
+      return -1;
+    }
+    printf("Digest: %s\n", HexEncode(digest).c_str());
+    return 0;
+  }
+
+  if (cl->HasSwitch("policy_or")) {
+    auto hexdigests = BreakByDelim(cl->GetSwitchValueASCII("policy_or"), ",");
+
+    std::vector<std::string> digests;
+    for (const auto& hexdigest : hexdigests) {
+      std::string digest;
+      if (!base::HexStringToString(hexdigest, &digest) ||
+          digest.size() != SHA256_DIGEST_SIZE) {
+        LOG(ERROR) << "Syntax error: policy_or takes "
+                   << "a list of comma-separated SHA256 digests";
+        return -1;
+      }
+      digests.push_back(digest);
+    }
+    if (digests.size() > 8) {
+      LOG(ERROR) << "Syntax error: policy_or supports "
+                 << "up to 8 digests";
+      return -1;
+    }
+    for (const auto& digest : digests) {
+      printf("Input Digest: %s\n", HexEncode(digest).c_str());
+    }
+    printf("\n");
+
+    auto session = factory.GetTrialSession();
+    if (!session) {
+      LOG(ERROR) << "Error during GetTrialSession";
+      return -1;
+    }
+
+    trunks::TPM_RC rc = session->StartUnboundSession(false, false);
+    if (rc) {
+      LOG(ERROR) << "Error during StartUnboundSession: "
+                 << trunks::GetErrorString(rc);
+      return -1;
+    }
+
+    rc = session->PolicyOR(digests);
+    if (rc) {
+      LOG(ERROR) << "Error during PolicyOR: " << trunks::GetErrorString(rc);
+      return -1;
+    }
+
+    std::string digest;
+    rc = session->GetDigest(&digest);
+    if (rc) {
+      LOG(ERROR) << "Error during GetDigest: " << trunks::GetErrorString(rc);
+      return -1;
+    }
+    printf("Digest: %s\n", HexEncode(digest).c_str());
+    return 0;
+  }
+
+  if (cl->HasSwitch("uds_create") && cl->HasSwitch("index") &&
+      cl->HasSwitch("size") && cl->HasSwitch("digest")) {
+    uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
+    uint32_t size = std::stoul(cl->GetSwitchValueASCII("size"), nullptr, 0);
+    if (size > MAX_NV_BUFFER_SIZE) {
+      LOG(ERROR) << "Size too big";
+      return -1;
+    }
+    auto hexdigest = cl->GetSwitchValueASCII("digest");
+    std::string digest;
+    if (!base::HexStringToString(hexdigest, &digest) ||
+        digest.size() != SHA256_DIGEST_SIZE) {
+      PrintUsage();
+      return -1;
+    }
+
+    const uint32_t nv_index = trunks::NV_INDEX_FIRST + index;
+    trunks::TPMS_NV_PUBLIC public_data;
+    public_data.nv_index = nv_index;
+    public_data.name_alg = trunks::TPM_ALG_SHA256;
+    public_data.attributes =
+        trunks::TPMA_NV_PPWRITE + trunks::TPMA_NV_AUTHREAD +
+        trunks::TPMA_NV_PPREAD + trunks::TPMA_NV_PLATFORMCREATE +
+        trunks::TPMA_NV_WRITE_STCLEAR + trunks::TPMA_NV_POLICY_DELETE;
+    public_data.auth_policy = trunks::Make_TPM2B_DIGEST(digest);
+    public_data.data_size = size;
+
+    const trunks::TPM2B_AUTH authorization = trunks::Make_TPM2B_DIGEST("");
+    const trunks::TPM2B_NV_PUBLIC public_area =
+        trunks::Make_TPM2B_NV_PUBLIC(public_data);
+    std::string rh_name;
+    trunks::Serialize_TPM_HANDLE(trunks::TPM_RH_PLATFORM, &rh_name);
+    trunks::PasswordAuthorizationDelegate delegate("");
+
+    trunks::TPM_RC rc = factory.GetTpm()->NV_DefineSpaceSync(
+        trunks::TPM_RH_PLATFORM, rh_name, authorization, public_area,
+        &delegate);
+    if (rc) {
+      LOG(ERROR) << "Error during NV_DefineSpace: "
+                 << trunks::GetErrorString(rc);
+      return -1;
+    }
+
+    std::string nv_name;
+    rc = factory.GetTpmUtility()->GetNVSpaceName(index, &nv_name);
+    if (rc) {
+      LOG(ERROR) << "Error during GetNVSpaceName: "
+                 << trunks::GetErrorString(rc);
+      return -1;
+    }
+
+    trunks::TPM2B_MAX_NV_BUFFER data;
+    data.size = size;
+    memset(data.buffer, 0xA5, size);
+    rc = factory.GetTpm()->NV_WriteSync(trunks::TPM_RH_PLATFORM, rh_name,
+                                        nv_index, nv_name, data, 0, &delegate);
+    if (rc) {
+      LOG(ERROR) << "Error during NV_Write: " << trunks::GetErrorString(rc);
+      return -1;
+    }
+
+    rc = factory.GetTpm()->NV_WriteLockSync(trunks::TPM_RH_PLATFORM, rh_name,
+                                            nv_index, nv_name, &delegate);
+    if (rc) {
+      LOG(ERROR) << "Error during NV_WriteLock: " << trunks::GetErrorString(rc);
+      return -1;
+    }
+
+    return 0;
+  }
+
+  if (cl->HasSwitch("uds_delete") && cl->HasSwitch("index")) {
+    uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
+    auto hexdigests = BreakByDelim(cl->GetSwitchValueASCII("or"), ",");
+    auto empty_password_authorization =
+        factory.GetPasswordAuthorization(std::string());
+
+    std::vector<std::string> digests;
+    for (const auto& hexdigest : hexdigests) {
+      std::string digest;
+      if (!base::HexStringToString(hexdigest, &digest) ||
+          digest.size() != SHA256_DIGEST_SIZE) {
+        LOG(ERROR) << "Syntax error: or takes "
+                   << "a list of comma-separated SHA256 digests";
+        return -1;
+      }
+      digests.push_back(digest);
+    }
+    if (digests.size() > 8) {
+      LOG(ERROR) << "Syntax error: or supports "
+                 << "up to 8 digests";
+      return -1;
+    }
+    for (const auto& digest : digests) {
+      printf("Or Digest: %s\n", HexEncode(digest).c_str());
+    }
+    printf("\n");
+
+    auto session = GetUDSSession(factory, cl, false);
+    trunks::TPM_RC rc = session->PolicyOR(digests);
+    if (rc) {
+      LOG(ERROR) << "Error during PolicyOR: " << trunks::GetErrorString(rc);
+      return -1;
+    }
+
+    const uint32_t nv_index = trunks::NV_INDEX_FIRST + index;
+    std::string nv_name;
+    rc = factory.GetTpmUtility()->GetNVSpaceName(index, &nv_name);
+    if (rc) {
+      LOG(ERROR) << "Error during GetNVSpaceName: "
+                 << trunks::GetErrorString(rc);
+      return -1;
+    }
+    std::string rh_name;
+    trunks::Serialize_TPM_HANDLE(trunks::TPM_RH_PLATFORM, &rh_name);
+
+    MultipleAuthorizations authorization;
+    authorization.AddAuthorizationDelegate(session->GetDelegate());
+    authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+    rc = factory.GetTpm()->NV_UndefineSpaceSpecialSync(
+        nv_index, nv_name, trunks::TPM_RH_PLATFORM, rh_name, &authorization);
+    if (rc) {
+      LOG(ERROR) << "Error during NV_UndefineSpaceSpecial: "
+                 << trunks::GetErrorString(rc);
+      return -1;
+    }
+    return 0;
   }
 
   puts("Invalid options!");
