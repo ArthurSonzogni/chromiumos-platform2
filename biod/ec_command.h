@@ -79,55 +79,9 @@ class EcCommand : public EcCommandInterface {
    * The caller must be careful to only retry EC state-less
    * commands, that can be rerun without consequence.
    */
-  bool Run(int ec_fd) override {
-    data_.cmd.result = kEcCommandUninitializedResult;
+  bool Run(int ec_fd) override;
 
-    // We rely on the ioctl preserving data_.req when the command fails.
-    // This is important for subsequent retries using the same data_.req.
-    int ret = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
-    if (ret < 0) {
-      // If the ioctl fails for some reason let's make sure that the driver
-      // didn't touch the result.
-      data_.cmd.result = kEcCommandUninitializedResult;
-      PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
-                  << std::dec << " failed";
-      return false;
-    }
-
-    return (static_cast<uint32_t>(ret) == data_.cmd.insize);
-  }
-
-  bool RunWithMultipleAttempts(int fd, int num_attempts) override {
-    for (int retry = 0; retry < num_attempts; retry++) {
-      bool ret = Run(fd);
-
-      if (ret) {
-        LOG_IF(INFO, retry > 0)
-            << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
-            << std::dec << " succeeded on attempt " << retry + 1 << "/"
-            << num_attempts << ".";
-        return true;
-      }
-
-      // If we just want to check the supported version of a command, and the
-      // command does not exist, do not emit error in the log and do not retry.
-      if (Command() == EC_CMD_GET_CMD_VERSIONS &&
-          Result() == EC_RES_INVALID_PARAM)
-        return false;
-
-      if (errno != ETIMEDOUT) {
-        LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
-                   << std::dec << " failed on attempt " << retry + 1 << "/"
-                   << num_attempts << ", retry is not allowed for error";
-        return false;
-      }
-
-      LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
-                 << std::dec << " failed on attempt " << retry + 1 << "/"
-                 << num_attempts;
-    }
-    return false;
-  }
+  bool RunWithMultipleAttempts(int fd, int num_attempts) override;
 
   virtual I* Resp() { return &data_.resp; }
   virtual const I* Resp() const { return &data_.resp; }
@@ -155,6 +109,58 @@ class EcCommand : public EcCommandInterface {
     return ::ioctl(fd, request, data);
   }
 };
+
+template <typename O, typename I>
+bool EcCommand<O, I>::Run(int ec_fd) {
+  data_.cmd.result = kEcCommandUninitializedResult;
+
+  // We rely on the ioctl preserving data_.req when the command fails.
+  // This is important for subsequent retries using the same data_.req.
+  int ret = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
+  if (ret < 0) {
+    // If the ioctl fails for some reason let's make sure that the driver
+    // didn't touch the result.
+    data_.cmd.result = kEcCommandUninitializedResult;
+    PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+                << std::dec << " failed";
+    return false;
+  }
+
+  return (static_cast<uint32_t>(ret) == data_.cmd.insize);
+}
+
+template <typename O, typename I>
+bool EcCommand<O, I>::RunWithMultipleAttempts(int fd, int num_attempts) {
+  for (int retry = 0; retry < num_attempts; retry++) {
+    bool ret = Run(fd);
+
+    if (ret) {
+      LOG_IF(INFO, retry > 0)
+          << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+          << std::dec << " succeeded on attempt " << retry + 1 << "/"
+          << num_attempts << ".";
+      return true;
+    }
+
+    // If we just want to check the supported version of a command, and the
+    // command does not exist, do not emit error in the log and do not retry.
+    if (Command() == EC_CMD_GET_CMD_VERSIONS &&
+        Result() == EC_RES_INVALID_PARAM)
+      return false;
+
+    if (errno != ETIMEDOUT) {
+      LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+                 << std::dec << " failed on attempt " << retry + 1 << "/"
+                 << num_attempts << ", retry is not allowed for error";
+      return false;
+    }
+
+    LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+               << std::dec << " failed on attempt " << retry + 1 << "/"
+               << num_attempts;
+  }
+  return false;
+}
 
 }  // namespace biod
 
