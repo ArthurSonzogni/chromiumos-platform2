@@ -141,5 +141,23 @@ TEST(EcCommand, RunWithMultipleAttempts_ErrorNotTimeout_Failure) {
   EXPECT_FALSE(mock.RunWithMultipleAttempts(kDummyFd, kNumAttempts));
 }
 
+TEST(EcCommand, RunWithMultipleAttempts_AccessDenied) {
+  MockFpModeCommand mock;
+
+  // ioctl should only be called once because we won't retry access denied
+  // failures.
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
+        // ioctl succeeds, but the EC command did not. In this case, "result"
+        // will be set, but the response size will not match the command's
+        // response size.
+        data->cmd.result = EC_RES_ACCESS_DENIED;
+        return 0;
+      });
+
+  constexpr int kNumAttempts = 2;
+  EXPECT_FALSE(mock.RunWithMultipleAttempts(kDummyFd, kNumAttempts));
+}
+
 }  // namespace
 }  // namespace biod

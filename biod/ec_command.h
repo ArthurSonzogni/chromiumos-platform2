@@ -102,6 +102,7 @@ class EcCommand : public EcCommandInterface {
   };
 
  protected:
+  bool ErrorTypeCanBeRetried(uint32_t ec_cmd_result);
   Data data_;
 
  private:
@@ -142,13 +143,7 @@ bool EcCommand<O, I>::RunWithMultipleAttempts(int fd, int num_attempts) {
       return true;
     }
 
-    // If we just want to check the supported version of a command, and the
-    // command does not exist, do not emit error in the log and do not retry.
-    if (Command() == EC_CMD_GET_CMD_VERSIONS &&
-        Result() == EC_RES_INVALID_PARAM)
-      return false;
-
-    if (errno != ETIMEDOUT) {
+    if (!ErrorTypeCanBeRetried(Result()) || (errno != ETIMEDOUT)) {
       LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
                  << std::dec << " failed on attempt " << retry + 1 << "/"
                  << num_attempts << ", retry is not allowed for error";
@@ -160,6 +155,18 @@ bool EcCommand<O, I>::RunWithMultipleAttempts(int fd, int num_attempts) {
                << num_attempts;
   }
   return false;
+}
+
+template <typename O, typename I>
+bool EcCommand<O, I>::ErrorTypeCanBeRetried(uint32_t ec_cmd_result) {
+  switch (ec_cmd_result) {
+    case kEcCommandUninitializedResult:
+    case EC_RES_TIMEOUT:
+    case EC_RES_BUSY:
+      return true;
+    default:
+      return false;
+  }
 }
 
 }  // namespace biod
