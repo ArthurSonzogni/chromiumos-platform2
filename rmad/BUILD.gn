@@ -1,0 +1,63 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libdbus_service",
+    ":librmad_interface",
+    ":rmad",
+  ]
+  if (use.test) {
+    deps += [ ":rmad_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  # NOSORT
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
+}
+
+static_library("libdbus_service") {
+  configs += [ ":target_defaults" ]
+  sources = [ "dbus_service.cc" ]
+}
+
+static_library("librmad_interface") {
+  configs += [ ":target_defaults" ]
+  sources = [ "rmad_interface_impl.cc" ]
+}
+
+executable("rmad") {
+  configs += [ ":target_defaults" ]
+  sources = [ "main.cc" ]
+  deps = [
+    ":libdbus_service",
+    ":librmad_interface",
+  ]
+}
+
+if (use.test) {
+  executable("rmad_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [ "dbus_service_test.cc" ]
+    deps = [
+      ":libdbus_service",
+      "//common-mk/testrunner",
+    ]
+  }
+}

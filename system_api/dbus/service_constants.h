@@ -35,6 +35,7 @@
 #include "permission_broker/dbus-constants.h"
 #include "power_manager/dbus-constants.h"
 #include "resource_manager/dbus-constants.h"
+#include "rmad/dbus-constants.h"
 #include "runtime_probe/dbus-constants.h"
 #include "seneschal/dbus-constants.h"
 #include "shill/dbus-constants.h"

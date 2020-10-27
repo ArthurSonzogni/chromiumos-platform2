@@ -37,6 +37,7 @@ group("all") {
     ":system_api-power_manager-goprotos",
     ":system_api-power_manager-protos",
     ":system_api-protos",
+    ":system_api-rmad-protos",
     ":system_api-runtime_probe-goprotos",
     ":system_api-runtime_probe-protos",
     ":system_api-seneschal-goprotos",
@@ -467,5 +468,12 @@ proto_library("system_api-dlp-protos") {
   proto_in_dir = "dbus/dlp"
   proto_out_dir = "include/dlp/proto_bindings"
   sources = [ "${proto_in_dir}/dlp_service.proto" ]
+  standalone = true
+}
+
+proto_library("system_api-rmad-protos") {
+  proto_in_dir = "dbus/rmad"
+  proto_out_dir = "include/rmad/proto_bindings"
+  sources = [ "${proto_in_dir}/rmad.proto" ]
   standalone = true
 }
