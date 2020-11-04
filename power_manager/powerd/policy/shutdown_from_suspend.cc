@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/policy/shutdown_from_suspend.h"
 
+#include <utility>
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/strings/stringprintf.h>
