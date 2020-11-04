@@ -13,14 +13,14 @@
 #include <base/timer/timer.h>
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/UserDataAuth.pb.h"
 
 namespace cryptohome {
 

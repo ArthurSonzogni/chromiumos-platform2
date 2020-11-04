@@ -36,24 +36,25 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cryptohome/proto_bindings/key.pb.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome/proto_bindings/signed_secret.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/attestation.pb.h"
+#include "cryptohome/common/print_UserDataAuth_proto.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/key.pb.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/rpc.pb.h"
-#include "cryptohome/signed_secret.pb.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/timestamp.pb.h"
-#include "cryptohome/UserDataAuth.pb.h"
 #include "cryptohome/vault_keyset.pb.h"
 #include "user_data_auth/dbus-proxies.h"
 // The dbus_adaptor and proxy include must happen after the protobuf include
@@ -62,6 +63,7 @@ using base::FilePath;
 using base::StringPrintf;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
+using user_data_auth::GetProtoDebugString;
 
 namespace {
 // Number of days that the set_current_user_old action uses when updating the
@@ -737,7 +739,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Mount failed.\n");
@@ -761,7 +763,7 @@ int main(int argc, char** argv) {
       printf("Mount call failed: %s", BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Mount failed.\n");
@@ -784,7 +786,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Fingerprint auth session failed to start.\n");
@@ -824,7 +826,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key removal failed.\n");
@@ -856,7 +858,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key retrieval failed.\n");
@@ -876,7 +878,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to list keys.\n");
@@ -910,7 +912,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key authentication failed.\n");
@@ -945,7 +947,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("MassRemoveKeys failed.\n");
@@ -982,7 +984,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key migration failed.\n");
@@ -1028,7 +1030,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key addition failed.\n");
@@ -1057,7 +1059,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Remove failed.\n");
@@ -1075,7 +1077,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Unmount failed.\n");
@@ -2344,7 +2346,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to call GetLoginStatus: status %d\n",
@@ -2378,7 +2380,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     } else {
-      reply.PrintDebugString();
+      puts(GetProtoDebugString(reply).c_str());
       if (reply.error() !=
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
         printf("Failed to call GetFirmwareManagementParameters: status %d\n",
@@ -2436,7 +2438,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     } else {
-      reply.PrintDebugString();
+      puts(GetProtoDebugString(reply).c_str());
       if (reply.error() !=
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
         printf("Failed to call SetFirmwareManagementParameters: status %d\n",
@@ -2461,7 +2463,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     } else {
-      reply.PrintDebugString();
+      puts(GetProtoDebugString(reply).c_str());
       if (reply.error() !=
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
         printf("Failed to call RemoveFirmwareManagementParameters: status %d\n",
@@ -2563,7 +2565,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
 
     printf("GetSupportedKeyPolicies success.\n");
   } else if (!strcmp(
@@ -2587,7 +2589,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("GetAccountDiskUsage call failed: status %d\n",
@@ -2618,7 +2620,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("LockToSingleUserMountUntilReboot call failed: status %d\n",
@@ -2639,7 +2641,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("GetRsuDeviceId call failed: status %d\n",
@@ -2658,7 +2660,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
@@ -2716,7 +2718,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Auth session failed to add credentials.\n");
@@ -2751,7 +2753,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Auth session failed to authenticate.\n");
@@ -2781,7 +2783,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Auth session failed to invalidate.\n");
@@ -2833,7 +2835,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Auth session failed to extend.\n");
@@ -2862,7 +2864,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to create persistent user.\n");
@@ -2883,7 +2885,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to prepare guest vault.\n");
@@ -2912,7 +2914,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to prepare ephemeral vault.\n");
@@ -2945,7 +2947,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to prepare persistent vault.\n");
@@ -2974,7 +2976,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to prepare vault for migration.\n");
@@ -3002,7 +3004,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to AddAuthFactor.\n");
@@ -3032,7 +3034,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to authenticate AuthFactor.\n");
@@ -3060,7 +3062,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to update AuthFactor.\n");
@@ -3088,7 +3090,7 @@ int main(int argc, char** argv) {
              BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    reply.PrintDebugString();
+    puts(GetProtoDebugString(reply).c_str());
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to remove AuthFactor.\n");

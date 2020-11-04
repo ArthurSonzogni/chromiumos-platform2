@@ -25,6 +25,8 @@
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
+#include <cryptohome/proto_bindings/key.pb.h>
+#include <cryptohome/proto_bindings/signed_secret.pb.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -32,9 +34,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/key.pb.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/signed_secret.pb.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"

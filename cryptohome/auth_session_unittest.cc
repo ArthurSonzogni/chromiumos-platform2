@@ -140,9 +140,14 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
       auth_session.GetCredentials(authorization_request, &error);
 
   // VERIFY
-  // DebugString is used in the absence of a comparator for KeyData protobuf.
-  EXPECT_EQ(test_creds->key_data().DebugString(),
-            authorization_request.mutable_key()->data().DebugString());
+  // SerializeToString is used in the absence of a comparator for KeyData
+  // protobuf.
+  std::string key_data_serialized1 = "1";
+  std::string key_data_serialized2 = "2";
+  test_creds->key_data().SerializeToString(&key_data_serialized1);
+  authorization_request.mutable_key()->data().SerializeToString(
+      &key_data_serialized2);
+  EXPECT_EQ(key_data_serialized1, key_data_serialized2);
 }
 
 // This test check AuthSession::GetCredential function for a kiosk user and
@@ -179,9 +184,14 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
       auth_session.GetCredentials(authorization_request, &error);
 
   // VERIFY
-  // DebugString is used in the absence of a comparator for KeyData protobuf.
-  EXPECT_EQ(test_creds->key_data().DebugString(),
-            authorization_request.mutable_key()->data().DebugString());
+  // SerializeToString is used in the absence of a comparator for KeyData
+  // protobuf.
+  std::string key_data_serialized1 = "1";
+  std::string key_data_serialized2 = "2";
+  test_creds->key_data().SerializeToString(&key_data_serialized1);
+  authorization_request.mutable_key()->data().SerializeToString(
+      &key_data_serialized2);
+  EXPECT_EQ(key_data_serialized1, key_data_serialized2);
   EXPECT_EQ(test_creds->passkey(), fake_pass_blob);
 }
 

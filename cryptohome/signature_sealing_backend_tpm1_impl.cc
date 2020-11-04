@@ -18,6 +18,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/error/tpm1_error.h>
+#include <cryptohome/proto_bindings/key.pb.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -28,7 +29,6 @@
 
 #include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/tpm1_static_utils.h"
 #include "cryptohome/tpm_impl.h"

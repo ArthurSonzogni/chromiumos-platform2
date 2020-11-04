@@ -9,6 +9,8 @@
 
 syntax = "proto2";
 
+option optimize_for = LITE_RUNTIME;
+
 package cryptohome;
 
 // Holds TPM credentials that the attestation server will need to see. These

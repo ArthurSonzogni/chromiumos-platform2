@@ -17,8 +17,8 @@
 #include <base/values.h>
 #include <brillo/secure_blob.h>
 
+#include "bindings/install_attributes.pb.h"  // NOLINT(build/include_directory)
 #include "cryptohome/crypto.h"
-#include "cryptohome/install_attributes.pb.h"
 #include "cryptohome/lockbox.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"

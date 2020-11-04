@@ -19,6 +19,7 @@
 #include <base/optional.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/key.pb.h>
 #include <google/protobuf/repeated_field.h>
 #include <libhwsec/error/tpm2_error.h>
 #include <trunks/error_codes.h>
@@ -29,7 +30,6 @@
 #include <trunks/tpm_utility.h>
 #include <trunks/authorization_delegate.h>
 
-#include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/tpm2_impl.h"
 

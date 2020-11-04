@@ -7,10 +7,10 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
 using brillo::Blob;

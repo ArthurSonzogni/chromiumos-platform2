@@ -15,7 +15,6 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_error.h>
 
-#include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
 

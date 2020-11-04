@@ -17,6 +17,7 @@
 #include <base/threading/thread.h>
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -42,7 +43,6 @@
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_session.h"
-#include "cryptohome/UserDataAuth.pb.h"
 
 namespace cryptohome {
 

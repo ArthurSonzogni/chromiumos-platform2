@@ -12,9 +12,9 @@
 #include <string>
 
 #include <base/macros.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 
 #include "cryptohome/platform.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/homedirs.h"
 
 namespace cryptohome {

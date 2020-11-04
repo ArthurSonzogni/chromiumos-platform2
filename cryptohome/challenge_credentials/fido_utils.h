@@ -13,9 +13,8 @@
 #include <vector>
 
 #include <base/time/time.h>
-
-#include "cryptohome/fido.pb.h"
-#include "cryptohome/rpc.pb.h"
+#include <cryptohome/proto_bindings/fido.pb.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 
 namespace cryptohome {
 

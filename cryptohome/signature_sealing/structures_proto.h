@@ -5,7 +5,8 @@
 #ifndef CRYPTOHOME_SIGNATURE_SEALING_STRUCTURES_PROTO_H_
 #define CRYPTOHOME_SIGNATURE_SEALING_STRUCTURES_PROTO_H_
 
-#include "cryptohome/key.pb.h"
+#include <cryptohome/proto_bindings/key.pb.h>
+
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/vault_keyset.pb.h"

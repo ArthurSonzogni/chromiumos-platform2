@@ -8,11 +8,11 @@
 #include <memory>
 #include <string>
 
-#include <dbus/cryptohome/dbus-constants.h>
 #include <brillo/dbus/dbus_method_response.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <dbus/cryptohome/dbus-constants.h>
 
 #include "cryptohome/userdataauth.h"
-#include "cryptohome/UserDataAuth.pb.h"
 #include "dbus_adaptors/org.chromium.UserDataAuth.h"
 
 namespace cryptohome {

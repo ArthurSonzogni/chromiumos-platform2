@@ -10,10 +10,10 @@
 
 #include <base/callback.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {

@@ -11,15 +11,15 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/UserDataAuth.pb.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 

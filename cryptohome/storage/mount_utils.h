@@ -7,11 +7,11 @@
 
 #include <string>
 
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
 
 #include "cryptohome/platform.h"
-#include "cryptohome/UserDataAuth.pb.h"
 
 namespace cryptohome {
 

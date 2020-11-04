@@ -9,9 +9,9 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/UserDataAuth.pb.h"
 
 namespace cryptohome {
 

@@ -17,7 +17,6 @@
 #include <base/time/time.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
-#include "cryptohome/install_attributes.pb.h"
 #include "cryptohome/lockbox.h"
 #include "cryptohome/tpm.h"
 

@@ -25,6 +25,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <cryptohome/proto_bindings/key.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/bn.h>
@@ -47,7 +48,6 @@
 
 #include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/key.pb.h"
 #include "cryptohome/protobuf_test_utils.h"
 
 using brillo::Blob;

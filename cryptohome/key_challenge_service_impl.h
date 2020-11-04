@@ -10,10 +10,9 @@
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/rpc.pb.h"
-
 #include "cryptohome_key_delegate/dbus-proxies.h"
 
 namespace dbus {

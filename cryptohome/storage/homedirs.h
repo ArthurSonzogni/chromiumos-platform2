@@ -25,6 +25,7 @@
 #endif  // USE_LVM_STATEFUL_PARTITION
 #include <brillo/secure_blob.h>
 #include <chaps/token_manager_client.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gtest/gtest_prod.h>
 #include <policy/device_policy.h>
@@ -32,7 +33,6 @@
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"

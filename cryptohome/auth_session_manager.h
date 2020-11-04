@@ -10,10 +10,10 @@
 #include <string>
 
 #include <base/unguessable_token.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_session.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/UserDataAuth.pb.h"
 
 namespace cryptohome {
 

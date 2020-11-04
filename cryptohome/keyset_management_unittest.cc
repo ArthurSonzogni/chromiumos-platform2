@@ -18,6 +18,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/signed_secret.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -37,7 +38,6 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
-#include "cryptohome/signed_secret.pb.h"
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 
