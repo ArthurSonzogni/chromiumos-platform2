@@ -23,6 +23,7 @@
 #include "chaps/object_pool_mock.h"
 #include "chaps/object_store_mock.h"
 #include "chaps/session_mock.h"
+#include "chaps/slot_policy_mock.h"
 #include "chaps/tpm_utility_mock.h"
 
 using base::FilePath;
@@ -133,7 +134,7 @@ class TestSlotManager : public ::testing::Test {
     ic_ = IsolateCredentialManager::GetDefaultIsolateCredential();
   }
   void SetUp() {
-    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     ConfigureTPMUtility(&tpm_);
     slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false, nullptr));
@@ -223,7 +224,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   ConfigureTPMUtility(&tpm);
   ChapsFactoryMock factory;
   ObjectPool* null_pool = NULL;
-  EXPECT_CALL(factory, CreateObjectPool(_, _, _))
+  EXPECT_CALL(factory, CreateObjectPool(_, _, _, _))
       .WillRepeatedly(Return(null_pool));
   ObjectStore* null_store = NULL;
   EXPECT_CALL(factory, CreateObjectStore(_)).WillRepeatedly(Return(null_store));
@@ -488,8 +489,11 @@ class SoftwareOnlyTest : public TestSlotManager {
   ~SoftwareOnlyTest() override {}
 
   void SetUp() override {
-    // Use our own ObjectPoolFactory.
-    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
+    // Use our own SlotPolicyFactory and ObjectPoolFactory.
+    EXPECT_CALL(factory_, CreateSlotPolicy())
+        .WillRepeatedly(
+            InvokeWithoutArgs(this, &SoftwareOnlyTest::SlotPolicyFactory));
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
         .WillRepeatedly(
             InvokeWithoutArgs(this, &SoftwareOnlyTest::ObjectPoolFactory));
     EXPECT_CALL(no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
@@ -501,6 +505,16 @@ class SoftwareOnlyTest : public TestSlotManager {
   void TearDown() override {
     // Destroy the slot manager before its dependencies.
     slot_manager_.reset();
+  }
+
+  SlotPolicyMock* SlotPolicyFactory() {
+    // Redirect internal blob stuff to fake methods.
+    SlotPolicyMock* slot_policy = new SlotPolicyMock();
+    EXPECT_CALL(*slot_policy, IsObjectClassAllowedForNewObject(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*slot_policy, IsObjectClassAllowedForImportedObject(_))
+        .WillRepeatedly(Return(true));
+    return slot_policy;
   }
 
   ObjectPoolMock* ObjectPoolFactory() {

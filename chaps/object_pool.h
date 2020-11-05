@@ -13,6 +13,7 @@
 namespace chaps {
 
 class Object;
+class SlotPolicy;
 
 // Enumerates internal blobs. These are used as 'blob_id' values when reading
 // or writing internal blobs.

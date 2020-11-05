@@ -21,6 +21,7 @@
 #include "chaps/object_importer.h"
 #include "chaps/object_store.h"
 #include "chaps/proto_bindings/attributes.pb.h"
+#include "chaps/slot_policy.h"
 
 using base::AutoLock;
 using base::AutoUnlock;
@@ -35,10 +36,12 @@ namespace chaps {
 
 ObjectPoolImpl::ObjectPoolImpl(ChapsFactory* factory,
                                HandleGenerator* handle_generator,
+                               SlotPolicy* slot_policy,
                                ObjectStore* store,
                                ObjectImporter* importer)
     : factory_(factory),
       handle_generator_(handle_generator),
+      slot_policy_(slot_policy),
       store_(store),
       importer_(importer),
       is_private_loaded_(false),
@@ -112,10 +115,23 @@ Result ObjectPoolImpl::Insert(Object* object) {
   if (object->IsPrivate() && !is_private_loaded_) {
     return Result::WaitForPrivateObjects;
   }
-  return Import(object);
+  return AddObject(object, /*from_external_source=*/false);
 }
 
 Result ObjectPoolImpl::Import(Object* object) {
+  return AddObject(object, /*from_external_source=*/true);
+}
+
+Result ObjectPoolImpl::AddObject(Object* object, bool from_external_source) {
+  const CK_OBJECT_CLASS object_class = object->GetObjectClass();
+  const bool allowed =
+      from_external_source
+          ? slot_policy_->IsObjectClassAllowedForImportedObject(object_class)
+          : slot_policy_->IsObjectClassAllowedForNewObject(object_class);
+  if (!allowed) {
+    return Result::Failure;
+  }
+
   AutoLock lock(lock_);
   if (objects_.find(object) != objects_.end())
     return Result::Failure;

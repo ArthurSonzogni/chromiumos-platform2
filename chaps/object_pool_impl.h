@@ -24,6 +24,7 @@ namespace chaps {
 class ChapsFactory;
 class HandleGenerator;
 class ObjectImporter;
+class SlotPolicy;
 
 // Key: Object handle.
 // Value: Object shared pointer.
@@ -32,12 +33,15 @@ typedef std::set<const Object*> ObjectSet;
 
 class ObjectPoolImpl : public ObjectPool {
  public:
-  // The 'factory' and 'handle_generator' pointers are not owned by the object
-  // pool. They must remain valid for the entire life of the ObjectPoolImpl
-  // instance. If the object pool is not persistent, 'store' should be NULL.
-  // Otherwise, 'store' will be owned by (and later deleted by) the object pool.
+  // The 'factory', 'handle_generator' and 'slot_policy' pointers are not owned
+  // by the object pool. They must remain valid for the entire life of the
+  // ObjectPoolImpl instance. If the object pool is not persistent, 'store'
+  // should be NULL. Otherwise, 'store' will be owned by (and later deleted by)
+  // the object pool.
+  // If 'slot_policy' is nullptr, it means that all objects are allowed.
   ObjectPoolImpl(ChapsFactory* factory,
                  HandleGenerator* handle_generator,
+                 SlotPolicy* slot_policy,
                  ObjectStore* store,
                  ObjectImporter* importer);
   ObjectPoolImpl(const ObjectPoolImpl&) = delete;
@@ -60,6 +64,7 @@ class ObjectPoolImpl : public ObjectPool {
   bool IsPrivateLoaded() override;
 
  private:
+  Result AddObject(Object* object, bool from_external_source);
   // An object matches a template when it holds values for all template
   // attributes and those values match the template values. This function
   // returns true if the given object matches the given template.
@@ -75,6 +80,7 @@ class ObjectPoolImpl : public ObjectPool {
   HandleObjectMap handle_object_map_;
   ChapsFactory* factory_;
   HandleGenerator* handle_generator_;
+  SlotPolicy* slot_policy_;
   std::unique_ptr<ObjectStore> store_;
   std::unique_ptr<ObjectImporter> importer_;
   bool is_private_loaded_;

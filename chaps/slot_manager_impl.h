@@ -7,6 +7,7 @@
 
 #include "chaps/handle_generator.h"
 #include "chaps/slot_manager.h"
+#include "chaps/slot_policy.h"
 #include "chaps/system_shutdown_blocker.h"
 #include "chaps/token_manager_interface.h"
 
@@ -110,6 +111,7 @@ class SlotManagerImpl : public SlotManager,
   struct Slot {
     CK_SLOT_INFO slot_info;
     CK_TOKEN_INFO token_info;
+    std::shared_ptr<SlotPolicy> slot_policy;
     std::shared_ptr<ObjectPool> token_object_pool;
     // Key: A session identifier.
     // Value: The associated session object.

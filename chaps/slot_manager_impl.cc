@@ -27,6 +27,7 @@
 #include "chaps/isolate.h"
 #include "chaps/object_importer.h"
 #include "chaps/session.h"
+#include "chaps/slot_policy_default.h"
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
@@ -657,10 +658,13 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
     *slot_id = path_slot_map_[path];
     return true;
   }
+
+  shared_ptr<SlotPolicy> slot_policy(factory_->CreateSlotPolicy());
+
   // Setup the object pool.
   *slot_id = FindEmptySlot();
   shared_ptr<ObjectPool> object_pool(factory_->CreateObjectPool(
-      this, factory_->CreateObjectStore(path),
+      this, slot_policy.get(), factory_->CreateObjectStore(path),
       factory_->CreateObjectImporter(*slot_id, path, tpm_utility_)));
   CHECK(object_pool.get());
 
@@ -687,6 +691,7 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   }
 
   // Insert the new token into the empty slot.
+  slot_list_[*slot_id].slot_policy = slot_policy;
   slot_list_[*slot_id].token_object_pool = object_pool;
   slot_list_[*slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = *slot_id;
@@ -829,7 +834,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
   bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     object_pool = factory_->CreateObjectPool(
-        this, factory_->CreateObjectStore(path), NULL);
+        this, nullptr, factory_->CreateObjectStore(path), nullptr);
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
     unload = true;

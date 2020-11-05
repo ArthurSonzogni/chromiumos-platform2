@@ -21,6 +21,7 @@
 #include "chaps/object_store_impl.h"
 #include "chaps/opencryptoki_importer.h"
 #include "chaps/session_impl.h"
+#include "chaps/slot_policy_default.h"
 
 using base::FilePath;
 using std::string;
@@ -38,10 +39,11 @@ Session* ChapsFactoryImpl::CreateSession(int slot_id,
 
 ObjectPool* ChapsFactoryImpl::CreateObjectPool(
     HandleGenerator* handle_generator,
+    SlotPolicy* slot_policy,
     ObjectStore* object_store,
     ObjectImporter* object_importer) {
   std::unique_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(
-      this, handle_generator, object_store, object_importer));
+      this, handle_generator, slot_policy, object_store, object_importer));
   CHECK(pool.get());
   if (!pool->Init())
     return NULL;
@@ -75,6 +77,12 @@ ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
     return NULL;
   }
   return new OpencryptokiImporter(slot_id, path, tpm_utility, this);
+}
+
+SlotPolicy* ChapsFactoryImpl::CreateSlotPolicy() {
+  // TODO(https://crbug.com/1132030): Create a special slot policy for shared
+  // slots.
+  return new SlotPolicyDefault();
 }
 
 ObjectPolicy* ChapsFactoryImpl::GetObjectPolicyForType(CK_OBJECT_CLASS type) {

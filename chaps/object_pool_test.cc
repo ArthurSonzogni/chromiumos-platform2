@@ -18,6 +18,7 @@
 #include "chaps/object_mock.h"
 #include "chaps/object_store_mock.h"
 #include "chaps/proto_bindings/attributes.pb.h"
+#include "chaps/slot_policy_mock.h"
 
 using brillo::SecureBlob;
 using std::map;
@@ -35,7 +36,7 @@ namespace chaps {
 
 namespace {
 
-Object* CreateObjectMock() {
+ObjectMock* CreateObjectMock() {
   ObjectMock* o = new ObjectMock();
   o->SetupFake();
   EXPECT_CALL(*o, GetObjectClass()).Times(AnyNumber());
@@ -59,6 +60,14 @@ Object* CreateObjectMock() {
   return o;
 }
 
+Object* CreateObjectMockWithClass(CK_OBJECT_CLASS object_class) {
+  ObjectMock* object = CreateObjectMock();
+  EXPECT_CALL(*object, GetObjectClass())
+      .Times(AnyNumber())
+      .WillRepeatedly(Return(object_class));
+  return object;
+}
+
 int CreateHandle() {
   static int last_handle = 0;
   return ++last_handle;
@@ -75,12 +84,18 @@ class TestObjectPool : public ::testing::Test {
         .WillRepeatedly(Invoke(CreateObjectMock));
     EXPECT_CALL(handle_generator_, CreateHandle())
         .WillRepeatedly(Invoke(CreateHandle));
+    // Setup the slot policy to allow all objects.
+    EXPECT_CALL(slot_policy_, IsObjectClassAllowedForNewObject(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(slot_policy_, IsObjectClassAllowedForImportedObject(_))
+        .WillRepeatedly(Return(true));
     // Create object pools to test with.
     store_ = new ObjectStoreMock();
     importer_ = new ObjectImporterMock();
-    pool_.reset(
-        new ObjectPoolImpl(&factory_, &handle_generator_, store_, importer_));
-    pool2_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, NULL, NULL));
+    pool_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, &slot_policy_,
+                                   store_, importer_));
+    pool2_.reset(new ObjectPoolImpl(&factory_, &handle_generator_,
+                                    &slot_policy_, NULL, NULL));
   }
 
   // Initialize and load private objects.
@@ -111,6 +126,8 @@ class TestObjectPool : public ::testing::Test {
   ObjectStoreMock* store_;
   ObjectImporterMock* importer_;
   HandleGeneratorMock handle_generator_;
+  SlotPolicyMock slot_policy_;
+
   std::unique_ptr<ObjectPoolImpl> pool_;
   std::unique_ptr<ObjectPoolImpl> pool2_;
 };
@@ -340,4 +357,20 @@ TEST_F(TestObjectPool, UnloadedPrivateObjects) {
   EXPECT_EQ(Result::Success, pool_->Insert(public_obj));
 }
 
+// Test that Insert() respects the slot policy for new objects.
+TEST_F(TestObjectPool, InsertRespectsSlotPolicy) {
+  EXPECT_CALL(slot_policy_, IsObjectClassAllowedForNewObject(CKO_PRIVATE_KEY))
+      .WillOnce(Return(false));
+  PreparePools();
+
+  Object* object = CreateObjectMockWithClass(CKO_PRIVATE_KEY);
+  ASSERT_EQ(Result::Failure, pool2_->Insert(object));
+  // ObjectPool::Insert does not take ownership of |object| on failure.
+  delete object;
+
+  std::unique_ptr<Object> find_all(CreateObjectMock());
+  vector<const Object*> v;
+  EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(0, v.size());
+}
 }  // namespace chaps

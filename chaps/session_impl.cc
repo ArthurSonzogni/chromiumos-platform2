@@ -642,7 +642,7 @@ SessionImpl::SessionImpl(int slot_id,
   CHECK(tpm_utility_);
   CHECK(factory_);
   session_object_pool_.reset(
-      factory_->CreateObjectPool(handle_generator, nullptr, nullptr));
+      factory_->CreateObjectPool(handle_generator, nullptr, nullptr, nullptr));
   CHECK(session_object_pool_.get());
 }
 

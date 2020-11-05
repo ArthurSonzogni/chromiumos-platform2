@@ -24,6 +24,7 @@ class ChapsFactoryImpl : public ChapsFactory {
                          HandleGenerator* handle_generator,
                          bool is_read_only) override;
   ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
+                               SlotPolicy* slot_policy,
                                ObjectStore* store,
                                ObjectImporter* importer) override;
   ObjectStore* CreateObjectStore(const base::FilePath& file_name) override;
@@ -32,6 +33,7 @@ class ChapsFactoryImpl : public ChapsFactory {
   ObjectImporter* CreateObjectImporter(int slot_id,
                                        const base::FilePath& path,
                                        TPMUtility* tpm_utility) override;
+  SlotPolicy* CreateSlotPolicy() override;
 
   static ObjectPolicy* GetObjectPolicyForType(CK_OBJECT_CLASS type);
 };

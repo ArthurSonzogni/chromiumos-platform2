@@ -29,6 +29,7 @@ group("all") {
       ":opencryptoki_importer_test",
       ":session_test",
       ":slot_manager_test",
+      ":slot_policy_test",
       ":tpm_utility_test",
     ]
     if (use.tpm2) {
@@ -151,6 +152,7 @@ executable("chapsd") {
     "proto_conversion.cc",
     "session_impl.cc",
     "slot_manager_impl.cc",
+    "slot_policy_default.cc",
     "system_shutdown_blocker.cc",
   ]
   configs += [
@@ -203,6 +205,7 @@ if (use.test) {
       "object_store_mock.cc",
       "session_mock.cc",
       "slot_manager_mock.cc",
+      "slot_policy_mock.cc",
       "tpm_utility_mock.cc",
     ]
     configs += [ ":target_defaults" ]
@@ -289,6 +292,7 @@ if (use.test) {
       "opencryptoki_importer.cc",
       "session_impl.cc",
       "session_test.cc",
+      "slot_policy_default.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -348,6 +352,22 @@ if (use.test) {
     sources = [
       "object_pool_impl.cc",
       "object_pool_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("slot_policy_test") {
+    sources = [
+      "slot_policy_default.cc",
+      "slot_policy_default_test.cc",
     ]
     configs += [
       "//common-mk:test",
