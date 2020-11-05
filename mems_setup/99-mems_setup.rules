@@ -1,0 +1,14 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+ACTION=="add", ATTR{name}=="cros-ec-accel*", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="cros-ec-gyro", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="cros-ec-light", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="acpi-als", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="cros-ec-sync", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="cros-ec-mag", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="cros-ec-lid-angle", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="cros-ec-baro", RUN+="/usr/sbin/mems_setup --device_id=%n"
+
+#TODO(gwendal): not needed when iioservice is running. Remove when iioservice is fully deployed.
+ACTION!="remove", ATTR{name}=="cros-ec-accel*", SYMLINK+="cros-ec-accel/%n", MODE="640", GROUP="chronos"
