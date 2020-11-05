@@ -165,3 +165,18 @@ Properties	string CheckPortalList [readonly]
 
 			The hash of the username, provided by the
 			the libchromeos SanitizeUsername() method.
+
+		string AlwaysOnVpnMode [read/write]
+
+			The operating mode of always-on VPN.  The mode is
+			a string between "off", "best-effort" and "strict".
+			When the value is "off" always-on VPN is disabled,
+			otherwise it is enabled and may allow fallback to
+			the default network (best-effort) or not (strict).
+
+		object AlwaysOnVpnService [read/write]
+
+			The object path of the service that will be
+			automatically brought up on login. It must be
+			a VPN service. When no service is set, it
+			returns the "/" object path.

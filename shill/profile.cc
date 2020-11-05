@@ -39,7 +39,7 @@ Profile::Profile(Manager* manager,
                  const Identifier& name,
                  const base::FilePath& storage_directory,
                  bool connect_to_rpc)
-    : manager_(manager), name_(name) {
+    : manager_(manager), store_(), name_(name) {
   if (connect_to_rpc)
     adaptor_ = manager->control_interface()->CreateProfileAdaptor(this);
 
@@ -52,6 +52,13 @@ Profile::Profile(Manager* manager,
   HelpRegisterConstDerivedRpcIdentifiers(kServicesProperty,
                                          &Profile::EnumerateAvailableServices);
   HelpRegisterConstDerivedStrings(kEntriesProperty, &Profile::EnumerateEntries);
+
+  HelpRegisterDerivedString(kAlwaysOnVpnModeProperty,
+                            &Profile::DBusGetAlwaysOnVpnMode,
+                            &Profile::DBusSetAlwaysOnVpnMode);
+  HelpRegisterDerivedRpcIdentifier(kAlwaysOnVpnServiceProperty,
+                                   &Profile::DBusGetAlwaysOnVpnService,
+                                   &Profile::DBusSetAlwaysOnVpnService);
 
   if (name.user.empty()) {
     // Subtle: Profile is only directly instantiated for user
@@ -118,6 +125,7 @@ bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
                                           name_.identifier.c_str()));
   }
   storage_ = std::move(storage);
+  properties_.Load(storage_.get());
   manager_->OnProfileStorageInitialized(this);
   return true;
 }
@@ -227,8 +235,8 @@ ServiceRefPtr Profile::GetServiceFromEntry(const std::string& entry_name,
   }
 
   // Lookup the service entry from the registered services.
-  ServiceRefPtr service =
-      manager_->GetServiceWithStorageIdentifier(this, entry_name, error);
+  ServiceRefPtr service = manager_->GetServiceWithStorageIdentifierFromProfile(
+      this, entry_name, error);
   if (service) {
     return service;
   }
@@ -346,7 +354,49 @@ bool Profile::MatchesIdentifier(const Identifier& name) const {
   return name.user == name_.user && name.identifier == name_.identifier;
 }
 
+string Profile::DBusGetAlwaysOnVpnMode(Error* /*error*/) {
+  return properties_.always_on_vpn_mode;
+}
+
+bool Profile::DBusSetAlwaysOnVpnMode(const string& mode, Error* error) {
+  if (mode != kAlwaysOnVpnModeOff && mode != kAlwaysOnVpnModeBestEffort &&
+      mode != kAlwaysOnVpnModeStrict) {
+    // Invalid mode
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "invalid always-on VPN mode");
+    return false;
+  }
+  properties_.always_on_vpn_mode = mode;
+  return true;
+}
+
+RpcIdentifier Profile::DBusGetAlwaysOnVpnService(Error* error) {
+  ServiceRefPtr service = manager()->GetServiceWithStorageIdentifier(
+      properties_.always_on_vpn_service, error);
+  if (service == nullptr) {
+    return manager()->control_interface()->NullRpcIdentifier();
+  }
+  return service->GetRpcIdentifier();
+}
+
+bool Profile::DBusSetAlwaysOnVpnService(const RpcIdentifier& id, Error* error) {
+  ServiceRefPtr service = manager()->GetServiceWithRpcIdentifier(id);
+  if (service == nullptr) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
+                          "service not found");
+    return false;
+  }
+  if (service->technology() != Technology::kVPN) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "not a VPN service");
+    return false;
+  }
+  properties_.always_on_vpn_service = service->GetStorageIdentifier();
+  return true;
+}
+
 bool Profile::Save() {
+  properties_.Save(storage_.get());
   return storage_->Flush();
 }
 
@@ -389,6 +439,24 @@ void Profile::HelpRegisterConstDerivedStrings(const string& name,
                 new CustomAccessor<Profile, Strings>(this, get, nullptr)));
 }
 
+void Profile::HelpRegisterDerivedRpcIdentifier(
+    const string& name,
+    RpcIdentifier (Profile::*get)(Error*),
+    bool (Profile::*set)(const RpcIdentifier&, Error*)) {
+  store_.RegisterDerivedRpcIdentifier(
+      name, RpcIdentifierAccessor(
+                new CustomAccessor<Profile, RpcIdentifier>(this, get, set)));
+}
+
+void Profile::HelpRegisterDerivedString(const string& name,
+                                        string (Profile::*get)(Error* error),
+                                        bool (Profile::*set)(const string&,
+                                                             Error*)) {
+  store_.RegisterDerivedString(
+      name,
+      StringAccessor(new CustomAccessor<Profile, string>(this, get, set)));
+}
+
 // static
 FilePath Profile::GetFinalStoragePath(const FilePath& storage_dir,
                                       const Identifier& profile_name) {
@@ -409,6 +477,24 @@ FilePath Profile::GetFinalStoragePath(const FilePath& storage_dir,
 
 Metrics* Profile::metrics() const {
   return manager_->metrics();
+}
+
+void Profile::Properties::Load(StoreInterface* storage) {
+  string value;
+  if (!storage->GetString(kStorageId, kAlwaysOnVpnModeProperty,
+                          &always_on_vpn_mode)) {
+    always_on_vpn_mode = kAlwaysOnVpnModeOff;
+  }
+  if (!storage->GetString(kStorageId, kAlwaysOnVpnServiceProperty,
+                          &always_on_vpn_service)) {
+    always_on_vpn_service = kDefaultAlwaysOnVpnService;
+  }
+}
+
+void Profile::Properties::Save(StoreInterface* storage) {
+  storage->SetString(kStorageId, kAlwaysOnVpnModeProperty, always_on_vpn_mode);
+  storage->SetString(kStorageId, kAlwaysOnVpnServiceProperty,
+                     always_on_vpn_service);
 }
 
 }  // namespace shill

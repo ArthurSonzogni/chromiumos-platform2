@@ -68,7 +68,7 @@ bool PropertyStore::SetAnyProperty(const string& name,
   } else if (value.IsTypeCompatible<int32_t>()) {
     ret = SetInt32Property(name, value.Get<int32_t>(), error);
   } else if (value.IsTypeCompatible<dbus::ObjectPath>()) {
-    ret = SetStringProperty(name, value.Get<dbus::ObjectPath>().value(), error);
+    ret = SetRpcIdentifierProperty(name, value.Get<dbus::ObjectPath>(), error);
   } else if (value.IsTypeCompatible<string>()) {
     ret = SetStringProperty(name, value.Get<string>(), error);
   } else if (value.IsTypeCompatible<Stringmap>()) {

@@ -1020,6 +1020,9 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Next pop should fail with "stack is empty".
   EXPECT_EQ(Error::kNotFound, TestPopAnyProfile(&manager));
 
+  // The service is unused now, remove it to avoid setting useless expectations.
+  manager.DeregisterService(service);
+
   const char kMachineProfile0[] = "machineprofile0";
   const char kMachineProfile1[] = "machineprofile1";
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kMachineProfile0));
@@ -1210,7 +1213,6 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
 
   string entry_name("entry_name");
   EXPECT_CALL(*ethernet_provider_, RefreshGenericEthernetService());
-  EXPECT_CALL(*s_not_in_profile, GetStorageIdentifier()).Times(0);
   EXPECT_CALL(*s_not_in_group, GetStorageIdentifier())
       .WillRepeatedly(Return("not_entry_name"));
   EXPECT_CALL(*s_configure_fail, GetStorageIdentifier())

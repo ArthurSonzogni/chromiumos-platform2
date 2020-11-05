@@ -36,9 +36,33 @@ class Profile : public base::RefCounted<Profile> {
     std::string user_hash;
   };
 
+  // Set of Profile properties to be get/set via PropertyStore calls, provided
+  // with helpers to read and save them to persistent storage.
+  struct Properties {
+    Properties()
+        : always_on_vpn_mode(kAlwaysOnVpnModeOff),
+          always_on_vpn_service(kDefaultAlwaysOnVpnService) {}
+    // Describes how the always-on VPN will be handled.
+    std::string always_on_vpn_mode;
+    // Identifier of the service automatically started when always-on VPN is
+    // enabled.
+    std::string always_on_vpn_service;
+
+    // Loads properties values from the storage.
+    void Load(StoreInterface* storage);
+    // Stores properties values to the storage.
+    void Save(StoreInterface* storage);
+  };
+
   // Path to the cached list of inserted user profiles to be loaded at
   // startup.
   static const char kUserProfileListPathname[];
+  // Always-on VPN is disabled.
+  static constexpr char kAlwaysOnVpnModeOff[] = "off";
+  // Always-on VPN is enabled and can fallback on default network (no lockdown).
+  static constexpr char kAlwaysOnVpnModeBestEffort[] = "best-effort";
+  // Always-on VPN is enabled and no fallback is allowed (lockdown enabled).
+  static constexpr char kAlwaysOnVpnModeStrict[] = "strict";
 
   Profile(Manager* manager,
           const Identifier& name,
@@ -167,6 +191,8 @@ class Profile : public base::RefCounted<Profile> {
   virtual bool IsDefault() const { return false; }
 
  protected:
+  // Storage group for user wide properties.
+  static constexpr char kStorageId[] = "global";
   // Returns the persistent store file path for a Profile with the
   // given |storage_dir| and |profile_name|. Provided as a static
   // method, so that tests can use this logic without having to
@@ -195,17 +221,34 @@ class Profile : public base::RefCounted<Profile> {
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
   FRIEND_TEST(ProfileTest, GetServiceFromEntry);
 
+  static constexpr char kDefaultAlwaysOnVpnService[] = "";
+
   static bool IsValidIdentifierToken(const std::string& token);
 
   void HelpRegisterConstDerivedRpcIdentifiers(
       const std::string& name, RpcIdentifiers (Profile::*get)(Error* error));
   void HelpRegisterConstDerivedStrings(const std::string& name,
                                        Strings (Profile::*get)(Error* error));
+  void HelpRegisterDerivedRpcIdentifier(
+      const std::string& name,
+      RpcIdentifier (Profile::*get)(Error* error),
+      bool (Profile::*set)(const RpcIdentifier&, Error*));
+  void HelpRegisterDerivedString(const std::string& name,
+                                 std::string (Profile::*get)(Error* error),
+                                 bool (Profile::*set)(const std::string&,
+                                                      Error*));
+  std::string DBusGetAlwaysOnVpnMode(Error* error);
+  bool DBusSetAlwaysOnVpnMode(const std::string& mode, Error* error);
+  RpcIdentifier DBusGetAlwaysOnVpnService(Error* error);
+  bool DBusSetAlwaysOnVpnService(const RpcIdentifier& id, Error* error);
 
   // Data members shared with subclasses via getter/setters above in the
   // protected: section
   Manager* manager_;
   base::FilePath persistent_profile_path_;
+
+  // Properties to be get/set via PropertyStore calls.
+  Properties properties_;
 
   // Shared with |adaptor_| via public getter.
   PropertyStore store_;

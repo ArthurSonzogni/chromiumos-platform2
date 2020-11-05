@@ -275,13 +275,18 @@ class Manager {
   // matches |guid|.
   virtual ServiceRefPtr GetServiceWithGUID(const std::string& guid,
                                            Error* error);
+  // Find a service that has a storage identifier that matches |entry_name|.
+  virtual ServiceRefPtr GetServiceWithStorageIdentifier(
+      const std::string& entry_name, Error* error);
   // Find a service that is both the member of |profile| and has a
   // storage identifier that matches |entry_name|.  This function is
   // called by the Profile in order to return a profile entry's properties.
-  virtual ServiceRefPtr GetServiceWithStorageIdentifier(
+  virtual ServiceRefPtr GetServiceWithStorageIdentifierFromProfile(
       const ProfileRefPtr& profile,
       const std::string& entry_name,
       Error* error);
+  // Find a service that has a RpcIdentifier that matches |id|.
+  virtual ServiceRefPtr GetServiceWithRpcIdentifier(const RpcIdentifier& id);
   // Create a temporary service for an entry |entry_name| within |profile|.
   // Callers must not register this service with the Manager or connect it
   // since it was never added to the provider's service list.

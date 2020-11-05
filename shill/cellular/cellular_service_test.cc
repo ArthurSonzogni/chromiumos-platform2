@@ -515,7 +515,7 @@ TEST_F(CellularServiceTest, CustomSetterNoopChange) {
   static const char kUsername[] = "commander.data";
   Error error;
   Stringmap testapn;
-  ProfileRefPtr profile(new NiceMock<MockProfile>(nullptr));
+  ProfileRefPtr profile(new NiceMock<MockProfile>(&manager_));
   service_->set_profile(profile);
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;

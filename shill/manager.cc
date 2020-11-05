@@ -890,6 +890,19 @@ map<RpcIdentifier, string> Manager::GetLoadableProfileEntriesForService(
 }
 
 ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
+    const std::string& entry_name, Error* error) {
+  for (const auto& service : services_) {
+    if (service->GetStorageIdentifier() == entry_name) {
+      return service;
+    }
+  }
+
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
+                        "service not found");
+  return nullptr;
+}
+
+ServiceRefPtr Manager::GetServiceWithStorageIdentifierFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
   for (const auto& service : services_) {
     if (service->profile().get() == profile.get() &&
@@ -900,6 +913,15 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
 
   SLOG(this, 2) << "Entry " << entry_name
                 << " is not registered in the manager";
+  return nullptr;
+}
+
+ServiceRefPtr Manager::GetServiceWithRpcIdentifier(const RpcIdentifier& id) {
+  for (const auto& service : services_) {
+    if (service->GetRpcIdentifier() == id) {
+      return service;
+    }
+  }
   return nullptr;
 }
 

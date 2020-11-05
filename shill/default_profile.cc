@@ -31,8 +31,6 @@ const char kStorageOfflineMode[] = "OfflineMode";
 // static
 const char DefaultProfile::kDefaultId[] = "default";
 // static
-const char DefaultProfile::kStorageId[] = "global";
-// static
 const char DefaultProfile::kStorageArpGateway[] = "ArpGateway";
 // static
 const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";

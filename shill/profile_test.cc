@@ -434,8 +434,8 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
   // Service entry already registered with the manager, the registered service
   // is returned.
   scoped_refptr<MockService> registered_service = CreateMockService();
-  EXPECT_CALL(*manager,
-              GetServiceWithStorageIdentifier(profile_, kEntryName, _))
+  EXPECT_CALL(*manager, GetServiceWithStorageIdentifierFromProfile(
+                            profile_, kEntryName, _))
       .WillOnce(Return(registered_service));
   {
     Error error;
@@ -448,8 +448,8 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
   // Service entry not registered with the manager, a temporary service is
   // created/returned.
   scoped_refptr<MockService> temporary_service = CreateMockService();
-  EXPECT_CALL(*manager,
-              GetServiceWithStorageIdentifier(profile_, kEntryName, _))
+  EXPECT_CALL(*manager, GetServiceWithStorageIdentifierFromProfile(
+                            profile_, kEntryName, _))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*manager,
               CreateTemporaryServiceFromProfile(profile_, kEntryName, _))

@@ -394,6 +394,8 @@ const char kEntriesProperty[] = "Entries";
 // kNameProperty: Defined above for Service.
 // kServicesProperty: Defined above for Manager.
 const char kUserHashProperty[] = "UserHash";
+const char kAlwaysOnVpnModeProperty[] = "AlwaysOnVpnMode";
+const char kAlwaysOnVpnServiceProperty[] = "AlwaysOnVpnService";
 
 // WiFi Service VendorInformation dictionary keys.
 const char kVendorOUIListProperty[] = "OUIList";

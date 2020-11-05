@@ -78,7 +78,7 @@ class MockManager : public Manager {
               (override));
   MOCK_METHOD(ServiceRefPtr, GetDefaultService, (), (const, override));
   MOCK_METHOD(ServiceRefPtr,
-              GetServiceWithStorageIdentifier,
+              GetServiceWithStorageIdentifierFromProfile,
               (const ProfileRefPtr&, const std::string&, Error*),
               (override));
   MOCK_METHOD(ServiceRefPtr,
