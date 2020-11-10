@@ -83,8 +83,7 @@ MountError UserSession::MountVault(const Credentials& credentials,
   SetCredentials(credentials, vk->GetLegacyIndex());
   UpdateActivityTimestamp(0);
 
-  PrepareWebAuthnSecret(obfuscated_username_, fs_keyset.Key().fek,
-                        fs_keyset.Key().fnek);
+  PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
   return code;
 }
@@ -114,8 +113,7 @@ MountError UserSession::MountVault(AuthSession* auth_session,
   SetCredentials(auth_session);
   UpdateActivityTimestamp(0);
 
-  PrepareWebAuthnSecret(obfuscated_username_, fs_keyset.Key().fek,
-                        fs_keyset.Key().fnek);
+  PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
   return code;
 }
@@ -150,8 +148,7 @@ base::Value UserSession::GetStatus() const {
   return mount_->GetStatus(key_index_);
 }
 
-void UserSession::PrepareWebAuthnSecret(const std::string& obfuscated_username,
-                                        const brillo::SecureBlob& fek,
+void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                                         const brillo::SecureBlob& fnek) {
   // This WebAuthn secret can be rederived upon in-session user auth success
   // since they will unlock the vault keyset.

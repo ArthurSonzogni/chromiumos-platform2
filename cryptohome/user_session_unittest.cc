@@ -37,6 +37,7 @@ namespace {
 
 constexpr char kUser0[] = "First User";
 constexpr char kUserPassword0[] = "user0_pass";
+constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 
 }  // namespace
 
@@ -164,6 +165,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
       keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
   const int64_t ts1 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts1, kTs1);
+  EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
 
   // SETUP
 
@@ -291,6 +293,7 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   vk0 = keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
   const int64_t ts3 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts3, ts2);
+  EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
 }
 
 // Fail to mount because vault doesn't exist and creation is disaalowed.
@@ -310,6 +313,78 @@ TEST_F(UserSessionTest, MountVaultNoExistNoCreate) {
   EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
   EXPECT_FALSE(session_->VerifyCredentials(users_[0].credentials));
   EXPECT_FALSE(keyset_management_->AreCredentialsValid(users_[0].credentials));
+  EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
+}
+
+// WebAuthn secret is cleared after read once.
+TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
+  // SETUP
+
+  Mount::MountArgs mount_args_create;
+  // Test with ecryptfs since it has a simpler existence check.
+  mount_args_create.create_as_ecryptfs = true;
+  mount_args_create.create_if_missing = true;
+
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _,
+                              MountArgsEqual(mount_args_create), true, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
+
+  ASSERT_EQ(MOUNT_ERROR_NONE,
+            session_->MountVault(users_[0].credentials, mount_args_create));
+
+  MountError code = MOUNT_ERROR_NONE;
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->LoadUnwrappedKeyset(users_[0].credentials, &code);
+  EXPECT_EQ(code, MOUNT_ERROR_NONE);
+  EXPECT_NE(vk, nullptr);
+  FileSystemKeyset fs_keyset(*vk);
+  const std::string message(kWebAuthnSecretHmacMessage);
+  auto expected_webauthn_secret = std::make_unique<brillo::SecureBlob>(
+      CryptoLib::HmacSha256(brillo::SecureBlob::Combine(fs_keyset.Key().fnek,
+                                                        fs_keyset.Key().fek),
+                            brillo::Blob(message.cbegin(), message.cend())));
+  EXPECT_NE(expected_webauthn_secret, nullptr);
+
+  // TEST
+
+  std::unique_ptr<brillo::SecureBlob> actual_webauthn_secret =
+      session_->GetWebAuthnSecret();
+  EXPECT_NE(actual_webauthn_secret, nullptr);
+  EXPECT_EQ(*actual_webauthn_secret, *expected_webauthn_secret);
+
+  // VERIFY
+  // The second read should get nothing.
+
+  EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
+}
+
+// WebAuthn secret is cleared after timeout.
+TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
+  // SETUP
+
+  Mount::MountArgs mount_args_create;
+  // Test with ecryptfs since it has a simpler existence check.
+  mount_args_create.create_as_ecryptfs = true;
+  mount_args_create.create_if_missing = true;
+
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _,
+                              MountArgsEqual(mount_args_create), true, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
+
+  ASSERT_EQ(MOUNT_ERROR_NONE,
+            session_->MountVault(users_[0].credentials, mount_args_create));
+
+  // TEST
+
+  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(5));
+
+  // VERIFY
+
+  EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
 }
 
 class UserSessionReAuthTest : public ::testing::Test {

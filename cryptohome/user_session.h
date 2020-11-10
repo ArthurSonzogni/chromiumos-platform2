@@ -94,8 +94,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
  private:
   // Computes a public derivative from |fek| and |fnek| for u2fd to fetch.
-  void PrepareWebAuthnSecret(const std::string& obfuscated_username,
-                             const brillo::SecureBlob& fek,
+  void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                              const brillo::SecureBlob& fnek);
 
   // Clears the WebAuthn secret if it's not read yet.
