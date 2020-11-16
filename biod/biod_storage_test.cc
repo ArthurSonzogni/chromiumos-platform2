@@ -5,6 +5,7 @@
 #include "biod/biod_storage.h"
 
 #include <algorithm>
+#include <memory>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -106,9 +107,7 @@ class BiodStorageBaseTest : public ::testing::Test {
   BiodStorageBaseTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     root_path_ = temp_dir_.GetPath().AppendASCII("biod_storage_unittest_root");
-    biod_storage_ = std::make_unique<BiodStorage>(
-        kBiometricsManagerName,
-        base::Bind(&BiodStorageBaseTest::LoadRecord, base::Unretained(this)));
+    biod_storage_ = std::make_unique<BiodStorage>(kBiometricsManagerName);
     // Since there is no session manager, allow accesses by default.
     biod_storage_->set_allow_access(true);
     biod_storage_->SetRootPathForTesting(root_path_);
@@ -135,24 +134,6 @@ class BiodStorageBaseTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath root_path_;
   std::unique_ptr<BiodStorage> biod_storage_;
-  std::vector<TestRecord> records_;
-
- private:
-  // LoadRecord is a callback passed to biod_storage_. It gets called when
-  // biod_storage_ reads a record from storage. It loads the new record into
-  // records_.
-  bool LoadRecord(int record_format_version,
-                  const std::string& user_id,
-                  const std::string& label,
-                  const std::string& record_id,
-                  const std::vector<uint8_t>& validation_val,
-                  const base::Value& data_value) {
-    std::string data;
-    data_value.GetAsString(&data);
-    records_.push_back(
-        TestRecord(record_id, user_id, label, validation_val, data));
-    return true;
-  }
 };
 
 class BiodStorageTest : public BiodStorageBaseTest,
@@ -185,9 +166,19 @@ TEST_P(BiodStorageTest, WriteAndReadRecords) {
 
   // Read the record.
   std::unordered_set<std::string> user_ids({kUserId1, kUserId2});
-  EXPECT_TRUE(biod_storage_->ReadRecords(user_ids));
+  auto read_result = biod_storage_->ReadRecords(user_ids);
+  EXPECT_TRUE(read_result.invalid_records.empty());
+
+  std::vector<TestRecord> records;
+  for (const auto& record : read_result.valid_records) {
+    records.emplace_back(
+        TestRecord(record.metadata.record_id, record.metadata.user_id,
+                   record.metadata.label, record.metadata.validation_val,
+                   std::string(record.data.cbegin(), record.data.cend())));
+  }
+  EXPECT_EQ(records.size(), kRecords.size());
   EXPECT_TRUE(
-      std::is_permutation(kRecords.begin(), kRecords.end(), records_.begin()));
+      std::is_permutation(kRecords.begin(), kRecords.end(), records.begin()));
 }
 
 TEST_F(BiodStorageBaseTest, WriteRecord_InvalidAbsolutePath) {
@@ -274,18 +265,22 @@ TEST_P(BiodStorageTest, DeleteRecord) {
 
   // Check this record is properly written.
   std::unordered_set<std::string> user_ids({kUserId1});
-  EXPECT_TRUE(biod_storage_->ReadRecords(user_ids));
-  ASSERT_FALSE(records_.empty());
-  ASSERT_EQ(1u, records_.size());
-  EXPECT_EQ(records_[0], kRecord);
-
-  records_.clear();
+  auto read_result = biod_storage_->ReadRecords(user_ids);
+  EXPECT_TRUE(read_result.invalid_records.empty());
+  EXPECT_EQ(read_result.valid_records.size(), 1);
+  const auto& record = read_result.valid_records[0];
+  auto test_record =
+      TestRecord(record.metadata.record_id, record.metadata.user_id,
+                 record.metadata.label, record.metadata.validation_val,
+                 std::string(record.data.cbegin(), record.data.cend()));
+  EXPECT_EQ(test_record, kRecord);
 
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
 
   // Check this record is properly deleted.
-  EXPECT_TRUE(biod_storage_->ReadRecords(user_ids));
-  EXPECT_TRUE(records_.empty());
+  read_result = biod_storage_->ReadRecords(user_ids);
+  EXPECT_TRUE(read_result.valid_records.empty());
+  EXPECT_TRUE(read_result.invalid_records.empty());
 }
 
 TEST_F(BiodStorageBaseTest, GenerateNewRecordId) {

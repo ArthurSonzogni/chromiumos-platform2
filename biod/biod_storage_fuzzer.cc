@@ -56,17 +56,6 @@ class TestRecord : public biod::BiometricsManager::Record {
 
 static std::vector<TestRecord> records;
 
-static bool LoadRecord(int record_format_version,
-                       const std::string& user_id,
-                       const std::string& label,
-                       const std::string& record_id,
-                       const std::vector<uint8_t>& validation_val,
-                       const base::Value& data_value) {
-  records.push_back(TestRecord(record_id, user_id, label, validation_val,
-                               data_value.GetBlob()));
-  return true;
-}
-
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   int MAX_LEN = 255;
@@ -93,8 +82,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   else
     biod_data = data_provider.ConsumeRemainingBytes<uint8_t>();
 
-  biod::BiodStorage biod_storage =
-      biod::BiodStorage("BiometricsManager", base::Bind(&LoadRecord));
+  biod::BiodStorage biod_storage = biod::BiodStorage("BiometricsManager");
   biod_storage.set_allow_access(true);
 
   auto record = std::make_unique<TestRecord>(id, user_id, label, validation_val,
@@ -104,8 +92,15 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   biod_storage.SetRootPathForTesting(root_path);
   bool status =
       biod_storage.WriteRecord(*record, base::Value(record->GetData()));
-  if (status)
-    status = biod_storage.ReadRecordsForSingleUser(user_id);
+  if (status) {
+    auto records_result = biod_storage.ReadRecordsForSingleUser(user_id);
+    for (const auto& r : records_result.valid_records) {
+      std::vector<uint8_t> record_data(r.data.cbegin(), r.data.cend());
+      records.emplace_back(r.metadata.record_id, r.metadata.user_id,
+                           r.metadata.label, r.metadata.validation_val,
+                           record_data);
+    }
+  }
 
   return 0;
 }

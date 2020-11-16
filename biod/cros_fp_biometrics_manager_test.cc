@@ -139,10 +139,9 @@ class CrosFpBiometricsManagerPeer {
                 const std::string& user_id,
                 const std::string& label,
                 const std::vector<uint8_t>& validation_value) {
-    CrosFpBiometricsManager::InternalRecord internal_record = {
-        record_format_version, record_id, user_id, label, validation_value};
-    cros_fp_biometrics_manager_->records_.emplace_back(
-        std::move(internal_record));
+    BiodStorage::RecordMetadata record = {record_format_version, record_id,
+                                          user_id, label, validation_value};
+    cros_fp_biometrics_manager_->records_.emplace_back(std::move(record));
     return cros_fp_biometrics_manager_->records_.size() - 1;
   }
 

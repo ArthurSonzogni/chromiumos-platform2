@@ -74,14 +74,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   using SessionAction = base::Callback<void(const uint32_t event)>;
 
-  struct InternalRecord {
-    int record_format_version;
-    std::string record_id;
-    std::string user_id;
-    std::string label;
-    std::vector<uint8_t> validation_val;
-  };
-
   class Record : public BiometricsManager::Record {
    public:
     Record(const base::WeakPtr<CrosFpBiometricsManager>& biometrics_manager,
@@ -112,14 +104,15 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   // Request an action from the Fingerprint MCU and set the appropriate callback
   // when the event with the result will arrive.
-  bool RequestEnrollImage(InternalRecord record);
-  bool RequestEnrollFingerUp(InternalRecord record);
+  bool RequestEnrollImage(BiodStorage::RecordMetadata record);
+  bool RequestEnrollFingerUp(BiodStorage::RecordMetadata record);
   bool RequestMatch(int attempt = 0);
   bool RequestMatchFingerUp();
 
   // Actions taken when the corresponding Fingerprint MKBP events happen.
-  void DoEnrollImageEvent(InternalRecord record, uint32_t event);
-  void DoEnrollFingerUpEvent(InternalRecord record, uint32_t event);
+  void DoEnrollImageEvent(BiodStorage::RecordMetadata record, uint32_t event);
+  void DoEnrollFingerUpEvent(BiodStorage::RecordMetadata record,
+                             uint32_t event);
   void DoMatchEvent(int attempt, uint32_t event);
   void DoMatchFingerUpEvent(uint32_t event);
   bool ValidationValueIsCorrect(uint32_t match_idx);
@@ -130,12 +123,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   void OnTaskComplete();
 
-  bool LoadRecord(int record_format_version,
-                  const std::string& user_id,
-                  const std::string& label,
-                  const std::string& record_id,
-                  const std::vector<uint8_t>& validation_val,
-                  const base::Value& data);
+  bool LoadRecord(const BiodStorage::Record record);
   bool WriteRecord(const BiometricsManager::Record& record,
                    uint8_t* tmpl_data,
                    size_t tmpl_size);
@@ -151,7 +139,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   SessionAction next_session_action_;
 
   // This list of records should be matching the templates loaded on the MCU.
-  std::vector<InternalRecord> records_;
+  std::vector<BiodStorage::RecordMetadata> records_;
 
   // Set of templates that came with a wrong validation value in matching.
   std::unordered_set<uint32_t> suspicious_templates_;

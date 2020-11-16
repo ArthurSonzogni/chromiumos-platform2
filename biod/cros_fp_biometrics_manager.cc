@@ -129,13 +129,12 @@ bool CrosFpBiometricsManager::Record::Remove() {
   if (index_ >= biometrics_manager_->records_.size())
     return false;
 
-  std::vector<InternalRecord>::iterator record =
-      biometrics_manager_->records_.begin() + index_;
-  std::string user_id = record->user_id;
+  const auto& record = biometrics_manager_->records_[index_];
+  std::string user_id = record.user_id;
 
   // TODO(mqg): only delete record if user_id is primary user.
   if (!biometrics_manager_->biod_storage_.DeleteRecord(user_id,
-                                                       record->record_id))
+                                                       record.record_id))
     return false;
 
   // We cannot remove only one record if we want to stay in sync with the MCU,
@@ -149,7 +148,11 @@ bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
   records_.clear();
   suspicious_templates_.clear();
   cros_dev_->SetContext(user_id);
-  return biod_storage_.ReadRecordsForSingleUser(user_id);
+  auto result = biod_storage_.ReadRecordsForSingleUser(user_id);
+  for (const auto& record : result.valid_records) {
+    LoadRecord(std::move(record));
+  }
+  return result.invalid_records.empty();
 }
 
 BiometricType CrosFpBiometricsManager::GetType() {
@@ -171,7 +174,7 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
   }
 
   std::vector<uint8_t> validation_val;
-  if (!RequestEnrollImage(InternalRecord{
+  if (!RequestEnrollImage(BiodStorage::RecordMetadata{
           kRecordFormatVersion, biod_storage_.GenerateNewRecordId(),
           std::move(user_id), std::move(label), std::move(validation_val)}))
     return BiometricsManager::EnrollSession();
@@ -222,7 +225,11 @@ void CrosFpBiometricsManager::RemoveRecordsFromMemory() {
 bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
     const std::string& user_id) {
   cros_dev_->SetContext(user_id);
-  return biod_storage_.ReadRecordsForSingleUser(user_id);
+  auto result = biod_storage_.ReadRecordsForSingleUser(user_id);
+  for (const auto& record : result.valid_records) {
+    LoadRecord(record);
+  }
+  return result.invalid_records.empty();
 }
 
 void CrosFpBiometricsManager::SetEnrollScanDoneHandler(
@@ -319,9 +326,7 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
       session_weak_factory_(this),
       weak_factory_(this),
       power_button_filter_(std::move(power_button_filter)),
-      biod_storage_(kCrosFpBiometricsManagerName,
-                    base::Bind(&CrosFpBiometricsManager::LoadRecord,
-                               base::Unretained(this))),
+      biod_storage_(kCrosFpBiometricsManagerName),
       use_positive_match_secret_(false),
       maintenance_timer_(std::make_unique<base::RepeatingTimer>()) {
   cros_dev_->SetMkbpEventCallback(base::Bind(
@@ -361,7 +366,8 @@ void CrosFpBiometricsManager::OnMkbpEvent(uint32_t event) {
     next_session_action_.Run(event);
 }
 
-bool CrosFpBiometricsManager::RequestEnrollImage(InternalRecord record) {
+bool CrosFpBiometricsManager::RequestEnrollImage(
+    BiodStorage::RecordMetadata record) {
   next_session_action_ =
       base::Bind(&CrosFpBiometricsManager::DoEnrollImageEvent,
                  base::Unretained(this), std::move(record));
@@ -373,7 +379,8 @@ bool CrosFpBiometricsManager::RequestEnrollImage(InternalRecord record) {
   return true;
 }
 
-bool CrosFpBiometricsManager::RequestEnrollFingerUp(InternalRecord record) {
+bool CrosFpBiometricsManager::RequestEnrollFingerUp(
+    BiodStorage::RecordMetadata record) {
   next_session_action_ =
       base::Bind(&CrosFpBiometricsManager::DoEnrollFingerUpEvent,
                  base::Unretained(this), std::move(record));
@@ -407,8 +414,8 @@ bool CrosFpBiometricsManager::RequestMatchFingerUp() {
   return true;
 }
 
-void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
-                                                 uint32_t event) {
+void CrosFpBiometricsManager::DoEnrollImageEvent(
+    BiodStorage::RecordMetadata record, uint32_t event) {
   if (!(event & EC_MKBP_FP_ENROLL)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
     // Continue waiting for the proper event, do not abort session.
@@ -496,8 +503,8 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
   OnEnrollScanDone(ScanResult::SCAN_RESULT_SUCCESS, enroll_status);
 }
 
-void CrosFpBiometricsManager::DoEnrollFingerUpEvent(InternalRecord record,
-                                                    uint32_t event) {
+void CrosFpBiometricsManager::DoEnrollFingerUpEvent(
+    BiodStorage::RecordMetadata record, uint32_t event) {
   if (!(event & EC_MKBP_FP_FINGER_UP)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
     // Continue waiting for the proper event, do not abort session.
@@ -717,30 +724,21 @@ void CrosFpBiometricsManager::OnTaskComplete() {
   next_session_action_ = SessionAction();
 }
 
-bool CrosFpBiometricsManager::LoadRecord(
-    int record_format_version,
-    const std::string& user_id,
-    const std::string& label,
-    const std::string& record_id,
-    const std::vector<uint8_t>& validation_val,
-    const base::Value& data) {
-  std::string tmpl_data_base64;
-  if (!data.GetAsString(&tmpl_data_base64)) {
-    LOG(ERROR) << "Cannot load data string from record " << record_id << ".";
-    return false;
-  }
+bool CrosFpBiometricsManager::LoadRecord(const BiodStorage::Record record) {
+  std::string tmpl_data_base64(record.data.cbegin(), record.data.cend());
 
   base::StringPiece tmpl_data_base64_sp(tmpl_data_base64);
   std::string tmpl_data_str;
   base::Base64Decode(tmpl_data_base64_sp, &tmpl_data_str);
 
   if (records_.size() >= cros_dev_->MaxTemplateCount()) {
-    LOG(ERROR) << "No space to upload template from " << record_id << ".";
+    LOG(ERROR) << "No space to upload template from "
+               << record.metadata.record_id << ".";
     return false;
   }
 
-  biod_metrics_->SendRecordFormatVersion(record_format_version);
-  LOG(INFO) << "Upload record " << record_id;
+  biod_metrics_->SendRecordFormatVersion(record.metadata.record_format_version);
+  LOG(INFO) << "Upload record " << record.metadata.record_id;
   VendorTemplate tmpl(tmpl_data_str.begin(), tmpl_data_str.end());
   auto* metadata =
       reinterpret_cast<const ec_fp_template_encryption_metadata*>(tmpl.data());
@@ -748,17 +746,17 @@ bool CrosFpBiometricsManager::LoadRecord(
     LOG(ERROR) << "Version mismatch between template ("
                << metadata->struct_version << ") and hardware ("
                << cros_dev_->TemplateVersion() << ")";
-    biod_storage_.DeleteRecord(user_id, record_id);
+    biod_storage_.DeleteRecord(record.metadata.user_id,
+                               record.metadata.record_id);
     return false;
   }
   if (!cros_dev_->UploadTemplate(tmpl)) {
-    LOG(ERROR) << "Cannot send template to the MCU from " << record_id << ".";
+    LOG(ERROR) << "Cannot send template to the MCU from "
+               << record.metadata.record_id << ".";
     return false;
   }
 
-  InternalRecord internal_record = {record_format_version, record_id, user_id,
-                                    label, validation_val};
-  records_.emplace_back(std::move(internal_record));
+  records_.emplace_back(std::move(record.metadata));
   return true;
 }
 
