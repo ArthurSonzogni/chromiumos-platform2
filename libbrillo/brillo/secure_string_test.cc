@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstring>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -28,24 +29,63 @@ TEST(SecureClearBytes, SecureClearBytes) {
   EXPECT_EQ(input, std::vector<uint8_t>({0x00, 0x00, 0x00}));
 }
 
-TEST(SecureClear, SecureClearVector) {
+TEST(SecureClearContainer, SecureClearVector) {
   std::vector<uint8_t> input = {0xFF, 0xFF, 0xFF};
-  SecureClear(input);
+  SecureClearContainer(input);
   EXPECT_EQ(input, std::vector<uint8_t>({0x00, 0x00, 0x00}));
 }
 
-TEST(SecureClear, SecureClearArray) {
+TEST(SecureClearContainer, SecureClearVectorUint16) {
+  std::vector<uint16_t> input = {0xFFFF, 0xFFFF, 0xFFFF};
+  SecureClearContainer(input);
+  EXPECT_EQ(input, std::vector<uint16_t>({0x0000, 0x0000, 0x0000}));
+}
+
+TEST(SecureClearContainer, SecureClearArray) {
   std::array<uint8_t, 3> input = {0xFF, 0xFF, 0xFF};
-  SecureClear(input);
+  SecureClearContainer(input);
   EXPECT_EQ(input, (std::array<uint8_t, 3>{0x00, 0x00, 0x00}));
 }
 
-TEST(SecureClear, SecureClearString) {
+TEST(SecureClearContainer, SecureClearCStyleArray) {
+  uint8_t input[3] = {0xFF, 0xFF, 0xFF};
+  constexpr uint8_t kExpected[3] = {0x00, 0x00, 0x00};
+  SecureClearContainer(input);
+  for (int i = 0; i < sizeof(kExpected); i++) {
+    EXPECT_EQ(input[i], kExpected[i]);
+  }
+}
+
+TEST(SecureClearContainer, SecureClearString) {
   std::string input = "abc";
   EXPECT_EQ(input.size(), 3);
-  SecureClear(input);
+  SecureClearContainer(input);
   // string has three NULs (plus terminating NUL)
   EXPECT_EQ(input, std::string({0, 0, 0}));
+}
+
+TEST(SecureClearObject, SecureClearObject) {
+  struct TestObj {
+    int a = 0xFF;
+    int b = 0xFF;
+  };
+
+  struct TestObj input;
+  SecureClearObject(input);
+
+  TestObj kExpected;
+  memset(&kExpected, 0, sizeof(kExpected));
+
+  EXPECT_EQ(memcmp(&kExpected, &input, sizeof(kExpected)), 0);
+}
+
+TEST(SecureClearObject, SecureClearScalarObject) {
+  int scalar = std::numeric_limits<int>::max();
+  constexpr int kExpected = 0;
+
+  SecureClearObject(scalar);
+
+  EXPECT_EQ(scalar, kExpected);
 }
 
 TEST(SecureMemcmp, Zero_Size) {

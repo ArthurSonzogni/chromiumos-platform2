@@ -6,6 +6,8 @@
 #define LIBBRILLO_BRILLO_SECURE_STRING_H_
 
 #include <cstddef>
+#include <memory>
+#include <type_traits>
 
 #include <base/check.h>
 #include <brillo/asan.h>
@@ -32,11 +34,26 @@ namespace brillo {
 // Since this is intentional, disable address sanitizer from analyzing it.
 BRILLO_EXPORT BRILLO_DISABLE_ASAN void SecureClearBytes(void* v, size_t n);
 
-// SecureClear overload that works with containers (vector, array, etc.) and
-// strings.
+// Variant of SecureClearBytes that works with contiguous containers (vector,
+// array, etc.), strings, and c-style arrays.
+template <typename C>
+BRILLO_EXPORT void SecureClearContainer(C& v) {  // NOLINT(runtime/references)
+  using T = std::remove_reference_t<decltype(*std::data(v))>;
+  static_assert(std::is_trivially_destructible_v<T>,
+                "Element type of the container must be trivially destructible");
+  SecureClearBytes(std::data(v), std::size(v) * sizeof(T));
+}
+
+// Variant of SecureClearBytes that works with generic (trivially destructible)
+// objects, including scalar objects such as "int", "int*", etc.
 template <typename T>
-BRILLO_EXPORT void SecureClear(T& v) {  // NOLINT(runtime/references)
-  SecureClearBytes(v.data(), v.size());
+BRILLO_EXPORT void SecureClearObject(T& v) {  // NOLINT(runtime/references)
+  static_assert(!std::is_pointer_v<T>,
+                "Pass the object to be cleared, not a pointer");
+  static_assert(!std::is_array_v<T>, "Use SecureClearContainer for arrays");
+  static_assert(std::is_trivially_destructible_v<T>,
+                "Object must be trivially destructible");
+  SecureClearBytes(std::addressof(v), sizeof(v));
 }
 
 // Compare [n] bytes starting at [s1] with [s2] and return 0 if they match,

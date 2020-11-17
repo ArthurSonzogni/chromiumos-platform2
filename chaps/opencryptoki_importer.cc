@@ -327,7 +327,7 @@ bool OpencryptokiImporter::DecryptMasterKey(const string& encrypted_master_key,
     return false;
   }
   *master_key = SecureBlob(master_key_str.begin(), master_key_str.end());
-  brillo::SecureClear(master_key_str);
+  brillo::SecureClearContainer(master_key_str);
   return true;
 }
 
