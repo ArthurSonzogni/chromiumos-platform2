@@ -758,6 +758,9 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_SIGNAL,
                    NestedData(kTypeU8, "NL80211_STA_INFO_SIGNAL", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_ACK_SIGNAL,
+                   NestedData(kTypeU8, "NL80211_STA_INFO_ACK_SIGNAL", false)));
   nested_template_.insert(AttrDataPair(NL80211_STA_INFO_TX_BITRATE, tx_rates));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_RX_PACKETS,
