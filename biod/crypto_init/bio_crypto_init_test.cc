@@ -13,10 +13,11 @@
 
 namespace biod {
 
+using ec::FpSeedCommand;
 using ::testing::Return;
 
 TEST(BioCryptoInit, CheckTemplateVersionCompatible) {
-  BioCryptoInit bio_crypto_init(std::make_unique<EcCommandFactory>());
+  BioCryptoInit bio_crypto_init(std::make_unique<ec::EcCommandFactory>());
   EXPECT_TRUE(bio_crypto_init.CrosFpTemplateVersionCompatible(3, 3));
   EXPECT_TRUE(bio_crypto_init.CrosFpTemplateVersionCompatible(4, 4));
   // Format version 2 should not be in the field.

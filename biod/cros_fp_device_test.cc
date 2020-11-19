@@ -4,13 +4,17 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libec/fingerprint/fp_info_command.h>
 
 #include "biod/cros_fp_device.h"
-#include "biod/fp_info_command.h"
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_device.h"
 #include "biod/mock_ec_command_factory.h"
 
+using ec::EcCommandFactoryInterface;
+using ec::EcCommandInterface;
+using ec::FpInfoCommand;
+using ec::FpMode;
 using testing::NiceMock;
 using testing::Return;
 

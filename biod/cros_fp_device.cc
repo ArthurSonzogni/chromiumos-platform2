@@ -18,12 +18,20 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/ec/cros_ec_dev.h>
+#include <libec/ec_command.h>
+#include <libec/ec_command_async.h>
+#include <libec/fingerprint/fp_context_command_factory.h>
+#include <libec/fingerprint/fp_frame_command.h>
+#include <libec/versions_command.h>
 
-#include "biod/ec_command.h"
-#include "biod/ec_command_async.h"
-#include "biod/fp_context_command_factory.h"
-#include "biod/fp_frame_command.h"
-#include "biod/versions_command.h"
+using ec::EcCmdVersionSupportStatus;
+using ec::EcCommand;
+using ec::EcCommandAsync;
+using ec::EmptyParam;
+using ec::FpFlashProtectCommand;
+using ec::FpMode;
+using ec::FpSensorErrors;
+using ec::VersionsCommand;
 
 namespace {
 
@@ -150,7 +158,7 @@ void CrosFpDevice::OnEventReadable() {
 
 bool CrosFpDevice::SetFpMode(const FpMode& mode) {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
-      EC_CMD_FP_MODE, kVersionZero, {.mode = mode.RawVal()});
+      EC_CMD_FP_MODE, ec::kVersionZero, {.mode = mode.RawVal()});
   bool ret = cmd.Run(cros_fd_.get());
   if (ret) {
     return true;
@@ -178,7 +186,7 @@ bool CrosFpDevice::SetFpMode(const FpMode& mode) {
 
 FpMode CrosFpDevice::GetFpMode() {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
-      EC_CMD_FP_MODE, kVersionZero,
+      EC_CMD_FP_MODE, ec::kVersionZero,
       {.mode = static_cast<uint32_t>(FP_MODE_DONT_CHANGE)});
   if (!cmd.Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to get FP mode from MCU.";
@@ -217,7 +225,7 @@ base::Optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
       cmd(EC_CMD_FP_READ_MATCH_SECRET, 0, {.fgr = index});
 
   if (!cmd.Run(cros_fd_.get()) &&
-      cmd.Result() == kEcCommandUninitializedResult) {
+      cmd.Result() == ec::kEcCommandUninitializedResult) {
     LOG(ERROR) << "Failed to run EC_CMD_FP_READ_MATCH_SECRET command.";
     return base::nullopt;
   }
@@ -557,7 +565,7 @@ std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
 bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
   union cmd_with_data {
     struct ec_params_fp_template req;
-    uint8_t _fullsize[kMaxPacketSize];
+    uint8_t _fullsize[ec::kMaxPacketSize];
   };
   EcCommand<union cmd_with_data, EmptyParam> cmd(EC_CMD_FP_TEMPLATE);
   struct ec_params_fp_template* req = &cmd.Req()->req;

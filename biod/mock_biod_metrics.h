@@ -33,8 +33,8 @@ class MockBiodMetrics : public BiodMetricsInterface {
               SendIgnoreMatchEventOnPowerButtonPress,
               (bool is_ignored),
               (override));
-  MOCK_METHOD(bool, SendResetContextMode, (const FpMode& mode), (override));
-  MOCK_METHOD(bool, SendSetContextMode, (const FpMode& mode), (override));
+  MOCK_METHOD(bool, SendResetContextMode, (const ec::FpMode& mode), (override));
+  MOCK_METHOD(bool, SendSetContextMode, (const ec::FpMode& mode), (override));
   MOCK_METHOD(bool, SendSetContextSuccess, (bool success), (override));
   MOCK_METHOD(bool,
               SendReadPositiveMatchSecretSuccess,

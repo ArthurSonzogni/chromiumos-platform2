@@ -12,15 +12,14 @@
 #include <base/files/scoped_file.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/ec/ec_commands.h>
-
-#include "biod/ec_command_factory.h"
+#include <libec/ec_command_factory.h>
 
 namespace biod {
 
 class BioCryptoInit {
  public:
   explicit BioCryptoInit(
-      std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+      std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory)
       : ec_command_factory_(std::move(ec_command_factory)) {}
   virtual ~BioCryptoInit() = default;
 
@@ -39,7 +38,7 @@ class BioCryptoInit {
                             ec_current_image expected_image);
 
  private:
-  std::unique_ptr<EcCommandFactoryInterface> ec_command_factory_;
+  std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory_;
   base::ScopedFD cros_fp_fd_;
 };
 

@@ -16,9 +16,11 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <libec/ec_command.h>
 
 #include "biod/cros_fp_device.h"
-#include "biod/ec_command.h"
+
+using ec::FpSeedCommand;
 
 namespace biod {
 

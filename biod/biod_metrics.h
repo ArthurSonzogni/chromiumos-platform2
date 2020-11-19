@@ -9,10 +9,10 @@
 #include <utility>
 
 #include <base/macros.h>
+#include <libec/fingerprint/fp_mode.h>
 #include <metrics/metrics_library.h>
 
 #include "biod/cros_fp_device_interface.h"
-#include "biod/fp_mode.h"
 #include "biod/updater/update_reason.h"
 
 namespace biod {
@@ -70,8 +70,8 @@ class BiodMetricsInterface {
                                    updater::UpdateReason reason,
                                    int overall_ms) = 0;
   virtual bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) = 0;
-  virtual bool SendResetContextMode(const FpMode& mode) = 0;
-  virtual bool SendSetContextMode(const FpMode& mode) = 0;
+  virtual bool SendResetContextMode(const ec::FpMode& mode) = 0;
+  virtual bool SendSetContextMode(const ec::FpMode& mode) = 0;
   virtual bool SendSetContextSuccess(bool success) = 0;
   virtual bool SendReadPositiveMatchSecretSuccess(bool success) = 0;
   virtual bool SendPositiveMatchSecretCorrect(bool correct) = 0;
@@ -106,10 +106,10 @@ class BiodMetrics : public BiodMetricsInterface {
   bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) override;
 
   // Was CrosFpDevice::ResetContext called while the FPMCU was in correct mode?
-  bool SendResetContextMode(const FpMode& mode) override;
+  bool SendResetContextMode(const ec::FpMode& mode) override;
 
   // What mode was FPMCU in when we set context?
-  bool SendSetContextMode(const FpMode& mode) override;
+  bool SendSetContextMode(const ec::FpMode& mode) override;
 
   // Did setting context succeed?
   bool SendSetContextSuccess(bool success) override;

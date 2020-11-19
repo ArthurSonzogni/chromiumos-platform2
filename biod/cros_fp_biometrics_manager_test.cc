@@ -44,8 +44,10 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
 
   void SetMkbpEventCallback(MkbpCallback callback) override {}
 
-  bool SetFpMode(const FpMode& mode) override { return false; }
-  FpMode GetFpMode() override { return FpMode(FpMode::Mode::kModeInvalid); }
+  bool SetFpMode(const ec::FpMode& mode) override { return false; }
+  ec::FpMode GetFpMode() override {
+    return ec::FpMode(ec::FpMode::Mode::kModeInvalid);
+  }
   base::Optional<FpStats> GetFpStats() override { return base::nullopt; }
   base::Optional<std::bitset<32>> GetDirtyMap() override {
     return base::nullopt;
@@ -75,9 +77,9 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
   int TemplateVersion() override { return FP_TEMPLATE_FORMAT_VERSION; }
   int DeadPixelCount() override { return 0; }
 
-  EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
-                                                  uint32_t ver) override {
-    return EcCmdVersionSupportStatus::UNSUPPORTED;
+  ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                      uint32_t ver) override {
+    return ec::EcCmdVersionSupportStatus::UNSUPPORTED;
   }
 
  private:
@@ -322,7 +324,7 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerFired) {
       .WillOnce(testing::Return(kNumDeadPixels));
 
   EXPECT_CALL(*mock_cros_dev_,
-              SetFpMode(FpMode(FpMode::Mode::kSensorMaintenance)))
+              SetFpMode(ec::FpMode(ec::FpMode::Mode::kSensorMaintenance)))
       .Times(1);
 
   mock_->OnMaintenanceTimerFiredDelegate();

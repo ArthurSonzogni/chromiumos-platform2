@@ -4,10 +4,10 @@
 
 #include "biod/biod_metrics.h"
 
+#include <libec/fingerprint/fp_sensor_errors.h>
 #include <metrics/metrics_library.h>
 
 #include "biod/biod_storage.h"
-#include "biod/fp_sensor_errors.h"
 #include "biod/updater/update_reason.h"
 #include "biod/utils.h"
 
@@ -161,12 +161,12 @@ void BiodMetrics::SetMetricsLibraryForTesting(
   metrics_lib_ = std::move(metrics_lib);
 }
 
-bool BiodMetrics::SendResetContextMode(const FpMode& mode) {
+bool BiodMetrics::SendResetContextMode(const ec::FpMode& mode) {
   return metrics_lib_->SendEnumToUMA(metrics::kResetContextMode, mode.EnumVal(),
                                      mode.MaxEnumVal());
 }
 
-bool BiodMetrics::SendSetContextMode(const FpMode& mode) {
+bool BiodMetrics::SendSetContextMode(const ec::FpMode& mode) {
   return metrics_lib_->SendEnumToUMA(metrics::kSetContextMode, mode.EnumVal(),
                                      mode.MaxEnumVal());
 }
@@ -177,7 +177,7 @@ bool BiodMetrics::SendSetContextSuccess(bool success) {
 
 bool BiodMetrics::SendDeadPixelCount(int num_dead_pixels) {
   constexpr int min_dead = 0;
-  constexpr int max_dead = kMaxDeadPixels;
+  constexpr int max_dead = ec::kMaxDeadPixels;
   return metrics_lib_->SendToUMA(metrics::kNumDeadPixels, num_dead_pixels,
                                  min_dead, max_dead,
                                  metrics::kDefaultNumBuckets);

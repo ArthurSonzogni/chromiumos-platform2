@@ -1,0 +1,86 @@
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/deps.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libec",
+    ":libec_pc",
+    ":libec_static",
+  ]
+  if (use.test) {
+    deps += [ ":libec_tests" ]
+  }
+}
+
+default_pkg_deps = [
+  "libbrillo",
+  "libchrome",
+]
+pkg_config("target_defaults_pkg_deps") {
+  pkg_deps = default_pkg_deps
+}
+
+libec_sources = [
+  "ec_command_factory.cc",
+  "fingerprint/fp_context_command.cc",
+  "fingerprint/fp_context_command_factory.cc",
+  "fingerprint/fp_flashprotect_command.cc",
+  "fingerprint/fp_frame_command.cc",
+  "fingerprint/fp_info_command.cc",
+  "fingerprint/fp_mode.cc",
+  "fingerprint/fp_seed_command.cc",
+  "versions_command.cc",
+]
+
+static_library("libec_static") {
+  configs += [ ":target_defaults_pkg_deps" ]
+  sources = libec_sources
+}
+
+shared_library("libec") {
+  configs += [ ":target_defaults_pkg_deps" ]
+  sources = libec_sources
+}
+
+if (use.test) {
+  executable("libec_tests") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults_pkg_deps",
+    ]
+    sources = [
+      "ec_command_async_test.cc",
+      "ec_command_test.cc",
+      "fingerprint/fp_context_command_factory_test.cc",
+      "fingerprint/fp_context_command_test.cc",
+      "fingerprint/fp_flashprotect_command_test.cc",
+      "fingerprint/fp_frame_command_test.cc",
+      "fingerprint/fp_info_command_test.cc",
+      "fingerprint/fp_mode_test.cc",
+      "fingerprint/fp_seed_command_test.cc",
+      "versions_command_test.cc",
+    ]
+    deps = [
+      ":libec_static",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [ "libchrome-test" ]
+  }
+}
+
+generate_pkg_config("libec_pc") {
+  name = "libec"
+  output_name = "libec"
+  description = "Chromium OS Embedded Controller Library"
+  version = "0.1"
+
+  # ec_command.h uses base/logging.h (and is a header-only class), so we need
+  # a direct dependency on libchrome.
+  requires = [ "libchrome" ]
+  requires_private = default_pkg_deps
+  libs = [ "-lec" ]
+}

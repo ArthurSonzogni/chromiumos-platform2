@@ -430,7 +430,7 @@ BiometricsDaemon::BiometricsDaemon() {
   auto cros_fp_bio = std::make_unique<CrosFpBiometricsManager>(
       PowerButtonFilter::Create(bus_),
       CrosFpDevice::Create(biod_metrics.get(),
-                           std::make_unique<EcCommandFactory>()),
+                           std::make_unique<ec::EcCommandFactory>()),
       std::move(biod_metrics));
   if (cros_fp_bio) {
     biometrics_managers_.emplace_back(

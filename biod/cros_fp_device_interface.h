@@ -13,9 +13,8 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/ec/ec_commands.h>
-
-#include "biod/ec_command.h"
-#include "biod/fp_mode.h"
+#include <libec/ec_command.h>
+#include <libec/fingerprint/fp_mode.h>
 
 /**
  * Though it's nice to have the template as a SecureVector, for some templates
@@ -49,11 +48,11 @@ class CrosFpDeviceInterface {
     uint32_t overall_ms = 0;
   };
 
-  virtual bool SetFpMode(const FpMode& mode) = 0;
+  virtual bool SetFpMode(const ec::FpMode& mode) = 0;
   /**
    * @return mode on success, FpMode(FpMode::Mode::kModeInvalid) on failure
    */
-  virtual FpMode GetFpMode() = 0;
+  virtual ec::FpMode GetFpMode() = 0;
   virtual base::Optional<FpStats> GetFpStats() = 0;
   virtual base::Optional<std::bitset<32>> GetDirtyMap() = 0;
   virtual bool SupportsPositiveMatchSecret() = 0;
@@ -73,8 +72,8 @@ class CrosFpDeviceInterface {
   virtual int TemplateVersion() = 0;
   virtual int DeadPixelCount() = 0;
 
-  virtual EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
-                                                          uint32_t ver) = 0;
+  virtual ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                              uint32_t ver) = 0;
 };
 
 }  // namespace biod

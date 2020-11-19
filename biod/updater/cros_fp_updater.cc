@@ -23,13 +23,13 @@
 #include <base/time/time.h>
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config_interface.h>
+#include <libec/ec_command.h>
 
 #include "biod/biod_config.h"
 #include "biod/biod_system.h"
 #include "biod/biod_version.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
-#include "biod/ec_command.h"
 #include "biod/updater/update_reason.h"
 #include "biod/updater/update_status.h"
 #include "biod/updater/update_utils.h"
@@ -115,8 +115,8 @@ bool CrosFpDeviceUpdate::IsFlashProtectEnabled(bool* status) const {
     return false;
   }
 
-  biod::EcCommand<struct ec_params_flash_protect,
-                  struct ec_response_flash_protect>
+  ec::EcCommand<struct ec_params_flash_protect,
+                struct ec_response_flash_protect>
       fp_cmd(EC_CMD_FLASH_PROTECT, EC_VER_FLASH_PROTECT);
   fp_cmd.Req()->mask = 0;
   fp_cmd.Req()->flags = 0;

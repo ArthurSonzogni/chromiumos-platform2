@@ -28,10 +28,10 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <libec/ec_command.h>
+#include <libec/fingerprint/fp_seed_command.h>
 
 #include "biod/biod_version.h"
-#include "biod/ec_command.h"
-#include "biod/fp_seed_command.h"
 
 namespace {
 constexpr int64_t kTimeoutSeconds = 30;
@@ -40,13 +40,13 @@ constexpr char kBioTpmSeedTmpFile[] = "/run/bio_crypto_init/seed";
 
 int ChildProcess(biod::BioCryptoInit* bio_crypto_init) {
   // The first thing we do is read the buffer, and delete the file.
-  brillo::SecureVector tpm_seed(biod::FpSeedCommand::kTpmSeedSize);
+  brillo::SecureVector tpm_seed(ec::FpSeedCommand::kTpmSeedSize);
   int bytes_read =
       base::ReadFile(base::FilePath(kBioTpmSeedTmpFile),
                      reinterpret_cast<char*>(tpm_seed.data()), tpm_seed.size());
   bio_crypto_init->NukeFile(base::FilePath(kBioTpmSeedTmpFile));
 
-  if (bytes_read != biod::FpSeedCommand::kTpmSeedSize) {
+  if (bytes_read != ec::FpSeedCommand::kTpmSeedSize) {
     LOG(ERROR) << "Failed to read TPM seed from tmpfile: " << bytes_read;
     return -1;
   }
@@ -93,8 +93,7 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "WARNING: The seccomp flag is enabled. Expect errors.";
   }
 
-  biod::BioCryptoInit bio_crypto_init(
-      std::make_unique<biod::EcCommandFactory>());
+  biod::BioCryptoInit bio_crypto_init(std::make_unique<ec::EcCommandFactory>());
 
   // We fork the process so that can we program the seed in the child, and
   // terminate it if it hangs.

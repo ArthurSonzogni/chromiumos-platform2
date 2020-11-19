@@ -13,12 +13,12 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/optional.h>
+#include <libec/ec_command_factory.h>
+#include <libec/fingerprint/fp_info_command.h>
+#include <libec/fingerprint/fp_mode.h>
 
 #include "biod/biod_metrics.h"
 #include "biod/cros_fp_device_interface.h"
-#include "biod/ec_command_factory.h"
-#include "biod/fp_info_command.h"
-#include "biod/fp_mode.h"
 #include "biod/uinput_device.h"
 
 namespace biod {
@@ -27,7 +27,7 @@ class CrosFpDevice : public CrosFpDeviceInterface {
  public:
   static std::unique_ptr<CrosFpDevice> Create(
       BiodMetricsInterface* biod_metrics,
-      std::unique_ptr<EcCommandFactoryInterface> ec_command_factory) {
+      std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory) {
     // Using new to access non-public constructor.
     // See https://abseil.io/tips/134.
     auto dev = base::WrapUnique(
@@ -51,8 +51,8 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   // CrosFpDeviceInterface overrides:
   ~CrosFpDevice() override;
 
-  bool SetFpMode(const FpMode& mode) override;
-  FpMode GetFpMode() override;
+  bool SetFpMode(const ec::FpMode& mode) override;
+  ec::FpMode GetFpMode() override;
   base::Optional<FpStats> GetFpStats() override;
   base::Optional<std::bitset<32>> GetDirtyMap() override;
   bool SupportsPositiveMatchSecret() override;
@@ -72,8 +72,8 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   int TemplateVersion() override;
   int DeadPixelCount() override;
 
-  EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
-                                                  uint32_t ver) override;
+  ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                      uint32_t ver) override;
 
   // Kernel device exposing the MCU command interface.
   static constexpr char kCrosFpPath[] = "/dev/cros_fp";
@@ -86,8 +86,9 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   static constexpr int kLastTemplate = -1;
 
  protected:
-  CrosFpDevice(BiodMetricsInterface* biod_metrics,
-               std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+  CrosFpDevice(
+      BiodMetricsInterface* biod_metrics,
+      std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory)
       : ec_command_factory_(std::move(ec_command_factory)),
         biod_metrics_(biod_metrics) {}
 
@@ -127,9 +128,9 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   base::ScopedFD cros_fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   EcProtocolInfo ec_protocol_info_;
-  std::unique_ptr<FpInfoCommand> info_;
+  std::unique_ptr<ec::FpInfoCommand> info_;
 
-  std::unique_ptr<EcCommandFactoryInterface> ec_command_factory_;
+  std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory_;
   MkbpCallback mkbp_event_;
   UinputDevice input_device_;
 

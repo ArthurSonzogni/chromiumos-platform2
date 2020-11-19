@@ -201,7 +201,8 @@ TEST_F(BiodMetricsTest, SendResetContextMode) {
               SendEnumToUMA(metrics::kResetContextMode,
                             kExpectedResetSensorEnum, kExpectedMaxEnum))
       .Times(1);
-  biod_metrics_.SendResetContextMode(FpMode(FpMode::Mode::kResetSensor));
+  biod_metrics_.SendResetContextMode(
+      ec::FpMode(ec::FpMode::Mode::kResetSensor));
   testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
 }
 

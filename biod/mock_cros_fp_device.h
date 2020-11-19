@@ -9,8 +9,9 @@
 #include <memory>
 #include <string>
 
+#include <libec/fingerprint/fp_mode.h>
+
 #include "biod/cros_fp_device_interface.h"
-#include "biod/fp_mode.h"
 
 namespace biod {
 
@@ -20,8 +21,8 @@ class MockCrosFpDevice : public CrosFpDeviceInterface {
   ~MockCrosFpDevice() override = default;
 
   MOCK_METHOD(void, SetMkbpEventCallback, (MkbpCallback), (override));
-  MOCK_METHOD(bool, SetFpMode, (const FpMode& mode), (override));
-  MOCK_METHOD(FpMode, GetFpMode, (), (override));
+  MOCK_METHOD(bool, SetFpMode, (const ec::FpMode& mode), (override));
+  MOCK_METHOD(ec::FpMode, GetFpMode, (), (override));
   MOCK_METHOD(base::Optional<FpStats>, GetFpStats, (), (override));
   MOCK_METHOD(base::Optional<std::bitset<32>>, GetDirtyMap, (), (override));
   MOCK_METHOD(std::unique_ptr<VendorTemplate>,
@@ -36,7 +37,7 @@ class MockCrosFpDevice : public CrosFpDeviceInterface {
   MOCK_METHOD(int, MaxTemplateCount, (), (override));
   MOCK_METHOD(int, TemplateVersion, (), (override));
   MOCK_METHOD(int, DeadPixelCount, (), (override));
-  MOCK_METHOD(EcCmdVersionSupportStatus,
+  MOCK_METHOD(ec::EcCmdVersionSupportStatus,
               EcCmdVersionSupported,
               (uint16_t cmd, uint32_t ver),
               (override));
