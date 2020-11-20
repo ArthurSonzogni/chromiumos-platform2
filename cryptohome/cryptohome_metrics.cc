@@ -91,6 +91,10 @@ constexpr char kRestoreSELinuxContextResultForHome[] =
     "Cryptohome.RestoreSELinuxContextResultForHome";
 constexpr char kRestoreSELinuxContextResultForShadow[] =
     "Cryptohome.RestoreSELinuxContextResultForShadow";
+constexpr char kCreateAuthBlockTypeHistogram[] =
+    "Cryptohome.CreateAuthBlockType";
+constexpr char kDeriveAuthBlockTypeHistogram[] =
+    "Cryptohome.DeriveAuthBlockType";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -577,6 +581,24 @@ void ReportInvalidateDirCryptoKeyResult(bool result) {
   }
 
   g_metrics->SendBoolToUMA(kInvalidateDirCryptoKeyResultHistogram, result);
+}
+
+void ReportCreateAuthBlock(AuthBlockType type) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kCreateAuthBlockTypeHistogram,
+                           static_cast<int>(type),
+                           static_cast<int>(AuthBlockType::kMaxValue));
+}
+
+void ReportDeriveAuthBlock(AuthBlockType type) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kDeriveAuthBlockTypeHistogram,
+                           static_cast<int>(type),
+                           static_cast<int>(AuthBlockType::kMaxValue));
 }
 
 }  // namespace cryptohome

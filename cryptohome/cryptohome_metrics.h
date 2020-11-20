@@ -391,6 +391,18 @@ enum class AttestationOpsStatus {
   kMaxValue
 };
 
+// List of all the possible auth block types. Used to construct the correct
+// histogram while logging to UMA.
+enum class AuthBlockType {
+  kPinWeaver = 0,
+  kChallengeCredential = 1,
+  kDoubleWrappedCompat = 2,
+  kTpmBoundToPcr = 3,
+  kTpmNotBoundToPcr = 4,
+  kLibScryptCompat = 5,
+  kMaxValue,
+};
+
 // Just to make sure I count correctly.
 static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 110,
               "DeprecatedApiEvent Enum miscounted");
@@ -595,6 +607,12 @@ void ReportRestoreSELinuxContextResultForShadowDir(bool success);
 // Reports the result of a RestoreSELinuxContexts operation for the bind mounted
 // directories under user home directory.
 void ReportRestoreSELinuxContextResultForHomeDir(bool success);
+
+// Reports which kinds of auth block we are used to derive.
+void ReportCreateAuthBlock(AuthBlockType type);
+
+// Reports which kinds of auth block we are used to derive.
+void ReportDeriveAuthBlock(AuthBlockType type);
 
 // Initialization helper.
 class ScopedMetricsInitializer {
