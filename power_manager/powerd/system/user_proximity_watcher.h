@@ -59,11 +59,15 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
   // Returns true on success.
   bool Init(PrefsInterface* prefs,
             UdevInterface* udev,
-            brillo::CrosConfigInterface* config);
+            brillo::CrosConfigInterface* config,
+            TabletMode tablet_mode);
 
   // UserProximityWatcherInterface implementation:
   void AddObserver(UserProximityObserver* observer) override;
   void RemoveObserver(UserProximityObserver* observer) override;
+
+  // Called when the tablet mode changes.
+  void HandleTabletModeChange(TabletMode mode) override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -79,6 +83,7 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
     int event_fd;
     // Bitwise combination of UserProximityObserver::SensorRole values
     uint32_t role;
+    std::string channel;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
   };
 
@@ -102,10 +107,24 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
                                 const std::string& postfix);
 
   // Configures the SAR sensor for usage based on values read from cros_config
-  bool ConfigureSarSensor(const std::string& syspath, uint32_t role);
+  bool ConfigureSarSensor(SensorInfo* sensor);
 
   // Configures the activity sensor to enable it.
   bool ConfigureActivitySensor(const std::string& syspath, uint32_t role);
+
+  // Compensates the sensor so that it works in a new configuration such
+  // as tablet mode or notebook mode.
+  void CompensateSensor(const SensorInfo& sensor);
+
+  // Gets IIO sensor enable paths
+  void GetIioEnablePath(const SensorInfo& sensor,
+                        std::string* either,
+                        std::string* falling,
+                        std::string* rising);
+  // Disables the sensor
+  bool DisableSensor(const SensorInfo& sensor);
+  // Enables the sensor
+  bool EnableSensor(const SensorInfo& sensor);
 
   // Opens a file descriptor suitable for listening to proximity events for
   // the sensor at |devlink|, and notifies registered observers that a new
@@ -120,6 +139,7 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
 
   OpenIioEventsFunc open_iio_events_func_;
 
+  TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
   UdevInterface* udev_ = nullptr;  // non-owned
   brillo::CrosConfigInterface* config_ = nullptr;  // non-owned
   base::ObserverList<UserProximityObserver> observers_;

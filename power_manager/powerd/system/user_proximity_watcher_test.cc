@@ -65,7 +65,8 @@ class TestObserver : public UserProximityObserver, public ActionRecorder {
 class UserProximityWatcherTest : public testing::Test {
  public:
   UserProximityWatcherTest()
-      : user_proximity_watcher_(std::make_unique<UserProximityWatcher>()) {
+      : user_proximity_watcher_(std::make_unique<UserProximityWatcher>()),
+        initial_tablet_mode_(TabletMode::UNSUPPORTED) {
     user_proximity_watcher_->set_open_iio_events_func_for_testing(base::Bind(
         &UserProximityWatcherTest::OpenTestIioFd, base::Unretained(this)));
   }
@@ -94,7 +95,8 @@ class UserProximityWatcherTest : public testing::Test {
         ADD_FAILURE() << "Unknown sensor type";
         return;
     }
-    CHECK(user_proximity_watcher_->Init(&prefs_, &udev_, config));
+    CHECK(user_proximity_watcher_->Init(&prefs_, &udev_, config,
+                                        initial_tablet_mode_));
     observer_.reset(
         new TestObserver(user_proximity_watcher_.get(), &loop_runner_));
   }
@@ -163,6 +165,7 @@ class UserProximityWatcherTest : public testing::Test {
   TestMainLoopRunner loop_runner_;
   std::unique_ptr<TestObserver> observer_;
   int open_sensor_count_ = 0;
+  TabletMode initial_tablet_mode_;
 };
 
 TEST_F(UserProximityWatcherTest, DetectUsableWifiDevice) {
@@ -436,6 +439,24 @@ TEST_F(UserProximityWatcherTest, SetProximityPeriodFalling) {
   ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
                                "events/thresh_falling_period", &attr));
   EXPECT_EQ("191", attr);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledAfterTabletModeChange) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "11");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr(
+      "/sys/mockproximity", "events/in_proximity11_thresh_either_en", &attr));
+  ASSERT_EQ("1", attr);
+
+  user_proximity_watcher_->HandleTabletModeChange(TabletMode::ON);
+  ASSERT_TRUE(udev_.GetSysattr(
+      "/sys/mockproximity", "events/in_proximity11_thresh_either_en", &attr));
+  EXPECT_EQ("1", attr);
 }
 
 }  // namespace

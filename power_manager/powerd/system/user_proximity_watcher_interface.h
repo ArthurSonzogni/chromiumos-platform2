@@ -26,6 +26,8 @@ class UserProximityWatcherInterface {
   virtual void AddObserver(UserProximityObserver* observer) = 0;
   virtual void RemoveObserver(UserProximityObserver* observer) = 0;
 
+  virtual void HandleTabletModeChange(TabletMode mode) = 0;
+
   // TODO(egranata): add querying mechanisms
 };
 

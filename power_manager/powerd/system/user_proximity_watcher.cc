@@ -75,7 +75,8 @@ UserProximityWatcher::~UserProximityWatcher() {
 
 bool UserProximityWatcher::Init(PrefsInterface* prefs,
                                 UdevInterface* udev,
-                                brillo::CrosConfigInterface* config) {
+                                brillo::CrosConfigInterface* config,
+                                TabletMode tablet_mode) {
   prefs->GetBool(kSetCellularTransmitPowerForProximityPref,
                  &use_proximity_for_cellular_);
   prefs->GetBool(kSetWifiTransmitPowerForProximityPref,
@@ -86,6 +87,7 @@ bool UserProximityWatcher::Init(PrefsInterface* prefs,
   prefs->GetBool(kSetWifiTransmitPowerForActivityProximityPref,
                  &use_activity_proximity_for_wifi_);
 
+  tablet_mode_ = tablet_mode;
   udev_ = udev;
   udev_->AddSubsystemObserver(kIioUdevSubsystem, this);
 
@@ -100,6 +102,76 @@ bool UserProximityWatcher::Init(PrefsInterface* prefs,
   for (auto const& iio_dev : iio_devices)
     OnNewUdevDevice(iio_dev);
   return true;
+}
+
+void UserProximityWatcher::HandleTabletModeChange(TabletMode mode) {
+  if (tablet_mode_ == mode)
+    return;
+
+  tablet_mode_ = mode;
+  for (auto const& sensor : sensors_) {
+    CompensateSensor(sensor.second);
+  }
+}
+
+void UserProximityWatcher::GetIioEnablePath(const SensorInfo& sensor,
+                                            std::string* either,
+                                            std::string* rising,
+                                            std::string* falling) {
+  const std::string& channel = sensor.channel;
+
+  *either = "events/in_proximity" + channel + "_thresh_either_en";
+  *rising = "events/in_proximity" + channel + "_thresh_rising_en";
+  *falling = "events/in_proximity" + channel + "_thresh_falling_en";
+}
+
+bool UserProximityWatcher::DisableSensor(const SensorInfo& sensor) {
+  const std::string& syspath = sensor.syspath;
+  std::string either, rising, falling;
+
+  GetIioEnablePath(sensor, &either, &rising, &falling);
+
+  if (udev_->SetSysattr(syspath, either, "0"))
+    return true;
+
+  if (!udev_->SetSysattr(syspath, rising, "0"))
+    return false;
+
+  if (!udev_->SetSysattr(syspath, falling, "0"))
+    return false;
+
+  return true;
+}
+
+bool UserProximityWatcher::EnableSensor(const SensorInfo& sensor) {
+  const std::string& syspath = sensor.syspath;
+  std::string either, rising, falling;
+
+  GetIioEnablePath(sensor, &either, &rising, &falling);
+
+  if (udev_->SetSysattr(syspath, either, "1"))
+    return true;
+
+  if (!udev_->SetSysattr(syspath, rising, "1"))
+    return false;
+
+  if (!udev_->SetSysattr(syspath, falling, "1"))
+    return false;
+
+  return true;
+}
+
+void UserProximityWatcher::CompensateSensor(const SensorInfo& sensor) {
+  LOG(INFO) << "Compensating proximity sensor";
+
+  if (!DisableSensor(sensor)) {
+    LOG(ERROR) << "Could not disable proximity sensor during compensation";
+    return;
+  }
+
+  if (!EnableSensor(sensor)) {
+    LOG(ERROR) << "Could not enable proximity sensor during compensation";
+  }
 }
 
 void UserProximityWatcher::AddObserver(UserProximityObserver* observer) {
@@ -268,8 +340,9 @@ bool UserProximityWatcher::SetIioRisingFallingValue(
   return true;
 }
 
-bool UserProximityWatcher::ConfigureSarSensor(const std::string& syspath,
-                                              uint32_t role) {
+bool UserProximityWatcher::ConfigureSarSensor(SensorInfo* sensor) {
+  const std::string& syspath = sensor->syspath;
+  uint32_t role = sensor->role;
   if (!config_) {
     /* Ignore on non-unibuild boards */
     LOG(INFO)
@@ -297,6 +370,8 @@ bool UserProximityWatcher::ConfigureSarSensor(const std::string& syspath,
         << "Could not get proximity sensor channel from cros_config. Ignoring";
     return true;
   }
+
+  sensor->channel = channel;
 
   std::string sampling_frequency;
   if (config_->GetString(config_path, "sampling-frequency",
@@ -333,16 +408,7 @@ bool UserProximityWatcher::ConfigureSarSensor(const std::string& syspath,
     return false;
   }
 
-  std::string enable_falling_path =
-      "events/in_proximity" + channel + "_thresh_falling_en";
-  std::string enable_rising_path =
-      "events/in_proximity" + channel + "_thresh_rising_en";
-  std::string enable_path =
-      "events/in_proximity" + channel + "_thresh_either_en";
-
-  if (!udev_->SetSysattr(syspath, enable_path, "1") &&
-      (!udev_->SetSysattr(syspath, enable_rising_path, "1") ||
-       !udev_->SetSysattr(syspath, enable_falling_path, "1"))) {
+  if (!EnableSensor(*sensor)) {
     LOG(ERROR) << "Could not enable proximity sensor";
     return false;
   }
@@ -371,9 +437,14 @@ bool UserProximityWatcher::OnSensorDetected(const SensorType type,
     return true;
   }
 
+  SensorInfo info;
+  info.syspath = syspath;
+  info.devlink = devlink;
+  info.role = role;
+
   switch (type) {
     case SensorType::SAR:
-      if (!ConfigureSarSensor(syspath, role)) {
+      if (!ConfigureSarSensor(&info)) {
         LOG(WARNING) << "Unable to configure sar sensor at " << devlink;
         return false;
       }
@@ -395,12 +466,7 @@ bool UserProximityWatcher::OnSensorDetected(const SensorType type,
     return false;
   }
 
-  SensorInfo info;
-  info.type = type;
-  info.syspath = syspath;
-  info.devlink = devlink;
   info.event_fd = event_fd;
-  info.role = role;
   info.controller = base::FileDescriptorWatcher::WatchReadable(
       event_fd,
       base::BindRepeating(&UserProximityWatcher::OnFileCanReadWithoutBlocking,

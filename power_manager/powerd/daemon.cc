@@ -435,8 +435,8 @@ void Daemon::Init() {
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
       base::FilePath(kPowerOverrideLockfileDir), {});
 
-  user_proximity_watcher_ =
-      delegate_->CreateUserProximityWatcher(prefs_.get(), udev_.get());
+  user_proximity_watcher_ = delegate_->CreateUserProximityWatcher(
+      prefs_.get(), udev_.get(), tablet_mode);
   user_proximity_handler_ = std::make_unique<policy::UserProximityHandler>();
   user_proximity_handler_->Init(user_proximity_watcher_.get(),
                                 wifi_controller_.get(),
@@ -577,6 +577,7 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
   input_device_controller_->SetTabletMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
+  user_proximity_watcher_->HandleTabletModeChange(mode);
   wifi_controller_->HandleTabletModeChange(mode);
   cellular_controller_->HandleTabletModeChange(mode);
 }

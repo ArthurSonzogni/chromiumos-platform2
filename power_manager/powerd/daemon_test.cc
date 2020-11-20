@@ -276,9 +276,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   }
   std::unique_ptr<system::UserProximityWatcherInterface>
   CreateUserProximityWatcher(PrefsInterface* prefs,
-                             system::UdevInterface* udev) override {
+                             system::UdevInterface* udev,
+                             TabletMode initial_tablet_mode) override {
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
+    EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);
     return std::move(passed_user_proximity_watcher_);
   }
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
@@ -478,6 +480,8 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   ASSERT_EQ(1, keyboard_backlight_controller_->tablet_mode_changes().size());
   EXPECT_EQ(TabletMode::ON,
             keyboard_backlight_controller_->tablet_mode_changes()[0]);
+  ASSERT_EQ(1, user_proximity_watcher_->tablet_mode_changes().size());
+  EXPECT_EQ(TabletMode::ON, user_proximity_watcher_->tablet_mode_changes()[0]);
 
   // Power source changes.
   system::PowerStatus status;
