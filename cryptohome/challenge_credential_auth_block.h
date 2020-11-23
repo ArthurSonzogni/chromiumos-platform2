@@ -11,7 +11,7 @@ namespace cryptohome {
 
 class ChallengeCredentialAuthBlock : public LibScryptCompatAuthBlock {
  public:
-  ChallengeCredentialAuthBlock() = default;
+  ChallengeCredentialAuthBlock();
   ~ChallengeCredentialAuthBlock() = default;
 
   base::Optional<AuthBlockState> Create(const AuthInput& user_input,

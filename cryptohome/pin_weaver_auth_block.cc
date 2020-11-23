@@ -4,6 +4,7 @@
 
 #include "cryptohome/pin_weaver_auth_block.h"
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
@@ -125,7 +126,9 @@ const struct {
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(LECredentialManager* le_manager,
                                        TpmInit* tpm_init)
-    : le_manager_(le_manager), tpm_init_(tpm_init) {
+    : AuthBlock(kLowEntropyCredential),
+      le_manager_(le_manager),
+      tpm_init_(tpm_init) {
   CHECK_NE(le_manager, nullptr);
   CHECK_NE(tpm_init, nullptr);
 }

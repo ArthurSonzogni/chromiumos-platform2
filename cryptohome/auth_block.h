@@ -13,6 +13,9 @@
 
 namespace cryptohome {
 
+// Defined in cryptohome_metrics.h
+enum DerivationType : int;
+
 struct AuthBlockState {
   base::Optional<SerializedVaultKeyset> vault_keyset;
 };
@@ -39,9 +42,16 @@ class AuthBlock {
                       KeyBlobs* key_blobs,
                       CryptoError* error) = 0;
 
+  DerivationType derivation_type() const { return derivation_type_; }
+
  protected:
   // This is a virtual interface that should not be directly constructed.
-  AuthBlock() = default;
+  explicit AuthBlock(DerivationType derivation_type)
+      : derivation_type_(derivation_type) {}
+
+ private:
+  // For UMA - keeps track of the encryption type used in Derive().
+  const DerivationType derivation_type_;
 };
 
 }  // namespace cryptohome

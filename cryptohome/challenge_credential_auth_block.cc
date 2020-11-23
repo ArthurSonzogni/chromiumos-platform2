@@ -4,10 +4,14 @@
 
 #include "cryptohome/challenge_credential_auth_block.h"
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 
 namespace cryptohome {
+
+ChallengeCredentialAuthBlock::ChallengeCredentialAuthBlock()
+    : LibScryptCompatAuthBlock(kSignatureChallengeProtected) {}
 
 base::Optional<AuthBlockState> ChallengeCredentialAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {

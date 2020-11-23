@@ -11,7 +11,7 @@ namespace cryptohome {
 
 class LibScryptCompatAuthBlock : public AuthBlock {
  public:
-  LibScryptCompatAuthBlock() = default;
+  LibScryptCompatAuthBlock();
   ~LibScryptCompatAuthBlock() = default;
 
   // Derives a high entropy secret from the user's password with scrypt.
@@ -26,6 +26,9 @@ class LibScryptCompatAuthBlock : public AuthBlock {
               const AuthBlockState& state,
               KeyBlobs* key_blobs,
               CryptoError* error) override;
+
+ protected:
+  explicit LibScryptCompatAuthBlock(DerivationType);
 };
 
 }  // namespace cryptohome

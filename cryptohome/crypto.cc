@@ -545,7 +545,13 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     }
   }
 
-  return UnwrapVaultKeyset(serialized, vkk_data, vault_keyset, error);
+  bool unwrapping_succeeded =
+      UnwrapVaultKeyset(serialized, vkk_data, vault_keyset, error);
+  if (unwrapping_succeeded) {
+    ReportWrappingKeyDerivationType(auth_block->derivation_type());
+  }
+
+  return unwrapping_succeeded;
 }
 
 bool Crypto::GenerateAndWrapKeys(const VaultKeyset& vault_keyset,

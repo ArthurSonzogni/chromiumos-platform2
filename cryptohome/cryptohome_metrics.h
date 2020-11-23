@@ -27,7 +27,7 @@ enum LECredOperationType {
   LE_CRED_OP_RESET,
   LE_CRED_OP_REMOVE,
   LE_CRED_OP_SYNC,
-  LE_CRED_OP_MAX,
+  LE_CRED_OP_MAX
 };
 
 // List of all possible actions taken within an LE Credential operation.
@@ -38,15 +38,35 @@ enum LECredActionType {
   LE_CRED_ACTION_SAVE_TO_DISK,
   LE_CRED_ACTION_BACKEND_GET_LOG,
   LE_CRED_ACTION_BACKEND_REPLAY_LOG,
-  LE_CRED_ACTION_MAX,
+  LE_CRED_ACTION_MAX
 };
 
-// Indication of whether EVKK's encryption is TPM backed.
-// Entries should not be renumbered and numeric values should never be reused.
-enum EvkkEncryptionType {
-  kScryptBackedEncryption,
-  kTpmBackedEncryption,
-  kEvkkEncryptionTypeNumBuckets
+// The derivation types used in the implementations of AuthBlock class.
+// Refer to cryptohome/docs/ for more details.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum DerivationType : int {
+  // Derive a high-entropy secret from the user's password using scrypt.
+  kScryptBacked = 0,
+  // Low-entropy secrets that need brute force protection are mapped to
+  // high-entropy secrets that can be obtained via a rate-limited lookup
+  // enforced by the TPM/GSC.
+  kLowEntropyCredential,
+  // Protecting user data via signing cryptographic keys stored on hardware
+  // tokens, rather than via passwords. The token needs to present a valid
+  // signature for the generated challenge to unseal a secret seed value, which
+  // is then used as a KDF passphrase for scrypt to derive the wrapping key.
+  // The sealing/unsealing algorithm involves TPM/GSC capabilities for achieving
+  // the security strength.
+  kSignatureChallengeProtected,
+  // TPM/GSC and user passkey is used to derive the wrapping keys which are
+  // sealed to PCR.
+  kTpmBackedPcrBound,
+  // TPM/GSC and user passkey is used to derive the wrapping key.
+  kTpmBackedNonPcrBound,
+  // Deprecated state - both TPM/GSC and scrypt is being used.
+  kDoubleWrapped,
+  kDerivationTypeNumBuckets  // Must be the last entry.
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -72,7 +92,7 @@ enum CryptohomeError {
   kBothTpmAndScryptWrappedKeyset = 18,
   kEphemeralCleanUpFailed = 19,
   kTpmOutOfMemory = 20,
-  kCryptohomeErrorNumBuckets,  // Must be the last entry.
+  kCryptohomeErrorNumBuckets  // Must be the last entry.
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -236,7 +256,7 @@ enum class DeprecatedApiEvent {
   kVerifyBootLockbox,           // 5
   kFinalizeBootLockbox,         // 6
   kTpmIsBeingOwned,             // 7
-  kMaxValue,                    // 8
+  kMaxValue                     // 8
 };
 
 // List of the possible results of attempting a mount operation using the
@@ -266,7 +286,7 @@ enum class AttestationOpsStatus {
   kSuccess = 0,
   kFailure = 1,
   kInvalidPcr0Value = 2,
-  kMaxValue,
+  kMaxValue
 };
 
 // Just to make sure I count correctly.
@@ -311,9 +331,9 @@ void OverrideMetricsLibraryForTesting(MetricsLibraryInterface* lib);
 // used with OverrideMetricsLibraryForTesting().
 void ClearMetricsLibraryForTesting();
 
-// The |encryption_type| value is reported to the
-// "Cryptohome.EvkkEncryptionType" enum histogram.
-void ReportEvkkEncryptionType(EvkkEncryptionType encryption_type);
+// The |derivation_type| value is reported to
+// "Cryptohome.WrappingKeyDerivation.Mount" histogram.
+void ReportWrappingKeyDerivationType(DerivationType derivation_type);
 
 // The |error| value is reported to the "Cryptohome.Errors" enum histogram.
 void ReportCryptohomeError(CryptohomeError error);

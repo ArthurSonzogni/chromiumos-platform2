@@ -23,7 +23,10 @@ namespace cryptohome {
 
 TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(Tpm* tpm,
                                                      TpmInit* tpm_init)
-    : tpm_(tpm), tpm_init_(tpm_init), utils_(tpm, tpm_init) {
+    : AuthBlock(kTpmBackedPcrBound),
+      tpm_(tpm),
+      tpm_init_(tpm_init),
+      utils_(tpm, tpm_init) {
   CHECK(tpm != nullptr);
   CHECK(tpm_init != nullptr);
 }

@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
@@ -16,7 +17,9 @@ namespace cryptohome {
 
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(Tpm* tpm,
                                                            TpmInit* tpm_init)
-    : tpm_auth_block_(tpm, tpm_init), lib_scrypt_compat_auth_block_() {}
+    : AuthBlock(kDoubleWrapped),
+      tpm_auth_block_(tpm, tpm_init),
+      lib_scrypt_compat_auth_block_() {}
 
 base::Optional<AuthBlockState> DoubleWrappedCompatAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {

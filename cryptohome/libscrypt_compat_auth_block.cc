@@ -64,6 +64,13 @@ bool ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
 
 }  // namespace
 
+LibScryptCompatAuthBlock::LibScryptCompatAuthBlock()
+    : AuthBlock(kScryptBacked) {}
+
+LibScryptCompatAuthBlock::LibScryptCompatAuthBlock(
+    DerivationType derivation_type)
+    : AuthBlock(derivation_type) {}
+
 base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob input_key = auth_input.user_input.value();
@@ -107,7 +114,6 @@ bool LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
                                       const AuthBlockState& state,
                                       KeyBlobs* key_blobs,
                                       CryptoError* error) {
-  ReportEvkkEncryptionType(kScryptBackedEncryption);
   const SerializedVaultKeyset& serialized = state.vault_keyset.value();
   const brillo::SecureBlob input_key = auth_input.user_input.value();
 

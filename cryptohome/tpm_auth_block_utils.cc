@@ -82,8 +82,6 @@ bool TpmAuthBlockUtils::IsTPMPubkeyHash(const std::string& hash,
 
 bool TpmAuthBlockUtils::CheckTPMReadiness(
     const SerializedVaultKeyset& serialized, CryptoError* error) {
-  ReportEvkkEncryptionType(kTpmBackedEncryption);
-
   if (!serialized.has_tpm_key()) {
     LOG(ERROR) << "Decrypting with TPM, but no TPM key present.";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
