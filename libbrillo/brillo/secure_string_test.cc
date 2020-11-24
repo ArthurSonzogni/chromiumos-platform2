@@ -29,20 +29,20 @@ TEST(SecureClear, SecureClear) {
 
 TEST(SecureClear, SecureClearVector) {
   std::vector<uint8_t> input = {0xFF, 0xFF, 0xFF};
-  SecureClear(&input);
+  SecureClear(input);
   EXPECT_EQ(input, std::vector<uint8_t>({0x00, 0x00, 0x00}));
 }
 
 TEST(SecureClear, SecureClearArray) {
   std::array<uint8_t, 3> input = {0xFF, 0xFF, 0xFF};
-  SecureClear(&input);
+  SecureClear(input);
   EXPECT_EQ(input, (std::array<uint8_t, 3>{0x00, 0x00, 0x00}));
 }
 
 TEST(SecureClear, SecureClearString) {
   std::string input = "abc";
   EXPECT_EQ(input.size(), 3);
-  SecureClear(&input);
+  SecureClear(input);
   // string has three NULs (plus terminating NUL)
   EXPECT_EQ(input, std::string({0, 0, 0}));
 }

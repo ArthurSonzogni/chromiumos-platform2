@@ -35,9 +35,8 @@ BRILLO_EXPORT BRILLO_DISABLE_ASAN void SecureClear(void* v, size_t n);
 // SecureClear overload that works with containers (vector, array, etc.) and
 // strings.
 template <typename T>
-BRILLO_EXPORT void SecureClear(T* v) {
-  CHECK(v);
-  SecureClear(v->data(), v->size());
+BRILLO_EXPORT void SecureClear(T& v) {  // NOLINT(runtime/references)
+  SecureClear(v.data(), v.size());
 }
 
 // Compare [n] bytes starting at [s1] with [s2] and return 0 if they match,
