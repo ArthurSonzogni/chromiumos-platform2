@@ -302,6 +302,11 @@ void VPNService::InitDriverPropertyStore() {
   driver_->InitPropertyStore(mutable_store());
 }
 
+bool VPNService::SupportsAlwaysOnVpn() {
+  // ARC VPNs are not supporting always-on VPN through Shill.
+  return driver()->GetProviderType() != kProviderArcVpn;
+}
+
 void VPNService::EnableAndRetainAutoConnect() {
   // The base EnableAndRetainAutoConnect method also sets auto_connect_ to true
   // which is not desirable for VPN services.

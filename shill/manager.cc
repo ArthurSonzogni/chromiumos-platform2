@@ -202,6 +202,8 @@ Manager::Manager(ControlInterface* control_interface,
       running_(false),
       last_default_physical_service_(nullptr),
       last_default_physical_service_online_(false),
+      always_on_vpn_mode_(Profile::kAlwaysOnVpnModeOff),
+      always_on_vpn_service_(nullptr),
       ephemeral_profile_(new EphemeralProfile(this)),
       use_startup_portal_list_(false),
       device_status_check_task_(
@@ -564,6 +566,9 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
     provider_mapping.second->CreateServicesFromProfile(profile);
   }
 
+  // Update the current always-on VPN configuration with the profile.
+  UpdateAlwaysOnVpnWith(profile);
+
   *path = profile->GetRpcIdentifier().value();
   SortServices();
   OnProfilesChanged();
@@ -727,6 +732,13 @@ void Manager::RemoveProfile(const string& name, Error* error) {
   profile->RemoveStorage(error);
 
   return;
+}
+
+void Manager::OnProfileChanged(const ProfileRefPtr& profile) {
+  if (IsActiveProfile(profile)) {
+    UpdateAlwaysOnVpnWith(profile);
+    SortServices();
+  }
 }
 
 bool Manager::DeviceManagementAllowed(const string& device_name) {
@@ -1033,6 +1045,11 @@ bool Manager::IsTechnologyAutoConnectDisabled(Technology technology) const {
       if (technology == disabled_technology)
         return true;
     }
+  }
+  if (technology == Technology::kVPN &&
+      always_on_vpn_mode_ != Profile::kAlwaysOnVpnModeOff) {
+    // Auto connect is disabled on VPNs when the always-on VPN is enabled.
+    return true;
   }
   return IsTechnologyInList(props_.no_auto_connect_technologies, technology);
 }
@@ -1867,6 +1884,62 @@ void Manager::SortServicesTask() {
     ethernet_provider_->RefreshGenericEthernetService();
 
   AutoConnect();
+  ApplyAlwaysOnVpn(new_physical);
+}
+
+void Manager::ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service) {
+  if (!running_) {
+    return;
+  }
+
+  SLOG(this, 2) << __func__ << " mode=" << always_on_vpn_mode_ << " service="
+                << (always_on_vpn_service_
+                        ? always_on_vpn_service_->GetRpcIdentifier().value()
+                        : "");
+
+  if (always_on_vpn_mode_ == Profile::kAlwaysOnVpnModeOff ||
+      !always_on_vpn_service_) {
+    // No VPN service to automatically wake-up.
+    return;
+  }
+
+  if (!physical_service->IsOnline()) {
+    // No physical network, we can't connect a VPN.
+    return;
+  }
+
+  if (!always_on_vpn_service_->SupportsAlwaysOnVpn()) {
+    // Exclude from always-on VPN all non compatible service like ARC VPNs.
+    return;
+  }
+
+  if (always_on_vpn_service_->IsConnecting() ||
+      always_on_vpn_service_->IsOnline()) {
+    // The VPN is connected or about to connect, nothing to do.
+    return;
+  }
+
+  if (always_on_vpn_service_->IsFailed()) {
+    // TODO(b/167661214): implement a backoff/retry strategy on failure.
+    // For now we'll reconnect immediately.
+    SLOG(this, 2) << "Service " << always_on_vpn_service_->friendly_name()
+                  << " has failed.";
+  }
+
+  Error error;
+  always_on_vpn_service_->Connect(&error, "Always-on VPN");
+}
+
+void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
+  string mode;
+  RpcIdentifier service_id;
+  if (profile->GetAlwaysOnVpnSettings(&mode, &service_id)) {
+    always_on_vpn_mode_ = mode;
+    ServiceRefPtr service = GetServiceWithRpcIdentifier(service_id);
+    // The service type is enforced by the profile when the service is set.
+    DCHECK_EQ(service->technology(), Technology::kVPN);
+    always_on_vpn_service_ = static_cast<VPNService*>(service.get());
+  }
 }
 
 void Manager::DeviceStatusCheckTask() {

@@ -243,6 +243,8 @@ class Manager {
   void PopAllUserProfiles(Error* error);
   // Remove the underlying persistent storage for a profile.
   void RemoveProfile(const std::string& name, Error* error);
+  // Called by a profile when its properties change.
+  void OnProfileChanged(const ProfileRefPtr& profile);
   // Give the ownership of the device with name |device_name| to claimer with
   // name |claimer_name|. This will cause shill to stop managing this device.
   virtual void ClaimDevice(const std::string& claimer_name,
@@ -599,6 +601,11 @@ class Manager {
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
 
   void AutoConnect();
+  // Ensure always-on VPN follows the current configuration, ie: hardware
+  // connectivity is available and the correct VPN service is running.
+  void ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service);
+  // Update always-on VPN configuration with the one contained in |profile|.
+  void UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile);
   std::vector<std::string> AvailableTechnologies(Error* error);
   std::vector<std::string> ConnectedTechnologies(Error* error);
   std::string DefaultTechnology(Error* error);
@@ -792,6 +799,12 @@ class Manager {
   // out when to send the DefaultServiceChanged notification.
   ServiceRefPtr last_default_physical_service_;
   bool last_default_physical_service_online_;
+  // Current always-on VPN operating mode.
+  std::string always_on_vpn_mode_;
+  // Reference to the VPN service managed by always-on VPN.  It may reference
+  // nothing if there's no service configured, otherwise it heads to a
+  // VPNService.
+  VPNServiceRefPtr always_on_vpn_service_;
   // Map of technologies to Provider instances.  These pointers are owned
   // by the respective scoped_reptr objects that are held over the lifetime
   // of the Manager object.

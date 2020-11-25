@@ -39,7 +39,9 @@ Profile::Profile(Manager* manager,
                  const Identifier& name,
                  const base::FilePath& storage_directory,
                  bool connect_to_rpc)
-    : manager_(manager), store_(), name_(name) {
+    : manager_(manager),
+      store_(base::Bind(&Profile::OnPropertyChanged, base::Unretained(this))),
+      name_(name) {
   if (connect_to_rpc)
     adaptor_ = manager->control_interface()->CreateProfileAdaptor(this);
 
@@ -82,6 +84,10 @@ Profile::Profile(Manager* manager,
 }
 
 Profile::~Profile() = default;
+
+void Profile::OnPropertyChanged(const std::string& /*name*/) {
+  manager()->OnProfileChanged(this);
+}
 
 bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
   CHECK(!persistent_profile_path_.empty());
@@ -352,6 +358,21 @@ bool Profile::SaveUserProfileList(const FilePath& path,
 
 bool Profile::MatchesIdentifier(const Identifier& name) const {
   return name.user == name_.user && name.identifier == name_.identifier;
+}
+
+bool Profile::GetAlwaysOnVpnSettings(std::string* mode, RpcIdentifier* id) {
+  DCHECK(mode);
+  DCHECK(id);
+
+  Error error;
+  if (!store().GetStringProperty(kAlwaysOnVpnModeProperty, mode, &error)) {
+    return false;
+  }
+  if (!store().GetRpcIdentifierProperty(kAlwaysOnVpnServiceProperty, id,
+                                        &error)) {
+    return false;
+  }
+  return true;
 }
 
 string Profile::DBusGetAlwaysOnVpnMode(Error* /*error*/) {

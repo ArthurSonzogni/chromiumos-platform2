@@ -181,6 +181,9 @@ class Profile : public base::RefCounted<Profile> {
   // Returns the user_hash component of the profile identifier.
   const std::string& GetUserHash() const { return name_.user_hash; }
 
+  // Returns the always-on VPN configuration.
+  virtual bool GetAlwaysOnVpnSettings(std::string* mode, RpcIdentifier* id);
+
   virtual StoreInterface* GetStorage() { return storage_.get(); }
 
   // Returns a read-only copy of the backing storage of the profile.
@@ -237,6 +240,7 @@ class Profile : public base::RefCounted<Profile> {
                                  std::string (Profile::*get)(Error* error),
                                  bool (Profile::*set)(const std::string&,
                                                       Error*));
+  void OnPropertyChanged(const std::string& name);
   std::string DBusGetAlwaysOnVpnMode(Error* error);
   bool DBusSetAlwaysOnVpnMode(const std::string& mode, Error* error);
   RpcIdentifier DBusGetAlwaysOnVpnService(Error* error);

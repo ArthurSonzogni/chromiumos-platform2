@@ -69,6 +69,9 @@ class VPNService : public Service, public DefaultServiceObserver {
   // connection) that this service depends on.
   std::string GetPhysicalTechnologyProperty(Error* error);
 
+  // Returns true if the service supports always-on VPN.
+  bool SupportsAlwaysOnVpn();
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
