@@ -24,7 +24,6 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/process/process_mock.h>
@@ -496,8 +495,6 @@ class MountTest
   std::unique_ptr<HomeDirs> homedirs_;
   MockChapsClientFactory chaps_client_factory_;
   scoped_refptr<Mount> mount_;
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 INSTANTIATE_TEST_SUITE_P(WithEcryptfs, MountTest, ::testing::Values(true));

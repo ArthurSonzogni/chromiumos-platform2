@@ -13,7 +13,6 @@
 #include <base/location.h>
 #include <base/stl_util.h>
 #include <base/test/bind_test_util.h>
-#include <base/test/task_environment.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>

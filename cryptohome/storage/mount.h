@@ -23,7 +23,6 @@
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>
-#include <base/timer/timer.h>
 #include <base/values.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
@@ -167,9 +166,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // stop.
   void MaybeCancelActiveDircryptoMigrationAndWait();
 
-  // Returns the WebAuthn secret and clears it from memory.
-  std::unique_ptr<brillo::SecureBlob> GetWebAuthnSecret();
-
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
   void set_bind_mount_downloads(bool bind) { bind_mount_downloads_ = bind; }
 
@@ -289,13 +285,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool DeriveTokenAuthData(const brillo::SecureBlob& passkey,
                            std::string* auth_data);
 
-  // Computes a public derivative from |fek| and |fnek| for u2fd to fetch.
-  void PrepareWebAuthnSecret(const std::string& obfuscated_username,
-                             const brillo::SecureBlob& fek,
-                             const brillo::SecureBlob& fnek);
-  // Clears the WebAuthn secret if it's not read yet.
-  void ClearWebAuthnSecret();
-
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
@@ -366,11 +355,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool mount_non_ephemeral_session_out_of_process_;
   bool mount_guest_session_non_root_namespace_;
   std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
-
-  // Secret for WebAuthn credentials.
-  std::unique_ptr<brillo::SecureBlob> webauthn_secret_;
-  // Timer for clearing the |webauthn_secret_| if not read.
-  base::OneShotTimer clear_webauthn_secret_timer_;
 
   // Represents the user's cryptohome vault.
   std::unique_ptr<CryptohomeVault> user_cryptohome_vault_;

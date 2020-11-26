@@ -74,9 +74,6 @@ namespace cryptohome {
 const char kChapsUserName[] = "chaps";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
 
-// Message to use when generating a secret for WebAuthn.
-const char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
-
 void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
                                       const std::string& username) {
   std::unique_ptr<brillo::Process> file_attrs =
@@ -325,11 +322,6 @@ bool Mount::MountCryptohome(const std::string& username,
 
   cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
 
-  // TODO(chromium:1147601): Move this into user_session.cc and add unittests
-  // when service.cc is gone.
-  PrepareWebAuthnSecret(obfuscated_username, file_system_keyset.Key().fek,
-                        file_system_keyset.Key().fnek);
-
   // At this point we're done mounting so move the clean-up closure to the
   // instance variable.
   mount_cleanup_ = unmount_and_drop_keys_runner.Release();
@@ -378,28 +370,6 @@ bool Mount::MountEphemeralCryptohomeInternal(
 
   mount_type_ = MountType::EPHEMERAL;
   return true;
-}
-
-void Mount::PrepareWebAuthnSecret(const std::string& obfuscated_username,
-                                  const brillo::SecureBlob& fek,
-                                  const brillo::SecureBlob& fnek) {
-  // This WebAuthn secret can be rederived upon in-session user auth success
-  // since they will unlock the vault keyset.
-  const std::string message(kWebAuthnSecretHmacMessage);
-  webauthn_secret_ = std::make_unique<brillo::SecureBlob>(
-      CryptoLib::HmacSha256(brillo::SecureBlob::Combine(fnek, fek),
-                            brillo::Blob(message.cbegin(), message.cend())));
-  clear_webauthn_secret_timer_.Start(
-      FROM_HERE, base::TimeDelta::FromSeconds(30),
-      base::BindOnce(&Mount::ClearWebAuthnSecret, base::Unretained(this)));
-}
-
-void Mount::ClearWebAuthnSecret() {
-  webauthn_secret_.reset();
-}
-
-std::unique_ptr<brillo::SecureBlob> Mount::GetWebAuthnSecret() {
-  return std::move(webauthn_secret_);
 }
 
 void Mount::TearDownEphemeralMount() {

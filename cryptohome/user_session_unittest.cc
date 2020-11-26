@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <base/test/task_environment.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
@@ -94,6 +95,8 @@ class UserSessionTest : public ::testing::Test {
   // TODO(dlunev): Replace with real mount when FakePlatform is mature enough
   // to support it mock-less.
   scoped_refptr<MockMount> mount_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   void AddUser(const char* name, const char* password) {
     std::string obfuscated =
