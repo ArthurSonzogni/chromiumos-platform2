@@ -13931,6 +13931,7 @@ mno {
       localized_name {
         name : "LTE"
       }
+      ip_type: IPV6
     }
     mobile_apn {
       apn : "epc.tmobile.com"
