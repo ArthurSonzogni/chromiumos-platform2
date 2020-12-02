@@ -29,6 +29,7 @@ using GetAssertionMethodResponse =
     brillo::dbus_utils::DBusMethodResponse<GetAssertionResponse>;
 using IsUvpaaMethodResponse =
     brillo::dbus_utils::DBusMethodResponse<IsUvpaaResponse>;
+using ::google::protobuf::RepeatedPtrField;
 
 struct MakeCredentialSession {
   bool empty() { return !response; }
@@ -46,6 +47,13 @@ struct GetAssertionSession {
   std::string credential_id;
   std::unique_ptr<GetAssertionMethodResponse> response;
   bool canceled = false;
+};
+
+struct MatchedCredentials {
+  std::vector<std::string> platform_credentials;
+  std::vector<std::string> legacy_credentials_for_rp_id;
+  std::vector<std::string> legacy_credentials_for_app_id;
+  bool has_internal_error = false;
 };
 
 enum class PresenceRequirement {
@@ -136,6 +144,14 @@ class WebAuthnHandler {
   // Called on user verification success if the request is user-verification.
   void DoMakeCredential(struct MakeCredentialSession session,
                         PresenceRequirement presence_requirement);
+
+  // Find all matching credentials and return them in 3 categories (see struct
+  // MatchedCredentials definition). If a legacy credential matches both rp_id
+  // and app_id, it will only appear in "legacy_credentials_for_rp_id".
+  MatchedCredentials FindMatchedCredentials(
+      const RepeatedPtrField<std::string>& all_credentials,
+      const std::string& rp_id,
+      const std::string& app_id);
 
   // Inserts the hash of auth-time secret into a versioned KH to form a
   // WebAuthn credential id.

@@ -678,21 +678,19 @@ void WebAuthnHandler::RemoveAuthTimeSecretHashFromCredentialId(
 
 HasCredentialsResponse::HasCredentialsStatus
 WebAuthnHandler::HasExcludedCredentials(const MakeCredentialRequest& request) {
-  std::vector<uint8_t> rp_id_hash = util::Sha256(request.rp_id());
-  for (auto credential : request.excluded_credential_id()) {
-    base::Optional<std::vector<uint8_t>> credential_secret =
-        webauthn_storage_->GetSecretByCredentialId(credential);
-    if (!credential_secret)
-      continue;
-
-    auto ret = DoU2fSignCheckOnly(rp_id_hash, util::ToVector(credential),
-                                  *credential_secret);
-    if (ret == HasCredentialsResponse::SUCCESS)
-      return ret;
-    if (ret == HasCredentialsResponse::INTERNAL_ERROR)
-      return ret;
+  MatchedCredentials matched =
+      FindMatchedCredentials(request.excluded_credential_id(), request.rp_id(),
+                             request.app_id_exclude());
+  if (matched.has_internal_error) {
+    return HasCredentialsResponse::INTERNAL_ERROR;
   }
-  return HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
+
+  if (matched.platform_credentials.empty() &&
+      matched.legacy_credentials_for_rp_id.empty() &&
+      matched.legacy_credentials_for_app_id.empty()) {
+    return HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
+  }
+  return HasCredentialsResponse::SUCCESS;
 }
 
 void WebAuthnHandler::GetAssertion(
@@ -728,35 +726,28 @@ void WebAuthnHandler::GetAssertion(
 
   // TODO(louiscollard): Support resident credentials.
 
-  const std::vector<uint8_t> rp_id_hash = util::Sha256(request.rp_id());
-  int matched_index = -1;
+  std::string* credential_to_use;
+  bool is_legacy_credential = false;
+  bool use_app_id = false;
 
-  for (int index = 0; index < request.allowed_credential_id_size(); index++) {
-    base::Optional<std::vector<uint8_t>> credential_secret =
-        webauthn_storage_->GetSecretByCredentialId(
-            request.allowed_credential_id(index));
-    if (!credential_secret)
-      continue;
-
-    const HasCredentialsResponse::HasCredentialsStatus ret = DoU2fSignCheckOnly(
-        rp_id_hash, util::ToVector(request.allowed_credential_id(index)),
-        *credential_secret);
-
-    if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
-      // If there's an internal error then the remaining credentials won't
-      // succeed.
-      response.set_status(GetAssertionResponse::INTERNAL_ERROR);
-      method_response->Return(response);
-      return;
-    }
-    if (ret != HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID) {
-      matched_index = index;
-      break;
-    }
+  MatchedCredentials matched = FindMatchedCredentials(
+      request.allowed_credential_id(), request.rp_id(), request.app_id());
+  if (matched.has_internal_error) {
+    response.set_status(GetAssertionResponse::INTERNAL_ERROR);
+    method_response->Return(response);
+    return;
   }
 
-  if (matched_index == -1) {
-    // No credential_id matched.
+  if (!matched.platform_credentials.empty()) {
+    credential_to_use = &matched.platform_credentials[0];
+  } else if (!matched.legacy_credentials_for_rp_id.empty()) {
+    credential_to_use = &matched.legacy_credentials_for_rp_id[0];
+    is_legacy_credential = true;
+  } else if (!matched.legacy_credentials_for_app_id.empty()) {
+    credential_to_use = &matched.legacy_credentials_for_app_id[0];
+    is_legacy_credential = true;
+    use_app_id = true;
+  } else {
     response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
     method_response->Return(response);
     return;
@@ -764,7 +755,11 @@ void WebAuthnHandler::GetAssertion(
 
   struct GetAssertionSession session = {
       static_cast<uint64_t>(base::Time::Now().ToTimeT()), request,
-      request.allowed_credential_id(matched_index), std::move(method_response)};
+      *credential_to_use, std::move(method_response)};
+  if (use_app_id) {
+    // App id was matched instead of rp id, so discard rp id.
+    session.request.set_rp_id(request.app_id());
+  }
 
   if (!allow_presence_mode_) {
     // Upgrade UP requests to UV.
@@ -772,8 +767,10 @@ void WebAuthnHandler::GetAssertion(
         VerificationType::VERIFICATION_USER_VERIFICATION);
   }
 
+  // Legacy credentials should go through power button, not UV.
   if (session.request.verification_type() ==
-      VerificationType::VERIFICATION_USER_VERIFICATION) {
+          VerificationType::VERIFICATION_USER_VERIFICATION &&
+      !is_legacy_credential) {
     dbus::MethodCall call(
         chromeos::kUserAuthenticationServiceInterface,
         chromeos::kUserAuthenticationServiceShowAuthDialogMethod);
@@ -812,10 +809,26 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   base::Optional<std::vector<uint8_t>> credential_secret =
       webauthn_storage_->GetSecretByCredentialId(session.credential_id);
   if (!credential_secret) {
-    LOG(ERROR) << "No credential secret for credential id "
-               << session.credential_id << ", aborting GetAssertion.";
-    response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
-    session.response->Return(response);
+    if (!allow_presence_mode_) {
+      LOG(ERROR) << "No credential secret for credential id "
+                 << session.credential_id << ", aborting GetAssertion.";
+      response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
+      session.response->Return(response);
+      return;
+    }
+
+    // Maybe signing u2fhid credentials. Use legacy secret instead.
+    base::Optional<brillo::SecureBlob> legacy_secret =
+        user_state_->GetUserSecret();
+    if (!legacy_secret) {
+      LOG(ERROR)
+          << "Cannot find user secret when trying to sign u2fhid credentials";
+      response.set_status(GetAssertionResponse::INTERNAL_ERROR);
+      session.response->Return(response);
+      return;
+    }
+    credential_secret =
+        std::vector<uint8_t>(legacy_secret->begin(), legacy_secret->end());
   }
   std::vector<uint8_t> signature;
   GetAssertionResponse::GetAssertionStatus sign_status =
@@ -942,6 +955,91 @@ WebAuthnHandler::SendU2fSignWaitForPresence(Request* sign_req,
   return GetAssertionResponse::VERIFICATION_FAILED;
 }
 
+MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
+    const RepeatedPtrField<std::string>& all_credentials,
+    const std::string& rp_id,
+    const std::string& app_id) {
+  std::vector<uint8_t> rp_id_hash = util::Sha256(rp_id);
+  std::vector<uint8_t> app_id_hash = util::Sha256(app_id);
+  MatchedCredentials result;
+
+  // Platform authenticator credentials.
+  for (const auto& credential_id : all_credentials) {
+    base::Optional<std::vector<uint8_t>> credential_secret =
+        webauthn_storage_->GetSecretByCredentialId(credential_id);
+    if (!credential_secret)
+      continue;
+
+    auto ret = DoU2fSignCheckOnly(rp_id_hash, util::ToVector(credential_id),
+                                  *credential_secret);
+    if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
+      result.has_internal_error = true;
+      return result;
+    } else if (ret == HasCredentialsResponse::SUCCESS) {
+      result.platform_credentials.emplace_back(credential_id);
+    }
+  }
+
+  const base::Optional<brillo::SecureBlob> user_secret =
+      user_state_->GetUserSecret();
+  if (!user_secret) {
+    result.has_internal_error = true;
+    return result;
+  }
+
+  // Legacy credentials. If a legacy credential matches both rp_id and app_id,
+  // it will only appear in result.legacy_credentials_for_rp_id.
+  for (const auto& credential_id : all_credentials) {
+    // First try matching rp_id.
+    HasCredentialsResponse::HasCredentialsStatus ret = DoU2fSignCheckOnly(
+        rp_id_hash, util::ToVector(credential_id),
+        std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
+    DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
+    switch (ret) {
+      case HasCredentialsResponse::SUCCESS:
+        // rp_id matched, it's a credential registered with u2fhid on WebAuthn
+        // API.
+        result.legacy_credentials_for_rp_id.emplace_back(credential_id);
+        continue;
+      case HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID:
+        break;
+      case HasCredentialsResponse::UNKNOWN:
+      case HasCredentialsResponse::INVALID_REQUEST:
+      case HasCredentialsResponse::INTERNAL_ERROR:
+        result.has_internal_error = true;
+        return result;
+      case google::protobuf::kint32min:
+      case google::protobuf::kint32max:
+        NOTREACHED();
+    }
+
+    // Try matching app_id.
+    ret = DoU2fSignCheckOnly(
+        app_id_hash, util::ToVector(credential_id),
+        std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
+    DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
+    switch (ret) {
+      case HasCredentialsResponse::SUCCESS:
+        // App id extension matched. It's a legacy credential registered with
+        // the U2F interface.
+        result.legacy_credentials_for_app_id.emplace_back(credential_id);
+        continue;
+      case HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID:
+        break;
+      case HasCredentialsResponse::UNKNOWN:
+      case HasCredentialsResponse::INVALID_REQUEST:
+      case HasCredentialsResponse::INTERNAL_ERROR:
+        result.has_internal_error = true;
+        return result;
+      case google::protobuf::kint32min:
+      case google::protobuf::kint32max:
+        NOTREACHED();
+    }
+  }
+
+  return result;
+}
+
 HasCredentialsResponse WebAuthnHandler::HasCredentials(
     const HasCredentialsRequest& request) {
   HasCredentialsResponse response;
@@ -956,31 +1054,21 @@ HasCredentialsResponse WebAuthnHandler::HasCredentials(
     return response;
   }
 
-  // First consider WebAuthn credentials registered with platform authenticator.
-  std::vector<uint8_t> rp_id_hash = util::Sha256(request.rp_id());
-  for (const auto& credential_id : request.credential_id()) {
-    base::Optional<std::vector<uint8_t>> credential_secret =
-        webauthn_storage_->GetSecretByCredentialId(credential_id);
-    if (!credential_secret)
-      continue;
-
-    auto ret = DoU2fSignCheckOnly(rp_id_hash, util::ToVector(credential_id),
-                                  *credential_secret);
-    if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
-      response.set_status(ret);
-      return response;
-    } else if (ret == HasCredentialsResponse::SUCCESS) {
-      *response.add_credential_id() = credential_id;
-    }
+  MatchedCredentials matched = FindMatchedCredentials(
+      request.credential_id(), request.rp_id(), request.app_id());
+  if (matched.has_internal_error) {
+    response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
+    return response;
   }
 
-  // Then consider legacy u2fhid credentials, which may be registered with
-  // WebAuthn API or U2F API.
-  HasCredentialsResponse legacy_response = HasLegacyCredentials(request);
-  if (legacy_response.status() == HasCredentialsResponse::SUCCESS) {
-    for (const auto& credential_id : legacy_response.credential_id()) {
-      *response.add_credential_id() = credential_id;
-    }
+  for (const auto& credential_id : matched.platform_credentials) {
+    *response.add_credential_id() = credential_id;
+  }
+  for (const auto& credential_id : matched.legacy_credentials_for_rp_id) {
+    *response.add_credential_id() = credential_id;
+  }
+  for (const auto& credential_id : matched.legacy_credentials_for_app_id) {
+    *response.add_credential_id() = credential_id;
   }
 
   response.set_status((response.credential_id_size() > 0)
@@ -1003,68 +1091,19 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
     return response;
   }
 
-  const base::Optional<brillo::SecureBlob> user_secret =
-      user_state_->GetUserSecret();
-  if (!user_secret) {
+  MatchedCredentials matched = FindMatchedCredentials(
+      request.credential_id(), request.rp_id(), request.app_id());
+  if (matched.has_internal_error) {
     response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
     return response;
   }
-  const std::vector<uint8_t> rp_id_hash = util::Sha256(request.rp_id());
-  const std::vector<uint8_t> app_id_hash = util::Sha256(request.app_id());
 
-  // A credential_id will be in |response| if either rp_id or app_id matches
-  // it. The ordering of credentials should not affect the number of matched
-  // entries.
-  for (const auto& credential_id : request.credential_id()) {
-    // First try matching rp_id.
-    HasCredentialsResponse::HasCredentialsStatus ret = DoU2fSignCheckOnly(
-        rp_id_hash, util::ToVector(credential_id),
-        std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
-    DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
-    switch (ret) {
-      case HasCredentialsResponse::INVALID_REQUEST:
-        response.set_status(ret);
-        return response;
-      case HasCredentialsResponse::SUCCESS:
-        // rp_id matched, it's a credential registered with u2fhid on WebAuthn
-        // API.
-        *response.add_credential_id() = credential_id;
-        continue;
-      case HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID:
-        break;
-      case HasCredentialsResponse::UNKNOWN:
-      case HasCredentialsResponse::INTERNAL_ERROR:
-        response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
-        return response;
-      case google::protobuf::kint32min:
-      case google::protobuf::kint32max:
-        NOTREACHED();
-    }
-
-    // Try matching app_id.
-    ret = DoU2fSignCheckOnly(
-        app_id_hash, util::ToVector(credential_id),
-        std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
-    DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
-    switch (ret) {
-      case HasCredentialsResponse::INVALID_REQUEST:
-        response.set_status(ret);
-        return response;
-      case HasCredentialsResponse::SUCCESS:
-        // App id extension matched. It's a legacy credential registered with
-        // the U2F interface.
-        *response.add_credential_id() = credential_id;
-        continue;
-      case HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID:
-        break;
-      case HasCredentialsResponse::UNKNOWN:
-      case HasCredentialsResponse::INTERNAL_ERROR:
-        response.set_status(HasCredentialsResponse::INTERNAL_ERROR);
-        return response;
-      case google::protobuf::kint32min:
-      case google::protobuf::kint32max:
-        NOTREACHED();
-    }
+  // Do not include platform credentials.
+  for (const auto& credential_id : matched.legacy_credentials_for_rp_id) {
+    *response.add_credential_id() = credential_id;
+  }
+  for (const auto& credential_id : matched.legacy_credentials_for_app_id) {
+    *response.add_credential_id() = credential_id;
   }
 
   response.set_status((response.credential_id_size() > 0)

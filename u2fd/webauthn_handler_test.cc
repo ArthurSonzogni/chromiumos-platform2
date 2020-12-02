@@ -517,6 +517,9 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialUPUpgradedToUV) {
   request.set_rp_id(kRpId);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
+  // Thought it's going to be UV, we will still check if any exclude credential
+  // matches legacy credentials.
+  ExpectGetUserSecret();
   ExpectUVFlowSuccess();
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(
@@ -537,6 +540,9 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialVerificationSuccess) {
   request.set_verification_type(
       VerificationType::VERIFICATION_USER_VERIFICATION);
 
+  // Thought it's going to be UV, we will still check if any exclude credential
+  // matches legacy credentials.
+  ExpectGetUserSecret();
   ExpectUVFlowSuccess();
 
   SetUpAuthTimeSecretHash();
@@ -654,12 +660,12 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionWrongClientDataHashLength) {
   ASSERT_TRUE(called);
 }
 
-// Simulates the case where the KH doesn't match any record in daemon-store. It
-// could be that the KH itself is invalid, or the user deleted the record (for
-// privacy reasons).
+// Simulates the case where the KH doesn't match any record in daemon-store, or
+// any legacy credential id.
 TEST_F(WebAuthnHandlerTestBase, GetAssertionNoCredentialSecret) {
   GetAssertionRequest request;
-  request.set_rp_id(kRpId);
+  request.set_rp_id(kWrongRpId);
+  request.set_app_id(kWrongRpId);
   request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
   const std::string credential_id(sizeof(struct u2f_key_handle), 0xab);
   request.add_allowed_credential_id(credential_id);
@@ -667,9 +673,16 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionNoCredentialSecret) {
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
       .WillOnce(Return(base::nullopt));
+  ExpectGetUserSecret();
 
-  // Since we don't have user secret, we won't even pass DoU2fSignCheckOnly, and
-  // the TPM won't receive any command.
+  // We will check for legacy credentials, so two check-only calls to TPM.
+  EXPECT_CALL(mock_tpm_proxy_,
+              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
+                              ExpectedU2fSignCheckOnlyRequestRegexWrongRpId())),
+                          _))
+      .Times(2)
+      .WillRepeatedly(Return(kCr50StatusPasswordRequired));
+
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
@@ -689,7 +702,8 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionNoCredentialSecret) {
 // is compromised.
 TEST_F(WebAuthnHandlerTestBase, GetAssertionInvalidKeyHandle) {
   GetAssertionRequest request;
-  request.set_rp_id(kRpId);
+  request.set_rp_id(kWrongRpId);
+  request.set_app_id(kWrongRpId);
   request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
   const std::string credential_id(sizeof(struct u2f_key_handle), 0xab);
   request.add_allowed_credential_id(credential_id);
@@ -697,11 +711,14 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionInvalidKeyHandle) {
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
       .WillOnce(Return(HexArrayToBlob(kCredentialSecret)));
+  ExpectGetUserSecret();
+  // 3 calls to TPM, one for each credential type.
   EXPECT_CALL(mock_tpm_proxy_,
               SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
-                              ExpectedU2fSignCheckOnlyRequestRegex())),
+                              ExpectedU2fSignCheckOnlyRequestRegexWrongRpId())),
                           _))
-      .WillOnce(Return(kCr50StatusPasswordRequired));
+      .Times(3)
+      .WillRepeatedly(Return(kCr50StatusPasswordRequired));
 
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
@@ -718,6 +735,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionInvalidKeyHandle) {
 }
 
 TEST_F(WebAuthnHandlerTestBase, GetAssertionUPUpgradedToUV) {
+  // Needed for "InsertAuthTimeSecretHash" workaround.
   SetUpAuthTimeSecretHash();
 
   GetAssertionRequest request;
@@ -737,12 +755,13 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionUPUpgradedToUV) {
   // Pass DoU2fSignCheckOnly so that we can get to UV flow.
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
       .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+  ExpectGetUserSecret();
   EXPECT_CALL(
       mock_tpm_proxy_,
       SendU2fSign(Matcher<const u2f_sign_versioned_req&>(StructMatchesRegex(
                       ExpectedUVU2fSignCheckOnlyRequestRegex())),
                   _))
-      .WillOnce(Return(kCr50StatusSuccess));
+      .WillRepeatedly(Return(kCr50StatusSuccess));
   EXPECT_CALL(
       mock_tpm_proxy_,
       SendU2fSign(Matcher<const u2f_sign_versioned_req&>(
@@ -758,6 +777,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionUPUpgradedToUV) {
 }
 
 TEST_F(WebAuthnHandlerTestBase, GetAssertionVerificationSuccess) {
+  // Needed for "InsertAuthTimeSecretHash" workaround.
   SetUpAuthTimeSecretHash();
 
   GetAssertionRequest request;
@@ -778,12 +798,13 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionVerificationSuccess) {
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
       .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+  ExpectGetUserSecret();
   EXPECT_CALL(
       mock_tpm_proxy_,
       SendU2fSign(Matcher<const u2f_sign_versioned_req&>(StructMatchesRegex(
                       ExpectedUVU2fSignCheckOnlyRequestRegex())),
                   _))
-      .WillOnce(Return(kCr50StatusSuccess));
+      .WillRepeatedly(Return(kCr50StatusSuccess));
   EXPECT_CALL(
       mock_tpm_proxy_,
       SendU2fSign(Matcher<const u2f_sign_versioned_req&>(
@@ -1074,6 +1095,8 @@ TEST_F(WebAuthnHandlerTestAllowUP, MakeCredentialPresenceSuccess) {
   request.set_rp_id(kRpId);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
+  // We will still check if any exclude credential matches legacy credentials.
+  ExpectGetUserSecret();
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(
       mock_tpm_proxy_,
@@ -1134,7 +1157,7 @@ TEST_F(WebAuthnHandlerTestAllowUP, MakeCredentialPresenceSuccess) {
   ASSERT_TRUE(called);
 }
 
-TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionPresenceNoPresence) {
+TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialNoPresence) {
   GetAssertionRequest request;
   request.set_rp_id(kRpId);
   request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
@@ -1143,7 +1166,10 @@ TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionPresenceNoPresence) {
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
-      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+      .Times(2)
+      .WillRepeatedly(Return(base::nullopt));
+  // LegacyCredential uses "user secret" instead of per credential secret.
+  ExpectGetUserSecretForTimes(2);
   EXPECT_CALL(mock_tpm_proxy_,
               SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
                               ExpectedU2fSignCheckOnlyRequestRegex())),
@@ -1170,7 +1196,7 @@ TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionPresenceNoPresence) {
   ASSERT_TRUE(called);
 }
 
-TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionPresenceSuccess) {
+TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialSuccess) {
   GetAssertionRequest request;
   request.set_rp_id(kRpId);
   request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
@@ -1179,7 +1205,10 @@ TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionPresenceSuccess) {
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
-      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+      .Times(2)
+      .WillRepeatedly(Return(base::nullopt));
+  // LegacyCredential uses "user secret" instead of per credential secret.
+  ExpectGetUserSecretForTimes(2);
   EXPECT_CALL(mock_tpm_proxy_,
               SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
                               ExpectedU2fSignCheckOnlyRequestRegex())),
@@ -1219,6 +1248,138 @@ TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionPresenceSuccess) {
 
   handler_->GetAssertion(std::move(mock_method_response), request);
   presence_requested_expected_ = 1;
+  ASSERT_TRUE(called);
+}
+
+TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialAppIdMatch) {
+  GetAssertionRequest request;
+  request.set_rp_id(kWrongRpId);
+  // Legacy credentials registered via U2F interface use the app id.
+  request.set_app_id(kRpId);
+  request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
+  const std::string credential_id(sizeof(struct u2f_key_handle), 0xab);
+  request.add_allowed_credential_id(credential_id);
+  request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
+
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
+      .Times(2)
+      .WillRepeatedly(Return(base::nullopt));
+  // LegacyCredential uses "user secret" instead of per credential secret.
+  ExpectGetUserSecretForTimes(2);
+
+  // Rp id doesn't match.
+  EXPECT_CALL(mock_tpm_proxy_,
+              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
+                              ExpectedU2fSignCheckOnlyRequestRegexWrongRpId())),
+                          _))
+      .WillOnce(Return(kCr50StatusPasswordRequired));
+  // App id matches.
+  EXPECT_CALL(mock_tpm_proxy_,
+              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
+                              ExpectedU2fSignCheckOnlyRequestRegex())),
+                          _))
+      .WillOnce(Return(kCr50StatusSuccess));
+  EXPECT_CALL(mock_tpm_proxy_,
+              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
+                              ExpectedU2fSignRequestRegex())),
+                          _))
+      .WillOnce(Return(kCr50StatusNotAllowed))
+      .WillOnce(DoAll(SetArgPointee<1>(kU2fSignResponse),
+                      Return(kCr50StatusSuccess)));
+
+  auto mock_method_response =
+      std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
+  bool called = false;
+  mock_method_response->set_return_callback(base::Bind(
+      [](bool* called_ptr, const GetAssertionResponse& resp) {
+        EXPECT_EQ(resp.status(), GetAssertionResponse::SUCCESS);
+        ASSERT_EQ(resp.assertion_size(), 1);
+        auto assertion = resp.assertion(0);
+        EXPECT_EQ(assertion.credential_id(),
+                  std::string(sizeof(struct u2f_key_handle), 0xab));
+        EXPECT_THAT(
+            base::HexEncode(assertion.authenticator_data().data(),
+                            assertion.authenticator_data().size()),
+            MatchesRegex(base::HexEncode(kRpIdHash.data(),
+                                         kRpIdHash.size()) +  // RP ID hash
+                         std::string("01"           // Flag: user present
+                                     "(..){4}")));  // Signature counter
+        EXPECT_EQ(util::ToVector(assertion.signature()),
+                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
+                                            kU2fSignResponse.sig_s));
+        *called_ptr = true;
+      },
+      &called));
+
+  handler_->GetAssertion(std::move(mock_method_response), request);
+  presence_requested_expected_ = 1;
+  ASSERT_TRUE(called);
+}
+
+TEST_F(WebAuthnHandlerTestAllowUP,
+       GetAssertionSignVersionedCredentialInUVMode) {
+  // Needed for "InsertAuthTimeSecretHash" workaround.
+  SetUpAuthTimeSecretHash();
+
+  GetAssertionRequest request;
+  request.set_rp_id(kRpId);
+  request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
+
+  std::vector<uint8_t> credential_id_vec(
+      sizeof(struct u2f_versioned_key_handle), 0xab);
+  InsertAuthTimeSecretHashToCredentialId(&credential_id_vec);
+  const std::string credential_id(credential_id_vec.begin(),
+                                  credential_id_vec.end());
+  request.add_allowed_credential_id(credential_id);
+
+  request.set_verification_type(
+      VerificationType::VERIFICATION_USER_VERIFICATION);
+
+  ExpectUVFlowSuccess();
+
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
+      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+  ExpectGetUserSecret();
+  EXPECT_CALL(
+      mock_tpm_proxy_,
+      SendU2fSign(Matcher<const u2f_sign_versioned_req&>(StructMatchesRegex(
+                      ExpectedUVU2fSignCheckOnlyRequestRegex())),
+                  _))
+      .WillRepeatedly(Return(kCr50StatusSuccess));
+  EXPECT_CALL(
+      mock_tpm_proxy_,
+      SendU2fSign(Matcher<const u2f_sign_versioned_req&>(
+                      StructMatchesRegex(ExpectedUVU2fSignRequestRegex())),
+                  _))
+      .WillOnce(DoAll(SetArgPointee<1>(kU2fSignResponse),
+                      Return(kCr50StatusSuccess)));
+
+  auto mock_method_response =
+      std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
+  bool called = false;
+  mock_method_response->set_return_callback(base::Bind(
+      [](bool* called_ptr, const std::string& expected_credential_id,
+         const GetAssertionResponse& resp) {
+        EXPECT_EQ(resp.status(), GetAssertionResponse::SUCCESS);
+        ASSERT_EQ(resp.assertion_size(), 1);
+        auto assertion = resp.assertion(0);
+        EXPECT_EQ(assertion.credential_id(), expected_credential_id);
+        EXPECT_THAT(
+            base::HexEncode(assertion.authenticator_data().data(),
+                            assertion.authenticator_data().size()),
+            MatchesRegex(base::HexEncode(kRpIdHash.data(),
+                                         kRpIdHash.size()) +  // RP ID hash
+                         std::string("05"  // Flag: user present, user verified
+                                     "(..){4}")));  // Signature counter
+        EXPECT_EQ(util::ToVector(assertion.signature()),
+                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
+                                            kU2fSignResponse.sig_s));
+        *called_ptr = true;
+      },
+      &called, credential_id));
+
+  handler_->GetAssertion(std::move(mock_method_response), request);
+  presence_requested_expected_ = 0;
   ASSERT_TRUE(called);
 }
 
