@@ -269,6 +269,10 @@ class Datapath {
   MinijailedProcessRunner& runner() const;
 
  private:
+  // Attempts to flush all built-in iptables chains used by patchpanel, and to
+  // delete all additionals chains created by patchpanel for routing. Traffic
+  // accounting chains are not deleted.
+  void ResetIptables();
   // Creates a virtual interface pair.
   bool AddVirtualInterfacePair(const std::string& netns_name,
                                const std::string& veth_ifname,

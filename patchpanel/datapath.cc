@@ -50,6 +50,7 @@ constexpr std::array<const char*, 6> kPhysicalIfnamePrefixes{
 constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
 constexpr char kCheckRoutingMarkChain[] = "check_routing_mark";
+constexpr char kDropGuestIpv4Prefix[] = "drop_guest_ipv4_prefix";
 
 // Constant fwmark mask for matching local socket traffic that should be routed
 // through a VPN connection. The traffic must not be part of an existing
@@ -94,6 +95,9 @@ MinijailedProcessRunner& Datapath::runner() const {
 }
 
 void Datapath::Start() {
+  // Restart from a clean iptables state in case of an unordered shutdown.
+  ResetIptables();
+
   // Enable IPv4 packet forwarding
   if (process_runner_->sysctl_w("net.ipv4.ip_forward", "1") != 0)
     LOG(ERROR) << "Failed to update net.ipv4.ip_forward."
@@ -124,6 +128,13 @@ void Datapath::Start() {
   // for VMs, containers, and connected namespaces This is needed to prevent
   // packets leaking with an incorrect src IP when a local process binds to the
   // wrong interface.
+  if (!ModifyChain(IpFamily::IPv4, "filter", "-N", kDropGuestIpv4Prefix))
+    LOG(ERROR) << "Failed to create " << kDropGuestIpv4Prefix
+               << " filter chain";
+  if (!ModifyIptables(IpFamily::IPv4, "filter",
+                      {"-I", "OUTPUT", "-j", kDropGuestIpv4Prefix, "-w"}))
+    LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
+               << kDropGuestIpv4Prefix;
   for (const auto& oif : kPhysicalIfnamePrefixes) {
     if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet))
       LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
@@ -163,10 +174,6 @@ void Datapath::Start() {
   if (!ModifyChain(IpFamily::Dual, "mangle", "-N", kApplyLocalSourceMarkChain))
     LOG(ERROR) << "Failed to set up " << kApplyLocalSourceMarkChain
                << " mangle chain";
-  // Ensure that the chain is empty if patchpanel is restarting after a crash.
-  if (!ModifyChain(IpFamily::Dual, "mangle", "-F", kApplyLocalSourceMarkChain))
-    LOG(ERROR) << "Failed to flush " << kApplyLocalSourceMarkChain
-               << " mangle chain";
   if (!ModifyIptables(IpFamily::Dual, "mangle",
                       {"-A", "OUTPUT", "-j", kApplyLocalSourceMarkChain, "-w"}))
     LOG(ERROR) << "Failed to attach " << kApplyLocalSourceMarkChain
@@ -187,9 +194,6 @@ void Datapath::Start() {
   // traffic that should be routed through a VPN.
   if (!ModifyChain(IpFamily::Dual, "mangle", "-N", kApplyVpnMarkChain))
     LOG(ERROR) << "Failed to set up " << kApplyVpnMarkChain << " mangle chain";
-  // Ensure that the chain is empty if patchpanel is restarting after a crash.
-  if (!ModifyChain(IpFamily::Dual, "mangle", "-F", kApplyVpnMarkChain))
-    LOG(ERROR) << "Failed to flush " << kApplyVpnMarkChain << " mangle chain";
   // All local outgoing traffic eligible to VPN routing should traverse the VPN
   // marking chain.
   if (!ModifyFwmarkVpnJumpRule("OUTPUT", "-A", "" /*iif*/, kFwmarkRouteOnVpn,
@@ -208,11 +212,6 @@ void Datapath::Start() {
   if (!ModifyChain(IpFamily::Dual, "mangle", "-N", kCheckRoutingMarkChain))
     LOG(ERROR) << "Failed to set up " << kCheckRoutingMarkChain
                << " mangle chain";
-  // Ensure that the chain is empty if patchpanel is restarting after a crash.
-  if (!ModifyChain(IpFamily::Dual, "mangle", "-F", kCheckRoutingMarkChain))
-    LOG(ERROR) << "Failed to flush " << kCheckRoutingMarkChain
-               << " mangle chain";
-
   // b/177787823 If it already exists, the routing tag of any traffic exiting an
   // interface (physical or VPN) must match the routing tag of that interface.
   if (!ModifyIptables(IpFamily::Dual, "mangle",
@@ -240,20 +239,6 @@ void Datapath::Start() {
 }
 
 void Datapath::Stop() {
-  // Remove static IPv4 SNAT rules.
-  RemoveOutboundIPv4SNATMark("vmtap+");
-  process_runner_->iptables("filter",
-                            {"-D", "FORWARD", "-m", "state", "--state",
-                             "ESTABLISHED,RELATED", "-j", "ACCEPT", "-w"});
-  process_runner_->iptables("nat", {"-D", "POSTROUTING", "-m", "mark", "--mark",
-                                    "1/1", "-j", "MASQUERADE", "-w"});
-  process_runner_->iptables(
-      "filter", {"-D", "FORWARD", "-m", "mark", "--mark", "1/1", "-m", "state",
-                 "--state", "INVALID", "-j", "DROP", "-w"});
-
-  for (const auto& oif : kPhysicalIfnamePrefixes)
-    RemoveSourceIPv4DropRule(oif, kGuestIPv4Subnet);
-
   // Restore original local port range.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
@@ -268,44 +253,53 @@ void Datapath::Stop() {
   if (process_runner_->sysctl_w("net.ipv4.ip_forward", "0") != 0)
     LOG(ERROR) << "Failed to restore net.ipv4.ip_forward.";
 
-  // Detach the VPN marking mangle chain
-  if (!ModifyFwmarkVpnJumpRule("OUTPUT", "-D", "" /*iif*/, kFwmarkRouteOnVpn,
-                               kFwmarkVpnMask))
-    LOG(ERROR)
-        << "Failed to remove from mangle OUTPUT chain jump rule to VPN chain";
+  ResetIptables();
+}
 
-  // Detach apply_local_source_mark from mangle PREROUTING
-  if (!ModifyIptables(IpFamily::Dual, "mangle",
-                      {"-D", "OUTPUT", "-j", kApplyLocalSourceMarkChain, "-w"}))
-    LOG(ERROR) << "Failed to detach " << kApplyLocalSourceMarkChain
-               << " from mangle OUTPUT";
+void Datapath::ResetIptables() {
+  // If it exists, remove jump rules from a built-in chain to a custom routing
+  // or tagging chain.
+  ModifyIptables(IpFamily::IPv4, "filter",
+                 {"-D", "OUTPUT", "-j", kDropGuestIpv4Prefix, "-w"},
+                 false /*log_failures*/);
 
-  // Stops applying routing tags saved in conntrack for sockets created in the
-  // host network namespace.
-  if (!ModifyConnmarkRestore(IpFamily::Dual, "OUTPUT", "-D", "" /*iif*/,
-                             kFwmarkRoutingMask))
-    LOG(ERROR) << "Failed to remove OUTPUT CONNMARK restore rule";
-  if (!ModifyConnmarkRestore(IpFamily::Dual, "POSTROUTING", "-D", "",
-                             kFwmarkRoutingMask))
-    LOG(ERROR) << "Failed to remove POSTROUTING CONNMARK restore rule";
+  // Flush chains used for routing and fwmark tagging. Also delete additional
+  // chains made by patchpanel. Chains used by permission broker (nat
+  // PREROUTING, filter INPUT) and chains used for traffic counters (mangle
+  // {rx,tx}_{<iface>, vpn}) are not flushed.
+  static struct {
+    IpFamily family;
+    std::string table;
+    std::string chain;
+    bool should_delete;
+  } resetOps[] = {
+      {IpFamily::Dual, "filter", "FORWARD", false},
+      {IpFamily::Dual, "mangle", "FORWARD", false},
+      {IpFamily::Dual, "mangle", "INPUT", false},
+      {IpFamily::Dual, "mangle", "OUTPUT", false},
+      {IpFamily::Dual, "mangle", "POSTROUTING", false},
+      {IpFamily::Dual, "mangle", "PREROUTING", false},
+      {IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain, true},
+      {IpFamily::Dual, "mangle", kApplyVpnMarkChain, true},
+      {IpFamily::Dual, "mangle", kCheckRoutingMarkChain, true},
+      {IpFamily::IPv4, "filter", kDropGuestIpv4Prefix, true},
+      {IpFamily::IPv4, "nat", "POSTROUTING", false},
+  };
+  for (const auto& op : resetOps) {
+    // Chains to delete are custom chains and will not exist the first time
+    // patchpanel starts after boot. Skip flushing and delete these chains if
+    // they do not exist to avoid logging spurious error messages.
+    if (op.should_delete && !ModifyChain(op.family, op.table, "-L", op.chain,
+                                         false /*log_failures*/))
+      continue;
 
-  // Delete the POSTROUTING jump rule to check_routing_mark chain holding
-  // routing tag filter rules.
-  if (!ModifyIptables(IpFamily::Dual, "mangle",
-                      {"-D", "POSTROUTING", "-m", "mark", "!", "--mark",
-                       "0x0/" + kFwmarkRoutingMask.ToString(), "-j",
-                       kCheckRoutingMarkChain, "-w"}))
-    LOG(ERROR) << "Failed to remove POSTROUTING jump rule to "
-               << kCheckRoutingMarkChain;
+    if (!ModifyChain(op.family, op.table, "-F", op.chain))
+      LOG(ERROR) << "Failed to flush " << op.chain << " chain in table "
+                 << op.table;
 
-  // Delete the mangle chains
-  for (const auto* chain : {kApplyLocalSourceMarkChain, kApplyVpnMarkChain,
-                            kCheckRoutingMarkChain}) {
-    if (!ModifyChain(IpFamily::Dual, "mangle", "-F", chain))
-      LOG(ERROR) << "Failed to flush " << chain << " mangle chain";
-
-    if (!ModifyChain(IpFamily::Dual, "mangle", "-X", chain))
-      LOG(ERROR) << "Failed to delete " << chain << " mangle chain";
+    if (op.should_delete && !ModifyChain(op.family, op.table, "-X", op.chain))
+      LOG(ERROR) << "Failed to delete " << op.chain << " chain in table "
+                 << op.table;
   }
 }
 
@@ -559,14 +553,16 @@ void Datapath::RemoveInterface(const std::string& ifname) {
 
 bool Datapath::AddSourceIPv4DropRule(const std::string& oif,
                                      const std::string& src_ip) {
-  return process_runner_->iptables("filter", {"-I", "OUTPUT", "-o", oif, "-s",
-                                              src_ip, "-j", "DROP", "-w"}) == 0;
+  return process_runner_->iptables(
+             "filter", {"-I", kDropGuestIpv4Prefix, "-o", oif, "-s", src_ip,
+                        "-j", "DROP", "-w"}) == 0;
 }
 
 bool Datapath::RemoveSourceIPv4DropRule(const std::string& oif,
                                         const std::string& src_ip) {
-  return process_runner_->iptables("filter", {"-D", "OUTPUT", "-o", oif, "-s",
-                                              src_ip, "-j", "DROP", "-w"}) == 0;
+  return process_runner_->iptables(
+             "filter", {"-D", kDropGuestIpv4Prefix, "-o", oif, "-s", src_ip,
+                        "-j", "DROP", "-w"}) == 0;
 }
 
 bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
