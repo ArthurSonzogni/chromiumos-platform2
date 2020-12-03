@@ -16,6 +16,8 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/blkdev_utils/mock_lvm.h>
+#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
 #include <gtest/gtest.h>
 
@@ -38,6 +40,16 @@ constexpr char kDataPartition[] = "0FC63DAF-8483-4772-8E79-3D69D8477DE4";
 constexpr char kReservedPartition[] = "2E0A753D-9E48-43B0-8337-B15192CB1B5E";
 constexpr char kRWFWPartition[] = "CAB6E88E-ABF3-4102-A07A-D4BB9BE3C1D3";
 constexpr char kEFIPartition[] = "C12A7328-F81F-11D2-BA4B-00A0C93EC93B";
+
+constexpr char kPhysicalVolumeReport[] =
+    "{\"report\": [{ \"pv\": [ {\"pv_name\":\"/dev/mmcblk0p1\", "
+    "\"vg_name\":\"stateful\"}]}]}";
+constexpr char kThinpoolReport[] =
+    "{\"report\": [{ \"lv\": [ {\"lv_name\":\"thinpool\", "
+    "\"vg_name\":\"stateful\"}]}]}";
+constexpr char kLogicalVolumeReport[] =
+    "{\"report\": [{ \"lv\": [ {\"lv_name\":\"unencrypted\", "
+    "\"vg_name\":\"stateful\"}]}]}";
 
 bool CreateDirectoryAndWriteFile(const base::FilePath& path,
                                  const std::string& contents) {
@@ -526,7 +538,8 @@ class MarkDeveloperModeTest : public ::testing::Test {
       : cros_system_(new CrosSystemFake()),
         clobber_(ClobberState::Arguments(),
                  std::unique_ptr<CrosSystem>(cros_system_),
-                 std::make_unique<ClobberUi>(DevNull())) {}
+                 std::make_unique<ClobberUi>(DevNull()),
+                 std::make_unique<brillo::MockLogicalVolumeManager>()) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -572,7 +585,8 @@ class GetPreservedFilesListTest : public ::testing::Test {
       : cros_system_(new CrosSystemFake()),
         clobber_(ClobberState::Arguments(),
                  std::unique_ptr<CrosSystem>(cros_system_),
-                 std::make_unique<ClobberUi>(DevNull())) {}
+                 std::make_unique<ClobberUi>(DevNull()),
+                 std::make_unique<brillo::MockLogicalVolumeManager>()) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -747,7 +761,10 @@ class ClobberStateMock : public ClobberState {
   ClobberStateMock(const Arguments& args,
                    std::unique_ptr<CrosSystem> cros_system,
                    std::unique_ptr<ClobberUi> ui)
-      : ClobberState(args, std::move(cros_system), std::move(ui)),
+      : ClobberState(args,
+                     std::move(cros_system),
+                     std::move(ui),
+                     std::make_unique<brillo::MockLogicalVolumeManager>()),
         secure_erase_supported_(false) {}
 
   void SetStatResultForPath(const base::FilePath& path, const struct stat& st) {
@@ -774,8 +791,17 @@ class ClobberStateMock : public ClobberState {
 
   bool DropCaches() override { return secure_erase_supported_; }
 
+  uint64_t GetBlkSize(const base::FilePath& device) override {
+    return stateful_partition_size_;
+  }
+
+  std::string GenerateRandomVolumeGroupName() override {
+    return "STATEFULSTATEFUL";
+  }
+
  private:
   std::unordered_map<std::string, struct stat> result_map_;
+  uint64_t stateful_partition_size_ = 5UL * 1024 * 1024 * 1024;
   bool secure_erase_supported_;
 };
 
@@ -1320,7 +1346,7 @@ TEST_F(GetDevicesToWipeTest, MMC) {
   ClobberState::DeviceWipeInfo wipe_info;
   EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
                                              partitions_, &wipe_info));
-  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/mmcblk0p1");
+  EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/mmcblk0p1");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/mmcblk0p5");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/mmcblk0p4");
   EXPECT_FALSE(wipe_info.is_mtd_flash);
@@ -1334,7 +1360,7 @@ TEST_F(GetDevicesToWipeTest, NVME_a_active) {
   ClobberState::DeviceWipeInfo wipe_info;
   EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
                                              partitions_, &wipe_info));
-  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/nvme0n1p1");
+  EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/nvme0n1p1");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/nvme0n1p5");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/nvme0n1p4");
   EXPECT_FALSE(wipe_info.is_mtd_flash);
@@ -1348,7 +1374,7 @@ TEST_F(GetDevicesToWipeTest, NVME_b_active) {
   ClobberState::DeviceWipeInfo wipe_info;
   EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
                                              partitions_, &wipe_info));
-  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/nvme0n1p1");
+  EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/nvme0n1p1");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/nvme0n1p3");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/nvme0n1p2");
   EXPECT_FALSE(wipe_info.is_mtd_flash);
@@ -1368,7 +1394,7 @@ TEST_F(GetDevicesToWipeTest, SDA) {
   ClobberState::DeviceWipeInfo wipe_info;
   EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
                                              partitions_, &wipe_info));
-  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/sda7");
+  EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/sda7");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/sda4");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/sda2");
   EXPECT_FALSE(wipe_info.is_mtd_flash);
@@ -1471,4 +1497,125 @@ TEST(WipeBlockDevice, Slow) {
     EXPECT_EQ(file_system.Read(offset, &buf[0], buf_size), buf_size);
     EXPECT_EQ(buf, zero_buf);
   }
+}
+
+class LogicalVolumeStatefulPartitionTest : public ::testing::Test {
+ public:
+  LogicalVolumeStatefulPartitionTest()
+      : wipe_info_(
+            {.stateful_partition_device = base::FilePath("/dev/mmcblk0p1")}),
+        lvm_command_runner_(std::make_shared<brillo::MockLvmCommandRunner>()),
+        clobber_(ClobberState::Arguments(),
+                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<ClobberUi>(DevNull())) {
+    std::unique_ptr<brillo::LogicalVolumeManager> lvm =
+        std::make_unique<brillo::LogicalVolumeManager>(lvm_command_runner_);
+
+    clobber_.SetLogicalVolumeManagerForTesting(std::move(lvm));
+    clobber_.SetWipeInfoForTesting(wipe_info_);
+  }
+  ~LogicalVolumeStatefulPartitionTest() = default;
+
+  void ExpectStatefulLogicalVolume() {
+    // Expect physical volume and volume group.
+    std::vector<std::string> pvdisplay = {
+        "/sbin/pvdisplay", "-C", "--reportformat", "json", "/dev/mmcblk0p1"};
+    EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(pvdisplay, _))
+        .WillRepeatedly(
+            DoAll(SetArgPointee<1>(std::string(kPhysicalVolumeReport)),
+                  Return(true)));
+    // Expect thinpool.
+    std::vector<std::string> thinpool_display = {"/sbin/lvdisplay",
+                                                 "-S",
+                                                 "pool_lv=\"\"",
+                                                 "-C",
+                                                 "--reportformat",
+                                                 "json",
+                                                 "STATEFULSTATEFUL/thinpool"};
+    EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(thinpool_display, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(std::string(kThinpoolReport)),
+                              Return(true)));
+    // Expect logical volume.
+    std::vector<std::string> lv_display = {"/sbin/lvdisplay",
+                                           "-S",
+                                           "pool_lv!=\"\"",
+                                           "-C",
+                                           "--reportformat",
+                                           "json",
+                                           "STATEFULSTATEFUL/unencrypted"};
+    EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(lv_display, _))
+        .WillRepeatedly(DoAll(
+            SetArgPointee<1>(std::string(kLogicalVolumeReport)), Return(true)));
+  }
+
+ protected:
+  ClobberState::DeviceWipeInfo wipe_info_;
+  std::shared_ptr<brillo::MockLvmCommandRunner> lvm_command_runner_;
+  ClobberStateMock clobber_;
+};
+
+TEST_F(LogicalVolumeStatefulPartitionTest, RemoveLogicalVolumeStackCheck) {
+  ExpectStatefulLogicalVolume();
+
+  EXPECT_CALL(
+      *lvm_command_runner_.get(),
+      RunCommand(std::vector<std::string>({"vgchange", "-an", "stateful"})))
+      .Times(1)
+      .WillOnce(Return(true));
+  EXPECT_CALL(*lvm_command_runner_.get(),
+              RunCommand(std::vector<std::string>({"vgremove", "stateful"})))
+      .Times(1)
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *lvm_command_runner_.get(),
+      RunCommand(std::vector<std::string>({"pvremove", "/dev/mmcblk0p1"})))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  clobber_.RemoveLogicalVolumeStack();
+}
+
+TEST_F(LogicalVolumeStatefulPartitionTest, CreateLogicalVolumeStackCheck) {
+  std::vector<std::string> pv_create = {"pvcreate", "-ff", "--yes",
+                                        "/dev/mmcblk0p1"};
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(pv_create))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  std::vector<std::string> vg_create = {"vgcreate", "-p", "1",
+                                        "STATEFULSTATEFUL", "/dev/mmcblk0p1"};
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(vg_create))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  std::vector<std::string> tp_create = {
+      "lvcreate", "--size",     "5017M",    "--poolmetadatasize",
+      "50M",      "--thinpool", "thinpool", "STATEFULSTATEFUL"};
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(tp_create))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  std::vector<std::string> lv_create = {"lvcreate",
+                                        "--thin",
+                                        "-V",
+                                        "4766M",
+                                        "-n",
+                                        "unencrypted",
+                                        "STATEFULSTATEFUL/thinpool"};
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(lv_create))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  std::vector<std::string> vg_enable = {"vgchange", "-ay", "STATEFULSTATEFUL"};
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(vg_enable))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  std::vector<std::string> lv_enable = {"lvchange", "-ay",
+                                        "STATEFULSTATEFUL/unencrypted"};
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(lv_enable))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  clobber_.CreateLogicalVolumeStack();
 }

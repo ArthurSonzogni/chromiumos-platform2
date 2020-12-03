@@ -11,6 +11,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/blkdev_utils/lvm.h>
 
 #include "init/crossystem_impl.h"
 
@@ -55,6 +56,8 @@ int main(int argc, char* argv[]) {
 
   ClobberState::Arguments args = ClobberState::ParseArgv(argc, argv);
   ClobberState clobber(args, std::make_unique<CrosSystemImpl>(),
-                       std::make_unique<ClobberUi>(OpenTerminal()));
+                       std::make_unique<ClobberUi>(OpenTerminal()),
+                       std::make_unique<brillo::LogicalVolumeManager>());
+
   return clobber.Run();
 }

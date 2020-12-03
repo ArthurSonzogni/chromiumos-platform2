@@ -9,11 +9,13 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/time/time.h>
+#include <brillo/blkdev_utils/lvm.h>
 
 #include "init/clobber_ui.h"
 #include "init/crossystem.h"
@@ -35,6 +37,8 @@ class ClobberState {
     // Assume that the reason string is already sanitized by session
     // manager (non-alphanumeric characters replaced with '_').
     std::string reason = "";
+    // Setup the stateful partition using a thin logical volume.
+    bool setup_lvm = false;
   };
 
   // The index of each partition within the gpt partition table.
@@ -48,7 +52,10 @@ class ClobberState {
 
   struct DeviceWipeInfo {
     // Paths under /dev for the various devices to wipe.
-    base::FilePath stateful_device;
+    base::FilePath stateful_partition_device;
+    // Devices using logical volumes on the stateful partition will use a
+    // logical volume on top of the stateful partition device.
+    base::FilePath stateful_filesystem_device;
     base::FilePath inactive_root_device;
     base::FilePath inactive_kernel_device;
 
@@ -129,9 +136,13 @@ class ClobberState {
   static void EnsureKernelIsBootable(const base::FilePath root_disk,
                                      int kernel_partition);
 
+  void CreateLogicalVolumeStack();
+  void RemoveLogicalVolumeStack();
+
   ClobberState(const Arguments& args,
                std::unique_ptr<CrosSystem> cros_system,
-               std::unique_ptr<ClobberUi> ui);
+               std::unique_ptr<ClobberUi> ui,
+               std::unique_ptr<brillo::LogicalVolumeManager> lvm);
 
   // Run the clobber state routine.
   int Run();
@@ -174,6 +185,15 @@ class ClobberState {
   void SetDevForTest(const base::FilePath& dev_path);
   void SetSysForTest(const base::FilePath& sys_path);
 
+  void SetLogicalVolumeManagerForTesting(
+      std::unique_ptr<brillo::LogicalVolumeManager> lvm) {
+    lvm_ = std::move(lvm);
+  }
+
+  void SetWipeInfoForTesting(const DeviceWipeInfo& wipe_info) {
+    wipe_info_ = wipe_info;
+  }
+
  protected:
   // These functions are marked protected so they can be overridden for tests.
 
@@ -188,6 +208,12 @@ class ClobberState {
   // returns true.
   virtual bool DropCaches();
 
+  // Wrapper around ioctl(_, BLKGETSIZE64, _). From cryptohome::Platform.
+  virtual uint64_t GetBlkSize(const base::FilePath& device_size);
+
+  // Generates a random volume group name for the stateful partition.
+  virtual std::string GenerateRandomVolumeGroupName();
+
  private:
   bool ClearBiometricSensorEntropy();
 
@@ -199,7 +225,7 @@ class ClobberState {
   // Makes a new filesystem on |wipe_info_.stateful_device|.
   int CreateStatefulFileSystem();
 
-  int Reboot();
+  void Reboot();
 
   Arguments args_;
   std::unique_ptr<CrosSystem> cros_system_;
@@ -211,6 +237,7 @@ class ClobberState {
   base::FilePath root_disk_;
   DeviceWipeInfo wipe_info_;
   base::TimeTicks wipe_start_time_;
+  std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
 };
 
 #endif  // INIT_CLOBBER_STATE_H_
