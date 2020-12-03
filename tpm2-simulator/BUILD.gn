@@ -18,6 +18,9 @@ pkg_config("target_defaults") {
 
 executable("tpm2-simulator") {
   configs += [ ":target_defaults" ]
-  sources = [ "main.cc" ]
+  sources = [
+    "main.cc",
+    "simulator.cc",
+  ]
   libs = [ "tpm2" ]
 }
