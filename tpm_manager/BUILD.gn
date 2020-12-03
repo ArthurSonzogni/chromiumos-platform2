@@ -10,10 +10,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":libtpm_manager",
     ":local_data_migration",
-    ":tpm_manager_client",
-    ":tpm_manager_test",
     ":tpm_managerd",
   ]
   if (use.test) {
@@ -50,47 +47,6 @@ proto_library("legacy_local_data_proto") {
   sources = [ "${proto_in_dir}/legacy_local_data.proto" ]
 }
 
-static_library("proto_library") {
-  proto_in_dir = "common"
-  sources = [ "${proto_in_dir}/print_tpm_manager_proto.cc" ]
-  configs -= [
-    "//common-mk:use_thin_archive",
-    "//common-mk:pie",
-  ]
-  configs += [
-    ":target_defaults",
-    "//common-mk:nouse_thin_archive",
-    "//common-mk:pic",
-  ]
-}
-
-# A shared library for clients.
-shared_library("libtpm_manager") {
-  sources = [ "client/tpm_manager_utility.cc" ]
-  configs += [ ":target_defaults" ]
-  libs = [ "system_api" ]
-  deps = [ ":proto_library" ]
-}
-
-# A client command line utility.
-executable("tpm_manager_client") {
-  sources = [ "client/main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":libtpm_manager",
-    ":proto_library",
-  ]
-
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
-}
-
 # A library for server code.
 config("server_library_tpm2_config") {
   libs = [ "trunks" ]
@@ -113,10 +69,7 @@ static_library("server_library") {
     "server/tpm_manager_service.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":legacy_local_data_proto",
-    ":proto_library",
-  ]
+  deps = [ ":legacy_local_data_proto" ]
 
   # NOSORT
   pkg_deps = [
@@ -159,10 +112,7 @@ executable("tpm_managerd") {
     ":target_defaults",
     ":tpm_managerd_config",
   ]
-  deps = [
-    ":proto_library",
-    ":server_library",
-  ]
+  deps = [ ":server_library" ]
 
   # NOSORT
   pkg_deps = [
@@ -199,7 +149,6 @@ static_library("tpm_manager_test") {
     "//common-mk:nouse_thin_archive",
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
-  deps = [ ":proto_library" ]
 
   # NOSORT
   pkg_deps = [
@@ -224,7 +173,6 @@ if (use.test) {
 
   executable("tpm_manager_testrunner") {
     sources = [
-      "client/tpm_manager_utility_test.cc",
       "server/dbus_service_test.cc",
       "server/local_data_migration_test.cc",
       "server/mock_local_data_store.cc",
@@ -242,8 +190,6 @@ if (use.test) {
       ":tpm_manager_testrunner_config",
     ]
     deps = [
-      ":libtpm_manager",
-      ":proto_library",
       ":server_library",
       ":tpm_manager_test",
     ]

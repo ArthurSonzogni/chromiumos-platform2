@@ -3,6 +3,19 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":libtpm_manager",
+    ":libtpm_manager-client-headers",
+    ":tpm_manager_client",
+  ]
+  if (use.test) {
+    deps += [ ":tpm_manager-client_testrunner" ]
+  }
+}
 
 # tpm_manager client library generated headers. Used by other tools to
 # interact with tpm_manager.
@@ -14,6 +27,116 @@ generate_dbus_proxies("libtpm_manager-client-headers") {
   sources = [ "../common/dbus_bindings/org.chromium.TpmManager.xml" ]
 }
 
-group("all") {
+# copy the dbus-proxies.h for the internal package usage.
+copy("libtpm_manager-client") {
+  sources = [ "${root_gen_dir}/include/tpm_manager/dbus-proxies.h" ]
+  outputs = [
+    "${root_gen_dir}/include/tpm_manager-client/tpm_manager/dbus-proxies.h",
+  ]
   deps = [ ":libtpm_manager-client-headers" ]
+}
+
+# copy the dbus-proxy-mocks.h for the internal package usage.
+copy("libtpm_manager-client-test") {
+  sources = [ "${root_gen_dir}/include/tpm_manager/dbus-proxy-mocks.h" ]
+  outputs = [ "${root_gen_dir}/include/tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h" ]
+  deps = [ ":libtpm_manager-client-headers" ]
+}
+
+pkg_config("target_default_deps") {
+  # This is a list of pkg-config dependencies
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+config("target_defaults") {
+  configs = [ ":target_default_deps" ]
+}
+
+static_library("proto_library") {
+  proto_in_dir = "common"
+  sources = [ "../${proto_in_dir}/print_tpm_manager_proto.cc" ]
+  configs -= [
+    "//common-mk:use_thin_archive",
+    "//common-mk:pie",
+  ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:nouse_thin_archive",
+    "//common-mk:pic",
+  ]
+}
+
+# A shared library for clients.
+shared_library("libtpm_manager") {
+  sources = [ "tpm_manager_utility.cc" ]
+  configs += [ ":target_defaults" ]
+  libs = [ "system_api" ]
+  deps = [
+    ":libtpm_manager-client",
+    ":proto_library",
+  ]
+}
+
+# A client command line utility.
+executable("tpm_manager_client") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libtpm_manager",
+    ":libtpm_manager-client",
+    ":proto_library",
+  ]
+
+  # NOSORT
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
+}
+
+if (use.test) {
+  pkg_config("tpm_manager_testrunner_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libmetrics",
+    ]
+  }
+
+  executable("tpm_manager-client_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":tpm_manager_testrunner_config",
+    ]
+    deps = [
+      ":libtpm_manager",
+      ":libtpm_manager-client-test",
+      ":proto_library",
+    ]
+    sources = [
+      "tpm_manager-client_testrunner.cc",
+      "tpm_manager_utility_test.cc",
+    ]
+
+    # NOSORT
+    pkg_deps = [
+      # system_api depends on protobuf (or protobuf-lite). It must appear
+      # before protobuf here or the linker flags won't be in the right
+      # order.
+      "system_api",
+      "protobuf",
+    ]
+  }
 }
