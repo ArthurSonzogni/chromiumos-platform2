@@ -274,7 +274,7 @@ bool CellularService::Save(StoreInterface* storage) {
 }
 
 bool CellularService::IsVisible() const {
-  return !!cellular_;
+  return true;
 }
 
 void CellularService::SetActivationType(ActivationType type) {

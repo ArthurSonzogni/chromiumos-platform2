@@ -1761,6 +1761,7 @@ void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
 
 void Cellular::SetSimSlotProperties(
     const std::vector<SimProperties>& slot_properties) {
+  // Set |sim_slot_info_| and emit SIMSlotInfo
   sim_slot_info_.clear();
   for (const SimProperties& sim_properties : slot_properties) {
     size_t slot = sim_properties.slot;
@@ -1773,6 +1774,22 @@ void Cellular::SetSimSlotProperties(
     properties.Set(kSIMSlotInfoPrimary, is_primary);
   }
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
+
+  // Update Cellular Services for secondary SIMs.
+  for (const SimProperties& sim_properties : slot_properties) {
+    if (sim_properties.iccid.empty()) {
+      LOG(WARNING) << "SIM slot with no profile, eID: " << sim_properties.eid;
+      continue;
+    }
+    // Skip the primary SIM
+    if (sim_properties.iccid == iccid_)
+      continue;
+
+    // TODO(b:169581681): Remove logging once stable.
+    LOG(INFO) << "Secondary SIM: " << sim_properties.iccid;
+    manager()->cellular_service_provider()->LoadServicesForSecondarySim(
+        sim_properties.eid, sim_properties.iccid, sim_properties.imsi);
+  }
 }
 
 void Cellular::set_mdn(const string& mdn) {

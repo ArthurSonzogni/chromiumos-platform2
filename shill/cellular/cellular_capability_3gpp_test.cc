@@ -35,6 +35,7 @@
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
 #include "shill/error.h"
+#include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
@@ -149,10 +150,12 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
                                "",
                                RpcIdentifier(""))),
         service_(new MockCellularService(&manager_, cellular_)),
+        profile_(new NiceMock<MockProfile>(&manager_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {
     metrics_.RegisterDevice(cellular_->interface_index(),
                             Technology::kCellular);
+    cellular_service_provider_.set_profile_for_testing(profile_);
   }
 
   ~CellularCapability3gppTest() override {
@@ -180,6 +183,11 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
 
     EXPECT_CALL(manager_, cellular_service_provider())
         .WillRepeatedly(Return(&cellular_service_provider_));
+
+    EXPECT_CALL(*profile_, GetConstStorage())
+        .WillRepeatedly(Return(&profile_storage_));
+    EXPECT_CALL(*profile_, GetStorage())
+        .WillRepeatedly(Return(&profile_storage_));
 
     SetMockMobileOperatorInfoObjects();
   }
@@ -512,6 +520,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   CellularRefPtr cellular_;
   MockCellularService* service_;  // owned by cellular_
   CellularServiceProvider cellular_service_provider_{&manager_};
+  FakeStore profile_storage_;
+  scoped_refptr<NiceMock<MockProfile>> profile_;
 
   // Properties provided by TestControl::CreateDBusPropertiesProxy()
   KeyValueStore modem_properties_;
