@@ -46,6 +46,11 @@ class CellularServiceProvider : public ProviderInterface {
   // current device IMSI, creating one if necessary.
   virtual CellularServiceRefPtr LoadServicesForDevice(Cellular* device);
 
+  // Loads any existing services matching |sim_identifier|.
+  virtual void LoadServicesForSecondarySim(const std::string& sim_card_id,
+                                           const std::string& iccid,
+                                           const std::string& imsi);
+
   // Removes any services associated with |device|.
   virtual void RemoveServicesForDevice(Cellular* device);
 
@@ -54,6 +59,11 @@ class CellularServiceProvider : public ProviderInterface {
  private:
   friend class CellularServiceProviderTest;
 
+  CellularServiceRefPtr LoadMatchingServicesFromProfile(
+      const std::string& sim_card_id,
+      const std::string& iccid,
+      const std::string& imsi,
+      Cellular* device);
   void AddService(CellularServiceRefPtr service);
   void RemoveService(CellularServiceRefPtr service);
   CellularServiceRefPtr FindService(const std::string& imsi);

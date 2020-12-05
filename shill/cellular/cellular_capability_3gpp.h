@@ -317,8 +317,9 @@ class CellularCapability3gpp : public CellularCapability {
       RpcIdentifier sim_path,
       std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
       const KeyValueStore& properties);
-  void OnSimPropertiesChanged(RpcIdentifier sim_path,
-                              const KeyValueStore& properties);
+  void ParseSimProperties(const KeyValueStore& properties,
+                          SimProperties* sim_properties);
+  void OnSimPropertiesUpdated(const KeyValueStore& properties);
 
   // Method callbacks
   void OnRegisterReply(const ResultCallback& callback, const Error& error);

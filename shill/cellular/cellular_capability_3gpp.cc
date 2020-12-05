@@ -23,6 +23,7 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_pco.h"
 #include "shill/cellular/cellular_service.h"
+#include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/modem_info.h"
 #include "shill/cellular/pending_activation_store.h"
@@ -1303,7 +1304,7 @@ void CellularCapability3gpp::OnPropertiesChanged(
     OnModemSignalPropertiesChanged(changed_properties);
   }
   if (interface == MM_DBUS_INTERFACE_SIM) {
-    OnSimPropertiesChanged(sim_path_, changed_properties);
+    OnSimPropertiesUpdated(changed_properties);
   }
 }
 
@@ -1359,7 +1360,8 @@ void CellularCapability3gpp::UpdateSims() {
 }
 
 void CellularCapability3gpp::OnAllSimPropertiesReceived() {
-  SLOG(this, 2) << __func__ << " Primary Sim path=" << sim_path_.value();
+  SLOG(this, 2) << __func__ << " Primary Sim path=" << sim_path_.value()
+                << " SIMs: " << sim_properties_.size();
   if (IsValidSimPath(sim_path_)) {
     sim_proxy_ = control_interface()->CreateMM1SimProxy(
         sim_path_, cellular()->dbus_service());
@@ -1381,14 +1383,34 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
       if (!IsValidSimPath(s))
         continue;
       uint32_t slot = idx + 1;
-      LOG(INFO) << " SetPrimarySimSlot: " << slot;
+      // TODO(b:169581681): Remove logging once stable.
+      LOG(INFO) << "SetPrimarySimSlot: " << slot;
       // This will complete immediately, at which point the Modem object will
       // become invalid. TODO(b/169581681): Ensure this is handled gracefully.
       modem_proxy_->SetPrimarySimSlot(slot, base::DoNothing(), kTimeoutDefault);
       break;
     }
   }
-  // TODO(b/169581681): Update Cellular Services for secondary SIMs.
+  // Update Cellular Services for secondary SIMs.
+  for (const auto& iter : sim_properties_) {
+    if (iter.first == sim_path_)
+      continue;  // Skip primary SIM.
+    if (iter.second.iccid.empty()) {
+      LOG(INFO) << "SIM card with no profile, eID: " << iter.second.eid;
+      continue;
+    }
+    // TODO(b:169581681): Remove logging once stable.
+    LOG(INFO) << "Secondary SIM: " << iter.first.value();
+    // Use EID if available or ICCID if not to look up associated services.
+    std::string sim_card_id = iter.second.eid;
+    if (sim_card_id.empty())
+      sim_card_id = iter.second.iccid;
+    modem_info()
+        ->manager()
+        ->cellular_service_provider()
+        ->LoadServicesForSecondarySim(sim_card_id, iter.second.iccid,
+                                      iter.second.imsi);
+  }
 }
 
 void CellularCapability3gpp::SetPrimarySimProperties(
@@ -1816,36 +1838,51 @@ void CellularCapability3gpp::OnGetSimProperties(
     RpcIdentifier sim_path,
     std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
     const KeyValueStore& properties) {
-  OnSimPropertiesChanged(sim_path, properties);
-  // |sim_properties_proxy| will be safely released here.|
-}
-
-void CellularCapability3gpp::OnSimPropertiesChanged(
-    RpcIdentifier sim_path, const KeyValueStore& properties) {
   SLOG(this, 2) << __func__ << ": " << sim_path.value();
+  if (!base::Contains(pending_slot_requests_, sim_path)) {
+    LOG(ERROR) << "OnGetSimProperties called without request: "
+               << sim_path.value();
+    return;
+  }
   SimProperties sim_properties;
-  if (properties.Contains<string>(MM_SIM_PROPERTY_SIMIDENTIFIER)) {
-    sim_properties.iccid =
-        properties.Get<string>(MM_SIM_PROPERTY_SIMIDENTIFIER);
-    LOG(INFO) << "SIM ICCID: " << sim_properties.iccid;
-  }
-  if (properties.Contains<string>(MM_SIM_PROPERTY_EID)) {
-    sim_properties.eid = properties.Get<string>(MM_SIM_PROPERTY_EID);
-  }
-  if (properties.Contains<string>(MM_SIM_PROPERTY_OPERATORIDENTIFIER)) {
-    sim_properties.operator_id =
-        properties.Get<string>(MM_SIM_PROPERTY_OPERATORIDENTIFIER);
-  }
-  if (properties.Contains<string>(MM_SIM_PROPERTY_OPERATORNAME)) {
-    sim_properties.spn = (properties.Get<string>(MM_SIM_PROPERTY_OPERATORNAME));
-  }
-  if (properties.Contains<string>(MM_SIM_PROPERTY_IMSI)) {
-    sim_properties.imsi = properties.Get<string>(MM_SIM_PROPERTY_IMSI);
-  }
+  ParseSimProperties(properties, &sim_properties);
   sim_properties_[sim_path] = sim_properties;
   pending_slot_requests_.erase(sim_path);
   if (pending_slot_requests_.empty())
     OnAllSimPropertiesReceived();
+  // |sim_properties_proxy| will be safely released here.|
+}
+
+void CellularCapability3gpp::ParseSimProperties(const KeyValueStore& properties,
+                                                SimProperties* sim_properties) {
+  if (properties.Contains<string>(MM_SIM_PROPERTY_SIMIDENTIFIER)) {
+    sim_properties->iccid =
+        properties.Get<string>(MM_SIM_PROPERTY_SIMIDENTIFIER);
+  }
+  if (properties.Contains<string>(MM_SIM_PROPERTY_EID)) {
+    sim_properties->eid = properties.Get<string>(MM_SIM_PROPERTY_EID);
+  }
+  if (properties.Contains<string>(MM_SIM_PROPERTY_OPERATORIDENTIFIER)) {
+    sim_properties->operator_id =
+        properties.Get<string>(MM_SIM_PROPERTY_OPERATORIDENTIFIER);
+  }
+  if (properties.Contains<string>(MM_SIM_PROPERTY_OPERATORNAME)) {
+    sim_properties->spn =
+        (properties.Get<string>(MM_SIM_PROPERTY_OPERATORNAME));
+  }
+  if (properties.Contains<string>(MM_SIM_PROPERTY_IMSI)) {
+    sim_properties->imsi = properties.Get<string>(MM_SIM_PROPERTY_IMSI);
+  }
+}
+
+// Note: It is not generally expected that this will get called.
+void CellularCapability3gpp::OnSimPropertiesUpdated(
+    const KeyValueStore& properties) {
+  SLOG(this, 2) << __func__ << ": " << sim_path_.value();
+  SimProperties& sim_properties = sim_properties_[sim_path_];
+  ParseSimProperties(properties, &sim_properties);
+  sim_properties_[sim_path_] = sim_properties;
+  SetPrimarySimProperties(sim_properties_[sim_path_]);
 }
 
 void CellularCapability3gpp::SetSimPathForTesting(

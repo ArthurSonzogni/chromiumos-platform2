@@ -121,12 +121,14 @@ TEST_F(CellularServiceProviderTest, LoadService) {
   EXPECT_EQ("iccid1", service->iccid());
   EXPECT_EQ("iccid1", service->sim_card_id());
   EXPECT_TRUE(service->IsVisible());
+  EXPECT_TRUE(service->connectable());
 
   // RemoveServicesForDevice does not destroy the services, but they should no
-  // longer be marked as visible.
+  // longer be marked as connectable.
   provider()->RemoveServicesForDevice(device.get());
   EXPECT_EQ(1u, GetProviderServices().size());
-  EXPECT_FALSE(service->IsVisible());
+  EXPECT_TRUE(service->IsVisible());
+  EXPECT_FALSE(service->connectable());
 
   // Stopping should remove all services.
   provider()->Stop();
@@ -192,10 +194,11 @@ TEST_F(CellularServiceProviderTest, SwitchDeviceIccid) {
   unsigned int serial_number1 = service->serial_number();
 
   // Removing services for the device does not destroy the services, but they
-  // should no longer be marked as visible.
+  // should no longer be marked as connectable.
   provider()->RemoveServicesForDevice(device.get());
   EXPECT_EQ(1u, GetProviderServices().size());
-  EXPECT_FALSE(service->IsVisible());
+  EXPECT_TRUE(service->IsVisible());
+  EXPECT_FALSE(service->connectable());
 
   // Adding a device with a new ICCID should create a new service with a
   // different serial number.
