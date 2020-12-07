@@ -507,6 +507,10 @@ dev_update_stateful_partition
 # /mnt/stateful_partition above.
 mount_or_fail --bind /mnt/stateful_partition/home /home
 
+if [ -f "/etc/init/tpm2-simulator.conf" ]; then
+  initctl start tpm2-simulator || true
+fi
+
 if ! do_mount_var_and_home_chronos; then
   if [ ! -O "${MOUNT_ENCRYPTED_FAILED_FILE}" ]; then
     touch "${MOUNT_ENCRYPTED_FAILED_FILE}"
