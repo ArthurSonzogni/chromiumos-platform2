@@ -4,21 +4,27 @@
 
 #include "tpm2-simulator/simulator.h"
 
-#include <base/command_line.h>
+#include <base/at_exit.h>
 #include <base/logging.h>
+#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
 int main(int argc, char* argv[]) {
-  // Initialize command line configuration early, as logging will require
-  // command line to be initialized
-  base::CommandLine::Init(argc, argv);
+  DEFINE_bool(sigstop, true, "raise SIGSTOP when TPM initialized");
+  DEFINE_string(work_dir, "/mnt/stateful_partition/unencrypted/tpm2-simulator",
+                "Daemon data folder");
+
+  base::AtExitManager at_exit;
+
+  brillo::FlagHelper::Init(argc, argv, "TPM2 simulator");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  if (argc != 1) {
-    LOG(ERROR) << "Program accepts no command line arguments";
-    return EXIT_FAILURE;
+  if (chdir(FLAGS_work_dir.c_str()) < 0) {
+    PLOG(ERROR) << "Failed to change to current directory";
   }
 
   tpm2_simulator::SimulatorDaemon daemon;
+  daemon.set_sigstop_on_initialized(FLAGS_sigstop);
+
   daemon.Run();
 }

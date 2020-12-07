@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path_watcher.h>
 #include <base/files/file.h>
 #include <brillo/daemons/daemon.h>
 
@@ -20,10 +21,18 @@ class SimulatorDaemon final : public brillo::Daemon {
   SimulatorDaemon& operator=(const SimulatorDaemon&) = delete;
   ~SimulatorDaemon() = default;
 
+  inline void set_sigstop_on_initialized(bool value) {
+    sigstop_on_initialized_ = value;
+  }
+
  protected:
   int OnInit() override;
   void OnCommand();
+  void OnTpmPathChange(const base::FilePath& path, bool error);
+  bool initialized_{false};
+  bool sigstop_on_initialized_{true};
   std::string remain_request_;
+  std::unique_ptr<base::FilePathWatcher> tpm_watcher_;
   base::ScopedFD command_fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> command_fd_watcher_;
 };

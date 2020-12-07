@@ -8,12 +8,13 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/files/file.h>
-#include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <crypto/sha2.h>
 #include <fcntl.h>
+#include <libminijail.h>
 #include <linux/vtpm_proxy.h>
+#include <scoped_minijail.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -24,40 +25,16 @@
 #include "tpm2-simulator/simulator.h"
 
 namespace {
-
+constexpr char kSimulatorUser[] = "tpm2-simulator";
+constexpr char kSimulatorGroup[] = "tpm2-simulator";
+constexpr char kSimulatorSeccompPath[] =
+    "/usr/share/policy/tpm2-simulator.policy";
 constexpr char kVtpmxPath[] = "/dev/vtpmx";
+constexpr char kDevTpmPathPrefix[] = "/dev/tpm";
 constexpr size_t kMaxCommandSize = MAX_COMMAND_SIZE;
 constexpr size_t kHeaderSize = 10;
-constexpr unsigned char kStartupCmd[] = {
-    0x80, 0x01,             /* TPM_ST_NO_SESSIONS */
-    0x00, 0x00, 0x00, 0x0c, /* commandSize = 12 */
-    0x00, 0x00, 0x01, 0x44, /* TPM_CC_Startup */
-    0x00, 0x00              /* TPM_SU_CLEAR */
-};
 
-// Resizes extend_data to size crypto::kSHA256Length and uses the result to
-// extend the indicated PCR.
-void ExtendPcr(unsigned int pcr_index, const std::string& extend_data) {
-  std::string mode_digest = extend_data;
-  mode_digest.resize(crypto::kSHA256Length);
-  tpm2::extend_pcr(pcr_index, mode_digest.data());
-}
-
-// According to the specified boot mode, extends PCR0 as cr50 does.
-// It should only be called once after the PCR0 value is set to all 0s
-// (e.g. running Startup with Clear). Calling it twice without resetting the PCR
-// will leave the TPM in an unknown boot mode.
-//  - developer_mode: 1 if in developer mode, 0 otherwise,
-//  - recovery_mode: 1 if in recovery mode, 0 otherwise,
-//  - verified_firmware: 1 if verified firmware, 0 if developer firmware.
-void ExtendPcr0BootMode(const char developer_mode,
-                        const char recovery_mode,
-                        const char verified_firmware) {
-  const std::string mode({developer_mode, recovery_mode, verified_firmware});
-  ExtendPcr(/*pcr_index=*/0, base::SHA1HashString(mode));
-}
-
-base::ScopedFD RegisterVTPM() {
+base::ScopedFD RegisterVTPM(base::FilePath* tpm_path) {
   struct vtpm_proxy_new_dev new_dev = {};
   new_dev.flags = VTPM_PROXY_FLAG_TPM2;
   base::ScopedFD vtpmx_fd(HANDLE_EINTR(open(kVtpmxPath, O_RDWR | O_CLOEXEC)));
@@ -69,6 +46,8 @@ base::ScopedFD RegisterVTPM() {
     // return an invalid FD.
     return {};
   }
+  *tpm_path =
+      base::FilePath(kDevTpmPathPrefix + std::to_string(new_dev.tpm_num));
   LOG(INFO) << "Create TPM at: /dev/tpm" << new_dev.tpm_num;
   return base::ScopedFD(new_dev.fd);
 }
@@ -92,25 +71,6 @@ void InitializeVTPM() {
     if (!tpm2::tpm_endorse())
       LOG(ERROR) << __func__ << " Failed to endorse TPM with a fixed key.";
   }
-
-  // Send TPM2_Startup(TPM_SU_CLEAR), ignore the result. This is normally done
-  // by firmware. Without TPM2_Startup, TpmUtility::CheckState() fails,
-  // ResourceManager aborts initialization, and trunks daemon dies.
-  unsigned int response_size;
-  unsigned char* response;
-  unsigned char startup_cmd[sizeof(kStartupCmd)];
-  memcpy(startup_cmd, kStartupCmd, sizeof(kStartupCmd));
-
-  // TODO(yich): ExecuteCommand would mutate the command buffer, so we can't
-  // mark the command buffer const here.
-  tpm2::ExecuteCommand(sizeof(startup_cmd), startup_cmd, &response_size,
-                       &response);
-  LOG(INFO) << "TPM2_Startup(TPM_SU_CLEAR) sent.";
-
-  ExtendPcr0BootMode(/*developer_mode=*/1, /*recovery_mode=*/0,
-                     /*verified_firmware=*/0);
-  // Assign an arbitrary value to PCR1.
-  ExtendPcr(/*pcr_index=*/1, /*extend_data=*/"PCR1");
 }
 
 std::string CommandWithCode(uint32_t code) {
@@ -159,9 +119,13 @@ std::string RunCommand(const std::string& command) {
   tpm2::TPM_CC command_code = 0;
   tpm2::TPM_RC rc =
       tpm2::TPMI_ST_COMMAND_TAG_Unmarshal(&tag, &header, &header_size);
-  CHECK_EQ(rc, TPM_RC_SUCCESS);
+  if (rc != TPM_RC_SUCCESS) {
+    return CommandWithCode(rc);
+  }
   rc = tpm2::UINT32_Unmarshal(&command_size, &header, &header_size);
-  CHECK_EQ(rc, TPM_RC_SUCCESS);
+  if (rc != TPM_RC_SUCCESS) {
+    return CommandWithCode(rc);
+  }
   rc = tpm2::TPM_CC_Unmarshal(&command_code, &header, &header_size);
   if (command_code == TPM2_CC_SET_LOCALITY) {
     return CommandWithCode(TPM_RC_SUCCESS);
@@ -173,6 +137,18 @@ std::string RunCommand(const std::string& command) {
   return std::string(reinterpret_cast<char*>(response), response_size);
 }
 
+void InitMinijailSandbox() {
+  ScopedMinijail j(minijail_new());
+  minijail_no_new_privs(j.get());
+  minijail_log_seccomp_filter_failures(j.get());
+  minijail_parse_seccomp_filters(j.get(), kSimulatorSeccompPath);
+  minijail_use_seccomp_filter(j.get());
+  minijail_change_user(j.get(), kSimulatorUser);
+  minijail_change_group(j.get(), kSimulatorGroup);
+  minijail_inherit_usergroups(j.get());
+  minijail_enter(j.get());
+}
+
 }  // namespace
 
 namespace tpm2_simulator {
@@ -182,7 +158,8 @@ int SimulatorDaemon::OnInit() {
   if (exit_code != EX_OK)
     return exit_code;
   InitializeVTPM();
-  command_fd_ = RegisterVTPM();
+  base::FilePath tpm_path;
+  command_fd_ = RegisterVTPM(&tpm_path);
   if (!command_fd_.is_valid()) {
     LOG(ERROR) << "Failed to register vTPM";
     return EX_OSERR;
@@ -190,6 +167,10 @@ int SimulatorDaemon::OnInit() {
   command_fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       command_fd_.get(),
       base::BindRepeating(&SimulatorDaemon::OnCommand, base::Unretained(this)));
+  tpm_watcher_.reset(new base::FilePathWatcher);
+  tpm_watcher_->Watch(
+      tpm_path, false,
+      base::Bind(&SimulatorDaemon::OnTpmPathChange, base::Unretained(this)));
   return EX_OK;
 }
 
@@ -232,6 +213,25 @@ void SimulatorDaemon::OnCommand() {
       PLOG(ERROR) << "WriteFileDescriptor failed.";
     }
   } while (!remain_request_.empty());
+}
+
+void SimulatorDaemon::OnTpmPathChange(const base::FilePath& path, bool error) {
+  if (error) {
+    LOG(ERROR) << "Got error while hearing about change to " << path.value();
+    return;
+  }
+  if (!initialized_ && base::PathExists(path)) {
+    LOG(INFO) << "vTPM initialized: " << path.value();
+    tpm_watcher_.reset();
+    initialized_ = true;
+    if (sigstop_on_initialized_) {
+      // Raise the SIGSTOP, so upstart would know the initialization process had
+      // been finished.
+      raise(SIGSTOP);
+    }
+    // Initialize the minijail.
+    InitMinijailSandbox();
+  }
 }
 
 }  // namespace tpm2_simulator
