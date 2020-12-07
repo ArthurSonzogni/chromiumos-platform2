@@ -82,6 +82,15 @@ static int has_chromefw(void) {
   return state;
 }
 
+static bool shall_use_tpm_for_system_key() {
+  if (has_chromefw()) {
+    return true;
+  }
+
+  /* Assume we have tpm for system_key when we are using vtpm tpm2 simulator */
+  return USE_TPM2_SIMULATOR && USE_VTPM_PROXY;
+}
+
 // This triggers the live encryption key to be written to disk, encrypted by the
 // system key. It is intended to be called by Cryptohome once the TPM is done
 // being set up. If the system key is passed as an argument, use it, otherwise
@@ -143,7 +152,7 @@ static result_code report_info(mount_encrypted::EncryptedFs* encrypted_fs,
   }
   printf("ChromeOS: %s\n", has_chromefw() ? "yes" : "no");
   printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
-  if (has_chromefw()) {
+  if (shall_use_tpm_for_system_key()) {
     brillo::SecureBlob system_key;
     auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);
     result_code rc = loader->Load(&system_key);
@@ -284,7 +293,7 @@ static result_code mount_encrypted_partition(
   mount_encrypted::Tpm tpm;
   auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);
   mount_encrypted::EncryptionKey key(loader.get(), rootdir);
-  if (has_chromefw() && safe_mount) {
+  if (shall_use_tpm_for_system_key() && safe_mount) {
     if (!tpm.available()) {
       // The TPM should be available before we load the system_key.
       LOG(ERROR) << "TPM not available.";

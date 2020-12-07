@@ -275,6 +275,10 @@ executable("encrypted-reboot-vault") {
 }
 
 executable("mount-encrypted") {
+  defines = [
+    "USE_TPM2_SIMULATOR=${use.tpm2_simulator}",
+    "USE_VTPM_PROXY=${use.vtpm_proxy}",
+  ]
   sources = [ "mount_encrypted/mount_encrypted.cc" ]
   deps = [
     ":mount_encrypted_lib",
