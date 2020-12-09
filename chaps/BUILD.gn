@@ -515,6 +515,9 @@ if (use.fuzzer) {
     pkg_deps = [
       "libchrome-test",
       "libprotobuf-mutator",
+
+      # nss is needed because we use pkcs11 headers from nss.
+      "nss",
       "protobuf",
     ]
     deps = [
@@ -534,7 +537,12 @@ if (use.fuzzer) {
     ]
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
     defines = [ "NO_METRICS" ]
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+
+      # nss is needed because we use pkcs11 headers from nss.
+      "nss",
+    ]
     deps = [ ":libchaps_static" ]
   }
 }

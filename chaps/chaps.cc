@@ -234,16 +234,23 @@ EXPORT_SPEC CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
 }
 
 // PKCS #11 v2.20 section 11.4 page 106.
-CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
+EXPORT_SPEC CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
   LOG_CK_RV_AND_RETURN_IF(!ppFunctionList, CKR_ARGUMENTS_BAD);
-  static CK_VERSION version = {2, 20};
+  static CK_VERSION version = {CRYPTOKI_VERSION_MAJOR, CRYPTOKI_VERSION_MINOR};
+  // PKCS#11 v3.0 and beyond have additional functions that will not be included
+  // if CK_PKCS11_2_0_ONLY is defined.
+  static_assert(CRYPTOKI_VERSION_MAJOR == 2,
+                "PKCS#11 major version changed, please verify that the "
+                "function list below is correct.");
+
   static CK_FUNCTION_LIST functionList = {
       version,
   // Let pkcs11f.h populate the function pointers in order.
 #define CK_PKCS11_FUNCTION_INFO(func) &func,
   // We want only the function names, not the arguments.
 #undef CK_NEED_ARG_LIST
-#include "pkcs11/pkcs11f.h"
+#define CK_PKCS11_2_0_ONLY
+#include <nss/pkcs11f.h>
 #undef CK_PKCS11_FUNCTION_INFO
   };
   *ppFunctionList = &functionList;

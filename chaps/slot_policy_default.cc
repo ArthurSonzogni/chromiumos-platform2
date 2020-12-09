@@ -4,8 +4,6 @@
 
 #include "chaps/slot_policy_default.h"
 
-#include "chaps/slot_policy_common.h"
-
 namespace chaps {
 
 SlotPolicyDefault::SlotPolicyDefault() = default;

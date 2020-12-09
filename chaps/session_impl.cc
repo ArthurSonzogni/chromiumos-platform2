@@ -36,8 +36,6 @@
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
-#define CKK_INVALID_KEY_TYPE (CKK_VENDOR_DEFINED + 0)
-
 using brillo::SecureBlob;
 using ScopedASN1_OCTET_STRING =
     crypto::ScopedOpenSSL<ASN1_OCTET_STRING, ASN1_OCTET_STRING_free>;

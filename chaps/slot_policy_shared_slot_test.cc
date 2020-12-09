@@ -9,7 +9,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chaps/slot_policy_common.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {

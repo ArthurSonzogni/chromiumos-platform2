@@ -4,8 +4,6 @@
 
 #include "chaps/slot_policy_shared_slot.h"
 
-#include "chaps/slot_policy_common.h"
-
 namespace chaps {
 
 SlotPolicySharedSlot::SlotPolicySharedSlot() = default;

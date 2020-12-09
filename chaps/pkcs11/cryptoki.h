@@ -7,20 +7,23 @@
 
 #define EXPORT_SPEC __attribute__ ((visibility ("default")))
 
-// The following defines are required by pkcs11.h.
-#define CK_PTR *
-#define CK_DEFINE_FUNCTION(return_type, function_name) \
-    EXPORT_SPEC return_type function_name
-#define CK_DECLARE_FUNCTION(return_type, function_name) \
-    EXPORT_SPEC return_type function_name
-#define CK_DECLARE_FUNCTION_POINTER(return_type, function_name) \
-    return_type(CK_PTR function_name)
-#define CK_CALLBACK_FUNCTION(return_type, function_name) \
-    return_type(CK_PTR function_name)
 #ifndef NULL_PTR
 #define NULL_PTR 0
 #endif
 
-#include "chaps/pkcs11/pkcs11.h"
+// Note that this file is not the only entrypoint for including pkcs11.h.
+// chaps.cc also includes pkcs11f.h.
+#include <nss/pkcs11.h>
+
+// Below are some workaround due to problems in the copy of pkcs11.h that we
+// are including.
+
+#ifndef CKK_INVALID_KEY_TYPE
+#define CKK_INVALID_KEY_TYPE (CKK_VENDOR_DEFINED + 0)
+#endif
+
+// chaps is currently coded to PKCS#11 v2.20.
+#define CRYPTOKI_VERSION_MAJOR 2
+#define CRYPTOKI_VERSION_MINOR 20
 
 #endif  // CHAPS_PKCS11_CRYPTOKI_H_
