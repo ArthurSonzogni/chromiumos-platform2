@@ -156,6 +156,9 @@ MechanismInfo::MechanismInfoData MechanismInfo::GetSupportedMechanismInfo(
     // ECC
     case CKM_ECDSA:
     case CKM_ECDSA_SHA1:
+    case CKM_ECDSA_SHA256:
+    case CKM_ECDSA_SHA384:
+    case CKM_ECDSA_SHA512:
       return {true, {kSign, kVerify}, CKK_EC};
 
     // HMAC
@@ -1825,8 +1828,10 @@ bool SessionImpl::ECCSignTPM(const std::string& input,
                              CK_MECHANISM_TYPE signing_mechanism,
                              const Object* key_object,
                              std::string* signature) {
-  if (!(signing_mechanism == CKM_ECDSA ||
-        signing_mechanism == CKM_ECDSA_SHA1)) {
+  if (!(signing_mechanism == CKM_ECDSA || signing_mechanism == CKM_ECDSA_SHA1 ||
+        signing_mechanism == CKM_ECDSA_SHA256 ||
+        signing_mechanism == CKM_ECDSA_SHA384 ||
+        signing_mechanism == CKM_ECDSA_SHA512)) {
     LOG(ERROR)
         << "Failed to sign with ECCSignTPM because mechanism is unsupported: "
         << signing_mechanism;

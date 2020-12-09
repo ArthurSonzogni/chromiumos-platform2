@@ -960,7 +960,10 @@ bool TPM2UtilityImpl::Sign(int key_handle,
   } else if (public_area.type == trunks::TPM_ALG_ECC) {
     // We are using TPM_ALG_ECDSA, and only the mechanisms below match.
     if (!(signing_mechanism == CKM_ECDSA ||
-          signing_mechanism == CKM_ECDSA_SHA1)) {
+          signing_mechanism == CKM_ECDSA_SHA1 ||
+          signing_mechanism == CKM_ECDSA_SHA256 ||
+          signing_mechanism == CKM_ECDSA_SHA384 ||
+          signing_mechanism == CKM_ECDSA_SHA512)) {
       LOG(ERROR) << "Unsupported signing mechanism for tpm2 ecc key "
                  << signing_mechanism;
       return false;

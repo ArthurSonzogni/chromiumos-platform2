@@ -959,16 +959,19 @@ chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism) {
     case CKM_SHA256_HMAC:
     case CKM_SHA256_RSA_PKCS:
     case CKM_SHA256_RSA_PKCS_PSS:
+    case CKM_ECDSA_SHA256:
       return chaps::DigestAlgorithm::SHA256;
     case CKM_SHA384:
     case CKM_SHA384_HMAC:
     case CKM_SHA384_RSA_PKCS:
     case CKM_SHA384_RSA_PKCS_PSS:
+    case CKM_ECDSA_SHA384:
       return chaps::DigestAlgorithm::SHA384;
     case CKM_SHA512:
     case CKM_SHA512_HMAC:
     case CKM_SHA512_RSA_PKCS:
     case CKM_SHA512_RSA_PKCS_PSS:
+    case CKM_ECDSA_SHA512:
       return chaps::DigestAlgorithm::SHA512;
     default:
       return chaps::DigestAlgorithm::NoDigest;

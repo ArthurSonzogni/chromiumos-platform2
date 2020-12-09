@@ -126,7 +126,15 @@ constexpr MechanismInfoPair kTPM2OnlyMechanismInfo[] = {
     // Elliptic Curve related mechanisms are TPM2 only.
     {CKM_EC_KEY_PAIR_GEN,
      {256, 256, CKF_GENERATE_KEY_PAIR | CKF_HW | kCommonECParameters}},
+    {CKM_ECDSA,
+     {256, 256, CKF_HW | CKF_SIGN | CKF_VERIFY | kCommonECParameters}},
     {CKM_ECDSA_SHA1,
+     {256, 256, CKF_HW | CKF_SIGN | CKF_VERIFY | kCommonECParameters}},
+    {CKM_ECDSA_SHA256,
+     {256, 256, CKF_HW | CKF_SIGN | CKF_VERIFY | kCommonECParameters}},
+    {CKM_ECDSA_SHA384,
+     {256, 256, CKF_HW | CKF_SIGN | CKF_VERIFY | kCommonECParameters}},
+    {CKM_ECDSA_SHA512,
      {256, 256, CKF_HW | CKF_SIGN | CKF_VERIFY | kCommonECParameters}},
 };
 

@@ -826,6 +826,33 @@ TEST_F(TPM2UtilityTest, SignEccSuccess) {
   EXPECT_EQ(output, "1234");
 }
 
+TEST_F(TPM2UtilityTest, SignEccSha256Success) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = "abcd";
+  std::string output;
+  trunks::TPMT_PUBLIC public_data = GetValidECCPublicKey();
+
+  trunks::TPMT_SIGNATURE tpm_signature = {};
+  tpm_signature.sig_alg = trunks::TPM_ALG_ECDSA;
+  tpm_signature.signature.ecdsa.signature_r =
+      trunks::Make_TPM2B_ECC_PARAMETER("12");
+  tpm_signature.signature.ecdsa.signature_s =
+      trunks::Make_TPM2B_ECC_PARAMETER("34");
+  std::string tpm_signature_str;
+  Serialize_TPMT_SIGNATURE(tpm_signature, &tpm_signature_str);
+
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_ECDSA,
+                                      trunks::TPM_ALG_SHA256, input, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<6>(tpm_signature_str), Return(TPM_RC_SUCCESS)));
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_ECDSA_SHA256, "", input, &output));
+
+  EXPECT_EQ(output, "1234");
+}
+
 TEST_F(TPM2UtilityTest, SignSuccessWithDecrypt) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;
