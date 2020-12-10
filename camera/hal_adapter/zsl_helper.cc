@@ -18,6 +18,39 @@
 
 #include "cros-camera/common.h"
 
+namespace {
+
+bool IsInputStream(camera3_stream_t* stream) {
+  return stream->stream_type == CAMERA3_STREAM_INPUT ||
+         stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL;
+}
+
+bool IsOutputStream(camera3_stream_t* stream) {
+  return stream->stream_type == CAMERA3_STREAM_OUTPUT ||
+         stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL;
+}
+
+uint32_t GetStillCaptureMaxBuffers(
+    const camera3_stream_configuration_t* stream_list) {
+  uint32_t max_buffers = 0;
+  for (size_t i = 0; i < stream_list->num_streams; ++i) {
+    auto* stream = stream_list->streams[i];
+    if (!IsOutputStream(stream)) {
+      continue;
+    }
+    // If our private usage flag is specified, we know only this stream will be
+    // used for ZSL capture.
+    if (stream->usage & cros::GRALLOC_USAGE_STILL_CAPTURE) {
+      return stream->max_buffers;
+    } else if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      max_buffers += stream->max_buffers;
+    }
+  }
+  return max_buffers;
+}
+
+}  // namespace
+
 namespace cros {
 
 ZslBuffer::ZslBuffer()
@@ -43,33 +76,48 @@ ZslBufferManager::~ZslBufferManager() {
   }
 }
 
+void ZslBufferManager::Reset() {
+  base::AutoLock l(buffer_pool_lock_);
+  for (auto& buffer : buffer_pool_) {
+    buffer_manager_->Free(buffer);
+  }
+  buffer_pool_.clear();
+  free_buffers_ = {};
+  buffer_to_buffer_pointer_map_.clear();
+}
+
 bool ZslBufferManager::Initialize(size_t pool_size,
                                   camera3_stream_t* output_stream) {
-  output_stream_ = output_stream;
+  DCHECK(buffer_pool_.empty());
 
-  buffer_pool_.reserve(pool_size);
-  base::AutoLock buffer_pool_lock(buffer_pool_lock_);
-  for (size_t i = 0; i < pool_size; ++i) {
-    uint32_t stride;
-    buffer_handle_t buffer;
-    if (buffer_manager_->Allocate(output_stream_->width, output_stream_->height,
-                                  ZslHelper::kZslPixelFormat,
-                                  GRALLOC_USAGE_HW_CAMERA_ZSL |
-                                      GRALLOC_USAGE_SW_READ_OFTEN |
-                                      GRALLOC_USAGE_SW_WRITE_OFTEN,
-                                  &buffer, &stride) != 0) {
-      LOGF(ERROR) << "Failed to allocate buffer";
-      // Free previously-allocated buffers.
-      for (auto& buffer : buffer_pool_) {
-        buffer_manager_->Free(buffer);
+  bool success = true;
+  output_stream_ = output_stream;
+  {
+    base::AutoLock l(buffer_pool_lock_);
+    buffer_pool_.reserve(pool_size);
+    for (size_t i = 0; i < pool_size; ++i) {
+      uint32_t stride;
+      buffer_handle_t buffer;
+      if (buffer_manager_->Allocate(
+              output_stream_->width, output_stream_->height,
+              ZslHelper::kZslPixelFormat,
+              GRALLOC_USAGE_HW_CAMERA_ZSL | GRALLOC_USAGE_SW_READ_OFTEN |
+                  GRALLOC_USAGE_SW_WRITE_OFTEN,
+              &buffer, &stride) != 0) {
+        LOGF(ERROR) << "Failed to allocate buffer";
+        success = false;
+        break;
       }
-      return false;
+      buffer_pool_.push_back(buffer);
+      free_buffers_.push(&buffer_pool_.back());
+      buffer_to_buffer_pointer_map_[buffer] = &buffer_pool_.back();
     }
-    buffer_pool_.push_back(buffer);
-    free_buffers_.push(&buffer_pool_.back());
-    buffer_to_buffer_pointer_map_[buffer] = &buffer_pool_.back();
   }
 
+  if (!success) {
+    Reset();
+    return false;
+  }
   initialized_ = true;
   return true;
 }
@@ -116,7 +164,8 @@ bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
   }
   const auto cap_entry = metadata->find(ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
   if (std::find(cap_entry.data.u8, cap_entry.data.u8 + cap_entry.count,
-                kZslCapability) == cap_entry.data.u8 + cap_entry.count) {
+                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING) ==
+      cap_entry.data.u8 + cap_entry.count) {
     return false;
   }
 
@@ -145,51 +194,31 @@ bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
 
 ZslHelper::ZslHelper(const camera_metadata_t* static_info,
                      FrameNumberMapper* mapper)
-    : initialized_(false),
-      enabled_(false),
+    : enabled_(false),
       fence_sync_thread_("FenceSyncThread"),
       frame_number_mapper_(mapper) {
   VLOGF_ENTER();
-  if (IsCapabilitySupported(static_info, kZslCapability)) {
-    uint32_t bi_width, bi_height;
-    if (SelectZslStreamSize(static_info, &bi_width, &bi_height)) {
-      LOGF(INFO) << "Selected ZSL stream size: " << bi_width << "x"
-                 << bi_height;
-      // Create ZSL streams
-      bi_stream_ = std::make_unique<camera3_stream_t>();
-      memset(bi_stream_.get(), 0, sizeof(*bi_stream_.get()));
-      bi_stream_->stream_type = CAMERA3_STREAM_BIDIRECTIONAL;
-      bi_stream_->width = bi_width;
-      bi_stream_->height = bi_height;
-      bi_stream_->format = kZslPixelFormat;
-
-      // Initialize ZSL buffer manager
-      uint8_t max_pipeline_depth = [&]() {
-        camera_metadata_ro_entry entry;
-        if (find_camera_metadata_ro_entry(
-                static_info, ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &entry) != 0) {
-          LOGF(ERROR) << "ANDROID_REQUEST_PIPELINE_MAX_DEPTH is missing from "
-                         "static metadata!";
-          // This shouldn't happen, but assigning this a value just in case.
-          return static_cast<uint8_t>(20);
-        }
-        return entry.data.u8[0];
-      }();
-      if (zsl_buffer_manager_.Initialize(kZslBufferSize + max_pipeline_depth,
-                                         bi_stream_.get())) {
-        initialized_ = true;
-      } else {
-        LOGF(ERROR) << "Failed to initialize ZSL buffer manager";
-      }
-    } else {
-      LOGF(ERROR) << "Failed to select stream sizes for ZSL.";
-    }
-  } else {
-    LOGF(INFO) << "Device doesn't support ZSL. ZSL won't be enabled.";
+  if (!IsCapabilitySupported(
+          static_info,
+          ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING)) {
+    LOGF(INFO) << "Private reprocessing not supported, ZSL won't be enabled";
+    return;
   }
+  uint32_t bi_width, bi_height;
+  if (!SelectZslStreamSize(static_info, &bi_width, &bi_height)) {
+    LOGF(ERROR) << "Failed to select stream sizes for ZSL.";
+    return;
+  }
+  LOGF(INFO) << "Selected ZSL stream size = " << bi_width << "x" << bi_height;
+  // Create ZSL streams
+  bi_stream_ = std::make_unique<camera3_stream_t>();
+  bi_stream_->stream_type = CAMERA3_STREAM_BIDIRECTIONAL;
+  bi_stream_->width = bi_width;
+  bi_stream_->height = bi_height;
+  bi_stream_->format = kZslPixelFormat;
+
   if (!fence_sync_thread_.Start()) {
     LOGF(ERROR) << "Fence sync thread failed to start";
-    initialized_ = false;
   }
   partial_result_count_ = [&]() {
     camera_metadata_ro_entry entry;
@@ -230,46 +259,12 @@ bool ZslHelper::IsZslEnabled() {
   return enabled_;
 }
 
-void ZslHelper::SetZslEnabled(bool enabled) {
-  base::AutoLock enabled_lock(enabled_lock_);
-  if (enabled != enabled_) {
-    LOGF(INFO) << (enabled ? "Enabling" : "Disabling") << " ZSL";
-    enabled_ = enabled;
-  }
-}
-
-bool ZslHelper::CanEnableZsl(const internal::ScopedStreams& streams) {
-  size_t num_input_streams = 0;
-  bool has_zsl_output_stream = false;
-  bool has_blob_output_stream = false;
-  for (auto it = streams.begin(); it != streams.end(); it++) {
-    camera3_stream_t* stream = it->second.get();
-    if (stream->stream_type == CAMERA3_STREAM_INPUT ||
-        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
-      num_input_streams++;
-    }
-    if (stream->stream_type == CAMERA3_STREAM_OUTPUT ||
-        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
-      if (stream->format == HAL_PIXEL_FORMAT_BLOB ||
-          (stream->usage & GRALLOC_USAGE_STILL_CAPTURE)) {
-        has_blob_output_stream = true;
-      }
-      if ((stream->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
-          GRALLOC_USAGE_HW_CAMERA_ZSL) {
-        has_zsl_output_stream = true;
-      }
-    }
-  }
-  return initialized_  // Initialized means we have an allocated buffer pool.
-         && has_blob_output_stream  // Has a stream for still capture.
-         && num_input_streams < max_num_input_streams_  // Has room for an extra
-                                                        // input stream for ZSL.
-         && !has_zsl_output_stream;  // HAL doesn't support multiple raw output
-                                     // streams.
-}
-
-void ZslHelper::AttachZslStream(camera3_stream_configuration_t* stream_list,
+bool ZslHelper::AttachZslStream(camera3_stream_configuration_t* stream_list,
                                 std::vector<camera3_stream_t*>* streams) {
+  if (!CanEnableZsl(streams)) {
+    return false;
+  }
+
   stream_list->num_streams++;
   streams->push_back(bi_stream_.get());
   // There could be memory reallocation happening after the push_back call.
@@ -291,6 +286,63 @@ void ZslHelper::AttachZslStream(camera3_stream_configuration_t* stream_list,
              << stream_list->streams[i]->height
              << ", format = " << stream_list->streams[i]->format;
   }
+
+  return true;
+}
+
+bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
+  base::AutoLock enable_lock(enabled_lock_);
+  base::AutoLock ring_buffer_lock(ring_buffer_lock_);
+
+  // First, clear all the buffers and states.
+  enabled_ = false;
+  ring_buffer_.Clear();
+  buffer_index_map_.clear();
+  zsl_buffer_manager_.Reset();
+
+  // Determine how many buffers we need. We need to determine at most how many
+  // buffers would be taken out for private reprocessing.
+  uint32_t still_max_buffers = GetStillCaptureMaxBuffers(stream_list);
+  if (still_max_buffers == 0) {
+    LOGF(ERROR) << "Failed to acquire max_buffers";
+    return false;
+  }
+  VLOGF(1) << "Max buffers for still capture streams = " << still_max_buffers;
+  // We need to have |still_max_buffers| additional buffers in the buffer pool.
+  if (!zsl_buffer_manager_.Initialize(kZslBufferSize + still_max_buffers,
+                                      bi_stream_.get())) {
+    LOGF(ERROR) << "Failed to initialize ZSL buffer manager";
+    return false;
+  }
+  LOGF(INFO) << "Enabling ZSL";
+  enabled_ = true;
+  return true;
+}
+
+bool ZslHelper::CanEnableZsl(std::vector<camera3_stream_t*>* streams) {
+  size_t num_input_streams = 0;
+  bool has_still_capture_output_stream = false;
+  bool has_zsl_output_stream = false;
+  for (auto* stream : (*streams)) {
+    if (IsInputStream(stream)) {
+      num_input_streams++;
+    }
+    if (IsOutputStream(stream) &&
+        (stream->format == HAL_PIXEL_FORMAT_BLOB ||
+         (stream->usage & GRALLOC_USAGE_STILL_CAPTURE))) {
+      has_still_capture_output_stream = true;
+    }
+    if (IsOutputStream(stream) &&
+        (stream->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
+            GRALLOC_USAGE_HW_CAMERA_ZSL) {
+      has_zsl_output_stream = true;
+    }
+  }
+  return num_input_streams < max_num_input_streams_  // Has room for an extra
+                                                     // input stream for ZSL.
+         && has_still_capture_output_stream  // Has a stream for still capture.
+         && !has_zsl_output_stream;  // HAL doesn't support multiple raw output
+                                     // streams.
 }
 
 bool ZslHelper::IsZslRequested(camera_metadata_t* settings) {
@@ -399,7 +451,7 @@ void ZslHelper::AttachRequest(
     camera3_capture_request_t* request,
     std::vector<camera3_stream_buffer_t>* output_buffers) {
   VLOGF_ENTER();
-  if (!enabled_) {
+  if (!IsZslEnabled()) {
     LOGF(WARNING) << "Trying to attach a request when ZSL is disabled";
     return;
   }
@@ -437,7 +489,7 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
                                  int32_t jpeg_orientation,
                                  SelectionStrategy strategy) {
   VLOGF_ENTER();
-  if (!enabled_) {
+  if (!IsZslEnabled()) {
     LOGF(WARNING) << "Trying to transform a request when ZSL is disabled";
     return false;
   }

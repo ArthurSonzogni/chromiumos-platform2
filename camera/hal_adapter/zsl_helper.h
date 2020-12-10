@@ -66,6 +66,9 @@ class ZslBufferManager {
   // output stream set to |output_stream|.
   bool Initialize(size_t pool_size, camera3_stream_t* output_stream);
 
+  // Releases all previously-allocated buffers.
+  void Reset();
+
   // Gets a buffer from the buffer pool.
   buffer_handle_t* GetBuffer();
 
@@ -106,8 +109,6 @@ class ZslHelper {
   static const size_t kZslBufferSize = 20;
   static const int kZslSyncWaitTimeoutMs = 3;
   static const int kZslPixelFormat = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
-  static const uint8_t kZslCapability =
-      ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING;
   // |kZslLoobackNs| accounts for the display latency (i.e., the time it takes
   // for a buffer to be drawn on screen since its start of exposure).
   // TODO(lnishan): Make this a chromeos-config entry and read the
@@ -137,15 +138,13 @@ class ZslHelper {
   // Whether ZSL is enabled for the device adapter that owns this helper.
   bool IsZslEnabled();
 
-  // Enable or disable ZSL.
-  void SetZslEnabled(bool enabled);
-
-  // Whether we can enable ZSL with the list of streams being configured.
-  bool CanEnableZsl(const internal::ScopedStreams& streams);
-
   // Attaches the ZSL bidirectional stream to the stream configuration.
-  void AttachZslStream(camera3_stream_configuration_t* stream_list,
+  bool AttachZslStream(camera3_stream_configuration_t* stream_list,
                        std::vector<camera3_stream_t*>* streams);
+
+  // Resets the states of ZSL and releases all buffers from prior sessions.
+  // Should be called during ConfigureStreams().
+  bool Initialize(const camera3_stream_configuration_t* stream_list);
 
   // Processes a capture request by either attaching a RAW output buffer (for
   // queueing the ZSL ring buffer) or transforming the request by adding a RAW
@@ -166,6 +165,9 @@ class ZslHelper {
       const camera3_stream_buffer_t** transformed_input);
 
  private:
+  // Whether we can enable ZSL with the list of streams being configured.
+  bool CanEnableZsl(std::vector<camera3_stream_t*>* streams);
+
   // Whether ZSL is enabled for this capture request.
   // Note that this function deletes the ANDROID_CONTROL_ENABLE_ZSL if
   // delete_entry is true.
@@ -222,8 +224,6 @@ class ZslHelper {
 
   // Reads ZSL buffer by the specified buffer index.
   ZslBuffer* MutableReadBufferByBufferIndex(size_t buffer_index);
-
-  bool initialized_;
 
   // Whether ZSL mechanism is enabled.
   bool enabled_;

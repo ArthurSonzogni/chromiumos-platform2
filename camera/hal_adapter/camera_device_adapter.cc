@@ -266,9 +266,6 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     }
   }
   streams_.swap(new_streams);
-  if (attempt_zsl_) {
-    zsl_helper_.SetZslEnabled(zsl_helper_.CanEnableZsl(streams_));
-  }
 
   camera3_stream_configuration_t stream_list;
   stream_list.num_streams = config->streams.size();
@@ -280,14 +277,19 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   for (auto it = streams_.begin(); it != streams_.end(); it++) {
     stream_list.streams[i++] = it->second.get();
   }
-  if (zsl_helper_.IsZslEnabled()) {
-    zsl_helper_.AttachZslStream(&stream_list, &streams);
+
+  bool is_zsl_stream_attached =
+      attempt_zsl_ && zsl_helper_.AttachZslStream(&stream_list, &streams);
+  if (is_zsl_stream_attached) {
     zsl_stream_ = streams.back();
   }
 
   int32_t result =
       camera_device_->ops->configure_streams(camera_device_, &stream_list);
-  if (!result) {
+  if (result == 0) {
+    if (is_zsl_stream_attached && !zsl_helper_.Initialize(&stream_list)) {
+      LOGF(ERROR) << "Failed to initialize ZslHelper";
+    }
     *updated_config = mojom::Camera3StreamConfiguration::New();
     (*updated_config)->operation_mode = config->operation_mode;
     for (const auto& s : streams_) {

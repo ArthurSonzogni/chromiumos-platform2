@@ -261,6 +261,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // solution, and in which case we should not try to enable our ZSL.
   bool attempt_zsl_;
 
+  // Utility for mapping framework and HAL frame numbers.
+  FrameNumberMapper frame_number_mapper_;
+
   // A helper class that includes various functions for the mechanisms of ZSL.
   ZslHelper zsl_helper_;
 
@@ -328,9 +331,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // Metrics for camera service.
   std::unique_ptr<CameraMetrics> camera_metrics_;
-
-  // Utility for mapping framework and HAL frame numbers.
-  FrameNumberMapper frame_number_mapper_;
 
   // ANDROID_PARTIAL_RESULT_COUNT from static metadata.
   int32_t partial_result_count_;
