@@ -1,0 +1,74 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":dnsproxyd",
+    ":libdnsproxy",
+  ]
+  if (use.test) {
+    deps += [ ":dns-proxy_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  # NOSORT
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+    "libminijail",
+    "libpatchpanel-client",
+    "libpatchpanel-util",
+    "libshill-client",
+    "libshill-dbus-client",
+
+    # system_api depends on protobuf (or protobuf-lite). It must
+    # appear before protobuf or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+  ]
+}
+
+static_library("libdnsproxy") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "controller.cc",
+    "proxy.cc",
+  ]
+  deps = []
+}
+
+executable("dnsproxyd") {
+  configs += [ ":target_defaults" ]
+  sources = [ "main.cc" ]
+  deps = [ ":libdnsproxy" ]
+}
+
+if (use.test) {
+  pkg_config("dns-proxy_test_config") {
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
+  executable("dns-proxy_test") {
+    configs += [
+      "//common-mk:test",
+      ":dns-proxy_test_config",
+      ":target_defaults",
+    ]
+    all_dependent_pkg_deps = [ "libcurl" ]
+    sources = []
+    defines = [ "UNIT_TEST" ]
+    deps = [
+      ":libdnsproxy",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+}

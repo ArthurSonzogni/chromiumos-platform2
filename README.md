@@ -57,6 +57,7 @@ copies.
 | [diagnostics](./diagnostics/) | Device telemetry and diagnostics daemons |
 | [disk_updater](./disk_updater/) | Utility for updating root disk firmware (e.g. SSDs and eMMC) |
 | [dlcservice](./dlcservice/) | Downloadable Content (DLC) Service daemon |
+| [dns-proxy](./dns-proxy/) | DNS Proxy daemon |
 | [easy-unlock](./easy-unlock/) | Daemon for handling Easy Unlock requests (e.g. unlocking Chromebooks with an Android device) |
 | [federated](./federated/) | Federated computation service (Federated Analytics & Federated Learning) |
 | [feedback](./feedback/) | Daemon for headless systems that want to gather feedback (normally Chrome manages it) |
