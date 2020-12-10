@@ -31,6 +31,7 @@ $IncludeConfig /etc/rsyslog.d/*.conf
 # Keep network stuff in /var/log/net.log
 if (($programname == 'charon') or \
     ($programname == 'dhcpcd') or \
+    ($programname == 'dnsproxyd') or \
     ($programname == 'hermes') or \
     ($programname == 'l2tpipsec_vpn') or \
     ($programname == 'mist') or \
@@ -48,6 +49,7 @@ if (($programname == 'charon') or \
 # but discard anything less severe
 if (($programname == 'charon') or \
     ($programname == 'dhcpcd') or \
+    ($programname == 'dnsproxyd') or \
     ($programname == 'hermes') or \
     ($programname == 'l2tpipsec_vpn') or \
     ($programname == 'mist') or \
