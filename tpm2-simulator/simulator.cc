@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sysexits.h>
-#include <tpm2/tpm_simulator.hpp>
 #include <unistd.h>
 
 #include "tpm2-simulator/simulator.h"
@@ -31,7 +30,7 @@ constexpr char kSimulatorSeccompPath[] =
     "/usr/share/policy/tpm2-simulator.policy";
 constexpr char kVtpmxPath[] = "/dev/vtpmx";
 constexpr char kDevTpmPathPrefix[] = "/dev/tpm";
-constexpr size_t kMaxCommandSize = MAX_COMMAND_SIZE;
+constexpr size_t kMaxCommandSize = 4096;
 constexpr size_t kHeaderSize = 10;
 
 base::ScopedFD RegisterVTPM(base::FilePath* tpm_path) {
@@ -52,91 +51,6 @@ base::ScopedFD RegisterVTPM(base::FilePath* tpm_path) {
   return base::ScopedFD(new_dev.fd);
 }
 
-void InitializeVTPM() {
-  // Initialize TPM.
-  tpm2::_plat__Signal_PowerOn();
-  /*
-   * Make sure NV RAM metadata is initialized, needed to check
-   * manufactured status. This is a speculative call which will have to
-   * be repeated in case the TPM has not been through the manufacturing
-   * sequence yet. No harm in calling it twice in that case.
-   */
-  tpm2::_TPM_Init();
-  tpm2::_plat__SetNvAvail();
-
-  if (!tpm2::tpm_manufactured()) {
-    tpm2::TPM_Manufacture(true);
-    // TODO(b/132145000): Verify if the second call to _TPM_Init() is necessary.
-    tpm2::_TPM_Init();
-    if (!tpm2::tpm_endorse())
-      LOG(ERROR) << __func__ << " Failed to endorse TPM with a fixed key.";
-  }
-}
-
-std::string CommandWithCode(uint32_t code) {
-  std::string response;
-  response.resize(10);
-  unsigned char* buffer = reinterpret_cast<unsigned char*>(response.data());
-  tpm2::TPM_ST tag = TPM_ST_NO_SESSIONS;
-  tpm2::INT32 size = 10;
-  tpm2::UINT32 len = size;
-  tpm2::TPMI_ST_COMMAND_TAG_Marshal(&tag, &buffer, &size);
-  tpm2::UINT32_Marshal(&len, &buffer, &size);
-  tpm2::TPM_CC_Marshal(&code, &buffer, &size);
-  return response;
-}
-
-unsigned int GetCommandSize(const std::string& command) {
-  unsigned char* header =
-      reinterpret_cast<unsigned char*>(const_cast<char*>(command.data()));
-  int32_t header_size = command.size();
-  tpm2::TPMI_ST_COMMAND_TAG tag;
-  uint32_t command_size;
-  tpm2::TPM_RC rc =
-      tpm2::TPMI_ST_COMMAND_TAG_Unmarshal(&tag, &header, &header_size);
-  if (rc != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to parse tag";
-    return command.size();
-  }
-  rc = tpm2::UINT32_Unmarshal(&command_size, &header, &header_size);
-  if (rc != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to parse size";
-    return command.size();
-  }
-  return command_size;
-}
-
-std::string RunCommand(const std::string& command) {
-  // TODO(yich): ExecuteCommand would mutate the command buffer, so we created a
-  // copy of the input command at here.
-  std::string command_copy = command;
-  unsigned char* command_ptr =
-      reinterpret_cast<unsigned char*>(command_copy.data());
-  unsigned char* header = command_ptr;
-  int32_t header_size = command.size();
-  tpm2::TPMI_ST_COMMAND_TAG tag;
-  uint32_t command_size;
-  tpm2::TPM_CC command_code = 0;
-  tpm2::TPM_RC rc =
-      tpm2::TPMI_ST_COMMAND_TAG_Unmarshal(&tag, &header, &header_size);
-  if (rc != TPM_RC_SUCCESS) {
-    return CommandWithCode(rc);
-  }
-  rc = tpm2::UINT32_Unmarshal(&command_size, &header, &header_size);
-  if (rc != TPM_RC_SUCCESS) {
-    return CommandWithCode(rc);
-  }
-  rc = tpm2::TPM_CC_Unmarshal(&command_code, &header, &header_size);
-  if (command_code == TPM2_CC_SET_LOCALITY) {
-    return CommandWithCode(TPM_RC_SUCCESS);
-  }
-
-  unsigned int response_size;
-  unsigned char* response;
-  tpm2::ExecuteCommand(command.size(), command_ptr, &response_size, &response);
-  return std::string(reinterpret_cast<char*>(response), response_size);
-}
-
 void InitMinijailSandbox() {
   ScopedMinijail j(minijail_new());
   minijail_no_new_privs(j.get());
@@ -153,11 +67,15 @@ void InitMinijailSandbox() {
 
 namespace tpm2_simulator {
 
+SimulatorDaemon::SimulatorDaemon(TpmExecutor* tpm_executor)
+    : tpm_executor_(tpm_executor) {}
+
 int SimulatorDaemon::OnInit() {
+  CHECK(tpm_executor_);
   int exit_code = Daemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
-  InitializeVTPM();
+  tpm_executor_->InitializeVTPM();
   base::FilePath tpm_path;
   command_fd_ = RegisterVTPM(&tpm_path);
   if (!command_fd_.is_valid()) {
@@ -175,6 +93,7 @@ int SimulatorDaemon::OnInit() {
 }
 
 void SimulatorDaemon::OnCommand() {
+  CHECK(tpm_executor_);
   char buffer[kMaxCommandSize];
   do {
     std::string request;
@@ -188,7 +107,7 @@ void SimulatorDaemon::OnCommand() {
       request.append(buffer, size);
     }
 
-    const uint32_t command_size = GetCommandSize(request);
+    const uint32_t command_size = tpm_executor_->GetCommandSize(request);
 
     // Read request body.
     while (command_size > request.size()) {
@@ -205,7 +124,7 @@ void SimulatorDaemon::OnCommand() {
     }
 
     // Run command.
-    std::string response = RunCommand(request);
+    std::string response = tpm_executor_->RunCommand(request);
 
     // Write response.
     if (!base::WriteFileDescriptor(command_fd_.get(), response.c_str(),

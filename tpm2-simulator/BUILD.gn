@@ -24,6 +24,7 @@ executable("tpm2-simulator") {
   sources = [
     "main.cc",
     "simulator.cc",
+    "tpm_executor_tpm2_impl.cc",
   ]
   libs = [ "tpm2" ]
   pkg_deps = [ "libminijail" ]

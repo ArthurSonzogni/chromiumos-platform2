@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include "tpm2-simulator/simulator.h"
+#include "tpm2-simulator/tpm_executor_tpm2_impl.h"
 
 #include <base/at_exit.h>
 #include <base/logging.h>
@@ -23,7 +26,10 @@ int main(int argc, char* argv[]) {
     PLOG(ERROR) << "Failed to change to current directory";
   }
 
-  tpm2_simulator::SimulatorDaemon daemon;
+  auto tpm_executor_impl =
+      std::make_unique<tpm2_simulator::TpmExecutorTpm2Impl>();
+
+  tpm2_simulator::SimulatorDaemon daemon(tpm_executor_impl.get());
   daemon.set_sigstop_on_initialized(FLAGS_sigstop);
 
   daemon.Run();

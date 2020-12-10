@@ -12,11 +12,13 @@
 #include <base/files/file.h>
 #include <brillo/daemons/daemon.h>
 
+#include "tpm2-simulator/tpm_executor.h"
+
 namespace tpm2_simulator {
 
 class SimulatorDaemon final : public brillo::Daemon {
  public:
-  SimulatorDaemon() = default;
+  explicit SimulatorDaemon(TpmExecutor* tpm_executor);
   SimulatorDaemon(const SimulatorDaemon&) = delete;
   SimulatorDaemon& operator=(const SimulatorDaemon&) = delete;
   ~SimulatorDaemon() = default;
@@ -29,6 +31,8 @@ class SimulatorDaemon final : public brillo::Daemon {
   int OnInit() override;
   void OnCommand();
   void OnTpmPathChange(const base::FilePath& path, bool error);
+
+  TpmExecutor* const tpm_executor_;
   bool initialized_{false};
   bool sigstop_on_initialized_{true};
   std::string remain_request_;
