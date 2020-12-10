@@ -7,6 +7,7 @@
 #ifndef CAMERA_HAL_ADAPTER_ZSL_HELPER_H_
 #define CAMERA_HAL_ADAPTER_ZSL_HELPER_H_
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <queue>
@@ -16,7 +17,6 @@
 #include <hardware/camera3.h>
 #include <time.h>
 
-#include <base/containers/ring_buffer.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata.h>
@@ -104,9 +104,6 @@ class ZslBufferManager {
 
 class ZslHelper {
  public:
-  // TODO(lnishan): Replace the ring buffer with a variable-length data
-  // structure and adjust the buffer size by the lookback time.
-  static const size_t kZslBufferSize = 20;
   static const int kZslSyncWaitTimeoutMs = 3;
   static const int kZslPixelFormat = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
   // |kZslLoobackNs| accounts for the display latency (i.e., the time it takes
@@ -121,7 +118,15 @@ class ZslHelper {
     STREAM_CONFIG_HEIGHT_INDEX,
     STREAM_CONFIG_DIRECTION_INDEX
   };
+  enum {
+    FRAME_DURATION_FOMRAT_INDEX,
+    FRAME_DURATION_WIDTH_INDEX,
+    FRAME_DURATION_HEIGHT_INDEX,
+    FRAME_DURATION_DURATION_INDEX
+  };
   enum SelectionStrategy { LAST_SUBMITTED, CLOSEST, CLOSEST_3A };
+
+  using ZslBufferIterator = std::deque<ZslBuffer>::iterator;
 
   // Updates the static metadata of the camera device if we can attempt to
   // enable our in-house ZSL solution for it. It checks whether or not the
@@ -173,14 +178,14 @@ class ZslHelper {
   // delete_entry is true.
   bool IsZslRequested(camera_metadata_t* settings);
 
-  // Whether frame_number belongs to an attached ZSL request.
-  bool IsAttachedZslFrame(uint32_t frame_number);
-
   // Whether this buffer belongs to an attached ZSL request.
   bool IsAttachedZslBuffer(const camera3_stream_buffer_t* buffer);
 
   // Whether this buffer belongs to a transformed ZSL request.
   bool IsTransformedZslBuffer(const camera3_stream_buffer_t* buffer);
+
+  // See if the oldest buffers can be released back to buffer pool.
+  void TryReleaseBuffer();
 
   // Attaches ZSL output buffer into the request.
   void AttachRequest(camera3_capture_request_t* request,
@@ -211,10 +216,11 @@ class ZslHelper {
   // Determines the size of the RAW stream for private reprocessing.
   bool SelectZslStreamSize(const camera_metadata_t* static_info,
                            uint32_t* bi_width,
-                           uint32_t* bi_height);
+                           uint32_t* bi_height,
+                           int64_t* min_frame_duration);
 
   // Selects the best ZSL buffer for reprocessing from the ZSL ring buffer.
-  ZslBuffer* SelectZslBuffer(SelectionStrategy strategy);
+  ZslBufferIterator SelectZslBuffer(SelectionStrategy strategy);
 
   // Gets the current timestamp with the source from |timestamp_source_|.
   int64_t GetCurrentTimestamp();
@@ -232,18 +238,17 @@ class ZslHelper {
 
   // The actual ZSL stream.
   std::unique_ptr<camera3_stream_t> bi_stream_;
+  int64_t bi_stream_min_frame_duration_;
+  uint32_t bi_stream_max_buffers_;
 
   // Manages the buffer used for ZSL, essentially a buffer pool.
   ZslBufferManager zsl_buffer_manager_;
 
   // ZSL ring buffer stores the buffer handles, their status (e.g., processed,
   // chosen) and their corresponding metadata.
-  base::RingBuffer<ZslBuffer, ZslHelper::kZslBufferSize> ring_buffer_;
+  std::deque<ZslBuffer> ring_buffer_;
   // Lock to protect |ring_buffer_|.
   base::Lock ring_buffer_lock_;
-
-  // A mapping from frame number to (ZSL) ring buffer index.
-  std::map<uint32_t, size_t> buffer_index_map_;
 
   // A thread that asynchornously waits for release fences and releases buffers
   // to ZSL Buffer Manager.

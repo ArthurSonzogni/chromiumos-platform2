@@ -30,23 +30,14 @@ bool IsOutputStream(camera3_stream_t* stream) {
          stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL;
 }
 
-uint32_t GetStillCaptureMaxBuffers(
-    const camera3_stream_configuration_t* stream_list) {
-  uint32_t max_buffers = 0;
-  for (size_t i = 0; i < stream_list->num_streams; ++i) {
-    auto* stream = stream_list->streams[i];
-    if (!IsOutputStream(stream)) {
-      continue;
-    }
-    // If our private usage flag is specified, we know only this stream will be
-    // used for ZSL capture.
-    if (stream->usage & cros::GRALLOC_USAGE_STILL_CAPTURE) {
-      return stream->max_buffers;
-    } else if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
-      max_buffers += stream->max_buffers;
-    }
+int64_t GetTimestamp(const android::CameraMetadata& android_metadata) {
+  camera_metadata_ro_entry_t entry;
+  if (android_metadata.exists(ANDROID_SENSOR_TIMESTAMP)) {
+    entry = android_metadata.find(ANDROID_SENSOR_TIMESTAMP);
+    return entry.data.i64[0];
   }
-  return max_buffers;
+  LOGF(ERROR) << "Cannot find sensor timestamp in ZSL buffer";
+  return static_cast<int64_t>(-1);
 }
 
 }  // namespace
@@ -205,7 +196,8 @@ ZslHelper::ZslHelper(const camera_metadata_t* static_info,
     return;
   }
   uint32_t bi_width, bi_height;
-  if (!SelectZslStreamSize(static_info, &bi_width, &bi_height)) {
+  if (!SelectZslStreamSize(static_info, &bi_width, &bi_height,
+                           &bi_stream_min_frame_duration_)) {
     LOGF(ERROR) << "Failed to select stream sizes for ZSL.";
     return;
   }
@@ -291,29 +283,70 @@ bool ZslHelper::AttachZslStream(camera3_stream_configuration_t* stream_list,
 }
 
 bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
+  auto GetStillCaptureMaxBuffers =
+      [&](const camera3_stream_configuration_t* stream_list) {
+        uint32_t max_buffers = 0;
+        for (size_t i = 0; i < stream_list->num_streams; ++i) {
+          auto* stream = stream_list->streams[i];
+          if (!IsOutputStream(stream)) {
+            continue;
+          }
+          // If our private usage flag is specified, we know only this stream
+          // will be used for ZSL capture.
+          if (stream->usage & cros::GRALLOC_USAGE_STILL_CAPTURE) {
+            return stream->max_buffers;
+          } else if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
+            max_buffers += stream->max_buffers;
+          }
+        }
+        return max_buffers;
+      };
+
   base::AutoLock enable_lock(enabled_lock_);
   base::AutoLock ring_buffer_lock(ring_buffer_lock_);
 
   // First, clear all the buffers and states.
   enabled_ = false;
-  ring_buffer_.Clear();
-  buffer_index_map_.clear();
+  ring_buffer_.clear();
   zsl_buffer_manager_.Reset();
 
-  // Determine how many buffers we need. We need to determine at most how many
-  // buffers would be taken out for private reprocessing.
+  // Determine at most how many buffers would be selected for private
+  // reprocessing simultaneously.
+  bi_stream_max_buffers_ = 0;
+  for (uint32_t i = 0; i < stream_list->num_streams; i++) {
+    auto* stream = stream_list->streams[i];
+    if (stream == bi_stream_.get()) {
+      bi_stream_max_buffers_ = stream->max_buffers;
+      break;
+    }
+  }
+  if (bi_stream_max_buffers_ == 0) {
+    LOGF(ERROR) << "Failed to acquire max_buffers for the private stream";
+    return false;
+  }
+  VLOGF(1) << "Max buffers for private stream = " << bi_stream_max_buffers_;
+
+  // Determine at most how many still capture buffers would be in-flight.
   uint32_t still_max_buffers = GetStillCaptureMaxBuffers(stream_list);
   if (still_max_buffers == 0) {
-    LOGF(ERROR) << "Failed to acquire max_buffers";
+    LOGF(ERROR) << "Failed to acquire max_buffers for the still capture stream";
     return false;
   }
   VLOGF(1) << "Max buffers for still capture streams = " << still_max_buffers;
-  // We need to have |still_max_buffers| additional buffers in the buffer pool.
-  if (!zsl_buffer_manager_.Initialize(kZslBufferSize + still_max_buffers,
+
+  // We look back at most
+  // ceil(|kZslLookbackNs| / |bi_stream_min_frame_duration_| frames, and there
+  // will be at most |bi_stream_max_buffers_| being processed. We also need to
+  // have |still_max_buffers| additional buffers in the buffer pool.
+  if (!zsl_buffer_manager_.Initialize(ceil(static_cast<double>(kZslLookbackNs) /
+                                           bi_stream_min_frame_duration_) +
+                                          bi_stream_max_buffers_ +
+                                          still_max_buffers,
                                       bi_stream_.get())) {
     LOGF(ERROR) << "Failed to initialize ZSL buffer manager";
     return false;
   }
+
   LOGF(INFO) << "Enabling ZSL";
   enabled_ = true;
   return true;
@@ -367,17 +400,44 @@ bool ZslHelper::IsZslRequested(camera_metadata_t* settings) {
   return false;
 }
 
-bool ZslHelper::IsAttachedZslFrame(uint32_t frame_number) {
-  base::AutoLock ring_buffer_lock(ring_buffer_lock_);
-  return buffer_index_map_.find(frame_number) != buffer_index_map_.end();
-}
-
 bool ZslHelper::IsAttachedZslBuffer(const camera3_stream_buffer_t* buffer) {
   return buffer && buffer->stream == bi_stream_.get();
 }
 
 bool ZslHelper::IsTransformedZslBuffer(const camera3_stream_buffer_t* buffer) {
   return buffer && buffer->stream == bi_stream_.get();
+}
+
+void ZslHelper::TryReleaseBuffer() {
+  ring_buffer_lock_.AssertAcquired();
+  // Check if the oldest buffer is already too old to be selected. In which
+  // case, we can remove it from our ring buffer. If the buffer is not selected,
+  // we release it back to the buffer pool. If the buffer is selected, we
+  // release it when it returns from ProcessZslCaptureResult.
+  if (ring_buffer_.empty()) {
+    return;
+  }
+  const ZslBuffer& oldest_buffer = ring_buffer_.back();
+  if (oldest_buffer.selected) {
+    ring_buffer_.pop_back();
+    return;
+  }
+
+  if (!oldest_buffer.metadata_ready) {
+    return;
+  }
+  auto timestamp = GetTimestamp(oldest_buffer.metadata);
+  DCHECK_NE(timestamp, -1);
+  if (GetCurrentTimestamp() - timestamp <= kZslLookbackNs) {
+    // Buffer is too new that we should keep it. This will happen for the
+    // initial buffers.
+    return;
+  }
+  if (!zsl_buffer_manager_.ReleaseBuffer(*oldest_buffer.buffer.buffer)) {
+    LOGF(ERROR) << "Unable to release the oldest buffer";
+    return;
+  }
+  ring_buffer_.pop_back();
 }
 
 void ZslHelper::ProcessZslCaptureRequest(
@@ -419,7 +479,10 @@ void ZslHelper::ProcessZslCaptureRequest(
           TransformRequest(still_request, &zsl_settings,
                            GetJpegOrientation(settings->get()), strategy);
       if (transformed) {
-        // Swap the frame numbers to submit the still capture request first.
+        // Swap frame numbers to send the split still capture request first.
+        // When merging the capture results, the shutter message and result
+        // metadata of the second preview capture request will be trimmed, which
+        // is safe because we don't reprocess preview frames.
         still_request->frame_number = request->frame_number;
         request->frame_number =
             frame_number_mapper_->GetHalFrameNumber(framework_frame_number);
@@ -455,30 +518,22 @@ void ZslHelper::AttachRequest(
     LOGF(WARNING) << "Trying to attach a request when ZSL is disabled";
     return;
   }
-  // Check if the oldest ZSL buffer is filled and free it if it's filled and
-  // not selected for any transformed ZSL requests.
-  base::AutoLock l(ring_buffer_lock_);
-  if (ring_buffer_.IsFilledIndex(0)) {
-    const ZslBuffer& buf = ring_buffer_.ReadBuffer(0);
-    if (!buf.selected) {
-      // We can free the buffer if it's not selected.
-      if (!zsl_buffer_manager_.ReleaseBuffer(*buf.buffer.buffer)) {
-        LOGF(ERROR) << "Unable to release the oldest buffer";
-      }
-    }
-    // No need to remember frame-to-index mapping when this buffer is popped.
-    buffer_index_map_.erase(buf.frame_number);
-  }
 
+  base::AutoLock l(ring_buffer_lock_);
+  TryReleaseBuffer();
+  auto* buffer = zsl_buffer_manager_.GetBuffer();
+  if (buffer == nullptr) {
+    LOGF(ERROR) << "Failed to acquire a ZSL buffer";
+    return;
+  }
   // Attach our ZSL output buffer.
   camera3_stream_buffer_t stream_buffer;
-  stream_buffer.buffer = zsl_buffer_manager_.GetBuffer();
+  stream_buffer.buffer = buffer;
   stream_buffer.stream = bi_stream_.get();
   stream_buffer.acquire_fence = stream_buffer.release_fence = -1;
 
-  buffer_index_map_[request->frame_number] = ring_buffer_.CurrentIndex();
-  ZslBuffer buffer(request->frame_number, stream_buffer);
-  ring_buffer_.SaveToBuffer(std::move(buffer));
+  ZslBuffer zsl_buffer(request->frame_number, stream_buffer);
+  ring_buffer_.push_front(std::move(zsl_buffer));
 
   output_buffers->push_back(std::move(stream_buffer));
   request->num_output_buffers++;
@@ -489,22 +544,22 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
                                  int32_t jpeg_orientation,
                                  SelectionStrategy strategy) {
   VLOGF_ENTER();
+  base::AutoLock l(ring_buffer_lock_);
   if (!IsZslEnabled()) {
     LOGF(WARNING) << "Trying to transform a request when ZSL is disabled";
     return false;
   }
 
   // Select the best buffer.
-  ZslBuffer* selected_buffer = SelectZslBuffer(strategy);
-  if (!selected_buffer) {
+  ZslBufferIterator selected_buffer_it = SelectZslBuffer(strategy);
+  if (selected_buffer_it == ring_buffer_.end()) {
     LOGF(WARNING) << "Unable to find a suitable ZSL buffer. Request will not "
                      "be transformed.";
     return false;
   }
 
   LOGF(INFO) << "Transforming request into ZSL reprocessing request";
-  base::AutoLock ring_buffer_lock(ring_buffer_lock_);
-  request->input_buffer = &selected_buffer->buffer;
+  request->input_buffer = &selected_buffer_it->buffer;
   request->input_buffer->stream = bi_stream_.get();
   request->input_buffer->acquire_fence = -1;
   request->input_buffer->release_fence = -1;
@@ -512,12 +567,12 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
   // The result metadata for the RAW buffers come from the preview frames. We
   // need to add JPEG orientation back so that the resulting JPEG is of the
   // correct orientation.
-  if (selected_buffer->metadata.update(ANDROID_JPEG_ORIENTATION,
-                                       &jpeg_orientation, 1) != 0) {
+  if (selected_buffer_it->metadata.update(ANDROID_JPEG_ORIENTATION,
+                                          &jpeg_orientation, 1) != 0) {
     LOGF(ERROR) << "Failed to update JPEG_ORIENTATION";
   }
   // Note that camera device adapter would take ownership of this pointer.
-  *settings = selected_buffer->metadata.release();
+  *settings = selected_buffer_it->metadata.release();
   return true;
 }
 
@@ -536,29 +591,27 @@ void ZslHelper::ProcessZslCaptureResult(
     *transformed_input = result->input_buffer;
     ReleaseStreamBuffer(*result->input_buffer);
   }
-  if (IsAttachedZslFrame(result->frame_number)) {
-    base::AutoLock ring_buffer_lock(ring_buffer_lock_);
-    auto it = buffer_index_map_.find(result->frame_number);
-    if (it != buffer_index_map_.end()) {
-      ZslBuffer* buffer = MutableReadBufferByBufferIndex(it->second);
 
-      for (size_t i = 0; i < result->num_output_buffers; ++i) {
-        if (result->output_buffers[i].stream == bi_stream_.get()) {
-          WaitAttachedFrame(result->frame_number,
-                            result->output_buffers[i].release_fence);
-          break;
-        }
-      }
+  base::AutoLock ring_buffer_lock(ring_buffer_lock_);
+  auto it = std::find_if(ring_buffer_.begin(), ring_buffer_.end(),
+                         [&](const ZslBuffer& buffer) {
+                           return buffer.frame_number == result->frame_number;
+                         });
+  if (it == ring_buffer_.end()) {
+    return;
+  }
+  for (size_t i = 0; i < result->num_output_buffers; ++i) {
+    if (result->output_buffers[i].stream == bi_stream_.get()) {
+      WaitAttachedFrame(result->frame_number,
+                        result->output_buffers[i].release_fence);
+      break;
+    }
+  }
 
-      if (result->partial_result != 0) {  // Result has metadata
-        // Merge the result metadata.
-        if (buffer) {
-          buffer->metadata.append(result->result);
-          if (result->partial_result == partial_result_count_) {
-            buffer->metadata_ready = true;
-          }
-        }
-      }
+  if (result->partial_result != 0) {  // Result has metadata. Merge it.
+    it->metadata.append(result->result);
+    if (result->partial_result == partial_result_count_) {
+      it->metadata_ready = true;
     }
   }
 }
@@ -577,12 +630,12 @@ void ZslHelper::WaitAttachedFrameOnFenceSyncThread(uint32_t frame_number,
     LOGF(WARNING) << "Failed to wait for release fence on attached ZSL buffer";
   } else {
     base::AutoLock ring_buffer_lock(ring_buffer_lock_);
-    auto it = buffer_index_map_.find(frame_number);
-    if (it != buffer_index_map_.end()) {
-      ZslBuffer* buffer = MutableReadBufferByBufferIndex(it->second);
-      if (buffer) {
-        buffer->buffer_ready = true;
-      }
+    auto it = std::find_if(ring_buffer_.begin(), ring_buffer_.end(),
+                           [&](const ZslBuffer& buffer) {
+                             return buffer.frame_number == frame_number;
+                           });
+    if (it != ring_buffer_.end()) {
+      it->buffer_ready = true;
     }
     return;
   }
@@ -629,8 +682,12 @@ bool ZslHelper::IsCapabilitySupported(const camera_metadata_t* static_info,
 
 bool ZslHelper::SelectZslStreamSize(const camera_metadata_t* static_info,
                                     uint32_t* bi_width,
-                                    uint32_t* bi_height) {
+                                    uint32_t* bi_height,
+                                    int64_t* min_frame_duration) {
   VLOGF_ENTER();
+
+  *bi_width = 0;
+  *bi_height = 0;
   camera_metadata_ro_entry entry;
   if (find_camera_metadata_ro_entry(
           static_info, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
@@ -638,9 +695,6 @@ bool ZslHelper::SelectZslStreamSize(const camera_metadata_t* static_info,
     LOGF(ERROR) << "Failed to find stream configurations map";
     return false;
   }
-  *bi_width = 0;
-  *bi_height = 0;
-
   VLOGF(1) << "Iterating stream configuration map for ZSL streams";
   for (size_t i = 0; i < entry.count; i += 4) {
     const int32_t& format = entry.data.i32[i + STREAM_CONFIG_FORMAT_INDEX];
@@ -661,53 +715,65 @@ bool ZslHelper::SelectZslStreamSize(const camera_metadata_t* static_info,
       }
     }
   }
-  return *bi_width > 0 && *bi_height > 0;
+  if (*bi_width == 0 || *bi_height == 0) {
+    LOGF(ERROR) << "Failed to select ZSL stream size";
+    return false;
+  }
+
+  *min_frame_duration = 0;
+  if (find_camera_metadata_ro_entry(
+          static_info, ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS, &entry) !=
+      0) {
+    LOGF(ERROR) << "Failed to find the minimum frame durations";
+    return false;
+  }
+  for (size_t i = 0; i < entry.count; i += 4) {
+    const int64_t& format = entry.data.i64[i + FRAME_DURATION_FOMRAT_INDEX];
+    const int64_t& width = entry.data.i64[i + FRAME_DURATION_WIDTH_INDEX];
+    const int64_t& height = entry.data.i64[i + FRAME_DURATION_HEIGHT_INDEX];
+    const int64_t& duration = entry.data.i64[i + FRAME_DURATION_DURATION_INDEX];
+    if (format == kZslPixelFormat && width == *bi_width &&
+        height == *bi_height) {
+      *min_frame_duration = duration;
+      break;
+    }
+  }
+  if (*min_frame_duration == 0) {
+    LOGF(ERROR) << "Failed to find the minimum frame duration for the selected "
+                   "ZSL stream";
+    return false;
+  }
+
+  return true;
 }
 
-ZslBuffer* ZslHelper::SelectZslBuffer(SelectionStrategy strategy) {
-  // Select the best ZSL buffer based on time and statistics.
-  auto GetTimestamp = [](const android::CameraMetadata& android_metadata) {
-    camera_metadata_ro_entry_t entry;
-    if (android_metadata.exists(ANDROID_SENSOR_TIMESTAMP)) {
-      entry = android_metadata.find(ANDROID_SENSOR_TIMESTAMP);
-      return entry.data.i64[0];
-    }
-    LOGF(ERROR) << "Cannot find sensor timestamp in ZSL buffer";
-    return static_cast<int64_t>(-1);
-  };
-  base::AutoLock ring_buffer_lock(ring_buffer_lock_);
+ZslHelper::ZslBufferIterator ZslHelper::SelectZslBuffer(
+    SelectionStrategy strategy) {
+  ring_buffer_lock_.AssertAcquired();
   if (strategy == LAST_SUBMITTED) {
-    for (int i = kZslBufferSize - 1; i >= 0; --i) {
-      if (!ring_buffer_.IsFilledIndex(i)) {
-        continue;
-      }
-      ZslBuffer* buffer = ring_buffer_.MutableReadBuffer(i);
-      if (buffer->metadata_ready && buffer->buffer_ready && !buffer->selected) {
-        buffer->selected = true;
-        return buffer;
+    for (auto it = ring_buffer_.begin(); it != ring_buffer_.end(); it++) {
+      if (it->metadata_ready && it->buffer_ready && !it->selected) {
+        it->selected = true;
+        return it;
       }
     }
     LOGF(WARNING) << "Failed to find a unselected submitted ZSL buffer";
-    return nullptr;
+    return ring_buffer_.end();
   }
 
   // For CLOSEST or CLOSEST_3A strategies.
   int64_t cur_timestamp = GetCurrentTimestamp();
   LOGF(INFO) << "Current timestamp = " << cur_timestamp;
-  ZslBuffer* selected_buffer = nullptr;
+  ZslBufferIterator selected_buffer_it = ring_buffer_.end();
   int64_t min_diff = kZslLookbackNs;
   int64_t ideal_timestamp = cur_timestamp - kZslLookbackNs;
-  for (int i = kZslBufferSize - 1; i >= 0; --i) {
-    if (!ring_buffer_.IsFilledIndex(i)) {
+  for (auto it = ring_buffer_.begin(); it != ring_buffer_.end(); it++) {
+    if (!it->metadata_ready || !it->buffer_ready || it->selected) {
       continue;
     }
-    ZslBuffer* buffer = ring_buffer_.MutableReadBuffer(i);
-    if (!buffer->metadata_ready || !buffer->buffer_ready || buffer->selected) {
-      continue;
-    }
-    int64_t timestamp = GetTimestamp(buffer->metadata);
-    bool satisfy_3a = strategy == CLOSEST || (strategy == CLOSEST_3A &&
-                                              Is3AConverged(buffer->metadata));
+    int64_t timestamp = GetTimestamp(it->metadata);
+    bool satisfy_3a = strategy == CLOSEST ||
+                      (strategy == CLOSEST_3A && Is3AConverged(it->metadata));
     int64_t diff = timestamp - ideal_timestamp;
     VLOGF(1) << "Candidate timestamp = " << timestamp
              << " (Satisfy 3A = " << satisfy_3a << ", "
@@ -721,22 +787,22 @@ ZslBuffer* ZslHelper::SelectZslBuffer(SelectionStrategy strategy) {
     if (satisfy_3a) {
       if (diff < min_diff) {
         min_diff = diff;
-        selected_buffer = buffer;
+        selected_buffer_it = it;
       } else {
         // Not possible to find a better buffer
         break;
       }
     }
   }
-  if (selected_buffer == nullptr) {
+  if (selected_buffer_it == ring_buffer_.end()) {
     LOGF(WARNING)
         << "Failed to a find suitable ZSL buffer with the given strategy";
-    return nullptr;
+    return selected_buffer_it;
   }
   LOGF(INFO) << "Timestamp of the selected buffer = "
-             << GetTimestamp(selected_buffer->metadata);
-  selected_buffer->selected = true;
-  return selected_buffer;
+             << GetTimestamp(selected_buffer_it->metadata);
+  selected_buffer_it->selected = true;
+  return selected_buffer_it;
 }
 
 int64_t ZslHelper::GetCurrentTimestamp() {
@@ -802,22 +868,6 @@ bool ZslHelper::Is3AConverged(const android::CameraMetadata& android_metadata) {
   }();
   // We won't reach here if neither AE nor AF is converged.
   return awb_converged;
-}
-
-ZslBuffer* ZslHelper::MutableReadBufferByBufferIndex(size_t buffer_index) {
-  size_t current_index = ring_buffer_.CurrentIndex();
-  DCHECK(current_index > buffer_index);
-  // The DCHECK fails if the caller is attempting to update a buffer that's no
-  // longer in the ring buffer. This means a capture result is returned after
-  // |kZslBufferSize| frames, which shouldn't happen and likely indicates
-  // something is wrong.
-  DCHECK(current_index - buffer_index <= ZslHelper::kZslBufferSize);
-  if (current_index - buffer_index <= ZslHelper::kZslBufferSize) {
-    size_t rel_index =
-        ZslHelper::kZslBufferSize - (current_index - buffer_index);
-    return ring_buffer_.MutableReadBuffer(rel_index);
-  }
-  return nullptr;
 }
 
 }  // namespace cros
