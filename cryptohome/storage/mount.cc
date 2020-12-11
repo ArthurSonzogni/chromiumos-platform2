@@ -149,22 +149,15 @@ bool Mount::Init() {
       default_user_, default_group_, default_access_group_, system_salt_,
       legacy_mount_, bind_mount_downloads_, platform_));
 
+  //  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
+  //  the user cryptohome in that mount namespace if the flags are enabled.
+  //  Chrome mount namespace is created by session_manager. cryptohome knows
+  //  the path at which this mount namespace is created and uses that path to
+  //  enter it.
   std::unique_ptr<MountNamespace> chrome_mnt_ns;
   if (mount_guest_session_non_root_namespace_ || IsolateUserSession()) {
     chrome_mnt_ns = std::make_unique<MountNamespace>(
         base::FilePath(kUserSessionMountNamespacePath), platform_);
-  }
-
-  // When the |user_session_isolation| USE flag is set, the mount namespace for
-  // both Guest and regular sessions will be created by session_manager.
-  if (mount_guest_session_non_root_namespace_ && !IsolateUserSession()) {
-    if (!chrome_mnt_ns->Create()) {
-      std::string message =
-          base::StringPrintf("Failed to create mount namespace at %s",
-                             kUserSessionMountNamespacePath);
-      cryptohome::ForkAndCrash(message);
-      result = false;
-    }
   }
 
   if (mount_guest_session_out_of_process_ ||
