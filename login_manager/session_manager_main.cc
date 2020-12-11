@@ -220,22 +220,35 @@ int main(int argc, char* argv[]) {
     // Instead of having Chrome unshare a new mount namespace on launch, have
     // Chrome enter the mount namespace where the user data directory exists.
     ns_path = base::FilePath(cryptohome::kUserSessionMountNamespacePath);
-    config.chrome_mount_ns_path = ns_path;
   }
 
   brillo::Platform platform;
   std::unique_ptr<brillo::MountNamespace> chrome_mnt_ns;
-  if (config.isolate_regular_session) {
-    // For regular sessions Chrome cannot enter the mount namespace created by
-    // cryptohome on launch since Chrome is not restarted after login. Thus
-    // create the mount namespace here before Chrome launches.
+  if (ns_path.has_value()) {
+    // Create the mount namespace here before Chrome launches.
+    // If the current session is not a Guest session browser_job and
+    // session_manager_impl check the user_session_isolation USE flag before
+    // entering the namespace.
     chrome_mnt_ns =
         std::make_unique<brillo::MountNamespace>(ns_path.value(), &platform);
     bool status = chrome_mnt_ns->Create();
     metrics.SendNamespaceCreationResult(status);
     if (status) {
+      // User session shouldn't fail if namespace creation fails.
+      // browser_job enters the mount namespace if |config.chrome_mount_ns_path|
+      // has a value. Populate this value only if the namespace creation
+      // succeeds.
+      config.chrome_mount_ns_path = ns_path;
       LOG(INFO) << "Mount namespace created at " << ns_path.value();
     } else {
+      // session_manager enters the mount namespace if |ns_path| has a value.
+      // Reset this value if the namespace creation fails.
+      // If flags are set for user session or Guest session isolation cryptohome
+      // will first check the namespace existence and fail only if cannot enter
+      // the existing namespace.
+      // If namespace creation fails here cryptohome will continue in the root
+      // mount namespace.
+      ns_path.reset();
       LOG(WARNING) << "Failed to create mount namespace at " << ns_path.value();
     }
   }
