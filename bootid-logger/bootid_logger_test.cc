@@ -25,7 +25,7 @@ TEST_F(BootidLoggerTest, WriteEntry) {
   EXPECT_TRUE(WriteBootEntry(temporary_file, kBootID, time, 100));
 
   const std::string expected_entry =
-      "2020-12-01T00:00:00.000000+00:00 INFO boot_id: " + kBootID + "\n";
+      "2020-12-01T00:00:00.000000Z INFO boot_id: " + kBootID + "\n";
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(temporary_file, &file_contents));
   EXPECT_EQ(expected_entry, file_contents);
@@ -53,7 +53,7 @@ TEST_F(BootidLoggerTest, WriteDuplicatedEntries) {
   }
 
   const std::string expected_entry =
-      "2020-12-01T00:00:00.000000+00:00 INFO boot_id: " + kBootID + "\n";
+      "2020-12-01T00:00:00.000000Z INFO boot_id: " + kBootID + "\n";
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(temporary_file, &file_contents));
   EXPECT_EQ(expected_entry, file_contents);
@@ -98,12 +98,12 @@ TEST_F(BootidLoggerTest, WriteMultipleEntries) {
   }
 
   const std::string expected_entry =
-      "2020-12-02T00:00:00.000000+00:00 INFO boot_id: " + kBootID2 +
+      "2020-12-02T00:00:00.000000Z INFO boot_id: " + kBootID2 +
       "\n"
-      "2020-12-03T00:00:00.000000+00:00 INFO boot_id: " +
+      "2020-12-03T00:00:00.000000Z INFO boot_id: " +
       kBootID3 +
       "\n"
-      "2020-12-04T00:00:00.000000+00:00 INFO boot_id: " +
+      "2020-12-04T00:00:00.000000Z INFO boot_id: " +
       kBootID4 + "\n";
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(temporary_file, &file_contents));
@@ -126,4 +126,102 @@ TEST_F(BootidLoggerTest, WriteCurrentBootEntry) {
   EXPECT_TRUE(ValidateBootEntry(boot_entry));
   std::string boot_id = ExtractBootId(boot_entry);
   EXPECT_EQ(boot_id, GetCurrentBootId());
+}
+
+TEST_F(BootidLoggerTest, ApppendToExistingFile) {
+  base::FilePath temporary_file;
+  EXPECT_TRUE(base::CreateTemporaryFile(&temporary_file));
+
+  // Prepare the file with the existing entries.
+  const std::string kExistingEntry1 =
+      "2020-12-01T00:00:00.000000Z INFO boot_id: "
+      "12345678901234567890123456789001\n";
+  const std::string kExistingEntry2 =
+      "2020-12-02T00:00:00.000000Z INFO boot_id: "
+      "12345678901234567890123456789002\n";
+  EXPECT_TRUE(
+      base::WriteFile(temporary_file, kExistingEntry1 + kExistingEntry2));
+
+  // Write an entry.
+  const std::string kBootID3 = "12345678901234567890123456789003";
+  {
+    const base::Time::Exploded exploded = {2020, 12, 1, 3, 0, 0, 0, 0};
+    base::Time time;
+    EXPECT_TRUE(base::Time::FromUTCExploded(exploded, &time));
+    EXPECT_TRUE(WriteBootEntry(temporary_file, kBootID3, time, 100));
+  }
+
+  // Confirms that the entry is written.
+  const std::string expected_entry =
+      kExistingEntry1 + kExistingEntry2 +
+      "2020-12-03T00:00:00.000000Z INFO boot_id: " + kBootID3 + "\n";
+  std::string file_contents;
+  EXPECT_TRUE(base::ReadFileToString(temporary_file, &file_contents));
+  EXPECT_EQ(expected_entry, file_contents);
+}
+
+TEST_F(BootidLoggerTest, KeepExistingEntryLocalTimezone) {
+  const size_t kMaxEntryNum = 999;
+
+  base::FilePath temporary_file;
+  EXPECT_TRUE(base::CreateTemporaryFile(&temporary_file));
+
+  // Prepare the file with the existing entries.
+  const std::string kExistingEntry1 =
+      "2020-12-01T00:00:00.000000+00:00 INFO boot_id: "
+      "12345678901234567890123456789001\n";
+  const std::string kExistingEntry2 =
+      "2020-12-02T00:00:00.000000+00:00 INFO boot_id: "
+      "12345678901234567890123456789002\n";
+  EXPECT_TRUE(
+      base::WriteFile(temporary_file, kExistingEntry1 + kExistingEntry2));
+
+  // Write an entry.
+  const std::string kBootID3 = "12345678901234567890123456789003";
+  {
+    const base::Time::Exploded exploded = {2020, 12, 1, 3, 0, 0, 0, 0};
+    base::Time time;
+    EXPECT_TRUE(base::Time::FromUTCExploded(exploded, &time));
+    EXPECT_TRUE(WriteBootEntry(temporary_file, kBootID3, time, kMaxEntryNum));
+  }
+
+  // Confirms that the entry is written.
+  const std::string expected_entry =
+      kExistingEntry1 + kExistingEntry2 +
+      "2020-12-03T00:00:00.000000Z INFO boot_id: " + kBootID3 + "\n";
+  std::string file_contents;
+  EXPECT_TRUE(base::ReadFileToString(temporary_file, &file_contents));
+  EXPECT_EQ(expected_entry, file_contents);
+}
+
+TEST_F(BootidLoggerTest, KeepExistingEntryLocalTimezoneDuplicated) {
+  const size_t kMaxEntryNum = 999;
+
+  base::FilePath temporary_file;
+  EXPECT_TRUE(base::CreateTemporaryFile(&temporary_file));
+
+  // Prepare the file with the existing entries.
+  const std::string kExistingEntry1 =
+      "2020-12-01T00:00:00.000000Z INFO boot_id: "
+      "12345678901234567890123456789001\n";
+  const std::string kBootID2 = "12345678901234567890123456789002";
+  const std::string kExistingEntry2 =
+      "2020-12-02T00:00:00.000000Z INFO boot_id: " + kBootID2 + "\n";
+  EXPECT_TRUE(
+      base::WriteFile(temporary_file, kExistingEntry1 + kExistingEntry2));
+
+  // Write an entry.
+  {
+    const base::Time::Exploded exploded = {2020, 12, 1, 3, 0, 0, 0, 0};
+    base::Time time;
+    EXPECT_TRUE(base::Time::FromUTCExploded(exploded, &time));
+    // Should return true, even if the ID is duplicated.
+    EXPECT_TRUE(WriteBootEntry(temporary_file, kBootID2, time, kMaxEntryNum));
+  }
+
+  // Confirms that the entry is not written, since it is duplicated.
+  const std::string expected_entry = kExistingEntry1 + kExistingEntry2;
+  std::string file_contents;
+  EXPECT_TRUE(base::ReadFileToString(temporary_file, &file_contents));
+  EXPECT_EQ(expected_entry, file_contents);
 }

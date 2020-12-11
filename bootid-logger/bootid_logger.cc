@@ -28,8 +28,35 @@ namespace {
 
 constexpr char kBootIdProcPath[] = "/proc/sys/kernel/random/boot_id";
 
-// 47 bytes = timestamp 31bytes + space + fixed message 15 bytes.
-constexpr size_t kBootEntryLength = 47u + kBootIdLength;
+constexpr char kBootEntryPrefix[] = "boot_id: ";
+constexpr char kBootEntrySeverity[] = "INFO";
+
+// Length of timestamp (eg. "2020-12-12T00:00:00.000000Z". The value is 27.
+constexpr size_t kTimestampLength = 27u;
+// Length of timestamp (eg. "2020-12-12T00:00:00.000000+00:00". The value is 32.
+constexpr size_t kLocalTimeTimestampLength = 32u;
+// Length of severity string "INFO". The value is 4.
+constexpr size_t kSeverityLength = sizeof(kBootEntrySeverity) - 1;
+// Length of prefix string "boot_id: ", including a space. The value is 9.
+constexpr size_t kPrefixLength = sizeof(kBootEntryPrefix) - 1;
+
+// Offsets for UTC timestamp boot entries.
+constexpr size_t kBootEntrySeverityOffset = kTimestampLength + 1;
+constexpr size_t kBootEntryPrefixOffset =
+    kBootEntrySeverityOffset + kSeverityLength + 1;
+constexpr size_t kBootEntryBootIdOffset =
+    kBootEntryPrefixOffset + kPrefixLength;
+constexpr size_t kBootEntryLength = kBootEntryBootIdOffset + kBootIdLength;
+
+// Offsets for local timezone timestamp boot entries.
+constexpr size_t kBootEntryLocalTimeSeverityOffset =
+    kLocalTimeTimestampLength + 1;
+constexpr size_t kBootEntryLocalTimeMessageOffset =
+    kBootEntryLocalTimeSeverityOffset + kSeverityLength + 1;
+constexpr size_t kBootEntryLocalTimeBootIdOffset =
+    kBootEntryLocalTimeMessageOffset + kPrefixLength;
+constexpr size_t kBootEntryLocalTimeLength =
+    kBootEntryLocalTimeBootIdOffset + kBootIdLength;
 
 // Generate an entry in the boot entry format.
 std::string GenerateBootEntryString(const std::string current_boot_id,
@@ -40,23 +67,45 @@ std::string GenerateBootEntryString(const std::string current_boot_id,
   // TODO(crbug.com): Change the timezone from local to UTC.
 
   base::Time::Exploded exploded;
-  boot_time.LocalExplode(&exploded);
-
-  struct tm lt = {0};
-  time_t milliseconds = boot_time.ToTimeT();
-  localtime_r(&milliseconds, &lt);
-  int32_t timezone_offset_sec = lt.tm_gmtoff;
+  boot_time.UTCExplode(&exploded);
 
   const std::string boot_time_str(base::StringPrintf(
-      "%04d-%02d-%02dT%02d:%02d:%02d.%03d000%+03d:%02d", exploded.year,
-      exploded.month, exploded.day_of_month, exploded.hour, exploded.minute,
-      exploded.second, exploded.millisecond, (timezone_offset_sec / 3600),
-      ((std::abs(timezone_offset_sec) / 60) % 60)));
+      "%04d-%02d-%02dT%02d:%02d:%02d.%03d000Z", exploded.year, exploded.month,
+      exploded.day_of_month, exploded.hour, exploded.minute, exploded.second,
+      exploded.millisecond));
+  CHECK_EQ(kTimestampLength, boot_time_str.size());
 
-  const std::string boot_id_entry =
-      boot_time_str + " INFO boot_id: " + base::ToLowerASCII(current_boot_id);
+  const std::string boot_id_entry = boot_time_str + " " + kBootEntrySeverity +
+                                    " " + kBootEntryPrefix +
+                                    base::ToLowerASCII(current_boot_id);
   CHECK_EQ(kBootEntryLength, boot_id_entry.length());
   return boot_id_entry;
+}
+
+// Validate the given boot entry is valid (as an entry with UTC timestap).
+bool ValidateBootEntryWithUTC(const std::string& boot_id_entry) {
+  if (boot_id_entry.length() != kBootEntryLength)
+    return false;
+
+  if (boot_id_entry[kBootEntrySeverityOffset - 1] != ' ' ||
+      boot_id_entry[kBootEntryPrefixOffset - 1] != ' ' ||
+      boot_id_entry[kBootEntryBootIdOffset - 1] != ' ')
+    return false;
+
+  return true;
+}
+
+// Validate the given boot entry is valid (as an entry with local timestap).
+bool ValidateBootEntryWithTimezone(const std::string& boot_id_entry) {
+  if (boot_id_entry.length() != kBootEntryLocalTimeLength)
+    return false;
+
+  if (boot_id_entry[kBootEntryLocalTimeSeverityOffset - 1] != ' ' ||
+      boot_id_entry[kBootEntryLocalTimeMessageOffset - 1] != ' ' ||
+      boot_id_entry[kBootEntryLocalTimeBootIdOffset - 1] != ' ')
+    return false;
+
+  return true;
 }
 
 // Read previous entries from the log file (FD).
@@ -122,24 +171,21 @@ base::Time GetCurrentBootTime() {
 
 }  // anonymous namespace
 
-// Extracts the boot ID from the givin boot ID entry.
+// Validate the given boot entry is valid.
 bool ValidateBootEntry(const std::string& boot_id_entry) {
-  if (boot_id_entry.length() != kBootEntryLength)
-    return false;
-
-  if (boot_id_entry[32] != ' ' || boot_id_entry[37] != ' ' ||
-      boot_id_entry[46] != ' ')
-    return false;
-
-  return true;
+  return ValidateBootEntryWithUTC(boot_id_entry) ||
+         ValidateBootEntryWithTimezone(boot_id_entry);
 }
 
 // Extracts the boot ID from the givin boot ID entry.
 std::string ExtractBootId(const std::string& boot_id_entry) {
-  if (boot_id_entry.length() != kBootEntryLength)
-    return "";
+  if (boot_id_entry.length() == kBootEntryLength)
+    return boot_id_entry.substr(kBootEntryBootIdOffset, kBootIdLength);
 
-  return boot_id_entry.substr(32u + 15u, kBootIdLength);
+  if (boot_id_entry.length() == kBootEntryLocalTimeLength)
+    return boot_id_entry.substr(kBootEntryLocalTimeBootIdOffset, kBootIdLength);
+
+  return "";
 }
 
 std::string GetCurrentBootId() {
