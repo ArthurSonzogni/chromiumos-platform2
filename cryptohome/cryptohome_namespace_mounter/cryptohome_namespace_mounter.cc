@@ -138,6 +138,20 @@ int main(int argc, char** argv) {
     // Enter the required mount namespace.
     ns_mnt = brillo::ScopedMountNamespace::CreateFromPath(
         base::FilePath(request.mount_namespace_path()));
+    // cryptohome_namespace_mounter will only fail if it cannot enter the
+    // existing user session mount namespace. If the namespace doesn't exist
+    // cryptohome_namespace_mounter will do the mounts in the root mount
+    // namespace. The design here is consistent with the session_manager
+    // behavior which will continue in the root mount namespace if the namespace
+    // creation is attempted but failed. The failure in the namespace creation
+    // is a very rare corner case and the user session will continue in the
+    // root mount namespace if that happens.
+    if (ns_mnt == nullptr && cryptohome::UserSessionMountNamespaceExists()) {
+      cryptohome::ForkAndCrash(
+          "cryptohome failed to enter the existing user session mount "
+          "namespace");
+      return EX_OSERR;
+    }
   }
 
   cryptohome::MountHelper mounter(uid, gid, access_gid, system_salt,
