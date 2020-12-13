@@ -203,6 +203,17 @@ bool Camera3Device::StaticInfo::IsColorOutputSupported() const {
       ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE);
 }
 
+bool Camera3Device::StaticInfo::HasAvailableRequestKey(int32_t key) const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(characteristics_,
+                                    ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                                    &entry) == 0) {
+    return std::find(entry.data.i32, entry.data.i32 + entry.count, key) !=
+           entry.data.i32 + entry.count;
+  }
+  return false;
+}
+
 std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableModes(
     int32_t key, int32_t min_value, int32_t max_value) const {
   camera_metadata_ro_entry_t entry;

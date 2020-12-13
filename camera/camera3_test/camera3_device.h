@@ -161,6 +161,9 @@ class Camera3Device::StaticInfo {
   // based on the backwards-compatible capability
   bool IsColorOutputSupported() const;
 
+  // Whether or not the key is in the list of available request keys.
+  bool HasAvailableRequestKey(int32_t key) const;
+
   // Get available edge modes
   std::set<uint8_t> GetAvailableEdgeModes() const;
 

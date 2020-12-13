@@ -6,9 +6,13 @@
 
 #include <algorithm>
 
-#include <base/stl_util.h>
-#include <base/files/file_util.h>
+#include <camera/camera_metadata.h>
+
 #include <base/command_line.h>
+#include <base/files/file_util.h>
+#include <base/stl_util.h>
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 
 namespace camera3_test {
 
@@ -68,10 +72,11 @@ class Camera3SimpleStillCaptureTest
  protected:
   using ExifTestData = Camera3ExifValidator::ExifTestData;
 
-  int cam_id_;
-
   void TakePictureTest(uint32_t num_still_pictures,
-                       bool require_3a_converged = true);
+                       bool require_3a_converged = true,
+                       bool enable_zsl = false);
+
+  int cam_id_;
 };
 
 TEST_P(Camera3SimpleStillCaptureTest, JpegExifTest) {
@@ -160,7 +165,8 @@ TEST_P(Camera3SimpleStillCaptureTest, JpegExifTest) {
 }
 
 void Camera3SimpleStillCaptureTest::TakePictureTest(uint32_t num_still_pictures,
-                                                    bool require_3a_converged) {
+                                                    bool require_3a_converged,
+                                                    bool enable_zsl) {
   auto IsAFSupported = [this]() {
     std::vector<uint8_t> available_af_modes;
     cam_service_.GetStaticInfo(cam_id_)->GetAvailableAFModes(
@@ -220,8 +226,24 @@ void Camera3SimpleStillCaptureTest::TakePictureTest(uint32_t num_still_pictures,
   const camera_metadata_t* metadata =
       cam_service_.ConstructDefaultRequestSettings(
           cam_id_, CAMERA3_TEMPLATE_STILL_CAPTURE);
-  for (uint32_t i = 0; i < num_still_pictures; i++) {
-    cam_service_.TakeStillCapture(cam_id_, metadata);
+  if (enable_zsl) {
+    android::CameraMetadata zsl_metadata(clone_camera_metadata(metadata));
+    uint8_t enable_zsl = 1;
+    ASSERT_EQ(zsl_metadata.update(ANDROID_CONTROL_ENABLE_ZSL, &enable_zsl, 1),
+              0);
+    auto* raw_zsl_metadata = zsl_metadata.getAndLock();
+    for (uint32_t i = 0; i < num_still_pictures; i++) {
+      cam_service_.TakeStillCapture(cam_id_, raw_zsl_metadata);
+
+      // Take a brief pause to allow ZSL to accumulate raw buffers that can be
+      // selected for private reprocessing.
+      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
+    }
+    zsl_metadata.unlock(raw_zsl_metadata);
+  } else {
+    for (uint32_t i = 0; i < num_still_pictures; i++) {
+      cam_service_.TakeStillCapture(cam_id_, metadata);
+    }
   }
 
   cam_service_.StopPreview(cam_id_);
@@ -233,6 +255,14 @@ TEST_P(Camera3SimpleStillCaptureTest, TakePictureTest) {
 
 TEST_P(Camera3SimpleStillCaptureTest, PerformanceTest) {
   TakePictureTest(2);
+}
+
+TEST_P(Camera3SimpleStillCaptureTest, TakePictureZslTest) {
+  if (!cam_service_.GetStaticInfo(cam_id_)->HasAvailableRequestKey(
+          ANDROID_CONTROL_ENABLE_ZSL)) {
+    GTEST_SKIP();
+  }
+  TakePictureTest(10, /*require_3a_converged=*/true, /*enable_zsl=*/true);
 }
 
 // Test parameters:
