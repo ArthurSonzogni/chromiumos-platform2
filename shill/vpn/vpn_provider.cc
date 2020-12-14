@@ -25,6 +25,7 @@
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/third_party_vpn_driver.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/vpn/wireguard_driver.h"
 
 using std::string;
 
@@ -235,6 +236,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
         new ThirdPartyVpnDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderArcVpn) {
     driver.reset(new ArcVpnDriver(manager_, ProcessManager::GetInstance()));
+  } else if (type == kProviderWireguard) {
+    driver.reset(new WireguardDriver(manager_, ProcessManager::GetInstance()));
   } else {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           "Unsupported VPN type: " + type);

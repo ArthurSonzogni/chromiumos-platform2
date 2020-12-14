@@ -547,6 +547,7 @@ const char kProviderL2tpIpsec[] = "l2tpipsec";
 const char kProviderOpenVpn[] = "openvpn";
 const char kProviderThirdPartyVpn[] = "thirdpartyvpn";
 const char kProviderArcVpn[] = "arcvpn";
+const char kProviderWireguard[] = "wireguard";
 
 // Flimflam monitored properties
 const char kMonitorPropertyChanged[] = "PropertyChanged";
