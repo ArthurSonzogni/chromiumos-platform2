@@ -105,6 +105,9 @@ class CrosHealthdRoutineService final
   void RunUrandomRoutine(
       chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunUrandomRoutineCallback callback) override;
+  void RunVideoConferencingRoutine(
+      const base::Optional<std::string>& stun_server_hostname,
+      RunVideoConferencingRoutineCallback callback) override;
 
  private:
   void RunRoutine(

@@ -880,3 +880,34 @@ Progress: 100
 Status: Passed
 Status message: HTTPS latency routine passed with no problems.
 ```
+
+### Video Conferencing
+
+Checks the device's video conferencing capabalities by testing whether the
+device can:
+(1) Contact either a default or specified STUN server via UDP.
+(2) Contact either a default or specified STUN server via TCP.
+(3) Reach common media endpoints.
+
+Parameters:
+-   `--stun_server_hostname` - The custom STUN server hostname. If not provided,
+    the default Google STUN server is used. Type: `string`. Default: `""`
+
+To run the video conferencing routine:
+
+From crosh:
+```bash
+crosh> diag video_conferencing --stun_server_hostname="custom_stun_server.com"
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag --action=run_routine --routine=video_conferencing --stun_server_hostname="custom_stun_server.com"
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+Status message: Video conferencing routine passed with no problems.
+```

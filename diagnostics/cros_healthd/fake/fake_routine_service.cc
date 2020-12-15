@@ -176,4 +176,10 @@ void FakeRoutineService::RunHttpsLatencyRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunVideoConferencingRoutine(
+    const base::Optional<std::string>& stun_server_hostname,
+    RunVideoConferencingRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

@@ -93,6 +93,8 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeHttpFirewallRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeHttpsFirewallRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeHttpsLatencyRoutine() override;
+  std::unique_ptr<DiagnosticRoutine> MakeVideoConferencingRoutine(
+      const base::Optional<std::string>& stun_server_hostname) override;
 
  private:
   // The routine that will be returned by any calls to MakeSomeRoutine.

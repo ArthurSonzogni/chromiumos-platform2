@@ -194,6 +194,12 @@ void FakeDiagnosticsService::RunHttpsLatencyRoutine(
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
+void FakeDiagnosticsService::RunVideoConferencingRoutine(
+    const base::Optional<std::string>& stun_server_hostname,
+    RunVideoConferencingRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
 void FakeDiagnosticsService::SetMojoServiceIsAvailable(bool is_available) {
   is_available_ = is_available;
 }

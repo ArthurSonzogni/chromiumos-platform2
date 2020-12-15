@@ -5,6 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_MOCK_NETWORK_DIAGNOSTICS_ADAPTER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_MOCK_NETWORK_DIAGNOSTICS_ADAPTER_H_
 
+#include <string>
+
+#include <base/optional.h>
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
@@ -80,6 +83,12 @@ class MockNetworkDiagnosticsAdapter final : public NetworkDiagnosticsAdapter {
               RunHttpsLatencyRoutine,
               (chromeos::network_diagnostics::mojom::
                    NetworkDiagnosticsRoutines::HttpsLatencyCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunVideoConferencingRoutine,
+              (const base::Optional<std::string>&,
+               chromeos::network_diagnostics::mojom::
+                   NetworkDiagnosticsRoutines::VideoConferencingCallback),
               (override));
 };
 

@@ -153,4 +153,18 @@ void NetworkDiagnosticsAdapterImpl::RunHttpsLatencyRoutine(
   network_diagnostics_routines_->HttpsLatency(std::move(callback));
 }
 
+void NetworkDiagnosticsAdapterImpl::RunVideoConferencingRoutine(
+    const base::Optional<std::string>& stun_server_hostname,
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+        VideoConferencingCallback callback) {
+  if (!network_diagnostics_routines_.is_bound()) {
+    std::move(callback).Run(
+        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
+        /*problems=*/{}, /*support_details=*/base::nullopt);
+    return;
+  }
+  network_diagnostics_routines_->VideoConferencing(stun_server_hostname,
+                                                   std::move(callback));
+}
+
 }  // namespace diagnostics

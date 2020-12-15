@@ -96,6 +96,7 @@ source_set("libdiag_routine") {
     "smartctl_check/smartctl_check.cc",
     "subproc_routine.cc",
     "urandom/urandom.cc",
+    "video_conferencing/video_conferencing.cc",
   ]
 }
 
@@ -142,6 +143,7 @@ if (use.test) {
       "smartctl_check/smartctl_check_utils.cc",
       "smartctl_check/smartctl_check_utils_test.cc",
       "subproc_routine_test.cc",
+      "video_conferencing/video_conferencing_test.cc",
     ]
   }
 }

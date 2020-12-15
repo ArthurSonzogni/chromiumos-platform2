@@ -70,7 +70,8 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kCaptivePortal,
       mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall,
       mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall,
-      mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency};
+      mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency,
+      mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing};
 }
 
 std::set<mojo_ipc::DiagnosticRoutineEnum> GetBatteryRoutines() {
@@ -840,6 +841,30 @@ TEST_F(CrosHealthdRoutineServiceTest, RunHttpsLatencyRoutine) {
         response = std::move(received_response);
         run_loop.Quit();
       }));
+  run_loop.Run();
+
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the video conferencing routine can be run.
+TEST_F(CrosHealthdRoutineServiceTest, RunVideoConferencingRoutine) {
+  constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  mojo_ipc::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  service()->RunVideoConferencingRoutine(
+      /*stun_server_hostname=*/base::Optional<
+          std::string>{"http://www.stunserverhostname.com/path?k=v"},
+      base::BindLambdaForTesting(
+          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
+            response = std::move(received_response);
+            run_loop.Quit();
+          }));
   run_loop.Run();
 
   EXPECT_EQ(response->id, 1);

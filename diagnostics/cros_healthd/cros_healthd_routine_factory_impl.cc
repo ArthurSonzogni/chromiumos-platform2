@@ -35,6 +35,7 @@
 #include "diagnostics/cros_healthd/routines/signal_strength/signal_strength.h"
 #include "diagnostics/cros_healthd/routines/smartctl_check/smartctl_check.h"
 #include "diagnostics/cros_healthd/routines/urandom/urandom.h"
+#include "diagnostics/cros_healthd/routines/video_conferencing/video_conferencing.h"
 #include "mojo/nullable_primitives.mojom.h"
 
 namespace diagnostics {
@@ -221,6 +222,13 @@ CrosHealthdRoutineFactoryImpl::MakeHttpsFirewallRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeHttpsLatencyRoutine() {
   return CreateHttpsLatencyRoutine(context_->network_diagnostics_adapter());
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeVideoConferencingRoutine(
+    const base::Optional<std::string>& stun_server_hostname) {
+  return CreateVideoConferencingRoutine(
+      stun_server_hostname, context_->network_diagnostics_adapter());
 }
 
 }  // namespace diagnostics

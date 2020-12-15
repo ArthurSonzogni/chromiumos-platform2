@@ -101,6 +101,9 @@ class FakeDiagnosticsService final
   void RunHttpFirewallRoutine(RunHttpFirewallRoutineCallback) override;
   void RunHttpsFirewallRoutine(RunHttpsFirewallRoutineCallback) override;
   void RunHttpsLatencyRoutine(RunHttpsLatencyRoutineCallback) override;
+  void RunVideoConferencingRoutine(
+      const base::Optional<std::string>& stun_server_hostname,
+      RunVideoConferencingRoutineCallback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

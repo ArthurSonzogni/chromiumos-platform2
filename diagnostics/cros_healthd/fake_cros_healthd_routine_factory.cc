@@ -344,4 +344,10 @@ FakeCrosHealthdRoutineFactory::MakeHttpsLatencyRoutine() {
   return std::move(next_routine_);
 }
 
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeVideoConferencingRoutine(
+    const base::Optional<std::string>& stun_server_hostname) {
+  return std::move(next_routine_);
+}
+
 }  // namespace diagnostics

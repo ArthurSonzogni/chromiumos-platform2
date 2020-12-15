@@ -311,6 +311,14 @@ void CrosHealthdRoutineService::RunUrandomRoutine(
              mojo_ipc::DiagnosticRoutineEnum::kUrandom, std::move(callback));
 }
 
+void CrosHealthdRoutineService::RunVideoConferencingRoutine(
+    const base::Optional<std::string>& stun_server_hostname,
+    RunVideoConferencingRoutineCallback callback) {
+  RunRoutine(
+      routine_factory_->MakeVideoConferencingRoutine(stun_server_hostname),
+      mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing, std::move(callback));
+}
+
 void CrosHealthdRoutineService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -358,7 +366,8 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kCaptivePortal,
       mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall,
       mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall,
-      mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency};
+      mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency,
+      mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing};
 
   if (context_->system_config()->HasBattery()) {
     available_routines_.insert(

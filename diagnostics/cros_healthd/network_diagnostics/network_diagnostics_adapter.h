@@ -5,6 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_NETWORK_DIAGNOSTICS_ADAPTER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_NETWORK_DIAGNOSTICS_ADAPTER_H_
 
+#include <string>
+
+#include <base/optional.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "mojo/network_diagnostics.mojom.h"
@@ -77,6 +80,12 @@ class NetworkDiagnosticsAdapter {
   virtual void RunHttpsLatencyRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           HttpsLatencyCallback) = 0;
+
+  // Requests the browser to invoke the VideoConferencing routine.
+  virtual void RunVideoConferencingRoutine(
+      const base::Optional<std::string>& stun_server_hostname,
+      chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
+          VideoConferencingCallback) = 0;
 };
 
 }  // namespace diagnostics

@@ -445,6 +445,40 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutine) {
   run_loop.Run();
 }
 
+// Test that the VideoConferencing routine can be run.
+TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
+  MockNetworkDiagnosticsRoutines network_diagnostics_routines;
+  network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
+      network_diagnostics_routines.pending_remote());
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(network_diagnostics_routines, VideoConferencing(_, _))
+      .WillOnce(testing::Invoke(
+          [&](const base::Optional<std::string>& stun_server_hostname,
+              network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                  VideoConferencingCallback callback) {
+            std::move(callback).Run(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {},
+                base::nullopt);
+          }));
+
+  network_diagnostics_adapter()->RunVideoConferencingRoutine(
+      /*stun_server_hostname=*/"http://www.stunserverhostname.com/path?k=v",
+      base::BindLambdaForTesting(
+          [&](network_diagnostics_ipc::RoutineVerdict response,
+              const std::vector<
+                  network_diagnostics_ipc::VideoConferencingProblem>& problems,
+              const base::Optional<std::string>& support_details) {
+            EXPECT_EQ(response,
+                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+            EXPECT_EQ(problems.size(), 0);
+            EXPECT_FALSE(support_details.has_value());
+            run_loop.Quit();
+          }));
+
+  run_loop.Run();
+}
+
 // Test that the LanConnectivity routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
@@ -642,6 +676,28 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutineWithNoRemote) {
             EXPECT_EQ(response,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
             EXPECT_EQ(problems.size(), 0);
+            run_loop.Quit();
+          }));
+
+  run_loop.Run();
+}
+
+// Test that the VideoConferencing routine returns RoutineVerdict::kNotRun if a
+// valid NetworkDiagnosticsRoutines remote was never sent.
+TEST_F(NetworkDiagnosticsAdapterImplTest,
+       RunVideoConferencingRoutineWithNoRemote) {
+  base::RunLoop run_loop;
+  network_diagnostics_adapter()->RunVideoConferencingRoutine(
+      /*stun_server_hostname=*/"http://www.stunserverhostname.com/path?k=v",
+      base::BindLambdaForTesting(
+          [&](network_diagnostics_ipc::RoutineVerdict response,
+              const std::vector<
+                  network_diagnostics_ipc::VideoConferencingProblem>& problems,
+              const base::Optional<std::string>& support_details) {
+            EXPECT_EQ(response,
+                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
+            EXPECT_EQ(problems.size(), 0);
+            EXPECT_FALSE(support_details.has_value());
             run_loop.Quit();
           }));
 
