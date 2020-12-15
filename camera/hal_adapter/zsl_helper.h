@@ -106,12 +106,8 @@ class ZslHelper {
  public:
   static const int kZslSyncWaitTimeoutMs = 3;
   static const int kZslPixelFormat = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
-  // |kZslLoobackNs| accounts for the display latency (i.e., the time it takes
-  // for a buffer to be drawn on screen since its start of exposure).
-  // TODO(lnishan): Make this a chromeos-config entry and read the
-  // configuration during runtime.
-  static const int64_t kZslLookbackNs = 420'000'000;        // 420ms
-  static const int64_t kZslLookbackLengthNs = 150'000'000;  // 150ms
+  static const int64_t kZslDefaultLookbackNs = 420'000'000;  // 420ms
+  static const int64_t kZslLookbackLengthNs = 150'000'000;   // 150ms
   enum {
     STREAM_CONFIG_FORMAT_INDEX,
     STREAM_CONFIG_WIDTH_INDEX,
@@ -228,9 +224,6 @@ class ZslHelper {
   // Whether this buffer is 3A-converged (AE, AF, AWB).
   bool Is3AConverged(const android::CameraMetadata& android_metadata);
 
-  // Reads ZSL buffer by the specified buffer index.
-  ZslBuffer* MutableReadBufferByBufferIndex(size_t buffer_index);
-
   // Whether ZSL mechanism is enabled.
   bool enabled_;
   // Lock to protect |enabled_|.
@@ -240,6 +233,11 @@ class ZslHelper {
   std::unique_ptr<camera3_stream_t> bi_stream_;
   int64_t bi_stream_min_frame_duration_;
   uint32_t bi_stream_max_buffers_;
+
+  // The duration of time ZSL should go back to find a raw buffer to be sent for
+  // private reprocessing. It's currently configured in chromeos-config but
+  // might be moved to CameraConfig in the future.
+  int64_t zsl_lookback_ns_;
 
   // Manages the buffer used for ZSL, essentially a buffer pool.
   ZslBufferManager zsl_buffer_manager_;

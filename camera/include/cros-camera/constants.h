@@ -53,6 +53,8 @@ const char kCrosMaxNativeHeight[] = "max_native_height";
 // Filtered out resolutions. The format is a list string of resolutions. e.g.
 // ["w1xh1", "w2xh2"]
 const char kCrosFilteredOutResolutions[] = "filtered_out_resolutions";
+// The lookback time for zero-shutter lag (ZSL) in nanoseconds.
+const char kCrosZslLookback[] = "zsl_lookback";
 // ------End configuration for |kCrosCameraConfigPathString|-------
 
 }  // namespace constants

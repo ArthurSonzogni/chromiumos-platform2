@@ -7,16 +7,21 @@
 #include "hal_adapter/zsl_helper.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/optional.h>
 #include <camera/camera_metadata.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/constants.h"
+#include "cros-camera/utils/camera_config.h"
 
 namespace {
 
@@ -240,6 +245,15 @@ ZslHelper::ZslHelper(const camera_metadata_t* static_info,
         camera_metadata_enum_android_sensor_info_timestamp_source_t>(
         entry.data.u8[0]);
   }();
+
+  auto camera_config =
+      cros::CameraConfig::Create(cros::constants::kCrosCameraConfigPathString);
+  // We're casting an int to int64_t here. Make sure the configured time doesn't
+  // overflow (roughly 2.1s).
+  zsl_lookback_ns_ = base::strict_cast<int64_t>(camera_config->GetInteger(
+      cros::constants::kCrosZslLookback,
+      base::checked_cast<int>(kZslDefaultLookbackNs)));
+  LOGF(INFO) << "Configured ZSL lookback time = " << zsl_lookback_ns_;
 }
 
 ZslHelper::~ZslHelper() {
@@ -335,14 +349,14 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
   VLOGF(1) << "Max buffers for still capture streams = " << still_max_buffers;
 
   // We look back at most
-  // ceil(|kZslLookbackNs| / |bi_stream_min_frame_duration_| frames, and there
+  // ceil(|zsl_lookback_ns_| / |bi_stream_min_frame_duration_| frames, and there
   // will be at most |bi_stream_max_buffers_| being processed. We also need to
   // have |still_max_buffers| additional buffers in the buffer pool.
-  if (!zsl_buffer_manager_.Initialize(ceil(static_cast<double>(kZslLookbackNs) /
-                                           bi_stream_min_frame_duration_) +
-                                          bi_stream_max_buffers_ +
-                                          still_max_buffers,
-                                      bi_stream_.get())) {
+  if (!zsl_buffer_manager_.Initialize(
+          static_cast<size_t>(std::ceil(static_cast<double>(zsl_lookback_ns_) /
+                                        bi_stream_min_frame_duration_)) +
+              bi_stream_max_buffers_ + still_max_buffers,
+          bi_stream_.get())) {
     LOGF(ERROR) << "Failed to initialize ZSL buffer manager";
     return false;
   }
@@ -428,7 +442,7 @@ void ZslHelper::TryReleaseBuffer() {
   }
   auto timestamp = GetTimestamp(oldest_buffer.metadata);
   DCHECK_NE(timestamp, -1);
-  if (GetCurrentTimestamp() - timestamp <= kZslLookbackNs) {
+  if (GetCurrentTimestamp() - timestamp <= zsl_lookback_ns_) {
     // Buffer is too new that we should keep it. This will happen for the
     // initial buffers.
     return;
@@ -765,8 +779,8 @@ ZslHelper::ZslBufferIterator ZslHelper::SelectZslBuffer(
   int64_t cur_timestamp = GetCurrentTimestamp();
   LOGF(INFO) << "Current timestamp = " << cur_timestamp;
   ZslBufferIterator selected_buffer_it = ring_buffer_.end();
-  int64_t min_diff = kZslLookbackNs;
-  int64_t ideal_timestamp = cur_timestamp - kZslLookbackNs;
+  int64_t min_diff = zsl_lookback_ns_;
+  int64_t ideal_timestamp = cur_timestamp - zsl_lookback_ns_;
   for (auto it = ring_buffer_.begin(); it != ring_buffer_.end(); it++) {
     if (!it->metadata_ready || !it->buffer_ready || it->selected) {
       continue;
