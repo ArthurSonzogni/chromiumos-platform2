@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2021 The Chromium Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<node name="/org/chromium/Missived"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.Missived">
+    <method name="EnqueueRecords">
+      <tp:docstring>
+        Enqueues records for encryption, storage, and upload.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="reporting::test::TestMessage" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="reporting::test::TestMessage" />
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
+    <method name="FlushPriority">
+      <tp:docstring>
+        Requests that the indicated priority queue is flushed.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="reporting::test::TestMessage" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="reporting::test::TestMessage" />
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
+    <method name="ConfirmRecordUpload">
+      <tp:docstring>
+        Sent by Chrome to indicate the record was succesfully uploaded.
+        Record indicated by the provided SequencingInformation.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="reporting::test::TestMessage" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="reporting::test::TestMessage" />
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
+  </interface>
+</node>

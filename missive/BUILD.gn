@@ -1,0 +1,98 @@
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":libmessaging_layer",
+    ":missived",
+  ]
+  if (use.test) {
+    deps += [ ":missived_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+  ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+# TODO(zatrudo): Remove after daemon testing
+proto_library("test_cc_proto") {
+  proto_in_dir = "protos"
+  proto_out_dir = "include/protos"
+  sources = [ "protos/test.proto" ]
+  all_dependent_pkg_deps = [ "protobuf" ]
+  standalone = true
+}
+
+generate_dbus_adaptors("missive_dbus_adaptors") {
+  dbus_adaptors_out_dir = "include/dbus_adaptors"
+  dbus_service_config = "dbus/dbus-service-config.json"
+  sources = [ "dbus/org.chromium.Missived.xml" ]
+}
+
+# Used by other tools to interact with missived
+generate_dbus_proxies("missive_dbus_proxies") {
+  dbus_service_config = "dbus/dbus-service-config.json"
+  proxy_output_file = "include/dbus_proxies/missive/dbus-proxies.h"
+  mock_output_file = "include/dbus_proxies/missive/dbus-proxies-mocks.h"
+  proxy_path_in_mocks = "missive/dbus-proxies.h"
+  sources = [ "dbus/org.chromium.Missived.xml" ]
+}
+
+static_library("libmessaging_layer") {
+  configs += [ ":target_defaults" ]
+  sources = [ "missive_daemon.cc" ]
+  deps = [
+    ":missive_dbus_adaptors",
+    ":missive_dbus_proxies",
+    ":test_cc_proto",
+  ]
+}
+
+executable("missived") {
+  configs += [ ":target_defaults" ]
+  deps = [ ":libmessaging_layer" ]
+  sources = [ "main.cc" ]
+}
+
+if (use.test) {
+  pkg_config("target_test") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
+
+  executable("missived_testrunner") {
+    configs += [
+      ":target_defaults",
+      ":target_test",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":libmessaging_layer",
+      "//common-mk/testrunner",
+    ]
+    sources = [ "missive_daemon_test.cc" ]
+  }
+}

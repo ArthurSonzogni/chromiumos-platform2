@@ -28,6 +28,7 @@
 #include "ip_peripheral/dbus-constants.h"
 #include "login_manager/dbus-constants.h"
 #include "lorgnette/dbus-constants.h"
+#include "missive/dbus-constants.h"
 #include "ocr/dbus-constants.h"
 #include "oobe_config/dbus-constants.h"
 #include "patchpanel/dbus-constants.h"
@@ -273,6 +274,14 @@ const char kVmPermissionServiceUnregisterVmMethod[] = "UnregisterVm";
 const char kVmPermissionServiceGetPermissionsMethod[] = "GetPermissions";
 const char kVmPermissionServiceSetPermissionsMethod[] = "SetPermissions";
 
+constexpr char kChromeReportingServiceInterface[] =
+    "org.chromium.ChromeReportingServiceInterface";
+constexpr char kChromeReportingServicePath[] =
+    "/org/chromium/ChromeReportingService";
+constexpr char kChromeReportingServiceName[] =
+    "org.chromium.ChromeReportingService";
+constexpr char kChromeReportingServiceUploadEncryptedRecordMethod[] =
+    "UploadEncryptedRecord";
 }  // namespace chromeos
 
 namespace media_perception {

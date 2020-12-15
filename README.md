@@ -95,6 +95,7 @@ copies.
 | [metrics](./metrics/) | Client side user metrics collection |
 | [midis](./midis/) | [MIDI](https://en.wikipedia.org/wiki/MIDI) service |
 | [minios](./minios/) | A minimal OS used during recovery |
+| [missive](./missive/) | Daemon for the storage of encrypted records for managed devices. |
 | [mist](./mist/) | Modem USB Interface Switching Tool |
 | [ml](./ml/) | Machine learning service |
 | [ml_benchmark](./ml_benchmark/) | ML performance benchmark for Chrome OS |

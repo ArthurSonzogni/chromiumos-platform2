@@ -1,0 +1,41 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "missive/missive_daemon.h"
+
+#include <base/logging.h>
+
+#include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
+
+namespace {
+
+void SetLogItems() {
+  const bool kOptionPID = true;
+  const bool kOptionTID = true;
+  const bool kOptionTimestamp = true;
+  const bool kOptionTickcount = true;
+  logging::SetLogItems(kOptionPID, kOptionTID, kOptionTimestamp,
+                       kOptionTickcount);
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+  brillo::FlagHelper::Init(argc, argv,
+                           "missive_daemon - Administrative device "
+                           "event logging daemon.");
+
+  // Always log to syslog and log to stderr if we are connected to a tty.
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+
+  // Override the log items set by brillo::InitLog.
+  SetLogItems();
+
+  LOG(INFO) << "Starting Missive Service.";
+  reporting::MissiveDaemon().Run();
+  LOG(INFO) << "Missive Service ended.";
+
+  return 0;
+}
