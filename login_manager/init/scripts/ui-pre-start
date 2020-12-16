@@ -9,14 +9,17 @@ set -e
 JOB=$(basename "$0")
 
 # Read chrome OS configurations
-read_cros_config_int() {
+read_cros_config() {
   local path="$1"
   local key="$2"
   local def="$3"
-  local v
 
   # cros_config exits with non-zero when a key isn't existed,
-  v=$(cros_config "${path}" "${key}" || echo "${def}")
+  cros_config "${path}" "${key}" || echo "${def}"
+}
+
+read_cros_config_int() {
+  local v=$(read_cros_config "$@")
 
   # config value should be an integer
   case "${v}" in
@@ -84,6 +87,10 @@ if [ ! -d "${CHROME_CPU_CGROUP_DIR}" ]; then
   chown -R chronos "${CHROME_CPU_CGROUP_DIR}"
 fi
 
+# TODO(ikjn): This scheduler settings are a bit complex,
+# Let's move these out to an another executable (c++).
+# Tracked in b/182958867
+
 # apply ui and chrome foreground cgroup's uclamp.min, default 20%,
 v=$(read_cros_config_int "/scheduler-tune" "boost-urgent" "20")
 for knob in "${UI_CPU_CGROUP_DIR}/cpu.uclamp.min" \
@@ -93,6 +100,59 @@ for knob in "${UI_CPU_CGROUP_DIR}/cpu.uclamp.min" \
     echo "${v}" > "${knob}"
   fi
 done
+
+# Apply boosting values for platforms using schedtune
+SCHEDTUNE_BOOST_DIR=/sys/fs/cgroup/schedtune/chrome/urgent
+if [ -d "${SCHEDTUNE_BOOST_DIR}" ]; then
+  echo "${v}" > "${SCHEDTUNE_BOOST_DIR}/schedtune.boost"
+  echo "1" > "${SCHEDTUNE_BOOST_DIR}/schedtune.prefer_idle"
+fi
+
+# Apply Input boosting
+INPUT_BOOST=/sys/module/cpu_boost/parameters/input_boost_freq_percent
+if [ -f "${INPUT_BOOST}" ]; then
+  read_cros_config_int "/scheduler-tune" "input-boost" "0" > "${INPUT_BOOST}"
+fi
+
+# Limit non-urgent tasks to small cores
+CPUBUSDIR=/sys/bus/cpu/devices
+CPUSET_NONURGENT_DIR=/sys/fs/cgroup/cpuset/chrome/non-urgent
+if [ -d "${CPUSET_NONURGENT_DIR}" ]; then
+  v=$(read_cros_config "/scheduler-tune" "cpuset-nonurgent" "")
+
+  # If a cpuset-nonurgent isn't specified in cros_config,
+  # use all little cores as a non-urgent cpuset.
+  if [ -z "${v}" ] && grep -q '^big_little$' /etc/ui_use_flags.txt; then
+    nr_cpus=0
+    nr_small_cpus=0
+    min_cap=1025
+    cpus=""
+    prefix="${CPUBUSDIR}/cpu"
+    for cpu in ${CPUBUSDIR}/cpu*; do
+      if [ ! -f "${cpu}/cpu_capacity" ]; then
+        cpus=""
+        break;
+      fi
+      cap=$(cat "${cpu}/cpu_capacity")
+      if [ "${cap}" -lt "${min_cap}" ]; then
+        cpus="${cpu##${prefix}}"
+        min_cap="${cap}"
+        nr_small_cpus=1
+      elif [ "${cap}" -eq "${min_cap}" ]; then
+        cpus="${cpus},${cpu##${prefix}}"
+        nr_small_cpus=$((nr_small_cpus + 1))
+      fi
+      nr_cpus=$((nr_cpus + 1))
+    done
+    if [ "${nr_small_cpus}" -lt "${nr_cpus}" ]; then
+      v="${cpus}"
+    fi
+  fi
+
+  if [ -n "${v}" ]; then
+    echo "${v}" > "${CPUSET_NONURGENT_DIR}/cpus"
+  fi
+fi
 
 # Set up a folder on the stateful partition for ephemeral encrypted swap
 # files.
