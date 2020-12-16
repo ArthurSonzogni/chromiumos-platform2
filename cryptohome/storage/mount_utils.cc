@@ -6,7 +6,9 @@
 
 #include "cryptohome/storage/mount_utils.h"
 
+#include <linux/magic.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -14,8 +16,25 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <chromeos/constants/cryptohome.h>
 
 namespace cryptohome {
+
+bool UserSessionMountNamespaceExists() {
+  struct statfs buff;
+  if (statfs(kUserSessionMountNamespacePath, &buff) == 0) {
+    if (static_cast<uint64_t>(buff.f_type) != NSFS_MAGIC) {
+      LOG(ERROR) << kUserSessionMountNamespacePath
+                 << " is not a namespace file, has the user session namespace "
+                    "been created?";
+      return false;
+    }
+  } else {
+    PLOG(ERROR) << "statfs(" << kUserSessionMountNamespacePath << ") failed";
+    return false;
+  }
+  return true;
+}
 
 bool ReadProtobuf(int in_fd, google::protobuf::MessageLite* message) {
   size_t proto_size = 0;

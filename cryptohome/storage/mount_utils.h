@@ -19,6 +19,10 @@ constexpr bool IsolateUserSession() {
   return USE_USER_SESSION_ISOLATION;
 }
 
+// Checks whether the user session mount namespace has been created and logs
+// error message.
+bool UserSessionMountNamespaceExists();
+
 // Cryptohome uses protobufs to communicate with the out-of-process mount
 // helper.
 bool ReadProtobuf(int fd, google::protobuf::MessageLite* message);

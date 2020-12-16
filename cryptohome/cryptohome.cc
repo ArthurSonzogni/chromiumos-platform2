@@ -44,6 +44,7 @@
 #include "cryptohome/rpc.pb.h"
 #include "cryptohome/signed_secret.pb.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/UserDataAuth.pb.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -857,6 +858,12 @@ int main(int argc, char** argv) {
     cryptohome::MountGuestRequest request;
     brillo::glib::ScopedError error;
     GArray* out_reply = NULL;
+
+    // This is for information. Do not fail if mount namespace is not ready.
+    if (!cryptohome::UserSessionMountNamespaceExists()) {
+      printf("User session mount namespace at %s has not been created yet.\n",
+             cryptohome::kUserSessionMountNamespacePath);
+    }
 
     brillo::glib::ScopedArray guest_request_ary(GArrayFromProtoBuf(request));
     if (!org_chromium_CryptohomeInterface_mount_guest_ex(
