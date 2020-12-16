@@ -156,6 +156,11 @@ class CrosHealthdMojoAdapter {
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunHttpsLatencyRoutine() = 0;
 
+  // Runs the video conferencing routine.
+  virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+  RunVideoConferencingRoutine(
+      const base::Optional<std::string>& stun_server_hostname) = 0;
+
   // Returns which routines are available on the platform.
   virtual std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
   GetAvailableRoutines() = 0;

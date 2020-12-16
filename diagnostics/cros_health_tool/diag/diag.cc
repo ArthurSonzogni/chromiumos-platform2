@@ -122,6 +122,12 @@ int diag_main(int argc, char** argv) {
                 "Upper bound for the battery discharge routine.");
   DEFINE_uint32(minimum_charge_percent_required, 0,
                 "Lower bound for the battery charge routine.");
+
+  // Flag for the video conferencing routine.
+  DEFINE_string(stun_server_hostname, "",
+                "Optional custom STUN server hostname for the video "
+                "conferencing routine.");
+
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
   logging::InitLogging(logging::LoggingSettings());
@@ -271,6 +277,12 @@ int diag_main(int argc, char** argv) {
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency:
         routine_result = actions.ActionRunHttpsLatencyRoutine();
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing:
+        routine_result = actions.ActionRunVideoConferencingRoutine(
+            (FLAGS_stun_server_hostname == "")
+                ? base::nullopt
+                : base::Optional<std::string>{FLAGS_stun_server_hostname});
         break;
       default:
         std::cout << "Unsupported routine: " << FLAGS_routine << std::endl;

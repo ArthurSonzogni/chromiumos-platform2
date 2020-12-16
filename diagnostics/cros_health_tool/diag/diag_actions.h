@@ -82,6 +82,8 @@ class DiagActions final {
   bool ActionRunSmartctlCheckRoutine();
   bool ActionRunUrandomRoutine(
       const base::Optional<base::TimeDelta>& length_seconds);
+  bool ActionRunVideoConferencingRoutine(
+      const base::Optional<std::string>& stun_server_hostname);
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the

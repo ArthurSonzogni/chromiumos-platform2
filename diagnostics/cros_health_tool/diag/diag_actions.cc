@@ -417,6 +417,14 @@ bool DiagActions::ActionRunUrandomRoutine(
   return PollRoutineAndProcessResult();
 }
 
+bool DiagActions::ActionRunVideoConferencingRoutine(
+    const base::Optional<std::string>& stun_server_hostname) {
+  auto response = adapter_->RunVideoConferencingRoutine(stun_server_hostname);
+  CHECK(response) << "No RunRoutineResponse received.";
+  id_ = response->id;
+  return PollRoutineAndProcessResult();
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

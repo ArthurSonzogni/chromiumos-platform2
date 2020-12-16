@@ -908,6 +908,12 @@ $ cros-health-tool diag --action=run_routine --routine=video_conferencing --stun
 Sample output:
 ```bash
 Progress: 100
-Status: Passed
-Status message: Video conferencing routine passed with no problems.
+Output: {
+    "supportDetails": "https://support.google.com/a/answer/1279090"
+}
+
+Status: Failed
+Status message: Failed requests to a STUN server via UDP.
+Failed requests to a STUN server via TCP.
+Failed to establish a TLS connection to media hostnames.
 ```
