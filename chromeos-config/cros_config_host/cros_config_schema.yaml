@@ -954,6 +954,19 @@ properties:
                     power point even when the system is low utilized.
                   minimum: 0
                   maximum: 100
+                input-boost:
+                  type: integer
+                  description: (Optional) chromium kernel has a cpu-boost
+                    feature, which boosts CPUs for a short duration when
+                    user intraction is detected from input devices.
+                    This value specifies how much CPUs will be boosted.
+                  minimum: 0
+                  maximum: 100
+                cpuset-nonurgent:
+                  type: string
+                  pattern: "^[0-9]+(-[0-9]+|(,[0-9]+)+)$"
+                  description: (Optional) non-urgent task are only allowed
+                    to use given CPUs.
               additionalProperties: false
           additionalProperties: false
           required:

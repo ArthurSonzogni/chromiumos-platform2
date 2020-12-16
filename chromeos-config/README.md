@@ -729,6 +729,8 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | boost-urgent | integer |  | False |  | False | (Optional) Scheduler's boost value(%) for urgent tasks. When an urgent thread is created, chrome applies this value to scheduler attribute. Tasks with higher boost value are more likely to have higher operating power point even when the system is low utilized. Minimum value: 0x0. Maximum value: 0x64. |
+| cpuset-nonurgent | string | ```^[0-9]+(-[0-9]+|(,[0-9]+)+)$``` | False |  | False | (Optional) non-urgent task are only allowed to use given CPUs. |
+| input-boost | integer |  | False |  | False | (Optional) chromium kernel has a cpu-boost feature, which boosts CPUs for a short duration when user intraction is detected from input devices. This value specifies how much CPUs will be boosted. Minimum value: 0x0. Maximum value: 0x64. |
 
 ### thermal
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
