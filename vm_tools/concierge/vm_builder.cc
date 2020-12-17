@@ -156,7 +156,29 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
   args.emplace_back("--cpus", std::to_string(cpus_ + rtcpus_.count()));
 
-  args.emplace_back("--rt-cpus", ConvertCpusetToString(rtcpus_));
+  if (rtcpus_.any()) {
+    args.emplace_back("--rt-cpus", ConvertCpusetToString(rtcpus_));
+
+    // Isolate non RT-vcpus and RT-vcpus.
+    // Guarantee that any non RT-vcpus and any rt-vcpus are never assigned to
+    // a same pCPU to avoid lock-holder preemption problem.
+    const int pcpu_num_for_rt_vcpus = 1;
+    std::vector<std::string> cpu_affinities;
+    for (int i = 0; i < cpus_; i++) {
+      cpu_affinities.emplace_back(
+          std::to_string(i) + "=" + "0-" +
+          std::to_string(cpus_ - pcpu_num_for_rt_vcpus - 1));
+    }
+    for (int i = 0; i < rtcpus_.size(); i++) {
+      if (!rtcpus_.test(i))
+        continue;
+      cpu_affinities.emplace_back(
+          std::to_string(i) + "=" +
+          std::to_string(cpus_ - pcpu_num_for_rt_vcpus) + "-" +
+          std::to_string(cpus_ - 1));
+    }
+    args.emplace_back("--cpu-affinity", base::JoinString(cpu_affinities, ":"));
+  }
 
   if (!memory_in_mib_.empty())
     args.emplace_back("--mem", memory_in_mib_);
