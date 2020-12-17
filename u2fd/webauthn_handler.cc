@@ -1188,6 +1188,14 @@ void WebAuthnHandler::IsUvpaa(
     return;
   }
 
+  if (!auth_time_secret_hash_) {
+    LOG(ERROR) << "No auth-time secret hash. MakeCredential will fail, so "
+                  "reporting IsUVPAA=false.";
+    response.set_available(false);
+    method_response->Return(response);
+    return;
+  }
+
   base::Optional<std::string> account_id = user_state_->GetUser();
   if (!account_id) {
     LOG(ERROR) << "IsUvpaa called but no user.";
