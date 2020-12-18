@@ -55,6 +55,10 @@ class MockModemProxy : public ModemProxyInterface {
       SetCurrentBands,
       (const std::vector<uint32_t>&, Error*, const ResultCallback&, int),
       (override));
+  MOCK_METHOD(void,
+              SetPrimarySimSlot,
+              (uint32_t, const ResultCallback&, int),
+              (override));
   MOCK_METHOD(
       void,
       Command,

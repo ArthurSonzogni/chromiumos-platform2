@@ -58,6 +58,9 @@ class ModemProxyInterface {
                                Error* error,
                                const ResultCallback& callback,
                                int timeout) = 0;
+  virtual void SetPrimarySimSlot(uint32_t slot,
+                                 const ResultCallback& callback,
+                                 int timeout) = 0;
   virtual void Command(const std::string& cmd,
                        uint32_t user_timeout,
                        Error* error,
