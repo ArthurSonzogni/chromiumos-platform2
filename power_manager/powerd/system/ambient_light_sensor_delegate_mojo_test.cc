@@ -78,7 +78,6 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
   void TearDown() override { sensor_->RemoveObserver(&observer_); }
 
   void InitSensor(bool color_delegate, bool fake_color_sensor) {
-    is_color_sensor_ = color_delegate && fake_color_sensor;
     sensor_device_ = std::make_unique<FakeSensorDevice>(
         fake_color_sensor, /*name=*/base::nullopt, /*location=*/base::nullopt);
 
@@ -98,17 +97,18 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
 
   void WriteLux(int64_t lux) {
     base::flat_map<int32_t, int64_t> sample;
-    sample[is_color_sensor_ ? 2 : 0] = lux;
+    sample[0] = lux;
 
     light_->OnSampleUpdated(std::move(sample));
   }
 
   // The indices of [0, 1, 2, 3] imply channels [lux, ChannelType::X,
   // ChannelType::Y, ChannelType::Z].
-  void WriteColorLux(std::vector<int64_t> color_lux) {
+  void WriteColorLux(int64_t lux, std::vector<int64_t> color_lux) {
     CHECK_EQ(color_lux.size(), base::size(kColorChannelConfig));
 
     base::flat_map<int32_t, int64_t> sample;
+    sample[0] = lux;
     for (size_t i = 0; i < color_lux.size(); ++i)
       sample[i + 1] = color_lux[i];
 
@@ -117,7 +117,6 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
 
   TestObserver observer_;
 
-  bool is_color_sensor_ = false;
   std::unique_ptr<FakeSensorDevice> sensor_device_;
 
   std::unique_ptr<AmbientLightSensor> sensor_;
@@ -164,8 +163,8 @@ TEST_F(AmbientLightSensorDelegateMojoTest, ColorSensor) {
   WriteLux(100);
   observer_.CheckSample(100);
 
-  WriteColorLux(std::vector<int64_t>{50, 50, 100});
-  observer_.CheckSample(50, 20921);
+  WriteColorLux(40, std::vector<int64_t>{50, 50, 100});
+  observer_.CheckSample(40, 20921);
 
   EXPECT_TRUE(sensor_->IsColorSensor());
 
@@ -173,8 +172,8 @@ TEST_F(AmbientLightSensorDelegateMojoTest, ColorSensor) {
   // Previous color temperature still remains.
   observer_.CheckSample(100, 20921);
 
-  WriteColorLux(std::vector<int64_t>{50, 60, 60});
-  observer_.CheckSample(60, 7253);
+  WriteColorLux(55, std::vector<int64_t>{50, 60, 60});
+  observer_.CheckSample(55, 7253);
 
   EXPECT_TRUE(sensor_->IsColorSensor());
 }

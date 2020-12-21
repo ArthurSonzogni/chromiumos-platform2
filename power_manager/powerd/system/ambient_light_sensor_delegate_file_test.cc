@@ -176,9 +176,10 @@ TEST_F(AmbientLightSensorDelegateFileTest, FindSensorAtBase) {
 TEST_F(AmbientLightSensorDelegateFileTest, IsColorSensor) {
   CreateSensor(SensorLocation::UNKNOWN, false);
 
-  // Default sensor does not have color support.
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  EXPECT_EQ(100, sensor_->GetAmbientLightLux());
+  // Default sensor does not have color support.
   EXPECT_FALSE(sensor_->IsColorSensor());
 
   // Add one color channel.
@@ -189,6 +190,7 @@ TEST_F(AmbientLightSensorDelegateFileTest, IsColorSensor) {
 
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  EXPECT_EQ(100, sensor_->GetAmbientLightLux());
   // The sensor should still not have color support -- it needs all 3.
   EXPECT_FALSE(sensor_->IsColorSensor());
 
@@ -202,6 +204,7 @@ TEST_F(AmbientLightSensorDelegateFileTest, IsColorSensor) {
 
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  EXPECT_EQ(100, sensor_->GetAmbientLightLux());
   // Now we have all channels. The sensor should support color.
   EXPECT_TRUE(sensor_->IsColorSensor());
 }

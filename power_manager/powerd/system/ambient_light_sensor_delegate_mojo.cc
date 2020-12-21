@@ -247,10 +247,7 @@ void AmbientLightSensorDelegateMojo::GetAllChannelIdsCallback(
       auto* color_channel_info = ChannelIdToColorChannelInfo(channel_id);
       if (color_channel_info) {
         color_indices_[color_channel_info->type] = j;
-
-        if (color_channel_info->is_lux_channel)
-          illuminance_index_ = j;
-      } else if (!illuminance_index_.has_value()) {
+      } else {
         // Cannot find the color lux channel, use the clear channel instead.
         illuminance_index_ = j;
       }
@@ -271,9 +268,10 @@ void AmbientLightSensorDelegateMojo::GetAllChannelIdsCallback(
     for (const auto& color_index : color_indices_)
       channel_indices_.push_back(color_index.second);
   } else {
-    channel_indices_.push_back(illuminance_index_.value());
     enable_color_support_ = false;
   }
+
+  channel_indices_.push_back(illuminance_index_.value());
 
   StartReading();
 }

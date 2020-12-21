@@ -96,7 +96,7 @@ class AmbientLightSensorManagerFileTest : public ::testing::Test {
     CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(lux)));
     color_file = device_dir.Append("in_illuminance_green_raw");
     CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(lux)));
-    return color_file;
+    return data_file;
   }
 
   // Temporary directory mimicking a /sys directory containing a set of sensor

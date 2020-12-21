@@ -103,17 +103,8 @@ bool AmbientLightSensorDelegateFile::IsColorSensor() const {
 }
 
 base::FilePath AmbientLightSensorDelegateFile::GetIlluminancePath() const {
-  if (IsColorSensor()) {
-    for (const ColorChannelInfo& channel : kColorChannelConfig) {
-      if (!channel.is_lux_channel)
-        continue;
-      if (color_als_files_.at(&channel).HasOpenedFile())
-        return color_als_files_.at(&channel).path();
-    }
-  } else {
-    if (als_file_.HasOpenedFile())
-      return als_file_.path();
-  }
+  if (als_file_.HasOpenedFile())
+    return als_file_.path();
   return base::FilePath();
 }
 
@@ -136,14 +127,14 @@ void AmbientLightSensorDelegateFile::ReadAls() {
 
   // The timer will be restarted after the read finishes.
   poll_timer_.Stop();
-  if (!IsColorSensor()) {
-    als_file_.StartRead(
-        base::Bind(&AmbientLightSensorDelegateFile::ReadCallback,
-                   base::Unretained(this)),
-        base::Bind(&AmbientLightSensorDelegateFile::ErrorCallback,
-                   base::Unretained(this)));
+
+  clear_reading_.reset();
+  als_file_.StartRead(base::Bind(&AmbientLightSensorDelegateFile::ReadCallback,
+                                 base::Unretained(this)),
+                      base::Bind(&AmbientLightSensorDelegateFile::ErrorCallback,
+                                 base::Unretained(this)));
+  if (!IsColorSensor())
     return;
-  }
 
   color_readings_.clear();
   for (const ColorChannelInfo& channel : kColorChannelConfig) {
@@ -159,7 +150,15 @@ void AmbientLightSensorDelegateFile::ReadCallback(const std::string& data) {
   if (!set_lux_callback_)
     return;
 
-  int value = 0;
+  int value = -1;
+
+  if (IsColorSensor()) {
+    ParseLuxData(data, &value);
+    clear_reading_ = value;
+    CollectChannelReadings();
+    return;
+  }
+
   if (ParseLuxData(data, &value))
     set_lux_callback_.Run(value, base::nullopt);
 
@@ -168,6 +167,13 @@ void AmbientLightSensorDelegateFile::ReadCallback(const std::string& data) {
 
 void AmbientLightSensorDelegateFile::ErrorCallback() {
   LOG(ERROR) << "Error reading ALS file";
+
+  if (IsColorSensor()) {
+    clear_reading_ = -1;
+    CollectChannelReadings();
+    return;
+  }
+
   StartTimer();
 }
 
@@ -187,28 +193,28 @@ void AmbientLightSensorDelegateFile::ErrorColorChannelCallback(
 }
 
 void AmbientLightSensorDelegateFile::CollectChannelReadings() {
-  if (!set_lux_callback_ ||
+  if (!set_lux_callback_ || !clear_reading_.has_value() ||
       color_readings_.size() != base::size(kColorChannelConfig)) {
     return;
   }
 
-  // We should notify observers if there is either a change in lux or a change
-  // in color temperature. This means that we can always notify when we have the
-  // Y value but otherwise we need all three.
   std::map<ChannelType, int> readings;
   base::Optional<int> lux_value = base::nullopt;
+  if (clear_reading_.value() > -1)
+    lux_value = clear_reading_.value();
+
   for (const auto& reading : color_readings_) {
     // -1 marks an invalid reading.
     if (reading.second == -1)
       continue;
-    if (reading.first->is_lux_channel)
-      lux_value = reading.second;
     readings[reading.first->type] = reading.second;
   }
 
   auto color_temperature =
       AmbientLightSensorDelegate::CalculateColorTemperature(readings);
 
+  // We should notify observers if there is either a change in lux or a change
+  // in color temperature.
   if (lux_value.has_value() || color_temperature.has_value())
     set_lux_callback_.Run(lux_value, color_temperature);
 

@@ -107,8 +107,12 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
   // If this map is empty, then there is no color support.
   std::map<const ColorChannelInfo*, AsyncFileReader> color_als_files_;
 
+  // Lux value read by the |als_file_| reader. We need to gather data from all
+  // four channels before notifying observers.
+  base::Optional<int> clear_reading_;
   // Values read by the |color_als_files_| readers. We need to gather data
-  // from each channel before computing a color temperature.
+  // from all four channels before computing a color temperature and notifying
+  // observers.
   std::map<const ColorChannelInfo*, int> color_readings_;
 
   // Location on the device (e.g. lid, base) where this sensor reports itself

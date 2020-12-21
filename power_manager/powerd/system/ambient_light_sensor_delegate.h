@@ -24,11 +24,10 @@ const struct ColorChannelInfo {
   ChannelType type;
   const char* rgb_name;
   const char* xyz_name;
-  bool is_lux_channel;
 } kColorChannelConfig[] = {
-    {ChannelType::X, "red", "x", false},
-    {ChannelType::Y, "green", "y", true},
-    {ChannelType::Z, "blue", "z", false},
+    {ChannelType::X, "red", "x"},
+    {ChannelType::Y, "green", "y"},
+    {ChannelType::Z, "blue", "z"},
 };
 
 enum class SensorLocation {
