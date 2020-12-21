@@ -90,7 +90,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
  public:
   explicit CameraDeviceAdapter(camera3_device_t* camera_device,
                                const camera_metadata_t* static_info,
-                               base::Callback<void()> close_callback);
+                               base::Callback<void()> close_callback,
+                               bool attempt_zsl);
 
   ~CameraDeviceAdapter();
 
@@ -256,11 +257,21 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // device.
   const camera_metadata_t* static_info_;
 
+  // Whether we should attempt to enable ZSL. We might have vendor-specific ZSL
+  // solution, and in which case we should not try to enable our ZSL.
+  bool attempt_zsl_;
+
   // A helper class that includes various functions for the mechanisms of ZSL.
   ZslHelper zsl_helper_;
 
   // The stream configured for ZSL requests.
   camera3_stream_t* zsl_stream_;
+
+  // Stores the request template for a given request type. The local reference
+  // is needed here because we need to modify the templates from HAL if ZSL is
+  // supported.
+  std::array<android::CameraMetadata, CAMERA3_TEMPLATE_COUNT>
+      request_templates_;
 
   // A mapping from Andoird HAL for all the configured streams.
   internal::ScopedStreams streams_;

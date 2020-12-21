@@ -122,6 +122,12 @@ class ZslHelper {
   };
   enum SelectionStrategy { LAST_SUBMITTED, CLOSEST, CLOSEST_3A };
 
+  // Updates the static metadata of the camera device if we can attempt to
+  // enable our in-house ZSL solution for it. It checks whether or not the
+  // device already supports ZSL, and checks for private processing capability
+  // if not.
+  static bool TryAddEnableZslKey(android::CameraMetadata* metadata);
+
   // Initialize static metadata and ZSL ring buffer.
   explicit ZslHelper(const camera_metadata_t* static_info,
                      FrameNumberMapper* mapper);

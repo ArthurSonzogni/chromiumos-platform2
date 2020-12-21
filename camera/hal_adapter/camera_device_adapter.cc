@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/timer/elapsed_timer.h>
 #include <drm_fourcc.h>
+#include <hardware/camera3.h>
 #include <libyuv.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <sync/sync.h>
@@ -113,7 +114,8 @@ void CameraMonitor::MonitorTimeout() {
 
 CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
                                          const camera_metadata_t* static_info,
-                                         base::Callback<void()> close_callback)
+                                         base::Callback<void()> close_callback,
+                                         bool attempt_zsl)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
@@ -123,6 +125,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       device_closed_(false),
       camera_device_(camera_device),
       static_info_(static_info),
+      attempt_zsl_(attempt_zsl),
       zsl_helper_(static_info, &frame_number_mapper_),
       camera_metrics_(CameraMetrics::New()),
       capture_request_monitor_("CaptureRequest"),
@@ -263,7 +266,9 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     }
   }
   streams_.swap(new_streams);
-  zsl_helper_.SetZslEnabled(zsl_helper_.CanEnableZsl(streams_));
+  if (attempt_zsl_) {
+    zsl_helper_.SetZslEnabled(zsl_helper_.CanEnableZsl(streams_));
+  }
 
   camera3_stream_configuration_t stream_list;
   stream_list.num_streams = config->streams.size();
@@ -314,10 +319,28 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     mojom::Camera3RequestTemplate type) {
   VLOGF_ENTER();
-  const camera_metadata_t* metadata =
-      camera_device_->ops->construct_default_request_settings(
-          camera_device_, static_cast<int32_t>(type));
-  return internal::SerializeCameraMetadata(metadata);
+  size_t type_index = static_cast<size_t>(type);
+  if (type_index >= CAMERA3_TEMPLATE_COUNT) {
+    LOGF(ERROR) << "Invalid template index given";
+    return mojom::CameraMetadata::New();
+  }
+  android::CameraMetadata& request_template = request_templates_[type_index];
+  if (request_template.isEmpty()) {
+    request_template.acquire(clone_camera_metadata(
+        camera_device_->ops->construct_default_request_settings(
+            camera_device_, static_cast<int32_t>(type))));
+    if (attempt_zsl_) {
+      // TODO(lnishan): Enable ZSL by default.
+      uint8_t enable_zsl = 0;
+      if (request_template.update(ANDROID_CONTROL_ENABLE_ZSL, &enable_zsl, 1) !=
+          0) {
+        LOGF(WARNING) << "Failed to add ENABLE_ZSL to template " << type;
+      } else {
+        LOGF(INFO) << "Added ENABLE_ZSL to template " << type;
+      }
+    }
+  }
+  return internal::SerializeCameraMetadata(request_template.getAndLock());
 }
 
 int32_t CameraDeviceAdapter::ProcessCaptureRequest(
@@ -831,7 +854,17 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     r->result = cros::mojom::CameraMetadata::New();
     r->partial_result = 0;
   } else {
-    r->result = internal::SerializeCameraMetadata(result->result);
+    // If we attempt ZSL, we'll add ANDROID_CONTROL_ENABLE_ZSL to the capture
+    // template which will then require us to add it to capture results as well.
+    if (attempt_zsl_ && r->partial_result == partial_result_count_) {
+      android::CameraMetadata zsl_metadata(
+          clone_camera_metadata(result->result));
+      uint8_t enable_zsl = transformed_input != nullptr;
+      zsl_metadata.update(ANDROID_CONTROL_ENABLE_ZSL, &enable_zsl, 1);
+      r->result = internal::SerializeCameraMetadata(zsl_metadata.getAndLock());
+    } else {
+      r->result = internal::SerializeCameraMetadata(result->result);
+    }
     r->partial_result = result->partial_result;
   }
 

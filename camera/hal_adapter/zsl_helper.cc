@@ -105,6 +105,44 @@ bool ZslBufferManager::ReleaseBuffer(buffer_handle_t buffer_to_release) {
   return true;
 }
 
+// static
+bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
+  // Determine if it's possible for us to enable our in-house ZSL solution. Note
+  // that we may end up not enabling it in situations where we cannot allocate
+  // sufficient private buffers or the camera HAL client's stream configuration
+  // wouldn't allow us to set up the streams we need.
+  if (!metadata->exists(ANDROID_REQUEST_AVAILABLE_CAPABILITIES)) {
+    return false;
+  }
+  const auto cap_entry = metadata->find(ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
+  if (std::find(cap_entry.data.u8, cap_entry.data.u8 + cap_entry.count,
+                kZslCapability) == cap_entry.data.u8 + cap_entry.count) {
+    return false;
+  }
+
+  // See if the camera HAL already supports ZSL.
+  if (!metadata->exists(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS)) {
+    return false;
+  }
+  auto entry = metadata->find(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
+  if (std::find(entry.data.i32, entry.data.i32 + entry.count,
+                ANDROID_CONTROL_ENABLE_ZSL) != entry.data.i32 + entry.count) {
+    LOGF(INFO) << "Device supports vendor-provided ZSL";
+    return false;
+  }
+
+  std::vector<int32_t> new_request_keys{entry.data.i32,
+                                        entry.data.i32 + entry.count};
+  new_request_keys.push_back(ANDROID_CONTROL_ENABLE_ZSL);
+  if (metadata->update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                       new_request_keys.data(), new_request_keys.size()) != 0) {
+    LOGF(ERROR) << "Failed to add ANDROID_CONTROL_ENABLE_ZSL to metadata";
+    return false;
+  }
+  LOGF(INFO) << "Added ANDROID_CONTROL_ENABLE_ZSL to static metadata";
+  return true;
+}
+
 ZslHelper::ZslHelper(const camera_metadata_t* static_info,
                      FrameNumberMapper* mapper)
     : initialized_(false),

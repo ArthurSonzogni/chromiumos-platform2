@@ -17,6 +17,7 @@
 #include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata_hidden.h>
@@ -32,6 +33,7 @@
 #include "hal_adapter/camera_module_delegate.h"
 #include "hal_adapter/camera_trace_event.h"
 #include "hal_adapter/vendor_tag_ops_delegate.h"
+#include "hal_adapter/zsl_helper.h"
 
 namespace cros {
 
@@ -176,7 +178,8 @@ int32_t CameraHalAdapter::OpenDevice(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
-      camera_device, info.static_camera_characteristics, close_callback);
+      camera_device, info.static_camera_characteristics, close_callback,
+      base::Contains(can_attempt_zsl_camera_ids_, internal_camera_id));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback =
@@ -241,6 +244,10 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
   android::CameraMetadata metadata =
       clone_camera_metadata(info.static_camera_characteristics);
   reprocess_effect_manager_.UpdateStaticMetadata(&metadata);
+  if (ZslHelper::TryAddEnableZslKey(&metadata)) {
+    LOGF(INFO) << "Will attempt to enable ZSL by private reprocessing";
+    can_attempt_zsl_camera_ids_.insert(internal_camera_id);
+  }
 
   mojom::CameraInfoPtr info_ptr = mojom::CameraInfo::New();
   info_ptr->facing = static_cast<mojom::CameraFacing>(info.facing);

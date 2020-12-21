@@ -16,6 +16,7 @@
 
 #include <hardware/camera3.h>
 
+#include <base/containers/flat_set.h>
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
@@ -188,6 +189,9 @@ class CameraHalAdapter {
   // (external camera id) <=> (module id, internal camera id)
   std::map<int, std::pair<int, int>> camera_id_map_;
   std::vector<std::map<int, int>> camera_id_inverse_map_;
+
+  // A set of camera IDs on which ZSL can be attempted.
+  base::flat_set<int> can_attempt_zsl_camera_ids_;
 
   // We need to keep the status for each camera to send up-to-date information
   // for newly connected client so everyone is in sync.
