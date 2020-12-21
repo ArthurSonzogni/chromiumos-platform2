@@ -338,6 +338,7 @@ impl ConnectionProxy {
 pub struct UserDisks {
     pub kernel: Option<String>,
     pub rootfs: Option<String>,
+    pub initrd: Option<String>,
     pub extra_disk: Option<String>,
 }
 
@@ -1159,6 +1160,17 @@ impl Methods {
                 OpenOptions::new()
                     .read(true)
                     .write(true) // extra disk is writable
+                    .custom_flags(libc::O_NOFOLLOW)
+                    .open(&path)?,
+            );
+        }
+
+        // User-specified initrd
+        if let Some(path) = user_disks.initrd {
+            request.fds.push(StartVmRequest_FdType::INITRD);
+            disk_files.push(
+                OpenOptions::new()
+                    .read(true)
                     .custom_flags(libc::O_NOFOLLOW)
                     .open(&path)?,
             );

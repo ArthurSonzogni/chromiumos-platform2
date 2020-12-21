@@ -214,6 +214,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         );
         opts.optopt(
             "",
+            "initrd",
+            "path to a custom initrd. Only valid on untrusted VMs.",
+            "PATH",
+        );
+        opts.optopt(
+            "",
             "rootfs",
             "path to a custom rootfs image. Only valid on untrusted VMs.",
             "PATH",
@@ -244,6 +250,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             kernel: matches.opt_str("kernel"),
             rootfs: matches.opt_str("rootfs"),
             extra_disk: matches.opt_str("extra-disk"),
+            initrd: matches.opt_str("initrd"),
         };
 
         self.metrics_send_sample("Vm.VmcStart");
@@ -748,7 +755,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] <name> |
+   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--initrd PATH] <name> |
      stop <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
@@ -921,6 +928,8 @@ mod tests {
             ],
             &["vmc", "start", "termina", "--no-start-lxd"],
             &["vmc", "start", "termina", "--dlc-id=foo"],
+            &["vmc", "start", "termina", "--initrd=myinitrd"],
+            &["vmc", "start", "termina", "--initrd" ,"myinitrd"],
             &["vmc", "stop", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
@@ -1017,6 +1026,7 @@ mod tests {
             &["vmc", "start", "termina", "extra args"],
             &["vmc", "start", "termina", "--extra-disk"],
             &["vmc", "start", "termina", "--dlc-id"],
+            &["vmc", "start", "termina", "--initrd"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "create"],

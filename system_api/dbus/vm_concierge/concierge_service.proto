@@ -172,6 +172,8 @@ message StartVmRequest {
     ROOTFS = 1;
     // File to be used for storage.
     STORAGE = 2;
+    // Initrd image.
+    INITRD = 3;
   }
   // For each FdType in fds a file descriptor must be passed along with the
   // message and that file descriptor will be used for the type's purpose.

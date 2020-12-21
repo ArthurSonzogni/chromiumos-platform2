@@ -1045,6 +1045,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   base::Optional<base::ScopedFD> kernel_fd;
   base::Optional<base::ScopedFD> rootfs_fd;
+  base::Optional<base::ScopedFD> initrd_fd;
   base::Optional<base::ScopedFD> storage_fd;
   for (const auto& fdType : request.fds()) {
     base::ScopedFD fd;
@@ -1062,6 +1063,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
         break;
       case StartVmRequest_FdType_ROOTFS:
         rootfs_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_INITRD:
+        initrd_fd = std::move(fd);
         break;
       case StartVmRequest_FdType_STORAGE:
         storage_fd = std::move(fd);
@@ -1099,8 +1103,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   string failure_reason;
   VMImageSpec image_spec =
-      GetImageSpec(request.vm(), kernel_fd, rootfs_fd, request.start_termina(),
-                   &failure_reason);
+      GetImageSpec(request.vm(), kernel_fd, rootfs_fd, initrd_fd,
+                   request.start_termina(), &failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -3423,6 +3427,7 @@ Service::VMImageSpec Service::GetImageSpec(
     const vm_tools::concierge::VirtualMachineSpec& vm,
     const base::Optional<base::ScopedFD>& kernel_fd,
     const base::Optional<base::ScopedFD>& rootfs_fd,
+    const base::Optional<base::ScopedFD>& initrd_fd,
     bool is_termina,
     string* failure_reason) {
   DCHECK(failure_reason);
@@ -3437,6 +3442,7 @@ Service::VMImageSpec Service::GetImageSpec(
 
   base::FilePath kernel;
   base::FilePath rootfs;
+  base::FilePath initrd;
   if (kernel_fd.has_value()) {
     // User-chosen kernel is untrusted.
     is_trusted_image = false;
@@ -3463,6 +3469,20 @@ Service::VMImageSpec Service::GetImageSpec(
                  .Append(base::NumberToString(raw_fd));
   } else {
     rootfs = base::FilePath(vm.rootfs());
+  }
+
+  if (initrd_fd.has_value()) {
+    // User-chosen initrd is untrusted.
+    is_trusted_image = false;
+
+    int raw_fd = initrd_fd.value().get();
+    *failure_reason = RemoveCloseOnExec(raw_fd);
+    if (!failure_reason->empty())
+      return {};
+    initrd = base::FilePath(kProcFileDescriptorsPath)
+                 .Append(base::NumberToString(raw_fd));
+  } else {
+    initrd = base::FilePath(vm.initrd());
   }
 
   if (!is_termina && vm.dlc_id().empty()) {
@@ -3492,6 +3512,7 @@ Service::VMImageSpec Service::GetImageSpec(
 
   return VMImageSpec{
       .kernel = std::move(kernel),
+      .initrd = std::move(initrd),
       .rootfs = std::move(rootfs),
       .tools_disk = std::move(tools_disk),
       .is_trusted_image = is_trusted_image,

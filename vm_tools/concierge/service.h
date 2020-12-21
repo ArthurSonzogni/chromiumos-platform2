@@ -293,6 +293,7 @@ class Service final {
       const vm_tools::concierge::VirtualMachineSpec& vm,
       const base::Optional<base::ScopedFD>& kernel_fd,
       const base::Optional<base::ScopedFD>& rootfs_fd,
+      const base::Optional<base::ScopedFD>& initrd_fd,
       bool is_termina,
       std::string* failure_reason);
 
