@@ -144,7 +144,9 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
   request.set_legacy_home(legacy_home_);
   request.set_bind_mount_downloads(bind_mount_downloads_);
   request.set_mount_namespace_path(
-      chrome_mnt_ns_ ? chrome_mnt_ns_->path().value() : "");
+      chrome_mnt_ns_ && username == brillo::cryptohome::home::kGuestUserName
+          ? chrome_mnt_ns_->path().value()
+          : "");
   request.set_type(cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL);
 
   OutOfProcessMountResponse response;

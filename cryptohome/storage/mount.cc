@@ -109,6 +109,7 @@ Mount::Mount(Platform* platform, HomeDirs* homedirs)
       chaps_client_factory_(default_chaps_client_factory_.get()),
       dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_),
       mount_guest_session_out_of_process_(true),
+      mount_ephemeral_session_out_of_process_(MountUserSessionOOP()),
       mount_non_ephemeral_session_out_of_process_(true),
       mount_guest_session_non_root_namespace_(true) {}
 
@@ -170,7 +171,8 @@ bool Mount::Init() {
   }
 
   if (mount_guest_session_out_of_process_ ||
-      mount_non_ephemeral_session_out_of_process_) {
+      mount_non_ephemeral_session_out_of_process_ ||
+      mount_ephemeral_session_out_of_process_) {
     out_of_process_mounter_.reset(new OutOfProcessMountHelper(
         system_salt_, std::move(chrome_mnt_ns), legacy_mount_,
         bind_mount_downloads_, platform_));
@@ -186,14 +188,29 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
   }
 
-  // Ephemeral mounts don't require dropping keys since they're not dircrypto
-  // mounts. This callback will be executed in the destructor at the latest so
-  // |this| will always be valid.
-  base::Closure cleanup =
-      base::Bind(&Mount::TearDownEphemeralMount, base::Unretained(this));
+  MountHelperInterface* ephemeral_mounter = nullptr;
+  base::Closure cleanup;
+  if (mount_ephemeral_session_out_of_process_) {
+    // Ephemeral cryptohomes for non-Guest ephemeral sessions are mounted
+    // out-of-process.
+    ephemeral_mounter = out_of_process_mounter_.get();
+    // Ephemeral mounts don't require dropping keys since they're not dircrypto
+    // mounts.
+    // This callback will be executed in the destructor at the latest so
+    // |out_of_process_mounter_| will always be valid. Error reporting is done
+    // in the helper process in cryptohome_namespace_mounter.cc.
+    cleanup = base::Bind(
+        base::IgnoreResult(&OutOfProcessMountHelper::TearDownEphemeralMount),
+        base::Unretained(out_of_process_mounter_.get()));
+  } else {
+    ephemeral_mounter = mounter_.get();
+    // This callback will be executed in the destructor at the latest so
+    // |this| will always be valid.
+    cleanup =
+        base::Bind(&Mount::TearDownEphemeralMount, base::Unretained(this));
+  }
 
-  // Ephemeral cryptohomes for regular users are mounted in-process.
-  if (!MountEphemeralCryptohomeInternal(username_, mounter_.get(),
+  if (!MountEphemeralCryptohomeInternal(username_, ephemeral_mounter,
                                         std::move(cleanup))) {
     homedirs_->Remove(username_);
     return MOUNT_ERROR_FATAL;
