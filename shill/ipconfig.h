@@ -74,18 +74,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
     Stringmaps dhcpv6_addresses;
     // IPv6 prefix delegated from a DHCPv6 server.
     Stringmaps dhcpv6_delegated_prefixes;
-    // If |allowed_uids| and/or |allowed_iifs| is set, IP policy rules will
-    // be created so that only traffic from the allowed UIDs and/or
-    // input interfaces can use this connection.  If neither is set,
-    // all system traffic can use this connection.
-    std::vector<uint32_t> allowed_uids;
-    std::vector<std::string> allowed_iifs;
     // Any egress traffic sent to prefixes listed in |included_dsts| will be
     // routed through this connection, even if it is not the default connection.
     std::vector<IPAddress> included_dsts;
-    // Any egress traffic marked with a fwmark matching a FwMark in
-    // |included_fwmarks| will be routed through this connection.
-    std::vector<RoutingPolicyEntry::FwMark> included_fwmarks;
     // List of uids that have their traffic blocked.
     std::vector<uint32_t> blackholed_uids;
     // Set the flag to true when the interface should be set as the default

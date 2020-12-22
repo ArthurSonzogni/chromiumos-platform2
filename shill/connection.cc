@@ -178,10 +178,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties& properties = config->properties();
-  allowed_uids_ = properties.allowed_uids;
-  allowed_iifs_ = properties.allowed_iifs;
   allowed_dsts_ = properties.included_dsts;
-  included_fwmarks_ = properties.included_fwmarks;
   use_if_addrs_ =
       properties.use_if_addrs || technology_.IsPrimaryConnectivityTechnology();
 
@@ -387,30 +384,6 @@ void Connection::UpdateRoutingPolicy() {
 void Connection::AllowTrafficThrough(uint32_t table_id,
                                      uint32_t base_priority,
                                      bool no_ipv6) {
-  for (const auto& uid : allowed_uids_) {
-    auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(base_priority)
-                     .SetTable(table_id)
-                     .SetUid(uid);
-    routing_table_->AddRule(interface_index_, entry);
-    if (no_ipv6) {
-      continue;
-    }
-    routing_table_->AddRule(interface_index_, entry.FlipFamily());
-  }
-
-  for (const auto& interface_name : allowed_iifs_) {
-    auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(base_priority)
-                     .SetTable(table_id)
-                     .SetIif(interface_name);
-    routing_table_->AddRule(interface_index_, entry);
-    if (no_ipv6) {
-      continue;
-    }
-    routing_table_->AddRule(interface_index_, entry.FlipFamily());
-  }
-
   for (const auto& source_address : allowed_srcs_) {
     if (source_address.family() == IPAddress::kFamilyIPv6 && no_ipv6)
       continue;
@@ -442,18 +415,6 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
   if (!no_ipv6) {
     routing_table_->AddRule(interface_index_,
                             fwmark_routing_entry.FlipFamily());
-  }
-
-  for (const auto& fwmark : included_fwmarks_) {
-    auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(base_priority)
-                     .SetTable(table_id)
-                     .SetFwMark(fwmark);
-    routing_table_->AddRule(interface_index_, entry);
-    if (no_ipv6) {
-      continue;
-    }
-    routing_table_->AddRule(interface_index_, entry.FlipFamily());
   }
 
   // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
@@ -493,26 +454,6 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
       routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
     }
   }
-}
-
-void Connection::AddInputInterfaceToRoutingTable(
-    const std::string& interface_name) {
-  if (base::Contains(allowed_iifs_, interface_name))
-    return;  // interface already allowed
-
-  allowed_iifs_.push_back(interface_name);
-  UpdateRoutingPolicy();
-  routing_table_->FlushCache();
-}
-
-void Connection::RemoveInputInterfaceFromRoutingTable(
-    const std::string& interface_name) {
-  if (!base::Contains(allowed_iifs_, interface_name))
-    return;  // interface already removed
-
-  base::Erase(allowed_iifs_, interface_name);
-  UpdateRoutingPolicy();
-  routing_table_->FlushCache();
 }
 
 void Connection::SetPriority(uint32_t priority, bool is_primary_physical) {

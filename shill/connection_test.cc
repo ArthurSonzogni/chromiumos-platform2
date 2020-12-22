@@ -80,11 +80,6 @@ MATCHER_P2(IsValidRoutingRule, family, priority, "") {
   return arg.family == family && arg.priority == priority;
 }
 
-MATCHER_P3(IsValidUidRule, family, priority, uid, "") {
-  return arg.family == family && arg.priority == priority &&
-         arg.uid_range == fib_rule_uid_range{uid, uid};
-}
-
 MATCHER_P3(IsValidFwMarkRule, family, priority, fwmark, "") {
   return arg.family == family && arg.priority == priority &&
          arg.fw_mark == fwmark;
@@ -621,17 +616,11 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
 
   const std::string kExcludeAddress1 = "192.0.1.0/24";
   const std::string kExcludeAddress2 = "192.0.2.0/24";
-  const uint32_t uid = 1000;
-  RoutingPolicyEntry::FwMark fwmark;
-  fwmark.value = 0x1234;
-  fwmark.mask = 0xffff;
   IPAddress address1(IPAddress::kFamilyIPv4);
   IPAddress address2(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address1.SetAddressAndPrefixFromString(kExcludeAddress1));
   EXPECT_TRUE(address2.SetAddressAndPrefixFromString(kExcludeAddress2));
 
-  properties_.allowed_uids = {uid};
-  properties_.included_fwmarks = {fwmark};
   properties_.default_route = false;
   properties_.exclusion_list = {kExcludeAddress1, kExcludeAddress2};
   UpdateProperties();
@@ -657,28 +646,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
               AddRoute(device->interface_index(), IsValidThrowRoute(address2)))
       .WillOnce(Return(true));
 
-  // UpdateRoutingPolicy should create uid and fwmark rules for IPv4 and IPv6
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidUidRule(IPAddress::kFamilyIPv4,
-                                     Connection::kLeastPriority, uid)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidUidRule(IPAddress::kFamilyIPv6,
-                                     Connection::kLeastPriority, uid)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidFwMarkRule(IPAddress::kFamilyIPv4,
-                                        Connection::kLeastPriority, fwmark)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidFwMarkRule(IPAddress::kFamilyIPv6,
-                                        Connection::kLeastPriority, fwmark)))
-      .WillOnce(Return(true));
-
   connection_->UpdateFromIPConfig(ipconfig_);
 
   IPAddress test_local_address(local_address_);
@@ -689,26 +656,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority);
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidUidRule(IPAddress::kFamilyIPv4,
-                                     Connection::kDefaultPriority, uid)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidUidRule(IPAddress::kFamilyIPv6,
-                                     Connection::kDefaultPriority, uid)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidFwMarkRule(IPAddress::kFamilyIPv4,
-                                        Connection::kDefaultPriority, fwmark)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidFwMarkRule(IPAddress::kFamilyIPv6,
-                                        Connection::kDefaultPriority, fwmark)))
-      .WillOnce(Return(true));
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
@@ -721,26 +668,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_TRUE(connection_->IsDefault());
 
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority);
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidUidRule(IPAddress::kFamilyIPv4,
-                                     Connection::kLeastPriority, uid)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidUidRule(IPAddress::kFamilyIPv6,
-                                     Connection::kLeastPriority, uid)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidFwMarkRule(IPAddress::kFamilyIPv4,
-                                        Connection::kLeastPriority, fwmark)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRule(device->interface_index(),
-                      IsValidFwMarkRule(IPAddress::kFamilyIPv6,
-                                        Connection::kLeastPriority, fwmark)))
-      .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(false);
   EXPECT_CALL(routing_table_, SetDefaultMetric(_, Connection::kLeastPriority));

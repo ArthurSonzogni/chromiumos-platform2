@@ -46,14 +46,6 @@ class MockConnection : public Connection {
               (override));
   MOCK_METHOD(bool, IsIPv6, (), (override));
   MOCK_METHOD(std::string, GetSubnetName, (), (const, override));
-  MOCK_METHOD(void,
-              AddInputInterfaceToRoutingTable,
-              (const std::string&),
-              (override));
-  MOCK_METHOD(void,
-              RemoveInputInterfaceFromRoutingTable,
-              (const std::string&),
-              (override));
 };
 
 }  // namespace shill

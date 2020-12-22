@@ -68,15 +68,6 @@ class Connection : public base::RefCounted<Connection> {
   // address+gateway have been configured.
   virtual void UpdateGatewayMetric(const IPConfigRefPtr& config);
 
-  // Adds |interface_name| to the allowed input interfaces that are
-  // allowed to use the connection and updates the routing table.
-  virtual void AddInputInterfaceToRoutingTable(
-      const std::string& interface_name);
-  // Removes |interface_name| from the allowed input interfaces and
-  // updates the routing table.
-  virtual void RemoveInputInterfaceFromRoutingTable(
-      const std::string& interface_name);
-
   // Routing policy rules have priorities, which establishes the order in which
   // policy rules will be matched against the current traffic. The higher the
   // priority value, the lower the priority of the rule. 0 is the highest rule
@@ -110,10 +101,7 @@ class Connection : public base::RefCounted<Connection> {
     return ipconfig_rpc_identifier_;
   }
 
-  // Flush and (re)create routing policy rules for the connection.  If
-  // |allowed_uids_| or |allowed_iifs_| is set, rules will be created
-  // to restrict traffic to the allowed UIDs or input interfaces.
-  // Otherwise, all system traffic will be allowed to use the connection.
+  // Flush and (re)create routing policy rules for the connection.
   // The rule priority will be set to |priority_| so that Manager's service
   // sort ranking is respected.
   virtual void UpdateRoutingPolicy();
@@ -191,14 +179,8 @@ class Connection : public base::RefCounted<Connection> {
   // True if this device should have rules sending traffic whose src address
   // matches one of the interface's addresses to the per-device table.
   bool use_if_addrs_;
-  // |allowed_{uids,iifs,dsts,srcs}| and |included_fwmarks_| allow for this
-  // connection to serve more traffic than it would by default.
-  // TODO(crbug.com/1022028) Replace this with a RoutingPolicy.
-  std::vector<uint32_t> allowed_uids_;
-  std::vector<std::string> allowed_iifs_;
   std::vector<IPAddress> allowed_srcs_;
   std::vector<IPAddress> allowed_dsts_;
-  std::vector<RoutingPolicyEntry::FwMark> included_fwmarks_;
   std::vector<uint32_t> blackholed_uids_;
 
   // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.
