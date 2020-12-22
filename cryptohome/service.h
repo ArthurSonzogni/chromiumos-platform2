@@ -211,6 +211,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   void set_force_ecryptfs(bool force_ecryptfs) {
     force_ecryptfs_ = force_ecryptfs;
   }
+  void set_fscrypt_v2(bool enable_v2) { fscrypt_v2_ = enable_v2; }
 
   void set_cleanup_threshold(uint64_t cleanup_threshold);
   void set_aggressive_cleanup_threshold(uint64_t aggressive_cleanup_threshold);
@@ -1096,6 +1097,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   ArcDiskQuota* arc_disk_quota_;
   std::string guest_user_;
   bool force_ecryptfs_;
+  bool fscrypt_v2_;
   bool legacy_mount_;
   bool bind_mount_downloads_;
   brillo::SecureBlob public_mount_salt_;

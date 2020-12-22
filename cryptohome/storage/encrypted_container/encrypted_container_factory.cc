@@ -27,15 +27,16 @@ EncryptedContainerFactory::EncryptedContainerFactory(
     Platform* platform,
     std::unique_ptr<BackingDeviceFactory> backing_device_factory)
     : platform_(platform),
-      backing_device_factory_(std::move(backing_device_factory)) {}
+      backing_device_factory_(std::move(backing_device_factory)),
+      allow_fscrypt_v2_(false) {}
 
 std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
     const EncryptedContainerConfig& config,
     const FileSystemKeyReference& key_reference) {
   switch (config.type) {
     case EncryptedContainerType::kFscrypt:
-      return std::make_unique<FscryptContainer>(config.backing_dir,
-                                                key_reference, platform_);
+      return std::make_unique<FscryptContainer>(
+          config.backing_dir, key_reference, allow_fscrypt_v2_, platform_);
     case EncryptedContainerType::kEcryptfs:
       return std::make_unique<EcryptfsContainer>(config.backing_dir,
                                                  key_reference, platform_);

@@ -13,9 +13,11 @@ namespace cryptohome {
 
 FscryptContainer::FscryptContainer(const base::FilePath& backing_dir,
                                    const FileSystemKeyReference& key_reference,
+                                   bool allow_v2,
                                    Platform* platform)
     : backing_dir_(backing_dir),
       key_reference_({.reference = key_reference.fek_sig}),
+      allow_v2_(allow_v2),
       platform_(platform) {}
 
 bool FscryptContainer::Purge() {
@@ -40,9 +42,10 @@ bool FscryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
       dircrypto::GetDirectoryPolicyVersion(backing_dir_);
 
   if (key_reference_.policy_version < 0) {
-    key_reference_.policy_version = dircrypto::CheckFscryptKeyIoctlSupport()
-                                        ? FSCRYPT_POLICY_V2
-                                        : FSCRYPT_POLICY_V1;
+    key_reference_.policy_version =
+        (allow_v2_ && dircrypto::CheckFscryptKeyIoctlSupport())
+            ? FSCRYPT_POLICY_V2
+            : FSCRYPT_POLICY_V1;
   }
 
   if (!platform_->AddDirCryptoKeyToKeyring(encryption_key.fek,

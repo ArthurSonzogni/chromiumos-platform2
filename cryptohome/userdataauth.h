@@ -149,6 +149,9 @@ class UserDataAuth {
     force_ecryptfs_ = force_ecryptfs;
   }
 
+  // Enable version 2 of fscrypt interface.
+  void set_fscrypt_v2(bool enable_v2) { fscrypt_v2_ = enable_v2; }
+
   // Set the |legacy_mount_| variable. For more information on legacy_mount_,
   // see comment of Mount::MountLegacyHome(). Note that this is usually used in
   // main() because there's a command line switch for selecting this.
@@ -1114,6 +1117,9 @@ class UserDataAuth {
   // Force the use of eCryptfs. If eCryptfs is not used, then dircrypto (the
   // ext4 directory encryption) is used.
   bool force_ecryptfs_;
+
+  // Force v2 version for fscrypt interface.
+  bool fscrypt_v2_;
 
   // Whether we are using legacy mount. See Mount::MountLegacyHome()'s comment
   // for more information.

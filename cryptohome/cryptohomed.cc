@@ -32,6 +32,7 @@ static const char* kNoCloseOnDaemonize = "noclose";
 static const char* kNoLegacyMount = "nolegacymount";
 static const char* kNoDownloadsBindMount = "no_downloads_bind_mount";
 static const char* kDirEncryption = "direncryption";
+static const char* kFscryptV2 = "fscrypt_v2";
 static const char* kNoDaemonize = "nodaemonize";
 static const char* kCleanupThreshold = "cleanup_threshold";
 static const char* kAggressiveThreshold = "aggressive_cleanup_threshold";
@@ -82,6 +83,7 @@ int main(int argc, char** argv) {
   bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
   bool nodownloadsbind = cl->HasSwitch(switches::kNoDownloadsBindMount);
   bool direncryption = cl->HasSwitch(switches::kDirEncryption);
+  bool fscryptv2 = cl->HasSwitch(switches::kFscryptV2);
   bool daemonize = !cl->HasSwitch(switches::kNoDaemonize);
   uint64_t cleanup_threshold =
       ReadCleanupThreshold(cl, switches::kCleanupThreshold,
@@ -120,6 +122,7 @@ int main(int argc, char** argv) {
   // Set options on whether we are going to use ext4 directory encryption or
   // eCryptfs.
   user_data_auth_daemon.GetUserDataAuth()->set_force_ecryptfs(!direncryption);
+  user_data_auth_daemon.GetUserDataAuth()->set_fscrypt_v2(fscryptv2);
 
   // Set automatic cleanup thresholds.
   user_data_auth_daemon.GetUserDataAuth()->set_cleanup_threshold(

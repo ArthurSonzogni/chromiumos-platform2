@@ -27,7 +27,7 @@ class FscryptContainerTest : public ::testing::Test {
         key_reference_({.fek_sig = brillo::SecureBlob("random_keysig")}),
         key_({.fek = brillo::SecureBlob("random key")}),
         container_(std::make_unique<FscryptContainer>(
-            backing_dir_, key_reference_, &platform_)) {}
+            backing_dir_, key_reference_, /*allow_v2=*/true, &platform_)) {}
   ~FscryptContainerTest() override = default;
 
  protected:

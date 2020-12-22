@@ -47,7 +47,8 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
     switch (config.type) {
       case EncryptedContainerType::kFscrypt:
         return std::make_unique<FscryptContainer>(config.backing_dir,
-                                                  key_reference, platform_);
+                                                  key_reference,
+                                                  /*allow_v2=*/true, platform_);
       case EncryptedContainerType::kEcryptfs:
         return std::make_unique<EcryptfsContainer>(config.backing_dir,
                                                    key_reference, platform_);

@@ -20,6 +20,7 @@ class FscryptContainer : public EncryptedContainer {
  public:
   FscryptContainer(const base::FilePath& backing_dir,
                    const FileSystemKeyReference& key_reference,
+                   bool allow_v2,
                    Platform* platform);
   ~FscryptContainer() = default;
 
@@ -34,6 +35,7 @@ class FscryptContainer : public EncryptedContainer {
  private:
   const base::FilePath backing_dir_;
   dircrypto::KeyReference key_reference_;
+  bool allow_v2_;
   Platform* platform_;
 };
 

@@ -30,9 +30,14 @@ class EncryptedContainerFactory {
       const EncryptedContainerConfig& config,
       const FileSystemKeyReference& key_reference);
 
+  void set_allow_fscrypt_v2(bool allow_fscrypt_v2) {
+    allow_fscrypt_v2_ = allow_fscrypt_v2;
+  }
+
  private:
   Platform* platform_;
   std::unique_ptr<BackingDeviceFactory> backing_device_factory_;
+  bool allow_fscrypt_v2_;
 };
 
 }  // namespace cryptohome

@@ -62,6 +62,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     bool create_as_ecryptfs = false;
     // Forces dircrypto, i.e., makes it an error to mount ecryptfs.
     bool force_dircrypto = false;
+    // Enables version 2 fscrypt interface.
+    bool enable_dircrypto_v2 = false;
     // Mount the existing ecryptfs vault to a temporary location while setting
     // up a new dircrypto directory.
     bool to_migrate_from_ecryptfs = false;

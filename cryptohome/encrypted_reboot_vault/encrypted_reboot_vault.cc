@@ -91,8 +91,10 @@ EncryptedRebootVault::EncryptedRebootVault()
   cryptohome::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob(kEncryptionKeyTag);
 
+  // TODO(dlunev): change the allow_v2 to true once all the boards are on
+  // 5.4+
   encrypted_container_ = std::make_unique<cryptohome::FscryptContainer>(
-      vault_path_, key_reference, &platform_);
+      vault_path_, key_reference, /*allow_v2=*/false, &platform_);
 }
 
 bool EncryptedRebootVault::CreateVault() {

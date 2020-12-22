@@ -166,6 +166,7 @@ UserDataAuth::UserDataAuth()
       public_mount_salt_(),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),
+      fscrypt_v2_(false),
       legacy_mount_(true),
       bind_mount_downloads_(true),
       default_arc_disk_quota_(nullptr),
@@ -237,10 +238,15 @@ bool UserDataAuth::Initialize() {
   }
 
   if (!homedirs_) {
-    default_homedirs_ =
-        std::make_unique<HomeDirs>(platform_, keyset_management_, system_salt_,
-                                   user_timestamp_cache_.get(),
-                                   std::make_unique<policy::PolicyProvider>());
+    auto container_factory =
+        std::make_unique<EncryptedContainerFactory>(platform_);
+    container_factory->set_allow_fscrypt_v2(fscrypt_v2_);
+    auto vault_factory = std::make_unique<CryptohomeVaultFactory>(
+        platform_, std::move(container_factory));
+    default_homedirs_ = std::make_unique<HomeDirs>(
+        platform_, keyset_management_, system_salt_,
+        user_timestamp_cache_.get(), std::make_unique<policy::PolicyProvider>(),
+        std::move(vault_factory));
     homedirs_ = default_homedirs_.get();
   }
 
