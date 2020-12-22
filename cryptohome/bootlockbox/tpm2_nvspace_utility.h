@@ -67,10 +67,6 @@ class TPM2NVSpaceUtility : public TPMNVSpaceUtilityInterface {
   // via tpm_managerd.
   bool DefineNVSpace() override;
 
-  // Defines nvspace via trunksd. This function must be called before
-  // tpm_managerd starts.
-  bool DefineNVSpaceBeforeOwned() override;
-
   // This method writes |digest| to nvram space for bootlockboxd.
   bool WriteNVSpace(const std::string& digest) override;
 

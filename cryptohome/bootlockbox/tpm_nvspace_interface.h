@@ -28,9 +28,6 @@ class TPMNVSpaceUtilityInterface {
   // This method defines a non-volatile storage area in TPM for bootlocboxd.
   virtual bool DefineNVSpace() = 0;
 
-  // This method defines a non-volatile space in TPM via trunks.
-  virtual bool DefineNVSpaceBeforeOwned() = 0;
-
   // This method writes |digest| to nvram space for bootlockboxd
   virtual bool WriteNVSpace(const std::string& digest) = 0;
 

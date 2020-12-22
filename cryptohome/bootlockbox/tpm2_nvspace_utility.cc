@@ -112,23 +112,6 @@ bool TPM2NVSpaceUtility::DefineNVSpace() {
   return true;
 }
 
-bool TPM2NVSpaceUtility::DefineNVSpaceBeforeOwned() {
-  auto pw_auth = trunks_factory_->GetPasswordAuthorization(kWellKnownPassword);
-  trunks::TPMA_NV attributes = trunks::TPMA_NV_WRITE_STCLEAR |
-                               trunks::TPMA_NV_AUTHREAD |
-                               trunks::TPMA_NV_AUTHWRITE;
-  trunks::TPM_RC result =
-      trunks::GetFormatOneError(trunks_factory_->GetTpmUtility()->DefineNVSpace(
-          kBootLockboxNVRamIndex, kNVSpaceSize, attributes, kWellKnownPassword,
-          "", pw_auth.get()));
-  if (result != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error define nv space, error: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  return true;
-}
-
 bool TPM2NVSpaceUtility::WriteNVSpace(const std::string& digest) {
   if (digest.size() != SHA256_DIGEST_LENGTH) {
     LOG(ERROR) << "Wrong digest size, expected: " << SHA256_DIGEST_LENGTH

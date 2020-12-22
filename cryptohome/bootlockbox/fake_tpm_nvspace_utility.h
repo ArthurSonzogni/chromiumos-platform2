@@ -19,8 +19,6 @@ class FakeTpmNVSpaceUtility : public TPMNVSpaceUtilityInterface {
 
   bool DefineNVSpace() override;
 
-  bool DefineNVSpaceBeforeOwned() override;
-
   bool WriteNVSpace(const std::string& digest) override;
 
   bool ReadNVSpace(std::string* digest, NVSpaceState* state) override;

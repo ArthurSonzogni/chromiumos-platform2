@@ -69,14 +69,6 @@ TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceFail) {
   EXPECT_FALSE(nvspace_utility_->DefineNVSpace());
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceBeforeOwned) {
-  EXPECT_CALL(mock_trunks_tpm_utility_,
-              DefineNVSpace(kBootLockboxNVRamIndex, kNVSpaceSize, _,
-                            kWellKnownPassword, "", _))
-      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_TRUE(nvspace_utility_->DefineNVSpaceBeforeOwned());
-}
-
 TEST_F(TPM2NVSpaceUtilityTest, ReadNVSpaceLengthFail) {
   EXPECT_CALL(mock_trunks_tpm_utility_, ReadNVSpace(_, _, _, _, _, _))
       .WillOnce(

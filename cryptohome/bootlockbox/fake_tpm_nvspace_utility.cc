@@ -14,10 +14,6 @@ bool FakeTpmNVSpaceUtility::DefineNVSpace() {
   return true;
 }
 
-bool FakeTpmNVSpaceUtility::DefineNVSpaceBeforeOwned() {
-  return true;
-}
-
 bool FakeTpmNVSpaceUtility::WriteNVSpace(const std::string& digest) {
   digest_ = digest;
   return true;
