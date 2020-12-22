@@ -8,10 +8,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
-#include <trunks/error_codes.h>
-#include <trunks/password_authorization_delegate.h>
-#include <trunks/tpm_constants.h>
-#include <trunks/tpm_utility.h>
 
 #include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
 #include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
@@ -24,17 +20,23 @@ using tpm_manager::NvramResult;
 
 namespace cryptohome {
 
-NVSpaceState MapTpmRc(trunks::TPM_RC rc) {
-  switch (rc) {
-    case trunks::TPM_RC_SUCCESS:
+NVSpaceState MapReadNvramError(NvramResult r) {
+  switch (r) {
+    case NvramResult::NVRAM_RESULT_SUCCESS:
       return NVSpaceState::kNVSpaceNormal;
-    case trunks::TPM_RC_HANDLE:
+    case NvramResult::NVRAM_RESULT_SPACE_DOES_NOT_EXIST:
       return NVSpaceState::kNVSpaceUndefined;
-    case trunks::TPM_RC_NV_UNINITIALIZED:
+    // Operation disable includes uninitialized and locked, but we shouldn't see
+    // read lock for bootlockboxd.
+    case NvramResult::NVRAM_RESULT_OPERATION_DISABLED:
       return NVSpaceState::kNVSpaceUninitialized;
-    case trunks::TPM_RC_NV_LOCKED:
-      return NVSpaceState::kNVSpaceWriteLocked;
-    default:
+    // There is nothing to do for these errors.
+    case NvramResult::NVRAM_RESULT_DEVICE_ERROR:
+    case NvramResult::NVRAM_RESULT_ACCESS_DENIED:
+    case NvramResult::NVRAM_RESULT_INVALID_PARAMETER:
+    case NvramResult::NVRAM_RESULT_SPACE_ALREADY_EXISTS:
+    case NvramResult::NVRAM_RESULT_INSUFFICIENT_SPACE:
+    case NvramResult::NVRAM_RESULT_IPC_ERROR:
       return NVSpaceState::kNVSpaceError;
   }
 }
@@ -63,10 +65,8 @@ std::string NvramResult2Str(NvramResult r) {
 }
 
 TPM2NVSpaceUtility::TPM2NVSpaceUtility(
-    org::chromium::TpmNvramProxyInterface* tpm_nvram,
-    trunks::TrunksFactory* trunks_factory) {
+    org::chromium::TpmNvramProxyInterface* tpm_nvram) {
   tpm_nvram_ = tpm_nvram;
-  trunks_factory_ = trunks_factory;
 }
 
 bool TPM2NVSpaceUtility::Initialize() {
@@ -75,14 +75,6 @@ bool TPM2NVSpaceUtility::Initialize() {
     CHECK(bus) << "Failed to connect to system D-Bus";
     default_tpm_nvram_ = std::make_unique<org::chromium::TpmNvramProxy>(bus);
     tpm_nvram_ = default_tpm_nvram_.get();
-  }
-  if (!trunks_factory_) {
-    default_trunks_factory_ = std::make_unique<trunks::TrunksFactoryImpl>();
-    if (!default_trunks_factory_->Initialize()) {
-      LOG(ERROR) << "Failed to initialize trunks factory";
-      return false;
-    }
-    trunks_factory_ = default_trunks_factory_.get();
   }
   return true;
 }
@@ -125,15 +117,22 @@ bool TPM2NVSpaceUtility::WriteNVSpace(const std::string& digest) {
   memcpy(BootLockboxNVSpace.digest, digest.data(), SHA256_DIGEST_LENGTH);
   std::string nvram_data(reinterpret_cast<const char*>(&BootLockboxNVSpace),
                          kNVSpaceSize);
-  auto pw_auth = trunks_factory_->GetPasswordAuthorization(kWellKnownPassword);
-  trunks::TPM_RC result =
-      trunks::GetFormatOneError(trunks_factory_->GetTpmUtility()->WriteNVSpace(
-          kBootLockboxNVRamIndex, 0 /* offset */, nvram_data,
-          false /* using_owner_authorization */, false /* extend */,
-          pw_auth.get()));
-  if (result != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error writing nvram space, error: "
-               << trunks::GetErrorString(result);
+
+  tpm_manager::WriteSpaceRequest request;
+  request.set_index(kBootLockboxNVRamIndex);
+  request.set_data(nvram_data);
+  request.set_authorization_value(kWellKnownPassword);
+  request.set_use_owner_authorization(false);
+  tpm_manager::WriteSpaceReply reply;
+  brillo::ErrorPtr error;
+  if (!tpm_nvram_->WriteSpace(request, &reply, &error,
+                              kDefaultTimeout.InMilliseconds())) {
+    LOG(ERROR) << "Failed to call WriteSpace: " << error->GetMessage();
+    return false;
+  }
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to write nvram space: "
+               << NvramResult2Str(reply.result());
     return false;
   }
   return true;
@@ -142,18 +141,28 @@ bool TPM2NVSpaceUtility::WriteNVSpace(const std::string& digest) {
 bool TPM2NVSpaceUtility::ReadNVSpace(std::string* digest,
                                      NVSpaceState* result) {
   *result = NVSpaceState::kNVSpaceError;
-  std::string nvram_data;
-  auto pw_auth = trunks_factory_->GetPasswordAuthorization(kWellKnownPassword);
-  trunks::TPM_RC rc =
-      trunks::GetFormatOneError(trunks_factory_->GetTpmUtility()->ReadNVSpace(
-          kBootLockboxNVRamIndex, 0 /* offset */, kNVSpaceSize,
-          false /* using owner authorization */, &nvram_data, pw_auth.get()));
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error reading nvram space, error: "
-               << trunks::GetErrorString(rc);
-    *result = MapTpmRc(rc);
+
+  tpm_manager::ReadSpaceRequest request;
+  request.set_index(kBootLockboxNVRamIndex);
+  request.set_authorization_value(kWellKnownPassword);
+  request.set_use_owner_authorization(false);
+  tpm_manager::ReadSpaceReply reply;
+
+  brillo::ErrorPtr error;
+  if (!tpm_nvram_->ReadSpace(request, &reply, &error,
+                             kDefaultTimeout.InMilliseconds())) {
+    LOG(ERROR) << "Failed to call ReadSpace: " << error->GetMessage();
     return false;
   }
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to read nvram space: "
+               << NvramResult2Str(reply.result());
+    *result = MapReadNvramError(reply.result());
+    return false;
+  }
+
+  const std::string& nvram_data = reply.data();
+
   if (nvram_data.size() != kNVSpaceSize) {
     LOG(ERROR) << "Error reading nvram space, invalid data length, expected:"
                << kNVSpaceSize << ", got " << nvram_data.size();
@@ -172,14 +181,23 @@ bool TPM2NVSpaceUtility::ReadNVSpace(std::string* digest,
 }
 
 bool TPM2NVSpaceUtility::LockNVSpace() {
-  auto pw_auth = trunks_factory_->GetPasswordAuthorization(kWellKnownPassword);
-  trunks::TPM_RC result =
-      trunks::GetFormatOneError(trunks_factory_->GetTpmUtility()->LockNVSpace(
-          kBootLockboxNVRamIndex, false /* lock read */, true /* lock write */,
-          false /* using owner authorization */, pw_auth.get()));
-  if (result != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error locking nvspace, error: "
-               << trunks::GetErrorString(result);
+  tpm_manager::LockSpaceRequest request;
+  request.set_index(kBootLockboxNVRamIndex);
+  request.set_lock_read(false);
+  request.set_lock_write(true);
+  request.set_authorization_value(kWellKnownPassword);
+  request.set_use_owner_authorization(false);
+  tpm_manager::LockSpaceReply reply;
+
+  brillo::ErrorPtr error;
+  if (!tpm_nvram_->LockSpace(request, &reply, &error,
+                             kDefaultTimeout.InMilliseconds())) {
+    LOG(ERROR) << "Failed to call LockSpace: " << error->GetMessage();
+    return false;
+  }
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to lock nvram space: "
+               << NvramResult2Str(reply.result());
     return false;
   }
   return true;

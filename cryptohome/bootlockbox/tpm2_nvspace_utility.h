@@ -13,9 +13,6 @@
 #include <brillo/dbus/dbus_connection.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
-#include <trunks/tpm_constants.h>
-#include <trunks/tpm_utility.h>
-#include <trunks/trunks_factory_impl.h>
 
 #include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
 
@@ -38,11 +35,6 @@ constexpr uint32_t kBootLockboxNVRamIndex = 0x800006;
 constexpr char kWellKnownPassword[] = "";
 
 // This class handles tpm operations to read, write, lock and define nv spaces.
-// DefineNVSpace is implemented using tpm_managerd to avoid blocking cryptohome
-// from starting for the first time boot. An alternative interface to define
-// nv sapce via trunks is also provided and must be called before tpm_mangerd
-// starts. ReadNVSpace is implemented using trunksd for better reading
-// performance.
 // Usage:
 //   auto nvspace_utility = TPM2NVSpaceUtility();
 //   nvspace_utility.Initialize();
@@ -51,9 +43,8 @@ class TPM2NVSpaceUtility : public TPMNVSpaceUtilityInterface {
  public:
   TPM2NVSpaceUtility() = default;
 
-  // Constructor that does not take ownership of tpm_nvram and trunks_factory.
-  TPM2NVSpaceUtility(org::chromium::TpmNvramProxyInterface* tpm_nvram,
-                     trunks::TrunksFactory* trunks_factory);
+  // Constructor that does not take ownership of tpm_nvram.
+  explicit TPM2NVSpaceUtility(org::chromium::TpmNvramProxyInterface* tpm_nvram);
   TPM2NVSpaceUtility(const TPM2NVSpaceUtility&) = delete;
   TPM2NVSpaceUtility& operator=(const TPM2NVSpaceUtility&) = delete;
 
@@ -84,10 +75,6 @@ class TPM2NVSpaceUtility : public TPMNVSpaceUtilityInterface {
   // created in Initialize and should only be used in the same thread.
   std::unique_ptr<org::chromium::TpmNvramProxyInterface> default_tpm_nvram_;
   org::chromium::TpmNvramProxyInterface* tpm_nvram_;
-
-  // Trunks interface.
-  std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
-  trunks::TrunksFactory* trunks_factory_;
 };
 
 }  // namespace cryptohome
