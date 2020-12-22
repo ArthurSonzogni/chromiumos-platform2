@@ -352,6 +352,7 @@ impl ConnectionProxy {
 pub struct UserDisks {
     pub kernel: Option<String>,
     pub rootfs: Option<String>,
+    pub writable_rootfs: bool,
     pub initrd: Option<String>,
     pub extra_disk: Option<String>,
 }
@@ -1159,9 +1160,11 @@ impl Methods {
         // User-specified rootfs
         if let Some(path) = user_disks.rootfs {
             request.fds.push(StartVmRequest_FdType::ROOTFS);
+            request.writable_rootfs = user_disks.writable_rootfs;
             disk_files.push(
                 OpenOptions::new()
                     .read(true)
+                    .write(user_disks.writable_rootfs)
                     .custom_flags(libc::O_NOFOLLOW)
                     .open(&path)?,
             );

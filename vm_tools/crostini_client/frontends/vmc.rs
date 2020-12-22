@@ -228,6 +228,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "no-start-lxd",
             "Don't start LXD (the container manager)",
         );
+        opts.optflag("", "writable-rootfs", "Mount the rootfs as writable.");
 
         let matches = opts.parse(self.args)?;
 
@@ -248,6 +249,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let user_disks = UserDisks {
             kernel: matches.opt_str("kernel"),
             rootfs: matches.opt_str("rootfs"),
+            writable_rootfs: matches.opt_present("writable-rootfs"),
             extra_disk: matches.opt_str("extra-disk"),
             initrd: matches.opt_str("initrd"),
         };
@@ -754,7 +756,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--initrd PATH] <name> |
+   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--initrd PATH] [--writable-rootfs] <name> |
      stop <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
@@ -929,6 +931,9 @@ mod tests {
             &["vmc", "start", "termina", "--dlc-id=foo"],
             &["vmc", "start", "termina", "--initrd=myinitrd"],
             &["vmc", "start", "termina", "--initrd" ,"myinitrd"],
+            &["vmc", "start", "termina", "--rootfs" ,"myrootfs"],
+            &["vmc", "start", "termina", "--rootfs=myrootfs"],
+            &["vmc", "start", "termina", "--rootfs" ,"myrootfs", "--writable-rootfs"],
             &["vmc", "stop", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
@@ -1026,6 +1031,8 @@ mod tests {
             &["vmc", "start", "termina", "--extra-disk"],
             &["vmc", "start", "termina", "--dlc-id"],
             &["vmc", "start", "termina", "--initrd"],
+            &["vmc", "start", "termina", "--rootfs"],
+            &["vmc", "start", "termina", "--writable-rootfs", "myrootfs"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "create"],
