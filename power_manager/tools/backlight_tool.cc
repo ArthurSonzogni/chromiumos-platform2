@@ -229,8 +229,7 @@ void GetAmbientLightLux(bool keyboard) {
     Abort("Ambient light sensor not enabled");
   }
 
-  AmbientLightSensorManager als_manager;
-  als_manager.Init(&prefs);
+  AmbientLightSensorManager als_manager(&prefs);
   als_manager.Run(true /* read_immediately */);
 
   AmbientLightSensorInterface* sensor;
@@ -267,8 +266,7 @@ void PrintAmbientLightPath(bool keyboard) {
     Abort("Ambient light sensor not enabled");
   }
 
-  AmbientLightSensorManager als_manager;
-  als_manager.Init(&prefs);
+  AmbientLightSensorManager als_manager(&prefs);
   als_manager.Run(true /* read_immediately */);
 
   AmbientLightSensorInterface* sensor;

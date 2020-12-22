@@ -69,7 +69,6 @@ class AmbientLightSensorManagerTest : public ::testing::Test {
   void SetUp() override {
     prefs_.SetInt64(kAllowAmbientEQ, 0);
     CHECK(temp_dir_.CreateUniqueTempDir());
-    manager_.reset(new AmbientLightSensorManager());
   }
 
   void TearDown() override {
@@ -115,7 +114,7 @@ class AmbientLightSensorManagerTest : public ::testing::Test {
 TEST_F(AmbientLightSensorManagerTest, ZeroSensors) {
   prefs_.SetInt64(kHasAmbientLightSensorPref, 0);
 
-  manager_->Init(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->Run(false /* read_immediately */);
 
@@ -128,7 +127,7 @@ TEST_F(AmbientLightSensorManagerTest, OneSensor) {
   prefs_.SetInt64(kHasAmbientLightSensorPref, 1);
   base::FilePath data_file = AddSensor(0, "lid", false);
 
-  manager_->Init(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);
@@ -155,7 +154,7 @@ TEST_F(AmbientLightSensorManagerTest, TwoSensors) {
   base::FilePath data0_file = AddSensor(0, "lid", false);
   base::FilePath data1_file = AddSensor(1, "base", false);
 
-  manager_->Init(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);
@@ -183,7 +182,7 @@ TEST_F(AmbientLightSensorManagerTest, HasColorSensor) {
   base::FilePath data0_file = AddSensor(0, "lid", true);
   base::FilePath data1_file = AddSensor(1, "base", false);
 
-  manager_->Init(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);

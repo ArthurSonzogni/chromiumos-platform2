@@ -14,24 +14,8 @@
 namespace power_manager {
 namespace system {
 
-AmbientLightSensorManager::AmbientLightSensorManager() = default;
-
-AmbientLightSensorManager::~AmbientLightSensorManager() = default;
-
-void AmbientLightSensorManager::set_device_list_path_for_testing(
-    const base::FilePath& path) {
-  for (auto als : als_list_)
-    als->set_device_list_path_for_testing(path);
-}
-
-void AmbientLightSensorManager::set_poll_interval_ms_for_testing(
-    int interval_ms) {
-  for (auto als : als_list_)
-    als->set_poll_interval_ms_for_testing(interval_ms);
-}
-
-void AmbientLightSensorManager::Init(PrefsInterface* prefs) {
-  prefs_ = prefs;
+AmbientLightSensorManager::AmbientLightSensorManager(PrefsInterface* prefs)
+    : prefs_(prefs) {
   int64_t num_sensors = 0;
   bool allow_ambient_eq = false;
   prefs_->GetInt64(kHasAmbientLightSensorPref, &num_sensors);
@@ -50,6 +34,20 @@ void AmbientLightSensorManager::Init(PrefsInterface* prefs) {
     lid_sensor_ = sensors_[0].get();
     base_sensor_ = sensors_[1].get();
   }
+}
+
+AmbientLightSensorManager::~AmbientLightSensorManager() = default;
+
+void AmbientLightSensorManager::set_device_list_path_for_testing(
+    const base::FilePath& path) {
+  for (auto als : als_list_)
+    als->set_device_list_path_for_testing(path);
+}
+
+void AmbientLightSensorManager::set_poll_interval_ms_for_testing(
+    int interval_ms) {
+  for (auto als : als_list_)
+    als->set_poll_interval_ms_for_testing(interval_ms);
 }
 
 void AmbientLightSensorManager::Run(bool read_immediately) {

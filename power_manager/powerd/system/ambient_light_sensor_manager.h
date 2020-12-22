@@ -21,7 +21,7 @@ namespace system {
 
 class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
  public:
-  AmbientLightSensorManager();
+  explicit AmbientLightSensorManager(PrefsInterface* prefs);
   AmbientLightSensorManager(const AmbientLightSensorManager&) = delete;
   AmbientLightSensorManager& operator=(const AmbientLightSensorManager&) =
       delete;
@@ -31,7 +31,6 @@ class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
   void set_device_list_path_for_testing(const base::FilePath& path);
   void set_poll_interval_ms_for_testing(int interval_ms);
 
-  void Init(PrefsInterface* prefs);
   void Run(bool read_immediately);
 
   bool HasColorSensor() override;

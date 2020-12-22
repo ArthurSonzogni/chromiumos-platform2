@@ -98,8 +98,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
   CreateAmbientLightSensorManager(PrefsInterface* prefs) override {
     auto light_sensor_manager =
-        std::make_unique<system::AmbientLightSensorManager>();
-    light_sensor_manager->Init(prefs);
+        std::make_unique<system::AmbientLightSensorManager>(prefs);
     light_sensor_manager->Run(false /* read_immediately */);
     return light_sensor_manager;
   }
