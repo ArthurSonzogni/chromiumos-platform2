@@ -32,32 +32,32 @@ generate_dbus_adaptors("image-burner-adaptors") {
 }
 
 static_library("libimage-burner") {
-  configs += [ ":target_defaults" ]
   sources = [
     "daemon.cc",
     "image_burn_service.cc",
     "image_burner_impl.cc",
     "image_burner_utils.cc",
   ]
+  configs += [ ":target_defaults" ]
 
   deps = [ ":image-burner-adaptors" ]
 }
 
 executable("image_burner") {
-  configs += [ ":target_defaults" ]
   sources = [ "image_burner_main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libimage-burner" ]
 }
 
 if (use.test) {
   executable("unittest_runner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "image_burner_impl_test.cc",
       "image_burner_utils_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libimage-burner",

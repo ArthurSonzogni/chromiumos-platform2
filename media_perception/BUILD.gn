@@ -85,11 +85,6 @@ static_library("media_perception_service_lib") {
     "libchrome",
     "libmojo",
   ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":media_perception_mojo_bindings",
-    ":media_perception_protos",
-  ]
   sources = [
     "audio_receiver.cc",
     "chrome_audio_service_client_impl.cc",
@@ -109,12 +104,16 @@ static_library("media_perception_service_lib") {
     "dbus-1",
     "libcras",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":media_perception_mojo_bindings",
+    ":media_perception_protos",
+  ]
 }
 
 executable("rtanalytics_main") {
-  configs += [ ":target_defaults" ]
-  deps = [ ":media_perception_service_lib" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [
     "rtanalytics",
     "dl",
@@ -122,12 +121,12 @@ executable("rtanalytics_main") {
 
   # librtanalytics.so is imported to the build directory by mri_package ebuild.
   lib_dirs = [ root_build_dir ]
+  deps = [ ":media_perception_service_lib" ]
 }
 
 executable("mps_main") {
-  configs += [ ":target_defaults" ]
-  deps = [ ":media_perception_service_lib" ]
   sources = [ "mps_main.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [
     "rtanalytics",
     "dl",
@@ -135,15 +134,11 @@ executable("mps_main") {
 
   # librtanalytics.so is imported to the build directory by mri_package ebuild.
   lib_dirs = [ root_build_dir ]
+  deps = [ ":media_perception_service_lib" ]
 }
 
 if (use.test) {
   executable("media_perception_service_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [ ":media_perception_service_lib" ]
     sources = [
       "fake_chrome_audio_service_client.cc",
       "fake_rtanalytics.cc",
@@ -153,5 +148,10 @@ if (use.test) {
       "proto_mojom_conversion_test.cc",
       "testrunner.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [ ":media_perception_service_lib" ]
   }
 }

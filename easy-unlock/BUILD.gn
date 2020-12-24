@@ -23,7 +23,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libeasyunlock") {
-  configs += [ ":target_defaults" ]
   sources = [
     "dbus_adaptor.cc",
     "dbus_adaptor.h",
@@ -36,11 +35,12 @@ static_library("libeasyunlock") {
       "fake_easy_unlock_service.h",
     ]
   }
+  configs += [ ":target_defaults" ]
 }
 
 executable("easy_unlock") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libeasyunlock" ]
 }
 
@@ -50,12 +50,12 @@ if (use.test) {
   }
 
   executable("easy_unlock_test_runner") {
+    sources = [ "easy_unlock_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
       ":test_config",
     ]
-    sources = [ "easy_unlock_test.cc" ]
     deps = [
       ":libeasyunlock",
       "//common-mk/testrunner",
