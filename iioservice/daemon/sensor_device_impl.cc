@@ -63,7 +63,8 @@ SensorDeviceImpl::~SensorDeviceImpl() {
 
 void SensorDeviceImpl::AddReceiver(
     int32_t iio_device_id,
-    mojo::PendingReceiver<cros::mojom::SensorDevice> request) {
+    mojo::PendingReceiver<cros::mojom::SensorDevice> request,
+    const std::set<cros::mojom::DeviceType>& types) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   auto iio_device = context_->GetDeviceById(iio_device_id);
@@ -74,15 +75,19 @@ void SensorDeviceImpl::AddReceiver(
 
   mojo::ReceiverId id =
       receiver_set_.Add(this, std::move(request), ipc_task_runner_);
-  clients_[id].id = id;
-  clients_[id].iio_device = iio_device;
+
+  clients_.emplace(id, ClientData(id, iio_device, types));
 }
 
 void SensorDeviceImpl::SetTimeout(uint32_t timeout) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  clients_[id].timeout = timeout;
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+
+  it->second.timeout = timeout;
 }
 
 void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
@@ -90,10 +95,15 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  ClientData& client = it->second;
+
   std::vector<base::Optional<std::string>> values;
   values.reserve(attr_names.size());
   for (const auto& attr_name : attr_names) {
-    auto value_opt = clients_[id].iio_device->ReadStringAttribute(attr_name);
+    auto value_opt = client.iio_device->ReadStringAttribute(attr_name);
     if (value_opt.has_value()) {
       value_opt =
           base::TrimString(value_opt.value(), base::StringPiece("\0\n", 2),
@@ -112,7 +122,10 @@ void SensorDeviceImpl::SetFrequency(double frequency,
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  ClientData& client = clients_[id];
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  ClientData& client = it->second;
 
   if (AddSamplesHandlerIfNotSet(client.iio_device)) {
     samples_handlers_.at(client.iio_device)
@@ -130,7 +143,10 @@ void SensorDeviceImpl::StartReadingSamples(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  ClientData& client = clients_[id];
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  ClientData& client = it->second;
 
   if (client.observer.is_bound()) {
     LOGF(ERROR) << "Reading already started: " << id;
@@ -162,7 +178,10 @@ void SensorDeviceImpl::GetAllChannelIds(GetAllChannelIdsCallback callback) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  auto iio_device = clients_[id].iio_device;
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  auto iio_device = it->second.iio_device;
   std::vector<std::string> chn_ids;
   for (auto iio_channel : iio_device->GetAllChannels())
     chn_ids.push_back(iio_channel->GetId());
@@ -177,7 +196,10 @@ void SensorDeviceImpl::SetChannelsEnabled(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  ClientData& client = clients_[id];
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  ClientData& client = it->second;
 
   if (AddSamplesHandlerIfNotSet(client.iio_device)) {
     samples_handlers_.at(client.iio_device)
@@ -214,7 +236,10 @@ void SensorDeviceImpl::GetChannelsEnabled(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  ClientData& client = clients_[id];
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  ClientData& client = it->second;
 
   if (AddSamplesHandlerIfNotSet(client.iio_device)) {
     samples_handlers_.at(client.iio_device)
@@ -241,7 +266,10 @@ void SensorDeviceImpl::GetChannelsAttributes(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  ClientData& client = clients_[id];
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  ClientData& client = it->second;
   auto iio_device = client.iio_device;
 
   std::vector<base::Optional<std::string>> values;
@@ -313,7 +341,10 @@ void SensorDeviceImpl::OnSamplesObserverDisconnect(mojo::ReceiverId id) {
 void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  ClientData& client = clients_[id];
+  auto it = clients_.find(id);
+  if (it == clients_.end())
+    return;
+  ClientData& client = it->second;
 
   if (!client.observer.is_bound()) {
     // The client is not reading samples.

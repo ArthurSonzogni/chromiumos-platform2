@@ -66,8 +66,9 @@ class SensorDeviceImplTest : public ::testing::Test {
         task_environment_.GetMainThreadTaskRunner(), context_.get());
     EXPECT_TRUE(sensor_device_);
 
-    sensor_device_->AddReceiver(fakes::kAccelDeviceId,
-                                remote_.BindNewPipeAndPassReceiver());
+    sensor_device_->AddReceiver(
+        fakes::kAccelDeviceId, remote_.BindNewPipeAndPassReceiver(),
+        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
   }
 
   std::unique_ptr<libmems::fakes::FakeIioContext> context_;

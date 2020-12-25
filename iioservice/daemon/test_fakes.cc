@@ -111,9 +111,11 @@ FakeSamplesObserver::~FakeSamplesObserver() {
 }
 
 void FakeSamplesObserver::OnSampleUpdated(
-    const base::flat_map<int32_t, int64_t>& sample) {
+    const libmems::IioDevice::IioSample& sample) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(failures_.empty() || failures_.begin()->first > sample_index_);
+
+  sample_ = sample;
 
   int step = GetStep();
   CHECK_GE(step, 1);
@@ -218,6 +220,15 @@ bool FakeSamplesObserver::NoRemainingFailures() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   return failures_.empty();
+}
+
+int FakeSamplesObserver::GetSampleIndex() const {
+  return sample_index_;
+}
+
+const libmems::IioDevice::IioSample& FakeSamplesObserver::GetLatestSample()
+    const {
+  return sample_;
 }
 
 FakeSamplesObserver::FakeSamplesObserver(

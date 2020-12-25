@@ -30,6 +30,21 @@ constexpr char kHWFifoFlushPath[] = "buffer/hwfifo_flush";
 constexpr double kAcpiAlsMinFrequency = 0.1;
 constexpr double kAcpiAlsMaxFrequency = 2.0;
 
+constexpr cros::mojom::DeviceType kOnChangeDeviceTypes[] = {
+    cros::mojom::DeviceType::LIGHT};
+
+bool IsOnChangeDevice(ClientData* client_data) {
+  if (client_data->iio_device->GetTrigger())
+    return false;
+
+  for (auto type : kOnChangeDeviceTypes) {
+    if (client_data->types.find(type) != client_data->types.end())
+      return true;
+  }
+
+  return false;
+}
+
 }  // namespace
 
 // static
@@ -231,6 +246,26 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
 
   clients_map_.emplace(client_data, SampleData{});
   clients_map_[client_data].sample_index = samples_cnt_;
+  if (IsOnChangeDevice(client_data)) {
+    // Read the first sample of the ON_CHANGE sensor for the sensor client.
+    libmems::IioDevice::IioSample sample;
+    for (int32_t index : client_data->enabled_chn_indices) {
+      auto channel = client_data->iio_device->GetChannel(index);
+      // Read from the input attribute or the raw attribute.
+      auto value_opt = channel->ReadNumberAttribute(kInputAttr);
+      if (!value_opt.has_value())
+        value_opt = channel->ReadNumberAttribute(libmems::kRawAttr);
+
+      if (value_opt.has_value())
+        sample[index] = value_opt.value();
+    }
+
+    if (!sample.empty()) {
+      ipc_task_runner_->PostTask(
+          FROM_HERE, base::BindOnce(on_sample_updated_callback_,
+                                    client_data->id, std::move(sample)));
+    }
+  }
 
   if (!watcher_.get())
     SetSampleWatcherOnThread();

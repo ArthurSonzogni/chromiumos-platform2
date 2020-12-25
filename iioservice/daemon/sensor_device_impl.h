@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -39,7 +40,8 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   ~SensorDeviceImpl();
 
   void AddReceiver(int32_t iio_device_id,
-                   mojo::PendingReceiver<cros::mojom::SensorDevice> request);
+                   mojo::PendingReceiver<cros::mojom::SensorDevice> request,
+                   const std::set<cros::mojom::DeviceType>& types);
 
   // cros::mojom::SensorDevice overrides:
   void SetTimeout(uint32_t timeout) override;

@@ -149,7 +149,10 @@ void SensorServiceImpl::GetDevice(
     return;
   }
 
-  sensor_device_->AddReceiver(iio_device_id, std::move(device_request));
+  const auto& types = device_types_map_[iio_device_id];
+  sensor_device_->AddReceiver(
+      iio_device_id, std::move(device_request),
+      std::set<cros::mojom::DeviceType>(types.begin(), types.end()));
 }
 
 void SensorServiceImpl::RegisterNewDevicesObserver(

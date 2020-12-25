@@ -16,14 +16,23 @@
 
 namespace iioservice {
 
-struct ClientData {
-  mojo::ReceiverId id;
-  libmems::IioDevice* iio_device;
+class ClientData {
+ public:
+  ClientData(const mojo::ReceiverId id,
+             libmems::IioDevice* const iio_device,
+             const std::set<cros::mojom::DeviceType>& types);
+
+  const mojo::ReceiverId id;
+  libmems::IioDevice* const iio_device;
+  const std::set<cros::mojom::DeviceType> types;
+
   std::set<int32_t> enabled_chn_indices;
   double frequency = -1;    // Hz
   uint32_t timeout = 5000;  // millisecond
   mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> observer;
 };
+
+constexpr char kInputAttr[] = "input";
 
 }  // namespace iioservice
 

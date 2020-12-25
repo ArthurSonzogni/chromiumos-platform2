@@ -79,7 +79,7 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   ~FakeSamplesObserver() override;
 
   // cros::mojom::SensorDeviceSamplesObserver overrides:
-  void OnSampleUpdated(const base::flat_map<int32_t, int64_t>& sample) override;
+  void OnSampleUpdated(const libmems::IioDevice::IioSample& sample) override;
   void OnErrorOccurred(cros::mojom::ObserverErrorType type) override;
 
   mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> GetRemote();
@@ -87,6 +87,9 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
 
   bool FinishedObserving() const;
   bool NoRemainingFailures() const;
+
+  int GetSampleIndex() const;
+  const libmems::IioDevice::IioSample& GetLatestSample() const;
 
  private:
   FakeSamplesObserver(
@@ -113,6 +116,8 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   int pause_index_;
 
   int sample_index_ = 0;
+  // Latest sample.
+  libmems::IioDevice::IioSample sample_;
 
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_;
 

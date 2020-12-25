@@ -24,6 +24,7 @@ static_library("libiioservice") {
   configs += [ ":target_defaults_pkg_deps" ]
 
   sources = [
+    "common_types.cc",
     "daemon.cc",
     "samples_handler.cc",
     "sensor_device_impl.cc",

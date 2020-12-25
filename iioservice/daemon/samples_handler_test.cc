@@ -35,6 +35,11 @@ constexpr int kNumFailures = 10;
 constexpr char kFakeTriggerName[] = "FakeTrigger";
 constexpr int kFakeTriggerId = 1;
 
+constexpr char kFakeLightName[] = "cros-ec-light";
+constexpr int kFakeLightId = 2;
+constexpr int kFakeLightData = 100;
+constexpr char kGreenChannel[] = "illuminance_green";
+
 double FixFrequency(double frequency) {
   if (frequency < libmems::kFrequencyEpsilon)
     return 0.0;
@@ -72,7 +77,7 @@ class SamplesHandlerTestBase {
     observers_[id]->OnErrorOccurred(type);
   }
 
-  void SetUpBase(bool with_trigger) {
+  void SetUpAccelBase(bool with_trigger) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
     if (with_trigger) {
@@ -89,6 +94,45 @@ class SamplesHandlerTestBase {
       device_->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
           libmems::fakes::kFakeAccelChns[i], true));
     }
+
+    EXPECT_TRUE(
+        device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0));
+
+    handler_ = fakes::FakeSamplesHandler::Create(
+        task_environment_.GetMainThreadTaskRunner(),
+        task_environment_.GetMainThreadTaskRunner(), device_.get(),
+        base::BindRepeating(&SamplesHandlerTestBase::OnSampleUpdatedCallback,
+                            base::Unretained(this)),
+        base::BindRepeating(&SamplesHandlerTestBase::OnErrorOccurredCallback,
+                            base::Unretained(this)));
+    EXPECT_TRUE(handler_);
+  }
+
+  void SetUpLightBase(bool with_trigger) {
+    device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
+        nullptr, kFakeLightName, kFakeLightId);
+    if (with_trigger) {
+      trigger_ = std::make_unique<libmems::fakes::FakeIioDevice>(
+          nullptr, kFakeTriggerName, kFakeTriggerId);
+      device_->SetTrigger(trigger_.get());
+    }
+
+    EXPECT_TRUE(
+        device_->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
+                                      fakes::kFakeSamplingFrequencyAvailable));
+
+    auto light_channel = std::make_unique<libmems::fakes::FakeIioChannel>(
+        cros::mojom::kLightChannel, true);
+    light_channel->WriteNumberAttribute(libmems::kRawAttr, kFakeLightData);
+    device_->AddChannel(std::move(light_channel));
+
+    auto light_green_channel =
+        std::make_unique<libmems::fakes::FakeIioChannel>(kGreenChannel, true);
+    light_green_channel->WriteNumberAttribute(kInputAttr, kFakeLightData);
+    device_->AddChannel(std::move(light_green_channel));
+
+    device_->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
+        libmems::kTimestampAttr, true));
 
     EXPECT_TRUE(
         device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0));
@@ -130,7 +174,7 @@ class SamplesHandlerTestBase {
 class SamplesHandlerTest : public ::testing::Test,
                            public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpBase(/*with_trigger=*/false); }
+  void SetUp() override { SetUpAccelBase(/*with_trigger=*/false); }
 
   void TearDown() override { TearDownBase(); }
 };
@@ -143,12 +187,13 @@ TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
   std::vector<double> freqs = {0.0, 10.0};
-  clients_data_.resize(freqs.size());
+  clients_data_.reserve(freqs.size());
   for (size_t i = 0; i < freqs.size(); ++i) {
+    clients_data_.emplace_back(ClientData(
+        i, device_.get(),
+        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
     ClientData& client_data = clients_data_[i];
 
-    client_data.id = i;
-    client_data.iio_device = device_.get();
     // At least one channel enabled
     client_data.enabled_chn_indices.emplace(3);  // timestamp
     client_data.timeout = 0;
@@ -190,7 +235,7 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
   device_->DisableFd();
 
   std::vector<double> freqs = {5.0, 0.0, 10.0, 100.0};
-  clients_data_.resize(freqs.size());
+  clients_data_.reserve(freqs.size());
 
   size_t fd_failed_cnt = 0;
   for (size_t i = 0; i < freqs.size(); ++i) {
@@ -199,10 +244,11 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
   }
 
   for (size_t i = 0; i < freqs.size(); ++i) {
+    clients_data_.emplace_back(ClientData(
+        i, device_.get(),
+        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
     ClientData& client_data = clients_data_[i];
 
-    client_data.id = i;
-    client_data.iio_device = device_.get();
     // At least one channel enabled
     client_data.enabled_chn_indices.emplace(3);  // timestamp
     client_data.frequency = freqs[i];
@@ -245,7 +291,7 @@ class SamplesHandlerTestWithParam
     : public ::testing::TestWithParam<std::vector<std::pair<double, double>>>,
       public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpBase(/*with_trigger=*/false); }
+  void SetUp() override { SetUpAccelBase(/*with_trigger=*/false); }
 
   void TearDown() override { TearDownBase(); }
 };
@@ -257,16 +303,17 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
-  clients_data_.resize(GetParam().size());
+  clients_data_.reserve(GetParam().size());
 
   std::multiset<double> frequencies;
 
   // Add clients
   for (size_t i = 0; i < GetParam().size(); ++i) {
+    clients_data_.emplace_back(ClientData(
+        i, device_.get(),
+        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
     ClientData& client_data = clients_data_[i];
 
-    client_data.id = i;
-    client_data.iio_device = device_.get();
     // At least one channel enabled
     client_data.enabled_chn_indices.emplace(3);  // timestamp
     client_data.timeout = 0;
@@ -333,7 +380,7 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
         std::make_pair(k, cros::mojom::ObserverErrorType::READ_FAILED));
   }
 
-  clients_data_.resize(GetParam().size());
+  clients_data_.reserve(GetParam().size());
 
   double max_freq = -1, max_freq2 = -1;
   for (size_t i = 0; i < GetParam().size(); ++i) {
@@ -345,10 +392,11 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
   max_freq2 = FixFrequency(max_freq2);
 
   for (size_t i = 0; i < GetParam().size(); ++i) {
+    clients_data_.emplace_back(ClientData(
+        i, device_.get(),
+        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
     ClientData& client_data = clients_data_[i];
 
-    client_data.id = i;
-    client_data.iio_device = device_.get();
     client_data.enabled_chn_indices.emplace(0);  // accel_x
     client_data.enabled_chn_indices.emplace(2);  // accel_z
     client_data.enabled_chn_indices.emplace(3);  // timestamp
@@ -458,18 +506,18 @@ INSTANTIATE_TEST_SUITE_P(
 class SamplesHandlerWithTriggerTest : public ::testing::Test,
                                       public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpBase(/*with_trigger=*/true); }
+  void SetUp() override { SetUpAccelBase(/*with_trigger=*/true); }
 
   void TearDown() override { TearDownBase(); }
 };
 
 TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
-  ClientData client_data;
+  ClientData client_data(
+      0, device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
 
   double frequency = kMaxFrequency;
 
-  client_data.id = 0;
-  client_data.iio_device = device_.get();
   client_data.enabled_chn_indices.emplace(0);  // accel_x
   client_data.frequency = frequency;
 
@@ -483,6 +531,84 @@ TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
   EXPECT_EQ(trigger_->ReadDoubleAttribute(libmems::kSamplingFrequencyAttr)
                 .value_or(-1),
             frequency);
+}
+
+class SamplesHandlerLightTest : public ::testing::Test,
+                                public SamplesHandlerTestBase {
+ protected:
+  void TearDown() override { TearDownBase(); }
+};
+
+TEST_F(SamplesHandlerLightTest, CrosECLight) {
+  SetUpLightBase(/*with_trigger=*/false);
+
+  // Set the pause in the beginning to test only the first sample from raw
+  // values.
+  device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
+
+  ClientData client_data(
+      0, device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT});
+
+  client_data.enabled_chn_indices.emplace(0);  // illuminance
+  client_data.enabled_chn_indices.emplace(1);  // illuminance_green
+  client_data.enabled_chn_indices.emplace(2);  // timestamp
+  client_data.frequency = kFooFrequency;
+
+  // Don't care about frequencies as there would be no samples.
+  auto fake_observer = fakes::FakeSamplesObserver::Create(
+      device_.get(),
+      std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>(),
+      kFooFrequency, kFooFrequency, kFooFrequency, kFooFrequency);
+
+  handler_->AddClient(&client_data);
+
+  observers_.emplace_back(std::move(fake_observer));
+
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(observers_.front()->GetSampleIndex(), 1);
+
+  auto& sample = observers_.front()->GetLatestSample();
+  EXPECT_EQ(sample.size(), 2);
+
+  auto it = sample.find(0);
+  EXPECT_TRUE(it != sample.end());
+  EXPECT_EQ(it->second, kFakeLightData);
+
+  it = sample.find(1);
+  EXPECT_TRUE(it != sample.end());
+  EXPECT_EQ(it->second, kFakeLightData);
+}
+
+TEST_F(SamplesHandlerLightTest, AcpiAls) {
+  SetUpLightBase(/*with_trigger=*/true);
+
+  // Set the pause in the beginning to test only the first sample from raw
+  // values.
+  device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
+
+  ClientData client_data(
+      0, device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT});
+
+  client_data.enabled_chn_indices.emplace(0);  // illuminance
+  client_data.enabled_chn_indices.emplace(1);  // timestamp
+  client_data.frequency = kFooFrequency;
+
+  // Don't care about frequencies as there would be no samples.
+  auto fake_observer = fakes::FakeSamplesObserver::Create(
+      device_.get(),
+      std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>(),
+      kFooFrequency, kFooFrequency, kFooFrequency, kFooFrequency);
+
+  handler_->AddClient(&client_data);
+
+  observers_.emplace_back(std::move(fake_observer));
+
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(observers_.front()->GetSampleIndex(), 0);
 }
 
 }  // namespace
