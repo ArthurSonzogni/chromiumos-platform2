@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next min version: 2
+// Next min version: 3
 
 module cros.mojom;
 
@@ -56,6 +56,7 @@ enum DeviceType {
   ANGLVEL_UNCALIBRATED = 9,
   MAGN_UNCALIBRATED = 10,
   GRAVITY = 11,
+  PROXIMITY = 12,
 };
 
 [Extensible]
@@ -124,10 +125,44 @@ enum SensorDeviceDisconnectReason {
   DEVICE_REMOVED = 1,
 };
 
+[Stable, Extensible]
+enum IioChanType {
+  [Default] IIO_PROXIMITY = 0,
+};
+
+[Stable, Extensible]
+enum IioEventType {
+  [Default] IIO_EV_TYPE_THRESH = 0,
+  IIO_EV_TYPE_MAG = 1,
+  IIO_EV_TYPE_ROC = 2,
+  IIO_EV_TYPE_THRESH_ADAPTIVE = 3,
+  IIO_EV_TYPE_MAG_ADAPTIVE = 4,
+  IIO_EV_TYPE_CHANGE = 5,
+};
+
+[Stable, Extensible]
+enum IioEventDirection {
+  [Default] IIO_EV_DIR_EITHER = 0,
+  IIO_EV_DIR_RISING = 1,
+  IIO_EV_DIR_FALLING = 2,
+  IIO_EV_DIR_NONE = 3,
+};
+
+struct IioEvent {
+  IioChanType chan_type;
+  IioEventType event_type;
+  IioEventDirection direction;
+
+  int16 channel;  // -1 if invalid
+
+  // Only set in SensorDeviceEventsObserver::OnEventUpdated.
+  int64 timestamp;
+};
+
 // SensorDevice, an interface sending requests for a physical device
 // (libiio:iio_device). It is an isolated client in iioservice's point of view.
 //
-// Next method ID: 9
+// Next method ID: 15
 interface SensorDevice {
   // Sets |timeout| in milliseconds for I/O operations, mainly for reading
   // samples. Sets |timeout| as 0 to specify that no timeout should occur.
@@ -177,6 +212,38 @@ interface SensorDevice {
   // Returns base::nullopt if the attribute in the channel cannot be read.
   GetChannelsAttributes@8(array<int32> iio_chn_indices, string attr_name)
     => (array<string?> values);
+
+  // Gets all events' names a given sensor supports as a vector of string.
+  // It is up to the client to set the event parameters properly directly.
+  // When several clients are listening to the same events, it is possible
+  // that altering the event property will lead to send more events
+  // to a given client or worse, prevent a client to receive events.
+  // Client decodes events using uapi/linux/iio/events.h macros.
+  // The ids are ordered and the user should use the indices of events
+  // to send further requests.
+  GetAllEvents@9() => (array<IioEvent> iio_events);
+
+  // Enable/Disable events, allow it to send message to the host.
+  SetEventsEnabled@10(array<int32> iio_event_indices, bool en)
+    => (array<int32> failed_indices);
+
+  // Returns an array of bool indicating if events are enabled.
+  GetEventsEnabled@11(array<int32> iio_event_indices) => (array<bool> enabled);
+
+  // Gets the |attr_name| attribute of events as a group into |values| in
+  // string.
+  // Returns base::nullopt if the attribute in the channel cannot be read.
+  GetEventsAttributes@12(array<int32> iio_event_indices, string attr_name)
+    => (array<string?> values);
+
+  // Starts reading events coming from the sensor.
+  // Errors will be pushed to the observer. It's the user's responsibility to
+  // keep |observer| active while reading.
+  StartReadingEvents@13(pending_remote<SensorDeviceEventsObserver> observer);
+
+  // Stops reading events in this device. Reading can be restarted by calling
+  // |StartReadingEvents| again.
+  StopReadingEvents@14();
 };
 
 // One observer is created to track one specific device's samples, using
@@ -201,3 +268,18 @@ interface SensorServiceNewDevicesObserver {
   // iioservice. Sensor clients can get access to this device with the id.
   OnNewDeviceAdded@0(int32 iio_device_id, array<DeviceType> types);
 };
+
+// One observer is created to track one specific device's events, using
+// SensorDevice::StartReadingEvents to register the observer.
+//
+// Next method ID: 2
+interface SensorDeviceEventsObserver {
+  // When |event| arrives, it is sent to clients as a u64 bit integer.
+  // Macros in uapi/linux/iio/events.h are used for decoding.
+  // The first term is the event to decode, the second term is a timestamp.
+  OnEventUpdated@0(IioEvent iio_event);
+
+  // An error occurs and is sent to the client as an enum type.
+  OnErrorOccurred@1(ObserverErrorType type);
+};
+

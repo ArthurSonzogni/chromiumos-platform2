@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <libmems/common_types.h>
 
@@ -67,6 +68,10 @@ bool ClientData::IsSampleActive() const {
          !enabled_chn_indices.empty();
 }
 
+bool ClientData::IsEventActive() const {
+  return !enabled_event_indices.empty();
+}
+
 std::vector<std::string> GetGravityChannels() {
   std::vector<std::string> channel_ids;
   for (char axis : kChannelAxes) {
@@ -114,6 +119,63 @@ base::Optional<std::string> DeviceTypeToString(cros::mojom::DeviceType type) {
       // iioservice instead of kernel.
     default:
       return base::nullopt;
+  }
+}
+
+cros::mojom::IioChanType ConvertChanType(iio_chan_type chan_type) {
+  switch (chan_type) {
+    case iio_chan_type::IIO_PROXIMITY:
+      return cros::mojom::IioChanType::IIO_PROXIMITY;
+
+    default:
+      NOTREACHED() << "Invalid iio_chan_type: " << chan_type;
+      return cros::mojom::IioChanType::IIO_PROXIMITY;
+  }
+}
+
+cros::mojom::IioEventType ConvertEventType(iio_event_type event_type) {
+  switch (event_type) {
+    case iio_event_type::IIO_EV_TYPE_THRESH:
+      return cros::mojom::IioEventType::IIO_EV_TYPE_THRESH;
+
+    case iio_event_type::IIO_EV_TYPE_MAG:
+      return cros::mojom::IioEventType::IIO_EV_TYPE_MAG;
+
+    case iio_event_type::IIO_EV_TYPE_ROC:
+      return cros::mojom::IioEventType::IIO_EV_TYPE_ROC;
+
+    case iio_event_type::IIO_EV_TYPE_THRESH_ADAPTIVE:
+      return cros::mojom::IioEventType::IIO_EV_TYPE_THRESH_ADAPTIVE;
+
+    case iio_event_type::IIO_EV_TYPE_MAG_ADAPTIVE:
+      return cros::mojom::IioEventType::IIO_EV_TYPE_MAG_ADAPTIVE;
+
+    case iio_event_type::IIO_EV_TYPE_CHANGE:
+      return cros::mojom::IioEventType::IIO_EV_TYPE_CHANGE;
+
+    default:
+      NOTREACHED() << "Invalid iio_event_type: " << event_type;
+      return cros::mojom::IioEventType::IIO_EV_TYPE_THRESH;
+  }
+}
+
+cros::mojom::IioEventDirection ConvertDirection(iio_event_direction direction) {
+  switch (direction) {
+    case iio_event_direction::IIO_EV_DIR_EITHER:
+      return cros::mojom::IioEventDirection::IIO_EV_DIR_EITHER;
+
+    case iio_event_direction::IIO_EV_DIR_RISING:
+      return cros::mojom::IioEventDirection::IIO_EV_DIR_RISING;
+
+    case iio_event_direction::IIO_EV_DIR_FALLING:
+      return cros::mojom::IioEventDirection::IIO_EV_DIR_FALLING;
+
+    case iio_event_direction::IIO_EV_DIR_NONE:
+      return cros::mojom::IioEventDirection::IIO_EV_DIR_NONE;
+
+    default:
+      NOTREACHED() << "Invalid iio_event_direction: " << direction;
+      return cros::mojom::IioEventDirection::IIO_EV_DIR_EITHER;
   }
 }
 

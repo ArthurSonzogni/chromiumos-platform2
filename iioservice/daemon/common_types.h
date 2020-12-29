@@ -5,6 +5,7 @@
 #ifndef IIOSERVICE_DAEMON_COMMON_TYPES_H_
 #define IIOSERVICE_DAEMON_COMMON_TYPES_H_
 
+#include <linux/iio/types.h>
 #include <map>
 #include <set>
 #include <string>
@@ -44,6 +45,7 @@ class ClientData {
                       DeviceData* device_data = nullptr);
 
   bool IsSampleActive() const;
+  bool IsEventActive() const;
 
   const mojo::ReceiverId id;
   DeviceData* const device_data;
@@ -52,6 +54,9 @@ class ClientData {
   double frequency = -1;    // Hz
   uint32_t timeout = 5000;  // millisecond
   mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> samples_observer;
+
+  std::set<int32_t> enabled_event_indices;
+  mojo::Remote<cros::mojom::SensorDeviceEventsObserver> events_observer;
 };
 
 struct SampleData {
@@ -75,6 +80,10 @@ std::string GetSamplingFrequencyAvailable(double min_frequency,
                                           double max_frequency);
 
 base::Optional<std::string> DeviceTypeToString(cros::mojom::DeviceType type);
+
+cros::mojom::IioChanType ConvertChanType(iio_chan_type chan_type);
+cros::mojom::IioEventType ConvertEventType(iio_event_type event_type);
+cros::mojom::IioEventDirection ConvertDirection(iio_event_direction direction);
 
 }  // namespace iioservice
 

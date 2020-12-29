@@ -24,6 +24,7 @@ pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmems",
     "libmetrics",
     "libmojo",
   ]
@@ -33,6 +34,7 @@ static_library("libiioservice") {
   sources = [
     "common_types.cc",
     "daemon.cc",
+    "events_handler.cc",
     "fusion.cc",
     "samples_handler.cc",
     "samples_handler_base.cc",
@@ -92,6 +94,7 @@ if (use.test) {
 
   executable("iioservice_testrunner") {
     sources = [
+      "events_handler_test.cc",
       "samples_handler_fusion_test.cc",
       "samples_handler_test.cc",
       "sensor_device_fusion_gravity_test.cc",

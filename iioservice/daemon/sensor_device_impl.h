@@ -22,6 +22,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "iioservice/daemon/common_types.h"
+#include "iioservice/daemon/events_handler.h"
 #include "iioservice/daemon/samples_handler.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
@@ -64,6 +65,19 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   void GetChannelsAttributes(const std::vector<int32_t>& iio_chn_indices,
                              const std::string& attr_name,
                              GetChannelsAttributesCallback callback) override;
+  void GetAllEvents(GetAllEventsCallback callback) override;
+  void SetEventsEnabled(const std::vector<int32_t>& iio_event_indices,
+                        bool en,
+                        SetEventsEnabledCallback callback) override;
+  void GetEventsEnabled(const std::vector<int32_t>& iio_event_indices,
+                        GetEventsEnabledCallback callback) override;
+  void GetEventsAttributes(const std::vector<int32_t>& iio_event_indices,
+                           const std::string& attr_name,
+                           GetEventsAttributesCallback callback) override;
+  void StartReadingEvents(
+      mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer)
+      override;
+  void StopReadingEvents() override;
 
   base::WeakPtr<SensorDeviceImpl> GetWeakPtr();
 
@@ -78,6 +92,8 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   void OnSamplesObserverDisconnect(mojo::ReceiverId id);
   void StopReadingSamplesOnClient(mojo::ReceiverId id,
                                   base::OnceClosure callback);
+  void StopReadingEventsOnClient(mojo::ReceiverId id,
+                                 base::OnceClosure callback);
 
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
   libmems::IioContext* context_;  // non-owned
@@ -94,6 +110,8 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
 
   std::map<libmems::IioDevice*, SamplesHandler::ScopedSamplesHandler>
       samples_handlers_;
+  std::map<libmems::IioDevice*, EventsHandler::ScopedEventsHandler>
+      events_handlers_;
 
   base::WeakPtrFactory<SensorDeviceImpl> weak_factory_{this};
 };

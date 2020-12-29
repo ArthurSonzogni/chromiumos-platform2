@@ -8,6 +8,7 @@
 #include <iterator>
 #include <vector>
 
+#include <gtest/gtest.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
 
@@ -242,8 +243,7 @@ FakeSamplesObserver::FakeSamplesObserver(
       frequency2_(frequency2),
       dev_frequency_(dev_frequency),
       dev_frequency2_(dev_frequency2),
-      pause_index_(pause_index),
-      receiver_(this) {
+      pause_index_(pause_index) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK_GE(frequency_, 0.0);
   CHECK_GE(frequency2_, 0.0);
@@ -281,6 +281,104 @@ int FakeSamplesObserver::GetStep() const {
   int step2 = dev_frequency2_ / frequency2_;
 
   return std::max(pause_index_ - sample_index_ + 1, step2);
+}
+
+FakeEventsObserver::FakeEventsObserver(
+    libmems::fakes::FakeIioDevice* device,
+    std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures,
+    std::set<int32_t> event_indices)
+    : device_(device),
+      failures_(std::move(failures)),
+      event_indices_(std::move(event_indices)) {
+  event_index_ = -1;
+  NextEventIndex();
+}
+
+FakeEventsObserver::~FakeEventsObserver() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
+
+void FakeEventsObserver::OnEventUpdated(cros::mojom::IioEventPtr event) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  EXPECT_EQ(event->timestamp / 1000000000LL, event_index_);
+
+  auto size = device_->GetAllEvents().size();
+  libmems::IioEvent* iio_event = device_->GetEvent(event_index_ % size);
+
+  EXPECT_EQ(ConvertChanType(iio_event->GetChannelType()), event->chan_type);
+  EXPECT_EQ(ConvertEventType(iio_event->GetEventType()), event->event_type);
+  if (iio_event->GetDirection() == iio_event_direction::IIO_EV_DIR_EITHER) {
+    if ((event_index_ / size) % 2 == 0) {
+      EXPECT_EQ(event->direction,
+                cros::mojom::IioEventDirection::IIO_EV_DIR_RISING);
+    } else {
+      EXPECT_EQ(event->direction,
+                cros::mojom::IioEventDirection::IIO_EV_DIR_FALLING);
+    }
+  } else {
+    EXPECT_EQ(ConvertDirection(iio_event->GetDirection()), event->direction);
+  }
+  EXPECT_EQ(iio_event->GetChannelNumber(), event->channel);
+
+  NextEventIndex();
+}
+
+void FakeEventsObserver::OnErrorOccurred(cros::mojom::ObserverErrorType type) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(!failures_.empty());
+  CHECK_EQ(failures_.begin()->second, type);
+
+  failures_.erase(failures_.begin());
+}
+
+mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver>
+FakeEventsObserver::GetRemote() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  auto remote = receiver_.BindNewPipeAndPassRemote();
+  receiver_.set_disconnect_handler(base::BindOnce(
+      &FakeEventsObserver::OnObserverDisconnect, weak_factory_.GetWeakPtr()));
+  return remote;
+}
+
+bool FakeEventsObserver::is_bound() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  return receiver_.is_bound();
+}
+
+bool FakeEventsObserver::FinishedObserving() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  return event_index_ >= libmems::fakes::kEventNumber;
+}
+
+bool FakeEventsObserver::NoRemainingFailures() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  return failures_.empty();
+}
+
+int FakeEventsObserver::GetEventIndex() const {
+  return event_index_;
+}
+
+void FakeEventsObserver::NextEventIndex() {
+  if (event_index_ >= libmems::fakes::kEventNumber)
+    return;
+
+  auto size = device_->GetAllEvents().size();
+  while (++event_index_ < libmems::fakes::kEventNumber) {
+    if (base::Contains(event_indices_, event_index_ % size))
+      break;
+  }
+}
+
+void FakeEventsObserver::OnObserverDisconnect() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  receiver_.reset();
 }
 
 }  // namespace fakes

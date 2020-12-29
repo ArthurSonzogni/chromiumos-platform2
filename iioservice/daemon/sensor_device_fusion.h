@@ -127,6 +127,19 @@ class SensorDeviceFusion : public cros::mojom::SensorDevice {
                           SetChannelsEnabledCallback callback) override;
   void GetChannelsEnabled(const std::vector<int32_t>& iio_chn_indices,
                           GetChannelsEnabledCallback callback) override;
+  void GetAllEvents(GetAllEventsCallback callback) override;
+  void SetEventsEnabled(const std::vector<int32_t>& iio_event_indices,
+                        bool en,
+                        SetEventsEnabledCallback callback) override;
+  void GetEventsEnabled(const std::vector<int32_t>& iio_event_indices,
+                        GetEventsEnabledCallback callback) override;
+  void GetEventsAttributes(const std::vector<int32_t>& iio_event_indices,
+                           const std::string& attr_name,
+                           GetEventsAttributesCallback callback) override;
+  void StartReadingEvents(
+      mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer)
+      override;
+  void StopReadingEvents() override;
 
  protected:
   friend SensorDeviceFusionTest;

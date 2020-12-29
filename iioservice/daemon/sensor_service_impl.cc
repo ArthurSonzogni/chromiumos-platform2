@@ -308,7 +308,14 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   const int32_t id = device->GetId();
-  if (!device->DisableBuffer()) {
+
+  bool disable_events = true;
+  for (auto* event : device->GetAllEvents()) {
+    if (!event->WriteStringAttribute("en", "0\n"))
+      disable_events = false;
+  }
+
+  if (!device->DisableBuffer() && !disable_events) {
     LOGF(ERROR) << "Permissions and ownerships hasn't been set for device: "
                 << id;
     return;

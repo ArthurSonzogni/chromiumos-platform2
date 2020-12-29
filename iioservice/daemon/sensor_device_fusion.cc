@@ -163,6 +163,52 @@ void SensorDeviceFusion::GetChannelsEnabled(
   std::move(callback).Run(std::move(enabled));
 }
 
+void SensorDeviceFusion::GetAllEvents(GetAllEventsCallback callback) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  std::move(callback).Run({});
+}
+
+void SensorDeviceFusion::SetEventsEnabled(
+    const std::vector<int32_t>& iio_event_indices,
+    bool en,
+    SetEventsEnabledCallback callback) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  std::move(callback).Run(iio_event_indices);
+}
+
+void SensorDeviceFusion::GetEventsEnabled(
+    const std::vector<int32_t>& iio_event_indices,
+    GetEventsEnabledCallback callback) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  std::move(callback).Run(std::vector<bool>(iio_event_indices.size(), false));
+}
+
+void SensorDeviceFusion::GetEventsAttributes(
+    const std::vector<int32_t>& iio_event_indices,
+    const std::string& attr_name,
+    GetEventsAttributesCallback callback) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  std::move(callback).Run(std::vector<base::Optional<std::string>>(
+      iio_event_indices.size(), base::nullopt));
+}
+
+void SensorDeviceFusion::StartReadingEvents(
+    mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  // Do nothing.
+}
+
+void SensorDeviceFusion::StopReadingEvents() {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  // Do nothing.
+}
+
 SensorDeviceFusion::IioDeviceHandler::IioDeviceHandler(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     int32_t iio_device_id,

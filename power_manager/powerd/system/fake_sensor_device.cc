@@ -123,5 +123,39 @@ void FakeSensorDevice::GetChannelsAttributes(
       iio_chn_indices.size(), base::nullopt)));
 }
 
+void FakeSensorDevice::GetAllEvents(GetAllEventsCallback callback) {
+  std::move(callback).Run({});
+}
+
+void FakeSensorDevice::SetEventsEnabled(
+    const std::vector<int32_t>& iio_event_indices,
+    bool en,
+    SetEventsEnabledCallback callback) {
+  std::move(callback).Run(iio_event_indices);
+}
+
+void FakeSensorDevice::GetEventsEnabled(
+    const std::vector<int32_t>& iio_event_indices,
+    GetEventsEnabledCallback callback) {
+  std::move(callback).Run(std::vector<bool>(iio_event_indices.size(), false));
+}
+
+void FakeSensorDevice::GetEventsAttributes(
+    const std::vector<int32_t>& iio_event_indices,
+    const std::string& attr_name,
+    GetEventsAttributesCallback callback) {
+  std::move(callback).Run(std::vector<base::Optional<std::string>>(
+      iio_event_indices.size(), base::nullopt));
+}
+
+void FakeSensorDevice::StartReadingEvents(
+    mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
+  // Do nothing.
+}
+
+void FakeSensorDevice::StopReadingEvents() {
+  // Do nothing.
+}
+
 }  // namespace system
 }  // namespace power_manager

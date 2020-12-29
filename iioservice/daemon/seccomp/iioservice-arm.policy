@@ -42,8 +42,7 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-# used in libiio as BLOCK_FREE_IOCTL: _IO('i', 0xa1)
-ioctl: arg1 == 0x69a1
+ioctl: 1
 _llseek: 1
 lstat64: 1
 madvise: 1

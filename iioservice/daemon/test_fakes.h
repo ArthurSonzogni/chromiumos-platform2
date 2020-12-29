@@ -144,11 +144,50 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   // Latest sample.
   libmems::IioDevice::IioSample sample_;
 
-  mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_;
+  mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_{this};
 
   SEQUENCE_CHECKER(sequence_checker_);
 
   base::WeakPtrFactory<FakeSamplesObserver> weak_factory_{this};
+};
+
+class FakeEventsObserver : public cros::mojom::SensorDeviceEventsObserver {
+ public:
+  FakeEventsObserver(
+      libmems::fakes::FakeIioDevice* device,
+      std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures,
+      std::set<int32_t> event_indices);
+
+  ~FakeEventsObserver() override;
+
+  // cros::mojom::SensorDeviceEventsObserver overrides:
+  void OnEventUpdated(cros::mojom::IioEventPtr event) override;
+  void OnErrorOccurred(cros::mojom::ObserverErrorType type) override;
+
+  mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> GetRemote();
+  bool is_bound() const;
+
+  bool FinishedObserving() const;
+  bool NoRemainingFailures() const;
+
+  int GetEventIndex() const;
+
+  void NextEventIndex();
+
+ private:
+  void OnObserverDisconnect();
+
+  libmems::fakes::FakeIioDevice* device_;
+  std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures_;
+  std::set<int32_t> event_indices_;
+
+  int event_index_;
+
+  mojo::Receiver<cros::mojom::SensorDeviceEventsObserver> receiver_{this};
+
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  base::WeakPtrFactory<FakeEventsObserver> weak_factory_{this};
 };
 
 }  // namespace fakes
