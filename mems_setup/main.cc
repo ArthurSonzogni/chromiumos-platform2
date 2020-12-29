@@ -11,6 +11,11 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+#include <base/task/single_thread_task_executor.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+#include <iioservice/include/dbus-constants.h>
 #include <libmems/iio_context_impl.h>
 #include <libmems/iio_device.h>
 #include "mems_setup/configuration.h"
@@ -81,5 +86,32 @@ int main(int argc, char** argv) {
   std::unique_ptr<mems_setup::Configuration> config(
       new mems_setup::Configuration(context.get(), device, delegate.get()));
 
-  return config->Configure() ? 0 : 1;
+  if (config->Configure()) {
+#if USE_IIOSERVICE
+    base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
+
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+    if (!bus->Connect()) {
+      LOG(ERROR) << "mems_setup: Cannot connect to D-Bus.";
+      return 1;
+    }
+
+    dbus::ObjectProxy* proxy = bus->GetObjectProxy(
+        ::iioservice::kIioserviceServiceName,
+        dbus::ObjectPath(::iioservice::kIioserviceServicePath));
+
+    dbus::MethodCall method_call(::iioservice::kIioserviceInterface,
+                                 ::iioservice::kMemsSetupDoneMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendInt32(device->GetId());
+
+    proxy->CallMethodAndBlock(&method_call,
+                              dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+#endif  // USE_IIOSERVICE
+    return 0;
+  }
+
+  return 1;
 }
