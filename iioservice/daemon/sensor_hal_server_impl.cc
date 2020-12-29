@@ -62,6 +62,14 @@ void SensorHalServerImpl::CreateChannel(
   sensor_service_->AddReceiver(std::move(sensor_service_request));
 }
 
+void SensorHalServerImpl::OnDeviceAdded(int iio_device_id) {
+  LOG(ERROR) << "iio device id: " << iio_device_id;
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+  DCHECK(sensor_service_);
+
+  sensor_service_->OnDeviceAdded(iio_device_id);
+}
+
 SensorHalServerImpl::SensorHalServerImpl(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     mojo::PendingReceiver<cros::mojom::SensorHalServer> server_receiver,

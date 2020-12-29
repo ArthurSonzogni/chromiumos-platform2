@@ -36,6 +36,8 @@ class SensorHalServerImpl : public cros::mojom::SensorHalServer {
   void CreateChannel(mojo::PendingReceiver<cros::mojom::SensorService>
                          sensor_service_request) override;
 
+  void OnDeviceAdded(int iio_device_id);
+
  protected:
   SensorHalServerImpl(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,

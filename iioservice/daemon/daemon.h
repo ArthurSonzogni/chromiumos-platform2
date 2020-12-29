@@ -26,6 +26,17 @@ class Daemon : public brillo::DBusDaemon, public SensorServerDbus {
   int OnInit() override;
 
  private:
+  // This function initializes the D-Bus service. The primary function of the
+  // D-Bus interface is to get notified by mems_setup that a device is ready to
+  // be used.
+  void InitDBus();
+
+  // Method called when kMemsSetupDone is received from mems_setup.
+  // Handles reporting of a device is setup by mems_setup and ready to be used.
+  void HandleMemsSetupDone(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
   // SensorServerDbus overrides:
   void OnServerReceived(
       mojo::PendingReceiver<cros::mojom::SensorHalServer> server) override;

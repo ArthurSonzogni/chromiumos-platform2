@@ -168,6 +168,11 @@ void SensorServiceImpl::RegisterNewDevicesObserver(
 void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
+  if (device_types_map_.find(iio_device_id) != device_types_map_.end()) {
+    // Device is already added. Skipping.
+    return;
+  }
+
   // Reload to check if there are new devices available.
   context_->Reload();
   auto device = context_->GetDeviceById(iio_device_id);

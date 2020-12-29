@@ -7,6 +7,7 @@
 #include <sysexits.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -21,6 +22,7 @@
 
 #include "iioservice/daemon/sensor_hal_server_impl.h"
 #include "iioservice/include/common.h"
+#include "iioservice/include/dbus-constants.h"
 
 namespace iioservice {
 
@@ -31,6 +33,8 @@ int Daemon::OnInit() {
   if (exit_code != EX_OK)
     return exit_code;
 
+  InitDBus();
+
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::ThreadTaskRunnerHandle::Get(),
@@ -40,6 +44,45 @@ int Daemon::OnInit() {
   BootstrapMojoConnection();
 
   return 0;
+}
+
+void Daemon::InitDBus() {
+  dbus::ExportedObject* const iioservice_exported_object =
+      bus_->GetExportedObject(
+          dbus::ObjectPath(::iioservice::kIioserviceServicePath));
+  CHECK(iioservice_exported_object);
+
+  // Register a handler of the MemsSetupDone method.
+  CHECK(iioservice_exported_object->ExportMethodAndBlock(
+      ::iioservice::kIioserviceInterface, ::iioservice::kMemsSetupDoneMethod,
+      base::BindRepeating(&Daemon::HandleMemsSetupDone,
+                          weak_factory_.GetWeakPtr())));
+
+  // Take ownership of the ML service.
+  CHECK(bus_->RequestOwnershipAndBlock(::iioservice::kIioserviceServiceName,
+                                       dbus::Bus::REQUIRE_PRIMARY));
+}
+
+void Daemon::HandleMemsSetupDone(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  if (sensor_hal_server_) {
+    dbus::MessageReader reader(method_call);
+    int32_t iio_device_id;
+    if (!reader.PopInt32(&iio_device_id) || iio_device_id < 0) {
+      LOG(ERROR) << "Couldn't extract iio_device_id (int32_t) from D-Bus call";
+      std::move(response_sender)
+          .Run(dbus::ErrorResponse::FromMethodCall(
+              method_call, DBUS_ERROR_FAILED,
+              "Couldn't extract iio_device_id (int32_t)"));
+      return;
+    }
+
+    sensor_hal_server_->OnDeviceAdded(iio_device_id);
+  }
+
+  // Send success response.
+  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void Daemon::OnServerReceived(
