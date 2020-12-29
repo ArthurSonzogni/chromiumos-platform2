@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/mount_encrypted/encryption_key.h"
@@ -32,6 +33,8 @@ class MountEncryptedMetrics {
   void ReportSystemKeyStatus(EncryptionKey::SystemKeyStatus status);
 
   void ReportEncryptionKeyStatus(EncryptionKey::EncryptionKeyStatus status);
+
+  void ReportTimeToTakeTpmOwnership(base::TimeDelta elapsed_time);
 
  private:
   explicit MountEncryptedMetrics(const std::string& output_file);

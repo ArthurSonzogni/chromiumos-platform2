@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
 #include "cryptohome/mount_encrypted/tlcl_stub.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
@@ -191,6 +192,9 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateDirectory(
         tmpdir_.GetPath().AppendASCII("mnt/stateful_partition")));
+
+    metrics_singleton_ = std::make_unique<ScopedMountEncryptedMetricsSingleton>(
+        tmpdir_.GetPath().AppendASCII("metrics").value());
 
     ClearTPM();
     ResetLoader();
@@ -366,6 +370,8 @@ class EncryptionKeyTest : public testing::Test {
   std::unique_ptr<Tpm> tpm_;
   std::unique_ptr<SystemKeyLoader> loader_;
   std::unique_ptr<EncryptionKey> key_;
+
+  std::unique_ptr<ScopedMountEncryptedMetricsSingleton> metrics_singleton_;
 };
 
 #if USE_TPM2

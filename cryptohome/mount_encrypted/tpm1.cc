@@ -22,6 +22,7 @@
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
 
 namespace mount_encrypted {
 namespace {
@@ -362,11 +363,14 @@ result_code Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
       return rc;
     }
 
+    const base::TimeTicks take_ownerhip_start_time = base::TimeTicks::Now();
     rc = tpm_->TakeOwnership();
     if (rc != RESULT_SUCCESS) {
       LOG(ERROR) << "Failed to ensure TPM ownership.";
       return rc;
     }
+    MountEncryptedMetrics::Get()->ReportTimeToTakeTpmOwnership(
+        base::TimeTicks::Now() - take_ownerhip_start_time);
   }
 
   uint32_t pcr_selection = (1 << kPCRBootMode);
