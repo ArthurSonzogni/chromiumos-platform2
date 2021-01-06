@@ -171,6 +171,8 @@ class MountManager {
   // filesystems mounted by the manager.
   using MountStateMap = std::map<std::string, MountState>;
 
+  MountState* FindMountBySource(const std::string& source);
+
   // Type definition of a cache mapping a reserved mount path to the mount
   // error that caused the mount path to be reserved.
   using ReservedMountPathMap = std::map<std::string, MountErrorType>;

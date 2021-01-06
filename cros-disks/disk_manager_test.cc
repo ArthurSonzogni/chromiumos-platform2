@@ -142,14 +142,6 @@ class MockPlatform : public Platform {
   }
 };
 
-class MockMountPoint : public MountPoint {
- public:
-  explicit MockMountPoint(const base::FilePath& path) : MountPoint({path}) {}
-  ~MockMountPoint() override { DestructorUnmount(); }
-
-  MOCK_METHOD(MountErrorType, UnmountImpl, (), (override));
-};
-
 class MockSandboxedProcess : public SandboxedProcess {
  public:
   pid_t StartImpl(base::ScopedFD, base::ScopedFD, base::ScopedFD) override {
@@ -514,9 +506,10 @@ TEST_F(DiskManagerTest, EjectDevice) {
   const base::FilePath kMountPath("/media/removable/disk");
   Disk disk;
 
-  std::unique_ptr<MockMountPoint> mount_point =
-      std::make_unique<MockMountPoint>(kMountPath);
-  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount).WillRepeatedly(Return(MOUNT_ERROR_NONE));
+
+  std::unique_ptr<MountPoint> mount_point =
+      std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   disk.device_file = "/dev/sda";
   disk.media_type = DEVICE_MEDIA_USB;
   EXPECT_CALL(ejector_, Eject("/dev/sda")).Times(0);
@@ -524,8 +517,8 @@ TEST_F(DiskManagerTest, EjectDevice) {
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);
   EXPECT_EQ(MOUNT_ERROR_NONE, wrapped_mount_point->Unmount());
 
-  mount_point = std::make_unique<MockMountPoint>(kMountPath);
-  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  mount_point =
+      std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   disk.device_file = "/dev/sr0";
   disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
   EXPECT_CALL(ejector_, Eject("/dev/sr0")).WillOnce(Return(true));
@@ -533,8 +526,8 @@ TEST_F(DiskManagerTest, EjectDevice) {
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);
   EXPECT_EQ(MOUNT_ERROR_NONE, wrapped_mount_point->Unmount());
 
-  mount_point = std::make_unique<MockMountPoint>(kMountPath);
-  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  mount_point =
+      std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   disk.device_file = "/dev/sr1";
   disk.media_type = DEVICE_MEDIA_DVD;
   EXPECT_CALL(ejector_, Eject("/dev/sr1")).WillOnce(Return(true));
@@ -549,10 +542,10 @@ TEST_F(DiskManagerTest, EjectDeviceWhenUnmountFailed) {
   disk.device_file = "/dev/sr0";
   disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
 
-  std::unique_ptr<MockMountPoint> mount_point =
-      std::make_unique<MockMountPoint>(kMountPath);
-  EXPECT_CALL(*mount_point, UnmountImpl())
-      .WillRepeatedly(Return(MOUNT_ERROR_UNKNOWN));
+  EXPECT_CALL(platform_, Unmount).WillRepeatedly(Return(MOUNT_ERROR_UNKNOWN));
+
+  std::unique_ptr<MountPoint> mount_point =
+      std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   EXPECT_CALL(ejector_, Eject("/dev/sr0")).Times(0);
   std::unique_ptr<MountPoint> wrapped_mount_point =
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);
@@ -565,9 +558,10 @@ TEST_F(DiskManagerTest, EjectDeviceWhenExplicitlyDisabled) {
   disk.device_file = "/dev/sr0";
   disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
 
-  std::unique_ptr<MockMountPoint> mount_point =
-      std::make_unique<MockMountPoint>(kMountPath);
-  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount).WillOnce(Return(MOUNT_ERROR_NONE));
+
+  std::unique_ptr<MountPoint> mount_point =
+      std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   manager_->eject_device_on_unmount_ = false;
   EXPECT_CALL(ejector_, Eject("/dev/sr0")).Times(0);
   std::unique_ptr<MountPoint> wrapped_mount_point =
@@ -581,9 +575,10 @@ TEST_F(DiskManagerTest, EjectDeviceWhenReleased) {
   disk.device_file = "/dev/sr0";
   disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
 
-  std::unique_ptr<MockMountPoint> mount_point =
-      std::make_unique<MockMountPoint>(kMountPath);
-  EXPECT_CALL(*mount_point, UnmountImpl()).Times(0);
+  EXPECT_CALL(platform_, Unmount).Times(0);
+
+  std::unique_ptr<MountPoint> mount_point =
+      std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   EXPECT_CALL(ejector_, Eject("/dev/sr0")).Times(0);
   std::unique_ptr<MountPoint> wrapped_mount_point =
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);

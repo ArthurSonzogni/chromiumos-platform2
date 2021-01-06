@@ -25,32 +25,6 @@ namespace {
 constexpr int kExternalDiskMountFlags =
     MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_NOSYMFOLLOW | MS_DIRSYNC;
 
-// A MountPoint that uses the umount() syscall for unmounting.
-class SystemMountPoint : public MountPoint {
- public:
-  SystemMountPoint(const base::FilePath& path, const Platform* platform)
-      : MountPoint({path}), platform_(platform) {}
-
-  SystemMountPoint(const SystemMountPoint&) = delete;
-  SystemMountPoint& operator=(const SystemMountPoint&) = delete;
-
-  ~SystemMountPoint() override { DestructorUnmount(); }
-
- protected:
-  MountErrorType UnmountImpl() override {
-    MountErrorType error = platform_->Unmount(path().value(), 0);
-    if (error == MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
-      LOG(WARNING) << "Device is busy, trying lazy unmount on "
-                   << path().value();
-      error = platform_->Unmount(path().value(), MNT_DETACH);
-    }
-    return error;
-  }
-
- private:
-  const Platform* platform_;
-};
-
 }  // namespace
 
 SystemMounter::SystemMounter(const Platform* platform,
@@ -82,13 +56,15 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
     return nullptr;
   }
 
-  *error = platform_->Mount(source, target_path.value(), filesystem_type_,
-                            flags, base::JoinString(options, ","));
-  if (*error != MOUNT_ERROR_NONE) {
-    return nullptr;
-  }
-
-  return std::make_unique<SystemMountPoint>(target_path, platform_);
+  return MountPoint::Mount(
+      {
+          .mount_path = target_path,
+          .source = source,
+          .filesystem_type = filesystem_type_,
+          .flags = flags,
+          .data = base::JoinString(options, ","),
+      },
+      platform_, error);
 }
 
 bool SystemMounter::CanMount(const std::string& source,

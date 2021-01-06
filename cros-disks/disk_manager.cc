@@ -181,9 +181,18 @@ class FATMounter : public SystemMounter {
 class DiskManager::EjectingMountPoint : public MountPoint {
  public:
   EjectingMountPoint(std::unique_ptr<MountPoint> mount_point,
+                     const Platform* platform,
                      DiskManager* disk_manager,
                      const std::string& device_file)
-      : MountPoint({mount_point->path()}),
+      : MountPoint(
+            {
+                .mount_path = mount_point->path(),
+                .source = mount_point->source(),
+                .filesystem_type = mount_point->fstype(),
+                .flags = mount_point->flags(),
+                .data = mount_point->data(),
+            },
+            platform),
         mount_point_(std::move(mount_point)),
         disk_manager_(disk_manager),
         device_file_(device_file) {
@@ -195,7 +204,7 @@ class DiskManager::EjectingMountPoint : public MountPoint {
   EjectingMountPoint(const EjectingMountPoint&) = delete;
   EjectingMountPoint& operator=(const EjectingMountPoint&) = delete;
 
-  ~EjectingMountPoint() override { DestructorUnmount(); }
+  ~EjectingMountPoint() override {}
 
   void Release() override {
     MountPoint::Release();
@@ -203,9 +212,16 @@ class DiskManager::EjectingMountPoint : public MountPoint {
   }
 
  protected:
-  MountErrorType UnmountImpl() override {
+  MountErrorType UnmountImpl() override { return CleanUp(); }
+
+  MountErrorType RemountImpl(int flags) override {
+    return mount_point_->Remount(flags & MS_RDONLY);
+  }
+
+ private:
+  MountErrorType CleanUp() {
     MountErrorType error = mount_point_->Unmount();
-    if (error == MOUNT_ERROR_NONE) {
+    if (error == MOUNT_ERROR_NONE || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
       bool success = disk_manager_->EjectDevice(device_file_);
       LOG_IF(ERROR, !success)
           << "Unable to eject device " << quote(device_file_)
@@ -214,7 +230,6 @@ class DiskManager::EjectingMountPoint : public MountPoint {
     return error;
   }
 
- private:
   const std::unique_ptr<MountPoint> mount_point_;
   DiskManager* const disk_manager_;
   const std::string device_file_;
@@ -425,8 +440,8 @@ std::unique_ptr<MountPoint> DiskManager::MaybeWrapMountPointForEject(
   if (!disk.IsOpticalDisk()) {
     return mount_point;
   }
-  return std::make_unique<EjectingMountPoint>(std::move(mount_point), this,
-                                              disk.device_file);
+  return std::make_unique<EjectingMountPoint>(
+      std::move(mount_point), platform(), this, disk.device_file);
 }
 
 bool DiskManager::UnmountAll() {

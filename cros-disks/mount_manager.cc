@@ -110,7 +110,8 @@ MountErrorType MountManager::Remount(const std::string& source_path,
                                      const std::string& filesystem_type,
                                      const std::vector<std::string>& options,
                                      std::string* mount_path) {
-  if (!GetMountPathFromCache(source_path, mount_path)) {
+  MountState* state = FindMountBySource(source_path);
+  if (!state) {
     LOG(WARNING) << "Path " << quote(source_path) << " is not mounted yet";
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
@@ -118,25 +119,21 @@ MountErrorType MountManager::Remount(const std::string& source_path,
   std::vector<std::string> updated_options = options;
   std::string mount_label;
   ExtractMountLabelFromOptions(&updated_options, &mount_label);
+  bool read_only = IsReadOnlyMount(updated_options);
 
   // Perform the underlying mount operation.
-  MountErrorType error_type = MOUNT_ERROR_UNKNOWN;
-  bool mounted_as_read_only = false;
-  std::unique_ptr<MountPoint> mount_point =
-      DoMount(source_path, filesystem_type, updated_options,
-              base::FilePath(*mount_path), &mounted_as_read_only, &error_type);
+  MountErrorType error_type = state->mount_point->Remount(read_only);
   if (error_type != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Cannot remount path " << quote(source_path)
-               << "': " << error_type;
+    LOG(ERROR) << "Cannot remount path " << quote(source_path) << ": "
+               << error_type;
     return error_type;
   }
 
-  DCHECK(mount_point);
+  *mount_path = state->mount_point->path().value();
+
   LOG(INFO) << "Path " << quote(source_path) << " on " << quote(*mount_path)
             << " is remounted";
-  AddOrUpdateMountStateCache(source_path, std::move(mount_point),
-                             mounted_as_read_only);
-
+  state->is_read_only = read_only;
   return error_type;
 }
 
@@ -305,6 +302,14 @@ bool MountManager::UnmountAll() {
   }
 
   return all_umounted;
+}
+
+MountManager::MountState* MountManager::FindMountBySource(
+    const std::string& source) {
+  const auto it = mount_states_.find(source);
+  if (it == mount_states_.end())
+    return nullptr;
+  return &it->second;
 }
 
 void MountManager::AddOrUpdateMountStateCache(

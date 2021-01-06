@@ -5,6 +5,8 @@
 #ifndef CROS_DISKS_MOUNT_POINT_H_
 #define CROS_DISKS_MOUNT_POINT_H_
 
+#include <sys/mount.h>
+
 #include <memory>
 #include <string>
 
@@ -27,12 +29,20 @@ struct MountPointData {
   std::string data = {};
 };
 
+class Platform;
+
 // Class representing a mount created by a mounter.
 class MountPoint {
  public:
   // Creates a MountPoint that does nothing on unmount and 'leaks' the mount
   // point.
   static std::unique_ptr<MountPoint> CreateLeaking(const base::FilePath& path);
+
+  static std::unique_ptr<MountPoint> Mount(MountPointData data,
+                                           const Platform* platform,
+                                           MountErrorType* error);
+
+  explicit MountPoint(MountPointData data, const Platform* platform = nullptr);
 
   MountPoint(const MountPoint&) = delete;
   MountPoint& operator=(const MountPoint&) = delete;
@@ -45,28 +55,33 @@ class MountPoint {
   // it's necessary to be able to leave the mount alone.
   virtual void Release();
 
-  // Unmounts right now using the unmounter.
+  // Unmounts right now.
   MountErrorType Unmount();
 
+  // Remount with specified ro/rw.
+  MountErrorType Remount(bool read_only);
+
   const base::FilePath& path() const { return data_.mount_path; }
+  const std::string& source() const { return data_.source; }
+  const std::string& fstype() const { return data_.filesystem_type; }
+  int flags() const { return data_.flags; }
+  const std::string& data() const { return data_.data; }
+  bool is_read_only() const { return (data_.flags & MS_RDONLY) == MS_RDONLY; }
 
  protected:
-  // Protected constructor for subclasses.
-  explicit MountPoint(MountPointData data);
-
-  // Unmounts the point point and logs errors as appropriate. MUST be called in
-  // the destructor.
-  void DestructorUnmount();
-
   // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be
   // called once, regardless of the number of times Unmount() is called. If
   // Release() is called, this function will not be called.
-  virtual MountErrorType UnmountImpl() = 0;
+  virtual MountErrorType UnmountImpl();
+
+  // Remounts with new flags. Only called if mount is assumed to be mounted.
+  virtual MountErrorType RemountImpl(int flags);
+
+  MountPointData data_;
+  const Platform* platform_;
 
  private:
-  const MountPointData data_;
   bool released_ = false;
-  bool unmounted_on_destruction_ = false;
 };
 
 }  // namespace cros_disks

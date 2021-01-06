@@ -14,37 +14,40 @@
 
 namespace cros_disks {
 
-namespace {
-
-class LeakingMountPoint : public MountPoint {
- public:
-  explicit LeakingMountPoint(const base::FilePath& path) : MountPoint({path}) {}
-  LeakingMountPoint(const LeakingMountPoint&) = delete;
-  LeakingMountPoint& operator=(const LeakingMountPoint&) = delete;
-  ~LeakingMountPoint() override { DestructorUnmount(); }
-
- protected:
-  // MountPoint overrides.
-  MountErrorType UnmountImpl() override { return MOUNT_ERROR_PATH_NOT_MOUNTED; }
-};
-
-}  // namespace
-
 // static
 std::unique_ptr<MountPoint> MountPoint::CreateLeaking(
     const base::FilePath& path) {
-  return std::make_unique<LeakingMountPoint>(path);
+  auto mount_point =
+      std::make_unique<MountPoint>(MountPointData{path}, nullptr);
+  mount_point->Release();
+  return mount_point;
 }
 
-MountPoint::MountPoint(MountPointData data) : data_(std::move(data)) {
+// static
+std::unique_ptr<MountPoint> MountPoint::Mount(MountPointData data,
+                                              const Platform* platform,
+                                              MountErrorType* error) {
+  *error = platform->Mount(data.source, data.mount_path.value(),
+                           data.filesystem_type, data.flags, data.data);
+  if (*error != MOUNT_ERROR_NONE) {
+    return nullptr;
+  }
+  return std::make_unique<MountPoint>(std::move(data), platform);
+}
+
+MountPoint::MountPoint(MountPointData data, const Platform* platform)
+    : data_(std::move(data)), platform_(platform) {
   DCHECK(!path().empty());
 }
 
 MountPoint::~MountPoint() {
-  // Verify that subclasses call DestructorUnmount().
-  DCHECK(unmounted_on_destruction_)
-      << "MountPoint subclasses MUST call DestructorUnmount() in their "
-      << "destructor";
+  if (!released_) {
+    MountErrorType error = Unmount();
+    if (error != MOUNT_ERROR_NONE && error != MOUNT_ERROR_PATH_NOT_MOUNTED) {
+      LOG(WARNING) << "Unmount error while destroying MountPoint("
+                   << quote(path()) << "): " << error;
+    }
+  }
 }
 
 void MountPoint::Release() {
@@ -59,23 +62,55 @@ MountErrorType MountPoint::Unmount() {
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
   MountErrorType error = UnmountImpl();
-  if (error == MOUNT_ERROR_NONE) {
+  if (error == MOUNT_ERROR_NONE || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
     released_ = true;
   }
   return error;
 }
 
-void MountPoint::DestructorUnmount() {
-  if (unmounted_on_destruction_) {
-    return;
+MountErrorType MountPoint::Remount(bool read_only) {
+  if (released_) {
+    return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
-  unmounted_on_destruction_ = true;
+  int new_flags = (data_.flags & ~MS_RDONLY) | (read_only ? MS_RDONLY : 0);
+  MountErrorType error = RemountImpl(new_flags);
+  if (error == MOUNT_ERROR_NONE) {
+    data_.flags = new_flags;
+  }
+  return error;
+}
 
-  MountErrorType error = Unmount();
-  if (error != MOUNT_ERROR_NONE && error != MOUNT_ERROR_PATH_NOT_MOUNTED) {
-    LOG(WARNING) << "Unmount error while destroying MountPoint("
-                 << quote(path()) << "): " << error;
+MountErrorType MountPoint::UnmountImpl() {
+  // We take a 2-step approach to unmounting FUSE filesystems. First, try a
+  // normal unmount. This lets the VFS flush any pending data and lets the
+  // filesystem shut down cleanly. If the filesystem is busy, force unmount
+  // the filesystem. This is done because there is no good recovery path the
+  // user can take, and these filesystem are sometimes unmounted implicitly on
+  // login/logout/suspend.
+
+  MountErrorType error = platform_->Unmount(path().value(), 0 /* flags */);
+  if (error != MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
+    // MOUNT_ERROR_PATH_ALREADY_MOUNTED is returned on EBUSY.
+    return error;
   }
+
+  // For FUSE filesystems, MNT_FORCE will cause the kernel driver to
+  // immediately close the channel to the user-space driver program and cancel
+  // all outstanding requests. However, if any program is still accessing the
+  // filesystem, the umount2() will fail with EBUSY and the mountpoint will
+  // still be attached. Since the mountpoint is no longer valid, use
+  // MNT_DETACH to also force the mountpoint to be disconnected.
+  // On a non-FUSE filesystem MNT_FORCE doesn't have effect, so it only
+  // handles MNT_DETACH, but it's OK to pass MNT_FORCE too.
+  LOG(WARNING) << "Mount point " << quote(path())
+               << " is busy, using force unmount";
+  return platform_->Unmount(path().value(), MNT_FORCE | MNT_DETACH);
+}
+
+MountErrorType MountPoint::RemountImpl(int flags) {
+  return platform_->Mount(data_.source, data_.mount_path.value(),
+                          data_.filesystem_type, flags | MS_REMOUNT,
+                          data_.data);
 }
 
 }  // namespace cros_disks

@@ -171,7 +171,7 @@ TEST(SystemMounterTest, UnmountBusyRetry) {
 
   EXPECT_CALL(platform, Unmount("/mnt/dir", 0))
       .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
-  EXPECT_CALL(platform, Unmount("/mnt/dir", MNT_DETACH))
+  EXPECT_CALL(platform, Unmount("/mnt/dir", MNT_DETACH | MNT_FORCE))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_EQ(MOUNT_ERROR_NONE, mountpoint->Unmount());
   mountpoint.reset();
