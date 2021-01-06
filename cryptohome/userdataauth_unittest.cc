@@ -2191,7 +2191,11 @@ class UserDataAuthExTest : public UserDataAuthTest {
     // closer to a stub. However, the underlying class is
     // NiceMock<MockVaultKeyset>, thus we name the method accordingly.
     std::unique_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
-    mvk->mutable_serialized()->mutable_key_data()->set_label(key_label);
+    mvk->SetKeyDataLabel(key_label);
+
+    SerializedVaultKeyset::SignatureChallengeInfo sig_challenge_info;
+    mvk->SetSignatureChallengeInfo(sig_challenge_info);
+
     return mvk;
   }
 

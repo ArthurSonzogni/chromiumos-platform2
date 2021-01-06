@@ -151,14 +151,11 @@ class Crypto {
                            const brillo::SecureBlob& aes_key,
                            brillo::SecureBlob* data) const;
 
-  // Attempts to reset an LE credential, specified by |serialized_reset|
-  // with an unencrypted key represented by |vk|.
+  // Attempts to reset an LE credential, specified by |vk|.
   // Returns true on success.
   // On failure, false is returned and |error| is set with the appropriate
   // error.
-  bool ResetLECredential(const SerializedVaultKeyset& serialized_reset,
-                         CryptoError* error,
-                         const VaultKeyset& vk) const;
+  bool ResetLECredential(const VaultKeyset& vk, CryptoError* error) const;
 
   // Removes an LE credential specified by |label|.
   // Returns true on success, false otherwise.
@@ -176,7 +173,7 @@ class Crypto {
   bool CanUnsealWithUserAuth() const;
 
   // Returns the number of wrong authentication attempts for the LE keyset.
-  int GetWrongAuthAttempts(const SerializedVaultKeyset& le_serialized) const;
+  int GetWrongAuthAttempts(uint64_t le_label) const;
 
   // Sets the TPM implementation
   void set_tpm(Tpm* value) { tpm_ = value; }

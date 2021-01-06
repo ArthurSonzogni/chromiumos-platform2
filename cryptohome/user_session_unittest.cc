@@ -159,7 +159,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
 
   std::unique_ptr<VaultKeyset> vk0 =
       keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
-  const int64_t ts1 = vk0->serialized().last_activity_timestamp();
+  const int64_t ts1 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts1, kTs1);
 
   // SETUP
@@ -193,7 +193,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
   EXPECT_TRUE(keyset_management_->AreCredentialsValid(users_[0].credentials));
 
   vk0 = keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
-  const int64_t ts2 = vk0->serialized().last_activity_timestamp();
+  const int64_t ts2 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts2, kTs2);
 
   // SETUP
@@ -211,7 +211,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // ts updated on unmount
 
   vk0 = keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
-  const int64_t ts3 = vk0->serialized().last_activity_timestamp();
+  const int64_t ts3 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts3, kTs3);
 }
 
@@ -239,7 +239,7 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
 
   std::unique_ptr<VaultKeyset> vk0 =
       keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
-  const int64_t ts1 = vk0->serialized().last_activity_timestamp();
+  const int64_t ts1 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts1, kTs1);
 
   // TODO(dlunev): this is required to mimic a real Mount::PrepareCryptohome
@@ -270,7 +270,7 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
 
   // No mount, no ts update.
   vk0 = keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
-  const int64_t ts2 = vk0->serialized().last_activity_timestamp();
+  const int64_t ts2 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts2, ts1);
 
   // SETUP
@@ -286,7 +286,7 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   // No unmount, no ts update.
 
   vk0 = keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
-  const int64_t ts3 = vk0->serialized().last_activity_timestamp();
+  const int64_t ts3 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts3, ts2);
 }
 

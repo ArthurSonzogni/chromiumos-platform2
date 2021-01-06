@@ -751,10 +751,7 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
       .WillOnce(Return(LE_CRED_SUCCESS));
 
   pin_vault_keyset_.CreateRandom();
-  pin_vault_keyset_.mutable_serialized()
-      ->mutable_key_data()
-      ->mutable_policy()
-      ->set_low_entropy_credential(true);
+  pin_vault_keyset_.SetLowEntropyCredential(true);
 
   SerializedVaultKeyset serialized;
   EXPECT_TRUE(crypto_.EncryptVaultKeyset(
@@ -769,10 +766,7 @@ TEST_F(LeCredentialsManagerTest, EncryptFail) {
       .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL));
 
   pin_vault_keyset_.CreateRandom();
-  pin_vault_keyset_.mutable_serialized()
-      ->mutable_key_data()
-      ->mutable_policy()
-      ->set_low_entropy_credential(true);
+  pin_vault_keyset_.SetLowEntropyCredential(true);
 
   SerializedVaultKeyset serialized;
   EXPECT_FALSE(crypto_.EncryptVaultKeyset(

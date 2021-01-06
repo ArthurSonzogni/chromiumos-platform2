@@ -384,9 +384,9 @@ void HomeDirs::AddUserTimestampToCache(const std::string& obfuscated) {
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> keyset =
         keyset_management_->LoadVaultKeysetForUser(obfuscated, index);
-    if (keyset.get() && keyset->serialized().has_last_activity_timestamp()) {
-      const base::Time t = base::Time::FromInternalValue(
-          keyset->serialized().last_activity_timestamp());
+    if (keyset.get() && keyset->HasLastActivityTimestamp()) {
+      const base::Time t =
+          base::Time::FromInternalValue(keyset->GetLastActivityTimestamp());
       if (t > timestamp)
         timestamp = t;
     }
