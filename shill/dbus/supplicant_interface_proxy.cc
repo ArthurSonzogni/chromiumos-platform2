@@ -288,7 +288,6 @@ bool SupplicantInterfaceProxy::SelectNetwork(const RpcIdentifier& network) {
 bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
     const std::vector<unsigned char>& mask, bool sched_scan) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  brillo::ErrorPtr error;
   // The MACRandomizationMask property is a map(type_string, ipmask_array)
   // where type_string is scan type ("scan" || "sched_scan" || "pno") and
   // ipmask specifies the corresponding mask as an array of bytes.
@@ -301,8 +300,7 @@ bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
 
   if (!(properties_->mac_address_randomization_mask.SetAndBlock(
           mac_randomization_args))) {
-    LOG(ERROR) << "Failed to enable MAC address randomization: "
-               << error->GetCode() << " " << error->GetMessage();
+    LOG(ERROR) << "Failed to enable MAC address randomization";
     return false;
   }
   return true;
@@ -310,13 +308,11 @@ bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
 
 bool SupplicantInterfaceProxy::DisableMacAddressRandomization() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  brillo::ErrorPtr error;
   // Send an empty map to disable Randomization for all scan types.
   std::map<std::string, std::vector<uint8_t>> mac_randomization_empty;
   if (!(properties_->mac_address_randomization_mask.SetAndBlock(
           mac_randomization_empty))) {
-    LOG(ERROR) << "Failed to enable MAC address randomization: "
-               << error->GetCode() << " " << error->GetMessage();
+    LOG(ERROR) << "Failed to disable MAC address randomization";
     return false;
   }
   return true;
