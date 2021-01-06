@@ -475,7 +475,7 @@ bool MountHelper::MountAndPush(const base::FilePath& src,
 bool MountHelper::BindAndPush(const FilePath& src,
                               const FilePath& dest,
                               bool is_shared) {
-  if (!platform_->Bind(src, dest, is_shared)) {
+  if (!platform_->Bind(src, dest, is_shared, /*nosymfollow=*/true)) {
     PLOG(ERROR) << "Bind mount failed: " << src.value() << " -> "
                 << dest.value() << " is_shared: " << std::boolalpha
                 << is_shared;

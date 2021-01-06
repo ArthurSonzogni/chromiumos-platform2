@@ -32,6 +32,11 @@
 #include <unistd.h>
 #include <memory>
 
+#ifndef MS_NOSYMFOLLOW
+// Added locally in kernels 4.x+.
+#define MS_NOSYMFOLLOW 256
+#endif
+
 #include <ios>
 #include <limits>
 #include <sstream>
@@ -276,15 +281,24 @@ bool Platform::Mount(const FilePath& from,
   return true;
 }
 
-bool Platform::Bind(const FilePath& from, const FilePath& to, bool is_shared) {
+bool Platform::Bind(const FilePath& from,
+                    const FilePath& to,
+                    bool is_shared,
+                    bool nosymfollow) {
   // To apply options specific to a bind mount, we have to call mount(2) twice.
   if (mount(from.value().c_str(), to.value().c_str(), nullptr, MS_BIND,
             nullptr))
     return false;
 
   uint32_t mount_flags = MS_REMOUNT | MS_BIND | kDefaultMountFlags;
+  std::string options;
+  if (nosymfollow) {
+    // Works only in 4.x+ kernels so far.
+    mount_flags |= MS_NOSYMFOLLOW;
+    options = "nosymfollow";
+  }
 
-  if (mount(nullptr, to.value().c_str(), nullptr, mount_flags, nullptr))
+  if (mount(nullptr, to.value().c_str(), nullptr, mount_flags, options.c_str()))
     return false;
 
   if (is_shared &&

@@ -305,20 +305,21 @@ class MountTest
         .WillOnce(Return(false));
 
     EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
-                                user.user_vault_mount_path, true))
+                                user.user_vault_mount_path, true, true))
         .WillOnce(Return(true));
 
     EXPECT_CALL(platform_,
-                Bind(user.user_vault_mount_path, user.user_mount_path, _))
+                Bind(user.user_vault_mount_path, user.user_mount_path, _, true))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
-                                user.legacy_user_mount_path, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
-                                MountHelper::GetNewUserPath(user.username), _))
+                                user.legacy_user_mount_path, _, true))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_,
-                Bind(user.root_vault_mount_path, user.root_mount_path, _))
+                Bind(user.user_vault_mount_path,
+                     MountHelper::GetNewUserPath(user.username), _, true))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_,
+                Bind(user.root_vault_mount_path, user.root_mount_path, _, true))
         .WillOnce(Return(true));
     ExpectDownloadsBindMounts(user);
     EXPECT_CALL(platform_, RestoreSELinuxContexts(
@@ -331,7 +332,7 @@ class MountTest
     FilePath user_dir = brillo::cryptohome::home::GetUserPath(user.username);
 
     EXPECT_CALL(platform_, Bind(user_dir.Append("Downloads"),
-                                user_dir.Append("MyFiles/Downloads"), _))
+                                user_dir.Append("MyFiles/Downloads"), _, true))
         .WillOnce(Return(true));
 
     auto downloads_path = user_dir.Append("Downloads");
@@ -379,7 +380,7 @@ class MountTest
                                            StartsWith(kEphemeralCryptohomeDir)),
                                   cryptohome::kEphemeralCryptohomeRootContext))
         .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Bind(_, _, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, Bind(_, _, _, _)).WillRepeatedly(Return(true));
 
     EXPECT_CALL(platform_, GetFileEnumerator(SkelDir(), _, _))
         .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
@@ -446,7 +447,7 @@ class MountTest
     EXPECT_CALL(platform_, SetPermissions(mount_source, stat_data.st_mode))
         .WillOnce(Return(true));
 
-    EXPECT_CALL(platform_, Bind(mount_source, mount_target, _))
+    EXPECT_CALL(platform_, Bind(mount_source, mount_target, _, true))
         .WillOnce(Return(true));
   }
 
@@ -553,7 +554,7 @@ TEST_P(MountTest, BindMyFilesDownloadsSuccess) {
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, GetFileEnumerator(downloads_in_myfiles, false, _))
       .WillOnce(Return(in_myfiles_download_enumerator));
-  EXPECT_CALL(platform_, Bind(downloads_path, downloads_in_myfiles, _))
+  EXPECT_CALL(platform_, Bind(downloads_path, downloads_in_myfiles, _, true))
       .WillOnce(Return(true));
 
   MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
@@ -651,7 +652,7 @@ TEST_P(MountTest, BindMyFilesDownloadsRemoveExistingFiles) {
   EXPECT_CALL(platform_, DeletePathRecursively(
                              AnyOfArray(existing_files_in_myfiles_download)))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Bind(downloads_path, downloads_in_myfiles, _))
+  EXPECT_CALL(platform_, Bind(downloads_path, downloads_in_myfiles, _, true))
       .WillOnce(Return(true));
 
   MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
@@ -698,7 +699,7 @@ TEST_P(MountTest, BindMyFilesDownloadsMoveForgottenFiles) {
   EXPECT_CALL(platform_, Move(AnyOfArray(existing_files_in_myfiles_download),
                               AnyOfArray(existing_files_in_download)))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Bind(downloads_path, downloads_in_myfiles, _))
+  EXPECT_CALL(platform_, Bind(downloads_path, downloads_in_myfiles, _, true))
       .WillOnce(Return(true));
 
   MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
@@ -983,7 +984,7 @@ TEST_P(MountTest, RememberMountOrderingTest) {
     InSequence sequence;
     EXPECT_CALL(platform_, Mount(src, dest0, _, kDefaultMountFlags, _))
         .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Bind(src, dest1, _)).WillOnce(Return(true));
+    EXPECT_CALL(platform_, Bind(src, dest1, _, true)).WillOnce(Return(true));
     EXPECT_CALL(platform_, Mount(src, dest2, _, kDefaultMountFlags, _))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Unmount(dest2, _, _)).WillOnce(Return(true));
@@ -1461,7 +1462,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
       .Times(0);
   EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Bind(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
       .WillOnce(Return(false));
   EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
@@ -2375,33 +2376,35 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
   EXPECT_CALL(
       platform_,
       Bind(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
-           Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)), _))
+           Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)), _,
+           true))
       .Times(1)
       .WillRepeatedly(Return(true));
 
   EXPECT_CALL(
       platform_,
       Bind(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
-           Property(&FilePath::value, StartsWith("/home/root/")), _))
+           Property(&FilePath::value, StartsWith("/home/root/")), _, true))
       .WillOnce(Return(true));
   EXPECT_CALL(
       platform_,
       Bind(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
-           Property(&FilePath::value, StartsWith("/home/user/")), _))
+           Property(&FilePath::value, StartsWith("/home/user/")), _, true))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(Property(&FilePath::value,
                                        StartsWith(kEphemeralCryptohomeDir)),
-                              FilePath("/home/chronos/user"), _))
+                              FilePath("/home/chronos/user"), _, true))
       .WillOnce(Return(true));
   EXPECT_CALL(
       platform_,
       Bind(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
-           Property(&FilePath::value, StartsWith("/home/chronos/u-")), _))
+           Property(&FilePath::value, StartsWith("/home/chronos/u-")), _, true))
       .WillOnce(Return(true));
   // Binding Downloads to MyFiles/Downloads.
-  EXPECT_CALL(platform_,
-              Bind(Property(&FilePath::value, StartsWith("/home/user/")),
-                   Property(&FilePath::value, StartsWith("/home/user/")), _))
+  EXPECT_CALL(
+      platform_,
+      Bind(Property(&FilePath::value, StartsWith("/home/user/")),
+           Property(&FilePath::value, StartsWith("/home/user/")), _, true))
       .WillOnce(Return(true));
 
   ASSERT_TRUE(mount_->MountGuestCryptohome());

@@ -168,9 +168,11 @@ class Platform {
   //   from - Where to mount from
   //   to - Where to mount to
   //   is_shared - Whether the bind mount should be remounted with MS_SHARED.
+  //   nosymfollow - Whether to apply nosymfollow on the mount.
   virtual bool Bind(const base::FilePath& from,
                     const base::FilePath& to,
-                    bool is_shared = false);
+                    bool is_shared = false,
+                    bool nosymfollow = false);
 
   // Calls the platform unmount
   //
