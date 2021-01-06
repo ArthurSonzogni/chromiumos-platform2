@@ -500,14 +500,19 @@ bool LECredentialManagerImpl::ReplayLogEntries(
   //   start from the earliest log.
   // - For all other entries, simply attempt to replay the operation.
   auto it = log.rbegin();
+  size_t replay_count = 0;
   for (; it != log.rend(); ++it) {
     const LELogEntry& log_entry = *it;
     if (log_entry.root == disk_root_hash) {
-      LOG(INFO) << "Starting replay at log entry #" << it - log.rbegin() + 1;
+      // 1-based count, zero indicates no root hash match.
+      replay_count = it - log.rbegin() + 1;
+      LOG(INFO) << "Starting replay at log entry #" << it - log.rbegin();
       ++it;
       break;
     }
   }
+
+  ReportLELogReplayEntryCount(replay_count);
 
   if (it == log.rend()) {
     LOG(WARNING) << "No matching root hash, starting replay at oldest entry";

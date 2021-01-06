@@ -575,6 +575,11 @@ void ReportLEResult(const char* type, const char* action, LECredError result);
 // to the "Cryptohome.LECredential.SyncOutcome" enum histogram.
 void ReportLESyncOutcome(LECredError result);
 
+// Reports the number of log entries attempted to replay during an LE log replay
+// operation. This count is one-based, zero is used as a sentinel value for "all
+// entries", reported when none of the log entries matches the root hash.
+void ReportLELogReplayEntryCount(size_t entry_count);
+
 // Reports the free space in MB when the migration fails and what the free space
 // was initially when the migration was started.
 void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,

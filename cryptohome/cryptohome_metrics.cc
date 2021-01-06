@@ -66,12 +66,14 @@ constexpr char kCryptohomeDiskCleanupProgressHistogram[] =
 constexpr char kCryptohomeDiskCleanupResultHistogram[] =
     "Cryptohome.DiskCleanupResult";
 constexpr char kCryptohomeLEResultHistogramPrefix[] = "Cryptohome.LECredential";
+constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] = ".SyncOutcome";
+constexpr char kCryptohomeLELogReplyEntryCountHistogram[] =
+    "Cryptohome.LECredential.LogReplayEntryCount";
 constexpr char kCryptohomeAsyncDBusRequestsPrefix[] =
     "Cryptohome.AsyncDBusRequest.";
 constexpr char kCryptohomeAsyncDBusRequestsInqueueTimePrefix[] =
     "Cryptohome.AsyncDBusRequest.Inqueue.";
 constexpr char kCryptohomeParallelTasksPrefix[] = "Cryptohome.ParallelTasks";
-constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] = ".SyncOutcome";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
 constexpr char kDircryptoMigrationNoSpaceFailureFreeSpaceInMbHistogram[] =
@@ -453,6 +455,16 @@ void ReportLESyncOutcome(LECredError result) {
                              .append(kCryptohomeLESyncOutcomeHistogramSuffix);
 
   g_metrics->SendEnumToUMA(hist_str, result, LE_CRED_ERROR_MAX);
+}
+
+void ReportLELogReplayEntryCount(size_t entry_count) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr int kMin = 1, kMax = 32, kNumBuckets = 33;
+  g_metrics->SendToUMA(kCryptohomeLELogReplyEntryCountHistogram,
+                       static_cast<int>(entry_count), kMin, kMax, kNumBuckets);
 }
 
 void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
