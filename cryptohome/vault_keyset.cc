@@ -29,48 +29,15 @@ VaultKeyset::VaultKeyset()
       crypto_(NULL),
       loaded_(false),
       encrypted_(false),
-      legacy_index_(-1) {}
-
-VaultKeyset::VaultKeyset(VaultKeyset&& vault_keyset) {
-  FromVaultKeyset(vault_keyset);
-}
+      flags_(0),
+      legacy_index_(-1),
+      auth_locked_(false) {}
 
 VaultKeyset::~VaultKeyset() {}
 
 void VaultKeyset::Initialize(Platform* platform, Crypto* crypto) {
   platform_ = platform;
   crypto_ = crypto;
-}
-
-void VaultKeyset::FromVaultKeyset(const VaultKeyset& vault_keyset) {
-  fek_.resize(vault_keyset.fek_.size());
-  memcpy(fek_.data(), vault_keyset.fek_.data(), fek_.size());
-
-  fek_sig_.resize(vault_keyset.fek_sig_.size());
-  memcpy(fek_sig_.data(), vault_keyset.fek_sig_.data(), fek_sig_.size());
-
-  fek_salt_.resize(vault_keyset.fek_salt_.size());
-  memcpy(fek_salt_.data(), vault_keyset.fek_salt_.data(), fek_salt_.size());
-
-  fnek_.resize(vault_keyset.fnek_.size());
-  memcpy(fnek_.data(), vault_keyset.fnek_.data(), fnek_.size());
-
-  fnek_sig_.resize(vault_keyset.fnek_sig_.size());
-  memcpy(fnek_sig_.data(), vault_keyset.fnek_sig_.data(), fnek_sig_.size());
-
-  fnek_salt_.resize(vault_keyset.fnek_salt_.size());
-  memcpy(fnek_salt_.data(), vault_keyset.fnek_salt_.data(), fnek_salt_.size());
-
-  chaps_key_.resize(vault_keyset.chaps_key_.size());
-  memcpy(chaps_key_.data(), vault_keyset.chaps_key_.data(), chaps_key_.size());
-
-  reset_seed_.resize(vault_keyset.reset_seed_.size());
-  memcpy(reset_seed_.data(), vault_keyset.reset_seed_.data(),
-         reset_seed_.size());
-
-  reset_secret_.resize(vault_keyset.reset_secret_.size());
-  memcpy(reset_secret_.data(), vault_keyset.reset_secret_.data(),
-         reset_secret_.size());
 }
 
 void VaultKeyset::FromKeys(const VaultKeysetKeys& keys) {
@@ -169,72 +136,21 @@ void VaultKeyset::CreateRandom() {
   CreateRandomResetSeed();
 }
 
-const SecureBlob& VaultKeyset::fek() const {
-  return fek_;
-}
-
-const SecureBlob& VaultKeyset::fek_sig() const {
-  return fek_sig_;
-}
-
-const SecureBlob& VaultKeyset::fek_salt() const {
-  return fek_salt_;
-}
-
-const SecureBlob& VaultKeyset::fnek() const {
-  return fnek_;
-}
-
-const SecureBlob& VaultKeyset::fnek_sig() const {
-  return fnek_sig_;
-}
-
-const SecureBlob& VaultKeyset::fnek_salt() const {
-  return fnek_salt_;
-}
-
-void VaultKeyset::set_chaps_key(const SecureBlob& chaps_key) {
-  CHECK(chaps_key.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
-  SecureBlob tmp = chaps_key;
-  chaps_key_.swap(tmp);
-}
-
-void VaultKeyset::clear_chaps_key() {
-  CHECK(chaps_key_.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
-  chaps_key_.clear();
-  chaps_key_.resize(0);
-}
-
-void VaultKeyset::set_reset_seed(const SecureBlob& reset_seed) {
-  CHECK_EQ(reset_seed.size(), CRYPTOHOME_RESET_SEED_LENGTH);
-  reset_seed_ = reset_seed;
-}
-
-void VaultKeyset::set_reset_secret(const SecureBlob& reset_secret) {
-  CHECK_EQ(reset_secret.size(), CRYPTOHOME_RESET_SEED_LENGTH);
-  reset_secret_ = reset_secret;
-}
-
 bool VaultKeyset::Load(const FilePath& filename) {
   CHECK(platform_);
   brillo::Blob contents;
   if (!platform_->ReadFile(filename, &contents))
     return false;
-  serialized_.Clear();  // Ensure a fresh start.
-  loaded_ = serialized_.ParseFromArray(contents.data(), contents.size());
+  ResetVaultKeyset();
+
+  SerializedVaultKeyset serialized;
+  loaded_ = serialized.ParseFromArray(contents.data(), contents.size());
   // If it was parsed from file, consider it save-able too.
   source_file_.clear();
   if (loaded_) {
     encrypted_ = true;
     source_file_ = filename;
-    // For LECredentials, set the key policy appropriately.
-    // TODO(crbug.com/832398): get rid of having two ways to identify an
-    // LECredential: LE_CREDENTIAL and key_data.policy.low_entropy_credential.
-    if (serialized_.flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
-      serialized_.mutable_key_data()
-          ->mutable_policy()
-          ->set_low_entropy_credential(true);
-    }
+    InitializeFromSerialized(serialized);
 
     FilePath timestamp_path = filename.AddExtension("timestamp");
     brillo::Blob tcontents;
@@ -243,7 +159,7 @@ bool VaultKeyset::Load(const FilePath& filename) {
     if (platform_->ReadFile(timestamp_path, &tcontents)) {
       cryptohome::Timestamp timestamp;
       if (timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
-        serialized_.set_last_activity_timestamp(timestamp.timestamp());
+        last_activity_timestamp_ = timestamp.timestamp();
       } else {
         LOG(WARNING) << "Failure to parse timestamp file: " << timestamp_path;
       }
@@ -269,10 +185,11 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
   }
 
   CryptoError local_crypto_error = CryptoError::CE_NONE;
-  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, locked_to_single_user,
-                                        nullptr, &local_crypto_error, this);
+  bool ok =
+      crypto_->DecryptVaultKeyset(ToSerialized(), key, locked_to_single_user,
+                                  nullptr, &local_crypto_error, this);
   if (!ok && local_crypto_error == CryptoError::CE_TPM_COMM_ERROR) {
-    ok = crypto_->DecryptVaultKeyset(serialized_, key, locked_to_single_user,
+    ok = crypto_->DecryptVaultKeyset(ToSerialized(), key, locked_to_single_user,
                                      nullptr, &local_crypto_error, this);
   }
 
@@ -281,8 +198,11 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
     // For LE credentials, if decrypting the keyset failed due to too many
     // attempts, set auth_locked=true in the keyset. Then save it for future
     // callers who can Load it w/o Decrypt'ing to check that flag.
-    serialized_.mutable_key_data()->mutable_policy()->set_auth_locked(true);
-    if (!Save(source_file())) {
+    if (!key_data_.has_value()) {
+      key_data_ = KeyData();
+    }
+    key_data_->mutable_policy()->set_auth_locked(true);
+    if (!Save(source_file_)) {
       LOG(WARNING) << "Failed to set auth_locked in VaultKeyset on disk.";
     }
   }
@@ -305,8 +225,68 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
   CHECK(crypto_);
   const auto salt =
       CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+
+  // TODO(kerrnel): Do not pass a SerializedVaultKeyset as an out param to
+  // EncryptVaultKeyset. This is a hack and bad layering but necessary to limit
+  // the scope of this current CL.
+  SerializedVaultKeyset serialized;
   encrypted_ = crypto_->EncryptVaultKeyset(*this, key, salt,
-                                           obfuscated_username, &serialized_);
+                                           obfuscated_username, &serialized);
+
+  // TODO(kerrnel): These fields are copied based on explicit knowledge of how
+  // EncryptVaultKeyset is implemented. This must be fixed in a follow up CL.
+  flags_ = serialized.flags();
+  salt_ =
+      brillo::SecureBlob(serialized.salt().begin(), serialized.salt().end());
+  if (IsLECredential()) {
+    reset_salt_ = brillo::SecureBlob(serialized.reset_salt().begin(),
+                                     serialized.reset_salt().end());
+    key_data_->mutable_policy()->set_auth_locked(true);
+  }
+  if (serialized.has_le_fek_iv()) {
+    le_fek_iv_ = brillo::SecureBlob(serialized.le_fek_iv().begin(),
+                                    serialized.le_fek_iv().end());
+  }
+  if (serialized.has_le_chaps_iv()) {
+    le_chaps_iv_ = brillo::SecureBlob(serialized.le_chaps_iv().begin(),
+                                      serialized.le_chaps_iv().end());
+  }
+  if (serialized.has_le_label()) {
+    le_label_ = serialized.le_label();
+  }
+  if (serialized.has_tpm_key()) {
+    tpm_key_ = brillo::SecureBlob(serialized.tpm_key().begin(),
+                                  serialized.tpm_key().end());
+  }
+  if (serialized.has_tpm_public_key_hash()) {
+    tpm_public_key_hash_ =
+        brillo::SecureBlob(serialized.tpm_public_key_hash().begin(),
+                           serialized.tpm_public_key_hash().end());
+  }
+  if (serialized.has_extended_tpm_key()) {
+    extended_tpm_key_ =
+        brillo::SecureBlob(serialized.extended_tpm_key().begin(),
+                           serialized.extended_tpm_key().end());
+  }
+  if (serialized.has_wrapped_keyset()) {
+    wrapped_keyset_ = brillo::SecureBlob(serialized.wrapped_keyset().begin(),
+                                         serialized.wrapped_keyset().end());
+  }
+  if (serialized.has_wrapped_chaps_key()) {
+    wrapped_chaps_key_ =
+        brillo::SecureBlob(serialized.wrapped_chaps_key().begin(),
+                           serialized.wrapped_chaps_key().end());
+  }
+  if (serialized.has_wrapped_reset_seed()) {
+    wrapped_reset_seed_ =
+        brillo::SecureBlob(serialized.wrapped_reset_seed().begin(),
+                           serialized.wrapped_reset_seed().end());
+  }
+  if (serialized.has_reset_iv()) {
+    reset_iv_ = brillo::SecureBlob(serialized.reset_iv().begin(),
+                                   serialized.reset_iv().end());
+  }
+
   return encrypted_;
 }
 
@@ -314,19 +294,21 @@ bool VaultKeyset::Save(const FilePath& filename) {
   CHECK(platform_);
   if (!encrypted_)
     return false;
-  brillo::Blob contents(serialized_.ByteSizeLong());
+  SerializedVaultKeyset serialized = ToSerialized();
+
+  brillo::Blob contents(serialized.ByteSizeLong());
   google::protobuf::uint8* buf =
       static_cast<google::protobuf::uint8*>(contents.data());
-  serialized_.SerializeWithCachedSizesToArray(buf);
+  serialized.SerializeWithCachedSizesToArray(buf);
 
   bool ok = platform_->WriteFileAtomicDurable(filename, contents,
                                               kVaultFilePermissions);
   return ok;
 }
 
-std::string VaultKeyset::label() const {
-  if (serialized_.has_key_data()) {
-    return serialized_.key_data().label();
+std::string VaultKeyset::GetLabel() const {
+  if (key_data_.has_value()) {
+    return key_data_->label();
   }
   // Fallback for legacy keys, for which the label has to be inferred from the
   // index number.
@@ -334,20 +316,535 @@ std::string VaultKeyset::label() const {
 }
 
 bool VaultKeyset::IsLECredential() const {
-  return serialized_.key_data().policy().low_entropy_credential();
+  if (key_data_.has_value()) {
+    return key_data_->policy().low_entropy_credential();
+  }
+  return false;
 }
 
 bool VaultKeyset::IsSignatureChallengeProtected() const {
-  return serialized_.flags() &
-         SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
+  return flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
 }
 
 int VaultKeyset::GetFscryptPolicyVersion() {
-  return serialized_.fscrypt_policy_version();
+  return fscrypt_policy_version_.value_or(-1);
 }
 
 void VaultKeyset::SetFscryptPolicyVersion(int policy_version) {
-  serialized_.set_fscrypt_policy_version(policy_version);
+  fscrypt_policy_version_ = policy_version;
+}
+
+bool VaultKeyset::HasTpmPublicKeyHash() const {
+  return tpm_public_key_hash_.has_value();
+}
+
+const brillo::SecureBlob& VaultKeyset::GetTpmPublicKeyHash() const {
+  DCHECK(tpm_public_key_hash_.has_value());
+  return tpm_public_key_hash_.value();
+}
+
+void VaultKeyset::SetTpmPublicKeyHash(const brillo::SecureBlob& hash) {
+  tpm_public_key_hash_ = hash;
+}
+
+bool VaultKeyset::HasPasswordRounds() const {
+  return password_rounds_.has_value();
+}
+
+int32_t VaultKeyset::GetPasswordRounds() const {
+  DCHECK(password_rounds_.has_value());
+  return password_rounds_.value();
+}
+
+bool VaultKeyset::HasLastActivityTimestamp() const {
+  return last_activity_timestamp_.has_value();
+}
+
+int64_t VaultKeyset::GetLastActivityTimestamp() const {
+  DCHECK(last_activity_timestamp_.has_value());
+  return last_activity_timestamp_.value();
+}
+
+bool VaultKeyset::HasKeyData() const {
+  return key_data_.has_value();
+}
+
+void VaultKeyset::SetKeyData(const KeyData& key_data) {
+  key_data_ = key_data;
+}
+
+void VaultKeyset::ClearKeyData() {
+  key_data_.reset();
+}
+
+const KeyData& VaultKeyset::GetKeyData() const {
+  DCHECK(key_data_.has_value());
+  return key_data_.value();
+}
+
+KeyData* VaultKeyset::GetMutableKeyData() {
+  DCHECK(key_data_.has_value());
+  return &(key_data_.value());
+}
+
+void VaultKeyset::SetResetIV(const brillo::SecureBlob& iv) {
+  reset_iv_ = iv;
+}
+
+bool VaultKeyset::HasResetIV() const {
+  return reset_iv_.has_value();
+}
+
+const brillo::SecureBlob& VaultKeyset::GetResetIV() const {
+  DCHECK(reset_iv_.has_value());
+  return reset_iv_.value();
+}
+
+void VaultKeyset::SetLowEntropyCredential(bool is_le_cred) {
+  if (!key_data_.has_value()) {
+    key_data_ = KeyData();
+  }
+  key_data_->mutable_policy()->set_low_entropy_credential(is_le_cred);
+}
+
+void VaultKeyset::SetKeyDataLabel(const std::string& key_label) {
+  if (!key_data_.has_value()) {
+    key_data_ = KeyData();
+  }
+  key_data_->set_label(key_label);
+}
+
+void VaultKeyset::SetLELabel(uint64_t label) {
+  le_label_ = label;
+}
+
+bool VaultKeyset::HasLELabel() const {
+  return le_label_.has_value();
+}
+
+uint64_t VaultKeyset::GetLELabel() const {
+  DCHECK(le_label_.has_value());
+  return le_label_.value();
+}
+
+void VaultKeyset::SetLEFekIV(const brillo::SecureBlob& iv) {
+  le_fek_iv_ = iv;
+}
+
+bool VaultKeyset::HasLEFekIV() const {
+  return le_fek_iv_.has_value();
+}
+
+const brillo::SecureBlob& VaultKeyset::GetLEFekIV() const {
+  DCHECK(le_fek_iv_.has_value());
+  return le_fek_iv_.value();
+}
+
+void VaultKeyset::SetLEChapsIV(const brillo::SecureBlob& iv) {
+  le_chaps_iv_ = iv;
+}
+
+bool VaultKeyset::HasLEChapsIV() const {
+  return le_chaps_iv_.has_value();
+}
+
+const brillo::SecureBlob& VaultKeyset::GetLEChapsIV() const {
+  DCHECK(le_chaps_iv_.has_value());
+  return le_chaps_iv_.value();
+}
+
+void VaultKeyset::SetResetSalt(const brillo::SecureBlob& reset_salt) {
+  reset_salt_ = reset_salt;
+}
+
+bool VaultKeyset::HasResetSalt() const {
+  return reset_salt_.has_value();
+}
+
+const brillo::SecureBlob& VaultKeyset::GetResetSalt() const {
+  DCHECK(reset_salt_.has_value());
+  return reset_salt_.value();
+}
+
+void VaultKeyset::SetFSCryptPolicyVersion(int32_t policy_version) {
+  fscrypt_policy_version_ = policy_version;
+}
+
+bool VaultKeyset::HasFSCryptPolicyVersion() const {
+  return fscrypt_policy_version_.has_value();
+}
+
+int32_t VaultKeyset::GetFSCryptPolicyVersion() const {
+  DCHECK(fscrypt_policy_version_.has_value());
+  return fscrypt_policy_version_.value();
+}
+
+void VaultKeyset::SetWrappedKeyset(const brillo::SecureBlob& wrapped_keyset) {
+  wrapped_keyset_ = wrapped_keyset;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetWrappedKeyset() const {
+  return wrapped_keyset_;
+}
+
+bool VaultKeyset::HasWrappedChapsKey() const {
+  return wrapped_chaps_key_.has_value();
+}
+
+void VaultKeyset::SetWrappedChapsKey(
+    const brillo::SecureBlob& wrapped_chaps_key) {
+  wrapped_chaps_key_ = wrapped_chaps_key;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetWrappedChapsKey() const {
+  DCHECK(wrapped_chaps_key_.has_value());
+  return wrapped_chaps_key_.value();
+}
+
+void VaultKeyset::ClearWrappedChapsKey() {
+  wrapped_chaps_key_.reset();
+}
+
+bool VaultKeyset::HasTPMKey() const {
+  return tpm_key_.has_value();
+}
+
+void VaultKeyset::SetTPMKey(const brillo::SecureBlob& tpm_key) {
+  tpm_key_ = tpm_key;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetTPMKey() const {
+  DCHECK(tpm_key_.has_value());
+  return tpm_key_.value();
+}
+
+bool VaultKeyset::HasExtendedTPMKey() const {
+  return extended_tpm_key_.has_value();
+}
+
+void VaultKeyset::SetExtendedTPMKey(
+    const brillo::SecureBlob& extended_tpm_key) {
+  extended_tpm_key_ = extended_tpm_key;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetExtendedTPMKey() const {
+  DCHECK(extended_tpm_key_.has_value());
+  return extended_tpm_key_.value();
+}
+
+bool VaultKeyset::HasWrappedResetSeed() const {
+  return wrapped_reset_seed_.has_value();
+}
+
+void VaultKeyset::SetWrappedResetSeed(
+    const brillo::SecureBlob& wrapped_reset_seed) {
+  wrapped_reset_seed_ = wrapped_reset_seed;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetWrappedResetSeed() const {
+  DCHECK(wrapped_reset_seed_.has_value());
+  return wrapped_reset_seed_.value();
+}
+
+bool VaultKeyset::HasSignatureChallengeInfo() const {
+  return signature_challenge_info_.has_value();
+}
+
+const SerializedVaultKeyset::SignatureChallengeInfo&
+VaultKeyset::GetSignatureChallengeInfo() const {
+  DCHECK(signature_challenge_info_.has_value());
+  return signature_challenge_info_.value();
+}
+
+void VaultKeyset::SetSignatureChallengeInfo(
+    const SerializedVaultKeyset::SignatureChallengeInfo& info) {
+  signature_challenge_info_ = info;
+}
+
+void VaultKeyset::SetChapsKey(const brillo::SecureBlob& chaps_key) {
+  CHECK(chaps_key.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
+  chaps_key_ = chaps_key;
+}
+
+void VaultKeyset::ClearChapsKey() {
+  CHECK(chaps_key_.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
+  chaps_key_.clear();
+  chaps_key_.resize(0);
+}
+
+void VaultKeyset::SetResetSeed(const brillo::SecureBlob& reset_seed) {
+  CHECK_EQ(reset_seed.size(), CRYPTOHOME_RESET_SEED_LENGTH);
+  reset_seed_ = reset_seed;
+}
+
+void VaultKeyset::SetResetSecret(const brillo::SecureBlob& reset_secret) {
+  CHECK_EQ(reset_secret.size(), CRYPTOHOME_RESET_SEED_LENGTH);
+  reset_secret_ = reset_secret;
+}
+
+SerializedVaultKeyset VaultKeyset::ToSerialized() const {
+  SerializedVaultKeyset serialized;
+  serialized.set_flags(flags_);
+  serialized.set_salt(salt_.data(), salt_.size());
+  serialized.set_wrapped_keyset(wrapped_keyset_.data(), wrapped_keyset_.size());
+
+  if (tpm_key_.has_value()) {
+    serialized.set_tpm_key(tpm_key_->data(), tpm_key_->size());
+  }
+
+  if (tpm_public_key_hash_.has_value()) {
+    serialized.set_tpm_public_key_hash(tpm_public_key_hash_->data(),
+                                       tpm_public_key_hash_->size());
+  }
+
+  if (password_rounds_.has_value()) {
+    serialized.set_password_rounds(password_rounds_.value());
+  }
+
+  if (last_activity_timestamp_.has_value()) {
+    serialized.set_last_activity_timestamp(last_activity_timestamp_.value());
+  }
+
+  if (key_data_.has_value()) {
+    *(serialized.mutable_key_data()) = key_data_.value();
+  }
+
+  if (auth_locked_) {
+    serialized.mutable_key_data()->mutable_policy()->set_auth_locked(false);
+  }
+
+  if (wrapped_chaps_key_.has_value()) {
+    serialized.set_wrapped_chaps_key(wrapped_chaps_key_->data(),
+                                     wrapped_chaps_key_->size());
+  }
+
+  if (wrapped_reset_seed_.has_value()) {
+    serialized.set_wrapped_reset_seed(wrapped_reset_seed_->data(),
+                                      wrapped_reset_seed_->size());
+  }
+
+  if (reset_iv_.has_value()) {
+    serialized.set_reset_iv(reset_iv_->data(), reset_iv_->size());
+  }
+
+  if (le_label_.has_value()) {
+    serialized.set_le_label(le_label_.value());
+  }
+
+  if (le_fek_iv_.has_value()) {
+    serialized.set_le_fek_iv(le_fek_iv_->data(), le_fek_iv_->size());
+  }
+
+  if (le_chaps_iv_.has_value()) {
+    serialized.set_le_chaps_iv(le_chaps_iv_->data(), le_chaps_iv_->size());
+  }
+
+  if (reset_salt_.has_value()) {
+    serialized.set_reset_salt(reset_salt_->data(), reset_salt_->size());
+  }
+
+  if (signature_challenge_info_.has_value()) {
+    *(serialized.mutable_signature_challenge_info()) =
+        signature_challenge_info_.value();
+  }
+
+  if (extended_tpm_key_.has_value()) {
+    serialized.set_extended_tpm_key(extended_tpm_key_->data(),
+                                    extended_tpm_key_->size());
+  }
+
+  if (fscrypt_policy_version_.has_value()) {
+    serialized.set_fscrypt_policy_version(fscrypt_policy_version_.value());
+  }
+
+  return serialized;
+}
+
+void VaultKeyset::ResetVaultKeyset() {
+  flags_ = -1;
+  salt_.clear();
+  legacy_index_ = -1;
+  tpm_public_key_hash_.reset();
+  password_rounds_.reset();
+  last_activity_timestamp_.reset();
+  key_data_.reset();
+  reset_iv_.reset();
+  le_label_.reset();
+  le_fek_iv_.reset();
+  le_chaps_iv_.reset();
+  reset_salt_.reset();
+  fscrypt_policy_version_.reset();
+  wrapped_keyset_.clear();
+  wrapped_chaps_key_.reset();
+  tpm_key_.reset();
+  extended_tpm_key_.reset();
+  wrapped_reset_seed_.reset();
+  signature_challenge_info_.reset();
+  fek_.clear();
+  fek_sig_.clear();
+  fek_salt_.clear();
+  fnek_.clear();
+  fnek_sig_.clear();
+  fnek_salt_.clear();
+  chaps_key_.clear();
+  reset_seed_.clear();
+  reset_secret_.clear();
+}
+
+void VaultKeyset::InitializeFromSerialized(
+    const SerializedVaultKeyset& serialized) {
+  flags_ = serialized.flags();
+  salt_ =
+      brillo::SecureBlob(serialized.salt().begin(), serialized.salt().end());
+
+  wrapped_keyset_ = brillo::SecureBlob(serialized.wrapped_keyset().begin(),
+                                       serialized.wrapped_keyset().end());
+
+  if (serialized.has_tpm_key()) {
+    tpm_key_ = brillo::SecureBlob(serialized.tpm_key().begin(),
+                                  serialized.tpm_key().end());
+  }
+
+  if (serialized.has_tpm_public_key_hash()) {
+    tpm_public_key_hash_ =
+        brillo::SecureBlob(serialized.tpm_public_key_hash().begin(),
+                           serialized.tpm_public_key_hash().end());
+  }
+
+  if (serialized.has_password_rounds()) {
+    password_rounds_ = serialized.password_rounds();
+  }
+
+  if (serialized.has_last_activity_timestamp()) {
+    last_activity_timestamp_ = serialized.last_activity_timestamp();
+  }
+
+  if (serialized.has_key_data()) {
+    key_data_ = serialized.key_data();
+
+    auth_locked_ = serialized.key_data().policy().auth_locked();
+
+    // For LECredentials, set the key policy appropriately.
+    // TODO(crbug.com/832398): get rid of having two ways to identify an
+    // LECredential: LE_CREDENTIAL and key_data.policy.low_entropy_credential.
+    if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
+      key_data_->mutable_policy()->set_low_entropy_credential(true);
+    }
+  }
+
+  if (serialized.has_wrapped_chaps_key()) {
+    wrapped_chaps_key_ =
+        brillo::SecureBlob(serialized.wrapped_chaps_key().begin(),
+                           serialized.wrapped_chaps_key().end());
+  }
+
+  if (serialized.has_wrapped_reset_seed()) {
+    wrapped_reset_seed_ =
+        brillo::SecureBlob(serialized.wrapped_reset_seed().begin(),
+                           serialized.wrapped_reset_seed().end());
+  }
+
+  if (serialized.has_reset_iv()) {
+    reset_iv_ = brillo::SecureBlob(serialized.reset_iv().begin(),
+                                   serialized.reset_iv().end());
+  }
+
+  if (serialized.has_le_label()) {
+    le_label_ = serialized.le_label();
+  }
+
+  if (serialized.has_le_fek_iv()) {
+    le_fek_iv_ = brillo::SecureBlob(serialized.le_fek_iv().begin(),
+                                    serialized.le_fek_iv().end());
+  }
+
+  if (serialized.has_le_chaps_iv()) {
+    le_chaps_iv_ = brillo::SecureBlob(serialized.le_chaps_iv().begin(),
+                                      serialized.le_chaps_iv().end());
+  }
+
+  if (serialized.has_reset_salt()) {
+    reset_salt_ = brillo::SecureBlob(serialized.reset_salt().begin(),
+                                     serialized.reset_salt().end());
+  }
+
+  if (serialized.has_signature_challenge_info()) {
+    signature_challenge_info_ = serialized.signature_challenge_info();
+  }
+
+  if (serialized.has_extended_tpm_key()) {
+    extended_tpm_key_ =
+        brillo::SecureBlob(serialized.extended_tpm_key().begin(),
+                           serialized.extended_tpm_key().end());
+  }
+
+  if (serialized.has_fscrypt_policy_version()) {
+    fscrypt_policy_version_ = serialized.fscrypt_policy_version();
+  }
+}
+
+const base::FilePath& VaultKeyset::GetSourceFile() const {
+  return source_file_;
+}
+
+void VaultKeyset::SetAuthLocked(bool locked) {
+  auth_locked_ = locked;
+}
+
+void VaultKeyset::SetFlags(int32_t flags) {
+  flags_ = flags;
+}
+
+int32_t VaultKeyset::GetFlags() const {
+  return flags_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetSalt() const {
+  return salt_;
+}
+
+void VaultKeyset::SetLegacyIndex(int index) {
+  legacy_index_ = index;
+}
+
+const int VaultKeyset::GetLegacyIndex() const {
+  return legacy_index_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetFek() const {
+  return fek_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetFekSig() const {
+  return fek_sig_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetFekSalt() const {
+  return fek_salt_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetFnek() const {
+  return fnek_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetFnekSig() const {
+  return fnek_sig_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetFnekSalt() const {
+  return fnek_salt_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetChapsKey() const {
+  return chaps_key_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetResetSeed() const {
+  return reset_seed_;
+}
+
+const brillo::SecureBlob& VaultKeyset::GetResetSecret() const {
+  return reset_secret_;
 }
 
 }  // namespace cryptohome

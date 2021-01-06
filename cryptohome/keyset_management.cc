@@ -66,13 +66,14 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeyset(
     // Skip decrypt attempts if the label doesn't match.
     // Treat an empty creds label as a wildcard.
     if (!creds.key_data().label().empty() &&
-        creds.key_data().label() != vk->label())
+        creds.key_data().label() != vk->GetLabel())
       continue;
     // Skip LE Credentials if not explicitly identified by a label, since we
     // don't want unnecessary wrong attempts.
     if (creds.key_data().label().empty() &&
-        (vk->serialized().flags() & SerializedVaultKeyset::LE_CREDENTIAL))
+        (vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL)) {
       continue;
+    }
     bool locked_to_single_user =
         platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
     if (vk->Decrypt(creds.passkey(), locked_to_single_user,
@@ -144,7 +145,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
     if (!vk) {
       continue;
     }
-    if (vk->label() == key_label) {
+    if (vk->GetLabel() == key_label) {
       return vk;
     }
   }
@@ -216,7 +217,7 @@ bool KeysetManagement::GetVaultKeysetLabels(
     if (!vk) {
       continue;
     }
-    labels->push_back(vk->label());
+    labels->push_back(vk->GetLabel());
   }
 
   return (labels->size() > 0);
@@ -231,20 +232,20 @@ bool KeysetManagement::AddInitialKeyset(const Credentials& credentials) {
       vault_keyset_factory_->New(platform_, crypto_));
   vk->Initialize(platform_, crypto_);
   vk->CreateRandom();
-  vk->set_legacy_index(kInitialKeysetIndex);
+  vk->SetLegacyIndex(kInitialKeysetIndex);
 
   if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
-    vk->mutable_serialized()->set_flags(
-        vk->serialized().flags() |
-        SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
-    *vk->mutable_serialized()->mutable_signature_challenge_info() =
-        credentials.challenge_credentials_keyset_info();
+    vk->SetFlags(vk->GetFlags() |
+                 SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
+    vk->SetSignatureChallengeInfo(
+        credentials.challenge_credentials_keyset_info());
   }
+
   // Merge in the key data from credentials using the label() as
   // the existence test. (All new-format calls must populate the
   // label on creation.)
   if (!credentials.key_data().label().empty()) {
-    *vk->mutable_serialized()->mutable_key_data() = credentials.key_data();
+    vk->SetKeyData(credentials.key_data());
   }
 
   if (!vk->Encrypt(passkey, obfuscated_username) ||
@@ -277,7 +278,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
   //
   // If the vault keyset is signature-challenge protected, we should not
   // re-encrypt it at all (that is unnecessary).
-  const unsigned crypt_flags = vault_keyset->serialized().flags();
+  const unsigned crypt_flags = vault_keyset->GetFlags();
   bool pcr_bound = (crypt_flags & SerializedVaultKeyset::PCR_BOUND) != 0;
   bool tpm_wrapped = (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
   bool scrypt_wrapped =
@@ -289,8 +290,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
   bool should_tpm = (crypto_->is_cryptohome_key_loaded() &&
                      !is_signature_challenge_protected);
   bool can_unseal_with_user_auth = crypto_->CanUnsealWithUserAuth();
-  bool has_tpm_public_key_hash =
-      vault_keyset->serialized().has_tpm_public_key_hash();
+  bool has_tpm_public_key_hash = vault_keyset->HasTpmPublicKeyHash();
 
   if (is_signature_challenge_protected) {
     return false;
@@ -298,15 +298,15 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
 
   bool is_le_credential =
       (crypt_flags & SerializedVaultKeyset::LE_CREDENTIAL) != 0;
-  uint64_t le_label = vault_keyset->serialized().le_label();
-  if (is_le_credential && !crypto_->NeedsPcrBinding(le_label)) {
+  if (is_le_credential &&
+      !crypto_->NeedsPcrBinding(vault_keyset->GetLELabel())) {
     return false;
   }
 
   // If the keyset was TPM-wrapped, but there was no public key hash,
   // always re-save.
   if (tpm_wrapped && !has_tpm_public_key_hash) {
-    LOG(INFO) << "Migrating keyset " << vault_keyset->legacy_index()
+    LOG(INFO) << "Migrating keyset " << vault_keyset->GetLegacyIndex()
               << " as there is no public hash";
     return true;
   }
@@ -321,7 +321,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
   if (scrypt_wrapped && !should_tpm && !tpm_wrapped)
     return false;  // 7
 
-  LOG(INFO) << "Migrating keyset " << vault_keyset->legacy_index()
+  LOG(INFO) << "Migrating keyset " << vault_keyset->GetLegacyIndex()
             << ": should_tpm=" << should_tpm
             << ", has_hash=" << has_tpm_public_key_hash
             << ", flags=" << crypt_flags << ", pcr_bound=" << pcr_bound
@@ -332,24 +332,23 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
 
 bool KeysetManagement::ReSaveKeyset(const Credentials& credentials,
                                     VaultKeyset* keyset) const {
-  // Save the initial serialized proto so we can roll-back any changes if we
+  // Save the initial keyset so we can roll-back any changes if we
   // failed to re-save.
-  SerializedVaultKeyset old_serialized;
-  old_serialized.CopyFrom(keyset->serialized());
+  VaultKeyset old_keyset;
+  old_keyset = *keyset;
 
   std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
 
-  uint64_t label = keyset->serialized().le_label();
   if (!keyset->Encrypt(credentials.passkey(), obfuscated_username) ||
-      !keyset->Save(keyset->source_file())) {
+      !keyset->Save(keyset->GetSourceFile())) {
     LOG(ERROR) << "Failed to encrypt and write the keyset.";
-    keyset->mutable_serialized()->CopyFrom(old_serialized);
+    *keyset = old_keyset;
     return false;
   }
 
-  if ((keyset->serialized().flags() & SerializedVaultKeyset::LE_CREDENTIAL) !=
-      0) {
+  if ((keyset->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0) {
+    uint64_t label = keyset->GetLELabel();
     if (!crypto_->RemoveLECredential(label)) {
       // This is non-fatal error.
       LOG(ERROR) << "Failed to remove label = " << label;
@@ -370,7 +369,7 @@ bool KeysetManagement::ReSaveKeysetIfNeeded(const Credentials& credentials,
   crypto_->EnsureTpm(false);
 
   bool force_resave = false;
-  if (!keyset->serialized().has_wrapped_chaps_key()) {
+  if (!keyset->HasWrappedChapsKey()) {
     keyset->CreateRandomChapsKey();
     force_resave = true;
   }
@@ -431,8 +430,7 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
 
   // Check the privileges to ensure Add is allowed.
   // Keys without extended data are considered fully privileged.
-  if (vk->serialized().has_key_data() &&
-      !vk->serialized().key_data().privileges().add()) {
+  if (vk->HasKeyData() && !vk->GetKeyData().privileges().add()) {
     // TODO(wad) Ensure this error can be returned as a KEY_DENIED error
     //           for AddKeyEx.
     LOG(WARNING) << "AddKeyset: no add() privilege";
@@ -441,11 +439,11 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
 
   // If the VaultKeyset doesn't have a reset seed, simply generate
   // one and re-encrypt before proceeding.
-  if (!vk->serialized().has_wrapped_reset_seed()) {
+  if (!vk->HasWrappedResetSeed()) {
     LOG(INFO) << "Keyset lacks reset_seed; generating one.";
     vk->CreateRandomResetSeed();
     if (!vk->Encrypt(existing_credentials.passkey(), obfuscated) ||
-        !vk->Save(vk->source_file())) {
+        !vk->Save(vk->GetSourceFile())) {
       LOG(WARNING) << "Failed to re-encrypt the old keyset";
       return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
     }
@@ -486,15 +484,15 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
       if (!clobber) {
         return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
       }
-      new_index = match->legacy_index();
-      vk_path = match->source_file();
+      new_index = match->GetLegacyIndex();
+      vk_path = match->GetSourceFile();
     }
   }
   // Since we're reusing the authorizing VaultKeyset, be careful with the
   // metadata.
-  vk->mutable_serialized()->clear_key_data();
+  vk->ClearKeyData();
   if (new_data) {
-    *(vk->mutable_serialized()->mutable_key_data()) = *new_data;
+    vk->SetKeyData(*new_data);
   }
 
   // Repersist the VK with the new creds.
@@ -545,13 +543,12 @@ CryptohomeErrorCode KeysetManagement::RemoveKeyset(
 
   // Legacy keys can remove any other key. Otherwise a key needs explicit
   // privileges.
-  if (vk->serialized().has_key_data() &&
-      !vk->serialized().key_data().privileges().remove()) {
+  if (vk->HasKeyData() && !vk->GetKeyData().privileges().remove()) {
     LOG(WARNING) << "RemoveKeyset: no remove() privilege";
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
   }
 
-  if (!ForceRemoveKeyset(obfuscated, remove_vk->legacy_index())) {
+  if (!ForceRemoveKeyset(obfuscated, remove_vk->GetLegacyIndex())) {
     LOG(ERROR) << "RemoveKeyset: failed to remove keyset file";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
   }
@@ -576,7 +573,7 @@ bool KeysetManagement::ForceRemoveKeyset(const std::string& obfuscated,
   // fail. The leaf data will remain, but at least the SerializedVaultKeyset
   // will be deleted.
   if (vk->IsLECredential()) {
-    if (!crypto_->RemoveLECredential(vk->serialized().le_label())) {
+    if (!crypto_->RemoveLECredential(vk->GetLELabel())) {
       // TODO(crbug.com/809749): Add UMA logging for this failure.
       LOG(ERROR)
           << "ForceRemoveKeyset: Failed to remove LE credential metadata.";
@@ -626,7 +623,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
     LOG(ERROR) << "Failed to load keyset file for user " << obfuscated_user;
     return nullptr;
   }
-  keyset->set_legacy_index(index);
+  keyset->SetLegacyIndex(index);
   return keyset;
 }
 
@@ -645,18 +642,17 @@ bool KeysetManagement::Migrate(const Credentials& newcreds,
                << newcreds.username();
     return false;
   }
-  key_index = vk->legacy_index();
+  key_index = vk->GetLegacyIndex();
   if (key_index == -1) {
     LOG(ERROR) << "Attempted migration of key-less mount.";
     return false;
   }
 
   const KeyData* key_data = NULL;
-  if (vk->serialized().has_key_data()) {
-    key_data = &(vk->serialized().key_data());
+  if (vk->HasKeyData()) {
+    key_data = &(vk->GetKeyData());
     // legacy keys are full privs
-    if (!vk->serialized().key_data().privileges().add() ||
-        !vk->serialized().key_data().privileges().remove()) {
+    if (!key_data->privileges().add() || !key_data->privileges().remove()) {
       LOG(ERROR) << "Migrate: key lacks sufficient privileges()";
       return false;
     }
@@ -720,7 +716,7 @@ void KeysetManagement::ResetLECredentials(const Credentials& creds) {
     std::unique_ptr<VaultKeyset> vk_reset =
         LoadVaultKeysetForUser(obfuscated, index);
     if (!vk_reset || !vk_reset->IsLECredential() ||  // Skip non-LE Credentials.
-        crypto_->GetWrongAuthAttempts(vk_reset->serialized()) == 0) {
+        crypto_->GetWrongAuthAttempts(vk_reset->GetLELabel()) == 0) {
       continue;
     }
 
@@ -737,14 +733,11 @@ void KeysetManagement::ResetLECredentials(const Credentials& creds) {
     }
 
     CryptoError err;
-    if (!crypto_->ResetLECredential(vk_reset->serialized(), &err, *vk)) {
+    if (!crypto_->ResetLECredential(*vk_reset, *vk, &err)) {
       LOG(WARNING) << "Failed to reset an LE credential: " << err;
     } else {
-      vk_reset->mutable_serialized()
-          ->mutable_key_data()
-          ->mutable_policy()
-          ->set_auth_locked(false);
-      if (!vk_reset->Save(vk_reset->source_file())) {
+      vk_reset->GetMutableKeyData()->mutable_policy()->set_auth_locked(false);
+      if (!vk_reset->Save(vk_reset->GetSourceFile())) {
         LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
       }
     }
@@ -767,7 +760,7 @@ void KeysetManagement::RemoveLECredentials(
       continue;
     }
 
-    uint64_t label = vk_remove->serialized().le_label();
+    uint64_t label = vk_remove->GetLELabel();
     if (!crypto_->RemoveLECredential(label)) {
       LOG(WARNING) << "Failed to remove an LE credential, label: " << label;
       continue;

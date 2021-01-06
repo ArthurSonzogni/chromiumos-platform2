@@ -458,7 +458,6 @@ if (use.test) {
       "mock_signature_sealing_backend.cc",
       "mock_tpm.cc",
       "mock_tpm_init.cc",
-      "mock_vault_keyset.cc",
       "password_verifier_unittest.cc",
       "persistent_lookup_table_unittest.cc",
       "pkcs11_keystore_unittest.cc",

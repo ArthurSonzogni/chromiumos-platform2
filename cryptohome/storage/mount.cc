@@ -521,19 +521,16 @@ base::Value Mount::GetStatus(int active_key_index) {
           homedirs_->keyset_management()->LoadVaultKeysetForUser(user,
                                                                  key_index));
       if (keyset.get()) {
-        bool tpm =
-            keyset->serialized().flags() & SerializedVaultKeyset::TPM_WRAPPED;
-        bool scrypt = keyset->serialized().flags() &
-                      SerializedVaultKeyset::SCRYPT_WRAPPED;
+        bool tpm = keyset->GetFlags() & SerializedVaultKeyset::TPM_WRAPPED;
+        bool scrypt =
+            keyset->GetFlags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
         keyset_dict.SetBoolKey("tpm", tpm);
         keyset_dict.SetBoolKey("scrypt", scrypt);
         keyset_dict.SetBoolKey("ok", true);
         keyset_dict.SetIntKey("last_activity",
-                              keyset->serialized().last_activity_timestamp());
-        if (keyset->serialized().has_key_data()) {
-          // TODO(wad) Add additional KeyData
-          keyset_dict.SetStringKey("label",
-                                   keyset->serialized().key_data().label());
+                              keyset->GetLastActivityTimestamp());
+        if (keyset->HasKeyData()) {
+          keyset_dict.SetStringKey("label", keyset->GetKeyData().label());
         }
       } else {
         keyset_dict.SetBoolKey("ok", false);

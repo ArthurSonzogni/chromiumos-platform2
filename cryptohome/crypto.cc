@@ -71,9 +71,9 @@ bool GenerateResetSecret(const VaultKeyset& vault_keyset,
 
   // For new users, a reset seed is stored in the VaultKeyset, which is derived
   // into the reset secret.
-  if (!vault_keyset.reset_seed().empty()) {
-    SecureBlob local_reset_seed(vault_keyset.reset_seed().begin(),
-                                vault_keyset.reset_seed().end());
+  if (!vault_keyset.GetResetSeed().empty()) {
+    SecureBlob local_reset_seed(vault_keyset.GetResetSeed().begin(),
+                                vault_keyset.GetResetSeed().end());
     *reset_salt = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
     *reset_secret = CryptoLib::HmacSha256(*reset_salt, local_reset_seed);
     return true;
@@ -82,9 +82,9 @@ bool GenerateResetSecret(const VaultKeyset& vault_keyset,
   // When a user credential is being migrated (such as the password), the reset
   // secret needs to remain the same to unlock the PIN. In this case, the reset
   // secret is passed through the vault keyset.
-  if (!vault_keyset.reset_secret().empty()) {
-    reset_secret->assign(vault_keyset.reset_secret().begin(),
-                         vault_keyset.reset_secret().end());
+  if (!vault_keyset.GetResetSecret().empty()) {
+    reset_secret->assign(vault_keyset.GetResetSecret().begin(),
+                         vault_keyset.GetResetSecret().end());
     return true;
   }
   LOG(ERROR) << "The VaultKeyset doesn't have a reset seed, so we can't"
@@ -129,7 +129,7 @@ bool UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
       return false;
     }
 
-    keyset->set_chaps_key(unwrapped_chaps_key);
+    keyset->SetChapsKey(unwrapped_chaps_key);
   }
 
   // Decrypt the reset seed.
@@ -148,7 +148,7 @@ bool UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
       return false;
     }
 
-    keyset->set_reset_seed(unwrapped_reset_seed);
+    keyset->SetResetSeed(unwrapped_reset_seed);
   }
 
   return true;
@@ -174,7 +174,7 @@ bool UnwrapScryptVaultKeyset(const SerializedVaultKeyset& serialized,
                                   &chaps_key)) {
       return false;
     }
-    keyset->set_chaps_key(chaps_key);
+    keyset->SetChapsKey(chaps_key);
   }
 
   if (serialized.has_wrapped_reset_seed()) {
@@ -187,7 +187,7 @@ bool UnwrapScryptVaultKeyset(const SerializedVaultKeyset& serialized,
             &reset_seed)) {
       return false;
     }
-    keyset->set_reset_seed(reset_seed);
+    keyset->SetResetSeed(reset_seed);
   }
 
   // There is a SHA hash included at the end of the decrypted blob. However,
@@ -228,10 +228,10 @@ bool WrapVaultKeysetWithAesDeprecated(const VaultKeyset& vault_keyset,
   serialized->set_wrapped_keyset(vault_cipher_text.data(),
                                  vault_cipher_text.size());
 
-  if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+  if (vault_keyset.GetChapsKey().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
     SecureBlob wrapped_chaps_key;
     if (!CryptoLib::AesEncryptDeprecated(
-            vault_keyset.chaps_key(), blobs.vkk_key.value(),
+            vault_keyset.GetChapsKey(), blobs.vkk_key.value(),
             blobs.chaps_iv.value(), &wrapped_chaps_key)) {
       return false;
     }
@@ -242,10 +242,10 @@ bool WrapVaultKeysetWithAesDeprecated(const VaultKeyset& vault_keyset,
   }
 
   // If a reset seed is present, encrypt and store it, else clear the field.
-  if (store_reset_seed && vault_keyset.reset_seed().size() != 0) {
+  if (store_reset_seed && vault_keyset.GetResetSeed().size() != 0) {
     const auto reset_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
     SecureBlob wrapped_reset_seed;
-    if (!CryptoLib::AesEncryptDeprecated(vault_keyset.reset_seed(),
+    if (!CryptoLib::AesEncryptDeprecated(vault_keyset.GetResetSeed(),
                                          blobs.vkk_key.value(), reset_iv,
                                          &wrapped_reset_seed)) {
       LOG(ERROR) << "AES encryption of Reset seed failed.";
@@ -291,11 +291,11 @@ bool WrapScryptVaultKeyset(const VaultKeyset& vault_keyset,
   }
   serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
 
-  if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+  if (vault_keyset.GetChapsKey().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
     SecureBlob wrapped_chaps_key;
     if (!LibScryptCompat::Encrypt(key_blobs.chaps_scrypt_key->derived_key(),
                                   key_blobs.chaps_scrypt_key->ConsumeSalt(),
-                                  vault_keyset.chaps_key(),
+                                  vault_keyset.GetChapsKey(),
                                   kDefaultScryptParams, &wrapped_chaps_key)) {
       LOG(ERROR) << "Scrypt encrypt of chaps key blob failed.";
       return false;
@@ -307,12 +307,12 @@ bool WrapScryptVaultKeyset(const VaultKeyset& vault_keyset,
   }
 
   // If there is a reset seed, encrypt and store it.
-  if (vault_keyset.reset_seed().size() != 0) {
+  if (vault_keyset.GetResetSeed().size() != 0) {
     brillo::SecureBlob wrapped_reset_seed;
     if (!LibScryptCompat::Encrypt(
             key_blobs.scrypt_wrapped_reset_seed_key->derived_key(),
             key_blobs.scrypt_wrapped_reset_seed_key->ConsumeSalt(),
-            vault_keyset.reset_seed(), kDefaultScryptParams,
+            vault_keyset.GetResetSeed(), kDefaultScryptParams,
             &wrapped_reset_seed)) {
       LOG(ERROR) << "Scrypt encrypt of reset seed failed.";
       return false;
@@ -478,7 +478,7 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
       LOG(ERROR) << "Chaps key scrypt decrypt failed.";
       return false;
     }
-    keyset->set_chaps_key(chaps_key);
+    keyset->SetChapsKey(chaps_key);
   }
 
   if (serialized.has_wrapped_reset_seed()) {
@@ -491,7 +491,7 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
       LOG(ERROR) << "Reset seed scrypt decrypt failed.";
       return false;
     }
-    keyset->set_reset_seed(reset_seed);
+    keyset->SetResetSeed(reset_seed);
   }
 
   // There is a SHA hash included at the end of the decrypted blob. However,
@@ -541,7 +541,7 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     // This is possible to be empty if an old version of CR50 is running.
     if (vkk_data.reset_secret.has_value() &&
         !vkk_data.reset_secret.value().empty()) {
-      vault_keyset->set_reset_secret(vkk_data.reset_secret.value());
+      vault_keyset->SetResetSecret(vkk_data.reset_secret.value());
     }
   }
 
@@ -750,11 +750,12 @@ bool Crypto::DecryptData(const std::string& encrypted_data,
   return true;
 }
 
-bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
-                               CryptoError* error,
-                               const VaultKeyset& vk) const {
-  if (!tpm_)
+bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
+                               const VaultKeyset& vk,
+                               CryptoError* error) const {
+  if (!tpm_) {
     return false;
+  }
 
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
@@ -764,10 +765,11 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
     return false;
   }
 
-  CHECK(serialized_reset.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
-  SecureBlob local_reset_seed(vk.reset_seed().begin(), vk.reset_seed().end());
-  SecureBlob reset_salt(serialized_reset.reset_salt().begin(),
-                        serialized_reset.reset_salt().end());
+  CHECK(vk_reset.GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  SecureBlob local_reset_seed(vk.GetResetSeed().begin(),
+                              vk.GetResetSeed().end());
+  SecureBlob reset_salt(vk_reset.GetResetSalt().begin(),
+                        vk_reset.GetResetSalt().end());
   if (local_reset_seed.empty() || reset_salt.empty()) {
     LOG(ERROR) << "Reset seed/salt is empty, can't reset LE credential.";
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
@@ -775,8 +777,7 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
   }
 
   SecureBlob reset_secret = CryptoLib::HmacSha256(reset_salt, local_reset_seed);
-  int ret =
-      le_manager_->ResetCredential(serialized_reset.le_label(), reset_secret);
+  int ret = le_manager_->ResetCredential(vk_reset.GetLELabel(), reset_secret);
   if (ret != LE_CRED_SUCCESS) {
     PopulateError(error, ret == LE_CRED_ERROR_INVALID_RESET_SECRET
                              ? CryptoError::CE_LE_INVALID_SECRET
@@ -786,11 +787,10 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
   return true;
 }
 
-int Crypto::GetWrongAuthAttempts(
-    const SerializedVaultKeyset& le_serialized) const {
+int Crypto::GetWrongAuthAttempts(uint64_t le_label) const {
   DCHECK(le_manager_)
       << "le_manage_ doesn't exist when calling GetWrongAuthAttempts()";
-  return le_manager_->GetWrongAuthAttempts(le_serialized.le_label());
+  return le_manager_->GetWrongAuthAttempts(le_label);
 }
 
 bool Crypto::RemoveLECredential(uint64_t label) const {
