@@ -184,7 +184,7 @@ class BRILLO_PRIVATE SecureAllocator {
     if (!v)
       return;
     // This is guaranteed not to be optimized out.
-    SecureClear(v, n);
+    SecureClearBytes(v, n);
   }
 
  private:

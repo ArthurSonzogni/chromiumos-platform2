@@ -60,14 +60,14 @@ SecureBlob::~SecureBlob() {
 
 void SecureBlob::resize(size_type count) {
   if (count < size()) {
-    SecureClear(data() + count, capacity() - count);
+    SecureClearBytes(data() + count, capacity() - count);
   }
   SecureVector::resize(count);
 }
 
 void SecureBlob::resize(size_type count, const value_type& value) {
   if (count < size()) {
-    SecureClear(data() + count, capacity() - count);
+    SecureClearBytes(data() + count, capacity() - count);
   }
   SecureVector::resize(count, value);
 }
@@ -99,7 +99,7 @@ bool SecureBlob::HexStringToSecureBlob(const std::string& input,
     return false;
   }
   output->assign(temp.begin(), temp.end());
-  SecureClear(temp.data(), temp.capacity());
+  SecureClearBytes(temp.data(), temp.capacity());
   return true;
 }
 

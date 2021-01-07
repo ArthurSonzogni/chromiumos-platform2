@@ -97,12 +97,12 @@ bool VaultKeyset::FromKeysBlob(const SecureBlob& keys_blob) {
 
   FromKeys(keys);
 
-  brillo::SecureClear(&keys, sizeof(keys));
+  brillo::SecureClearBytes(&keys, sizeof(keys));
   return true;
 }
 
 bool VaultKeyset::ToKeys(VaultKeysetKeys* keys) const {
-  brillo::SecureClear(keys, sizeof(VaultKeysetKeys));
+  brillo::SecureClearBytes(keys, sizeof(VaultKeysetKeys));
   if (fek_.size() != sizeof(keys->fek)) {
     return false;
   }

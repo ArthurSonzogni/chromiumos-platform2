@@ -749,8 +749,8 @@ WebAuthnHandler::SendU2fGenerateWaitForPresence(
         return tpm_proxy_->SendU2fGenerate(*generate_req, generate_resp);
       },
       &generate_status);
-  brillo::SecureClear(&generate_req->userSecret,
-                      sizeof(generate_req->userSecret));
+  brillo::SecureClearBytes(&generate_req->userSecret,
+                           sizeof(generate_req->userSecret));
 
   if (generate_status == 0) {
     util::AppendToVector(generate_resp->pubKey, credential_public_key);
@@ -1050,7 +1050,7 @@ WebAuthnHandler::SendU2fSignWaitForPresence(Request* sign_req,
         return tpm_proxy_->SendU2fSign(*sign_req, sign_resp);
       },
       &sign_status);
-  brillo::SecureClear(&sign_req->userSecret, sizeof(sign_req->userSecret));
+  brillo::SecureClearBytes(&sign_req->userSecret, sizeof(sign_req->userSecret));
 
   if (sign_status == 0) {
     base::Optional<std::vector<uint8_t>> opt_signature =
@@ -1296,7 +1296,7 @@ WebAuthnHandler::DoU2fSignCheckOnly(
     struct u2f_sign_resp sign_resp;
     base::AutoLock(tpm_proxy_->GetLock());
     sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-    brillo::SecureClear(&sign_req.userSecret, sizeof(sign_req.userSecret));
+    brillo::SecureClearBytes(&sign_req.userSecret, sizeof(sign_req.userSecret));
   } else if (credential_id.size() == sizeof(u2f_key_handle)) {
     struct u2f_sign_req sign_req = {.flags = U2F_AUTH_CHECK_ONLY};
     if (!util::VectorToObject(rp_id_hash, sign_req.appId,
@@ -1315,7 +1315,7 @@ WebAuthnHandler::DoU2fSignCheckOnly(
     struct u2f_sign_resp sign_resp;
     base::AutoLock(tpm_proxy_->GetLock());
     sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-    brillo::SecureClear(&sign_req.userSecret, sizeof(sign_req.userSecret));
+    brillo::SecureClearBytes(&sign_req.userSecret, sizeof(sign_req.userSecret));
   } else {
     return HasCredentialsResponse::INVALID_REQUEST;
   }
