@@ -45,7 +45,7 @@ T Sha1Helper(const U& data) {
   hash.resize(sizeof(md_value));
   memcpy(hash.data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
-  brillo::SecureClearBytes(md_value, sizeof(md_value));
+  brillo::SecureClearContainer(md_value);
   return hash;
 }
 
@@ -61,7 +61,7 @@ T Sha256Helper(const U& data) {
   hash.resize(sizeof(md_value));
   memcpy(hash.data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
-  brillo::SecureClearBytes(md_value, sizeof(md_value));
+  brillo::SecureClearContainer(md_value);
   return hash;
 }
 

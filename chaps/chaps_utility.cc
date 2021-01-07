@@ -671,7 +671,7 @@ SecureBlob Sha1(const SecureBlob& input) {
   unsigned char digest[SHA_DIGEST_LENGTH];
   SHA1(input.data(), input.size(), digest);
   SecureBlob hash(std::begin(digest), std::end(digest));
-  brillo::SecureClearBytes(digest, SHA_DIGEST_LENGTH);
+  brillo::SecureClearContainer(digest);
   return hash;
 }
 
@@ -679,7 +679,7 @@ SecureBlob Sha256(const SecureBlob& input) {
   unsigned char digest[SHA256_DIGEST_LENGTH];
   SHA256(input.data(), input.size(), digest);
   SecureBlob hash(std::begin(digest), std::end(digest));
-  brillo::SecureClearBytes(digest, SHA256_DIGEST_LENGTH);
+  brillo::SecureClearContainer(digest);
   return hash;
 }
 
@@ -687,7 +687,7 @@ SecureBlob Sha512(const SecureBlob& input) {
   unsigned char digest[SHA512_DIGEST_LENGTH];
   SHA512(input.data(), input.size(), digest);
   SecureBlob hash(std::begin(digest), std::end(digest));
-  brillo::SecureClearBytes(digest, SHA512_DIGEST_LENGTH);
+  brillo::SecureClearContainer(digest);
   return hash;
 }
 

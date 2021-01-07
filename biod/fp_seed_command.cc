@@ -22,7 +22,7 @@ bool FpSeedCommand::Run(int fd) {
 }
 
 void FpSeedCommand::ClearSeedBuffer() {
-  brillo::SecureClearBytes(Req()->seed, sizeof(Req()->seed));
+  brillo::SecureClearContainer(Req()->seed);
 }
 
 bool FpSeedCommand::EcCommandRun(int fd) {
