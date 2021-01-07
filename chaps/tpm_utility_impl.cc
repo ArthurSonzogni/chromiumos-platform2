@@ -775,7 +775,7 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
     RAND_bytes(discard, kSha1OutputBytes);
     result = Tspi_Policy_SetSecret(migration_policy, TSS_SECRET_MODE_SHA1,
                                    kSha1OutputBytes, discard);
-    brillo::SecureClear(discard, kSha1OutputBytes);
+    brillo::SecureClearBytes(discard, kSha1OutputBytes);
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
       return false;

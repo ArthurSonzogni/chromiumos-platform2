@@ -8,7 +8,7 @@
 
 namespace brillo {
 
-BRILLO_DISABLE_ASAN void SecureClear(void* v, size_t n) {
+BRILLO_DISABLE_ASAN void SecureClearBytes(void* v, size_t n) {
   OPENSSL_cleanse(v, n);
 }
 

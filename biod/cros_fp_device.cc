@@ -229,8 +229,8 @@ base::Optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
             cmd.Resp()->positive_match_secret +
                 sizeof(cmd.Resp()->positive_match_secret),
             secret.begin());
-  brillo::SecureClear(cmd.Resp()->positive_match_secret,
-                      sizeof(cmd.Resp()->positive_match_secret));
+  brillo::SecureClearBytes(cmd.Resp()->positive_match_secret,
+                           sizeof(cmd.Resp()->positive_match_secret));
   return secret;
 }
 
