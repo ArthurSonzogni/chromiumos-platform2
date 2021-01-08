@@ -414,20 +414,23 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
     return true;
 
   requested_frequency_ = frequency;
-  if (!iio_device_->GetTrigger()) {
-    if (!iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
-                                           frequency)) {
-      LOGF(ERROR) << "Failed to set frequency";
-    }
 
-    auto freq_opt =
-        iio_device_->ReadDoubleAttribute(libmems::kSamplingFrequencyAttr);
-    if (!freq_opt.has_value()) {
-      LOGF(ERROR) << "Failed to get frequency";
+  if (!iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
+                                         frequency)) {
+    LOGF(ERROR) << "Failed to set frequency";
+    // If the device has trigger, setting device's sampling_frequency isn't
+    // necessary.
+    if (!iio_device_->GetTrigger())
       return false;
-    }
-    dev_frequency_ = freq_opt.value();
+  }
 
+  // |sampling_frequency| returns by the EC is the current sensors ODR. It may
+  // be higher than requested when the EC needs higher speed, or just different
+  // if the EC is slow to set the new sensor ODR. Use requested |frequency| as
+  // base for downsampling.
+  dev_frequency_ = frequency;
+
+  if (!iio_device_->GetTrigger()) {
     if (dev_frequency_ < libmems::kFrequencyEpsilon)
       return true;
 
@@ -440,19 +443,12 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
     return true;
   }
 
-  iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, frequency);
+  // |iio_device_| has a trigger.
   if (!iio_device_->GetTrigger()->WriteDoubleAttribute(
           libmems::kSamplingFrequencyAttr, frequency)) {
     LOGF(ERROR) << "Failed to set trigger's frequency";
     return false;
   }
-  auto freq_opt = iio_device_->GetTrigger()->ReadDoubleAttribute(
-      libmems::kSamplingFrequencyAttr);
-  if (!freq_opt.has_value()) {
-    LOGF(ERROR) << "Failed to get frequency";
-    return false;
-  }
-  dev_frequency_ = freq_opt.value();
 
   return true;
 }
