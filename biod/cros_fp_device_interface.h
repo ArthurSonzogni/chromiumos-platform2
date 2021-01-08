@@ -18,11 +18,11 @@
 #include "biod/fp_mode.h"
 
 /**
- * The template is encrypted, so it's not strictly necessary to use
- * SecureVector, but we do so as part of a defense-in-depth strategy in case
- * there's a bug in the encryption/FPMCU.
+ * Though it's nice to have the template as a SecureVector, for some templates
+ * this will hit the RLIMIT_MEMLOCK and cause a crash. Since the template is
+ * encrypted by the FPMCU, it's not strictly necessary to use SecureVector.
  */
-using VendorTemplate = brillo::SecureVector;
+using VendorTemplate = std::vector<uint8_t>;
 
 namespace biod {
 

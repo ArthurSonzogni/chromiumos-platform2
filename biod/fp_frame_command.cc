@@ -42,7 +42,7 @@ bool FpFrameCommand::Run(int fd) {
   return true;
 }
 
-std::unique_ptr<brillo::SecureVector> FpFrameCommand::frame() {
+std::unique_ptr<std::vector<uint8_t>> FpFrameCommand::frame() {
   return std::move(frame_data_);
 }
 
