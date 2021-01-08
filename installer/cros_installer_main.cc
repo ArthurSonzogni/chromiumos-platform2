@@ -8,7 +8,7 @@
 #include "installer/chromeos_postinst.h"
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(type, "", "Install type, one of: postinst.");
+  DEFINE_string(type, "install", "Install type, one of: install, postinst.");
 
   // postinst flags.
   DEFINE_string(bios, "", "Bios type, one of: secure, legacy, efi, and uboot.");
@@ -38,6 +38,11 @@ int main(int argc, char* argv[]) {
                         &exit_code)) {
       return exit_code ? exit_code : 1;
     }
+  } else if (FLAGS_type == "install") {
+    // For now just pass through the args.
+    std::vector<std::string> cmd = {"/usr/libexec/chromeos-install"};
+    cmd.insert(cmd.end(), argv + 1, argv + argc);
+    return RunCommand(cmd);
   } else {
     LOG(ERROR) << "Invalid --type flag is passed.";
     return 1;
