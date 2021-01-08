@@ -14,8 +14,8 @@
 #define MS_NOSYMFOLLOW 256
 #endif
 
-#include <set>
 #include <string>
+#include <unordered_set>
 
 #include <base/files/file.h>
 #include <chromeos/dbus/service_constants.h>
@@ -65,7 +65,7 @@ class Platform {
   virtual bool CreateOrReuseEmptyDirectoryWithFallback(
       std::string* path,
       unsigned max_suffix_to_retry,
-      const std::set<std::string>& reserved_paths) const;
+      const std::unordered_set<std::string>& reserved_paths) const;
 
   // Creates a temporary directory inside |dir| and sets its path to |path|.
   virtual bool CreateTemporaryDirInDir(const std::string& dir,

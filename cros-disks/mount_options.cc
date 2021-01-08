@@ -55,4 +55,22 @@ void SetParamValue(std::vector<std::string>* params,
   params->emplace_back(base::StrCat({name, "=", value}));
 }
 
+bool HasExactParam(const std::vector<std::string>& params,
+                   base::StringPiece param) {
+  return base::Contains(params, param);
+}
+
+size_t RemoveParamsEqualTo(std::vector<std::string>* params,
+                           base::StringPiece param) {
+  return base::Erase(*params, param);
+}
+
+size_t RemoveParamsWithSameName(std::vector<std::string>* params,
+                                base::StringPiece name) {
+  std::string prefix = base::StrCat({name, "="});
+  return base::EraseIf(*params, [prefix](const std::string& value) {
+    return base::StartsWith(value, prefix, base::CompareCase::SENSITIVE);
+  });
+}
+
 }  // namespace cros_disks

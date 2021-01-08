@@ -10,10 +10,9 @@
 #ifndef CROS_DISKS_MOUNT_MANAGER_H_
 #define CROS_DISKS_MOUNT_MANAGER_H_
 
-#include <map>
 #include <memory>
-#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -40,12 +39,6 @@ class Platform;
 // of filesystem.
 class MountManager {
  public:
-  // Represents status of a mounted volume.
-  struct MountState {
-    std::unique_ptr<MountPoint> mount_point;
-    bool is_read_only;
-  };
-
   // Constructor that takes a mount root directory, an object for providing
   // platform service, and an object for collecting UMA metrics. The mount
   // root directory |mount_root| must be a non-empty path string, but it is
@@ -109,7 +102,7 @@ class MountManager {
   // the reserved mount path.
   MountErrorType Mount(const std::string& source_path,
                        const std::string& filesystem_type,
-                       const std::vector<std::string>& options,
+                       std::vector<std::string> options,
                        std::string* mount_path);
 
   // Unmounts |path|, which can be a source path or a mount path. If the mount
@@ -120,62 +113,23 @@ class MountManager {
   // Unmounts all mounted paths.
   virtual bool UnmountAll();
 
-  // Adds or updates a mapping |source_path| to its mount state in the cache.
-  void AddOrUpdateMountStateCache(const std::string& source_path,
-                                  std::unique_ptr<MountPoint> mount_point,
-                                  bool is_read_only);
-
-  // Gets the corresponding |mount_path| of |source_path| from the cache.
-  // Returns false if |source_path| is not found in the cache.
-  bool GetMountPathFromCache(const std::string& source_path,
-                             std::string* mount_path) const;
-
-  // Returns true if |mount_path| is found in the cache.
-  bool IsMountPathInCache(const std::string& mount_path) const;
-
-  // Removes |mount_path| from the cache. Returns false if |mount_path|
-  // is not found in the cache.
-  bool RemoveMountPathFromCache(const std::string& mount_path);
-
-  // Returns true if |mount_path| is reserved.
-  bool IsMountPathReserved(const std::string& mount_path) const;
-
-  // Returns the mount error that caused |mount_path| to be reserved, or
-  // kMountErrorNone if |mount_path| is not a reserved path.
-  MountErrorType GetMountErrorOfReservedMountPath(
-      const std::string& mount_path) const;
-
-  // Returns a set of reserved mount paths.
-  std::set<std::string> GetReservedMountPaths() const;
-
-  // Adds |mount_path| to the set of reserved mount paths. Also records
-  // |error_type| that caused the mount path to be reserved. If a |mount_path|
-  // has been reserved, subsequent calls to this method with the same
-  // |mount_path| but different |error_type| are ignored.
-  void ReserveMountPath(const std::string& mount_path,
-                        MountErrorType error_type);
-
-  // Removes |mount_path| from the set of reserved mount paths.
-  void UnreserveMountPath(const std::string& mount_path);
-
   // Returns the mount entries managed by this mount manager.
   std::vector<MountEntry> GetMountEntries() const;
-
-  // Returns a mount entry for |source_path|, or the empty Optional<> if
-  // |source_path| is not found.
-  base::Optional<MountEntry> GetMountEntryForTest(
-      const std::string& source_path) const;
 
  protected:
   // Type definition of a cache mapping a source path to its mount state of
   // filesystems mounted by the manager.
-  using MountStateMap = std::map<std::string, MountState>;
+  using MountStateMap =
+      std::unordered_map<std::string, std::unique_ptr<MountPoint>>;
 
-  MountState* FindMountBySource(const std::string& source);
+  MountPoint* FindMountBySource(const std::string& source);
+  MountPoint* FindMountByMountPath(const base::FilePath& path);
+  bool RemoveMount(MountPoint* mount_point);
 
   // Type definition of a cache mapping a reserved mount path to the mount
   // error that caused the mount path to be reserved.
-  using ReservedMountPathMap = std::map<std::string, MountErrorType>;
+  using ReservedMountPathMap =
+      std::unordered_map<base::FilePath, MountErrorType>;
 
   // The base class calls Platform::GetRealPath(), derived classes can override
   // it.
@@ -184,13 +138,13 @@ class MountManager {
   // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
   MountErrorType MountNewSource(const std::string& source_path,
                                 const std::string& filesystem_type,
-                                const std::vector<std::string>& options,
+                                std::vector<std::string> options,
                                 std::string* mount_path);
 
   // Remounts |source_path| on |mount_path| as |filesystem_type| with |options|.
   MountErrorType Remount(const std::string& source_path,
                          const std::string& filesystem_type,
-                         const std::vector<std::string>& options,
+                         std::vector<std::string> options,
                          std::string* mount_path);
 
   // Implemented by a derived class to mount |source_path| to |mount_path|
@@ -211,14 +165,6 @@ class MountManager {
   virtual std::string SuggestMountPath(
       const std::string& source_path) const = 0;
 
-  // Extracts the mount label, if any, from an array of options.
-  // If a mount label option is found in |options|, returns true, sets
-  // |mount_label| to the mount label value, and removes the option from
-  // |options|. If multiple mount label options are given, |mount_label|
-  // is set to the last mount label value.
-  bool ExtractMountLabelFromOptions(std::vector<std::string>* options,
-                                    std::string* mount_label) const;
-
   // Returns true if the manager should reserve a mount path if the mount
   // operation returns a particular type of error. The default implementation
   // returns false on any error. A derived class should override this method
@@ -227,8 +173,8 @@ class MountManager {
 
   // Returns true if |path| is an immediate child of |parent|, i.e.
   // |path| is an immediate file or directory under |parent|.
-  bool IsPathImmediateChildOfParent(const base::FilePath& path,
-                                    const base::FilePath& parent) const;
+  static bool IsPathImmediateChildOfParent(const base::FilePath& path,
+                                           const base::FilePath& parent);
 
   // Returns true if |mount_path| is a valid mount path, which should be an
   // immediate child of the mount root specified by |mount_root_|. The check
@@ -251,6 +197,35 @@ class MountManager {
   brillo::ProcessReaper* process_reaper() const { return process_reaper_; }
 
  private:
+  // Prepares empty directory to mount into. If |mount_path| contains a path
+  // it may be used, but not necessarily. Returns the status of the operation
+  // and if successful - fills |mount_path|.
+  MountErrorType CreateMountPathForSource(const std::string& source,
+                                          const std::string& label,
+                                          base::FilePath* mount_path);
+
+  // Adds or updates a mapping |source_path| to its mount state in the cache.
+  void AddOrUpdateMountStateCache(const std::string& source_path,
+                                  std::unique_ptr<MountPoint> mount_point,
+                                  bool is_read_only);
+
+  // Returns true if |mount_path| is reserved.
+  bool IsMountPathReserved(const base::FilePath& mount_path) const;
+
+  // Returns the mount error that caused |mount_path| to be reserved, or
+  // kMountErrorNone if |mount_path| is not a reserved path.
+  MountErrorType GetMountErrorOfReservedMountPath(
+      const base::FilePath& mount_path) const;
+
+  // Adds |mount_path| to the set of reserved mount paths. Also records
+  // |error_type| that caused the mount path to be reserved. If a |mount_path|
+  // has been reserved, subsequent calls to this method with the same
+  // |mount_path| but different |error_type| are ignored.
+  void ReserveMountPath(base::FilePath mount_path, MountErrorType error_type);
+
+  // Removes |mount_path| from the set of reserved mount paths.
+  void UnreserveMountPath(const base::FilePath& mount_path);
+
   // The root directory under which mount directories are created.
   const base::FilePath mount_root_;
 
@@ -270,6 +245,8 @@ class MountManager {
   // A cache mapping a reserved mount path to the error that caused
   // the path to reserved.
   ReservedMountPathMap reserved_mount_paths_;
+
+  friend class MountManagerUnderTest;
 
   FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptions);
   FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel);

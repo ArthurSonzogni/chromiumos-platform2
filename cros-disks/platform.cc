@@ -80,7 +80,7 @@ bool Platform::CreateOrReuseEmptyDirectory(const std::string& path) const {
 bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
     std::string* path,
     unsigned max_suffix_to_retry,
-    const std::set<std::string>& reserved_paths) const {
+    const std::unordered_set<std::string>& reserved_paths) const {
   CHECK(path && !path->empty()) << "Invalid path argument";
 
   if (!base::Contains(reserved_paths, *path) &&

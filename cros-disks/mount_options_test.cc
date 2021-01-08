@@ -41,4 +41,29 @@ TEST(MountOptionsTest, SetParamValue) {
   EXPECT_THAT(params, ElementsAre("foo=bar", "baz="));
 }
 
+TEST(MountOptionsTest, HasExactParam) {
+  EXPECT_TRUE(HasExactParam({"abc", "foo", "bar=baz"}, "foo"));
+  EXPECT_FALSE(HasExactParam({"abc", "foo", "bar=baz"}, "bar"));
+}
+
+TEST(MountOptionsTest, RemoveParamsEqualTo) {
+  std::vector<std::string> params = {"abc", "foo", "bar=baz", "abc"};
+  EXPECT_EQ(0, RemoveParamsEqualTo(&params, "bar"));
+  EXPECT_THAT(params, ElementsAre("abc", "foo", "bar=baz", "abc"));
+  EXPECT_EQ(1, RemoveParamsEqualTo(&params, "foo"));
+  EXPECT_THAT(params, ElementsAre("abc", "bar=baz", "abc"));
+  EXPECT_EQ(2, RemoveParamsEqualTo(&params, "abc"));
+  EXPECT_THAT(params, ElementsAre("bar=baz"));
+}
+
+TEST(MountOptionsTest, RemoveParamsWithSameName) {
+  std::vector<std::string> params = {"abc", "foo=0", "bar=baz", "foo=1"};
+  EXPECT_EQ(0, RemoveParamsWithSameName(&params, "abc"));
+  EXPECT_THAT(params, ElementsAre("abc", "foo=0", "bar=baz", "foo=1"));
+  EXPECT_EQ(1, RemoveParamsWithSameName(&params, "bar"));
+  EXPECT_THAT(params, ElementsAre("abc", "foo=0", "foo=1"));
+  EXPECT_EQ(2, RemoveParamsWithSameName(&params, "foo"));
+  EXPECT_THAT(params, ElementsAre("abc"));
+}
+
 }  // namespace cros_disks

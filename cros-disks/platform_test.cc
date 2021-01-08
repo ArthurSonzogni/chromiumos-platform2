@@ -122,7 +122,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  std::set<std::string> reserved_paths;
+  std::unordered_set<std::string> reserved_paths;
 
   // Nonexistent directory
   base::FilePath new_dir = temp_dir.GetPath().Append("test1");
@@ -163,7 +163,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  std::set<std::string> reserved_paths;
+  std::unordered_set<std::string> reserved_paths;
 
   base::FilePath new_dir = temp_dir.GetPath().Append("test");
   std::string path = new_dir.value();

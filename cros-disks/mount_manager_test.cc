@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -60,7 +61,7 @@ class MockPlatform : public Platform {
               (const, override));
   MOCK_METHOD(bool,
               CreateOrReuseEmptyDirectoryWithFallback,
-              (std::string*, unsigned, const std::set<std::string>&),
+              (std::string*, unsigned, const std::unordered_set<std::string>&),
               (const, override));
   MOCK_METHOD(bool,
               RemoveEmptyDirectory,
@@ -117,6 +118,54 @@ class MountManagerUnderTest : public MountManager {
               SuggestMountPath,
               (const std::string&),
               (const, override));
+
+  // Adds or updates a mapping |source_path| to its mount state in the cache.
+  void AddMount(const std::string& source_path,
+                std::unique_ptr<MountPoint> mount_point) {
+    DCHECK(mount_point);
+    DCHECK(!FindMountBySource(source_path));
+    mount_states_.insert({source_path, std::move(mount_point)});
+  }
+
+  using MountManager::GetMountErrorOfReservedMountPath;
+  using MountManager::ReserveMountPath;
+  using MountManager::UnreserveMountPath;
+
+  bool IsMountPathInCache(const std::string& path) {
+    return FindMountByMountPath(base::FilePath(path));
+  }
+
+  bool IsMountPathReserved(const std::string& path) {
+    return MountManager::IsMountPathReserved(base::FilePath(path));
+  }
+
+  void AddMountStateCache(const std::string& source,
+                          std::unique_ptr<MountPoint> mount_point) {
+    mount_states_.insert({source, std::move(mount_point)});
+  }
+
+  bool RemoveMountPathFromCache(const std::string& path) {
+    MountPoint* mp = FindMountByMountPath(base::FilePath(path));
+    if (!mp)
+      return false;
+    return RemoveMount(mp);
+  }
+
+  std::unordered_set<std::string> GetReservedMountPaths() {
+    std::unordered_set<std::string> result;
+    for (const auto& element : reserved_mount_paths_) {
+      result.insert(element.first.value());
+    }
+    return result;
+  }
+
+  base::Optional<MountEntry> GetMountEntryForTest(const std::string& source) {
+    MountPoint* mp = FindMountBySource(source);
+    if (!mp)
+      return {};
+    return MountEntry(MOUNT_ERROR_NONE, source, GetMountSourceType(),
+                      mp->path().value(), mp->is_read_only());
+  }
 };
 
 class MountManagerTest : public ::testing::Test {
@@ -310,6 +359,7 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectory) {
 TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
+  base::FilePath mount_path(mount_path_);
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -318,10 +368,10 @@ TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
   EXPECT_CALL(manager_, DoMount(_, _, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
-  manager_.ReserveMountPath(mount_path_, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
+  manager_.ReserveMountPath(mount_path, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
+            manager_.GetMountErrorOfReservedMountPath(mount_path));
   EXPECT_EQ(
       MOUNT_ERROR_DIRECTORY_CREATION_FAILED,
       manager_.Mount(source_path_, filesystem_type_, options_, &mount_path_));
@@ -329,7 +379,7 @@ TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
+            manager_.GetMountErrorOfReservedMountPath(mount_path));
 }
 
 // Verifies that MountManager::Mount() returns an error when it fails to
@@ -984,43 +1034,13 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
-// Verifies that MountManager::AddOrUpdateMountStateCache() works as expected.
-TEST_F(MountManagerTest, AddOrUpdateMountStateCache) {
-  std::string result;
-  source_path_ = kTestSourcePath;
-  mount_path_ = kTestMountPath;
-  std::string mount_path_2 = "target2";
-  bool is_read_only = true;
-
-  manager_.AddOrUpdateMountStateCache(source_path_, MakeMountPoint(mount_path_),
-                                      is_read_only);
-  EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
-  EXPECT_EQ(mount_path_, result);
-  base::Optional<MountEntry> mount_entry;
-  mount_entry = manager_.GetMountEntryForTest(source_path_);
-  EXPECT_TRUE(mount_entry);
-  EXPECT_EQ(kTestMountPath, mount_entry->mount_path);
-  EXPECT_EQ(is_read_only, mount_entry->is_read_only);
-
-  manager_.AddOrUpdateMountStateCache(source_path_,
-                                      MakeMountPoint(mount_path_2), false);
-  mount_entry = manager_.GetMountEntryForTest(source_path_);
-  EXPECT_TRUE(mount_entry);
-  EXPECT_EQ(mount_path_2, mount_entry->mount_path);
-  EXPECT_FALSE(mount_entry->is_read_only);
-
-  EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
-  EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_2));
-}
-
 // Verifies that MountManager::IsMountPathInCache() works as expected.
 TEST_F(MountManagerTest, IsMountPathInCache) {
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  manager_.AddOrUpdateMountStateCache(source_path_, MakeMountPoint(mount_path_),
-                                      false);
+  manager_.AddMountStateCache(source_path_, MakeMountPoint(mount_path_));
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
@@ -1032,40 +1052,39 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
-  manager_.AddOrUpdateMountStateCache(source_path_, MakeMountPoint(mount_path_),
-                                      false);
+  manager_.AddMountStateCache(source_path_, MakeMountPoint(mount_path_));
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
 }
 
 // Verifies that MountManager::GetReservedMountPaths() works as expected.
 TEST_F(MountManagerTest, GetReservedMountPaths) {
-  std::set<std::string> reserved_paths;
-  std::set<std::string> expected_paths;
-  std::string path1 = "path1";
-  std::string path2 = "path2";
+  std::unordered_set<std::string> reserved_paths;
+  std::unordered_set<std::string> expected_paths;
+  base::FilePath path1("path1");
+  base::FilePath path2("path2");
 
   reserved_paths = manager_.GetReservedMountPaths();
   EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.ReserveMountPath(path1, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.insert(path1);
+  expected_paths.insert(path1.value());
   EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.ReserveMountPath(path2, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.insert(path2);
+  expected_paths.insert(path2.value());
   EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.UnreserveMountPath(path1);
   reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.erase(path1);
+  expected_paths.erase(path1.value());
   EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.UnreserveMountPath(path2);
   reserved_paths = manager_.GetReservedMountPaths();
-  expected_paths.erase(path2);
+  expected_paths.erase(path2.value());
   EXPECT_TRUE(expected_paths == reserved_paths);
 }
 
@@ -1075,34 +1094,40 @@ TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
-  manager_.ReserveMountPath(mount_path_, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.GetMountErrorOfReservedMountPath(
+                                  base::FilePath(mount_path_)));
+  manager_.ReserveMountPath(base::FilePath(mount_path_),
+                            MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
-  manager_.UnreserveMountPath(mount_path_);
+  EXPECT_EQ(
+      MOUNT_ERROR_UNKNOWN_FILESYSTEM,
+      manager_.GetMountErrorOfReservedMountPath(base::FilePath(mount_path_)));
+  manager_.UnreserveMountPath(base::FilePath(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.GetMountErrorOfReservedMountPath(
+                                  base::FilePath(mount_path_)));
 
   // Removing a nonexistent mount path should be ok
-  manager_.UnreserveMountPath(mount_path_);
+  manager_.UnreserveMountPath(base::FilePath(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 
   // Adding an existent mount path should be ok
-  manager_.ReserveMountPath(mount_path_, MOUNT_ERROR_UNSUPPORTED_FILESYSTEM);
+  manager_.ReserveMountPath(base::FilePath(mount_path_),
+                            MOUNT_ERROR_UNSUPPORTED_FILESYSTEM);
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
-  manager_.ReserveMountPath(mount_path_, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
+  EXPECT_EQ(
+      MOUNT_ERROR_UNSUPPORTED_FILESYSTEM,
+      manager_.GetMountErrorOfReservedMountPath(base::FilePath(mount_path_)));
+  manager_.ReserveMountPath(base::FilePath(mount_path_),
+                            MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   EXPECT_TRUE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
-  manager_.UnreserveMountPath(mount_path_);
+  EXPECT_EQ(
+      MOUNT_ERROR_UNSUPPORTED_FILESYSTEM,
+      manager_.GetMountErrorOfReservedMountPath(base::FilePath(mount_path_)));
+  manager_.UnreserveMountPath(base::FilePath(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            manager_.GetMountErrorOfReservedMountPath(mount_path_));
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.GetMountErrorOfReservedMountPath(
+                                  base::FilePath(mount_path_)));
 }
 
 // Verifies that MountManager::GetMountEntries() returns the expected list of
@@ -1113,8 +1138,7 @@ TEST_F(MountManagerTest, GetMountEntries) {
   EXPECT_TRUE(mount_entries.empty());
 
   // A normal mount entry is returned.
-  manager_.AddOrUpdateMountStateCache(kTestSourcePath,
-                                      MakeMountPoint(kTestMountPath), false);
+  manager_.AddMountStateCache(kTestSourcePath, MakeMountPoint(kTestMountPath));
   mount_entries = manager_.GetMountEntries();
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type);
@@ -1123,58 +1147,14 @@ TEST_F(MountManagerTest, GetMountEntries) {
   EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path);
 
   // A reserved mount entry is returned.
-  manager_.ReserveMountPath(kTestMountPath, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
+  manager_.ReserveMountPath(base::FilePath(kTestMountPath),
+                            MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   mount_entries = manager_.GetMountEntries();
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_entries[0].error_type);
   EXPECT_EQ(kTestSourcePath, mount_entries[0].source_path);
   EXPECT_EQ(MOUNT_SOURCE_REMOVABLE_DEVICE, mount_entries[0].source_type);
   EXPECT_EQ(kTestMountPath, mount_entries[0].mount_path);
-}
-
-// Verifies that MountManager::ExtractMountLabelFromOptions() extracts a mount
-// label from the given options and returns true.
-TEST_F(MountManagerTest, ExtractMountLabelFromOptions) {
-  std::vector<std::string> options = {"ro", "mountlabel=My USB Drive",
-                                      "noexec"};
-  std::string mount_label;
-
-  EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
-  EXPECT_THAT(options, ElementsAre("ro", "noexec"));
-  EXPECT_EQ("My USB Drive", mount_label);
-}
-
-// Verifies that MountManager::ExtractMountLabelFromOptions() returns false
-// when no mount label is found in the given options.
-TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel) {
-  std::vector<std::string> options;
-  std::string mount_label;
-
-  EXPECT_FALSE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
-  EXPECT_THAT(options, ElementsAre());
-  EXPECT_EQ("", mount_label);
-
-  options.push_back("ro");
-  EXPECT_FALSE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
-  EXPECT_THAT(options, ElementsAre("ro"));
-  EXPECT_EQ("", mount_label);
-
-  options.push_back("mountlabel");
-  EXPECT_FALSE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
-  EXPECT_THAT(options, ElementsAre("ro", "mountlabel"));
-  EXPECT_EQ("", mount_label);
-}
-
-// Verifies that MountManager::ExtractMountLabelFromOptions() extracts the last
-// mount label from the given options with two mount labels.
-TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels) {
-  std::vector<std::string> options = {"ro", "mountlabel=My USB Drive", "noexec",
-                                      "mountlabel=Another Label"};
-  std::string mount_label;
-
-  EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
-  EXPECT_THAT(options, ElementsAre("ro", "noexec"));
-  EXPECT_EQ("Another Label", mount_label);
 }
 
 // Verifies that MountManager::IsPathImmediateChildOfParent() correctly

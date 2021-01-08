@@ -30,6 +30,20 @@ void SetParamValue(std::vector<std::string>* params,
                    base::StringPiece name,
                    base::StringPiece value);
 
+// Returns whether params contain the exact param value.
+bool HasExactParam(const std::vector<std::string>& params,
+                   base::StringPiece param);
+
+// Removes all elements equal to the provided and returns the count of
+// removed elements.
+size_t RemoveParamsEqualTo(std::vector<std::string>* params,
+                           base::StringPiece param);
+
+// Removes all elements like '|name|=|value|' with the name equal to the
+// provided and returns the count of removed elements.
+size_t RemoveParamsWithSameName(std::vector<std::string>* params,
+                                base::StringPiece name);
+
 }  // namespace cros_disks
 
 #endif  // CROS_DISKS_MOUNT_OPTIONS_H_
