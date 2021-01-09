@@ -164,10 +164,6 @@ void SetUpOzoneNNPalmPropertiesFlag(
     chromeos::ui::ChromiumCommandBuilder* builder,
     brillo::CrosConfigInterface* cros_config);
 
-// Add "--arc-build-properties" flag with value read from |cros_config|.
-void SetUpArcBuildPropertiesFlag(chromeos::ui::ChromiumCommandBuilder* builder,
-                                 brillo::CrosConfigInterface* cros_config);
-
 // Add "AllowAmbientEQ" flag if allow-ambient-eq powerd pref is set to 1 in
 // |cros_config|. Do not add flag is allow-ambient-eq is set to 0 or not set.
 void SetUpAllowAmbientEQFlag(chromeos::ui::ChromiumCommandBuilder* builder,

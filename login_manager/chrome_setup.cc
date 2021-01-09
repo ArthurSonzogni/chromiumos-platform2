@@ -75,12 +75,6 @@ constexpr char kOzoneNNPalmRadiusProperty[] = "radius-polynomial";
 constexpr std::array<const char*, 2> kOzoneNNPalmOptionalProperties = {
     kOzoneNNPalmCompatibleProperty, kOzoneNNPalmRadiusProperty};
 
-constexpr char kArcBuildPropertiesPath[] = "/arc/build-properties";
-constexpr std::array<const char*, 2> kArcBuildProperties = {"device",
-                                                            "product"};
-constexpr std::array<const char*, 4> kArcOptionalBuildProperties = {
-    "first-api-level", "marketing-name", "metrics-tag", "pai-regions"};
-
 const char kPowerPath[] = "/power";
 const char kAllowAmbientEQField[] = "allow-ambient-eq";
 const char kAllowAmbientEQFeature[] = "AllowAmbientEQ";
@@ -566,7 +560,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpInternalStylusFlag(builder, cros_config);
   SetUpFingerprintSensorLocationFlag(builder, cros_config);
   SetUpOzoneNNPalmPropertiesFlag(builder, cros_config);
-  SetUpArcBuildPropertiesFlag(builder, cros_config);
   SetUpAutoNightLightFlag(builder, cros_config);
   SetUpAllowAmbientEQFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
@@ -804,33 +797,6 @@ void SetUpOzoneNNPalmPropertiesFlag(ChromiumCommandBuilder* builder,
     return;
   }
   builder->AddArg("--ozone-nnpalm-properties=" + json_info);
-}
-
-void SetUpArcBuildPropertiesFlag(ChromiumCommandBuilder* builder,
-                                 brillo::CrosConfigInterface* cros_config) {
-  base::Value info(base::Value::Type::DICTIONARY);
-  if (cros_config) {
-    std::string value;
-    for (const char* property : kArcBuildProperties) {
-      if (cros_config->GetString(kArcBuildPropertiesPath, property, &value)) {
-        info.SetStringKey(property, std::move(value));
-        continue;
-      }
-      LOG(ERROR) << property << " is not found in cros config";
-    }
-    for (const char* property : kArcOptionalBuildProperties) {
-      if (cros_config->GetString(kArcBuildPropertiesPath, property, &value))
-        info.SetStringKey(property, std::move(value));
-    }
-  }
-
-  std::string json_info;
-  if (!base::JSONWriter::Write(info, &json_info)) {
-    LOG(ERROR)
-        << "JSONWriter::Write failed in writing ARC build properties info";
-    return;
-  }
-  builder->AddArg("--arc-build-properties=" + json_info);
 }
 
 // Enables the "AllowAmbientEQ" feature if "allow-ambient-eq" is set to "1"
