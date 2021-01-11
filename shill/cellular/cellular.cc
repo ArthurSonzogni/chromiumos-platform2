@@ -4,6 +4,7 @@
 
 #include "shill/cellular/cellular.h"
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
@@ -15,6 +16,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -129,6 +131,10 @@ class ApnList {
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const char Cellular::kUseAttachApn[] = "UseAttachAPN";
+const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
+const char Cellular::kModemResetSysfsName[] =
+    "/sys/class/remoteproc/remoteproc0/state";
+const int64_t Cellular::kModemResetTimeoutMilliseconds = 1000;
 const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
 const int64_t Cellular::kPollLocationIntervalMilliseconds = 300000;  // 5 mins
 const char Cellular::kGenericServiceNamePrefix[] = "MobileNetwork";
@@ -584,8 +590,39 @@ void Cellular::ChangePin(const string& old_pin,
   capability_->ChangePin(old_pin, new_pin, error, callback);
 }
 
+bool Cellular::ResetQ6V5Modem() {
+  // TODO(b/177375637): Check for q6v5 driver before resetting the modem.
+  int fd = HANDLE_EINTR(open(kModemResetSysfsName, O_RDWR | O_CLOEXEC));
+  if (fd < 0) {
+    return false;
+  }
+
+  base::ScopedFD scoped_fd(fd);
+  if (HANDLE_EINTR(write(fd, "stop", sizeof("stop")))) {
+    LOG(ERROR) << "Failed to stop modem";
+    return false;
+  }
+  usleep(kModemResetTimeoutMilliseconds * 1000);
+  if (HANDLE_EINTR(write(fd, "start", sizeof("stop")))) {
+    LOG(ERROR) << "Failed to start modem";
+    return false;
+  }
+  return true;
+}
+
 void Cellular::Reset(Error* error, const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
+  // Qualcomm q6v5 modems on trogdor do not support reset using qmi messages.
+  // As per QC the only way to reset the modem is to use the sysfs interface.
+  if (manufacturer_ == kQ6V5ModemManufacturerName) {
+    if (!ResetQ6V5Modem()) {
+      callback.Run(Error(Error::Type::kOperationFailed));
+    } else {
+      callback.Run(Error(Error::Type::kSuccess));
+    }
+    return;
+  }
+
   if (!capability_)
     callback.Run(Error(Error::Type::kOperationFailed));
   capability_->Reset(error, callback);

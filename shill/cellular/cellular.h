@@ -424,6 +424,15 @@ class Cellular : public Device,
   static const char kAllowRoaming[];
   static const char kUseAttachApn[];
 
+  // Modem reset sysfs path
+  static const char kModemResetSysfsName[];
+
+  // Modem Manufacturer Name
+  static const char kQ6V5ModemManufacturerName[];
+
+  // Time between stop and start of modem device
+  static const int64_t kModemResetTimeoutMilliseconds;
+
   // the |kScanningProperty| exposed by Cellular device is sticky false. Every
   // time it is set to true, it must be reset to false after a time equal to
   // this constant.
@@ -501,6 +510,9 @@ class Cellular : public Device,
   // Executed after the asynchronous CellularCapability::StartModem
   // call from OnAfterResume completes.
   static void LogRestartModemResult(const Error& error);
+
+  // Handler to reset qcom-q6v5-mss based modems
+  bool ResetQ6V5Modem();
 
   // Terminate the pppd process associated with this Device, and remove the
   // association between the PPPDevice and our CellularService. If this
