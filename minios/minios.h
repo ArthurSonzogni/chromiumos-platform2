@@ -5,8 +5,10 @@
 #ifndef MINIOS_MINIOS_H_
 #define MINIOS_MINIOS_H_
 
-#include "minios/process_manager.h"
 #include "minios/screens.h"
+
+extern const char kDebugConsole[];
+extern const char kLogFile[];
 
 class MiniOs {
  public:

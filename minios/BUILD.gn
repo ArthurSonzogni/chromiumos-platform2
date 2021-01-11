@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":minios" ]
+  deps = [
+    ":minios",
+    ":minios_init",
+  ]
   if (use.test) {
     deps += [ ":minios_test" ]
   }
@@ -32,6 +35,12 @@ static_library("libminios") {
 executable("minios") {
   configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  deps = [ ":libminios" ]
+}
+
+executable("minios_init") {
+  configs += [ ":target_defaults" ]
+  sources = [ "init.cc" ]
   deps = [ ":libminios" ]
 }
 

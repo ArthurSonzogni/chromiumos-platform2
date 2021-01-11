@@ -5,10 +5,10 @@
 #include <base/logging.h>
 
 #include "minios/minios.h"
+#include "minios/process_manager.h"
 
-namespace {
-constexpr char kDebugConsole[] = "/dev/pts/2";
-}  // namespace
+const char kDebugConsole[] = "/dev/pts/2";
+const char kLogFile[] = "/log/recovery.log";
 
 int MiniOs::Run() {
   LOG(INFO) << "Starting miniOS.";
