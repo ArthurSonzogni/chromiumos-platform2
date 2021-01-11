@@ -9,12 +9,14 @@
 #include <vector>
 
 #include <mojo/public/cpp/bindings/binding_set.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "mojo/cros_healthd.mojom.h"
+#include "mojo/network_health.mojom.h"
 
 namespace diagnostics {
 
@@ -47,6 +49,10 @@ class CrosHealthdMojoService final
                           observer) override;
   void AddPowerObserver(
       chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer)
+      override;
+  void AddNetworkObserver(
+      mojo::PendingRemote<
+          chromeos::network_health::mojom::NetworkEventsObserver> observer)
       override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:

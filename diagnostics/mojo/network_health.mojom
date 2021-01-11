@@ -76,9 +76,23 @@ struct NetworkHealthState {
   array<Network> networks;
 };
 
+// Implemented by clients who desire network notifications.
+interface NetworkEventsObserver {
+  // Fired when a network’s connection state changes.
+  OnConnectionStateChanged(string guid, NetworkState state);
+  // Fired when a wireless network’s signal strength changes by ten or more
+  // percent.
+  OnSignalStrengthChanged(string guid, UInt32Value signal_strength);
+};
+
 // Interface for retrieving aggregated information about the current network
 // state and health.
 interface NetworkHealthService {
+  // Adds an observer to be notified on network events. The caller can remove
+  // the observer created by this call by closing their end of the message
+  // pipe.
+  AddObserver(pending_remote<NetworkEventsObserver> observer);
+
   // Returns a list of all the networks. Networks will be sorted with active
   // connections listed first.
   GetNetworkList() => (array<Network> networks);

@@ -25,6 +25,9 @@ class FakeNetworkHealthAdapter final : public NetworkHealthAdapter {
   void SetServiceRemote(
       mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
           remote) override {}
+  void AddObserver(mojo::PendingRemote<
+                   chromeos::network_health::mojom::NetworkEventsObserver>
+                       observer) override {}
 
   // Method to provide the canned response for the GetNetworkHealthState
   // request.

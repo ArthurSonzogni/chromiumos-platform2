@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/callback.h>
+#include <base/logging.h>
 #include <base/optional.h>
 
 #include "mojo/network_health.mojom.h"
@@ -46,6 +47,37 @@ void NetworkHealthAdapterImpl::SetServiceRemote(
   if (network_health_remote_.is_bound())
     network_health_remote_.reset();
   network_health_remote_.Bind(std::move(remote));
+}
+
+void NetworkHealthAdapterImpl::AddObserver(
+    mojo::PendingRemote<network_health_ipc::NetworkEventsObserver> observer) {
+  if (!network_health_remote_.is_bound()) {
+    LOG(ERROR) << "Failed to add NetworkEventsObserver remote: unbound "
+                  "NetworkHealthService remote";
+    return;
+  }
+
+  if (!network_events_observer_receiver_.is_bound()) {
+    network_health_remote_->AddObserver(
+        network_events_observer_receiver_.BindNewPipeAndPassRemote());
+  }
+  observers_.Add(std::move(observer));
+}
+
+void NetworkHealthAdapterImpl::OnConnectionStateChanged(
+    const std::string& guid, network_health_ipc::NetworkState state) {
+  for (auto& observer : observers_)
+    observer->OnConnectionStateChanged(guid, state);
+}
+
+void NetworkHealthAdapterImpl::OnSignalStrengthChanged(
+    const std::string& guid,
+    network_health_ipc::UInt32ValuePtr signal_strength) {
+  uint32_t value = signal_strength->value;
+  for (auto& observer : observers_) {
+    observer->OnSignalStrengthChanged(
+        guid, network_health_ipc::UInt32Value::New(value));
+  }
 }
 
 }  // namespace diagnostics

@@ -15,6 +15,7 @@
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace network_health_ipc = ::chromeos::network_health::mojom;
 
 CrosHealthdMojoService::CrosHealthdMojoService(
     Context* context,
@@ -49,6 +50,11 @@ void CrosHealthdMojoService::AddLidObserver(
 void CrosHealthdMojoService::AddPowerObserver(
     chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) {
   power_events_->AddObserver(std::move(observer));
+}
+
+void CrosHealthdMojoService::AddNetworkObserver(
+    mojo::PendingRemote<network_health_ipc::NetworkEventsObserver> observer) {
+  context_->network_health_adapter()->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::ProbeProcessInfo(

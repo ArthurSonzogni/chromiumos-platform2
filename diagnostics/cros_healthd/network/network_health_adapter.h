@@ -18,6 +18,7 @@ class NetworkHealthAdapter {
  public:
   using FetchNetworkStateCallback = base::OnceCallback<void(
       base::Optional<chromeos::network_health::mojom::NetworkHealthStatePtr>)>;
+
   virtual ~NetworkHealthAdapter() = default;
 
   // Request to get the NetworkHealthState snapshot. Will return the
@@ -29,6 +30,11 @@ class NetworkHealthAdapter {
   virtual void SetServiceRemote(
       mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
           remote) = 0;
+
+  // Adds a new observer to be notified when network-related events occur.
+  virtual void AddObserver(
+      mojo::PendingRemote<
+          chromeos::network_health::mojom::NetworkEventsObserver> observer) = 0;
 };
 
 }  // namespace diagnostics
