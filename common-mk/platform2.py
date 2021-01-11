@@ -90,6 +90,7 @@ _IUSE = [
     'ondevice_handwriting',
     'ondevice_handwriting_dlc',
     'ondevice_speech',
+    'ondevice_text_suggestions',
     'opengles',
     'passive_metrics',
     'pinweaver',

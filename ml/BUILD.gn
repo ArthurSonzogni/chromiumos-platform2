@@ -87,6 +87,12 @@ proto_library("ml_soda_proto") {
   sources = [ "${proto_in_dir}/extended_soda_api.proto" ]
 }
 
+proto_library("ml_text_suggester_proto") {
+  proto_in_dir = "${sysroot}/usr/include/chromeos/libsuggest/proto"
+  proto_out_dir = "chrome/knowledge/suggest/"
+  sources = [ "${proto_in_dir}/text_suggester_interface.proto" ]
+}
+
 static_library("ml_common") {
   sources = [
     "daemon.cc",
@@ -105,6 +111,7 @@ static_library("ml_common") {
     "request_metrics.cc",
     "tensor_view.cc",
     "text_classifier_impl.cc",
+    "text_suggestions.cc",
     "util.cc",
   ]
   include_dirs = [
@@ -128,12 +135,14 @@ static_library("ml_common") {
     "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
     "USE_ONDEVICE_HANDWRITING=${use.ondevice_handwriting}",
     "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",
+    "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     "TC3_VOCAB_ANNOTATOR_IMPL",
   ]
   public_deps = [ ":ml_mojo_bindings_lib" ]
   deps = [
     ":ml_grammar_proto",
     ":ml_handwriting_proto",
+    ":ml_text_suggester_proto",
   ]
   if (use.ondevice_speech) {
     sources += [
@@ -211,6 +220,7 @@ if (use.test) {
       "model_impl_test.cc",
       "test_utils.cc",
       "testrunner.cc",
+      "text_suggestions_test.cc",
       "util_test.cc",
     ]
     configs += [ "//common-mk:test" ]
@@ -219,11 +229,13 @@ if (use.test) {
       "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
       "USE_ONDEVICE_HANDWRITING=${use.ondevice_handwriting}",
       "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",
+      "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     ]
     deps = [
       ":ml_common",
       ":ml_grammar_proto",
       ":ml_handwriting_proto",
+      ":ml_text_suggester_proto",
       "//common-mk/testrunner:testrunner",
     ]
     if (use.ondevice_speech && !use.asan) {
