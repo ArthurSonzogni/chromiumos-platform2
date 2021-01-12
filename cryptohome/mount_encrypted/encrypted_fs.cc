@@ -23,6 +23,10 @@
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "cryptohome/storage/encrypted_container/backing_device.h"
+#include "cryptohome/storage/encrypted_container/encrypted_container.h"
+#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
+#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 
 namespace mount_encrypted {
 
@@ -34,15 +38,10 @@ constexpr char kDevMapperPath[] = "/dev/mapper";
 constexpr char kDumpe2fsLogPath[] = "/run/mount_encrypted/dumpe2fs.log";
 constexpr char kProcDirtyExpirePath[] = "/proc/sys/vm/dirty_expire_centisecs";
 constexpr float kSizePercent = 0.3;
-constexpr uint64_t kSectorSize = 512;
 constexpr uint64_t kExt4BlockSize = 4096;
 constexpr uint64_t kExt4MinBytes = 16 * 1024 * 1024;
-constexpr int kCryptAllowDiscard = 1;
 constexpr unsigned int kResizeStepSeconds = 2;
 constexpr uint64_t kExt4ResizeBlocks = 32768 * 10;
-constexpr uint64_t kExt4BlocksPerGroup = 32768;
-constexpr uint64_t kExt4InodeRatioDefault = 16384;
-constexpr uint64_t kExt4InodeRatioMinimum = 2048;
 // Block size is 4k => Minimum free space available to try resizing is 400MB.
 constexpr int64_t kMinBlocksAvailForResize = 102400;
 constexpr char kExt4ExtendedOptions[] = "discard,lazy_itable_init";
@@ -143,93 +142,14 @@ std::string GetMountOpts() {
   return "discard,commit=" + std::to_string(commit_interval);
 }
 
-// When creating a filesystem that will grow, the inode ratio is calculated
-// using the starting size not the hinted "resize" size, which means the
-// number of inodes can be highly constrained on tiny starting filesystems.
-// Instead, calculate what the correct inode ratio should be for a given
-// filesystem based on its expected starting and ending sizes.
-//
-// inode-ratio_mkfs =
-//
-//               ceil(blocks_max / group-ratio) * size_mkfs
-//      ------------------------------------------------------------------
-//      ceil(size_max / inode-ratio_max) * ceil(blocks_mkfs / group-ratio)
-//
-static uint64_t Ext4GetInodeRatio(uint64_t block_bytes_in,
-                                  uint64_t blocks_mkfs_in,
-                                  uint64_t blocks_max_in) {
-  double block_bytes = static_cast<double>(block_bytes_in);
-  double blocks_mkfs = static_cast<double>(blocks_mkfs_in);
-  double blocks_max = static_cast<double>(blocks_max_in);
-
-  double size_max, size_mkfs, groups_max;
-  double inode_ratio_mkfs;
-
-  uint64_t denom, inodes_max, groups_mkfs;
-
-  size_max = block_bytes * blocks_max;
-  size_mkfs = block_bytes * blocks_mkfs;
-
-  groups_max = ceil(blocks_max / kExt4BlocksPerGroup);
-  groups_mkfs = static_cast<uint64_t>(ceil(blocks_mkfs / kExt4BlocksPerGroup));
-
-  inodes_max = static_cast<uint64_t>(ceil(size_max / kExt4InodeRatioDefault));
-
-  denom = inodes_max * groups_mkfs;
-  // Make sure we never trigger divide-by-zero.
-  if (denom == 0)
-    return kExt4InodeRatioDefault;
-
-  inode_ratio_mkfs = (groups_max * size_mkfs) / denom;
-
-  // Make sure we never calculate anything totally huge or totally tiny.
-  if (inode_ratio_mkfs > blocks_mkfs ||
-      inode_ratio_mkfs < kExt4InodeRatioMinimum)
-    return kExt4InodeRatioDefault;
-
-  return (uint64_t)inode_ratio_mkfs;
-}
-
 std::vector<std::string> BuildExt4FormatOpts(uint64_t block_bytes,
                                              uint64_t blocks_min,
                                              uint64_t blocks_max) {
-  return {
-      "-T",
-      "default",
-      "-b",
-      std::to_string(block_bytes),
-      "-m",
-      "0",
-      "-O",
-      "^huge_file,^flex_bg",
-      "-i",
-      std::to_string(Ext4GetInodeRatio(block_bytes, blocks_min, blocks_max)),
-      "-E",
-      kExt4ExtendedOptions + ((blocks_min < blocks_max)
-                                  ? ",resize=" + std::to_string(blocks_max)
-                                  : "")};
-}
-
-bool UdevAdmSettle(const base::FilePath& device_path, bool wait_for_device) {
-  brillo::ProcessImpl udevadm_process;
-  udevadm_process.AddArg("/bin/udevadm");
-  udevadm_process.AddArg("settle");
-
-  if (wait_for_device) {
-    udevadm_process.AddArg("-t");
-    udevadm_process.AddArg("10");
-    udevadm_process.AddArg("-E");
-    udevadm_process.AddArg(device_path.value());
-  }
-  // Close unused file descriptors in child process.
-  udevadm_process.SetCloseUnusedFileDescriptors(true);
-
-  // Start the process and return.
-  int rc = udevadm_process.Run();
-  if (rc != 0)
-    return false;
-
-  return true;
+  return {"-T", "default",
+          "-b", std::to_string(block_bytes),
+          "-m", "0",
+          "-O", "^huge_file,^flex_bg",
+          "-E", kExt4ExtendedOptions};
 }
 
 void CheckSparseFileSize(const base::FilePath& sparse_file, int64_t file_size) {
@@ -253,50 +173,89 @@ void Dumpe2fs(const base::FilePath& device_path) {
 
 }  // namespace
 
-EncryptedFs::EncryptedFs(const base::FilePath& rootdir,
-                         cryptohome::Platform* platform,
-                         brillo::LoopDeviceManager* loop_device_manager,
-                         brillo::DeviceMapper* device_mapper)
-    : platform_(platform),
-      loopdev_manager_(loop_device_manager),
+EncryptedFs::EncryptedFs(
+    const base::FilePath& rootdir,
+    uint64_t fs_size,
+    const std::string& dmcrypt_name,
+    std::unique_ptr<cryptohome::EncryptedContainer> container,
+    cryptohome::Platform* platform,
+    brillo::DeviceMapper* device_mapper)
+    : rootdir_(rootdir),
+      fs_size_(fs_size),
+      dmcrypt_name_(dmcrypt_name),
+      stateful_mount_(rootdir_.Append(STATEFUL_MNT)),
+      block_path_(stateful_mount_.Append("encrypted.block")),
+      dmcrypt_dev_(base::FilePath(kDevMapperPath).Append(dmcrypt_name_)),
+      encrypted_mount_(rootdir_.Append(ENCRYPTED_MNT)),
+      platform_(platform),
       device_mapper_(device_mapper),
-      rootdir_(rootdir) {
-  dmcrypt_name_ = std::string(kCryptDevName);
-  if (rootdir_ != base::FilePath("/")) {
-    brillo::SecureBlob digest =
-        cryptohome::CryptoLib::Sha256(brillo::SecureBlob(rootdir_.value()));
-    std::string hex = cryptohome::CryptoLib::SecureBlobToHex(digest);
-    dmcrypt_name_ += "_" + hex.substr(0, 16);
+      container_(std::move(container)),
+      bind_mounts_({{rootdir_.Append(ENCRYPTED_MNT "/var"),
+                     rootdir_.Append("var"), "root", "root",
+                     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false},
+                    {rootdir_.Append(ENCRYPTED_MNT "/chronos"),
+                     rootdir_.Append("home/chronos"), "chronos", "chronos",
+                     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, true}}) {}
+
+// static
+std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
+    const base::FilePath& rootdir,
+    cryptohome::Platform* platform,
+    brillo::DeviceMapper* device_mapper,
+    cryptohome::EncryptedContainerFactory* encrypted_container_factory) {
+  // Calculate the maximum size of the encrypted stateful partition.
+  // truncate()/ftruncate() use int64_t for file size.
+  struct statvfs stateful_statbuf;
+  if (!platform->StatVFS(rootdir.Append(STATEFUL_MNT), &stateful_statbuf)) {
+    PLOG(ERROR) << "stat() failed on: " << rootdir.Append(STATEFUL_MNT);
+    return nullptr;
   }
-  // Initialize remaining directories.
-  stateful_mount_ = rootdir_.Append(STATEFUL_MNT);
-  block_path_ = rootdir_.Append(STATEFUL_MNT "/encrypted.block");
-  encrypted_mount_ = rootdir_.Append(ENCRYPTED_MNT);
-  dmcrypt_dev_ = base::FilePath(kDevMapperPath).Append(dmcrypt_name_.c_str());
 
-  // Create bind mounts.
-  bind_mounts_.push_back(
-      {rootdir_.Append(ENCRYPTED_MNT "/var"), rootdir_.Append("var"), "root",
-       "root", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false});
+  uint64_t fs_bytes_max = static_cast<uint64_t>(stateful_statbuf.f_blocks);
+  fs_bytes_max *= kSizePercent;
+  fs_bytes_max *= stateful_statbuf.f_frsize;
 
-  bind_mounts_.push_back({rootdir_.Append(ENCRYPTED_MNT "/chronos"),
-                          rootdir_.Append("home/chronos"), "chronos", "chronos",
-                          S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH,
-                          true});
+  std::string dmcrypt_name = std::string(kCryptDevName);
+  if (rootdir != base::FilePath("/")) {
+    brillo::SecureBlob digest =
+        cryptohome::CryptoLib::Sha256(brillo::SecureBlob(rootdir.value()));
+    std::string hex = cryptohome::CryptoLib::SecureBlobToHex(digest);
+    dmcrypt_name += "_" + hex.substr(0, 16);
+  }
+
+  // Initialize the encrypted container.
+  cryptohome::BackingDeviceConfig backing_device_config(
+      {.type = cryptohome::BackingDeviceType::kLoopbackDevice,
+       .name = dmcrypt_name,
+       .size = fs_bytes_max,
+       .loopback = {.backing_file_path =
+                        rootdir.Append(STATEFUL_MNT "/encrypted.block")}});
+
+  cryptohome::EncryptedContainerConfig container_config(
+      {.type = cryptohome::EncryptedContainerType::kDmcrypt,
+       .dmcrypt_config = {.backing_device_config = backing_device_config,
+                          .dmcrypt_device_name = dmcrypt_name,
+                          .dmcrypt_cipher = std::string(kDmCryptDefaultCipher),
+                          .mkfs_opts = BuildExt4FormatOpts(
+                              kExt4BlockSize, kExt4MinBytes / kExt4BlockSize,
+                              fs_bytes_max / kExt4BlockSize),
+                          .tune2fs_opts = {}}});
+
+  std::unique_ptr<cryptohome::EncryptedContainer> container =
+      encrypted_container_factory->Generate(container_config, {});
+
+  return std::make_unique<EncryptedFs>(rootdir, fs_bytes_max, dmcrypt_name,
+                                       std::move(container), platform,
+                                       device_mapper);
 }
 
 bool EncryptedFs::Purge() {
-  LOG(INFO) << "Purging block file";
-  return platform_->DeleteFile(block_path_);
-}
-
-bool EncryptedFs::CreateSparseBackingFile(int64_t file_size) {
-  return platform_->CreateSparseFile(block_path_, file_size) &&
-         platform_->SetPermissions(block_path_, S_IRUSR | S_IWUSR);
+  LOG(INFO) << "Purging block device";
+  return container_->Purge();
 }
 
 // Do all the work needed to actually set up the encrypted partition.
-result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
+result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
                                bool rebuild) {
   result_code rc = RESULT_FAIL_FATAL;
   struct statvfs stateful_statbuf;
@@ -308,25 +267,6 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     return rc;
   }
 
-  // Calculate the maximum size of the encrypted stateful partition.
-  // truncate()/ftruncate() use int64_t for file size.
-  int64_t fs_bytes_max = static_cast<int64_t>(stateful_statbuf.f_blocks);
-  fs_bytes_max *= kSizePercent;
-  fs_bytes_max *= stateful_statbuf.f_frsize;
-
-  if (rebuild) {
-    // Wipe out the old files, and ignore errors.
-    Purge();
-
-    // Create new sparse file.
-    LOG(INFO) << "Creating sparse backing file with size " << fs_bytes_max;
-
-    if (!CreateSparseBackingFile(fs_bytes_max)) {
-      PLOG(ERROR) << "Failed to create sparse backing file " << block_path_;
-      return rc;
-    }
-  }
-
   // b/131123943: Check the size of the sparse file and resize if necessary.
   // Resizing the sparse file via truncate() should be a no-op but resizing
   // the filesystem residing on the file is a bit more involved and may need
@@ -335,97 +275,23 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   // the encrypted stateful file system. Check if there are at least a few
   // blocks available on the stateful partition.
   if (stateful_statbuf.f_bfree > kMinBlocksAvailForResize)
-    CheckSparseFileSize(block_path_, fs_bytes_max);
+    CheckSparseFileSize(block_path_, fs_size_);
   else
     LOG(WARNING) << "Low space on stateful partition; not attempting to resize "
                  << "the underlying block file.";
 
-  // Set up loopback device.
-  LOG(INFO) << "Loopback attaching " << block_path_ << " named "
-            << dmcrypt_name_;
-  std::unique_ptr<brillo::LoopDevice> lodev =
-      loopdev_manager_->AttachDeviceToFile(block_path_);
-  if (!lodev->IsValid()) {
-    LOG(ERROR) << "Loop attach failed";
-    return rc;
-  }
-
-  // Set loop device name.
-  if (!lodev->SetName(dmcrypt_name_)) {
-    LOG(ERROR) << "Loop set name failed";
-    return rc;
-  }
-
-  base::FilePath lodev_path = lodev->GetDevicePath();
-
-  // Get size as seen by block device.
-  uint64_t blkdev_size;
-  if (!platform_->GetBlkSize(lodev_path, &blkdev_size) ||
-      blkdev_size < kExt4BlockSize) {
-    LOG(ERROR) << "Failed to read device size";
-    TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
-    return rc;
-  }
-
-  // Mount loopback device with dm-crypt using the encryption key.
-  LOG(INFO) << "Setting up dm-crypt " << lodev_path << " as " << dmcrypt_dev_;
-
-  uint64_t sectors = blkdev_size / kSectorSize;
-  brillo::SecureBlob dm_parameters =
-      brillo::DevmapperTable::CryptCreateParameters(
-          kDmCryptDefaultCipher,  // cipher.
-          encryption_key,         // encryption key.
-          0,                      // iv offset.
-          lodev_path,             // device_path.
-          0,                      // device offset.
-          kCryptAllowDiscard);    // allow discards.
-
-  brillo::DevmapperTable dm_table(0, sectors, "crypt", dm_parameters);
-  if (!device_mapper_->Setup(dmcrypt_name_, dm_table)) {
-    // If dm_setup() fails, it could be due to lacking
-    // "allow_discard" support, so try again with discard
-    // disabled. There doesn't seem to be a way to query
-    // the kernel for this feature short of a fallible
-    // version test or just trying to set up the dm table
-    // again, so do the latter.
-    dm_parameters = brillo::DevmapperTable::CryptCreateParameters(
-        kDmCryptDefaultCipher,  // cipher.
-        encryption_key,         // encryption key.
-        0,                      // iv offset.
-        lodev_path,             // device_path.
-        0,                      // device offset.
-        !kCryptAllowDiscard);   // allow discards.
-    brillo::DevmapperTable dm_table(0, sectors, "crypt", dm_parameters);
-    if (!device_mapper_->Setup(dmcrypt_name_, dm_table)) {
-      LOG(ERROR) << "dm_setup failed";
-      TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
-      return rc;
-    }
-    LOG(INFO) << dmcrypt_dev_
-              << ": dm-crypt does not support discard; disabling.";
-  }
-
-  if (!UdevAdmSettle(dmcrypt_dev_, true)) {
-    LOG(ERROR) << "udevadm settle failed.";
-    TeardownByStage(TeardownStage::kTeardownDevmapper, true);
-    return rc;
-  }
-
-  // Calculate filesystem min/max size.
-  uint64_t blocks_max = blkdev_size / kExt4BlockSize;
-  uint64_t blocks_min = kExt4MinBytes / kExt4BlockSize;
-
   if (rebuild) {
-    LOG(INFO) << "Building filesystem on " << dmcrypt_dev_
-              << "(blocksize: " << kExt4BlockSize << ", min: " << blocks_min
-              << ", max: " << blocks_max;
-    if (!platform_->FormatExt4(
-            dmcrypt_dev_,
-            BuildExt4FormatOpts(kExt4BlockSize, blocks_min, blocks_max),
-            blocks_min)) {
-      TeardownByStage(TeardownStage::kTeardownDevmapper, true);
-      return rc;
-    }
+    // Wipe out the old files, and ignore errors.
+    Purge();
+
+    // Create new sparse file.
+    LOG(INFO) << "Creating sparse backing file with size " << fs_size_;
+  }
+
+  if (!container_->Setup(encryption_key, rebuild)) {
+    LOG(ERROR) << "Failed to set up encrypted container";
+    TeardownByStage(TeardownStage::kTeardownContainer, true);
+    return rc;
   }
 
   // Mount the dm-crypt partition finally.
@@ -435,7 +301,7 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
         platform_->SetPermissions(encrypted_mount_,
                                   S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))) {
     PLOG(ERROR) << dmcrypt_dev_;
-    TeardownByStage(TeardownStage::kTeardownDevmapper, true);
+    TeardownByStage(TeardownStage::kTeardownContainer, true);
     return rc;
   }
   if (!platform_->Mount(dmcrypt_dev_, encrypted_mount_, kEncryptedFSType,
@@ -447,13 +313,14 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     // cleans up afterwards, this is the only point where this data can be
     // collected.
     Dumpe2fs(dmcrypt_dev_);
-    TeardownByStage(TeardownStage::kTeardownDevmapper, true);
+    TeardownByStage(TeardownStage::kTeardownContainer, true);
     return rc;
   }
 
   // Always spawn filesystem resizer, in case growth was interrupted.
   // TODO(keescook): if already full size, don't resize.
-  SpawnResizer(platform_, dmcrypt_dev_, blocks_min, blocks_max);
+  SpawnResizer(platform_, dmcrypt_dev_, kExt4MinBytes / kExt4BlockSize,
+               fs_size_);
 
   // Perform bind mounts.
   for (auto& bind : bind_mounts_) {
@@ -514,24 +381,10 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
 
       // Intentionally fall through here to teardown the lower dmcrypt device.
       FALLTHROUGH;
-    case TeardownStage::kTeardownDevmapper:
+    case TeardownStage::kTeardownContainer:
       LOG(INFO) << "Removing " << dmcrypt_dev_;
-      if (!device_mapper_->Remove(dmcrypt_name_) && !ignore_errors) {
-        LOG(ERROR) << "dm_teardown: " << dmcrypt_dev_;
-        return RESULT_FAIL_FATAL;
-      }
-      if (!UdevAdmSettle(dmcrypt_dev_, false) && !ignore_errors)
-        LOG(WARNING) << "udevadm settle failed.";
-      platform_->Sync();
-
-      // Intentionally fall through here to teardown the lower loop device.
-      FALLTHROUGH;
-    case TeardownStage::kTeardownLoopDevice:
-      LOG(INFO) << "Unlooping " << block_path_ << " named " << dmcrypt_name_;
-      std::unique_ptr<brillo::LoopDevice> lodev =
-          loopdev_manager_->GetAttachedDeviceByName(dmcrypt_name_);
-      if (!(lodev->IsValid() && lodev->Detach()) && !ignore_errors) {
-        LOG(ERROR) << "loop_detach_name: " << dmcrypt_name_;
+      if (!container_->Teardown() && !ignore_errors) {
+        LOG(ERROR) << "Failed to teardown encrypted container";
         return RESULT_FAIL_FATAL;
       }
       platform_->Sync();

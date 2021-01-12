@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -21,15 +22,19 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
-#include <cryptohome/cryptolib.h>
-#include <cryptohome/mount_encrypted/encrypted_fs.h>
-#include <cryptohome/mount_encrypted/encryption_key.h>
-#include <cryptohome/mount_encrypted/mount_encrypted.h>
-#include <cryptohome/mount_encrypted/mount_encrypted_metrics.h>
-#include <cryptohome/mount_encrypted/tpm.h>
-#include <cryptohome/platform.h>
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
+
+#include "cryptohome/cryptolib.h"
+#include "cryptohome/mount_encrypted/encrypted_fs.h"
+#include "cryptohome/mount_encrypted/encryption_key.h"
+#include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
+#include "cryptohome/mount_encrypted/tpm.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
+
+#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 
 #define PROP_SIZE 64
 
@@ -82,7 +87,7 @@ static int has_chromefw(void) {
 // being set up. If the system key is passed as an argument, use it, otherwise
 // attempt to query the TPM again.
 static result_code finalize_from_cmdline(
-    const mount_encrypted::EncryptedFs& encrypted_fs,
+    mount_encrypted::EncryptedFs* encrypted_fs,
     const base::FilePath& rootdir,
     const char* key) {
   // Load the system key.
@@ -113,7 +118,7 @@ static result_code finalize_from_cmdline(
   }
 
   // Load the encryption key.
-  brillo::SecureBlob encryption_key = encrypted_fs.GetKey();
+  brillo::SecureBlob encryption_key = encrypted_fs->GetKey();
   if (encryption_key.empty()) {
     LOG(ERROR) << "Could not get mount encryption key";
     return RESULT_FAIL_FATAL;
@@ -125,7 +130,7 @@ static result_code finalize_from_cmdline(
   return RESULT_SUCCESS;
 }
 
-static result_code report_info(const mount_encrypted::EncryptedFs& encrypted_fs,
+static result_code report_info(mount_encrypted::EncryptedFs* encrypted_fs,
                                const base::FilePath& rootdir) {
   mount_encrypted::Tpm tpm;
 
@@ -151,7 +156,7 @@ static result_code report_info(const mount_encrypted::EncryptedFs& encrypted_fs,
     printf("NVRAM: not present\n");
   }
   // Report info from the encrypted mount.
-  encrypted_fs.ReportInfo();
+  encrypted_fs->ReportInfo();
 
   return RESULT_SUCCESS;
 }
@@ -312,7 +317,9 @@ static result_code mount_encrypted_partition(
     LOG(ERROR) << "Failed to load system key, biod won't get a TPM seed.";
   }
 
-  rc = encrypted_fs->Setup(key.encryption_key(), key.is_fresh());
+  cryptohome::FileSystemKey encryption_key;
+  encryption_key.fek = key.encryption_key();
+  rc = encrypted_fs->Setup(encryption_key, key.is_fresh());
   if (rc == RESULT_SUCCESS) {
     bool lockbox_valid = false;
     if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
@@ -346,27 +353,28 @@ int main(int argc, const char* argv[]) {
   char* rootdir_env = getenv("MOUNT_ENCRYPTED_ROOT");
   base::FilePath rootdir = base::FilePath(rootdir_env ? rootdir_env : "/");
   cryptohome::Platform platform;
-  brillo::LoopDeviceManager loopdev_manager;
+  cryptohome::EncryptedContainerFactory encrypted_container_factory(&platform);
   brillo::DeviceMapper device_mapper;
-  mount_encrypted::EncryptedFs encrypted_fs(rootdir, &platform,
-                                            &loopdev_manager, &device_mapper);
+  auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
+      rootdir, &platform, &device_mapper, &encrypted_container_factory);
 
   LOG(INFO) << "Starting.";
 
   if (args.size() >= 1) {
     if (args[0] == "umount") {
-      return encrypted_fs.Teardown();
+      return encrypted_fs->Teardown();
     } else if (args[0] == "info") {
       // Report info from the encrypted mount.
-      return report_info(encrypted_fs, rootdir);
+      return report_info(encrypted_fs.get(), rootdir);
     } else if (args[0] == "finalize") {
-      return finalize_from_cmdline(encrypted_fs, rootdir,
+      return finalize_from_cmdline(encrypted_fs.get(), rootdir,
                                    args.size() >= 2 ? args[1].c_str() : NULL);
     } else if (args[0] == "set") {
       return set_system_key(rootdir, args.size() >= 2 ? args[1].c_str() : NULL,
                             &platform);
     } else if (args[0] == "mount") {
-      return mount_encrypted_partition(&encrypted_fs, rootdir, !FLAGS_unsafe);
+      return mount_encrypted_partition(encrypted_fs.get(), rootdir,
+                                       !FLAGS_unsafe);
     } else {
       print_usage(argv[0]);
       return RESULT_FAIL_FATAL;
@@ -374,5 +382,5 @@ int main(int argc, const char* argv[]) {
   }
 
   // default operation is mount encrypted partition.
-  return mount_encrypted_partition(&encrypted_fs, rootdir, !FLAGS_unsafe);
+  return mount_encrypted_partition(encrypted_fs.get(), rootdir, !FLAGS_unsafe);
 }

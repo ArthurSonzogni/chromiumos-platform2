@@ -7,17 +7,21 @@
 
 #include <glib.h>
 #include <inttypes.h>
+#include <memory>
 #include <string>
 #include <sys/stat.h>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper.h>
-#include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/secure_blob.h>
 
-#include <cryptohome/mount_encrypted/mount_encrypted.h>
-#include <cryptohome/platform.h>
+#include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/storage/encrypted_container/encrypted_container.h"
+#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
+#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
@@ -27,8 +31,7 @@ namespace mount_encrypted {
 // Teardown stage: for granular teardowns
 enum class TeardownStage {
   kTeardownUnbind,
-  kTeardownDevmapper,
-  kTeardownLoopDevice,
+  kTeardownContainer,
 };
 
 // BindMount represents a bind mount to be setup from
@@ -49,12 +52,20 @@ struct BindMount {
 // sets up an encrypted mount at <root_dir>/ENCRYPTED_MOUNT.
 class EncryptedFs {
  public:
-  // Setup EncryptedFs with the root dir, platform and loopdev manager.
+  // Set up the encrypted filesystem..
   EncryptedFs(const base::FilePath& rootdir,
+              uint64_t fs_size,
+              const std::string& dmcrypt_name,
+              std::unique_ptr<cryptohome::EncryptedContainer> container,
               cryptohome::Platform* platform,
-              brillo::LoopDeviceManager* loop_device_manager,
               brillo::DeviceMapper* device_mapper);
   ~EncryptedFs() = default;
+
+  static std::unique_ptr<EncryptedFs> Generate(
+      const base::FilePath& rootdir,
+      cryptohome::Platform* platform,
+      brillo::DeviceMapper* device_mapper,
+      cryptohome::EncryptedContainerFactory* encrypted_container_factory);
 
   // Setup mounts the encrypted mount by:
   // 1. Create a sparse file at <rootdir>/STATEFUL_MNT/encrypted.block
@@ -69,7 +80,8 @@ class EncryptedFs {
   // Parameters
   //   encryption_key - dmcrypt encryption key.
   //   rebuild - cleanup and recreate the encrypted mount.
-  result_code Setup(const brillo::SecureBlob& encryption_key, bool rebuild);
+  result_code Setup(const cryptohome::FileSystemKey& encryption_key,
+                    bool rebuild);
   // Purge - obliterate the sparse file. This should be called only
   // when the encrypted fs is not mounted.
   bool Purge(void);
@@ -86,34 +98,39 @@ class EncryptedFs {
   brillo::SecureBlob GetKey() const;
 
  private:
-  // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
-  // for mock Platform objects.
-  cryptohome::Platform* platform_;
-  // Loop Device Manager.
-  brillo::LoopDeviceManager* loopdev_manager_;
-  // Device Mapper.
-  brillo::DeviceMapper* device_mapper_;
-
   friend class EncryptedFsTest;
   FRIEND_TEST(EncryptedFsTest, RebuildStateful);
   FRIEND_TEST(EncryptedFsTest, OldStateful);
   FRIEND_TEST(EncryptedFsTest, LoopdevTeardown);
   FRIEND_TEST(EncryptedFsTest, DevmapperTeardown);
 
-  // CreateSparseBackingFile creates the sparse backing file for the
-  // encrypted mount and returns an open fd, if successful.
-  bool CreateSparseBackingFile(int64_t file_size);
   // TeardownByStage allows higher granularity over teardown
   // processes.
   result_code TeardownByStage(TeardownStage stage, bool ignore_errors);
 
-  // FilePaths used by the encrypted fs.
-  base::FilePath rootdir_;
-  base::FilePath stateful_mount_;
-  base::FilePath block_path_;
-  base::FilePath encrypted_mount_;
-  std::string dmcrypt_name_;
-  base::FilePath dmcrypt_dev_;
+  // Root directory to use for the encrypted stateful filesystem.
+  const base::FilePath rootdir_;
+  // Size of the filesystem.
+  const uint64_t fs_size_;
+
+  // Dm-crypt device name: used for key finalization.
+  const std::string dmcrypt_name_;
+
+  // File paths used by encrypted stateful.
+  const base::FilePath stateful_mount_;
+  const base::FilePath block_path_;
+  const base::FilePath dmcrypt_dev_;
+  const base::FilePath encrypted_mount_;
+
+  // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
+  // for mock Platform objects.
+  cryptohome::Platform* platform_;
+  // Device Mapper.
+  brillo::DeviceMapper* device_mapper_;
+
+  // Encrypted container that will be mounted as the encrypted filesystem.
+  std::unique_ptr<cryptohome::EncryptedContainer> container_;
+
   std::vector<BindMount> bind_mounts_;
 };
 
