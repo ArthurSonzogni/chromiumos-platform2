@@ -13,6 +13,7 @@
 #include "base/time/time.h"
 
 #include "bootid-logger/bootid_logger.h"
+#include "bootid-logger/timestamp_util.h"
 
 namespace {
 
@@ -34,7 +35,16 @@ int main(int argc, char* argv[]) {
     unlink(kBootLogFile);
   }
 
-  if (WriteCurrentBootEntry(base::FilePath(kBootLogFile), kBootLogMaxEntries))
+  // Keep only the recent boot id logs so that the logs can cover the time of
+  // |GetOldestModifiedTime()|.
+  // Note: we keep logs at least for 8 day, even If |GetOldestModifiedTime()|
+  // returns a most recent time.
+  base::Time first_timestamp_to_keep =
+      std::min(GetOldestModifiedTime(),
+               base::Time::Now() - base::TimeDelta::FromDays(8));
+
+  if (WriteCurrentBootEntry(base::FilePath(kBootLogFile),
+                            first_timestamp_to_keep, kBootLogMaxEntries))
     return 0;
   else
     return EXIT_FAILURE;

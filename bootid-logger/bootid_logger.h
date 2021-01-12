@@ -10,8 +10,6 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 
-constexpr size_t kBootIdLength = 32u;
-
 // Returns true if the boot entry is valid. The given boot id must not include
 // trailing CR/LF.
 bool ValidateBootEntry(const std::string& boot_id_entry);
@@ -22,12 +20,14 @@ std::string GetCurrentBootId();
 
 // Write a boot entry with the current boot id and time to the given file.
 bool WriteCurrentBootEntry(const base::FilePath& bootid_log_path,
+                           const base::Time first_timestamp_to_keep,
                            const int max_entries);
 
 // Write a boot entry with the given boot id and time to the given file.
 bool WriteBootEntry(const base::FilePath& bootid_log_path,
                     const std::string& current_boot_id,
                     const base::Time boot_time,
+                    const base::Time first_timestamp_to_keep,
                     const int max_entries);
 
 #endif  // BOOTID_LOGGER_BOOTID_LOGGER_H_

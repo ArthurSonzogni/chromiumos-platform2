@@ -23,40 +23,12 @@
 #include "base/time/time.h"
 
 #include "bootid-logger/bootid_logger.h"
+#include "bootid-logger/constants.h"
+#include "bootid-logger/timestamp_util.h"
 
 namespace {
 
 constexpr char kBootIdProcPath[] = "/proc/sys/kernel/random/boot_id";
-
-constexpr char kBootEntryPrefix[] = "boot_id: ";
-constexpr char kBootEntrySeverity[] = "INFO";
-
-// Length of timestamp (eg. "2020-12-12T00:00:00.000000Z". The value is 27.
-constexpr size_t kTimestampLength = 27u;
-// Length of timestamp (eg. "2020-12-12T00:00:00.000000+00:00". The value is 32.
-constexpr size_t kLocalTimeTimestampLength = 32u;
-// Length of severity string "INFO". The value is 4.
-constexpr size_t kSeverityLength = sizeof(kBootEntrySeverity) - 1;
-// Length of prefix string "boot_id: ", including a space. The value is 9.
-constexpr size_t kPrefixLength = sizeof(kBootEntryPrefix) - 1;
-
-// Offsets for UTC timestamp boot entries.
-constexpr size_t kBootEntrySeverityOffset = kTimestampLength + 1;
-constexpr size_t kBootEntryPrefixOffset =
-    kBootEntrySeverityOffset + kSeverityLength + 1;
-constexpr size_t kBootEntryBootIdOffset =
-    kBootEntryPrefixOffset + kPrefixLength;
-constexpr size_t kBootEntryLength = kBootEntryBootIdOffset + kBootIdLength;
-
-// Offsets for local timezone timestamp boot entries.
-constexpr size_t kBootEntryLocalTimeSeverityOffset =
-    kLocalTimeTimestampLength + 1;
-constexpr size_t kBootEntryLocalTimeMessageOffset =
-    kBootEntryLocalTimeSeverityOffset + kSeverityLength + 1;
-constexpr size_t kBootEntryLocalTimeBootIdOffset =
-    kBootEntryLocalTimeMessageOffset + kPrefixLength;
-constexpr size_t kBootEntryLocalTimeLength =
-    kBootEntryLocalTimeBootIdOffset + kBootIdLength;
 
 // Generate an entry in the boot entry format.
 std::string GenerateBootEntryString(const std::string current_boot_id,
@@ -110,7 +82,9 @@ bool ValidateBootEntryWithTimezone(const std::string& boot_id_entry) {
 
 // Read previous entries from the log file (FD).
 base::Optional<std::deque<std::string>> ReadPreviousBootEntries(
-    const int fd, int boot_log_max_entries) {
+    const int fd,
+    const base::Time first_timestamp_to_keep,
+    int boot_log_max_entries) {
   std::deque<std::string> previous_boot_entries;
 
   struct stat st;
@@ -144,6 +118,13 @@ base::Optional<std::deque<std::string>> ReadPreviousBootEntries(
       // Skip an invalid entry.
       if (!ValidateBootEntry(s))
         continue;
+
+      if (!first_timestamp_to_keep.is_null()) {
+        base::Time time = ExtractTimestampString(s);
+        // Skips the entry with older timestamp than |first_timestamp_to_keep|.
+        if (!time.is_null() && time < first_timestamp_to_keep)
+          continue;
+      }
 
       previous_boot_entries.push_back(s);
     }
@@ -200,16 +181,19 @@ std::string GetCurrentBootId() {
 }
 
 bool WriteCurrentBootEntry(const base::FilePath& bootid_log_path,
+                           const base::Time first_timestamp_to_keep,
                            const int max_entries) {
   std::string boot_id = GetCurrentBootId();
   base::Time boot_time = GetCurrentBootTime();
 
-  return WriteBootEntry(bootid_log_path, boot_id, boot_time, max_entries);
+  return WriteBootEntry(bootid_log_path, boot_id, boot_time,
+                        first_timestamp_to_keep, max_entries);
 }
 
 bool WriteBootEntry(const base::FilePath& bootid_log_path,
                     const std::string& current_boot_id,
                     const base::Time boot_time,
+                    const base::Time first_timestamp_to_keep,
                     const int max_entries) {
   // Open the log file.
   base::ScopedFD fd(HANDLE_EINTR(
@@ -225,7 +209,8 @@ bool WriteBootEntry(const base::FilePath& bootid_log_path,
     return false;
   }
 
-  auto ret = ReadPreviousBootEntries(fd.get(), max_entries);
+  auto ret =
+      ReadPreviousBootEntries(fd.get(), first_timestamp_to_keep, max_entries);
   if (!ret.has_value()) {
     LOG(FATAL) << "Reading the log file failed";
     return false;

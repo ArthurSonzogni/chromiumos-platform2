@@ -19,8 +19,12 @@ static_library("bootid_logger_lib") {
   sources = [
     "bootid_logger.cc",
     "bootid_logger.h",
+    "constants.h",
+    "timestamp_util.cc",
+    "timestamp_util.h",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ "//croslog:libcroslog_static" ]
 }
 
 executable("bootid-logger") {
@@ -36,7 +40,10 @@ if (use.test) {
   }
 
   executable("bootid-logger-testrunner") {
-    sources = [ "bootid_logger_test.cc" ]
+    sources = [
+      "bootid_logger_test.cc",
+      "timestamp_util_test.cc",
+    ]
     run_test = true
     defines = [ "UNIT_TEST" ]
     configs += [
