@@ -165,6 +165,13 @@ const char* const kUserTrafficUsernames[] = {
     "fuse-smbfs"  // smbfs SMB filesystem daemon
 };
 
+// Backoff time increment used to compute the delay before always-on VPN next
+// attempt after a connection failure.
+constexpr base::TimeDelta kAlwaysOnVpnBackoffDelay =
+    base::TimeDelta::FromMilliseconds(500);
+// Maximum shift value used to compute the always-on VPN backoff time.
+constexpr uint32_t kAlwaysOnVpnBackoffMaxShift = 7u;
+
 }  // namespace
 
 Manager::Manager(ControlInterface* control_interface,
@@ -204,6 +211,7 @@ Manager::Manager(ControlInterface* control_interface,
       last_default_physical_service_online_(false),
       always_on_vpn_mode_(Profile::kAlwaysOnVpnModeOff),
       always_on_vpn_service_(nullptr),
+      always_on_vpn_connect_attempts_(0u),
       ephemeral_profile_(new EphemeralProfile(this)),
       use_startup_portal_list_(false),
       device_status_check_task_(
@@ -737,6 +745,7 @@ void Manager::RemoveProfile(const string& name, Error* error) {
 void Manager::OnProfileChanged(const ProfileRefPtr& profile) {
   if (IsActiveProfile(profile)) {
     UpdateAlwaysOnVpnWith(profile);
+    ResetAlwaysOnVpnBackoff();
     SortServices();
   }
 }
@@ -1865,6 +1874,12 @@ void Manager::SortServicesTask() {
     }
   }
 
+  // The physical network changed, the VPN client might be able to connect
+  // next time.
+  if (last_default_physical_service_ != new_physical) {
+    ResetAlwaysOnVpnBackoff();
+  }
+
   Error error;
   adaptor_->EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty,
                                           EnumerateCompleteServices(nullptr));
@@ -1905,6 +1920,7 @@ void Manager::ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service) {
 
   if (!physical_service->IsOnline()) {
     // No physical network, we can't connect a VPN.
+    ResetAlwaysOnVpnBackoff();
     return;
   }
 
@@ -1913,21 +1929,46 @@ void Manager::ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service) {
     return;
   }
 
-  if (always_on_vpn_service_->IsConnecting() ||
-      always_on_vpn_service_->IsOnline()) {
-    // The VPN is connected or about to connect, nothing to do.
+  if (always_on_vpn_service_->IsConnecting()) {
+    // Let the service finish.
+    return;
+  }
+
+  if (always_on_vpn_service_->IsOnline()) {
+    // The VPN is connected, nothing to do.
+    ResetAlwaysOnVpnBackoff();
     return;
   }
 
   if (always_on_vpn_service_->IsFailed()) {
-    // TODO(b/167661214): implement a backoff/retry strategy on failure.
-    // For now we'll reconnect immediately.
-    SLOG(this, 2) << "Service " << always_on_vpn_service_->friendly_name()
-                  << " has failed.";
+    if (!always_on_vpn_connect_task_.IsCancelled()) {
+      // The service has failed to connect but a retry is pending, we have
+      // nothing to do until the task is executed.
+      return;
+    }
   }
 
-  Error error;
-  always_on_vpn_service_->Connect(&error, "Always-on VPN");
+  if (always_on_vpn_connect_attempts_ == 0u) {
+    // First connection attempt: we can connect directly, no need to schedule
+    // a task.
+    ConnectAlwaysOnVpn();
+    return;
+  }
+
+  // We already tried to connect without success, schedule a delayed
+  // connection to avoid a connect/failure loop.
+  uint32_t shifter =
+      std::min(always_on_vpn_connect_attempts_, kAlwaysOnVpnBackoffMaxShift);
+  base::TimeDelta delay = (1 << shifter) * kAlwaysOnVpnBackoffDelay;
+  always_on_vpn_connect_task_.Reset(
+      Bind(&Manager::ConnectAlwaysOnVpn, base::Unretained(this)));
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               always_on_vpn_connect_task_.callback(),
+                               delay.InMilliseconds());
+
+  LOG(INFO) << "Delayed " << always_on_vpn_service_->friendly_name()
+            << " connection in " << delay << " (attempt #"
+            << always_on_vpn_connect_attempts_ << ")";
 }
 
 void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
@@ -1940,6 +1981,22 @@ void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
     DCHECK_EQ(service->technology(), Technology::kVPN);
     always_on_vpn_service_ = static_cast<VPNService*>(service.get());
   }
+}
+
+void Manager::ConnectAlwaysOnVpn() {
+  SLOG(this, 4) << "In " << __func__;
+
+  Error error;
+  always_on_vpn_service_->Connect(&error, "Always-on VPN");
+  always_on_vpn_connect_attempts_++;
+  always_on_vpn_connect_task_.Cancel();
+}
+
+void Manager::ResetAlwaysOnVpnBackoff() {
+  SLOG(this, 4) << "In " << __func__;
+
+  always_on_vpn_connect_attempts_ = 0u;
+  always_on_vpn_connect_task_.Cancel();
 }
 
 void Manager::DeviceStatusCheckTask() {

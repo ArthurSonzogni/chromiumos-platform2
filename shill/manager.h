@@ -610,6 +610,12 @@ class Manager {
   void ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service);
   // Update always-on VPN configuration with the one contained in |profile|.
   void UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile);
+  // Connect the always-on VPN and maintain the previous connection attempts
+  // count.
+  void ConnectAlwaysOnVpn();
+  // Reset the connection backoff to its initial state.  Used on a successful
+  // attempt or a physical network change for instance.
+  void ResetAlwaysOnVpnBackoff();
   std::vector<std::string> AvailableTechnologies(Error* error);
   std::vector<std::string> ConnectedTechnologies(Error* error);
   std::string DefaultTechnology(Error* error);
@@ -807,6 +813,10 @@ class Manager {
   // nothing if there's no service configured, otherwise it heads to a
   // VPNService.
   VPNServiceRefPtr always_on_vpn_service_;
+  // Count of always-on VPN service connection attempts since the last reset.
+  uint32_t always_on_vpn_connect_attempts_;
+  // Task to connect always-on VPN service.
+  base::CancelableClosure always_on_vpn_connect_task_;
   // Map of technologies to Provider instances.  These pointers are owned
   // by the respective scoped_reptr objects that are held over the lifetime
   // of the Manager object.
