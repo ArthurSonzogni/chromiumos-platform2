@@ -36,12 +36,6 @@ const char kDefaultDeviceListPath[] = "/sys/bus/iio/devices";
 // Default interval for polling the ambient light sensor.
 const int kDefaultPollIntervalMs = 1000;
 
-enum class ChannelType {
-  X,
-  Y,
-  Z,
-};
-
 SensorLocation StringToSensorLocation(const std::string& location) {
   if (location == "base")
     return SensorLocation::BASE;
@@ -75,17 +69,6 @@ bool ParseLuxData(const std::string& data, int* value) {
 }
 
 }  // namespace
-
-const struct ColorChannelInfo {
-  ChannelType type;
-  const char* rgb_name;
-  const char* xyz_name;
-  bool is_lux_channel;
-} kColorChannelConfig[] = {
-    {ChannelType::X, "red", "x", false},
-    {ChannelType::Y, "green", "y", true},
-    {ChannelType::Z, "blue", "z", false},
-};
 
 const int AmbientLightSensorDelegateFile::kNumInitAttemptsBeforeLogging = 5;
 const int AmbientLightSensorDelegateFile::kNumInitAttemptsBeforeGivingUp = 20;
@@ -211,8 +194,7 @@ void AmbientLightSensorDelegateFile::CollectChannelReadings() {
   // We should notify observers if there is either a change in lux or a change
   // in color temperature. This means that we can always notify when we have the
   // Y value but otherwise we need all three.
-  std::map<ChannelType, int> valid_readings;
-  double scale_factor = 0;
+  std::map<ChannelType, int> readings;
   base::Optional<int> lux_value = base::nullopt;
   for (const auto& reading : color_readings_) {
     // -1 marks an invalid reading.
@@ -220,35 +202,15 @@ void AmbientLightSensorDelegateFile::CollectChannelReadings() {
       continue;
     if (reading.first->is_lux_channel)
       lux_value = reading.second;
-    valid_readings[reading.first->type] = reading.second;
-    scale_factor += reading.second;
+    readings[reading.first->type] = reading.second;
   }
 
-  if (valid_readings.count(ChannelType::Y) == 0) {
-    StartTimer();
-    return;
-  }
+  auto color_temperature =
+      AmbientLightSensorDelegate::CalculateColorTemperature(readings);
 
-  int color_temperature;
-  if (valid_readings.size() != color_readings_.size() || scale_factor == 0) {
-    // We either don't have all of the channels or there is no light in the
-    // sensor and therefore no color temperature, but we can still notify
-    // for lux.
-    color_temperature = -1;
-  } else {
-    double scaled_x = valid_readings[ChannelType::X] / scale_factor;
-    double scaled_y = valid_readings[ChannelType::Y] / scale_factor;
-    // Avoid weird behavior around the function's pole.
-    if (scaled_y < 0.186) {
-      color_temperature = -1;
-    } else {
-      double n = (scaled_x - 0.3320) / (0.1858 - scaled_y);
-      color_temperature = static_cast<int>(449 * n * n * n + 3525 * n * n +
-                                           6823.3 * n + 5520.33);
-    }
-  }
+  if (lux_value.has_value() || color_temperature.has_value())
+    set_lux_callback_.Run(lux_value, color_temperature);
 
-  set_lux_callback_.Run(lux_value, color_temperature);
   StartTimer();
 }
 

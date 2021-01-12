@@ -77,6 +77,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libmojo",
     "libudev",
     "re2",
 
@@ -131,7 +132,9 @@ static_library("libsystem") {
   sources = [
     "powerd/system/acpi_wakeup_helper.cc",
     "powerd/system/ambient_light_sensor.cc",
+    "powerd/system/ambient_light_sensor_delegate.cc",
     "powerd/system/ambient_light_sensor_delegate_file.cc",
+    "powerd/system/ambient_light_sensor_delegate_mojo.cc",
     "powerd/system/ambient_light_sensor_manager.cc",
     "powerd/system/arc_timer_manager.cc",
     "powerd/system/async_file_reader.cc",
@@ -168,6 +171,12 @@ static_library("libsystem") {
     "powerd/system/wakeup_source_identifier.cc",
     "powerd/system/wilco_charge_controller_helper.cc",
   ]
+
+  deps = [
+    "//iioservice/libiioservice_ipc:libiioservice_ipc",
+    "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
+  ]
+
   libs = [ "rt" ]
 }
 
@@ -424,6 +433,8 @@ if (use.test) {
       "common/testrunner.cc",
       "powerd/system/acpi_wakeup_helper_test.cc",
       "powerd/system/ambient_light_sensor_delegate_file_test.cc",
+      "powerd/system/ambient_light_sensor_delegate_mojo_test.cc",
+      "powerd/system/ambient_light_sensor_delegate_test.cc",
       "powerd/system/ambient_light_sensor_manager_test.cc",
       "powerd/system/ambient_light_sensor_test.cc",
       "powerd/system/arc_timer_manager_test.cc",
@@ -433,6 +444,7 @@ if (use.test) {
       "powerd/system/cros_ec_ioctl_test.cc",
       "powerd/system/display/display_watcher_test.cc",
       "powerd/system/display/external_display_test.cc",
+      "powerd/system/fake_sensor_device.cc",
       "powerd/system/input_watcher_test.cc",
       "powerd/system/internal_backlight_test.cc",
       "powerd/system/lockfile_checker_test.cc",

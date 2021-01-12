@@ -5,36 +5,16 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
 
-#include <base/callback.h>
+#include <memory>
+
 #include <base/observer_list.h>
 #include <base/optional.h>
 
-#include <memory>
-
+#include "power_manager/powerd/system/ambient_light_sensor_delegate.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
 namespace power_manager {
 namespace system {
-
-class AmbientLightSensorDelegate {
- public:
-  AmbientLightSensorDelegate() {}
-  AmbientLightSensorDelegate(const AmbientLightSensorDelegate&) = delete;
-  AmbientLightSensorDelegate& operator=(const AmbientLightSensorDelegate&) =
-      delete;
-  virtual ~AmbientLightSensorDelegate() {}
-
-  virtual bool IsColorSensor() const = 0;
-  virtual base::FilePath GetIlluminancePath() const = 0;
-
-  void SetLuxCallback(
-      base::RepeatingCallback<void(base::Optional<int>, base::Optional<int>)>
-          set_lux_callback);
-
- protected:
-  base::RepeatingCallback<void(base::Optional<int>, base::Optional<int>)>
-      set_lux_callback_;
-};
 
 class AmbientLightSensor : public AmbientLightSensorInterface {
  public:

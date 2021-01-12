@@ -22,14 +22,6 @@
 namespace power_manager {
 namespace system {
 
-struct ColorChannelInfo;
-
-enum class SensorLocation {
-  UNKNOWN,
-  BASE,
-  LID,
-};
-
 class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
  public:
   // Number of failed init attempts before AmbientLightSensorDelegateFile will

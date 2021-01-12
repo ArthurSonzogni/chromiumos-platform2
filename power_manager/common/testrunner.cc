@@ -9,6 +9,8 @@
 #include <base/logging.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
@@ -23,5 +25,11 @@ int main(int argc, char** argv) {
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY,
       base::test::TaskEnvironment::MainThreadType::IO);
   ::testing::InitGoogleTest(&argc, argv);
+
+  mojo::core::Init();
+  auto ipc_support = std::make_unique<mojo::core::ScopedIPCSupport>(
+      task_environment.GetMainThreadTaskRunner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+
   return RUN_ALL_TESTS();
 }

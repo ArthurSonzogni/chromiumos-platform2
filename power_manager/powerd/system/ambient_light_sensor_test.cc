@@ -6,6 +6,8 @@
 
 #include <memory>
 #include <utility>
+
+#include <base/optional.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/ambient_light_observer.h"

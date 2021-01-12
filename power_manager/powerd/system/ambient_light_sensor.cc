@@ -12,15 +12,12 @@
 namespace power_manager {
 namespace system {
 
-void AmbientLightSensorDelegate::SetLuxCallback(
-    base::RepeatingCallback<void(base::Optional<int>, base::Optional<int>)>
-        set_lux_callback) {
-  set_lux_callback_ = std::move(set_lux_callback);
-}
-
 void AmbientLightSensor::SetDelegate(
     std::unique_ptr<AmbientLightSensorDelegate> delegate) {
   delegate_ = std::move(delegate);
+  if (!delegate_.get())
+    return;
+
   delegate_->SetLuxCallback(base::BindRepeating(
       &AmbientLightSensor::SetLuxAndColorTemperature, base::Unretained(this)));
 }
