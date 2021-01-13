@@ -16,6 +16,7 @@
 #include <base/macros.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cros_config/fake_cros_config.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <gtest/gtest.h>

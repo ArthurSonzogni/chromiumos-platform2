@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <cros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/action_recorder.h"
@@ -69,7 +70,9 @@ class UserProximityWatcherTest : public testing::Test {
         &UserProximityWatcherTest::OpenTestIioFd, base::Unretained(this)));
   }
 
-  void Init(UserProximityWatcher::SensorType type, uint32_t roles) {
+  void Init(UserProximityWatcher::SensorType type,
+            uint32_t roles,
+            brillo::FakeCrosConfig* config) {
     switch (type) {
       case UserProximityWatcher::SensorType::SAR:
         prefs_.SetInt64(
@@ -91,7 +94,7 @@ class UserProximityWatcherTest : public testing::Test {
         ADD_FAILURE() << "Unknown sensor type";
         return;
     }
-    CHECK(user_proximity_watcher_->Init(&prefs_, &udev_));
+    CHECK(user_proximity_watcher_->Init(&prefs_, &udev_, config));
     observer_.reset(
         new TestObserver(user_proximity_watcher_.get(), &loop_runner_));
   }
@@ -164,7 +167,7 @@ class UserProximityWatcherTest : public testing::Test {
 
 TEST_F(UserProximityWatcherTest, DetectUsableWifiDevice) {
   Init(UserProximityWatcher::SensorType::SAR,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI, nullptr);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-wifi-right");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x1)", nullptr),
@@ -174,7 +177,7 @@ TEST_F(UserProximityWatcherTest, DetectUsableWifiDevice) {
 
 TEST_F(UserProximityWatcherTest, DetectUsableLteDevice) {
   Init(UserProximityWatcher::SensorType::SAR,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x2)", nullptr),
@@ -184,7 +187,7 @@ TEST_F(UserProximityWatcherTest, DetectUsableLteDevice) {
 
 TEST_F(UserProximityWatcherTest, DetectNotUsableWifiDevice) {
   Init(UserProximityWatcher::SensorType::SAR,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-wifi-right");
   EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
@@ -193,7 +196,7 @@ TEST_F(UserProximityWatcherTest, DetectNotUsableWifiDevice) {
 
 TEST_F(UserProximityWatcherTest, DetectNotUsableLteDevice) {
   Init(UserProximityWatcher::SensorType::SAR,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI, nullptr);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
@@ -202,7 +205,7 @@ TEST_F(UserProximityWatcherTest, DetectNotUsableLteDevice) {
 
 TEST_F(UserProximityWatcherTest, DetectUsableMixDevice) {
   Init(UserProximityWatcher::SensorType::SAR,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI, nullptr);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-wifi-lte");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x1)", nullptr),
@@ -212,7 +215,7 @@ TEST_F(UserProximityWatcherTest, DetectUsableMixDevice) {
 
 TEST_F(UserProximityWatcherTest, ReceiveProximityInfo) {
   Init(UserProximityWatcher::SensorType::SAR,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   observer_->GetActions();  // consume OnNewSensor
@@ -223,7 +226,7 @@ TEST_F(UserProximityWatcherTest, ReceiveProximityInfo) {
 
 TEST_F(UserProximityWatcherTest, UnknownDevice) {
   Init(UserProximityWatcher::SensorType::SAR,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI, nullptr);
 
   AddDevice("/sys/mockunknown", "/dev/unknown-wifi-right");
   EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
@@ -232,7 +235,7 @@ TEST_F(UserProximityWatcherTest, UnknownDevice) {
 
 TEST_F(UserProximityWatcherTest, DetectUsableActivityDevice) {
   Init(UserProximityWatcher::SensorType::ACTIVITY,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI, nullptr);
 
   AddDevice("/sys/cros-ec-activity.6.auto/MOCKSENSOR", "/dev/MOCKSENSOR");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x1)", nullptr),
@@ -242,7 +245,7 @@ TEST_F(UserProximityWatcherTest, DetectUsableActivityDevice) {
 
 TEST_F(UserProximityWatcherTest, DetectNotUsableActivityDevice) {
   Init(UserProximityWatcher::SensorType::ACTIVITY,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_NONE);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_NONE, nullptr);
 
   AddDevice("/sys/cros-ec-activity.6.auto/MOCKSENSOR", "/dev/MOCKSENSOR");
   EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
@@ -251,13 +254,188 @@ TEST_F(UserProximityWatcherTest, DetectNotUsableActivityDevice) {
 
 TEST_F(UserProximityWatcherTest, ReceiveActivityProximityInfo) {
   Init(UserProximityWatcher::SensorType::ACTIVITY,
-       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
 
   AddDevice("/sys/cros-ec-activity.6.auto/MOCKSENSOR", "/dev/MOCKSENSOR");
   observer_->GetActions();  // consume OnNewSensor
   SendEvent("/dev/MOCKSENSOR", UserProximity::NEAR);
   EXPECT_EQ(JoinActions("OnProximityEvent(value=near)", nullptr),
             observer_->GetActions());
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityChannelEnable) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "34");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr(
+      "/sys/mockproximity", "events/in_proximity34_thresh_either_en", &attr));
+  EXPECT_EQ("1", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximitySamplingFrequency) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "12");
+  config.SetString("/proximity-sensor/lte", "sampling-frequency", "4213.657");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(
+      udev_.GetSysattr("/sys/mockproximity", "sampling_frequency", &attr));
+  EXPECT_EQ("4213.657", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityHardwareGain) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "3");
+  config.SetString("/proximity-sensor/lte", "hardwaregain", "323");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "in_proximity3_hardwaregain", &attr));
+  EXPECT_EQ("323", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityThresholdEither) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "9");
+  config.SetString("/proximity-sensor/lte", "thresh-rising", "88");
+  config.SetString("/proximity-sensor/lte", "thresh-falling", "88");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr(
+      "/sys/mockproximity", "events/in_proximity9_thresh_either_value", &attr));
+  EXPECT_EQ("88", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityThresholdRising) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "9");
+  config.SetString("/proximity-sensor/lte", "thresh-rising", "89");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr(
+      "/sys/mockproximity", "events/in_proximity9_thresh_rising_value", &attr));
+  EXPECT_EQ("89", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityThresholdFalling) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "9");
+  config.SetString("/proximity-sensor/lte", "thresh-falling", "39");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "events/in_proximity9_thresh_falling_value",
+                               &attr));
+  EXPECT_EQ("39", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityHysteresisEither) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "0");
+  config.SetString("/proximity-sensor/lte", "thresh-rising-hysteresis", "1020");
+  config.SetString("/proximity-sensor/lte", "thresh-falling-hysteresis",
+                   "1020");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "events/in_proximity0_thresh_either_hysteresis",
+                               &attr));
+  EXPECT_EQ("1020", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityHysteresisRising) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "6");
+  config.SetString("/proximity-sensor/lte", "thresh-rising-hysteresis", "1120");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "events/in_proximity6_thresh_rising_hysteresis",
+                               &attr));
+  EXPECT_EQ("1120", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityHysteresisFalling) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "6");
+  config.SetString("/proximity-sensor/lte", "thresh-falling-hysteresis", "120");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "events/in_proximity6_thresh_falling_hysteresis",
+                               &attr));
+  EXPECT_EQ("120", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityPeriodEither) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "11");
+  config.SetString("/proximity-sensor/lte", "thresh-rising-period", "301");
+  config.SetString("/proximity-sensor/lte", "thresh-falling-period", "301");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "events/thresh_either_period", &attr));
+  EXPECT_EQ("301", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityPeriodRising) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "11");
+  config.SetString("/proximity-sensor/lte", "thresh-rising-period", "101");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "events/thresh_rising_period", &attr));
+  EXPECT_EQ("101", attr);
+}
+
+TEST_F(UserProximityWatcherTest, SetProximityPeriodFalling) {
+  std::string attr;
+  brillo::FakeCrosConfig config;
+  config.SetString("/proximity-sensor/lte", "channel", "11");
+  config.SetString("/proximity-sensor/lte", "thresh-falling-period", "191");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, &config);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity",
+                               "events/thresh_falling_period", &attr));
+  EXPECT_EQ("191", attr);
 }
 
 }  // namespace

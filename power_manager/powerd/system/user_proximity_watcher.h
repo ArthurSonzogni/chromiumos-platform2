@@ -57,7 +57,9 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
   ~UserProximityWatcher() override;
 
   // Returns true on success.
-  bool Init(PrefsInterface* prefs, UdevInterface* udev);
+  bool Init(PrefsInterface* prefs,
+            UdevInterface* udev,
+            brillo::CrosConfigInterface* config);
 
   // UserProximityWatcherInterface implementation:
   void AddObserver(UserProximityObserver* observer) override;
@@ -94,7 +96,6 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
 
   // Sets proximity IIO attributes for rising, falling, or either direction
   bool SetIioRisingFallingValue(const std::string& syspath,
-                                brillo::CrosConfigInterface* config,
                                 const std::string& config_path,
                                 const std::string& config_name,
                                 const std::string& path_prefix,
@@ -120,6 +121,7 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
   OpenIioEventsFunc open_iio_events_func_;
 
   UdevInterface* udev_ = nullptr;  // non-owned
+  brillo::CrosConfigInterface* config_ = nullptr;  // non-owned
   base::ObserverList<UserProximityObserver> observers_;
 
   // Mapping between IIO event file descriptors and sensor details.
