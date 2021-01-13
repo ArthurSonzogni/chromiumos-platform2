@@ -25,6 +25,7 @@ import "ml/mojom/handwriting_recognizer.mojom";
 import "ml/mojom/model.mojom";
 import "ml/mojom/soda.mojom";
 import "ml/mojom/text_classifier.mojom";
+import "ml/mojom/text_suggester.mojom";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -38,7 +39,7 @@ enum LoadModelResult {
 };
 
 // Top-level interface between Chromium and the ML Service daemon.
-// Next ordinal: 8
+// Next ordinal: 9
 [Stable, Uuid="9e5e4750-40cc-4eda-ac09-3457d06a45ab"]
 interface MachineLearningService {
   // Binds another pipe to this instance.
@@ -73,5 +74,8 @@ interface MachineLearningService {
       => (LoadModelResult result);
   // Create and initialize a grammar checker.
   LoadGrammarChecker@7(pending_receiver<GrammarChecker> receiver)
+      => (LoadModelResult result);
+  // Create and initialize a text suggester.
+  LoadTextSuggester@8(pending_receiver<TextSuggester> receiver)
       => (LoadModelResult result);
 };

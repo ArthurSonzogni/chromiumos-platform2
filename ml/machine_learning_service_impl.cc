@@ -29,6 +29,8 @@
 #include "ml/request_metrics.h"
 #include "ml/soda_recognizer_impl.h"
 #include "ml/text_classifier_impl.h"
+#include "ml/text_suggester_impl.h"
+#include "ml/text_suggestions.h"
 
 namespace ml {
 
@@ -408,6 +410,49 @@ void MachineLearningServiceImpl::LoadGrammarChecker(
 
   // Create GrammarChecker.
   if (!GrammarCheckerImpl::Create(std::move(receiver))) {
+    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    return;
+  }
+
+  std::move(callback).Run(LoadModelResult::OK);
+
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(LoadModelResult::OK);
+}
+
+void MachineLearningServiceImpl::LoadTextSuggester(
+    mojo::PendingReceiver<chromeos::machine_learning::mojom::TextSuggester>
+        receiver,
+    LoadTextSuggesterCallback callback) {
+  RequestMetrics request_metrics("TextSuggester", kMetricsRequestName);
+  request_metrics.StartRecordingPerformanceMetrics();
+
+  // Load TextSuggestions library.
+  auto* const text_suggestions = ml::TextSuggestions::GetInstance();
+
+  if (text_suggestions->GetStatus() ==
+      ml::TextSuggestions::Status::kNotSupported) {
+    LOG(ERROR) << "Initialize ml::TextSuggestions with error "
+               << static_cast<int>(text_suggestions->GetStatus());
+
+    std::move(callback).Run(LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
+    request_metrics.RecordRequestEvent(
+        LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
+    return;
+  }
+
+  if (text_suggestions->GetStatus() != ml::TextSuggestions::Status::kOk) {
+    LOG(ERROR) << "Initialize ml::TextSuggestions with error "
+               << static_cast<int>(text_suggestions->GetStatus());
+
+    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    return;
+  }
+
+  // Create TextSuggester.
+  if (!TextSuggesterImpl::Create(std::move(receiver))) {
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
     return;

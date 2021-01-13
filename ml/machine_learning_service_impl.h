@@ -84,6 +84,10 @@ class MachineLearningServiceImpl
       mojo::PendingReceiver<chromeos::machine_learning::mojom::GrammarChecker>
           receiver,
       LoadGrammarCheckerCallback callback) override;
+  void LoadTextSuggester(
+      mojo::PendingReceiver<chromeos::machine_learning::mojom::TextSuggester>
+          receiver,
+      LoadTextSuggesterCallback callback) override;
 
   // Metadata required to load builtin models. Initialized at construction.
   const std::map<chromeos::machine_learning::mojom::BuiltinModelId,

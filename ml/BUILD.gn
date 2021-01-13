@@ -42,6 +42,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
     "mojom/soda.mojom",
     "mojom/tensor.mojom",
     "mojom/text_classifier.mojom",
+    "mojom/text_suggester.mojom",
     "mojom/time.mojom",
   ]
   mojo_extra_args = [
@@ -111,6 +112,8 @@ static_library("ml_common") {
     "request_metrics.cc",
     "tensor_view.cc",
     "text_classifier_impl.cc",
+    "text_suggester_impl.cc",
+    "text_suggester_proto_mojom_conversion.cc",
     "text_suggestions.cc",
     "util.cc",
   ]
@@ -220,6 +223,7 @@ if (use.test) {
       "model_impl_test.cc",
       "test_utils.cc",
       "testrunner.cc",
+      "text_suggester_proto_mojom_conversion_test.cc",
       "text_suggestions_test.cc",
       "util_test.cc",
     ]

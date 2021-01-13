@@ -29,8 +29,11 @@
 #include "ml/mojom/model.mojom.h"
 #include "ml/mojom/soda.mojom.h"
 #include "ml/mojom/text_classifier.mojom.h"
+#include "ml/mojom/text_suggester.mojom.h"
 #include "ml/tensor_view.h"
 #include "ml/test_utils.h"
+#include "ml/text_suggester_proto_mojom_conversion.h"
+#include "ml/text_suggestions.h"
 
 namespace ml {
 namespace {
@@ -220,8 +223,17 @@ using ::chromeos::machine_learning::mojom::TextAnnotationRequest;
 using ::chromeos::machine_learning::mojom::TextAnnotationRequestPtr;
 using ::chromeos::machine_learning::mojom::TextClassifier;
 using ::chromeos::machine_learning::mojom::TextLanguagePtr;
+using ::chromeos::machine_learning::mojom::TextSuggester;
+using ::chromeos::machine_learning::mojom::TextSuggesterQuery;
+using ::chromeos::machine_learning::mojom::TextSuggesterQueryPtr;
+using ::chromeos::machine_learning::mojom::TextSuggesterResult;
+using ::chromeos::machine_learning::mojom::TextSuggesterResultPtr;
 using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequest;
 using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequestPtr;
+
+using ::chromeos::machine_learning::mojom::NextWordCompletionCandidate;
+using ::chromeos::machine_learning::mojom::NextWordCompletionCandidatePtr;
+
 using ::testing::DoubleEq;
 using ::testing::DoubleNear;
 using ::testing::ElementsAre;
@@ -1379,6 +1391,61 @@ TEST(GrammarCheckerTest, LoadModelAndInference) {
             EXPECT_EQ(result->candidates.at(0)->fragments.at(0)->replacement,
                       "are students");
 
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+TEST(TextSuggesterTest, LoadModelAndInference) {
+  if (ml::TextSuggestions::GetInstance()->GetStatus() ==
+      ml::TextSuggestions::Status::kNotSupported) {
+    return;
+  }
+
+  mojo::Remote<MachineLearningService> ml_service;
+  const MachineLearningServiceImplForTesting ml_service_impl(
+      ml_service.BindNewPipeAndPassReceiver());
+
+  // Load TextSuggester.
+  mojo::Remote<TextSuggester> suggester;
+  bool model_callback_done = false;
+  ml_service->LoadTextSuggester(
+      suggester.BindNewPipeAndPassReceiver(),
+      base::Bind(
+          [](bool* model_callback_done, const LoadModelResult result) {
+            ASSERT_EQ(result, LoadModelResult::OK);
+            *model_callback_done = true;
+          },
+          &model_callback_done));
+
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(model_callback_done);
+  ASSERT_TRUE(suggester.is_bound());
+
+  TextSuggesterQueryPtr query = TextSuggesterQuery::New();
+  query->text = "how are y";
+
+  NextWordCompletionCandidatePtr candidate_one =
+      NextWordCompletionCandidate::New();
+  candidate_one->text = "you";
+  candidate_one->normalized_score = -1.0f;
+  query->next_word_candidates.push_back(std::move(candidate_one));
+
+  bool infer_callback_done = false;
+  suggester->Suggest(
+      std::move(query),
+      base::Bind(
+          [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
+            EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
+            ASSERT_EQ(result->candidates.size(), 1);
+            ASSERT_TRUE(result->candidates.at(0)->is_multi_word());
+            EXPECT_EQ(result->candidates.at(0)->get_multi_word()->text,
+                      "you doing");
+            EXPECT_EQ(
+                result->candidates.at(0)->get_multi_word()->normalized_score,
+                -0.680989f);
             *infer_callback_done = true;
           },
           &infer_callback_done));
