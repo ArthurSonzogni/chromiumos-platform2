@@ -155,6 +155,16 @@ int dm_bht_compute_hash(struct dm_bht* bht,
                         const uint8_t* buffer,
                         uint8_t* digest);
 
+/* Functions for creating struct dm_bhts on disk.  A newly created dm_bht
+ * should not be directly used for verification. (It should be repopulated.)
+ * In addition, these functions aren't meant to be called in parallel.
+ */
+int dm_bht_compute(struct dm_bht* bht);
+void dm_bht_set_buffer(struct dm_bht* bht, void* buffer);
+int dm_bht_store_block(struct dm_bht* bht,
+                       unsigned int block,
+                       uint8_t* block_data);
+
 /* Functions for converting indices to nodes. */
 
 inline struct dm_bht_level* dm_bht_get_level(struct dm_bht* bht, int depth) {

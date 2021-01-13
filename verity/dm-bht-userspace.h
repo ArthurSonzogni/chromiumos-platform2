@@ -8,18 +8,7 @@
 #ifndef VERITY_DM_BHT_USERSPACE_H_
 #define VERITY_DM_BHT_USERSPACE_H_
 
-namespace verity {
-
-/* Functions for creating struct dm_bhts on disk.  A newly created dm_bht
- * should not be directly used for verification. (It should be repopulated.)
- * In addition, these functions aren't meant to be called in parallel.
- */
-int dm_bht_compute(struct dm_bht* bht);
-void dm_bht_set_buffer(struct dm_bht* bht, void* buffer);
-int dm_bht_store_block(struct dm_bht* bht,
-                       unsigned int block,
-                       uint8_t* block_data);
-
-}  // namespace verity
+// TODO(crbug.com/886953): Remove this file once all it's users have stopped
+// including it.
 
 #endif  // VERITY_DM_BHT_USERSPACE_H_

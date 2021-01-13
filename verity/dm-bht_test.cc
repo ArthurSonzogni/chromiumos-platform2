@@ -13,7 +13,6 @@
 #include <gtest/gtest.h>
 
 #include "verity/dm-bht.h"
-#include "verity/dm-bht-userspace.h"
 
 namespace verity {
 

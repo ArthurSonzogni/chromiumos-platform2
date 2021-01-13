@@ -26,7 +26,6 @@ static_library("libdm-bht") {
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
   sources = [
-    "dm-bht-userspace.cc",
     "dm-bht.cc",
     "file_hasher.cc",
   ]
