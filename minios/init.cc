@@ -35,7 +35,10 @@ bool InitClock() {
     return true;
   constexpr char kDayAfterUnixEpoch[] = "010200001970.00";
   return ProcessManager().RunCommand({"/bin/date", kDayAfterUnixEpoch},
-                                     kDebugConsole, kDebugConsole) != 0;
+                                     ProcessManager::IORedirection{
+                                         .input = kDebugConsole,
+                                         .output = kDebugConsole,
+                                     }) != 0;
 }
 
 // Sets up all the common system mount points.
@@ -93,5 +96,9 @@ int main() {
     LOG(ERROR) << "Failed to init mounts.";
     return -1;
   }
-  return ProcessManager().RunCommand({"/init.sh"}, "/dev/null", kLogFile);
+  return ProcessManager().RunCommand({"/init.sh"},
+                                     ProcessManager::IORedirection{
+                                         .input = "/dev/null",
+                                         .output = kLogFile,
+                                     });
 }

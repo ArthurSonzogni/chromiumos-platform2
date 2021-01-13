@@ -18,6 +18,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "system_api",
     "xkbcommon",
   ]
 }
@@ -25,6 +26,7 @@ pkg_config("target_defaults") {
 static_library("libminios") {
   configs += [ ":target_defaults" ]
   sources = [
+    "daemon.cc",
     "key_reader.cc",
     "minios.cc",
     "process_manager.cc",

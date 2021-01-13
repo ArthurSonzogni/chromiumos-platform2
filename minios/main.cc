@@ -2,9 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "minios/minios.h"
+#include "minios/daemon.h"
 
 int main() {
-  MiniOs minios;
-  return minios.Run();
+  return minios::Daemon().Run();
 }
