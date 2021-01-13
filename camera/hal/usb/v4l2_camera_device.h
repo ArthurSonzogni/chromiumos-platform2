@@ -242,17 +242,6 @@ class V4L2CameraDevice {
   // Returns true if the current connected device is an external camera.
   bool IsExternalCamera();
 
-  // Subscribe the camera privacy switch status changed as privacy v4l2-event.
-  // Returns |-errno| if it fails to subscribe.
-  int SubscribePrivacySwitchEvent();
-
-  // Unsubscribe the camera privacy switch status changed as privacy v4l2-event.
-  // Returns |-errno| if it fails to unsubscribe.
-  int UnsubscribePrivacySwitchEvent();
-
-  // Keep dequeuing the v4l2-events from device.
-  void RunDequeueEventsLoop();
-
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;
 
@@ -282,17 +271,6 @@ class V4L2CameraDevice {
 
   // Current control values.
   std::map<ControlType, int32_t> control_values_;
-
-  // The thread for dequeing v4l2-events.
-  base::Thread event_thread_;
-
-  // The endpoint of cancelation pipe. The main thread should close it before
-  // trying to stop the event thread.
-  base::ScopedFD cancel_pipe_;
-
-  // The endpoint of cancelation pipe. The event thread should poll for it so
-  // that we can notify the thread to leave the loop.
-  base::ScopedFD cancel_fd_;
 
   // Monitor for the status change of camera privacy switch.
   CameraPrivacySwitchMonitor* privacy_switch_monitor_;

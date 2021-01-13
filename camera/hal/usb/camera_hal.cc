@@ -488,6 +488,8 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   request_template_[info.camera_id] =
       ScopedCameraMetadata(request_template.release());
 
+  privacy_switch_monitor_.TrySubscribe(info.camera_id, info.device_path);
+
   if (info.lens_facing == LensFacing::kExternal) {
     callbacks_->camera_device_status_change(callbacks_, info.camera_id,
                                             CAMERA_DEVICE_STATUS_PRESENT);
@@ -513,6 +515,8 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
     VLOGF(1) << "Camera " << id << "is a built-in camera, ignore it";
     return;
   }
+
+  privacy_switch_monitor_.Unsubscribe(id);
 
   LOGF(INFO) << "Camera " << id << " at " << path << " removed";
 
