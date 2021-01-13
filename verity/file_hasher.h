@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/files/file.h>
+#include <brillo/brillo_export.h>
 
 #include "verity/dm-bht.h"
 
@@ -21,7 +22,7 @@ namespace verity {
 // bytes creating SHA-256 hashes as it goes.
 // TODO(wad) allow any hashing format supported by openssl (and the kernel).
 // This class may not be used by multiple threads at once.
-class FileHasher {
+class BRILLO_EXPORT FileHasher {
  public:
   FileHasher(std::unique_ptr<base::File> source,
              std::unique_ptr<base::File> destination,
@@ -43,12 +44,7 @@ class FileHasher {
   virtual std::string GetTable(bool colocated);
 
   virtual const char* RandomSalt();
-  virtual void set_salt(const char* salt) {
-    if (!strcmp(salt, "random"))
-      salt = RandomSalt();
-    dm_bht_set_salt(&tree_, salt);
-    salt_ = salt;
-  }
+  virtual void set_salt(const char* salt);
   virtual const char* salt(void) { return salt_; }
 
  private:

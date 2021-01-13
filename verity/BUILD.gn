@@ -19,12 +19,8 @@ pkg_config("target_defaults") {
   include_dirs = [ "include" ]
 }
 
-static_library("libdm-bht") {
-  configs += [
-    ":target_defaults",
-    "//common-mk:nouse_thin_archive",
-  ]
-  configs -= [ "//common-mk:use_thin_archive" ]
+shared_library("libdm-bht") {
+  configs += [ ":target_defaults" ]
   sources = [
     "dm-bht.cc",
     "file_hasher.cc",

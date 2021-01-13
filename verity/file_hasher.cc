@@ -117,6 +117,13 @@ bool FileHasher::Hash() {
   return !dm_bht_compute(&tree_);
 }
 
+void FileHasher::set_salt(const char* salt) {
+  if (!strcmp(salt, "random"))
+    salt = RandomSalt();
+  dm_bht_set_salt(&tree_, salt);
+  salt_ = salt;
+}
+
 const char* FileHasher::RandomSalt() {
   char buf[DM_BHT_SALT_SIZE];
   base::FilePath urandom_path("/dev/urandom");

@@ -24,10 +24,9 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libdm-bht",
     "vboot_host",
   ]
-  include_dirs = [ "${sysroot}/usr/include/verity" ]
-  libs = [ "dm-bht" ]
 }
 
 static_library("libcros_installer") {

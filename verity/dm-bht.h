@@ -11,6 +11,8 @@
 
 #include <cstdint>
 
+#include <brillo/brillo_export.h>
+
 /* To avoid allocating memory for digest tests, we just setup a
  * max to use for now.
  */
@@ -42,6 +44,7 @@ typedef uint64_t sector_t;
 
 namespace verity {
 
+BRILLO_EXPORT
 extern const char kSha256HashName[];
 
 /* dm_bht_entry
@@ -121,34 +124,45 @@ struct dm_bht {
 };
 
 /* Constructor for struct dm_bht instances. */
+BRILLO_EXPORT
 int dm_bht_create(struct dm_bht* bht,
                   unsigned int block_count,
                   const char* alg_name);
 /* Destructor for struct dm_bht instances.  Does not free @bht */
+BRILLO_EXPORT
 int dm_bht_destroy(struct dm_bht* bht);
 
 /* Basic accessors for struct dm_bht */
+BRILLO_EXPORT
 sector_t dm_bht_sectors(const struct dm_bht* bht);
+BRILLO_EXPORT
 void dm_bht_set_read_cb(struct dm_bht* bht, dm_bht_callback read_cb);
+BRILLO_EXPORT
 int dm_bht_set_root_hexdigest(struct dm_bht* bht, const uint8_t* hexdigest);
+BRILLO_EXPORT
 int dm_bht_root_hexdigest(struct dm_bht* bht,
                           uint8_t* hexdigest,
                           int available);
+BRILLO_EXPORT
 void dm_bht_set_salt(struct dm_bht* bht, const char* hexsalt);
 int dm_bht_salt(struct dm_bht* bht, char* hexsalt);
 
 /* Functions for loading in data from disk for verification */
 bool dm_bht_is_populated(struct dm_bht* bht, unsigned int block);
+BRILLO_EXPORT
 int dm_bht_populate(struct dm_bht* bht, void* read_cb_ctx, unsigned int block);
+BRILLO_EXPORT
 int dm_bht_verify_block(struct dm_bht* bht,
                         unsigned int block,
                         const uint8_t* buffer,
                         unsigned int offset);
+BRILLO_EXPORT
 int dm_bht_zeroread_callback(void* ctx,
                              sector_t start,
                              uint8_t* dst,
                              sector_t count,
                              struct dm_bht_entry* entry);
+BRILLO_EXPORT
 void dm_bht_read_completed(struct dm_bht_entry* entry, int status);
 
 int dm_bht_compute_hash(struct dm_bht* bht,
@@ -159,8 +173,11 @@ int dm_bht_compute_hash(struct dm_bht* bht,
  * should not be directly used for verification. (It should be repopulated.)
  * In addition, these functions aren't meant to be called in parallel.
  */
+BRILLO_EXPORT
 int dm_bht_compute(struct dm_bht* bht);
+BRILLO_EXPORT
 void dm_bht_set_buffer(struct dm_bht* bht, void* buffer);
+BRILLO_EXPORT
 int dm_bht_store_block(struct dm_bht* bht,
                        unsigned int block,
                        uint8_t* block_data);
