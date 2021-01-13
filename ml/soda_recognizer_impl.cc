@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
 #include "ml/request_metrics.h"
 #include "ml/soda.h"
@@ -26,8 +27,8 @@ using ::chromeos::machine_learning::mojom::SpeechRecognizerEvent;
 using ::chromeos::machine_learning::mojom::SpeechRecognizerEventPtr;
 using ::speech::soda::chrome::SodaResponse;
 
-constexpr char kSodaDefaultConfigFilePath[] =
-    "/opt/google/chrome/ml_models/soda/models/en_us/dictation.ascii_proto";
+constexpr char kSodaDefaultLanguagePackDirectory[] =
+    "/opt/google/chrome/ml_models/soda/models/en_us/";
 
 void SodaCallback(const char* soda_response_str,
                   int size,
@@ -37,14 +38,9 @@ void SodaCallback(const char* soda_response_str,
     LOG(ERROR) << "Parse SODA response failed." << std::endl;
     return;
   }
-  // For this initial version, only send the recognition result to Chrome.
-  if (response.has_recognition_result() &&
-      !response.recognition_result().hypothesis().empty()) {
-    reinterpret_cast<SodaRecognizerImpl*>(soda_recognizer_impl)
-        ->OnSodaEvent(response.SerializeAsString());
-  }
+  reinterpret_cast<SodaRecognizerImpl*>(soda_recognizer_impl)
+      ->OnSodaEvent(response.SerializeAsString());
 }
-
 }  // namespace
 
 bool SodaRecognizerImpl::Create(
@@ -111,7 +107,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   speech::soda::chrome::ExtendedSodaConfigMsg cfg_msg;
   cfg_msg.set_channel_count(spec->channel_count);
   cfg_msg.set_sample_rate(spec->sample_rate);
-  cfg_msg.set_config_file_location(kSodaDefaultConfigFilePath);
+  cfg_msg.set_language_pack_directory(kSodaDefaultLanguagePackDirectory);
   cfg_msg.set_api_key(spec->api_key);
   std::string serialized = cfg_msg.SerializeAsString();
 
