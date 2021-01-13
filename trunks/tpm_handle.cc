@@ -10,6 +10,8 @@
 #include <base/callback.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 
 #include "trunks/trunks_metrics.h"
 
@@ -18,6 +20,18 @@ namespace {
 const char kTpmDevice[] = "/dev/tpm0";
 const uint32_t kTpmBufferSize = 4096;
 const int kInvalidFileDescriptor = -1;
+
+// Retry parameters for opening /dev/tpm0.
+// How long do we wait after the first try?
+constexpr base::TimeDelta kInitialRetry = base::TimeDelta::FromSecondsD(0.1);
+// When we retry the next time, how much longer do we wait?
+constexpr double kRetryMultiplier = 2.0;
+// How many times to retry?
+constexpr int kMaxRetry = 5;
+// Total of 4 wait time between 5 retries.
+// sum 0.1*2^k for k = 0 to 3 = 1.5s
+// Note that if this period is not enough, upstart will still respawn trunksd
+// after it all fall through.
 
 }  // namespace
 
@@ -38,12 +52,23 @@ bool TpmHandle::Init() {
     VLOG(1) << "Tpm already initialized.";
     return true;
   }
-  fd_ = HANDLE_EINTR(open(kTpmDevice, O_RDWR));
-  if (fd_ == kInvalidFileDescriptor) {
-    PLOG(ERROR) << "TPM: Error opening tpm0 file descriptor at " << kTpmDevice;
-    return false;
+  base::TimeDelta current_wait = kInitialRetry;
+  for (int i = 0; i < kMaxRetry; i++) {
+    fd_ = HANDLE_EINTR(open(kTpmDevice, O_RDWR));
+    if (fd_ == kInvalidFileDescriptor) {
+      PLOG(ERROR) << "TPM: Error opening tpm0 file descriptor at "
+                  << kTpmDevice;
+      if (i == kMaxRetry - 1) {
+        // If we get here, it doesn't work.
+        return false;
+      }
+      base::PlatformThread::Sleep(current_wait);
+      current_wait = current_wait * kRetryMultiplier;
+      continue;
+    }
+    LOG(INFO) << "TPM: " << kTpmDevice << " opened successfully";
+    break;
   }
-  LOG(INFO) << "TPM: " << kTpmDevice << " opened successfully";
   return true;
 }
 
