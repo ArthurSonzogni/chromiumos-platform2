@@ -817,8 +817,10 @@ int main(int argc, char** argv) {
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(mount_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -828,8 +830,10 @@ int main(int argc, char** argv) {
       DBusGProxyCall* call = org_chromium_CryptohomeInterface_mount_ex_async(
           proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
           &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call)
+      if (!call) {
+        printf("Failed to call MountEx async\n");
         return 1;
+      }
       loop.Run();
       reply = loop.reply();
     } else {
@@ -902,8 +906,10 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     cryptohome::EndFingerprintAuthSessionRequest req;
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
-    if (!req_ary.get())
+    if (!req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     brillo::glib::ScopedError error;
     GArray* out_reply = NULL;
@@ -930,8 +936,10 @@ int main(int argc, char** argv) {
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(remove_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -981,6 +989,7 @@ int main(int argc, char** argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_data_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
     }
 
@@ -994,6 +1003,7 @@ int main(int argc, char** argv) {
               proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
               &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
       if (!call) {
+        printf("Failed to call GetKeyDataEx async.\n");
         return 1;
       }
       loop.Run();
@@ -1024,8 +1034,10 @@ int main(int argc, char** argv) {
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(list_keys_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1037,6 +1049,7 @@ int main(int argc, char** argv) {
               proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
               &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
       if (!call) {
+        printf("Failed to call ListKeysEx async.\n");
         return 1;
       }
       loop.Run();
@@ -1084,8 +1097,10 @@ int main(int argc, char** argv) {
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(check_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1096,8 +1111,10 @@ int main(int argc, char** argv) {
           org_chromium_CryptohomeInterface_check_key_ex_async(
               proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
               &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call)
+      if (!call) {
+        printf("Failed to call CheckKeyEx async.\n");
         return 1;
+      }
       loop.Run();
       reply = loop.reply();
     } else {
@@ -1126,8 +1143,10 @@ int main(int argc, char** argv) {
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    if (!account_ary.get() || !auth_ary.get())
+    if (!account_ary.get() || !auth_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1138,8 +1157,10 @@ int main(int argc, char** argv) {
           org_chromium_CryptohomeInterface_add_data_restore_key_async(
               proxy.gproxy(), account_ary.get(), auth_ary.get(),
               &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call)
+      if (!call) {
+        printf("Failed to call AddDataRestoreKey async.\n");
         return 1;
+      }
       loop.Run();
       reply = loop.reply();
     } else {
@@ -1189,8 +1210,10 @@ int main(int argc, char** argv) {
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(
         GArrayFromProtoBuf(mass_remove_keys_request));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1201,8 +1224,10 @@ int main(int argc, char** argv) {
           org_chromium_CryptohomeInterface_mass_remove_keys_async(
               proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
               &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call)
+      if (!call) {
+        printf("Failed to call MassRemoveKeys async.\n");
         return 1;
+      }
       loop.Run();
       reply = loop.reply();
     } else {
@@ -1251,6 +1276,7 @@ int main(int argc, char** argv) {
 
     if (!account_ary.get() || !auth_request_ary.get() ||
         !migrate_request_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
     }
 
@@ -1305,8 +1331,10 @@ int main(int argc, char** argv) {
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -1316,8 +1344,10 @@ int main(int argc, char** argv) {
       DBusGProxyCall* call = org_chromium_CryptohomeInterface_add_key_ex_async(
           proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
           &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call)
+      if (!call) {
+        printf("Failed to call AddKeyEx async.\n");
         return 1;
+      }
       loop.Run();
       reply = loop.reply();
     } else {
@@ -1351,8 +1381,10 @@ int main(int argc, char** argv) {
     identifier.set_account_id(account_id);
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(identifier));
-    if (!account_ary.get())
+    if (!account_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     GArray* out_reply = nullptr;
     brillo::glib::ScopedError error;
@@ -1374,8 +1406,10 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     cryptohome::UnmountRequest request;
     brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
-    if (!request_ary.get())
+    if (!request_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     GArray* out_reply = nullptr;
     brillo::glib::ScopedError error;
@@ -1775,8 +1809,10 @@ int main(int argc, char** argv) {
       printf("Set() failed: %s.\n", error->message);
       return 1;
     }
-    if (result == FALSE)
+    if (result == FALSE) {
+      printf("Call to InstallAttributesSet() failed.\n");
       return 1;
+    }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_FINALIZE],
                      action.c_str())) {
@@ -2933,15 +2969,19 @@ int main(int argc, char** argv) {
       return 1;
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    if (!account_ary.get())
+    if (!account_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::MigrateToDircryptoRequest request;
     request.set_minimal_migration(cl->HasSwitch(switches::kMinimalMigration));
 
     brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
-    if (!request_ary.get())
+    if (!request_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto(
@@ -2961,8 +3001,10 @@ int main(int argc, char** argv) {
     }
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    if (!account_ary.get())
+    if (!account_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     brillo::glib::ScopedError error;
     gboolean needs_migration = false;
@@ -3096,8 +3138,10 @@ int main(int argc, char** argv) {
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
-    if (!account_ary.get() || !req_ary.get())
+    if (!account_ary.get() || !req_ary.get()) {
+      printf("Failed to create glib ScopedArray from protobuf.\n");
       return 1;
+    }
 
     cryptohome::BaseReply reply;
     brillo::glib::ScopedError error;
@@ -3107,6 +3151,7 @@ int main(int argc, char** argv) {
     if (!org_chromium_CryptohomeInterface_start_auth_session(
             proxy.gproxy(), account_ary.get(), req_ary.get(), &out_reply,
             &brillo::Resetter(&error).lvalue())) {
+      printf("Failed to call StartAuthSession.\n");
       return 1;
     }
     // TODO(crbug.com/1152474): Print Auth Session token here for the developer
