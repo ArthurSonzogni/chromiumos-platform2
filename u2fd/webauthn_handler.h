@@ -117,6 +117,9 @@ class WebAuthnHandler {
   void IsUvpaa(std::unique_ptr<IsUvpaaMethodResponse> method_response,
                const IsUvpaaRequest& request);
 
+  // Checks whether u2f is enabled (therefore power button mode is supported).
+  IsU2fEnabledResponse IsU2fEnabled(const IsU2fEnabledRequest& request);
+
   void SetWebAuthnStorageForTesting(std::unique_ptr<WebAuthnStorage> storage);
 
   void SetCryptohomeInterfaceProxyForTesting(

@@ -269,6 +269,13 @@ void IsUvpaa(dbus::ObjectProxy* proxy) {
   }
 }
 
+void IsU2fEnabled(dbus::ObjectProxy* proxy) {
+  u2f::IsU2fEnabledResponse resp =
+      SendRequest<u2f::IsU2fEnabledRequest, u2f::IsU2fEnabledResponse>(
+          proxy, u2f::kU2FIsU2fEnabled, u2f::IsU2fEnabledRequest());
+  LOG(INFO) << "U2f enabled ? " << resp.enabled();
+}
+
 int main(int argc, char* argv[]) {
   DEFINE_bool(make_credential, false, "make a credential");
   DEFINE_bool(get_assertion, false, "get an assertion");
@@ -276,6 +283,7 @@ int main(int argc, char* argv[]) {
               "check validity/existence of credentials");
   DEFINE_bool(cancel, false, "cancel ongoing WebAuthn operations");
   DEFINE_bool(is_uvpaa, false, "check whether user-verification is available");
+  DEFINE_bool(is_u2f_enabled, false, "check whether u2f is enabled");
 
   DEFINE_int32(verification_type, 1,
                "type of verification to request: presence=1, verification=2");
@@ -335,6 +343,11 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_is_uvpaa) {
     IsUvpaa(u2f_proxy);
+    return EX_OK;
+  }
+
+  if (FLAGS_is_u2f_enabled) {
+    IsU2fEnabled(u2f_proxy);
     return EX_OK;
   }
 

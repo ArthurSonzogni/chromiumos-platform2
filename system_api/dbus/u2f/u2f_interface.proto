@@ -165,3 +165,13 @@ message IsUvpaaRequest {}
 message IsUvpaaResponse {
   bool available = 1;
 }
+
+// Check whether u2f is enabled (by policy or by force flag). If u2f is
+// enabled, the browser will dispatch a cross-platform MakeCredential call to
+// the Chrome OS platform authenticator (with VerificationType=USER_PRESENCE),
+// so that we preserve the MakeCredential behavior for u2f users.
+message IsU2fEnabledRequest {}
+
+message IsU2fEnabledResponse {
+  bool enabled = 1;
+}

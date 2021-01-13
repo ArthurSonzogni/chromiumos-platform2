@@ -1169,6 +1169,13 @@ WebAuthnHandler::DoU2fSignCheckOnly(
                             : HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
 }
 
+IsU2fEnabledResponse WebAuthnHandler::IsU2fEnabled(
+    const IsU2fEnabledRequest& request) {
+  IsU2fEnabledResponse response;
+  response.set_enabled(allow_presence_mode_);
+  return response;
+}
+
 void WebAuthnHandler::IsUvpaa(
     std::unique_ptr<IsUvpaaMethodResponse> method_response,
     const IsUvpaaRequest& request) {
