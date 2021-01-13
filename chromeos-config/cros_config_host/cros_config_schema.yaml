@@ -408,6 +408,10 @@ properties:
                   items:
                     type: object
                     properties:
+                      has-privacy-switch:
+                        type: boolean
+                        description: The camera has a privacy switch that
+                          can disable the output when enabled.
                       interface:
                         type: string
                         description: The interface type of the camera device.

@@ -433,6 +433,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | facing | string |  | True |  | False | Direction the camera faces relative to device screen. |
 | flags | [flags](#flags) |  | True |  | False | Bit flags representing camera capabilities of this device. A camera module can be mounted on this slot only if all the flags match. |
+| has-privacy-switch | boolean |  | False |  | False | The camera has a privacy switch that can disable the output when enabled. |
 | ids | array - string |  | False |  | False | An identifier string of camera module. For USB cameras this must be 4-digit hexadecimal VID and PID separated by a colon, e.g. 0123:abcd. For MIPI cameras it depends on vendor software usage. |
 | interface | string |  | True |  | False | The interface type of the camera device. |
 | orientation | integer |  | True |  | False | Clockwise angle through which the output image needs to be rotated to be upright on the device screen in its native orientation. |
