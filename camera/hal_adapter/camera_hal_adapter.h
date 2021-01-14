@@ -25,6 +25,7 @@
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
 #include "mojo/camera3.mojom.h"
@@ -54,7 +55,8 @@ class CameraHalAdapter {
   using CameraActivityCallback = base::RepeatingCallback<void(
       int32_t, bool, cros::mojom::CameraClientType)>;
 
-  CameraHalAdapter(std::vector<camera_module_t*> camera_modules,
+  CameraHalAdapter(std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
+                       camera_interfaces,
                    CameraMojoChannelManagerToken* token,
                    CameraActivityCallback activity_callback);
 
@@ -78,7 +80,8 @@ class CameraHalAdapter {
   virtual int32_t GetNumberOfCameras();
 
   virtual int32_t GetCameraInfo(int32_t camera_id,
-                                mojom::CameraInfoPtr* camera_info);
+                                mojom::CameraInfoPtr* camera_info,
+                                mojom::CameraClientType camera_client_type);
 
   // TODO(b/169324225): Remove when all camera clients transition to
   // SetCallbacksAssociated.
@@ -168,8 +171,11 @@ class CameraHalAdapter {
   void ResetCallbacksDelegateOnThread(uint32_t callbacks_id);
   void ResetVendorTagOpsDelegateOnThread(uint32_t vendor_tag_ops_id);
 
-  // The handles to the camera HALs dlopen()/dlsym()'d on process start.
-  std::vector<camera_module_t*> camera_modules_;
+  // camera_module_t: The handles to the camera HALs dlopen()/dlsym()'d on
+  //                  process start.
+  // cros_camera_hals: Interfaces of Camera HALs.
+  std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
+      camera_interfaces_;
 
   // The thread that all camera module functions operate on.
   base::Thread camera_module_thread_;

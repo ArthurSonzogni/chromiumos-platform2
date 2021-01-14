@@ -63,7 +63,8 @@ class CameraClient {
                const camera_metadata_t& request_template,
                const hw_module_t* module,
                hw_device_t** hw_device,
-               CameraPrivacySwitchMonitor* privacy_switch_monitor);
+               CameraPrivacySwitchMonitor* privacy_switch_monitor,
+               ClientType client_type);
   CameraClient(const CameraClient&) = delete;
   CameraClient& operator=(const CameraClient&) = delete;
   ~CameraClient();
@@ -154,6 +155,10 @@ class CameraClient {
 
   // The formats used to report to apps.
   SupportedFormats qualified_formats_;
+
+  // max native resolution
+  int max_native_width_;
+  int max_native_height_;
 
   // RequestHandler is used to handle in-flight requests. All functions in the
   // class run on |request_thread_|. The class will be created in StreamOn and

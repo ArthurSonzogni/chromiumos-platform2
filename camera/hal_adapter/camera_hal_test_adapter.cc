@@ -13,13 +13,14 @@
 namespace cros {
 
 CameraHalTestAdapter::CameraHalTestAdapter(
-    std::vector<camera_module_t*> camera_modules,
+    std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
+        camera_interfaces,
     CameraMojoChannelManagerToken* token,
     CameraActivityCallback activity_callback,
     bool enable_front,
     bool enable_back,
     bool enable_external)
-    : CameraHalAdapter(camera_modules, token, activity_callback),
+    : CameraHalAdapter(camera_interfaces, token, activity_callback),
       enable_front_(enable_front),
       enable_back_(enable_back),
       enable_external_(enable_external) {
@@ -51,8 +52,10 @@ int32_t CameraHalTestAdapter::GetNumberOfCameras() {
   return enable_camera_ids_.size();
 }
 
-int32_t CameraHalTestAdapter::GetCameraInfo(int32_t camera_id,
-                                            mojom::CameraInfoPtr* camera_info) {
+int32_t CameraHalTestAdapter::GetCameraInfo(
+    int32_t camera_id,
+    mojom::CameraInfoPtr* camera_info,
+    cros::mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
 
   base::Optional<int> unremapped_id = GetUnRemappedCameraId(camera_id);
@@ -62,7 +65,8 @@ int32_t CameraHalTestAdapter::GetCameraInfo(int32_t camera_id,
   }
   LOGF(INFO) << "From remap camera id " << camera_id << " to "
              << *unremapped_id;
-  int32_t ret = CameraHalAdapter::GetCameraInfo(*unremapped_id, camera_info);
+  int32_t ret = CameraHalAdapter::GetCameraInfo(*unremapped_id, camera_info,
+                                                camera_client_type);
   if (ret != 0) {
     return ret;
   }

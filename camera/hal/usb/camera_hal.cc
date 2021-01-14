@@ -6,6 +6,7 @@
 #include "hal/usb/camera_hal.h"
 
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 #include <base/bind.h>
@@ -13,9 +14,12 @@
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 
+#include <chromeos-config/libcros_config/cros_config.h>
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
+#include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/udev_watcher.h"
+#include "cros-camera/utils/camera_config.h"
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/metadata_handler.h"
@@ -62,6 +66,41 @@ bool FillMetadata(const DeviceInfo& device_info,
                                                    device_info.device_path));
 
   return true;
+}
+
+ScopedCameraMetadata StaticMetadataForAndroid(
+    const android::CameraMetadata& static_metadata) {
+  android::CameraMetadata data(static_metadata);
+  std::vector<int32_t> stream_configurations;
+
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraConfigPathString);
+  int max_width = camera_config->GetInteger(
+      constants::kUsbAndroidMaxStreamWidth, std::numeric_limits<int>::max());
+  int max_height = camera_config->GetInteger(
+      constants::kUsbAndroidMaxStreamHeight, std::numeric_limits<int>::max());
+  camera_metadata_entry entry =
+      data.find(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
+
+  for (size_t i = 0; i < entry.count; i += 4) {
+    if (entry.data.i32[i] != HAL_PIXEL_FORMAT_BLOB) {
+      if (entry.data.i32[i + 1] > max_width ||
+          entry.data.i32[i + 2] > max_height) {
+        LOGF(INFO) << "Filter Format: 0x" << std::hex << entry.data.i32[i]
+                   << std::dec << "-" << entry.data.i32[i + 1] << "x"
+                   << entry.data.i32[i + 2] << " for Android";
+        continue;
+      }
+    }
+    stream_configurations.push_back(entry.data.i32[i]);
+    stream_configurations.push_back(entry.data.i32[i + 1]);
+    stream_configurations.push_back(entry.data.i32[i + 2]);
+    stream_configurations.push_back(entry.data.i32[i + 3]);
+  }
+  data.update(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+              stream_configurations);
+
+  return ScopedCameraMetadata(data.release());
 }
 
 bool IsVivid(udev_device* dev) {
@@ -136,7 +175,8 @@ CameraMojoChannelManagerToken* CameraHal::GetMojoManagerToken() {
 
 int CameraHal::OpenDevice(int id,
                           const hw_module_t* module,
-                          hw_device_t** hw_device) {
+                          hw_device_t** hw_device,
+                          ClientType client_type) {
   VLOGFID(1, id);
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!IsValidCameraId(id)) {
@@ -163,10 +203,16 @@ int CameraHal::OpenDevice(int id,
                   << cameras_.begin()->first << " is already opened.";
     return -EUSERS;
   }
-  cameras_[id].reset(new CameraClient(id, device_infos_[id],
-                                      *static_metadata_[id].get(),
-                                      *request_template_[id].get(), module,
-                                      hw_device, &privacy_switch_monitor_));
+
+  camera_metadata_t* static_metadata;
+  if (client_type == ClientType::kAndroid) {
+    static_metadata = static_metadata_android_[id].get();
+  } else {
+    static_metadata = static_metadata_[id].get();
+  }
+  cameras_[id].reset(new CameraClient(
+      id, device_infos_[id], *static_metadata, *request_template_[id].get(),
+      module, hw_device, &privacy_switch_monitor_, client_type));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -181,7 +227,9 @@ bool CameraHal::IsValidCameraId(int id) {
   return device_infos_.find(id) != device_infos_.end();
 }
 
-int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
+int CameraHal::GetCameraInfo(int id,
+                             struct camera_info* info,
+                             ClientType client_type) {
   VLOGFID(1, id);
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!IsValidCameraId(id)) {
@@ -206,11 +254,19 @@ int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
   }
   info->orientation = device_infos_[id].sensor_orientation;
   info->device_version = CAMERA_DEVICE_API_VERSION_3_3;
-  info->static_camera_characteristics = static_metadata_[id].get();
+  if (client_type == ClientType::kAndroid) {
+    info->static_camera_characteristics = static_metadata_android_[id].get();
+  } else {
+    info->static_camera_characteristics = static_metadata_[id].get();
+  }
   info->resource_cost = 0;
   info->conflicting_devices = nullptr;
   info->conflicting_devices_length = 0;
   return 0;
+}
+
+int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
+  return GetCameraInfo(id, info, ClientType::kChrome);
 }
 
 int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
@@ -265,6 +321,11 @@ int CameraHal::Init() {
     DCHECK_EQ(static_metadata_.begin()->first, 1);
     static_metadata_.emplace(0, std::move(static_metadata_[1]));
     static_metadata_.erase(1);
+
+    DCHECK_EQ(static_metadata_android_.size(), 1);
+    DCHECK_EQ(static_metadata_android_.begin()->first, 1);
+    static_metadata_android_.emplace(0, std::move(static_metadata_android_[1]));
+    static_metadata_android_.erase(1);
 
     DCHECK_EQ(request_template_.size(), 1);
     DCHECK_EQ(request_template_.begin()->first, 1);
@@ -483,6 +544,8 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
 
   path_to_id_[info.device_path] = info.camera_id;
   device_infos_[info.camera_id] = info;
+  static_metadata_android_[info.camera_id] =
+      StaticMetadataForAndroid(static_metadata);
   static_metadata_[info.camera_id] =
       ScopedCameraMetadata(static_metadata.release());
   request_template_[info.camera_id] =
@@ -534,6 +597,7 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
   path_to_id_.erase(it);
   device_infos_.erase(id);
   static_metadata_.erase(id);
+  static_metadata_android_.erase(id);
   request_template_.erase(id);
 
   if (callbacks_) {
@@ -542,9 +606,10 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
   }
 }
 
-static int camera_device_open(const hw_module_t* module,
-                              const char* name,
-                              hw_device_t** device) {
+static int camera_device_open_ext(const hw_module_t* module,
+                                  const char* name,
+                                  hw_device_t** device,
+                                  ClientType client_type) {
   VLOGF_ENTER();
   // Make sure hal adapter loads the correct symbol.
   if (module != &HAL_MODULE_INFO_SYM.common) {
@@ -560,7 +625,13 @@ static int camera_device_open(const hw_module_t* module,
     return -EINVAL;
   }
 
-  return CameraHal::GetInstance().OpenDevice(id, module, device);
+  return CameraHal::GetInstance().OpenDevice(id, module, device, client_type);
+}
+
+static int camera_device_open(const hw_module_t* module,
+                              const char* name,
+                              hw_device_t** device) {
+  return camera_device_open_ext(module, name, device, ClientType::kChrome);
 }
 
 static int get_number_of_cameras() {
@@ -611,6 +682,12 @@ static void set_privacy_switch_callback(
   CameraHal::GetInstance().SetPrivacySwitchCallback(std::move(callback));
 }
 
+static int get_camera_info_ext(int id,
+                               struct camera_info* info,
+                               ClientType client_type) {
+  return CameraHal::GetInstance().GetCameraInfo(id, info, client_type);
+}
+
 int camera_device_close(struct hw_device_t* hw_device) {
   camera3_device_t* cam_dev = reinterpret_cast<camera3_device_t*>(hw_device);
   CameraClient* cam = static_cast<CameraClient*>(cam_dev->priv);
@@ -651,4 +728,6 @@ camera_module_t HAL_MODULE_INFO_SYM CROS_CAMERA_EXPORT = {
 cros::cros_camera_hal_t CROS_CAMERA_HAL_INFO_SYM CROS_CAMERA_EXPORT = {
     .set_up = cros::set_up,
     .tear_down = cros::tear_down,
-    .set_privacy_switch_callback = cros::set_privacy_switch_callback};
+    .set_privacy_switch_callback = cros::set_privacy_switch_callback,
+    .camera_device_open_ext = cros::camera_device_open_ext,
+    .get_camera_info_ext = cros::get_camera_info_ext};

@@ -39,7 +39,8 @@ CameraClient::CameraClient(int id,
                            const camera_metadata_t& request_template,
                            const hw_module_t* module,
                            hw_device_t** hw_device,
-                           CameraPrivacySwitchMonitor* privacy_switch_monitor)
+                           CameraPrivacySwitchMonitor* privacy_switch_monitor,
+                           ClientType client_type)
     : id_(id),
       device_info_(device_info),
       static_metadata_(clone_camera_metadata(&static_metadata)),
@@ -65,6 +66,29 @@ CameraClient::CameraClient(int id,
   metadata_handler_ = std::make_unique<MetadataHandler>(
       static_metadata, request_template, device_info, device_.get(),
       qualified_formats_);
+
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraConfigPathString);
+  if (client_type == ClientType::kAndroid) {
+    max_native_width_ = camera_config->GetInteger(
+        constants::kUsbAndroidMaxStreamWidth, std::numeric_limits<int>::max());
+    max_native_height_ = camera_config->GetInteger(
+        constants::kUsbAndroidMaxStreamHeight, std::numeric_limits<int>::max());
+  } else {
+    max_native_width_ = camera_config->GetInteger(
+        constants::kUsbMaxStreamWidth, std::numeric_limits<int>::max());
+    max_native_height_ = camera_config->GetInteger(
+        constants::kUsbMaxStreamHeight, std::numeric_limits<int>::max());
+    // TODO(mojahsu): Remove them after config files refactor
+    max_native_width_ =
+        std::min(max_native_width_,
+                 camera_config->GetInteger(constants::kCrosMaxNativeWidth,
+                                           std::numeric_limits<int>::max()));
+    max_native_height_ =
+        std::min(max_native_height_,
+                 camera_config->GetInteger(constants::kCrosMaxNativeHeight,
+                                           std::numeric_limits<int>::max()));
+  }
 }
 
 CameraClient::~CameraClient() {}
@@ -460,24 +484,17 @@ bool CameraClient::ShouldUseNativeSensorRatio(
   resolution->width = std::numeric_limits<int>::max();
   resolution->height = std::numeric_limits<int>::max();
 
-  std::unique_ptr<CameraConfig> camera_config =
-      CameraConfig::Create(constants::kCrosCameraConfigPathString);
-
-  int max_native_width = camera_config->GetInteger(
-      constants::kCrosMaxNativeWidth, std::numeric_limits<int>::max());
-  int max_native_height = camera_config->GetInteger(
-      constants::kCrosMaxNativeHeight, std::numeric_limits<int>::max());
-
   VLOGFID(1, id_) << "native aspect ratio:" << target_aspect_ratio << ",("
                   << device_info_.sensor_info_pixel_array_size_width << ", "
                   << device_info_.sensor_info_pixel_array_size_height << ")"
-                  << " Max " << max_native_width << "x" << max_native_height;
+                  << " Max " << max_native_width_ << "x" << max_native_height_;
   for (const auto& format : qualified_formats_) {
     float max_fps = GetMaximumFrameRate(format);
     if (max_fps < 29.0) {
       continue;
     }
-    if (format.width > max_native_width || format.height > max_native_height) {
+    if (format.width > max_native_width_ ||
+        format.height > max_native_height_) {
       continue;
     }
     if (format.width < max_stream_resolution.width ||

@@ -57,6 +57,13 @@ class CameraHal : public UdevWatcher::Observer {
   void SetUp(CameraMojoChannelManagerToken* token);
   void TearDown();
   void SetPrivacySwitchCallback(PrivacySwitchStateChangeCallback callback);
+  int OpenDevice(int id,
+                 const hw_module_t* module,
+                 hw_device_t** hw_device,
+                 ClientType client_type);
+  int GetCameraInfo(int camera_id,
+                    struct camera_info* info,
+                    ClientType client_type);
 
   // Runs on device ops thread. Post a task to the thread which is used for
   // OpenDevice.
@@ -87,6 +94,8 @@ class CameraHal : public UdevWatcher::Observer {
 
   // Used to report camera info at anytime.
   std::map<int, ScopedCameraMetadata> static_metadata_;
+  // Android may need more restriction metadata for CTS.
+  std::map<int, ScopedCameraMetadata> static_metadata_android_;
   std::map<int, ScopedCameraMetadata> request_template_;
 
   // Used to post CloseDevice to run on the same thread.

@@ -46,7 +46,8 @@ void CameraModuleDelegate::GetCameraInfo(int32_t camera_id,
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   mojom::CameraInfoPtr camera_info;
-  int32_t result = camera_hal_adapter_->GetCameraInfo(camera_id, &camera_info);
+  int32_t result = camera_hal_adapter_->GetCameraInfo(camera_id, &camera_info,
+                                                      camera_client_type_);
   std::move(callback).Run(result, std::move(camera_info));
 }
 

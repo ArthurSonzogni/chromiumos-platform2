@@ -37,7 +37,11 @@ const char kCrosEnableExternalCameraOption[] = "enable_external_camera";
 // ------End configuration for |kCrosCameraTestConfigPathString|-------
 
 // ------Configuration for |kCrosCameraConfigPathString|-------
-// Restrict max resolutions for android hal formats.
+const char kUsbMaxStreamWidth[] = "usb_max_stream_width";
+const char kUsbMaxStreamHeight[] = "usb_max_stream_height";
+const char kUsbAndroidMaxStreamWidth[] = "usb_android_max_stream_width";
+const char kUsbAndroidMaxStreamHeight[] = "usb_android_max_stream_height";
+// (Deprecated) Restrict max resolutions for android hal formats.
 // HAL_PIXEL_FORMAT_BLOB
 const char kCrosMaxBlobWidth[] = "max_blob_width";
 const char kCrosMaxBlobHeight[] = "max_blob_height";

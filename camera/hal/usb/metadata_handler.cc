@@ -436,10 +436,15 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
                                HAL_PIXEL_FORMAT_YCbCr_420_888,
                                HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED};
 
-  std::unordered_map<int, int> max_hal_width_by_format;
-  std::unordered_map<int, int> max_hal_height_by_format;
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraConfigPathString);
+  int max_width = camera_config->GetInteger(constants::kUsbMaxStreamWidth,
+                                            std::numeric_limits<int>::max());
+  int max_height = camera_config->GetInteger(constants::kUsbMaxStreamHeight,
+                                             std::numeric_limits<int>::max());
+  // TODO(mojahsu) Remove.
+  std::unordered_map<int, int> max_hal_width_by_format;
+  std::unordered_map<int, int> max_hal_height_by_format;
   max_hal_width_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config->GetInteger(
       constants::kCrosMaxBlobWidth, std::numeric_limits<int>::max());
   max_hal_width_by_format[HAL_PIXEL_FORMAT_YCbCr_420_888] =
@@ -495,8 +500,17 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
                      << max_hal_height_by_format[format];
           continue;
         }
-        if (format != HAL_PIXEL_FORMAT_BLOB && per_format_max_fps < 30) {
-          continue;
+        if (format != HAL_PIXEL_FORMAT_BLOB) {
+          if (per_format_max_fps < 30) {
+            continue;
+          }
+          if (supported_format.width > max_width ||
+              supported_format.height > max_height) {
+            LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
+                       << "-" << supported_format.width << "x"
+                       << supported_format.height;
+            continue;
+          }
         }
       }
 

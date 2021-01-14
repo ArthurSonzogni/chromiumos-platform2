@@ -20,12 +20,14 @@ namespace cros {
 
 class CameraHalTestAdapter : public CameraHalAdapter {
  public:
-  CameraHalTestAdapter(std::vector<camera_module_t*> camera_modules,
-                       CameraMojoChannelManagerToken* token,
-                       CameraActivityCallback activity_callback,
-                       bool enable_front,
-                       bool enable_back,
-                       bool enable_external);
+  CameraHalTestAdapter(
+      std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
+          camera_interfaces,
+      CameraMojoChannelManagerToken* token,
+      CameraActivityCallback activity_callback,
+      bool enable_front,
+      bool enable_back,
+      bool enable_external);
 
   ~CameraHalTestAdapter() override {}
 
@@ -36,7 +38,8 @@ class CameraHalTestAdapter : public CameraHalAdapter {
   int32_t GetNumberOfCameras() override;
 
   int32_t GetCameraInfo(int32_t camera_id,
-                        mojom::CameraInfoPtr* camera_info) override;
+                        mojom::CameraInfoPtr* camera_info,
+                        mojom::CameraClientType camera_client_type) override;
 
   int32_t SetTorchMode(int32_t camera_id, bool enabled) override;
 

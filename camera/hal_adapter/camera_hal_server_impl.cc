@@ -207,7 +207,8 @@ int CameraHalServerImpl::LoadCameraHal() {
   DCHECK(!camera_hal_adapter_);
   DCHECK_EQ(cros_camera_hals_.size(), 0);
 
-  std::vector<camera_module_t*> camera_modules;
+  std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
+      camera_interfaces;
   std::unique_ptr<CameraConfig> config =
       CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
   bool enable_front =
@@ -229,12 +230,11 @@ int CameraHalServerImpl::LoadCameraHal() {
     cros_camera_hal_t* cros_camera_hal = static_cast<cros_camera_hal_t*>(
         dlsym(handle, CROS_CAMERA_HAL_INFO_SYM_AS_STR));
     if (!cros_camera_hal) {
-      // TODO(b/151270948): We should report error here once all camera HALs
-      // have implemented the interface.
-    } else {
-      cros_camera_hal->set_up(mojo_manager_.get());
-      cros_camera_hals_.push_back(cros_camera_hal);
+      LOGF(ERROR) << "Failed to get cros_camera_hal_t pointer with symbol name "
+                  << CROS_CAMERA_HAL_INFO_SYM_AS_STR << " from " << dll.value();
+      return ELIBBAD;
     }
+    cros_camera_hal->set_up(mojo_manager_.get());
 
     auto* module = static_cast<camera_module_t*>(
         dlsym(handle, HAL_MODULE_INFO_SYM_AS_STR));
@@ -244,17 +244,18 @@ int CameraHalServerImpl::LoadCameraHal() {
       return ELIBBAD;
     }
 
-    camera_modules.push_back(module);
+    cros_camera_hals_.push_back(cros_camera_hal);
+    camera_interfaces.push_back({module, cros_camera_hal});
   }
 
   auto active_callback = base::Bind(
       &CameraHalServerImpl::OnCameraActivityChange, base::Unretained(this));
   if (enable_front && enable_back && enable_external) {
     camera_hal_adapter_.reset(new CameraHalAdapter(
-        camera_modules, mojo_manager_.get(), active_callback));
+        camera_interfaces, mojo_manager_.get(), active_callback));
   } else {
     camera_hal_adapter_.reset(new CameraHalTestAdapter(
-        camera_modules, mojo_manager_.get(), active_callback, enable_front,
+        camera_interfaces, mojo_manager_.get(), active_callback, enable_front,
         enable_back, enable_external));
   }
 

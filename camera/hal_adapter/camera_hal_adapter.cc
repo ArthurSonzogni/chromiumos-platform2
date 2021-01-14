@@ -46,10 +46,12 @@ const uint32_t kIdAll = 0xFFFFFFFF;
 
 }  // namespace
 
-CameraHalAdapter::CameraHalAdapter(std::vector<camera_module_t*> camera_modules,
-                                   CameraMojoChannelManagerToken* token,
-                                   CameraActivityCallback activity_callback)
-    : camera_modules_(camera_modules),
+CameraHalAdapter::CameraHalAdapter(
+    std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
+        camera_interfaces,
+    CameraMojoChannelManagerToken* token,
+    CameraActivityCallback activity_callback)
+    : camera_interfaces_(camera_interfaces),
       camera_module_thread_("CameraModuleThread"),
       camera_module_callbacks_thread_("CameraModuleCallbacksThread"),
       module_id_(0),
@@ -152,11 +154,21 @@ int32_t CameraHalAdapter::OpenDevice(
     return -EBUSY;
   }
 
+  int module_id = camera_id_map_[camera_id].first;
+  cros_camera_hal_t* cros_camera_hal = camera_interfaces_[module_id].second;
   hw_module_t* common = &camera_module->common;
   camera3_device_t* camera_device;
-  int ret =
-      common->methods->open(common, std::to_string(internal_camera_id).c_str(),
-                            reinterpret_cast<hw_device_t**>(&camera_device));
+  int ret;
+  if (cros_camera_hal->camera_device_open_ext) {
+    ret = cros_camera_hal->camera_device_open_ext(
+        common, std::to_string(internal_camera_id).c_str(),
+        reinterpret_cast<hw_device_t**>(&camera_device),
+        static_cast<ClientType>(camera_client_type));
+  } else {
+    ret = common->methods->open(
+        common, std::to_string(internal_camera_id).c_str(),
+        reinterpret_cast<hw_device_t**>(&camera_device));
+  }
   if (ret != 0) {
     LOGF(ERROR) << "Failed to open camera device " << camera_id;
     return ret;
@@ -164,7 +176,12 @@ int32_t CameraHalAdapter::OpenDevice(
   activity_callback_.Run(camera_id, /*opened=*/true, camera_client_type);
 
   camera_info_t info;
-  ret = camera_module->get_camera_info(internal_camera_id, &info);
+  if (cros_camera_hal->get_camera_info_ext) {
+    ret = cros_camera_hal->get_camera_info_ext(
+        internal_camera_id, &info, static_cast<ClientType>(camera_client_type));
+  } else {
+    ret = camera_module->get_camera_info(internal_camera_id, &info);
+  }
   if (ret != 0) {
     LOGF(ERROR) << "Failed to get camera info of camera " << camera_id;
     return ret;
@@ -211,8 +228,10 @@ int32_t CameraHalAdapter::GetNumberOfCameras() {
   return num_builtin_cameras_;
 }
 
-int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
-                                        mojom::CameraInfoPtr* camera_info) {
+int32_t CameraHalAdapter::GetCameraInfo(
+    int32_t camera_id,
+    mojom::CameraInfoPtr* camera_info,
+    mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED("camera_id", camera_id);
@@ -226,16 +245,25 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
     camera_info->reset();
     return -EINVAL;
   }
-
+  int ret;
+  int module_id = camera_id_map_[camera_id].first;
   camera_info_t info;
-  int ret = camera_module->get_camera_info(internal_camera_id, &info);
+  cros_camera_hal_t* cros_camera_hal = camera_interfaces_[module_id].second;
+  if (cros_camera_hal->get_camera_info_ext) {
+    ret = cros_camera_hal->get_camera_info_ext(
+        internal_camera_id, &info, static_cast<ClientType>(camera_client_type));
+  } else {
+    ret = camera_module->get_camera_info(internal_camera_id, &info);
+  }
+
   if (ret != 0) {
     LOGF(ERROR) << "Failed to get info of camera " << camera_id;
     camera_info->reset();
     return ret;
   }
 
-  LOGF(INFO) << "camera_id = " << camera_id << ", facing = " << info.facing;
+  LOGF(INFO) << camera_client_type << " camera_id = " << camera_id
+             << ", facing = " << info.facing;
 
   if (VLOG_IS_ON(2)) {
     dump_camera_metadata(info.static_camera_characteristics, 2, 3);
@@ -259,7 +287,6 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
   info_ptr->resource_cost->resource_cost = info.resource_cost;
 
   std::vector<std::string> conflicting_devices;
-  int module_id = camera_id_map_[camera_id].first;
   for (size_t i = 0; i < info.conflicting_devices_length; i++) {
     int conflicting_id =
         GetExternalId(module_id, atoi(info.conflicting_devices[i]));
@@ -522,7 +549,8 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
   //
   // Note that camera HALs MAY run callbacks before set_callbacks() returns.
 
-  for (const auto& m : camera_modules_) {
+  for (const auto& interface : camera_interfaces_) {
+    camera_module_t* m = interface.first;
     if (m->get_vendor_tag_ops) {
       vendor_tag_ops ops = {};
       m->get_vendor_tag_ops(&ops);
@@ -544,33 +572,36 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
 
   const bool force_start =
       base::PathExists(base::FilePath(constants::kForceStartCrosCameraPath));
-  for (auto iter = camera_modules_.begin(); iter != camera_modules_.end();) {
-    if ((*iter)->init) {
-      int ret = (*iter)->init();
+  for (auto iter = camera_interfaces_.begin();
+       iter != camera_interfaces_.end();) {
+    camera_module_t* m = iter->first;
+    if (m->init) {
+      int ret = m->init();
       if (ret != 0) {
         if (force_start) {
           LOGF(WARNING) << "Disabled camera module "
-                        << std::quoted((*iter)->common.name)
+                        << std::quoted(m->common.name)
                         << " to force start cros-camera";
-          iter = camera_modules_.erase(iter);
+          iter = camera_interfaces_.erase(iter);
           continue;
         }
         LOGF(ERROR) << "Failed to init camera module "
-                    << std::quoted((*iter)->common.name);
+                    << std::quoted(m->common.name);
         callback.Run(false);
         return;
       }
     }
     iter++;
   }
-  CHECK_GT(camera_modules_.size(), 0);
+  CHECK_GT(camera_interfaces_.size(), 0);
 
   std::vector<std::tuple<int, int, int>> cameras;
-  std::vector<std::vector<bool>> has_flash_unit(camera_modules_.size());
+  std::vector<std::vector<bool>> has_flash_unit(camera_interfaces_.size());
 
-  camera_id_inverse_map_.resize(camera_modules_.size());
-  for (size_t module_id = 0; module_id < camera_modules_.size(); module_id++) {
-    camera_module_t* m = camera_modules_[module_id];
+  camera_id_inverse_map_.resize(camera_interfaces_.size());
+  for (size_t module_id = 0; module_id < camera_interfaces_.size();
+       module_id++) {
+    camera_module_t* m = camera_interfaces_[module_id].first;
 
     int n = m->get_number_of_cameras();
     LOGF(INFO) << "Camera module " << std::quoted(m->common.name) << " has "
@@ -630,7 +661,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
   num_builtin_cameras_ = cameras.size();
   next_external_camera_id_ = num_builtin_cameras_;
 
-  LOGF(INFO) << "SuperHAL started with " << camera_modules_.size()
+  LOGF(INFO) << "SuperHAL started with " << camera_interfaces_.size()
              << " modules and " << num_builtin_cameras_ << " built-in cameras";
 
   callback.Run(true);
@@ -671,7 +702,7 @@ std::pair<camera_module_t*, int> CameraHalAdapter::GetInternalModuleAndId(
     return {};
   }
   std::pair<int, int> idx = camera_id_map_[camera_id];
-  return {camera_modules_[idx.first], idx.second};
+  return {camera_interfaces_[idx.first].first, idx.second};
 }
 
 int CameraHalAdapter::GetExternalId(int module_id, int camera_id) {
