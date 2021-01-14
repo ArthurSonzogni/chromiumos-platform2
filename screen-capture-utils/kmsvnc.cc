@@ -243,7 +243,12 @@ int VncMain() {
     timer.MaybePrint();
 
     auto capture_result = display_buffer->Capture();
+    // Keep the previous framebuffer around for comparison.
+    prev.swap(buffer);
+    // Copy the current data to the buffer.
     ConvertBuffer(capture_result, buffer.data());
+    // Update VNC server's view to the swapped current buffer.
+    server->frameBuffer = buffer.data();
 
     // Find rectangle of modification.
     int min_x = crtc_width;
@@ -265,9 +270,6 @@ int VncMain() {
         min_y = std::min(y, min_y);
       }
     }
-
-    // Keep the previous framebuffer around for comparison.
-    prev = buffer;
 
     if ((min_x > max_x) || (min_y > max_y)) {
       // Skipping unchanged frame.
