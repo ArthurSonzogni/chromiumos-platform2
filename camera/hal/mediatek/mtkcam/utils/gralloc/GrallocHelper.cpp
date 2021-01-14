@@ -632,7 +632,7 @@ GrallocHelperImp::determine(MyRequest const& src, MyStaticInfo* dst) {
   uint32_t outStride = 0;
   buffer_handle_t handle;
   int err = g_cbm->Allocate(src.widthInPixels, src.heightInPixels, src.format,
-                            src.usage, cros::GRALLOC, &handle, &outStride);
+                            src.usage, &handle, &outStride);
   if (err != OK || handle == nullptr) {
     MY_LOGE("Bad allcation handle:%p %dx%d format:%#x(%s) usage:%#x(%s)",
             handle, src.widthInPixels, src.heightInPixels, src.format,

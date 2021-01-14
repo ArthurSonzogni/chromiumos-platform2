@@ -184,7 +184,7 @@ GbmImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
     uint32_t halformat = HAL_PIXEL_FORMAT_YCbCr_420_888;
     err = mGbmBufferManager->Allocate(mImgSize.w, mImgSize.h, halformat,
                                       GRALLOC_USAGE_HW_CAMERA_WRITE,
-                                      cros::GRALLOC, &mpHwBuffer, &stride);
+                                      &mpHwBuffer, &stride);
     if (err != 0) {
       MY_LOGE("Allocate handle failed! %d", ret);
       return false;
@@ -206,7 +206,7 @@ GbmImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
   } else {
     err = mGbmBufferManager->Allocate(allocateSize, 1, HAL_PIXEL_FORMAT_BLOB,
                                       GRALLOC_USAGE_HW_CAMERA_WRITE,
-                                      cros::GRALLOC, &mpHwBuffer, &stride);
+                                      &mpHwBuffer, &stride);
     if (err != 0) {
       MY_LOGE("Allocate handle failed! %d", ret);
       return false;
