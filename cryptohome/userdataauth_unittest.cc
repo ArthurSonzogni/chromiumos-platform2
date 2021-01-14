@@ -89,20 +89,18 @@ bool AssignSalt(size_t size, SecureBlob* salt) {
 
 }  // namespace
 
-// UserDataAuthTestNotInitialized is a test fixture that does not call
+// UserDataAuthTestBase is a test fixture that does not call
 // UserDataAuth::Initialize() during setup. Therefore, it's suited to tests that
 // can be conducted without calling UserDataAuth::Initialize(), or for tests
 // that wants some flexibility before calling UserDataAuth::Initialize(), note
 // that in this case the test have to call UserDataAuth::Initialize().
-class UserDataAuthTestNotInitialized : public ::testing::Test {
+class UserDataAuthTestBase : public ::testing::Test {
  public:
-  UserDataAuthTestNotInitialized() = default;
-  UserDataAuthTestNotInitialized(const UserDataAuthTestNotInitialized&) =
-      delete;
-  UserDataAuthTestNotInitialized& operator=(
-      const UserDataAuthTestNotInitialized&) = delete;
+  UserDataAuthTestBase() = default;
+  UserDataAuthTestBase(const UserDataAuthTestBase&) = delete;
+  UserDataAuthTestBase& operator=(const UserDataAuthTestBase&) = delete;
 
-  ~UserDataAuthTestNotInitialized() override = default;
+  ~UserDataAuthTestBase() override = default;
 
   void SetUp() override {
     tpm_init_.set_tpm(&tpm_);
@@ -116,7 +114,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
       // NULL. The reason for this branch is because some derived-class of this
       // class (such as UserDataAuthTestThreaded) need to have the constructor
       // of UserDataAuth run on a specific thread, and therefore will construct
-      // |userdataauth_| before calling UserDataAuthTestNotInitialized::SetUp().
+      // |userdataauth_| before calling UserDataAuthTestBase::SetUp().
       userdataauth_.reset(new UserDataAuth());
     }
     userdataauth_->set_crypto(&crypto_);
@@ -271,6 +269,150 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   std::unique_ptr<UserDataAuth> userdataauth_;
 };
 
+// Test fixture that implements two task runners, which is similar to the task
+// environment in UserDataAuth. Developers could fast forward the time in
+// UserDataAuth, and prevent the flakiness caused by the real time clock. Note
+// that this does not initialize |userdataauth_|. And using WaitableEvent in it
+// may hang the test runner. Because all of the task runner is on the same
+// thread, we would need to use TaskGuard to let UserDataAuth know which task
+// runner is current task runner.
+class UserDataAuthTestTasked : public UserDataAuthTestBase {
+ public:
+  UserDataAuthTestTasked() = default;
+  UserDataAuthTestTasked(const UserDataAuthTestTasked&) = delete;
+  UserDataAuthTestTasked& operator=(const UserDataAuthTestTasked&) = delete;
+
+  ~UserDataAuthTestTasked() override = default;
+
+  void SetUp() override {
+    // Setup the usual stuff
+    UserDataAuthTestBase::SetUp();
+
+    // We do the task runner stuff for this test fixture.
+    userdataauth_->set_origin_task_runner(origin_task_runner_);
+    userdataauth_->set_mount_task_runner(mount_task_runner_);
+    userdataauth_->set_current_thread_id_for_test(
+        UserDataAuth::TestThreadId::kOriginThread);
+    userdataauth_->set_disable_threading(false);
+
+    ON_CALL(platform_, GetCurrentTime()).WillByDefault(Invoke([this]() {
+      // The time between origin and mount task runner may have a skew when fast
+      // forwarding the time. But current running task runner time must be the
+      // biggest one.
+      return std::max(origin_task_runner_->Now(), mount_task_runner_->Now());
+    }));
+  }
+
+  void TearDown() override {
+    RunUntilIdle();
+    // Destruct the |userdataauth_| object.
+    userdataauth_.reset();
+  }
+
+  // Initialize |userdataauth_| in |origin_task_runner_|
+  void InitializeUserDataAuth() {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
+    ASSERT_TRUE(userdataauth_->Initialize());
+    userdataauth_->set_dbus(bus_);
+    userdataauth_->set_mount_thread_dbus(mount_bus_);
+    ASSERT_TRUE(userdataauth_->PostDBusInitialize());
+  }
+
+  // Fast-forwards virtual time by |delta|
+  void FastForwardBy(base::TimeDelta delta) {
+    // Keep running the loop until there is no virtual time remain.
+    while (!delta.is_zero()) {
+      const base::TimeDelta& origin_delay =
+          origin_task_runner_->NextPendingTaskDelay();
+      const base::TimeDelta& mount_delay =
+          mount_task_runner_->NextPendingTaskDelay();
+
+      // Find the earliest task/deadline to forward.
+      const base::TimeDelta& delay =
+          std::min(delta, std::min(origin_delay, mount_delay));
+
+      // Forward and run the origin task runner
+      {
+        TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
+        origin_task_runner_->FastForwardBy(delay);
+      }
+
+      // Forward and run the mount task runner
+      {
+        TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+        mount_task_runner_->FastForwardBy(delay);
+      }
+
+      // Decrease the virtual time.
+      delta -= delay;
+    }
+
+    // Make sure there is no zero delay tasks remain.
+    RunUntilIdle();
+  }
+
+  // Run the all of the task runners until they don't find any zero delay tasks
+  // in their queues.
+  void RunUntilIdle() {
+    bool pending = true;
+    while (pending) {
+      pending = false;
+      bool origin_pending =
+          origin_task_runner_->NextPendingTaskDelay().is_zero();
+      pending |= origin_pending;
+      if (origin_pending) {
+        TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
+        origin_task_runner_->RunUntilIdle();
+      }
+      bool mount_pending = mount_task_runner_->NextPendingTaskDelay().is_zero();
+      pending |= mount_pending;
+      if (mount_pending) {
+        TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+        mount_task_runner_->RunUntilIdle();
+      }
+    }
+  }
+
+ protected:
+  // TaskGuard would help us to guarantee the thread id in the unit-tests scope,
+  // so we could check AssertOnOriginThread and AssertOnMountThread.
+  class TaskGuard {
+   public:
+    TaskGuard(UserDataAuthTestTasked* uda_test,
+              UserDataAuth::TestThreadId thread_id)
+        : uda_test_(uda_test),
+          old_thread_id_(
+              uda_test_->userdataauth_->get_current_thread_id_for_test()),
+          new_thread_id_(thread_id) {
+      uda_test_->userdataauth_->set_current_thread_id_for_test(new_thread_id_);
+    }
+    ~TaskGuard() {
+      uda_test_->RunUntilIdle();
+      EXPECT_EQ(new_thread_id_,
+                uda_test_->userdataauth_->get_current_thread_id_for_test());
+      uda_test_->userdataauth_->set_current_thread_id_for_test(old_thread_id_);
+    }
+
+   private:
+    UserDataAuthTestTasked* uda_test_;
+    UserDataAuth::TestThreadId old_thread_id_;
+    UserDataAuth::TestThreadId new_thread_id_;
+  };
+
+  // MockTimeTaskRunner for origin and mount thread.
+  scoped_refptr<base::TestMockTimeTaskRunner> origin_task_runner_{
+      new base::TestMockTimeTaskRunner()};
+  base::TestMockTimeTaskRunner::ScopedContext scoped_origin_context_{
+      origin_task_runner_};
+  scoped_refptr<base::TestMockTimeTaskRunner> mount_task_runner_{
+      new base::TestMockTimeTaskRunner()};
+  base::TestMockTimeTaskRunner::ScopedContext scoped_mount_context_{
+      mount_task_runner_};
+};
+
+// Using UserDataAuthTestTasked for not initialized tests.
+using UserDataAuthTestNotInitialized = UserDataAuthTestTasked;
+
 // Variant of UserDataAuthTestNotInitialized for DeathTest. We should be careful
 // in not creating threads in this class.
 using UserDataAuthTestNotInitializedDeathTest = UserDataAuthTestNotInitialized;
@@ -286,7 +428,7 @@ class UserDataAuthTest : public UserDataAuthTestNotInitialized {
 
   void SetUp() override {
     UserDataAuthTestNotInitialized::SetUp();
-    ASSERT_TRUE(userdataauth_->Initialize());
+    InitializeUserDataAuth();
   }
 };
 
@@ -561,6 +703,7 @@ static_assert(cryptohome::CryptohomeErrorCode_MAX == 49,
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
 TEST_F(UserDataAuthTest, IsMounted) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // By default there are no mount right after initialization
   EXPECT_FALSE(userdataauth_->IsMounted());
   EXPECT_FALSE(userdataauth_->IsMounted("foo@gmail.com"));
@@ -594,6 +737,7 @@ TEST_F(UserDataAuthTest, IsMounted) {
 }
 
 TEST_F(UserDataAuthTest, Unmount) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Unmount validity test.
   // The tests on whether stale mount are cleaned up is in another set of tests
   // called CleanUpStale_*
@@ -628,6 +772,7 @@ TEST_F(UserDataAuthTest, Unmount) {
 }
 
 TEST_F(UserDataAuthTest, InitializePkcs11Success) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // This test the most common success case for PKCS#11 initialization.
 
   EXPECT_FALSE(userdataauth_->IsMounted());
@@ -650,6 +795,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11Success) {
 }
 
 TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test when TPM isn't owned.
 
   // Add a mount associated with foo@gmail.com
@@ -693,6 +839,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
 }
 
 TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
@@ -711,6 +858,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
 }
 
 TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // When there's no mount at all, it should be true.
   EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
 
@@ -779,6 +927,7 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
 }
 
 TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   user_data_auth::TpmTokenInfo info;
 
   constexpr CK_SLOT_ID kSlot = 42;
@@ -820,6 +969,7 @@ TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
 }
 
 TEST_F(UserDataAuthTest, Pkcs11Terminate) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Check that it'll not crash when there's no mount
   userdataauth_->Pkcs11Terminate();
 
@@ -831,6 +981,7 @@ TEST_F(UserDataAuthTest, Pkcs11Terminate) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
 
   std::string str_true = "true";
@@ -839,15 +990,14 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
 
   EXPECT_CALL(attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
-  userdataauth_->Initialize();
-  userdataauth_->set_dbus(bus_);
-  userdataauth_->set_mount_thread_dbus(mount_bus_);
-  userdataauth_->PostDBusInitialize();
+
+  InitializeUserDataAuth();
 
   EXPECT_TRUE(userdataauth_->IsEnterpriseOwned());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
 
   std::string str_true = "false";
@@ -856,10 +1006,8 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
 
   EXPECT_CALL(attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
-  userdataauth_->Initialize();
-  userdataauth_->set_dbus(bus_);
-  userdataauth_->set_mount_thread_dbus(mount_bus_);
-  userdataauth_->PostDBusInitialize();
+
+  InitializeUserDataAuth();
 
   EXPECT_FALSE(userdataauth_->IsEnterpriseOwned());
 }
@@ -869,6 +1017,7 @@ constexpr uint8_t kInstallAttributeData[] = {0x01, 0x02, 0x00,
                                              0x03, 0xFF, 0xAB};
 
 TEST_F(UserDataAuthTest, InstallAttributesGet) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
   EXPECT_CALL(attrs_, Get(kInstallAttributeName, _))
       .WillOnce(
@@ -890,6 +1039,7 @@ TEST_F(UserDataAuthTest, InstallAttributesGet) {
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesSet) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
   EXPECT_CALL(attrs_, Set(kInstallAttributeName,
                           ElementsAreArray(kInstallAttributeData)))
@@ -909,6 +1059,7 @@ TEST_F(UserDataAuthTest, InstallAttributesSet) {
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
   EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->InstallAttributesFinalize());
@@ -919,12 +1070,14 @@ TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesCount) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   constexpr int kCount = 42;  // The Answer!!
   EXPECT_CALL(attrs_, Count()).WillOnce(Return(kCount));
   EXPECT_EQ(kCount, userdataauth_->InstallAttributesCount());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
   EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->InstallAttributesIsSecure());
@@ -935,6 +1088,7 @@ TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   std::vector<InstallAttributes::Status> status_list = {
       InstallAttributes::Status::kUnknown,
       InstallAttributes::Status::kTpmNotOwned,
@@ -948,6 +1102,7 @@ TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesStatusToProtoEnum) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   EXPECT_EQ(user_data_auth::InstallAttributesState::UNKNOWN,
             UserDataAuth::InstallAttributesStatusToProtoEnum(
                 InstallAttributes::Status::kUnknown));
@@ -971,11 +1126,13 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesStatusToProtoEnum) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   EXPECT_CALL(arc_disk_quota_, Initialize()).Times(1);
   EXPECT_TRUE(userdataauth_->Initialize());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, IsArcQuotaSupported) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   EXPECT_CALL(arc_disk_quota_, IsQuotaSupported()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->IsArcQuotaSupported());
 
@@ -984,6 +1141,7 @@ TEST_F(UserDataAuthTestNotInitialized, IsArcQuotaSupported) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceFoArcUid) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr uid_t kUID = 42;  // The Answer.
   constexpr int64_t kSpaceUsage = 98765432198765;
 
@@ -993,6 +1151,7 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceFoArcUid) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr uid_t kGID = 42;  // Yet another answer.
   constexpr int64_t kSpaceUsage = 87654321987654;
 
@@ -1002,6 +1161,7 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcProjectId) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr int kProjectId = 1001;  // Yet another answer.
   constexpr int64_t kSpaceUsage = 87654321987654;
 
@@ -1012,6 +1172,7 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcProjectId) {
 }
 
 TEST_F(UserDataAuthTest, SetProjectId) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr int kProjectId = 1001;
   const base::FilePath kChildPath = base::FilePath("/child/path");
   constexpr char kUsername[] = "foo@gmail.com";
@@ -1029,6 +1190,7 @@ TEST_F(UserDataAuthTest, SetProjectId) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, SeedUrandomInitialize) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   // Should Get Random from TPM
   EXPECT_CALL(tpm_, GetRandomDataBlob(kDefaultRandomSeedLength, _))
       .WillOnce(Return(true));
@@ -1040,6 +1202,7 @@ TEST_F(UserDataAuthTestNotInitialized, SeedUrandomInitialize) {
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity20) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr char kUsername1[] = "foo@gmail.com";
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
@@ -1062,6 +1225,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity20) {
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity12) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr char kUsername1[] = "foo@gmail.com";
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
@@ -1085,6 +1249,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity12) {
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr char kUsername1[] = "foo@gmail.com";
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
@@ -1097,6 +1262,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr char kUsername1[] = "foo@gmail.com";
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
@@ -1115,6 +1281,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr char kUsername1[] = "foo@gmail.com";
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
@@ -1139,6 +1306,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
 // ================== Firmware Management Parameters tests ==================
 
 TEST_F(UserDataAuthTest, GetFirmwareManagementParametersSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   const std::string kHash = "its_a_hash";
   std::vector<uint8_t> hash(kHash.begin(), kHash.end());
   constexpr uint32_t kFlag = 0x1234;
@@ -1158,6 +1326,7 @@ TEST_F(UserDataAuthTest, GetFirmwareManagementParametersSuccess) {
 }
 
 TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr uint32_t kFlag = 0x1234;
 
   // Test Load() fail.
@@ -1188,6 +1357,7 @@ TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   const std::string kHash = "its_a_hash";
   std::vector<uint8_t> hash(kHash.begin(), kHash.end());
   constexpr uint32_t kFlag = 0x1234;
@@ -1209,6 +1379,7 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersSuccess) {
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersNoHash) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   constexpr uint32_t kFlag = 0x1234;
 
   EXPECT_CALL(fwmp_, Create()).WillOnce(Return(true));
@@ -1222,6 +1393,7 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersNoHash) {
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersCreateError) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   const std::string kHash = "its_a_hash";
   constexpr uint32_t kFlag = 0x1234;
 
@@ -1237,6 +1409,7 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersCreateError) {
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersStoreError) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   const std::string kHash = "its_a_hash";
   constexpr uint32_t kFlag = 0x1234;
 
@@ -1253,38 +1426,41 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersStoreError) {
 }
 
 TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(true));
 
   EXPECT_TRUE(userdataauth_->RemoveFirmwareManagementParameters());
 }
 
 TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(false));
 
   EXPECT_FALSE(userdataauth_->RemoveFirmwareManagementParameters());
 }
 
 TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   brillo::SecureBlob salt;
   AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
   EXPECT_EQ(salt, userdataauth_->GetSystemSalt());
 }
 
 TEST_F(UserDataAuthTestNotInitializedDeathTest, GetSystemSaltUninitialized) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   EXPECT_DEBUG_DEATH(userdataauth_->GetSystemSalt(),
                      "Cannot call GetSystemSalt before initialization");
 }
 
 TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   base::RepeatingCallback<void()> callback;
 
   // Called by PostDBusInitialize().
   EXPECT_CALL(tpm_manager_utility_, AddOwnershipCallback)
       .WillOnce(SaveArg<0>(&callback));
 
-  userdataauth_->set_dbus(bus_);
-  userdataauth_->set_mount_thread_dbus(mount_bus_);
-  userdataauth_->PostDBusInitialize();
+  InitializeUserDataAuth();
 
   EXPECT_FALSE(callback.is_null());
 
@@ -1301,15 +1477,14 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
 }
 
 TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   base::RepeatingCallback<void()> callback;
 
   // Called by PostDBusInitialize().
   EXPECT_CALL(tpm_manager_utility_, AddOwnershipCallback)
       .WillOnce(SaveArg<0>(&callback));
 
-  userdataauth_->set_dbus(bus_);
-  userdataauth_->set_mount_thread_dbus(mount_bus_);
-  userdataauth_->PostDBusInitialize();
+  InitializeUserDataAuth();
 
   EXPECT_FALSE(callback.is_null());
 
@@ -1329,6 +1504,7 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
 }
 
 TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   constexpr int kTimeshift = 5;
 
   // Test case for single mount
@@ -1353,6 +1529,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
 }
 
 TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   constexpr int kTimeshift = 5;
 
   // Test case for single mount
@@ -1455,6 +1632,7 @@ bool EnumerateSparseFiles(const base::FilePath& path,
 }  // namespace
 
 TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Ephemeral) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Check that when we have ephemeral mounts, no active mounts,
   // and no open filehandles, all stale mounts are unmounted, loop device is
   // detached and sparse file is deleted.
@@ -1486,6 +1664,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Ephemeral) {
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Check that when we have ephemeral mounts, no active mounts,
   // and some open filehandles to the legacy homedir, everything is kept.
 
@@ -1518,6 +1697,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral) {
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral_Forced) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Check that when we have ephemeral mounts, no active mounts,
   // and some open filehandles to the legacy homedir, but cleanup is forced,
   // all mounts are unmounted, loop device is detached and file is deleted.
@@ -1548,6 +1728,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral_Forced) {
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Check that when we have a bunch of stale shadow mounts, no active mounts,
   // and no open filehandles, all stale mounts are unmounted.
 
@@ -1570,6 +1751,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly_Forced) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Check that when we have a bunch of stale shadow mounts, no active mounts,
   // and no open filehandles, all stale mounts are unmounted and we attempt
   // to clear the encryption key for fscrypt/ecryptfs mounts.
@@ -1598,6 +1780,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly_Forced) {
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Check that when we have a bunch of stale shadow mounts, no active mounts,
   // and some open filehandles to the legacy homedir, all mounts without
   // filehandles are unmounted.
@@ -1654,7 +1837,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
-  ASSERT_TRUE(userdataauth_->Initialize());
+
+  InitializeUserDataAuth();
 
   EXPECT_CALL(lockbox_, FinalizeBoot());
   EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
@@ -1675,15 +1859,19 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
       "password");
   mount_req.mutable_create()->set_copy_authorization_key(true);
   bool mount_done = false;
-  userdataauth_->DoMount(
-      mount_req,
-      base::Bind(
-          [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
-            *mount_done_ptr = true;
-          },
-          base::Unretained(&mount_done)));
-  ASSERT_EQ(TRUE, mount_done);
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        mount_req,
+        base::Bind(
+            [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+                        reply.error());
+              *mount_done_ptr = true;
+            },
+            base::Unretained(&mount_done)));
+    ASSERT_EQ(TRUE, mount_done);
+  }
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
       .Times(4)
@@ -1732,6 +1920,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   // Expect that CleanUpStaleMounts() tells us it skipped mounts since 1 is
   // still logged in.
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
 }
 
@@ -1749,7 +1938,8 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
   EXPECT_CALL(platform_, GetAttachedLoopDevices()).Times(0);
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).Times(0);
-  ASSERT_TRUE(userdataauth_->Initialize());
+
+  InitializeUserDataAuth();
 
   EXPECT_CALL(lockbox_, FinalizeBoot());
   EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
@@ -1770,15 +1960,19 @@ TEST_F(UserDataAuthTest,
       "password");
   mount_req.mutable_create()->set_copy_authorization_key(true);
   bool mount_done = false;
-  userdataauth_->DoMount(
-      mount_req,
-      base::Bind(
-          [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
-            *mount_done_ptr = true;
-          },
-          base::Unretained(&mount_done)));
-  ASSERT_EQ(TRUE, mount_done);
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        mount_req,
+        base::Bind(
+            [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+                        reply.error());
+              *mount_done_ptr = true;
+            },
+            base::Unretained(&mount_done)));
+    ASSERT_EQ(TRUE, mount_done);
+  }
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
       .Times(4)
@@ -1827,6 +2021,7 @@ TEST_F(UserDataAuthTest,
 
   // Expect that CleanUpStaleMounts() tells us it skipped mounts since 1 is
   // still logged in.
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
 }
 
@@ -1843,17 +2038,19 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoValidity) {
       .WillOnce(Return(true));
 
   int success_cnt = 0;
-  userdataauth_->StartMigrateToDircrypto(
-      request,
-      base::Bind(
-          [](int* success_cnt_ptr,
-             const user_data_auth::DircryptoMigrationProgress& progress) {
-            EXPECT_EQ(progress.status(),
-                      user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS);
-            (*success_cnt_ptr)++;
-          },
-          base::Unretained(&success_cnt)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartMigrateToDircrypto(
+        request,
+        base::Bind(
+            [](int* success_cnt_ptr,
+               const user_data_auth::DircryptoMigrationProgress& progress) {
+              EXPECT_EQ(progress.status(),
+                        user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS);
+              (*success_cnt_ptr)++;
+            },
+            base::Unretained(&success_cnt)));
+  }
   EXPECT_EQ(success_cnt, 1);
 }
 
@@ -1866,17 +2063,19 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
 
   // Test mount non-existent.
   int call_cnt = 0;
-  userdataauth_->StartMigrateToDircrypto(
-      request,
-      base::Bind(
-          [](int* call_cnt_ptr,
-             const user_data_auth::DircryptoMigrationProgress& progress) {
-            EXPECT_EQ(progress.status(),
-                      user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
-            (*call_cnt_ptr)++;
-          },
-          base::Unretained(&call_cnt)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartMigrateToDircrypto(
+        request,
+        base::Bind(
+            [](int* call_cnt_ptr,
+               const user_data_auth::DircryptoMigrationProgress& progress) {
+              EXPECT_EQ(progress.status(),
+                        user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+              (*call_cnt_ptr)++;
+            },
+            base::Unretained(&call_cnt)));
+  }
   EXPECT_EQ(call_cnt, 1);
 
   // Test MigrateToDircrypto failed
@@ -1886,21 +2085,25 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
       .WillOnce(Return(false));
 
   call_cnt = 0;
-  userdataauth_->StartMigrateToDircrypto(
-      request,
-      base::Bind(
-          [](int* call_cnt_ptr,
-             const user_data_auth::DircryptoMigrationProgress& progress) {
-            EXPECT_EQ(progress.status(),
-                      user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
-            (*call_cnt_ptr)++;
-          },
-          base::Unretained(&call_cnt)));
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartMigrateToDircrypto(
+        request,
+        base::Bind(
+            [](int* call_cnt_ptr,
+               const user_data_auth::DircryptoMigrationProgress& progress) {
+              EXPECT_EQ(progress.status(),
+                        user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+              (*call_cnt_ptr)++;
+            },
+            base::Unretained(&call_cnt)));
+  }
 
   EXPECT_EQ(call_cnt, 1);
 }
 
 TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   bool result;
   AccountIdentifier account;
   account.set_account_id("foo@gmail.com");
@@ -1936,6 +2139,7 @@ TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
 }
 
 TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   // Test when there's no Low Entropy Credential Backend.
   EXPECT_CALL(tpm_, GetLECredentialBackend()).WillOnce(Return(nullptr));
   EXPECT_FALSE(userdataauth_->IsLowEntropyCredentialSupported());
@@ -1953,6 +2157,7 @@ TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
 }
 
 TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test when the user is non-existent.
   AccountIdentifier account;
   account.set_account_id("non_existent_user");
@@ -2083,15 +2288,18 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
       }));
 
   bool called = false;
-  userdataauth_->DoMount(
-      *mount_req_,
-      base::BindOnce(
-          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-            *called_ptr = true;
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+              *called_ptr = true;
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+                        reply.error());
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 
   EXPECT_NE(userdataauth_->get_session_for_user(
@@ -2112,16 +2320,18 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   EXPECT_CALL(mount_factory_, New(_, _)).Times(0);
 
   bool called = false;
-  userdataauth_->DoMount(
-      *mount_req_,
-      base::BindOnce(
-          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-            *called_ptr = true;
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY,
-                      reply.error());
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+              *called_ptr = true;
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY,
+                        reply.error());
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 
   EXPECT_EQ(userdataauth_->get_session_for_user(
@@ -2143,16 +2353,18 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
       }));
 
   bool called = false;
-  userdataauth_->DoMount(
-      *mount_req_,
-      base::BindOnce(
-          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-            *called_ptr = true;
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL,
-                      reply.error());
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+              *called_ptr = true;
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL,
+                        reply.error());
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 }
 
@@ -2171,15 +2383,18 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   // is called), and is CRYPTOHOME_ERROR_INVALID_ARGUMENT.
   auto CallDoMountAndCheckResultIsInvalidArgument = [&called, this]() {
     called = false;
-    userdataauth_->DoMount(
-        *mount_req_,
-        base::BindOnce(
-            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-              *called_ptr = true;
-              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
-                        reply.error());
-            },
-            base::Unretained(&called)));
+    {
+      TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+      userdataauth_->DoMount(
+          *mount_req_,
+          base::BindOnce(
+              [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+                *called_ptr = true;
+                EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
+                          reply.error());
+              },
+              base::Unretained(&called)));
+    }
     EXPECT_TRUE(called);
   };
 
@@ -2230,16 +2445,18 @@ TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
 
   bool called = false;
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  userdataauth_->DoMount(
-      *mount_req_,
-      base::BindOnce(
-          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-            *called_ptr = true;
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY,
-                      reply.error());
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+              *called_ptr = true;
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY,
+                        reply.error());
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 }
 
@@ -2260,19 +2477,23 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
   }));
 
   bool called = false;
-  userdataauth_->DoMount(
-      *mount_req_,
-      base::BindOnce(
-          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-            *called_ptr = true;
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+              *called_ptr = true;
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+                        reply.error());
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 }
 
 TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   // Test for when there's no email supplied.
@@ -2299,6 +2520,7 @@ TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
 }
 
 TEST_F(UserDataAuthExTest, AddKeyValidity) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
@@ -2316,6 +2538,7 @@ TEST_F(UserDataAuthExTest, AddKeyValidity) {
 }
 
 TEST_F(UserDataAuthExTest, AddDataRestoreKeyInvalidArgsNoEmail) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   brillo::SecureBlob data_restore_key;
@@ -2325,6 +2548,7 @@ TEST_F(UserDataAuthExTest, AddDataRestoreKeyInvalidArgsNoEmail) {
 }
 
 TEST_F(UserDataAuthExTest, AddDataRestoreKeyInvalidArgsNoSecret) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
@@ -2336,6 +2560,7 @@ TEST_F(UserDataAuthExTest, AddDataRestoreKeyInvalidArgsNoSecret) {
 }
 
 TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountNotExist) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
@@ -2352,6 +2577,7 @@ TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountNotExist) {
 }
 
 TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountExistAddFail) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
@@ -2370,6 +2596,7 @@ TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountExistAddFail) {
 }
 
 TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountExistAddSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
@@ -2393,6 +2620,7 @@ TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountExistAddSuccess) {
 // Therefore, we test the combinations of (Homedirs, Mount) x (Success, Fail)
 // below.
 TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   SetupMount(kUser);
 
@@ -2409,6 +2637,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   SetupMount(kUser);
 
@@ -2427,6 +2656,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   SetupMount(kUser);
 
@@ -2440,6 +2670,7 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   SetupMount(kUser);
 
@@ -2463,17 +2694,19 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionInvalid) {
   user_data_auth::StartFingerprintAuthSessionRequest req;
 
   bool called = false;
-  userdataauth_->StartFingerprintAuthSession(
-      req,
-      base::Bind(
-          [](bool* called_ptr,
-             const user_data_auth::StartFingerprintAuthSessionReply& reply) {
-            EXPECT_EQ(reply.error(),
-                      user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-            *called_ptr = true;
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartFingerprintAuthSession(
+        req,
+        base::Bind(
+            [](bool* called_ptr,
+               const user_data_auth::StartFingerprintAuthSessionReply& reply) {
+              EXPECT_EQ(reply.error(),
+                        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+              *called_ptr = true;
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 }
 
@@ -2493,18 +2726,20 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionFail) {
       });
 
   bool called = false;
-  userdataauth_->StartFingerprintAuthSession(
-      req,
-      base::Bind(
-          [](bool* called_ptr,
-             const user_data_auth::StartFingerprintAuthSessionReply& reply) {
-            EXPECT_EQ(reply.error(),
-                      user_data_auth::CryptohomeErrorCode::
-                          CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-            *called_ptr = true;
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartFingerprintAuthSession(
+        req,
+        base::Bind(
+            [](bool* called_ptr,
+               const user_data_auth::StartFingerprintAuthSessionReply& reply) {
+              EXPECT_EQ(reply.error(),
+                        user_data_auth::CryptohomeErrorCode::
+                            CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+              *called_ptr = true;
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 }
 
@@ -2523,20 +2758,24 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionSuccess) {
       });
 
   bool called = false;
-  userdataauth_->StartFingerprintAuthSession(
-      req,
-      base::Bind(
-          [](bool* called_ptr,
-             const user_data_auth::StartFingerprintAuthSessionReply& reply) {
-            EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-            *called_ptr = true;
-          },
-          base::Unretained(&called)));
-
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartFingerprintAuthSession(
+        req,
+        base::Bind(
+            [](bool* called_ptr,
+               const user_data_auth::StartFingerprintAuthSessionReply& reply) {
+              EXPECT_EQ(reply.error(),
+                        user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+              *called_ptr = true;
+            },
+            base::Unretained(&called)));
+  }
   EXPECT_TRUE(called);
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailRetry) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   check_req_->mutable_account_id()->set_account_id(kUser);
@@ -2561,6 +2800,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailRetry) {
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailNoRetry) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   check_req_->mutable_account_id()->set_account_id(kUser);
@@ -2585,6 +2825,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailNoRetry) {
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintWrongUser) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   check_req_->mutable_account_id()->set_account_id(kUser);
@@ -2601,6 +2842,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintWrongUser) {
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   check_req_->mutable_account_id()->set_account_id(kUser);
@@ -2623,6 +2865,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintSuccess) {
 }
 
 TEST_F(UserDataAuthExTest, CheckKeyInvalidArgs) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   // No email supplied.
@@ -2638,6 +2881,7 @@ TEST_F(UserDataAuthExTest, CheckKeyInvalidArgs) {
 }
 
 TEST_F(UserDataAuthExTest, RemoveKeyValidity) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   constexpr char kUsername1[] = "foo@gmail.com";
@@ -2676,6 +2920,7 @@ TEST_F(UserDataAuthExTest, RemoveKeyValidity) {
 }
 
 TEST_F(UserDataAuthExTest, RemoveKeyInvalidArgs) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   // No email supplied.
@@ -2701,6 +2946,7 @@ TEST_F(UserDataAuthExTest, RemoveKeyInvalidArgs) {
 }
 
 TEST_F(UserDataAuthExTest, MassRemoveKeysInvalidArgsNoEmail) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
@@ -2708,6 +2954,7 @@ TEST_F(UserDataAuthExTest, MassRemoveKeysInvalidArgsNoEmail) {
 }
 
 TEST_F(UserDataAuthExTest, MassRemoveKeysInvalidArgsNoSecret) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
 
@@ -2716,6 +2963,7 @@ TEST_F(UserDataAuthExTest, MassRemoveKeysInvalidArgsNoSecret) {
 }
 
 TEST_F(UserDataAuthExTest, MassRemoveKeysAccountNotExist) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
   mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
@@ -2728,6 +2976,7 @@ TEST_F(UserDataAuthExTest, MassRemoveKeysAccountNotExist) {
 }
 
 TEST_F(UserDataAuthExTest, MassRemoveKeysAuthFailed) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
   mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
@@ -2742,6 +2991,7 @@ TEST_F(UserDataAuthExTest, MassRemoveKeysAuthFailed) {
 }
 
 TEST_F(UserDataAuthExTest, MassRemoveKeysGetLabelsFailed) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
   mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
@@ -2758,6 +3008,7 @@ TEST_F(UserDataAuthExTest, MassRemoveKeysGetLabelsFailed) {
 }
 
 TEST_F(UserDataAuthExTest, MassRemoveKeysForceSuccess) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
   mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
@@ -2777,6 +3028,7 @@ constexpr char ListKeysValidityTest_label1[] = "Label 1";
 constexpr char ListKeysValidityTest_label2[] = "Yet another label";
 
 TEST_F(UserDataAuthExTest, ListKeysValidity) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   list_keys_req_->mutable_account_id()->set_account_id("foo@gmail.com");
@@ -2815,6 +3067,7 @@ TEST_F(UserDataAuthExTest, ListKeysValidity) {
 }
 
 TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
   std::vector<std::string> labels;
 
@@ -2829,6 +3082,7 @@ TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
 }
 
 TEST_F(UserDataAuthExTest, GetKeyDataExNoMatch) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
@@ -2853,6 +3107,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataExNoMatch) {
 }
 
 TEST_F(UserDataAuthExTest, GetKeyDataExOneMatch) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Request the single key by label.
   PrepareArguments();
 
@@ -2877,6 +3132,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataExOneMatch) {
 }
 
 TEST_F(UserDataAuthExTest, GetKeyDataInvalidArgs) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   // No email.
@@ -2888,6 +3144,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataInvalidArgs) {
 }
 
 TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   constexpr char kUsername1[] = "foo@gmail.com";
@@ -2915,6 +3172,7 @@ TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
 }
 
 TEST_F(UserDataAuthExTest, MigrateKeyInvalidArguments) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   // No email.
@@ -2928,6 +3186,7 @@ TEST_F(UserDataAuthExTest, MigrateKeyInvalidArguments) {
 }
 
 TEST_F(UserDataAuthExTest, RemoveValidity) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   constexpr char kUsername1[] = "foo@gmail.com";
@@ -2946,6 +3205,7 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
 }
 
 TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   // No account_id
@@ -2959,6 +3219,7 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
 }
 
 TEST_F(UserDataAuthExTest, RenameValidity) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   constexpr char kUsername1[] = "foo@gmail.com";
@@ -2988,6 +3249,7 @@ TEST_F(UserDataAuthExTest, RenameValidity) {
 }
 
 TEST_F(UserDataAuthExTest, RenameInvalidArguments) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
   constexpr char kUsername1[] = "foo@gmail.com";
@@ -3006,19 +3268,21 @@ TEST_F(UserDataAuthExTest, RenameInvalidArguments) {
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSession) {
-  base::test::SingleThreadTaskEnvironment task_environment;
   PrepareArguments();
   start_auth_session_req_->mutable_account_id()->set_account_id(
       "foo@example.com");
   user_data_auth::StartAuthSessionReply auth_session_reply;
-  userdataauth_->StartAuthSession(
-      *start_auth_session_req_,
-      base::BindOnce(
-          [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
-             const user_data_auth::StartAuthSessionReply& reply) {
-            *auth_reply_ptr = reply;
-          },
-          base::Unretained(&auth_session_reply)));
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
   EXPECT_EQ(auth_session_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   base::Optional<base::UnguessableToken> auth_session_id =
@@ -3027,7 +3291,10 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
   EXPECT_TRUE(auth_session_id.has_value());
   EXPECT_NE(userdataauth_->auth_sessions_.find(auth_session_id.value()),
             userdataauth_->auth_sessions_.end());
-  userdataauth_->auth_sessions_[auth_session_id.value()]->timer_.FireNow();
+
+  FastForwardBy(userdataauth_->auth_sessions_[auth_session_id.value()]
+                    ->timer_.GetCurrentDelay());
+
   EXPECT_EQ(userdataauth_->auth_sessions_.find(auth_session_id.value()),
             userdataauth_->auth_sessions_.end());
 }
@@ -3037,14 +3304,17 @@ TEST_F(UserDataAuthExTest, AuthenticateAuthSessionInvalidToken) {
   std::string invalid_token = "invalid_token_16";
   authenticate_auth_session_req_->set_auth_session_id(invalid_token);
   user_data_auth::AuthenticateAuthSessionReply auth_session_reply;
-  userdataauth_->AuthenticateAuthSession(
-      *authenticate_auth_session_req_,
-      base::BindOnce(
-          [](user_data_auth::AuthenticateAuthSessionReply* auth_reply_ptr,
-             const user_data_auth::AuthenticateAuthSessionReply& reply) {
-            *auth_reply_ptr = reply;
-          },
-          base::Unretained(&auth_session_reply)));
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->AuthenticateAuthSession(
+        *authenticate_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::AuthenticateAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::AuthenticateAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
   EXPECT_EQ(auth_session_reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   EXPECT_FALSE(auth_session_reply.authenticated());
@@ -3132,6 +3402,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
 // credentials, where the credentials are verified without going through full
 // decryption.
 TEST_F(ChallengeResponseUserDataAuthExTest, LightweightCheckKey) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   SetUpActiveUserSession();
 
   // Simulate a successful key verification.
@@ -3145,6 +3416,7 @@ TEST_F(ChallengeResponseUserDataAuthExTest, LightweightCheckKey) {
 // Tests the CheckKey full check scenario for challenge-response credentials,
 // with falling back from the failed lightweight check.
 TEST_F(ChallengeResponseUserDataAuthExTest, FallbackLightweightCheckKey) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   SetUpActiveUserSession();
 
   // Simulate a failure in the lightweight check and a successful decryption.
@@ -3158,139 +3430,11 @@ TEST_F(ChallengeResponseUserDataAuthExTest, FallbackLightweightCheckKey) {
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
-// Test fixture that implements two task runners, which is similar to the task
-// environment in UserDataAuth. Developers could fast forward the time in
-// UserDataAuth, and prevent the flakiness caused by the real time clock. Note
-// that this does not initialize |userdataauth_|. And using WaitableEvent in it
-// may hang the test runner. Because all of the task runner is on the same
-// thread, we would need to set_current_thread_id_for_test for UserDataAuth to
-// let it know which task runner is current task runner.
-class UserDataAuthTestTasked : public UserDataAuthTestNotInitialized {
- public:
-  UserDataAuthTestTasked() = default;
-  UserDataAuthTestTasked(const UserDataAuthTestTasked&) = delete;
-  UserDataAuthTestTasked& operator=(const UserDataAuthTestTasked&) = delete;
-
-  ~UserDataAuthTestTasked() override = default;
-
-  // Post a task to the origin task runner, then wait for it to finish.
-  void PostToOriginAndBlock(base::OnceClosure task) {
-    origin_task_runner_->PostTask(FROM_HERE, std::move(task));
-    RunUntilIdle();
-  }
-
-  void SetUp() override {
-    ON_CALL(platform_, GetCurrentTime()).WillByDefault(Invoke([this]() {
-      // The time between origin and mount task runner may have a skew when fast
-      // forwarding the time. But current running task runner time must be the
-      // biggest one.
-      return std::max(origin_task_runner_->Now(), mount_task_runner_->Now());
-    }));
-
-    // Setup the usual stuff
-    UserDataAuthTestNotInitialized::SetUp();
-    // We do the task runner stuff for this test fixture.
-    userdataauth_->set_origin_task_runner(origin_task_runner_);
-    userdataauth_->set_mount_task_runner(mount_task_runner_);
-    userdataauth_->set_disable_threading(false);
-  }
-
-  void TearDown() override {
-    RunUntilIdle();
-    // Destruct the |userdataauth_| object.
-    userdataauth_.reset();
-  }
-
-  // Initialize |userdataauth_| in |origin_task_runner_|
-  void InitializeUserDataAuth() {
-    PostToOriginAndBlock(base::BindOnce(
-        [](UserDataAuth* userdataauth) {
-          ASSERT_TRUE(userdataauth->Initialize());
-        },
-        base::Unretained(userdataauth_.get())));
-    userdataauth_->set_dbus(bus_);
-    userdataauth_->set_mount_thread_dbus(mount_bus_);
-    PostToOriginAndBlock(base::BindOnce(
-        [](UserDataAuth* userdataauth) {
-          ASSERT_TRUE(userdataauth->PostDBusInitialize());
-        },
-        base::Unretained(userdataauth_.get())));
-  }
-
-  // Fast-forwards virtual time by |delta|
-  void FastForwardBy(base::TimeDelta delta) {
-    // Keep running the loop until there is no virtual time remain.
-    while (!delta.is_zero()) {
-      const base::TimeDelta& origin_delay =
-          origin_task_runner_->NextPendingTaskDelay();
-      const base::TimeDelta& mount_delay =
-          mount_task_runner_->NextPendingTaskDelay();
-
-      // Find the earliest task/deadline to forward.
-      const base::TimeDelta& delay =
-          std::min(delta, std::min(origin_delay, mount_delay));
-
-      // Forward and run the origin task runner
-      userdataauth_->set_current_thread_id_for_test(
-          UserDataAuth::TestThreadId::kOriginThread);
-      origin_task_runner_->FastForwardBy(delay);
-
-      // Forward and run the mount task runner
-      userdataauth_->set_current_thread_id_for_test(
-          UserDataAuth::TestThreadId::kMountThread);
-      mount_task_runner_->FastForwardBy(delay);
-
-      // Run remaining zero delay tasks.
-      RunUntilIdle();
-
-      // Decrease the virtual time.
-      delta -= delay;
-    }
-
-    // Make sure there is no zero delay tasks remain.
-    RunUntilIdle();
-  }
-
-  // Run the all of the task runners until they don't find any zero delay tasks
-  // in their queues.
-  void RunUntilIdle() {
-    bool pending = true;
-    while (pending) {
-      pending = false;
-      bool origin_pending =
-          origin_task_runner_->NextPendingTaskDelay().is_zero();
-      pending |= origin_pending;
-      if (origin_pending) {
-        userdataauth_->set_current_thread_id_for_test(
-            UserDataAuth::TestThreadId::kOriginThread);
-        origin_task_runner_->RunUntilIdle();
-      }
-      bool mount_pending = mount_task_runner_->NextPendingTaskDelay().is_zero();
-      pending |= mount_pending;
-      if (mount_pending) {
-        userdataauth_->set_current_thread_id_for_test(
-            UserDataAuth::TestThreadId::kMountThread);
-        mount_task_runner_->RunUntilIdle();
-      }
-    }
-  }
-
- protected:
-  scoped_refptr<base::TestMockTimeTaskRunner> origin_task_runner_{
-      new base::TestMockTimeTaskRunner()};
-  base::TestMockTimeTaskRunner::ScopedContext scoped_origin_context_{
-      origin_task_runner_};
-  scoped_refptr<base::TestMockTimeTaskRunner> mount_task_runner_{
-      new base::TestMockTimeTaskRunner()};
-  base::TestMockTimeTaskRunner::ScopedContext scoped_mount_context_{
-      mount_task_runner_};
-};
-
 // ================ Tests requiring fully threaded environment ================
 
 // Test fixture that implements fully threaded environment in UserDataAuth.
 // Note that this does not initialize |userdataauth_|.
-class UserDataAuthTestThreaded : public UserDataAuthTestNotInitialized {
+class UserDataAuthTestThreaded : public UserDataAuthTestBase {
  public:
   UserDataAuthTestThreaded() : origin_thread_("origin_thread") {}
   UserDataAuthTestThreaded(const UserDataAuthTestThreaded&) = delete;
@@ -3326,7 +3470,7 @@ class UserDataAuthTestThreaded : public UserDataAuthTestNotInitialized {
     userdataauth_.reset(new UserDataAuth());
 
     // Setup the usual stuff
-    UserDataAuthTestNotInitialized::SetUp();
+    UserDataAuthTestBase::SetUp();
 
     // We do the real threading stuff for this test fixture.
     userdataauth_->set_disable_threading(false);
