@@ -188,7 +188,7 @@ esim_profile_from_iccid() {
                               sed 's|^/[[:digit:]]* ||' | tr '\n' ' ')"
 
     if ! echo "${profiles}" | grep -q -E \
-      '^(/org/chromium/Hermes/profile/[0-9]+ )*$'; then
+      '^(/org/chromium/Hermes/profile/[0-9]+/[0-9]+ )*$'; then
 
       error_exit "Invalid profile objects received from hermes"
 
