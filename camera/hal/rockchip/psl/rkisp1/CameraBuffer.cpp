@@ -796,7 +796,7 @@ CameraBuffer::allocateHandleBuffer(int w,
 
     LOG1("%s, [wxh] = [%dx%d], format 0x%x, usage 0x%x",
           __FUNCTION__, w, h, gfxFmt, usage);
-    int ret = bufManager->Allocate(w, h, gfxFmt, usage, cros::GRALLOC, &handle, &stride);
+    int ret = bufManager->Allocate(w, h, gfxFmt, usage, &handle, &stride);
     if (ret != 0) {
         LOGE("Allocate handle failed! %d", ret);
         return nullptr;
