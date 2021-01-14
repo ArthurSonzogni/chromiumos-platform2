@@ -29,8 +29,6 @@
 using base::File;
 using base::FilePath;
 using base::ReadFileToString;
-using base::TimeDelta;
-using base::TimeTicks;
 
 using brillo::ProcessImpl;
 
@@ -68,10 +66,6 @@ bool GetArcProperties(arc_util::BuildProperty* build_property);
 // See b/170238737 for detail.
 bool GetAbiMigrationState(std::string* state);
 
-#if USE_ARCPP
-std::string FormatDuration(uint64_t seconds);
-#endif  // USE_ARCPP
-
 }  // namespace
 
 ArcCollector::ArcCollector() : ArcCollector(ContextPtr(new ArcContext(this))) {}
@@ -101,7 +95,8 @@ bool ArcCollector::IsArcProcess(pid_t pid) const {
 
 bool ArcCollector::HandleJavaCrash(
     const std::string& crash_type,
-    const arc_util::BuildProperty& build_property) {
+    const arc_util::BuildProperty& build_property,
+    base::TimeDelta uptime) {
   std::string reason;
   const bool should_dump = UserCollectorBase::ShouldDump(&reason);
 
@@ -134,7 +129,7 @@ bool ArcCollector::HandleJavaCrash(
 
   bool out_of_capacity = false;
   if (!CreateReportForJavaCrash(crash_type, build_property, map, exception_info,
-                                log, &out_of_capacity)) {
+                                log, uptime, &out_of_capacity)) {
     if (!out_of_capacity) {
       EnqueueCollectionErrorLog(kErrorSystemIssue, exec);
     }
@@ -302,7 +297,7 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   if (exit_code == EX_OK) {
     std::string process;
     ArcCollector::GetExecutableBaseNameFromPid(pid, &process);
-    AddArcMetaData(process, "native_crash", true);
+    AddArcMetaData(process, "native_crash", true, base::TimeDelta());
     return kErrorNone;
   }
 
@@ -322,7 +317,8 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
 
 void ArcCollector::AddArcMetaData(const std::string& process,
                                   const std::string& crash_type,
-                                  bool add_arc_properties) {
+                                  bool add_arc_properties,
+                                  base::TimeDelta uptime) {
   AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
   AddCrashMetaUploadData(arc_util::kProcessField, process);
   AddCrashMetaUploadData(arc_util::kCrashTypeField, crash_type);
@@ -343,20 +339,19 @@ void ArcCollector::AddArcMetaData(const std::string& process,
       AddCrashMetaUploadData(arc_util::kAbiMigrationField, abi_migration_state);
   }
 
-  // TODO(b/138095700): Support ARCVM
 #if USE_ARCPP
-  int64_t start_time;
-  brillo::ErrorPtr error;
-  SetUpDBus();
-  if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
-    const uint64_t delta = static_cast<uint64_t>(
-        (TimeTicks::Now() - TimeTicks::FromInternalValue(start_time))
-            .InSeconds());
-    AddCrashMetaUploadData(arc_util::kUptimeField, FormatDuration(delta));
-  } else {
-    LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
+  if (uptime.is_zero()) {
+    SetUpDBus();
+    if (!arc_util::GetArcContainerUptime(session_manager_proxy_.get(),
+                                         &uptime)) {
+      uptime = base::TimeDelta();
+    }
   }
 #endif  // USE_ARCPP
+  if (!uptime.is_zero()) {
+    AddCrashMetaUploadData(arc_util::kUptimeField,
+                           arc_util::FormatDuration(uptime));
+  }
 
   if (arc_util::IsSilentReport(crash_type))
     AddCrashMetaData(arc_util::kSilentKey, "true");
@@ -368,6 +363,7 @@ bool ArcCollector::CreateReportForJavaCrash(
     const CrashLogHeaderMap& map,
     const std::string& exception_info,
     const std::string& log,
+    base::TimeDelta uptime,
     bool* out_of_capacity) {
   FilePath crash_dir;
   if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir, out_of_capacity)) {
@@ -386,7 +382,7 @@ bool ArcCollector::CreateReportForJavaCrash(
     return false;
   }
 
-  AddArcMetaData(process, crash_type, false);
+  AddArcMetaData(process, crash_type, false, uptime);
   AddCrashMetaUploadData(arc_util::kArcVersionField,
                          build_property.fingerprint);
   AddCrashMetaUploadData(
@@ -560,32 +556,5 @@ bool GetAbiMigrationState(std::string* state) {
     return false;
   }
 }
-
-#if USE_ARCPP
-std::string FormatDuration(uint64_t seconds) {
-  constexpr uint64_t kSecondsPerMinute = 60;
-  constexpr uint64_t kSecondsPerHour = 60 * kSecondsPerMinute;
-  constexpr uint64_t kSecondsPerDay = 24 * kSecondsPerHour;
-
-  const auto days = seconds / kSecondsPerDay;
-  seconds %= kSecondsPerDay;
-  const auto hours = seconds / kSecondsPerHour;
-  seconds %= kSecondsPerHour;
-  const auto minutes = seconds / kSecondsPerMinute;
-  seconds %= kSecondsPerMinute;
-
-  std::ostringstream out;
-
-  if (days > 0)
-    out << days << "d ";
-  if (days > 0 || hours > 0)
-    out << hours << "h ";
-  if (days > 0 || hours > 0 || minutes > 0)
-    out << minutes << "min ";
-
-  out << seconds << 's';
-  return out.str();
-}
-#endif  // USE_ARCPP
 
 }  // namespace

@@ -5,9 +5,12 @@
 #include "crash-reporter/arc_util.h"
 
 #include <algorithm>
+#include <memory>
 
+#include <base/test/simple_test_tick_clock.h>
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
+#include <session_manager/dbus-proxy-mocks.h>
 
 using brillo::ClearLog;
 using brillo::FindLog;
@@ -210,6 +213,44 @@ TEST(ArcUtilTest, ListMetadataForBuildProperty) {
   std::sort(expected_metadata.begin(), expected_metadata.end());
   std::sort(metadata.begin(), metadata.end());
   EXPECT_EQ(metadata, expected_metadata);
+}
+
+TEST(ArcUtilTest, FormatDuration) {
+  EXPECT_EQ(FormatDuration(base::TimeDelta()), "0s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromMilliseconds(999)), "0s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromSeconds(1)), "1s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromMinutes(2)), "2min 0s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromHours(3)), "3h 0min 0s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromDays(4)), "4d 0h 0min 0s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromHours(1) +
+                           base::TimeDelta::FromMinutes(2) +
+                           base::TimeDelta::FromSeconds(3)),
+            "1h 2min 3s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromMilliseconds(123456789)),
+            "1d 10h 17min 36s");
+  EXPECT_EQ(FormatDuration(base::TimeDelta::FromDays(365)), "365d 0h 0min 0s");
+}
+
+TEST(ArcUtilTest, GetArcContainerUptime) {
+  base::TimeDelta expected = base::TimeDelta::FromMilliseconds(1234567);
+  int64_t start_time = 1234567890;
+  base::SimpleTestTickClock test_clock;
+  test_clock.SetNowTicks(base::TimeTicks::FromInternalValue(start_time) +
+                         expected);
+
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  EXPECT_CALL(*mock, GetArcStartTimeTicks)
+      .WillOnce(
+          testing::Invoke([start_time](int64_t* start_time_ptr,
+                                       brillo::ErrorPtr* error, int value) {
+            *start_time_ptr = start_time;
+            return true;
+          }));
+
+  base::TimeDelta actual;
+  EXPECT_TRUE(GetArcContainerUptime(mock.get(), &actual, &test_clock));
+  EXPECT_EQ(actual, expected);
 }
 
 }  // namespace arc_util

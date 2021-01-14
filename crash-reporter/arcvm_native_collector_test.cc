@@ -29,6 +29,10 @@ constexpr time_t kTime = 1546300800;
 constexpr pid_t kPid = 1234;
 constexpr char kExecName[] = "execname";
 
+constexpr base::TimeDelta kUptimeValue =
+    base::TimeDelta::FromMilliseconds(123456789);  // 1d 10h 17min 36s
+constexpr char kUptimeFormatted[] = "1d 10h 17min 36s";
+
 constexpr char kTestCrashDirectory[] = "test-crash-directory";
 constexpr char kBasenameWithoutExt[] = "execname.20190101.000000.*.1234";
 
@@ -94,7 +98,8 @@ class ArcvmNativeCollectorTest : public ::testing::Test {
 
 TEST_F(ArcvmNativeCollectorTest, HandleCrashWithMinidumpFD) {
   ASSERT_TRUE(collector_->HandleCrashWithMinidumpFD(
-      GetBuildProperty(), GetCrashInfo(), std::move(minidump_fd_)));
+      GetBuildProperty(), GetCrashInfo(), kUptimeValue,
+      std::move(minidump_fd_)));
 
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, std::string(kBasenameWithoutExt) + ".meta",
@@ -110,11 +115,13 @@ TEST_F(ArcvmNativeCollectorTest, HandleCrashWithMinidumpFD) {
 }
 
 TEST_F(ArcvmNativeCollectorTest, AddArcMetadata) {
-  collector_->AddArcMetadata(GetBuildProperty(), GetCrashInfo());
+  collector_->AddArcMetadata(GetBuildProperty(), GetCrashInfo(), kUptimeValue);
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kProcessField, kExecName));
   EXPECT_TRUE(
       collector_->HasMetaData(arc_util::kArcVersionField, kFingerprint));
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kDeviceField, kDevice));
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kBoardField, kBoard));
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kCpuAbiField, kCpuAbi));
+  EXPECT_TRUE(
+      collector_->HasMetaData(arc_util::kUptimeField, kUptimeFormatted));
 }

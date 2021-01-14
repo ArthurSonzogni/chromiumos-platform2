@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "crash-reporter/arc_util.h"
@@ -54,8 +55,10 @@ class ArcCollector : public UserCollectorBase {
 
   // Reads a Java crash log for the given |crash_type| from standard input, or
   // closes the stream if reporting is disabled.
+  // |uptime| can be zero if the value is unknown.
   bool HandleJavaCrash(const std::string& crash_type,
-                       const arc_util::BuildProperty& build_property);
+                       const arc_util::BuildProperty& build_property,
+                       base::TimeDelta uptime);
 
   static bool IsArcRunning();
   static bool GetArcPid(pid_t* arc_pid);
@@ -103,9 +106,11 @@ class ArcCollector : public UserCollectorBase {
 
   // Adds the |process|, |crash_type| and Chrome version as metadata. The
   // |add_arc_properties| option requires privilege to access the ARC root.
+  // |uptime| can be zero if the value is unknown.
   void AddArcMetaData(const std::string& process,
                       const std::string& crash_type,
-                      bool add_arc_properties);
+                      bool add_arc_properties,
+                      base::TimeDelta uptime);
 
   using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
 
@@ -114,6 +119,7 @@ class ArcCollector : public UserCollectorBase {
                                 const CrashLogHeaderMap& map,
                                 const std::string& exception_info,
                                 const std::string& log,
+                                base::TimeDelta uptime,
                                 bool* out_of_capacity);
 
   // Returns whether the process identified by |pid| is 32- or 64-bit.

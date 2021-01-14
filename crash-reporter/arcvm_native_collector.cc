@@ -32,14 +32,16 @@ ArcvmNativeCollector::~ArcvmNativeCollector() = default;
 
 bool ArcvmNativeCollector::HandleCrash(
     const arc_util::BuildProperty& build_property,
-    const CrashInfo& crash_info) {
-  return HandleCrashWithMinidumpFD(build_property, crash_info,
+    const CrashInfo& crash_info,
+    base::TimeDelta uptime) {
+  return HandleCrashWithMinidumpFD(build_property, crash_info, uptime,
                                    base::ScopedFD(STDIN_FILENO));
 }
 
 bool ArcvmNativeCollector::HandleCrashWithMinidumpFD(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
+    base::TimeDelta uptime,
     base::ScopedFD minidump_fd) {
   const std::string message =
       "Received crash notification for " + crash_info.exec_name;
@@ -55,7 +57,7 @@ bool ArcvmNativeCollector::HandleCrashWithMinidumpFD(
     return false;
   }
 
-  AddArcMetadata(build_property, crash_info);
+  AddArcMetadata(build_property, crash_info, uptime);
 
   const std::string basename_without_ext =
       FormatDumpBasename(crash_info.exec_name, crash_info.time, crash_info.pid);
@@ -76,13 +78,19 @@ bool ArcvmNativeCollector::HandleCrashWithMinidumpFD(
 
 void ArcvmNativeCollector::AddArcMetadata(
     const arc_util::BuildProperty& build_property,
-    const CrashInfo& crash_info) {
+    const CrashInfo& crash_info,
+    base::TimeDelta uptime) {
   AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
   AddCrashMetaUploadData(arc_util::kProcessField, crash_info.exec_name);
   AddCrashMetaUploadData(arc_util::kCrashTypeField, kArcvmNativeCrashType);
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
   for (auto metadata : arc_util::ListMetadataForBuildProperty(build_property)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
+
+  if (!uptime.is_zero()) {
+    AddCrashMetaUploadData(arc_util::kUptimeField,
+                           arc_util::FormatDuration(uptime));
   }
 }
 

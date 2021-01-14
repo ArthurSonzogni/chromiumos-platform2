@@ -21,6 +21,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/time/time.h>
 
 // Collector for native crashes in ARCVM.
 class ArcvmNativeCollector : public CrashCollector {
@@ -37,8 +38,10 @@ class ArcvmNativeCollector : public CrashCollector {
   ~ArcvmNativeCollector() override;
 
   // Handles a native crash in ARCVM.
+  // |uptime| can be zero if the value is unknown.
   bool HandleCrash(const arc_util::BuildProperty& build_property,
-                   const CrashInfo& crash_info);
+                   const CrashInfo& crash_info,
+                   base::TimeDelta uptime);
 
  private:
   friend class ArcvmNativeCollectorMock;
@@ -54,11 +57,13 @@ class ArcvmNativeCollector : public CrashCollector {
   // default argument.
   bool HandleCrashWithMinidumpFD(const arc_util::BuildProperty& build_property,
                                  const CrashInfo& crash_info,
+                                 base::TimeDelta uptime,
                                  base::ScopedFD minidump_fd);
 
   // Adds ARC-related metadata to the crash report.
   void AddArcMetadata(const arc_util::BuildProperty& build_property,
-                      const CrashInfo& crash_info);
+                      const CrashInfo& crash_info,
+                      base::TimeDelta uptime);
 
   // Reads the content from FD and writes it to the specified path.
   bool DumpFdToFile(base::ScopedFD fd, const base::FilePath& path);

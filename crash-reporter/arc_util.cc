@@ -4,6 +4,7 @@
 
 #include "crash-reporter/arc_util.h"
 
+#include <stdint.h>
 #include <sysexits.h>
 
 #include <brillo/process/process.h>
@@ -186,6 +187,56 @@ bool GetChromeVersion(std::string* version) {
   }
 
   version->pop_back();  // Discard EOL.
+  return true;
+}
+
+std::string FormatDuration(base::TimeDelta delta) {
+  constexpr int64_t kSecondsPerMinute = 60;
+  constexpr int64_t kSecondsPerHour = 60 * kSecondsPerMinute;
+  constexpr int64_t kSecondsPerDay = 24 * kSecondsPerHour;
+
+  std::ostringstream out;
+
+  int64_t seconds = delta.InSeconds();
+  if (seconds < 0) {
+    out << "negative ";
+    seconds = -seconds;
+  }
+
+  const auto days = seconds / kSecondsPerDay;
+  seconds %= kSecondsPerDay;
+  const auto hours = seconds / kSecondsPerHour;
+  seconds %= kSecondsPerHour;
+  const auto minutes = seconds / kSecondsPerMinute;
+  seconds %= kSecondsPerMinute;
+
+  if (days > 0)
+    out << days << "d ";
+  if (days > 0 || hours > 0)
+    out << hours << "h ";
+  if (days > 0 || hours > 0 || minutes > 0)
+    out << minutes << "min ";
+
+  out << seconds << 's';
+  return out.str();
+}
+
+bool GetArcContainerUptime(
+    org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
+    base::TimeDelta* uptime,
+    base::TickClock* test_clock) {
+  DCHECK(uptime);
+
+  int64_t start_time = 0;
+  brillo::ErrorPtr error;
+  if (!session_manager_proxy->GetArcStartTimeTicks(&start_time, &error)) {
+    LOG(ERROR) << "Failed to get ARC uptime: "
+               << (error ? error->GetMessage() : "unknown error");
+    return false;
+  }
+
+  auto end_time = test_clock ? test_clock->NowTicks() : base::TimeTicks::Now();
+  *uptime = end_time - base::TimeTicks::FromInternalValue(start_time);
   return true;
 }
 

@@ -12,6 +12,9 @@
 #include <vector>
 
 #include <base/optional.h>
+#include <base/time/tick_clock.h>
+#include <base/time/time.h>
+#include <session_manager/dbus-proxies.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -90,6 +93,17 @@ std::vector<std::pair<std::string, std::string>> ListMetadataForBuildProperty(
 // GetChromeVersion returns the version of Chrome browser. ARC++ and ARCVM crash
 // reports use versions of Chrome browser as their product version.
 bool GetChromeVersion(std::string* version);
+
+// Format the given time delta in human-readable manner.
+std::string FormatDuration(base::TimeDelta delta);
+
+// Return the uptime of current ARC container instance from the time when the
+// container upgraded from the mini-container. This works only for ARC container
+// and only after the full container is started.
+bool GetArcContainerUptime(
+    org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
+    base::TimeDelta* uptime,
+    base::TickClock* test_clock = nullptr);
 
 }  // namespace arc_util
 

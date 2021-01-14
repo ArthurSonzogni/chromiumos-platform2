@@ -18,6 +18,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/time/time.h>
 #include <base/optional.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -323,6 +324,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(arc_board, "", "Metadata for ARC crashes");
   DEFINE_string(arc_cpu_abi, "", "Metadata for ARC crashes");
   DEFINE_string(arc_fingerprint, "", "Metadata for ARC crashes");
+  DEFINE_int64(arc_uptime, 0, "Uptime of ARC instance in milliseconds");
 
   // TODO(hashimoto): Remove this switch after fixing chrome.
   DEFINE_bool(arc_is_arcvm, false, "Is ARCVM");
@@ -423,7 +425,8 @@ int main(int argc, char* argv[]) {
               ArcvmNativeCollector::CrashInfo{
                   .time = static_cast<time_t>(FLAGS_arc_native_time),
                   .pid = FLAGS_pid,
-                  .exec_name = FLAGS_exe}),
+                  .exec_name = FLAGS_exe},
+              base::TimeDelta::FromMilliseconds(FLAGS_arc_uptime)),
       }},
   });
 
@@ -479,7 +482,8 @@ int main(int argc, char* argv[]) {
                           .board = FLAGS_arc_board,
                           .cpu_abi = FLAGS_arc_cpu_abi,
                           .fingerprint = FLAGS_arc_fingerprint,
-                      }),
+                      },
+                      base::TimeDelta::FromMilliseconds(FLAGS_arc_uptime)),
               }},
   });
 #else   // USE_ARCPP || USE_ARCVM
