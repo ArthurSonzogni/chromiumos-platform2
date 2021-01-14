@@ -397,7 +397,7 @@ allocateHandleBuffer(int w, int h, int gfxFmt, int usage, int cameraId)
     uint32_t stride = 0;
     cros::CameraBufferManager* bufManager = cros::CameraBufferManager::GetInstance();
     CheckError(bufManager == nullptr, nullptr, "@%s, GetInstance fails", __FUNCTION__);
-    int ret = bufManager->Allocate(w, h, gfxFmt, usage, cros::GRALLOC, &handle, &stride);
+    int ret = bufManager->Allocate(w, h, gfxFmt, usage, &handle, &stride);
     CheckError(ret != 0, nullptr, "@%s, Allocate fails, ret:%d", __FUNCTION__, ret);
 
     std::shared_ptr<CameraBuffer> buffer(new CameraBuffer());

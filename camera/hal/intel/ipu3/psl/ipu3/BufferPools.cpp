@@ -148,8 +148,7 @@ status_t BufferPools::allocateCaptureBuffers(
         if (mBufferManager->Allocate(
               v4l2Buf->Length(0), 1, HAL_PIXEL_FORMAT_BLOB,
               GRALLOC_USAGE_HW_CAMERA_READ |
-              GRALLOC_USAGE_HW_CAMERA_WRITE, cros::GRALLOC, &handle,
-              &stride) != 0) {
+              GRALLOC_USAGE_HW_CAMERA_WRITE, &handle, &stride) != 0) {
             LOGE("Failed to allocate buffer handle!");
             for (auto& it : mBufferHandles) {
                 mBufferManager->Free(it);

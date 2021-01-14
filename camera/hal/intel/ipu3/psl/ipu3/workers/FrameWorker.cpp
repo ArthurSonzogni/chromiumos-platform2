@@ -115,8 +115,7 @@ status_t FrameWorker::allocateWorkerBuffers(uint32_t usage, int pixelFormat)
         int height = (pixelFormat == HAL_PIXEL_FORMAT_BLOB) ?
             1 : mFormat.Height();
         if (mBufferManager->Allocate(
-              width, height, pixelFormat, usage, cros::GRALLOC,
-              &handle, &stride) != 0) {
+              width, height, pixelFormat, usage, &handle, &stride) != 0) {
             LOGE("Failed to allocate buffer handle!");
             for (auto& it : mBufferHandles) {
                 mBufferManager->Free(it);
