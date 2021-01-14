@@ -166,7 +166,6 @@ bool PrefixPresent(const std::vector<FilePath>& prefixes,
 UserDataAuth::UserDataAuth()
     : origin_thread_id_(base::PlatformThread::CurrentId()),
       mount_thread_(nullptr),
-      disable_threading_(false),
       system_salt_(),
       tpm_(nullptr),
       default_tpm_init_(nullptr),
@@ -224,17 +223,14 @@ UserDataAuth::~UserDataAuth() {
 bool UserDataAuth::Initialize() {
   AssertOnOriginThread();
 
-  if (!disable_threading_) {
-    // Note that |origin_task_runner_| is initialized here because in some cases
-    // such as unit testing, the current thread Task Runner might not be
-    // available, so we should not attempt to retrieve the current thread task
-    // runner during the creation of this class.
-    if (!origin_task_runner_) {
-      origin_task_runner_ = base::ThreadTaskRunnerHandle::Get();
-    }
-    if (!mount_task_runner_) {
-      mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);
-    }
+  // Note that we check to see if |origin_task_runner_| and |mount_task_runner_|
+  // are available here because they may have been set to an overridden value
+  // during unit testing before Initialize() is called.
+  if (!origin_task_runner_) {
+    origin_task_runner_ = base::ThreadTaskRunnerHandle::Get();
+  }
+  if (!mount_task_runner_) {
+    mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);
   }
 
   // Note that we check to see if |tpm_| is available here because it may have
@@ -308,13 +304,11 @@ bool UserDataAuth::Initialize() {
   // Initialize ARC Disk Quota Service.
   arc_disk_quota_->Initialize();
 
-  if (!disable_threading_) {
-    if (!mount_task_runner_) {
-      base::Thread::Options options;
-      options.message_pump_type = base::MessagePumpType::IO;
-      mount_thread_->StartWithOptions(options);
-      mount_task_runner_ = mount_thread_->task_runner();
-    }
+  if (!mount_task_runner_) {
+    base::Thread::Options options;
+    options.message_pump_type = base::MessagePumpType::IO;
+    mount_thread_->StartWithOptions(options);
+    mount_task_runner_ = mount_thread_->task_runner();
   }
 
   if (platform_->FileExists(base::FilePath(kNotFirstBootFilePath))) {
@@ -335,26 +329,22 @@ bool UserDataAuth::Initialize() {
   // Seed /dev/urandom
   SeedUrandom();
 
-  if (!disable_threading_) {
-    low_disk_space_handler_->SetUpdateUserActivityTimestampCallback(
-        base::BindRepeating(
-            base::IgnoreResult(
-                &UserDataAuth::UpdateCurrentUserActivityTimestamp),
-            base::Unretained(this), 0));
+  low_disk_space_handler_->SetUpdateUserActivityTimestampCallback(
+      base::BindRepeating(
+          base::IgnoreResult(&UserDataAuth::UpdateCurrentUserActivityTimestamp),
+          base::Unretained(this), 0));
 
-    low_disk_space_handler_->SetLowDiskSpaceCallback(
-        base::Bind([](uint64_t) {}));
+  low_disk_space_handler_->SetLowDiskSpaceCallback(base::Bind([](uint64_t) {}));
 
-    if (!low_disk_space_handler_->Init(base::Bind(
-            &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
-      return false;
+  if (!low_disk_space_handler_->Init(base::Bind(
+          &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
+    return false;
 
-    // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
-    // scheduled by the callback itself.
-    PostTaskToOriginThread(FROM_HERE,
-                           base::Bind(&UserDataAuth::UploadAlertsDataCallback,
-                                      base::Unretained(this)));
-  }
+  // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
+  // scheduled by the callback itself.
+  PostTaskToOriginThread(FROM_HERE,
+                         base::Bind(&UserDataAuth::UploadAlertsDataCallback,
+                                    base::Unretained(this)));
 
   // Do Stateful Recovery if requested.
   auto mountfn =
@@ -542,11 +532,6 @@ void UserDataAuth::OnOwnershipTakenSignal() {
 bool UserDataAuth::PostTaskToOriginThread(const base::Location& from_here,
                                           base::OnceClosure task,
                                           const base::TimeDelta& delay) {
-  if (disable_threading_) {
-    CHECK(delay.is_zero());
-    std::move(task).Run();
-    return true;
-  }
   if (delay.is_zero()) {
     return origin_task_runner_->PostTask(from_here, std::move(task));
   }
@@ -557,11 +542,6 @@ bool UserDataAuth::PostTaskToOriginThread(const base::Location& from_here,
 bool UserDataAuth::PostTaskToMountThread(const base::Location& from_here,
                                          base::OnceClosure task,
                                          const base::TimeDelta& delay) {
-  if (disable_threading_) {
-    CHECK(delay.is_zero());
-    std::move(task).Run();
-    return true;
-  }
   CHECK(mount_task_runner_);
   if (delay.is_zero()) {
     return mount_task_runner_->PostTask(from_here, std::move(task));
@@ -3013,7 +2993,6 @@ void UserDataAuth::ResetDictionaryAttackMitigation() {
 
 void UserDataAuth::UploadAlertsDataCallback() {
   AssertOnOriginThread();
-  CHECK(!disable_threading_);
 
   Tpm::AlertsData alerts;
 

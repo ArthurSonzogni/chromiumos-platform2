@@ -94,6 +94,7 @@ bool AssignSalt(size_t size, SecureBlob* salt) {
 // can be conducted without calling UserDataAuth::Initialize(), or for tests
 // that wants some flexibility before calling UserDataAuth::Initialize(), note
 // that in this case the test have to call UserDataAuth::Initialize().
+// Note: We shouldn't use this test fixture directly.
 class UserDataAuthTestBase : public ::testing::Test {
  public:
   UserDataAuthTestBase() = default;
@@ -137,7 +138,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_key_challenge_service_factory(
         &key_challenge_service_factory_);
     userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
-    userdataauth_->set_disable_threading(true);
     ON_CALL(homedirs_, keyset_management())
         .WillByDefault(Return(&keyset_management_));
     // Empty token list by default.  The effect is that there are no attempts
@@ -293,7 +293,6 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     userdataauth_->set_mount_task_runner(mount_task_runner_);
     userdataauth_->set_current_thread_id_for_test(
         UserDataAuth::TestThreadId::kOriginThread);
-    userdataauth_->set_disable_threading(false);
 
     ON_CALL(platform_, GetCurrentTime()).WillByDefault(Invoke([this]() {
       // The time between origin and mount task runner may have a skew when fast
@@ -3471,9 +3470,6 @@ class UserDataAuthTestThreaded : public UserDataAuthTestBase {
 
     // Setup the usual stuff
     UserDataAuthTestBase::SetUp();
-
-    // We do the real threading stuff for this test fixture.
-    userdataauth_->set_disable_threading(false);
   }
 
   void TearDown() override {

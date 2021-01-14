@@ -439,9 +439,6 @@ class UserDataAuth {
     // Note that this function should not rely on |origin_task_runner_| because
     // it may be unavailable when this function is first called by
     // UserDataAuth::Initialize()
-    if (disable_threading_) {
-      return true;
-    }
     if (!mount_thread_ && mount_task_runner_) {
       return current_thread_id_for_test_ == TestThreadId::kOriginThread;
     }
@@ -450,9 +447,6 @@ class UserDataAuth {
 
   // Returns true if we are currently running on the mount thread
   bool IsOnMountThread() const {
-    if (disable_threading_) {
-      return true;
-    }
     if (!mount_thread_) {
       return current_thread_id_for_test_ == TestThreadId::kMountThread;
     }
@@ -611,13 +605,6 @@ class UserDataAuth {
   // testing. This is so that we can finish the unit test in a shorter time.
   void set_upload_alerts_period_ms(int value) {
     upload_alerts_period_ms_ = value;
-  }
-
-  // Set |disable_threading_|, so that we can disable threading in this class
-  // for testing purpose. See comment of |disable_threading_| for more
-  // information.
-  void set_disable_threading(bool disable_threading) {
-    disable_threading_ = disable_threading;
   }
 
   bool StartAuthSession(
@@ -921,13 +908,6 @@ class UserDataAuth {
 
   // The task runner that belongs to the mount thread.
   scoped_refptr<base::SingleThreadTaskRunner> mount_task_runner_;
-
-  // This variable is used only for unit testing purpose. If set to true, it'll
-  // disable the the threading mechanism in this class so that testing doesn't
-  // fail. When threading is disabled, posting to origin or mount thread will
-  // execute immediately, and all checks for whether we are on mount or origin
-  // thread will result in true.
-  bool disable_threading_;
 
   // This variable is used only for unit testing purpose. We could use this to
   // know current task is running on origin thread or mount thread.
