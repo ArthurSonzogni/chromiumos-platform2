@@ -23,7 +23,8 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   using DBusResponse = brillo::dbus_utils::DBusMethodResponse<T...>;
 
   static std::unique_ptr<Profile> Create(const lpa::proto::ProfileInfo& profile,
-                                         const uint32_t physical_slot);
+                                         const uint32_t physical_slot,
+                                         const std::string& eid);
 
   // org::chromium::Hermes::ProfileInterface overrides.
   void Enable(std::unique_ptr<DBusResponse<>> resp) override;

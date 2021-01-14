@@ -188,7 +188,7 @@ void Euicc::OnProfileInstalled(
     pending_profiles_.erase(iter);
     UpdatePendingProfilesProperty();
   } else {
-    profile = Profile::Create(profile_info, physical_slot_);
+    profile = Profile::Create(profile_info, physical_slot_, slot_info_.eid());
   }
 
   if (!profile) {
@@ -279,7 +279,7 @@ void Euicc::OnInstalledProfilesReceived(
   installed_profiles_.clear();
   UpdateInstalledProfilesProperty();
   for (const auto& info : profile_infos) {
-    auto profile = Profile::Create(info, physical_slot_);
+    auto profile = Profile::Create(info, physical_slot_, slot_info_.eid());
     if (profile) {
       installed_profiles_.push_back(std::move(profile));
     }
@@ -324,7 +324,7 @@ void Euicc::OnPendingProfilesReceived(
   pending_profiles_.clear();
   UpdatePendingProfilesProperty();
   for (const auto& info : profile_infos) {
-    auto profile = Profile::Create(info, physical_slot_);
+    auto profile = Profile::Create(info, physical_slot_, slot_info_.eid());
     if (profile) {
       pending_profiles_.push_back(std::move(profile));
     }

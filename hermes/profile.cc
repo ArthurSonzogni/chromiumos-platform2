@@ -53,10 +53,13 @@ base::Optional<profile::ProfileClass> LpaProfileClassToHermes(
 
 // static
 std::unique_ptr<Profile> Profile::Create(
-    const lpa::proto::ProfileInfo& profile_info, const uint32_t physical_slot) {
+    const lpa::proto::ProfileInfo& profile_info,
+    const uint32_t physical_slot,
+    const std::string& eid) {
   CHECK(profile_info.has_iccid());
   auto profile = std::unique_ptr<Profile>(new Profile(
-      dbus::ObjectPath(kBasePath + profile_info.iccid()), physical_slot));
+      dbus::ObjectPath(kBasePath + eid + "/" + profile_info.iccid()),
+      physical_slot));
 
   // Initialize properties.
   profile->SetIccid(profile_info.iccid());
