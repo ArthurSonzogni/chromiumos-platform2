@@ -4463,4 +4463,36 @@ TEST_F(ManagerTest, RefreshAllTrafficCountersTask) {
   EXPECT_EQ(1, service2->current_traffic_counters_.size());
 }
 
+TEST_F(ManagerTest, SetDNSProxyIPv4Address) {
+  Error err;
+  // Bad cases.
+  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("10.10.10.1", &err));
+  EXPECT_TRUE(err.IsFailure());
+  err.Reset();
+  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("1.1", &err));
+  EXPECT_TRUE(err.IsFailure());
+  err.Reset();
+  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("blah", &err));
+  EXPECT_TRUE(err.IsFailure());
+  err.Reset();
+
+  // Good cases.
+  // TODO(garrick): Add expectations for resolv.conf as appropriate.
+  EXPECT_TRUE(manager()->SetDNSProxyIPv4Address("100.115.92.100", &err));
+  EXPECT_FALSE(err.IsFailure());
+  err.Reset();
+  // Unchanged.
+  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("100.115.92.100", &err));
+  EXPECT_FALSE(err.IsFailure());
+  err.Reset();
+  // Clear.
+  EXPECT_TRUE(manager()->SetDNSProxyIPv4Address("", &err));
+  EXPECT_FALSE(err.IsFailure());
+  err.Reset();
+  // Unchanged.
+  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("", &err));
+  EXPECT_FALSE(err.IsFailure());
+  err.Reset();
+}
+
 }  // namespace shill

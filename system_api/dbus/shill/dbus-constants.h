@@ -102,6 +102,7 @@ const char kServicesProperty[] = "Services";  // Also used for Profile.
 const char kUninitializedTechnologiesProperty[] = "UninitializedTechnologies";
 const char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 const char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
+const char kDNSProxyIPv4AddressProperty[] = "DNSProxyIPv4Address";
 
 // Manager and DefaultProfile property names (the Manager properties that are
 // persisted by a DefaultProfile; these are always read-only for

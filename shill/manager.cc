@@ -4,6 +4,7 @@
 
 #include "shill/manager.h"
 
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <time.h>
@@ -172,6 +173,18 @@ constexpr base::TimeDelta kAlwaysOnVpnBackoffDelay =
 // Maximum shift value used to compute the always-on VPN backoff time.
 constexpr uint32_t kAlwaysOnVpnBackoffMaxShift = 7u;
 
+// Copied from patchpanel/net_util.h so avoid circular build dependency with
+// libpatchpanel-util.
+constexpr uint32_t IPv4Addr(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) {
+  return (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
+}
+
+// Known IPv4 address range valid for DNS proxy.
+constexpr const struct in_addr kDNSProxyBaseAddr = {
+    .s_addr = IPv4Addr(100, 115, 92, 0)};
+constexpr const struct in_addr kDNSProxyNetmask = {
+    .s_addr = IPv4Addr(255, 255, 254, 0)};
+
 }  // namespace
 
 Manager::Manager(ControlInterface* control_interface,
@@ -285,6 +298,9 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
   HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
                                   &Manager::ClaimedDevices);
+  HelpRegisterDerivedString(kDNSProxyIPv4AddressProperty,
+                            &Manager::GetDNSProxyIPv4Address,
+                            &Manager::SetDNSProxyIPv4Address);
 
   UpdateProviderMapping();
 
@@ -2947,6 +2963,33 @@ bool Manager::SetAlwaysOnVpnPackage(const string& package_name, Error* error) {
     return false;
   props_.always_on_vpn_package = package_name;
   UpdateBlackholeUserTraffic();
+  return true;
+}
+
+string Manager::GetDNSProxyIPv4Address(Error* /* error */) {
+  return props_.dns_proxy_ipv4_address;
+}
+
+bool Manager::SetDNSProxyIPv4Address(const string& addr, Error* error) {
+  if (props_.dns_proxy_ipv4_address == addr)
+    return false;
+
+  if (!addr.empty()) {
+    struct in_addr p_addr;
+    if (inet_pton(AF_INET, addr.c_str(), &p_addr) != 1) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Invalid address: " + addr);
+      return false;
+    }
+    if ((p_addr.s_addr & kDNSProxyNetmask.s_addr) != kDNSProxyBaseAddr.s_addr) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
+                            "Address not allowed: " + addr);
+      return false;
+    }
+  }
+
+  props_.dns_proxy_ipv4_address = addr;
+  // TODO(garrick): Update resolv.conf.
   return true;
 }
 

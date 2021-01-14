@@ -101,6 +101,9 @@ class Manager {
     // Name of Android VPN package that should be enforced for user traffic.
     // Empty string if the lockdown feature is not enabled.
     std::string always_on_vpn_package;
+    // The IPv4 address of the DNS Proxy, if applicable. When this value is set,
+    // resolv.conf should use this address as the name server.
+    std::string dns_proxy_ipv4_address;
 #if !defined(DISABLE_WIFI)
     base::Optional<bool> ft_enabled;
 #endif  // !DISABLE_WIFI
@@ -599,6 +602,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, ShouldBlackholeUserTraffic);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
+  FRIEND_TEST(ManagerTest, SetDNSProxyIPv4Address);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
@@ -649,6 +653,9 @@ class Manager {
                                  Error* error);
   std::string GetProhibitedTechnologies(Error* error);
   void OnTechnologyProhibited(Technology technology, const Error& error);
+
+  std::string GetDNSProxyIPv4Address(Error* error);
+  bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
 
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.

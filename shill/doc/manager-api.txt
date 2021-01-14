@@ -641,3 +641,13 @@ Properties 	object ActiveProfile [readonly]
 
 			Specifies whether or not 802.11r Fast BSS Transition should be
 			used.
+
+		string DNSProxyIPv4Address [readwrite]
+
+			The IPv4 address of the dns-proxy service. If this
+			property is set, shill will use this address as the
+			system name server rather than those specified by the
+			relevant service.
+
+			This address is enforced to be within a predetermined
+			system local subnet.
