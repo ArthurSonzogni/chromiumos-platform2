@@ -16,7 +16,10 @@ bool FpFrameCommand::Run(int fd) {
   uint32_t offset = frame_index_ << FP_FRAME_INDEX_SHIFT;
   auto pos = frame_data_->begin();
   while (pos < frame_data_->end()) {
-    uint16_t len = std::min<uint16_t>(max_read_size_, frame_data_->end() - pos);
+    // Compare as uint32_t to avoid overflow, then cast to uint16_t since the
+    // min value will always fit in uint16_t.
+    uint16_t len = static_cast<uint16_t>(
+        std::min<uint32_t>(max_read_size_, frame_data_->end() - pos));
     SetReq({.offset = offset, .size = len});
     SetRespSize(len);
     int retries = 0;

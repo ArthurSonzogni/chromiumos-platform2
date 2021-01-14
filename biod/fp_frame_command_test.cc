@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -73,7 +74,7 @@ class FpFrameCommandTest : public testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
-TEST_F(FpFrameCommandTest, Success) {
+TEST_F(FpFrameCommandTest, SmallTemplateSuccess) {
   FpFramePacket packet = {1, 2, 3, 4, 5};
   EXPECT_EQ(packet.size(), 544);
   // Ec command payload is empty until EcCommandRun is called.
@@ -123,6 +124,55 @@ TEST_F(FpFrameCommandTest, Success) {
   packet_vec.resize(10);
   std::vector<uint8_t> frame_chunk_3(frame_begin, frame_end);
   EXPECT_EQ(packet_vec, frame_chunk_3);
+}
+
+TEST_F(FpFrameCommandTest, LargeTemplateSuccess) {
+  FpFramePacket packet = {1, 2, 3, 4, 5};
+  EXPECT_EQ(packet.size(), 544);
+  // Ec command payload is empty until EcCommandRun is called.
+  FpFramePacket payload = {0};
+
+  constexpr int kMaxReadSize = 536;  // SPI max packet size is 544. Subtract
+                                     // the sizeof(struct ec_host_response)
+                                     // to get 536.
+  static_assert(kMaxReadSize <= packet.size(),
+                "Read size must be less than or equal to packet size");
+
+  // Create a frame that is larger than the max uint16_t value.
+  constexpr int kFrameSize = std::numeric_limits<uint16_t>::max() + 10;
+  auto mock_fp_frame_command =
+      FpFrameCommand::Create<MockFpFrameCommand>(0, kFrameSize, kMaxReadSize);
+
+  EXPECT_CALL(*mock_fp_frame_command, Resp).WillRepeatedly(Return(&payload));
+
+  EXPECT_CALL(*mock_fp_frame_command, EcCommandRun)
+      .WillRepeatedly(
+          // Command is run, so start returning actual packet.
+          [&payload, &packet](int fd) {
+            payload = packet;
+            return true;
+          });
+  EXPECT_TRUE(mock_fp_frame_command->Run(-1));
+  const auto& frame = mock_fp_frame_command->frame();
+
+  std::vector<uint8_t> packet_vec(packet.begin(),
+                                  packet.begin() + kMaxReadSize);
+  auto frame_begin = frame->begin();
+  auto frame_end = frame->begin() + packet_vec.size();
+  while (frame_end + packet_vec.size() < frame->end()) {
+    std::vector<uint8_t> chunk(frame_begin, frame_end);
+    EXPECT_EQ(packet_vec, chunk);
+    frame_begin += packet_vec.size();
+    frame_end += packet_vec.size();
+  }
+
+  // Last chunk (short).
+  frame_begin += packet_vec.size();
+  frame_end += kFrameSize % kMaxReadSize;
+  EXPECT_EQ(frame_end, frame->end());
+  packet_vec.resize(kFrameSize % kMaxReadSize);
+  std::vector<uint8_t> chunk(frame_begin, frame_end);
+  EXPECT_EQ(packet_vec, chunk);
 }
 
 TEST_F(FpFrameCommandTest, RetriesWhenBusy) {
