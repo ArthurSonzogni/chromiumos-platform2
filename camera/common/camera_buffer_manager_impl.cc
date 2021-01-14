@@ -295,19 +295,50 @@ int CameraBufferManagerImpl::Allocate(size_t width,
                                       size_t height,
                                       uint32_t format,
                                       uint32_t usage,
-                                      BufferType type,
                                       buffer_handle_t* out_buffer,
                                       uint32_t* out_stride) {
-  if (type == GRALLOC) {
-    return AllocateGrallocBuffer(width, height, format, usage, out_buffer,
-                                 out_stride);
-  } else if (type == SHM) {
-    return AllocateShmBuffer(width, height, format, usage, out_buffer,
-                             out_stride);
-  } else {
-    NOTREACHED() << "Invalid buffer type: " << type;
+  base::AutoLock l(lock_);
+
+  uint32_t gbm_flags;
+  uint32_t drm_format = ResolveFormat(format, usage, &gbm_flags);
+  if (!drm_format) {
     return -EINVAL;
   }
+
+  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
+  buffer_context->bo =
+      gbm_bo_create(gbm_device_, width, height, drm_format, gbm_flags);
+  if (!buffer_context->bo) {
+    LOGF(ERROR) << "Failed to create GBM bo";
+    return -ENOMEM;
+  }
+
+  std::unique_ptr<camera_buffer_handle_t> handle(new camera_buffer_handle_t());
+  handle->base.version = sizeof(handle->base);
+  handle->base.numInts = kCameraBufferHandleNumInts;
+  handle->base.numFds = kCameraBufferHandleNumFds;
+  handle->magic = kCameraBufferMagic;
+  handle->buffer_id = reinterpret_cast<uint64_t>(buffer_context->bo);
+  handle->drm_format = drm_format;
+  handle->hal_pixel_format = format;
+  handle->width = width;
+  handle->height = height;
+  size_t num_planes = gbm_bo_get_plane_count(buffer_context->bo);
+  for (size_t i = 0; i < num_planes; ++i) {
+    handle->fds[i] = gbm_bo_get_plane_fd(buffer_context->bo, i);
+    handle->strides[i] = gbm_bo_get_stride_for_plane(buffer_context->bo, i);
+    handle->offsets[i] = gbm_bo_get_offset(buffer_context->bo, i);
+  }
+
+  if (num_planes == 1) {
+    *out_stride = handle->strides[0];
+  } else {
+    *out_stride = 0;
+  }
+  *out_buffer = reinterpret_cast<buffer_handle_t>(handle.release());
+  buffer_context->usage = 1;
+  buffer_context_[*out_buffer] = std::move(buffer_context);
+  return 0;
 }
 
 int CameraBufferManagerImpl::Free(buffer_handle_t buffer) {
@@ -316,14 +347,9 @@ int CameraBufferManagerImpl::Free(buffer_handle_t buffer) {
     return -EINVAL;
   }
 
-  if (handle->type == GRALLOC) {
-    Deregister(buffer);
-    delete handle;
-    return 0;
-  } else {
-    // TODO(jcliang): Implement deletion of SharedMemory.
-    return -EINVAL;
-  }
+  Deregister(buffer);
+  delete handle;
+  return 0;
 }
 
 int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
@@ -342,55 +368,32 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
 
   std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
 
-  if (handle->type == GRALLOC) {
-    // Import the buffer if we haven't done so.
-    struct gbm_import_fd_modifier_data import_data;
-    memset(&import_data, 0, sizeof(import_data));
-    import_data.width = handle->width;
-    import_data.height = handle->height;
-    import_data.format = handle->drm_format;
-    uint32_t num_planes = GetNumPlanes(buffer);
-    if (num_planes <= 0) {
-      return -EINVAL;
-    }
-
-    import_data.num_fds = num_planes;
-    for (size_t i = 0; i < num_planes; ++i) {
-      import_data.fds[i] = handle->fds[i];
-      import_data.strides[i] = handle->strides[i];
-      import_data.offsets[i] = handle->offsets[i];
-    }
-
-    uint32_t usage = GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE |
-                     GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
-    buffer_context->bo = gbm_bo_import(gbm_device_, GBM_BO_IMPORT_FD_MODIFIER,
-                                       &import_data, usage);
-    if (!buffer_context->bo) {
-      LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
-                  << handle->buffer_id;
-      return -EIO;
-    }
-  } else if (handle->type == SHM) {
-    // The shared memory buffer is a contiguous area of memory which is large
-    // enough to hold all the physical planes.  We mmap the buffer on Register
-    // and munmap on Deregister.
-    off_t size = lseek(handle->fds[0], 0, SEEK_END);
-    if (size == -1) {
-      PLOGF(ERROR) << "Failed to get shm buffer size through lseek";
-      return -errno;
-    }
-    buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
-    lseek(handle->fds[0], 0, SEEK_SET);
-    buffer_context->mapped_addr =
-        mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
-             MAP_SHARED, handle->fds[0], 0);
-    if (buffer_context->mapped_addr == MAP_FAILED) {
-      PLOGF(ERROR) << "Failed to mmap shm buffer";
-      return -errno;
-    }
-  } else {
-    NOTREACHED() << "Invalid buffer type: " << handle->type;
+  // Import the buffer if we haven't done so.
+  struct gbm_import_fd_modifier_data import_data;
+  memset(&import_data, 0, sizeof(import_data));
+  import_data.width = handle->width;
+  import_data.height = handle->height;
+  import_data.format = handle->drm_format;
+  uint32_t num_planes = GetNumPlanes(buffer);
+  if (num_planes <= 0) {
     return -EINVAL;
+  }
+
+  import_data.num_fds = num_planes;
+  for (size_t i = 0; i < num_planes; ++i) {
+    import_data.fds[i] = handle->fds[i];
+    import_data.strides[i] = handle->strides[i];
+    import_data.offsets[i] = handle->offsets[i];
+  }
+
+  uint32_t usage = GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE |
+                   GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
+  buffer_context->bo = gbm_bo_import(gbm_device_, GBM_BO_IMPORT_FD_MODIFIER,
+                                     &import_data, usage);
+  if (!buffer_context->bo) {
+    LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
+                << handle->buffer_id;
+    return -EIO;
   }
 
   buffer_context->usage = 1;
@@ -412,33 +415,18 @@ int CameraBufferManagerImpl::Deregister(buffer_handle_t buffer) {
     return -EINVAL;
   }
   auto buffer_context = context_it->second.get();
-  if (handle->type == GRALLOC) {
-    if (!--buffer_context->usage) {
-      // Unmap all the existing mapping of bo.
-      for (auto it = buffer_info_.begin(); it != buffer_info_.end();) {
-        if (it->second->bo == buffer_context->bo) {
-          it = buffer_info_.erase(it);
-        } else {
-          ++it;
-        }
+  if (!--buffer_context->usage) {
+    // Unmap all the existing mapping of bo.
+    for (auto it = buffer_info_.begin(); it != buffer_info_.end();) {
+      if (it->second->bo == buffer_context->bo) {
+        it = buffer_info_.erase(it);
+      } else {
+        ++it;
       }
-      buffer_context_.erase(context_it);
     }
-    return 0;
-  } else if (handle->type == SHM) {
-    if (!--buffer_context->usage) {
-      int ret =
-          munmap(buffer_context->mapped_addr, buffer_context->shm_buffer_size);
-      if (ret == -1) {
-        PLOGF(ERROR) << "Failed to munmap shm buffer";
-      }
-      buffer_context_.erase(context_it);
-    }
-    return 0;
-  } else {
-    NOTREACHED() << "Invalid buffer type: " << handle->type;
-    return -EINVAL;
+    buffer_context_.erase(context_it);
   }
+  return 0;
 }
 
 int CameraBufferManagerImpl::Lock(buffer_handle_t buffer,
@@ -614,67 +602,6 @@ uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
   return drm_format;
 }
 
-int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
-                                                   size_t height,
-                                                   uint32_t format,
-                                                   uint32_t usage,
-                                                   buffer_handle_t* out_buffer,
-                                                   uint32_t* out_stride) {
-  base::AutoLock l(lock_);
-
-  uint32_t gbm_flags;
-  uint32_t drm_format = ResolveFormat(format, usage, &gbm_flags);
-  if (!drm_format) {
-    return -EINVAL;
-  }
-
-  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
-  buffer_context->bo =
-      gbm_bo_create(gbm_device_, width, height, drm_format, gbm_flags);
-  if (!buffer_context->bo) {
-    LOGF(ERROR) << "Failed to create GBM bo";
-    return -ENOMEM;
-  }
-
-  std::unique_ptr<camera_buffer_handle_t> handle(new camera_buffer_handle_t());
-  handle->base.version = sizeof(handle->base);
-  handle->base.numInts = kCameraBufferHandleNumInts;
-  handle->base.numFds = kCameraBufferHandleNumFds;
-  handle->magic = kCameraBufferMagic;
-  handle->buffer_id = reinterpret_cast<uint64_t>(buffer_context->bo);
-  handle->type = GRALLOC;
-  handle->drm_format = drm_format;
-  handle->hal_pixel_format = format;
-  handle->width = width;
-  handle->height = height;
-  size_t num_planes = gbm_bo_get_plane_count(buffer_context->bo);
-  for (size_t i = 0; i < num_planes; ++i) {
-    handle->fds[i] = gbm_bo_get_plane_fd(buffer_context->bo, i);
-    handle->strides[i] = gbm_bo_get_stride_for_plane(buffer_context->bo, i);
-    handle->offsets[i] = gbm_bo_get_offset(buffer_context->bo, i);
-  }
-
-  if (num_planes == 1) {
-    *out_stride = handle->strides[0];
-  } else {
-    *out_stride = 0;
-  }
-  *out_buffer = reinterpret_cast<buffer_handle_t>(handle.release());
-  buffer_context->usage = 1;
-  buffer_context_[*out_buffer] = std::move(buffer_context);
-  return 0;
-}
-
-int CameraBufferManagerImpl::AllocateShmBuffer(size_t width,
-                                               size_t height,
-                                               uint32_t format,
-                                               uint32_t usage,
-                                               buffer_handle_t* out_buffer,
-                                               uint32_t* out_stride) {
-  // TODO(jcliang): Implement allocation of SharedMemory.
-  return -EINVAL;
-}
-
 void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
                                    uint32_t flags,
                                    uint32_t plane) {
@@ -695,7 +622,6 @@ void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
   VLOGF(2) << "buffer info:";
   VLOGF(2) << "\tfd: " << handle->fds[plane];
   VLOGF(2) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
-  VLOGF(2) << "\ttype: " << handle->type;
   VLOGF(2) << "\tformat: " << FormatToString(handle->drm_format);
   VLOGF(2) << "\twidth: " << handle->width;
   VLOGF(2) << "\theight: " << handle->height;
@@ -704,64 +630,41 @@ void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
 
   base::AutoLock l(lock_);
 
-  if (handle->type == GRALLOC) {
-    auto key = MappedGrallocBufferInfoCache::key_type(buffer, plane);
-    auto info_cache = buffer_info_.find(key);
-    if (info_cache == buffer_info_.end()) {
-      // We haven't mapped |plane| of |buffer| yet.
-      std::unique_ptr<MappedGrallocBufferInfo> info(
-          new MappedGrallocBufferInfo);
-      auto context_it = buffer_context_.find(buffer);
-      if (context_it == buffer_context_.end()) {
-        LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
-                    << " is not registered";
-        return MAP_FAILED;
-      }
-      info->bo = context_it->second->bo;
-      // Since |flags| is reserved we don't expect user to pass any non-zero
-      // value, we simply override |flags| here.
-      flags = GBM_BO_TRANSFER_READ_WRITE;
-      uint32_t stride;
-      info->addr = gbm_bo_map2(info->bo, 0, 0, handle->width, handle->height,
-                               flags, &stride, &info->map_data, plane);
-      if (info->addr == MAP_FAILED) {
-        PLOGF(ERROR) << "Failed to map buffer";
-        return MAP_FAILED;
-      }
-      info->usage = 1;
-      buffer_info_[key] = std::move(info);
-    } else {
-      // We have mapped |plane| on |buffer| before: we can simply call
-      // gbm_bo_map() on the existing bo.
-      DCHECK(buffer_context_.find(buffer) != buffer_context_.end());
-      info_cache->second->usage++;
-    }
-    struct MappedGrallocBufferInfo* info = buffer_info_[key].get();
-    VLOGF(2) << "Plane " << plane << " of gralloc buffer 0x" << std::hex
-             << handle->buffer_id << " mapped to "
-             << reinterpret_cast<uintptr_t>(info->addr);
-    return info->addr;
-  } else if (handle->type == SHM) {
-    // We can't call mmap() here because each mmap call may return different
-    // mapped virtual addresses and may lead to virtual memory address leak.
-    // Instead we call mmap() only once in Register.
+  auto key = MappedDmaBufInfoCache::key_type(buffer, plane);
+  auto info_cache = buffer_info_.find(key);
+  if (info_cache == buffer_info_.end()) {
+    // We haven't mapped |plane| of |buffer| yet.
+    std::unique_ptr<MappedDmaBufInfo> info(new MappedDmaBufInfo);
     auto context_it = buffer_context_.find(buffer);
     if (context_it == buffer_context_.end()) {
-      LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
+      LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
+                  << " is not registered";
       return MAP_FAILED;
     }
-    auto buffer_context = context_it->second.get();
-    void* out_addr = reinterpret_cast<void*>(
-        reinterpret_cast<uintptr_t>(buffer_context->mapped_addr) +
-        handle->offsets[plane]);
-    VLOGF(2) << "Plane " << plane << " of shm buffer 0x" << std::hex
-             << handle->buffer_id << " mapped to "
-             << reinterpret_cast<uintptr_t>(out_addr);
-    return out_addr;
+    info->bo = context_it->second->bo;
+    // Since |flags| is reserved we don't expect user to pass any non-zero
+    // value, we simply override |flags| here.
+    flags = GBM_BO_TRANSFER_READ_WRITE;
+    uint32_t stride;
+    info->addr = gbm_bo_map2(info->bo, 0, 0, handle->width, handle->height,
+                             flags, &stride, &info->map_data, plane);
+    if (info->addr == MAP_FAILED) {
+      PLOGF(ERROR) << "Failed to map buffer";
+      return MAP_FAILED;
+    }
+    info->usage = 1;
+    buffer_info_[key] = std::move(info);
   } else {
-    NOTREACHED() << "Invalid buffer type: " << handle->type;
-    return MAP_FAILED;
+    // We have mapped |plane| on |buffer| before: we can simply call
+    // gbm_bo_map() on the existing bo.
+    DCHECK(buffer_context_.find(buffer) != buffer_context_.end());
+    info_cache->second->usage++;
   }
+  struct MappedDmaBufInfo* info = buffer_info_[key].get();
+  VLOGF(2) << "Plane " << plane << " of DMA-buf 0x" << std::hex
+           << handle->buffer_id << " mapped to "
+           << reinterpret_cast<uintptr_t>(info->addr);
+  return info->addr;
 }
 
 int CameraBufferManagerImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
@@ -770,24 +673,17 @@ int CameraBufferManagerImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
     return -EINVAL;
   }
 
-  if (handle->type == GRALLOC) {
-    base::AutoLock l(lock_);
-    auto key = MappedGrallocBufferInfoCache::key_type(buffer, plane);
-    auto info_cache = buffer_info_.find(key);
-    if (info_cache == buffer_info_.end()) {
-      LOGF(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
-                  << handle->buffer_id << " was not mapped";
-      return -EINVAL;
-    }
-    auto& info = info_cache->second;
-    if (!--info->usage) {
-      buffer_info_.erase(info_cache);
-    }
-  } else if (handle->type == SHM) {
-    // No-op for SHM buffers.
-  } else {
-    NOTREACHED() << "Invalid buffer type: " << handle->type;
+  base::AutoLock l(lock_);
+  auto key = MappedDmaBufInfoCache::key_type(buffer, plane);
+  auto info_cache = buffer_info_.find(key);
+  if (info_cache == buffer_info_.end()) {
+    LOGF(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
+                << handle->buffer_id << " was not mapped";
     return -EINVAL;
+  }
+  auto& info = info_cache->second;
+  if (!--info->usage) {
+    buffer_info_.erase(info_cache);
   }
   VLOGF(2) << "buffer 0x" << std::hex << handle->buffer_id << " unmapped";
   return 0;

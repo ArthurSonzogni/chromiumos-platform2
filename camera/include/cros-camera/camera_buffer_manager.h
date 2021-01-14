@@ -26,13 +26,6 @@ namespace cros {
 
 class GbmDevice;
 
-// The enum definition here should match |Camera3DeviceOps::BufferType| in
-// mojo/camera3.mojom.
-enum BufferType {
-  GRALLOC = 0,
-  SHM = 1,
-};
-
 // Generic camera buffer manager.  The class is for a camera HAL to map and
 // unmap the buffer handles received in camera3_stream_buffer_t.
 //
@@ -83,7 +76,6 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   //    |height|: The height of the frame.
   //    |format|: The HAL pixel format of the frame.
   //    |usage|: The gralloc usage of the buffer.
-  //    |type|: Type of the buffer: GRALLOC or SHM.
   //    |out_buffer|: The handle to the allocated buffer.
   //    |out_stride|: The stride of the allocated buffer. |out_stride| is 0 for
   //                  YUV buffers.
@@ -94,7 +86,6 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
                        size_t height,
                        uint32_t format,
                        uint32_t usage,
-                       BufferType type,
                        buffer_handle_t* out_buffer,
                        uint32_t* out_stride) = 0;
 

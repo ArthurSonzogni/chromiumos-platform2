@@ -41,23 +41,12 @@ class CameraBufferManagerImplTest;
 }  // namespace tests
 
 struct BufferContext {
-  // ** The following fields are used for gralloc buffers only. **
-  // The GBM bo of the gralloc buffer.
+  // The GBM bo of the DMA-buf.
   struct gbm_bo* bo;
-  // ** End of gralloc buffer fields. **
-
-  // ** The following fields are used for shm buffers only. **
-  // The mapped address of the shared memory buffer.
-  void* mapped_addr;
-
-  // The size of the shared memory buffer.
-  size_t shm_buffer_size;
-  // ** End of shm buffer fields. **
 
   uint32_t usage;
 
-  BufferContext()
-      : bo(nullptr), mapped_addr(nullptr), shm_buffer_size(0), usage(0) {}
+  BufferContext() : bo(nullptr), usage(0) {}
 
   ~BufferContext() {
     if (bo) {
@@ -70,19 +59,19 @@ typedef std::unordered_map<buffer_handle_t,
                            std::unique_ptr<struct BufferContext>>
     BufferContextCache;
 
-struct MappedGrallocBufferInfo {
-  // The gbm_bo associated with the imported buffer (for gralloc buffer only).
+struct MappedDmaBufInfo {
+  // The gbm_bo associated with the imported buffer.
   struct gbm_bo* bo;
-  // The per-bo data returned by gbm_bo_map() (for gralloc buffer only).
+  // The per-bo data returned by gbm_bo_map().
   void* map_data;
   // The mapped virtual address.
   void* addr;
   // For refcounting.
   uint32_t usage;
 
-  MappedGrallocBufferInfo() : bo(nullptr), map_data(nullptr), usage(0) {}
+  MappedDmaBufInfo() : bo(nullptr), map_data(nullptr), usage(0) {}
 
-  ~MappedGrallocBufferInfo() {
+  ~MappedDmaBufInfo() {
     if (bo && map_data) {
       gbm_bo_unmap(bo, map_data);
     }
@@ -101,9 +90,9 @@ struct MappedBufferInfoKeyHash {
 };
 
 typedef std::unordered_map<MappedBufferInfoKeyType,
-                           std::unique_ptr<MappedGrallocBufferInfo>,
+                           std::unique_ptr<MappedDmaBufInfo>,
                            struct MappedBufferInfoKeyHash>
-    MappedGrallocBufferInfoCache;
+    MappedDmaBufInfoCache;
 
 class CameraBufferManagerImpl final : public CameraBufferManager {
  public:
@@ -117,7 +106,6 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
                size_t height,
                uint32_t format,
                uint32_t usage,
-               BufferType type,
                buffer_handle_t* out_buffer,
                uint32_t* out_stride);
   int Free(buffer_handle_t buffer);
@@ -153,20 +141,6 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
                          uint32_t usage,
                          uint32_t* gbm_flags);
 
-  int AllocateGrallocBuffer(size_t width,
-                            size_t height,
-                            uint32_t format,
-                            uint32_t usage,
-                            buffer_handle_t* out_buffer,
-                            uint32_t* out_stride);
-
-  int AllocateShmBuffer(size_t width,
-                        size_t height,
-                        uint32_t format,
-                        uint32_t usage,
-                        buffer_handle_t* out_buffer,
-                        uint32_t* out_stride);
-
   // Maps |buffer| and returns the mapped address.
   //
   // Args:
@@ -196,9 +170,8 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
   // The handle to the opened GBM device.
   struct gbm_device* gbm_device_;
 
-  // A cache which stores all the context of the registered buffers.
-  // For gralloc buffers the context stores the imported GBM buffer objects.
-  // For shm buffers the context stores the mapped address and the buffer size.
+  // A cache which stores all the context of the registered buffers, which
+  // includes the imported GBM buffer objects.
   // |buffer_context_| needs to be placed before |buffer_info_| to make sure the
   // GBM buffer objects are valid when we unmap them in |buffer_info_|'s
   // destructor.
@@ -206,9 +179,8 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
 
   // The private info about all the mapped (buffer, plane) pairs.
   // |buffer_info_| has to be placed after |gbm_device_| so that the GBM device
-  // is still valid when we delete the MappedGrallocBufferInfoCache.
-  // This is only used by gralloc buffers.
-  MappedGrallocBufferInfoCache buffer_info_;
+  // is still valid when we delete the MappedDmaBufInfoCache.
+  MappedDmaBufInfoCache buffer_info_;
 
   // ** End of lock_ scope **
 };

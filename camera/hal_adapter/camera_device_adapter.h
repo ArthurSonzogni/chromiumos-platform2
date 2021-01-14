@@ -170,7 +170,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   void FreeAllocatedStreamBuffers();
 
   int32_t RegisterBufferLocked(uint64_t buffer_id,
-                               mojom::Camera3DeviceOps::BufferType type,
                                std::vector<mojo::ScopedHandle> fds,
                                uint32_t drm_format,
                                mojom::HalPixelFormat hal_pixel_format,

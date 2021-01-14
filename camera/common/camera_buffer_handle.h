@@ -30,9 +30,6 @@ typedef struct camera_buffer_handle {
   // Used to identify the buffer object on the other end of the IPC channel
   // (e.g. the Android container or Chrome browser process.)
   uint64_t buffer_id;
-  // The type of the buffer.  Must be one of the values defined in enum
-  // BufferType.
-  int32_t type;
   // The DRM fourcc code of the buffer.
   uint32_t drm_format;
   // The HAL pixel format of the buffer.
@@ -54,7 +51,6 @@ typedef struct camera_buffer_handle {
   camera_buffer_handle()
       : magic(kCameraBufferMagic),
         buffer_id(kInvalidBufferId),
-        type(-1),
         drm_format(0),
         hal_pixel_format(0),
         width(0),

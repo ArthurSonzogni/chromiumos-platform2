@@ -508,8 +508,8 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
     const std::vector<uint32_t>& offsets) {
   base::AutoLock l(buffer_handles_lock_);
   return CameraDeviceAdapter::RegisterBufferLocked(
-      buffer_id, type, std::move(fds), drm_format, hal_pixel_format, width,
-      height, strides, offsets);
+      buffer_id, std::move(fds), drm_format, hal_pixel_format, width, height,
+      strides, offsets);
 }
 
 int32_t CameraDeviceAdapter::Close() {
@@ -695,9 +695,9 @@ bool CameraDeviceAdapter::AllocateBuffersForStreams(
 
       buffer_handle_t buffer_handle;
       uint32_t buffer_stride;
-      status = camera_buffer_manager->Allocate(
-          buffer_width, buffer_height, stream_format, stream->usage,
-          BufferType::GRALLOC, &buffer_handle, &buffer_stride);
+      status = camera_buffer_manager->Allocate(buffer_width, buffer_height,
+                                               stream_format, stream->usage,
+                                               &buffer_handle, &buffer_stride);
       if (status) {
         LOGF(ERROR) << "Failed to allocate buffer.";
         return false;
@@ -756,7 +756,6 @@ void CameraDeviceAdapter::FreeAllocatedStreamBuffers() {
 
 int32_t CameraDeviceAdapter::RegisterBufferLocked(
     uint64_t buffer_id,
-    mojom::Camera3DeviceOps::BufferType type,
     std::vector<mojo::ScopedHandle> fds,
     uint32_t drm_format,
     mojom::HalPixelFormat hal_pixel_format,
@@ -779,7 +778,6 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
 
   buffer_handle->magic = kCameraBufferMagic;
   buffer_handle->buffer_id = buffer_id;
-  buffer_handle->type = static_cast<int32_t>(type);
   buffer_handle->drm_format = drm_format;
   buffer_handle->hal_pixel_format = static_cast<uint32_t>(hal_pixel_format);
   buffer_handle->width = width;
@@ -801,10 +799,10 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
 
 int32_t CameraDeviceAdapter::RegisterBufferLocked(
     mojom::CameraBufferHandlePtr buffer) {
-  return RegisterBufferLocked(
-      buffer->buffer_id, mojom::Camera3DeviceOps::BufferType::GRALLOC,
-      std::move(buffer->fds), buffer->drm_format, buffer->hal_pixel_format,
-      buffer->width, buffer->height, buffer->strides, buffer->offsets);
+  return RegisterBufferLocked(buffer->buffer_id, std::move(buffer->fds),
+                              buffer->drm_format, buffer->hal_pixel_format,
+                              buffer->width, buffer->height, buffer->strides,
+                              buffer->offsets);
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(

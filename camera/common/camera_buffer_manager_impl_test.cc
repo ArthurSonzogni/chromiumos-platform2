@@ -407,7 +407,6 @@ class CameraBufferManagerImplTest : public ::testing::Test {
 
   std::unique_ptr<camera_buffer_handle_t> CreateBuffer(
       uint32_t buffer_id,
-      BufferType type,
       uint32_t drm_format,
       uint32_t hal_pixel_format,
       uint32_t width,
@@ -416,7 +415,6 @@ class CameraBufferManagerImplTest : public ::testing::Test {
     buffer->fds[0] = dummy_fd;
     buffer->magic = kCameraBufferMagic;
     buffer->buffer_id = buffer_id;
-    buffer->type = type;
     buffer->drm_format = drm_format;
     buffer->hal_pixel_format = hal_pixel_format;
     buffer->width = width;
@@ -444,7 +442,7 @@ class CameraBufferManagerImplTest : public ::testing::Test {
     return buffer;
   }
 
-  const MappedGrallocBufferInfoCache& GetMappedBufferInfo() const {
+  const MappedDmaBufInfoCache& GetMappedBufferInfo() const {
     return cbm_->buffer_info_;
   }
 
@@ -480,7 +478,7 @@ TEST_F(CameraBufferManagerImplTest, AllocateTest) {
         .WillOnce(Return(0));
   }
   EXPECT_EQ(cbm_->Allocate(kBufferWidth, kBufferHeight,
-                           HAL_PIXEL_FORMAT_YCbCr_420_888, usage, GRALLOC,
+                           HAL_PIXEL_FORMAT_YCbCr_420_888, usage,
                            &buffer_handle, &stride),
             0);
 
@@ -511,7 +509,7 @@ TEST_F(CameraBufferManagerImplTest, AllocateTest) {
 TEST_F(CameraBufferManagerImplTest, LockTest) {
   // Create a dummy buffer.
   const int kBufferWidth = 1280, kBufferHeight = 720;
-  auto buffer = CreateBuffer(1, GRALLOC, DRM_FORMAT_XBGR8888,
+  auto buffer = CreateBuffer(1, DRM_FORMAT_XBGR8888,
                              HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                              kBufferWidth, kBufferHeight);
   buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(buffer.get());
@@ -567,8 +565,8 @@ TEST_F(CameraBufferManagerImplTest, LockYCbCrTest) {
   // Create a dummy buffer.
   const int kBufferWidth = 1280, kBufferHeight = 720;
   auto buffer =
-      CreateBuffer(1, GRALLOC, DRM_FORMAT_YUV420,
-                   HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferWidth, kBufferHeight);
+      CreateBuffer(1, DRM_FORMAT_YUV420, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                   kBufferWidth, kBufferHeight);
   buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(buffer.get());
 
   // Register the buffer.
@@ -649,9 +647,8 @@ TEST_F(CameraBufferManagerImplTest, LockYCbCrTest) {
   EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
 
   // Test semi-planar buffer.
-  buffer =
-      CreateBuffer(2, GRALLOC, DRM_FORMAT_NV12, HAL_PIXEL_FORMAT_YCbCr_420_888,
-                   kBufferWidth, kBufferHeight);
+  buffer = CreateBuffer(2, DRM_FORMAT_NV12, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                        kBufferWidth, kBufferHeight);
   handle = reinterpret_cast<buffer_handle_t>(buffer.get());
 
   EXPECT_CALL(gbm_, GbmBoImport(&dummy_device, A<uint32_t>(), A<void*>(),
@@ -689,48 +686,10 @@ TEST_F(CameraBufferManagerImplTest, LockYCbCrTest) {
   EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
 }
 
-TEST_F(CameraBufferManagerImplTest, ShmBufferTest) {
-  // Create a dummy buffer.
-  const int kBufferWidth = 1280, kBufferHeight = 720;
-  auto buffer = CreateBuffer(1, SHM, DRM_FORMAT_XBGR8888,
-                             HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                             kBufferWidth, kBufferHeight);
-  const size_t kBufferSize = kBufferWidth * kBufferHeight * 4;
-  buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(buffer.get());
-
-  // Register the buffer.
-  EXPECT_CALL(gbm_, Lseek(dummy_fd, 0, SEEK_END))
-      .Times(1)
-      .WillOnce(Return(kBufferSize));
-  EXPECT_CALL(gbm_, Lseek(dummy_fd, 0, SEEK_SET)).Times(1);
-  EXPECT_CALL(gbm_, Mmap(nullptr, kBufferSize, PROT_READ | PROT_WRITE,
-                         MAP_SHARED, dummy_fd, 0))
-      .Times(1)
-      .WillOnce(Return(dummy_addr));
-  EXPECT_EQ(cbm_->Register(handle), 0);
-
-  // The call to Lock |handle| should succeed with valid width and height.
-  void* addr;
-  EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
-  EXPECT_EQ(addr, dummy_addr);
-
-  // Another call to Lock |handle| should return the same mapped address.
-  EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
-  EXPECT_EQ(addr, dummy_addr);
-
-  // And the call to Unlock on |handle| should also succeed.
-  EXPECT_EQ(cbm_->Unlock(handle), 0);
-  EXPECT_EQ(cbm_->Unlock(handle), 0);
-
-  // Finally the shm buffer should be unmapped when we deregister the buffer.
-  EXPECT_CALL(gbm_, Munmap(dummy_addr, kBufferSize)).Times(1);
-  EXPECT_EQ(cbm_->Deregister(handle), 0);
-}
-
 TEST_F(CameraBufferManagerImplTest, GetPlaneSizeTest) {
   const int kBufferWidth = 1280, kBufferHeight = 720;
 
-  auto gralloc_buffer = CreateBuffer(0, GRALLOC, DRM_FORMAT_XBGR8888,
+  auto gralloc_buffer = CreateBuffer(0, DRM_FORMAT_XBGR8888,
                                      HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                                      kBufferWidth, kBufferHeight);
   buffer_handle_t rgbx_handle =
@@ -742,7 +701,7 @@ TEST_F(CameraBufferManagerImplTest, GetPlaneSizeTest) {
   EXPECT_EQ(CameraBufferManagerImpl::GetPlaneSize(rgbx_handle, 1), 0);
 
   auto nv12_buffer =
-      CreateBuffer(1, SHM, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
+      CreateBuffer(1, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
                    kBufferWidth, kBufferHeight);
   const size_t kNV12Plane0Size =
       kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV12);
@@ -757,7 +716,7 @@ TEST_F(CameraBufferManagerImplTest, GetPlaneSizeTest) {
   EXPECT_EQ(CameraBufferManagerImpl::GetPlaneSize(nv12_handle, 2), 0);
 
   auto yuv420_buffer =
-      CreateBuffer(2, SHM, DRM_FORMAT_YUV420, HAL_PIXEL_FORMAT_YCbCr_420_888,
+      CreateBuffer(2, DRM_FORMAT_YUV420, HAL_PIXEL_FORMAT_YCbCr_420_888,
                    kBufferWidth, kBufferHeight);
   const size_t kYuv420Plane0Size =
       kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_YUV420);
@@ -778,12 +737,12 @@ TEST_F(CameraBufferManagerImplTest, DeregisterTest) {
   // Create two dummy buffers.
   const int kBufferWidth = 1280, kBufferHeight = 720;
   auto buffer1 =
-      CreateBuffer(1, GRALLOC, DRM_FORMAT_YUV420,
-                   HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferWidth, kBufferHeight);
+      CreateBuffer(1, DRM_FORMAT_YUV420, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                   kBufferWidth, kBufferHeight);
   buffer_handle_t handle1 = reinterpret_cast<buffer_handle_t>(buffer1.get());
   auto buffer2 =
-      CreateBuffer(1, GRALLOC, DRM_FORMAT_YUV420,
-                   HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferWidth, kBufferHeight);
+      CreateBuffer(1, DRM_FORMAT_YUV420, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                   kBufferWidth, kBufferHeight);
   buffer_handle_t handle2 = reinterpret_cast<buffer_handle_t>(buffer2.get());
 
   // Register the buffers.
