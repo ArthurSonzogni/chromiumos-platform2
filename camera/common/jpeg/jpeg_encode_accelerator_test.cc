@@ -200,13 +200,13 @@ void JpegEncodeAcceleratorTest::PrepareMemory(Frame* frame) {
   LOG_ASSERT(buffer_manager_->Allocate(
                  frame->width, frame->height, HAL_PIXEL_FORMAT_YCbCr_420_888,
                  GRALLOC_USAGE_HW_CAMERA_READ | GRALLOC_USAGE_SW_WRITE_OFTEN,
-                 cros::GRALLOC, &frame->input_handle, &input_stride) == 0);
+                 &frame->input_handle, &input_stride) == 0);
 
   LOG_ASSERT(buffer_manager_->Allocate(
                  frame->hw_memory_size, 1, HAL_PIXEL_FORMAT_BLOB,
                  GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_SW_READ_OFTEN |
                      GRALLOC_USAGE_HW_CAMERA_WRITE,
-                 cros::GRALLOC, &frame->output_handle, &output_stride) == 0);
+                 &frame->output_handle, &output_stride) == 0);
 
   struct android_ycbcr mapped_input;
   LOG_ASSERT(buffer_manager_->LockYCbCr(frame->input_handle, 0, 0, 0, 0, 0,

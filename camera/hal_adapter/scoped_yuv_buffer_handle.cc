@@ -44,8 +44,8 @@ ScopedYUVBufferHandle ScopedYUVBufferHandle::AllocateScopedYUVHandle(
   buffer_handle_t handle;
   uint32_t stride;
   if (cros::CameraBufferManager::GetInstance()->Allocate(
-          width, height, HAL_PIXEL_FORMAT_YCbCr_420_888, flag, cros::GRALLOC,
-          &handle, &stride) != 0) {
+          width, height, HAL_PIXEL_FORMAT_YCbCr_420_888, flag, &handle,
+          &stride) != 0) {
     LOGF(ERROR) << "Failed to allocate buffer handle";
     return ScopedYUVBufferHandle(nullptr, false, 0, 0, 0);
   }

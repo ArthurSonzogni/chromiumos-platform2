@@ -305,7 +305,7 @@ GrallocFrameBuffer::GrallocFrameBuffer(uint32_t width,
 
   uint32_t stride;
   int ret = buffer_manager_->Allocate(width, height, hal_format, hal_usage,
-                                      GRALLOC, &buffer_, &stride);
+                                      &buffer_, &stride);
   if (ret) {
     LOGF(ERROR) << "Failed to allocate buffer";
     return;

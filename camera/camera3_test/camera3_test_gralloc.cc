@@ -59,8 +59,8 @@ ScopedBufferHandle Camera3TestGralloc::Allocate(int32_t width,
   }
   ScopedBufferHandle handle(new buffer_handle_t);
   uint32_t stride;
-  if (buffer_manager_->Allocate(width, height, format, usage, cros::GRALLOC,
-                                handle.get(), &stride)) {
+  if (buffer_manager_->Allocate(width, height, format, usage, handle.get(),
+                                &stride)) {
     return ScopedBufferHandle(nullptr);
   }
   return handle;

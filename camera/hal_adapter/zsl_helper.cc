@@ -57,7 +57,7 @@ bool ZslBufferManager::Initialize(size_t pool_size,
                                   GRALLOC_USAGE_HW_CAMERA_ZSL |
                                       GRALLOC_USAGE_SW_READ_OFTEN |
                                       GRALLOC_USAGE_SW_WRITE_OFTEN,
-                                  cros::GRALLOC, &buffer, &stride) != 0) {
+                                  &buffer, &stride) != 0) {
       LOGF(ERROR) << "Failed to allocate buffer";
       // Free previously-allocated buffers.
       for (auto& buffer : buffer_pool_) {
