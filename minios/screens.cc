@@ -27,6 +27,8 @@ const char kMenuBlack[] = "0x202124";
 const char kMenuBlue[] = "0x8AB4F8";
 const char kMenuGrey[] = "0x3F4042";
 const char kMenuButtonFrameGrey[] = "0x9AA0A6";
+const char kMenuDropdownFrameNavy[] = "0x435066";
+const char kMenuDropdownBackgroundBlack[] = "0x2D2E30";
 
 // Key values.
 const int kKeyUp = 103;
@@ -57,11 +59,12 @@ constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
 }  // namespace
 
 bool Screens::Init() {
-  // TODO(vyshu): Query system to check to set rtl and detachable values.
-
-  screens_path_ = root_.Append(screens::kScreens);
+  CheckDetachable();
+  CheckRightToLeft();
+  screens_path_ = root_.Append(kScreens);
   // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
   ReadDimensionConstants();
+  ReadLangConstants();
   return true;
 }
 
@@ -189,6 +192,33 @@ void Screens::ShowInstructionsWithTitle(const std::string& message_token) {
     LOG(WARNING) << "Unable to show description " << message_token;
 }
 
+void Screens::ShowProgressBar(double seconds) {
+  constexpr int kProgressIncrement = 10;
+  constexpr int kProgressHeight = 4;
+
+  ShowBox(0, 0, kProgressIncrement * 100, kProgressHeight, kMenuGrey);
+
+  constexpr int kLeftIncrement = -500;
+  int leftmost = kLeftIncrement;
+
+  // Can be increased for a smoother progress bar.
+  constexpr int kUpdatesPerSecond = 10;
+  const double percent_update = 100 / (seconds * kUpdatesPerSecond);
+  double current_percent = 0;
+
+  while (current_percent < 100) {
+    current_percent += percent_update;
+    int rightmost = kLeftIncrement + kProgressIncrement * current_percent;
+    while (leftmost < rightmost) {
+      ShowBox(leftmost + kProgressIncrement / 2, 0, kProgressIncrement + 2,
+              kProgressHeight, kMenuBlue);
+      leftmost += kProgressIncrement;
+    }
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(1000 / kUpdatesPerSecond));
+  }
+}
+
 void Screens::ClearMainArea() {
   constexpr int kFooterHeight = 142;
   if (!ShowBox(0, -kFooterHeight / 2, kCanvasSize + 100,
@@ -291,14 +321,93 @@ void Screens::ShowStepper(const std::vector<std::string>& steps) {
   }
 }
 
+void Screens::ShowLanguageDropdown(int index) {
+  constexpr int kItemHeight = 40;
+  constexpr int kItemPerPage = (kCanvasSize - 260) / kItemHeight;
+
+  // Pick begin index such that the selected index is centered on the screen if
+  // possible.
+  int begin_index =
+      std::clamp(index - kItemPerPage / 2, 0,
+                 static_cast<int>(supported_locales_.size()) - kItemPerPage);
+
+  int offset_y = -kCanvasSize / 2 + 88;
+  constexpr int kBackgroundX = -kCanvasSize / 2 + 360;
+  for (int i = begin_index;
+       i < (begin_index + kItemPerPage) && i < supported_locales_.size(); i++) {
+    // Get placement for the language image.
+    int language_width;
+    if (!GetLangConstants(supported_locales_[i], &language_width)) {
+      language_width = 95;
+      LOG(WARNING) << "Could not get width for " << supported_locales_[i]
+                   << ". Defaulting to " << language_width;
+    }
+    int lang_x = -kCanvasSize / 2 + language_width / 2 + 40;
+
+    // This is the currently selected language. Show in blue.
+    if (index == i) {
+      ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
+      ShowImage(screens_path_.Append(supported_locales_[i])
+                    .Append("language_focused.png"),
+                lang_x, offset_y);
+    } else {
+      ShowBox(kBackgroundX, offset_y, 720, 40, kMenuDropdownFrameNavy);
+      ShowBox(kBackgroundX, offset_y, 718, 38, kMenuDropdownBackgroundBlack);
+      ShowImage(
+          screens_path_.Append(supported_locales_[i]).Append("language.png"),
+          lang_x, offset_y);
+    }
+    offset_y += kItemHeight;
+  }
+}
+
+void Screens::LanguageMenuOnSelect() {
+  ShowLanguageMenu(false);
+
+  // Find index of current locale to show in the dropdown.
+  int index = std::distance(
+      supported_locales_.begin(),
+      std::find(supported_locales_.begin(), supported_locales_.end(), locale_));
+  if (index == supported_locales_.size()) {
+    // Default to en-US.
+    index = 9;
+    LOG(WARNING) << " Could not find an index to match current locale "
+                 << locale_ << ". Defaulting to index " << index << " for  "
+                 << supported_locales_[index];
+  }
+
+  ShowLanguageDropdown(index);
+
+  bool enter = false;
+  while (true) {
+    WaitMenuInput(supported_locales_.size(), &index, &enter);
+    if (enter && index >= 0) {
+      // Selected a new locale. Update the constants and whether it is read from
+      // rtl.
+      locale_ = supported_locales_[index];
+      CheckRightToLeft();
+      ReadDimensionConstants();
+      ClearScreen();
+      LOG(INFO) << "Changed selected locale to " << supported_locales_[index];
+      return;
+    }
+    // Update drop down menu with new highlighted selection.
+    ShowLanguageDropdown(index);
+  }
+}
+
 void Screens::ShowLanguageMenu(bool is_selected) {
   constexpr int kOffsetY = -kCanvasSize / 2 + 40;
   constexpr int kBgX = -kCanvasSize / 2 + 145;
   constexpr int kGlobeX = -kCanvasSize / 2 + 20;
   constexpr int kArrowX = -kCanvasSize / 2 + 268;
-  // TODO(vyshu): Find declaration of language_width.
-  constexpr int kLanguageWidth = 57;
-  constexpr int kTextX = -kCanvasSize / 2 + 40 + kLanguageWidth / 2;
+  int language_width;
+  if (!GetLangConstants(locale_, &language_width)) {
+    language_width = 100;
+    LOG(WARNING) << "Could not get language width for " << locale_
+                 << ". Defaulting to 100.";
+  }
+  const int text_x = -kCanvasSize / 2 + 40 + language_width / 2;
 
   base::FilePath menu_background =
       is_selected ? screens_path_.Append("language_menu_bg_focused.png")
@@ -308,7 +417,7 @@ void Screens::ShowLanguageMenu(bool is_selected) {
   ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
 
   ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
-  ShowMessage("language_folded", kTextX, kOffsetY);
+  ShowMessage("language_folded", text_x, kOffsetY);
 }
 
 void Screens::ShowFooter() {
@@ -382,9 +491,13 @@ void Screens::MessageBaseScreen() {
 }
 
 void Screens::MiniOsWelcomeOnSelect() {
+  MessageBaseScreen();
+  ShowInstructionsWithTitle("MiniOS_welcome");
+  ShowStepper({"1", "2", "3"});
+
   int index = 1;
   bool enter = false;
-  MiniOsWelcomeOnChange(index);
+  ShowMiniOsWelcomeButtons(index);
   while (true) {
     // Get key events from evwaitkey.
     WaitMenuInput(3, &index, &enter);
@@ -392,27 +505,27 @@ void Screens::MiniOsWelcomeOnSelect() {
       // TODO(vyshu): Create screen functions below to replace the LOG messages.
       switch (index) {
         case 0:
-          LOG(INFO) << "Message language_menu.";
+          LanguageMenuOnSelect();
+          // Return to current screen after picking new language.
+          enter = false;
+          index = 1;
+          ShowInstructionsWithTitle("MiniOS_welcome");
+          ShowStepper({"1", "2", "3"});
           break;
         case 1:
           LOG(INFO) << "Message minios_dropdown.";
-          break;
+          return;
         case 2:
           LOG(INFO) << "Message minios_welcome.";
-          break;
+          return;
       }
-      return;
-    } else {
-      // If not entered, update MiniOS Screen with new button selections.
-      MiniOsWelcomeOnChange(index);
     }
+    // If not entered, update MiniOS Screen with new button selections.
+    ShowMiniOsWelcomeButtons(index);
   }
 }
 
-void Screens::MiniOsWelcomeOnChange(int index) {
-  MessageBaseScreen();
-  ShowInstructionsWithTitle("MiniOS_welcome");
-  ShowStepper({"1", "2", "3"});
+void Screens::ShowMiniOsWelcomeButtons(int index) {
   ShowLanguageMenu(index == 0);
 
   constexpr int kTitleY = (-kCanvasSize / 2) + 238;
@@ -424,7 +537,6 @@ void Screens::MiniOsWelcomeOnChange(int index) {
     LOG(WARNING) << "Unable to get dimension for " << kButtonWidthToken
                  << ". Defaulting to width " << kDefaultButtonWidth;
   }
-
   ShowButton("btn_next", kBtnY, (index == 1), debug_btn_width);
   ShowButton("btn_back", kBtnY + kBtnYStep, (index == 2), debug_btn_width);
 }
@@ -483,6 +595,74 @@ void Screens::UpdateButtons(int menu_count, int key, int* index, bool* enter) {
     LOG(ERROR) << "Unknown key value: " << key;
   }
   *index = starting_index;
+}
+
+void Screens::ReadLangConstants() {
+  lang_constants_.clear();
+  supported_locales_.clear();
+  // Read language widths from lang_constants.sh into memory.
+  auto lang_constants_path = screens_path_.Append("lang_constants.sh");
+  std::string const_values;
+  if (!ReadFileToString(lang_constants_path, &const_values)) {
+    LOG(ERROR) << "Could not read lang constants file " << lang_constants_path;
+    return;
+  }
+
+  if (!base::SplitStringIntoKeyValuePairs(const_values, '=', '\n',
+                                          &lang_constants_)) {
+    LOG(ERROR) << "Unable to parse language width information.";
+    return;
+  }
+  for (const auto& pair : lang_constants_) {
+    if (pair.first == "SUPPORTED_LOCALES") {
+      // Parse list of supported locales and store separately.
+      std::string locale_list;
+      if (!base::RemoveChars(pair.second, "\"", &locale_list))
+        LOG(WARNING) << "Unable to remove surrounding quotes from locale list.";
+      supported_locales_ = base::SplitString(
+          locale_list, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    }
+  }
+
+  if (supported_locales_.empty()) {
+    LOG(WARNING) << "Unable to get supported locales. Will not be able to "
+                    "change locale.";
+  }
+}
+
+bool Screens::GetLangConstants(const std::string& locale, int* lang_width) {
+  if (lang_constants_.empty()) {
+    LOG(ERROR) << "No language widths available.";
+    return false;
+  }
+
+  // Lang_consts uses '_' while supported locale list uses '-'.
+  std::string token;
+  base::ReplaceChars(locale, "-", "_", &token);
+  token = "LANGUAGE_" + token + "_WIDTH";
+
+  // Find the width for the token.
+  for (const auto& width_token : lang_constants_) {
+    if (width_token.first == token) {
+      if (!base::StringToInt(width_token.second, lang_width)) {
+        LOG(ERROR) << "Could not convert " << width_token.second
+                   << " to a number.";
+        return false;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+void Screens::CheckRightToLeft() {
+  // TODO(vyshu): Create an unblocked_terms.txt to allow "he" for Hebrew.
+  right_to_left_ = (locale_ == "ar" || locale_ == "fa" || locale_ == "he");
+}
+
+void Screens::CheckDetachable() {
+  is_detachable_ =
+      base::PathExists(root_.Append("etc/cros-initramfs/is_detachable"));
 }
 
 void Screens::SetRootForTest(const std::string& test_root) {

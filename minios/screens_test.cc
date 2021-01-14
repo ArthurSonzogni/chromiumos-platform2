@@ -205,6 +205,25 @@ TEST_F(ScreensTest, GetDimension) {
   EXPECT_EQ(38, dimension);
 }
 
+TEST_F(ScreensTest, GetLangConsts) {
+  std::string lang_consts =
+      "LANGUAGE_en_US_WIDTH=99\nLANGUAGE_fi_WIDTH=44\nLANGUAGE_mr_WIDTH="
+      "incorrect\n LANGUAGE_ko_WIDTH=  77 \n  SUPPORTED_LOCALES=\"en-US fi mr "
+      "ko\"";
+  ASSERT_TRUE(
+      base::WriteFile(screens_path_.Append("lang_constants.sh"), lang_consts));
+  screens_.ReadLangConstants();
+
+  EXPECT_EQ(5, screens_.lang_constants_.size());
+  EXPECT_EQ(4, screens_.supported_locales_.size());
+  int lang_width;
+  EXPECT_TRUE(screens_.GetLangConstants("en-US", &lang_width));
+  EXPECT_EQ(99, lang_width);
+  // Incorrect or doesn't exist.
+  EXPECT_FALSE(screens_.GetLangConstants("fr", &lang_width));
+  EXPECT_FALSE(screens_.GetLangConstants("mr", &lang_width));
+}
+
 TEST_F(ScreensTest, UpdateButtons) {
   int index = 1;
   bool enter = false;
@@ -262,6 +281,36 @@ TEST_F(ScreensTest, UpdateButtonsIsDetachable) {
   screens_.UpdateButtons(menu_items, kKeyPower, &index, &enter);
   EXPECT_EQ(1, index);
   EXPECT_TRUE(enter);
+}
+
+TEST_F(ScreensTest, CheckRightToLeft) {
+  screens_.SetLanguageForTest("fr");
+  screens_.CheckRightToLeft();
+  EXPECT_FALSE(screens_.right_to_left_);
+
+  // Three languages are read from right to left.
+  screens_.SetLanguageForTest("he");
+  screens_.CheckRightToLeft();
+  EXPECT_TRUE(screens_.right_to_left_);
+
+  screens_.SetLanguageForTest("fa");
+  screens_.CheckRightToLeft();
+  EXPECT_TRUE(screens_.right_to_left_);
+
+  screens_.SetLanguageForTest("ar");
+  screens_.CheckRightToLeft();
+  EXPECT_TRUE(screens_.right_to_left_);
+}
+
+TEST_F(ScreensTest, CheckDetachable) {
+  screens_.CheckDetachable();
+
+  EXPECT_FALSE(screens_.is_detachable_);
+
+  brillo::TouchFile(
+      base::FilePath(test_root_).Append("etc/cros-initramfs/is_detachable"));
+  screens_.CheckDetachable();
+  EXPECT_TRUE(screens_.is_detachable_);
 }
 
 class MockScreens : public Screens {

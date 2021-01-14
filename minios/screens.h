@@ -23,6 +23,8 @@ extern const char kMenuBlack[];
 extern const char kMenuBlue[];
 extern const char kMenuGrey[];
 extern const char kMenuButtonFrameGrey[];
+extern const char kMenuDropdownFrameNavy[];
+extern const char kMenuDropdownBackgroundBlack[];
 
 // Key values.
 extern const int kKeyUp;
@@ -77,6 +79,9 @@ class Screens {
   // `constants` to place.
   void ShowInstructionsWithTitle(const std::string& message_token);
 
+  // Shows on screen progress bar.
+  void ShowProgressBar(double seconds);
+
   // Clears full screen except the footer.
   void ClearMainArea();
 
@@ -101,6 +106,15 @@ class Screens {
   // Defaults to done if requested icon not found.
   void ShowStepper(const std::vector<std::string>& steps);
 
+  // Shows the list of all supported locales with the currently selected index
+  // highlighted blue. Users can 'scroll' using the up and down arrow keys.
+  void ShowLanguageDropdown(int index);
+
+  // Waits for key input and repaints the screen with a changed language
+  // selection, clears the whole screen including the footer and updates the
+  // language dependent constants. Returns to original screen after selection,
+  void LanguageMenuOnSelect();
+
   // Shows language menu drop down button on base screen. Button is highlighted
   // if it is currently selected.
   void ShowLanguageMenu(bool is_selected);
@@ -113,9 +127,6 @@ class Screens {
 
   // First screen.
   void MiniOsWelcomeOnSelect();
-
-  // Changes button focus based on index selected.
-  void MiniOsWelcomeOnChange(int index);
 
   // Override the root directory for testing. Default is '/'.
   void SetRootForTest(const std::string& test_root);
@@ -130,8 +141,11 @@ class Screens {
  private:
   FRIEND_TEST(ScreensTest, ReadDimension);
   FRIEND_TEST(ScreensTest, GetDimension);
+  FRIEND_TEST(ScreensTest, GetLangConsts);
   FRIEND_TEST(ScreensTest, UpdateButtons);
   FRIEND_TEST(ScreensTest, UpdateButtonsIsDetachable);
+  FRIEND_TEST(ScreensTest, CheckRightToLeft);
+  FRIEND_TEST(ScreensTest, CheckDetachable);
 
   key_reader::KeyReader key_reader_ =
       key_reader::KeyReader(/*include_usb=*/true);
@@ -148,6 +162,24 @@ class Screens {
   // ignored and index is kept within the range of menu items.
   void UpdateButtons(int menu_count, int key, int* index, bool* enter);
 
+  // Read the language constants into memory. Does not change
+  // based on the current locale.
+  void ReadLangConstants();
+
+  // Sets the width of language token for a given locale. Returns false on
+  // error.
+  bool GetLangConstants(const std::string& locale, int* lang_width);
+
+  // Changes button focus based on index selected.
+  void ShowMiniOsWelcomeButtons(int index);
+
+  // Checks whether the current language is read from right to left. Must be
+  // updated every time the language changes.
+  void CheckRightToLeft();
+
+  // Checks whether device has a detachable keyboard and sets `is_detachable`.
+  void CheckDetachable();
+
   // Whether the locale is read from right to left.
   bool right_to_left_{false};
 
@@ -156,6 +188,12 @@ class Screens {
 
   // Key value pairs that store token name and measurements.
   base::StringPairs image_dimensions_;
+
+  // Key value pairs that store language widths.
+  base::StringPairs lang_constants_;
+
+  // List of all supported locales.
+  std::vector<std::string> supported_locales_;
 
   // Default root directory.
   base::FilePath root_{"/"};
