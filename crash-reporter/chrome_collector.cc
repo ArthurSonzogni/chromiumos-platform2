@@ -5,6 +5,7 @@
 #include "crash-reporter/chrome_collector.h"
 
 #include <stdint.h>
+#include <string.h>
 
 #include <limits>
 #include <map>
@@ -119,8 +120,17 @@ bool ChromeCollector::HandleCrashWithDumpData(
   }
 
   if (payload_path.empty()) {
-    LOG(ERROR) << "Did not get a payload";
-    return false;
+    if (crash_type == kJavaScriptError) {
+      // This is expected. Some classes of JavaScript errors don't have a stack
+      // (specifically unhandled promise rejections). Since crash_sender will
+      // not send without a payload, make a "No stack" payload.
+      if (!CreateNoStackJSPayload(dir, dump_basename, &payload_path)) {
+        return false;
+      }
+    } else {
+      LOG(ERROR) << "Did not get a payload";
+      return false;
+    }
   }
 
   // Keyed by crash metadata key name.
@@ -173,6 +183,22 @@ bool ChromeCollector::HandleCrashWithDumpData(
   fprintf(output_file_ptr_, "%s", kSuccessMagic);
   fflush(output_file_ptr_);
 
+  return true;
+}
+
+bool ChromeCollector::CreateNoStackJSPayload(const base::FilePath& dir,
+                                             const std::string& dump_basename,
+                                             base::FilePath* payload_path) {
+  *payload_path =
+      GetCrashPath(dir, dump_basename, constants::kJavaScriptStackExtension);
+  constexpr char kNoStackPayload[] = "No Stack\n";
+  if (WriteNewFile(*payload_path, kNoStackPayload, strlen(kNoStackPayload)) !=
+      strlen(kNoStackPayload)) {
+    // Can't send a crash report without a payload, so just fail.
+    LOG(ERROR) << "Failed to write lack-of-js-stack message to "
+               << payload_path->value();
+    return false;
+  }
   return true;
 }
 

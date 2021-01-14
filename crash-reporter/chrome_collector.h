@@ -96,6 +96,13 @@ class ChromeCollector : public CrashCollector {
                      CrashType crash_type,
                      base::FilePath* payload);
 
+  // Some classes of JavaScript errors do not have stacks. Since crash_sender
+  // cannot send error reports without a payload, create a simple payload that
+  // just states there was no stack.
+  bool CreateNoStackJSPayload(const base::FilePath& dir,
+                              const std::string& dump_basename,
+                              base::FilePath* payload_path);
+
   // Gets the GPU's error state from debugd and writes it to |error_state_path|.
   // Returns true on success.
   bool GetDriErrorState(const base::FilePath& error_state_path);
