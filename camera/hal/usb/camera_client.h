@@ -156,9 +156,9 @@ class CameraClient {
   // The formats used to report to apps.
   SupportedFormats qualified_formats_;
 
-  // max native resolution
-  int max_native_width_;
-  int max_native_height_;
+  // max stream resolution
+  int max_stream_width_;
+  int max_stream_height_;
 
   // RequestHandler is used to handle in-flight requests. All functions in the
   // class run on |request_thread_|. The class will be created in StreamOn and

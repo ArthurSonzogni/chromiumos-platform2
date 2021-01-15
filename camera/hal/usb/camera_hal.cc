@@ -75,10 +75,12 @@ ScopedCameraMetadata StaticMetadataForAndroid(
 
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraConfigPathString);
-  int max_width = camera_config->GetInteger(
-      constants::kUsbAndroidMaxStreamWidth, std::numeric_limits<int>::max());
-  int max_height = camera_config->GetInteger(
-      constants::kUsbAndroidMaxStreamHeight, std::numeric_limits<int>::max());
+  int max_width =
+      camera_config->GetInteger(constants::kCrosUsbAndroidMaxStreamWidth,
+                                std::numeric_limits<int>::max());
+  int max_height =
+      camera_config->GetInteger(constants::kCrosUsbAndroidMaxStreamHeight,
+                                std::numeric_limits<int>::max());
   camera_metadata_entry entry =
       data.find(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
 

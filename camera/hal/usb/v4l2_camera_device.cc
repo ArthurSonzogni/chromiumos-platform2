@@ -852,7 +852,7 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
 
   std::vector<std::string> filter_out_resolution_strings =
       CameraConfig::Create(constants::kCrosCameraConfigPathString)
-          ->GetStrings(constants::kCrosFilteredOutResolutions,
+          ->GetStrings(constants::kCrosUsbFilteredOutResolutions,
                        std::vector<std::string>());
 
   std::vector<Size> filter_out_resolutions;

@@ -37,26 +37,13 @@ const char kCrosEnableExternalCameraOption[] = "enable_external_camera";
 // ------End configuration for |kCrosCameraTestConfigPathString|-------
 
 // ------Configuration for |kCrosCameraConfigPathString|-------
-const char kUsbMaxStreamWidth[] = "usb_max_stream_width";
-const char kUsbMaxStreamHeight[] = "usb_max_stream_height";
-const char kUsbAndroidMaxStreamWidth[] = "usb_android_max_stream_width";
-const char kUsbAndroidMaxStreamHeight[] = "usb_android_max_stream_height";
-// (Deprecated) Restrict max resolutions for android hal formats.
-// HAL_PIXEL_FORMAT_BLOB
-const char kCrosMaxBlobWidth[] = "max_blob_width";
-const char kCrosMaxBlobHeight[] = "max_blob_height";
-// HAL_PIXEL_FORMAT_YCbCr_420_888
-const char kCrosMaxYuvWidth[] = "max_yuv_width";
-const char kCrosMaxYuvHeight[] = "max_yuv_height";
-// HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
-const char kCrosMaxPrivateWidth[] = "max_private_width";
-const char kCrosMaxPrivateHeight[] = "max_private_height";
-// Restrict max resolutions for native ratio.
-const char kCrosMaxNativeWidth[] = "max_native_width";
-const char kCrosMaxNativeHeight[] = "max_native_height";
+const char kCrosUsbMaxStreamWidth[] = "usb_max_stream_width";
+const char kCrosUsbMaxStreamHeight[] = "usb_max_stream_height";
+const char kCrosUsbAndroidMaxStreamWidth[] = "usb_android_max_stream_width";
+const char kCrosUsbAndroidMaxStreamHeight[] = "usb_android_max_stream_height";
 // Filtered out resolutions. The format is a list string of resolutions. e.g.
 // ["w1xh1", "w2xh2"]
-const char kCrosFilteredOutResolutions[] = "filtered_out_resolutions";
+const char kCrosUsbFilteredOutResolutions[] = "usb_filtered_out_resolutions";
 // The lookback time for zero-shutter lag (ZSL) in nanoseconds.
 const char kCrosZslLookback[] = "zsl_lookback";
 // ------End configuration for |kCrosCameraConfigPathString|-------

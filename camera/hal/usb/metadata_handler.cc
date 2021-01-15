@@ -440,31 +440,10 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraConfigPathString);
-  int max_width = camera_config->GetInteger(constants::kUsbMaxStreamWidth,
+  int max_width = camera_config->GetInteger(constants::kCrosUsbMaxStreamWidth,
                                             std::numeric_limits<int>::max());
-  int max_height = camera_config->GetInteger(constants::kUsbMaxStreamHeight,
+  int max_height = camera_config->GetInteger(constants::kCrosUsbMaxStreamHeight,
                                              std::numeric_limits<int>::max());
-  // TODO(mojahsu) Remove.
-  std::unordered_map<int, int> max_hal_width_by_format;
-  std::unordered_map<int, int> max_hal_height_by_format;
-  max_hal_width_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config->GetInteger(
-      constants::kCrosMaxBlobWidth, std::numeric_limits<int>::max());
-  max_hal_width_by_format[HAL_PIXEL_FORMAT_YCbCr_420_888] =
-      camera_config->GetInteger(constants::kCrosMaxYuvWidth,
-                                std::numeric_limits<int>::max());
-  max_hal_width_by_format[HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED] =
-      camera_config->GetInteger(constants::kCrosMaxPrivateWidth,
-                                std::numeric_limits<int>::max());
-
-  max_hal_height_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config->GetInteger(
-      constants::kCrosMaxBlobHeight, std::numeric_limits<int>::max());
-  max_hal_height_by_format[HAL_PIXEL_FORMAT_YCbCr_420_888] =
-      camera_config->GetInteger(constants::kCrosMaxYuvHeight,
-                                std::numeric_limits<int>::max());
-  max_hal_height_by_format[HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED] =
-      camera_config->GetInteger(constants::kCrosMaxPrivateHeight,
-                                std::numeric_limits<int>::max());
-
   for (const auto& supported_format : supported_formats) {
     int64_t min_frame_duration = std::numeric_limits<int64_t>::max();
     int32_t per_format_max_fps = std::numeric_limits<int32_t>::min();
@@ -490,18 +469,6 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 
     for (const auto& format : hal_formats) {
       if (is_builtin) {
-        if (supported_format.width > max_hal_width_by_format[format]) {
-          LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
-                     << "-width " << supported_format.width << ". max is "
-                     << max_hal_width_by_format[format];
-          continue;
-        }
-        if (supported_format.height > max_hal_height_by_format[format]) {
-          LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
-                     << "-height " << supported_format.height << ". max is "
-                     << max_hal_height_by_format[format];
-          continue;
-        }
         if (format != HAL_PIXEL_FORMAT_BLOB) {
           if (per_format_max_fps < 30) {
             continue;

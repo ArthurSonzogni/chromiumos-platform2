@@ -70,24 +70,17 @@ CameraClient::CameraClient(int id,
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraConfigPathString);
   if (client_type == ClientType::kAndroid) {
-    max_native_width_ = camera_config->GetInteger(
-        constants::kUsbAndroidMaxStreamWidth, std::numeric_limits<int>::max());
-    max_native_height_ = camera_config->GetInteger(
-        constants::kUsbAndroidMaxStreamHeight, std::numeric_limits<int>::max());
+    max_stream_width_ =
+        camera_config->GetInteger(constants::kCrosUsbAndroidMaxStreamWidth,
+                                  std::numeric_limits<int>::max());
+    max_stream_height_ =
+        camera_config->GetInteger(constants::kCrosUsbAndroidMaxStreamHeight,
+                                  std::numeric_limits<int>::max());
   } else {
-    max_native_width_ = camera_config->GetInteger(
-        constants::kUsbMaxStreamWidth, std::numeric_limits<int>::max());
-    max_native_height_ = camera_config->GetInteger(
-        constants::kUsbMaxStreamHeight, std::numeric_limits<int>::max());
-    // TODO(mojahsu): Remove them after config files refactor
-    max_native_width_ =
-        std::min(max_native_width_,
-                 camera_config->GetInteger(constants::kCrosMaxNativeWidth,
-                                           std::numeric_limits<int>::max()));
-    max_native_height_ =
-        std::min(max_native_height_,
-                 camera_config->GetInteger(constants::kCrosMaxNativeHeight,
-                                           std::numeric_limits<int>::max()));
+    max_stream_width_ = camera_config->GetInteger(
+        constants::kCrosUsbMaxStreamWidth, std::numeric_limits<int>::max());
+    max_stream_height_ = camera_config->GetInteger(
+        constants::kCrosUsbMaxStreamHeight, std::numeric_limits<int>::max());
   }
 }
 
@@ -487,14 +480,14 @@ bool CameraClient::ShouldUseNativeSensorRatio(
   VLOGFID(1, id_) << "native aspect ratio:" << target_aspect_ratio << ",("
                   << device_info_.sensor_info_pixel_array_size_width << ", "
                   << device_info_.sensor_info_pixel_array_size_height << ")"
-                  << " Max " << max_native_width_ << "x" << max_native_height_;
+                  << " Max " << max_stream_width_ << "x" << max_stream_height_;
   for (const auto& format : qualified_formats_) {
     float max_fps = GetMaximumFrameRate(format);
     if (max_fps < 29.0) {
       continue;
     }
-    if (format.width > max_native_width_ ||
-        format.height > max_native_height_) {
+    if (format.width > max_stream_width_ ||
+        format.height > max_stream_height_) {
       continue;
     }
     if (format.width < max_stream_resolution.width ||
