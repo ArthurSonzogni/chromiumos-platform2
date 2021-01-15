@@ -59,17 +59,18 @@ GbmBoDisplayBuffer::GbmBoDisplayBuffer(
       height_(height) {
   CHECK(device_) << "gbm_create_device failed";
 
+  base::ScopedFD buffer_fd{};
   {
     int fd;
     CHECK(crtc_.fb());
     int rv = drmPrimeHandleToFD(crtc_.file().GetPlatformFile(),
                                 crtc_.fb()->handle, 0, &fd);
     CHECK_EQ(rv, 0) << "drmPrimeHandleToFD failed";
-    buffer_fd_.reset(fd);
+    buffer_fd.reset(fd);
   }
 
   gbm_import_fd_data fd_data = {
-      buffer_fd_.get(),
+      buffer_fd.get(),
       crtc_.fb()->width,
       crtc_.fb()->height,
       crtc_.fb()->pitch,

@@ -47,7 +47,6 @@ class GbmBoDisplayBuffer : public DisplayBuffer {
   ScopedGbmBoPtr bo_{nullptr};
   uint32_t stride_{0};
   std::unique_ptr<ScopedMapData> map_data_{nullptr};
-  base::ScopedFD buffer_fd_{0};
 };
 
 }  // namespace screenshot
