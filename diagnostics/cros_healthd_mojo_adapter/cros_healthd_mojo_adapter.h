@@ -14,11 +14,13 @@
 
 #include <base/optional.h>
 #include <base/time/time.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "mojo/cros_healthd.mojom.h"
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 #include "mojo/cros_healthd_events.mojom.h"
 #include "mojo/cros_healthd_probe.mojom.h"
+#include "mojo/network_health.mojom.h"
 
 namespace diagnostics {
 
@@ -183,6 +185,11 @@ class CrosHealthdMojoAdapter {
   // Subscribes the client to power events.
   virtual void AddPowerObserver(
       chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) = 0;
+
+  // Subscribes the client to network events.
+  virtual void AddNetworkObserver(
+      mojo::PendingRemote<
+          chromeos::network_health::mojom::NetworkEventsObserver> observer) = 0;
 };
 
 }  // namespace diagnostics

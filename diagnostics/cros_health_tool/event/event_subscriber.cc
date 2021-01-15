@@ -7,15 +7,18 @@
 #include <utility>
 
 #include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
 #include "mojo/cros_healthd_events.mojom.h"
+#include "mojo/network_health.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace network_health_ipc = ::chromeos::network_health::mojom;
 
 }  // namespace
 
@@ -51,6 +54,13 @@ void EventSubscriber::SubscribeToPowerEvents() {
   power_subscriber_ =
       std::make_unique<PowerSubscriber>(std::move(observer_request));
   mojo_adapter_->AddPowerObserver(std::move(observer_ptr));
+}
+
+void EventSubscriber::SubscribeToNetworkEvents() {
+  mojo::PendingRemote<network_health_ipc::NetworkEventsObserver> remote;
+  network_subscriber_ = std::make_unique<NetworkSubscriber>(
+      remote.InitWithNewPipeAndPassReceiver());
+  mojo_adapter_->AddNetworkObserver(std::move(remote));
 }
 
 }  // namespace diagnostics

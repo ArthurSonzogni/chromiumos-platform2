@@ -188,6 +188,12 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
       chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer)
       override;
 
+  // Subscribes the client to network events.
+  void AddNetworkObserver(
+      mojo::PendingRemote<
+          chromeos::network_health::mojom::NetworkEventsObserver> observer)
+      override;
+
  private:
   // Establishes a mojo connection with cros_healthd.
   void Connect();
@@ -828,6 +834,15 @@ void CrosHealthdMojoAdapterImpl::AddPowerObserver(
     Connect();
 
   cros_healthd_event_service_->AddPowerObserver(std::move(observer));
+}
+
+void CrosHealthdMojoAdapterImpl::AddNetworkObserver(
+    mojo::PendingRemote<chromeos::network_health::mojom::NetworkEventsObserver>
+        observer) {
+  if (!cros_healthd_service_factory_.is_bound())
+    Connect();
+
+  cros_healthd_event_service_->AddNetworkObserver(std::move(observer));
 }
 
 void CrosHealthdMojoAdapterImpl::Connect() {
