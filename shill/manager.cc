@@ -330,7 +330,7 @@ void Manager::SetAllowedDevices(const vector<string>& allowed_devices) {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
-  ComputeUserTrafficUids();
+  user_traffic_uids_ = ComputeUserTrafficUids();
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   supplicant_manager_->Start();
@@ -2803,14 +2803,18 @@ void Manager::UpdateBlackholeUserTraffic() {
   }
 }
 
-void Manager::ComputeUserTrafficUids() {
+// static
+std::vector<uint32_t> Manager::ComputeUserTrafficUids() {
+  std::vector<uint32_t> uids;
   for (const auto& username : kUserTrafficUsernames) {
     uid_t uid;
-    if (!brillo::userdb::GetUserInfo(username, &uid, nullptr))
-      LOG(WARNING) << "Unable to look up UID for " << username << ", skipping";
-    else
-      user_traffic_uids_.push_back(static_cast<uint32_t>(uid));
+    if (!brillo::userdb::GetUserInfo(username, &uid, nullptr)) {
+      LOG(WARNING) << "Unable to look up UID for " << username;
+      continue;
+    }
+    uids.push_back(static_cast<uint32_t>(uid));
   }
+  return uids;
 }
 
 void Manager::InitializePatchpanelClient() {

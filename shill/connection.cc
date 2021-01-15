@@ -17,6 +17,7 @@
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
@@ -57,6 +58,8 @@ const uint32_t Connection::kDefaultPriority = 10;
 // rules and sent out of the wrong interface, but the routes added to
 // |table_id| will not be ignored.
 const uint32_t Connection::kDstRulePriority =
+    RoutingTable::kRulePriorityMain - 3;
+const uint32_t Connection::kVpnUidRulePriority =
     RoutingTable::kRulePriorityMain - 2;
 const uint32_t Connection::kCatchallPriority =
     RoutingTable::kRulePriorityMain - 1;
@@ -326,6 +329,22 @@ void Connection::UpdateRoutingPolicy() {
   }
 
   AllowTrafficThrough(table_id_, priority_ + blackhole_offset);
+
+  // b/177620923 Add uid rules just before the default rule to route to the VPN
+  // interface any untagged traffic owner by a uid routed through VPN
+  // connections. These rules are necessary for consistency between source IP
+  // address selection algorithm that ignores iptables fwmark tagging rules, and
+  // the actual routing of packets that have been tagged in iptables PREROUTING.
+  if (technology_ == Technology::kVPN) {
+    for (const auto& uid : Manager::ComputeUserTrafficUids()) {
+      auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                       .SetPriority(kVpnUidRulePriority)
+                       .SetTable(table_id_)
+                       .SetUid(uid);
+      routing_table_->AddRule(interface_index_, entry);
+      routing_table_->AddRule(interface_index_, entry.FlipFamily());
+    }
+  }
 
   if (use_if_addrs_ && is_primary_physical_) {
     // Main routing table contains kernel-added routes for source address

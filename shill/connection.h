@@ -37,6 +37,9 @@ class Connection : public base::RefCounted<Connection> {
   static const uint32_t kDefaultPriority;
   // Priority for rules corresponding to IPConfig::Properties::routes.
   static const uint32_t kDstRulePriority;
+  // Priority for VPN rules routing traffic or specific uids with the routing
+  // table of a VPN connection.
+  static const uint32_t kVpnUidRulePriority;
   // Priority for the rule sending any remaining traffic to the default physical
   // interface.
   static const uint32_t kCatchallPriority;

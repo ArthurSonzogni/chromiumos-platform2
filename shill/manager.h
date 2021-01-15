@@ -533,6 +533,10 @@ class Manager {
 #endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
   patchpanel::Client* patchpanel_client() { return patchpanel_client_.get(); }
 
+  // Returns a vector of all uids whose traffic is routed through VPN
+  // connections.
+  static std::vector<uint32_t> ComputeUserTrafficUids();
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -742,8 +746,6 @@ class Manager {
   std::string GetAlwaysOnVpnPackage(Error* error);
 
   void UpdateBlackholeUserTraffic();
-
-  void ComputeUserTrafficUids();
 
   // Initializes patchpanel_client_ if it has not already been initialized.
   void InitializePatchpanelClient();
