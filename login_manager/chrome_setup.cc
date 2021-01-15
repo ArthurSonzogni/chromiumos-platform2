@@ -58,6 +58,7 @@ const char kSideVolumeButtonSide[] = "side";
 const char kHardwarePropertiesPath[] = "/hardware-properties";
 const char kStylusCategoryField[] = "stylus-category";
 const char kDisplayCategoryField[] = "display-type";
+const char kFormFactorField[] = "form-factor";
 
 constexpr char kFingerprintPath[] = "/fingerprint";
 constexpr char kFingerprintSensorLocationField[] = "sensor-location";
@@ -541,6 +542,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   }
 
   SetUpAutoDimFlag(builder, cros_config);
+  SetUpFormFactorFlag(builder, cros_config);
 
   SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
 
@@ -715,6 +717,16 @@ void SetUpAutoDimFlag(ChromiumCommandBuilder* builder,
                              &display_type) &&
       display_type == "old") {
     builder->AddArg("--enable-dim-shelf");
+  }
+}
+
+void SetUpFormFactorFlag(ChromiumCommandBuilder* builder,
+                         brillo::CrosConfigInterface* cros_config) {
+  std::string form_factor;
+  if (cros_config && cros_config->GetString(kHardwarePropertiesPath,
+                                            kFormFactorField, &form_factor)) {
+    builder->AddArg(
+        base::StringPrintf("--form-factor=%s", form_factor.c_str()));
   }
 }
 

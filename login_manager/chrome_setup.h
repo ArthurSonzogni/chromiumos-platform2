@@ -47,6 +47,9 @@ extern const char kPowerButtonPositionField[];
 // Property name of the display setting in CrosConfig.
 extern const char kDisplayCategoryField[];
 
+// Property name of the form factor string in CrosConfig.
+extern const char kFormFactorField[];
+
 // Path to hardware properties in CrosConfig.
 extern const char kHardwarePropertiesPath[];
 
@@ -151,6 +154,10 @@ void SetUpFingerprintSensorLocationFlag(
 // auto-dimming should be enabled.
 void SetUpAutoDimFlag(chromeos::ui::ChromiumCommandBuilder* builder,
                       brillo::CrosConfigInterface* cros_config);
+
+// Add "--form-factor" flag with value read from |cros_config|.
+void SetUpFormFactorFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                         brillo::CrosConfigInterface* cros_config);
 
 // Add "--ozone-nnpalm-properties" flag with value read from |cros_config|.
 void SetUpOzoneNNPalmPropertiesFlag(
