@@ -252,8 +252,24 @@ bool IioDeviceImpl::IsBufferEnabled(size_t* count) const {
   return enabled;
 }
 
+bool IioDeviceImpl::CreateBuffer() {
+  if (buffer_)
+    return false;
+
+  buffer_.reset(iio_device_create_buffer(device_, kNumSamples, false));
+
+  if (!buffer_) {
+    char errMsg[kErrorBufferSize];
+    iio_strerror(errno, errMsg, sizeof(errMsg));
+    LOG(ERROR) << log_prefix_ << "Unable to allocate buffer: " << errMsg;
+    return false;
+  }
+
+  return true;
+}
+
 base::Optional<int32_t> IioDeviceImpl::GetBufferFd() {
-  if (!CreateBuffer())
+  if (!buffer_)
     return base::nullopt;
 
   int32_t fd = iio_buffer_get_poll_fd(buffer_.get());
@@ -266,7 +282,7 @@ base::Optional<int32_t> IioDeviceImpl::GetBufferFd() {
 }
 
 base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
-  if (!CreateBuffer())
+  if (!buffer_)
     return base::nullopt;
 
   ssize_t ret = iio_buffer_refill(buffer_.get());
@@ -274,7 +290,6 @@ base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
     char errMsg[kErrorBufferSize];
     iio_strerror(-ret, errMsg, sizeof(errMsg));
     LOG(ERROR) << log_prefix_ << "Unable to refill buffer: " << errMsg;
-    buffer_.reset();
 
     return base::nullopt;
   }
@@ -287,7 +302,6 @@ base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
     LOG(ERROR) << log_prefix_
                << "sample_size doesn't match in refill: " << buf_step
                << ", sample_size: " << sample_size;
-    buffer_.reset();
 
     return base::nullopt;
   }
@@ -297,28 +311,14 @@ base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
   return DeserializeSample(start);
 }
 
+void IioDeviceImpl::FreeBuffer() {
+  buffer_.reset();
+}
+
 // static
 void IioDeviceImpl::IioBufferDeleter(iio_buffer* buffer) {
   iio_buffer_cancel(buffer);
   iio_buffer_destroy(buffer);
-}
-
-bool IioDeviceImpl::CreateBuffer() {
-  if (buffer_ &&
-      iio_device_get_sample_size(device_) == iio_buffer_step(buffer_.get()))
-    return true;
-
-  buffer_.reset();
-  buffer_.reset(iio_device_create_buffer(device_, kNumSamples, false));
-
-  if (!buffer_) {
-    char errMsg[kErrorBufferSize];
-    iio_strerror(errno, errMsg, sizeof(errMsg));
-    LOG(ERROR) << log_prefix_ << "Unable to allocate buffer: " << errMsg;
-    return false;
-  }
-
-  return true;
 }
 
 IioDevice::IioSample IioDeviceImpl::DeserializeSample(const uint8_t* src) {

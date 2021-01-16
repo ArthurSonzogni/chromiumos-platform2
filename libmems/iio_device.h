@@ -133,19 +133,32 @@ class LIBMEMS_EXPORT IioDevice {
   // If it is enabled, it sets |num| to the number of samples.
   virtual bool IsBufferEnabled(size_t* num = nullptr) const = 0;
 
-  // Creates the IIO buffer if it doesn't exist, and gets the file descriptor to
-  // poll for events. Returns base::nullopt on failure.
+  // Creates the IIO buffer if it doesn't exist.
+  // Returns false if the IIO buffer is already created.
+  // Returns false on buffer not created.
+  // The buffer's lifetime is managed by the client, which will be disabled when
+  // FreeBuffer is called or the IioDevice along with the IioContext gets
+  // destroyed. It should not be used along with EnableBuffer.
+  virtual bool CreateBuffer() = 0;
+
+  // Gets the file descriptor to poll for samples if the IIO buffer is created
+  // by CreateBuffer.
+  // Returns base::nullopt on failure.
   // The buffer's lifetime is managed by the IioDevice, which will be disabled
   // when the IioDevice along with the IioContext gets destroyed. It should not
   // be used along with EnableBuffer.
   virtual base::Optional<int32_t> GetBufferFd() = 0;
 
-  // Creates the IIO buffer if it doesn't exist, and reads & returns one sample.
+  // Reads & returns one sample if the IIO buffer is created by CreateBuffer.
   // Returns base::nullopt on failure.
   // The buffer's lifetime is managed by the IioDevice, which will be disabled
   // when the IioDevice along with the IioContext gets destroyed. It should not
   // be used along with EnableBuffer.
   virtual base::Optional<IioSample> ReadSample() = 0;
+
+  // Frees the IIO buffer created by CreateBuffer if it exists. It should not be
+  // used along with EnableBuffer.
+  virtual void FreeBuffer() = 0;
 
   bool GetMinMaxFrequency(double* min_freq, double* max_freq);
 

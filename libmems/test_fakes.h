@@ -217,8 +217,10 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
     return base::nullopt;
   }
 
+  bool CreateBuffer() override;
   base::Optional<int32_t> GetBufferFd() override;
   base::Optional<IioSample> ReadSample() override;
+  void FreeBuffer() override;
 
   // Simulates a bad device: not readable fd and fails all reads.
   void DisableFd();
@@ -242,7 +244,6 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
     FakeIioChannel* chn = nullptr;
   };
 
-  bool CreateBuffer();
   bool WriteByte();
   bool ReadByte();
   void ClosePipe();

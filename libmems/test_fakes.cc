@@ -144,17 +144,34 @@ bool FakeIioDevice::IsBufferEnabled(size_t* n) const {
   return buffer_enabled_;
 }
 
-base::Optional<int32_t> FakeIioDevice::GetBufferFd() {
-  if (disabled_fd_)
-    return base::nullopt;
+bool FakeIioDevice::CreateBuffer() {
+  if (disabled_fd_ || sample_fd_.is_valid())
+    return false;
 
-  if (!CreateBuffer())
+  int fd = eventfd(0, 0);
+  CHECK_GE(fd, 0);
+  sample_fd_.reset(fd);
+
+  if (sample_index_ >= base::size(kFakeAccelSamples) || is_paused_)
+    return true;
+
+  if (!WriteByte()) {
+    ClosePipe();
+    return false;
+  }
+
+  return true;
+}
+
+base::Optional<int32_t> FakeIioDevice::GetBufferFd() {
+  if (disabled_fd_ || !sample_fd_.is_valid())
     return base::nullopt;
 
   return sample_fd_.get();
 }
+
 base::Optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
-  if (is_paused_ || disabled_fd_)
+  if (is_paused_ || disabled_fd_ || !sample_fd_.is_valid())
     return base::nullopt;
 
   if (!failed_read_queue_.empty()) {
@@ -164,9 +181,6 @@ base::Optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
       return base::nullopt;
     }
   }
-
-  if (!CreateBuffer())
-    return base::nullopt;
 
   if (!ReadByte())
     return base::nullopt;
@@ -207,6 +221,10 @@ base::Optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
   return sample;
 }
 
+void FakeIioDevice::FreeBuffer() {
+  ClosePipe();
+}
+
 void FakeIioDevice::DisableFd() {
   disabled_fd_ = true;
   if (readable_fd_)
@@ -240,27 +258,6 @@ void FakeIioDevice::ResumeReadingSamples() {
   is_paused_ = false;
   if (sample_fd_.is_valid() && !readable_fd_)
     CHECK(WriteByte());
-}
-
-bool FakeIioDevice::CreateBuffer() {
-  CHECK(!disabled_fd_);
-
-  if (sample_fd_.is_valid())
-    return true;
-
-  int fd = eventfd(0, 0);
-  CHECK_GE(fd, 0);
-  sample_fd_.reset(fd);
-
-  if (sample_index_ >= base::size(kFakeAccelSamples) || is_paused_)
-    return true;
-
-  if (!WriteByte()) {
-    ClosePipe();
-    return false;
-  }
-
-  return true;
 }
 
 bool FakeIioDevice::WriteByte() {
