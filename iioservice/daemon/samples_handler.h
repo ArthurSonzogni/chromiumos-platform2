@@ -5,6 +5,7 @@
 #ifndef IIOSERVICE_DAEMON_SAMPLES_HANDLER_H_
 #define IIOSERVICE_DAEMON_SAMPLES_HANDLER_H_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -81,6 +82,9 @@ class SamplesHandler {
 
   static const uint32_t kNumReadFailedLogsBeforeGivingUp = 100;
   static const uint32_t kNumReadFailedLogsRecovery = 10000;
+
+  static void WatcherDeleter(base::FileDescriptorWatcher::Controller* watcher,
+                             libmems::IioDevice* iio_device);
 
   // use fifo
   SamplesHandler(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
@@ -164,7 +168,9 @@ class SamplesHandler {
 
   std::set<int32_t> no_batch_chn_indices;
 
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller,
+                  std::function<void(base::FileDescriptorWatcher::Controller*)>>
+      watcher_;
 
  private:
   base::WeakPtrFactory<SamplesHandler> weak_factory_{this};

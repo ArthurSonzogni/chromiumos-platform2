@@ -144,6 +144,13 @@ void SamplesHandler::GetChannelsEnabled(
                      std::move(iio_chn_indices), std::move(callback)));
 }
 
+// static
+void SamplesHandler::WatcherDeleter(
+    base::FileDescriptorWatcher::Controller* watcher,
+    libmems::IioDevice* iio_device) {
+  iio_device->FreeBuffer();
+}
+
 SamplesHandler::SamplesHandler(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
@@ -158,7 +165,9 @@ SamplesHandler::SamplesHandler(
       dev_min_frequency_(min_freq),
       dev_max_frequency_(max_freq),
       on_sample_updated_callback_(std::move(on_sample_updated_callback)),
-      on_error_occurred_callback_(std::move(on_error_occurred_callback)) {
+      on_error_occurred_callback_(std::move(on_error_occurred_callback)),
+      watcher_(nullptr,
+               std::bind(WatcherDeleter, std::placeholders::_1, iio_device_)) {
   DCHECK_GE(dev_max_frequency_, dev_min_frequency_);
 
   auto channels = iio_device_->GetAllChannels();
@@ -174,11 +183,24 @@ SamplesHandler::SamplesHandler(
 
 void SamplesHandler::SetSampleWatcherOnThread() {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
+  DCHECK(!watcher_.get());
 
   // Flush the old samples in EC FIFO.
   if (!iio_device_->GetTrigger() &&
       !iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n")) {
     LOGF(ERROR) << "Failed to flush the old samples in EC FIFO";
+  }
+
+  if (!iio_device_->CreateBuffer()) {
+    LOGF(ERROR) << "Failed to create buffer";
+    for (auto client : clients_map_) {
+      ipc_task_runner_->PostTask(
+          FROM_HERE,
+          base::BindOnce(on_error_occurred_callback_, client.first->id,
+                         cros::mojom::ObserverErrorType::GET_FD_FAILED));
+    }
+
+    return;
   }
 
   auto fd = iio_device_->GetBufferFd();
@@ -194,10 +216,12 @@ void SamplesHandler::SetSampleWatcherOnThread() {
     return;
   }
 
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      fd.value(),
-      base::BindRepeating(&SamplesHandler::OnSampleAvailableWithoutBlocking,
-                          weak_factory_.GetWeakPtr()));
+  watcher_.reset(
+      base::FileDescriptorWatcher::WatchReadable(
+          fd.value(),
+          base::BindRepeating(&SamplesHandler::OnSampleAvailableWithoutBlocking,
+                              weak_factory_.GetWeakPtr()))
+          .release());
 }
 
 void SamplesHandler::StopSampleWatcherOnThread() {
