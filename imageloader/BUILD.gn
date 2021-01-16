@@ -59,10 +59,7 @@ generate_dbus_adaptors("imageloader-adaptors") {
 
 shared_library("libimageloader-manifest") {
   configs += [ ":target_defaults" ]
-  sources = [
-    "manifest.cc",
-    "manifest.h",
-  ]
+  sources = [ "manifest.cc" ]
 }
 
 static_library("libimageloader_static") {
@@ -74,20 +71,13 @@ static_library("libimageloader_static") {
   ]
   sources = [
     "component.cc",
-    "component.h",
     "dlc.cc",
-    "dlc.h",
     "helper_process_proxy.cc",
-    "helper_process_proxy.h",
     "helper_process_receiver.cc",
-    "helper_process_receiver.h",
     "imageloader.cc",
-    "imageloader.h",
     "imageloader_impl.cc",
     "verity_mounter.cc",
-    "verity_mounter.h",
     "verity_mounter_impl.cc",
-    "verity_mounter_impl.h",
   ]
 }
 
@@ -104,10 +94,7 @@ executable("imageloader") {
     ":imageloader-adaptors",
     ":libimageloader_static",
   ]
-  sources = [
-    "imageloader.h",
-    "imageloader_main.cc",
-  ]
+  sources = [ "imageloader_main.cc" ]
 }
 
 if (use.test) {
@@ -129,16 +116,12 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
     ]
     sources = [
-      "component.h",
       "component_test.cc",
       "dlc_test.cc",
       "imageloader.cc",
-      "imageloader.h",
       "imageloader_test.cc",
       "manifest_test.cc",
-      "mock_helper_process_proxy.h",
       "test_utilities.cc",
-      "test_utilities.h",
       "verity_mounter_test.cc",
     ]
   }
