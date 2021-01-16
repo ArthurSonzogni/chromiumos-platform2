@@ -5,23 +5,35 @@
 #ifndef MINIOS_MINIOS_H_
 #define MINIOS_MINIOS_H_
 
+#include "minios/minios_interface.h"
 #include "minios/screens.h"
+
+namespace minios {
 
 extern const char kDebugConsole[];
 extern const char kLogFile[];
 
-class MiniOs {
+class MiniOs : public MiniOsInterface {
  public:
   MiniOs() = default;
   ~MiniOs() = default;
 
   // Runs the miniOS flow.
-  int Run();
+  virtual int Run();
+
+  // MiniOsInterface overrides.
+  bool GetState(State* state_out, brillo::ErrorPtr* error) override;
 
  private:
   MiniOs(const MiniOs&) = delete;
   MiniOs& operator=(const MiniOs&) = delete;
+
+  // The current state of MiniOs.
+  State state_;
+
   screens::Screens screens_;
 };
+
+}  // namespace minios
 
 #endif  // MINIOS_MINIOS_H__

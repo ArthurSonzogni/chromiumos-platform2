@@ -9,6 +9,7 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "minios/dbus_adaptors/dbus_adaptor.h"
 #include "minios/minios.h"
 
 namespace minios {
@@ -19,14 +20,21 @@ class Daemon : public brillo::DBusServiceDaemon {
   Daemon();
   ~Daemon() override = default;
 
+  void Start();
+
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
  private:
   // |brillo::Daemon| overrides:
-  int OnInit() override;
+  int OnEventLoopStarted() override;
+  // |brillo::DBusServiceDaemon| overrides:
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  MiniOs minios_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<DBusAdaptor> dbus_adaptor_;
+  std::shared_ptr<MiniOs> mini_os_;
 };
 
 }  // namespace minios

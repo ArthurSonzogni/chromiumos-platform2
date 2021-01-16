@@ -36,8 +36,8 @@ bool InitClock() {
   constexpr char kDayAfterUnixEpoch[] = "010200001970.00";
   return ProcessManager().RunCommand({"/bin/date", kDayAfterUnixEpoch},
                                      ProcessManager::IORedirection{
-                                         .input = kDebugConsole,
-                                         .output = kDebugConsole,
+                                         .input = minios::kDebugConsole,
+                                         .output = minios::kDebugConsole,
                                      }) != 0;
 }
 
@@ -84,6 +84,7 @@ bool InitMounts() {
   }
   return true;
 }
+
 }  // namespace
 
 // This init runs steps required for upstart to start successfully.
@@ -99,6 +100,6 @@ int main() {
   return ProcessManager().RunCommand({"/init.sh"},
                                      ProcessManager::IORedirection{
                                          .input = "/dev/null",
-                                         .output = kLogFile,
+                                         .output = minios::kLogFile,
                                      });
 }

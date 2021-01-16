@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2021 The Chromium Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/MiniOs"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+<interface name="org.chromium.MiniOsInterface">
+  <method name="GetState">
+    <tp:docstring>
+      Get the current state of MiniOs.
+    </tp:docstring>
+    <arg name="state" type="ay" direction="out">
+      <tp:docstring>
+        A serialized protobuf (State,
+        platform2/system_api/dbus/minios/minios.proto) indicating
+        the state of MiniOs.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="minios::State"/>
+    </arg>
+  </method>
+</interface>
+</node>

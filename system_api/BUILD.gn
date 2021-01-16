@@ -27,6 +27,7 @@ group("all") {
     ":system_api-lorgnette-protos",
     ":system_api-metrics_event-goprotos",
     ":system_api-metrics_event-protos",
+    ":system_api-minios-protos",
     ":system_api-oobe_config-protos",
     ":system_api-patchpanel-goprotos",
     ":system_api-patchpanel-protos",
@@ -451,5 +452,12 @@ proto_library("system_api-vm_permission_service-protos") {
   proto_in_dir = "dbus/vm_permission_service"
   proto_out_dir = "include/vm_permission_service/proto_bindings"
   sources = [ "${proto_in_dir}/vm_permission_service.proto" ]
+  standalone = true
+}
+
+proto_library("system_api-minios-protos") {
+  proto_in_dir = "dbus/minios"
+  proto_out_dir = "include/minios/proto_bindings"
+  sources = [ "${proto_in_dir}/minios.proto" ]
   standalone = true
 }

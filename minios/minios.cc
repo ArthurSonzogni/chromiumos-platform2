@@ -7,17 +7,13 @@
 #include "minios/minios.h"
 #include "minios/process_manager.h"
 
+namespace minios {
+
 const char kDebugConsole[] = "/dev/pts/2";
 const char kLogFile[] = "/log/recovery.log";
 
 int MiniOs::Run() {
   LOG(INFO) << "Starting miniOS.";
-  if (!screens_.Init()) {
-    LOG(ERROR) << "Screens init failed. Exiting.";
-    return 1;
-  }
-  screens_.MiniOsWelcomeOnSelect();
-
   // TODO(b/177025106): Cleanup or be able to toggle for production.
   // Start the background shell on DEBUG console.
   pid_t shell_pid;
@@ -32,5 +28,18 @@ int MiniOs::Run() {
   }
   LOG(INFO) << "Started shell in the background as pid: " << shell_pid;
 
+  if (!screens_.Init()) {
+    LOG(ERROR) << "Screens init failed. Exiting.";
+    return 1;
+  }
+  screens_.MiniOsWelcomeOnSelect();
+
   return 0;
 }
+
+bool MiniOs::GetState(State* state_out, brillo::ErrorPtr* error) {
+  state_out->CopyFrom(state_);
+  return true;
+}
+
+}  // namespace minios

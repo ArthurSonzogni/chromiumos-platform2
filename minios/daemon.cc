@@ -4,6 +4,7 @@
 
 #include "minios/daemon.h"
 
+#include <brillo/message_loops/message_loop.h>
 #include <dbus/minios/dbus-constants.h>
 #include <sysexits.h>
 
@@ -11,17 +12,32 @@ namespace minios {
 
 Daemon::Daemon() : DBusServiceDaemon(kMiniOsServiceName) {}
 
-int Daemon::OnInit() {
-  int return_code = brillo::DBusServiceDaemon::OnInit();
+void Daemon::Start() {
+  mini_os_->Run();
+}
+
+int Daemon::OnEventLoopStarted() {
+  int return_code = brillo::DBusServiceDaemon::OnEventLoopStarted();
   if (return_code != EX_OK)
     return return_code;
 
-  if (minios_.Run()) {
-    LOG(ERROR) << "MiniOS failed to start.";
-    return EX_SOFTWARE;
-  }
-
+  brillo::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(&Daemon::Start, base::Unretained(this)));
   return EX_OK;
+}
+
+void Daemon::RegisterDBusObjectsAsync(
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
+      nullptr, bus_, org::chromium::MiniOsInterfaceAdaptor::GetObjectPath());
+
+  mini_os_ = std::make_shared<MiniOs>();
+  dbus_adaptor_ =
+      std::make_unique<DBusAdaptor>(std::make_unique<DBusService>(mini_os_));
+
+  dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
+  dbus_object_->RegisterAsync(
+      sequencer->GetHandler("RegisterAsync() failed.", true));
 }
 
 }  // namespace minios

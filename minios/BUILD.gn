@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
     ":minios",
+    ":minios_adaptors",
     ":minios_init",
   ]
   if (use.test) {
@@ -14,10 +16,17 @@ group("all") {
   }
 }
 
+generate_dbus_adaptors("minios_adaptors") {
+  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/minios/dbus_adaptors"
+  sources = [ "dbus_adaptors/org.chromium.MiniOsInterface.xml" ]
+}
+
 pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "protobuf-lite",
     "system_api",
     "xkbcommon",
   ]
@@ -27,11 +36,13 @@ static_library("libminios") {
   configs += [ ":target_defaults" ]
   sources = [
     "daemon.cc",
+    "dbus_adaptors/dbus_adaptor.cc",
     "key_reader.cc",
     "minios.cc",
     "process_manager.cc",
     "screens.cc",
   ]
+  deps = [ ":minios_adaptors" ]
 }
 
 executable("minios") {
@@ -61,6 +72,7 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
     ]
     sources = [
+      "dbus_adaptors/dbus_adaptor_test.cc",
       "key_reader_test.cc",
       "screens_test.cc",
     ]
