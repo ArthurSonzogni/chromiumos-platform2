@@ -71,6 +71,9 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  // Make sure the child process does not become a zombie.
+  signal(SIGCHLD, SIG_IGN);
+
   pid_t pid = 0;
   while (1) {
     VLOGF(1) << "Waiting for incoming connection for "
