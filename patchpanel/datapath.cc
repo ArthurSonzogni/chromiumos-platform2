@@ -49,6 +49,7 @@ constexpr std::array<const char*, 6> kPhysicalIfnamePrefixes{
 
 constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
+constexpr char kCheckRoutingMarkChain[] = "check_routing_mark";
 
 // Constant fwmark mask for matching local socket traffic that should be routed
 // through a VPN connection. The traffic must not be part of an existing
@@ -153,6 +154,13 @@ void Datapath::Start() {
   if (!ModifyConnmarkRestore(IpFamily::Dual, "OUTPUT", "-A", "" /*iif*/,
                              kFwmarkRoutingMask))
     LOG(ERROR) << "Failed to add OUTPUT CONNMARK restore rule";
+  // b/177787823 Also restore the routing tag after routing has taken place so
+  // that packets pre-tagged with the VPN routing tag are in sync with their
+  // associated CONNMARK routing tag. This is necessary to correctly identify
+  // packets exiting through the wrong interface.
+  if (!ModifyConnmarkRestore(IpFamily::Dual, "POSTROUTING", "-A", "" /*iif*/,
+                             kFwmarkRoutingMask))
+    LOG(ERROR) << "Failed to add POSTROUTING CONNMARK restore rule";
 
   // Set up a mangle chain used in OUTPUT for applying the fwmark TrafficSource
   // tag and tagging the local traffic that should be routed through a VPN.
@@ -198,6 +206,25 @@ void Datapath::Start() {
            "0x0/" + kFwmarkRoutingMask.ToString(), "-j", "ACCEPT", "-w"}))
     LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
                   "connections";
+
+  // Sets up a mangle chain used in POSTROUTING for checking consistency between
+  // the routing tag and the output interface.
+  if (!ModifyChain(IpFamily::Dual, "mangle", "-N", kCheckRoutingMarkChain))
+    LOG(ERROR) << "Failed to set up " << kCheckRoutingMarkChain
+               << " mangle chain";
+  // Ensure that the chain is empty if patchpanel is restarting after a crash.
+  if (!ModifyChain(IpFamily::Dual, "mangle", "-F", kCheckRoutingMarkChain))
+    LOG(ERROR) << "Failed to flush " << kCheckRoutingMarkChain
+               << " mangle chain";
+
+  // b/177787823 If it already exists, the routing tag of any traffic exiting an
+  // interface (physical or VPN) must match the routing tag of that interface.
+  if (!ModifyIptables(IpFamily::Dual, "mangle",
+                      {"-A", "POSTROUTING", "-m", "mark", "!", "--mark",
+                       "0x0/" + kFwmarkRoutingMask.ToString(), "-j",
+                       kCheckRoutingMarkChain, "-w"}))
+    LOG(ERROR) << "Failed to add POSTROUTING jump rule to "
+               << kCheckRoutingMarkChain;
 }
 
 void Datapath::Stop() {
@@ -240,9 +267,22 @@ void Datapath::Stop() {
   if (!ModifyConnmarkRestore(IpFamily::Dual, "OUTPUT", "-D", "" /*iif*/,
                              kFwmarkRoutingMask))
     LOG(ERROR) << "Failed to remove OUTPUT CONNMARK restore rule";
+  if (!ModifyConnmarkRestore(IpFamily::Dual, "POSTROUTING", "-D", "",
+                             kFwmarkRoutingMask))
+    LOG(ERROR) << "Failed to remove POSTROUTING CONNMARK restore rule";
+
+  // Delete the POSTROUTING jump rule to check_routing_mark chain holding
+  // routing tag filter rules.
+  if (!ModifyIptables(IpFamily::Dual, "mangle",
+                      {"-D", "POSTROUTING", "-m", "mark", "!", "--mark",
+                       "0x0/" + kFwmarkRoutingMask.ToString(), "-j",
+                       kCheckRoutingMarkChain, "-w"}))
+    LOG(ERROR) << "Failed to remove POSTROUTING jump rule to "
+               << kCheckRoutingMarkChain;
 
   // Delete the mangle chains
-  for (const auto* chain : {kApplyLocalSourceMarkChain, kApplyVpnMarkChain}) {
+  for (const auto* chain : {kApplyLocalSourceMarkChain, kApplyVpnMarkChain,
+                            kCheckRoutingMarkChain}) {
     if (!ModifyChain(IpFamily::Dual, "mangle", "-F", chain))
       LOG(ERROR) << "Failed to flush " << chain << " mangle chain";
 
@@ -819,6 +859,15 @@ void Datapath::RemoveIPv6Address(const std::string& ifname,
 }
 
 void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
+  int ifindex = FindIfIndex(ext_ifname);
+  if (ifindex != 0 && !ModifyIptables(IpFamily::Dual, "mangle",
+                                      {"-A", kCheckRoutingMarkChain, "-o",
+                                       ext_ifname, "-m", "mark", "!", "--mark",
+                                       Fwmark::FromIfIndex(ifindex).ToString() +
+                                           "/" + kFwmarkRoutingMask.ToString(),
+                                       "-j", "DROP", "-w"}))
+    LOG(ERROR) << "Could not set fwmark routing filter rule for " << ext_ifname;
+
   // Set in CONNMARK the routing tag associated with |ext_ifname|.
   if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-A", ext_ifname))
     LOG(ERROR) << "Could not start connection pinning on " << ext_ifname;
@@ -838,6 +887,16 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
 }
 
 void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
+  int ifindex = FindIfIndex(ext_ifname);
+  if (ifindex != 0 && !ModifyIptables(IpFamily::Dual, "mangle",
+                                      {"-D", kCheckRoutingMarkChain, "-o",
+                                       ext_ifname, "-m", "mark", "!", "--mark",
+                                       Fwmark::FromIfIndex(ifindex).ToString() +
+                                           "/" + kFwmarkRoutingMask.ToString(),
+                                       "-j", "DROP", "-w"}))
+    LOG(ERROR) << "Could not remove fwmark routing filter rule for "
+               << ext_ifname;
+
   if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-D", ext_ifname))
     LOG(ERROR) << "Could not stop connection pinning on " << ext_ifname;
   if (!ModifyConnmarkSave(IpFamily::Dual, "POSTROUTING", "-D", ext_ifname,
@@ -919,11 +978,6 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
                                      const std::string& op,
                                      const std::string& iif,
                                      Fwmark mask) {
-  if (chain != "OUTPUT" && (chain != "PREROUTING" || iif.empty())) {
-    LOG(ERROR) << "Invalid arguments chain=" << chain << " iif=" << iif;
-    return false;
-  }
-
   std::vector<std::string> args = {op, chain};
   if (!iif.empty()) {
     args.push_back("-i");
