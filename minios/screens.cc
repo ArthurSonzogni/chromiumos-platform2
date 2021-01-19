@@ -158,24 +158,29 @@ bool Screens::ShowMessage(const std::string& message_token,
   return ShowImage(message_file_path, offset_x, offset_y);
 }
 
-void Screens::Instructions(const std::string& message_token) {
+void Screens::ShowInstructions(const std::string& message_token) {
   constexpr int kXOffset = (-kCanvasSize / 2) + (kDefaultMessageWidth / 2);
   constexpr int kYOffset = (-kCanvasSize / 2) + 283;
   if (!ShowMessage(message_token, kXOffset, kYOffset))
     LOG(WARNING) << "Unable to show " << message_token;
 }
 
-void Screens::InstructionsWithTitle(const std::string& message_token) {
+void Screens::ShowInstructionsWithTitle(const std::string& message_token) {
   constexpr int kXOffset = (-kCanvasSize / 2) + (kDefaultMessageWidth / 2);
 
-  int title_height = GetDimension("TITLE_" + message_token + "_HEIGHT");
-  int desc_height = GetDimension("DESC_" + message_token + "_HEIGHT");
-  if (title_height == -1 || desc_height == -1) {
+  int title_height;
+  if (!GetDimension("TITLE_" + message_token + "_HEIGHT", &title_height)) {
     title_height = 40;
-    desc_height = 40;
-    LOG(WARNING) << "Unable to get constants for  " << message_token
-                 << ". Defaulting to 40.";
+    LOG(WARNING) << "Unable to get title constant for  " << message_token
+                 << ". Defaulting to " << title_height;
   }
+  int desc_height;
+  if (!GetDimension("DESC_" + message_token + "_HEIGHT", &desc_height)) {
+    desc_height = 40;
+    LOG(WARNING) << "Unable to get description constant for  " << message_token
+                 << ". Defaulting to " << desc_height;
+  }
+
   const int title_y = (-kCanvasSize / 2) + 220 + (title_height / 2);
   const int desc_y = title_y + (title_height / 2) + 16 + (desc_height / 2);
   if (!ShowMessage("title_" + message_token, kXOffset, title_y))
@@ -406,15 +411,15 @@ void Screens::MiniOsWelcomeOnSelect() {
 
 void Screens::MiniOsWelcomeOnChange(int index) {
   MessageBaseScreen();
-  InstructionsWithTitle("MiniOS_welcome");
+  ShowInstructionsWithTitle("MiniOS_welcome");
   ShowStepper({"1", "2", "3"});
   ShowLanguageMenu(index == 0);
 
   constexpr int kTitleY = (-kCanvasSize / 2) + 238;
   constexpr int kBtnYStep = kButtonHeight + kButtonMargin;
   constexpr int kBtnY = kTitleY + 80 + kBtnYStep * 2;
-  int debug_btn_width = GetDimension(kButtonWidthToken);
-  if (debug_btn_width == -1) {
+  int debug_btn_width;
+  if (!GetDimension(kButtonWidthToken, &debug_btn_width)) {
     debug_btn_width = kDefaultButtonWidth;
     LOG(WARNING) << "Unable to get dimension for " << kButtonWidthToken
                  << ". Defaulting to width " << kDefaultButtonWidth;
@@ -437,27 +442,24 @@ void Screens::ReadDimensionConstants() {
     LOG(WARNING) << "Unable to parse all dimension information for " << locale_;
 }
 
-int Screens::GetDimension(const std::string& token) {
+bool Screens::GetDimension(const std::string& token, int* token_dimension) {
   if (image_dimensions_.empty()) {
     LOG(ERROR) << "No dimensions available.";
-    return -1;
+    return false;
   }
 
   // Find the dimension for the token.
   for (const auto& dimension : image_dimensions_) {
     if (dimension.first == token) {
-      int image_dim = -1;
-      if (!base::StringToInt(dimension.second, &image_dim)) {
+      if (!base::StringToInt(dimension.second, token_dimension)) {
         LOG(ERROR) << "Could not convert " << dimension.second
                    << " to a number.";
-        return -1;
-
-      } else {
-        return image_dim;
+        return false;
       }
+      return true;
     }
   }
-  return -1;
+  return false;
 }
 
 void Screens::UpdateButtons(int menu_count, int key, int* index, bool* enter) {

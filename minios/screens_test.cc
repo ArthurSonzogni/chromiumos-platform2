@@ -163,7 +163,7 @@ TEST_F(ScreensTest, InstructionsWithTitle) {
   brillo::TouchFile(
       screens_path_.Append("en-US").Append("desc_minios_token.png"));
 
-  screens_.InstructionsWithTitle("minios_token");
+  screens_.ShowInstructionsWithTitle("minios_token");
 
   std::string written_command;
   EXPECT_TRUE(ReadFileToString(console_, &written_command));
@@ -193,14 +193,16 @@ TEST_F(ScreensTest, ReadDimension) {
 }
 
 TEST_F(ScreensTest, GetDimension) {
-  EXPECT_EQ(-1, screens_.GetDimension("DESC_invalid_HEIGHT"));
-  EXPECT_EQ(-1, screens_.GetDimension("incorrect_DESC_minios_token_HEIGHT"));
-
+  int dimension;
+  EXPECT_FALSE(screens_.GetDimension("DESC_invalid_HEIGHT", &dimension));
+  EXPECT_FALSE(
+      screens_.GetDimension("incorrect_DESC_minios_token_HEIGHT", &dimension));
   // Not a number.
-  EXPECT_EQ(-1, screens_.GetDimension("DESC_screen_token_HEIGHT"));
+  EXPECT_FALSE(screens_.GetDimension("DESC_screen_token_HEIGHT", &dimension));
 
   // Correctly returns the dimension.
-  EXPECT_EQ(38, screens_.GetDimension("TITLE_minios_token_HEIGHT"));
+  EXPECT_TRUE(screens_.GetDimension("TITLE_minios_token_HEIGHT", &dimension));
+  EXPECT_EQ(38, dimension);
 }
 
 TEST_F(ScreensTest, UpdateButtons) {

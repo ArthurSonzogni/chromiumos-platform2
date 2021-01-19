@@ -71,11 +71,11 @@ class Screens {
                            int offset_y);
 
   // Shows title and uses title offsets.
-  void Instructions(const std::string& message_token);
+  void ShowInstructions(const std::string& message_token);
 
   // Shows the title and corresponding description using offsets from
   // `constants` to place.
-  void InstructionsWithTitle(const std::string& message_token);
+  void ShowInstructionsWithTitle(const std::string& message_token);
 
   // Clears full screen except the footer.
   void ClearMainArea();
@@ -140,8 +140,9 @@ class Screens {
   // every time the language changes.
   void ReadDimensionConstants();
 
-  // Gets the height or width of an image given the token. Returns -1 on error.
-  int GetDimension(const std::string& token);
+  // Sets the height or width of an image given the token. Returns false on
+  // error.
+  bool GetDimension(const std::string& token, int* token_dimension);
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items.
