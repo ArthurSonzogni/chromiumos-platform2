@@ -18,17 +18,16 @@
 #include <brillo/cryptohome.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include <brillo/minijail/minijail.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 #include <dbus/attestation/dbus-constants.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "attestation/server/attestation_service.h"
 #include "attestation/server/dbus_service.h"
 #include "attestation/server/google_keys.h"
-
-#include <chromeos/libminijail.h>
 
 namespace {
 
@@ -95,15 +94,17 @@ void InitMinijailSandbox() {
                                     &attestation_gid))
       << "Error getting attestation uid and gid.";
   CHECK_EQ(getuid(), kRootUID) << "AttestationDaemon not initialized as root.";
-  brillo::Minijail* minijail = brillo::Minijail::GetInstance();
-  struct minijail* jail = minijail->New();
 
-  minijail_log_seccomp_filter_failures(jail);
-  minijail->DropRoot(jail, kAttestationUser, kAttestationGroup);
-  minijail_inherit_usergroups(jail);
-  minijail->UseSeccompFilter(jail, kAttestationSeccompPath);
-  minijail->Enter(jail);
-  minijail->Destroy(jail);
+  ScopedMinijail j(minijail_new());
+  minijail_log_seccomp_filter_failures(j.get());
+  minijail_no_new_privs(j.get());
+  minijail_use_seccomp_filter(j.get());
+  minijail_parse_seccomp_filters(j.get(), kAttestationSeccompPath);
+  minijail_change_user(j.get(), kAttestationUser);
+  minijail_change_group(j.get(), kAttestationGroup);
+  minijail_inherit_usergroups(j.get());
+  minijail_enter(j.get());
+
   CHECK_EQ(getuid(), attestation_uid)
       << "AttestationDaemon was not able to drop to attestation user.";
   CHECK_EQ(getgid(), attestation_gid)
