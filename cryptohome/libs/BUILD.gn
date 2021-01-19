@@ -294,7 +294,6 @@ static_library("libcryptohome") {
     "../dircrypto_data_migrator/migration_helper.cc",
     "../filesystem_layout.cc",
     "../fingerprint_manager.cc",
-    "../interface.cc",
     "../key_challenge_service_factory_impl.cc",
     "../key_challenge_service_impl.cc",
     "../keyset_management.cc",
