@@ -474,7 +474,6 @@ if (use.test) {
       "storage/homedirs_unittest.cc",
       "storage/mock_mount.cc",
       "storage/mount_stack_unittest.cc",
-      "storage/mount_task_unittest.cc",
       "storage/mount_unittest.cc",
       "storage/out_of_process_mount_helper_test.cc",
       "tpm_init_unittest.cc",
