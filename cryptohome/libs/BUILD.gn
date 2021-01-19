@@ -290,7 +290,6 @@ static_library("libcryptohome") {
     "../cleanup/low_disk_space_handler.cc",
     "../cleanup/user_oldest_activity_timestamp_cache.cc",
     "../credentials.cc",
-    "../dbus_transition.cc",
     "../dircrypto_data_migrator/atomic_flag.cc",
     "../dircrypto_data_migrator/migration_helper.cc",
     "../filesystem_layout.cc",
