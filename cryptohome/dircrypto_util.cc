@@ -67,16 +67,15 @@ base::ScopedFD GetStatefulPartitionScopedFd() {
   return fd;
 }
 
-bool DropMountCaches(const base::FilePath& dir) {
-  base::ScopedFD fd(
-      HANDLE_EINTR(open(dir.value().c_str(), O_RDONLY | O_DIRECTORY)));
+bool DropMountCaches() {
+  base::ScopedFD fd = GetStatefulPartitionScopedFd();
   if (!fd.is_valid()) {
-    PLOG(ERROR) << "Invalid directory: " << dir.value();
+    PLOG(ERROR) << "Failed to open stateful partition";
     return false;
   }
 
   if (ioctl(fd.get(), FS_IOC_DROP_CACHE, nullptr) < 0) {
-    PLOG(ERROR) << "Failed: drop cache for mount point. Dir:" << dir.value();
+    PLOG(ERROR) << "Failed to drop cache for stateful partition";
     return false;
   }
 
@@ -172,12 +171,11 @@ static bool UnlinkSessionKey(const KeyReference& key_reference) {
   return true;
 }
 
-static bool InvalidateSessionKey(const KeyReference& key_reference,
-                                 const base::FilePath& mount_path) {
-  // First, attempt to selectively drop caches for mount point.
+static bool InvalidateSessionKey(const KeyReference& key_reference) {
+  // First, attempt to selectively drop caches for the stateful partition.
   // This can fail if the directory does not support the operation or if
   // the process does not have the correct capabilities (CAP_SYS_ADMIN).
-  if (!DropMountCaches(mount_path)) {
+  if (!DropMountCaches()) {
     LOG(ERROR) << "Failed to drop cache for user mount.";
     // Use drop_caches to drop all clear cache. Otherwise, cached decrypted data
     // will stay visible. This should invalidate the key provided no one touches
@@ -209,8 +207,7 @@ static bool InvalidateSessionKey(const KeyReference& key_reference,
   return true;
 }
 
-static bool RemoveSessionKey(const KeyReference& key_reference,
-                             const base::FilePath& dir) {
+static bool RemoveSessionKey(const KeyReference& key_reference) {
   // Unlink the key.
   // NOTE: Even after this, the key will still stay valid as long as the
   // encrypted contents are on the page cache.
@@ -220,7 +217,7 @@ static bool RemoveSessionKey(const KeyReference& key_reference,
   // Run Sync() to make all dirty cache clear.
   sync();
 
-  return InvalidateSessionKey(key_reference, dir);
+  return InvalidateSessionKey(key_reference);
 }
 
 }  // namespace legacy
@@ -462,7 +459,7 @@ bool RemoveDirectoryKey(const KeyReference& key_reference,
   }
 
   return CheckFscryptKeyIoctlSupport() ? RemoveFscryptKey(ref)
-                                       : legacy::RemoveSessionKey(ref, dir);
+                                       : legacy::RemoveSessionKey(ref);
 }
 
 }  // namespace dircrypto
