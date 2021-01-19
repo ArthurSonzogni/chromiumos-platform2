@@ -9,9 +9,10 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/threading/thread.h>
-#include <brillo/minijail/minijail.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "trunks/background_command_transceiver.h"
 #include "trunks/power_manager.h"
@@ -44,13 +45,16 @@ void InitMinijailSandbox() {
   CHECK(brillo::userdb::GetUserInfo(kTrunksUser, &trunks_uid, &trunks_gid))
       << "Error getting trunks uid and gid.";
   CHECK_EQ(getuid(), kRootUID) << "trunksd not initialized as root.";
-  brillo::Minijail* minijail = brillo::Minijail::GetInstance();
-  struct minijail* jail = minijail->New();
-  minijail_log_seccomp_filter_failures(jail);
-  minijail->UseSeccompFilter(jail, kTrunksSeccompPath);
-  minijail->DropRoot(jail, kTrunksUser, kTrunksGroup);
-  minijail->Enter(jail);
-  minijail->Destroy(jail);
+
+  ScopedMinijail j(minijail_new());
+  minijail_log_seccomp_filter_failures(j.get());
+  minijail_no_new_privs(j.get());
+  minijail_use_seccomp_filter(j.get());
+  minijail_parse_seccomp_filters(j.get(), kTrunksSeccompPath);
+  minijail_change_user(j.get(), kTrunksUser);
+  minijail_change_group(j.get(), kTrunksGroup);
+  minijail_enter(j.get());
+
   CHECK_EQ(getuid(), trunks_uid)
       << "trunksd was not able to drop user privilege.";
   CHECK_EQ(getgid(), trunks_gid)
