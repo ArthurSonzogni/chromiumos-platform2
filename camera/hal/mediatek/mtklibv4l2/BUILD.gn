@@ -16,8 +16,5 @@ shared_library("libmtk_mc_libv4l2") {
     "${mtk_root_path}/mtkcam/include/mtkcam/def/",
     "${mtk_root_path}/mtkcam/include/",
   ]
-  libs += [
-    "camera_v4l2_device",
-    "pthread",
-  ]
+  libs += [ "pthread" ]
 }

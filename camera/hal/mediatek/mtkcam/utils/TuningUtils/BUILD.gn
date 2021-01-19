@@ -5,7 +5,6 @@
 shared_library("libmtkcam_tuning_utils") {
   import("//camera/hal/mediatek/common-config.gni")
   sources = [
-    "../../../../../common/utils/camera_config_impl.cc",
     "AccelerationDetector.cpp",
     "CommonRule.cpp",
     "FileDumpNamingHint.cpp",

@@ -1,55 +1,161 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-config("libcamera_metrics_config") {
-  libs = [ "metrics" ]
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cros_camera_algo",
+    ":libcros_camera",
+    ":libcros_camera_pkg_config",
+  ]
+
+  if (use.test) {
+    deps += [
+      ":cbm_test",
+      ":future_test",
+    ]
+  }
 }
 
-static_library("libcamera_metrics") {
-  sources = [ "camera_metrics_impl.cc" ]
-  configs += [
-    "//camera/build:cros_camera_common",
-    "//common-mk:pic",
-    "//common-mk:nouse_thin_archive",
-  ]
-  configs -= [
-    "//common-mk:pie",
-    "//common-mk:use_thin_archive",
-  ]
-  public_configs = [ ":libcamera_metrics_config" ]
-  all_dependent_pkg_deps = [ "libmetrics" ]
+pkg_config("target_defaults") {
+  configs = [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "cros-camera-android-headers",
-    "libcamera_metadata",
-    "libchrome",
+    "libdrm",
   ]
-  deps = [ "//camera/common/libcamera_ipc" ]
 }
 
-config("libcamera_jpeg_config") {
+generate_mojom_bindings("libcros_camera_mojom") {
+  sources = [
+    "//camera/mojo/algorithm/camera_algorithm.mojom",
+    "//camera/mojo/camera3.mojom",
+    "//camera/mojo/camera_common.mojom",
+    "//camera/mojo/camera_metadata.mojom",
+    "//camera/mojo/camera_metadata_tags.mojom",
+    "//camera/mojo/cros_camera_enum.mojom",
+    "//camera/mojo/cros_camera_service.mojom",
+    "//camera/mojo/gpu/dmabuf.mojom",
+    "//camera/mojo/gpu/jpeg_encode_accelerator.mojom",
+    "//camera/mojo/gpu/mjpeg_decode_accelerator.mojom",
+    "//camera/mojo/unguessable_token.mojom",
+  ]
+  mojo_root = "//camera"
+  use_pic = true
+  standalone = true
+}
+
+shared_library("libcros_camera") {
+  sources = [
+    "//camera/common/camera_algorithm_bridge_impl.cc",
+    "//camera/common/camera_algorithm_callback_ops_impl.cc",
+    "//camera/common/camera_buffer_manager_impl.cc",
+    "//camera/common/camera_buffer_manager_internal.cc",
+    "//camera/common/camera_metrics_impl.cc",
+    "//camera/common/camera_mojo_channel_manager_impl.cc",
+    "//camera/common/exif_utils.cc",
+    "//camera/common/future.cc",
+    "//camera/common/ipc_util.cc",
+    "//camera/common/jpeg/jpeg_decode_accelerator_impl.cc",
+    "//camera/common/jpeg/jpeg_encode_accelerator_impl.cc",
+    "//camera/common/jpeg_compressor_impl.cc",
+    "//camera/common/libcamera_connector/camera_client.cc",
+    "//camera/common/libcamera_connector/camera_client_ops.cc",
+    "//camera/common/libcamera_connector/camera_metadata_utils.cc",
+    "//camera/common/libcamera_connector/camera_module_callbacks.cc",
+    "//camera/common/libcamera_connector/camera_service_connector.cc",
+    "//camera/common/libcamera_connector/camera_service_connector_impl.cc",
+    "//camera/common/libcamera_connector/stream_buffer_manager.cc",
+    "//camera/common/libcamera_connector/supported_formats.cc",
+    "//camera/common/timezone.cc",
+    "//camera/common/udev_watcher.cc",
+    "//camera/common/utils/camera_config_impl.cc",
+    "//camera/common/v4l2_device/v4l2_device.cc",
+    "//camera/common/v4l2_device/v4l2_subdevice.cc",
+    "//camera/common/v4l2_device/v4l2_video_node.cc",
+  ]
+  output_name = "libcros_camera"
+  configs += [ ":target_defaults" ]
   libs = [ "jpeg" ]
-}
-
-static_library("libcamera_jpeg") {
-  sources = [ "jpeg_compressor_impl.cc" ]
-  public_configs = [ ":libcamera_jpeg_config" ]
-  configs += [
-    "//camera/build:cros_camera_common",
-    "//common-mk:nouse_thin_archive",
-    "//common-mk:pic",
-  ]
-  configs -= [
-    "//common-mk:pie",
-    "//common-mk:use_thin_archive",
-  ]
   pkg_deps = [
-    "cros-camera-android-headers",
+    "gbm",
+    "libbrillo",
+    "libcamera_metadata",
+    "libexif",
+    "libmetrics",
+    "libmojo",
+    "libsync",
+    "libudev",
     "libyuv",
   ]
-  all_dependent_pkg_deps = [ "libcbm" ]
-  deps = [
-    "//camera/common:libcamera_metrics",
-    "//camera/common/jpeg:libjea",
+  deps = [ ":libcros_camera_mojom" ]
+
+  if (use.camera_feature_portrait_mode) {
+    sources += [ "//camera/common/camera_gpu_algorithm.cc" ]
+    libs += [ "portrait_cros" ]
+  }
+}
+
+generate_pkg_config("libcros_camera_pkg_config") {
+  name = "libcros_camera"
+  description = "cros-camera common libraries"
+  version = getenv("PV")
+  requires_private = [ "libchrome" ]
+  requires = [ "libmojo" ]
+  cflags = [ "-I/usr/include/cros-camera" ]
+  libs = [
+    "-lcros_camera",
+    "-lcros_camera_mojom",
   ]
+}
+
+executable("cros_camera_algo") {
+  sources = [
+    "//camera/common/camera_algorithm_adapter.cc",
+    "//camera/common/camera_algorithm_main.cc",
+    "//camera/common/camera_algorithm_ops_impl.cc",
+    "//camera/common/ipc_util.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [ "dl" ]
+  pkg_deps = [
+    "libbrillo",
+    "libmojo",
+  ]
+  deps = [
+    ":libcros_camera",
+
+    # We only need //camera/mojo/algorithm/camera_algorithm.mojom,
+    # libcros_camera_mojom provides a superset mojom library containing it.
+    ":libcros_camera_mojom",
+  ]
+}
+
+# Build configs for unit tests.
+
+config("target_defaults_test") {
+  configs = [
+    "//common-mk:test",
+    ":target_defaults",
+  ]
+}
+
+if (use.test) {
+  executable("cbm_test") {
+    sources = [
+      "//camera/common/camera_buffer_manager_impl.cc",
+      "//camera/common/camera_buffer_manager_impl_test.cc",
+    ]
+    configs += [ ":target_defaults_test" ]
+  }
+
+  executable("future_test") {
+    sources = [
+      "//camera/common/future.cc",
+      "//camera/common/future_test.cc",
+    ]
+    configs += [ ":target_defaults_test" ]
+  }
 }

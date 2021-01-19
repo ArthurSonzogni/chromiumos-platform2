@@ -12,7 +12,6 @@ shared_library("libmtkcam_fdvt") {
     "${mtk_root_path}/mtkcam/include/mtkcam/def",
     "${mtk_root_path}/android_utils/include",
   ]
-  libs += [ "cbm" ]
   deps += [
     "//camera/hal/mediatek/mtkcam/utils/imgbuf:libmtkcam_imgbuf",
     "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",

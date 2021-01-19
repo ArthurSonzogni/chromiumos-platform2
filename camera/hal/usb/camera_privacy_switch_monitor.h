@@ -12,11 +12,11 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/containers/flat_map.h>
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 
-#include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/cros_camera_hal.h"
 
 namespace cros {

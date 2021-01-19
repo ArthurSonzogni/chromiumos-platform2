@@ -17,13 +17,9 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "cros-camera-android-headers",
     "libcamera_client",
-    "libcamera_common",
-    "libcamera_exif",
     "libcamera_metadata",
-    "libcamera_timezone",
-    "libcbm",
+    "libcros_camera",
     "libcros_config",
-    "libjda",
     "libsync",
     "libyuv",
     "re2",
@@ -42,7 +38,6 @@ generate_mojom_bindings("libcamera_hal_mojom") {
 
 shared_library("libcamera_hal") {
   sources = [
-    "//camera/common/utils/camera_config_impl.cc",
     "//camera/common/vendor_tag_manager.cc",
     "cached_frame.cc",
     "camera_characteristics.cc",
@@ -66,11 +61,7 @@ shared_library("libcamera_hal") {
     sources += [ "sensor_handler_monocle.cc" ]
   }
   configs += [ ":target_defaults" ]
-  deps = [
-    ":libcamera_hal_mojom",
-    "//camera/common:libcamera_jpeg",
-    "//camera/common:libcamera_metrics",
-  ]
+  deps = [ ":libcamera_hal_mojom" ]
 }
 
 if (use.test) {

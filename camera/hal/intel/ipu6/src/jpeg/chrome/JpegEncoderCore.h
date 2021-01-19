@@ -20,7 +20,7 @@
 #include <mutex>
 
 #include "IJpegEncoder.h"
-#include "camera/include/cros-camera/jpeg_compressor.h"
+#include "cros-camera/jpeg_compressor.h"
 #include "iutils/Utils.h"
 
 namespace icamera {

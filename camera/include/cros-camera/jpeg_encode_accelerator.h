@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/export.h"
 #include "cros-camera/jpeg_compressor.h"
 
 namespace cros {
@@ -25,7 +26,7 @@ using EncodeWithDmaBufCallback =
 // Encapsulates a converter from YU12 to JPEG format. This class is not
 // thread-safe.
 // Before using this class, make sure mojo is initialized first.
-class JpegEncodeAccelerator {
+class CROS_CAMERA_EXPORT JpegEncodeAccelerator {
  public:
   // Enumeration of encode errors.
   enum Status {

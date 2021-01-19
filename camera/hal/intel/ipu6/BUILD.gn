@@ -201,8 +201,6 @@ shared_library("libcamhal") {
   libs = [
     "camera_client",
     "camera_metadata",
-    "camera_common",
-    "cbm",
     "jpeg",
     "dl",
     "cros_config",
@@ -210,14 +208,10 @@ shared_library("libcamhal") {
   pkg_deps = [
     "cros-camera-android-headers",
     "expat",
-    "libcab",
     "libcamera_client",
-    "libcamera_common",
-    "libcamera_exif",
     "libcamera_metadata",
-    "libcamera_v4l2_device",
-    "libcbm",
     "libchrome",
+    "libcros_camera",
     "libmojo",
     "libsync",
     "libyuv",
@@ -295,8 +289,6 @@ shared_library("libcamhal") {
       "modules/ia_css/ipu6/include",
     ]
   }
-  deps = [ "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
-           "//camera/common:libcamera_jpeg",  ]
 }
 
 shared_library("libcam_algo") {
@@ -413,7 +405,7 @@ shared_library("libcam_algo") {
   ]
   pkg_deps = [
     "cros-camera-android-headers",
-    "libcab",
+    "libcros_camera",
     "libmojo",
   ]
   if (use.ipu6se) {
@@ -447,7 +439,6 @@ shared_library("libcam_algo") {
       "modules/ia_css/ipu6/include",
     ]
   }
-  deps = [ "//camera/common/libcamera_ipc:libcamera_ipc_mojom" ]
 }
 
 if (use.ipu6se) {
@@ -501,10 +492,9 @@ if (use.ipu6se) {
     ]
     pkg_deps = [
       "cros-camera-android-headers",
-      "libcab",
+      "libcros_camera",
       "igfxcmrt",
       "libmojo",
     ]
-    deps = [ "//camera/common/libcamera_ipc:libcamera_ipc_mojom" ]
   }
 }

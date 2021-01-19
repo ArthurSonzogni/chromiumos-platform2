@@ -5,24 +5,18 @@ include_dirs = [
   "${mtk_root_path}/mtkcam/utils",
   "${mtk_root_path}/mtkcam/utils/property_service",
   "//camera",
-  "//camera/include",
 ]
 ldflags = [ "-Wl,--no-undefined" ]
 libs = []
 pkg_deps = [
   "cros-camera-android-headers",
-  "libcamera_common",
   "libcamera_metadata",
-  "libcbm",
   "libchrome",
+  "libcros_camera",
   "libdrm",
   "libyuv",
 ]
-deps = [
-  "//camera/common:libcamera_jpeg",
-  "//camera/common:libcamera_metrics",
-  "//camera/common/libcab",
-]
+deps = []
 CAMERA_HAL_VERSION = "3"
 MTKCAM_IP_BASE = "1"
 MTKCAM_HAVE_SANDBOX_SUPPORT = "1"

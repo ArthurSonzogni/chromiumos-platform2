@@ -129,25 +129,16 @@ shared_library("libcamera_hal") {
     "HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F",
     "MACRO_KBL_AIC",
   ]
-  configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "cros-camera-android-headers",
     "expat",
-    "libcab",
     "libcamera_client",
-    "libcamera_common",
-    "libcamera_exif",
     "libcamera_metadata",
-    "libcamera_v4l2_device",
-    "libcbm",
+    "libchrome",
+    "libcros_camera",
     "libmojo",
     "libsync",
     "libyuv",
-  ]
-  deps = [
-    "//camera/common:libcamera_jpeg",
-    "//camera/common:libcamera_metrics",
-    "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
   ]
 }
 
@@ -186,7 +177,6 @@ shared_library("libcam_algo") {
     "HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F",
     "MACRO_KBL_AIC",
   ]
-  configs += [ "//camera/build:cros_camera_common" ]
   libs = [
     "SkyCamAICKBL",
     "ia_aiq",
@@ -201,8 +191,8 @@ shared_library("libcam_algo") {
   ]
   pkg_deps = [
     "cros-camera-android-headers",
-    "libcab",
+    "libchrome",
+    "libcros_camera",
     "libmojo",
   ]
-  deps = [ "//camera/common/libcamera_ipc:libcamera_ipc_mojom" ]
 }

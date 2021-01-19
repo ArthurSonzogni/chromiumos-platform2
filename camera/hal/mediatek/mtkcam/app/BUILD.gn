@@ -26,7 +26,6 @@ shared_library("libcam3_app") {
   ]
   libs += [
     "camera_metadata",
-    "cbm",
     "pthread",
   ]
   deps += [

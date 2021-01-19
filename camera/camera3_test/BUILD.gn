@@ -14,9 +14,8 @@ pkg_config("target_defaults") {
     "gbm",
     "libbrillo",
     "libcamera_client",
-    "libcamera_common",
     "libcamera_metadata",
-    "libcbm",
+    "libcros_camera",
     "libcros_config",
     "libdrm",
     "libexif",
@@ -56,9 +55,5 @@ executable("cros_camera_test") {
   libs = [
     "dl",
     "jpeg",
-  ]
-  deps = [
-    "//camera/common/libcamera_ipc",
-    "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
   ]
 }

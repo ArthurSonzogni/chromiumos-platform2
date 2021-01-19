@@ -31,10 +31,7 @@ shared_library("libcam_normalpipe") {
     "${mtk_root_path}/mtkcam/utils",
     "${mtk_root_path}/mtklibv4l2",
   ]
-  libs += [
-    "camera_v4l2_device",
-    "pthread",
-  ]
+  libs += [ "pthread" ]
   deps += [
     "//camera/hal/mediatek/mtkcam/drv/iopipe/src/common:libcam_iopie_common",
     "//camera/hal/mediatek/mtkcam/drv/iopipe/src/utils:libcam_iopie_utils",

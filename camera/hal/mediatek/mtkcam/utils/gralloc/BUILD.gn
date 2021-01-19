@@ -11,7 +11,6 @@ shared_library("libmtkcam_grallocutils") {
     "${mtk_root_path}/mtklibv4l2",
     "../../../../../common",
   ]
-  libs += [ "cbm" ]
   deps +=
       [ "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property" ]
 }

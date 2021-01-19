@@ -98,16 +98,13 @@ shared_library("libcamera_hal") {
     "cros-camera-android-headers",
     "expat",
     "libcamera_client",
-    "libcamera_common",
-    "libcamera_exif",
     "libcamera_metadata",
-    "libcamera_v4l2_device",
-    "libcbm",
+    "libchrome",
+    "libcros_camera",
     "libmojo",
     "libsync",
     "libyuv",
   ]
-  configs += [ "//camera/build:cros_camera_common" ]
   hal_src_root = "//camera/hal/rockchip"
   include_dirs = [
     "${hal_src_root}",
@@ -138,13 +135,7 @@ shared_library("libcamera_hal") {
     "REMOTE_3A_SERVER",
     "USING_DECLARED_NAMESPACE=using namespace android::camera2",
   ]
-  deps = [
-    ":libcam_algo",
-    "//camera/common:libcamera_jpeg",
-    "//camera/common:libcamera_metrics",
-    "//camera/common/libcab",
-    "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
-  ]
+  deps = [ ":libcam_algo" ]
 }
 
 shared_library("libcam_algo") {
@@ -176,8 +167,7 @@ shared_library("libcam_algo") {
   libs = [ "rk_aiq" ]
   pkg_deps = [
     "cros-camera-android-headers",
-    "libcab",
+    "libcros_camera",
     "libmojo",
   ]
-  deps = [ "//camera/common/libcamera_ipc:libcamera_ipc_mojom" ]
 }

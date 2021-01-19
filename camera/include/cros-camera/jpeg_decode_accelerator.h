@@ -15,6 +15,7 @@
 #include <system/window.h>
 
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/export.h"
 
 namespace cros {
 
@@ -23,7 +24,7 @@ using DecodeCallback = base::Callback<void(int buffer_id, int error)>;
 // Encapsulates a converter from JPEG to YU12 format. This class is not
 // thread-safe.
 // Before using this class, make sure mojo is initialized first.
-class JpegDecodeAccelerator {
+class CROS_CAMERA_EXPORT JpegDecodeAccelerator {
  public:
   // Enumeration of decode errors.
   enum class Error {

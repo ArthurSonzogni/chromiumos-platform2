@@ -34,17 +34,13 @@ shared_library("libcamera_hal") {
     "cros-camera-android-headers",
     "libbrillo",
     "libcamera_client",
-    "libcamera_common",
-    "libcbm",
-    "libjda",
+    "libcros_camera",
     "libsync",
     "libyuv",
   ]
   deps = [
     ":libcamera_hal_dbus",
     ":libcamera_hal_mojom",
-    "//camera/common:libcamera_metrics",
-    "//camera/common/libcamera_ipc:libcamera_ipc",
   ]
 }
 

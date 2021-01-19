@@ -10,7 +10,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  pkg_deps = [ "libcamera_common" ]
+  pkg_deps = [ "libcros_camera" ]
   configs = [ "//camera/build:cros_camera_common" ]
 }
 
@@ -25,13 +25,6 @@ executable("libcab_test") {
     ":target_defaults",
     "//common-mk:test",
   ]
-  pkg_deps = [
-    "libbrillo",
-    "libcab",
-  ]
+  pkg_deps = [ "libbrillo" ]
   libs = [ "rt" ]
-  deps = [
-    "//camera/common/libcamera_ipc",
-    "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
-  ]
 }
