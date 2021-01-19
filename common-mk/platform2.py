@@ -55,7 +55,6 @@ _IUSE = [
     'crosvm_virtio_video',
     'crosvm_wl_dmabuf',
     'crypto',
-    'cryptohome_userdataauth_interface',
     'dbus',
     'device_mapper',
     'dhcpv6',
