@@ -26,10 +26,9 @@ class KeyReader {
   explicit KeyReader(bool include_usb)
       : include_usb_(include_usb), use_only_evwaitkey_(true) {}
 
-  KeyReader(bool include_usb, bool print_length, std::string country_code)
+  KeyReader(bool include_usb, std::string country_code)
       : backspace_counter_(0),
         return_pressed_(false),
-        print_length_(print_length),
         include_usb_(include_usb),
         country_code_(country_code),
         use_only_evwaitkey_(false) {
@@ -42,13 +41,13 @@ class KeyReader {
   // Returns false for invalid keyboard layout, true otherwise.
   bool SetKeyboardContext();
 
-  // Given a key code, does all conversions for the layout including
-  // capitalization and special characters.
-  bool GetInput();
+  // Given a key code, does all the setup finding the available fds and events
+  // and creating the proper keyboard layout.
+  bool InputSetUp();
 
-  // GetChar takes in an input event and adds to user input if the key press
-  // is a valid, printable ASCII. Returns false on return, true otherwise.
-  bool GetChar(const struct input_event& ev);
+  // Sets 'enter' to true after return key press is recorded. Press tab
+  // to toggle between showing and hiding passwords. Returns false on error.
+  bool GetUserInput(bool* enter, bool* tab_toggle, std::string* user_input);
 
   // A blocking call that will wait until one of the keys given is pressed. Sets
   // the value of key_press with the first key from the list that is recorded.
@@ -56,7 +55,10 @@ class KeyReader {
   // TODO(vyshu): Change this call to be asynchronous.
   bool EvWaitForKeys(const std::vector<int>& keys, int* key_press);
 
-  // Returns the input stored as a string. Used in unittests.
+  // Wrapper that does not take in tab toggle key. Used for testing.
+  bool GetCharForTest(const struct input_event& ev);
+
+  // Returns the current key input as a string. Used for testing.
   std::string GetUserInputForTest();
 
  private:
@@ -77,19 +79,24 @@ class KeyReader {
   // fd index and returns true on success.
   virtual bool GetEpEvent(int epfd, struct input_event* ev, int* index);
 
+  // GetChar takes in an input event and adds to user input if the key press
+  // is a valid, printable ASCII. Pressing tab key toggles boolean. Returns
+  // false after enter key press, true otherwise.
+  bool GetChar(const struct input_event& ev, bool* tab_toggle);
+
   std::string user_input_;
   // Counts and aggregates repeated backspace key events.
   int backspace_counter_;
   // Checks that enter key down was recorded before returning on key up.
   bool return_pressed_;
-  // Outputs input length to stdout when true.
-  bool print_length_;
   // Whether or not to include USB connections when scanning for events.
   bool include_usb_;
   // Keyboard layout for xkb common;
   std::string country_code_;
   // Stores open event connections.
   std::vector<base::ScopedFD> fds_;
+  // Stores epoll file descriptor.
+  base::ScopedFD epfd_;
 
   // Allows class to only access the EvWaitForKey function. GetInput will return
   // false.

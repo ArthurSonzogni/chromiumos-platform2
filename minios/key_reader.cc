@@ -168,10 +168,10 @@ bool KeyReader::SetKeyboardContext() {
   return true;
 }
 
-bool KeyReader::GetInput() {
+bool KeyReader::InputSetUp() {
   if (use_only_evwaitkey_) {
-    LOG(ERROR) << "Please construct the class with include_usb, print_length, "
-                  "and country_code in order to correctly use this function.";
+    LOG(ERROR) << "Please construct the class with include_usb and "
+                  "country_code in order to correctly use this function.";
     return false;
   }
 
@@ -180,49 +180,26 @@ bool KeyReader::GetInput() {
     return false;
   }
 
-  base::ScopedFD epfd;
-  if (!EpollCreate(&epfd)) {
+  if (!EpollCreate(&epfd_)) {
     return false;
   }
 
   if (!SetKeyboardContext()) {
     return false;
   }
-
-  while (true) {
-    struct input_event ev;
-    int index = 0;
-    if (!GetEpEvent(epfd.get(), &ev, &index)) {
-      LOG(ERROR) << "Could not get event";
-      return false;
-    }
-
-    if (ev.type != EV_KEY || ev.code > KEY_MAX) {
-      continue;
-    }
-    // Take in ev event and add to user input as appropriate.
-    // Returns false to exit.
-    if (!GetChar(ev)) {
-      return true;
-    }
-  }
+  return true;
 }
 
-bool KeyReader::GetChar(const struct input_event& ev) {
+bool KeyReader::GetChar(const struct input_event& ev, bool* tab_toggle) {
   xkb_keycode_t keycode = ev.code + kXkbOffset;
   xkb_keysym_t sym = xkb_state_key_get_one_sym(state_, keycode);
-
   if (ev.value == 0) {
     // Key up event.
     if (sym == XKB_KEY_Return && return_pressed_) {
       // Only end if RETURN key press was already recorded.
-      if (user_input_.empty()) {
-        printf("\n");
-      } else {
-        user_input_.push_back('\0');
-        printf("%s\n", user_input_.c_str());
-      }
       return false;
+    } else if (sym == XKB_KEY_Tab) {
+      *tab_toggle = !(*tab_toggle);
     }
 
     // Put char representation in buffer.
@@ -238,13 +215,6 @@ bool KeyReader::GetChar(const struct input_event& ev) {
       user_input_.push_back(buff[0]);
     }
     xkb_state_update_key(state_, keycode, XKB_KEY_UP);
-
-    if (print_length_) {
-      printf("%zu\n", user_input_.size());
-      // Flush input so it can be read before program exits.
-      fflush(stdout);
-    }
-
   } else if (ev.value == 1) {
     // Key down event.
     if (sym == XKB_KEY_Return)
@@ -260,12 +230,29 @@ bool KeyReader::GetChar(const struct input_event& ev) {
       user_input_.pop_back();
       backspace_counter_ = 0;
     }
-    if (print_length_) {
-      printf("%zu\n", user_input_.size());
-      // Flush input so it can be read before program exits.
-      fflush(stdout);
-    }
   }
+  return true;
+}
+
+bool KeyReader::GetUserInput(bool* enter,
+                             bool* tab_toggle,
+                             std::string* user_input) {
+  struct input_event ev;
+  int index = 0;
+  if (!GetEpEvent(epfd_.get(), &ev, &index)) {
+    PLOG(ERROR) << "Could not get event";
+    return false;
+  }
+
+  if (ev.type != EV_KEY || ev.code > KEY_MAX) {
+    return true;
+  }
+  // Take in ev event and add to user input as appropriate.
+  // Returns false to indicate enter was pressed.
+  if (!GetChar(ev, tab_toggle)) {
+    *enter = true;
+  }
+  *user_input = user_input_;
   return true;
 }
 
@@ -309,6 +296,11 @@ bool KeyReader::EvWaitForKeys(const std::vector<int>& keys, int* key_pressed) {
       }
     }
   }
+}
+
+bool KeyReader::GetCharForTest(const struct input_event& ev) {
+  bool tab_key = false;
+  return GetChar(ev, &tab_key);
 }
 
 std::string KeyReader::GetUserInputForTest() {
