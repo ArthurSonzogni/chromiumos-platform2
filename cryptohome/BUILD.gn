@@ -430,7 +430,6 @@ if (use.test) {
       "crc32_unittest.cc",
       "credentials_unittest.cc",
       "crypto_unittest.cc",
-      "cryptohome_event_source_unittest.cc",
       "cryptolib_unittest.cc",
       "dircrypto_data_migrator/migration_helper_unittest.cc",
       "fake_le_credential_backend.cc",
