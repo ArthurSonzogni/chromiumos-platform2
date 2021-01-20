@@ -57,21 +57,11 @@ class Smdp : public lpa::smdp::SmdpClient {
                  LpaCallback cb) override;
 
  private:
-  void OnHttpsResponse(LpaCallback cb,
-                       brillo::http::RequestID request_id,
-                       std::unique_ptr<brillo::http::Response> response);
-
-  void OnHttpsError(LpaCallback cb,
-                    brillo::http::RequestID request_id,
-                    const brillo::Error* error);
-
   std::shared_ptr<brillo::http::Transport> server_transport_;
 
   // Objects owned by the Daemon instance.
   Logger* logger_;
   Executor* executor_;
-
-  base::WeakPtrFactory<Smdp> weak_factory_;
 };
 
 }  // namespace hermes
