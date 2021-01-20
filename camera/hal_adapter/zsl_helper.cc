@@ -188,11 +188,8 @@ bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
   return true;
 }
 
-ZslHelper::ZslHelper(const camera_metadata_t* static_info,
-                     FrameNumberMapper* mapper)
-    : enabled_(false),
-      fence_sync_thread_("FenceSyncThread"),
-      frame_number_mapper_(mapper) {
+ZslHelper::ZslHelper(const camera_metadata_t* static_info)
+    : enabled_(false), fence_sync_thread_("FenceSyncThread") {
   VLOGF_ENTER();
   if (!IsCapabilitySupported(
           static_info,
@@ -454,74 +451,24 @@ void ZslHelper::TryReleaseBuffer() {
   ring_buffer_.pop_back();
 }
 
-void ZslHelper::ProcessZslCaptureRequest(
-    uint32_t framework_frame_number,
-    camera3_capture_request_t* request,  // maybe just use *input_buffer?
+bool ZslHelper::ProcessZslCaptureRequest(
+    camera3_capture_request_t* request,
     std::vector<camera3_stream_buffer_t>* output_buffers,
     internal::ScopedCameraMetadata* settings,
-    camera3_capture_request_t* still_request,
-    std::vector<camera3_stream_buffer_t>* still_output_buffers,
     SelectionStrategy strategy) {
-  auto GetJpegOrientation = [&](const camera_metadata_t* settings) {
-    camera_metadata_ro_entry_t entry;
-    if (find_camera_metadata_ro_entry(settings, ANDROID_JPEG_ORIENTATION,
-                                      &entry) != 0) {
-      LOGF(ERROR) << "Failed to find JPEG orientation, defaulting to 0";
-      return 0;
-    }
-    return *entry.data.i32;
-  };
   if (request->input_buffer != nullptr) {
-    return;
+    return false;
   }
+  bool transformed = false;
   if (IsZslRequested(settings->get())) {
-    for (auto it = output_buffers->begin(); it != output_buffers->end();) {
-      if (it->stream->format == HAL_PIXEL_FORMAT_BLOB ||
-          (it->stream->usage & GRALLOC_USAGE_STILL_CAPTURE)) {
-        still_output_buffers->push_back(std::move(*it));
-        it = output_buffers->erase(it);
-      } else {
-        it++;
-      }
+    transformed = TransformRequest(request, settings, strategy);
+    if (!transformed) {
+      LOGF(ERROR) << "Failed to find a suitable ZSL buffer";
     }
-    if (still_output_buffers->empty()) {
-      LOGF(ERROR) << "ZSL is requested, but we couldn't find any still "
-                     "capture output buffers.";
-    } else {
-      camera_metadata_t* zsl_settings;
-      bool transformed =
-          TransformRequest(still_request, &zsl_settings,
-                           GetJpegOrientation(settings->get()), strategy);
-      if (transformed) {
-        // Swap frame numbers to send the split still capture request first.
-        // When merging the capture results, the shutter message and result
-        // metadata of the second preview capture request will be trimmed, which
-        // is safe because we don't reprocess preview frames.
-        still_request->frame_number = request->frame_number;
-        request->frame_number =
-            frame_number_mapper_->GetHalFrameNumber(framework_frame_number);
-        still_request->settings = zsl_settings;
-      } else {
-        // TODO(lnishan): Implement 3A stabilization mechanism so that we
-        // would attempt to get a buffer in another time.
-        // Merging the buffers back for now.
-        LOGF(ERROR) << "Not splitting this request because we cannot find a "
-                       "suitable ZSL buffer";
-        for (size_t i = 0; i < still_output_buffers->size(); ++i) {
-          output_buffers->push_back(std::move((*still_output_buffers)[i]));
-        }
-        still_output_buffers->clear();
-      }
-    }
-    still_request->num_output_buffers = still_output_buffers->size();
-    still_request->output_buffers = const_cast<const camera3_stream_buffer_t*>(
-        still_output_buffers->data());
+  } else {
+    AttachRequest(request, output_buffers);
   }
-
-  // We might end up moving all output buffers to the added request. So here we
-  // unconditionally add a ZSL output buffer. We also need a placeholder request
-  // so that we can defer a request if a suitable ZSL buffer is not found.
-  AttachRequest(request, output_buffers);
+  return transformed;
 }
 
 void ZslHelper::AttachRequest(
@@ -554,11 +501,20 @@ void ZslHelper::AttachRequest(
 }
 
 bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
-                                 camera_metadata_t** settings,
-                                 int32_t jpeg_orientation,
+                                 internal::ScopedCameraMetadata* settings,
                                  SelectionStrategy strategy) {
   VLOGF_ENTER();
   base::AutoLock l(ring_buffer_lock_);
+  auto GetJpegOrientation = [&](const camera_metadata_t* settings) {
+    camera_metadata_ro_entry_t entry;
+    if (find_camera_metadata_ro_entry(settings, ANDROID_JPEG_ORIENTATION,
+                                      &entry) != 0) {
+      LOGF(ERROR) << "Failed to find JPEG orientation, defaulting to 0";
+      return 0;
+    }
+    return *entry.data.i32;
+  };
+
   if (!IsZslEnabled()) {
     LOGF(WARNING) << "Trying to transform a request when ZSL is disabled";
     return false;
@@ -581,12 +537,13 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
   // The result metadata for the RAW buffers come from the preview frames. We
   // need to add JPEG orientation back so that the resulting JPEG is of the
   // correct orientation.
+  int32_t jpeg_orientation = GetJpegOrientation(settings->get());
   if (selected_buffer_it->metadata.update(ANDROID_JPEG_ORIENTATION,
                                           &jpeg_orientation, 1) != 0) {
     LOGF(ERROR) << "Failed to update JPEG_ORIENTATION";
   }
   // Note that camera device adapter would take ownership of this pointer.
-  *settings = selected_buffer_it->metadata.release();
+  settings->reset(selected_buffer_it->metadata.release());
   return true;
 }
 

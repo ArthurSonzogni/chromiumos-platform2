@@ -23,7 +23,6 @@
 #include "common/utils/common_types.h"
 
 #include "cros-camera/camera_buffer_manager.h"
-#include "hal_adapter/frame_number_mapper.h"
 
 namespace cros {
 
@@ -131,8 +130,7 @@ class ZslHelper {
   static bool TryAddEnableZslKey(android::CameraMetadata* metadata);
 
   // Initialize static metadata and ZSL ring buffer.
-  explicit ZslHelper(const camera_metadata_t* static_info,
-                     FrameNumberMapper* mapper);
+  explicit ZslHelper(const camera_metadata_t* static_info);
 
   ~ZslHelper();
 
@@ -150,13 +148,10 @@ class ZslHelper {
   // Processes a capture request by either attaching a RAW output buffer (for
   // queueing the ZSL ring buffer) or transforming the request by adding a RAW
   // input stream.
-  void ProcessZslCaptureRequest(
-      uint32_t framework_frame_number,
+  bool ProcessZslCaptureRequest(
       camera3_capture_request_t* request,
       std::vector<camera3_stream_buffer_t>* output_buffers,
       internal::ScopedCameraMetadata* settings,
-      camera3_capture_request_t* still_request,
-      std::vector<camera3_stream_buffer_t>* still_output_buffers,
       SelectionStrategy strategy = CLOSEST_3A);
 
   // Merges ZSL metadata and mark buffer as ready to be submitted.
@@ -189,8 +184,7 @@ class ZslHelper {
 
   // Transforms a simple capture request into a reprocessing request.
   bool TransformRequest(camera3_capture_request_t* request,
-                        camera_metadata_t** settings,
-                        int32_t jpeg_orientation,
+                        internal::ScopedCameraMetadata* settings,
                         SelectionStrategy strategy = CLOSEST_3A);
 
   // Wait for the release fence on an attached ZSL output buffer. This function
@@ -260,9 +254,6 @@ class ZslHelper {
 
   // ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE from static metadata.
   camera_metadata_enum_android_sensor_info_timestamp_source_t timestamp_source_;
-
-  // Utility for mapping framework and HAL frame numbers.
-  FrameNumberMapper* frame_number_mapper_;
 };
 
 }  // namespace cros

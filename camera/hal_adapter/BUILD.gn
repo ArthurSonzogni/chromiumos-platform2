@@ -42,7 +42,6 @@ executable("cros_camera_service") {
     "camera_module_delegate.cc",
     "camera_trace_event.cc",
     "cros_camera_main.cc",
-    "frame_number_mapper.cc",
     "reprocess_effect/gpu_algo_manager.cc",
     "reprocess_effect/portrait_mode_effect.cc",
     "reprocess_effect/reprocess_effect_manager.cc",
