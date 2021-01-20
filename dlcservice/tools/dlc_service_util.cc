@@ -225,7 +225,11 @@ class DlcServiceUtil : public brillo::Daemon {
   bool Install() {
     brillo::ErrorPtr err;
     LOG(INFO) << "Attempting to install DLC modules: " << dlc_id_;
-    if (!dlc_service_proxy_->InstallWithOmahaUrl(dlc_id_, omaha_url_, &err)) {
+    // TODO(b/177932564): Temporary increase in timeout to unblock CQ cases that
+    // hit DLC installation while dlcservice is busy.
+    if (!dlc_service_proxy_->InstallWithOmahaUrl(
+            dlc_id_, omaha_url_, &err,
+            /*timeout_ms=*/5 * 60 * 1000)) {
       LOG(ERROR) << "Failed to install: " << dlc_id_ << ", "
                  << ErrorPtrStr(err);
       return false;
