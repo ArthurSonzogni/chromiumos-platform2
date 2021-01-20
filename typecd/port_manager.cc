@@ -218,11 +218,22 @@ void PortManager::RunModeEntry(int port_num) {
   }
 
   if (port->CanEnterTBTCompatibilityMode()) {
-    if (ec_util_->EnterMode(port_num, TypeCMode::kTBT)) {
-      port->SetCurrentMode(TypeCMode::kTBT);
-      LOG(INFO) << "Entered TBT compat mode on port " << port_num;
+    // If the user is not active, check if DP alt mode can be entered. If so,
+    // enter that. If not, proceed to enter TBT.
+    TypeCMode cur_mode = TypeCMode::kTBT;
+    if (!GetUserActive() && port->CanEnterDPAltMode()) {
+      cur_mode = TypeCMode::kDP;
+      LOG(INFO) << "Not entering TBT compat mode since user not active, port "
+                << port_num;
+    }
+
+    if (ec_util_->EnterMode(port_num, cur_mode)) {
+      port->SetCurrentMode(cur_mode);
+      LOG(INFO) << "Entered " << ModeToString(cur_mode) << " mode on port "
+                << port_num;
     } else {
-      LOG(ERROR) << "Attempt to call Enter TBT failed for port " << port_num;
+      LOG(ERROR) << "Attempt to call enter " << ModeToString(cur_mode)
+                 << " failed for port " << port_num;
     }
 
     return;
