@@ -383,6 +383,8 @@ bool ArcService::Start(uint32_t id) {
                  << arc_device_->phys_ifname();
       return false;
     }
+    // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
+    SetContainerSysfsMtuOwner(id, arc_device_->guest_ifname(), "mtu");
   }
   id_ = id;
 
