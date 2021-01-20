@@ -46,6 +46,7 @@ const char kMountUser[] = "fuse-fuse";
 const char kFUSEType[] = "fusefs";
 const char kSomeSource[] = "/dev/dummy";
 const char kMountDir[] = "/mnt";
+const char kCgroup[] = "/sys/fs/cgroup/freezer/exe/cgroup.procs";
 const int kFUSEMountFlags = MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_DIRSYNC;
 
 // Mock Platform implementation for testing.
@@ -168,6 +169,7 @@ class FUSESandboxedProcessFactoryTest : public ::testing::Test {
 };
 
 TEST_F(FUSESandboxedProcessFactoryTest, BasicSetup) {
+  EXPECT_CALL(platform_, PathExists(kCgroup)).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(exe_.value())).WillOnce(Return(true));
   FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_);
   MockSandboxedProcess sandbox_;
@@ -175,6 +177,7 @@ TEST_F(FUSESandboxedProcessFactoryTest, BasicSetup) {
 }
 
 TEST_F(FUSESandboxedProcessFactoryTest, BasicSetup_MissingExecutable) {
+  EXPECT_CALL(platform_, PathExists(kCgroup)).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(exe_.value())).WillOnce(Return(false));
   FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_);
   MockSandboxedProcess sandbox_;
@@ -189,6 +192,7 @@ TEST_F(FUSESandboxedProcessFactoryTest, DISABLED_SeccompPolicy) {
   std::string policy = "close: 1\n";
   base::WriteFile(seccomp, policy.c_str(), policy.length());
   EXPECT_CALL(platform_, PathExists(seccomp.value())).WillOnce(Return(true));
+  EXPECT_CALL(platform_, PathExists(kCgroup)).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(exe_.value())).WillOnce(Return(true));
   FUSESandboxedProcessFactory factory(&platform_, {exe_, seccomp}, run_as_);
   MockSandboxedProcess sandbox_;
@@ -199,6 +203,7 @@ TEST_F(FUSESandboxedProcessFactoryTest, SeccompPolicy_MissingPolicy) {
   base::ScopedTempDir tmp;
   ASSERT_TRUE(tmp.CreateUniqueTempDir());
   base::FilePath seccomp = tmp.GetPath().Append("exe.policy");
+  EXPECT_CALL(platform_, PathExists(kCgroup)).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(seccomp.value())).WillOnce(Return(false));
   FUSESandboxedProcessFactory factory(&platform_, {exe_, seccomp}, run_as_);
   MockSandboxedProcess sandbox_;
@@ -206,6 +211,7 @@ TEST_F(FUSESandboxedProcessFactoryTest, SeccompPolicy_MissingPolicy) {
 }
 
 TEST_F(FUSESandboxedProcessFactoryTest, NetworkEnabled_NonCrostini) {
+  EXPECT_CALL(platform_, PathExists(kCgroup)).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(exe_.value())).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists("/etc/hosts.d")).WillOnce(Return(false));
   FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_, true);
@@ -214,6 +220,7 @@ TEST_F(FUSESandboxedProcessFactoryTest, NetworkEnabled_NonCrostini) {
 }
 
 TEST_F(FUSESandboxedProcessFactoryTest, NetworkEnabled_Crostini) {
+  EXPECT_CALL(platform_, PathExists(kCgroup)).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(exe_.value())).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists("/etc/hosts.d")).WillOnce(Return(true));
   FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_, true);

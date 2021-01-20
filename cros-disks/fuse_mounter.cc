@@ -43,6 +43,8 @@ namespace cros_disks {
 namespace {
 
 const char kFuseDeviceFile[] = "/dev/fuse";
+const char kBaseFreezerCgroup[] = "/sys/fs/cgroup/freezer";
+const char kCgroupProcsFile[] = "cgroup.procs";
 const int kFUSEMountFlags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_DIRSYNC;
 
 class FUSEMountPoint : public MountPoint {
@@ -152,6 +154,9 @@ FUSESandboxedProcessFactory::CreateSandboxedProcess() const {
 
 bool FUSESandboxedProcessFactory::ConfigureSandbox(
     SandboxedProcess* sandbox) const {
+  base::FilePath cgroup = base::FilePath(kBaseFreezerCgroup)
+                              .Append(executable_.BaseName())
+                              .Append(kCgroupProcsFile);
   sandbox->SetCapabilities(0);
   sandbox->SetNoNewPrivileges();
 
@@ -164,6 +169,18 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
   // kernel 3.8 supports it or no more supported devices use kernel
   // 3.8.
   // mount_process.NewCgroupNamespace();
+
+  // Add the sandboxed process to its cgroup that should be setup. Return an
+  // error if it's not there.
+  if (!platform_->PathExists(cgroup.value())) {
+    LOG(ERROR) << "Freezer cgroup, " << cgroup << " is missing";
+    return MOUNT_ERROR_INTERNAL;
+  }
+
+  if (!sandbox->AddToCgroup(cgroup.value())) {
+    LOG(ERROR) << "Unable to add sandboxed process to cgroup " << cgroup;
+    return MOUNT_ERROR_INTERNAL;
+  }
 
   sandbox->NewIpcNamespace();
 
