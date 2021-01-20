@@ -220,9 +220,7 @@ CameraMetadataInspector::CameraMetadataInspector(
       output_file_(std::move(output_file)),
       allowlist_(std::move(allowlist)),
       denylist_(std::move(denylist)),
-      thread_(std::move(thread)) {
-  result_sequence_checker_.DetachFromSequence();
-}
+      thread_(std::move(thread)) {}
 
 void CameraMetadataInspector::Write(base::StringPiece msg) {
   output_file_.WriteAtCurrentPos(msg.data(), msg.size());
@@ -342,11 +340,13 @@ void CameraMetadataInspector::InspectRequest(
 
 void CameraMetadataInspector::InspectResult(
     const camera3_capture_result_t* result) {
-  DCHECK(result_sequence_checker_.CalledOnValidSequence());
   if (result->result == nullptr) {
     return;
   }
-  pending_result_.append(result->result);
+  {
+    base::AutoLock l(pending_result_lock_);
+    pending_result_.append(result->result);
+  }
   if (result->partial_result != partial_result_count_) {
     return;
   }

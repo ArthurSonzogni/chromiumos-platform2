@@ -110,12 +110,9 @@ class CameraMetadataInspector {
   // The latest DataMap for each kind of metadata.
   DataMap latest_map[static_cast<size_t>(Kind::kNumberOfKinds)];
 
-  // The aggregated capture result for all current partial results.  It's only
-  // accessed in InspectResult() and guarded by |result_sequence_checker_|.
-  android::CameraMetadata pending_result_;
-
-  // Ensures InspectResult() are called on the same sequence.
-  base::SequenceChecker result_sequence_checker_;
+  // The aggregated capture result for all current partial results.
+  base::Lock pending_result_lock_;
+  android::CameraMetadata pending_result_ GUARDED_BY(pending_result_lock_);
 
   // The real work such as InspectOnThread() is running on |thread_|, so the
   // capture flow won't be blocked by InspectRequest() and InspectResult().
