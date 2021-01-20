@@ -26,12 +26,12 @@ class TpmBoundToPcrAuthBlock : public AuthBlock {
   TpmBoundToPcrAuthBlock(const TpmBoundToPcrAuthBlock&) = delete;
   TpmBoundToPcrAuthBlock& operator=(const TpmBoundToPcrAuthBlock&) = delete;
 
-  base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                        KeyBlobs* key_blobs,
-                                        CryptoError* error) override;
+  base::Optional<DeprecatedAuthBlockState> Create(const AuthInput& user_input,
+                                                  KeyBlobs* key_blobs,
+                                                  CryptoError* error) override;
 
   bool Derive(const AuthInput& auth_input,
-              const AuthBlockState& state,
+              const DeprecatedAuthBlockState& state,
               KeyBlobs* key_blobs,
               CryptoError* error) override;
 

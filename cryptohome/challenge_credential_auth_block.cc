@@ -13,7 +13,7 @@ namespace cryptohome {
 ChallengeCredentialAuthBlock::ChallengeCredentialAuthBlock()
     : LibScryptCompatAuthBlock(kSignatureChallengeProtected) {}
 
-base::Optional<AuthBlockState> ChallengeCredentialAuthBlock::Create(
+base::Optional<DeprecatedAuthBlockState> ChallengeCredentialAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   auto auth_state =
       LibScryptCompatAuthBlock::Create(user_input, key_blobs, error);
@@ -30,7 +30,7 @@ base::Optional<AuthBlockState> ChallengeCredentialAuthBlock::Create(
 }
 
 bool ChallengeCredentialAuthBlock::Derive(const AuthInput& user_input,
-                                          const AuthBlockState& state,
+                                          const DeprecatedAuthBlockState& state,
                                           KeyBlobs* key_blobs,
                                           CryptoError* error) {
   const SerializedVaultKeyset& serialized = state.vault_keyset.value();

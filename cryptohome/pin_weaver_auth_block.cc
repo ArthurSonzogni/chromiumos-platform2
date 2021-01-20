@@ -133,7 +133,7 @@ PinWeaverAuthBlock::PinWeaverAuthBlock(LECredentialManager* le_manager,
   CHECK_NE(tpm_init, nullptr);
 }
 
-base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
+base::Optional<DeprecatedAuthBlockState> PinWeaverAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
   DCHECK(key_blobs);
 
@@ -209,7 +209,7 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 }
 
 bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
-                                const AuthBlockState& state,
+                                const DeprecatedAuthBlockState& state,
                                 KeyBlobs* key_blobs,
                                 CryptoError* error) {
   DCHECK(key_blobs);

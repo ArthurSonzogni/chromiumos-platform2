@@ -30,7 +30,7 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(Tpm* tpm, TpmInit* tpm_init)
   CHECK(tpm_init != nullptr);
 }
 
-base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
+base::Optional<DeprecatedAuthBlockState> TpmBoundToPcrAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   const brillo::SecureBlob& salt = user_input.salt.value();
@@ -103,7 +103,7 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
 }
 
 bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
-                                    const AuthBlockState& state,
+                                    const DeprecatedAuthBlockState& state,
                                     KeyBlobs* key_out_data,
                                     CryptoError* error) {
   const SerializedVaultKeyset& serialized = state.vault_keyset.value();

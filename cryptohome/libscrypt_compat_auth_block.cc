@@ -71,7 +71,7 @@ LibScryptCompatAuthBlock::LibScryptCompatAuthBlock(
     DerivationType derivation_type)
     : AuthBlock(derivation_type) {}
 
-base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
+base::Optional<DeprecatedAuthBlockState> LibScryptCompatAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob input_key = auth_input.user_input.value();
 
@@ -111,7 +111,7 @@ base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
 }
 
 bool LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
-                                      const AuthBlockState& state,
+                                      const DeprecatedAuthBlockState& state,
                                       KeyBlobs* key_blobs,
                                       CryptoError* error) {
   const SerializedVaultKeyset& serialized = state.vault_keyset.value();
