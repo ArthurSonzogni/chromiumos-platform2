@@ -50,6 +50,7 @@ class CellularCapability {
   static const int kTimeoutScan;
   static const int kTimeoutSetInitialEpsBearer;
   static const int kTimeoutSetupLocation;
+  static const int kTimeoutSetupSignal;
 
   static std::unique_ptr<CellularCapability> Create(Cellular::Type type,
                                                     Cellular* cellular,
@@ -163,6 +164,8 @@ class CellularCapability {
                              const ResultCallback& callback) = 0;
 
   virtual void GetLocation(const StringCallback& callback) = 0;
+
+  virtual void SetupSignal(uint32_t rate, const ResultCallback& callback) = 0;
 
   virtual bool IsLocationUpdateSupported() const = 0;
 

@@ -24,6 +24,7 @@
 #include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modemcdma_proxy_interface.h"
 #include "shill/cellular/mm1_modem_proxy_interface.h"
+#include "shill/cellular/mm1_modem_signal_proxy_interface.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
@@ -147,6 +148,10 @@ class MockControl : public ControlInterface {
               (override));
   MOCK_METHOD(std::unique_ptr<mm1::ModemProxyInterface>,
               CreateMM1ModemProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<mm1::ModemSignalProxyInterface>,
+              CreateMM1ModemSignalProxy,
               (const RpcIdentifier&, const std::string&),
               (override));
   MOCK_METHOD(std::unique_ptr<mm1::ModemSimpleProxyInterface>,

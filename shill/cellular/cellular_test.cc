@@ -36,6 +36,7 @@ extern "C" {
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
+#include "shill/cellular/mock_mm1_modem_signal_proxy.h"
 #include "shill/cellular/mock_mm1_modem_simple_proxy.h"
 #include "shill/cellular/mock_mm1_proxy.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
@@ -223,6 +224,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
     mm1_modem_cdma_proxy_.reset(new mm1::MockModemModemCdmaProxy());
     mm1_modem_proxy_.reset(new mm1::MockModemProxy());
+    mm1_signal_proxy_.reset(new mm1::MockModemSignalProxy());
     mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
   }
 
@@ -490,6 +492,12 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->mm1_simple_proxy_);
     }
 
+    std::unique_ptr<mm1::ModemSignalProxyInterface> CreateMM1ModemSignalProxy(
+        const RpcIdentifier& /*path*/, const string& /*service*/) override {
+      CHECK(test_->mm1_signal_proxy_);
+      return std::move(test_->mm1_signal_proxy_);
+    }
+
    private:
     CellularTest* test_;
   };
@@ -553,6 +561,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   unique_ptr<mm1::MockModemModemCdmaProxy> mm1_modem_cdma_proxy_;
   unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
   unique_ptr<mm1::MockModemProxy> mm1_modem_proxy_;
+  unique_ptr<mm1::MockModemSignalProxy> mm1_signal_proxy_;
   unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
   MockMobileOperatorInfo* mock_home_provider_info_;
   MockMobileOperatorInfo* mock_serving_operator_info_;

@@ -450,7 +450,7 @@ class Service : public base::RefCounted<Service> {
   bool key_rotation() const { return key_rotation_; }
   bool endpoint_auth() const { return endpoint_auth_; }
 
-  void SetStrength(uint8_t strength);
+  mockable void SetStrength(uint8_t strength);
 
   // uint8_t streams out as a char. Coerce to a larger type, so that
   // it prints as a number.

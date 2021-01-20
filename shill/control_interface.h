@@ -60,6 +60,7 @@ class ModemModemCdmaProxyInterface;
 class ModemProxyInterface;
 class Mm1ProxyInterface;
 class ModemSimpleProxyInterface;
+class ModemSignalProxyInterface;
 class SimProxyInterface;
 
 }  // namespace mm1
@@ -154,6 +155,10 @@ class ControlInterface {
 
   virtual std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
       const RpcIdentifier& path, const std::string& service) = 0;
+
+  virtual std::unique_ptr<mm1::ModemSignalProxyInterface>
+  CreateMM1ModemSignalProxy(const RpcIdentifier& path,
+                            const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::ModemSimpleProxyInterface>
   CreateMM1ModemSimpleProxy(const RpcIdentifier& path,

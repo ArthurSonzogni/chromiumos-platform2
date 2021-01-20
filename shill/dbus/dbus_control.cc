@@ -29,6 +29,7 @@
 #include "shill/dbus/mm1_modem_modem3gpp_proxy.h"
 #include "shill/dbus/mm1_modem_modemcdma_proxy.h"
 #include "shill/dbus/mm1_modem_proxy.h"
+#include "shill/dbus/mm1_modem_signal_proxy.h"
 #include "shill/dbus/mm1_modem_simple_proxy.h"
 #include "shill/dbus/mm1_proxy.h"
 #include "shill/dbus/mm1_sim_proxy.h"
@@ -248,6 +249,12 @@ DBusControl::CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
 std::unique_ptr<mm1::ModemProxyInterface> DBusControl::CreateMM1ModemProxy(
     const RpcIdentifier& path, const string& service) {
   return std::make_unique<mm1::ModemProxy>(proxy_bus_, path, service);
+}
+
+std::unique_ptr<mm1::ModemSignalProxyInterface>
+DBusControl::CreateMM1ModemSignalProxy(const RpcIdentifier& path,
+                                       const string& service) {
+  return std::make_unique<mm1::ModemSignalProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemSimpleProxyInterface>

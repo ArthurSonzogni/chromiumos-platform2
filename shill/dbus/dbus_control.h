@@ -106,6 +106,9 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
       const RpcIdentifier& path, const std::string& service) override;
 
+  std::unique_ptr<mm1::ModemSignalProxyInterface> CreateMM1ModemSignalProxy(
+      const RpcIdentifier& path, const std::string& service) override;
+
   std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
       const RpcIdentifier& path, const std::string& service) override;
 

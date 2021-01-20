@@ -26,6 +26,7 @@
 #include "shill/cellular/mock_mm1_modem_location_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
+#include "shill/cellular/mock_mm1_modem_signal_proxy.h"
 #include "shill/cellular/mock_mm1_modem_simple_proxy.h"
 #include "shill/cellular/mock_mm1_sim_proxy.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
@@ -134,6 +135,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
         modem_info_(&control_interface_, &manager_),
         modem_3gpp_proxy_(new NiceMock<mm1::MockModemModem3gppProxy>()),
         modem_proxy_(new mm1::MockModemProxy()),
+        modem_signal_proxy_(new mm1::MockModemSignalProxy()),
         modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         capability_(nullptr),
         device_adaptor_(nullptr),
@@ -249,6 +251,14 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
     modem_3gpp_properties_.Set<uint32_t>(
         MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS, 0);
     modem_3gpp_properties_.Set<string>(MM_MODEM_MODEM3GPP_PROPERTY_IMEI, kImei);
+
+    // Set up mock modem signal properties.
+    KeyValueStore modem_signal_property_lte;
+    modem_signal_property_lte.Set<double>(
+        CellularCapability3gpp::kRsrpProperty,
+        CellularCapability3gpp::kRsrpBounds.min_threshold);
+    modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_LTE,
+                                                modem_signal_property_lte);
   }
 
   void InvokeEnable(bool enable,
@@ -276,6 +286,10 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
     callback.Run(Error());
   }
 
+  void SetSignalProxy() {
+    capability_->modem_signal_proxy_ = std::move(modem_signal_proxy_);
+  }
+
   void SetSimpleProxy() {
     capability_->modem_simple_proxy_ = std::move(modem_simple_proxy_);
   }
@@ -298,6 +312,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
     EXPECT_EQ(nullptr, capability_->modem_3gpp_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_location_proxy_);
+    EXPECT_EQ(nullptr, capability_->modem_signal_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_simple_proxy_);
   }
 
@@ -388,6 +403,12 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
       return std::move(test_->modem_proxy_);
     }
 
+    std::unique_ptr<mm1::ModemSignalProxyInterface> CreateMM1ModemSignalProxy(
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
+      return std::move(test_->modem_signal_proxy_);
+    }
+
     std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
         const RpcIdentifier& /*path*/,
         const std::string& /*service*/) override {
@@ -426,6 +447,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
         fake_properties->SetDictionaryForTesting(
             MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
             test_->modem_3gpp_properties_.properties());
+        fake_properties->SetDictionaryForTesting(
+            MM_DBUS_INTERFACE_MODEM_SIGNAL,
+            test_->modem_signal_properties_.properties());
       }
       return properties_proxy;
     }
@@ -443,6 +467,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   MockModemInfo modem_info_;
   std::unique_ptr<NiceMock<mm1::MockModemModem3gppProxy>> modem_3gpp_proxy_;
   std::unique_ptr<mm1::MockModemProxy> modem_proxy_;
+  std::unique_ptr<mm1::MockModemSignalProxy> modem_signal_proxy_;
   std::unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   CellularCapability3gpp* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;   // Owned by |cellular_|.
@@ -455,6 +480,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   KeyValueStore modem_3gpp_properties_;
   RpcIdentifier sim_path_;
   std::map<RpcIdentifier, KeyValueStore> sim_properties_;
+
+  KeyValueStore modem_signal_properties_;
 
   // saved for testing connect operations.
   RpcIdentifierCallback connect_callback_;
@@ -877,6 +904,71 @@ TEST_F(CellularCapability3gppMainTest, PropertiesChanged) {
       MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(_, _)).Times(0);
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
+}
+
+TEST_F(CellularCapability3gppMainTest, SignalPropertiesChanged) {
+  modem_signal_properties_.Clear();
+
+  KeyValueStore modem_signal_property_gsm;
+  modem_signal_property_gsm.Set<double>(
+      CellularCapability3gpp::kRssiProperty,
+      CellularCapability3gpp::kRssiBounds.max_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_GSM,
+                                              modem_signal_property_gsm);
+  EXPECT_CALL(*service_, SetStrength(100)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  KeyValueStore modem_signal_property_umts;
+  modem_signal_property_umts.Set<double>(
+      CellularCapability3gpp::kRssiProperty,
+      CellularCapability3gpp::kRssiBounds.min_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_UMTS,
+                                              modem_signal_property_umts);
+  EXPECT_CALL(*service_, SetStrength(0)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  KeyValueStore modem_signal_property_lte;
+  modem_signal_property_lte.Set<double>(
+      CellularCapability3gpp::kRssiProperty,
+      CellularCapability3gpp::kRssiBounds.max_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_LTE,
+                                              modem_signal_property_lte);
+  EXPECT_CALL(*service_, SetStrength(100)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  modem_signal_property_lte.Set<double>(
+      CellularCapability3gpp::kRsrpProperty,
+      CellularCapability3gpp::kRsrpBounds.min_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_LTE,
+                                              modem_signal_property_lte);
+  EXPECT_CALL(*service_, SetStrength(0)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  modem_signal_property_lte.Set<double>(
+      CellularCapability3gpp::kRsrpProperty,
+      CellularCapability3gpp::kRsrpBounds.max_threshold);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_LTE,
+                                              modem_signal_property_lte);
+  EXPECT_CALL(*service_, SetStrength(100)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
+
+  double rsrp_midrange = (CellularCapability3gpp::kRsrpBounds.min_threshold +
+                          CellularCapability3gpp::kRsrpBounds.max_threshold) /
+                         2;
+  modem_signal_property_lte.Set<double>(CellularCapability3gpp::kRsrpProperty,
+                                        rsrp_midrange);
+  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_LTE,
+                                              modem_signal_property_lte);
+  uint32_t expected_strength =
+      CellularCapability3gpp::kRsrpBounds.GetAsPercentage(rsrp_midrange);
+  EXPECT_CALL(*service_, SetStrength(expected_strength)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
+                                   modem_signal_properties_);
 }
 
 TEST_F(CellularCapability3gppMainTest, UpdateRegistrationState) {

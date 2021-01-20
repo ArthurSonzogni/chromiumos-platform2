@@ -67,18 +67,23 @@ const char CellularCapability3gpp::kOperatorShortProperty[] = "operator-short";
 const char CellularCapability3gpp::kOperatorCodeProperty[] = "operator-code";
 const char CellularCapability3gpp::kOperatorAccessTechnologyProperty[] =
     "access-technology";
+
+const char CellularCapability3gpp::kRsrpProperty[] = "rsrp";
+const char CellularCapability3gpp::kRssiProperty[] = "rssi";
+// Range of RSSI's reported to UI. Any RSSI out of this range is clamped to the
+// nearest threshold.
+const CellularCapability3gpp::SignalQualityBounds
+    CellularCapability3gpp::kRssiBounds = {-105, -83};
+// Range of RSRP's reported to UI. Any RSRP out of this range is clamped to the
+// nearest threshold.
+const CellularCapability3gpp::SignalQualityBounds
+    CellularCapability3gpp::kRsrpBounds = {-128, -88};
+
 const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
 
 namespace {
-// Range of rssi's that modem manager can report.
-const double kModemManagerRssiMax = -51.0;
-const double kModemManagerRssiMin = -113.0;
-
-// Range of rssi's reported to UI. Any RSSI out of this range is clamped to the
-// nearest threshold.
-const double kChromeRssiMin = -103.0;
-const double kChromeRssiMax = -63.0;
+const int kSignalQualityUpdateRateSeconds = 30;
 
 // Plugin strings via ModemManager.
 const char kTelitMMPlugin[] = "Telit";
@@ -86,11 +91,6 @@ const char kTelitMMPlugin[] = "Telit";
 // This identifier is specified in the serviceproviders.prototxt file.
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
-
-// Used to distinguish trogdor from other boards for signal quality indicators
-const char kFilePathPlatformName[] =
-    "/run/chromeos-config/v1/identity/platform-name";
-const char kPlatformTrogdor[] = "Trogdor";
 
 // Keys for the entries of Profiles.
 const char kProfileApn[] = "apn";
@@ -201,7 +201,6 @@ CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
-      mm_reports_wideband_rssi_(false),
       resetting_(false),
       subscription_state_(SubscriptionState::kUnknown),
       reset_done_(false),
@@ -210,30 +209,6 @@ CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
       weak_ptr_factory_(this) {
   SLOG(this, 2) << "Cellular capability constructed: 3GPP";
   mobile_operator_info_->Init();
-  InitMmReportsWidebandRssi();
-}
-
-void CellularCapability3gpp::InitMmReportsWidebandRssi() {
-  const base::FilePath path(kFilePathPlatformName);
-  base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  std::string contents;
-
-  mm_reports_wideband_rssi_ = false;
-  if (!file.IsValid()) {
-    LOG(ERROR) << "Invalid file " << path.value();
-    return;
-  }
-
-  std::vector<char> buf(file.GetLength());
-  int read = file.ReadAtCurrentPos(buf.data(), buf.size());
-  if (read < 0) {
-    LOG(ERROR) << "Could not read from file " << path.value();
-    return;
-  }
-
-  contents = std::string(buf.begin(), buf.begin() + read);
-  if (contents == kPlatformTrogdor)
-    mm_reports_wideband_rssi_ = true;
 }
 
 CellularCapability3gpp::~CellularCapability3gpp() = default;
@@ -264,6 +239,8 @@ void CellularCapability3gpp::InitProxies() {
   modem_3gpp_proxy_ = control_interface()->CreateMM1ModemModem3gppProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_proxy_ = control_interface()->CreateMM1ModemProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
+  modem_signal_proxy_ = control_interface()->CreateMM1ModemSignalProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_simple_proxy_ = control_interface()->CreateMM1ModemSimpleProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
@@ -351,6 +328,11 @@ void CellularCapability3gpp::EnableModemCompleted(
 
     return;
   }
+
+  ResultCallback setup_signal_callback =
+      Bind(&CellularCapability3gpp::OnSetupSignalReply,
+           weak_ptr_factory_.GetWeakPtr());
+  SetupSignal(kSignalQualityUpdateRateSeconds, setup_signal_callback);
 
   // After modem is enabled, it should be possible to get properties
   // TODO(jglasgow): handle errors from GetProperties
@@ -602,6 +584,7 @@ void CellularCapability3gpp::ReleaseProxies() {
   modem_3gpp_proxy_.reset();
   modem_proxy_.reset();
   modem_location_proxy_.reset();
+  modem_signal_proxy_.reset();
   modem_simple_proxy_.reset();
   dbus_properties_proxy_.reset();
 
@@ -611,8 +594,9 @@ void CellularCapability3gpp::ReleaseProxies() {
 
 bool CellularCapability3gpp::AreProxiesInitialized() const {
   return (modem_3gpp_proxy_.get() && modem_proxy_.get() &&
-          modem_simple_proxy_.get() && sim_proxy_.get() &&
-          modem_location_proxy_.get() && dbus_properties_proxy_.get());
+          modem_signal_proxy_.get() && modem_simple_proxy_.get() &&
+          sim_proxy_.get() && modem_location_proxy_.get() &&
+          dbus_properties_proxy_.get());
 }
 
 void CellularCapability3gpp::UpdateServiceActivationState() {
@@ -773,6 +757,10 @@ void CellularCapability3gpp::GetProperties() {
   auto properties_3gpp =
       dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP);
   OnModem3gppPropertiesChanged(properties_3gpp);
+
+  auto properties_signal =
+      dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_MODEM_SIGNAL);
+  OnModemSignalPropertiesChanged(properties_signal);
 }
 
 void CellularCapability3gpp::UpdateServiceOLP() {
@@ -1111,6 +1099,13 @@ void CellularCapability3gpp::SetupLocation(uint32_t sources,
                                kTimeoutSetupLocation);
 }
 
+void CellularCapability3gpp::SetupSignal(uint32_t rate,
+                                         const ResultCallback& callback) {
+  SLOG(this, 3) << __func__;
+  Error error;
+  modem_signal_proxy_->Setup(rate, &error, callback, kTimeoutSetupSignal);
+}
+
 void CellularCapability3gpp::OnSetupLocationReply(const Error& error) {
   SLOG(this, 3) << __func__;
   if (error.IsFailure()) {
@@ -1118,6 +1113,14 @@ void CellularCapability3gpp::OnSetupLocationReply(const Error& error) {
     // ModemManager starts. This failure is only likely for devices
     // which don't support location gathering.
     SLOG(this, 2) << "Failed to setup modem location capability.";
+    return;
+  }
+}
+
+void CellularCapability3gpp::OnSetupSignalReply(const Error& error) {
+  SLOG(this, 3) << __func__;
+  if (error.IsFailure()) {
+    SLOG(this, 2) << "Failed to setup modem signal capability.";
     return;
   }
 }
@@ -1280,13 +1283,6 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
         properties.Get<uint32_t>(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES));
   }
 
-  if (properties.ContainsVariant(MM_MODEM_PROPERTY_SIGNALQUALITY)) {
-    SignalQuality quality =
-        properties.GetVariant(MM_MODEM_PROPERTY_SIGNALQUALITY)
-            .Get<SignalQuality>();
-    OnSignalQualityChanged(std::get<0>(quality));
-  }
-
   if (properties.Contains<Strings>(MM_MODEM_PROPERTY_OWNNUMBERS)) {
     vector<string> numbers =
         properties.Get<Strings>(MM_MODEM_PROPERTY_OWNNUMBERS);
@@ -1305,6 +1301,9 @@ void CellularCapability3gpp::OnPropertiesChanged(
   }
   if (interface == MM_DBUS_INTERFACE_MODEM_MODEM3GPP) {
     OnModem3gppPropertiesChanged(changed_properties);
+  }
+  if (interface == MM_DBUS_INTERFACE_MODEM_SIGNAL) {
+    OnModemSignalPropertiesChanged(changed_properties);
   }
   if (interface == MM_DBUS_INTERFACE_SIM) {
     OnSimPropertiesChanged(sim_path_, changed_properties);
@@ -1709,56 +1708,6 @@ void CellularCapability3gpp::OnModemStateChangedSignal(int32_t old_state,
                 << reason << ")";
 }
 
-void CellularCapability3gpp::OnSignalQualityChanged(uint32_t quality) {
-  // Shill does not query RSRP or RSRQ from ModemManager yet. For now, we will
-  // rely on RSSI.
-  // TODO(pholla): Report RSRP instead of RSSI b/173016943
-  double scaled_quality = 0.0;
-  SLOG(this, 3) << __func__
-                << "mm_reports_wideband_rssi : " << mm_reports_wideband_rssi_;
-  if (mm_reports_wideband_rssi_) {
-    // Reference from android:
-    // https://android.googlesource.com/platform/frameworks/base.git/+/HEAD/telephony/java/android/telephony/CarrierConfigManager.java
-    // RSSI thresholds = Androids RSRP thresholds + 25dB (assuming no noise and
-    // 5Mhz channel).
-    // RSSI(dBm) -> UI bars mapping
-    // >-73   GREAT (4 bars)
-    // >-83   GOOD (3 bars)
-    // >-93   MODERATE (2 bars)
-    // >-inf  POOR (1 bar)
-
-    // Modem manager measures signal strength in RSSI and maps it to a value in
-    // the range of [0-100].
-    double rssi = kModemManagerRssiMin +
-                  static_cast<double>(quality) / 100.0 *
-                      (kModemManagerRssiMax - kModemManagerRssiMin);
-    double clamped_rssi =
-        std::min(std::max(rssi, kChromeRssiMin), kChromeRssiMax);
-
-    // Chrome OS UI uses signal quality values set by this method to draw
-    // network icons. UI code maps |quality| to number of bars as follows:
-    // [1-25] 1 bar, [26-50] 2 bars, [51-75] 3 bars and [76-100] 4 bars.
-    // -103->-63 rssi scales to UI quality of 0->100
-    // i.e. UI scaled_quality = min(max(rssi,-103),-63) / 40 * 100
-    scaled_quality = (clamped_rssi - kChromeRssiMin) * 100 /
-                     (kChromeRssiMax - kChromeRssiMin);
-  } else {
-    // This code path is used when we are not certain about the bandwidth for
-    // which RSSI is being reported. Fibocom modems may choose to return
-    // RSSI over 180kHz(RSRP) as RSSI.
-
-    // The mappings we desire are: [1-12] 1 bar, [13-24] 2 bars, [25-37] 3 bars
-    // and [38-100] 4 bars.
-    // A simple way to accomplish the desired mappings is to scale signal
-    // strength measurements by 2*x+1. For example: modem manager reports a
-    // signal strength of 25. After applying our scaling function chrome OS UI
-    // will receive a reading of 51. 51 maps to an icon with 3 bars on Chrome OS
-    // UI.
-    scaled_quality = std::min(100u, 2 * quality + 1);
-  }
-  cellular()->HandleNewSignalQuality(static_cast<uint32_t>(scaled_quality));
-}
-
 void CellularCapability3gpp::OnFacilityLocksChanged(uint32_t locks) {
   bool sim_enabled = !!(locks & MM_MODEM_3GPP_FACILITY_SIM);
   if (sim_lock_status_.enabled != sim_enabled) {
@@ -1818,7 +1767,47 @@ void CellularCapability3gpp::OnGetSimProperties(
     std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
     const KeyValueStore& properties) {
   OnSimPropertiesChanged(sim_path, properties);
-  // |sim_properties_proxy| will be safely released here.
+  // |sim_properties_proxy| will be safely released here.|
+}
+
+// Chrome OS UI uses signal quality values set by this method to draw
+// network icons. UI code maps |quality| to number of bars as follows:
+// [1-25] 1 bar, [26-50] 2 bars, [51-75] 3 bars and [76-100] 4 bars.
+// -128->-88 rsrp scales to UI quality of 0->100, used for 4G
+// -105->-83 rssi scales to UI quality of 0->100, used for other tech
+void CellularCapability3gpp::OnModemSignalPropertiesChanged(
+    const KeyValueStore& props) {
+  SLOG(this, 3) << __func__;
+  uint32_t scaled_quality = 0;
+  // Technologies whose signal strength will be probed, ordered by priority
+  std::vector<std::string> signal_properties_list = {
+      MM_MODEM_SIGNAL_PROPERTY_LTE, MM_MODEM_SIGNAL_PROPERTY_UMTS,
+      MM_MODEM_SIGNAL_PROPERTY_GSM, MM_MODEM_SIGNAL_PROPERTY_CDMA,
+      MM_MODEM_SIGNAL_PROPERTY_EVDO};
+  for (auto signal_property : signal_properties_list) {
+    if (props.ContainsVariant(signal_property)) {
+      auto tech_props = props.GetVariant(signal_property).Get<KeyValueStore>();
+      double signal_quality = 0.0;
+
+      if (tech_props.Contains<double>(kRsrpProperty)) {
+        signal_quality = tech_props.Get<double>(kRsrpProperty);
+        scaled_quality = kRsrpBounds.GetAsPercentage(signal_quality);
+      } else if (tech_props.Contains<double>(kRssiProperty)) {
+        signal_quality = tech_props.Get<double>(kRssiProperty);
+        scaled_quality = kRssiBounds.GetAsPercentage(signal_quality);
+      } else {
+        // we aren't interested in this tech since it does not report rssi/rsrp
+        continue;
+      }
+
+      SLOG(this, 4) << "signal_quality:" << signal_quality
+                    << " scaled_quality:" << scaled_quality;
+      cellular()->HandleNewSignalQuality(scaled_quality);
+      // we've found a signal quality indicator, no need to parse other
+      // technologies.
+      return;
+    }
+  }
 }
 
 void CellularCapability3gpp::OnSimPropertiesChanged(
@@ -1864,4 +1853,12 @@ void CellularCapability3gpp::SetSimSlotsForTesting(
   UpdateSims();
 }
 
+double CellularCapability3gpp::SignalQualityBounds::GetAsPercentage(
+    double signal_quality) const {
+  double clamped_signal_quality =
+      std::min(std::max(signal_quality, min_threshold), max_threshold);
+
+  return (clamped_signal_quality - min_threshold) * 100 /
+         (max_threshold - min_threshold);
+}
 }  // namespace shill

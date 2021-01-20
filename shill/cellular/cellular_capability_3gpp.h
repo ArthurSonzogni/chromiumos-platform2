@@ -25,6 +25,7 @@
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/cellular/mm1_modem_proxy_interface.h"
+#include "shill/cellular/mm1_modem_signal_proxy_interface.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/cellular/subscription_state.h"
@@ -135,6 +136,19 @@ class CellularCapability3gpp : public CellularCapability {
 
   void GetLocation(const StringCallback& callback) override;
 
+  void SetupSignal(uint32_t rate, const ResultCallback& callback) override;
+
+  // Used to encapsulate bounds for rssi/rsrp
+  struct SignalQualityBounds {
+    const double min_threshold;
+    const double max_threshold;
+
+    // Convert signal_quality to a percentage between 0 and 100
+    // If signal_quality < min_threshold, clamp to 0 %
+    // If signal_quality > max_threshold, clamp to 100 %
+    double GetAsPercentage(double signal_quality) const;
+  };
+
   bool IsLocationUpdateSupported() const override;
 
   uint32_t access_technologies_for_testing() const {
@@ -152,6 +166,12 @@ class CellularCapability3gpp : public CellularCapability {
   static const char kOperatorShortProperty[];
   static const char kOperatorCodeProperty[];
   static const char kOperatorAccessTechnologyProperty[];
+
+  static const SignalQualityBounds kRssiBounds;
+  static const SignalQualityBounds kRsrpBounds;
+
+  static const char kRsrpProperty[];
+  static const char kRssiProperty[];
 
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
@@ -197,6 +217,7 @@ class CellularCapability3gpp : public CellularCapability {
               OnModemCurrentCapabilitiesChanged);
   FRIEND_TEST(CellularCapability3gppMainTest, OnSimLockPropertiesChanged);
   FRIEND_TEST(CellularCapability3gppMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, SignalPropertiesChanged);
   FRIEND_TEST(CellularCapability3gppMainTest, Reset);
   FRIEND_TEST(CellularCapability3gppMainTest, SetInitialEpsBearer);
   FRIEND_TEST(CellularCapability3gppMainTest, SimLockStatusChanged);
@@ -227,8 +248,6 @@ class CellularCapability3gpp : public CellularCapability {
     MMModemLock lock_type;
     int32_t retries_left;
   };
-
-  void InitMmReportsWidebandRssi();
 
   // Methods used in starting a modem
   void EnableModem(bool deferralbe,
@@ -270,8 +289,6 @@ class CellularCapability3gpp : public CellularCapability {
   // Property Change notification handlers
   void OnModemPropertiesChanged(const KeyValueStore& properties);
 
-  void OnSignalQualityChanged(uint32_t quality);
-
   void OnModemCurrentCapabilitiesChanged(uint32_t current_capabilities);
   void OnMdnChanged(const std::string& mdn);
   void OnModemRevisionChanged(const std::string& revision);
@@ -300,6 +317,8 @@ class CellularCapability3gpp : public CellularCapability {
   void OnPcoChanged(const PcoList& pco_list);
   void OnProfilesChanged(const Profiles& profiles);
 
+  void OnModemSignalPropertiesChanged(const KeyValueStore& props);
+
   // SIM property change handlers
   void RequestSimProperties(RpcIdentifier sim_path);
   void OnGetSimProperties(
@@ -322,6 +341,7 @@ class CellularCapability3gpp : public CellularCapability {
   void OnGetLocationReply(const StringCallback& callback,
                           const std::map<uint32_t, brillo::Any>& results,
                           const Error& error);
+  void OnSetupSignalReply(const Error& error);
   void OnSetInitialEpsBearerReply(const Error& error);
 
   // Returns the normalized version of |mdn| by keeping only digits in |mdn|
@@ -351,6 +371,7 @@ class CellularCapability3gpp : public CellularCapability {
   std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   std::unique_ptr<mm1::ModemProxyInterface> modem_proxy_;
   std::unique_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
+  std::unique_ptr<mm1::ModemSignalProxyInterface> modem_signal_proxy_;
   std::unique_ptr<mm1::SimProxyInterface> sim_proxy_;
   std::unique_ptr<mm1::ModemLocationProxyInterface> modem_location_proxy_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
@@ -365,11 +386,6 @@ class CellularCapability3gpp : public CellularCapability {
   // Bits based on MMModemCapabilities
   uint32_t current_capabilities_;  // Technologies supported without a reload
   uint32_t access_technologies_;   // Bits based on MMModemAccessTechnology
-
-  // MM reports wideband rssi as signal quality on Trogdor
-  // and RSRP as signal quality on other cellular platforms
-  // TODO(pholla): Report RSRP instead of RSSI b/173016943
-  bool mm_reports_wideband_rssi_;
 
   Stringmap serving_operator_;
   std::string spn_;  // For testing only.

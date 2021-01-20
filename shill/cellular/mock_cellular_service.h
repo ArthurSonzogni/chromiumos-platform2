@@ -30,6 +30,7 @@ class MockCellularService : public CellularService {
   MOCK_METHOD(void, SetState, (ConnectState), (override));
   MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
   MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
+  MOCK_METHOD(void, SetStrength, (uint8_t), (override));
   MOCK_METHOD(ConnectState, state, (), (const, override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
   MOCK_METHOD(const std::string&, activation_state, (), (const, override));
