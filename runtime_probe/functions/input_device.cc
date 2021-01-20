@@ -103,7 +103,6 @@ base::Value LoadInputDevices() {
         break;
       }
       default: {
-        DVLOG(1) << "Unknown prefix '" << prefix << "'. line: " << line;
         break;
       }
     }

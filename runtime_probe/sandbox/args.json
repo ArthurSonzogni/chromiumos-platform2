@@ -79,7 +79,16 @@
     "-b",
     "/sys/devices/pci0000:00/"
   ],
-  "input_device": [],
+  "input_device": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/bus/i2c/",
+    "-b",
+    "/sys/devices/pci0000:00/"
+  ],
   "memory": [
     "-k",
     "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",

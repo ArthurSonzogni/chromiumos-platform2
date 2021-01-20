@@ -12,12 +12,14 @@ exit_group: 1
 fstat: 1
 gettid: 1
 lseek: 1
+lstat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 openat: 1
 prlimit64: 1
 read: 1
+readlink: 1
 restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
