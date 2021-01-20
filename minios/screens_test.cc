@@ -329,6 +329,12 @@ class MockScreens : public Screens {
   MOCK_METHOD(bool,
               ShowMessage,
               (const std::string& message_token, int offset_x, int offset_y));
+  MOCK_METHOD(bool,
+              ShowText,
+              (const std::string& text,
+               int glyph_offset_h,
+               int glyph_offset_v,
+               const std::string& color));
 };
 
 class ScreensTestMocks : public ::testing::Test {
@@ -370,7 +376,8 @@ TEST_F(ScreensTestMocks, ShowButtonFocused) {
 
   brillo::TouchFile(
       screens_path_.Append("en-US").Append(message + "_focused.png"));
-  mock_screens_.ShowButton(message, offset_y, /* focus=*/true, inner_width);
+  mock_screens_.ShowButton(message, offset_y, /*focus=*/true, inner_width,
+                           false);
 }
 
 TEST_F(ScreensTestMocks, ShowButton) {
@@ -396,7 +403,59 @@ TEST_F(ScreensTestMocks, ShowButton) {
       .WillRepeatedly(testing::Return(true));
 
   brillo::TouchFile(screens_path_.Append("en-US").Append(message + ".png"));
-  mock_screens_.ShowButton(message, offset_y, /* focus=*/false, inner_width);
+  mock_screens_.ShowButton(message, offset_y, /*focus=*/false, inner_width,
+                           false);
+}
+
+TEST_F(ScreensTestMocks, ShowButtonTextFocused) {
+  const int offset_y = 50;
+  const int inner_width = 45;
+  std::string text_message = "enter";
+
+  // Clear the button area.
+  EXPECT_CALL(mock_screens_, ShowBox(_, offset_y, _, _, kMenuBlack))
+      .WillRepeatedly(testing::Return(true));
+
+  // Show button.
+  EXPECT_CALL(mock_screens_,
+              ShowImage(screens_path_.Append("btn_bg_left_focused.png"), _, _))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_screens_,
+              ShowImage(screens_path_.Append("btn_bg_right_focused.png"), _, _))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_screens_, ShowBox(_, offset_y, inner_width, _, kMenuBlue))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_screens_, ShowText(text_message, _, _, "black"))
+      .WillOnce(testing::Return(true));
+
+  mock_screens_.ShowButton(text_message, offset_y, /*focus=*/true, inner_width,
+                           true);
+}
+
+TEST_F(ScreensTestMocks, ShowButtonText) {
+  const int offset_y = 50;
+  const int inner_width = 45;
+  const std::string text_message = "btn_enter";
+
+  // Clear the button area.
+  EXPECT_CALL(mock_screens_, ShowBox(_, offset_y, _, _, kMenuBlack))
+      .WillRepeatedly(testing::Return(true));
+
+  // Show button.
+  EXPECT_CALL(mock_screens_,
+              ShowImage(screens_path_.Append("btn_bg_left.png"), _, _))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_screens_,
+              ShowImage(screens_path_.Append("btn_bg_right.png"), _, _))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_screens_, ShowText(text_message, _, _, "white"))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_screens_, ShowBox(_, _, _, _, kMenuButtonFrameGrey))
+      .Times(2)
+      .WillRepeatedly(testing::Return(true));
+
+  mock_screens_.ShowButton(text_message, offset_y, /*focus=*/false, inner_width,
+                           true);
 }
 
 TEST_F(ScreensTestMocks, ShowStepper) {

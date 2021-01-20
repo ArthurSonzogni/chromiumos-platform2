@@ -48,10 +48,10 @@ class Screens {
 
   // Show dynamic text using pre-rendered glyphs. Colors 'white', 'grey' and
   // 'black'. Returns true on success.
-  bool ShowText(const std::string& text,
-                int glyph_offset_h,
-                int glyph_offset_v,
-                const std::string& color);
+  virtual bool ShowText(const std::string& text,
+                        int glyph_offset_h,
+                        int glyph_offset_v,
+                        const std::string& color);
 
   // Uses frecon to show image given a full file path. Returns true on success.
   virtual bool ShowImage(const base::FilePath& image_name,
@@ -99,7 +99,8 @@ class Screens {
   void ShowButton(const std::string& message_token,
                   int offset_y,
                   bool is_selected,
-                  int inner_width);
+                  int inner_width,
+                  bool is_text);
 
   // Shows stepper icons given a list of steps. Currently icons available in
   // 'kScreens' only go up to 3. Steps can be a number '1', 'error', or 'done'.
@@ -125,8 +126,22 @@ class Screens {
   // Clears screen and shows footer and language drop down menu.
   void MessageBaseScreen();
 
-  // First screen.
+  // MiniOs Screens. Users can navigate between then using up/down arrow keys.
+  // Function displays all components and buttons for that screen.
   void MiniOsWelcomeOnSelect();
+
+  // Shows a list of all available items.
+  void ShowItemDropdown(int index);
+
+  // Shows item menu drop down button on the dropdown screen. Button is
+  // highlighted if it is currently selected. Selecting this button directs to
+  // the expanded dropdown.
+  void ShowCollapsedItemMenu(bool is_selected);
+
+  // Queries list of available items and shows them as a drop down. On
+  // selection sets the 'chosen_item' and redirects to the password
+  // screen.
+  void ExpandItemDropdown();
 
   // Override the root directory for testing. Default is '/'.
   void SetRootForTest(const std::string& test_root);
@@ -170,8 +185,13 @@ class Screens {
   // error.
   bool GetLangConstants(const std::string& locale, int* lang_width);
 
-  // Changes button focus based on index selected.
+  // Shows the buttons of MiniOs screens. Index changes button focus based on
+  // button order.
   void ShowMiniOsWelcomeButtons(int index);
+
+  // Sets list of available items to item_list_ to show in drop down. Called
+  // every time the menu is clicked.
+  void SetItems();
 
   // Checks whether the current language is read from right to left. Must be
   // updated every time the language changes.
@@ -194,6 +214,15 @@ class Screens {
 
   // List of all supported locales.
   std::vector<std::string> supported_locales_;
+
+  // List of currently available items.
+  std::vector<std::string> item_list_;
+
+  // The item the user has picked from the dropdown menu.
+  std::string chosen_item_;
+
+  // Default button width. Changes for each locale.
+  int default_button_width_;
 
   // Default root directory.
   base::FilePath root_{"/"};

@@ -51,10 +51,13 @@ constexpr int kMonospaceGlyphWidth = 10;
 constexpr int kDefaultMessageWidth = 720;
 constexpr int kButtonHeight = 32;
 constexpr int kButtonMargin = 8;
-constexpr int kDefaultButtonWidth = 10;
+constexpr int kDefaultButtonWidth = 80;
 
 constexpr int kNewLineChar = 10;
 
+// Buttons
+constexpr int kTitleY = (-kCanvasSize / 2) + 238;
+constexpr int kBtnYStep = kButtonHeight + kButtonMargin;
 constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
 }  // namespace
 
@@ -249,7 +252,8 @@ void Screens::WaitMenuInput(int menu_count, int* index, bool* enter) {
 void Screens::ShowButton(const std::string& message_token,
                          int offset_y,
                          bool is_selected,
-                         int inner_width) {
+                         int inner_width,
+                         bool is_text) {
   const int btn_padding = 32;  // Left and right padding.
   int left_padding_x = (-kCanvasSize / 2) + (btn_padding / 2);
   const int offset_x = left_padding_x + (btn_padding / 2) + (inner_width / 2);
@@ -271,18 +275,25 @@ void Screens::ShowButton(const std::string& message_token,
               offset_y);
 
     ShowBox(offset_x, offset_y, inner_width, kButtonHeight, kMenuBlue);
-
-    ShowMessage(message_token + "_focused", offset_x, offset_y);
+    if (is_text) {
+      ShowText(message_token, left_padding_x, offset_y, "black");
+    } else {
+      ShowMessage(message_token + "_focused", offset_x, offset_y);
+    }
   } else {
     ShowImage(screens_path_.Append("btn_bg_left.png"), left_padding_x,
               offset_y);
     ShowImage(screens_path_.Append("btn_bg_right.png"), right_padding_x,
               offset_y);
-    ShowMessage(message_token, offset_x, offset_y);
     ShowBox(offset_x, offset_y - (kButtonHeight / 2) + 1, inner_width, 1,
             kMenuButtonFrameGrey);
     ShowBox(offset_x, offset_y + (kButtonHeight / 2), inner_width, 1,
             kMenuButtonFrameGrey);
+    if (is_text) {
+      ShowText(message_token, left_padding_x, offset_y, "white");
+    } else {
+      ShowMessage(message_token, offset_x, offset_y);
+    }
   }
 }
 
@@ -388,6 +399,7 @@ void Screens::LanguageMenuOnSelect() {
       CheckRightToLeft();
       ReadDimensionConstants();
       ClearScreen();
+      ShowFooter();
       LOG(INFO) << "Changed selected locale to " << supported_locales_[index];
       return;
     }
@@ -516,8 +528,9 @@ void Screens::MiniOsWelcomeOnSelect() {
           LOG(INFO) << "Message minios_dropdown.";
           return;
         case 2:
-          LOG(INFO) << "Message minios_welcome.";
-          return;
+          index = 1;
+          ShowMiniOsWelcomeButtons(index);
+          continue;
       }
     }
     // If not entered, update MiniOS Screen with new button selections.
@@ -527,18 +540,30 @@ void Screens::MiniOsWelcomeOnSelect() {
 
 void Screens::ShowMiniOsWelcomeButtons(int index) {
   ShowLanguageMenu(index == 0);
-
-  constexpr int kTitleY = (-kCanvasSize / 2) + 238;
-  constexpr int kBtnYStep = kButtonHeight + kButtonMargin;
   constexpr int kBtnY = kTitleY + 80 + kBtnYStep * 2;
-  int debug_btn_width;
-  if (!GetDimension(kButtonWidthToken, &debug_btn_width)) {
-    debug_btn_width = kDefaultButtonWidth;
-    LOG(WARNING) << "Unable to get dimension for " << kButtonWidthToken
-                 << ". Defaulting to width " << kDefaultButtonWidth;
+  ShowButton("btn_next", kBtnY, (index == 1), default_button_width_, false);
+  ShowButton("btn_back", kBtnY + kBtnYStep, (index == 2), default_button_width_,
+             false);
+}
+
+void Screens::ExpandItemDropdown() {
+  SetItems();
+  ShowLanguageMenu(false);
+  ShowCollapsedItemMenu(true);
+
+  int index = 0;
+  ShowItemDropdown(index);
+  bool enter = false;
+  while (true) {
+    WaitMenuInput(item_list_.size(), &index, &enter);
+    if (enter && index > 0) {
+      chosen_item_ = item_list_[index];
+      LOG(INFO) << "Changed network to " << chosen_item_;
+      return;
+    }
+    // Update drop down menu with new highlighted selection.
+    ShowItemDropdown(index);
   }
-  ShowButton("btn_next", kBtnY, (index == 1), debug_btn_width);
-  ShowButton("btn_back", kBtnY + kBtnYStep, (index == 2), debug_btn_width);
 }
 
 void Screens::ReadDimensionConstants() {
@@ -550,8 +575,17 @@ void Screens::ReadDimensionConstants() {
     return;
   }
   if (!base::SplitStringIntoKeyValuePairs(dimension_consts, '=', '\n',
-                                          &image_dimensions_))
+                                          &image_dimensions_)) {
     LOG(WARNING) << "Unable to parse all dimension information for " << locale_;
+    return;
+  }
+
+  // Save default button width for this locale.
+  if (!GetDimension(kButtonWidthToken, &default_button_width_)) {
+    default_button_width_ = kDefaultButtonWidth;
+    LOG(WARNING) << "Unable to get dimension for " << kButtonWidthToken
+                 << ". Defaulting to width " << kDefaultButtonWidth;
+  }
 }
 
 bool Screens::GetDimension(const std::string& token, int* token_dimension) {
@@ -653,6 +687,55 @@ bool Screens::GetLangConstants(const std::string& locale, int* lang_width) {
     }
   }
   return false;
+}
+
+void Screens::ShowCollapsedItemMenu(bool is_selected) {
+  constexpr int kOffsetY = -kCanvasSize / 2 + 350;
+  constexpr int kBgX = -kCanvasSize / 2 + 145;
+  constexpr int kGlobeX = -kCanvasSize / 2 + 20;
+  constexpr int kArrowX = -kCanvasSize / 2 + 268;
+  const int text_x = -kCanvasSize / 2 + 100;
+
+  // Currently using language and globe icons as placeholders.
+  base::FilePath menu_background =
+      is_selected ? screens_path_.Append("language_menu_bg_focused.png")
+                  : screens_path_.Append("language_menu_bg.png");
+
+  ShowImage(menu_background, kBgX, kOffsetY);
+  ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
+  ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
+  ShowMessage("btn_MiniOS_display_options", text_x, kOffsetY);
+}
+
+void Screens::ShowItemDropdown(int index) {
+  constexpr int kItemPerPage = 10;
+  // Pick begin index such that the selected index is centered on the screen.
+  int begin_index =
+      std::clamp(index - kItemPerPage / 2, 0,
+                 static_cast<int>(supported_locales_.size()) - kItemPerPage);
+
+  int offset_y = -kCanvasSize / 2 + 350 + 40;
+  constexpr int kBackgroundX = -kCanvasSize / 2 + 360;
+  constexpr int kOffsetX = -kCanvasSize / 2 + 60;
+  constexpr int kItemHeight = 40;
+  for (int i = begin_index;
+       i < (begin_index + kItemPerPage) && i < item_list_.size(); i++) {
+    if (index == i) {
+      ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
+      ShowText(item_list_[i], kOffsetX, offset_y, "black");
+    } else {
+      ShowBox(kBackgroundX, offset_y, 720, 40, kMenuDropdownFrameNavy);
+      ShowBox(kBackgroundX, offset_y, 718, 38, kMenuDropdownBackgroundBlack);
+      ShowText(item_list_[i], kOffsetX, offset_y, "grey");
+    }
+    offset_y += kItemHeight;
+  }
+}
+
+void Screens::SetItems() {
+  // TODO(vyshu): temporary item names, replace with shill information.
+  item_list_ = {" item 1", "item2_public", "testing ! 1 2 ",
+                "32_char_is_the_longest_item_name"};
 }
 
 void Screens::CheckRightToLeft() {
