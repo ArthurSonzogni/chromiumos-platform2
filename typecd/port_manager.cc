@@ -153,7 +153,7 @@ void PortManager::OnScreenIsLocked() {
 }
 
 void PortManager::OnScreenIsUnlocked() {
-  // TODO(b/177628378): Potentially switch device alt modes.
+  // TODO(b/177628378): Call HandleUnlock().
 }
 
 void PortManager::OnSessionStarted() {
@@ -162,6 +162,34 @@ void PortManager::OnSessionStarted() {
 
 void PortManager::OnSessionStopped() {
   // TODO(b/177628378): Potentially switch device alt modes.
+}
+
+void PortManager::HandleUnlock() {
+  SetUserActive(true);
+  for (auto const& x : ports_) {
+    Port* port = x.second.get();
+    int port_num = x.first;
+    // If the current mode is anything other than DP, we don't care about
+    // changing modes.
+    if (port->GetCurrentMode() != TypeCMode::kDP)
+      continue;
+
+    // If TBT mode entry isn't supported, there is nothing left to do.
+    if (!port->CanEnterTBTCompatibilityMode())
+      continue;
+
+    // First try exiting the alt mode.
+    if (ec_util_->ExitMode(port_num)) {
+      port->SetCurrentMode(TypeCMode::kNone);
+      LOG(INFO) << "Exited DP mode on port " << port_num;
+    } else {
+      LOG(ERROR) << "Attempt to call ExitMode failed for port " << port_num;
+      continue;
+    }
+
+    // Now run mode entry again.
+    RunModeEntry(port_num);
+  }
 }
 
 void PortManager::RunModeEntry(int port_num) {

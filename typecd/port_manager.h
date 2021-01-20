@@ -43,6 +43,8 @@ class PortManager : public UdevMonitor::Observer,
   friend class PortManagerTest;
   FRIEND_TEST(PortManagerTest, ModeEntryNotSupported);
   FRIEND_TEST(PortManagerTest, SimpleModeEntry);
+  FRIEND_TEST(PortManagerTest, ModeSwitchUnlockDPandTBT);
+  FRIEND_TEST(PortManagerTest, ModeSwitchUnlockUSB4);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,
@@ -66,6 +68,8 @@ class PortManager : public UdevMonitor::Observer,
   void OnScreenIsUnlocked() override;
   void OnSessionStarted() override;
   void OnSessionStopped() override;
+
+  void HandleUnlock();
 
   // The central function which contains the main mode entry logic. This decides
   // which partner mode we select, based on partner/cable characteristics as
