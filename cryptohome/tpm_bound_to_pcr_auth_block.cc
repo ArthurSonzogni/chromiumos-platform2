@@ -32,7 +32,7 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
   CHECK(cryptohome_key_loader != nullptr);
 }
 
-base::Optional<DeprecatedAuthBlockState> TpmBoundToPcrAuthBlock::Create(
+base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   const brillo::SecureBlob& salt = user_input.salt.value();
@@ -77,30 +77,36 @@ base::Optional<DeprecatedAuthBlockState> TpmBoundToPcrAuthBlock::Create(
     return base::nullopt;
   }
 
+  AuthBlockState auth_block_state;
+  AuthBlockState::TpmBoundToPcrAuthBlockState* auth_state =
+      auth_block_state.mutable_tpm_bound_to_pcr_state();
+
   // Allow this to fail.  It is not absolutely necessary; it allows us to
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
-  SerializedVaultKeyset serialized;
   brillo::SecureBlob pub_key_hash;
   if (tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
                              &pub_key_hash) == Tpm::kTpmRetryNone) {
-    serialized.set_tpm_public_key_hash(pub_key_hash.data(),
-                                       pub_key_hash.size());
+    auth_state->set_tpm_public_key_hash(pub_key_hash.data(),
+                                        pub_key_hash.size());
+  } else {
+    LOG(ERROR) << "Failed to get the TPM public key hash";
   }
 
-  serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
-                       SerializedVaultKeyset::SCRYPT_DERIVED |
-                       SerializedVaultKeyset::PCR_BOUND);
-  serialized.set_tpm_key(tpm_key.data(), tpm_key.size());
-  serialized.set_extended_tpm_key(extended_tpm_key.data(),
-                                  extended_tpm_key.size());
+  auth_state->set_scrypt_derived(true);
+  auth_state->set_tpm_key(tpm_key.data(), tpm_key.size());
+  auth_state->set_extended_tpm_key(extended_tpm_key.data(),
+                                   extended_tpm_key.size());
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
   key_blobs->vkk_key = vkk_key;
+  // Note that one might expect the IV to be part of the AuthBlockState. But
+  // since it's taken from the scrypt output, it's actually created by the auth
+  // block, not used to initialize the auth block.
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
 
-  return {{serialized}};
+  return auth_block_state;
 }
 
 bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
@@ -149,6 +155,7 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     brillo::SecureBlob* vkk_key) const {
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
   if (!CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&pass_blob, vkk_iv})) {
+    LOG(ERROR) << "scrypt derivation failed";
     return false;
   }
 

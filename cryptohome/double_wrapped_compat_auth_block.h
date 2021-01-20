@@ -30,9 +30,9 @@ class DoubleWrappedCompatAuthBlock : public AuthBlock {
 
   // This auth block represents legacy keysets left in an inconsistent state, so
   // calling Create() here is FATAL.
-  base::Optional<DeprecatedAuthBlockState> Create(const AuthInput& user_input,
-                                                  KeyBlobs* key_blobs,
-                                                  CryptoError* error) override;
+  base::Optional<AuthBlockState> Create(const AuthInput& user_input,
+                                        KeyBlobs* key_blobs,
+                                        CryptoError* error) override;
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
   bool Derive(const AuthInput& auth_input,

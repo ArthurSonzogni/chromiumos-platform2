@@ -66,7 +66,7 @@ bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
   return true;
 }
 
-base::Optional<DeprecatedAuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
+base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   const brillo::SecureBlob& salt = user_input.salt.value();
@@ -98,27 +98,33 @@ base::Optional<DeprecatedAuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
     return base::nullopt;
   }
 
+  AuthBlockState auth_block_state;
+  AuthBlockState::TpmNotBoundToPcrAuthBlockState* auth_state =
+      auth_block_state.mutable_tpm_not_bound_to_pcr_state();
   // Allow this to fail.  It is not absolutely necessary; it allows us to
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
-  SerializedVaultKeyset serialized;
   brillo::SecureBlob pub_key_hash;
   if (tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
                              &pub_key_hash) == Tpm::kTpmRetryNone) {
-    serialized.set_tpm_public_key_hash(pub_key_hash.data(),
-                                       pub_key_hash.size());
+    auth_state->set_tpm_public_key_hash(pub_key_hash.data(),
+                                        pub_key_hash.size());
+  } else {
+    LOG(ERROR) << "Failed to get tpm public key hash.";
   }
 
-  serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
-                       SerializedVaultKeyset::SCRYPT_DERIVED);
-  serialized.set_tpm_key(tpm_key.data(), tpm_key.size());
+  auth_state->set_scrypt_derived(true);
+  auth_state->set_tpm_key(tpm_key.data(), tpm_key.size());
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
   key_blobs->vkk_key = CryptoLib::HmacSha256(kdf_skey, local_blob);
+  // Note that one might expect the IV to be part of the AuthBlockState. But
+  // since it's taken from the scrypt output, it's actually created by the auth
+  // block, not used to initialize the auth block.
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
 
-  return {{serialized}};
+  return auth_block_state;
 }
 
 bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(

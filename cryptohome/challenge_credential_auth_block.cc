@@ -13,7 +13,7 @@ namespace cryptohome {
 ChallengeCredentialAuthBlock::ChallengeCredentialAuthBlock()
     : LibScryptCompatAuthBlock(kSignatureChallengeProtected) {}
 
-base::Optional<DeprecatedAuthBlockState> ChallengeCredentialAuthBlock::Create(
+base::Optional<AuthBlockState> ChallengeCredentialAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   auto auth_state =
       LibScryptCompatAuthBlock::Create(user_input, key_blobs, error);
@@ -21,12 +21,9 @@ base::Optional<DeprecatedAuthBlockState> ChallengeCredentialAuthBlock::Create(
     LOG(ERROR) << "scrypt derivation failed for challenge credential";
     return base::nullopt;
   }
-
-  auth_state->vault_keyset->set_flags(
-      auth_state->vault_keyset->flags() |
-      SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
-
-  return auth_state;
+  AuthBlockState final_state;
+  final_state.mutable_challenge_credential_state();
+  return final_state;
 }
 
 bool ChallengeCredentialAuthBlock::Derive(const AuthInput& user_input,
