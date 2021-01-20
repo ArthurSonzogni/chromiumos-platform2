@@ -3179,6 +3179,10 @@ int main(int argc, char** argv) {
     cryptohome::AuthenticateAuthSessionRequest req;
     req.set_auth_session_id(auth_session_id);
 
+    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+                            req.mutable_authorization()))
+      return 1;
+
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
     if (!req_ary.get())
       return 1;

@@ -3120,6 +3120,7 @@ void LegacyCryptohomeInterfaceAdaptor::AuthenticateAuthSession(
 
   user_data_auth::AuthenticateAuthSessionRequest request;
   request.set_auth_session_id(in_request.auth_session_id());
+  request.mutable_authorization()->CopyFrom(in_request.authorization());
   userdataauth_proxy_->AuthenticateAuthSessionAsync(
       request,
       base::Bind(

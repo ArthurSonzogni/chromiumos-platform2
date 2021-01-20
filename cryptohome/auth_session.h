@@ -5,11 +5,18 @@
 #ifndef CRYPTOHOME_AUTH_SESSION_H_
 #define CRYPTOHOME_AUTH_SESSION_H_
 
+#include <memory>
 #include <string>
 
 #include <base/timer/timer.h>
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
+
+#include "cryptohome/credentials.h"
+#include "cryptohome/keyset_management.h"
+#include "cryptohome/rpc.pb.h"
+#include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/UserDataAuth.pb.h"
 
 namespace cryptohome {
 
@@ -22,7 +29,10 @@ enum class AuthStatus {
   kAuthStatusFurtherFactorRequired,
   // kAuthStatusTimedOut tells the user to restart the AuthSession because
   // the session has timed out.
-  kAuthStatusTimedOut
+  kAuthStatusTimedOut,
+  // kAuthStatusAuthenticated tells the user that the session is authenticated
+  // and that file system keys are available should they be required.
+  kAuthStatusAuthenticated
   // TODO(crbug.com/1154912): Complete the implementation of AuthStatus.
 };
 
@@ -30,9 +40,12 @@ enum class AuthStatus {
 // credentials.
 class AuthSession final {
  public:
+  // Caller needs to ensure that the the KeysetManagement* outlives the instance
+  // of AuthSession.
   AuthSession(
       std::string username,
-      base::OnceCallback<void(const base::UnguessableToken&)> on_timeout);
+      base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
+      KeysetManagement* keyset_management);
   ~AuthSession();
 
   // Returns the full unhashed user name.
@@ -43,6 +56,12 @@ class AuthSession final {
 
   // This function return the current status of this AuthSession.
   AuthStatus GetStatus() const { return status_; }
+
+  // Authenticate is called when the user wants to authenticate the current
+  // AuthSession. It may be called multiple times depending on errors or various
+  // steps involved in multi-factor authentication.
+  user_data_auth::CryptohomeErrorCode Authenticate(
+      const cryptohome::AuthorizationRequest& authorization_request);
 
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
@@ -69,6 +88,17 @@ class AuthSession final {
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
   base::OneShotTimer timer_;
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
+
+  // Pointer to FileSystemKeyset which will be initialized when the current
+  // AuthSession is successfully authenticated.
+  // TODO(crbug.com/1171025): Replace FileSystemKeyset with intermediate key as
+  // a proof of authentication.
+  std::unique_ptr<FileSystemKeyset> file_system_keyset_;
+
+  // The creator of the AuthSession object is responsible for the life of
+  // KeysetManagement object.
+  // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
+  KeysetManagement* keyset_management_;
 
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);

@@ -578,6 +578,8 @@ message AuthenticateAuthSessionRequest {
   // Serialized form of token that is used to identify Auth Session that needs
   // to be authenticated.
   optional bytes auth_session_id = 1;
+  // Authorization data from the user.
+  optional AuthorizationRequest authorization = 2;
 }
 
 message AuthenticateAuthSessionReply {

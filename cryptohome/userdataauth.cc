@@ -33,6 +33,7 @@
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/storage/disk_cleanup.h"
 #include "cryptohome/storage/low_disk_space_handler.h"
+#include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_session.h"
@@ -57,47 +58,6 @@ const std::string& GetAccountId(const AccountIdentifier& id) {
     return id.account_id();
   }
   return id.email();
-}
-
-// Convert MountError used by mount.cc to CryptohomeErrorCode defined in the
-// protos.
-user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(
-    const MountError code) {
-  static const std::unordered_map<MountError,
-                                  user_data_auth::CryptohomeErrorCode>
-      error_code_lut = {
-          {MOUNT_ERROR_NONE, user_data_auth::CRYPTOHOME_ERROR_NOT_SET},
-          {MOUNT_ERROR_FATAL, user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL},
-          {MOUNT_ERROR_KEY_FAILURE,
-           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED},
-          {MOUNT_ERROR_MOUNT_POINT_BUSY,
-           user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY},
-          {MOUNT_ERROR_TPM_COMM_ERROR,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_COMM_ERROR},
-          {MOUNT_ERROR_UNPRIVILEGED_KEY,
-           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED},
-          {MOUNT_ERROR_TPM_DEFEND_LOCK,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK},
-          {MOUNT_ERROR_TPM_UPDATE_REQUIRED,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED},
-          {MOUNT_ERROR_USER_DOES_NOT_EXIST,
-           user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND},
-          {MOUNT_ERROR_TPM_NEEDS_REBOOT,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT},
-          {MOUNT_ERROR_OLD_ENCRYPTION,
-           user_data_auth::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION},
-          {MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
-           user_data_auth::
-               CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE},
-          {MOUNT_ERROR_RECREATED, user_data_auth::CRYPTOHOME_ERROR_NOT_SET},
-          {MOUNT_ERROR_VAULT_UNRECOVERABLE,
-           user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE}};
-
-  if (error_code_lut.count(code) != 0) {
-    return error_code_lut.at(code);
-  }
-
-  return user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;
 }
 
 // Returns whether the Chrome OS image is a test one.
@@ -3047,8 +3007,10 @@ bool UserDataAuth::StartAuthSession(
   // usage of |Unretained| is safe.
   auto on_timeout = base::BindOnce(&UserDataAuth::RemoveAuthSessionWithToken,
                                    base::Unretained(this));
-  std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
-      request.account_id().account_id(), std::move(on_timeout));
+  // Assumption here is that keyset_management_ will outlive this AuthSession.
+  std::unique_ptr<AuthSession> auth_session =
+      std::make_unique<AuthSession>(request.account_id().account_id(),
+                                    std::move(on_timeout), keyset_management_);
   user_data_auth::StartAuthSessionReply reply;
   base::Optional<std::string> serialized_string =
       AuthSession::GetSerializedStringFromToken(auth_session->token());
@@ -3086,9 +3048,15 @@ bool UserDataAuth::AuthenticateAuthSession(
     std::move(on_done).Run(reply);
     return false;
   }
+
+  // Perform authentication using data in AuthorizationRequest and
+  // auth_session_token.
+  user_data_auth::CryptohomeErrorCode error =
+      auth_sessions_[token.value()]->Authenticate(request.authorization());
   // TODO(crbug.com/1157622) : Complete the API with actual authentication.
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-  reply.set_authenticated(false);
+  reply.set_error(error);
+  reply.set_authenticated(auth_sessions_[token.value()]->GetStatus() ==
+                          AuthStatus::kAuthStatusAuthenticated);
   std::move(on_done).Run(reply);
   return false;
 }
