@@ -35,7 +35,7 @@
 #       Otherwise it generates a thin archive assuming it's used inside the same package only.
 template("proto_library") {
   action_name = "${target_name}_gen"
-  action_foreach(action_name) {
+  action(action_name) {
     visibility = [ ":*" ]
 
     forward_variables_from(invoker,
@@ -85,13 +85,15 @@ template("proto_library") {
 
     script = "//common-mk/file_generator_wrapper.py"
     args = [ "protoc" ]
+    foreach(source, sources) {
+      args += [ rebase_path(source, proto_in_dir) ]
+    }
     foreach(x, proto_lib_dirs) {
       args += [
         "--proto_path",
         x,
       ]
     }
-    args += [ "${proto_in_dir}/{{source_name_part}}.proto" ]
     outputs = []
     if (gen_python) {
       python_dir = "${root_gen_dir}/${proto_out_dir}/py"
@@ -99,12 +101,20 @@ template("proto_library") {
         "--python_out",
         "${python_dir}",
       ]
-      outputs += [ "${python_dir}/{{source_name_part}}_pb.py" ]
+      foreach(source, sources) {
+        source = rebase_path(source, proto_in_dir)
+        source = string_replace(source, ".proto", "")
+        outputs += [ "${python_dir}/${source}_pb.py" ]
+      }
     }
     if (gen_grpc) {
       if (gen_grpc_gmock) {
         args += [ "--grpc_out=generate_mock_code=true:${cc_dir}" ]
-        outputs += [ "${cc_dir}/{{source_name_part}}_mock.grpc.pb.h" ]
+        foreach(source, sources) {
+          source = rebase_path(source, proto_in_dir)
+          source = string_replace(source, ".proto", "")
+          outputs += [ "${cc_dir}/${source}_mock.grpc.pb.h" ]
+        }
       } else {
         args += [ "--grpc_out=${cc_dir}" ]
       }
@@ -113,19 +123,27 @@ template("proto_library") {
         "--plugin=protoc-gen-grpc=${grpc_cpp_plugin}",
         "--cpp_out=${gen_cpp_mode}${cc_dir}",
       ]
-      outputs += [
-        "${cc_dir}/{{source_name_part}}.grpc.pb.cc",
-        "${cc_dir}/{{source_name_part}}.grpc.pb.h",
-        "${cc_dir}/{{source_name_part}}.pb.cc",
-        "${cc_dir}/{{source_name_part}}.pb.h",
-      ]
+      foreach(source, sources) {
+        source = rebase_path(source, proto_in_dir)
+        source = string_replace(source, ".proto", "")
+        outputs += [
+          "${cc_dir}/${source}.grpc.pb.cc",
+          "${cc_dir}/${source}.grpc.pb.h",
+          "${cc_dir}/${source}.pb.cc",
+          "${cc_dir}/${source}.pb.h",
+        ]
+      }
     }
     if (!gen_grpc && !gen_python) {
       args += [ "--cpp_out=${gen_cpp_mode}${cc_dir}" ]
-      outputs += [
-        "${cc_dir}/{{source_name_part}}.pb.cc",
-        "${cc_dir}/{{source_name_part}}.pb.h",
-      ]
+      foreach(source, sources) {
+        source = rebase_path(source, proto_in_dir)
+        source = string_replace(source, ".proto", "")
+        outputs += [
+          "${cc_dir}/${source}.pb.cc",
+          "${cc_dir}/${source}.pb.h",
+        ]
+      }
     }
   }
 
@@ -144,6 +162,7 @@ template("proto_library") {
           "public_configs",
           "public_deps",
           "visibility",
+          "proto_out_dir",
 
           # TODO(oka): we should not have to use all_dependent_pkg_deps here, because there is no
           # inherent reason that all users of this target should depend on some external
@@ -173,6 +192,7 @@ template("proto_library") {
     }
 
     sources = get_target_outputs(":${action_name}")
+    include_dirs = [ "${root_gen_dir}/${proto_out_dir}" ]
     deps = [ ":${action_name}" ]
     if (defined(invoker.deps)) {
       deps += invoker.deps
