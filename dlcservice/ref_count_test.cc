@@ -19,6 +19,7 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::DoAll;
+using testing::InvokeWithoutArgs;
 using testing::Return;
 using testing::SetArgPointee;
 
@@ -100,11 +101,15 @@ TEST_F(RefCountTest, UserInstalledAndUninstallDlc) {
   }
 
   EXPECT_CALL(*mock_session_manager_proxy_ptr_,
-              RetrievePrimarySession(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>("username-1"),
-                      SetArgPointee<1>("user-1"), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<0>("username-2"),
-                      SetArgPointee<1>("user-2"), Return(true)));
+              RetrievePrimarySessionAsync(_, _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        UserRefCount::OnSuccessRetrievePrimarySessionAsyncForTest("username-1",
+                                                                  "user-1");
+      }))
+      .WillOnce(InvokeWithoutArgs([]() {
+        UserRefCount::OnSuccessRetrievePrimarySessionAsyncForTest("username-2",
+                                                                  "user-2");
+      }));
 
   UserRefCount::SessionChanged(kSessionStarted);
   UserRefCount ref_count(prefs_path_);
@@ -134,13 +139,19 @@ TEST_F(RefCountTest, DeleteNotExistingUsers) {
   }
 
   EXPECT_CALL(*mock_session_manager_proxy_ptr_,
-              RetrievePrimarySession(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>("username-1"),
-                      SetArgPointee<1>("user-1"), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<0>("username-2"),
-                      SetArgPointee<1>("user-2"), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<0>("username-2"),
-                      SetArgPointee<1>("user-2"), Return(true)));
+              RetrievePrimarySessionAsync(_, _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        UserRefCount::OnSuccessRetrievePrimarySessionAsyncForTest("username-1",
+                                                                  "user-1");
+      }))
+      .WillOnce(InvokeWithoutArgs([]() {
+        UserRefCount::OnSuccessRetrievePrimarySessionAsyncForTest("username-2",
+                                                                  "user-2");
+      }))
+      .WillOnce(InvokeWithoutArgs([]() {
+        UserRefCount::OnSuccessRetrievePrimarySessionAsyncForTest("username-2",
+                                                                  "user-2");
+      }));
 
   // Install with both "user-1".
   UserRefCount ref_count(prefs_path_);

@@ -161,18 +161,29 @@ unique_ptr<string> UserRefCount::primary_session_username_;
 void UserRefCount::SessionChanged(const string& state) {
   if (state == kSessionStarted) {
     device_users_ = ScanDirectory(SystemState::Get()->users_dir());
-
-    string username, sanitized_username;
-    brillo::ErrorPtr err;
-    if (!SystemState::Get()->session_manager()->RetrievePrimarySession(
-            &username, &sanitized_username, &err)) {
-      LOG(ERROR) << "Failed to get the primary session's username with error: "
-                 << Error::ToString(err);
-      primary_session_username_.reset();
-      return;
-    }
-    primary_session_username_ = std::make_unique<string>(sanitized_username);
+    SystemState::Get()->session_manager()->RetrievePrimarySessionAsync(
+        base::Bind(&UserRefCount::OnSuccessRetrievePrimarySessionAsync),
+        base::Bind(&UserRefCount::OnErrorRetrievePrimarySessionAsync));
   }
+}
+
+// static
+void UserRefCount::OnSuccessRetrievePrimarySessionAsyncForTest(
+    const std::string& username, const std::string& sanitized_username) {
+  OnSuccessRetrievePrimarySessionAsync(username, sanitized_username);
+}
+
+// static
+void UserRefCount::OnSuccessRetrievePrimarySessionAsync(
+    const string& username, const string& sanitized_username) {
+  primary_session_username_ = std::make_unique<string>(sanitized_username);
+}
+
+// static
+void UserRefCount::OnErrorRetrievePrimarySessionAsync(brillo::Error* err) {
+  LOG(ERROR) << "Failed to get the primary session's username with error: "
+             << Error::ToString(err->Clone());
+  primary_session_username_.reset();
 }
 
 UserRefCount::UserRefCount(const base::FilePath& prefs_path)

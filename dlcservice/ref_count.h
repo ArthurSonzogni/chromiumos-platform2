@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
+#include <brillo/errors/error.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "dlcservice/ref_count.pb.h"
@@ -114,12 +115,19 @@ class UserRefCount : public RefCountBase {
   // Refreshes the internal cache of the user names we keep.
   static void SessionChanged(const std::string& state);
 
+  static void OnSuccessRetrievePrimarySessionAsyncForTest(
+      const std::string& username, const std::string& sanitized_username);
+
  protected:
   std::string GetCurrentUserName() const override {
     return primary_session_username_ ? *primary_session_username_ : "";
   }
 
  private:
+  static void OnSuccessRetrievePrimarySessionAsync(
+      const std::string& username, const std::string& sanitized_username);
+  static void OnErrorRetrievePrimarySessionAsync(brillo::Error* err);
+
   static std::set<std::string> device_users_;
   static std::unique_ptr<std::string> primary_session_username_;
 
