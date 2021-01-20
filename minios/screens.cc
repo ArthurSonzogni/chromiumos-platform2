@@ -18,6 +18,8 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "minios/key_reader.h"
+
 namespace screens {
 
 const char kScreens[] = "etc/screens";
@@ -514,7 +516,6 @@ void Screens::MiniOsWelcomeOnSelect() {
     // Get key events from evwaitkey.
     WaitMenuInput(3, &index, &enter);
     if (enter) {
-      // TODO(vyshu): Create screen functions below to replace the LOG messages.
       switch (index) {
         case 0:
           LanguageMenuOnSelect();
@@ -525,7 +526,7 @@ void Screens::MiniOsWelcomeOnSelect() {
           ShowStepper({"1", "2", "3"});
           break;
         case 1:
-          LOG(INFO) << "Message minios_dropdown.";
+          MiniOsDropdownOnSelect();
           return;
         case 2:
           index = 1;
@@ -546,6 +547,46 @@ void Screens::ShowMiniOsWelcomeButtons(int index) {
              false);
 }
 
+void Screens::MiniOsDropdownOnSelect() {
+  MessageBaseScreen();
+  ShowInstructions("title_MiniOS_dropdown");
+  ShowStepper({"1-done", "2", "3"});
+
+  int index = 1;
+  ShowMiniOsDropdownButtons(index);
+  bool enter = false;
+  while (true) {
+    WaitMenuInput(3, &index, &enter);
+    if (enter) {
+      switch (index) {
+        case 0:
+          LanguageMenuOnSelect();
+          // Return to current screen after picking new language.
+          ShowInstructions("title_MiniOS_dropdown");
+          ShowStepper({"1-done", "2", "3"});
+          enter = false;
+          index = 1;
+          break;
+        case 1:
+          ExpandItemDropdown();
+          MiniOsGetPasswordOnSelect();
+          return;
+        case 2:
+          MiniOsWelcomeOnSelect();
+          return;
+      }
+    }
+    ShowMiniOsDropdownButtons(index);
+  }
+}
+
+void Screens::ShowMiniOsDropdownButtons(int index) {
+  ShowLanguageMenu(index == 0);
+  ShowCollapsedItemMenu((index == 1));
+  ShowButton("btn_back", kTitleY + 58 + (4 * kBtnYStep), (index == 2),
+             default_button_width_, false);
+}
+
 void Screens::ExpandItemDropdown() {
   SetItems();
   ShowLanguageMenu(false);
@@ -563,6 +604,70 @@ void Screens::ExpandItemDropdown() {
     }
     // Update drop down menu with new highlighted selection.
     ShowItemDropdown(index);
+  }
+}
+
+void Screens::ShowMiniOsGetPasswordButtons(int index) {
+  ShowLanguageMenu((index == 0));
+  constexpr int kBtnY = kTitleY + 58 + kBtnYStep * 2;
+  ShowButton("Enter your password", kBtnY, false, default_button_width_ * 4,
+             true);
+  ShowButton("btn_back", kBtnY + kBtnYStep, (index == 2), default_button_width_,
+             false);
+}
+
+void Screens::GetPassword() {
+  key_reader_.InputSetUp();
+
+  constexpr int kBtnY = kTitleY + 58 + kBtnYStep * 2;
+  ShowButton("", kBtnY, false, default_button_width_ * 4, true);
+
+  bool enter = false;
+  bool show_password = false;
+  std::string input;
+  do {
+    if (!key_reader_.GetUserInput(&enter, &show_password, &input))
+      continue;
+    if (!show_password) {
+      input = std::string(input.size(), '*');
+    }
+    ShowButton(input, kBtnY, false, default_button_width_ * 4, true);
+  } while (!enter);
+  // TODO(vyshu) : Log password for development purposes only. Remove.
+  LOG(INFO) << "User password is: " << input;
+}
+
+void Screens::MiniOsGetPasswordOnSelect() {
+  MessageBaseScreen();
+  ShowInstructionsWithTitle("MiniOS_password");
+  ShowStepper({"done", "2-done", "3"});
+
+  int index = 1;
+  ShowMiniOsGetPasswordButtons(index);
+  bool enter = false;
+  while (true) {
+    // Get key events from evwaitkey.
+    WaitMenuInput(3, &index, &enter);
+    if (enter) {
+      switch (index) {
+        case 0:
+          LanguageMenuOnSelect();
+          // Return to current screen after picking new language.
+          ShowInstructionsWithTitle("MiniOS_password");
+          ShowStepper({"done", "2-done", "3"});
+          enter = false;
+          index = 1;
+          break;
+        case 1:
+          GetPassword();
+          return;
+        case 2:
+          MiniOsDropdownOnSelect();
+          return;
+      }
+    }
+    // If not entered, update MiniOS Screen with new button selections.
+    ShowMiniOsGetPasswordButtons(index);
   }
 }
 

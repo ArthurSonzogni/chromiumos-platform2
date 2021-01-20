@@ -129,6 +129,8 @@ class Screens {
   // MiniOs Screens. Users can navigate between then using up/down arrow keys.
   // Function displays all components and buttons for that screen.
   void MiniOsWelcomeOnSelect();
+  void MiniOsDropdownOnSelect();
+  void MiniOsGetPasswordOnSelect();
 
   // Shows a list of all available items.
   void ShowItemDropdown(int index);
@@ -142,6 +144,10 @@ class Screens {
   // selection sets the 'chosen_item' and redirects to the password
   // screen.
   void ExpandItemDropdown();
+
+  // Get user password using the keyboard layout stored in locale. Users can use
+  // the tab key to toggle showing the password.
+  void GetPassword();
 
   // Override the root directory for testing. Default is '/'.
   void SetRootForTest(const std::string& test_root);
@@ -162,8 +168,9 @@ class Screens {
   FRIEND_TEST(ScreensTest, CheckRightToLeft);
   FRIEND_TEST(ScreensTest, CheckDetachable);
 
+  // TODO(vyshu): Use region in vpd to initialize.
   key_reader::KeyReader key_reader_ =
-      key_reader::KeyReader(/*include_usb=*/true);
+      key_reader::KeyReader(/*include_usb=*/true, "us");
 
   // Read dimension constants for current locale into memory. Must be updated
   // every time the language changes.
@@ -188,6 +195,8 @@ class Screens {
   // Shows the buttons of MiniOs screens. Index changes button focus based on
   // button order.
   void ShowMiniOsWelcomeButtons(int index);
+  void ShowMiniOsGetPasswordButtons(int index);
+  void ShowMiniOsDropdownButtons(int index);
 
   // Sets list of available items to item_list_ to show in drop down. Called
   // every time the menu is clicked.
