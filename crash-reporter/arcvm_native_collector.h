@@ -46,6 +46,9 @@ class ArcvmNativeCollector : public CrashCollector {
   FRIEND_TEST(ArcvmNativeCollectorTest, HandleCrashWithMinidumpFD);
   FRIEND_TEST(ArcvmNativeCollectorTest, AddArcMetadata);
 
+  // CrashCollector overrides.
+  std::string GetOsVersion() const override;
+
   // Handles a native crash in ARCVM using the given FD for minidump.
   // TODO(kimiyuki): Replace |minidump_fd| with a path and make "/dev/stdin" the
   // default argument.

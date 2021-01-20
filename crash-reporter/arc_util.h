@@ -87,6 +87,10 @@ pid_t CreateRandomPID();
 std::vector<std::pair<std::string, std::string>> ListMetadataForBuildProperty(
     const BuildProperty& build_property);
 
+// GetChromeVersion returns the version of Chrome browser. ARC++ and ARCVM crash
+// reports use versions of Chrome browser as their product version.
+bool GetChromeVersion(std::string* version);
+
 }  // namespace arc_util
 
 #endif  // CRASH_REPORTER_ARC_UTIL_H_

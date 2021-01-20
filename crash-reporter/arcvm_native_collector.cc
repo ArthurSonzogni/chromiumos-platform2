@@ -108,3 +108,8 @@ bool ArcvmNativeCollector::DumpFdToFile(base::ScopedFD src_fd,
       return false;
   }
 }
+
+std::string ArcvmNativeCollector::GetOsVersion() const {
+  std::string version;
+  return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
+}

@@ -103,3 +103,8 @@ void ArcvmKernelCollector::AddArcMetadata(
     AddCrashMetaUploadData(metadata.first, metadata.second);
   }
 }
+
+std::string ArcvmKernelCollector::GetOsVersion() const {
+  std::string version;
+  return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
+}

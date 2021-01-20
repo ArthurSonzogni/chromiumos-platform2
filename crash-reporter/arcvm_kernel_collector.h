@@ -35,6 +35,9 @@ class ArcvmKernelCollector : public CrashCollector {
               HandleCrashWithRamoopsStreamAndTimestamp);
   FRIEND_TEST(ArcvmKernelCollectorTest, AddArcMetadata);
 
+  // CrashCollector overrides.
+  std::string GetOsVersion() const override;
+
   // Handles a kernel crash of ARCVM using the given stream for ramoops.
   // |timestamp| is used for a filename of the crash report.
   bool HandleCrashWithRamoopsStreamAndTimestamp(

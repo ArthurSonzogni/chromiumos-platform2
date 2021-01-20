@@ -46,8 +46,6 @@ const char kCoreCollectorPath[] = "/usr/bin/core_collector";
 const char kCoreCollector32Path[] = "/usr/bin/core_collector32";
 const char kCoreCollector64Path[] = "/usr/bin/core_collector64";
 
-const char kChromePath[] = "/opt/google/chrome/chrome";
-
 // Keys for build properties.
 const char kBoardProperty[] = "ro.product.board";
 const char kCpuAbiProperty[] = "ro.product.cpu.abi";
@@ -62,8 +60,6 @@ inline bool IsAppProcess(const std::string& name) {
 }
 
 bool ReadCrashLogFromStdin(std::stringstream* stream);
-
-bool GetChromeVersion(std::string* version);
 
 bool GetArcRoot(FilePath* root);
 bool GetArcProperties(arc_util::BuildProperty* build_property);
@@ -225,7 +221,7 @@ bool ArcCollector::ArcContext::ReadAuxvForProcess(pid_t pid,
 
 std::string ArcCollector::GetOsVersion() const {
   std::string version;
-  return GetChromeVersion(&version) ? version : kUnknownValue;
+  return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
 }
 
 bool ArcCollector::GetExecutableBaseNameFromPid(pid_t pid,
@@ -503,21 +499,6 @@ bool ReadCrashLogFromStdin(std::stringstream* stream) {
 
     stream->write(buffer, count);
   }
-}
-
-bool GetChromeVersion(std::string* version) {
-  ProcessImpl chrome;
-  chrome.AddArg(kChromePath);
-  chrome.AddArg("--product-version");
-
-  int exit_code = util::RunAndCaptureOutput(&chrome, STDOUT_FILENO, version);
-  if (exit_code != EX_OK || version->empty()) {
-    LOG(ERROR) << "Failed to get Chrome version";
-    return false;
-  }
-
-  version->pop_back();  // Discard EOL.
-  return true;
 }
 
 bool GetArcRoot(FilePath* root) {

@@ -4,11 +4,19 @@
 
 #include "crash-reporter/arc_util.h"
 
+#include <sysexits.h>
+
+#include <brillo/process/process.h>
+
+#include "crash-reporter/util.h"
+
 namespace arc_util {
 
 namespace {
 
 constexpr char kUnknownValue[] = "unknown";
+
+const char kChromePath[] = "/opt/google/chrome/chrome";
 
 bool HasExceptionInfo(const std::string& type) {
   static const std::unordered_set<std::string> kTypes = {
@@ -164,6 +172,21 @@ std::vector<std::pair<std::string, std::string>> ListMetadataForBuildProperty(
   metadata.emplace_back(kBoardField, build_property.board);
   metadata.emplace_back(kCpuAbiField, build_property.cpu_abi);
   return metadata;
+}
+
+bool GetChromeVersion(std::string* version) {
+  brillo::ProcessImpl chrome;
+  chrome.AddArg(kChromePath);
+  chrome.AddArg("--product-version");
+
+  int exit_code = util::RunAndCaptureOutput(&chrome, STDOUT_FILENO, version);
+  if (exit_code != EX_OK || version->empty()) {
+    LOG(ERROR) << "Failed to get Chrome version";
+    return false;
+  }
+
+  version->pop_back();  // Discard EOL.
+  return true;
 }
 
 }  // namespace arc_util
