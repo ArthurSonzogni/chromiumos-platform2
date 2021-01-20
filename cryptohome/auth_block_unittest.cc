@@ -61,13 +61,12 @@ TEST(TpmBoundToPcrTest, CreateTest) {
 
   TpmBoundToPcrAuthBlock auth_block(&tpm, &tpm_init);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
-  EXPECT_NE(auth_state, base::nullopt);
+  EXPECT_TRUE(auth_state->has_tpm_bound_to_pcr_state());
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
   EXPECT_NE(vkk_data.auth_iv, base::nullopt);
-  EXPECT_NE(auth_state.value().vault_keyset, base::nullopt);
 }
 
 TEST(TpmBoundToPcrTest, CreateFailTest) {
@@ -117,12 +116,12 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   CryptoError error;
   TpmNotBoundToPcrAuthBlock auth_block(&tpm, &tpm_init);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
+  EXPECT_TRUE(auth_state->has_tpm_not_bound_to_pcr_state());
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
   EXPECT_NE(vkk_data.auth_iv, base::nullopt);
-  EXPECT_NE(auth_state.value().vault_keyset, base::nullopt);
 }
 
 TEST(TpmNotBoundToPcrTest, CreateFailTest) {
@@ -178,12 +177,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   PinWeaverAuthBlock auth_block(&le_cred_manager, &tpm_init);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
   EXPECT_NE(base::nullopt, auth_state);
-
-  // Copy the SerializedVaultKeyset back out.
-  SerializedVaultKeyset serialized = auth_state.value().vault_keyset.value();
-
-  // Check the outputs.
-  EXPECT_EQ(SerializedVaultKeyset::LE_CREDENTIAL, serialized.flags());
+  EXPECT_TRUE(auth_state->has_pin_weaver_state());
 }
 
 TEST(PinWeaverAuthBlockTest, CreateFailTest) {

@@ -1,0 +1,42 @@
+// Copyright 2021 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package cryptohome;
+
+message AuthBlockState {
+  message TpmNotBoundToPcrAuthBlockState {
+    // Marks if the password is run through scrypt before going to the TPM.
+    bool scrypt_derived = 1;
+    // The VKK wrapped with the user's password by the tpm.
+    bytes tpm_key = 2;
+    // A check if this is the same TPM that wrapped the credential.
+    bytes tpm_public_key_hash = 3;
+  }
+  message TpmBoundToPcrAuthBlockState {
+    // Marks if the password is run through scrypt before going to the TPM.
+    bool scrypt_derived = 1;
+    // The VKK encrypted with the user's password and TPM.
+    bytes tpm_key = 2;
+    // Same as tpm_key, but extends the PCR to only allow one user until reboot.
+    bytes extended_tpm_key = 3;
+    // A check if this is the same TPM that wrapped the credential.
+    bytes tpm_public_key_hash = 4;
+  }
+  message PinWeaverAuthBlockState {
+    // The label for the credential in the LE hash tree.
+    uint64 le_label = 5;
+  }
+  message LibScryptCompatAuthBlockState {}
+  message ChallengeCredentialAuthBlockState {}
+
+  oneof auth_block_state {
+    TpmNotBoundToPcrAuthBlockState tpm_not_bound_to_pcr_state = 1;
+    TpmBoundToPcrAuthBlockState tpm_bound_to_pcr_state = 2;
+    PinWeaverAuthBlockState pin_weaver_state = 3;
+    LibScryptCompatAuthBlockState libscrypt_compat_state = 4;
+    ChallengeCredentialAuthBlockState challenge_credential_state = 5;
+  }
+}

@@ -133,7 +133,7 @@ PinWeaverAuthBlock::PinWeaverAuthBlock(LECredentialManager* le_manager,
   CHECK_NE(tpm_init, nullptr);
 }
 
-base::Optional<DeprecatedAuthBlockState> PinWeaverAuthBlock::Create(
+base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
   DCHECK(key_blobs);
 
@@ -166,16 +166,12 @@ base::Optional<DeprecatedAuthBlockState> PinWeaverAuthBlock::Create(
   const auto fek_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
   const auto chaps_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
 
-  SerializedVaultKeyset serialized;
-  serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
-  serialized.set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
-
   brillo::SecureBlob vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
 
   key_blobs->vkk_key = vkk_key;
   key_blobs->vkk_iv = fek_iv;
-  key_blobs->chaps_iv = chaps_iv;
   key_blobs->auth_iv = le_iv;
+  key_blobs->chaps_iv = chaps_iv;
 
   // Once we are able to correctly set up the VaultKeyset encryption,
   // store the LE and HE credential in the LECredentialManager.
@@ -202,10 +198,12 @@ base::Optional<DeprecatedAuthBlockState> PinWeaverAuthBlock::Create(
     PopulateError(error, ConvertLeError(ret));
     return base::nullopt;
   }
-  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
-  serialized.set_le_label(label);
 
-  return {{serialized}};
+  AuthBlockState auth_state;
+  AuthBlockState::PinWeaverAuthBlockState* pin_auth_state =
+      auth_state.mutable_pin_weaver_state();
+  pin_auth_state->set_le_label(label);
+  return auth_state;
 }
 
 bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
