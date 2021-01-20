@@ -13,7 +13,7 @@
 
 namespace cryptohome {
 
-struct AuthBlockState {
+struct DeprecatedAuthBlockState {
   base::Optional<SerializedVaultKeyset> vault_keyset;
 };
 
@@ -28,14 +28,13 @@ class AuthBlock {
   // user input. The key will then be used to wrap the keyset.
   // On success, it returns a constructed object, such as a
   // SerializedVaultKeyset, in the optional object, or base::nullopt on failure.
-  virtual base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                                KeyBlobs* key_blobs,
-                                                CryptoError* error) = 0;
+  virtual base::Optional<DeprecatedAuthBlockState> Create(
+      const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) = 0;
 
   // This is implemented by concrete auth methods to map the user secret
   // input into a key. This method should successfully authenticate the user.
   virtual bool Derive(const AuthInput& auth_input,
-                      const AuthBlockState& state,
+                      const DeprecatedAuthBlockState& state,
                       KeyBlobs* key_blobs,
                       CryptoError* error) = 0;
 
