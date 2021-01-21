@@ -6,6 +6,7 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/proxy/dbus_service.h"
 
 int main(int argc, char** argv) {
@@ -20,7 +21,12 @@ int main(int argc, char** argv) {
   }
 
   brillo::InitLog(flags);
+  cryptohome::InitializeMetrics();
 
   cryptohome::CryptohomeProxyDaemon proxy_daemon;
-  return proxy_daemon.Run();
+  int result = proxy_daemon.Run();
+
+  cryptohome::TearDownMetrics();
+
+  return result;
 }
