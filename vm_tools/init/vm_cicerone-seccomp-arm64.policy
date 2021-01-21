@@ -87,3 +87,4 @@ inotify_rm_watch: 1
 dup3: 1
 pselect6: 1
 flock: 1
+getrandom: 1
