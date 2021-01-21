@@ -51,8 +51,7 @@ void CellularControllerTrogdor::Init(Delegate* delegate,
       << set_transmit_power_for_proximity_
       << " set_transmit_power_for_tablet_mode_ = "
       << set_transmit_power_for_tablet_mode_;
-  if (set_transmit_power_for_proximity_ || set_transmit_power_for_tablet_mode_)
-    CHECK(InitQrtrSocket());
+  CHECK(InitQrtrSocket());
 }
 
 void CellularControllerTrogdor::EmitEvent(const char* event) {
