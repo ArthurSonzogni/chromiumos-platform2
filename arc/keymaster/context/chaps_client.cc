@@ -27,8 +27,8 @@ constexpr char kApplicationID[] =
 constexpr char kEncryptKeyLabel[] = "arc-keymasterd_AES_key";
 
 // Largest attribute retrieved is a certificate X509. Consider anything larger
-// than 1KB an error.
-constexpr size_t kMaxAttributeSize = 1024;
+// than 10KB an error.
+constexpr size_t kMaxAttributeSize = 10240;
 // Arbitrary number of object handles to retrieve on a search.
 constexpr CK_ULONG kMaxHandles = 100;
 // Max retries for invalid session handle errors.
@@ -436,8 +436,10 @@ CK_RV ChapsClient::GetBytesAttribute(CK_OBJECT_HANDLE object_handle,
     return rv;
   }
 
-  if (attribute.ulValueLen <= 0 || attribute.ulValueLen > kMaxAttributeSize)
+  if (attribute.ulValueLen <= 0 || attribute.ulValueLen > kMaxAttributeSize) {
+    LOG(ERROR) << "Invalid attribute length (" << attribute.ulValueLen << ")";
     return CKR_GENERAL_ERROR;
+  }
 
   attribute_value->resize(attribute.ulValueLen);
   attribute.pValue = attribute_value->data();
