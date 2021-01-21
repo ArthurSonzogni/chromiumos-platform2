@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
 #include <brillo/blkdev_utils/mock_lvm.h>
 #endif  // USE_LVM_STATEFUL_PARTITION
@@ -525,7 +526,7 @@ class HomeDirsVaultTest : public ::testing::Test {
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)));
   }
-
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   void ExpectLogicalVolumeStatefulPartition(
       const std::string& obfuscated_username, bool existing_cryptohome) {
@@ -568,6 +569,7 @@ class HomeDirsVaultTest : public ::testing::Test {
   std::unique_ptr<HomeDirs> homedirs_;
 };
 
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
 TEST_F(HomeDirsVaultTest, PristineVaultLvmStatefulSupport) {
   ExpectLogicalVolumeStatefulPartition(user_.obfuscated,
@@ -602,7 +604,7 @@ TEST_F(HomeDirsVaultTest, ExistingDmcryptContainer) {
   EXPECT_EQ(vault->GetCacheContainerType(), EncryptedContainerType::kDmcrypt);
   EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
 }
-#endif
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 // Tests cryptohome vault generation with fscrypt support.
 TEST_F(HomeDirsVaultTest, PristineVault) {

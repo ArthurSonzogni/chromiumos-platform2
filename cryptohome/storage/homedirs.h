@@ -19,6 +19,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
 #include <brillo/blkdev_utils/lvm.h>
 #endif  // USE_LVM_STATEFUL_PARTITION
@@ -222,7 +223,7 @@ class HomeDirs {
   // split patch. Remove it once all clients using it are either get it
   // directly or not use it.
   virtual KeysetManagement* keyset_management() { return keyset_management_; }
-
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   void SetLogicalVolumeManagerForTesting(
       std::unique_ptr<brillo::LogicalVolumeManager> lvm) {
@@ -291,7 +292,7 @@ class HomeDirs {
 
   // The container a not-shifted system UID in ARC++ container (AID_SYSTEM).
   static constexpr uid_t kAndroidSystemUid = 1000;
-
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
 #endif  // USE_LVM_STATEFUL_PARTITION

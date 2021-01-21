@@ -19,6 +19,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/cryptohome.h>
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
 #include <brillo/blkdev_utils/lvm.h>
 #endif  // USE_LVM_STATEFUL_PARTITION
@@ -84,9 +85,10 @@ HomeDirs::HomeDirs(Platform* platform,
       policy_provider_(std::move(policy_provider)),
       enterprise_owned_(false),
       vault_factory_(std::move(vault_factory)) {
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   lvm_ = std::make_unique<brillo::LogicalVolumeManager>();
-#endif
+#endif  // USE_LVM_STATEFUL_PARTITION
 }
 
 HomeDirs::~HomeDirs() {}
@@ -139,6 +141,7 @@ bool HomeDirs::DircryptoCryptohomeExists(
 bool HomeDirs::DmcryptContainerExists(
     const std::string& obfuscated_username,
     const std::string& container_suffix) const {
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   // Check for the presence of the logical volume for the user's data container.
   std::string logical_volume_container =
@@ -161,7 +164,7 @@ bool HomeDirs::DmcryptContainerExists(
   return lvm_->GetLogicalVolume(*vg, logical_volume_container) != base::nullopt;
 #else
   return false;
-#endif
+#endif  // USE_LVM_STATEFUL_PARTITION
 }
 
 bool HomeDirs::DmcryptCryptohomeExists(
@@ -394,6 +397,7 @@ void HomeDirs::AddUserTimestampToCache(const std::string& obfuscated) {
 }
 
 EncryptedContainerType HomeDirs::ChooseVaultType() {
+// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   // Validate stateful partition thinpool.
   base::Optional<brillo::PhysicalVolume> pv =
@@ -407,7 +411,7 @@ EncryptedContainerType HomeDirs::ChooseVaultType() {
         return EncryptedContainerType::kDmcrypt;
     }
   }
-#endif
+#endif  // USE_LVM_STATEFUL_PARTITION
 
   dircrypto::KeyState state = platform_->GetDirCryptoKeyState(ShadowRoot());
   switch (state) {
