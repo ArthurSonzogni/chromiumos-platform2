@@ -193,7 +193,7 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   DCHECK(!watcher_.get());
 
   // Flush the old samples in EC FIFO.
-  if (!iio_device_->GetTrigger() &&
+  if (iio_device_->HasFifo() &&
       !iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n")) {
     LOGF(ERROR) << "Failed to flush the old samples in EC FIFO";
   }
@@ -470,7 +470,8 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
     if (dev_frequency_ < libmems::kFrequencyEpsilon)
       return true;
 
-    if (!iio_device_->WriteDoubleAttribute(libmems::kHWFifoTimeoutAttr,
+    if (iio_device_->HasFifo() &&
+        !iio_device_->WriteDoubleAttribute(libmems::kHWFifoTimeoutAttr,
                                            1.0 / dev_frequency_)) {
       LOGF(ERROR) << "Failed to set fifo timeout";
       return false;
