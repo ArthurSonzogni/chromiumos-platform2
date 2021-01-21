@@ -25,7 +25,7 @@ class CrosECUtil : public ECUtil {
 
   bool ModeEntrySupported() override;
   bool EnterMode(int port, TypeCMode mode) override;
-  bool ExitMode(int port) override { return true; };
+  bool ExitMode(int port) override;
 
  private:
   FRIEND_TEST(CrosEcUtilTest, ModeEntrySupported);

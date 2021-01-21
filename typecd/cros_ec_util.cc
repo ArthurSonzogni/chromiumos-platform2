@@ -71,4 +71,23 @@ bool CrosECUtil::EnterMode(int port, TypeCMode mode) {
   return false;
 }
 
+bool CrosECUtil::ExitMode(int port) {
+  brillo::ErrorPtr error;
+  std::string result;
+  int retries = 5;
+
+  while (retries--) {
+    if (debugd_proxy_->EcTypeCExitMode(port, &result, &error))
+      return true;
+
+    LOG(INFO) << "Exit mode attempts remaining: " << retries;
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kTypeCControlWaitMs));
+  }
+
+  LOG(ERROR) << "Failed to call D-Bus TypeCExitMode: " << error->GetMessage();
+
+  return false;
+}
+
 }  // namespace typecd
