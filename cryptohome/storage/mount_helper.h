@@ -32,6 +32,13 @@ namespace cryptohome {
 extern const char kDefaultHomeDir[];
 extern const char kEphemeralCryptohomeRootContext[];
 
+struct DirectoryACL {
+  base::FilePath path;
+  mode_t mode;
+  uid_t uid;
+  gid_t gid;
+};
+
 // Objects that implement MountHelperInterface can perform mount operations.
 // This interface will be used as we transition all cryptohome mounts to be
 // performed out-of-process.
@@ -164,8 +171,14 @@ class MountHelper : public MountHelperInterface {
   std::vector<base::FilePath> MountedPaths() const;
 
  private:
-  // Returns the names of all tracked subdirectories.
-  static std::vector<base::FilePath> GetTrackedSubdirectories();
+  // Returns the names of all tracked subdirectories and its proper ACLs.
+  static std::vector<DirectoryACL> GetCommonSubdirectories(uid_t uid,
+                                                           gid_t gid,
+                                                           gid_t access_gid);
+  // Returns the names of all tracked subdirectories and its proper ACLs.
+  static std::vector<DirectoryACL> GetTrackedSubdirectories(uid_t uid,
+                                                            gid_t gid,
+                                                            gid_t access_gid);
 
   // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
   //
@@ -304,10 +317,6 @@ class MountHelper : public MountHelperInterface {
   // Sets up a freshly mounted ephemeral cryptohome by adjusting its permissions
   // and populating it with a skeleton directory and file structure.
   bool SetUpEphemeralCryptohome(const FilePath& source_path);
-
-  // Changes the group ownership and permissions on those directories inside
-  // the cryptohome that need to be accessible by other system daemons.
-  bool SetUpGroupAccess(const FilePath& home_dir) const;
 
   uid_t default_uid_;
   uid_t default_gid_;
