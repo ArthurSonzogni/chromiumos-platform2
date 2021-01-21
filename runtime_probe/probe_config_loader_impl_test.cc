@@ -106,15 +106,17 @@ TEST(ProbeConfigLoaderImplTestConstructor, DefaultConstructor) {
 }
 
 TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_WithoutCrosDebug) {
-  SetCrosDebugFlag(0);
-  const base::FilePath rel_path{kRuntimeProbeConfigName};
-  const auto rel_file_path = testdata_root_.Append(kRuntimeProbeConfigName);
+  for (const auto cros_config_flag : {0, 2 /* invalid flags */}) {
+    SetCrosDebugFlag(cros_config_flag);
+    const base::FilePath rel_path{kRuntimeProbeConfigName};
+    const auto rel_file_path = testdata_root_.Append(kRuntimeProbeConfigName);
 
-  const auto probe_config = probe_config_loader_->LoadFromFile(rel_file_path);
-  EXPECT_FALSE(probe_config);
+    const auto probe_config = probe_config_loader_->LoadFromFile(rel_file_path);
+    EXPECT_FALSE(probe_config);
+  }
 }
 
-TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_WithCrosDebug_RelativePath) {
+TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_RelativePath) {
   SetCrosDebugFlag(1);
   const base::FilePath rel_path{kRuntimeProbeConfigName};
   const auto rel_file_path = testdata_root_.Append(kRuntimeProbeConfigName);
@@ -128,7 +130,7 @@ TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_WithCrosDebug_RelativePath) {
             "B4B67B8FB7B094783926CC581850C492C5A246A4");
 }
 
-TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_WithCrosDebug_AbsolutePath) {
+TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_AbsolutePath) {
   SetCrosDebugFlag(1);
   const base::FilePath rel_path{kRuntimeProbeConfigName};
   const auto rel_file_path = testdata_root_.Append(kRuntimeProbeConfigName);
@@ -141,6 +143,7 @@ TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_WithCrosDebug_AbsolutePath) {
   EXPECT_EQ(probe_config->sha1_hash,
             "B4B67B8FB7B094783926CC581850C492C5A246A4");
 }
+
 TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_MissingFile) {
   SetCrosDebugFlag(1);
   const base::FilePath rel_path{"missing_file.json"};
@@ -157,6 +160,22 @@ TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_InvalidFile) {
 
   const auto probe_config = probe_config_loader_->LoadFromFile(rel_path);
   EXPECT_FALSE(probe_config);
+}
+
+TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_SymbolicLink) {
+  SetCrosDebugFlag(1);
+  const base::FilePath rel_path{kRuntimeProbeConfigName};
+  const auto rel_file_path = testdata_root_.Append(kRuntimeProbeConfigName);
+  const auto abs_file_path = base::MakeAbsoluteFilePath(rel_file_path);
+  const auto symlink_config_path = GetRootDir().Append("config.json");
+
+  PCHECK(base::CreateSymbolicLink(abs_file_path, symlink_config_path));
+  auto probe_config = probe_config_loader_->LoadFromFile(symlink_config_path);
+  EXPECT_TRUE(probe_config);
+  EXPECT_EQ(probe_config->path, abs_file_path);
+  EXPECT_FALSE(probe_config->config.DictEmpty());
+  EXPECT_EQ(probe_config->sha1_hash,
+            "B4B67B8FB7B094783926CC581850C492C5A246A4");
 }
 
 TEST_F(ProbeConfigLoaderImplTest, GetDefaultPaths_WithoutCrosDebug) {
