@@ -71,9 +71,9 @@ constexpr char kTestHarnessSharedDirTag[] = "testharness";
 constexpr char kApkCacheSharedDir[] = "/run/arcvm/apkcache";
 constexpr char kApkCacheSharedDirTag[] = "apkcache";
 
-// For |kOemEtcSharedDir|, map host's chronos to guest's root, also arc-camera
+// For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
-constexpr char kOemEtcUgidMap[] = "0 1000 1, 5000 600 50";
+constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 
 base::ScopedFD ConnectVSock(int cid) {
   DLOG(INFO) << "Creating VSOCK...";
@@ -193,10 +193,15 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableVideoEncoder(true /* enable */);
   }
 
+  std::string oem_etc_uid_map =
+      base::StringPrintf(kOemEtcUgidMapTemplate, geteuid());
+  std::string oem_etc_gid_map =
+      base::StringPrintf(kOemEtcUgidMapTemplate, getegid());
   std::string oem_etc_shared_dir = base::StringPrintf(
       "%s:%s:type=fs:cache=always:uidmap=%s:gidmap=%s:timeout=3600:rewrite-"
       "security-xattrs=true",
-      kOemEtcSharedDir, kOemEtcSharedDirTag, kOemEtcUgidMap, kOemEtcUgidMap);
+      kOemEtcSharedDir, kOemEtcSharedDirTag, oem_etc_uid_map.c_str(),
+      oem_etc_gid_map.c_str());
   std::string shared_media = base::StringPrintf(
       "%s:%s:type=9p:cache=never:uidmap=%s:gidmap=%s:ascii_casefold=true",
       kMediaSharedDir, kMediaSharedDirTag, kAndroidUidMap, kAndroidGidMap);

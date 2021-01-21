@@ -2351,7 +2351,8 @@ void ArcSetup::OnApplyPerBoardConfig() {
   ApplyPerBoardConfigurationsInternal(base::FilePath(kArcVmPerBoardConfigPath));
   SetUpCameraProperty(base::FilePath(kBuildPropFileVm));
 
-  // Unlike ARC container, ARCVM's platform.xml has to be owned by chronos.
+  // ARCVM's platform.xml has to be owned by crosvm for proper ugid mapping by
+  // crosvm.
   brillo::SafeFD fd;
   brillo::SafeFD::Error err;
   std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(
@@ -2360,7 +2361,11 @@ void ArcSetup::OnApplyPerBoardConfig() {
   if (err == brillo::SafeFD::Error::kDoesNotExist)
     return;  // the board does not have the file.
   EXIT_IF(!fd.is_valid());
-  EXIT_IF(fchown(fd.get(), kHostChronosUid, kHostChronosGid));
+
+  uid_t crosvm_uid;
+  gid_t crosvm_gid;
+  EXIT_IF(!GetUserId("crosvm", &crosvm_uid, &crosvm_gid));
+  EXIT_IF(fchown(fd.get(), crosvm_uid, crosvm_gid));
 }
 
 void ArcSetup::OnCreateData() {
