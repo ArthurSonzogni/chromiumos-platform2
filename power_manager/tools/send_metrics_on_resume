@@ -23,7 +23,7 @@ root_spool_dir=/var/spool/power_manager/root
 #  this function, you should read up on how $@ works, since it might be your
 #  problem.
 log_msg() {
-    logger -t "send_metrics_on_resume[${PPID}]" $@
+    logger -t "send_metrics_on_resume[${PPID}]" "$@"
 }
 
 LAST_RESUME_TIMINGS_FILE=${root_run_dir}/last_resume_timings
@@ -46,20 +46,22 @@ log_metric() {
 # Prints the name of the temp file created.
 split_recent_messages() {
   local suspend_start="Going to suspend-to-"
-  local tempdir=$(mktemp --tmpdir -d send_metrics_on_resume.XXXXXXXXXX)
+  local tempdir
+  tempdir=$(mktemp --tmpdir -d send_metrics_on_resume.XXXXXXXXXX)
   local retries=25
 
   while true; do
     # count can change if the log gets rotated mid run
-    local count=$(grep -c "${suspend_start}" /var/log/messages)
+    local count
+    count=$(grep -c "${suspend_start}" /var/log/messages)
 
     csplit -s -f "${tempdir}/recent_messages" /var/log/messages \
-      "%${suspend_start}%" {$((count-1))}
+      "%${suspend_start}%" "{$((count-1))}"
     # Resume finished is logged by powerd_suspend when it is done
     if grep -q "Resume finished" "${tempdir}/recent_messages00"; then
       break;
     fi
-    retries=$(($retries-1))
+    retries=$((retries-1))
     if [ $retries -eq 0 ]; then
       log_msg "Could not find end of resume indicator splitting messages"
       break # Skip cleanup and sleep steps and exit loop
@@ -78,7 +80,7 @@ cleanup_recent_messages() {
   local recent_messages="$1"
 
   /bin/rm "$recent_messages"
-  /bin/rmdir $(dirname "$recent_messages")
+  /bin/rmdir "$(dirname "$recent_messages")"
 }
 
 # Sends to UMA the total time since going in suspend:
@@ -94,21 +96,25 @@ send_time_in_suspend() {
   local f_suspend_at=${root_spool_dir}/suspend-to-ram-time
   [ -r $f_suspend_at ] || return
 
-  local resume_at=$(/bin/cat /sys/class/rtc/rtc0/since_epoch)
-  local suspend_at=$(/bin/cat $f_suspend_at)
+  local resume_at
+  resume_at=$(/bin/cat /sys/class/rtc/rtc0/since_epoch)
+  local suspend_at
+  suspend_at=$(/bin/cat $f_suspend_at)
   /bin/rm -f $f_suspend_at &
-  [ $resume_at -gt $suspend_at ] || return
+  [ "$resume_at" -gt "$suspend_at" ] || return
 
   # Converts seconds to minutes rounding to the nearest whole minute.
-  local time_in_suspend=$((($resume_at - $suspend_at + 30) / 60))
-  /usr/bin/metrics_client $time_in_suspend_name $time_in_suspend 1 10000 50 &
+  local time_in_suspend=$(((resume_at - suspend_at + 30) / 60))
+  /usr/bin/metrics_client "$time_in_suspend_name" $time_in_suspend 1 10000 50 &
 }
 
 # Prints the firmware (just BIOS, not including EC) resume time in
 # milliseconds.
 calculate_firmware_resume_time() {
   # Max CPU frequency, in KHz
-  local cpu_freq=$(cat "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+  local cpu_freq
+  cpu_freq=$(cat "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+  # shellcheck disable=SC2016
   AWK_PROG='
     /TSC at resume: / {
       sub(".*TSC at resume: ", "")
@@ -129,7 +135,8 @@ calculate_firmware_resume_time() {
 #   $1 - string to look for
 #   $2 - Path to messages for most recent suspend onward.
 get_last_message_timestamp() {
-  [ -n "$1" -a -n "$2" ] || return
+  [ -z "$1" ] && return
+  [ -z "$2" ] && return
   /bin/grep -E "$1" "$2" \
     | /usr/bin/tail -n1 \
     | /bin/sed 's/.*\[\s*\([0-9.]*\)].*/\1/'
@@ -144,9 +151,11 @@ get_last_message_timestamp() {
 get_timestamp() {
   local filename="${1}"
   shift 1
-  [ -n "${filename}" -a -n "${1}" ] || return
+  [ -z "${filename}" ] && return
+  [ -z "${1}" ] && return
   for pattern in "${@}"; do
-    local timestamp=$(get_last_message_timestamp "${pattern}" "${filename}")
+    local timestamp
+    timestamp=$(get_last_message_timestamp "${pattern}" "${filename}")
     if [ -n "${timestamp}" ]; then
       echo "${timestamp}"
       return
@@ -237,16 +246,21 @@ send_suspend_resume_time() {
   [ -r $power_status_on_suspend ] || return
 
   # Greps the timestamps.
-  local start_suspend_time=$(get_start_suspend_time "$recent_messages")
-  local end_suspend_time=$(get_end_suspend_time "$recent_messages")
-  local start_resume_time=$(get_start_resume_time "$recent_messages")
-  local end_resume_time=$(get_end_resume_time "$recent_messages")
-  local cpu_ready_time=$(get_cpu_ready_time "$recent_messages")
-  log_metric start_suspend_time $start_suspend_time
-  log_metric end_suspend_time $end_suspend_time
-  log_metric start_resume_time $start_resume_time
-  log_metric end_resume_time $end_resume_time
-  log_metric cpu_ready_time $cpu_ready_time
+  local start_suspend_time
+  local end_suspend_time
+  local start_resume_time
+  local end_resume_time
+  local cpu_ready_time
+  start_suspend_time=$(get_start_suspend_time "$recent_messages")
+  end_suspend_time=$(get_end_suspend_time "$recent_messages")
+  start_resume_time=$(get_start_resume_time "$recent_messages")
+  end_resume_time=$(get_end_resume_time "$recent_messages")
+  cpu_ready_time=$(get_cpu_ready_time "$recent_messages")
+  log_metric start_suspend_time "$start_suspend_time"
+  log_metric end_suspend_time "$end_suspend_time"
+  log_metric start_resume_time "$start_resume_time"
+  log_metric end_resume_time "$end_resume_time"
+  log_metric cpu_ready_time "$cpu_ready_time"
 
   [ -z "$start_suspend_time" ] && log_msg "Unable to get start_suspend_time"
   [ -z "$start_resume_time" ] && log_msg "Unable to get start_resume_time"
@@ -254,25 +268,29 @@ send_suspend_resume_time() {
 
   # Calculates the time intervals in milliseconds.
   [ -n "$start_suspend_time" ] && [ -n "$start_resume_time" ] &&
-    local kernel_suspend_time=$(echo $start_suspend_time $start_resume_time |
+    local kernel_suspend_time
+    kernel_suspend_time=$(echo "$start_suspend_time" "$start_resume_time" |
     /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
   [ -n "$start_resume_time" ] && [ -n "$end_resume_time" ] &&
-    local kernel_resume_time=$(echo $start_resume_time $end_resume_time |
+    local kernel_resume_time
+    kernel_resume_time=$(echo "$start_resume_time" "$end_resume_time" |
     /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
-  local firmware_resume_time=$(calculate_firmware_resume_time)
+  local firmware_resume_time
+  firmware_resume_time=$(calculate_firmware_resume_time)
 
   [ -z "$firmware_resume_time" ] && log_msg "Unable to get firmware_resume_time"
 
   # Sends the metrics. Uses the pre-suspend AC status for both suspend
   # and resume since this is the mode that most software is configured
   # at at resume time.
-  local ac_status=$(/bin/cat $power_status_on_suspend)
+  local ac_status
+  ac_status=$(/bin/cat $power_status_on_suspend)
   [ -n "$kernel_suspend_time" ] && /usr/bin/metrics_client \
-    Power.KernelSuspendTime$ac_status $kernel_suspend_time 1 10000 50 &
+    Power.KernelSuspendTime"$ac_status" "$kernel_suspend_time" 1 10000 50 &
   [ -n "$kernel_resume_time" ] && /usr/bin/metrics_client \
-    Power.KernelResumeTime$ac_status $kernel_resume_time 1 10000 50 &
+    Power.KernelResumeTime"$ac_status" "$kernel_resume_time" 1 10000 50 &
   [ -n "$firmware_resume_time" ] && /usr/bin/metrics_client \
-    Power.FirmwareResumeTime$ac_status $firmware_resume_time 1 10000 50 &
+    Power.FirmwareResumeTime"$ac_status" "$firmware_resume_time" 1 10000 50 &
 
   # Cleanup.
   /bin/rm -f $power_status_on_suspend
@@ -306,8 +324,10 @@ send_bitfix_metrics() {
 
   # Get information about bitfix and send it on.
   if [ "$(cat $enable_file 2>/dev/null)" = "Y" ]; then
-    local bitfix_chunks=$(get_bitfix_chunks "$recent_messages")
-    local bitfix_fixes=$(get_bitfix_fixes "$recent_messages")
+    local bitfix_chunks
+    bitfix_chunks=$(get_bitfix_chunks "$recent_messages")
+    local bitfix_fixes
+    bitfix_fixes=$(get_bitfix_fixes "$recent_messages")
     /usr/bin/metrics_client -e Power.BitfixChunks "$bitfix_chunks" 100 &
     /usr/bin/metrics_client -e Power.BitfixFixes "$bitfix_fixes" 500 &
   fi
@@ -330,6 +350,7 @@ send_bitfix_metrics() {
 send_tpschrome_retries() {
   local recent_messages="$1"
 
+  # shellcheck disable=SC2016
   local retries_script='
     /regulator\.[0-9]+: reg 0x[0-9a-f]+ enable ok after [0-9]+ tries/ {
       sub(".*regulator\.[0-9]+: reg ", "");
@@ -359,7 +380,8 @@ main() {
   rm -f "${LAST_RESUME_TIMINGS_FILE}"
   send_time_in_suspend $event
   if [ $event = "Resume" ]; then
-    local recent_messages=$(split_recent_messages)
+    local recent_messages
+    recent_messages=$(split_recent_messages)
     send_suspend_resume_time "$recent_messages"
     send_bitfix_metrics "$recent_messages"
     send_tpschrome_retries "$recent_messages"
@@ -370,4 +392,4 @@ main() {
   fi
 }
 
-main $@
+main "$@"
