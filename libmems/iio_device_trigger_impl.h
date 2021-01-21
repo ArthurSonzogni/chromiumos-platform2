@@ -72,10 +72,6 @@ class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
   base::Optional<int32_t> GetBufferFd() override { return base::nullopt; }
   base::Optional<IioSample> ReadSample() override { return base::nullopt; }
 
-  base::TimeDelta GetPeriodForObsoleteSamplesInMilliseconds() override {
-    return base::TimeDelta::FromMilliseconds(0.0);
-  }
-
  private:
   IioContextImpl* context_;    // non-owned
   iio_device* const trigger_;  // non-owned
