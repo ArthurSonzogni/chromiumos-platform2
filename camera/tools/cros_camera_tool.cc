@@ -11,29 +11,120 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/json/json_writer.h>
+#include <base/optional.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/values.h>
 #include <brillo/syslog_logging.h>
+
+#include "tools/crc_ccitt.h"
 
 namespace {
 
 const char kSysfsV4lClassRoot[] = "/sys/class/video4linux";
+const char kSysfsI2cDevicesRoot[] = "/sys/bus/i2c/devices";
 const char kVendorIdPath[] = "device/vendor_id";
 const std::vector<std::string> kArgsPattern = {"modules", "list"};
+const size_t kEepromIdBlockAlignment = 32u;
+
+struct eeprom_id_block {
+  char os[4];
+  uint16_t crc;
+  uint8_t version;
+  uint8_t length;
+  uint16_t data_format;
+  uint16_t module_pid;
+  char module_vid[2];
+  char sensor_vid[2];
+  uint16_t sensor_pid;
+};
 
 struct camera {
   std::string name;
   std::string vendor_id;
-
-  camera(const std::string& name_, const std::string& vendor_id_)
-      : name(name_), vendor_id(vendor_id_) {}
+  base::Optional<eeprom_id_block> eeprom;
 };
+
+bool ValidateCameraModuleInfo(base::span<const uint8_t> section) {
+  if (section.size() < sizeof(eeprom_id_block)) {
+    return false;
+  }
+  auto* info = reinterpret_cast<const eeprom_id_block*>(section.data());
+  const uint16_t crc =
+      Crc16CcittFalse(section.subspan(offsetof(eeprom_id_block, version)), 0u);
+  return strncmp(info->os, "CrOS", 4) == 0 && info->crc == crc &&
+         info->version == 1u;
+}
+
+base::FilePath FindEepromPathForSensorSubdev(const std::string& v4l_subdev) {
+  // Finds the eeprom node that is on the same I2C bus as the sensor V4L
+  // subdevice. For example:
+  //   /sys/bus/i2c/devices - i2c-2 - 2-0010 - video4linux - v4l-subdev6
+  //                               \- 2-0058 - eeprom
+  base::FileEnumerator bus_enum(base::FilePath(kSysfsI2cDevicesRoot), false,
+                                base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath bus_path = bus_enum.Next(); !bus_path.empty();
+       bus_path = bus_enum.Next()) {
+    base::FileEnumerator dev_enum(bus_path, false,
+                                  base::FileEnumerator::DIRECTORIES);
+    bool found_v4l_subdev = false;
+    base::FilePath eeprom_path;
+    for (base::FilePath dev_path = dev_enum.Next(); !dev_path.empty();
+         dev_path = dev_enum.Next()) {
+      if (base::PathExists(dev_path.Append("video4linux").Append(v4l_subdev))) {
+        found_v4l_subdev = true;
+      }
+      base::FilePath path = dev_path.Append("eeprom");
+      if (base::PathExists(path)) {
+        eeprom_path = path;
+      }
+    }
+    if (found_v4l_subdev && !eeprom_path.empty()) {
+      return eeprom_path;
+    }
+  }
+  return base::FilePath{};
+}
+
+base::Optional<eeprom_id_block> ReadEepromForSensorSubdev(
+    const std::string& v4l_subdev) {
+  const base::FilePath eeprom_path = FindEepromPathForSensorSubdev(v4l_subdev);
+  if (eeprom_path.empty()) {
+    return base::nullopt;
+  }
+  LOG(INFO) << "Found EEPROM path " << eeprom_path << " for " << v4l_subdev;
+
+  std::string eeprom;
+  if (!base::ReadFileToString(eeprom_path, &eeprom)) {
+    LOG(ERROR) << "Failed to read EEPROM from sysfs";
+    return base::nullopt;
+  }
+
+  static_assert(sizeof(eeprom_id_block) <= kEepromIdBlockAlignment);
+  const size_t alignment = kEepromIdBlockAlignment;
+  const uint8_t* data_end =
+      reinterpret_cast<const uint8_t*>(eeprom.data()) + eeprom.size();
+  for (size_t offset_from_end = alignment + eeprom.size() % alignment;
+       offset_from_end <= eeprom.size(); offset_from_end += alignment) {
+    base::span<const uint8_t> section =
+        base::make_span(data_end - offset_from_end, sizeof(eeprom_id_block));
+    if (ValidateCameraModuleInfo(section)) {
+      return *reinterpret_cast<const eeprom_id_block*>(section.data());
+    }
+  }
+  LOG(INFO) << "Didn't find module identification block in EEPROM data";
+  return base::nullopt;
+}
 
 class CameraTool {
   typedef std::vector<struct camera> CameraVector;
@@ -47,26 +138,45 @@ class CameraTool {
       return;
     }
 
-    std::cout << std::setw(16) << "Name"
-              << " | "
-              << "Vendor ID" << std::endl;
-    for (const auto& camera : cameras)
-      std::cout << std::setw(16) << camera.name << " | " << camera.vendor_id
-                << std::endl;
+    base::Value root(base::Value::Type::LIST);
+    for (const auto& camera : cameras) {
+      base::Value node(base::Value::Type::DICTIONARY);
+      node.SetStringKey("name", camera.name);
+      if (camera.eeprom.has_value()) {
+        const struct eeprom_id_block& b = *camera.eeprom;
+        node.SetStringKey("module_id",
+                          base::StringPrintf("%c%c%04x", b.module_vid[0],
+                                             b.module_vid[1], b.module_pid));
+        node.SetStringKey("sensor_id",
+                          base::StringPrintf("%c%c%04x", b.sensor_vid[0],
+                                             b.sensor_vid[1], b.sensor_pid));
+      } else {
+        node.SetStringKey("vendor", camera.vendor_id);
+      }
+      root.Append(std::move(node));
+    }
+    std::string json;
+    if (!base::JSONWriter::WriteWithOptions(
+            root, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json)) {
+      LOG(ERROR) << "Failed to print camera infos";
+    }
+    std::cout << json << std::endl;
   }
 
  private:
   void ProbeSensorSubdev(struct media_entity_desc* desc,
                          const base::FilePath& path) {
+    struct camera camera {
+      .name = desc->name
+    };
+    std::string vendor_id;
     const base::FilePath& vendor_id_path = path.Append(kVendorIdPath);
-    std::string vendor_id = "-1";
+    if (base::ReadFileToStringWithMaxSize(vendor_id_path, &vendor_id, 64)) {
+      base::TrimWhitespaceASCII(vendor_id, base::TRIM_ALL, &camera.vendor_id);
+    }
+    camera.eeprom = ReadEepromForSensorSubdev(path.BaseName().value());
 
-    if (!base::ReadFileToStringWithMaxSize(vendor_id_path, &vendor_id, 64))
-      LOG(ERROR) << "Failed to read vendor ID for sensor '" << desc->name
-                 << "'";
-
-    base::TrimWhitespaceASCII(vendor_id, base::TRIM_ALL, &vendor_id);
-    platform_cameras_.emplace_back(desc->name, vendor_id);
+    platform_cameras_.emplace_back(std::move(camera));
   }
 
   base::FilePath FindSubdevSysfsByDevId(int major, int minor) {
