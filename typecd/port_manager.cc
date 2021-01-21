@@ -161,7 +161,35 @@ void PortManager::OnSessionStarted() {
 }
 
 void PortManager::OnSessionStopped() {
-  // TODO(b/177628378): Potentially switch device alt modes.
+  // TODO(b/177628378): Call HandleSessionStopped().
+}
+
+void PortManager::HandleSessionStopped() {
+  SetUserActive(false);
+  for (auto const& x : ports_) {
+    Port* port = x.second.get();
+    int port_num = x.first;
+    // If the current mode is anything other than kTBT, we don't care about
+    // changing modes.
+    if (port->GetCurrentMode() != TypeCMode::kTBT)
+      continue;
+
+    // If DP mode entry isn't supported, there is nothing left to do.
+    if (!port->CanEnterDPAltMode())
+      continue;
+
+    // First try exiting the alt mode.
+    if (ec_util_->ExitMode(port_num)) {
+      port->SetCurrentMode(TypeCMode::kNone);
+      LOG(INFO) << "Exited TBT mode on port " << port_num;
+    } else {
+      LOG(ERROR) << "Attempt to call ExitMode failed for port " << port_num;
+      continue;
+    }
+
+    // Now run mode entry again.
+    RunModeEntry(port_num);
+  }
 }
 
 void PortManager::HandleUnlock() {
