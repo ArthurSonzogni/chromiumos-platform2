@@ -23,6 +23,7 @@ constexpr char kDeviceName[] = "name";
 constexpr char kFrequencyAttr[] = "frequency";
 constexpr char kSamplingFrequencyAttr[] = "sampling_frequency";
 constexpr char kHWFifoTimeoutAttr[] = "buffer/hwfifo_timeout";
+constexpr char kHWFifoWatermarkMaxAttr[] = "buffer/hwfifo_watermark_max";
 constexpr char kSamplingFrequencyAvailable[] = "sampling_frequency_available";
 
 constexpr double kFrequencyEpsilon = 0.001;  // Hz

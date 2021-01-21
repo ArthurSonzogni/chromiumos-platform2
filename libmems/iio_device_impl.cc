@@ -156,6 +156,10 @@ bool IioDeviceImpl::WriteDoubleAttribute(const std::string& name,
   return true;
 }
 
+bool IioDeviceImpl::HasFifo() const {
+  return iio_device_find_buffer_attr(device_, kHWFifoWatermarkMaxAttr);
+}
+
 iio_device* IioDeviceImpl::GetUnderlyingIioDevice() const {
   return device_;
 }

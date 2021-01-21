@@ -54,6 +54,8 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
   bool WriteDoubleAttribute(const std::string& name, double value) override;
 
+  bool HasFifo() const override;
+
   iio_device* GetUnderlyingIioDevice() const override;
 
   bool SetTrigger(IioDevice* trigger_device) override;
