@@ -62,6 +62,7 @@
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
+#include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 #include <rootdev/rootdev.h>
@@ -792,17 +793,26 @@ bool Platform::CreateDirectory(const FilePath& path) {
   return base::CreateDirectory(path);
 }
 
-bool Platform::SafeCreateDirAndSetOwnership(const base::FilePath& path,
-                                            uid_t user_id,
-                                            gid_t group_id) {
+bool Platform::SafeCreateDirAndSetOwnershipAndPermissions(
+    const base::FilePath& path, mode_t mode, uid_t user_id, gid_t group_id) {
+  // Reset mask since we are setting the mode explicitly.
+  brillo::ScopedUmask scoped_umask(0);
+
   auto root_fd_result = brillo::SafeFD::Root();
   if (root_fd_result.second != brillo::SafeFD::Error::kNoError) {
     return false;
   }
 
-  auto path_result = root_fd_result.first.MakeDir(
-      path, brillo::SafeFD::kDefaultDirPermissions, user_id, group_id);
+  auto path_result =
+      root_fd_result.first.MakeDir(path, mode, user_id, group_id);
   return path_result.second == brillo::SafeFD::Error::kNoError;
+}
+
+bool Platform::SafeCreateDirAndSetOwnership(const base::FilePath& path,
+                                            uid_t user_id,
+                                            gid_t group_id) {
+  return SafeCreateDirAndSetOwnershipAndPermissions(
+      path, brillo::SafeFD::kDefaultDirPermissions, user_id, group_id);
 }
 
 bool Platform::UdevAdmSettle(const base::FilePath& device_path,
