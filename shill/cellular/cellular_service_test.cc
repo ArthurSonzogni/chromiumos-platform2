@@ -49,8 +49,10 @@ class CellularServiceTest : public testing::Test {
     device_ = new MockCellular(&modem_info_, "usb0", kAddress, 3,
                                Cellular::kTypeCdma, "", RpcIdentifier(""));
     // CellularService expects an IMSI and SIM ID be set in the Device.
-    device_->SetImsi(kImsi);
-    device_->SetIccid(kIccid);
+    Cellular::SimProperties sim_properties;
+    sim_properties.iccid = kIccid;
+    sim_properties.imsi = kImsi;
+    device_->SetSimProperties(sim_properties);
     service_ =
         new CellularService(&manager_, kImsi, kIccid, device_->GetSimCardId());
     service_->SetDevice(device_.get());
