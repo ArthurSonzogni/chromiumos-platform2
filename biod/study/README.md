@@ -53,9 +53,9 @@ See [Typography conventions] to understand what `(outside)`, `(inside)`,
     [/etc/init/fingerprint_study.conf](init/fingerprint_study.conf).
 
 [boot-from-usb]:
-https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#boot-from-your-usb-disk
+https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#boot-from-your-usb-disk
 [install-from-usb]:
-https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#installing-your-chromium-os-image-to-your-hard-disk
+https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#installing-your-chromium-os-image-to-your-hard-disk
 
 ## Test on Host Using Mock ectool
 
