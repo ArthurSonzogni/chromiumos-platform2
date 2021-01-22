@@ -3171,10 +3171,10 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_SESSION],
                  action.c_str())) {
-    std::string auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id))
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
       return 1;
-    base::HexStringToString(auth_session_id.c_str(), &auth_session_id);
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
     cryptohome::AuthenticateAuthSessionRequest req;
     req.set_auth_session_id(auth_session_id);
