@@ -1,0 +1,57 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":dbus_code_generator",
+    ":dlp",
+  ]
+  if (use.test) {
+    deps += [ ":dlp_test" ]
+  }
+}
+
+# D-Bus code generator.
+generate_dbus_adaptors("dbus_code_generator") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/dlp"
+  sources = [ "dbus_bindings/org.chromium.Dlp.xml" ]
+}
+
+pkg_config("target_defaults") {
+  # NOSORT
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+executable("dlp") {
+  configs += [ ":target_defaults" ]
+  sources = [ "dlp.cc" ]
+}
+
+# Unit tests.
+if (use.test) {
+  pkg_config("dlp_test_config") {
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
+  executable("dlp_test") {
+    configs += [
+      "//common-mk:test",
+      ":dlp_test_config",
+      ":target_defaults",
+    ]
+    sources = []
+    defines = [ "UNIT_TEST" ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
+  }
+}
