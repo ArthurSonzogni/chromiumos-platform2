@@ -128,7 +128,6 @@ class LogTool {
   // Returns cached output if it is available for this user.
   std::string GetArcBugReport(const std::string& username, bool* is_backup);
   bool IsUserHashValid(const std::string& userhash);
-  base::FilePath GetArcBugReportBackupFilePath(const std::string& userhash);
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
