@@ -58,14 +58,12 @@ ioctl: arg1 == TCGETS || arg1 == TCSETSF || arg1 == FIONREAD
 madvise: 1
 shutdown: 1
 gettimeofday: 1
-sendto: 1
 clock_gettime: 1
 tgkill: 1
 kill: 1
 execve: 1
 faccessat: 1
 set_tid_address: 1
-fstat: 1
 umask: 1
 recvfrom: 1
 getpeername: 1
