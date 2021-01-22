@@ -112,7 +112,7 @@ constexpr LazyRE2 before_iwlwifi_assert_lmac = {
     R"(iwlwifi (?:.+): Loaded firmware version:)"};
 constexpr LazyRE2 before_iwlwifi_assert_umac = {R"(iwlwifi (?:.+): Status:)"};
 constexpr LazyRE2 iwlwifi_sig_re = {
-    R"(iwlwifi (?:.+): \b(\w+)\b \| \b(\w+)\b)"};
+    R"((iwlwifi (?:.+): \b(\w+)\b \| \b(\w+)\b))"};
 
 enum class LineType {
   Umac,
@@ -138,7 +138,10 @@ bool KernelWarningCollector::ExtractIwlwifiSignature(const std::string& content,
   // in umac.
   const std::string default_lmac_assert = "0x00000071";
   const std::string default_umac_assert = "0x20000070";
+  // The signature is reported as unknown in the case of parsing error.
+  const std::string unknown_iwlwifi_signature = "iwlwifi unknown signature";
   std::string assert_number;
+  std::string iwlwifi_signature;
   std::string::size_type end_position = content.find('\n');
   if (end_position == std::string::npos) {
     LOG(ERROR) << "unexpected kernel iwlwifi error format";
@@ -160,9 +163,10 @@ bool KernelWarningCollector::ExtractIwlwifiSignature(const std::string& content,
       }
     } else if (last_line == LineType::Lmac) {
       // Check the signature of the lmac.
-      if (RE2::PartialMatch(*signature, *iwlwifi_sig_re, &assert_number,
-                            func_name)) {
+      if (RE2::PartialMatch(*signature, *iwlwifi_sig_re, &iwlwifi_signature,
+                            &assert_number, func_name)) {
         if (default_lmac_assert != assert_number) {
+          *signature = iwlwifi_signature;
           return true;
         } else {
           // Check umac if the lmac assertion number == default_lmac_assert.
@@ -172,8 +176,8 @@ bool KernelWarningCollector::ExtractIwlwifiSignature(const std::string& content,
         }
       } else {
         // Break if the signature of the lmac didn't match.
-        LOG(INFO) << *signature << " does not match regex";
-        signature->clear();
+        LOG(INFO) << *signature << " does not match lmac regex";
+        *signature = unknown_iwlwifi_signature;
         func_name->clear();
         break;
       }
@@ -184,22 +188,23 @@ bool KernelWarningCollector::ExtractIwlwifiSignature(const std::string& content,
       }
     } else if (last_line == LineType::Umac) {
       // Check the signature of the umac.
-      if (RE2::PartialMatch(*signature, *iwlwifi_sig_re, &assert_number,
-                            func_name)) {
+      if (RE2::PartialMatch(*signature, *iwlwifi_sig_re, &iwlwifi_signature,
+                            &assert_number, func_name)) {
         if (default_umac_assert != assert_number) {
+          *signature = iwlwifi_signature;
           return true;
         } else {
           // Break if the umac assertion number == default_umac_assert.
           LOG(ERROR) << "unexpected kernel iwlwifi error format. "
                         "Both umac/lmac dumps have the default assert numbers.";
-          signature->clear();
+          *signature = unknown_iwlwifi_signature;
           func_name->clear();
           break;
         }
       } else {
         // Break if the signature of the umac didn't match.
-        LOG(INFO) << *signature << " does not match regex";
-        signature->clear();
+        LOG(INFO) << *signature << " does not match umac regex";
+        *signature = unknown_iwlwifi_signature;
         func_name->clear();
         break;
       }
