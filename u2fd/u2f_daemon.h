@@ -21,13 +21,12 @@
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include "u2fd/tpm_vendor_cmd.h"
+#include "u2fd/u2f_mode.h"
 #include "u2fd/u2f_msg_handler.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/webauthn_handler.h"
 
 namespace u2f {
-
-enum class U2fMode : uint8_t;
 
 // U2F Daemon; starts/runs the virtual USB HID U2F device, and implements the
 // U2F DBus interface.
@@ -72,7 +71,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   void CreateU2fMsgHandler(bool allow_g2f_attestation,
                            bool include_g2f_allowlisting_data);
   void CreateU2fHid();
-  void InitializeWebAuthnHandler(bool allow_presence_mode);
+  void InitializeWebAuthnHandler(U2fMode u2f_mode);
 
   // Sends a DBus signal that indicates to Chrome a 'Press Power Button'
   // notification should be displayed.

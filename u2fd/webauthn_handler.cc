@@ -123,7 +123,7 @@ WebAuthnHandler::WebAuthnHandler()
 void WebAuthnHandler::Initialize(dbus::Bus* bus,
                                  TpmVendorCommandProxy* tpm_proxy,
                                  UserState* user_state,
-                                 bool allow_presence_mode,
+                                 U2fMode u2f_mode,
                                  std::function<void()> request_presence) {
   if (Initialized()) {
     LOG(INFO) << "WebAuthn handler already initialized, doing nothing.";
@@ -136,7 +136,7 @@ void WebAuthnHandler::Initialize(dbus::Bus* bus,
       base::Bind(&WebAuthnHandler::OnSessionStarted, base::Unretained(this)));
   user_state_->SetSessionStoppedCallback(
       base::Bind(&WebAuthnHandler::OnSessionStopped, base::Unretained(this)));
-  allow_presence_mode_ = allow_presence_mode;
+  u2f_mode_ = u2f_mode;
   request_presence_ = request_presence;
   bus_ = bus;
   auth_dialog_dbus_proxy_ = bus_->GetObjectProxy(
@@ -160,6 +160,10 @@ void WebAuthnHandler::Initialize(dbus::Bus* bus,
 
 bool WebAuthnHandler::Initialized() {
   return tpm_proxy_ != nullptr && user_state_ != nullptr;
+}
+
+bool WebAuthnHandler::AllowPresenceMode() {
+  return u2f_mode_ == U2fMode::kU2f || u2f_mode_ == U2fMode::kU2fExtended;
 }
 
 void WebAuthnHandler::OnSessionStarted(const std::string& account_id) {
@@ -268,7 +272,7 @@ void WebAuthnHandler::MakeCredential(
       static_cast<uint64_t>(base::Time::Now().ToTimeT()), request,
       std::move(method_response)};
 
-  if (!allow_presence_mode_) {
+  if (!AllowPresenceMode()) {
     // Upgrade UP requests to UV.
     session.request.set_verification_type(
         VerificationType::VERIFICATION_USER_VERIFICATION);
@@ -761,7 +765,7 @@ void WebAuthnHandler::GetAssertion(
     session.request.set_rp_id(request.app_id());
   }
 
-  if (!allow_presence_mode_) {
+  if (!AllowPresenceMode()) {
     // Upgrade UP requests to UV.
     session.request.set_verification_type(
         VerificationType::VERIFICATION_USER_VERIFICATION);
@@ -809,7 +813,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   base::Optional<std::vector<uint8_t>> credential_secret =
       webauthn_storage_->GetSecretByCredentialId(session.credential_id);
   if (!credential_secret) {
-    if (!allow_presence_mode_) {
+    if (!AllowPresenceMode()) {
       LOG(ERROR) << "No credential secret for credential id "
                  << session.credential_id << ", aborting GetAssertion.";
       response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
@@ -1172,7 +1176,7 @@ WebAuthnHandler::DoU2fSignCheckOnly(
 IsU2fEnabledResponse WebAuthnHandler::IsU2fEnabled(
     const IsU2fEnabledRequest& request) {
   IsU2fEnabledResponse response;
-  response.set_enabled(allow_presence_mode_);
+  response.set_enabled(AllowPresenceMode());
   return response;
 }
 

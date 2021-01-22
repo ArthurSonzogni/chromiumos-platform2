@@ -15,7 +15,6 @@
 #include <base/bind.h>
 #include <base/optional.h>
 #include <base/synchronization/waitable_event.h>
-#include <bindings/chrome_device_policy.pb.h>
 #include <dbus/u2f/dbus-constants.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
@@ -25,15 +24,6 @@
 #include "u2fd/uhid_device.h"
 
 namespace u2f {
-
-namespace em = enterprise_management;
-
-enum class U2fMode : uint8_t {
-  kUnset = em::DeviceSecondFactorAuthenticationProto_U2fMode_UNSET,
-  kDisabled = em::DeviceSecondFactorAuthenticationProto_U2fMode_DISABLED,
-  kU2f = em::DeviceSecondFactorAuthenticationProto_U2fMode_U2F,
-  kU2fExtended = em::DeviceSecondFactorAuthenticationProto_U2fMode_U2F_EXTENDED,
-};
 
 namespace {
 
@@ -206,12 +196,8 @@ int U2fDaemon::StartService() {
   int status = StartU2fHidService();
 
   U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
-  // If u2f or g2f is enabled, this is an enterprise user who has used the
-  // power button u2f, so allow that in WebAuthn.
-  bool webauthn_allow_presence_mode =
-      u2f_mode == U2fMode::kU2f || u2f_mode == U2fMode::kU2fExtended;
   LOG(INFO) << "Initializing WebAuthn handler.";
-  InitializeWebAuthnHandler(webauthn_allow_presence_mode);
+  InitializeWebAuthnHandler(u2f_mode);
 
   return status;
 }
@@ -338,14 +324,14 @@ void U2fDaemon::CreateU2fHid() {
       u2f_msg_handler_.get());
 }
 
-void U2fDaemon::InitializeWebAuthnHandler(bool allow_presence_mode) {
+void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
   std::function<void()> request_presence = [this]() {
     IgnorePowerButtonPress();
     SendWinkSignal();
   };
 
   webauthn_handler_.Initialize(bus_.get(), &tpm_proxy_, user_state_.get(),
-                               allow_presence_mode, request_presence);
+                               u2f_mode, request_presence);
 }
 
 void U2fDaemon::SendWinkSignal() {

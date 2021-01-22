@@ -205,7 +205,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
  public:
   void SetUp() override {
     PrepareMockBus();
-    CreateHandler(/* allow_presence_mode = */ false);
+    CreateHandler(U2fMode::kDisabled);
     PrepareMockStorage();
     // We use per-credential secret instead of the old user secret.
     ExpectNoGetUserSecret();
@@ -240,12 +240,11 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
         .WillOnce(Return(mock_auth_dialog_proxy_.get()));
   }
 
-  void CreateHandler(bool allow_presence_mode) {
+  void CreateHandler(U2fMode u2f_mode) {
     handler_ = std::make_unique<WebAuthnHandler>();
     PrepareMockCryptohome();
     handler_->Initialize(mock_bus_.get(), &mock_tpm_proxy_, &mock_user_state_,
-                         allow_presence_mode,
-                         [this]() { presence_requested_count_++; });
+                         u2f_mode, [this]() { presence_requested_count_++; });
   }
 
   void PrepareMockCryptohome() {
@@ -1075,13 +1074,12 @@ TEST_F(WebAuthnHandlerTestBase, InsertAuthTimeSecretHashToCredentialId) {
 
 }  // namespace
 
-// This test fixture tests the behavior when u2f or g2f is enabled on the
-// device.
+// This test fixture tests the behavior when u2f is enabled on the device.
 class WebAuthnHandlerTestAllowUP : public WebAuthnHandlerTestBase {
  public:
   void SetUp() override {
     PrepareMockBus();
-    CreateHandler(/* allow_presence_mode = */ true);
+    CreateHandler(U2fMode::kU2f);
     PrepareMockStorage();
     // We use per-credential secret instead of the old user secret.
     ExpectNoGetUserSecret();

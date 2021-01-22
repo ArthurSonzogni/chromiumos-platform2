@@ -18,6 +18,7 @@
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include "u2fd/tpm_vendor_cmd.h"
+#include "u2fd/u2f_mode.h"
 #include "u2fd/user_state.h"
 #include "u2fd/webauthn_storage.h"
 
@@ -76,14 +77,13 @@ class WebAuthnHandler {
   // outlive WebAuthnHandler.
   // |user_state| - pointer to a UserState instance, for requesting user secret.
   // Owned by U2fDaemon and should outlive WebAuthnHandler.
-  // |allow_presence_mode| - whether power-button mode should be allowed. If
-  // false, all requests will be upgraded to user-verifying.
+  // |u2f_mode| - whether u2f or g2f is enabled.
   // |request_presence| - callback for performing other platform tasks when
   // expecting the user to press the power button.
   void Initialize(dbus::Bus* bus,
                   TpmVendorCommandProxy* tpm_proxy,
                   UserState* user_state,
-                  bool allow_presence_mode,
+                  U2fMode u2f_mode,
                   std::function<void()> request_presence);
 
   // Called when session state changed. Loads/clears state for primary user.
@@ -246,6 +246,9 @@ class WebAuthnHandler {
   // Checks whether the user with |account_id| has fingerprint set up.
   bool HasFingerprint(const std::string& account_id);
 
+  // Returns whether presence-only mode (power button mode) is allowed.
+  bool AllowPresenceMode();
+
   TpmVendorCommandProxy* tpm_proxy_ = nullptr;
   UserState* user_state_ = nullptr;
   std::function<void()> request_presence_;
@@ -257,8 +260,9 @@ class WebAuthnHandler {
       cryptohome_proxy_;
 
   // Presence-only mode (power button mode) should only be allowed if u2f or
-  // g2f is enabled for the device (it's a per-device policy).
-  bool allow_presence_mode_;
+  // g2f is enabled for the device (it's a per-device policy). The mode also
+  // determines the attestation to add to MakeCredential.
+  U2fMode u2f_mode_;
 
   // The MakeCredential session that's waiting on UI. There can only be one
   // such session. UP sessions should not use this since there can be multiple.
