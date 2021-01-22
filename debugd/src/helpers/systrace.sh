@@ -155,7 +155,7 @@ parse_event_or_category()
     esac
 }
 
-is_enabled=$(cat ${tracing_path}/tracing_on)
+is_enabled=$(cat "${tracing_path}/tracing_on")
 
 case "$CMD" in
 start)
@@ -168,7 +168,7 @@ start)
         events=$(parse_event_or_category 'all')
     fi
 
-    if [ "$is_enabled" = "1" ]; then
+    if [ "${is_enabled}" = "1" ]; then
         tracing_reset
     fi
 
@@ -178,12 +178,19 @@ start)
     # splitting here:
     # shellcheck disable=SC2086
     tracing_enable_events ${events}
-    tracing_write "record-tgid" trace_options
+    # Pre v4.13 kernel uses print-tgid, but v4.13+ upstream replaced it with
+    # record-tgid option. Both options produce the same ftrace format change.
+    tgid_option=$(grep -e '^[a-z]*-tgid$' "${tracing_path}/trace_options") || :
+    if [ "${tgid_option}" = "noprint-tgid" ]; then
+        tracing_write "print-tgid" trace_options
+    elif [ "${tgid_option}" = "norecord-tgid" ]; then
+        tracing_write "record-tgid" trace_options
+    fi
     tracing_write "${buffer_size_running}" buffer_size_kb
     tracing_enable                              # start kernel tracing
     ;;
 stop)
-    if [ "$is_enabled" = "0" ]; then
+    if [ "${is_enabled}" = "0" ]; then
         echo "Tracing is not enabled; nothing to do" >&2
         exit
     fi
