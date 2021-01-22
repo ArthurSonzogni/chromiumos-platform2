@@ -11,6 +11,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
 
+#include <set>
 #include <string>
 #include <sysexits.h>
 
@@ -135,12 +136,19 @@ int AuthorizeAllDevices(void) {
     ret = EXIT_FAILURE;
   }
 
+  // Create an ordered set of thunderbolt devices.
+  std::set<base::FilePath> thunderbolt_devs;
   base::FileEnumerator iter(base::FilePath("/sys/bus/thunderbolt/devices"),
                             false, base::FileEnumerator::DIRECTORIES);
-  for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next()) {
-    // Authorize the device. This takes care of any thunderbolt peripherals
-    // that were added while the screen was locked.
-    if (AuthorizeThunderboltDev(devpath))
+  for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next())
+    thunderbolt_devs.insert(devpath);
+
+  // Authorize the thunderbolt devices in BFS order (Due to kernel device
+  // naming scheme, the ordered set always results in BFS order). This is
+  // required because if a parent is deauthorized, the children are
+  // automatically deauthorized, but vice versa is not true.
+  for (auto dev : thunderbolt_devs) {
+    if (AuthorizeThunderboltDev(dev))
       ret = EXIT_FAILURE;
   }
 
