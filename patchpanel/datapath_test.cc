@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -22,6 +23,7 @@
 
 using testing::_;
 using testing::ElementsAre;
+using testing::ElementsAreArray;
 using testing::Return;
 using testing::StrEq;
 
@@ -55,6 +57,10 @@ int ioctl_rtentry_cap(int fd, ioctl_req_t req, struct rtentry* arg) {
 }
 
 }  // namespace
+
+using IpFamily::Dual;
+using IpFamily::IPv4;
+using IpFamily::IPv6;
 
 class MockProcessRunner : public MinijailedProcessRunner {
  public:
@@ -105,135 +111,34 @@ class MockProcessRunner : public MinijailedProcessRunner {
                int(const std::string& netns_name, bool log_failures));
 };
 
+void Verify_iptables(MockProcessRunner& runner,
+                     IpFamily family,
+                     const std::string& command) {
+  auto args =
+      base::SplitString(command, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
+                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+  const auto table = args[0];
+  args.erase(args.begin());
+  if (family & IPv4)
+    EXPECT_CALL(runner,
+                iptables(StrEq(table), ElementsAreArray(args), _, nullptr));
+  if (family & IPv6)
+    EXPECT_CALL(runner,
+                ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr));
+}
+
 TEST(DatapathTest, IpFamily) {
-  EXPECT_EQ(IpFamily::Dual, IpFamily::IPv4 | IpFamily::IPv6);
-  EXPECT_EQ(IpFamily::Dual & IpFamily::IPv4, IpFamily::IPv4);
-  EXPECT_EQ(IpFamily::Dual & IpFamily::IPv6, IpFamily::IPv6);
-  EXPECT_NE(IpFamily::Dual, IpFamily::IPv4);
-  EXPECT_NE(IpFamily::Dual, IpFamily::IPv6);
-  EXPECT_NE(IpFamily::IPv4, IpFamily::IPv6);
+  EXPECT_EQ(Dual, IPv4 | IPv6);
+  EXPECT_EQ(Dual & IPv4, IPv4);
+  EXPECT_EQ(Dual & IPv6, IPv6);
+  EXPECT_NE(Dual, IPv4);
+  EXPECT_NE(Dual, IPv6);
+  EXPECT_NE(IPv4, IPv6);
 }
 
 TEST(DatapathTest, Start) {
   MockProcessRunner runner;
   MockFirewall firewall;
-
-  // Asserts for iptables chain reset.
-  EXPECT_CALL(runner, iptables(StrEq("filter"),
-                               ElementsAre("-D", "OUTPUT", "-j",
-                                           "drop_guest_ipv4_prefix", "-w"),
-                               false, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"), ElementsAre("-F", "FORWARD", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("filter"), ElementsAre("-F", "FORWARD", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "FORWARD", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "FORWARD", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "INPUT", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "INPUT", "-w"), true,
-                        nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "OUTPUT", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "OUTPUT", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "POSTROUTING", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "POSTROUTING", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "PREROUTING", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "PREROUTING", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-L", "apply_local_source_mark", "-w"),
-                       false, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-L", "apply_local_source_mark", "-w"),
-                        false, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-F", "apply_local_source_mark", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-F", "apply_local_source_mark", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-X", "apply_local_source_mark", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-X", "apply_local_source_mark", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-L", "apply_vpn_mark", "-w"), false,
-                               nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-L", "apply_vpn_mark", "-w"),
-                                false, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-F", "apply_vpn_mark", "-w"), true,
-                               nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-F", "apply_vpn_mark", "-w"), true,
-                                nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-X", "apply_vpn_mark", "-w"), true,
-                               nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-X", "apply_vpn_mark", "-w"), true,
-                                nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-L", "check_routing_mark", "-w"),
-                               false, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-L", "check_routing_mark", "-w"),
-                                false, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-F", "check_routing_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-F", "check_routing_mark", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-X", "check_routing_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-X", "check_routing_mark", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-L", "drop_guest_ipv4_prefix", "-w"), false,
-                       nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-F", "drop_guest_ipv4_prefix", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-X", "drop_guest_ipv4_prefix", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("nat"), ElementsAre("-F", "POSTROUTING", "-w"),
-                       true, nullptr));
 
   // Asserts for sysctl modifications
   EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv4.ip_forward"), StrEq("1"), true));
@@ -241,352 +146,142 @@ TEST(DatapathTest, Start) {
                                StrEq("32768 47103"), true));
   EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv6.conf.all.forwarding"),
                                StrEq("1"), true));
-  // Asserts for SNAT rules.
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("filter"),
-               ElementsAre("-A", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
-                           "state", "--state", "INVALID", "-j", "DROP", "-w"),
-               true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("nat"),
-                       ElementsAre("-A", "POSTROUTING", "-m", "mark", "--mark",
-                                   "1/1", "-j", "MASQUERADE", "-w"),
-                       true, nullptr));
-  // Asserts for AddForwardEstablishedRule
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-A", "FORWARD", "-m", "state", "--state",
-                                   "ESTABLISHED,RELATED", "-j", "ACCEPT", "-w"),
-                       true, nullptr));
-  // Asserts for AddSourceIPv4DropRule() calls.
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-N", "drop_guest_ipv4_prefix", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("filter"),
-                               ElementsAre("-I", "OUTPUT", "-j",
-                                           "drop_guest_ipv4_prefix", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-I", "drop_guest_ipv4_prefix", "-o", "eth+",
-                                   "-s", "100.115.92.0/23", "-j", "DROP", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("filter"),
-                               ElementsAre("-I", "drop_guest_ipv4_prefix", "-o",
-                                           "wlan+", "-s", "100.115.92.0/23",
-                                           "-j", "DROP", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("filter"),
-                               ElementsAre("-I", "drop_guest_ipv4_prefix", "-o",
-                                           "mlan+", "-s", "100.115.92.0/23",
-                                           "-j", "DROP", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-I", "drop_guest_ipv4_prefix", "-o", "usb+",
-                                   "-s", "100.115.92.0/23", "-j", "DROP", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("filter"),
-                               ElementsAre("-I", "drop_guest_ipv4_prefix", "-o",
-                                           "wwan+", "-s", "100.115.92.0/23",
-                                           "-j", "DROP", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("filter"),
-                               ElementsAre("-I", "drop_guest_ipv4_prefix", "-o",
-                                           "rmnet+", "-s", "100.115.92.0/23",
-                                           "-j", "DROP", "-w"),
-                               true, nullptr));
-  // Asserts for AddOutboundIPv4SNATMark("vmtap+")
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-A", "PREROUTING", "-i", "vmtap+", "-j",
-                                   "MARK", "--set-mark", "1/1", "-w"),
-                       true, nullptr));
-  // Asserts for OUTPUT ndp connmark bypass rule
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
-                            "router-solicitation", "-j", "ACCEPT", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
-                            "router-advertisement", "-j", "ACCEPT", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
-                            "neighbour-solicitation", "-j", "ACCEPT", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
-                            "neighbour-advertisement", "-j", "ACCEPT", "-w"),
-                true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
-                                    "--icmpv6-type", "router-solicitation",
-                                    "-j", "RETURN", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
-                                    "--icmpv6-type", "router-advertisement",
-                                    "-j", "RETURN", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
-                                    "--icmpv6-type", "neighbour-solicitation",
-                                    "-j", "RETURN", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
-                                    "--icmpv6-type", "neighbour-advertisement",
-                                    "-j", "RETURN", "-w"),
-                        true, nullptr));
-  // Asserts for OUTPUT CONNMARK restore rule
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-A", "OUTPUT", "-j", "CONNMARK",
-                                           "--restore-mark", "--mask",
-                                           "0xffff0000", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-A", "OUTPUT", "-j", "CONNMARK",
-                                            "--restore-mark", "--mask",
-                                            "0xffff0000", "-w"),
-                                true, nullptr));
-  // Asserts for apply_local_source_mark chain
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-N", "apply_local_source_mark", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-A", "OUTPUT", "-j",
-                                           "apply_local_source_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                           "--uid-owner", "chronos", "-j", "MARK", "--set-mark",
-                           "0x00008100/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-A", "apply_local_source_mark",
-                                           "-m", "owner", "--uid-owner",
-                                           "debugd", "-j", "MARK", "--set-mark",
-                                           "0x00008200/0x0000ff00", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-A", "apply_local_source_mark", "-m",
-                                   "owner", "--uid-owner", "cups", "-j", "MARK",
-                                   "--set-mark", "0x00008200/0x0000ff00", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                           "--uid-owner", "lpadmin", "-j", "MARK", "--set-mark",
-                           "0x00008200/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                           "--uid-owner", "kerberosd", "-j", "MARK",
-                           "--set-mark", "0x00008400/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                           "--uid-owner", "kerberosd-exec", "-j", "MARK",
-                           "--set-mark", "0x00008400/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                           "--uid-owner", "tlsdate", "-j", "MARK", "--set-mark",
-                           "0x00008400/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                           "--uid-owner", "pluginvm", "-j", "MARK",
-                           "--set-mark", "0x00008200/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                           "--uid-owner", "fuse-smbfs", "-j", "MARK",
-                           "--set-mark", "0x00008400/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "cgroup",
-                           "--cgroup", "0x00010001", "-j", "MARK", "--set-mark",
-                           "0x00000300/0x0000ff00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("mangle"),
-               ElementsAre("-A", "apply_local_source_mark", "-m", "mark",
-                           "--mark", "0x0/0x00003f00", "-j", "MARK",
-                           "--set-mark", "0x00000400/0x00003f00", "-w"),
-               true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-N", "apply_local_source_mark", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-A", "OUTPUT", "-j",
-                                            "apply_local_source_mark", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "debugd", "-j", "MARK", "--set-mark",
-                            "0x00008200/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "chronos", "-j", "MARK",
-                            "--set-mark", "0x00008100/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-A", "apply_local_source_mark",
-                                            "-m", "owner", "--uid-owner",
-                                            "cups", "-j", "MARK", "--set-mark",
-                                            "0x00008200/0x0000ff00", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "lpadmin", "-j", "MARK",
-                            "--set-mark", "0x00008200/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "kerberosd", "-j", "MARK",
-                            "--set-mark", "0x00008400/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "kerberosd-exec", "-j", "MARK",
-                            "--set-mark", "0x00008400/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "tlsdate", "-j", "MARK",
-                            "--set-mark", "0x00008400/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "pluginvm", "-j", "MARK",
-                            "--set-mark", "0x00008200/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
-                            "--uid-owner", "fuse-smbfs", "-j", "MARK",
-                            "--set-mark", "0x00008400/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "cgroup",
-                            "--cgroup", "0x00010001", "-j", "MARK",
-                            "--set-mark", "0x00000300/0x0000ff00", "-w"),
-                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_local_source_mark", "-m", "mark",
-                            "--mark", "0x0/0x00003f00", "-j", "MARK",
-                            "--set-mark", "0x00000400/0x00003f00", "-w"),
-                true, nullptr));
-  // Asserts for apply_vpn_mark chain
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-N", "apply_vpn_mark", "-w"), true,
-                               nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-A", "OUTPUT", "-m", "mark",
-                                           "--mark", "0x00008000/0x0000c000",
-                                           "-j", "apply_vpn_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-A", "apply_vpn_mark", "-m", "mark",
-                                           "!", "--mark", "0x0/0xffff0000",
-                                           "-j", "ACCEPT", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-N", "apply_vpn_mark", "-w"), true,
-                                nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-A", "OUTPUT", "-m", "mark",
-                                            "--mark", "0x00008000/0x0000c000",
-                                            "-j", "apply_vpn_mark", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(
-      runner,
-      ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "apply_vpn_mark", "-m", "mark", "!", "--mark",
-                            "0x0/0xffff0000", "-j", "ACCEPT", "-w"),
-                true, nullptr));
-  // Asserts for check_routing_mark chain
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-N", "check_routing_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-A", "POSTROUTING", "-j",
-                                           "CONNMARK", "--restore-mark",
-                                           "--mask", "0xffff0000", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-A", "POSTROUTING", "-m", "mark",
-                                           "!", "--mark", "0x0/0xffff0000",
-                                           "-j", "check_routing_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-N", "check_routing_mark", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-A", "POSTROUTING", "-j",
-                                            "CONNMARK", "--restore-mark",
-                                            "--mask", "0xffff0000", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-A", "POSTROUTING", "-m", "mark",
-                                            "!", "--mark", "0x0/0xffff0000",
-                                            "-j", "check_routing_mark", "-w"),
-                                true, nullptr));
+
+  std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
+      // Asserts for iptables chain reset.
+      {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
+      {Dual, "filter -F FORWARD -w"},
+      {Dual, "mangle -F FORWARD -w"},
+      {Dual, "mangle -F INPUT -w"},
+      {Dual, "mangle -F OUTPUT -w"},
+      {Dual, "mangle -F POSTROUTING -w"},
+      {Dual, "mangle -F PREROUTING -w"},
+      {Dual, "mangle -L apply_local_source_mark -w"},
+      {Dual, "mangle -F apply_local_source_mark -w"},
+      {Dual, "mangle -X apply_local_source_mark -w"},
+      {Dual, "mangle -L apply_vpn_mark -w"},
+      {Dual, "mangle -F apply_vpn_mark -w"},
+      {Dual, "mangle -X apply_vpn_mark -w"},
+      {Dual, "mangle -L check_routing_mark -w"},
+      {Dual, "mangle -F check_routing_mark -w"},
+      {Dual, "mangle -X check_routing_mark -w"},
+      {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
+      {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
+      {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {IPv4, "nat -F POSTROUTING -w"},
+      // Asserts for SNAT rules.
+      {IPv4,
+       "filter -A FORWARD -m mark --mark 1/1 -m state --state INVALID -j DROP "
+       "-w"},
+      {IPv4, "nat -A POSTROUTING -m mark --mark 1/1 -j MASQUERADE -w"},
+      // Asserts for AddForwardEstablishedRule
+      {IPv4,
+       "filter -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT -w"},
+      // Asserts for AddSourceIPv4DropRule() calls.
+      {IPv4, "filter -N drop_guest_ipv4_prefix -w"},
+      {IPv4, "filter -I OUTPUT -j drop_guest_ipv4_prefix -w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o eth+ -s 100.115.92.0/23 -j DROP "
+       "-w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o wlan+ -s 100.115.92.0/23 -j DROP "
+       "-w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o mlan+ -s 100.115.92.0/23 -j DROP "
+       "-w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o usb+ -s 100.115.92.0/23 -j DROP "
+       "-w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o wwan+ -s 100.115.92.0/23 -j DROP "
+       "-w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o rmnet+ -s 100.115.92.0/23 -j DROP "
+       "-w"},
+      // Asserts for AddOutboundIPv4SNATMark("vmtap+")
+      {IPv4, "mangle -A PREROUTING -i vmtap+ -j MARK --set-mark 1/1 -w"},
+      // Asserts for OUTPUT ndp connmark bypass rule
+      {IPv6,
+       "mangle -I OUTPUT -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT "
+       "-w"},
+      {IPv6,
+       "mangle -I OUTPUT -p icmpv6 --icmpv6-type router-advertisement -j "
+       "ACCEPT -w"},
+      {IPv6,
+       "mangle -I OUTPUT -p icmpv6 --icmpv6-type neighbour-solicitation -j "
+       "ACCEPT -w"},
+      {IPv6,
+       "mangle -I OUTPUT -p icmpv6 --icmpv6-type neighbour-advertisement -j "
+       "ACCEPT -w"},
+      {IPv6,
+       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
+       "router-solicitation -j RETURN -w"},
+      {IPv6,
+       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
+       "router-advertisement -j RETURN -w"},
+      {IPv6,
+       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
+       "neighbour-solicitation -j RETURN -w"},
+      {IPv6,
+       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
+       "neighbour-advertisement -j RETURN -w"},
+      // Asserts for OUTPUT CONNMARK restore rule
+      {Dual,
+       "mangle -A OUTPUT -j CONNMARK --restore-mark --mask 0xffff0000 -w"},
+      // Asserts for apply_local_source_mark chain
+      {Dual, "mangle -N apply_local_source_mark -w"},
+      {Dual, "mangle -A OUTPUT -j apply_local_source_mark -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner chronos -j MARK "
+       "--set-mark 0x00008100/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner debugd -j MARK "
+       "--set-mark 0x00008200/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner cups -j MARK "
+       "--set-mark 0x00008200/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner lpadmin -j MARK "
+       "--set-mark 0x00008200/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner kerberosd -j "
+       "MARK --set-mark 0x00008400/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner kerberosd-exec "
+       "-j MARK --set-mark 0x00008400/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner tlsdate -j MARK "
+       "--set-mark 0x00008400/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner pluginvm -j "
+       "MARK --set-mark 0x00008200/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m owner --uid-owner fuse-smbfs -j "
+       "MARK --set-mark 0x00008400/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m cgroup --cgroup 0x00010001 -j "
+       "MARK --set-mark 0x00000300/0x0000ff00 -w"},
+      {Dual,
+       "mangle -A apply_local_source_mark -m mark --mark 0x0/0x00003f00 -j "
+       "MARK --set-mark 0x00000400/0x00003f00 -w"},
+      // Asserts for apply_vpn_mark chain
+      {Dual, "mangle -N apply_vpn_mark -w"},
+      {Dual,
+       "mangle -A OUTPUT -m mark --mark 0x00008000/0x0000c000 -j "
+       "apply_vpn_mark -w"},
+      {Dual,
+       "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w"},
+      // Asserts for check_routing_mark chain
+      {Dual, "mangle -N check_routing_mark -w"},
+      {Dual,
+       "mangle -A POSTROUTING -j CONNMARK --restore-mark --mask 0xffff0000 -w"},
+      {Dual,
+       "mangle -A POSTROUTING -m mark ! --mark 0x0/0xffff0000 -j "
+       "check_routing_mark -w"},
+  };
+  for (const auto& c : iptables_commands) {
+    Verify_iptables(runner, c.first, c.second);
+  }
 
   Datapath datapath(&runner, &firewall);
   datapath.Start();
@@ -601,122 +296,33 @@ TEST(DatapathTest, Stop) {
   EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv6.conf.all.forwarding"),
                                StrEq("0"), true));
   EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv4.ip_forward"), StrEq("0"), true));
+
   // Asserts for iptables chain reset.
-  EXPECT_CALL(runner, iptables(StrEq("filter"),
-                               ElementsAre("-D", "OUTPUT", "-j",
-                                           "drop_guest_ipv4_prefix", "-w"),
-                               false, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"), ElementsAre("-F", "FORWARD", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("filter"), ElementsAre("-F", "FORWARD", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "FORWARD", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "FORWARD", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "INPUT", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "INPUT", "-w"), true,
-                        nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "OUTPUT", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "OUTPUT", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "POSTROUTING", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "POSTROUTING", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"), ElementsAre("-F", "PREROUTING", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"), ElementsAre("-F", "PREROUTING", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-L", "apply_local_source_mark", "-w"),
-                       false, nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-L", "apply_local_source_mark", "-w"),
-                        false, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-F", "apply_local_source_mark", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-F", "apply_local_source_mark", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-X", "apply_local_source_mark", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-X", "apply_local_source_mark", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-L", "apply_vpn_mark", "-w"), false,
-                               nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-L", "apply_vpn_mark", "-w"),
-                                false, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-F", "apply_vpn_mark", "-w"), true,
-                               nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-F", "apply_vpn_mark", "-w"), true,
-                                nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-X", "apply_vpn_mark", "-w"), true,
-                               nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-X", "apply_vpn_mark", "-w"), true,
-                                nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-L", "check_routing_mark", "-w"),
-                               false, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-L", "check_routing_mark", "-w"),
-                                false, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-F", "check_routing_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-F", "check_routing_mark", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-X", "check_routing_mark", "-w"),
-                               true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("mangle"),
-                                ElementsAre("-X", "check_routing_mark", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-L", "drop_guest_ipv4_prefix", "-w"), false,
-                       nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-F", "drop_guest_ipv4_prefix", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-X", "drop_guest_ipv4_prefix", "-w"), true,
-                       nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("nat"), ElementsAre("-F", "POSTROUTING", "-w"),
-                       true, nullptr));
+  std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
+      {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
+      {Dual, "filter -F FORWARD -w"},
+      {Dual, "mangle -F FORWARD -w"},
+      {Dual, "mangle -F INPUT -w"},
+      {Dual, "mangle -F OUTPUT -w"},
+      {Dual, "mangle -F POSTROUTING -w"},
+      {Dual, "mangle -F PREROUTING -w"},
+      {Dual, "mangle -L apply_local_source_mark -w"},
+      {Dual, "mangle -F apply_local_source_mark -w"},
+      {Dual, "mangle -X apply_local_source_mark -w"},
+      {Dual, "mangle -L apply_vpn_mark -w"},
+      {Dual, "mangle -F apply_vpn_mark -w"},
+      {Dual, "mangle -X apply_vpn_mark -w"},
+      {Dual, "mangle -L check_routing_mark -w"},
+      {Dual, "mangle -F check_routing_mark -w"},
+      {Dual, "mangle -X check_routing_mark -w"},
+      {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
+      {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
+      {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {IPv4, "nat -F POSTROUTING -w"},
+  };
+  for (const auto& c : iptables_commands) {
+    Verify_iptables(runner, c.first, c.second);
+  }
 
   Datapath datapath(&runner, &firewall);
   datapath.Stop();
