@@ -561,17 +561,37 @@ bool DevicePolicyImpl::GetAllowKioskAppControlChromeVersion(
 
 bool DevicePolicyImpl::GetUsbDetachableWhitelist(
     std::vector<UsbDeviceId>* usb_whitelist) const {
-  if (!device_policy_.has_usb_detachable_whitelist())
+  const bool has_allowlist =
+      device_policy_.has_usb_detachable_allowlist() &&
+      device_policy_.usb_detachable_allowlist().id_size() != 0;
+  const bool has_whitelist =
+      device_policy_.has_usb_detachable_whitelist() &&
+      device_policy_.usb_detachable_whitelist().id_size() != 0;
+
+  if (!has_allowlist && !has_whitelist)
     return false;
-  const em::UsbDetachableWhitelistProto& proto =
-      device_policy_.usb_detachable_whitelist();
+
   usb_whitelist->clear();
-  for (int i = 0; i < proto.id_size(); i++) {
-    const em::UsbDeviceIdProto& id = proto.id(i);
-    UsbDeviceId dev_id;
-    dev_id.vendor_id = id.has_vendor_id() ? id.vendor_id() : 0;
-    dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
-    usb_whitelist->push_back(dev_id);
+  if (has_allowlist) {
+    const em::UsbDetachableAllowlistProto& proto =
+        device_policy_.usb_detachable_allowlist();
+    for (int i = 0; i < proto.id_size(); i++) {
+      const em::UsbDeviceIdInclusiveProto& id = proto.id(i);
+      UsbDeviceId dev_id;
+      dev_id.vendor_id = id.has_vendor_id() ? id.vendor_id() : 0;
+      dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
+      usb_whitelist->push_back(dev_id);
+    }
+  } else {
+    const em::UsbDetachableWhitelistProto& proto =
+        device_policy_.usb_detachable_whitelist();
+    for (int i = 0; i < proto.id_size(); i++) {
+      const em::UsbDeviceIdProto& id = proto.id(i);
+      UsbDeviceId dev_id;
+      dev_id.vendor_id = id.has_vendor_id() ? id.vendor_id() : 0;
+      dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
+      usb_whitelist->push_back(dev_id);
+    }
   }
   return true;
 }

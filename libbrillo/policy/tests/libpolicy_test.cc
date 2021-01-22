@@ -163,9 +163,14 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));
   EXPECT_FALSE(bool_value);
 
+  // Note: policy data contains both the old usb_detachable_whitelist and the
+  // new usb_detachable_allowlist.
+  //
+  // Test that only the allowlist is considered.
   std::vector<DevicePolicy::UsbDeviceId> list_device;
   ASSERT_TRUE(policy.GetUsbDetachableWhitelist(&list_device));
-  EXPECT_EQ(2, list_device.size());
+  ASSERT_EQ(2, list_device.size());
+  // In the new usb_detachable_allowlist.
   EXPECT_EQ(0x413c, list_device[0].vendor_id);
   EXPECT_EQ(0x2105, list_device[0].product_id);
   EXPECT_EQ(0x0403, list_device[1].vendor_id);
@@ -200,6 +205,38 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
 
   // Reloading the protobuf should succeed.
   EXPECT_TRUE(provider.Reload());
+}
+
+// Test the deprecated usb_detachable_whitelist using a copy of the test policy
+// data and removing the usb_detachable_allowlist.
+TEST(PolicyTest, DevicePolicyWhitelistTest) {
+  base::FilePath policy_file(kPolicyFileAllSet);
+  base::FilePath key_file(kKeyFile);
+  PolicyProvider provider;
+  provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true),
+      policy_file, key_file, false));
+  provider.Reload();
+
+  // Ensure we successfully loaded the device policy file.
+  ASSERT_TRUE(provider.device_policy_is_loaded());
+
+  enterprise_management::ChromeDeviceSettingsProto proto =
+      static_cast<const DevicePolicyImpl&>(provider.GetDevicePolicy())
+          .get_device_policy();
+  proto.clear_usb_detachable_allowlist();
+  ASSERT_FALSE(proto.has_usb_detachable_allowlist());
+  ASSERT_TRUE(proto.has_usb_detachable_whitelist());
+
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(proto);
+
+  std::vector<DevicePolicy::UsbDeviceId> list_device;
+  ASSERT_TRUE(device_policy.GetUsbDetachableWhitelist(&list_device));
+  ASSERT_EQ(1, list_device.size());
+  EXPECT_EQ(0x01d1, list_device[0].vendor_id);
+  EXPECT_EQ(0xdead, list_device[0].product_id);
 }
 
 // Test that a policy file can be verified and parsed correctly. The file
