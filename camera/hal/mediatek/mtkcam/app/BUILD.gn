@@ -24,10 +24,7 @@ shared_library("libcam3_app") {
     "${mtk_root_path}/mtkcam/ipc",
     "${mtk_root_path}/mtkcam/utils",
   ]
-  libs += [
-    "camera_metadata",
-    "pthread",
-  ]
+  libs += [ "pthread" ]
   deps += [
     "//camera/hal/mediatek/mtkcam/ipc/client:libcam_algo_client",
     "//camera/hal/mediatek/mtkcam/pipeline/utils:libmtkcam_streamutils",

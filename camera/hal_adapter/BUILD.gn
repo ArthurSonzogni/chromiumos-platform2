@@ -11,11 +11,9 @@ group("all") {
 pkg_config("target_defaults") {
   configs = [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
-    "cros-camera-android-headers",
     "libbrillo",
-    "libcamera_client",
-    "libcamera_metadata",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libdrm",
     "libmojo",
     "libsync",

@@ -15,10 +15,8 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "cros-camera-android-headers",
-    "libcamera_client",
-    "libcamera_metadata",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libcros_config",
     "libsync",
     "libyuv",

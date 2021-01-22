@@ -9,10 +9,9 @@ include_dirs = [
 ldflags = [ "-Wl,--no-undefined" ]
 libs = []
 pkg_deps = [
-  "cros-camera-android-headers",
-  "libcamera_metadata",
   "libchrome",
   "libcros_camera",
+  "libcros_camera_android_deps",
   "libdrm",
   "libyuv",
 ]

@@ -199,19 +199,15 @@ shared_library("libcamhal") {
     "FACE_DETECTION",
   ]
   libs = [
-    "camera_client",
-    "camera_metadata",
     "jpeg",
     "dl",
     "cros_config",
   ]
   pkg_deps = [
-    "cros-camera-android-headers",
     "expat",
-    "libcamera_client",
-    "libcamera_metadata",
     "libchrome",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libmojo",
     "libsync",
     "libyuv",
@@ -404,8 +400,8 @@ shared_library("libcam_algo") {
     "ia_aiqb_parser",
   ]
   pkg_deps = [
-    "cros-camera-android-headers",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libmojo",
   ]
   if (use.ipu6se) {
@@ -491,8 +487,8 @@ if (use.ipu6se) {
       "tnr7_cm",
     ]
     pkg_deps = [
-      "cros-camera-android-headers",
       "libcros_camera",
+      "libcros_camera_android_deps",
       "igfxcmrt",
       "libmojo",
     ]

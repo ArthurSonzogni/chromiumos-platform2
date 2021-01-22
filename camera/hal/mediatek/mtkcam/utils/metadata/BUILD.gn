@@ -20,7 +20,6 @@ shared_library("libmtkcam_metadata") {
     "${mtk_root_path}/mtkcam/custom/common/hal/inc",
   ]
   libs += [
-    "camera_metadata",
     "dl",
     "pthread",
   ]

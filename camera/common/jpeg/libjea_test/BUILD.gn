@@ -13,9 +13,9 @@ executable("libjea_test") {
     "//common-mk:test",
   ]
   pkg_deps = [
-    "cros-camera-android-headers",
     "libbrillo",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libyuv",
   ]
 }

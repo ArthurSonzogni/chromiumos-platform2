@@ -23,7 +23,7 @@ group("all") {
 pkg_config("target_defaults") {
   configs = [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
-    "cros-camera-android-headers",
+    "libcros_camera_android_deps",
     "libdrm",
   ]
 }
@@ -82,7 +82,6 @@ shared_library("libcros_camera") {
   pkg_deps = [
     "gbm",
     "libbrillo",
-    "libcamera_metadata",
     "libexif",
     "libmetrics",
     "libmojo",

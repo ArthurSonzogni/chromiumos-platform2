@@ -49,7 +49,6 @@ shared_library("libmtkcam_metastore") {
   libs += [
     "dl",
     "pthread",
-    "camera_metadata",
   ]
   defines += [ "NR3D_SUPPORTED" ]
   deps += [

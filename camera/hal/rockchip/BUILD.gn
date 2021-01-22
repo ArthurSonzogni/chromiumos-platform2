@@ -95,12 +95,10 @@ shared_library("libcamera_hal") {
     "psl/rkisp1/workers/StatisticsWorker.cpp",
   ]
   pkg_deps = [
-    "cros-camera-android-headers",
     "expat",
-    "libcamera_client",
-    "libcamera_metadata",
     "libchrome",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libmojo",
     "libsync",
     "libyuv",
@@ -166,8 +164,8 @@ shared_library("libcam_algo") {
   ]
   libs = [ "rk_aiq" ]
   pkg_deps = [
-    "cros-camera-android-headers",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libmojo",
   ]
 }

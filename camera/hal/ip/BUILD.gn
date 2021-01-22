@@ -31,10 +31,9 @@ shared_library("libcamera_hal") {
   ]
   configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
-    "cros-camera-android-headers",
     "libbrillo",
-    "libcamera_client",
     "libcros_camera",
+    "libcros_camera_android_deps",
     "libsync",
     "libyuv",
   ]
@@ -55,8 +54,7 @@ if (use.test) {
       "//common-mk:test",
     ]
     pkg_deps = [
-      "cros-camera-android-headers",
-      "libcamera_client",
+      "libcros_camera_android_deps",
       "libsync",
     ]
     deps = [ "//common-mk/testrunner" ]

@@ -33,7 +33,6 @@ shared_library("libcam_algo_client") {
   ]
   libs += [
     "camalgo.eis",
-    "camera_client",
     "dl",
     "pthread",
     "rt",
