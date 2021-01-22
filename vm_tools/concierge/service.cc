@@ -3448,25 +3448,8 @@ Service::VMImageSpec Service::GetImageSpec(
   // specifying kernel and rootfs image.
   bool is_trusted_image = is_termina;
 
-  if (!is_termina && vm.dlc_id().empty()) {
-    // User-chosen VMs (i.e. with arbitrary paths) can not be trusted.
-    return VMImageSpec{
-        .kernel = base::FilePath(vm.kernel()),
-        .initrd = base::FilePath(vm.initrd()),
-        .rootfs = base::FilePath(vm.rootfs()),
-        .tools_disk = {},
-        .is_trusted_image = is_trusted_image,
-    };
-  }
-
-  base::FilePath vm_path = GetVmImagePath(vm.dlc_id(), failure_reason);
-  if (vm_path.empty())
-    return {};
-
   base::FilePath kernel;
   base::FilePath rootfs;
-  base::FilePath tools_disk;
-
   if (kernel_fd.has_value()) {
     // User-chosen kernel is untrusted.
     is_trusted_image = false;
@@ -3478,7 +3461,7 @@ Service::VMImageSpec Service::GetImageSpec(
     kernel = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
   } else {
-    kernel = vm_path.Append(kVmKernelName);
+    kernel = base::FilePath(vm.kernel());
   }
 
   if (rootfs_fd.has_value()) {
@@ -3492,9 +3475,31 @@ Service::VMImageSpec Service::GetImageSpec(
     rootfs = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
   } else {
-    rootfs = vm_path.Append(kVmRootfsName);
+    rootfs = base::FilePath(vm.rootfs());
   }
 
+  if (!is_termina && vm.dlc_id().empty()) {
+    // User-chosen VMs (i.e. with arbitrary paths) can not be trusted.
+    return VMImageSpec{
+        .kernel = std::move(kernel),
+        .initrd = base::FilePath(vm.initrd()),
+        .rootfs = std::move(rootfs),
+        .tools_disk = {},
+        .is_trusted_image = false,
+    };
+  }
+
+  base::FilePath vm_path = GetVmImagePath(vm.dlc_id(), failure_reason);
+  if (vm_path.empty())
+    return {};
+
+  // Pull in the DLC-provided files if requested.
+  if (!kernel_fd.has_value())
+    kernel = vm_path.Append(kVmKernelName);
+  if (!rootfs_fd.has_value())
+    rootfs = vm_path.Append(kVmRootfsName);
+
+  base::FilePath tools_disk;
   if (is_termina)
     tools_disk = vm_path.Append(kVmToolsDiskName);
 
