@@ -1132,7 +1132,7 @@ impl Methods {
         let mut disk_files = vec![];
         // User-specified kernel
         if let Some(path) = user_disks.kernel {
-            request.use_fd_for_kernel = true;
+            request.fds.push(StartVmRequest_FdType::KERNEL);
             disk_files.push(
                 OpenOptions::new()
                     .read(true)
@@ -1143,7 +1143,7 @@ impl Methods {
 
         // User-specified rootfs
         if let Some(path) = user_disks.rootfs {
-            request.use_fd_for_rootfs = true;
+            request.fds.push(StartVmRequest_FdType::ROOTFS);
             disk_files.push(
                 OpenOptions::new()
                     .read(true)
@@ -1154,7 +1154,7 @@ impl Methods {
 
         // User-specified extra disk
         if let Some(path) = user_disks.extra_disk {
-            request.use_fd_for_storage = true;
+            request.fds.push(StartVmRequest_FdType::STORAGE);
             disk_files.push(
                 OpenOptions::new()
                     .read(true)

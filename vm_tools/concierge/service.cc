@@ -1043,44 +1043,33 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_vm_type(request.start_termina() ? VmInfo::TERMINA
                                                : VmInfo::UNKNOWN);
 
-  // Pop all FDs passed via D-Bus in the correct order.
   base::Optional<base::ScopedFD> kernel_fd;
   base::Optional<base::ScopedFD> rootfs_fd;
   base::Optional<base::ScopedFD> storage_fd;
-  if (request.use_fd_for_kernel()) {
+  for (const auto& fdType : request.fds()) {
     base::ScopedFD fd;
     if (!reader.PopFileDescriptor(&fd)) {
-      LOG(ERROR) << "failed to get a kernel FD";
-      response.set_failure_reason("failed to get a kernel FD");
+      std::stringstream ss;
+      ss << "failed to get a " << StartVmRequest_FdType_Name(fdType) << " FD";
+      LOG(ERROR) << ss.str();
+      response.set_failure_reason(ss.str());
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
-
-    kernel_fd = std::move(fd);
-  }
-
-  if (request.use_fd_for_rootfs()) {
-    base::ScopedFD fd;
-    if (!reader.PopFileDescriptor(&fd)) {
-      LOG(ERROR) << "failed to get a rootfs FD";
-      response.set_failure_reason("failed to get a rootfs FD");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+    switch (fdType) {
+      case StartVmRequest_FdType_KERNEL:
+        kernel_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_ROOTFS:
+        rootfs_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_STORAGE:
+        storage_fd = std::move(fd);
+        break;
+      default:
+        LOG(WARNING) << "received request with unknown FD type " << fdType
+                     << ". Ignoring.";
     }
-
-    rootfs_fd = std::move(fd);
-  }
-
-  if (request.use_fd_for_storage()) {
-    base::ScopedFD fd;
-    if (!reader.PopFileDescriptor(&fd)) {
-      LOG(ERROR) << "failed to get an extra storage FD";
-      response.set_failure_reason("failed to get an extra storage FD");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-    }
-
-    storage_fd = std::move(fd);
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
@@ -1233,13 +1222,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   // Check if an opened storage image was passed over D-BUS.
   if (storage_fd.has_value()) {
-    DCHECK(request.use_fd_for_storage());
-
     // We only allow untrusted VMs to mount extra storage.
     if (!is_untrusted_vm) {
-      LOG(ERROR) << "use_fd_for_storage is set for a trusted VM";
+      LOG(ERROR) << "storage fd passed for a trusted VM";
 
-      response.set_failure_reason("use_fd_for_storage is set for a trusted VM");
+      response.set_failure_reason("storage fd is passed for a trusted VM");
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
@@ -1475,7 +1462,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   // Mount an extra disk in the VM. We mount them after calling StartTermina
   // because /mnt/external is set up there.
-  if (request.use_fd_for_storage()) {
+  if (storage_fd.has_value()) {
     const string external_disk_path =
         base::StringPrintf("/dev/vd%c", disk_letter++);
 

@@ -1041,7 +1041,8 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
     }
 
     request.set_name(std::move(name));
-    request.set_use_fd_for_storage(true);
+    request.mutable_fds()->Add(
+        vm_tools::concierge::StartVmRequest_FdType_STORAGE);
     if (!ParseExtraDisks(&request, extra_disks)) {
       return -1;
     }
