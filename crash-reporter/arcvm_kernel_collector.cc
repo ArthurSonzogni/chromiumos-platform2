@@ -15,6 +15,7 @@
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/kernel_util.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -82,7 +83,11 @@ bool ArcvmKernelCollector::HandleCrashWithRamoopsStreamAndTimestamp(
     LOG(ERROR) << "Failed to write ramoops to file: " << ramoops_path;
     return false;
   }
-  // TODO(kimiyuki): Compute the signature of the crash from |ramoops_content|.
+
+  kernel_util::ArchKind arch = kernel_util::GetCompilerArch();
+  const std::string signature =
+      kernel_util::ComputeKernelStackSignature(ramoops_content, arch);
+  AddCrashMetaData(arc_util::kSignatureField, signature);
 
   const base::FilePath metadata_path =
       GetCrashPath(crash_dir, basename_without_ext, "meta");
