@@ -149,19 +149,20 @@ void PortManager::OnPartnerChanged(int port_num) {
 }
 
 void PortManager::OnScreenIsLocked() {
-  // TODO(b/177628378): Update |user_active_| when this happens.
+  SetUserActive(false);
 }
 
 void PortManager::OnScreenIsUnlocked() {
-  // TODO(b/177628378): Call HandleUnlock().
+  HandleUnlock();
 }
 
 void PortManager::OnSessionStarted() {
-  // TODO(b/177628378): Potentially switch device alt modes.
+  // Session started is handled similarly to "screen unlocked".
+  HandleUnlock();
 }
 
 void PortManager::OnSessionStopped() {
-  // TODO(b/177628378): Call HandleSessionStopped().
+  HandleSessionStopped();
 }
 
 void PortManager::HandleSessionStopped() {
