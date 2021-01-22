@@ -96,8 +96,8 @@ bool ECCollector::Collect() {
     return true;
   }
 
-  std::string signature =
-      StringPrintf("%s-%08X", kECExecName, HashString(StringPiece(data, len)));
+  std::string signature = StringPrintf(
+      "%s-%08X", kECExecName, util::HashString(StringPiece(data, len)));
 
   /* TODO(drinkcat): Figure out a way to add EC version to metadata. */
   AddCrashMetaData("sig", signature);

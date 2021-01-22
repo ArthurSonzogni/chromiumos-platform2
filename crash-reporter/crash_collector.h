@@ -421,10 +421,6 @@ class CrashCollector {
   // rely on crash_sender to later pick it up and send it.
   const CrashSendingMode crash_sending_mode_;
 
-  // Hash a string to a number.  We define our own hash function to not
-  // be dependent on a C++ library that might change.
-  static unsigned HashString(base::StringPiece input);
-
   // Record information about a crash collector failure in a new crash report.
   // Clears metadata for existing report.
   // orig_exec: Name of the executable in which we were processing a crash when

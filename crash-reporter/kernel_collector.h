@@ -15,24 +15,13 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <re2/re2.h>
 
 #include "crash-reporter/crash_collector.h"
+#include "crash-reporter/kernel_util.h"
 
 // Kernel crash collector.
 class KernelCollector : public CrashCollector {
  public:
-  // Enumeration to specify architecture type.
-  enum ArchKind {
-    kArchUnknown,
-    kArchArm,
-    kArchMips,
-    kArchX86,
-    kArchX86_64,
-
-    kArchCount  // Number of architectures.
-  };
-
   KernelCollector();
   KernelCollector(const KernelCollector&) = delete;
   KernelCollector& operator=(const KernelCollector&) = delete;
@@ -53,12 +42,9 @@ class KernelCollector : public CrashCollector {
   // a dump (even if there were problems storing the dump), false otherwise.
   bool Collect();
 
-  // Compute a stack signature string from a kernel dump.
-  std::string ComputeKernelStackSignature(const std::string& kernel_dump);
-
   // Set the architecture of the crash dumps we are looking at.
-  void set_arch(ArchKind arch) { arch_ = arch; }
-  ArchKind arch() const { return arch_; }
+  void set_arch(kernel_util::ArchKind arch) { arch_ = arch; }
+  kernel_util::ArchKind arch() const { return arch_; }
 
  private:
   // This class represents single EFI crash.
@@ -169,26 +155,6 @@ class KernelCollector : public CrashCollector {
                           size_t current_record,
                           bool* record_found);
 
-  void ProcessStackTrace(re2::StringPiece kernel_dump,
-                         unsigned* hash,
-                         float* last_stack_timestamp,
-                         bool* is_watchdog_crash);
-  bool FindCrashingFunction(re2::StringPiece kernel_dump,
-                            float stack_trace_timestamp,
-                            std::string* crashing_function);
-  bool FindPanicMessage(re2::StringPiece kernel_dump,
-                        std::string* panic_message);
-
-  // Returns the architecture kind for which we are built.
-  static ArchKind GetCompilerArch();
-
-  // BIOS crashes use a simple signature containing the crash PC.
-  static std::string BiosCrashSignature(const std::string& dump);
-
-  // Watchdog reboots leave no stack trace. Generate a poor man's signature out
-  // of the last log line instead (minus the timestamp ended by ']').
-  static std::string WatchdogSignature(const std::string& console_ramoops);
-
   bool HandleCrash(const std::string& kernel_dump,
                    const std::string& bios_dump,
                    const std::string& signature);
@@ -208,7 +174,7 @@ class KernelCollector : public CrashCollector {
   size_t records_;
 
   // The architecture of kernel dump strings we are working with.
-  ArchKind arch_;
+  kernel_util::ArchKind arch_;
 };
 
 #endif  // CRASH_REPORTER_KERNEL_COLLECTOR_H_

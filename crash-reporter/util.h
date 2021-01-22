@@ -135,6 +135,10 @@ bool ReadFdToStream(unsigned int fd, std::stringstream* stream);
 void JoinSessionKeyring();
 #endif  // USE_DIRENCRYPTION
 
+// Hash a string to a number.  We define our own hash function to not
+// be dependent on a C++ library that might change.
+unsigned HashString(base::StringPiece input);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_
