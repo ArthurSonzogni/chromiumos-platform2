@@ -133,8 +133,9 @@ static bool is_vaapi_dec_h264_device(int fd) {
                              VAProfileH264High,
                              VAProfileH264ConstrainedBaseline, VAProfileNone};
   if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
-                               VA_RT_FORMAT_YUV420))
+                               VA_RT_FORMAT_YUV420)) {
     return true;
+  }
   return false;
 }
 
@@ -147,8 +148,9 @@ static bool is_vaapi_dec_vp8_device(int fd) {
 #if VA_CHECK_VERSION(0, 35, 0)
   VAProfile va_profiles[] = {VAProfileVP8Version0_3, VAProfileNone};
   if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
-                               VA_RT_FORMAT_YUV420))
+                               VA_RT_FORMAT_YUV420)) {
     return true;
+  }
 #endif
   return false;
 }
@@ -162,8 +164,9 @@ static bool is_vaapi_dec_vp9_device(int fd) {
 #if VA_CHECK_VERSION(0, 37, 1)
   VAProfile va_profiles[] = {VAProfileVP9Profile0, VAProfileNone};
   if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
-                               VA_RT_FORMAT_YUV420))
+                               VA_RT_FORMAT_YUV420)) {
     return true;
+  }
 #endif
   return false;
 }
@@ -177,8 +180,41 @@ static bool is_vaapi_dec_vp9_2_device(int fd) {
 #if VA_CHECK_VERSION(0, 38, 1)
   VAProfile va_profiles[] = {VAProfileVP9Profile2, VAProfileNone};
   if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
-                               VA_RT_FORMAT_YUV420_10BPP))
+                               VA_RT_FORMAT_YUV420_10)) {
     return true;
+  }
+#endif
+  return false;
+}
+
+/* Helper function for detect_video_acc_av1.
+ * Determine if a VAAPI device supports AV1 decoding, i.e. it
+ * supports AV1 main profile 0, has decoding entry point, and can output
+ * YUV420 format.
+ */
+static bool is_vaapi_dec_av1_device(int fd) {
+#if VA_CHECK_VERSION(1, 8, 0)
+  VAProfile va_profiles[] = {VAProfileAV1Profile0, VAProfileNone};
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
+                               VA_RT_FORMAT_YUV420)) {
+    return true;
+  }
+#endif
+  return false;
+}
+
+/* Helper function for detect_video_acc_av1_10bpp.
+ * Determine if a VAAPI device supports AV1 decoding main
+ * profile 0 (10 bit), i.e. it supports AV1 main profile (10 bit),
+ * has decoding entry point, and can output YUV420 10BPP format.
+ */
+static bool is_vaapi_dec_av1_10bpp_device(int fd) {
+#if VA_CHECK_VERSION(1, 8, 0)
+  VAProfile va_profiles[] = {VAProfileAV1Profile0, VAProfileNone};
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
+                               VA_RT_FORMAT_YUV420_10)) {
+    return true;
+  }
 #endif
   return false;
 }
@@ -245,8 +281,9 @@ static bool is_vaapi_enc_vp9_device(int fd) {
 static bool is_vaapi_dec_jpeg_device(int fd) {
   VAProfile va_profiles[] = {VAProfileJPEGBaseline, VAProfileNone};
   if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
-                               VA_RT_FORMAT_YUV420))
+                               VA_RT_FORMAT_YUV420)) {
     return true;
+  }
   return false;
 }
 
@@ -258,8 +295,9 @@ static bool is_vaapi_dec_jpeg_device(int fd) {
 static bool is_vaapi_enc_jpeg_device(int fd) {
   VAProfile va_profiles[] = {VAProfileJPEGBaseline, VAProfileNone};
   if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncPicture,
-                               VA_RT_FORMAT_YUV420))
+                               VA_RT_FORMAT_YUV420)) {
     return true;
+  }
   return false;
 }
 
@@ -327,6 +365,32 @@ bool detect_video_acc_vp9(void) {
 bool detect_video_acc_vp9_2(void) {
 #if defined(USE_VAAPI)
   return is_any_device(kDRMDevicePattern, is_vaapi_dec_vp9_2_device);
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "hw_video_acc_av1" label. That is, either the VAAPI device
+ * supports AV1 main profile 0, has decoding entry point, and output YUV420
+ * formats.
+ */
+bool detect_video_acc_av1(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_av1_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "hw_video_acc_av1_10bpp" label. That is, either the VAAPI device
+ * supports AV1 main profile 0 (10bit), has decoding entry point, and output
+ * YUV420 10BPP formats.
+ */
+bool detect_video_acc_av1_10bpp(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_av1_10bpp_device))
+    return true;
 #endif  // defined(USE_VAAPI)
 
   return false;

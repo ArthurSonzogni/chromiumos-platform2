@@ -54,7 +54,8 @@ bool is_vaapi_support_formats(int fd,
                               unsigned int format);
 bool get_vaapi_max_resolution(int fd,
                               const VAProfile* profiles,
-                              VAEntrypoint entrypoit,
+                              VAEntrypoint entrypoint,
+                              unsigned int format,
                               int32_t* const resolution_width,
                               int32_t* const resolution_height);
 #endif  // defined(USE_VAAPI)
@@ -69,6 +70,8 @@ extern bool detect_video_acc_h264(void);
 extern bool detect_video_acc_vp8(void);
 extern bool detect_video_acc_vp9(void);
 extern bool detect_video_acc_vp9_2(void);
+extern bool detect_video_acc_av1(void);
+extern bool detect_video_acc_av1_10bpp(void);
 extern bool detect_video_acc_enc_h264(void);
 extern bool detect_video_acc_enc_vp8(void);
 extern bool detect_video_acc_enc_vp9(void);
@@ -77,6 +80,8 @@ extern bool detect_jpeg_acc_enc(void);
 bool detect_4k_device_h264(void);
 bool detect_4k_device_vp8(void);
 bool detect_4k_device_vp9(void);
+bool detect_4k_device_av1(void);
+bool detect_4k_device_av1_10bpp(void);
 bool detect_4k_device_enc_h264(void);
 bool detect_4k_device_enc_vp8(void);
 bool detect_4k_device_enc_vp9(void);

@@ -252,13 +252,14 @@ static bool get_max_resolution(VADisplay va_display,
 bool get_vaapi_max_resolution(int fd,
                               const VAProfile* profiles,
                               VAEntrypoint entrypoint,
+                              unsigned int format,
                               int32_t* const resolution_width,
                               int32_t* const resolution_height) {
   *resolution_width = 0;
   *resolution_height = 0;
 
-  VAConfigAttrib required_attribs = {VAConfigAttribRTFormat,
-                                     VA_RT_FORMAT_YUV420};
+  VAConfigAttrib required_attribs = {VAConfigAttribRTFormat, format};
+
   VAStatus va_res;
   VADisplay va_display = vaGetDisplayDRM(fd);
   int major_version, minor_version;
