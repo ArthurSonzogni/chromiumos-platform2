@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "pciguard/pciguard_utils.h"
+#include "pciguard/sysfs_utils.h"
 
 #include <base/command_line.h>
 #include <base/files/file_enumerator.h>
@@ -19,18 +19,6 @@ namespace pciguard {
 
 namespace {
 
-// Sysfs driver allowlist file (contains drivers that are allowlisted for
-// external PCI devices)).
-constexpr char kAllowlistPath[] = "/sys/bus/pci/drivers_allowlist";
-
-// Sysfs PCI lockdown file. When set to 1, this prevents any driver to bind to
-// external PCI devices (including allowlisted drivers).
-constexpr char kExtPCILockdownPath[] =
-    "/sys/bus/pci/drivers_allowlist_lockdown";
-
-// Sysfs PCI rescan file. It rescans the PCI bus to discover any new devices.
-constexpr char kPCIRescanPath[] = "/sys/bus/pci/rescan";
-
 // Actual driver allowlist.
 const char* kAllowlist[] = {
     // TODO(b/163121310): Finalize allowlist
@@ -40,7 +28,18 @@ const char* kAllowlist[] = {
     "ahci",      // AHCI driver
 };
 
-int SetAuthorizedAttribute(base::FilePath devpath, bool enable) {
+}  // namespace
+
+SysfsUtils::SysfsUtils() : SysfsUtils(FilePath("/")) {}
+
+SysfsUtils::SysfsUtils(FilePath root)
+    : allowlist_path_(root.Append("sys/bus/pci/drivers_allowlist")),
+      pci_lockdown_path_(root.Append("sys/bus/pci/drivers_allowlist_lockdown")),
+      pci_rescan_path_(root.Append("sys/bus/pci/rescan")),
+      tbt_devices_path_(root.Append("sys/bus/thunderbolt/devices")),
+      pci_devices_path_(root.Append("sys/bus/pci/devices")) {}
+
+int SysfsUtils::SetAuthorizedAttribute(base::FilePath devpath, bool enable) {
   if (!PathExists(devpath)) {
     PLOG(ERROR) << "Path doesn't exist : " << devpath;
     return EXIT_FAILURE;
@@ -83,27 +82,24 @@ int SetAuthorizedAttribute(base::FilePath devpath, bool enable) {
   return EXIT_SUCCESS;
 }
 
-int DeauthorizeThunderboltDev(base::FilePath devpath) {
+int SysfsUtils::DeauthorizeThunderboltDev(base::FilePath devpath) {
   return SetAuthorizedAttribute(devpath, false);
 }
 
-}  // namespace
-
-int OnInit(void) {
-  if (!base::PathIsWritable(base::FilePath(kAllowlistPath)) ||
-      !base::PathIsWritable(base::FilePath(kExtPCILockdownPath))) {
+int SysfsUtils::OnInit(void) {
+  if (!base::PathIsWritable(allowlist_path_) ||
+      !base::PathIsWritable(pci_lockdown_path_)) {
     PLOG(ERROR) << "Kernel is missing needed support for external PCI security";
     return EX_OSFILE;
   }
 
-  if (base::WriteFile(base::FilePath(kExtPCILockdownPath), "1", 1) != 1) {
-    PLOG(ERROR) << "Couldn't write 1 to " << kExtPCILockdownPath;
+  if (base::WriteFile(pci_lockdown_path_, "1", 1) != 1) {
+    PLOG(ERROR) << "Couldn't write 1 to " << pci_lockdown_path_;
     return EX_IOERR;
   }
 
-  const base::FilePath allowlist_file(kAllowlistPath);
   for (auto drvr_name : kAllowlist) {
-    if (base::WriteFile(allowlist_file, drvr_name, sizeof(drvr_name)) ==
+    if (base::WriteFile(allowlist_path_, drvr_name, sizeof(drvr_name)) ==
         sizeof(drvr_name))
       LOG(INFO) << "Allowed " << drvr_name;
     else
@@ -112,26 +108,26 @@ int OnInit(void) {
   return EX_OK;
 }
 
-int AuthorizeThunderboltDev(base::FilePath devpath) {
+int SysfsUtils::AuthorizeThunderboltDev(base::FilePath devpath) {
   return SetAuthorizedAttribute(devpath, true);
 }
 
-int AuthorizeAllDevices(void) {
+int SysfsUtils::AuthorizeAllDevices(void) {
   LOG(INFO) << "Authorizing all external PCI devices";
 
   // Allow drivers to bind to PCI devices. This also binds any PCI devices
   // that may have been hotplugged "into" external peripherals, while the
   // screen was locked.
-  if (base::WriteFile(base::FilePath(kExtPCILockdownPath), "0", 1) != 1) {
-    PLOG(ERROR) << "Couldn't write 0 to " << kExtPCILockdownPath;
+  if (base::WriteFile(pci_lockdown_path_, "0", 1) != 1) {
+    PLOG(ERROR) << "Couldn't write 0 to " << pci_lockdown_path_;
     return EXIT_FAILURE;
   }
 
   int ret = EXIT_SUCCESS;
 
   // Add any PCI devices that we removed when the user had logged off.
-  if (base::WriteFile(base::FilePath(kPCIRescanPath), "1", 1) != 1) {
-    PLOG(ERROR) << "Couldn't write 1 to " << kPCIRescanPath;
+  if (base::WriteFile(pci_rescan_path_, "1", 1) != 1) {
+    PLOG(ERROR) << "Couldn't write 1 to " << pci_rescan_path_;
     ret = EXIT_FAILURE;
   }
 
@@ -143,8 +139,8 @@ int AuthorizeAllDevices(void) {
     return symlink1 < symlink2;
   };
   std::set<base::FilePath, decltype(cmp)> thunderbolt_devs(cmp);
-  base::FileEnumerator iter(base::FilePath("/sys/bus/thunderbolt/devices"),
-                            false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator iter(tbt_devices_path_, false,
+                            base::FileEnumerator::DIRECTORIES);
   for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next())
     thunderbolt_devs.insert(devpath);
 
@@ -160,18 +156,18 @@ int AuthorizeAllDevices(void) {
   return ret;
 }
 
-int DenyNewDevices(void) {
+int SysfsUtils::DenyNewDevices(void) {
   LOG(INFO) << "Will deny all new external PCI devices";
 
   // Deny drivers to bind to any *new* external PCI devices.
-  if (base::WriteFile(base::FilePath(kExtPCILockdownPath), "1", 1) != 1) {
-    PLOG(ERROR) << "Couldn't write 1 to " << kExtPCILockdownPath;
+  if (base::WriteFile(pci_lockdown_path_, "1", 1) != 1) {
+    PLOG(ERROR) << "Couldn't write 1 to " << pci_lockdown_path_;
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;
 }
 
-int DeauthorizeAllDevices(void) {
+int SysfsUtils::DeauthorizeAllDevices(void) {
   int ret = EXIT_SUCCESS;
   if (DenyNewDevices())
     return EXIT_FAILURE;
@@ -179,7 +175,7 @@ int DeauthorizeAllDevices(void) {
   LOG(INFO) << "Deauthorizing all external PCI devices";
 
   // Remove all untrusted (external) PCI devices.
-  base::FileEnumerator iter(base::FilePath("/sys/bus/pci/devices"), false,
+  base::FileEnumerator iter(pci_devices_path_, false,
                             base::FileEnumerator::DIRECTORIES);
   for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next()) {
     std::string untrusted;
@@ -209,8 +205,8 @@ int DeauthorizeAllDevices(void) {
   }
 
   // Deauthorize all thunderbolt devices.
-  base::FileEnumerator tbt_iter(base::FilePath("/sys/bus/thunderbolt/devices"),
-                                false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator tbt_iter(tbt_devices_path_, false,
+                                base::FileEnumerator::DIRECTORIES);
   for (auto devpath = tbt_iter.Next(); !devpath.empty();
        devpath = tbt_iter.Next()) {
     if (DeauthorizeThunderboltDev(devpath))

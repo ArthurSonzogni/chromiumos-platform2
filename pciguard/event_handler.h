@@ -14,7 +14,7 @@ namespace pciguard {
 // A class for handling all events.
 class EventHandler {
  public:
-  EventHandler();
+  explicit EventHandler(SysfsUtils* utils);
   EventHandler(const EventHandler&) = delete;
   EventHandler& operator=(const EventHandler&) = delete;
   ~EventHandler() = default;
@@ -46,8 +46,12 @@ class EventHandler {
   // User Permission from chrome browser, to allow external PCI devices.
   bool user_permission_;
 
+  SysfsUtils* utils_;
+
   // Logs the event
   void LogEvent(const char ev[]);
+
+  friend class EventHandlerTest;
 };
 
 }  // namespace pciguard

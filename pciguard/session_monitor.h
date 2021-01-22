@@ -19,7 +19,7 @@ namespace pciguard {
 class SessionMonitor {
  public:
   explicit SessionMonitor(scoped_refptr<dbus::Bus> bus,
-                          std::shared_ptr<EventHandler> ev_handler);
+                          EventHandler* ev_handler);
   SessionMonitor(const SessionMonitor&) = delete;
   SessionMonitor& operator=(const SessionMonitor&) = delete;
   ~SessionMonitor() = default;
@@ -35,7 +35,7 @@ class SessionMonitor {
   void OnSessionStateChanged(const std::string& state);
 
   org::chromium::SessionManagerInterfaceProxy proxy_;
-  std::shared_ptr<EventHandler> event_handler_;
+  EventHandler* event_handler_;
   base::WeakPtrFactory<SessionMonitor> weak_ptr_factory_;
 };
 

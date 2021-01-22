@@ -3,17 +3,19 @@
 // found in the LICENSE file.
 
 #include "pciguard/event_handler.h"
-#include "pciguard/pciguard_utils.h"
 
 #include <base/check.h>
 
 namespace pciguard {
 
 // TODO(b/176184431): Don't assume NO_USER_LOGGED_IN on init.
-EventHandler::EventHandler()
+EventHandler::EventHandler(SysfsUtils* utils)
     : state_(NO_USER_LOGGED_IN),
       authorizer_(nullptr),
-      user_permission_(false) {}
+      user_permission_(false),
+      utils_(utils) {
+  CHECK(utils);
+}
 
 void EventHandler::LogEvent(const char ev[]) {
   const char* states[] = {
@@ -53,7 +55,7 @@ void EventHandler::OnUserLogout() {
   authorizer_.reset();
   user_permission_ = false;
 
-  DeauthorizeAllDevices();
+  utils_->DeauthorizeAllDevices();
 }
 
 void EventHandler::OnScreenLocked() {
@@ -67,7 +69,7 @@ void EventHandler::OnScreenLocked() {
 
   authorizer_.reset();
 
-  DenyNewDevices();
+  utils_->DenyNewDevices();
 }
 
 void EventHandler::OnScreenUnlocked() {
@@ -83,7 +85,7 @@ void EventHandler::OnScreenUnlocked() {
   if (state_ == USER_LOGGED_IN_BUT_SCREEN_LOCKED) {
     state_ = USER_LOGGED_IN_SCREEN_UNLOCKED;
     if (user_permission_) {
-      authorizer_ = std::make_unique<Authorizer>();
+      authorizer_ = std::make_unique<Authorizer>(utils_);
       authorizer_->SubmitJob(Authorizer::AUTHORIZE_ALL_DEVICES,
                              base::FilePath(""));
     }
@@ -117,7 +119,7 @@ void EventHandler::OnUserPermissionChanged(bool new_permission) {
     if (state_ == USER_LOGGED_IN_SCREEN_UNLOCKED) {
       user_permission_ = true;
       if (!authorizer_) {
-        authorizer_ = std::make_unique<Authorizer>();
+        authorizer_ = std::make_unique<Authorizer>(utils_);
         authorizer_->SubmitJob(Authorizer::AUTHORIZE_ALL_DEVICES,
                                base::FilePath(""));
       }
@@ -126,7 +128,7 @@ void EventHandler::OnUserPermissionChanged(bool new_permission) {
     LogEvent("User-Permission-Denied");
     // No state check needed.
     authorizer_.reset();
-    DeauthorizeAllDevices();
+    utils_->DeauthorizeAllDevices();
     user_permission_ = false;
   }
 }

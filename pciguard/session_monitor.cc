@@ -22,7 +22,7 @@ void OnSignalConnected(const std::string& interface,
 }  // namespace
 
 SessionMonitor::SessionMonitor(scoped_refptr<dbus::Bus> bus,
-                               std::shared_ptr<EventHandler> ev_handler)
+                               EventHandler* ev_handler)
     : proxy_(bus), event_handler_(ev_handler), weak_ptr_factory_(this) {
   proxy_.RegisterScreenIsLockedSignalHandler(
       base::BindRepeating(&SessionMonitor::OnScreenIsLocked,

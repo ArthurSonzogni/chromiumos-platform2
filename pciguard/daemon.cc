@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "pciguard/daemon.h"
-#include "pciguard/pciguard_utils.h"
+#include "pciguard/sysfs_utils.h"
 
 #include <base/check.h>
 #include <dbus/pciguard/dbus-constants.h>
@@ -16,21 +16,22 @@ Daemon::Daemon() : DBusServiceDaemon(kPciguardServiceName) {}
 int Daemon::OnInit() {
   LOG(INFO) << "pciguard daemon starting...";
 
-  int exit_code = pciguard::OnInit();
+  utils_ = std::make_unique<SysfsUtils>();
+  int exit_code = utils_->OnInit();
   if (exit_code != EX_OK)
     return exit_code;
 
-  event_handler_ = std::make_shared<EventHandler>();
+  event_handler_ = std::make_unique<EventHandler>(utils_.get());
 
   exit_code = DBusServiceDaemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
 
   // Begin monitoring the session events
-  session_monitor_ = std::make_unique<SessionMonitor>(bus_, event_handler_);
-
+  session_monitor_ =
+      std::make_unique<SessionMonitor>(bus_, event_handler_.get());
   // Begin monitoring the thunderbolt udev events
-  tbt_udev_monitor_ = std::make_unique<TbtUdevMonitor>(event_handler_);
+  tbt_udev_monitor_ = std::make_unique<TbtUdevMonitor>(event_handler_.get());
 
   LOG(INFO) << "pciguard daemon started";
 

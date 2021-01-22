@@ -14,7 +14,7 @@ const char kThunderboltDevice[] = "thunderbolt_device";
 
 }  // namespace
 
-TbtUdevMonitor::TbtUdevMonitor(std::shared_ptr<EventHandler> ev_handler)
+TbtUdevMonitor::TbtUdevMonitor(EventHandler* ev_handler)
     : event_handler_(ev_handler) {
   udev_ = brillo::Udev::Create();
   if (!udev_) {

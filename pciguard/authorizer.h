@@ -6,7 +6,10 @@
 #define PCIGUARD_AUTHORIZER_H_
 
 #include <base/files/file_path.h>
+#include <memory>
 #include <queue>
+
+#include "pciguard/sysfs_utils.h"
 
 namespace pciguard {
 
@@ -14,7 +17,7 @@ namespace pciguard {
 // and forks a thread to process that queue (that can be killed when needed)
 class Authorizer {
  public:
-  Authorizer();
+  explicit Authorizer(SysfsUtils* utils);
   Authorizer(const Authorizer&) = delete;
   Authorizer& operator=(const Authorizer&) = delete;
   ~Authorizer();
@@ -25,6 +28,7 @@ class Authorizer {
   };
 
   void SubmitJob(JobType type, base::FilePath path);
+  bool IsJobQueueEmpty(void);
 
  private:
   struct Job {
@@ -37,6 +41,7 @@ class Authorizer {
   pthread_cond_t job_available_;
 
   pthread_t authorizer_thread_;
+  SysfsUtils* utils_;
   static void* AuthorizerThread(void* ptr);
   bool GetNextJob(Job* job);
 };

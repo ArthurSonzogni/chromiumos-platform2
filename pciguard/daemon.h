@@ -27,7 +27,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   void HandleUserPermissionChanged(bool ext_pci_allowed);
 
  private:
-  std::shared_ptr<EventHandler> event_handler_;
+  std::unique_ptr<SysfsUtils> utils_;
+  std::unique_ptr<EventHandler> event_handler_;
   std::unique_ptr<SessionMonitor> session_monitor_;
   std::unique_ptr<TbtUdevMonitor> tbt_udev_monitor_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

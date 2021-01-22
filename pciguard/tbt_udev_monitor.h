@@ -25,7 +25,7 @@ namespace pciguard {
 // Class to monitor thunderbolt udev events
 class TbtUdevMonitor {
  public:
-  explicit TbtUdevMonitor(std::shared_ptr<EventHandler> ev_handler);
+  explicit TbtUdevMonitor(EventHandler* ev_handler);
   TbtUdevMonitor(const TbtUdevMonitor&) = delete;
   TbtUdevMonitor& operator=(const TbtUdevMonitor&) = delete;
   ~TbtUdevMonitor() = default;
@@ -38,7 +38,7 @@ class TbtUdevMonitor {
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
-  std::shared_ptr<EventHandler> event_handler_;
+  std::unique_ptr<EventHandler> event_handler_;
 };
 
 }  // namespace pciguard

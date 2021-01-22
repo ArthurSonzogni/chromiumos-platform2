@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":pciguard" ]
+  if (use.test) {
+    deps += [ ":pciguard_testrunner" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -19,14 +22,46 @@ pkg_config("target_defaults") {
 
 executable("pciguard") {
   configs += [ ":target_defaults" ]
+  deps = [ ":pciguard_common" ]
+  sources = [
+    "daemon.cc",
+    "main.cc",
+  ]
+}
+
+static_library("pciguard_common") {
+  all_dependent_configs = [ ":target_defaults" ]
   sources = [
     "authorizer.cc",
-    "daemon.cc",
     "event_handler.cc",
-    "main.cc",
-    "pciguard_utils.cc",
     "session_monitor.cc",
+    "sysfs_utils.cc",
     "tbt_udev_monitor.cc",
   ]
   libs = [ "pthread" ]
+}
+
+if (use.test) {
+  pkg_config("test_defaults") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libudev",
+    ]
+  }
+
+  executable("pciguard_testrunner") {
+    configs += [
+      ":test_defaults",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":pciguard_common",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "event_handler_test.cc",
+      "sysfs_utils_test.cc",
+    ]
+  }
 }

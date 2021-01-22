@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "pciguard/authorizer.h"
-#include "pciguard/pciguard_utils.h"
 
 #include <sysexits.h>
 
@@ -20,16 +19,17 @@ void* Authorizer::AuthorizerThread(void* ptr) {
   Job job;
   while (authorizer->GetNextJob(&job)) {
     if (job.type_ == AUTHORIZE_ALL_DEVICES)
-      AuthorizeAllDevices();
+      authorizer->utils_->AuthorizeAllDevices();
     else
-      AuthorizeThunderboltDev(job.syspath_);
+      authorizer->utils_->AuthorizeThunderboltDev(job.syspath_);
   }
   return NULL;
 }
 
-Authorizer::Authorizer()
+Authorizer::Authorizer(SysfsUtils* utils)
     : mutex_(PTHREAD_MUTEX_INITIALIZER),
-      job_available_(PTHREAD_COND_INITIALIZER) {
+      job_available_(PTHREAD_COND_INITIALIZER),
+      utils_(utils) {
   if (pthread_create(&authorizer_thread_, NULL, &Authorizer::AuthorizerThread,
                      this)) {
     PLOG(ERROR) << __func__ << ": Problem creating thread. Exiting now";
@@ -60,6 +60,19 @@ void Authorizer::SubmitJob(JobType type, base::FilePath path) {
     PLOG(ERROR) << "Mutex unlock issue while submitting job";
     return;
   }
+}
+
+bool Authorizer::IsJobQueueEmpty() {
+  if (pthread_mutex_lock(&mutex_)) {
+    PLOG(ERROR) << "Mutex lock issue while checking job queue status";
+    exit(EXIT_FAILURE);
+  }
+  auto ret = queue_.empty();
+  if (pthread_mutex_unlock(&mutex_)) {
+    PLOG(ERROR) << "Mutex unlock issue while checking job queue status";
+    exit(EXIT_FAILURE);
+  }
+  return ret;
 }
 
 // Pops and returns next authorization job. If no job, then blocks until
