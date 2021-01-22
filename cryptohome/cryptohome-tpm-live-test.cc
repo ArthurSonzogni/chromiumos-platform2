@@ -17,20 +17,8 @@
 #include "cryptohome/tpm_live_test.h"
 
 int main(int argc, char** argv) {
-  DEFINE_string(owner_password, "",
-                "The TPM owner password. If the device is equipped with TPM "
-                "1.2, then when this flag is specified some additional tests "
-                "that require knowledge of the password are executed. When "
-                "omitted or empty, such tests are skipped. This flag has no "
-                "effect on TPM 2.0 systems.");
-  DEFINE_bool(tpm2_use_system_owner_password, "",
-              "Whether the TPM 2.0 owner password which is available to the "
-              "system should be used (for example, this password is displayed "
-              "by the \"tpm-manager dump_status\" command). If the device is "
-              "equipped with TPM 2.0, then when this flag is specified some "
-              "additional tests that require availability of the password are "
-              "executed; note that these tests will fail if the password turns "
-              "out to be missing. This flag has no effect on TPM 1.2 systems.");
+  DEFINE_string(owner_password, "", "deprecated flag");
+  DEFINE_bool(tpm2_use_system_owner_password, "", "deprecated flag");
   brillo::FlagHelper::Init(argc, argv,
                            "Executes cryptohome tests on a live TPM.\nNOTE: "
                            "the TPM must be available and owned.");
@@ -39,16 +27,6 @@ int main(int argc, char** argv) {
   OpenSSL_add_all_algorithms();
   LOG(INFO) << "Running TPM live tests.";
 
-  // Set up the Tpm singleton state, assuming that the preconditions for running
-  // this tool are satisfied.
-  cryptohome::Tpm* const tpm = cryptohome::Tpm::GetSingleton();
-  if (tpm->GetVersion() != cryptohome::Tpm::TPM_2_0) {
-    tpm->SetIsEnabled(true);
-    tpm->SetIsOwned(true);
-  }
-
-  const bool success = cryptohome::TpmLiveTest().RunLiveTests(
-      brillo::SecureBlob(FLAGS_owner_password),
-      FLAGS_tpm2_use_system_owner_password);
+  const bool success = cryptohome::TpmLiveTest().RunLiveTests();
   return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }

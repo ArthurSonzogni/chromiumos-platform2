@@ -27,11 +27,8 @@ class TpmLiveTest {
   ~TpmLiveTest() = default;
 
   // This method runs all or a subset of all tests, depending on the supplied
-  // parameters. On TPM 1.2, some tests are only running when |owner_password|
-  // is non-empty. On TPM 2.0, some tests run only when
-  // |tpm2_use_system_owner_password| is true.
-  bool RunLiveTests(const brillo::SecureBlob& owner_password,
-                    bool tpm2_use_system_owner_password);
+  // parameters.
+  bool RunLiveTests();
 
  private:
   // Helper method to try to sign some data.
@@ -60,16 +57,11 @@ class TpmLiveTest {
 
   // This test verifies that the Nvram subsystem of the TPM is working
   // correctly.
-  // This test requires the TPM owner password to be provided via
-  // |owner_password|.
-  bool NvramTest(const brillo::SecureBlob& owner_password);
+  bool NvramTest();
 
   // This test checks the signature-sealed secret creation and its unsealing. A
   // random RSA key is used.
-  // For TPM 1.2, this test requires the TPM owner password to be provided via
-  // |owner_password|; for other implementations, this test may be run with an
-  // empty |owner_password|.
-  bool SignatureSealedSecretTest(const brillo::SecureBlob& owner_password);
+  bool SignatureSealedSecretTest();
 
   Tpm* tpm_;
 };

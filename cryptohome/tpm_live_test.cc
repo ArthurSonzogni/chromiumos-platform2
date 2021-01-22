@@ -43,38 +43,9 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-namespace {
-
-// Scoped setter of the owner password of the global Tpm instance.
-// Does nothing if the version is different from |TPM_1_2|.
-class ScopedTpmOwnerPasswordSetter {
- public:
-  explicit ScopedTpmOwnerPasswordSetter(const SecureBlob& owner_password)
-      : tpm_(Tpm::GetSingleton()) {
-    if (ShouldApply()) {
-      tpm_->GetOwnerPassword(&previous_tpm_owner_password_);
-      tpm_->SetOwnerPassword(owner_password);
-    }
-  }
-
-  ~ScopedTpmOwnerPasswordSetter() {
-    if (ShouldApply())
-      tpm_->SetOwnerPassword(previous_tpm_owner_password_);
-  }
-
- private:
-  bool ShouldApply() const { return tpm_->GetVersion() == Tpm::TPM_1_2; }
-
-  Tpm* const tpm_;
-  SecureBlob previous_tpm_owner_password_;
-};
-
-}  // namespace
-
 TpmLiveTest::TpmLiveTest() : tpm_(Tpm::GetSingleton()) {}
 
-bool TpmLiveTest::RunLiveTests(const SecureBlob& owner_password,
-                               bool tpm2_use_system_owner_password) {
+bool TpmLiveTest::RunLiveTests() {
   if (!PCRKeyTest()) {
     LOG(ERROR) << "Error running PCRKeyTest.";
     return false;
@@ -91,19 +62,13 @@ bool TpmLiveTest::RunLiveTests(const SecureBlob& owner_password,
     LOG(ERROR) << "Error running SealToPcrWithAuthorizationTest.";
     return false;
   }
-  const Tpm::TpmVersion tpm_version = tpm_->GetVersion();
-  if ((tpm_version == Tpm::TPM_1_2 && !owner_password.empty()) ||
-      (tpm_version == Tpm::TPM_2_0 && tpm2_use_system_owner_password)) {
-    if (!NvramTest(owner_password)) {
-      LOG(ERROR) << "Error running NvramTest.";
-      return false;
-    }
+  if (!NvramTest()) {
+    LOG(ERROR) << "Error running NvramTest.";
+    return false;
   }
-  if (tpm_version != Tpm::TPM_1_2 || !owner_password.empty()) {
-    if (!SignatureSealedSecretTest(owner_password)) {
-      LOG(ERROR) << "Error running SignatureSealedSecretTest.";
-      return false;
-    }
+  if (!SignatureSealedSecretTest()) {
+    LOG(ERROR) << "Error running SignatureSealedSecretTest.";
+    return false;
   }
   LOG(INFO) << "All tests run successfully.";
   return true;
@@ -453,10 +418,8 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   return true;
 }
 
-bool TpmLiveTest::NvramTest(const SecureBlob& owner_password) {
+bool TpmLiveTest::NvramTest() {
   LOG(INFO) << "NvramTest started";
-  const ScopedTpmOwnerPasswordSetter scoped_tpm_owner_password_setter(
-      owner_password);
   uint32_t index = 12;
   SecureBlob nvram_data("nvram_data");
   if (tpm_->IsNvramDefined(index)) {
@@ -579,9 +542,9 @@ class SignatureSealedSecretTestCase final {
  public:
   using UnsealingSession = SignatureSealingBackend::UnsealingSession;
 
-  SignatureSealedSecretTestCase(SignatureSealedSecretTestCaseParam param,
-                                const SecureBlob& owner_password)
-      : param_(std::move(param)), owner_password_(owner_password) {
+  explicit SignatureSealedSecretTestCase(
+      SignatureSealedSecretTestCaseParam param)
+      : param_(std::move(param)) {
     LOG(INFO) << "SignatureSealedSecretTestCase: " << param_.key_size_bits
               << "-bit key, " << param_.test_case_description;
   }
@@ -740,8 +703,6 @@ class SignatureSealedSecretTestCase final {
   bool InitDelegate() {
     if (tpm()->GetVersion() != Tpm::TPM_1_2)
       return true;
-    const ScopedTpmOwnerPasswordSetter scoped_tpm_owner_password_setter(
-        owner_password_);
     return tpm()->CreateDelegate(kPcrIndexes, kDelegateFamilyLabel,
                                  kDelegateLabel, &delegate_blob_,
                                  &delegate_secret_);
@@ -759,8 +720,6 @@ class SignatureSealedSecretTestCase final {
     if (delegate_blob_.empty() || delegate_secret_.empty())
       return;
     // Obtain the TPM context and handle with the owner authorization.
-    const ScopedTpmOwnerPasswordSetter scoped_tpm_owner_password_setter(
-        owner_password_);
     ScopedTssContext tpm_context;
     TSS_HTPM tpm_handle = 0;
     if (!static_cast<TpmImpl*>(tpm())->ConnectContextAsOwner(tpm_context.ptr(),
@@ -1077,7 +1036,6 @@ class SignatureSealedSecretTestCase final {
   }
 
   const SignatureSealedSecretTestCaseParam param_;
-  const SecureBlob owner_password_;
   Blob delegate_blob_;
   Blob delegate_secret_;
   crypto::ScopedEVP_PKEY pkey_;
@@ -1086,7 +1044,7 @@ class SignatureSealedSecretTestCase final {
 
 }  // namespace
 
-bool TpmLiveTest::SignatureSealedSecretTest(const SecureBlob& owner_password) {
+bool TpmLiveTest::SignatureSealedSecretTest() {
   using TestCaseParam = SignatureSealedSecretTestCaseParam;
   if (!tpm_->GetSignatureSealingBackend()) {
     // Not supported by the Tpm implementation, just skip the test.
@@ -1137,8 +1095,7 @@ bool TpmLiveTest::SignatureSealedSecretTest(const SecureBlob& owner_password) {
     }
   }
   for (auto&& test_case_param : test_case_params) {
-    SignatureSealedSecretTestCase test_case(std::move(test_case_param),
-                                            owner_password);
+    SignatureSealedSecretTestCase test_case(std::move(test_case_param));
     if (!test_case.SetUp() || !test_case.Run())
       return false;
   }
