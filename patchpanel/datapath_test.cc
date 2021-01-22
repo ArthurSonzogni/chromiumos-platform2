@@ -123,18 +123,13 @@ TEST(DatapathTest, Start) {
                                StrEq("32768 47103"), true));
   EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv6.conf.all.forwarding"),
                                StrEq("1"), true));
-  // Asserts for AddSNATMarkRules
+  // Asserts for SNAT rules.
   EXPECT_CALL(
       runner,
       iptables(StrEq("filter"),
                ElementsAre("-A", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
                            "state", "--state", "INVALID", "-j", "DROP", "-w"),
                true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-A", "FORWARD", "-m", "mark", "--mark",
-                                   "1/1", "-j", "ACCEPT", "-w"),
-                       true, nullptr));
   EXPECT_CALL(runner,
               iptables(StrEq("nat"),
                        ElementsAre("-A", "POSTROUTING", "-m", "mark", "--mark",
@@ -474,18 +469,13 @@ TEST(DatapathTest, Stop) {
                        ElementsAre("-D", "FORWARD", "-m", "state", "--state",
                                    "ESTABLISHED,RELATED", "-j", "ACCEPT", "-w"),
                        true, nullptr));
-  // Asserts for RemoveSNATMarkRules
+  // Asserts for SNAT rules.
   EXPECT_CALL(
       runner,
       iptables(StrEq("filter"),
                ElementsAre("-D", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
                            "state", "--state", "INVALID", "-j", "DROP", "-w"),
                true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-D", "FORWARD", "-m", "mark", "--mark",
-                                   "1/1", "-j", "ACCEPT", "-w"),
-                       true, nullptr));
   EXPECT_CALL(runner,
               iptables(StrEq("nat"),
                        ElementsAre("-D", "POSTROUTING", "-m", "mark", "--mark",
@@ -1842,52 +1832,6 @@ TEST(DatapathTest, AddIPv4Route) {
   EXPECT_EQ(route2, captured_routes[3]);
   ioctl_reqs.clear();
   ioctl_rtentry_args.clear();
-}
-
-TEST(DatapathTest, AddSNATMarkRules) {
-  MockProcessRunner runner;
-  MockFirewall firewall;
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("filter"),
-               ElementsAre("-A", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
-                           "state", "--state", "INVALID", "-j", "DROP", "-w"),
-               true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-A", "FORWARD", "-m", "mark", "--mark",
-                                   "1/1", "-j", "ACCEPT", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("nat"),
-                       ElementsAre("-A", "POSTROUTING", "-m", "mark", "--mark",
-                                   "1/1", "-j", "MASQUERADE", "-w"),
-                       true, nullptr));
-  Datapath datapath(&runner, &firewall);
-  datapath.AddSNATMarkRules();
-}
-
-TEST(DatapathTest, RemoveSNATMarkRules) {
-  MockProcessRunner runner;
-  MockFirewall firewall;
-  EXPECT_CALL(
-      runner,
-      iptables(StrEq("filter"),
-               ElementsAre("-D", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
-                           "state", "--state", "INVALID", "-j", "DROP", "-w"),
-               true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("filter"),
-                       ElementsAre("-D", "FORWARD", "-m", "mark", "--mark",
-                                   "1/1", "-j", "ACCEPT", "-w"),
-                       true, nullptr));
-  EXPECT_CALL(runner,
-              iptables(StrEq("nat"),
-                       ElementsAre("-D", "POSTROUTING", "-m", "mark", "--mark",
-                                   "1/1", "-j", "MASQUERADE", "-w"),
-                       true, nullptr));
-  Datapath datapath(&runner, &firewall);
-  datapath.RemoveSNATMarkRules();
 }
 
 TEST(DatapathTest, ArcVethHostName) {

@@ -299,11 +299,6 @@ class Datapath {
                           const std::string& ipv4_addr);
   void RemoveInboundIPv4DNAT(const std::string& ifname,
                              const std::string& ipv4_addr);
-  // Create (or delete) a forwarding rule for |ifname|.
-  // Creates (or deletes) the forwarding and postrouting rules for SNAT
-  // fwmarked IPv4 traffic.
-  bool AddSNATMarkRules();
-  void RemoveSNATMarkRules();
   // Create (or delete) a mangle PREROUTING rule for marking IPv4 traffic
   // outgoing of |ifname| with the SNAT fwmark value 0x1.
   // TODO(hugobenichi) Refer to RoutingService to obtain the fwmark value and
@@ -369,12 +364,10 @@ class Datapath {
 
   FRIEND_TEST(DatapathTest, AddInboundIPv4DNAT);
   FRIEND_TEST(DatapathTest, AddOutboundIPv4SNATMark);
-  FRIEND_TEST(DatapathTest, AddSNATMarkRules);
   FRIEND_TEST(DatapathTest, AddVirtualInterfacePair);
   FRIEND_TEST(DatapathTest, ConfigureInterface);
   FRIEND_TEST(DatapathTest, RemoveInboundIPv4DNAT);
   FRIEND_TEST(DatapathTest, RemoveOutboundIPv4SNATMark);
-  FRIEND_TEST(DatapathTest, RemoveSNATMarkRules);
   FRIEND_TEST(DatapathTest, StartStopIpForwarding);
   FRIEND_TEST(DatapathTest, ToggleInterface);
 

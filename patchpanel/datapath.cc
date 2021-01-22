@@ -112,10 +112,6 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
                << " IPv6 functionality may be broken.";
 
-  if (!AddSNATMarkRules())
-    LOG(ERROR) << "Failed to install SNAT mark rules."
-               << " Guest connectivity may be broken.";
-
   // Create a FORWARD ACCEPT rule for connections already established.
   if (process_runner_->iptables(
           "filter", {"-A", "FORWARD", "-m", "state", "--state",
@@ -134,9 +130,20 @@ void Datapath::Start() {
                    << kGuestIPv4Subnet << " exiting " << oif;
   }
 
+  // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
+  // Crostini, ...) or a connected namespace.
+  // chromium:1050579: INVALID packets cannot be tracked by conntrack therefore
+  // need to be explicitly dropped as SNAT cannot be applied to them.
+  if (process_runner_->iptables(
+          "filter", {"-A", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
+                     "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0)
+    LOG(ERROR) << "Failed to install SNAT mark rules.";
+  if (process_runner_->iptables(
+          "nat", {"-A", "POSTROUTING", "-m", "mark", "--mark", "1/1", "-j",
+                  "MASQUERADE", "-w"}) != 0)
+    LOG(ERROR) << "Failed to install SNAT mark rules.";
   if (!AddOutboundIPv4SNATMark("vmtap+"))
-    LOG(ERROR) << "Failed to set up NAT for TAP devices."
-               << " Guest connectivity may be broken.";
+    LOG(ERROR) << "Failed to set up NAT for TAP devices.";
 
   // b/176260499: on 4.4 kernel, the following connmark rules are observed to
   // wrongly cause neighbor discovery icmpv6 packets to be dropped. Add these
@@ -228,11 +235,17 @@ void Datapath::Start() {
 }
 
 void Datapath::Stop() {
+  // Remove static IPv4 SNAT rules.
   RemoveOutboundIPv4SNATMark("vmtap+");
   process_runner_->iptables("filter",
                             {"-D", "FORWARD", "-m", "state", "--state",
                              "ESTABLISHED,RELATED", "-j", "ACCEPT", "-w"});
-  RemoveSNATMarkRules();
+  process_runner_->iptables("nat", {"-D", "POSTROUTING", "-m", "mark", "--mark",
+                                    "1/1", "-j", "MASQUERADE", "-w"});
+  process_runner_->iptables(
+      "filter", {"-D", "FORWARD", "-m", "mark", "--mark", "1/1", "-m", "state",
+                 "--state", "INVALID", "-j", "DROP", "-w"});
+
   for (const auto& oif : kPhysicalIfnamePrefixes)
     RemoveSourceIPv4DropRule(oif, kGuestIPv4Subnet);
 
@@ -758,40 +771,6 @@ void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
   process_runner_->iptables(
       "nat", {"-D", "PREROUTING", "-i", ifname, "-m", "socket", "--nowildcard",
               "-j", "ACCEPT", "-w"});
-}
-
-// TODO(b/161507671) Stop relying on the traffic fwmark 1/1 once forwarded
-// egress traffic is routed through the fwmark routing tag.
-bool Datapath::AddSNATMarkRules() {
-  // chromium:1050579: INVALID packets cannot be tracked by conntrack therefore
-  // need to be explicitly dropped.
-  if (process_runner_->iptables(
-          "filter", {"-A", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
-                     "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0) {
-    return false;
-  }
-  if (process_runner_->iptables(
-          "filter", {"-A", "FORWARD", "-m", "mark", "--mark", "1/1", "-j",
-                     "ACCEPT", "-w"}) != 0) {
-    return false;
-  }
-  if (process_runner_->iptables(
-          "nat", {"-A", "POSTROUTING", "-m", "mark", "--mark", "1/1", "-j",
-                  "MASQUERADE", "-w"}) != 0) {
-    RemoveSNATMarkRules();
-    return false;
-  }
-  return true;
-}
-
-void Datapath::RemoveSNATMarkRules() {
-  process_runner_->iptables("nat", {"-D", "POSTROUTING", "-m", "mark", "--mark",
-                                    "1/1", "-j", "MASQUERADE", "-w"});
-  process_runner_->iptables("filter", {"-D", "FORWARD", "-m", "mark", "--mark",
-                                       "1/1", "-j", "ACCEPT", "-w"});
-  process_runner_->iptables(
-      "filter", {"-D", "FORWARD", "-m", "mark", "--mark", "1/1", "-m", "state",
-                 "--state", "INVALID", "-j", "DROP", "-w"});
 }
 
 bool Datapath::AddOutboundIPv4SNATMark(const std::string& ifname) {
