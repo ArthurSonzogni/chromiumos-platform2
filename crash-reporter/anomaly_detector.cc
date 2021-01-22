@@ -12,6 +12,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -386,9 +387,10 @@ MaybeCrashReport CryptohomeParser::ParseLogEntry(const std::string& line) {
     return base::nullopt;
   }
 
-  // Failure to mount non-existent users returns 32. Avoid creating crash
-  // reports in this case for now.
-  if (error_code == 32)
+  // Avoid creating crash reports if the user doesn't exist or if cryptohome
+  // can't authenticate the user's password.
+  if (error_code == cryptohome::MOUNT_ERROR_USER_DOES_NOT_EXIST ||
+      error_code == cryptohome::MOUNT_ERROR_KEY_FAILURE)
     return base::nullopt;
 
   return CrashReport("", {std::move("--mount_failure"),

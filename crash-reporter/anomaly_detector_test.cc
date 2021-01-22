@@ -443,3 +443,9 @@ TEST(AnomalyDetectorTest, CryptohomeIgnoreMountFailure) {
   ParserTest<CryptohomeParser>("TEST_CRYPTOHOME_MOUNT_FAILURE_IGNORE",
                                {cryptohome_mount_failure});
 }
+
+TEST(AnomalyDetectorTest, CryptohomeIgnoreFailedLogin) {
+  ParserRun cryptohome_mount_failure = {.expected_size = 0};
+  ParserTest<CryptohomeParser>("TEST_CRYPTOHOME_FAILED_LOGIN_IGNORE",
+                               {cryptohome_mount_failure});
+}
