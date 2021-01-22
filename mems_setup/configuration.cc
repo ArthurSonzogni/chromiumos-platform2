@@ -77,9 +77,9 @@ constexpr char kTriggerString[] = "trigger";
 constexpr char kDevString[] = "/dev/";
 #endif  // USE_IIOSERVICE
 
-constexpr char kFilesToSetReadAndOwnership[][24] = {
-    "buffer/hwfifo_timeout", "buffer/enable", "buffer/length",
-    "trigger/current_trigger"};
+constexpr char kFilesToSetReadAndOwnership[][28] = {
+    "buffer/hwfifo_timeout", "buffer/hwfifo_watermark_max", "buffer/enable",
+    "buffer/length", "trigger/current_trigger"};
 constexpr char kFilesToSetWriteAndOwnership[][24] = {"sampling_frequency",
                                                      "buffer/hwfifo_timeout",
                                                      "buffer/hwfifo_flush",
