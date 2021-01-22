@@ -42,7 +42,6 @@ getresgid: 1
 getrlimit: 1
 ioctl: arg1 == TCGETS
 gettimeofday: 1
-sendto: 1
 clock_gettime: 1
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
