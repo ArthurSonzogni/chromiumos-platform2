@@ -79,7 +79,6 @@ enum ChromeOSError {
     RetrieveActiveSessions,
     SourcePathDoesNotExist,
     TpmOnStable,
-    DlcIdNotSupplied,
 }
 
 use self::ChromeOSError::*;
@@ -159,7 +158,6 @@ impl fmt::Display for ChromeOSError {
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
             SourcePathDoesNotExist => write!(f, "source media path does not exist"),
             TpmOnStable => write!(f, "TPM device is not available on stable channel"),
-            DlcIdNotSupplied => write!(f, "non-termina VMs must have a DLC ID"),
         }
     }
 }
@@ -1078,23 +1076,15 @@ impl Methods {
         if let Some(id) = dlc_param {
             if id.is_empty() {
                 // Explicitly passing the empty string means "don't use DLC".
-                if is_termina {
-                    Ok(None)
-                } else {
-                    Err(DlcIdNotSupplied.into())
-                }
+                Ok(None)
             } else {
                 Ok(Some(id))
             }
         } else {
-            if is_termina {
-                if self.does_crostini_use_dlc()? {
-                    Ok(Some("termina-dlc".to_owned()))
-                } else {
-                    Ok(None)
-                }
+            if is_termina && self.does_crostini_use_dlc()? {
+                Ok(Some("termina-dlc".to_owned()))
             } else {
-                Err(DlcIdNotSupplied.into())
+                Ok(None)
             }
         }
     }
