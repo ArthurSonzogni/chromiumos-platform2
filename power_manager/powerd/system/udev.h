@@ -84,6 +84,9 @@ class UdevInterface {
                           const std::string& sysattr,
                           std::string* value) = 0;
 
+  virtual bool HasSysattr(const std::string& syspath,
+                          const std::string& sysattr) = 0;
+
   // Sets the value of a sysfs attribute. Returns true on success.
   virtual bool SetSysattr(const std::string& syspath,
                           const std::string& sysattr,
@@ -117,6 +120,8 @@ class Udev : public UdevInterface {
   std::vector<TaggedDevice> GetTaggedDevices() override;
   bool GetSubsystemDevices(const std::string& subsystem,
                            std::vector<UdevDeviceInfo>* devices_out) override;
+  bool HasSysattr(const std::string& syspath,
+                  const std::string& sysattr) override;
   bool GetSysattr(const std::string& syspath,
                   const std::string& sysattr,
                   std::string* value) override;

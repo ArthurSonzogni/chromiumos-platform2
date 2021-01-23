@@ -252,6 +252,12 @@ bool Udev::GetSysattr(const std::string& syspath,
   return value_cstr != nullptr;
 }
 
+bool Udev::HasSysattr(const std::string& syspath, const std::string& sysattr) {
+  std::string value;
+
+  return GetSysattr(syspath, sysattr, &value);
+}
+
 bool Udev::SetSysattr(const std::string& syspath,
                       const std::string& sysattr,
                       const std::string& value) {

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <fcntl.h>
+#include <list>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -142,6 +143,26 @@ class UserProximityWatcherTest : public testing::Test {
     iio_event.device_info.syspath = syspath;
     udev_.AddSubsystemDevice(iio_event.device_info.subsystem,
                              iio_event.device_info, {devlink});
+
+    udev_.NotifySubsystemObservers(iio_event);
+  }
+
+  void AddDeviceWithAttrs(const std::string& syspath,
+                          const std::string& devlink,
+                          std::list<std::string> attrs) {
+    UdevEvent iio_event;
+    iio_event.action = UdevEvent::Action::ADD;
+    iio_event.device_info.subsystem = UserProximityWatcher::kIioUdevSubsystem;
+    iio_event.device_info.devtype = UserProximityWatcher::kIioUdevDevice;
+    iio_event.device_info.sysname = "MOCKSENSOR";
+    iio_event.device_info.syspath = syspath;
+    udev_.AddSubsystemDevice(iio_event.device_info.subsystem,
+                             iio_event.device_info, {devlink});
+
+    for (auto const& attr : attrs)
+      udev_.SetSysattr(syspath, attr, "");
+    udev_.stop_accepting_sysattr_for_testing();
+
     udev_.NotifySubsystemObservers(iio_event);
   }
 
@@ -460,6 +481,124 @@ TEST_F(UserProximityWatcherTest, ProximityEnabledAfterTabletModeChange) {
   ASSERT_TRUE(udev_.GetSysattr(
       "/sys/mockproximity", "events/in_proximity11_thresh_either_en", &attr));
   EXPECT_EQ("1", attr);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledNoConfig) {
+  std::string attr;
+  const std::string sysattr = "events/in_proximity_thresh_either_en";
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
+
+  AddDeviceWithAttrs("/sys/mockproximity", "/dev/proximity-lte", {sysattr});
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr, &attr));
+  EXPECT_EQ("1", attr);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledNoConfigRisingFalling) {
+  std::string attr, attr1, attr2;
+  const std::string sysattr_either = "events/in_proximity_thresh_either_en";
+  const std::string sysattr_rising = "events/in_proximity_thresh_rising_en";
+  const std::string sysattr_falling = "events/in_proximity_thresh_falling_en";
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
+
+  AddDeviceWithAttrs("/sys/mockproximity", "/dev/proximity-lte",
+                     {sysattr_rising, sysattr_falling});
+  ASSERT_FALSE(udev_.GetSysattr("/sys/mockproximity", sysattr_either, &attr));
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr_rising, &attr1));
+  EXPECT_EQ("1", attr1);
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr_falling, &attr2));
+  EXPECT_EQ("1", attr2);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledConfigRisingFalling) {
+  std::string attr, attr1, attr2;
+  const std::string sysattr_either = "events/in_proximity0_thresh_either_en";
+  const std::string sysattr_rising = "events/in_proximity0_thresh_rising_en";
+  const std::string sysattr_falling = "events/in_proximity0_thresh_falling_en";
+  auto config = std::make_unique<brillo::FakeCrosConfig>();
+  config->SetString("/proximity-sensor/lte", "channel", "0");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, std::move(config));
+
+  AddDeviceWithAttrs("/sys/mockproximity", "/dev/proximity-lte",
+                     {sysattr_rising, sysattr_falling});
+  ASSERT_FALSE(udev_.GetSysattr("/sys/mockproximity", sysattr_either, &attr));
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr_rising, &attr1));
+  EXPECT_EQ("1", attr1);
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr_falling, &attr2));
+  EXPECT_EQ("1", attr2);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledConfigEither) {
+  std::string attr;
+  const std::string sysattr = "events/in_proximity4_thresh_either_en";
+  auto config = std::make_unique<brillo::FakeCrosConfig>();
+  config->SetString("/proximity-sensor/lte", "channel", "4");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, std::move(config));
+
+  AddDeviceWithAttrs("/sys/mockproximity", "/dev/proximity-lte", {sysattr});
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr, &attr));
+  EXPECT_EQ("1", attr);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledNoConfigMany) {
+  std::string attr, attr1;
+  const std::string sysattr = "events/in_proximity4_thresh_either_en";
+  const std::string sysattr1 = "events/in_proximity1_thresh_either_en";
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
+
+  AddDeviceWithAttrs("/sys/mockproximity", "/dev/proximity-lte",
+                     {sysattr, sysattr1});
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr, &attr));
+  EXPECT_NE("1", attr);
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr1, &attr1));
+  EXPECT_NE("1", attr1);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledConfigManyEither) {
+  std::string attr, attr1;
+  const std::string sysattr = "events/in_proximity_fake_name_thresh_either_en";
+  const std::string sysattr1 = "events/in_proximity_not_it_thresh_either_en";
+  auto config = std::make_unique<brillo::FakeCrosConfig>();
+  config->SetString("/proximity-sensor/lte", "channel", "_fake_name");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, std::move(config));
+
+  AddDeviceWithAttrs("/sys/mockproximity", "/dev/proximity-lte",
+                     {sysattr, sysattr1});
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr, &attr));
+  EXPECT_EQ("1", attr);
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr1, &attr1));
+  EXPECT_NE("1", attr1);
+}
+
+TEST_F(UserProximityWatcherTest, ProximityEnabledConfigManyRisingFalling) {
+  std::string attr, attr1, attr2, attr3;
+  const std::string sysattr =
+      "events/in_proximity_mixed_target_thresh_rising_en";
+  const std::string sysattr1 =
+      "events/in_proximity_mixed_target_thresh_falling_en";
+  const std::string sysattr2 =
+      "events/in_proximity_not_it_thresh_thresh_rising_en";
+  const std::string sysattr3 = "events/in_proximity_not_it_thresh_falling_en";
+  auto config = std::make_unique<brillo::FakeCrosConfig>();
+  config->SetString("/proximity-sensor/lte", "channel", "_mixed_target");
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, std::move(config));
+
+  AddDeviceWithAttrs("/sys/mockproximity", "/dev/proximity-lte",
+                     {sysattr, sysattr1, sysattr2, sysattr3});
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr, &attr));
+  EXPECT_EQ("1", attr);
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr1, &attr1));
+  EXPECT_EQ("1", attr1);
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr2, &attr2));
+  EXPECT_NE("1", attr2);
+  ASSERT_TRUE(udev_.GetSysattr("/sys/mockproximity", sysattr3, &attr3));
+  EXPECT_NE("1", attr3);
 }
 
 }  // namespace

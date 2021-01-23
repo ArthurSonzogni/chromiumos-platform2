@@ -11,7 +11,7 @@
 namespace power_manager {
 namespace system {
 
-UdevStub::UdevStub() {}
+UdevStub::UdevStub() : stop_accepting_sysattr_for_testing_(false) {}
 
 UdevStub::~UdevStub() {}
 
@@ -43,6 +43,10 @@ void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
   tagged_devices_.erase(syspath);
   for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
     observer.OnTaggedDeviceRemoved(device);
+}
+
+void UdevStub::stop_accepting_sysattr_for_testing() {
+  stop_accepting_sysattr_for_testing_ = true;
 }
 
 void UdevStub::RemoveSysattr(const std::string& syspath,
@@ -106,6 +110,13 @@ bool UdevStub::GetSubsystemDevices(const std::string& subsystem,
   return true;
 }
 
+bool UdevStub::HasSysattr(const std::string& syspath,
+                          const std::string& sysattr) {
+  std::string unused;
+
+  return GetSysattr(syspath, sysattr, &unused);
+}
+
 bool UdevStub::GetSysattr(const std::string& syspath,
                           const std::string& sysattr,
                           std::string* value) {
@@ -119,9 +130,9 @@ bool UdevStub::GetSysattr(const std::string& syspath,
 bool UdevStub::SetSysattr(const std::string& syspath,
                           const std::string& sysattr,
                           const std::string& value) {
-  // Allows arbitrary attributes to be created using SetSysattr, which differs
-  // from UdevSysattr. For all reasonable testing scenarios, this should be
-  // fine.
+  SysattrMap::iterator it = map_.find(std::make_pair(syspath, sysattr));
+  if (it == map_.end() && stop_accepting_sysattr_for_testing_)
+    return false;
   map_[std::make_pair(syspath, sysattr)] = value;
   return true;
 }

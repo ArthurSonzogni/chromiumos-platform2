@@ -115,51 +115,51 @@ void UserProximityWatcher::HandleTabletModeChange(TabletMode mode) {
   }
 }
 
-void UserProximityWatcher::GetIioEnablePath(const SensorInfo& sensor,
-                                            std::string* either,
-                                            std::string* rising,
-                                            std::string* falling) {
+bool UserProximityWatcher::EnableDisableSensor(const SensorInfo& sensor,
+                                               bool enable) {
+  std::string either, rising, falling;
+  const std::string& syspath = sensor.syspath;
+  const std::string& val = enable ? "1" : "0";
   const std::string& channel = sensor.channel;
+  bool channel_in_config = !channel.empty();
+  bool has_either, has_rising, has_falling;
 
-  *either = "events/in_proximity" + channel + "_thresh_either_en";
-  *rising = "events/in_proximity" + channel + "_thresh_rising_en";
-  *falling = "events/in_proximity" + channel + "_thresh_falling_en";
+  either = "events/in_proximity" + channel + "_thresh_either_en";
+  rising = "events/in_proximity" + channel + "_thresh_rising_en";
+  falling = "events/in_proximity" + channel + "_thresh_falling_en";
+
+  if (udev_->SetSysattr(syspath, either, val))
+    return true;
+  has_either = udev_->HasSysattr(syspath, either);
+  if (channel_in_config && has_either)
+    return false;
+
+  has_rising = udev_->HasSysattr(syspath, rising);
+  if (has_rising && !udev_->SetSysattr(syspath, rising, val))
+    return false;
+
+  has_falling = udev_->HasSysattr(syspath, falling);
+  if (has_falling && !udev_->SetSysattr(syspath, falling, val))
+    return false;
+
+  // There are either some number of channels to enable in sysfs, like
+  // events/in_proximity{0,1,2,..}_thresh_{either,rising,falling}_en or just
+  // events/in_proximity_thresh_{either,rising,falling}_en, we're not sure. If
+  // there isn't a channel in the config then we tried the latter sysfs
+  // attributes, so print a warning if the channel is missing and there weren't
+  // any attributes found.
+  if (!channel_in_config && !(has_either || has_falling || has_rising))
+    LOG(WARNING)
+        << "Consider setting a proximity sensor channel in cros config.";
+  return true;
 }
 
 bool UserProximityWatcher::DisableSensor(const SensorInfo& sensor) {
-  const std::string& syspath = sensor.syspath;
-  std::string either, rising, falling;
-
-  GetIioEnablePath(sensor, &either, &rising, &falling);
-
-  if (udev_->SetSysattr(syspath, either, "0"))
-    return true;
-
-  if (!udev_->SetSysattr(syspath, rising, "0"))
-    return false;
-
-  if (!udev_->SetSysattr(syspath, falling, "0"))
-    return false;
-
-  return true;
+  return EnableDisableSensor(sensor, false);
 }
 
 bool UserProximityWatcher::EnableSensor(const SensorInfo& sensor) {
-  const std::string& syspath = sensor.syspath;
-  std::string either, rising, falling;
-
-  GetIioEnablePath(sensor, &either, &rising, &falling);
-
-  if (udev_->SetSysattr(syspath, either, "1"))
-    return true;
-
-  if (!udev_->SetSysattr(syspath, rising, "1"))
-    return false;
-
-  if (!udev_->SetSysattr(syspath, falling, "1"))
-    return false;
-
-  return true;
+  return EnableDisableSensor(sensor, true);
 }
 
 void UserProximityWatcher::CompensateSensor(const SensorInfo& sensor) {
@@ -409,11 +409,6 @@ bool UserProximityWatcher::ConfigureSarSensor(SensorInfo* sensor) {
     return false;
   }
 
-  if (!EnableSensor(*sensor)) {
-    LOG(ERROR) << "Could not enable proximity sensor";
-    return false;
-  }
-
   return true;
 }
 
@@ -447,6 +442,11 @@ bool UserProximityWatcher::OnSensorDetected(const SensorType type,
     case SensorType::SAR:
       if (!ConfigureSarSensor(&info)) {
         LOG(WARNING) << "Unable to configure sar sensor at " << devlink;
+        return false;
+      }
+      // Enable the sensor regardless of cros config existing or not.
+      if (!EnableSensor(info)) {
+        LOG(ERROR) << "Could not enable proximity sensor";
         return false;
       }
       break;
