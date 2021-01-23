@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+nanosleep: 1
 gettid: 1
 read: 1
 epoll_wait: 1
