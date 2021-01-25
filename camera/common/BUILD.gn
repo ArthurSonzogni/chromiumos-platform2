@@ -54,6 +54,7 @@ shared_library("libcros_camera") {
     "//camera/common/camera_algorithm_callback_ops_impl.cc",
     "//camera/common/camera_buffer_manager_impl.cc",
     "//camera/common/camera_buffer_manager_internal.cc",
+    "//camera/common/camera_face_detection.cc",
     "//camera/common/camera_metrics_impl.cc",
     "//camera/common/camera_mojo_channel_manager_impl.cc",
     "//camera/common/exif_utils.cc",
@@ -79,7 +80,10 @@ shared_library("libcros_camera") {
     "//camera/mojo/cros_camera_mojo_verifier.cc",
   ]
   configs += [ ":target_defaults" ]
-  libs = [ "jpeg" ]
+  libs = [
+    "facessd_cros",
+    "jpeg",
+  ]
   pkg_deps = [
     "gbm",
     "libbrillo",
