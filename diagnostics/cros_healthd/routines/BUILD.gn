@@ -12,8 +12,8 @@ pkg_config("common_pkg_deps") {
 }
 
 executable("urandom") {
-  configs += [ ":common_pkg_deps" ]
   sources = [ "urandom/main.cc" ]
+  configs += [ ":common_pkg_deps" ]
 }
 
 pkg_config("smartctl-check_pkg_deps") {
@@ -21,31 +21,31 @@ pkg_config("smartctl-check_pkg_deps") {
 }
 
 executable("smartctl-check") {
-  configs += [
-    ":smartctl-check_pkg_deps",
-    ":common_pkg_deps",
-  ]
   sources = [
     "smartctl_check/main.cc",
     "smartctl_check/smartctl_check_utils.cc",
   ]
+  configs += [
+    ":smartctl-check_pkg_deps",
+    ":common_pkg_deps",
+  ]
 }
 
 executable("floating-point-accuracy") {
+  sources = [ "floating_point/main.cc" ]
   configs += [ ":common_pkg_deps" ]
   cflags_cc = [
     "-msse",
     "-mno-mmx",
   ]
-  sources = [ "floating_point/main.cc" ]
 }
 
 executable("prime-search") {
-  configs += [ ":common_pkg_deps" ]
   sources = [
     "prime_search/main.cc",
     "prime_search/prime_number_search.cc",
   ]
+  configs += [ ":common_pkg_deps" ]
 }
 
 pkg_config("libdiag_routine_pkg_deps") {
@@ -108,15 +108,6 @@ if (use.test) {
   }
 
   executable("routine_test") {
-    configs += [ "//common-mk:test" ]
-    deps = [
-      ":libdiag_routine",
-      ":libroutine_test_utils",
-      "//diagnostics/common:libcommon",
-      "//diagnostics/common:libcommon_test_utils",
-      "//diagnostics/common:mojo_testrunner",
-      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
-    ]
     sources = [
       "ac_power/ac_power_test.cc",
       "battery_capacity/battery_capacity_test.cc",
@@ -144,6 +135,15 @@ if (use.test) {
       "smartctl_check/smartctl_check_utils_test.cc",
       "subproc_routine_test.cc",
       "video_conferencing/video_conferencing_test.cc",
+    ]
+    configs += [ "//common-mk:test" ]
+    deps = [
+      ":libdiag_routine",
+      ":libroutine_test_utils",
+      "//diagnostics/common:libcommon",
+      "//diagnostics/common:libcommon_test_utils",
+      "//diagnostics/common:mojo_testrunner",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
     ]
   }
 }

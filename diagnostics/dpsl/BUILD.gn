@@ -39,6 +39,13 @@ source_set("libdpsl") {
 
 if (use.test) {
   executable("libdpsl_test") {
+    sources = [
+      "internal/dpsl_global_context_impl_test.cc",
+      "internal/dpsl_requester_impl_test.cc",
+      "internal/dpsl_rpc_server_impl_test.cc",
+      "internal/dpsl_thread_context_impl_test.cc",
+      "internal/test_dpsl_background_thread.cc",
+    ]
     configs += [
       ":common_pkg_deps",
       "//common-mk:test",
@@ -46,13 +53,6 @@ if (use.test) {
     deps = [
       ":libdpsl",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "internal/dpsl_global_context_impl_test.cc",
-      "internal/dpsl_requester_impl_test.cc",
-      "internal/dpsl_rpc_server_impl_test.cc",
-      "internal/dpsl_thread_context_impl_test.cc",
-      "internal/test_dpsl_background_thread.cc",
     ]
   }
 }

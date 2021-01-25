@@ -43,6 +43,7 @@ if (use.test) {
   }
 
   executable("libcommon_test") {
+    sources = [ "mojo_utils_test.cc" ]
     configs += [
       ":libcommon_pkg_deps",
       "//common-mk:test",
@@ -53,6 +54,5 @@ if (use.test) {
       ":mojo_testrunner",
       "system:libsystem_test",
     ]
-    sources = [ "mojo_utils_test.cc" ]
   }
 }

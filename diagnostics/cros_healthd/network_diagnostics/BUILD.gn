@@ -24,6 +24,7 @@ if (use.test) {
   }
 
   executable("network_diagnostics_test") {
+    sources = [ "network_diagnostics_adapter_impl_test.cc" ]
     configs += [
       ":network_diagnostics_test_pkg_deps",
       "//common-mk:test",
@@ -32,7 +33,6 @@ if (use.test) {
       ":libnetwork_diagnostics_adapter",
       "//diagnostics/common:mojo_testrunner",
     ]
-    sources = [ "network_diagnostics_adapter_impl_test.cc" ]
   }
 }
 

@@ -24,12 +24,12 @@ source_set("libcros_healthd_mojo_adapter") {
 
 if (use.test) {
   executable("cros_healthd_mojo_adapter_test") {
+    sources = [ "cros_healthd_mojo_adapter_test.cc" ]
     configs += [ "//common-mk:test" ]
     deps = [
       ":libcros_healthd_mojo_adapter",
       "//common-mk/testrunner:testrunner",
       "//diagnostics/cros_healthd/fake:libfake_cros_healthd",
     ]
-    sources = [ "cros_healthd_mojo_adapter_test.cc" ]
   }
 }

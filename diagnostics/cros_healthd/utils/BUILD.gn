@@ -28,6 +28,11 @@ if (use.test) {
   }
 
   executable("libcros_healthd_utils_test") {
+    sources = [
+      "cpu_file_helpers_test.cc",
+      "helper_tool_utils_test.cc",
+      "procfs_utils_test.cc",
+    ]
     configs += [
       ":libcros_healthd_utils_test_pkg_deps",
       "//common-mk:test",
@@ -36,11 +41,6 @@ if (use.test) {
       ":libcros_healthd_utils",
       "//common-mk/testrunner:testrunner",
       "//diagnostics/common:libcommon_test_utils",
-    ]
-    sources = [
-      "cpu_file_helpers_test.cc",
-      "helper_tool_utils_test.cc",
-      "procfs_utils_test.cc",
     ]
   }
 }

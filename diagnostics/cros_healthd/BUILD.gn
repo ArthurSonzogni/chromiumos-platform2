@@ -38,13 +38,13 @@ source_set("libcros_healthd") {
 }
 
 executable("cros_healthd") {
+  sources = [ "main.cc" ]
   deps = [
     ":libcros_healthd",
     "executor:libcros_healthd_executor",
     "minijail:libcros_healthd_minijail",
     "system:libcros_healthd_system",
   ]
-  sources = [ "main.cc" ]
 }
 
 if (use.test) {
@@ -56,6 +56,11 @@ if (use.test) {
   }
 
   executable("cros_healthd_test") {
+    sources = [
+      "cros_healthd_routine_service_test.cc",
+      "fake_cros_healthd_routine_factory.cc",
+      "routine_parameter_fetcher_test.cc",
+    ]
     configs += [
       ":cros_healthd_test_pkg_deps",
       "//common-mk:test",
@@ -66,11 +71,6 @@ if (use.test) {
       "system:libcros_healthd_system_test_utils",
       "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/common:mojo_testrunner",
-    ]
-    sources = [
-      "cros_healthd_routine_service_test.cc",
-      "fake_cros_healthd_routine_factory.cc",
-      "routine_parameter_fetcher_test.cc",
     ]
   }
 }

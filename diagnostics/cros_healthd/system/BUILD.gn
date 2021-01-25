@@ -78,6 +78,7 @@ if (use.test) {
   }
 
   executable("system_config_test") {
+    sources = [ "system_config_test.cc" ]
     configs += [
       ":system_config_test_pkg_deps",
       "//common-mk:test",
@@ -87,6 +88,5 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
       "//diagnostics/common:libcommon_test_utils",
     ]
-    sources = [ "system_config_test.cc" ]
   }
 }

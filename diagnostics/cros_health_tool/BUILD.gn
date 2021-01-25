@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 executable("cros-health-tool") {
+  sources = [ "main.cc" ]
   deps = [
     "diag:libdiag",
     "event:libevent",
     "telem:libtelem",
   ]
-  sources = [ "main.cc" ]
 }
