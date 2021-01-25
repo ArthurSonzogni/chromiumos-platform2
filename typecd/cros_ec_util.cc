@@ -42,13 +42,19 @@ CrosECUtil::CrosECUtil(scoped_refptr<dbus::Bus> bus)
 bool CrosECUtil::ModeEntrySupported() {
   std::string inventory;
   brillo::ErrorPtr error;
+  int retries = 10;
 
-  if (!debugd_proxy_->EcGetInventory(&inventory, &error)) {
-    LOG(ERROR) << "Failed to call D-Bus GetInventory: " << error->GetMessage();
-    return false;
+  while (retries--) {
+    if (debugd_proxy_->EcGetInventory(&inventory, &error))
+      return CheckInventoryForModeEntry(inventory);
+
+    LOG(INFO) << "Inventory attempts remaining: " << retries;
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kTypeCControlWaitMs));
   }
 
-  return CheckInventoryForModeEntry(inventory);
+  LOG(ERROR) << "Failed to call D-Bus GetInventory: " << error->GetMessage();
+  return false;
 }
 
 bool CrosECUtil::EnterMode(int port, TypeCMode mode) {
