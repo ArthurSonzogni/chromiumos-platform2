@@ -56,6 +56,12 @@ int ioctl_rtentry_cap(int fd, ioctl_req_t req, struct rtentry* arg) {
   return 0;
 }
 
+std::vector<std::string> SplitCommand(const std::string& command) {
+  return base::SplitString(command, " ",
+                           base::WhitespaceHandling::TRIM_WHITESPACE,
+                           base::SplitResult::SPLIT_WANT_NONEMPTY);
+}
+
 }  // namespace
 
 using IpFamily::Dual;
@@ -67,15 +73,9 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MockProcessRunner() = default;
   ~MockProcessRunner() = default;
 
-  MOCK_METHOD1(WriteSentinelToContainer, int(pid_t pid));
   MOCK_METHOD3(brctl,
                int(const std::string& cmd,
                    const std::vector<std::string>& argv,
-                   bool log_failures));
-  MOCK_METHOD4(chown,
-               int(const std::string& uid,
-                   const std::string& gid,
-                   const std::string& file,
                    bool log_failures));
   MOCK_METHOD4(ip,
                int(const std::string& obj,
@@ -97,8 +97,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
                    const std::vector<std::string>& argv,
                    bool log_failures,
                    std::string* output));
-  MOCK_METHOD2(modprobe_all,
-               int(const std::vector<std::string>& modules, bool log_failures));
   MOCK_METHOD3(sysctl_w,
                int(const std::string& key,
                    const std::string& value,
@@ -110,6 +108,33 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MOCK_METHOD2(ip_netns_delete,
                int(const std::string& netns_name, bool log_failures));
 };
+
+void Verify_brctl(MockProcessRunner& runner, const std::string& command) {
+  auto args = SplitCommand(command);
+  const auto action = args[0];
+  args.erase(args.begin());
+  EXPECT_CALL(runner, brctl(StrEq(action), ElementsAreArray(args), _));
+}
+
+void Verify_ip(MockProcessRunner& runner, const std::string& command) {
+  auto args = SplitCommand(command);
+  const auto object = args[0];
+  const auto action = args[1];
+  args.erase(args.begin());
+  args.erase(args.begin());
+  EXPECT_CALL(runner,
+              ip(StrEq(object), StrEq(action), ElementsAreArray(args), _));
+}
+
+void Verify_ip6(MockProcessRunner& runner, const std::string& command) {
+  auto args = SplitCommand(command);
+  const auto object = args[0];
+  const auto action = args[1];
+  args.erase(args.begin());
+  args.erase(args.begin());
+  EXPECT_CALL(runner,
+              ip6(StrEq(object), StrEq(action), ElementsAreArray(args), _));
+}
 
 void Verify_iptables(MockProcessRunner& runner,
                      IpFamily family,
@@ -127,6 +152,23 @@ void Verify_iptables(MockProcessRunner& runner,
                 ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr));
 }
 
+void Verify_sysctl_w(MockProcessRunner& runner,
+                     const std::string& key,
+                     const std::string& value) {
+  EXPECT_CALL(runner, sysctl_w(StrEq(key), StrEq(value), _));
+}
+
+void Verify_ip_netns_attach(MockProcessRunner& runner,
+                            const std::string& netns_name,
+                            pid_t pid) {
+  EXPECT_CALL(runner, ip_netns_attach(StrEq(netns_name), pid, _));
+}
+
+void Verify_ip_netns_delete(MockProcessRunner& runner,
+                            const std::string& netns_name) {
+  EXPECT_CALL(runner, ip_netns_delete(StrEq(netns_name), _));
+}
+
 TEST(DatapathTest, IpFamily) {
   EXPECT_EQ(Dual, IPv4 | IPv6);
   EXPECT_EQ(Dual & IPv4, IPv4);
@@ -141,11 +183,9 @@ TEST(DatapathTest, Start) {
   MockFirewall firewall;
 
   // Asserts for sysctl modifications
-  EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv4.ip_forward"), StrEq("1"), true));
-  EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv4.ip_local_port_range"),
-                               StrEq("32768 47103"), true));
-  EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv6.conf.all.forwarding"),
-                               StrEq("1"), true));
+  Verify_sysctl_w(runner, "net.ipv4.ip_forward", "1");
+  Verify_sysctl_w(runner, "net.ipv4.ip_local_port_range", "32768 47103");
+  Verify_sysctl_w(runner, "net.ipv6.conf.all.forwarding", "1");
 
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       // Asserts for iptables chain reset.
@@ -291,12 +331,9 @@ TEST(DatapathTest, Stop) {
   MockProcessRunner runner;
   MockFirewall firewall;
   // Asserts for sysctl modifications
-  EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv4.ip_local_port_range"),
-                               StrEq("32768 61000"), true));
-  EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv6.conf.all.forwarding"),
-                               StrEq("0"), true));
-  EXPECT_CALL(runner, sysctl_w(StrEq("net.ipv4.ip_forward"), StrEq("0"), true));
-
+  Verify_sysctl_w(runner, "net.ipv4.ip_local_port_range", "32768 61000");
+  Verify_sysctl_w(runner, "net.ipv6.conf.all.forwarding", "0");
+  Verify_sysctl_w(runner, "net.ipv4.ip_forward", "0");
   // Asserts for iptables chain reset.
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
@@ -378,8 +415,7 @@ TEST(DatapathTest, AddTAPNoAddrs) {
 TEST(DatapathTest, RemoveTAP) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(runner, ip(StrEq("tuntap"), StrEq("del"),
-                         ElementsAre("foo0", "mode", "tap"), true));
+  Verify_ip(runner, "tuntap del foo0 mode tap");
   Datapath datapath(&runner, &firewall);
   datapath.RemoveTAP("foo0");
 }
@@ -387,8 +423,8 @@ TEST(DatapathTest, RemoveTAP) {
 TEST(DatapathTest, NetnsAttachName) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(runner, ip_netns_delete(StrEq("netns_foo"), false));
-  EXPECT_CALL(runner, ip_netns_attach(StrEq("netns_foo"), 1234, true));
+  Verify_ip_netns_delete(runner, "netns_foo");
+  Verify_ip_netns_attach(runner, "netns_foo", 1234);
   Datapath datapath(&runner, &firewall);
   EXPECT_TRUE(datapath.NetnsAttachName("netns_foo", 1234));
 }
@@ -405,13 +441,9 @@ TEST(DatapathTest, AddBridge) {
   MockProcessRunner runner;
   MockFirewall firewall;
   Datapath datapath(&runner, &firewall);
-  EXPECT_CALL(runner, brctl(StrEq("addbr"), ElementsAre("br"), true));
-  EXPECT_CALL(
-      runner,
-      ip(StrEq("addr"), StrEq("add"),
-         ElementsAre("1.1.1.1/30", "brd", "1.1.1.3", "dev", "br"), true));
-  EXPECT_CALL(runner,
-              ip(StrEq("link"), StrEq("set"), ElementsAre("br", "up"), true));
+  Verify_brctl(runner, "addbr br");
+  Verify_ip(runner, "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
+  Verify_ip(runner, "link set br up");
   Verify_iptables(runner, IPv4,
                   "mangle -A PREROUTING -i br -j MARK --set-mark 1/1 -w");
   datapath.AddBridge("br", Ipv4Addr(1, 1, 1, 1), 30);
@@ -420,22 +452,13 @@ TEST(DatapathTest, AddBridge) {
 TEST(DatapathTest, ConnectVethPair) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("add"),
-                         ElementsAre("veth_foo", "type", "veth", "peer", "name",
-                                     "peer_foo", "netns", "netns_foo"),
-                         true));
-  EXPECT_CALL(runner, ip(StrEq("addr"), StrEq("add"),
-                         ElementsAre("100.115.92.169/30", "brd",
-                                     "100.115.92.171", "dev", "peer_foo"),
-                         true))
-      .WillOnce(Return(0));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
-                         ElementsAre("dev", "peer_foo", "up", "addr",
-                                     "01:02:03:04:05:06", "multicast", "on"),
-                         true))
-      .WillOnce(Return(0));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
-                         ElementsAre("veth_foo", "up"), true));
+  Verify_ip(runner,
+            "link add veth_foo type veth peer name peer_foo netns netns_foo");
+  Verify_ip(runner,
+            "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
+  Verify_ip(runner,
+            "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
+  Verify_ip(runner, "link set veth_foo up");
   Datapath datapath(&runner, &firewall);
   EXPECT_TRUE(datapath.ConnectVethPair(kTestPID, "netns_foo", "veth_foo",
                                        "peer_foo", {1, 2, 3, 4, 5, 6},
@@ -445,10 +468,8 @@ TEST(DatapathTest, ConnectVethPair) {
 TEST(DatapathTest, AddVirtualInterfacePair) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("add"),
-                         ElementsAre("veth_foo", "type", "veth", "peer", "name",
-                                     "peer_foo", "netns", "netns_foo"),
-                         true));
+  Verify_ip(runner,
+            "link add veth_foo type veth peer name peer_foo netns netns_foo");
   Datapath datapath(&runner, &firewall);
   EXPECT_TRUE(
       datapath.AddVirtualInterfacePair("netns_foo", "veth_foo", "peer_foo"));
@@ -457,10 +478,8 @@ TEST(DatapathTest, AddVirtualInterfacePair) {
 TEST(DatapathTest, ToggleInterface) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(runner,
-              ip(StrEq("link"), StrEq("set"), ElementsAre("foo", "up"), true));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
-                         ElementsAre("bar", "down"), true));
+  Verify_ip(runner, "link set foo up");
+  Verify_ip(runner, "link set bar down");
   Datapath datapath(&runner, &firewall);
   EXPECT_TRUE(datapath.ToggleInterface("foo", true));
   EXPECT_TRUE(datapath.ToggleInterface("bar", false));
@@ -469,16 +488,8 @@ TEST(DatapathTest, ToggleInterface) {
 TEST(DatapathTest, ConfigureInterface) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(
-      runner,
-      ip(StrEq("addr"), StrEq("add"),
-         ElementsAre("1.1.1.1/30", "brd", "1.1.1.3", "dev", "foo"), true))
-      .WillOnce(Return(0));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
-                         ElementsAre("dev", "foo", "up", "addr",
-                                     "02:02:02:02:02:02", "multicast", "on"),
-                         true))
-      .WillOnce(Return(0));
+  Verify_ip(runner, "addr add 1.1.1.1/30 brd 1.1.1.3 dev foo");
+  Verify_ip(runner, "link set dev foo up addr 02:02:02:02:02:02 multicast on");
 
   Datapath datapath(&runner, &firewall);
   MacAddress mac_addr = {2, 2, 2, 2, 2, 2};
@@ -489,8 +500,7 @@ TEST(DatapathTest, ConfigureInterface) {
 TEST(DatapathTest, RemoveInterface) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(runner,
-              ip(StrEq("link"), StrEq("delete"), ElementsAre("foo"), false));
+  Verify_ip(runner, "link delete foo");
   Datapath datapath(&runner, &firewall);
   datapath.RemoveInterface("foo");
 }
@@ -500,9 +510,8 @@ TEST(DatapathTest, RemoveBridge) {
   MockFirewall firewall;
   Verify_iptables(runner, IPv4,
                   "mangle -D PREROUTING -i br -j MARK --set-mark 1/1 -w");
-  EXPECT_CALL(runner,
-              ip(StrEq("link"), StrEq("set"), ElementsAre("br", "down"), true));
-  EXPECT_CALL(runner, brctl(StrEq("delbr"), ElementsAre("br"), true));
+  Verify_ip(runner, "link set br down");
+  Verify_brctl(runner, "delbr br");
   Datapath datapath(&runner, &firewall);
   datapath.RemoveBridge("br");
 }
@@ -526,34 +535,18 @@ TEST(DatapathTest, StartRoutingNamespace) {
   MockFirewall firewall;
   MacAddress mac = {1, 2, 3, 4, 5, 6};
 
-  EXPECT_CALL(runner, ip_netns_delete(StrEq("netns_foo"), false));
-  EXPECT_CALL(runner, ip_netns_attach(StrEq("netns_foo"), kTestPID, true));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("add"),
-                         ElementsAre("arc_ns0", "type", "veth", "peer", "name",
-                                     "veth0", "netns", "netns_foo"),
-                         true));
-  EXPECT_CALL(runner, ip(StrEq("addr"), StrEq("add"),
-                         ElementsAre("100.115.92.130/30", "brd",
-                                     "100.115.92.131", "dev", "veth0"),
-                         true))
-      .WillOnce(Return(0));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
-                         ElementsAre("dev", "veth0", "up", "addr",
-                                     "01:02:03:04:05:06", "multicast", "off"),
-                         true))
-      .WillOnce(Return(0));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
-                         ElementsAre("arc_ns0", "up"), true));
-  EXPECT_CALL(runner, ip(StrEq("addr"), StrEq("add"),
-                         ElementsAre("100.115.92.129/30", "brd",
-                                     "100.115.92.131", "dev", "arc_ns0"),
-                         true))
-      .WillOnce(Return(0));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
-                         ElementsAre("dev", "arc_ns0", "up", "addr",
-                                     "01:02:03:04:05:06", "multicast", "off"),
-                         true))
-      .WillOnce(Return(0));
+  Verify_ip_netns_delete(runner, "netns_foo");
+  Verify_ip_netns_attach(runner, "netns_foo", kTestPID);
+  Verify_ip(runner,
+            "link add arc_ns0 type veth peer name veth0 netns netns_foo");
+  Verify_ip(runner, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
+  Verify_ip(runner,
+            "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
+  Verify_ip(runner, "link set arc_ns0 up");
+  Verify_ip(runner,
+            "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
+  Verify_ip(runner,
+            "link set dev arc_ns0 up addr 01:02:03:04:05:06 multicast off");
   Verify_iptables(runner, IPv4, "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
   Verify_iptables(runner, IPv4, "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
   Verify_iptables(runner, IPv4,
@@ -600,9 +593,8 @@ TEST(DatapathTest, StopRoutingNamespace) {
                   "--restore-mark --mask 0xffff0000 -w");
   Verify_iptables(runner, Dual,
                   "mangle -D PREROUTING -i arc_ns0 -j apply_vpn_mark -w");
-  EXPECT_CALL(runner, ip_netns_delete(StrEq("netns_foo"), true));
-  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("delete"), ElementsAre("arc_ns0"),
-                         false));
+  Verify_ip_netns_delete(runner, "netns_foo");
+  Verify_ip(runner, "link delete arc_ns0");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -1014,9 +1006,7 @@ TEST(DatapathTest, RemoveIPv6Forwarding) {
 TEST(DatapathTest, AddIPv6HostRoute) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  EXPECT_CALL(runner,
-              ip6(StrEq("route"), StrEq("replace"),
-                  ElementsAre("2001:da8:e00::1234/128", "dev", "eth0"), true));
+  Verify_ip6(runner, "route replace 2001:da8:e00::1234/128 dev eth0");
   Datapath datapath(&runner, &firewall);
   datapath.AddIPv6HostRoute("eth0", "2001:da8:e00::1234", 128);
 }
