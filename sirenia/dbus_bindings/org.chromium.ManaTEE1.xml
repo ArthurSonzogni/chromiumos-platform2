@@ -4,7 +4,7 @@
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 <interface name="org.chromium.ManaTEEInterface">
   <!--
-    -->          StartTEEApplication:
+  StartTEEApplication:
   @app_id: Application id of TEE application to run.
   @fds: The returned file descriptors to interact with the TEE.
 
