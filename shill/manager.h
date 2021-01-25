@@ -589,6 +589,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
   FRIEND_TEST(ManagerTest, UpdateDefaultServices);
+  FRIEND_TEST(ManagerTest, UpdateDefaultServicesDNSProxy);
   FRIEND_TEST(ManagerTest,
               UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
   FRIEND_TEST(ManagerTest, UpdateBlackholeUserTraffic);
@@ -656,6 +657,7 @@ class Manager {
 
   std::string GetDNSProxyIPv4Address(Error* error);
   bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
+  void UseDNSProxy(const std::string& proxy_addr);
 
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.

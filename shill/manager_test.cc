@@ -79,6 +79,7 @@ using ::testing::ElementsAre;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
+using ::testing::IsEmpty;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Ref;
@@ -140,6 +141,9 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's upstart instance with our mock.  Passes
     // ownership.
     manager()->upstart_.reset(upstart_);
+
+    // Replace the manager's resolver with our mock.
+    manager()->resolver_ = &resolver_;
   }
   ~ManagerTest() override = default;
 
@@ -275,8 +279,6 @@ class ManagerTest : public PropertyStoreTest {
   RpcIdentifier GetDefaultServiceRpcIdentifier() {
     return manager()->GetDefaultServiceRpcIdentifier(nullptr);
   }
-
-  void SetResolver(Resolver* resolver) { manager()->resolver_ = resolver; }
 
   bool SetIgnoredDNSSearchPaths(const string& search_paths, Error* error) {
     return manager()->SetIgnoredDNSSearchPaths(search_paths, error);
@@ -483,6 +485,7 @@ class ManagerTest : public PropertyStoreTest {
 #endif  // DISABLE_WIFI
   MockThrottler* throttler_;
   MockUpstart* upstart_;
+  MockResolver resolver_;
   patchpanel::FakeClient* patchpanel_client_;
 };
 
@@ -2401,6 +2404,36 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   manager()->DeregisterService(mock_service0);
 }
 
+TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
+
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+
+  EXPECT_CALL(*mock_service0, IsOnline)
+      .WillOnce(Return(true))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+
+  // Online -> offline should always force dns-proxy off.
+  EXPECT_CALL(resolver_, SetDNSProxy(StrEq(""))).WillOnce(Return(true));
+  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+
+  // Offline -> online should push the dns-proxy info if set.
+  manager()->props_.dns_proxy_ipv4_address = "100.115.92.100";
+  EXPECT_CALL(resolver_, SetDNSProxy(StrEq("100.115.92.100")))
+      .WillOnce(Return(true));
+  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+
+  // Switching from an online service to an offline one should force dns-proxy
+  // off.
+  EXPECT_CALL(*mock_service1, IsOnline).WillOnce(Return(false));
+  EXPECT_CALL(resolver_, SetDNSProxy(StrEq(""))).WillOnce(Return(true));
+  manager()->UpdateDefaultServices(mock_service1, mock_service1);
+}
+
 TEST_F(ManagerTest, ReportServicesOnSameNetwork) {
   int connection_id1 = 100;
   int connection_id2 = 200;
@@ -3250,29 +3283,25 @@ TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
 }
 
 TEST_F(ManagerTest, IgnoredSearchList) {
-  std::unique_ptr<MockResolver> resolver(new StrictMock<MockResolver>());
   vector<string> ignored_paths;
-  SetResolver(resolver.get());
 
   const string kIgnored0 = "chromium.org";
   ignored_paths.push_back(kIgnored0);
-  EXPECT_CALL(*resolver, set_ignored_search_list(ignored_paths));
+  EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths(kIgnored0, nullptr);
   EXPECT_EQ(kIgnored0, GetIgnoredDNSSearchPaths());
 
   const string kIgnored1 = "google.com";
   const string kIgnoredSum = kIgnored0 + "," + kIgnored1;
   ignored_paths.push_back(kIgnored1);
-  EXPECT_CALL(*resolver, set_ignored_search_list(ignored_paths));
+  EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths(kIgnoredSum, nullptr);
   EXPECT_EQ(kIgnoredSum, GetIgnoredDNSSearchPaths());
 
   ignored_paths.clear();
-  EXPECT_CALL(*resolver, set_ignored_search_list(ignored_paths));
+  EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths("", nullptr);
   EXPECT_EQ("", GetIgnoredDNSSearchPaths());
-
-  SetResolver(Resolver::GetInstance());
 }
 
 TEST_F(ManagerTest, PortalFallbackUrls) {
@@ -3755,20 +3784,18 @@ TEST_F(ManagerTest, CustomSetterNoopChange) {
 
   // SetIgnoredDNSSearchPaths
   {
-    NiceMock<MockResolver> resolver;
     static const string kIgnoredPaths = "example.com,example.org";
     Error error;
-    SetResolver(&resolver);
     // Set to known value.
-    EXPECT_CALL(resolver, set_ignored_search_list(_));
+    EXPECT_CALL(resolver_, set_ignored_search_list(_));
     EXPECT_TRUE(SetIgnoredDNSSearchPaths(kIgnoredPaths, &error));
     EXPECT_TRUE(error.IsSuccess());
-    Mock::VerifyAndClearExpectations(&resolver);
+    Mock::VerifyAndClearExpectations(&resolver_);
     // Set to same value.
-    EXPECT_CALL(resolver, set_ignored_search_list(_)).Times(0);
+    EXPECT_CALL(resolver_, set_ignored_search_list(_)).Times(0);
     EXPECT_FALSE(SetIgnoredDNSSearchPaths(kIgnoredPaths, &error));
     EXPECT_TRUE(error.IsSuccess());
-    Mock::VerifyAndClearExpectations(&resolver);
+    Mock::VerifyAndClearExpectations(&resolver_);
   }
 }
 
@@ -4477,7 +4504,8 @@ TEST_F(ManagerTest, SetDNSProxyIPv4Address) {
   err.Reset();
 
   // Good cases.
-  // TODO(garrick): Add expectations for resolv.conf as appropriate.
+  manager()->last_default_physical_service_online_ = true;
+  EXPECT_CALL(resolver_, SetDNSProxy(StrEq("100.115.92.100")));
   EXPECT_TRUE(manager()->SetDNSProxyIPv4Address("100.115.92.100", &err));
   EXPECT_FALSE(err.IsFailure());
   err.Reset();
@@ -4486,6 +4514,7 @@ TEST_F(ManagerTest, SetDNSProxyIPv4Address) {
   EXPECT_FALSE(err.IsFailure());
   err.Reset();
   // Clear.
+  EXPECT_CALL(resolver_, SetDNSProxy(StrEq("")));
   EXPECT_TRUE(manager()->SetDNSProxyIPv4Address("", &err));
   EXPECT_FALSE(err.IsFailure());
   err.Reset();

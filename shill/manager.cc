@@ -1656,13 +1656,19 @@ void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
        physical_service_online != last_default_physical_service_online_);
 
   if (physical_service_changed) {
+    // The dns-proxy must be not be used unless the default service is online.
+    if (!physical_service_online) {
+      UseDNSProxy("");
+    } else if (!props_.dns_proxy_ipv4_address.empty()) {
+      UseDNSProxy(props_.dns_proxy_ipv4_address);
+    }
+
     last_default_physical_service_ = physical_service;
     last_default_physical_service_online_ = physical_service_online;
 
     if (physical_service) {
       LOG(INFO) << "Default physical service: " << physical_service->log_name()
-                << " (" << (physical_service->IsOnline() ? "" : "not ")
-                << "online)";
+                << " (" << (physical_service_online ? "" : "not ") << "online)";
     } else {
       LOG(INFO) << "Default physical service: NONE";
     }
@@ -2992,8 +2998,26 @@ bool Manager::SetDNSProxyIPv4Address(const string& addr, Error* error) {
   }
 
   props_.dns_proxy_ipv4_address = addr;
-  // TODO(garrick): Update resolv.conf.
+
+  // Assign or clear the dns-proxy addresses on the Resolver;
+  // existing DNS configuration for the connection will be preserved.
+  // If the proxy address is being cleared, always pass this along to the
+  // resolver; otherwise only do so if the default service is online -
+  // UpdateDefaultService will propagate the change when the service comes
+  // online.
+  if (addr.empty()) {
+    UseDNSProxy("");
+  } else if (last_default_physical_service_online_) {
+    UseDNSProxy(addr);
+  }
   return true;
+}
+
+void Manager::UseDNSProxy(const string& proxy_addr) {
+  if (!running_)
+    return;
+
+  resolver_->SetDNSProxy(proxy_addr);
 }
 
 bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,
