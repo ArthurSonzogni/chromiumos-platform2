@@ -164,6 +164,8 @@ const char kCryptohomeStartFingerprintAuthSession[] =
     "StartFingerprintAuthSession";
 const char kCryptohomeEndFingerprintAuthSession[] = "EndFingerprintAuthSession";
 const char kCryptohomeGetWebAuthnSecret[] = "GetWebAuthnSecret";
+const char kCryptohomeStartAuthSession[] = "StartAuthSession";
+const char kCryptohomeAuthenticateAuthSession[] = "AuthenticateAuthSession";
 
 // Signals of the |kCryptohomeInterface| interface:
 const char kSignalAsyncCallStatus[] = "AsyncCallStatus";
