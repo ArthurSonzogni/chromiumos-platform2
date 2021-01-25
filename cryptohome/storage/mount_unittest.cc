@@ -713,7 +713,6 @@ class ChapsDirectoryTest : public ::testing::Test {
  public:
   ChapsDirectoryTest()
       : kBaseDir("/base_chaps_dir"),
-        kSaltFile("/base_chaps_dir/auth_data_salt"),
         kDatabaseDir("/base_chaps_dir/database"),
         kDatabaseFile("/base_chaps_dir/database/file") {
     crypto_.set_platform(&platform_);
@@ -861,9 +860,6 @@ TEST_F(ChapsDirectoryTest, FixBadOwnership) {
   // Expect corrections.
   EXPECT_CALL(platform_, SetOwnership(kBaseDir, fake_platform::kChapsUID,
                                       fake_platform::kSharedGID, true))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kSaltFile, fake_platform::kRootUID,
-                                      fake_platform::kRootGID, true))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetOwnership(kDatabaseDir, fake_platform::kChapsUID,
                                       fake_platform::kSharedGID, true))

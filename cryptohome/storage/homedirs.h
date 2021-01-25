@@ -150,14 +150,6 @@ class HomeDirs {
   // Returns the path to the user's chaps token directory.
   virtual base::FilePath GetChapsTokenDir(const std::string& username) const;
 
-  // Returns the path to the user's legacy chaps token directory.
-  virtual base::FilePath GetLegacyChapsTokenDir(
-      const std::string& username) const;
-
-  // Returns the path to the user's token salt.
-  virtual base::FilePath GetChapsTokenSaltPath(
-      const std::string& username) const;
-
   // Returns true if the cryptohome for the given obfuscated username should
   // migrate to dircrypto.
   virtual bool NeedsDircryptoMigration(

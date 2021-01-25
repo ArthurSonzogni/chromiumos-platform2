@@ -493,11 +493,6 @@ bool Mount::CheckChapsDirectory(const FilePath& dir) {
       default_access_group_,       // chronos-access
       S_IRUSR | S_IWUSR | S_IRGRP  // 0640
   };
-  const Platform::Permissions kChapsSaltPermissions = {
-      0,                 // root
-      0,                 // root
-      S_IRUSR | S_IWUSR  // 0600
-  };
 
   // If the Chaps database directory does not exist, create it.
   if (!platform_->DirectoryExists(dir)) {
@@ -518,10 +513,8 @@ bool Mount::CheckChapsDirectory(const FilePath& dir) {
   }
   // Directory already exists so check permissions and log a warning
   // if not as expected then attempt to apply correct permissions.
-  std::map<FilePath, Platform::Permissions> special_cases;
-  special_cases[dir.Append("auth_data_salt")] = kChapsSaltPermissions;
-  if (!platform_->ApplyPermissionsRecursive(
-          dir, kChapsFilePermissions, kChapsDirPermissions, special_cases)) {
+  if (!platform_->ApplyPermissionsRecursive(dir, kChapsFilePermissions,
+                                            kChapsDirPermissions, {})) {
     LOG(ERROR) << "Chaps permissions failure.";
     return false;
   }
@@ -534,9 +527,6 @@ bool Mount::InsertPkcs11Token() {
     return false;
   // We may create a salt file and, if so, we want to restrict access to it.
   brillo::ScopedUmask scoped_umask(kDefaultUmask);
-
-  // Derive authorization data for the token from the passkey.
-  FilePath salt_file = homedirs_->GetChapsTokenSaltPath(username_);
 
   std::unique_ptr<chaps::TokenManagerClient> chaps_client(
       chaps_client_factory_->New());

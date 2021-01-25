@@ -730,20 +730,10 @@ int64_t HomeDirs::ComputeDiskUsage(const std::string& account_id) {
 
 namespace {
 const char* kChapsDaemonName = "chaps";
-const char* kChapsDirName = ".chaps";
-const char* kChapsSaltName = "auth_data_salt";
 }  // namespace
 
 FilePath HomeDirs::GetChapsTokenDir(const std::string& user) const {
   return brillo::cryptohome::home::GetDaemonStorePath(user, kChapsDaemonName);
-}
-
-FilePath HomeDirs::GetLegacyChapsTokenDir(const std::string& user) const {
-  return brillo::cryptohome::home::GetUserPath(user).Append(kChapsDirName);
-}
-
-FilePath HomeDirs::GetChapsTokenSaltPath(const std::string& user) const {
-  return GetChapsTokenDir(user).Append(kChapsSaltName);
 }
 
 bool HomeDirs::NeedsDircryptoMigration(
