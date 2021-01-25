@@ -370,7 +370,9 @@ void Manager::Start() {
   upstart_.reset(new Upstart(control_interface_));
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
-  resolver_->set_path(run_path_.Append("resolv.conf"));
+  const auto filepath = run_path_.Append("resolv.conf");
+  CHECK(!filepath.empty());
+  resolver_->set_path(filepath);
 
   if (metrics_) {
     AddDefaultServiceObserver(metrics_);

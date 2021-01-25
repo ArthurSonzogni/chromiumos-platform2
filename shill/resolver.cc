@@ -51,6 +51,11 @@ bool Resolver::SetDNSFromLists(
 }
 
 bool Resolver::Emit() {
+  if (path_.empty()) {
+    LOG(DFATAL) << "No path set";
+    return false;
+  }
+
   // dns-proxy always used if set.
   const auto name_servers = !dns_proxy_addr_.empty()
                                 ? std::vector<std::string>({dns_proxy_addr_})
@@ -123,7 +128,10 @@ bool Resolver::SetDNSProxy(const std::string& proxy_addr) {
 bool Resolver::ClearDNS() {
   SLOG(this, 2) << __func__;
 
-  CHECK(!path_.empty());
+  if (path_.empty()) {
+    LOG(DFATAL) << "No path set";
+    return false;
+  }
 
   name_servers_.clear();
   domain_search_list_.clear();
