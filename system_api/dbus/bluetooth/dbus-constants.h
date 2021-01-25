@@ -160,7 +160,9 @@ constexpr char kBluetoothDeviceInterface[] = "org.bluez.Device1";
 
 // Bluetooth Device methods.
 constexpr char kConnect[] = "Connect";
+constexpr char kConnectLE[] = "ConnectLE";
 constexpr char kDisconnect[] = "Disconnect";
+constexpr char kDisconnectLE[] = "DisconnectLE";
 constexpr char kConnectProfile[] = "ConnectProfile";
 constexpr char kDisconnectProfile[] = "DisconnectProfile";
 constexpr char kPair[] = "Pair";
@@ -179,6 +181,7 @@ constexpr char kAppearanceProperty[] = "Appearance";
 constexpr char kUUIDsProperty[] = "UUIDs";
 constexpr char kPairedProperty[] = "Paired";
 constexpr char kConnectedProperty[] = "Connected";
+constexpr char kConnectedLEProperty[] = "ConnectedLE";
 constexpr char kTrustedProperty[] = "Trusted";
 constexpr char kBlockedProperty[] = "Blocked";
 constexpr char kAliasProperty[] = "Alias";
