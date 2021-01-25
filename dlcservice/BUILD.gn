@@ -72,18 +72,16 @@ proto_library("ref_count-proto") {
 
 # DLC utils related files.
 static_library("libdlcservice_utils") {
-  configs += [ ":target_defaults" ]
   sources = [
     "boot/boot_device.cc",
     "boot/boot_slot.cc",
     "utils.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 # DLC service related files.
 static_library("libdlcservice") {
-  configs += [ ":target_defaults" ]
-  libs = [ "rootdev" ]
   sources = [
     "daemon.cc",
     "dbus_adaptors/dbus_adaptor.cc",
@@ -97,6 +95,8 @@ static_library("libdlcservice") {
     "system_properties.cc",
     "system_state.cc",
   ]
+  configs += [ ":target_defaults" ]
+  libs = [ "rootdev" ]
   deps = [
     ":dlcservice_adaptors",
     ":libdlcservice_utils",
@@ -106,18 +106,18 @@ static_library("libdlcservice") {
 
 # For dlcservice:
 executable("dlcservice") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libdlcservice" ]
 }
 
 # For dlcservice_util:
 executable("dlcservice_util") {
+  sources = [ "tools/dlc_service_util.cc" ]
   configs += [
     ":target_defaults",
     ":dlcservice_util_config",
   ]
-  sources = [ "tools/dlc_service_util.cc" ]
   deps = [ ":libdlcservice_utils" ]
 }
 
@@ -134,11 +134,6 @@ if (use.test) {
   }
 
   executable("dlcservice_tests") {
-    configs += [
-      "//common-mk:test",
-      ":dlcservice_tests_config",
-      ":target_defaults",
-    ]
     sources = [
       "boot/boot_device_test.cc",
       "boot/boot_slot_test.cc",
@@ -155,6 +150,11 @@ if (use.test) {
       "unique_queue_test.cc",
       "utils_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":dlcservice_tests_config",
+      ":target_defaults",
+    ]
     deps = [
       ":libdlcservice",
       "//common-mk/testrunner",
@@ -168,21 +168,21 @@ if (use.fuzzer) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("dlcservice_boot_slot_fuzzer") {
+    sources = [ "boot/boot_slot_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":dlcservice_fuzzer_config",
       ":target_defaults",
     ]
-    sources = [ "boot/boot_slot_fuzzer.cc" ]
     deps = [ ":libdlcservice" ]
   }
   executable("dlcservice_boot_device_fuzzer") {
+    sources = [ "boot/boot_device_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":dlcservice_fuzzer_config",
       ":target_defaults",
     ]
-    sources = [ "boot/boot_device_fuzzer.cc" ]
     deps = [ ":libdlcservice" ]
   }
 }

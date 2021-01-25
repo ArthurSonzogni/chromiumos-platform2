@@ -58,17 +58,11 @@ generate_dbus_adaptors("imageloader-adaptors") {
 }
 
 shared_library("libimageloader-manifest") {
-  configs += [ ":target_defaults" ]
   sources = [ "manifest.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("libimageloader_static") {
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":imageloader-adaptors",
-    ":libimageloader-manifest",
-    ":protos",
-  ]
   sources = [
     "component.cc",
     "dlc.cc",
@@ -79,6 +73,12 @@ static_library("libimageloader_static") {
     "verity_mounter.cc",
     "verity_mounter_impl.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":imageloader-adaptors",
+    ":libimageloader-manifest",
+    ":protos",
+  ]
 }
 
 pkg_config("imageloader_config") {
@@ -86,6 +86,7 @@ pkg_config("imageloader_config") {
 }
 
 executable("imageloader") {
+  sources = [ "imageloader_main.cc" ]
   configs += [
     ":target_defaults",
     ":imageloader_config",
@@ -94,7 +95,6 @@ executable("imageloader") {
     ":imageloader-adaptors",
     ":libimageloader_static",
   ]
-  sources = [ "imageloader_main.cc" ]
 }
 
 if (use.test) {
@@ -106,15 +106,6 @@ if (use.test) {
   }
 
   executable("run_tests") {
-    configs += [
-      "//common-mk:test",
-      ":run_tests_config",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libimageloader_static",
-      "//common-mk/testrunner:testrunner",
-    ]
     sources = [
       "component_test.cc",
       "dlc_test.cc",
@@ -123,6 +114,15 @@ if (use.test) {
       "manifest_test.cc",
       "test_utilities.cc",
       "verity_mounter_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":run_tests_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libimageloader_static",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 }
@@ -133,21 +133,21 @@ if (use.fuzzer) {
   }
 
   executable("imageloader_helper_process_receiver_fuzzer") {
+    sources = [ "helper_process_receiver_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":run_fuzzer_config",
       ":target_defaults",
     ]
     deps = [ ":libimageloader_static" ]
-    sources = [ "helper_process_receiver_fuzzer.cc" ]
   }
 
   executable("imageloader_manifest_fuzzer") {
+    sources = [ "manifest_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
     deps = [ ":libimageloader_static" ]
-    sources = [ "manifest_fuzzer.cc" ]
   }
 }

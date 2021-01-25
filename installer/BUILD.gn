@@ -30,7 +30,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libcros_installer") {
-  configs += [ ":target_defaults" ]
   sources = [
     "cgpt_manager.cc",
     "chromeos_install_config.cc",
@@ -40,12 +39,12 @@ static_library("libcros_installer") {
     "chromeos_verity.cc",
     "inst_util.cc",
   ]
-
   if (use.enable_slow_boot_notify) {
     sources += [ "slow_boot_notify_enable.cc" ]
   } else {
     sources += [ "slow_boot_notify_stub.cc" ]
   }
+  configs += [ ":target_defaults" ]
 }
 
 pkg_config("cros_installer_config") {
@@ -53,17 +52,17 @@ pkg_config("cros_installer_config") {
 }
 
 executable("cros_installer") {
+  sources = [ "cros_installer_main.cc" ]
   configs += [
     ":cros_installer_config",
     ":target_defaults",
   ]
   deps = [ ":libcros_installer" ]
-  sources = [ "cros_installer_main.cc" ]
 }
 
 executable("evwaitkey") {
-  configs += [ ":target_defaults" ]
   sources = [ "util/evwaitkey.c" ]
+  configs += [ ":target_defaults" ]
 }
 
 pkg_config("cros_oobe_crypto_config") {
@@ -71,11 +70,11 @@ pkg_config("cros_oobe_crypto_config") {
 }
 
 executable("cros_oobe_crypto") {
+  sources = [ "util/cros_oobe_crypto.c" ]
   configs += [
     ":cros_oobe_crypto_config",
     ":target_defaults",
   ]
-  sources = [ "util/cros_oobe_crypto.c" ]
 }
 
 if (use.mtd) {
@@ -83,15 +82,15 @@ if (use.mtd) {
     pkg_deps = [ "libchrome" ]
   }
   executable("nand_partition") {
+    sources = [
+      "nand_partition.cc",
+      "nand_partition_main.cc",
+    ]
     configs += [
       ":nand_partition_config",
       ":target_defaults",
     ]
     deps = [ ":libcros_installer" ]
-    sources = [
-      "nand_partition.cc",
-      "nand_partition_main.cc",
-    ]
   }
 }
 
@@ -104,6 +103,14 @@ if (!use.cros_host && use.test) {
   }
 
   executable("cros_installer_test") {
+    sources = [
+      "chromeos_install_config_test.cc",
+      "chromeos_legacy_test.cc",
+      "inst_util_test.cc",
+    ]
+    if (use.enable_slow_boot_notify) {
+      sources += [ "slow_boot_notify_test.cc" ]
+    }
     configs += [
       "//common-mk:test",
       ":cros_installer_test_config",
@@ -113,13 +120,5 @@ if (!use.cros_host && use.test) {
       ":libcros_installer",
       "//common-mk/testrunner:testrunner",
     ]
-    sources = [
-      "chromeos_install_config_test.cc",
-      "chromeos_legacy_test.cc",
-      "inst_util_test.cc",
-    ]
-    if (use.enable_slow_boot_notify) {
-      sources += [ "slow_boot_notify_test.cc" ]
-    }
   }
 }

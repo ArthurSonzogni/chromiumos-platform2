@@ -33,7 +33,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libminios") {
-  configs += [ ":target_defaults" ]
   sources = [
     "daemon.cc",
     "dbus_adaptors/dbus_adaptor.cc",
@@ -42,18 +41,19 @@ static_library("libminios") {
     "process_manager.cc",
     "screens.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":minios_adaptors" ]
 }
 
 executable("minios") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libminios" ]
 }
 
 executable("minios_init") {
-  configs += [ ":target_defaults" ]
   sources = [ "init.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libminios" ]
 }
 
@@ -62,6 +62,11 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("minios_test") {
+    sources = [
+      "dbus_adaptors/dbus_adaptor_test.cc",
+      "key_reader_test.cc",
+      "screens_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":test_config",
@@ -70,11 +75,6 @@ if (use.test) {
     deps = [
       ":libminios",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "dbus_adaptors/dbus_adaptor_test.cc",
-      "key_reader_test.cc",
-      "screens_test.cc",
     ]
   }
 }
