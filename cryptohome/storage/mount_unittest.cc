@@ -811,12 +811,9 @@ TEST_F(ChapsDirectoryTest, DirectoryDoesNotExist) {
   EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
       .WillRepeatedly(Return(false));
   // Expect basic setup.
-  EXPECT_CALL(platform_, CreateDirectory(kBaseDir))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(kBaseDir, 0750))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kBaseDir, fake_platform::kChapsUID,
-                                      fake_platform::kSharedGID, true))
+  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                             kBaseDir, 0750, fake_platform::kChapsUID,
+                             fake_platform::kSharedGID))
       .WillRepeatedly(Return(true));
   ASSERT_TRUE(RunCheck());
 }
@@ -826,7 +823,9 @@ TEST_F(ChapsDirectoryTest, CreateFailure) {
   EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
       .WillRepeatedly(Return(false));
   // Expect basic setup but fail.
-  EXPECT_CALL(platform_, CreateDirectory(kBaseDir))
+  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                             kBaseDir, 0750, fake_platform::kChapsUID,
+                             fake_platform::kSharedGID))
       .WillRepeatedly(Return(false));
   ASSERT_FALSE(RunCheck());
 }
