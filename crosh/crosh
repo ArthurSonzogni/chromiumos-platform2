@@ -541,6 +541,8 @@ HELP_cras='
       - wbs: Turn on this flag to make CRAS try to use wideband speech mode in
         Bluetooth HFP, if both the Bluetooth controller and peripheral supports
         this feature.
+      - noise_cancellation: Turn on this flag to enable noise cancellation
+        processing to input devices who support noise cancellation.
 
       Notice: The flag changes made through this command do not persist after
       reboot.
@@ -612,6 +614,13 @@ cmd_cras() (
       dbus-send --system --type=method_call --print-reply \
           --dest=org.chromium.cras /org/chromium/cras \
           org.chromium.cras.Control.SetWbsEnabled "boolean:${enabled}"
+      return
+      ;;
+    noise_cancellation)
+      dbus-send --system --type=method_call --print-reply \
+          --dest=org.chromium.cras /org/chromium/cras \
+          org.chromium.cras.Control.SetNoiseCancellationEnabled \
+          "boolean:${enabled}"
       return
       ;;
     *)
