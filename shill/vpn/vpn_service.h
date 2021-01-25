@@ -82,7 +82,6 @@ class VPNService : public Service, public DefaultServiceObserver {
   virtual void OnDriverEvent(DriverEvent event,
                              ConnectFailure failure,
                              const std::string& error_details);
-  virtual void OnLinkReady(const std::string& link_name, int interface_index);
 
  private:
   friend class VPNServiceTest;
@@ -91,9 +90,7 @@ class VPNService : public Service, public DefaultServiceObserver {
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);
   FRIEND_TEST(VPNServiceTest, GetTethering);
   FRIEND_TEST(VPNServiceTest, ConfigureDeviceAndCleanupDevice);
-  FRIEND_TEST(VPNServiceTest, ArcConnectFlow);
-  FRIEND_TEST(VPNServiceTest, TunnelConnectFlow);
-  FRIEND_TEST(VPNServiceTest, PPPConnectFlow);
+  FRIEND_TEST(VPNServiceTest, ConnectFlow);
 
   static const char kAutoConnNeverConnected[];
   static const char kAutoConnVPNAlreadyActive[];
@@ -102,10 +99,9 @@ class VPNService : public Service, public DefaultServiceObserver {
 
   ConnectionConstRefPtr GetUnderlyingConnection() const;
 
-  // Create a VPN VirtualDevice as device_. If if_index is unspecified, then
-  // query the index from DeviceInfo first and return false if the link is not
-  // available.
-  bool CreateDevice(const std::string& if_name, int if_index = -1);
+  // Create a VPN VirtualDevice as device_. Query the index from DeviceInfo
+  // first and return false if the link is not available.
+  bool CreateDevice(const std::string& if_name);
   void ConfigureDevice();
   void CleanupDevice();
 

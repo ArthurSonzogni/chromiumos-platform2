@@ -4,6 +4,8 @@
 
 #include "shill/vpn/third_party_vpn_driver.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
@@ -81,14 +83,21 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   IOHandler* io_handler = new IOHandler();  // Owned by |driver_|
   int fd = 1;
 
-  driver_->set_interface_name(kInterfaceName);
+  DeviceInfo::LinkReadyCallback link_ready_callback;
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
+      .WillOnce([&link_ready_callback](DeviceInfo::LinkReadyCallback callback) {
+        link_ready_callback = std::move(callback);
+        return true;
+      });
+  driver_->ConnectAsync(service_->GetCallback());
+
   EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
       .WillOnce(Return(fd));
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(fd, _, _))
       .WillOnce(Return(io_handler));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kConnected)));
-  driver_->ConnectAsync(service_->GetCallback());
+  std::move(link_ready_callback).Run(kInterfaceName, kInterfaceIndex);
   EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
   EXPECT_EQ(driver_->active_client_, driver_);
   EXPECT_TRUE(driver_->parameters_expected_);
@@ -111,8 +120,9 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
       .WillOnce(Return(fd));
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(fd, _, _))
       .WillOnce(Return(io_handler));
-  driver_->set_interface_name(kInterfaceName);
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
   driver_->ConnectAsync(service_->GetCallback());
+  driver_->OnLinkReady(kInterfaceName, kInterfaceIndex);
 
   driver_->reconnect_supported_ = true;
 
@@ -154,8 +164,9 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
       .WillOnce(Return(fd));
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(fd, _, _))
       .WillOnce(Return(io_handler));
-  driver_->set_interface_name(kInterfaceName);
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
   driver_->ConnectAsync(service_->GetCallback());
+  driver_->OnLinkReady(kInterfaceName, kInterfaceIndex);
 
   driver_->reconnect_supported_ = true;
 

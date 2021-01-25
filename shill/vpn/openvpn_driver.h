@@ -86,16 +86,14 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
                   std::vector<std::vector<std::string>>* options);
 
  protected:
-  // Inherited from VPNDriver. VPNService is responsible for creating a tunnel
-  // device and set_interface_name() before calling |ConnectAsync|. This driver
-  // then sets up and spawns an external 'openvpn' process. IP configuration
-  // settings are passed back from the external process through the |Notify| RPC
-  // service method.
+  // Inherited from VPNDriver. This driver first creates a tunnel interface
+  // via DeviceInfo, and then sets up and spawns an external 'openvpn' process.
+  // IP configuration settings are passed back from the external process through
+  // the |Notify| RPC service method.
   void ConnectAsync(const VPNService::DriverEventCallback& callback) override;
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
-  IfType GetIfType() const override;
   void OnConnectTimeout() override;
   void OnDefaultPhysicalServiceEvent(
       DefaultPhysicalServiceEvent event) override;
@@ -192,6 +190,8 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   void ParseIPConfiguration(
       const std::map<std::string, std::string>& configuration,
       IPConfig::Properties* properties) const;
+
+  void OnLinkReady(const std::string& link_name, int interface_index);
 
   bool SpawnOpenVPN();
 

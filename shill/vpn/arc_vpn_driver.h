@@ -29,7 +29,6 @@ class ArcVpnDriver : public VPNDriver {
   ~ArcVpnDriver() override = default;
 
   std::string GetProviderType() const override;
-  IfType GetIfType() const override;
 
   void ConnectAsync(const VPNService::DriverEventCallback& callback) override;
   void Disconnect() override;

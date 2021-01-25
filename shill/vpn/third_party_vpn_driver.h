@@ -69,7 +69,6 @@ class ThirdPartyVpnDriver : public VPNDriver {
   void ConnectAsync(const VPNService::DriverEventCallback& callback) override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
-  IfType GetIfType() const override;
   void Disconnect() override;
 
   void OnDefaultPhysicalServiceEvent(
@@ -109,6 +108,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // |error_details|, and disassociates from the service.
   void FailService(Service::ConnectFailure failure,
                    const std::string& error_details);
+
+  void OnLinkReady(const std::string& link_name, int interface_index);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.

@@ -4,6 +4,8 @@
 
 #include "shill/vpn/l2tp_ipsec_driver.h"
 
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ptr_util.h>
@@ -613,11 +615,35 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   ExpectMetricsReported();
   EXPECT_CALL(*service_,
               OnDriverEvent(VPNService::kEventConnectionSuccess, _, _));
+  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
+      .WillOnce(Return(kInterfaceIndex));
   InvokeNotify(kPPPReasonConnect, config);
   EXPECT_EQ(driver_->interface_name_, kInterfaceName);
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(IsConnectTimeoutStarted());
+}
+
+TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
+  map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
+  FilePath psk_file;
+  FilePath xauth_credentials_file;
+  FakeUpConnect(&psk_file, &xauth_credentials_file);
+  DeviceInfo::LinkReadyCallback link_ready_callback;
+  EXPECT_CALL(*service_,
+              OnDriverEvent(VPNService::kEventConnectionSuccess, _, _))
+      .Times(0);
+  EXPECT_CALL(device_info_, GetIndex(kInterfaceName)).WillOnce(Return(-1));
+  EXPECT_CALL(device_info_, AddVirtualInterfaceReadyCallback(kInterfaceName, _))
+      .WillOnce([&link_ready_callback](const std::string&,
+                                       DeviceInfo::LinkReadyCallback callback) {
+        link_ready_callback = std::move(callback);
+      });
+  InvokeNotify(kPPPReasonConnect, config);
+
+  EXPECT_CALL(*service_,
+              OnDriverEvent(VPNService::kEventConnectionSuccess, _, _));
+  std::move(link_ready_callback).Run(kInterfaceName, kInterfaceIndex);
 }
 
 TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {

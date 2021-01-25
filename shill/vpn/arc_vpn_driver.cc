@@ -37,7 +37,9 @@ const VPNDriver::Property ArcVpnDriver::kProperties[] = {
 
 ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(
-          manager, process_manager, kProperties, base::size(kProperties)) {}
+          manager, process_manager, kProperties, base::size(kProperties)) {
+  interface_name_ = VPNProvider::kArcBridgeIfName;
+}
 
 void ArcVpnDriver::ConnectAsync(
     const VPNService::DriverEventCallback& callback) {
@@ -70,10 +72,6 @@ IPConfig::Properties ArcVpnDriver::GetIPProperties() const {
 
 std::string ArcVpnDriver::GetProviderType() const {
   return std::string(kProviderArcVpn);
-}
-
-VPNDriver::IfType ArcVpnDriver::GetIfType() const {
-  return kArcBridge;
 }
 
 }  // namespace shill

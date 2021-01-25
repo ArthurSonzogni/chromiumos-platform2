@@ -472,19 +472,40 @@ void ThirdPartyVpnDriver::Cleanup() {
   }
   parameters_expected_ = false;
   reconnect_supported_ = false;
+
+  if (!interface_name_.empty()) {
+    int interface_index = manager()->device_info()->GetIndex(interface_name_);
+    if (interface_index != -1) {
+      manager()->device_info()->DeleteInterface(interface_index);
+    }
+    interface_name_.clear();
+  }
 }
 
 void ThirdPartyVpnDriver::ConnectAsync(
     const VPNService::DriverEventCallback& callback) {
   SLOG(this, 2) << __func__;
-  service_callback_ = callback;
-  if (interface_name_.empty()) {
-    LOG(DFATAL) << "Tunnel interface name needs to be set before connecting.";
-    FailService(Service::kFailureInternal, "Invalid tunnel interface");
+  if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
+          &ThirdPartyVpnDriver::OnLinkReady, weak_factory_.GetWeakPtr()))) {
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::Bind(std::move(callback), VPNService::kEventDriverFailure,
+                   Service::kFailureInternal,
+                   "Could not create tunnel interface."));
     return;
   }
+
+  service_callback_ = callback;
+}
+
+void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
+                                      int interface_index) {
+  SLOG(this, 2) << __func__;
   CHECK(adaptor_interface_);
   CHECK(!active_client_);
+
+  interface_name_ = link_name;
+
   StartConnectTimeout(kConnectTimeoutSeconds);
   ip_properties_ = IPConfig::Properties();
   ip_properties_set_ = false;
@@ -530,10 +551,6 @@ void ThirdPartyVpnDriver::Disconnect() {
 
 std::string ThirdPartyVpnDriver::GetProviderType() const {
   return std::string(kProviderThirdPartyVpn);
-}
-
-VPNDriver::IfType ThirdPartyVpnDriver::GetIfType() const {
-  return kTunnel;
 }
 
 void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(

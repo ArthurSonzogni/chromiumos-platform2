@@ -307,8 +307,10 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
       .WillOnce(Return(10101));
-  driver_->set_interface_name(kInterfaceName);
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
   driver_->ConnectAsync(service_->GetCallback());
+
+  driver_->OnLinkReady(kInterfaceName, kInterfaceIndex);
   EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
 }
 

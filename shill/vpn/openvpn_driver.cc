@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include <limits>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/stl_util.h>
@@ -202,7 +203,14 @@ void OpenVPNDriver::Cleanup() {
     process_manager()->StopProcessAndBlock(pid_);
     pid_ = 0;
   }
-  interface_name_.clear();
+
+  if (!interface_name_.empty()) {
+    int interface_index = manager()->device_info()->GetIndex(interface_name_);
+    if (interface_index != -1) {
+      manager()->device_info()->DeleteInterface(interface_index);
+    }
+    interface_name_.clear();
+  }
 }
 
 // static
@@ -596,12 +604,21 @@ bool OpenVPNDriver::SplitPortFromHost(const string& host,
 
 void OpenVPNDriver::ConnectAsync(
     const VPNService::DriverEventCallback& callback) {
-  service_callback_ = callback;
-  if (interface_name_.empty()) {
-    LOG(DFATAL) << "Tunnel interface name needs to be set before connecting.";
-    FailService(Service::kFailureInternal, "Invalid tunnel interface");
+  if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
+          &OpenVPNDriver::OnLinkReady, weak_factory_.GetWeakPtr()))) {
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::Bind(std::move(callback), VPNService::kEventDriverFailure,
+                   Service::kFailureInternal,
+                   "Could not create tunnel interface."));
     return;
   }
+  service_callback_ = callback;
+}
+
+void OpenVPNDriver::OnLinkReady(const std::string& link_name,
+                                int interface_index) {
+  interface_name_ = link_name;
   StartConnectTimeout(kConnectTimeoutSeconds);
   rpc_task_.reset(new RpcTask(control_interface(), this));
   if (!SpawnOpenVPN()) {
@@ -992,10 +1009,6 @@ int OpenVPNDriver::GetReconnectTimeoutSeconds(ReconnectReason reason) {
 
 string OpenVPNDriver::GetProviderType() const {
   return kProviderOpenVpn;
-}
-
-VPNDriver::IfType OpenVPNDriver::GetIfType() const {
-  return kTunnel;
 }
 
 KeyValueStore OpenVPNDriver::GetProvider(Error* error) {

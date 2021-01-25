@@ -32,19 +32,6 @@ class StoreInterface;
 
 class VPNDriver {
  public:
-  // Indicating how virtual interface is managed for this type of driver
-  enum IfType {
-    kUnknown = 0,
-    // VPNService calls DeviceInfo to create a tun interface, and pass
-    // the ifname to driver before ConnectAsync().
-    kTunnel = 1,
-    // A ppp interface will be created by external pppd process after
-    // ConnectAsync() and VPNService will capture it.
-    kPPP = 2,
-    // Uses the always-present arc bridge interface
-    kArcBridge = 3,
-  };
-
   // Note that the Up and Down events are triggered by whether the default
   // physical service is online. This works in most cases, but in some
   // scenarios, we may want to connect to a VPN service when the service is not
@@ -63,12 +50,20 @@ class VPNDriver {
 
   virtual ~VPNDriver();
 
+  // When this function is called, a VPNDriver is responsible for 1) creating
+  // the network interface (either by interacting with DeviceInfo or by letting
+  // another program do this), 2) starting and configuring the VPN tunnel,
+  // and 3) invoking |callback| to notify the VPNService of connection success
+  // (or other events). Once the success callback is invoked, the VPNService
+  // will call interface_name() (to create the VirtualDevice) and
+  // GetIPProperties() on the driver, so the driver should make sure that
+  // the interface is already known by shill (DeviceInfo) before invoking the
+  // success callback.
   virtual void ConnectAsync(
       const VPNService::DriverEventCallback& callback) = 0;
   virtual void Disconnect() = 0;
   virtual IPConfig::Properties GetIPProperties() const = 0;
   virtual std::string GetProviderType() const = 0;
-  virtual IfType GetIfType() const = 0;
 
   virtual void InitPropertyStore(PropertyStore* store);
 
@@ -89,9 +84,6 @@ class VPNDriver {
   mockable std::string GetHost() const;
 
   std::string interface_name() const { return interface_name_; }
-  void set_interface_name(const std::string& interface_name) {
-    interface_name_ = interface_name;
-  }
 
   KeyValueStore* args() { return &args_; }
   const KeyValueStore* const_args() const { return &args_; }

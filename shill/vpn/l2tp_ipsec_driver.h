@@ -39,7 +39,6 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
-  IfType GetIfType() const override;
   void OnConnectTimeout() override;
 
   // Disconnects from the VPN service before suspend or when the current default
@@ -118,6 +117,8 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
               const std::map<std::string, std::string>& dict) override;
   // Called when the l2tpipsec_vpn process exits.
   void OnL2TPIPSecVPNDied(pid_t pid, int status);
+
+  void OnLinkReady(const std::string& link_name, int interface_index);
 
   void ReportConnectionMetrics();
 

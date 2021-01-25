@@ -168,10 +168,6 @@ string L2TPIPSecDriver::GetProviderType() const {
   return kProviderL2tpIpsec;
 }
 
-VPNDriver::IfType L2TPIPSecDriver::GetIfType() const {
-  return kPPP;
-}
-
 void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
   SLOG(this, 2) << __func__ << "(" << Service::ConnectFailureToString(failure)
                 << ")";
@@ -453,6 +449,21 @@ void L2TPIPSecDriver::Notify(const string& reason,
 
   ReportConnectionMetrics();
   StopConnectTimeout();
+
+  // Make sure DeviceInfo is aware of this interface before invoking the
+  // connection success callback.
+  int interface_index = manager()->device_info()->GetIndex(interface_name_);
+  if (interface_index != -1) {
+    OnLinkReady(interface_name_, interface_index);
+  } else {
+    manager()->device_info()->AddVirtualInterfaceReadyCallback(
+        interface_name_, base::BindOnce(&L2TPIPSecDriver::OnLinkReady,
+                                        weak_ptr_factory_.GetWeakPtr()));
+  }
+}
+
+void L2TPIPSecDriver::OnLinkReady(const std::string& link_name,
+                                  int interface_index) {
   if (service_callback_) {
     service_callback_.Run(VPNService::kEventConnectionSuccess,
                           Service::kFailureNone, Service::kErrorDetailsNone);

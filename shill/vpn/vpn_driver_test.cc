@@ -63,7 +63,6 @@ class VPNDriverUnderTest : public VPNDriver {
   MOCK_METHOD(void, Disconnect, (), (override));
   MOCK_METHOD(IPConfig::Properties, GetIPProperties, (), (const, override));
   MOCK_METHOD(string, GetProviderType, (), (const, override));
-  MOCK_METHOD(IfType, GetIfType, (), (const, override));
 
  private:
   static const Property kProperties[];
