@@ -20,13 +20,13 @@ pkg_config("target_defaults") {
 }
 
 static_library("libdev_install") {
-  configs += [ ":target_defaults" ]
   sources = [ "dev_install.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("dev_install") {
-  configs += [ ":target_defaults" ]
   sources = [ "dev_install_main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libdev_install" ]
 }
 
@@ -36,12 +36,12 @@ if (use.test) {
   }
 
   executable("dev_install_test") {
+    sources = [ "dev_install_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
       ":test_config",
     ]
-    sources = [ "dev_install_test.cc" ]
     deps = [
       ":libdev_install",
       "//common-mk/testrunner",
