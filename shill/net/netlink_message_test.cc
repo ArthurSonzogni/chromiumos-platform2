@@ -334,9 +334,13 @@ class NetlinkMessageTest : public Test {
     AttributeIdIterator ssid_iter(*ssid_list);
     value->clear();
     for (; !ssid_iter.AtEnd(); ssid_iter.Advance()) {
-      string ssid;
-      if (ssid_list->GetStringAttributeValue(ssid_iter.GetId(), &ssid)) {
-        value->push_back(ssid);
+      ByteString bytes;
+      if (ssid_list->GetRawAttributeValue(ssid_iter.GetId(), &bytes)) {
+        if (bytes.IsEmpty()) {
+          value->push_back("");
+        } else {
+          value->push_back(string(bytes.GetConstCString(), bytes.GetLength()));
+        }
       }
     }
     return true;

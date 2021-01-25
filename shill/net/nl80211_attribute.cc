@@ -625,7 +625,7 @@ const char Nl80211AttributeScanSsids::kNameString[] = "NL80211_ATTR_SCAN_SSIDS";
 Nl80211AttributeScanSsids::Nl80211AttributeScanSsids()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(AttrDataPair(
-      kArrayAttrEnumVal, NestedData(kTypeString, "NL80211_SCAN_SSID", true)));
+      kArrayAttrEnumVal, NestedData(kTypeRaw, "NL80211_SCAN_SSID", true)));
 }
 
 const int Nl80211AttributeMPathInfo::kName = NL80211_ATTR_MPATH_INFO;
