@@ -711,10 +711,7 @@ TEST_P(MountTest, BindMyFilesDownloadsMoveForgottenFiles) {
 // A fixture for testing chaps directory checks.
 class ChapsDirectoryTest : public ::testing::Test {
  public:
-  ChapsDirectoryTest()
-      : kBaseDir("/base_chaps_dir"),
-        kDatabaseDir("/base_chaps_dir/database"),
-        kDatabaseFile("/base_chaps_dir/database/file") {
+  ChapsDirectoryTest() : kBaseDir("/base_chaps_dir") {
     crypto_.set_platform(&platform_);
     platform_.GetFake()->SetStandardUsersAndGroups();
 
@@ -732,12 +729,6 @@ class ChapsDirectoryTest : public ::testing::Test {
     // By default, set stats to the expected values.
     InitStat(&base_stat_, 040750, fake_platform::kChapsUID,
              fake_platform::kSharedGID);
-    InitStat(&salt_stat_, 0600, fake_platform::kRootUID,
-             fake_platform::kRootGID);
-    InitStat(&database_dir_stat_, 040750, fake_platform::kChapsUID,
-             fake_platform::kSharedGID);
-    InitStat(&database_file_stat_, 0640, fake_platform::kChapsUID,
-             fake_platform::kSharedGID);
   }
   ChapsDirectoryTest(const ChapsDirectoryTest&) = delete;
   ChapsDirectoryTest& operator=(const ChapsDirectoryTest&) = delete;
@@ -750,41 +741,14 @@ class ChapsDirectoryTest : public ::testing::Test {
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, Stat(kBaseDir, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(base_stat_), Return(true)));
-
-    // Configure a fake enumerator.
-    MockFileEnumerator* enumerator = new MockFileEnumerator();
-    EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
-        .WillOnce(Return(enumerator));
-    enumerator->entries_.push_back(
-        FileEnumerator::FileInfo(kBaseDir, base_stat_));
-    enumerator->entries_.push_back(
-        FileEnumerator::FileInfo(kSaltFile, salt_stat_));
-    enumerator->entries_.push_back(
-        FileEnumerator::FileInfo(kDatabaseDir, database_dir_stat_));
-    enumerator->entries_.push_back(
-        FileEnumerator::FileInfo(kDatabaseFile, database_file_stat_));
-  }
-
-  void SetupFakeChapsDirectoryNoEnumerator() {
-    // Configure the base directory.
-    EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, Stat(kBaseDir, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(base_stat_), Return(true)));
   }
 
   bool RunCheck() { return mount_->CheckChapsDirectory(kBaseDir); }
 
  protected:
   const FilePath kBaseDir;
-  const FilePath kSaltFile;
-  const FilePath kDatabaseDir;
-  const FilePath kDatabaseFile;
 
   base::stat_wrapper_t base_stat_;
-  base::stat_wrapper_t salt_stat_;
-  base::stat_wrapper_t database_dir_stat_;
-  base::stat_wrapper_t database_file_stat_;
 
   scoped_refptr<Mount> mount_;
   NiceMock<MockPlatform> platform_;
@@ -826,64 +790,6 @@ TEST_F(ChapsDirectoryTest, CreateFailure) {
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
                              kBaseDir, 0750, fake_platform::kChapsUID,
                              fake_platform::kSharedGID))
-      .WillRepeatedly(Return(false));
-  ASSERT_FALSE(RunCheck());
-}
-
-TEST_F(ChapsDirectoryTest, FixBadPerms) {
-  // Specify some bad perms.
-  base_stat_.st_mode = 040700;
-  salt_stat_.st_mode = 0640;
-  database_dir_stat_.st_mode = 040755;
-  database_file_stat_.st_mode = 0666;
-  SetupFakeChapsDirectory();
-  // Expect corrections.
-  EXPECT_CALL(platform_, SetPermissions(kBaseDir, 0750))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(kSaltFile, 0600))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(kDatabaseDir, 0750))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(kDatabaseFile, 0640))
-      .WillRepeatedly(Return(true));
-  ASSERT_TRUE(RunCheck());
-}
-
-TEST_F(ChapsDirectoryTest, FixBadOwnership) {
-  // Specify bad ownership.
-  base_stat_.st_uid = fake_platform::kRootUID;
-  salt_stat_.st_gid = fake_platform::kChapsUID;
-  database_dir_stat_.st_gid = fake_platform::kChapsUID;
-  database_file_stat_.st_uid = fake_platform::kSharedGID;
-  SetupFakeChapsDirectory();
-  // Expect corrections.
-  EXPECT_CALL(platform_, SetOwnership(kBaseDir, fake_platform::kChapsUID,
-                                      fake_platform::kSharedGID, true))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kDatabaseDir, fake_platform::kChapsUID,
-                                      fake_platform::kSharedGID, true))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kDatabaseFile, fake_platform::kChapsUID,
-                                      fake_platform::kSharedGID, true))
-      .WillRepeatedly(Return(true));
-  ASSERT_TRUE(RunCheck());
-}
-
-TEST_F(ChapsDirectoryTest, FixBadPermsFailure) {
-  // Specify some bad perms.
-  base_stat_.st_mode = 040700;
-  SetupFakeChapsDirectoryNoEnumerator();
-  // Expect corrections but fail to apply.
-  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(false));
-  ASSERT_FALSE(RunCheck());
-}
-
-TEST_F(ChapsDirectoryTest, FixBadOwnershipFailure) {
-  // Specify bad ownership.
-  base_stat_.st_uid = fake_platform::kRootUID;
-  SetupFakeChapsDirectoryNoEnumerator();
-  // Expect corrections but fail to apply.
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _))
       .WillRepeatedly(Return(false));
   ASSERT_FALSE(RunCheck());
 }

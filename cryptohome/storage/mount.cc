@@ -483,33 +483,15 @@ FilePath Mount::GetUserDirectoryForUser(
 }
 
 bool Mount::CheckChapsDirectory(const FilePath& dir) {
-  const Platform::Permissions kChapsDirPermissions = {
-      chaps_user_,                 // chaps
-      default_access_group_,       // chronos-access
-      S_IRWXU | S_IRGRP | S_IXGRP  // 0750
-  };
-  const Platform::Permissions kChapsFilePermissions = {
-      chaps_user_,                 // chaps
-      default_access_group_,       // chronos-access
-      S_IRUSR | S_IWUSR | S_IRGRP  // 0640
-  };
-
   // If the Chaps database directory does not exist, create it.
   if (!platform_->DirectoryExists(dir)) {
     if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-            dir, kChapsDirPermissions.mode, kChapsDirPermissions.user,
-            kChapsDirPermissions.group)) {
+            dir, S_IRWXU | S_IRGRP | S_IXGRP, chaps_user_,
+            default_access_group_)) {
       LOG(ERROR) << "Failed to create " << dir.value();
       return false;
     }
     return true;
-  }
-  // Directory already exists so check permissions and log a warning
-  // if not as expected then attempt to apply correct permissions.
-  if (!platform_->ApplyPermissionsRecursive(dir, kChapsFilePermissions,
-                                            kChapsDirPermissions, {})) {
-    LOG(ERROR) << "Chaps permissions failure.";
-    return false;
   }
   return true;
 }

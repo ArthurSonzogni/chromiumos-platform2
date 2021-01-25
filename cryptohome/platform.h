@@ -286,20 +286,6 @@ class Platform {
                                   gid_t group_id,
                                   mode_t group_mode) const;
 
-  // Applies ownership and permissions recursively if they do not already match.
-  // Logs a warning each time ownership or permissions need to be set.
-  //
-  // Parameters
-  //   path - The base path.
-  //   default_file_info - Default ownership / perms for files.
-  //   default_dir_info - Default ownership / perms for directories.
-  //   special_cases - A map of absolute path to ownership / perms.
-  virtual bool ApplyPermissionsRecursive(
-      const base::FilePath& path,
-      const Permissions& default_file_info,
-      const Permissions& default_dir_info,
-      const std::map<base::FilePath, Permissions>& special_cases);
-
   // Returns the user and group ids for a user
   //
   // Parameters

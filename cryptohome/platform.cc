@@ -1107,53 +1107,6 @@ bool Platform::CopyWithPermissions(const FilePath& from_path,
   return true;
 }
 
-bool Platform::ApplyPermissionsCallback(
-    const Permissions& default_file_info,
-    const Permissions& default_dir_info,
-    const std::map<FilePath, Permissions>& special_cases,
-    const FilePath& file_path,
-    const base::stat_wrapper_t& file_info
-) {
-  Permissions expected;
-  std::map<FilePath, Permissions>::const_iterator it =
-      special_cases.find(file_path);
-  if (it != special_cases.end()) {
-    expected = it->second;
-  } else if (IsDirectory(file_info)) {
-    expected = default_dir_info;
-  } else {
-    expected = default_file_info;
-  }
-  if (expected.user != file_info.st_uid || expected.group != file_info.st_gid) {
-    LOG(WARNING) << "Unexpected user/group for " << file_path.value();
-    if (!SetOwnership(file_path, expected.user, expected.group, true)) {
-      PLOG(ERROR) << "Failed to fix user/group for " << file_path.value();
-      return false;
-    }
-  }
-  const mode_t permissions_mask = 07777;
-  if ((expected.mode & permissions_mask) !=
-      (file_info.st_mode & permissions_mask)) {
-    LOG(WARNING) << "Unexpected permissions for " << file_path.value();
-    if (!SetPermissions(file_path, expected.mode & permissions_mask)) {
-      PLOG(ERROR) << "Failed to set permissions for " << file_path.value();
-      return false;
-    }
-  }
-  return true;
-}
-
-bool Platform::ApplyPermissionsRecursive(
-    const FilePath& path,
-    const Permissions& default_file_info,
-    const Permissions& default_dir_info,
-    const std::map<FilePath, Permissions>& special_cases) {
-  FileEnumeratorCallback callback =
-      base::Bind(&Platform::ApplyPermissionsCallback, base::Unretained(this),
-                 default_file_info, default_dir_info, special_cases);
-  return WalkPath(path, callback);
-}
-
 bool Platform::StatVFS(const FilePath& path, struct statvfs* vfs) {
   return statvfs(path.value().c_str(), vfs) == 0;
 }
