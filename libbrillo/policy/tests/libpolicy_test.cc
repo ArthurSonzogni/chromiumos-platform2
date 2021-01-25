@@ -63,13 +63,6 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetPolicyRefreshRate(&int_value));
   EXPECT_EQ(100, int_value);
 
-  std::vector<std::string> list_value;
-  ASSERT_TRUE(policy.GetUserWhitelist(&list_value));
-  ASSERT_EQ(3, list_value.size());
-  EXPECT_EQ("me@here.com", list_value[0]);
-  EXPECT_EQ("you@there.com", list_value[1]);
-  EXPECT_EQ("*@monsters.com", list_value[2]);
-
   bool bool_value = true;
   ASSERT_TRUE(policy.GetGuestModeEnabled(&bool_value));
   EXPECT_FALSE(bool_value);
@@ -260,7 +253,6 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   // Check that we cannot read any fields out of the sample protobuf.
   int int_value;
   int64_t int64_value;
-  std::vector<std::string> list_value;
   bool bool_value;
   std::string string_value;
   std::vector<DevicePolicy::UsbDeviceId> list_device;
@@ -268,7 +260,6 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   base::Version device_minimum_version;
 
   EXPECT_FALSE(policy.GetPolicyRefreshRate(&int_value));
-  EXPECT_FALSE(policy.GetUserWhitelist(&list_value));
   EXPECT_FALSE(policy.GetGuestModeEnabled(&bool_value));
   EXPECT_FALSE(policy.GetCameraEnabled(&bool_value));
   EXPECT_FALSE(policy.GetShowUserNames(&bool_value));

@@ -241,17 +241,6 @@ bool DevicePolicyImpl::GetPolicyRefreshRate(int* rate) const {
   return true;
 }
 
-bool DevicePolicyImpl::GetUserWhitelist(
-    std::vector<std::string>* user_whitelist) const {
-  if (!device_policy_.has_user_whitelist())
-    return false;
-  const em::UserWhitelistProto& proto = device_policy_.user_whitelist();
-  user_whitelist->clear();
-  for (int i = 0; i < proto.user_whitelist_size(); i++)
-    user_whitelist->push_back(proto.user_whitelist(i));
-  return true;
-}
-
 bool DevicePolicyImpl::GetGuestModeEnabled(bool* guest_mode_enabled) const {
   if (!device_policy_.has_guest_mode_enabled())
     return false;

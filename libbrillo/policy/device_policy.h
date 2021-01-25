@@ -81,11 +81,6 @@ class DevicePolicy {
   // true on success.
   virtual bool GetPolicyRefreshRate(int* rate) const = 0;
 
-  // Writes the value of the UserWhitelist policy in |user_whitelist|. Returns
-  // true on success.
-  virtual bool GetUserWhitelist(
-      std::vector<std::string>* user_whitelist) const = 0;
-
   // Writes the value of the GuestModeEnabled policy in |guest_mode_enabled|.
   // Returns true on success.
   virtual bool GetGuestModeEnabled(bool* guest_mode_enabled) const = 0;
