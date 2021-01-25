@@ -11,7 +11,7 @@
 #include <base/message_loop/message_pump_type.h>
 
 namespace {
-constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(5);
 }  // namespace
 
 namespace tpm_manager {
