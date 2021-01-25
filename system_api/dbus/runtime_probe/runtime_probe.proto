@@ -313,6 +313,8 @@ message InputDevice {
     uint32 product = 6;
     // The version number, 16 bits.
     uint32 version = 7;
+    // The firmware version.
+    string fw_version = 8;
   }
   // Component alias.
   string name = 1;
