@@ -1016,16 +1016,6 @@ class UserDataAuth {
 
   // =============== Mount Related Variables ===============
 
-  // Defines a type for tracking Mount objects for each user by username.
-  typedef std::map<const std::string, scoped_refptr<UserSession>>
-      UserSessionMap;
-
-  // Records the UserSession objects associated with each username.
-  // This and its content should only be accessed from the mount thread.
-  // TODO(b/126022424): Verify that this access paradigm doesn't cause
-  // measurable performance impact.
-  UserSessionMap sessions_;
-
   // Note: In Service class (the class that this class is refactored from),
   // there is a mounts_lock_ lock for inserting/removal of mounts_ map. However,
   // in this class, all accesses to mounts_ should happen on the mount thread,
@@ -1036,13 +1026,9 @@ class UserDataAuth {
   // possible to the version in service.cc.
   bool reported_pkcs11_init_fail_;
 
-  // The keyset_management_ object in normal operation
-  std::unique_ptr<KeysetManagement> default_keyset_management_;
-  // This holds the object that records information about the
-  // keyset_management. This is usually set to default_keyset_management_, but
-  // can be overridden for testing. This is to be accessed from the mount thread
-  // only because there's no guarantee on thread safety of the HomeDirs object.
-  KeysetManagement* keyset_management_;
+  // This holds a timestamp for each user that is the time that the user was
+  // active.
+  std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
 
   // The homedirs_ object in normal operation
   std::unique_ptr<HomeDirs> default_homedirs_;
@@ -1054,9 +1040,23 @@ class UserDataAuth {
   // guarantee on thread safety of the HomeDirs object.
   HomeDirs* homedirs_;
 
-  // This holds a timestamp for each user that is the time that the user was
-  // active.
-  std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+  // The keyset_management_ object in normal operation.
+  std::unique_ptr<KeysetManagement> default_keyset_management_;
+  // This holds the object that records information about the
+  // keyset_management. This is usually set to default_keyset_management_, but
+  // can be overridden for testing. This is to be accessed from the mount thread
+  // only because there's no guarantee on thread safety of the HomeDirs object.
+  KeysetManagement* keyset_management_;
+
+  // Defines a type for tracking Mount objects for each user by username.
+  typedef std::map<const std::string, scoped_refptr<UserSession>>
+      UserSessionMap;
+
+  // Records the UserSession objects associated with each username.
+  // This and its content should only be accessed from the mount thread.
+  // TODO(b/126022424): Verify that this access paradigm doesn't cause
+  // measurable performance impact.
+  UserSessionMap sessions_;
 
   // The low_disk_space_handler_ object in normal operation
   std::unique_ptr<LowDiskSpaceHandler> default_low_disk_space_handler_;
