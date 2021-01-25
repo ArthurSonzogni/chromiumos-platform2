@@ -21,6 +21,7 @@ const char kNameServer1[] = "8.8.9.9";
 const char kNameServer2[] = "2001:4860:4860:0:0:0:0:8888";
 const char kNameServerEvil[] = "8.8.8.8\noptions debug";
 const char kNameServerSubtlyEvil[] = "3.14.159.265";
+const char kNameServerProxy[] = "100.115.94.1";
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
 const char kSearchDomain2[] = "crbug.com";
@@ -37,6 +38,13 @@ const char kExpectedIgnoredSearchOutput[] =
     "nameserver 8.8.9.9\n"
     "nameserver 2001:4860:4860::8888\n"
     "search google.com\n"
+    "options single-request timeout:1 attempts:5\n";
+const char kExpectedProxyOutput[] =
+    "nameserver 100.115.94.1\n"
+    "options single-request timeout:1 attempts:5\n";
+const char kExpectedProxyWithSearchOutput[] =
+    "nameserver 100.115.94.1\n"
+    "search chromium.org google.com\n"
     "options single-request timeout:1 attempts:5\n";
 }  // namespace
 
@@ -56,6 +64,7 @@ class ResolverTest : public Test {
     EXPECT_TRUE(resolver_->ClearDNS());
     resolver_->set_path(FilePath(""));  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
+    resolver_->set_ignored_search_list({});
   }
 
  protected:
@@ -107,6 +116,40 @@ TEST_F(ResolverTest, IgnoredSearchList) {
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedIgnoredSearchOutput, ReadFile());
+}
+
+TEST_F(ResolverTest, Proxy) {
+  EXPECT_TRUE(resolver_->SetDNSProxy(kNameServerProxy));
+  EXPECT_TRUE(base::PathExists(path_));
+  EXPECT_EQ(kExpectedProxyOutput, ReadFile());
+}
+
+TEST_F(ResolverTest, ProxyClear) {
+  EXPECT_TRUE(resolver_->SetDNSProxy(kNameServerProxy));
+  EXPECT_TRUE(base::PathExists(path_));
+  EXPECT_TRUE(resolver_->SetDNSProxy(""));
+  EXPECT_FALSE(base::PathExists(path_));
+}
+
+TEST_F(ResolverTest, ProxyToggle) {
+  vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
+  vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
+  // Connection's DNS
+  EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
+  EXPECT_TRUE(base::PathExists(path_));
+  EXPECT_EQ(kExpectedOutput, ReadFile());
+  // DNS proxy set
+  EXPECT_TRUE(resolver_->SetDNSProxy(kNameServerProxy));
+  EXPECT_TRUE(base::PathExists(path_));
+  EXPECT_EQ(kExpectedProxyWithSearchOutput, ReadFile());
+  // Connection DNS update (no change to resolv.conf)
+  EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
+  EXPECT_TRUE(base::PathExists(path_));
+  EXPECT_EQ(kExpectedProxyWithSearchOutput, ReadFile());
+  // DNS proxy cleared
+  EXPECT_TRUE(resolver_->SetDNSProxy(""));
+  EXPECT_TRUE(base::PathExists(path_));
+  EXPECT_EQ(kExpectedOutput, ReadFile());
 }
 
 }  // namespace shill

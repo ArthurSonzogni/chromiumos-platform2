@@ -40,17 +40,28 @@ Resolver* Resolver::GetInstance() {
   return instance.get();
 }
 
-bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
-                               const std::vector<std::string>& domain_search) {
+bool Resolver::SetDNSFromLists(
+    const std::vector<std::string>& name_servers,
+    const std::vector<std::string>& domain_search_list) {
   SLOG(this, 2) << __func__;
 
-  if (dns_servers.empty() && domain_search.empty()) {
+  name_servers_ = name_servers;
+  domain_search_list_ = domain_search_list;
+  return Emit();
+}
+
+bool Resolver::Emit() {
+  // dns-proxy always used if set.
+  const auto name_servers = !dns_proxy_addr_.empty()
+                                ? std::vector<std::string>({dns_proxy_addr_})
+                                : name_servers_;
+  if (name_servers.empty() && domain_search_list_.empty()) {
     SLOG(this, 2) << "DNS list is empty";
     return ClearDNS();
   }
 
   vector<string> lines;
-  for (const auto& server : dns_servers) {
+  for (const auto& server : name_servers) {
     IPAddress addr(server);
     std::string canonical_ip;
     if (addr.family() != IPAddress::kFamilyUnknown &&
@@ -61,20 +72,21 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
     }
   }
 
-  vector<string> filtered_domain_search;
-  for (const auto& domain : domain_search) {
+  vector<string> filtered_domain_search_list;
+  for (const auto& domain : domain_search_list_) {
     if (base::Contains(ignored_search_list_, domain)) {
       continue;
     }
     if (IsValidDNSDomain(domain)) {
-      filtered_domain_search.push_back(domain);
+      filtered_domain_search_list.push_back(domain);
     } else {
       LOG(WARNING) << "Malformed search domain: " << domain;
     }
   }
 
-  if (!filtered_domain_search.empty()) {
-    lines.push_back("search " + base::JoinString(filtered_domain_search, " "));
+  if (!filtered_domain_search_list.empty()) {
+    lines.push_back("search " +
+                    base::JoinString(filtered_domain_search_list, " "));
   }
 
   // - Send queries one-at-a-time, rather than parallelizing IPv4
@@ -101,11 +113,21 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
   return count == static_cast<int>(contents.size());
 }
 
+bool Resolver::SetDNSProxy(const std::string& proxy_addr) {
+  SLOG(this, 2) << __func__;
+
+  dns_proxy_addr_ = proxy_addr;
+  return Emit();
+}
+
 bool Resolver::ClearDNS() {
   SLOG(this, 2) << __func__;
 
   CHECK(!path_.empty());
 
+  name_servers_.clear();
+  domain_search_list_.clear();
+  dns_proxy_addr_.clear();
   return base::DeleteFile(path_);
 }
 

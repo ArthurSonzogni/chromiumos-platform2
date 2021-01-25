@@ -37,16 +37,25 @@ class Resolver {
   virtual void set_path(const base::FilePath& path) { path_ = path; }
 
   // Install domain name service parameters, given a list of
-  // DNS servers in |dns_servers|, and a list of DNS search suffixes in
-  // |domain_search|.
-  virtual bool SetDNSFromLists(const std::vector<std::string>& dns_servers,
-                               const std::vector<std::string>& domain_search);
+  // DNS servers in |name_servers|, and a list of DNS search suffixes in
+  // |domain_search_list|.
+  virtual bool SetDNSFromLists(
+      const std::vector<std::string>& name_servers,
+      const std::vector<std::string>& domain_search_list);
+
+  // Tells the resolver that DNS should go through the proxy provided.
+  // If |proxy_addr| is non-empty, this name server will be used instead of
+  // any provided by SetDNSFromLists. Previous name servers are not forgotten,
+  // and will be restored if this method is called again with |proxy_addr|
+  // empty.
+  virtual bool SetDNSProxy(const std::string& proxy_addr);
 
   // Remove any created domain name service file.
   virtual bool ClearDNS();
 
   // Sets the list of ignored DNS search suffixes.  This list will be used
-  // to filter the domain_search parameter of later SetDNSFromLists() calls.
+  // to filter the domain_search_list parameter of later SetDNSFromLists()
+  // calls.
   virtual void set_ignored_search_list(
       const std::vector<std::string>& ignored_list) {
     ignored_search_list_ = ignored_list;
@@ -61,8 +70,14 @@ class Resolver {
   friend class ResolverTest;
   friend class base::NoDestructor<Resolver>;
 
+  // Writes the resolver file.
+  bool Emit();
+
   base::FilePath path_;
+  std::vector<std::string> name_servers_;
+  std::vector<std::string> domain_search_list_;
   std::vector<std::string> ignored_search_list_;
+  std::string dns_proxy_addr_;
 };
 
 }  // namespace shill
