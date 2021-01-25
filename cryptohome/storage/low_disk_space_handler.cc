@@ -83,6 +83,8 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
                  DiskCleanup::FreeSpaceState::kNeedNormalCleanup ||
              free_space_state ==
                  DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup) {
+    LOG(INFO) << "Available disk space: |" << free_disk_space.value()
+              << "| bytes.  Emitting low disk space signal.";
     low_disk_space_callback_.Run(free_disk_space.value());
     low_disk_space_signal_emitted = true;
   }
