@@ -758,6 +758,7 @@ if (use.test) {
         "vpn/vpn_driver_test.cc",
         "vpn/vpn_provider_test.cc",
         "vpn/vpn_service_test.cc",
+        "vpn/wireguard_driver_test.cc",
       ]
     }
 

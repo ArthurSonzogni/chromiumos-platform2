@@ -20,6 +20,11 @@ mkdir -p /run/l2tpipsec_vpn
 chown -R shill:shill /run/l2tpipsec_vpn
 chmod 0750 /run/l2tpipsec_vpn
 
+# Create state directory for wireguard
+mkdir -p /run/wireguard
+chown -R vpn:vpn /run/wireguard
+chmod 0770 /run/wireguard
+
 # Create storage for the shill global profile.
 mkdir -p /var/cache/shill
 chown -R shill:shill /var/cache/shill
