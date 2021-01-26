@@ -16,7 +16,6 @@
 #include "cryptohome/tpm2_impl.h"
 #else
 #include "cryptohome/tpm_impl.h"
-#include "cryptohome/tpm_new_impl.h"
 #endif
 
 namespace cryptohome {
@@ -80,7 +79,7 @@ Tpm* Tpm::GetSingleton() {
 #if USE_TPM2
     singleton_ = new Tpm2Impl();
 #else
-    singleton_ = new TpmNewImpl();
+    singleton_ = new TpmImpl();
 #endif
   }
   singleton_lock_.Release();

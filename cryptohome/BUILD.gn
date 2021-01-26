@@ -542,7 +542,6 @@ if (use.test) {
       sources += [
         "tpm1_static_utils_unittest.cc",
         "tpm1_test.cc",
-        "tpm_new_impl_test.cc",
       ]
     }
 
@@ -743,7 +742,6 @@ if (use.fuzzer) {
         "tpm1_static_utils.cc",
         "tpm_impl.cc",
         "tpm_metrics.cc",
-        "tpm_new_impl.cc",
       ]
       deps += [ "//libhwsec:overalls_library" ]
       libs = [

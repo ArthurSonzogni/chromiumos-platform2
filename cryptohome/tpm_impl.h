@@ -235,7 +235,7 @@ class TpmImpl : public Tpm {
                                 UINT32 encryption_scheme,
                                 TSS_HKEY* key_handle);
 
- protected:
+ private:
   // Processes the delegate blob and establishes if it's bound to any PCR. Also
   // keeps the information about reset_lock_permissions. Returns |true| iff the
   // attributes of the delegate is successfully determined.
@@ -245,7 +245,6 @@ class TpmImpl : public Tpm {
   bool SetDelegateData(const brillo::Blob& delegate_blob,
                        bool has_reset_lock_permissions);
 
- private:
   // Connects to the TPM and return its context at |context_handle|.
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
 
