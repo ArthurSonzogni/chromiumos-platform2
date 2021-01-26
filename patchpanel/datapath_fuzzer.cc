@@ -66,8 +66,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   FuzzedDataProvider provider(data, size);
   RandomProcessRunner runner(&provider);
-  Firewall firewall;
-  Datapath datapath(&runner, &firewall, ioctl_stub);
 
   while (provider.remaining_bytes() > 0) {
     uint32_t pid = provider.ConsumeIntegral<uint32_t>();
@@ -84,7 +82,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     std::unique_ptr<SubnetAddress> subnet_addr = subnet.AllocateAtOffset(0);
     MacAddress mac;
     std::vector<uint8_t> bytes = provider.ConsumeBytes<uint8_t>(mac.size());
-    std::copy(std::begin(bytes), std::begin(bytes), std::begin(mac));
+    std::copy(bytes.begin(), bytes.end(), mac.begin());
+    struct in6_addr ipv6_addr;
+    bytes = provider.ConsumeBytes<uint8_t>(sizeof(ipv6_addr.s6_addr));
+    std::copy(bytes.begin(), bytes.end(), ipv6_addr.s6_addr);
+    std::string ipv6_addr_str = IPv6AddressToString(ipv6_addr);
     bool route_on_vpn = provider.ConsumeBool();
 
     ConnectedNamespace nsinfo = {};
@@ -99,10 +101,15 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         std::make_unique<Subnet>(addr, prefix_len, base::DoNothing());
     nsinfo.peer_mac_addr = mac;
 
+    Firewall firewall;
+    Datapath datapath(&runner, &firewall, ioctl_stub);
     datapath.Start();
     datapath.Stop();
+    datapath.NetnsAttachName(netns_name, kTestPID);
+    datapath.NetnsDeleteName(netns_name);
     datapath.AddBridge(ifname, addr, prefix_len);
     datapath.RemoveBridge(ifname);
+    datapath.AddToBridge(ifname, ifname2);
     datapath.StartRoutingDevice(ifname, ifname2, addr, TrafficSource::UNKNOWN,
                                 route_on_vpn);
     datapath.StopRoutingDevice(ifname, ifname2, addr, TrafficSource::UNKNOWN,
@@ -117,6 +124,18 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     datapath.AddIPv4Route(provider.ConsumeIntegral<uint32_t>(),
                           provider.ConsumeIntegral<uint32_t>(),
                           provider.ConsumeIntegral<uint32_t>());
+    datapath.StartConnectionPinning(ifname);
+    datapath.StopConnectionPinning(ifname);
+    datapath.StartVpnRouting(ifname);
+    datapath.StopVpnRouting(ifname);
+    datapath.MaskInterfaceFlags(ifname, provider.ConsumeIntegral<uint16_t>(),
+                                provider.ConsumeIntegral<uint16_t>());
+    datapath.AddIPv6Forwarding(ifname, ifname2);
+    datapath.RemoveIPv6Forwarding(ifname, ifname2);
+    datapath.AddIPv6HostRoute(ifname, ipv6_addr_str, prefix_len);
+    datapath.RemoveIPv6HostRoute(ifname, ipv6_addr_str, prefix_len);
+    datapath.AddIPv6Address(ifname, ipv6_addr_str);
+    datapath.RemoveIPv6Address(ifname, ipv6_addr_str);
   }
 
   return 0;

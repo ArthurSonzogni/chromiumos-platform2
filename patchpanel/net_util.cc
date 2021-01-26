@@ -65,6 +65,11 @@ std::string IPv4AddressToString(uint32_t addr) {
   return !inet_ntop(AF_INET, &ia, buf, sizeof(buf)) ? "" : buf;
 }
 
+std::string IPv6AddressToString(const struct in6_addr& addr) {
+  char buf[INET6_ADDRSTRLEN] = {0};
+  return !inet_ntop(AF_INET6, &addr, buf, sizeof(buf)) ? "" : buf;
+}
+
 std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length) {
   return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
 }

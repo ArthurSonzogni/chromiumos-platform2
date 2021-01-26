@@ -77,6 +77,9 @@ BRILLO_EXPORT uint32_t Ipv4BroadcastAddr(uint32_t base, uint32_t prefix_len);
 // order.
 BRILLO_EXPORT std::string IPv4AddressToString(uint32_t addr);
 
+// Returns the literal representation of the IPv6 address given.
+BRILLO_EXPORT std::string IPv6AddressToString(const struct in6_addr& addr);
+
 // Returns the CIDR representation of an IPv4 address given in network byte
 // order.
 BRILLO_EXPORT std::string IPv4AddressToCidrString(uint32_t addr,

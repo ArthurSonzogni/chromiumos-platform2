@@ -88,6 +88,26 @@ TEST(Ipv4, CreationAndStringConversion) {
   }
 }
 
+TEST(Ipv6, CreationAndStringConversion) {
+  struct {
+    std::string literal_address;
+    uint8_t bytes[16];
+  } test_cases[] = {
+      {"::", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+      {"2001:da8:ff:5002:1034:56ff:fe78:9abc",
+       {0x20, 0x01, 0xd, 0xa8, 0, 0xff, 0x50, 0x02, 0x10, 0x34, 0x56, 0xff,
+        0xfe, 0x78, 0x9a, 0xbc}},
+      {"fe80::1122",
+       {0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x11, 0x22}},
+  };
+
+  for (auto const& test_case : test_cases) {
+    struct in6_addr addr = {};
+    memcpy(addr.s6_addr, test_case.bytes, sizeof(addr.s6_addr));
+    EXPECT_EQ(test_case.literal_address, IPv6AddressToString(addr));
+  }
+}
+
 TEST(Ipv4, CreationAndCidrStringConversion) {
   struct {
     std::string literal_address;
