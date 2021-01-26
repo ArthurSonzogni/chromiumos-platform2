@@ -5,6 +5,7 @@
 #ifndef DNS_PROXY_RESOLVER_H_
 #define DNS_PROXY_RESOLVER_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -37,10 +38,11 @@ class Resolver {
   explicit Resolver(base::TimeDelta timeout);
   virtual ~Resolver() = default;
 
-  // Listens for incoming requests on address |addr|.
+  // Listen on an incoming DNS query on address |addr| for UDP and TCP.
   // Listening on default DNS port (53) requires CAP_NET_BIND_SERVICE.
   // TODO(jasongustaman): Listen on IPv6.
-  virtual bool Listen(struct sockaddr* addr);
+  virtual bool ListenTCP(struct sockaddr* addr);
+  virtual bool ListenUDP(struct sockaddr* addr);
 
   // Set standard DNS and DNS-over-HTTPS servers endpoints.
   // If DoH servers are not empty, resolving domain will be done with DoH.
@@ -92,8 +94,17 @@ class Resolver {
   // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
   void HandleCurlResult(void* ctx, int64_t http_code, uint8_t* msg, size_t len);
 
-  // Listen on an incoming DNS query on |addr|.
-  bool ListenUDP(struct sockaddr* addr);
+  // |TCPConnection| is used to track and terminate TCP connections.
+  struct TCPConnection {
+    TCPConnection(std::unique_ptr<patchpanel::Socket> sock,
+                  const base::Callback<void(int, int)>& callback);
+
+    std::unique_ptr<patchpanel::Socket> sock;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
+  };
+
+  // Callback to handle newly opened connections on TCP sockets.
+  void OnTCPConnection();
 
   // Handle DNS query from clients. |type| values will be either SOCK_DGRAM
   // or SOCK STREAM, for UDP and TCP respectively.
@@ -107,6 +118,13 @@ class Resolver {
 
   // Resolve using DoH if true.
   bool doh_enabled_;
+
+  // Watch |tcp_src_| for incoming TCP connections.
+  std::unique_ptr<patchpanel::Socket> tcp_src_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> tcp_src_watcher_;
+
+  // Map of TCP connections keyed by their file descriptor.
+  std::map<int, std::unique_ptr<TCPConnection>> tcp_connections_;
 
   // Watch queries from |udp_src_|.
   std::unique_ptr<patchpanel::Socket> udp_src_;

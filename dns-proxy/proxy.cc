@@ -219,8 +219,10 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     addr.sin_addr.s_addr =
         INADDR_ANY;  // Since we're running in the private namespace.
 
-    CHECK(resolver_->Listen(reinterpret_cast<struct sockaddr*>(&addr)))
-        << opts_ << " failed to start relay loop";
+    CHECK(resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr)))
+        << opts_ << " failed to start UDP relay loop";
+    CHECK(resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)))
+        << opts_ << " failed to start TCP relay loop";
   }
 
   // Update the resolver with the latest DNS config.

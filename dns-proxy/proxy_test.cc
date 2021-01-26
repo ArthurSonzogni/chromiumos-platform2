@@ -83,7 +83,8 @@ class MockResolver : public Resolver {
   MockResolver() : Resolver(kRequestTimeout) {}
   ~MockResolver() = default;
 
-  MOCK_METHOD(bool, Listen, (struct sockaddr*), (override));
+  MOCK_METHOD(bool, ListenUDP, (struct sockaddr*), (override));
+  MOCK_METHOD(bool, ListenTCP, (struct sockaddr*), (override));
   MOCK_METHOD(void,
               SetNameServers,
               (const std::vector<std::string>&),
@@ -291,7 +292,8 @@ TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
   proxy.resolver = std::move(resolver);
   shill::Client::Device dev;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
-  EXPECT_CALL(*mock_resolver, Listen(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_resolver, ListenUDP(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_resolver, ListenTCP(_)).WillOnce(Return(true));
   proxy.OnDefaultDeviceChanged(&dev);
   EXPECT_TRUE(proxy.resolver_);
 }
@@ -307,7 +309,8 @@ TEST_F(ProxyTest, CrashOnListenFailure) {
   proxy.resolver = std::move(resolver);
   shill::Client::Device dev;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
-  ON_CALL(*mock_resolver, Listen(_)).WillByDefault(Return(false));
+  ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(false));
+  ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(false));
   EXPECT_DEATH(proxy.OnDefaultDeviceChanged(&dev), "relay loop");
 }
 
@@ -324,7 +327,8 @@ TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
   dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
   dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
   // Doesn't call listen since the resolver already exists.
-  EXPECT_CALL(*mock_resolver, Listen(_)).Times(0);
+  EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
+  EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
   EXPECT_CALL(*mock_resolver,
               SetNameServers(
                   ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
