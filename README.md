@@ -112,6 +112,7 @@ copies.
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
 | [print_tools](./print_tools/) | Various tools related to the native printing system |
 | [regions](./regions/) ||
+| [resourced](./resourced/) | Resource Management Daemon |
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |
 | [screen-capture-utils](./screen-capture-utils/) | Utilities for screen capturing (screenshot) |
