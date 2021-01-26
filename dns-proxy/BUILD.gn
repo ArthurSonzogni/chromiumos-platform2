@@ -38,6 +38,7 @@ pkg_config("target_defaults") {
 static_library("libdnsproxy") {
   configs += [ ":target_defaults" ]
   sources = [
+    "ares_client.cc",
     "controller.cc",
     "doh_curl_client.cc",
     "proxy.cc",
@@ -48,7 +49,10 @@ static_library("libdnsproxy") {
 
 executable("dnsproxyd") {
   configs += [ ":target_defaults" ]
-  all_dependent_pkg_deps = [ "libcurl" ]
+  all_dependent_pkg_deps = [
+    "libcares",
+    "libcurl",
+  ]
   sources = [ "main.cc" ]
   deps = [ ":libdnsproxy" ]
 }
@@ -67,7 +71,10 @@ if (use.test) {
       ":dns-proxy_test_config",
       ":target_defaults",
     ]
-    all_dependent_pkg_deps = [ "libcurl" ]
+    all_dependent_pkg_deps = [
+      "libcares",
+      "libcurl",
+    ]
     sources = [ "proxy_test.cc" ]
     defines = [ "UNIT_TEST" ]
     deps = [
