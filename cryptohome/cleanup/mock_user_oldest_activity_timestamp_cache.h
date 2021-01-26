@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_STORAGE_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
-#define CRYPTOHOME_STORAGE_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#ifndef CRYPTOHOME_CLEANUP_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#define CRYPTOHOME_CLEANUP_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
 
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 
 #include <string>
 
@@ -39,4 +39,4 @@ class MockUserOldestActivityTimestampCache
 };
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#endif  // CRYPTOHOME_CLEANUP_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_

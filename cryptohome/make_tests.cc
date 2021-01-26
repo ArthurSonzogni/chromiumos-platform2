@@ -28,6 +28,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
@@ -36,7 +37,6 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_helper.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/storage/disk_cleanup.h"
+#include "cryptohome/cleanup/disk_cleanup.h"
 
 #include <algorithm>
 #include <string>
@@ -14,11 +14,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/cleanup/mock_disk_cleanup_routines.h"
+#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/storage/mock_disk_cleanup_routines.h"
 #include "cryptohome/storage/mock_homedirs.h"
-#include "cryptohome/storage/mock_user_oldest_activity_timestamp_cache.h"
 
 using ::testing::_;
 using ::testing::DoAll;

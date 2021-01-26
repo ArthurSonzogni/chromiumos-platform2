@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_STORAGE_MOCK_DISK_CLEANUP_H_
-#define CRYPTOHOME_STORAGE_MOCK_DISK_CLEANUP_H_
+#ifndef CRYPTOHOME_CLEANUP_MOCK_DISK_CLEANUP_H_
+#define CRYPTOHOME_CLEANUP_MOCK_DISK_CLEANUP_H_
 
-#include "cryptohome/storage/disk_cleanup.h"
+#include "cryptohome/cleanup/disk_cleanup.h"
 
 #include <cstdint>
 #include <string>
@@ -41,4 +41,4 @@ class MockDiskCleanup : public DiskCleanup {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_MOCK_DISK_CLEANUP_H_
+#endif  // CRYPTOHOME_CLEANUP_MOCK_DISK_CLEANUP_H_

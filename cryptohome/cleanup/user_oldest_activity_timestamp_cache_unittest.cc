@@ -4,7 +4,7 @@
 
 // Unit tests for UsersOldestActivityTimestampCache.
 
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 
 #include <base/logging.h>
 #include <gtest/gtest.h>

@@ -35,6 +35,8 @@
 #include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
+#include "cryptohome/cleanup/mock_low_disk_space_handler.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
@@ -56,10 +58,8 @@
 #include "cryptohome/protobuf_test_utils.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
 #include "cryptohome/storage/mock_homedirs.h"
-#include "cryptohome/storage/mock_low_disk_space_handler.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/user_session.h"
 
 using base::FilePath;

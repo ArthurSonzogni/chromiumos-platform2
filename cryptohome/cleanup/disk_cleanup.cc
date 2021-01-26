@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/storage/disk_cleanup.h"
+#include "cryptohome/cleanup/disk_cleanup.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -15,12 +15,12 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 
+#include "cryptohome/cleanup/disk_cleanup_routines.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/disk_cleanup_routines.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 
 namespace cryptohome {
 

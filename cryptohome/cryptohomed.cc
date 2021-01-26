@@ -21,6 +21,7 @@
 #include <glib.h>
 #include <openssl/evp.h>
 
+#include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"

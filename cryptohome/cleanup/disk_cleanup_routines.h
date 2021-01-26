@@ -5,8 +5,8 @@
 // DiskCleanupRoutines contains methods used to free up disk space.
 // Used by DiskCleanup to perform the actual cleanup.
 
-#ifndef CRYPTOHOME_STORAGE_DISK_CLEANUP_ROUTINES_H_
-#define CRYPTOHOME_STORAGE_DISK_CLEANUP_ROUTINES_H_
+#ifndef CRYPTOHOME_CLEANUP_DISK_CLEANUP_ROUTINES_H_
+#define CRYPTOHOME_CLEANUP_DISK_CLEANUP_ROUTINES_H_
 
 #include <string>
 
@@ -59,4 +59,4 @@ class DiskCleanupRoutines {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_DISK_CLEANUP_ROUTINES_H_
+#endif  // CRYPTOHOME_CLEANUP_DISK_CLEANUP_ROUTINES_H_

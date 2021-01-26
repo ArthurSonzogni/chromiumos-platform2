@@ -28,6 +28,7 @@
 #include <dbus/dbus-glib.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
+#include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/fingerprint_manager.h"
@@ -40,8 +41,6 @@
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/arc_disk_quota.h"
-#include "cryptohome/storage/disk_cleanup.h"
-#include "cryptohome/storage/low_disk_space_handler.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/storage/mount_task.h"

@@ -5,8 +5,8 @@
 // LowDiskSpaceHandler checks if the device has low disk space.
 // Uses DiskCleanup to perform cleanup when space is low.
 
-#ifndef CRYPTOHOME_STORAGE_LOW_DISK_SPACE_HANDLER_H_
-#define CRYPTOHOME_STORAGE_LOW_DISK_SPACE_HANDLER_H_
+#ifndef CRYPTOHOME_CLEANUP_LOW_DISK_SPACE_HANDLER_H_
+#define CRYPTOHOME_CLEANUP_LOW_DISK_SPACE_HANDLER_H_
 
 #include <cstdint>
 #include <memory>
@@ -96,4 +96,4 @@ class LowDiskSpaceHandler {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_LOW_DISK_SPACE_HANDLER_H_
+#endif  // CRYPTOHOME_CLEANUP_LOW_DISK_SPACE_HANDLER_H_

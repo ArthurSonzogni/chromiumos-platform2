@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_STORAGE_MOCK_LOW_DISK_SPACE_HANDLER_H_
-#define CRYPTOHOME_STORAGE_MOCK_LOW_DISK_SPACE_HANDLER_H_
+#ifndef CRYPTOHOME_CLEANUP_MOCK_LOW_DISK_SPACE_HANDLER_H_
+#define CRYPTOHOME_CLEANUP_MOCK_LOW_DISK_SPACE_HANDLER_H_
 
-#include "cryptohome/storage/low_disk_space_handler.h"
+#include "cryptohome/cleanup/low_disk_space_handler.h"
 
 #include <cstdint>
 #include <string>
@@ -39,4 +39,4 @@ class MockLowDiskSpaceHandler : public LowDiskSpaceHandler {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_MOCK_LOW_DISK_SPACE_HANDLER_H_
+#endif  // CRYPTOHOME_CLEANUP_MOCK_LOW_DISK_SPACE_HANDLER_H_

@@ -5,8 +5,8 @@
 // DiskCleanup contains methods used to free up disk space.
 // Used by DiskCleanup to perform the actual cleanup.
 
-#ifndef CRYPTOHOME_STORAGE_DISK_CLEANUP_H_
-#define CRYPTOHOME_STORAGE_DISK_CLEANUP_H_
+#ifndef CRYPTOHOME_CLEANUP_DISK_CLEANUP_H_
+#define CRYPTOHOME_CLEANUP_DISK_CLEANUP_H_
 
 #include <cstdint>
 #include <memory>
@@ -15,10 +15,10 @@
 #include <base/optional.h>
 #include <base/time/time.h>
 
+#include "cryptohome/cleanup/disk_cleanup_routines.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/disk_cleanup_routines.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 
 namespace cryptohome {
 
@@ -129,4 +129,4 @@ class DiskCleanup {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_DISK_CLEANUP_H_
+#endif  // CRYPTOHOME_CLEANUP_DISK_CLEANUP_H_

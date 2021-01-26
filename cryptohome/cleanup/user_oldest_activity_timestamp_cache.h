@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_STORAGE_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
-#define CRYPTOHOME_STORAGE_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#ifndef CRYPTOHOME_CLEANUP_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#define CRYPTOHOME_CLEANUP_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
 
 #include <map>
 #include <string>
@@ -55,4 +55,4 @@ class UserOldestActivityTimestampCache {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_
+#endif  // CRYPTOHOME_CLEANUP_USER_OLDEST_ACTIVITY_TIMESTAMP_CACHE_H_

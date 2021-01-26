@@ -35,6 +35,7 @@
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/bootlockbox/mock_boot_lockbox.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
@@ -52,7 +53,6 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mount_helper.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 

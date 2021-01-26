@@ -30,6 +30,7 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
@@ -38,7 +39,6 @@
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 
 namespace cryptohome {
 

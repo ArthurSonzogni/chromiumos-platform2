@@ -27,6 +27,7 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
@@ -42,7 +43,6 @@
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/mount_helper.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;

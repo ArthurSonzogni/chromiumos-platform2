@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/storage/low_disk_space_handler.h"
+#include "cryptohome/cleanup/low_disk_space_handler.h"
 
 #include <base/logging.h>
 
+#include "cryptohome/cleanup/disk_cleanup.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/disk_cleanup.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/user_oldest_activity_timestamp_cache.h"
 
 namespace cryptohome {
 

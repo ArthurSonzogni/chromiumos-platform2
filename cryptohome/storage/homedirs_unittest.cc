@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
 
+#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
@@ -30,7 +31,6 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
-#include "cryptohome/storage/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/timestamp.pb.h"
 
