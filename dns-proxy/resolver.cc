@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <chromeos/patchpanel/net_util.h>
 
 // Using directive is necessary to have the overloaded function for socket data
@@ -21,6 +22,12 @@ namespace dns_proxy {
 Resolver::SocketFd::SocketFd(int type, int fd) : type(type), fd(fd) {
   len = sizeof(src);
 }
+
+Resolver::Resolver(base::TimeDelta timeout)
+    : always_on_doh_(false),
+      doh_enabled_(false),
+      ares_client_(new AresClient(timeout)),
+      curl_client_(new DoHCurlClient(timeout)) {}
 
 bool Resolver::Listen(struct sockaddr* addr) {
   // TODO(jasongustaman): Listen on TCP.
@@ -47,8 +54,35 @@ bool Resolver::ListenUDP(struct sockaddr* addr) {
   return true;
 }
 
-void Resolver::ReplyDNS(SocketFd* sock_fd, const char* data, int len) {
-  if (sendto(sock_fd->fd, data, len, 0,
+void Resolver::HandleAresResult(void* ctx,
+                                int status,
+                                uint8_t* msg,
+                                size_t len) {
+  std::unique_ptr<SocketFd> sock_fd(static_cast<SocketFd*>(ctx));
+  if (status != ARES_SUCCESS) {
+    LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
+    return;
+  }
+  ReplyDNS(sock_fd.get(), msg, len);
+}
+
+void Resolver::HandleCurlResult(void* ctx,
+                                int64_t http_code,
+                                uint8_t* msg,
+                                size_t len) {
+  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
+  // TODO(jasongustaman): Handle other HTTP status code.
+  if (http_code != kHTTPOk) {
+    LOG(ERROR) << "Failed to do curl lookup, HTTP status code " << http_code;
+    delete sock_fd;
+    return;
+  }
+  ReplyDNS(sock_fd, msg, len);
+  delete sock_fd;
+}
+
+void Resolver::ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len) {
+  if (sendto(sock_fd->fd, msg, len, 0,
              reinterpret_cast<struct sockaddr*>(&sock_fd->src),
              sock_fd->len) <= 0) {
     PLOG(ERROR) << "sendto() " << sock_fd->fd << " failed";
@@ -56,13 +90,15 @@ void Resolver::ReplyDNS(SocketFd* sock_fd, const char* data, int len) {
 }
 
 void Resolver::SetNameServers(const std::vector<std::string>& name_servers) {
-  // TODO(jasongustaman): Set DNS servers for CURL and Ares.
+  ares_client_->SetNameServers(name_servers);
+  curl_client_->SetNameServers(name_servers);
 }
 
 void Resolver::SetDoHProviders(const std::vector<std::string>& doh_providers,
-                               bool always_on) {
-  // TODO(jasongustaman): Set DoH servers for CURL.
-  always_on_doh_ = always_on;
+                               bool always_on_doh) {
+  always_on_doh_ = always_on_doh;
+  doh_enabled_ = !doh_providers.empty();
+  curl_client_->SetDoHProviders(doh_providers);
 }
 
 void Resolver::OnDNSQuery(int fd, int type) {
@@ -80,9 +116,18 @@ void Resolver::OnDNSQuery(int fd, int type) {
     return;
   }
 
-  // TODO(jasongustaman): Query DoH using CURL, fallback upon unexpected
-  // error.
-  // TODO(jasongustaman): Query DNS using Ares.
-  delete sock_fd;
+  if (doh_enabled_) {
+    if (curl_client_->Resolve(data, len,
+                              base::BindOnce(&Resolver::HandleCurlResult,
+                                             weak_factory_.GetWeakPtr()),
+                              reinterpret_cast<void*>(sock_fd)) ||
+        always_on_doh_) {
+      return;
+    }
+  }
+  ares_client_->Resolve(
+      reinterpret_cast<const unsigned char*>(data), len,
+      base::BindOnce(&Resolver::HandleAresResult, weak_factory_.GetWeakPtr()),
+      reinterpret_cast<void*>(sock_fd));
 }
 }  // namespace dns_proxy

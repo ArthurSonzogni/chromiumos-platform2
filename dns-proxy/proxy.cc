@@ -19,12 +19,12 @@ namespace dns_proxy {
 
 constexpr base::TimeDelta kShillPropertyAttemptDelay =
     base::TimeDelta::FromMilliseconds(200);
+constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
 
 constexpr char kSystemProxyType[] = "sys";
 constexpr char kDefaultProxyType[] = "def";
 constexpr char kARCProxyType[] = "arc";
 constexpr uint16_t kDefaultPort = 13568;  // port 53 in network order.
-
 // static
 const char* Proxy::TypeToString(Type t) {
   switch (t) {
@@ -159,8 +159,8 @@ void Proxy::OnShillReset(bool reset) {
   SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()));
 }
 
-std::unique_ptr<Resolver> Proxy::NewResolver() {
-  return std::make_unique<Resolver>();
+std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout) {
+  return std::make_unique<Resolver>(timeout);
 }
 
 void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
@@ -211,7 +211,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   *device_.get() = *device;
 
   if (!resolver_) {
-    resolver_ = NewResolver();
+    resolver_ = NewResolver(kRequestTimeout);
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;

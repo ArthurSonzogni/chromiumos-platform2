@@ -17,6 +17,9 @@
 
 namespace dns_proxy {
 
+// List of HTTP status codes.
+constexpr int64_t kHTTPOk = 200;
+
 // DoHCurlClient receives a wire-format DNS query and re-send it using secure
 // DNS (DNS-over-HTTPS). The caller of DoHCurlClient will get a wire-format
 // response done through CURL. Given multiple DoH servers, DoHCurlClient will

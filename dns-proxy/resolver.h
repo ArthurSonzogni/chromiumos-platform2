@@ -11,7 +11,11 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <chromeos/patchpanel/socket.h>
+
+#include "dns-proxy/ares_client.h"
+#include "dns-proxy/doh_curl_client.h"
 
 namespace dns_proxy {
 
@@ -30,7 +34,7 @@ namespace dns_proxy {
 // Resolver listens on UDP and TCP port 53.
 class Resolver {
  public:
-  Resolver() = default;
+  explicit Resolver(base::TimeDelta timeout);
   virtual ~Resolver() = default;
 
   // Listens for incoming requests on address |addr|.
@@ -40,10 +44,11 @@ class Resolver {
 
   // Set standard DNS and DNS-over-HTTPS servers endpoints.
   // If DoH servers are not empty, resolving domain will be done with DoH.
-  // |always_on| flag is used to disallow fallback to standard plain-text DNS.
+  // |always_on_doh| flag is used to disallow fallback to standard plain-text
+  // DNS.
   virtual void SetNameServers(const std::vector<std::string>& name_servers);
   virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
-                               bool always_on = false);
+                               bool always_on_doh = false);
 
  private:
   // |SocketFd| stores client's socket data.
@@ -64,6 +69,29 @@ class Resolver {
     socklen_t len;
   };
 
+  // Handle DNS result queried through ares.
+  // This function will check the response and proxies it to the client upon
+  // successful. On failure, it will disregard the response.
+  //
+  // |ctx| is a pointer given through `Resolve(...)` and is owned by this
+  // class. |ctx| should be cleared here if no retry will be tried.
+  // |status| is the ares response status. |msg| is the wire-format response
+  // of the DNS query given through `Resolve(...)` with the len |len|.
+  // |msg| and its lifecycle is owned by ares.
+  void HandleAresResult(void* ctx, int status, uint8_t* msg, size_t len);
+
+  // Handle DoH result queried through curl.
+  // This function will check the response and proxies it to the client upon
+  // successful. On failure, it will disregard the response.
+  // TODO(jasongustaman): Handle failures.
+  //
+  // |ctx| is a pointer given through `Resolve(...)` and is owned by this
+  // class. |ctx| should be cleared here if no retry will be tried.
+  // |http_code| is the HTTP status code of the response. |msg| is the
+  // wire-format response of the DNS query given through `Resolve(...)` with
+  // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
+  void HandleCurlResult(void* ctx, int64_t http_code, uint8_t* msg, size_t len);
+
   // Listen on an incoming DNS query on |addr|.
   bool ListenUDP(struct sockaddr* addr);
 
@@ -72,14 +100,23 @@ class Resolver {
   void OnDNSQuery(int fd, int type);
 
   // Send back data taken from CURL or Ares to the client.
-  void ReplyDNS(SocketFd* sock_fd, const char* data, int len);
+  void ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len);
 
   // Disallow DoH fallback to standard plain-text DNS.
   bool always_on_doh_;
 
+  // Resolve using DoH if true.
+  bool doh_enabled_;
+
   // Watch queries from |udp_src_|.
   std::unique_ptr<patchpanel::Socket> udp_src_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> udp_src_watcher_;
+
+  // Ares client to resolve DNS through standard plain-text DNS.
+  std::unique_ptr<AresClient> ares_client_;
+
+  // Curl client to resolve DNS through secure DNS.
+  std::unique_ptr<DoHCurlClient> curl_client_;
 
   base::WeakPtrFactory<Resolver> weak_factory_{this};
 };

@@ -21,7 +21,9 @@
 #include <shill/dbus-proxy-mocks.h>
 
 namespace dns_proxy {
-
+namespace {
+constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
+}  // namespace
 using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ManagerProxyMock;
 using testing::_;
@@ -78,7 +80,7 @@ class FakePatchpanelClient : public patchpanel::FakeClient {
 
 class MockResolver : public Resolver {
  public:
-  MockResolver() = default;
+  MockResolver() : Resolver(kRequestTimeout) {}
   ~MockResolver() = default;
 
   MOCK_METHOD(bool, Listen, (struct sockaddr*), (override));
@@ -100,7 +102,8 @@ class TestProxy : public Proxy {
       : Proxy(opts, std::move(patchpanel), std::move(shill)) {}
 
   std::unique_ptr<Resolver> resolver;
-  std::unique_ptr<Resolver> NewResolver() override {
+  std::unique_ptr<Resolver> NewResolver(
+      base::TimeDelta request_timeout) override {
     return std::move(resolver);
   }
 };
