@@ -64,21 +64,12 @@ class TpmImpl : public Tpm {
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
-  bool IsEnabled() override { return !is_disabled_; }
-  void SetIsEnabled(bool enabled) override { is_disabled_ = !enabled; }
-  bool IsOwned() override {
-    // Note that this is one hack to align the behaviour of TPM 1.2 monolithic
-    // mode and distributed mode (tpm_manager). In distributed mode, IsOwned()
-    // will return false when the device is pre-owned, as in owned with the
-    // default password. However, TPM 1.2 monolithic mode will return true if we
-    // just return is_owned_. The addition of && !is_being_owned_ here is to
-    // ensure that it return false when it is in preowned state, in alignment
-    // with distributed mode.
-    return is_owned_ && !is_being_owned_;
-  }
-  void SetIsOwned(bool owned) override { is_owned_ = owned; }
-  bool IsOwnerPasswordPresent() override { return false; }
-  bool HasResetLockPermissions() override { return false; }
+  bool IsEnabled() override;
+  void SetIsEnabled(bool enabled) override;
+  bool IsOwned() override;
+  void SetIsOwned(bool owned) override;
+  bool IsOwnerPasswordPresent() override;
+  bool HasResetLockPermissions() override;
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
   bool IsInitialized() override { return initialized_; }
   void SetIsInitialized(bool done) override { initialized_ = done; }
@@ -249,10 +240,6 @@ class TpmImpl : public Tpm {
   // keeps the information about reset_lock_permissions. Returns |true| iff the
   // attributes of the delegate is successfully determined.
   //
-  // Note that this is supposed to belong to TpmNewImpl; TpmImpl doesn't have
-  // any internal caller to this function; regardless, we should just move it to
-  // tpm manager eventually.
-  //
   // TODO(b/169392230): Remove this function once tpm manager performs the
   // check.
   bool SetDelegateData(const brillo::Blob& delegate_blob,
@@ -399,6 +386,24 @@ class TpmImpl : public Tpm {
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
   bool InitializeTpmManagerUtility();
 
+  // Calls |TpmManagerUtility::GetTpmStatus| and stores the result into
+  // |is_enabled_|, |is_owned_|, and |last_tpm_manager_data_| for later use.
+  bool CacheTpmManagerStatus();
+
+  // Attempts to get |tpm_manager::LocalData| from signal or by explicitly
+  // querying it. Returns |true| iff either approach succeeds. Behind the scene,
+  // the function attempts to update the local data when it's available from
+  // ownership taken signal. Otherwise, for any reason why we don't have it from
+  // ownership taken signal, it actively query tpm status by a dbus request.
+  // This intuitive way can be seen an  overkill sometimes(e.g. The signal is
+  // waiting to be connected); however this conservative approach can avoid the
+  // data loss due to some potential issues (e.g. unexpectedly long waiting time
+  // until the signal is confirmed to be connected).
+  bool UpdateLocalDataFromTpmManager();
+
+  // Gets delegate from tpm manager and call feed the value to |SetDelegate|.
+  bool SetDelegateDataFromTpmManager();
+
   // Member variables
   bool initialized_;
   brillo::SecureBlob srk_auth_;
@@ -410,11 +415,11 @@ class TpmImpl : public Tpm {
   // initialization background thread.
   base::Lock password_sync_lock_;
 
-  // Indicates if the TPM is disabled
-  bool is_disabled_;
+  // Indicates if the TPM is enabled
+  bool is_enabled_{false};
 
   // Indicates if the TPM is owned
-  bool is_owned_;
+  bool is_owned_{false};
 
   // Indicates if the TPM is being owned
   bool is_being_owned_;
@@ -434,6 +439,22 @@ class TpmImpl : public Tpm {
 
   // wrapped tpm_manager proxy to get information from |tpm_manager|.
   tpm_manager::TpmManagerUtility* tpm_manager_utility_ = nullptr;
+
+  // Indicates if the delegate has been set and the parent class |TpmImpl|
+  // already has the information about the owner delegate we have from tpm
+  // manager.
+  bool has_set_delegate_data_ = false;
+
+  // This flag indicates |CacheTpmManagerStatus| shall be called when the
+  // ownership taken signal is confirmed to be connected.
+  bool shall_cache_tpm_manager_status_{true};
+
+  // Records |LocalData| from tpm_manager last time we query, either by
+  // explicitly requesting the update or from dbus signal.
+  tpm_manager::LocalData last_tpm_manager_data_;
+
+  // Cache of TPM version info, base::nullopt if cache doesn't exist.
+  base::Optional<TpmVersionInfo> version_info_;
 };
 
 }  // namespace cryptohome

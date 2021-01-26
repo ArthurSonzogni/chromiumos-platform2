@@ -30,6 +30,7 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
@@ -209,6 +210,19 @@ bool ConvertPublicKeyToDER(const SecureBlob& public_key,
   return true;
 }
 
+std::string OwnerDependencyEnumClassToString(
+    TpmPersistentState::TpmOwnerDependency dependency) {
+  switch (dependency) {
+    case TpmPersistentState::TpmOwnerDependency::kInstallAttributes:
+      return tpm_manager::kTpmOwnerDependency_Nvram;
+    case TpmPersistentState::TpmOwnerDependency::kAttestation:
+      return tpm_manager::kTpmOwnerDependency_Attestation;
+  }
+  NOTREACHED() << __func__ << ": Unexpected enum class value: "
+               << static_cast<int>(dependency);
+  return "";
+}
+
 }  // namespace
 
 const unsigned char kDefaultSrkAuth[] = {};
@@ -232,8 +246,6 @@ TpmImpl::TpmImpl()
       srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
       owner_password_(),
       password_sync_lock_(),
-      is_disabled_(true),
-      is_owned_(false),
       is_being_owned_(false) {
   TSS_HCONTEXT context_handle = ConnectContext();
   if (context_handle) {
@@ -430,92 +442,21 @@ bool TpmImpl::GetDictionaryAttackInfo(int* counter,
                                       int* threshold,
                                       bool* lockout,
                                       int* seconds_remaining) {
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
     return false;
   }
-  brillo::Blob capability_data;
-  if (!GetCapability(context_handle, tpm_handle, TSS_TPMCAP_DA_LOGIC,
-                     TPM_ET_KEYHANDLE, &capability_data, NULL)) {
-    LOG(ERROR) << __func__ << ": Failed to query DA_LOGIC capability.";
-    return false;
-  }
-  if (static_cast<UINT16>(capability_data[1]) == TPM_TAG_DA_INFO) {
-    TPM_DA_INFO da_info;
-    UINT64 offset = 0;
-    Trspi_UnloadBlob_DA_INFO(&offset, capability_data.data(), &da_info);
-    VLOG(1) << "DA_INFO for TPM_ET_KEYHANDLE:";
-    VLOG(1) << "  Active: " << static_cast<int>(da_info.state);
-    VLOG(1) << "  Counter: " << da_info.currentCount;
-    VLOG(1) << "  Threshold: " << da_info.thresholdCount;
-    VLOG(1) << "  Action: " << da_info.actionAtThreshold.actions;
-    VLOG(1) << "  Action Value: " << da_info.actionDependValue;
-    VLOG(1) << "  Vendor Data Size: " << da_info.vendorDataSize;
-    if (da_info.vendorDataSize > 0) {
-      VLOG(1) << "  Vendor Data: "
-              << base::HexEncode(da_info.vendorData, da_info.vendorDataSize);
-    }
-    *counter = da_info.currentCount;
-    *threshold = da_info.thresholdCount;
-    *lockout = (da_info.state == TPM_DA_STATE_ACTIVE);
-    *seconds_remaining = da_info.actionDependValue;
-    free(da_info.vendorData);
-  } else {
-    LOG(WARNING) << __func__ << ": Cannot read counter.";
-  }
-  // For Infineon, pull the counter out of vendor-specific data, and check if it
-  // matches the value in DA_INFO.
-  UINT32 manufacturer;
-  if (!GetCapability(context_handle, tpm_handle, TSS_TPMCAP_PROPERTY,
-                     TSS_TPMCAP_PROP_MANUFACTURER, NULL, &manufacturer)) {
-    LOG(ERROR) << __func__ << ": Failed to query TSS_TPMCAP_PROP_MANUFACTURER.";
-    return false;
-  }
-  const UINT32 kInfineon = 0x49465800;
-  if (manufacturer == kInfineon) {
-    brillo::Blob capability_data;
-    if (!GetCapability(context_handle, tpm_handle, TSS_TPMCAP_MFR,
-                       0x00000802,  // Opaque vendor-specific bits.
-                       &capability_data, NULL)) {
-      LOG(ERROR) << __func__ << ": Failed to query MFR capability.";
-      return false;
-    }
-    const size_t kInfineonCounterOffset = 9;
-    if (capability_data.size() > kInfineonCounterOffset) {
-      if (*counter != capability_data[kInfineonCounterOffset]) {
-        LOG(WARNING) << __func__ << ": Counter mismatch: " << *counter << " vs "
-                     << capability_data[kInfineonCounterOffset];
-        *counter =
-            std::max(*counter,
-                     static_cast<int>(capability_data[kInfineonCounterOffset]));
-      }
-      VLOG(1) << __func__ << ": " << counter;
-    } else {
-      LOG(WARNING) << __func__ << ": Cannot read counter.";
-    }
-  }
-  return true;
+  return tpm_manager_utility_->GetDictionaryAttackInfo(
+      counter, threshold, lockout, seconds_remaining);
 }
 
-bool TpmImpl::ResetDictionaryAttackMitigation(
-    const brillo::Blob& delegate_blob, const brillo::Blob& delegate_secret) {
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsDelegate(delegate_blob, delegate_secret,
-                                context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+bool TpmImpl::ResetDictionaryAttackMitigation(const brillo::Blob&,
+                                              const brillo::Blob&) {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
     return false;
   }
-  TSS_RESULT result = Tspi_TPM_SetStatus(tpm_handle, TSS_TPMSTATUS_RESETLOCK,
-                                         true /* Will be ignored. */);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to reset lock.";
-    return false;
-  }
-  LOG(WARNING) << "Dictionary attack mitigation has been reset.";
-  return true;
+  return tpm_manager_utility_->ResetDictionaryAttackLock();
 }
 
 bool TpmImpl::CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
@@ -990,55 +931,16 @@ bool TpmImpl::IsEndorsementKeyAvailable() {
   return true;
 }
 
-bool TpmImpl::TakeOwnership(int max_timeout_tries,
-                            const SecureBlob& owner_password) {
-  TSS_RESULT result;
-  TSS_HTPM tpm_handle;
-  if (!GetTpmWithAuth(tpm_context_.value(), owner_password, &tpm_handle)) {
+bool TpmImpl::TakeOwnership(int, const SecureBlob&) {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
-
-  ScopedTssKey srk_handle(tpm_context_.value());
-  TSS_FLAG init_flags = TSS_KEY_TSP_SRK | TSS_KEY_AUTHORIZATION;
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                    tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
-                    srk_handle.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
-    return false;
+  if (IsOwned()) {
+    LOG(INFO) << __func__ << ": TPM is already owned.";
+    return true;
   }
-
-  TSS_HPOLICY srk_usage_policy;
-  if (TPM_ERROR(result = Tspi_GetPolicyObject(srk_handle, TSS_POLICY_USAGE,
-                                              &srk_usage_policy))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
-    return false;
-  }
-
-  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
-                    srk_usage_policy, TSS_SECRET_MODE_PLAIN,
-                    strlen(kWellKnownSrkTmp),
-                    const_cast<BYTE*>(
-                        reinterpret_cast<const BYTE*>(kWellKnownSrkTmp))))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
-    return false;
-  }
-
-  int retry_count = 0;
-  do {
-    result = Tspi_TPM_TakeOwnership(tpm_handle, srk_handle, 0);
-    retry_count++;
-  } while (((result == TDDL_E_TIMEOUT) ||
-            (result == (TSS_LAYER_TDDL | TDDL_E_TIMEOUT)) ||
-            (result == (TSS_LAYER_TDDL | TDDL_E_IOERROR))) &&
-           (retry_count < max_timeout_tries));
-
-  if (result) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_TakeOwnership, attempts: "
-                           << retry_count;
-    return false;
-  }
-
-  return true;
+  return tpm_manager_utility_->TakeOwnership();
 }
 
 bool TpmImpl::InitializeSrk(const SecureBlob& owner_password) {
@@ -1249,15 +1151,20 @@ bool TpmImpl::TestTpmAuth(const brillo::SecureBlob& owner_password) {
 }
 
 bool TpmImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
-  bool result = false;
-  if (password_sync_lock_.Try()) {
-    if (owner_password_.size() != 0) {
-      owner_password->assign(owner_password_.begin(), owner_password_.end());
-      result = true;
+  if (IsOwned()) {
+    *owner_password =
+        brillo::SecureBlob(last_tpm_manager_data_.owner_password());
+    if (owner_password->empty()) {
+      LOG(WARNING) << __func__
+                   << ": Trying to get owner password after it is cleared.";
     }
-    password_sync_lock_.Release();
+  } else {
+    LOG(ERROR)
+        << __func__
+        << ": Cannot get owner password until TPM is confirmed to be owned.";
+    owner_password->clear();
   }
-  return result;
+  return !owner_password->empty();
 }
 
 bool TpmImpl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
@@ -2831,8 +2738,65 @@ bool TpmImpl::GetCapability(TSS_HCONTEXT context_handle,
 }
 
 void TpmImpl::SetOwnerPassword(const brillo::SecureBlob& owner_password) {
-  base::AutoLock lock(password_sync_lock_);
-  owner_password_.assign(owner_password.begin(), owner_password.end());
+  LOG(WARNING) << __func__ << ": no-ops.";
+}
+
+void TpmImpl::SetIsEnabled(bool) {
+  LOG(WARNING) << __func__ << ": no-ops.";
+}
+
+void TpmImpl::SetIsOwned(bool) {
+  LOG(WARNING) << __func__ << ": no-ops.";
+}
+
+bool TpmImpl::IsEnabled() {
+  if (!is_enabled_) {
+    if (!CacheTpmManagerStatus()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to update TPM status from tpm manager.";
+      return false;
+    }
+  }
+  return is_enabled_;
+}
+
+bool TpmImpl::IsOwned() {
+  if (!is_owned_) {
+    if (!UpdateLocalDataFromTpmManager()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to call |UpdateLocalDataFromTpmManager|.";
+      return false;
+    }
+  }
+  return is_owned_;
+}
+
+bool TpmImpl::IsOwnerPasswordPresent() {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  bool is_owner_password_present = false;
+  if (!tpm_manager_utility_->GetTpmNonsensitiveStatus(
+          nullptr, nullptr, &is_owner_password_present, nullptr)) {
+    LOG(ERROR) << __func__ << ": Failed to get |is_owner_password_present|.";
+    return false;
+  }
+  return is_owner_password_present;
+}
+
+bool TpmImpl::HasResetLockPermissions() {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  bool has_reset_lock_permissions = false;
+  if (!tpm_manager_utility_->GetTpmNonsensitiveStatus(
+          nullptr, nullptr, nullptr, &has_reset_lock_permissions)) {
+    LOG(ERROR) << __func__ << ": Failed to get |has_reset_lock_permissions|.";
+    return false;
+  }
+  return has_reset_lock_permissions;
 }
 
 bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
@@ -3024,62 +2988,50 @@ void TpmImpl::CloseHandle(TpmKeyHandle key_handle) {
 }
 
 bool TpmImpl::RemoveOwnerDependency(
-    TpmPersistentState::TpmOwnerDependency /* dependency */) {
-  return true;
+    TpmPersistentState::TpmOwnerDependency dependency) {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_->RemoveOwnerDependency(
+      OwnerDependencyEnumClassToString(dependency));
 }
 
 bool TpmImpl::ClearStoredPassword() {
-  brillo::SecureBlob empty;
-  SetOwnerPassword(empty);
-  return true;
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_->ClearStoredOwnerPassword();
 }
 
 bool TpmImpl::GetVersionInfo(TpmVersionInfo* version_info) {
-  ScopedTssContext context_handle;
-  if ((*(context_handle.ptr()) = ConnectContext()) == 0) {
-    LOG(ERROR) << "Could not open the TPM";
+  if (!version_info) {
+    LOG(ERROR) << __func__ << "version_info is not initialized.";
     return false;
   }
 
-  TSS_HTPM tpm_handle;
-  if (!GetTpm(context_handle, &tpm_handle)) {
-    LOG(ERROR) << "Could not get a handle to the TPM.";
+  // Version info on a device never changes. Returns from cache directly if we
+  // have the cache.
+  if (version_info_) {
+    *version_info = *version_info_;
+    return true;
+  }
+
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
     return false;
   }
 
-  brillo::Blob capability_data;
-  if (!GetCapability(context_handle, tpm_handle, TSS_TPMCAP_VERSION_VAL, 0,
-                     &capability_data, NULL)) {
-    LOG(ERROR) << "Failed to query VERSION_INFO capability.";
+  if (!tpm_manager_utility_->GetVersionInfo(
+          &version_info->family, &version_info->spec_level,
+          &version_info->manufacturer, &version_info->tpm_model,
+          &version_info->firmware_version, &version_info->vendor_specific)) {
+    LOG(ERROR) << __func__ << ": failed to get version info from tpm_manager.";
     return false;
   }
 
-  if (static_cast<UINT16>(capability_data[1]) != TPM_TAG_CAP_VERSION_INFO) {
-    LOG(ERROR) << "Bad VERSION_INFO capability value.";
-    return false;
-  }
-
-  UINT64 trspi_offset = 0;
-  TPM_CAP_VERSION_INFO tpm_version;
-  Trspi_UnloadBlob_CAP_VERSION_INFO(&trspi_offset, capability_data.data(),
-                                    &tpm_version);
-  version_info->family = 0x312e3200;
-  version_info->spec_level =
-      (static_cast<uint64_t>(tpm_version.specLevel) << 32) |
-      tpm_version.errataRev;
-  version_info->manufacturer =
-      (tpm_version.tpmVendorID[0] << 24) | (tpm_version.tpmVendorID[1] << 16) |
-      (tpm_version.tpmVendorID[2] << 8) | (tpm_version.tpmVendorID[3] << 0);
-  // The TPM 1.2 spec doesn't expose the TPM model in a generic field, so put
-  // an easily discernible invalid value for now.
-  version_info->tpm_model = ~0;
-  version_info->firmware_version =
-      (tpm_version.version.revMajor << 8) | tpm_version.version.revMinor;
-  version_info->vendor_specific.assign(
-      reinterpret_cast<char*>(tpm_version.vendorSpecific),
-      tpm_version.vendorSpecificSize);
-  free(tpm_version.vendorSpecific);
-
+  version_info_ = *version_info;
   return true;
 }
 
@@ -3190,10 +3142,18 @@ bool TpmImpl::SetDelegateData(const brillo::Blob& delegate_blob,
 }
 
 base::Optional<bool> TpmImpl::IsDelegateBoundToPcr() {
+  if (!SetDelegateDataFromTpmManager()) {
+    LOG(WARNING) << __func__
+                 << ": failed to call |SetDelegateDataFromTpmManager|.";
+  }
   return is_delegate_bound_to_pcr_;
 }
 
 bool TpmImpl::DelegateCanResetDACounter() {
+  if (!SetDelegateDataFromTpmManager()) {
+    LOG(WARNING) << __func__
+                 << ": failed to call |SetDelegateDataFromTpmManager|.";
+  }
   return has_reset_lock_permissions_;
 }
 
@@ -3215,13 +3175,30 @@ void TpmImpl::HandleOwnershipTakenEvent() {
   SetIsOwned(true);
 }
 
-bool TpmImpl::GetDelegate(brillo::Blob*, brillo::Blob*, bool*) {
-  DCHECK(false) << __func__ << ": Not implemented.";
-  return false;
+bool TpmImpl::GetDelegate(brillo::Blob* blob,
+                          brillo::Blob* secret,
+                          bool* has_reset_lock_permissions) {
+  blob->clear();
+  secret->clear();
+  if (last_tpm_manager_data_.owner_delegate().blob().empty() ||
+      last_tpm_manager_data_.owner_delegate().secret().empty()) {
+    if (!CacheTpmManagerStatus()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to call |UpdateLocalDataFromTpmManager|.";
+      return false;
+    }
+  }
+  const auto& owner_delegate = last_tpm_manager_data_.owner_delegate();
+  *blob = brillo::BlobFromString(owner_delegate.blob());
+  *secret = brillo::BlobFromString(owner_delegate.secret());
+  *has_reset_lock_permissions = owner_delegate.has_reset_lock_permissions();
+  return !blob->empty() && !secret->empty();
 }
 
+// TODO(chingkang): DoesUseTpmManager() returns true everywhere now, maybe we
+//                  should remove it.
 bool TpmImpl::DoesUseTpmManager() {
-  return false;
+  return true;
 }
 
 bool TpmImpl::IsCurrentPCR0ValueValid() {
@@ -3261,6 +3238,61 @@ bool TpmImpl::InitializeTpmManagerUtility() {
     }
   }
   return tpm_manager_utility_ && tpm_manager_utility_->Initialize();
+}
+
+bool TpmImpl::CacheTpmManagerStatus() {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_->GetTpmStatus(&is_enabled_, &is_owned_,
+                                            &last_tpm_manager_data_);
+}
+
+bool TpmImpl::UpdateLocalDataFromTpmManager() {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+
+  bool is_successful = false;
+  bool has_received = false;
+
+  // Repeats data copy into |last_tpm_manager_data_|; reasonable trade-off due
+  // to low ROI to avoid that.
+  bool is_connected = tpm_manager_utility_->GetOwnershipTakenSignalStatus(
+      &is_successful, &has_received, &last_tpm_manager_data_);
+
+  // When we need explicitly query tpm status either because the signal is not
+  // ready for any reason, or because the signal is not received yet so we need
+  // to run it once in case the signal is sent by tpm_manager before already.
+  if (!is_connected || !is_successful ||
+      (!has_received && shall_cache_tpm_manager_status_)) {
+    // Retains |shall_cache_tpm_manager_status_| to be |true| if the signal
+    // cannot be relied on (yet). Actually |!is_successful| suffices to update
+    // |shall_cache_tpm_manager_status_|; by design, uses the redundancy just to
+    // avoid confusion.
+    shall_cache_tpm_manager_status_ &= (!is_connected || !is_successful);
+    return CacheTpmManagerStatus();
+  } else if (has_received) {
+    is_enabled_ = true;
+    is_owned_ = true;
+  }
+  return true;
+}
+
+bool TpmImpl::SetDelegateDataFromTpmManager() {
+  if (has_set_delegate_data_) {
+    return true;
+  }
+  brillo::Blob blob, unused_secret;
+  bool has_reset_lock_permissions = false;
+  if (GetDelegate(&blob, &unused_secret, &has_reset_lock_permissions)) {
+    // Don't log the error at this level but by the called function and the
+    // functions that call it.
+    has_set_delegate_data_ |= SetDelegateData(blob, has_reset_lock_permissions);
+  }
+  return has_set_delegate_data_;
 }
 
 }  // namespace cryptohome
