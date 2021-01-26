@@ -7,6 +7,7 @@
 #ifndef CAMERA_HAL_ADAPTER_ZSL_HELPER_H_
 #define CAMERA_HAL_ADAPTER_ZSL_HELPER_H_
 
+#include <atomic>
 #include <deque>
 #include <map>
 #include <memory>
@@ -25,6 +26,13 @@
 #include "cros-camera/camera_buffer_manager.h"
 
 namespace cros {
+
+namespace tests {
+
+class ZslBufferManagerTest;
+class ZslHelperTest;
+
+}  // namespace tests
 
 const int GRALLOC_USAGE_STILL_CAPTURE = GRALLOC_USAGE_PRIVATE_1;
 const int GRALLOC_USAGE_ZSL_ENABLED = GRALLOC_USAGE_PRIVATE_2;
@@ -59,25 +67,32 @@ struct ZslBuffer {
 class ZslBufferManager {
  public:
   ZslBufferManager();
-  ~ZslBufferManager();
+  virtual ~ZslBufferManager();
 
   // Initializes a ZSL buffer manager with a pool size of |pool_size| and
   // output stream set to |output_stream|.
-  bool Initialize(size_t pool_size, camera3_stream_t* output_stream);
+  virtual bool Initialize(size_t pool_size,
+                          const camera3_stream_t* output_stream);
 
   // Releases all previously-allocated buffers.
   void Reset();
 
   // Gets a buffer from the buffer pool.
-  buffer_handle_t* GetBuffer();
+  virtual buffer_handle_t* GetBuffer();
 
   // Releases a buffer to the buffer pool.
-  bool ReleaseBuffer(buffer_handle_t buffer_to_release);
+  virtual bool ReleaseBuffer(buffer_handle_t buffer_to_release);
 
  private:
+  friend class tests::ZslBufferManagerTest;
+
+  // Set the CameraBufferManager used for testing. Should be called before
+  // ZslBufferManager::Initialize().
+  void SetCameraBufferManagerForTesting(CameraBufferManager* buffer_manager);
+
   // Whether manager is initialized. True if all buffers in buffer pool have
   // been successfully allocated.
-  bool initialized_;
+  std::atomic<bool> initialized_;
 
   // The buffer manager that allocates and frees the buffer handles.
   CameraBufferManager* buffer_manager_;
@@ -98,7 +113,7 @@ class ZslBufferManager {
   base::Lock buffer_pool_lock_;
 
   // The ZSL output stream.
-  camera3_stream_t* output_stream_;
+  const camera3_stream_t* output_stream_;
 };
 
 class ZslHelper {
@@ -158,6 +173,8 @@ class ZslHelper {
       const camera3_stream_buffer_t** transformed_input);
 
  private:
+  friend class tests::ZslHelperTest;
+
   // Whether we can enable ZSL with the list of streams being configured.
   bool CanEnableZsl(std::vector<camera3_stream_t*>* streams);
 
@@ -215,6 +232,14 @@ class ZslHelper {
   // Whether this buffer is 3A-converged (AE, AF, AWB).
   bool Is3AConverged(const android::CameraMetadata& android_metadata);
 
+  // Sets the ZslBufferManager used for testing. Should be called before
+  // ZslHelper::Initialize().
+  void SetZslBufferManagerForTesting(
+      std::unique_ptr<ZslBufferManager> zsl_buffer_manager);
+
+  // Overrides the current timestamp for testing.
+  void OverrideCurrentTimestampForTesting(int64_t timestamp);
+
   // The actual ZSL stream.
   std::unique_ptr<camera3_stream_t> bi_stream_;
   int64_t bi_stream_min_frame_duration_;
@@ -226,7 +251,7 @@ class ZslHelper {
   int64_t zsl_lookback_ns_;
 
   // Manages the buffer used for ZSL, essentially a buffer pool.
-  ZslBufferManager zsl_buffer_manager_;
+  std::unique_ptr<ZslBufferManager> zsl_buffer_manager_;
 
   // ZSL ring buffer stores the buffer handles, their status (e.g., processed,
   // chosen) and their corresponding metadata.
@@ -246,6 +271,9 @@ class ZslHelper {
 
   // ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE from static metadata.
   camera_metadata_enum_android_sensor_info_timestamp_source_t timestamp_source_;
+
+  // Overridden timestamp for testing.
+  int64_t override_current_timestamp_for_testing_;
 };
 
 }  // namespace cros

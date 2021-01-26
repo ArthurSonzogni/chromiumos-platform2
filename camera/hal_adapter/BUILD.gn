@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":cros_camera_service" ]
+  if (use.test) {
+    deps += [ ":zsl_helper_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -54,4 +57,30 @@ executable("cros_camera_service") {
     "dl",
     "rt",
   ]
+}
+
+if (use.test) {
+  executable("zsl_helper_test") {
+    sources = [
+      "//camera/common/camera_buffer_manager_impl.cc",
+      "//camera/common/camera_buffer_manager_internal.cc",
+      "//camera/common/utils/camera_config_impl.cc",
+      "zsl_helper.cc",
+      "zsl_helper_test.cc",
+    ]
+    configs += [ "//common-mk:test" ]
+    include_dirs = [
+      "//camera",
+      "//camera/include",
+    ]
+    deps = [ "//camera/common:libcros_camera_mojom" ]
+    pkg_deps = [
+      "gbm",
+      "libchrome",
+      "libcros_camera_android_deps",
+      "libdrm",
+      "libmojo",
+      "libsync",
+    ]
+  }
 }

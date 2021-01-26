@@ -27,6 +27,8 @@
 
 namespace {
 
+static constexpr int64_t kOverrideCurrentTimestampNotSet = -1;
+
 bool IsInputStream(camera3_stream_t* stream) {
   return stream->stream_type == CAMERA3_STREAM_INPUT ||
          stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL;
@@ -62,31 +64,20 @@ ZslBuffer::ZslBuffer(uint32_t frame_number,
       selected(false) {}
 
 ZslBufferManager::ZslBufferManager()
-    : initialized_(false),
-      buffer_manager_(CameraBufferManager::GetInstance()) {}
+    : initialized_(false), buffer_manager_(nullptr) {}
 
 ZslBufferManager::~ZslBufferManager() {
-  if (free_buffers_.size() != buffer_pool_.size()) {
-    LOGF(WARNING) << "Not all ZSL buffers have been released";
-  }
-  for (auto& buffer : buffer_pool_) {
-    buffer_manager_->Free(buffer);
-  }
-}
-
-void ZslBufferManager::Reset() {
-  base::AutoLock l(buffer_pool_lock_);
-  for (auto& buffer : buffer_pool_) {
-    buffer_manager_->Free(buffer);
-  }
-  buffer_pool_.clear();
-  free_buffers_ = {};
-  buffer_to_buffer_pointer_map_.clear();
+  Reset();
 }
 
 bool ZslBufferManager::Initialize(size_t pool_size,
-                                  camera3_stream_t* output_stream) {
+                                  const camera3_stream_t* output_stream) {
   DCHECK(buffer_pool_.empty());
+
+  // |buffer_manager_| could be set by SetCameraBufferManagerForTesting().
+  if (!buffer_manager_) {
+    buffer_manager_ = CameraBufferManager::GetInstance();
+  }
 
   bool success = true;
   output_stream_ = output_stream;
@@ -151,6 +142,22 @@ bool ZslBufferManager::ReleaseBuffer(buffer_handle_t buffer_to_release) {
   return true;
 }
 
+void ZslBufferManager::Reset() {
+  initialized_ = false;
+  base::AutoLock l(buffer_pool_lock_);
+  for (auto& buffer : buffer_pool_) {
+    buffer_manager_->Free(buffer);
+  }
+  buffer_pool_.clear();
+  free_buffers_ = {};
+  buffer_to_buffer_pointer_map_.clear();
+}
+
+void ZslBufferManager::SetCameraBufferManagerForTesting(
+    CameraBufferManager* buffer_manager) {
+  buffer_manager_ = buffer_manager;
+}
+
 // static
 bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
   // Determine if it's possible for us to enable our in-house ZSL solution. Note
@@ -191,7 +198,9 @@ bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
 }
 
 ZslHelper::ZslHelper(const camera_metadata_t* static_info)
-    : fence_sync_thread_("FenceSyncThread") {
+    : zsl_buffer_manager_(new ZslBufferManager),
+      fence_sync_thread_("FenceSyncThread"),
+      override_current_timestamp_for_testing_(kOverrideCurrentTimestampNotSet) {
   VLOGF_ENTER();
   if (!IsCapabilitySupported(
           static_info,
@@ -314,7 +323,7 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
 
   // First, clear all the buffers and states.
   ring_buffer_.clear();
-  zsl_buffer_manager_.Reset();
+  zsl_buffer_manager_->Reset();
 
   // Determine at most how many buffers would be selected for private
   // reprocessing simultaneously.
@@ -344,7 +353,7 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
   // ceil(|zsl_lookback_ns_| / |bi_stream_min_frame_duration_| frames, and there
   // will be at most |bi_stream_max_buffers_| being processed. We also need to
   // have |still_max_buffers| additional buffers in the buffer pool.
-  if (!zsl_buffer_manager_.Initialize(
+  if (!zsl_buffer_manager_->Initialize(
           static_cast<size_t>(std::ceil(static_cast<double>(zsl_lookback_ns_) /
                                         bi_stream_min_frame_duration_)) +
               bi_stream_max_buffers_ + still_max_buffers,
@@ -437,7 +446,7 @@ void ZslHelper::TryReleaseBuffer() {
     // initial buffers.
     return;
   }
-  if (!zsl_buffer_manager_.ReleaseBuffer(*oldest_buffer.buffer.buffer)) {
+  if (!zsl_buffer_manager_->ReleaseBuffer(*oldest_buffer.buffer.buffer)) {
     LOGF(ERROR) << "Unable to release the oldest buffer";
     return;
   }
@@ -471,7 +480,7 @@ void ZslHelper::AttachRequest(
 
   base::AutoLock l(ring_buffer_lock_);
   TryReleaseBuffer();
-  auto* buffer = zsl_buffer_manager_.GetBuffer();
+  auto* buffer = zsl_buffer_manager_->GetBuffer();
   if (buffer == nullptr) {
     LOGF(ERROR) << "Failed to acquire a ZSL buffer";
     return;
@@ -612,7 +621,7 @@ void ZslHelper::ReleaseStreamBufferOnFenceSyncThread(
       sync_wait(buffer.release_fence, ZslHelper::kZslSyncWaitTimeoutMs)) {
     LOGF(WARNING) << "Failed to wait for release fence on ZSL input buffer";
   } else {
-    if (!zsl_buffer_manager_.ReleaseBuffer(*buffer.buffer)) {
+    if (!zsl_buffer_manager_->ReleaseBuffer(*buffer.buffer)) {
       LOGF(ERROR) << "Failed to release this stream buffer";
     }
     // The above error should only happen when the mapping in buffer manager
@@ -761,6 +770,10 @@ ZslHelper::ZslBufferIterator ZslHelper::SelectZslBuffer(
 }
 
 int64_t ZslHelper::GetCurrentTimestamp() {
+  if (override_current_timestamp_for_testing_ !=
+      kOverrideCurrentTimestampNotSet) {
+    return override_current_timestamp_for_testing_;
+  }
   struct timespec t = {};
   clock_gettime(
       timestamp_source_ == ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN
@@ -823,6 +836,15 @@ bool ZslHelper::Is3AConverged(const android::CameraMetadata& android_metadata) {
   }();
   // We won't reach here if neither AE nor AF is converged.
   return awb_converged;
+}
+
+void ZslHelper::SetZslBufferManagerForTesting(
+    std::unique_ptr<ZslBufferManager> zsl_buffer_manager) {
+  zsl_buffer_manager_ = std::move(zsl_buffer_manager);
+}
+
+void ZslHelper::OverrideCurrentTimestampForTesting(int64_t timestamp) {
+  override_current_timestamp_for_testing_ = timestamp;
 }
 
 }  // namespace cros
