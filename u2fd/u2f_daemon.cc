@@ -337,8 +337,16 @@ void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
     SendWinkSignal();
   };
 
+  std::unique_ptr<u2f::AllowlistingUtil> allowlisting_util;
+  // If g2f is enabled by policy, we always include allowlisting data.
+  if (g2f_allowlist_data_ || (ReadU2fPolicy() == U2fMode::kU2fExtended)) {
+    allowlisting_util = std::make_unique<u2f::AllowlistingUtil>(
+        [this](int cert_size) { return GetCertifiedG2fCert(cert_size); });
+  }
+
   webauthn_handler_.Initialize(bus_.get(), &tpm_proxy_, user_state_.get(),
-                               u2f_mode, request_presence);
+                               u2f_mode, request_presence,
+                               std::move(allowlisting_util));
 }
 
 void U2fDaemon::SendWinkSignal() {

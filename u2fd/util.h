@@ -15,6 +15,9 @@
 #include <openssl/sha.h>
 
 namespace u2f {
+
+class TpmVendorCommandProxy;
+
 namespace util {
 
 //
@@ -80,6 +83,11 @@ std::vector<uint8_t> Sha256(const Blob& data) {
   return hash;
 }
 
+// Attest to |data_to_sign| using software attestation.
+bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,
+                      std::vector<uint8_t>* attestation_cert,
+                      std::vector<uint8_t>* signature);
+
 // Creates a new EC key to use for U2F attestation.
 crypto::ScopedEC_KEY CreateAttestationKey();
 
@@ -96,6 +104,17 @@ base::Optional<std::vector<uint8_t>> CreateAttestationCertificate(
 // Parses the specified certificate and re-serializes it to the same vector,
 // removing any padding that was present.
 bool RemoveCertificatePadding(std::vector<uint8_t>* cert);
+
+// Retrieves the G2F certificate from cr50. Returns nullopt on failure.
+base::Optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy);
+
+// Builds data to be signed as part of a U2F_REGISTER response, as defined by
+// the "U2F Raw Message Formats" specification.
+std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
+    const std::vector<uint8_t>& app_id,
+    const std::vector<uint8_t>& challenge,
+    const std::vector<uint8_t>& pub_key,
+    const std::vector<uint8_t>& key_handle);
 
 }  // namespace util
 }  // namespace u2f

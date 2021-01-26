@@ -17,6 +17,7 @@
 #include <cryptohome-client/cryptohome/dbus-proxies.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
+#include "u2fd/allowlisting_util.h"
 #include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2f_mode.h"
 #include "u2fd/user_state.h"
@@ -80,11 +81,13 @@ class WebAuthnHandler {
   // |u2f_mode| - whether u2f or g2f is enabled.
   // |request_presence| - callback for performing other platform tasks when
   // expecting the user to press the power button.
+  // |allowlisting_util| - utility to append allowlisting data to g2f certs.
   void Initialize(dbus::Bus* bus,
                   TpmVendorCommandProxy* tpm_proxy,
                   UserState* user_state,
                   U2fMode u2f_mode,
-                  std::function<void()> request_presence);
+                  std::function<void()> request_presence,
+                  std::unique_ptr<AllowlistingUtil> allowlisting_util);
 
   // Called when session state changed. Loads/clears state for primary user.
   void OnSessionStarted(const std::string& account_id);
@@ -219,6 +222,13 @@ class WebAuthnHandler {
       const std::vector<uint8_t>& credential_id,
       const std::vector<uint8_t>& credential_secret);
 
+  // Run a U2F_ATTEST command to sign data using the cr50 individual attestation
+  // certificate.
+  MakeCredentialResponse::MakeCredentialStatus DoG2fAttest(
+      const std::vector<uint8_t>& data,
+      uint8_t format,
+      std::vector<uint8_t>* signature_out);
+
   // Prompts the user for presence through |request_presence_| and calls |fn|
   // repeatedly until success or timeout.
   void CallAndWaitForPresence(std::function<uint32_t()> fn, uint32_t* status);
@@ -234,6 +244,13 @@ class WebAuthnHandler {
 
   // Appends a none attestation to |response|. Only used in MakeCredential.
   void AppendNoneAttestation(MakeCredentialResponse* response);
+
+  // Creates and returns an U2F attestation statement for |data_to_sign|, or
+  // nullopt if attestation fails.
+  base::Optional<std::vector<uint8_t>> MakeFidoU2fAttestationStatement(
+      const std::vector<uint8_t>& data_to_sign,
+      const MakeCredentialRequest::AttestationConveyancePreference
+          attestation_conveyance_preference);
 
   // Runs U2F_SIGN command with "check only" flag on each excluded credential
   // id. Returns true if one of them belongs to this device.
@@ -263,6 +280,9 @@ class WebAuthnHandler {
   // g2f is enabled for the device (it's a per-device policy). The mode also
   // determines the attestation to add to MakeCredential.
   U2fMode u2f_mode_;
+
+  // Util to append allowlisting data to g2f certificates.
+  std::unique_ptr<AllowlistingUtil> allowlisting_util_;
 
   // The MakeCredential session that's waiting on UI. There can only be one
   // such session. UP sessions should not use this since there can be multiple.

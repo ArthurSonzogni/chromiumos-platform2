@@ -37,6 +37,10 @@ constexpr uint32_t kCr50StatusNotAllowed = 0x507;
 constexpr char kAttestationFormatNone[] = "none";
 // \xa0 is empty map in CBOR
 constexpr char kAttestationStatementNone = '\xa0';
+constexpr char kAttestationFormatU2f[] = "fido-u2f";
+// Keys for attestation statement CBOR map.
+constexpr char kSignatureKey[] = "sig";
+constexpr char kX509CertKey[] = "x5c";
 
 // AAGUID should be empty for none-attestation.
 const std::vector<uint8_t> kAaguid(16);
@@ -114,6 +118,20 @@ std::vector<uint8_t> EncodeCredentialPublicKeyInCBOR(
   return *cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
 }
 
+std::vector<uint8_t> EncodeU2fAttestationStatementInCBOR(
+    const std::vector<uint8_t>& signature, const std::vector<uint8_t>& cert) {
+  cbor::Value::MapValue attestation_statement_map;
+  attestation_statement_map[cbor::Value(kSignatureKey)] =
+      cbor::Value(signature);
+  // The "x5c" field is an array of just one cert.
+  std::vector<cbor::Value> certificate_array;
+  certificate_array.push_back(cbor::Value(cert));
+  attestation_statement_map[cbor::Value(kX509CertKey)] =
+      cbor::Value(std::move(certificate_array));
+  return *cbor::Writer::Write(
+      cbor::Value(std::move(attestation_statement_map)));
+}
+
 }  // namespace
 
 WebAuthnHandler::WebAuthnHandler()
@@ -121,11 +139,13 @@ WebAuthnHandler::WebAuthnHandler()
       user_state_(nullptr),
       webauthn_storage_(std::make_unique<WebAuthnStorage>()) {}
 
-void WebAuthnHandler::Initialize(dbus::Bus* bus,
-                                 TpmVendorCommandProxy* tpm_proxy,
-                                 UserState* user_state,
-                                 U2fMode u2f_mode,
-                                 std::function<void()> request_presence) {
+void WebAuthnHandler::Initialize(
+    dbus::Bus* bus,
+    TpmVendorCommandProxy* tpm_proxy,
+    UserState* user_state,
+    U2fMode u2f_mode,
+    std::function<void()> request_presence,
+    std::unique_ptr<AllowlistingUtil> allowlisting_util) {
   if (Initialized()) {
     LOG(INFO) << "WebAuthn handler already initialized, doing nothing.";
     return;
@@ -139,6 +159,7 @@ void WebAuthnHandler::Initialize(dbus::Bus* bus,
       base::Bind(&WebAuthnHandler::OnSessionStopped, base::Unretained(this)));
   u2f_mode_ = u2f_mode;
   request_presence_ = request_presence;
+  allowlisting_util_ = std::move(allowlisting_util);
   bus_ = bus;
   auth_dialog_dbus_proxy_ = bus_->GetObjectProxy(
       chromeos::kUserAuthenticationServiceName,
@@ -445,18 +466,34 @@ void WebAuthnHandler::DoMakeCredential(
   std::vector<uint8_t> credential_id;
   std::vector<uint8_t> credential_public_key;
 
-  // TODO(yichengli): Make this a parameter of MakeCredential once we support
-  // UP-only (non-consumer) credentials in WebAuthnHandler.
-  // UV-compatible means the credential works with power button, fingerprint or
-  // PIN.
-  bool uv_compatible = true;
+  // If we are in u2f or g2f mode, and the request says it wants presence only,
+  // make a non-versioned (i.e. non-uv-compatible) credential.
+  bool uv_compatible = !(AllowPresenceMode() &&
+                         session.request.verification_type() ==
+                             VerificationType::VERIFICATION_USER_PRESENCE);
 
   brillo::Blob credential_secret(kCredentialSecretSize);
-  if (RAND_bytes(&credential_secret.front(), credential_secret.size()) != 1) {
-    LOG(ERROR) << "Failed to generate secret for new credential.";
-    response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
-    session.response->Return(response);
-    return;
+  if (uv_compatible) {
+    if (RAND_bytes(credential_secret.data(), credential_secret.size()) != 1) {
+      LOG(ERROR) << "Failed to generate secret for new credential.";
+      response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+      session.response->Return(response);
+      return;
+    }
+  } else {
+    // We are creating a credential that can only be signed with power button
+    // press, and can be signed by u2f/g2f, so we must use the legacy secret.
+    base::Optional<brillo::SecureBlob> legacy_secret =
+        user_state_->GetUserSecret();
+    if (!legacy_secret) {
+      LOG(ERROR) << "Cannot find user secret when trying to create u2f/g2f "
+                    "credential.";
+      response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+      session.response->Return(response);
+      return;
+    }
+    credential_secret =
+        std::vector<uint8_t>(legacy_secret->begin(), legacy_secret->end());
   }
 
   MakeCredentialResponse::MakeCredentialStatus generate_status =
@@ -489,27 +526,52 @@ void WebAuthnHandler::DoMakeCredential(
     return;
   }
 
-  WebAuthnRecord record;
-  AppendToString(credential_id, &record.credential_id);
-  record.secret = std::move(credential_secret);
-  record.rp_id = session.request.rp_id();
-  record.user_id = session.request.user_id();
-  record.user_display_name = session.request.user_display_name();
-  record.timestamp = base::Time::Now().ToDoubleT();
-  if (!webauthn_storage_->WriteRecord(std::move(record))) {
-    response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
-    session.response->Return(response);
-    return;
+  const std::vector<uint8_t> authenticator_data = MakeAuthenticatorData(
+      rp_id_hash, credential_id,
+      EncodeCredentialPublicKeyInCBOR(credential_public_key),
+      /* user_verified = */ session.request.verification_type() ==
+          VerificationType::VERIFICATION_USER_VERIFICATION,
+      /* include_attested_credential_data = */ true);
+  AppendToString(authenticator_data, response.mutable_authenticator_data());
+
+  // If a credential is not UV-compatible, it is a legacy U2F/G2F credential
+  // and should come with U2F/G2F attestation for backward compatibility.
+  if (uv_compatible) {
+    AppendNoneAttestation(&response);
+  } else {
+    const std::vector<uint8_t> data_to_sign =
+        util::BuildU2fRegisterResponseSignedData(
+            rp_id_hash, util::ToVector(session.request.client_data_hash()),
+            credential_public_key, credential_id);
+    base::Optional<std::vector<uint8_t>> attestation_statement =
+        MakeFidoU2fAttestationStatement(
+            data_to_sign, session.request.attestation_conveyance_preference());
+    if (!attestation_statement) {
+      response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+      session.response->Return(response);
+      return;
+    }
+    response.set_attestation_format(kAttestationFormatU2f);
+    AppendToString(*attestation_statement,
+                   response.mutable_attestation_statement());
   }
 
-  AppendToString(MakeAuthenticatorData(
-                     rp_id_hash, credential_id,
-                     EncodeCredentialPublicKeyInCBOR(credential_public_key),
-                     session.request.verification_type() ==
-                         VerificationType::VERIFICATION_USER_VERIFICATION,
-                     true),
-                 response.mutable_authenticator_data());
-  AppendNoneAttestation(&response);
+  // u2f/g2f credentials should not be written to record.
+  if (uv_compatible) {
+    // All steps succeeded, so write to record.
+    WebAuthnRecord record;
+    AppendToString(credential_id, &record.credential_id);
+    record.secret = std::move(credential_secret);
+    record.rp_id = session.request.rp_id();
+    record.user_id = session.request.user_id();
+    record.user_display_name = session.request.user_display_name();
+    record.timestamp = base::Time::Now().ToDoubleT();
+    if (!webauthn_storage_->WriteRecord(std::move(record))) {
+      response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+      session.response->Return(response);
+      return;
+    }
+  }
 
   response.set_status(MakeCredentialResponse::SUCCESS);
   session.response->Return(response);
@@ -560,6 +622,47 @@ void WebAuthnHandler::AppendNoneAttestation(MakeCredentialResponse* response) {
   response->set_attestation_format(kAttestationFormatNone);
   response->mutable_attestation_statement()->push_back(
       kAttestationStatementNone);
+}
+
+base::Optional<std::vector<uint8_t>>
+WebAuthnHandler::MakeFidoU2fAttestationStatement(
+    const std::vector<uint8_t>& data_to_sign,
+    const MakeCredentialRequest::AttestationConveyancePreference
+        attestation_conveyance_preference) {
+  std::vector<uint8_t> attestation_cert;
+  std::vector<uint8_t> signature;
+  if (attestation_conveyance_preference == MakeCredentialRequest::G2F &&
+      u2f_mode_ == U2fMode::kU2fExtended) {
+    base::Optional<std::vector<uint8_t>> g2f_cert =
+        util::GetG2fCert(tpm_proxy_);
+    if (g2f_cert.has_value()) {
+      attestation_cert = *g2f_cert;
+    } else {
+      LOG(ERROR) << "Failed to get G2f cert for MakeCredential";
+      return base::nullopt;
+    }
+
+    MakeCredentialResponse::MakeCredentialStatus attest_status =
+        DoG2fAttest(data_to_sign, U2F_ATTEST_FORMAT_REG_RESP, &signature);
+
+    if (attest_status != MakeCredentialResponse::SUCCESS) {
+      LOG(ERROR) << "Failed to do G2f attestation for MakeCredential";
+      return base::nullopt;
+    }
+
+    if (allowlisting_util_ != nullptr &&
+        !allowlisting_util_->AppendDataToCert(&attestation_cert)) {
+      LOG(ERROR) << "Failed to get allowlisting data for G2F Enroll Request";
+      return base::nullopt;
+    }
+  } else {
+    if (!util::DoSoftwareAttest(data_to_sign, &attestation_cert, &signature)) {
+      LOG(ERROR) << "Failed to do software attestation for MakeCredential";
+      return base::nullopt;
+    }
+  }
+
+  return EncodeU2fAttestationStatementInCBOR(signature, attestation_cert);
 }
 
 void WebAuthnHandler::CallAndWaitForPresence(std::function<uint32_t()> fn,
@@ -804,9 +907,11 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   const std::vector<uint8_t> rp_id_hash = util::Sha256(session.request.rp_id());
   std::vector<uint8_t> authenticator_data = MakeAuthenticatorData(
       rp_id_hash, std::vector<uint8_t>(), std::vector<uint8_t>(),
-      session.request.verification_type() ==
-          VerificationType::VERIFICATION_USER_VERIFICATION,
-      false);
+      // If presence requirement is "power button" then the user was not
+      // verified. Otherwise the user was verified through UI.
+      /* user_verified = */ presence_requirement !=
+          PresenceRequirement::kPowerButton,
+      /* include_attested_credential_data = */ false);
   std::vector<uint8_t> data_to_sign(authenticator_data);
   util::AppendToVector(session.request.client_data_hash(), &data_to_sign);
   std::vector<uint8_t> hash_to_sign = util::Sha256(data_to_sign);
@@ -958,6 +1063,52 @@ WebAuthnHandler::SendU2fSignWaitForPresence(Request* sign_req,
   }
 
   return GetAssertionResponse::VERIFICATION_FAILED;
+}
+
+MakeCredentialResponse::MakeCredentialStatus WebAuthnHandler::DoG2fAttest(
+    const std::vector<uint8_t>& data,
+    uint8_t format,
+    std::vector<uint8_t>* signature_out) {
+  base::AutoLock(tpm_proxy_->GetLock());
+  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  if (!user_secret.has_value()) {
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+
+  struct u2f_attest_req attest_req = {
+      .format = format, .dataLen = static_cast<uint8_t>(data.size())};
+  if (!util::VectorToObject(*user_secret, attest_req.userSecret,
+                            sizeof(attest_req.userSecret))) {
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+  if (!util::VectorToObject(data, attest_req.data, sizeof(attest_req.data))) {
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+
+  struct u2f_attest_resp attest_resp = {};
+  uint32_t attest_status = tpm_proxy_->SendU2fAttest(attest_req, &attest_resp);
+
+  brillo::SecureClear(&attest_req.userSecret, sizeof(attest_req.userSecret));
+
+  if (attest_status != 0) {
+    // We are attesting to a key handle that we just created, so if
+    // attestation fails we have hit some internal error.
+    LOG(ERROR) << "U2F_ATTEST failed, status: " << std::hex
+               << static_cast<uint32_t>(attest_status);
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+
+  base::Optional<std::vector<uint8_t>> signature =
+      util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
+
+  if (!signature.has_value()) {
+    LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+
+  *signature_out = *signature;
+
+  return MakeCredentialResponse::SUCCESS;
 }
 
 MatchedCredentials WebAuthnHandler::FindMatchedCredentials(

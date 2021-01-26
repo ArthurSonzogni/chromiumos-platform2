@@ -78,9 +78,6 @@ class U2fMessageHandler {
                             uint8_t format,
                             std::vector<uint8_t>* sig_out);
 
-  // Retrieves the G2F certificate from cr50. Returns nullopt on failure.
-  base::Optional<std::vector<uint8_t>> GetG2fCert();
-
   // Builds an empty U2F response with the specified status code.
   U2fResponseAdpu BuildEmptyResponse(uint16_t sw);
 

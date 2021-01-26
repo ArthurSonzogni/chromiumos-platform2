@@ -104,50 +104,6 @@ U2fResponseAdpu U2fMessageHandler::ProcessMsg(const std::string& req) {
   return BuildEmptyResponse(u2f_status ?: U2F_SW_WTF);
 }
 
-namespace {
-
-// Builds data to be signed as part of a U2F_REGISTER response, as defined by
-// the "U2F Raw Message Formats" specification.
-std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
-    const std::vector<uint8_t>& app_id,
-    const std::vector<uint8_t>& challenge,
-    const std::vector<uint8_t>& pub_key,
-    const std::vector<uint8_t>& key_handle) {
-  std::vector<uint8_t> signed_data;
-  signed_data.push_back('\0');  // reserved byte
-  util::AppendToVector(app_id, &signed_data);
-  util::AppendToVector(challenge, &signed_data);
-  util::AppendToVector(key_handle, &signed_data);
-  util::AppendToVector(pub_key, &signed_data);
-  return signed_data;
-}
-
-bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,
-                      std::vector<uint8_t>* attestation_cert,
-                      std::vector<uint8_t>* signature) {
-  crypto::ScopedEC_KEY attestation_key = util::CreateAttestationKey();
-  if (!attestation_key) {
-    return false;
-  }
-
-  base::Optional<std::vector<uint8_t>> cert_result =
-      util::CreateAttestationCertificate(attestation_key.get());
-  base::Optional<std::vector<uint8_t>> attest_result =
-      util::AttestToData(data_to_sign, attestation_key.get());
-
-  if (!cert_result.has_value() || !attest_result.has_value()) {
-    // These functions are never expected to fail.
-    LOG(ERROR) << "U2F software attestation failed.";
-    return false;
-  }
-
-  *attestation_cert = std::move(*cert_result);
-  *signature = std::move(*attest_result);
-  return true;
-}
-
-}  // namespace
-
 U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
     const U2fRegisterRequestAdpu& request) {
   std::vector<uint8_t> pub_key;
@@ -164,7 +120,7 @@ U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
     return BuildErrorResponse(generate_status);
   }
 
-  std::vector<uint8_t> data_to_sign = BuildU2fRegisterResponseSignedData(
+  std::vector<uint8_t> data_to_sign = util::BuildU2fRegisterResponseSignedData(
       request.GetAppId(), request.GetChallenge(), pub_key, key_handle);
 
   std::vector<uint8_t> attestation_cert;
@@ -172,7 +128,7 @@ U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
   std::vector<uint8_t> allowlisting_data;
 
   if (allow_g2f_attestation_ && request.UseG2fAttestation()) {
-    base::Optional<std::vector<uint8_t>> g2f_cert = GetG2fCert();
+    base::Optional<std::vector<uint8_t>> g2f_cert = util::GetG2fCert(proxy_);
 
     if (g2f_cert.has_value()) {
       attestation_cert = *g2f_cert;
@@ -192,7 +148,8 @@ U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
       LOG(ERROR) << "Failed to get allowlisting data for G2F Enroll Request";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
-  } else if (!DoSoftwareAttest(data_to_sign, &attestation_cert, &signature)) {
+  } else if (!util::DoSoftwareAttest(data_to_sign, &attestation_cert,
+                                     &signature)) {
     return BuildEmptyResponse(U2F_SW_WTF);
   }
 
@@ -480,29 +437,6 @@ U2fResponseAdpu U2fMessageHandler::BuildErrorResponse(Cr50CmdStatus status) {
   }
 
   return BuildEmptyResponse(sw);
-}
-
-base::Optional<std::vector<uint8_t>> U2fMessageHandler::GetG2fCert() {
-  std::string cert_str;
-  std::vector<uint8_t> cert;
-
-  Cr50CmdStatus get_cert_status =
-      static_cast<Cr50CmdStatus>(proxy_->GetG2fCertificate(&cert_str));
-
-  if (get_cert_status != Cr50CmdStatus::kSuccess) {
-    LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
-               << static_cast<uint32_t>(get_cert_status);
-    return base::nullopt;
-  }
-
-  util::AppendToVector(cert_str, &cert);
-
-  if (!util::RemoveCertificatePadding(&cert)) {
-    LOG(ERROR) << "Failed to remove padding from G2F certificate ";
-    return base::nullopt;
-  }
-
-  return cert;
 }
 
 }  // namespace u2f

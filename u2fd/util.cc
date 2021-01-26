@@ -16,6 +16,8 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
+#include "u2fd/tpm_vendor_cmd.h"
+
 namespace u2f {
 namespace util {
 
@@ -72,6 +74,30 @@ base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
   }
 
   return signature;
+}
+
+bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,
+                      std::vector<uint8_t>* attestation_cert,
+                      std::vector<uint8_t>* signature) {
+  crypto::ScopedEC_KEY attestation_key = util::CreateAttestationKey();
+  if (!attestation_key) {
+    return false;
+  }
+
+  base::Optional<std::vector<uint8_t>> cert_result =
+      util::CreateAttestationCertificate(attestation_key.get());
+  base::Optional<std::vector<uint8_t>> attest_result =
+      util::AttestToData(data_to_sign, attestation_key.get());
+
+  if (!cert_result.has_value() || !attest_result.has_value()) {
+    // These functions are never expected to fail.
+    LOG(ERROR) << "U2F software attestation failed.";
+    return false;
+  }
+
+  *attestation_cert = std::move(*cert_result);
+  *signature = std::move(*attest_result);
+  return true;
 }
 
 crypto::ScopedEC_KEY CreateAttestationKey() {
@@ -209,6 +235,42 @@ bool RemoveCertificatePadding(std::vector<uint8_t>* cert_in) {
 
   cert_in->resize(cert_size);
   return true;
+}
+
+base::Optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy) {
+  std::string cert_str;
+  std::vector<uint8_t> cert;
+
+  uint32_t get_cert_status = proxy->GetG2fCertificate(&cert_str);
+
+  if (get_cert_status != 0) {
+    LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
+               << get_cert_status;
+    return base::nullopt;
+  }
+
+  util::AppendToVector(cert_str, &cert);
+
+  if (!util::RemoveCertificatePadding(&cert)) {
+    LOG(ERROR) << "Failed to remove padding from G2F certificate ";
+    return base::nullopt;
+  }
+
+  return cert;
+}
+
+std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
+    const std::vector<uint8_t>& app_id,
+    const std::vector<uint8_t>& challenge,
+    const std::vector<uint8_t>& pub_key,
+    const std::vector<uint8_t>& key_handle) {
+  std::vector<uint8_t> signed_data;
+  signed_data.push_back('\0');  // reserved byte
+  util::AppendToVector(app_id, &signed_data);
+  util::AppendToVector(challenge, &signed_data);
+  util::AppendToVector(key_handle, &signed_data);
+  util::AppendToVector(pub_key, &signed_data);
+  return signed_data;
 }
 
 }  // namespace util

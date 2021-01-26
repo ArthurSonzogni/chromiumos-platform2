@@ -11,6 +11,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
+#include <chromeos/cbor/values.h>
+#include <chromeos/cbor/writer.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome-client-test/cryptohome/dbus-proxy-mocks.h>
 #include <dbus/bus.h>
@@ -19,6 +21,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "u2fd/mock_allowlisting_util.h"
 #include "u2fd/mock_tpm_vendor_cmd.h"
 #include "u2fd/mock_user_state.h"
 #include "u2fd/mock_webauthn_storage.h"
@@ -58,26 +61,6 @@ const std::vector<uint8_t> kRpIdHash = util::Sha256(std::string(kRpId));
 const std::vector<uint8_t> kKeyHandle(sizeof(struct u2f_key_handle), 0xab);
 // Dummy hash to sign.
 const std::vector<uint8_t> kHashToSign(U2F_P256_SIZE, 0xcd);
-
-const std::string ExpectedUserPresenceU2fGenerateRequestRegex() {
-  // See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(kRpIdHash.data(), kRpIdHash.size()) +  // AppId
-      std::string("[A-F0-9]{64}") +  // Credential Secret
-      std::string("0B") +            // U2F_UV_ENABLED_KH | U2F_AUTH_ENFORCE
-      std::string("(12){32}");       // Auth time secret hash
-  return request_regex;
-}
-
-const std::string ExpectedUserVerificationU2fGenerateRequestRegex() {
-  // See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(kRpIdHash.data(), kRpIdHash.size()) +  // AppId
-      std::string("[A-F0-9]{64}") +  // Credential Secret
-      std::string("08") +            // U2F_UV_ENABLED_KH
-      std::string("(12){32}");       // Auth time secret hash
-  return request_regex;
-}
 
 // Only used to test DoU2fSign, where the hash to sign can be determined.
 const std::string ExpectedDeterministicU2fSignRequestRegex() {
@@ -154,6 +137,12 @@ const std::string ExpectedUVU2fSignCheckOnlyRequestRegex() {
 }
 
 // Dummy cr50 U2F_GENERATE_RESP.
+const struct u2f_generate_resp kU2fGenerateResponse = {
+    .pubKey = {.pointFormat = 0xAB,
+               .x = {[0 ... 31] = 0xAB},
+               .y = {[0 ... 31] = 0xAB}},
+    .keyHandle = {.origin_seed = {[0 ... 31] = 0xFD},
+                  .hmac = {[0 ... 31] = 0xFD}}};
 const struct u2f_generate_versioned_resp kU2fGenerateVersionedResponse = {
     .pubKey = {.pointFormat = 0xAB,
                .x = {[0 ... 31] = 0xAB},
@@ -205,7 +194,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
  public:
   void SetUp() override {
     PrepareMockBus();
-    CreateHandler(U2fMode::kDisabled);
+    CreateHandler(U2fMode::kDisabled, nullptr);
     PrepareMockStorage();
     // We use per-credential secret instead of the old user secret.
     ExpectNoGetUserSecret();
@@ -240,11 +229,14 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
         .WillOnce(Return(mock_auth_dialog_proxy_.get()));
   }
 
-  void CreateHandler(U2fMode u2f_mode) {
+  void CreateHandler(U2fMode u2f_mode,
+                     std::unique_ptr<AllowlistingUtil> allowlisting_util) {
     handler_ = std::make_unique<WebAuthnHandler>();
     PrepareMockCryptohome();
-    handler_->Initialize(mock_bus_.get(), &mock_tpm_proxy_, &mock_user_state_,
-                         u2f_mode, [this]() { presence_requested_count_++; });
+    handler_->Initialize(
+        mock_bus_.get(), &mock_tpm_proxy_, &mock_user_state_, u2f_mode,
+        [this]() { presence_requested_count_++; },
+        std::move(allowlisting_util));
   }
 
   void PrepareMockCryptohome() {
@@ -260,6 +252,26 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
     mock_webauthn_storage_ = mock_storage.get();
     handler_->SetWebAuthnStorageForTesting(std::move(mock_storage));
     mock_webauthn_storage_->set_allow_access(true);
+  }
+
+  const std::string ExpectedUserPresenceU2fGenerateRequestRegex() {
+    // See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
+    static const std::string request_regex =
+        base::HexEncode(kRpIdHash.data(), kRpIdHash.size()) +  // AppId
+        std::string("[A-F0-9]{64}") +  // Credential Secret
+        std::string("0B") +            // U2F_UV_ENABLED_KH | U2F_AUTH_ENFORCE
+        std::string("(12){32}");       // Auth time secret hash
+    return request_regex;
+  }
+
+  const std::string ExpectedUserVerificationU2fGenerateRequestRegex() {
+    // See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
+    static const std::string request_regex =
+        base::HexEncode(kRpIdHash.data(), kRpIdHash.size()) +  // AppId
+        std::string("[A-F0-9]{64}") +  // Credential Secret
+        std::string("08") +            // U2F_UV_ENABLED_KH
+        std::string("(12){32}");       // Auth time secret hash
+    return request_regex;
   }
 
   void ExpectUVFlowSuccess() {
@@ -1075,37 +1087,49 @@ TEST_F(WebAuthnHandlerTestBase, InsertAuthTimeSecretHashToCredentialId) {
 }  // namespace
 
 // This test fixture tests the behavior when u2f is enabled on the device.
-class WebAuthnHandlerTestAllowUP : public WebAuthnHandlerTestBase {
+class WebAuthnHandlerTestU2fMode : public WebAuthnHandlerTestBase {
  public:
   void SetUp() override {
     PrepareMockBus();
-    CreateHandler(U2fMode::kU2f);
+    CreateHandler(U2fMode::kU2f, nullptr);
     PrepareMockStorage();
-    // We use per-credential secret instead of the old user secret.
-    ExpectNoGetUserSecret();
+  }
+
+ protected:
+  const std::string ExpectedUserPresenceU2fGenerateRequestRegex() {
+    // See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
+    static const std::string request_regex =
+        base::HexEncode(kRpIdHash.data(), kRpIdHash.size()) +  // AppId
+        std::string("(EE){32}") +  // Legacy user secret
+        std::string("03") +        // U2F_UV_ENABLED_KH | U2F_AUTH_ENFORCE
+        std::string("(00){32}");   // Auth time secret hash, unset
+    return request_regex;
   }
 };
 
 namespace {
 
-TEST_F(WebAuthnHandlerTestAllowUP, MakeCredentialPresenceSuccess) {
+TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   MakeCredentialRequest request;
   request.set_rp_id(kRpId);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
-  // We will still check if any exclude credential matches legacy credentials.
-  ExpectGetUserSecret();
+  // 1. LegacyCredential uses "user secret" instead of per credential secret.
+  // 2. We will still check if any exclude credential matches legacy
+  // credentials.
+  ExpectGetUserSecretForTimes(2);
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(
       mock_tpm_proxy_,
       SendU2fGenerate(
           StructMatchesRegex(ExpectedUserPresenceU2fGenerateRequestRegex()),
-          Matcher<u2f_generate_versioned_resp*>(_)))
+          Matcher<u2f_generate_resp*>(_)))
       .WillOnce(Return(kCr50StatusNotAllowed))
-      .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateVersionedResponse),
+      .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateResponse),
                       Return(kCr50StatusSuccess)));
-  // TODO(yichengli): Specify the parameter to WriteRecord.
-  EXPECT_CALL(*mock_webauthn_storage_, WriteRecord(_)).WillOnce(Return(true));
+  // Since this creates a legacy credential with legacy secret, we won't write
+  // to storage.
+  EXPECT_CALL(*mock_webauthn_storage_, WriteRecord(_)).Times(0);
 
   const std::string expected_authenticator_data_regex =
       base::HexEncode(kRpIdHash.data(), kRpIdHash.size()) +  // RP ID hash
@@ -1113,12 +1137,9 @@ TEST_F(WebAuthnHandlerTestAllowUP, MakeCredentialPresenceSuccess) {
           "41"          // Flag: user present, attested credential data included
           "(..){4}"     // Signature counter
           "(00){16}"    // AAGUID
-          "0091"        // Credential ID length
-                        // Credential ID, from kU2fGenerateVersionedResponse:
-          "(FD){65}"    // Versioned key handle header
-          "(FD){16}"    // Authorization salt
-          "(12){32}"    // Hash of authorization secret
-          "(FD){32}"    // Authorization hmac
+          "0040"        // Credential ID length
+                        // Credential ID, from kU2fGenerateResponse:
+          "(FD){64}"    // (non-versioned) key handle
                         // CBOR encoded credential public key:
           "A5"          // Start a CBOR map of 5 elements
           "01"          // unsigned(1), COSE key type field
@@ -1129,10 +1150,10 @@ TEST_F(WebAuthnHandlerTestAllowUP, MakeCredentialPresenceSuccess) {
           "01"          // unsigned(1), COSE EC key curve
           "21"          // negative(1) = -2, COSE EC key x coordinate field
           "5820"        // Start a CBOR array of 32 bytes
-          "(AB){32}"    // x coordinate, from kU2fGenerateVersionedResponse
+          "(AB){32}"    // x coordinate, from kU2fGenerateResponse
           "22"          // negative(2) = -3, COSE EC key y coordinate field
           "5820"        // Start a CBOR array of 32 bytes
-          "(AB){32}");  // y coordinate, from kU2fGenerateVersionedResponse
+          "(AB){32}");  // y coordinate, from kU2fGenerateResponse
 
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
@@ -1144,8 +1165,19 @@ TEST_F(WebAuthnHandlerTestAllowUP, MakeCredentialPresenceSuccess) {
         EXPECT_THAT(base::HexEncode(resp.authenticator_data().data(),
                                     resp.authenticator_data().size()),
                     MatchesRegex(expected_authenticator_data));
-        EXPECT_EQ(resp.attestation_format(), "none");
-        EXPECT_EQ(resp.attestation_statement(), "\xa0");
+        EXPECT_EQ(resp.attestation_format(), "fido-u2f");
+        const std::string expected_attestation_statement =
+            "A2"      // Start a CBOR map of 2 elements
+            "63"      // Start CBOR text of 3 chars
+            "736967"  // "sig"
+            ".+"      // Random signature
+            "63"      // Start CBOR text of 3 chars
+            "783563"  // "x5c"
+            "81"      // Start CBOR array of 1 element
+            ".+";     // Random x509
+        EXPECT_THAT(base::HexEncode(resp.attestation_statement().data(),
+                                    resp.attestation_statement().size()),
+                    MatchesRegex(expected_attestation_statement));
         *called_ptr = true;
       },
       &called, expected_authenticator_data_regex));
@@ -1155,7 +1187,7 @@ TEST_F(WebAuthnHandlerTestAllowUP, MakeCredentialPresenceSuccess) {
   ASSERT_TRUE(called);
 }
 
-TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialNoPresence) {
+TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialNoPresence) {
   GetAssertionRequest request;
   request.set_rp_id(kRpId);
   request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
@@ -1194,7 +1226,7 @@ TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialNoPresence) {
   ASSERT_TRUE(called);
 }
 
-TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialSuccess) {
+TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
   GetAssertionRequest request;
   request.set_rp_id(kRpId);
   request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
@@ -1249,7 +1281,7 @@ TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialSuccess) {
   ASSERT_TRUE(called);
 }
 
-TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialAppIdMatch) {
+TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
   GetAssertionRequest request;
   request.set_rp_id(kWrongRpId);
   // Legacy credentials registered via U2F interface use the app id.
@@ -1314,7 +1346,7 @@ TEST_F(WebAuthnHandlerTestAllowUP, GetAssertionSignLegacyCredentialAppIdMatch) {
   ASSERT_TRUE(called);
 }
 
-TEST_F(WebAuthnHandlerTestAllowUP,
+TEST_F(WebAuthnHandlerTestU2fMode,
        GetAssertionSignVersionedCredentialInUVMode) {
   // Needed for "InsertAuthTimeSecretHash" workaround.
   SetUpAuthTimeSecretHash();
@@ -1378,6 +1410,103 @@ TEST_F(WebAuthnHandlerTestAllowUP,
 
   handler_->GetAssertion(std::move(mock_method_response), request);
   presence_requested_expected_ = 0;
+  ASSERT_TRUE(called);
+}
+
+}  // namespace
+
+// This test fixture tests the behavior when g2f is enabled on the device.
+class WebAuthnHandlerTestG2fMode : public WebAuthnHandlerTestU2fMode {
+ public:
+  void SetUp() override {
+    PrepareMockBus();
+    mock_allowlisting_util_ = new StrictMock<MockAllowlistingUtil>();
+    CreateHandler(U2fMode::kU2fExtended,
+                  std::unique_ptr<AllowlistingUtil>(mock_allowlisting_util_));
+    PrepareMockStorage();
+  }
+
+ protected:
+  StrictMock<MockAllowlistingUtil>* mock_allowlisting_util_;  // Not Owned.
+};
+
+namespace {
+
+// Example of a cert that would be returned by cr50.
+constexpr char kDummyG2fCert[] =
+    "308201363081DDA0030201020210442D32429223D041240350303716EE6B300A06082A8648"
+    "CE3D040302300F310D300B06035504031304637235303022180F3230303030313031303030"
+    "3030305A180F32303939313233313233353935395A300F310D300B06035504031304637235"
+    "303059301306072A8648CE3D020106082A8648CE3D030107034200045165719A9975F6FD30"
+    "CC2516C22FE841F65F9D2EE7B8B72F76807AEBD8CA3376005C7FA86453E4B10DB7BFAD5D2B"
+    "D00DB4A7C4845AD06D686ACD0252387618ECA31730153013060B2B0601040182E51C020101"
+    "040403020308300A06082A8648CE3D0403020348003045022100F09976F373920FEF8205C4"
+    "B1FB1DA21EB9F3F176B7DF433A1ADE0F3F38B721960220179D9B9051BFCCCC90BA6BB42B86"
+    "111D7A9C4FB56DFD39FB426081DD027AD609";
+
+std::string GetDummyG2fCert() {
+  std::vector<uint8_t> cert;
+  base::HexStringToBytes(kDummyG2fCert, &cert);
+  return std::string(cert.begin(), cert.end());
+}
+
+TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
+  MakeCredentialRequest request;
+  request.set_rp_id(kRpId);
+  request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
+  request.set_attestation_conveyance_preference(MakeCredentialRequest::G2F);
+
+  // We will need user secret 3 times:
+  // first time for u2f_generate (legacy credential),
+  // second time for g2f attestation command,
+  // third time for checking if any exclude credential matches legacy
+  // credentials.
+  ExpectGetUserSecretForTimes(3);
+  SetUpAuthTimeSecretHash();
+  EXPECT_CALL(
+      mock_tpm_proxy_,
+      SendU2fGenerate(
+          StructMatchesRegex(ExpectedUserPresenceU2fGenerateRequestRegex()),
+          Matcher<u2f_generate_resp*>(_)))
+      .WillOnce(Return(kCr50StatusNotAllowed))
+      .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateResponse),
+                      Return(kCr50StatusSuccess)));
+  // Since this creates a legacy credential with legacy secret, we won't write
+  // to storage.
+  EXPECT_CALL(*mock_webauthn_storage_, WriteRecord(_)).Times(0);
+
+  // G2f attestation mock.
+  EXPECT_CALL(mock_tpm_proxy_, GetG2fCertificate(_))
+      .WillOnce(DoAll(SetArgPointee<0>(GetDummyG2fCert()), Return(0)));
+  EXPECT_CALL(mock_tpm_proxy_, SendU2fAttest(_, _)).WillOnce(Return(0));
+  EXPECT_CALL(*mock_allowlisting_util_, AppendDataToCert(_))
+      .WillOnce(Return(true));
+
+  auto mock_method_response =
+      std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
+  bool called = false;
+  mock_method_response->set_return_callback(base::Bind(
+      [](bool* called_ptr, const MakeCredentialResponse& resp) {
+        EXPECT_EQ(resp.status(), MakeCredentialResponse::SUCCESS);
+        EXPECT_EQ(resp.attestation_format(), "fido-u2f");
+        const std::string expected_attestation_statement =
+            "A2"      // Start a CBOR map of 2 elements
+            "63"      // Start CBOR text of 3 chars
+            "736967"  // "sig"
+            ".+"      // Random signature
+            "63"      // Start CBOR text of 3 chars
+            "783563"  // "x5c"
+            "81"      // Start CBOR array of 1 element
+            ".+";     // Random x509
+        EXPECT_THAT(base::HexEncode(resp.attestation_statement().data(),
+                                    resp.attestation_statement().size()),
+                    MatchesRegex(expected_attestation_statement));
+        *called_ptr = true;
+      },
+      &called));
+
+  handler_->MakeCredential(std::move(mock_method_response), request);
+  presence_requested_expected_ = 1;
   ASSERT_TRUE(called);
 }
 
