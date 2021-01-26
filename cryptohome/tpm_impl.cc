@@ -242,6 +242,11 @@ TpmImpl::TpmImpl()
 
 TpmImpl::~TpmImpl() {}
 
+void TpmImpl::SetTpmManagerUtilityForTesting(
+    tpm_manager::TpmManagerUtility* tpm_manager_utility) {
+  tpm_manager_utility_ = tpm_manager_utility;
+}
+
 TSS_HCONTEXT TpmImpl::ConnectContext() {
   TSS_RESULT result;
   TSS_HCONTEXT context_handle = 0;
@@ -3356,6 +3361,16 @@ std::map<uint32_t, std::string> TpmImpl::GetPcrMap(
   }
 
   return pcr_map;
+}
+
+bool TpmImpl::InitializeTpmManagerUtility() {
+  if (!tpm_manager_utility_) {
+    tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
+    if (!tpm_manager_utility_) {
+      LOG(ERROR) << __func__ << ": Failed to get TpmManagerUtility singleton!";
+    }
+  }
+  return tpm_manager_utility_ && tpm_manager_utility_->Initialize();
 }
 
 }  // namespace cryptohome

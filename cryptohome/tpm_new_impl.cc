@@ -29,7 +29,9 @@ std::string OwnerDependencyEnumClassToString(
 }  // namespace
 
 TpmNewImpl::TpmNewImpl(tpm_manager::TpmManagerUtility* tpm_manager_utility)
-    : tpm_manager_utility_(tpm_manager_utility) {}
+    : tpm_manager_utility_(tpm_manager_utility) {
+  SetTpmManagerUtilityForTesting(tpm_manager_utility);
+}
 
 bool TpmNewImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
   if (IsOwned()) {

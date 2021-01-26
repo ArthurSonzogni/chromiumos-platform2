@@ -7,6 +7,7 @@
 
 #include <base/macros.h>
 
+#include <tpm_manager/client/tpm_manager_utility.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
@@ -33,6 +34,10 @@ class TpmImpl : public Tpm {
   TpmImpl& operator=(const TpmImpl&) = delete;
 
   virtual ~TpmImpl();
+
+  void SetTpmManagerUtilityForTesting(
+      tpm_manager::TpmManagerUtility* tpm_manager_utility);
+
   // Tpm methods
   TpmVersion GetVersion() override { return TpmVersion::TPM_1_2; }
   TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
@@ -391,6 +396,9 @@ class TpmImpl : public Tpm {
                     TSS_HTPM tpm_handle,
                     const brillo::SecureBlob& auth_blob);
 
+  // Initializes |tpm_manager_utility_|; returns |true| iff successful.
+  bool InitializeTpmManagerUtility();
+
   // Member variables
   bool initialized_;
   brillo::SecureBlob srk_auth_;
@@ -423,6 +431,9 @@ class TpmImpl : public Tpm {
   // A single instance of the backend for signature-sealing operations that is
   // returned from GetSignatureSealingBackend().
   SignatureSealingBackendTpm1Impl signature_sealing_backend_{this};
+
+  // wrapped tpm_manager proxy to get information from |tpm_manager|.
+  tpm_manager::TpmManagerUtility* tpm_manager_utility_ = nullptr;
 };
 
 }  // namespace cryptohome
