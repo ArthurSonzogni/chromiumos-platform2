@@ -39,6 +39,7 @@ static_library("libdnsproxy") {
   configs += [ ":target_defaults" ]
   sources = [
     "controller.cc",
+    "doh_curl_client.cc",
     "proxy.cc",
     "resolver.cc",
   ]
@@ -47,6 +48,7 @@ static_library("libdnsproxy") {
 
 executable("dnsproxyd") {
   configs += [ ":target_defaults" ]
+  all_dependent_pkg_deps = [ "libcurl" ]
   sources = [ "main.cc" ]
   deps = [ ":libdnsproxy" ]
 }
