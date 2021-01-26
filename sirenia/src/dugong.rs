@@ -74,11 +74,11 @@ impl OrgChromiumManaTEEInterface for DugongDevice {
     fn start_teeapplication(
         &self,
         app_id: &str,
-    ) -> std::result::Result<(i32, (OwnedFd, OwnedFd)), tree::MethodErr> {
+    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), tree::MethodErr> {
         info!("Got request to start up: {}", app_id);
         let fds = request_start_tee_app(self, app_id);
         match fds {
-            Ok(fds) => Ok((0, fds)),
+            Ok(fds) => Ok((0, fds.0, fds.1)),
             Err(e) => Err(tree::MethodErr::failed(&e)),
         }
     }
