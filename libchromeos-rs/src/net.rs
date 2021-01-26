@@ -210,7 +210,7 @@ impl TcpSocket {
                     // If this doesn't match, it's not safe to get the port out of the sockaddr.
                     assert_eq!(addrlen as usize, size_of::<sockaddr_in>());
 
-                    Ok(sin.sin_port)
+                    Ok(u16::from_be(sin.sin_port))
                 }
             }
             InetVersion::V6 => {
@@ -239,7 +239,7 @@ impl TcpSocket {
                     // If this doesn't match, it's not safe to get the port out of the sockaddr.
                     assert_eq!(addrlen as usize, size_of::<sockaddr_in>());
 
-                    Ok(sin6.sin6_port)
+                    Ok(u16::from_be(sin6.sin6_port))
                 }
             }
         }
