@@ -292,17 +292,17 @@ class Root(object):
 def main(argv: list):
     # Get study parameters from the command-line.
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--finger_count', type=int, default=2,
+    parser.add_argument('-f', '--finger-count', type=int, default=2,
                         help='Number of fingers acquired per user')
-    parser.add_argument('-e', '--enrollment_count', type=int, default=20,
+    parser.add_argument('-e', '--enrollment-count', type=int, default=20,
                         help='Number of enrollment images per finger')
-    parser.add_argument('-v', '--verification_count', type=int, default=15,
+    parser.add_argument('-v', '--verification-count', type=int, default=15,
                         help='Number of verification images per finger')
     parser.add_argument('-p', '--port', type=int, default=9000,
                         help='The port for the webserver')
-    parser.add_argument('-d', '--picture_dir', default='./fingers',
+    parser.add_argument('-d', '--picture-dir', default='./fingers',
                         help='Directory for the fingerprint captures')
-    parser.add_argument('-l', '--log_dir',
+    parser.add_argument('-l', '--log-dir',
                         help='Log files directory')
     parser.add_argument('-s', '--syslog', action='store_true',
                         help='Log to syslog')

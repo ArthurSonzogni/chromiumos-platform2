@@ -44,9 +44,9 @@ if [[ -n "${LOG_DIR}" ]]; then
 fi
 
 PATH="${study_dir}/mock-bin:${PATH}" "${study_dir}/study_serve.py"             \
-  --finger_count="${FINGER_COUNT}"                                             \
-  --enrollment_count="${ENROLLMENT_COUNT}"                                     \
-  --verification_count="${VERIFICATION_COUNT}"                                 \
-  --picture_dir="${PICTURE_DIR}"                                               \
-  --log_dir="${LOG_DIR}"                                                       \
+  --finger-count="${FINGER_COUNT}"                                             \
+  --enrollment-count="${ENROLLMENT_COUNT}"                                     \
+  --verification-count="${VERIFICATION_COUNT}"                                 \
+  --picture-dir="${PICTURE_DIR}"                                               \
+  --log-dir="${LOG_DIR}"                                                       \
   "$@"
