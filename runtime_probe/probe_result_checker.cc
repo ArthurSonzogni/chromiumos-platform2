@@ -164,12 +164,12 @@ std::string IntegerFieldConverter::ToString() const {
 }
 
 std::string HexFieldConverter::ToString() const {
-  return base::StringPrintf("IntegerFieldConverter(%s, 0x%x)",
+  return base::StringPrintf("HexFieldConverter(%s, 0x%lx)",
                             ::ToString(operator_), operand_);
 }
 
 std::string DoubleFieldConverter::ToString() const {
-  return base::StringPrintf("IntegerFieldConverter(%s, %f)",
+  return base::StringPrintf("DoubleFieldConverter(%s, %f)",
                             ::ToString(operator_), operand_);
 }
 
@@ -258,8 +258,8 @@ ReturnCode IntegerFieldConverter::Convert(const std::string& field_name,
       return ReturnCode::OK;
     case base::Value::Type::STRING: {
       const auto& string_value = value->GetString();
-      int int_value;
-      if (StringToInt(string_value, &int_value)) {
+      OperandType int_value;
+      if (StringToOperand(string_value, &int_value)) {
         dict_value->SetIntKey(field_name, int_value);
         return ReturnCode::OK;
       } else {
@@ -280,26 +280,33 @@ ReturnCode HexFieldConverter::Convert(const std::string& field_name,
   if (!value)
     return ReturnCode::FIELD_NOT_FOUND;
 
+  OperandType int_value;
   switch (value->type()) {
     case base::Value::Type::DOUBLE:
       dict_value->SetIntKey(field_name, static_cast<int>(value->GetDouble()));
       return ReturnCode::OK;
-    case base::Value::Type::INTEGER:
-      return ReturnCode::OK;
+    case base::Value::Type::INTEGER: {
+      int_value = value->GetInt();
+      break;
+    }
     case base::Value::Type::STRING: {
-      const auto& string_value = value->GetString();
-      int int_value;
-      if (HexStringToInt(string_value, &int_value)) {
-        dict_value->SetIntKey(field_name, int_value);
-        return ReturnCode::OK;
-      } else {
-        LOG(ERROR) << "Failed to convert '" << string_value << "' to integer.";
+      const auto& string_value_ = value->GetString();
+      if (!StringToOperand(string_value_, &int_value)) {
+        LOG(ERROR) << "Failed to convert '" << string_value_ << "' to integer.";
         return ReturnCode::INCOMPATIBLE_VALUE;
       }
+      break;
     }
     default:
       return ReturnCode::INCOMPATIBLE_VALUE;
   }
+  // Since base::Value only supports 32-bit integer, we use string field to
+  // store large integers.  We convert values to decimal strings to make
+  // google::protobuf::util::JsonStringToMessage parse strings to integers
+  // correctly.
+  const auto string_value = base::NumberToString(int_value);
+  dict_value->SetStringKey(field_name, string_value);
+  return ReturnCode::OK;
 }
 
 ReturnCode DoubleFieldConverter::Convert(const std::string& field_name,
@@ -383,10 +390,21 @@ ReturnCode HexFieldConverter::Validate(const std::string& field_name,
   auto* value_ = dict_value->FindKey(field_name);
   if (!value_)
     return ReturnCode::FIELD_NOT_FOUND;
-  if (!value_->is_int())
-    return ReturnCode::INCOMPATIBLE_VALUE;
-  const auto value = value_->GetInt();
-
+  OperandType value;
+  switch (value_->type()) {
+    case base::Value::Type::INTEGER: {
+      value = value_->GetInt();
+      break;
+    }
+    case base::Value::Type::STRING: {
+      const auto& string_value = value_->GetString();
+      if (!StringToInt64(string_value, &value))
+        return ReturnCode::INCOMPATIBLE_VALUE;
+      break;
+    }
+    default:
+      return ReturnCode::INCOMPATIBLE_VALUE;
+  }
   return CheckNumber(operator_, value, operand_);
 }
 
@@ -473,7 +491,7 @@ bool ProbeResultChecker::Apply(base::Value* probe_result) const {
     const auto& key = entry.first;
     const auto& converter = entry.second;
     if (!probe_result->FindKey(key)) {
-      LOG(ERROR) << "Missing key: " << key;
+      DVLOG(2) << "Missing key: " << key;
       success = false;
       break;
     }

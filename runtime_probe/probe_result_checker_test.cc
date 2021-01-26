@@ -55,19 +55,56 @@ TEST(IntegerFieldConverterTest, TestStringToInt) {
   }
 }
 
-TEST(HexFieldConverterTest, TestStringToInt) {
-  for (const auto s : {"7b", "0x7b", "  0x7b", "  0x7b  ", "0x7b  "}) {
+TEST(HexFieldConverterTest, TestHexStringToDecString) {
+  static const struct {
+    std::string input;
+    std::string output;
+  } cases[] = {
+      {"7b", "123"},
+      {"0x7b", "123"},
+      {"  0x7b", "123"},
+      {"  0x7b  ", "123"},
+      {"0x7b  ", "123"},
+      {"-0x7b", "-123"},
+      {"0x80000000", "2147483648"},
+      {"-0x80000000", "-2147483648"},
+  };
+  for (const auto& [in, out] : cases) {
     base::Value dict_value(base::Value::Type::DICTIONARY);
-    dict_value.SetStringKey("key", s);
+    dict_value.SetStringKey("key", in);
 
     auto converter = HexFieldConverter::Build("");
 
     ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
-        << "failed to convert string: " << s;
+        << "failed to convert string: \"" << in << "\"";
 
-    auto int_value = dict_value.FindIntKey("key");
-    ASSERT_TRUE(int_value.has_value());
-    ASSERT_EQ(*int_value, 123) << s << " is not converted to 123";
+    auto* string_value = dict_value.FindStringKey("key");
+    ASSERT_NE(string_value, nullptr);
+    ASSERT_EQ(*string_value, out)
+        << "\"" << in << "\" is not converted to " << out;
+  }
+}
+
+TEST(HexFieldConverterTest, TestIntToDecString) {
+  static const struct {
+    int input;
+    std::string output;
+  } cases[] = {
+      {0x7b, "123"},
+      {-0x7b, "-123"},
+  };
+  for (const auto& [in, out] : cases) {
+    base::Value dict_value(base::Value::Type::DICTIONARY);
+    dict_value.SetIntKey("key", in);
+
+    auto converter = HexFieldConverter::Build("");
+
+    ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
+        << "failed to convert string: " << in;
+
+    auto* string_value = dict_value.FindStringKey("key");
+    ASSERT_NE(string_value, nullptr);
+    ASSERT_EQ(*string_value, out) << in << " is not converted to " << out;
   }
 }
 
@@ -449,9 +486,9 @@ TEST(ProbeResultCheckerTest, TestApplySuccess) {
   ASSERT_TRUE(int_value.has_value());
   ASSERT_EQ(*int_value, 1024);
 
-  auto hex_value = probe_result->FindIntKey("hex");
-  ASSERT_TRUE(hex_value.has_value());
-  ASSERT_EQ(*hex_value, 123);
+  auto* hex_value = probe_result->FindStringKey("hex");
+  ASSERT_NE(hex_value, nullptr);
+  ASSERT_EQ(*hex_value, "123");
 
   auto double_value = probe_result->FindDoubleKey("double");
   ASSERT_TRUE(double_value.has_value());
@@ -493,9 +530,9 @@ TEST(ProbeResultCheckerTest, TestApplyWithLimitsSuccess) {
   ASSERT_TRUE(int_value.has_value());
   ASSERT_EQ(*int_value, 1024);
 
-  auto hex_value = probe_result->FindIntKey("hex");
-  ASSERT_TRUE(hex_value.has_value());
-  ASSERT_EQ(*hex_value, 123);
+  auto* hex_value = probe_result->FindStringKey("hex");
+  ASSERT_NE(hex_value, nullptr);
+  ASSERT_EQ(*hex_value, "123");
 
   auto double_value = probe_result->FindDoubleKey("double");
   ASSERT_TRUE(double_value.has_value());

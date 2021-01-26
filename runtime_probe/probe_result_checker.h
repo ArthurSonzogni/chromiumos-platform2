@@ -161,7 +161,7 @@ class IntegerFieldConverter : public FieldConverter {
 class HexFieldConverter : public FieldConverter {
  public:
   using FieldConverter::FieldConverter;
-  using OperandType = int;
+  using OperandType = int64_t;
 
   ReturnCode Convert(const std::string& field_name,
                      base::Value* dict_value) const override;
@@ -178,7 +178,7 @@ class HexFieldConverter : public FieldConverter {
       : operator_(op), operand_(operand) {}
 
   static bool StringToOperand(const std::string& s, OperandType* output) {
-    return HexStringToInt(s, output);
+    return HexStringToInt64(s, output);
   }
 
  private:

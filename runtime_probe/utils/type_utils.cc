@@ -49,4 +49,10 @@ bool HexStringToInt(const std::string& input, int* output) {
   return base::HexStringToInt(trimmed_input, output);
 }
 
+bool HexStringToInt64(const std::string& input, int64_t* output) {
+  std::string trimmed_input;
+  TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL, &trimmed_input);
+  return base::HexStringToInt64(trimmed_input, output);
+}
+
 }  // namespace runtime_probe
