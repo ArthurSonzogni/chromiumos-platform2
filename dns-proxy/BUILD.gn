@@ -40,6 +40,7 @@ static_library("libdnsproxy") {
   sources = [
     "controller.cc",
     "proxy.cc",
+    "resolver.cc",
   ]
   deps = []
 }
