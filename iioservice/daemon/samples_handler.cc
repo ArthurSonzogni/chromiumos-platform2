@@ -86,6 +86,7 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
 }
 
 SamplesHandler::~SamplesHandler() {
+  iio_device_->FreeBuffer();
   if (requested_frequency_ > 0.0 &&
       !iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0))
     LOGF(ERROR) << "Failed to set frequency";
@@ -144,13 +145,6 @@ void SamplesHandler::GetChannelsEnabled(
                      std::move(iio_chn_indices), std::move(callback)));
 }
 
-// static
-void SamplesHandler::WatcherDeleter(
-    base::FileDescriptorWatcher::Controller* watcher,
-    libmems::IioDevice* iio_device) {
-  iio_device->FreeBuffer();
-}
-
 SamplesHandler::SamplesHandler(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
@@ -165,9 +159,7 @@ SamplesHandler::SamplesHandler(
       dev_min_frequency_(min_freq),
       dev_max_frequency_(max_freq),
       on_sample_updated_callback_(std::move(on_sample_updated_callback)),
-      on_error_occurred_callback_(std::move(on_error_occurred_callback)),
-      watcher_(nullptr,
-               std::bind(WatcherDeleter, std::placeholders::_1, iio_device_)) {
+      on_error_occurred_callback_(std::move(on_error_occurred_callback)) {
   DCHECK_GE(dev_max_frequency_, dev_min_frequency_);
 
   auto channels = iio_device_->GetAllChannels();
@@ -216,18 +208,17 @@ void SamplesHandler::SetSampleWatcherOnThread() {
     return;
   }
 
-  watcher_.reset(
-      base::FileDescriptorWatcher::WatchReadable(
-          fd.value(),
-          base::BindRepeating(&SamplesHandler::OnSampleAvailableWithoutBlocking,
-                              weak_factory_.GetWeakPtr()))
-          .release());
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd.value(),
+      base::BindRepeating(&SamplesHandler::OnSampleAvailableWithoutBlocking,
+                          weak_factory_.GetWeakPtr()));
 }
 
 void SamplesHandler::StopSampleWatcherOnThread() {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
 
   watcher_.reset();
+  iio_device_->FreeBuffer();
 }
 
 void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
