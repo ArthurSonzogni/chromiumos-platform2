@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import argparse
 from datetime import datetime
+from distutils import util
 import json
 import logging
 import logging.handlers
@@ -34,6 +35,17 @@ try:
     import fputils
 except ImportError:
     fputils = None
+
+DEFAULT_ARGS = {
+    'finger-count': 2,
+    'enrollment-count': 20,
+    'verification-count': 15,
+    'port': 9000,
+    'picture-dir': './fingers',
+    'syslog': False,
+    'gpg-keyring': '',
+    'gpg-recipients': '',
+}
 
 errors = [
     # FP_SENSOR_LOW_IMAGE_QUALITY 1
@@ -294,26 +306,74 @@ class Root(object):
         cherrypy.request.ws_handler.set_config(self.args)
 
 
+def environment_parameters(default_params: dict) -> dict:
+    """Return |default_params| after overriding with environment vars.
+
+    Given a dictionary of default runtime parameters, return the same
+    dictionary with parameters overridden by their equivalent environment
+    variable.
+
+    A corresponding environment variable is the uppercase equivalent of the
+    parameter name, with all '-' replaced with '_'.
+    For examples, parameter "log-dir" corresponds to environment variable
+    "LOG_DIR".
+    """
+
+    env_params = default_params.copy()
+    for param in default_params:
+        env_var = param.upper().replace('-', '_')
+        arg_type = type(default_params[param])
+        value = os.environ.get(env_var)
+        if value is not None:
+            try:
+                if arg_type is bool:
+                    value = bool(util.strtobool(value))
+                elif arg_type is type(None):
+                    raise Exception('Cannot handle type None in default list.')
+                else:
+                    value = arg_type(value)
+            except ValueError:
+                raise ValueError(env_var)
+            env_params[param] = value
+    return env_params
+
+
 def main(argv: list):
-    # Get study parameters from the command-line.
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--finger-count', type=int, default=2,
+
+    # Read environment variables as the arg default values.
+    try:
+        env_default = environment_parameters(DEFAULT_ARGS)
+    except ValueError as e:
+        parser.error(f'failed to parse {e}')
+
+    # Get study parameters from the command-line.
+    parser.add_argument('-f', '--finger-count', type=int,
+                        default=env_default['finger-count'],
                         help='Number of fingers acquired per user')
-    parser.add_argument('-e', '--enrollment-count', type=int, default=20,
+    parser.add_argument('-e', '--enrollment-count', type=int,
+                        default=env_default['enrollment-count'],
                         help='Number of enrollment images per finger')
-    parser.add_argument('-v', '--verification-count', type=int, default=15,
+    parser.add_argument('-v', '--verification-count', type=int,
+                        default=env_default['verification-count'],
                         help='Number of verification images per finger')
-    parser.add_argument('-p', '--port', type=int, default=9000,
+    parser.add_argument('-p', '--port', type=int,
+                        default=env_default['port'],
                         help='The port for the webserver')
-    parser.add_argument('-d', '--picture-dir', default='./fingers',
+    parser.add_argument('-d', '--picture-dir',
+                        default=env_default['picture-dir'],
                         help='Directory for the fingerprint captures')
     parser.add_argument('-l', '--log-dir',
+                        default=env_default['log-dir'],
                         help='Log files directory')
     parser.add_argument('-s', '--syslog', action='store_true',
+                        default=env_default['syslog'],
                         help='Log to syslog')
     parser.add_argument('-k', '--gpg-keyring', type=str,
+                        default=env_default['gpg-keyring'],
                         help='Path to the GPG keyring')
     parser.add_argument('-r', '--gpg-recipients', type=str,
+                        default=env_default['gpg-recipients'],
                         help='User IDs of GPG recipients separated by space')
     args = parser.parse_args(argv)
 
