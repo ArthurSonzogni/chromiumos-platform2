@@ -91,6 +91,7 @@ fn request_start_tee_app(device: &DugongDevice, app_id: &str) -> Result<(OwnedFd
         app_id: String::from(app_id),
         port_number: addr.get_port().unwrap(),
     };
+    info!("Requesting start {:?}", &app_info);
     device
         .trichechus_client
         .borrow_mut()

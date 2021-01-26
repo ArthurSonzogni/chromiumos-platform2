@@ -169,10 +169,7 @@ impl Trichechus for TrichechusServerImpl {
     type Error = ();
 
     fn start_session(&self, app_info: AppInfo) -> StdResult<(), ()> {
-        info!(
-            "Received start session message with app_id: {}",
-            app_info.app_id
-        );
+        info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
         self.state.borrow_mut().pending_apps.insert(
             self.port_to_transport_type(app_info.port_number),
@@ -225,23 +222,31 @@ impl DugongConnectionHandler {
 
 impl ConnectionHandler for DugongConnectionHandler {
     fn handle_incoming_connection(&mut self, connection: Transport) -> Option<Box<dyn Mutator>> {
+        info!("incomming connection '{:?}'", &connection.id);
         let expected_port = self.state.borrow().expected_port;
         // Check if the incoming connection is expected and associated with a TEE
         // application.
         let reservation = self.state.borrow_mut().pending_apps.remove(&connection.id);
         if let Some(app_id) = reservation {
+            info!("starting instance of '{}'", app_id);
             self.connect_tee_app(&app_id, connection)
         } else {
             // Check if it is a control connection.
             match connection.id.get_port() {
-                Ok(port) if port == expected_port => Some(Box::new(AddEventSourceMutator(Some(
-                    Box::new(RpcDispatcher::new(
-                        TrichechusServerImpl::new(self.state.clone(), connection.id.clone())
-                            .box_clone(),
-                        connection,
-                    )),
-                )))),
-                _ => None,
+                Ok(port) if port == expected_port => {
+                    info!("new control connection.");
+                    Some(Box::new(AddEventSourceMutator(Some(Box::new(
+                        RpcDispatcher::new(
+                            TrichechusServerImpl::new(self.state.clone(), connection.id.clone())
+                                .box_clone(),
+                            connection,
+                        ),
+                    )))))
+                }
+                _ => {
+                    error!("dropping unexpected connection.");
+                    None
+                }
             }
         }
     }
@@ -303,7 +308,7 @@ fn main() -> Result<()> {
     let log_path = PathBuf::from(
         matches
             .opt_str(SYSLOG_PATH_SHORT_NAME)
-            .unwrap_or(SYSLOG_PATH.to_string()),
+            .unwrap_or_else(|| SYSLOG_PATH.to_string()),
     );
     let syslog: Option<Syslog> = if !log_path.exists() {
         eprintln!("Creating syslog.");
