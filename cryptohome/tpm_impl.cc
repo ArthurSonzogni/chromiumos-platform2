@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <base/memory/free_deleter.h>
@@ -1301,137 +1302,41 @@ bool TpmImpl::GetAlertsData(Tpm::AlertsData* alerts) {
 }
 
 bool TpmImpl::DestroyNvram(uint32_t index) {
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Could not open the TPM";
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
-
-  if (!IsNvramDefinedForContext(context_handle, tpm_handle, index)) {
-    LOG(INFO) << "NVRAM index is already undefined.";
-    return true;
-  }
-
-  // Create an NVRAM store object handle.
-  TSS_RESULT result;
-  ScopedTssNvStore nv_handle(context_handle);
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_NV, 0,
-                                     nv_handle.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
-    return false;
-  }
-
-  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX, 0, index);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
-    return false;
-  }
-
-  if ((result = Tspi_NV_ReleaseSpace(nv_handle))) {
-    TPM_LOG(ERROR, result) << "Could not release NVRAM space: " << index;
-    return false;
-  }
-
-  return true;
+  return tpm_manager_utility_->DestroySpace(index);
 }
 
 bool TpmImpl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "DefineNvram failed to acquire authorization.";
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
-  TSS_RESULT result;
+  const bool write_define = flags & Tpm::kTpmNvramWriteDefine;
+  const bool bind_to_pcr0 = flags & Tpm::kTpmNvramBindToPCR0;
+  const bool firmware_readable = flags & Tpm::kTpmNvramFirmwareReadable;
 
-  // Create a PCR object handle.
-  ScopedTssPcrs pcrs_handle(context_handle);
-  if (flags & kTpmNvramBindToPCR0) {
-    if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                      context_handle, TSS_OBJECT_TYPE_PCRS,
-                      TSS_PCRS_STRUCT_INFO_SHORT, pcrs_handle.ptr()))) {
-      TPM_LOG(ERROR, result) << "Could not acquire PCR object handle";
-      return false;
-    }
-
-    // Read PCR0.
-    UINT32 pcr_len;
-    ScopedTssMemory pcr_value(context_handle);
-    if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, kTpmBootPCR, &pcr_len,
-                                            pcr_value.ptr()))) {
-      TPM_LOG(ERROR, result) << "Could not read PCR0 value";
-      return false;
-    }
-    // Include PCR0 value in PcrComposite.
-    if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrValue(
-                      pcrs_handle, kTpmBootPCR, pcr_len, pcr_value.value()))) {
-      TPM_LOG(ERROR, result) << "Could not set value for PCR0 in PCR handle";
-      return false;
-    }
-    // Set locality.
-    if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrLocality(pcrs_handle,
-                                                            kTpmPCRLocality))) {
-      TPM_LOG(ERROR, result) << "Could not set locality for PCR0 in PCR handle";
-      return false;
-    }
-  }
-
-  // Create an NVRAM store object handle.
-  ScopedTssNvStore nv_handle(context_handle);
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_NV, 0,
-                                     nv_handle.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
-    return false;
-  }
-
-  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX, 0, index);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
-    return false;
-  }
-
-  result =
-      Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_DATASIZE, 0, length);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not set size on NVRAM object: " << length;
-    return false;
-  }
-
-  // Set appropriate permissions
-  uint32_t perms = 0;
-  if (flags & kTpmNvramWriteDefine) {
-    perms |= TPM_NV_PER_WRITEDEFINE;
-  } else {
-    TPM_LOG(ERROR, result) << "Unsupported permissions for NVRAM object";
-    return false;
-  }
-  result =
-      Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_PERMISSIONS, 0, perms);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not set permissions on NVRAM object";
-    return false;
-  }
-
-  if (TPM_ERROR(result =
-                    Tspi_NV_DefineSpace(nv_handle, pcrs_handle, pcrs_handle))) {
-    TPM_LOG(ERROR, result) << "Could not define NVRAM space: " << index;
-    return false;
-  }
-
-  return true;
+  return tpm_manager_utility_->DefineSpace(index, length, write_define,
+                                           bind_to_pcr0, firmware_readable);
 }
 
 bool TpmImpl::IsNvramDefined(uint32_t index) {
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Could not connect to the TPM";
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
-  return IsNvramDefinedForContext(context_handle, tpm_handle, index);
+  std::vector<uint32_t> spaces;
+  if (!tpm_manager_utility_->ListSpaces(&spaces)) {
+    return false;
+  }
+  for (uint32_t space : spaces) {
+    if (index == space) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool TpmImpl::IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
@@ -1460,14 +1365,18 @@ bool TpmImpl::IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
 }
 
 unsigned int TpmImpl::GetNvramSize(uint32_t index) {
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Could not connect to the TPM";
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  uint32_t size;
+  bool is_read_locked;
+  bool is_write_locked;
+  if (!tpm_manager_utility_->GetSpaceInfo(index, &size, &is_read_locked,
+                                          &is_write_locked)) {
     return 0;
   }
-
-  return GetNvramSizeForContext(context_handle, tpm_handle, index);
+  return size;
 }
 
 unsigned int TpmImpl::GetNvramSizeForContext(TSS_HCONTEXT context_handle,
@@ -1497,14 +1406,18 @@ unsigned int TpmImpl::GetNvramSizeForContext(TSS_HCONTEXT context_handle,
 }
 
 bool TpmImpl::IsNvramLocked(uint32_t index) {
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Could not connect to the TPM";
-    return 0;
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
+    return false;
   }
-
-  return IsNvramLockedForContext(context_handle, tpm_handle, index);
+  uint32_t size;
+  bool is_read_locked;
+  bool is_write_locked;
+  if (!tpm_manager_utility_->GetSpaceInfo(index, &size, &is_read_locked,
+                                          &is_write_locked)) {
+    return false;
+  }
+  return is_write_locked;
 }
 
 bool TpmImpl::IsNvramLockedForContext(TSS_HCONTEXT context_handle,
@@ -1536,15 +1449,15 @@ bool TpmImpl::IsNvramLockedForContext(TSS_HCONTEXT context_handle,
 }
 
 bool TpmImpl::ReadNvram(uint32_t index, SecureBlob* blob) {
-  // TODO(wad) longer term, add support for checking when a space is restricted
-  //           and needs an authenticated handle.
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Could not connect to the TPM";
+  if (!InitializeTpmManagerUtility()) {
     return false;
   }
-  return ReadNvramForContext(context_handle, tpm_handle, 0, index, blob);
+
+  std::string output;
+  const bool result = tpm_manager_utility_->ReadSpace(index, false, &output);
+  brillo::SecureBlob tmp(output);
+  blob->swap(tmp);
+  return result;
 }
 
 bool TpmImpl::ReadNvramForContext(TSS_HCONTEXT context_handle,
@@ -1617,45 +1530,22 @@ bool TpmImpl::ReadNvramForContext(TSS_HCONTEXT context_handle,
 }
 
 bool TpmImpl::WriteNvram(uint32_t index, const SecureBlob& blob) {
-  // TODO(wad) longer term, add support for checking when a space is restricted
-  //           and needs an authenticated handle.
-  ScopedTssContext context_handle;
-  TSS_HTPM tpm_handle;
-  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Could not connect to the TPM";
-    return 0;
-  }
-
-  // Create an NVRAM store object handle.
-  TSS_RESULT result;
-  ScopedTssNvStore nv_handle(context_handle);
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_NV, 0,
-                                     nv_handle.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
-
-  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX, 0, index);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
-    return false;
-  }
-
-  std::unique_ptr<BYTE[]> nv_data(new BYTE[blob.size()]);
-  memcpy(nv_data.get(), blob.data(), blob.size());
-  result = Tspi_NV_WriteValue(nv_handle, 0, blob.size(), nv_data.get());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not write to NVRAM space: " << index;
-    return false;
-  }
-
-  return true;
+  tpm_manager::WriteSpaceRequest request;
+  request.set_index(index);
+  request.set_data(blob.to_string());
+  return tpm_manager_utility_->WriteSpace(index, blob.to_string(), false);
 }
 
 bool TpmImpl::WriteLockNvram(uint32_t index) {
-  SecureBlob lock(0);
-  return WriteNvram(index, lock);
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_->LockSpace(index);
 }
 
 bool TpmImpl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
