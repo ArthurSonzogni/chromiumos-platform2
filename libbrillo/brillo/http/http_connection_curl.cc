@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport_curl.h>
 #include <brillo/streams/memory_stream.h>
@@ -29,22 +30,22 @@ static int curl_trace(CURL* /* handle */,
       VLOG(3) << "== Info: " << msg;
       break;
     case CURLINFO_HEADER_OUT:
-      VLOG(3) << "=> Send headers:\n" << msg;
+      VLOG(3) << "=> Send headers: " << msg;
       break;
     case CURLINFO_DATA_OUT:
-      VLOG(3) << "=> Send data:\n" << msg;
+      VLOG(3) << "=> Send data: <" << base::HexEncode(data, size) << ">";
       break;
     case CURLINFO_SSL_DATA_OUT:
-      VLOG(3) << "=> Send SSL data" << msg;
+      VLOG(3) << "=> Send SSL data: <" << base::HexEncode(data, size) << ">";
       break;
     case CURLINFO_HEADER_IN:
       VLOG(3) << "<= Recv header: " << msg;
       break;
     case CURLINFO_DATA_IN:
-      VLOG(3) << "<= Recv data:\n" << msg;
+      VLOG(3) << "<= Recv data: <" << base::HexEncode(data, size) << ">";
       break;
     case CURLINFO_SSL_DATA_IN:
-      VLOG(3) << "<= Recv SSL data" << msg;
+      VLOG(3) << "<= Recv SSL data: <" << base::HexEncode(data, size) << ">";
       break;
     default:
       break;
