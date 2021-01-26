@@ -1137,6 +1137,10 @@ class UserDataAuth {
 
   AuthSessionMap auth_sessions_;
 
+  // A counter to count the number of parallel tasks on mount thread.
+  // Recorded when a requests comes in. Counts of 1 will not reported.
+  std::atomic<int> parallel_task_count_ = 0;
+
   friend class UserDataAuthExTest;
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
 };

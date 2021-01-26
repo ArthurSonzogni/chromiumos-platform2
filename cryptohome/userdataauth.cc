@@ -544,7 +544,21 @@ bool UserDataAuth::PostTaskToMountThread(const base::Location& from_here,
                                          const base::TimeDelta& delay) {
   CHECK(mount_task_runner_);
   if (delay.is_zero()) {
-    return mount_task_runner_->PostTask(from_here, std::move(task));
+    // Increase and report the parallel task count.
+    parallel_task_count_ += 1;
+    if (parallel_task_count_ > 1) {
+      ReportParallelTasks(parallel_task_count_);
+    }
+
+    // Reduce the parallel task count after finished the task.
+    auto full_task = base::BindOnce(
+        [](base::OnceClosure task, std::atomic<int>* task_count) {
+          std::move(task).Run();
+          *task_count -= 1;
+        },
+        std::move(task), base::Unretained(&parallel_task_count_));
+
+    return mount_task_runner_->PostTask(from_here, std::move(full_task));
   }
   return mount_task_runner_->PostDelayedTask(from_here, std::move(task), delay);
 }
