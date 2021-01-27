@@ -165,6 +165,9 @@ void PortManager::OnSessionStopped() {
 }
 
 void PortManager::HandleSessionStopped() {
+  if (!GetModeEntrySupported())
+    return;
+
   SetUserActive(false);
   for (auto const& x : ports_) {
     Port* port = x.second.get();
@@ -193,6 +196,9 @@ void PortManager::HandleSessionStopped() {
 }
 
 void PortManager::HandleUnlock() {
+  if (!GetModeEntrySupported())
+    return;
+
   SetUserActive(true);
   for (auto const& x : ports_) {
     Port* port = x.second.get();
