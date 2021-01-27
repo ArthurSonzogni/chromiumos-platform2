@@ -277,40 +277,23 @@ EglDisplayBuffer::~EglDisplayBuffer() {
 }
 
 DisplayBuffer::Result EglDisplayBuffer::Capture() {
-  const GLuint indices[4] = {0, 1, 2, 3};
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  if (crtc_.planes().empty()) {
-    EGLImageKHR image =
-        CreateImage(createImageKHR_, import_modifiers_exist_,
-                    crtc_.file().GetPlatformFile(), display_, crtc_.fb2());
+  for (auto& plane : crtc_.GetConnectedPlanes()) {
+    EGLImageKHR image = CreateImage(createImageKHR_, import_modifiers_exist_,
+                                    crtc_.file().GetPlatformFile(), display_,
+                                    plane.first.get());
     CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
-    glViewport(0, 0, width_, height_);
+    // TODO(dcastagna): Handle SRC_ and rotation.
+    glViewport(plane.second.x, plane.second.y, plane.second.w, plane.second.h);
+
     glEGLImageTargetTexture2DOES_(GL_TEXTURE_EXTERNAL_OES, image);
 
-    glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, indices);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     destroyImageKHR_(display_, image);
-  } else {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    for (auto& plane : crtc_.planes()) {
-      EGLImageKHR image = CreateImage(createImageKHR_, import_modifiers_exist_,
-                                      crtc_.file().GetPlatformFile(), display_,
-                                      plane.first.get());
-      CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
-
-      // TODO(dcastagna): Handle SRC_ and rotation.
-      glViewport(plane.second.x, plane.second.y, plane.second.w,
-                 plane.second.h);
-
-      glEGLImageTargetTexture2DOES_(GL_TEXTURE_EXTERNAL_OES, image);
-
-      glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, indices);
-
-      destroyImageKHR_(display_, image);
-    }
   }
 
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
