@@ -30,7 +30,11 @@ getpriority: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-ioctl: arg1 == TCGETS || arg1 == TIOCGWINSZ || arg1 == TIOCGPGRP || arg1 == 0x40048001 || arg1 == 0x40108002 || arg1 == 0x40108003 || arg1 == 0x40108014 || arg1 == 0x4010801b || arg1 == 0x4020800f || arg1 == 0x40208018 || arg1 == 0x80048011 || arg1 == 0xc0048000 || arg1 == 0xc0208005
+ioctl: arg1 == TCGETS || arg1 == TIOCGWINSZ || arg1 == TIOCGPGRP || \
+       arg1 == 0x40048001 || arg1 == 0x40088026 || arg1 == 0x40108002 || \
+       arg1 == 0x40108003 || arg1 == 0x40108014 || arg1 == 0x4010801b || \
+       arg1 == 0x4020800f || arg1 == 0x40208018 || arg1 == 0x80048011 || \
+       arg1 == 0xc0048000 || arg1 == 0xc0208005
 kill: 1
 listen: 1
 _llseek: 1
