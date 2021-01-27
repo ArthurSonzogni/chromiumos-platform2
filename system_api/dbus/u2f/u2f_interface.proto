@@ -25,6 +25,14 @@ enum VerificationType {
 }
 
 message MakeCredentialRequest {
+  enum AttestationConveyancePreference {
+    NONE = 0;
+    // Want u2f attestation.
+    U2F = 1;
+    // Want g2f attestation, with a cert and a signature from the TPM.
+    G2F = 2;
+  }
+
   VerificationType verification_type = 1;
   // String representing a valid domain name.
   string rp_id = 2;
@@ -44,6 +52,8 @@ message MakeCredentialRequest {
   string app_id_exclude = 8;
   // SHA-256 hash of client data, which is the same as "challenge" in u2f.
   bytes client_data_hash = 9;
+  // What kind of attestation is desired.
+  AttestationConveyancePreference attestation_conveyance_preference = 10;
 }
 
 message MakeCredentialResponse {
