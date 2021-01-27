@@ -9,7 +9,6 @@
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
 #include <utility>
 #include <vector>
@@ -27,11 +26,6 @@
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/ipc_util.h"
-
-void SigchldHandler(int sig) {
-  while (waitpid(-1, nullptr, WNOHANG) != -1) {
-  }
-}
 
 int main(int argc, char** argv) {
   static base::AtExitManager exit_manager;
@@ -76,12 +70,6 @@ int main(int argc, char** argv) {
     PLOGF(ERROR) << "fcntl(F_SETFL) failed to disable O_NONBLOCK";
     return EXIT_FAILURE;
   }
-
-  // Register a SIGCHLD handler to make sure the child process exits and does
-  // not become a zombie.
-  struct sigaction sa = {};
-  sa.sa_handler = SigchldHandler;
-  sigaction(SIGCHLD, &sa, nullptr);
 
   pid_t pid = 0;
   while (1) {
