@@ -31,7 +31,8 @@ class MiniOs : public MiniOsInterface {
   // The current state of MiniOs.
   State state_;
 
-  screens::Screens screens_;
+  ProcessManager process_manager_;
+  screens::Screens screens_{&process_manager_};
 };
 
 }  // namespace minios

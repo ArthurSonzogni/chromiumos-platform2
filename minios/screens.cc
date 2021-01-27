@@ -11,14 +11,14 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-
-#include "minios/key_reader.h"
+#include <base/values.h>
 
 namespace screens {
 
@@ -66,10 +66,19 @@ constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
 bool Screens::Init() {
   CheckDetachable();
   CheckRightToLeft();
+  GetVpdRegion();
+  ReadHardwareId();
+
   screens_path_ = root_.Append(kScreens);
   // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
   ReadDimensionConstants();
   ReadLangConstants();
+  return true;
+}
+
+bool Screens::InitForTest() {
+  screens_path_ = root_.Append(kScreens);
+  ReadDimensionConstants();
   return true;
 }
 
@@ -484,9 +493,7 @@ void Screens::ShowFooter() {
             kNavButtonY);
 
   ShowImage(screens_path_.Append("qr_code.png"), kQrCodeX, kQrCodeY);
-  // TODO(vyshu): Get hardware from "crossystem hwid".
-  std::string hwid = "CHROMEBOOK";
-  int hwid_len = hwid.size();
+  int hwid_len = hwid_.size();
   int hwid_x = kQrCodeX + (kQrCodeSize / 2) + 16 + 5;
   const int hwid_y = kFooterY + kFooterLineHeight;
 
@@ -494,7 +501,7 @@ void Screens::ShowFooter() {
     hwid_x = -hwid_x - kMonospaceGlyphWidth * (hwid_len - 2);
   }
 
-  ShowText(hwid, hwid_x, hwid_y, "grey");
+  ShowText(hwid_, hwid_x, hwid_y, "grey");
   ShowBox(kSeparatorX, kSeparatorY, 1, kQrCodeSize, kMenuGrey);
 }
 
@@ -617,7 +624,15 @@ void Screens::ShowMiniOsGetPasswordButtons(int index) {
 }
 
 void Screens::GetPassword() {
-  key_reader_.InputSetUp();
+  std::string keyboard_layout;
+  if (!MapRegionToKeyboard(&keyboard_layout)) {
+    LOG(WARNING)
+        << "Could not find xkb layout for given region. Defaulting to US.";
+    keyboard_layout = "us";
+  }
+  key_reader::KeyReader password_key_reader =
+      key_reader::KeyReader(/*include_usb=*/true, keyboard_layout);
+  password_key_reader.InputSetUp();
 
   constexpr int kBtnY = kTitleY + 58 + kBtnYStep * 2;
   ShowButton("", kBtnY, false, default_button_width_ * 4, true);
@@ -625,16 +640,18 @@ void Screens::GetPassword() {
   bool enter = false;
   bool show_password = false;
   std::string input;
+  std::string plain_text_password;
   do {
-    if (!key_reader_.GetUserInput(&enter, &show_password, &input))
+    if (!password_key_reader.GetUserInput(&enter, &show_password, &input))
       continue;
+    plain_text_password = input;
     if (!show_password) {
       input = std::string(input.size(), '*');
     }
     ShowButton(input, kBtnY, false, default_button_width_ * 4, true);
   } while (!enter);
-  // TODO(vyshu) : Log password for development purposes only. Remove.
-  LOG(INFO) << "User password is: " << input;
+  // TODO(vyshu) : Logging password for development purposes only. Remove.
+  LOG(INFO) << "User password is: " << plain_text_password;
 }
 
 void Screens::MiniOsGetPasswordOnSelect() {
@@ -660,6 +677,7 @@ void Screens::MiniOsGetPasswordOnSelect() {
           break;
         case 1:
           GetPassword();
+          ShowMiniOsDownloading();
           return;
         case 2:
           MiniOsDropdownOnSelect();
@@ -669,6 +687,25 @@ void Screens::MiniOsGetPasswordOnSelect() {
     // If not entered, update MiniOS Screen with new button selections.
     ShowMiniOsGetPasswordButtons(index);
   }
+}
+
+void Screens::ShowMiniOsDownloading() {
+  MessageBaseScreen();
+  ShowInstructionsWithTitle("MiniOS_downloading");
+  ShowStepper({"done", "done", "3-done"});
+  ShowLanguageMenu(false);
+  ShowProgressBar(10);
+  ShowMiniOsComplete();
+}
+
+void Screens::ShowMiniOsComplete() {
+  MessageBaseScreen();
+  ShowInstructions("title_MiniOS_complete");
+  ShowStepper({"done", "done", "done"});
+  ShowLanguageMenu(false);
+  ShowProgressBar(5);
+  // TODO(vyshu): Automatically reboot after timeout or on button selection.
+  ShowButton("Reboot", -100, false, default_button_width_, true);
 }
 
 void Screens::ReadDimensionConstants() {
@@ -851,6 +888,107 @@ void Screens::CheckRightToLeft() {
 void Screens::CheckDetachable() {
   is_detachable_ =
       base::PathExists(root_.Append("etc/cros-initramfs/is_detachable"));
+}
+
+/*
+vpd_get_value() {
+  local file="/sys/firmware/vpd/ro/$1"
+
+  if [ -e "${file}" ]; then
+    cat "${file}"
+  else
+    vpd -g "$1"
+  fi
+}
+*/
+void Screens::GetVpdRegion() {
+  if (ReadFileToString(root_.Append("sys/firmware/vpd/ro/region"),
+                       &vpd_region_)) {
+    return;
+  }
+  LOG(WARNING) << "Could not read vpd region from file. Trying commandline.";
+  int exit_code = 0;
+  std::string error;
+  if (!process_manager_->RunCommandWithOutput(
+          {"/bin/vpd", "-g", "region"}, &exit_code, &vpd_region_, &error) ||
+      exit_code) {
+    vpd_region_ = "us";
+    PLOG(WARNING) << "Error getting vpd -g region. Exit code " << exit_code
+                  << " with error " << error << ". Defaulting to 'us'. ";
+    return;
+  }
+  return;
+}
+
+/*
+read_truncated_hwid() {
+  crossystem hwid | cut -f 1 -d ' '
+}
+*/
+void Screens::ReadHardwareId() {
+  int exit_code = 0;
+  std::string output, error;
+  if (!process_manager_->RunCommandWithOutput({"/bin/crossystem", "hwid"},
+                                              &exit_code, &output, &error) ||
+      exit_code) {
+    hwid_ = "CHROMEBOOK";
+    PLOG(WARNING)
+        << "Could not get hwid from crossystem. Exited with exit code "
+        << exit_code << " and error " << error
+        << ". Defaulting to 'CHROMEBOOK'.";
+    return;
+  }
+
+  // Truncate HWID.
+  std::vector<std::string> hwid_parts = base::SplitString(
+      output, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  hwid_ = hwid_parts[0];
+  return;
+}
+
+bool Screens::MapRegionToKeyboard(std::string* xkb_keyboard_layout) {
+  std::string cros_region_json;
+  if (!ReadFileToString(root_.Append("usr/share/misc/cros-regions.json"),
+                        &cros_region_json)) {
+    PLOG(ERROR) << "Could not read JSON mapping from cros-regions.json.";
+    return false;
+  }
+
+  base::JSONReader::ValueWithError json_output =
+      base::JSONReader::ReadAndReturnValueWithError(cros_region_json);
+  if (!json_output.value || !json_output.value->is_dict()) {
+    LOG(ERROR) << "Could not read json. " << json_output.error_message
+               << " and exit code "
+               << base::JSONReader::ErrorCodeToString(json_output.error_code);
+    return false;
+  }
+
+  // Look up mapping between vpd region and xkb keyboard layout.
+  const base::Value* region_info = json_output.value->FindDictKey(vpd_region_);
+  if (!region_info) {
+    LOG(ERROR) << "Region " << vpd_region_ << " not found.";
+    return false;
+  }
+
+  const base::Value* keyboard = region_info->FindListKey("keyboards");
+  if (!keyboard || keyboard->GetList().empty()) {
+    LOG(ERROR) << "Could not retrieve keyboards for given region "
+               << vpd_region_
+               << ". Available region information: " << *region_info;
+    return false;
+  }
+
+  // Always use the first keyboard in the list.
+  std::vector<std::string> keyboard_parts =
+      base::SplitString(keyboard->GetList()[0].GetString(), ":",
+                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (keyboard_parts.size() < 2) {
+    LOG(ERROR) << "Could not parse keyboard information for region  "
+               << vpd_region_;
+    return false;
+  }
+  *xkb_keyboard_layout = keyboard_parts[1];
+  return true;
 }
 
 void Screens::SetRootForTest(const std::string& test_root) {

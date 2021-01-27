@@ -5,6 +5,7 @@
 #ifndef MINIOS_SCREENS_H_
 #define MINIOS_SCREENS_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "minios/key_reader.h"
+#include "minios/process_manager.h"
 
 namespace screens {
 
@@ -36,7 +38,9 @@ extern const int kKeyPower;
 
 class Screens {
  public:
-  Screens() = default;
+  explicit Screens(ProcessManagerInterface* process_manager) {
+    process_manager_ = process_manager;
+  }
   virtual ~Screens() = default;
   // Not copyable or movable.
   Screens(const Screens&) = delete;
@@ -45,6 +49,10 @@ class Screens {
   // Loads token constants for screen placement, checks whether locale is read
   // from right to left and whether device is detachable.
   bool Init();
+
+  // Has the minimum needed to set up tests, to reduce excessive logging. All
+  // other components are tested separately.
+  bool InitForTest();
 
   // Show dynamic text using pre-rendered glyphs. Colors 'white', 'grey' and
   // 'black'. Returns true on success.
@@ -167,10 +175,21 @@ class Screens {
   FRIEND_TEST(ScreensTest, UpdateButtonsIsDetachable);
   FRIEND_TEST(ScreensTest, CheckRightToLeft);
   FRIEND_TEST(ScreensTest, CheckDetachable);
+  FRIEND_TEST(ScreensTest, GetVpdFromFile);
+  FRIEND_TEST(ScreensTest, GetVpdFromCommand);
+  FRIEND_TEST(ScreensTest, GetVpdFromDefault);
+  FRIEND_TEST(ScreensTest, GetHwidFromCommand);
+  FRIEND_TEST(ScreensTest, GetHwidFromDefault);
+  FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoFile);
+  FRIEND_TEST(ScreensTest, MapRegionToKeyboardNotDict);
+  FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoKeyboard);
+  FRIEND_TEST(ScreensTest, MapRegionToKeyboardBadKeyboardFormat);
+  FRIEND_TEST(ScreensTest, MapRegionToKeyboard);
 
-  // TODO(vyshu): Use region in vpd to initialize.
+  ProcessManagerInterface* process_manager_;
+
   key_reader::KeyReader key_reader_ =
-      key_reader::KeyReader(/*include_usb=*/true, "us");
+      key_reader::KeyReader(/*include_usb=*/true);
 
   // Read dimension constants for current locale into memory. Must be updated
   // every time the language changes.
@@ -192,11 +211,13 @@ class Screens {
   // error.
   bool GetLangConstants(const std::string& locale, int* lang_width);
 
-  // Shows the buttons of MiniOs screens. Index changes button focus based on
+  // Shows the components of MiniOs screens. Index changes button focus based on
   // button order.
   void ShowMiniOsWelcomeButtons(int index);
   void ShowMiniOsGetPasswordButtons(int index);
   void ShowMiniOsDropdownButtons(int index);
+  void ShowMiniOsDownloading();
+  void ShowMiniOsComplete();
 
   // Sets list of available items to item_list_ to show in drop down. Called
   // every time the menu is clicked.
@@ -208,6 +229,15 @@ class Screens {
 
   // Checks whether device has a detachable keyboard and sets `is_detachable`.
   void CheckDetachable();
+
+  // Get region from VPD. Set vpd_region_ to US as default.
+  void GetVpdRegion();
+
+  // Get hardware Id from crossystem. Set hwid to `CHROMEBOOK` as default.
+  void ReadHardwareId();
+
+  // Get XKB keyboard layout based on the VPD region. Return false on error.
+  bool MapRegionToKeyboard(std::string* xkb_keyboard_layout);
 
   // Whether the locale is read from right to left.
   bool right_to_left_{false};
@@ -241,6 +271,13 @@ class Screens {
 
   // Default and fall back locale directory.
   std::string locale_{"en-US"};
+
+  // Hardware Id read from crossystem.
+  std::string hwid_;
+
+  // Region code read from VPD. Used to determine keyboard layout. Does not
+  // change based on selected locale.
+  std::string vpd_region_;
 };
 
 }  // namespace screens

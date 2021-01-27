@@ -8,11 +8,29 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "minios/mock_process_manager.h"
 #include "minios/screens.h"
 
 using testing::_;
 
 namespace screens {
+
+namespace {
+
+constexpr char kCrosJsonSnippet[] =
+    "{\"au\": {\"region_code\": \"au\", \"confirmed\": true, "
+    "\"description\": \"Australia\", \"keyboards\": [\"xkb:us::eng\"], "
+    "\"time_zones\": [\"Australia/Sydney\"], \"locales\": [\"en-AU\"], "
+    "\"keyboard_mechanical_layout\": \"ANSI\", \"regulatory_domain\": "
+    "\"AU\"}, \"be\": {\"region_code\": \"be\", \"confirmed\": true, "
+    "\"description\": \"Belgium\", \"keyboards\": [\"xkb:be::nld\", "
+    "\"xkb:ca:eng:eng\"], \"time_zones\": [\"Europe/Brussels\"], "
+    "\"locales\": [\"en-GB\"], \"keyboard_mechanical_layout\": \"ISO\", "
+    "\"regulatory_domain\": \"BE\"},  \"he\": {\"keyboards\": [\"xkbbenld\"]}, "
+    "\"us\": {\"region_code\": \"us\", \"confirmed\": true, "
+    "\"description\": \"US\"}}";
+
+}  // namespace
 
 class ScreensTest : public ::testing::Test {
  public:
@@ -31,19 +49,22 @@ class ScreensTest : public ::testing::Test {
     // Create and write constants file.
     std::string token_consts =
         "TITLE_minios_token_HEIGHT=38 \nDESC_minios_token_HEIGHT=44\n"
-        "DESC_screen_token_HEIGHT=incorrect\n";
+        "DESC_screen_token_HEIGHT=incorrect\nDEBUG_OPTIONS_BTN_WIDTH=99\n";
     ASSERT_TRUE(
         base::WriteFile(locale_dir_en.Append("constants.sh"), token_consts));
 
-    // Create console and glyph directories.
+    // Create directories.
     ASSERT_TRUE(
         base::CreateDirectory(base::FilePath(test_root_).Append("dev/pts")));
     console_ = base::FilePath(test_root_).Append("dev/pts/0");
     ASSERT_TRUE(base::WriteFile(console_, ""));
     ASSERT_TRUE(CreateDirectory(
         base::FilePath(screens_path_).Append("glyphs").Append("white")));
-    // Load constants file.
-    ASSERT_TRUE(screens_.Init());
+    ASSERT_TRUE(CreateDirectory(
+        base::FilePath(test_root_).Append("sys/firmware/vpd/ro")));
+    ASSERT_TRUE(base::CreateDirectory(
+        base::FilePath(test_root_).Append("usr/share/misc")));
+    ASSERT_TRUE(screens_.InitForTest());
   }
 
  protected:
@@ -53,8 +74,8 @@ class ScreensTest : public ::testing::Test {
   base::FilePath console_;
   // Path to /etc/screens in test directory.
   base::FilePath screens_path_;
-
-  Screens screens_;
+  MockProcessManager mock_process_manager_;
+  Screens screens_{&mock_process_manager_};
   std::string test_root_;
 };
 
@@ -313,9 +334,117 @@ TEST_F(ScreensTest, CheckDetachable) {
   EXPECT_TRUE(screens_.is_detachable_);
 }
 
+TEST_F(ScreensTest, GetVpdFromFile) {
+  std::string vpd = "ca";
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append("sys/firmware/vpd/ro/region"), vpd));
+  screens_.GetVpdRegion();
+  EXPECT_EQ(screens_.vpd_region_, "ca");
+}
+
+TEST_F(ScreensTest, GetVpdFromCommand) {
+  std::string output = "ca";
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<2>(output),
+                               testing::Return(true)));
+  screens_.GetVpdRegion();
+  EXPECT_EQ(screens_.vpd_region_, output);
+}
+
+TEST_F(ScreensTest, GetVpdFromDefault) {
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::Return(false));
+  screens_.GetVpdRegion();
+  EXPECT_EQ(screens_.vpd_region_, "us");
+}
+
+TEST_F(ScreensTest, GetHwidFromCommand) {
+  std::string output = "Nightfury TEST ID";
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<2>(output),
+                               testing::Return(true)));
+  screens_.ReadHardwareId();
+  // Returns truncated hwid.
+  EXPECT_EQ(screens_.hwid_, "Nightfury");
+}
+
+TEST_F(ScreensTest, GetHwidFromDefault) {
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::Return(false));
+  screens_.ReadHardwareId();
+  EXPECT_EQ(screens_.hwid_, "CHROMEBOOK");
+}
+
+TEST_F(ScreensTest, MapRegionToKeyboardNoFile) {
+  std::string keyboard;
+  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(ScreensTest, MapRegionToKeyboardNotDict) {
+  std::string not_dict =
+      "{ au : { region_code :  au ,  confirmed : true, "
+      " description :  Australia ,  keyboards : [ xkb:us::eng ], "
+      " time_zones : [ Australia/Sydney ],  locales : [ en-AU ], "
+      " keyboard_mechanical_layout ";
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
+      not_dict));
+  std::string keyboard;
+  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(ScreensTest, MapRegionToKeyboardNoKeyboard) {
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
+      kCrosJsonSnippet));
+
+  // Find keyboard for region. "us" dict entry does not have a keyboard value.
+  screens_.vpd_region_ = "us";
+  std::string keyboard;
+  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+
+  // Given Vpd region not available at all.
+  screens_.vpd_region_ = "fr";
+  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(ScreensTest, MapRegionToKeyboardBadKeyboardFormat) {
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
+      kCrosJsonSnippet));
+
+  // Find keyboard for region. "he" dict entry does not have a correctly
+  // formatted keyboard value.
+  screens_.vpd_region_ = "he";
+  std::string keyboard;
+  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(ScreensTest, MapRegionToKeyboard) {
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
+      kCrosJsonSnippet));
+
+  // Find keyboard for region.
+  screens_.vpd_region_ = "au";
+  std::string keyboard;
+  EXPECT_TRUE(screens_.MapRegionToKeyboard(&keyboard));
+  EXPECT_EQ(keyboard, "us");
+
+  // Multiple keyboards available.
+  screens_.vpd_region_ = "be";
+  EXPECT_TRUE(screens_.MapRegionToKeyboard(&keyboard));
+  EXPECT_EQ(keyboard, "be");
+}
+
 class MockScreens : public Screens {
  public:
-  MockScreens() = default;
+  MockScreens() : Screens(nullptr) {}
   MOCK_METHOD(bool,
               ShowBox,
               (int offset_x,
@@ -345,7 +474,7 @@ class ScreensTestMocks : public ::testing::Test {
     screens_path_ = base::FilePath(temp_dir_.GetPath()).Append(kScreens);
     brillo::TouchFile(screens_path_.Append("en-US").Append("constants.sh"));
     mock_screens_.SetRootForTest(temp_dir_.GetPath().value());
-    mock_screens_.Init();
+    mock_screens_.InitForTest();
   }
 
  protected:
