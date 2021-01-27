@@ -736,7 +736,7 @@ TEST_P(CellularTest, StartConnected) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(Return(true));
 
-  device_->set_modem_state(Cellular::kModemStateConnected);
+  device_->set_modem_state_for_testing(Cellular::kModemStateConnected);
   device_->set_meid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   Error error;
@@ -753,7 +753,7 @@ TEST_P(CellularTest, StartLinked) {
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
-  device_->set_modem_state(Cellular::kModemStateConnected);
+  device_->set_modem_state_for_testing(Cellular::kModemStateConnected);
   device_->set_meid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, _, _))
@@ -1221,7 +1221,7 @@ TEST_P(CellularTest, ModemStateChangeEnable) {
       .WillOnce(Invoke(this, &CellularTest::InvokeGetSignalQuality));
   EXPECT_CALL(manager_, UpdateEnabledTechnologies());
   device_->state_ = Cellular::kStateDisabled;
-  device_->set_modem_state(Cellular::kModemStateDisabled);
+  device_->set_modem_state_for_testing(Cellular::kModemStateDisabled);
 
   KeyValueStore props;
   props.Set<bool>(CellularCapabilityClassic::kModemPropertyEnabled, true);
@@ -1246,7 +1246,7 @@ TEST_P(CellularTest, ModemStateChangeDisable) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   device_->state_ = Cellular::kStateEnabled;
-  device_->set_modem_state(Cellular::kModemStateEnabled);
+  device_->set_modem_state_for_testing(Cellular::kModemStateEnabled);
   GetCapabilityClassic()->InitProxies();
 
   GetCapabilityClassic()->OnModemStateChangedSignal(
@@ -1287,7 +1287,7 @@ TEST_P(CellularTest, ModemStateChangeLostRegistration) {
   CellularCapability3gpp* capability = GetCapability3gpp();
   capability->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
   EXPECT_TRUE(capability->IsRegistered());
-  device_->set_modem_state(Cellular::kModemStateRegistered);
+  device_->set_modem_state_for_testing(Cellular::kModemStateRegistered);
   device_->OnModemStateChanged(Cellular::kModemStateEnabled);
   EXPECT_FALSE(capability->IsRegistered());
 }

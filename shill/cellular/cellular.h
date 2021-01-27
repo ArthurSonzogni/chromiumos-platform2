@@ -174,7 +174,6 @@ class Cellular : public Device,
 
   State state() const { return state_; }
 
-  void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
   bool IsUnderlyingDeviceEnabled() const override;
   static bool IsEnabledModemState(ModemState state);
@@ -331,7 +330,7 @@ class Cellular : public Device,
   void set_manufacturer(const std::string& manufacturer);
   void set_model_id(const std::string& model_id);
   void set_mm_plugin(const std::string& mm_plugin);
-  void set_scanning(bool scanning);
+  void SetScanning(bool scanning);
 
   void set_selected_network(const std::string& selected_network);
   void clear_found_networks();
@@ -339,8 +338,6 @@ class Cellular : public Device,
   void set_provider_requires_roaming(bool provider_requires_roaming);
   void SetSimPresent(bool sim_present);
   void set_apn_list(const Stringmaps& apn_list);
-
-  void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
 
   // Takes ownership.
   void set_home_provider_info(MobileOperatorInfo* home_provider_info);
@@ -352,6 +349,9 @@ class Cellular : public Device,
 
   CellularCapability* capability_for_testing() { return capability_.get(); }
   mm1::Mm1ProxyInterface* mm1_proxy_for_testing() { return mm1_proxy_.get(); }
+
+  void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
+  void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
 
  private:
   friend class CellularTest;

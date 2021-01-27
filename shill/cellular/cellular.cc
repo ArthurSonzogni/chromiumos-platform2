@@ -802,6 +802,13 @@ void Cellular::PollLocation() {
   capability_->GetLocation(cb);
 }
 
+void Cellular::HandleNewSignalQuality(uint32_t strength) {
+  SLOG(this, 2) << "Signal strength: " << strength;
+  if (service_) {
+    service_->SetStrength(strength);
+  }
+}
+
 void Cellular::HandleNewRegistrationState() {
   SLOG(this, 2) << __func__ << ": (new state " << GetStateString(state_) << ")";
   CHECK(capability_);
@@ -833,22 +840,14 @@ void Cellular::HandleNewRegistrationState() {
     // registered means we've successfully connected
     StartLocationPolling();
   }
-  if (!service_) {
-    metrics()->NotifyDeviceScanFinished(interface_index());
+  if (!service_)
     CreateService();
-  }
+
   if (state_ == kStateRegistered && modem_state_ == kModemStateConnected)
     OnConnected();
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
   manager()->UpdateService(service_);
-}
-
-void Cellular::HandleNewSignalQuality(uint32_t strength) {
-  SLOG(this, 2) << "Signal strength: " << strength;
-  if (service_) {
-    service_->SetStrength(strength);
-  }
 }
 
 void Cellular::CreateService() {
@@ -901,6 +900,7 @@ void Cellular::DestroyCapability() {
   if (capability_state_ == CapabilityState::kModemStopping ||
       capability_state_ == CapabilityState::kCellularStopped) {
     // If Cellular::StopModem has been called, nothing more to do.
+    UpdateScanning();
     return;
   }
   // Clear any modem starting/started/stopped state by resetting the capability
@@ -1167,7 +1167,7 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
   CHECK(capability_);
   SLOG(this, 1) << __func__ << ": " << GetModemStateString(old_state) << " -> "
                 << GetModemStateString(new_state);
-  set_modem_state(new_state);
+  modem_state_ = new_state;
 
   // Skip calls to OnDisabled|Enabled|Connected|Disconnected while the
   // capability is starting or stopping the modem since ModemState transitions
@@ -1479,27 +1479,20 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 
 void Cellular::UpdateScanning() {
   if (proposed_scan_in_progress_) {
-    set_scanning(true);
+    SetScanning(true);
     return;
   }
 
-  if (modem_state_ == kModemStateEnabling) {
-    set_scanning(true);
-    return;
-  }
-
-  if (service_ && service_->activation_state() != kActivationStateActivated) {
-    set_scanning(false);
-    return;
-  }
-
-  if (modem_state_ == kModemStateEnabled ||
+  // Modem is Scanning until it is Registered / Connecting / Connected.
+  if (capability_state_ != CapabilityState::kModemStarted ||
+      modem_state_ == kModemStateEnabled ||
+      modem_state_ == kModemStateEnabling ||
       modem_state_ == kModemStateSearching) {
-    set_scanning(true);
+    SetScanning(true);
     return;
   }
 
-  set_scanning(false);
+  SetScanning(false);
 }
 
 void Cellular::RegisterProperties() {
@@ -1562,8 +1555,9 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
     return;
   dbus_path_ = dbus_path;
   dbus_path_str_ = dbus_path.value();
-  set_modem_state(kModemStateUnknown);
+  modem_state_ = kModemStateUnknown;
   set_mac_address(mac_address);
+  UpdateScanning();
 }
 
 const std::string& Cellular::GetSimCardId() const {
@@ -1767,12 +1761,17 @@ void Cellular::StopLocationPolling() {
   }
 }
 
-void Cellular::set_scanning(bool scanning) {
+void Cellular::SetScanning(bool scanning) {
   if (scanning_ == scanning)
     return;
 
   scanning_ = scanning;
   adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
+
+  if (scanning)
+    metrics()->NotifyDeviceScanStarted(interface_index());
+  else
+    metrics()->NotifyDeviceScanFinished(interface_index());
 
   // kScanningProperty is a sticky-false property.
   // Every time it is set to |true|, it will remain |true| up to a maximum of
@@ -1786,7 +1785,7 @@ void Cellular::set_scanning(bool scanning) {
     SLOG(this, 2) << "Scanning set to true. "
                   << "Starting timeout to reset to false.";
     scanning_timeout_callback_.Reset(
-        Bind(&Cellular::set_scanning, weak_ptr_factory_.GetWeakPtr(), false));
+        Bind(&Cellular::SetScanning, weak_ptr_factory_.GetWeakPtr(), false));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   scanning_timeout_callback_.callback(),
                                   scanning_timeout_milliseconds_);

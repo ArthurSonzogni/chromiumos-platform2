@@ -500,17 +500,6 @@ class CellularCapability3gppMainTest : public CellularCapability3gppTest {
   EventDispatcherForTest dispatcher_;
 };
 
-// Tests that involve timers will (or may) use a mock of the event dispatcher
-// instead of a real one.
-class CellularCapability3gppTimerTest : public CellularCapability3gppTest {
- public:
-  CellularCapability3gppTimerTest()
-      : CellularCapability3gppTest(&mock_dispatcher_) {}
-
- protected:
-  ::testing::StrictMock<MockEventDispatcher> mock_dispatcher_;
-};
-
 TEST_F(CellularCapability3gppMainTest, StartModem) {
   ExpectModemAndModem3gppProperties();
 
@@ -976,7 +965,7 @@ TEST_F(CellularCapability3gppMainTest, UpdateRegistrationState) {
 
   CreateService();
   cellular_->SetImsi("310240123456789");
-  cellular_->set_modem_state(Cellular::kModemStateConnected);
+  cellular_->set_modem_state_for_testing(Cellular::kModemStateConnected);
   SetRegistrationDroppedUpdateTimeout(0);
 
   const Stringmap& home_provider_map = cellular_->home_provider();
@@ -1099,7 +1088,7 @@ TEST_F(CellularCapability3gppMainTest,
   CreateService();
 
   cellular_->SetImsi("310240123456789");
-  cellular_->set_modem_state(Cellular::kModemStateRegistered);
+  cellular_->set_modem_state_for_testing(Cellular::kModemStateRegistered);
   SetRegistrationDroppedUpdateTimeout(0);
 
   const Stringmap& home_provider_map = cellular_->home_provider();
@@ -1645,7 +1634,7 @@ TEST_F(CellularCapability3gppMainTest, IsMdnValid) {
   EXPECT_TRUE(capability_->IsMdnValid());
 }
 
-TEST_F(CellularCapability3gppTimerTest, CompleteActivation) {
+TEST_F(CellularCapability3gppMainTest, CompleteActivation) {
   const char kIccid[] = "1234567";
 
   cellular_->SetIccid(kIccid);
@@ -1665,7 +1654,6 @@ TEST_F(CellularCapability3gppTimerTest, CompleteActivation) {
   capability_->CompleteActivation(&error);
   VerifyAndSetActivationExpectations();
   Mock::VerifyAndClearExpectations(service_);
-  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
 }
 
 TEST_F(CellularCapability3gppMainTest, UpdateServiceActivationState) {

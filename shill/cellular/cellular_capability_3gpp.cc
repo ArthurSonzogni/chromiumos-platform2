@@ -337,10 +337,7 @@ void CellularCapability3gpp::EnableModemCompleted(
   // After modem is enabled, it should be possible to get properties
   // TODO(jglasgow): handle errors from GetProperties
   GetProperties();
-  // We expect the modem to start scanning after it has been enabled.
-  // Change this if this behavior is no longer the case in the future.
   metrics_->NotifyDeviceEnableFinished(cellular()->interface_index());
-  metrics_->NotifyDeviceScanStarted(cellular()->interface_index());
   callback.Run(error);
 }
 
