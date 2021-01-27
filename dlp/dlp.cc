@@ -4,9 +4,17 @@
 
 #include <brillo/syslog_logging.h>
 
+#include "dlp/dlp_daemon.h"
+
 int main(int /* argc */, char* /* argv */[]) {
   brillo::OpenLog("dlp", true /* log_pid */);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+
+  // Run daemon.
+  LOG(INFO) << "DLP daemon starting";
+  dlp::DlpDaemon daemon;
+  int result = daemon.Run();
+  LOG(INFO) << "DLP daemon stopping with exit code " << result;
 
   return 0;
 }

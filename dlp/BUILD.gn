@@ -28,12 +28,22 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+
+    # system_api depends on protobuf (or protobuf-lite). It must
+    # appear before protobuf or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
   ]
 }
 
 executable("dlp") {
   configs += [ ":target_defaults" ]
-  sources = [ "dlp.cc" ]
+  sources = [
+    "dlp.cc",
+    "dlp_adaptor.cc",
+    "dlp_daemon.cc",
+  ]
 }
 
 # Unit tests.

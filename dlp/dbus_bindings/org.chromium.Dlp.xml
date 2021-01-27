@@ -7,5 +7,17 @@
 <node name="/org/chromium/Dlp"
     xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Dlp">
+      <method name="SetDlpFilesPolicy">
+        <tp:docstring>
+          Sets the Data Leak Prevention files policy.
+        </tp:docstring>
+        <arg name="request" type="ay" direction="in">
+          Serialized SetDlpFilesPolicyRequest message.
+        </arg>
+        <arg name="response" type="ay" direction="out">
+          Serialized SetDlpFilesPolicyResponse message.
+        </arg>
+        <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      </method>
   </interface>
 </node>
