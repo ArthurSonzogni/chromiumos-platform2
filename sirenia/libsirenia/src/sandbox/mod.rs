@@ -154,9 +154,10 @@ mod tests {
         std::mem::drop(w_stdout);
         std::mem::drop(w_stderr);
 
+        // The sleep was added to possibly resolve https://crbug.com/1171078.
         write!(
             &mut w_stdin,
-            "echo -n '{}'; echo -n '{}' 1>&2; exit;",
+            "echo -n '{}'; sleep 0.05; echo -n '{}' 1>&2; exit;",
             STDOUT_TEST, STDERR_TEST
         )
         .unwrap();
