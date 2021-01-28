@@ -4008,7 +4008,6 @@ int main(int argc, char** argv) {
   const char* clipboard_manager = getenv("SOMMELIER_CLIPBOARD_MANAGER");
   const char* frame_color = getenv("SOMMELIER_FRAME_COLOR");
   const char* dark_frame_color = getenv("SOMMELIER_DARK_FRAME_COLOR");
-  const char* drm_device = getenv("SOMMELIER_DRM_DEVICE");
   const char* glamor = getenv("SOMMELIER_GLAMOR");
   const char* fullscreen_mode = getenv("SOMMELIER_FULLSCREEN_MODE");
   const char* shm_driver = getenv("SOMMELIER_SHM_DRIVER");
@@ -4097,8 +4096,6 @@ int main(int argc, char** argv) {
       frame_color = sl_arg_value(arg);
     } else if (strstr(arg, "--dark-frame-color") == arg) {
       dark_frame_color = sl_arg_value(arg);
-    } else if (strstr(arg, "--drm-device") == arg) {
-      drm_device = sl_arg_value(arg);
     } else if (strstr(arg, "--glamor") == arg) {
       glamor = "1";
     } else if (strstr(arg, "--fullscreen-mode") == arg) {
@@ -4368,14 +4365,9 @@ int main(int argc, char** argv) {
                              sl_handle_virtwl_ctx_event, &ctx);
   }
 
-  if (drm_device) {
-    int drm_fd = open(drm_device, O_RDWR | O_CLOEXEC);
-    if (drm_fd == -1) {
-      fprintf(stderr, "error: could not open %s (%s)\n", drm_device,
-              strerror(errno));
-      return EXIT_FAILURE;
-    }
-
+  char* drm_device = NULL;
+  int drm_fd = open_virtgpu(&drm_device);
+  if (drm_fd >= 0) {
     ctx.gbm = gbm_create_device(drm_fd);
     if (!ctx.gbm) {
       fprintf(stderr, "error: couldn't get display device\n");

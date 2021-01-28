@@ -196,4 +196,6 @@ class VirtGpuChannel : public WaylandChannel {
   std::vector<BufferDescription> description_cache_;
 };
 
+int open_virtgpu(char** drm_device);
+
 #endif  // VM_TOOLS_SOMMELIER_VIRTUALIZATION_WAYLAND_CHANNEL_H_
