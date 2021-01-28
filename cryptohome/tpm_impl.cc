@@ -245,7 +245,6 @@ TpmImpl::TpmImpl()
     : initialized_(false),
       srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
       owner_password_(),
-      password_sync_lock_(),
       is_being_owned_(false) {
   TSS_HCONTEXT context_handle = ConnectContext();
   if (context_handle) {
@@ -1325,34 +1324,6 @@ bool TpmImpl::IsNvramLocked(uint32_t index) {
     return false;
   }
   return is_write_locked;
-}
-
-bool TpmImpl::IsNvramLockedForContext(TSS_HCONTEXT context_handle,
-                                      TSS_HTPM tpm_handle,
-                                      uint32_t index) {
-  unsigned int count = 0;
-  TSS_RESULT result;
-  UINT32 nv_index_data_length = 0;
-  ScopedTssMemory nv_index_data(context_handle);
-  if (TPM_ERROR(result = Tspi_TPM_GetCapability(
-                    tpm_handle, TSS_TPMCAP_NV_INDEX, sizeof(index),
-                    reinterpret_cast<BYTE*>(&index), &nv_index_data_length,
-                    nv_index_data.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
-    return count;
-  }
-  if (nv_index_data_length < sizeof(UINT32) + sizeof(TPM_BOOL)) {
-    return count;
-  }
-  // TPM_NV_DATA_PUBLIC->bWriteDefine is the second to last element in the
-  // struct.  Since packing the struct still doesn't eliminate inconsistencies
-  // between the API and the hardware, this is the safest way to extract the
-  // data.
-  // TODO(wad) share data with GetNvramSize() to avoid extra calls.
-  uint32_t* nv_data_public =
-      reinterpret_cast<uint32_t*>(nv_index_data.value() + nv_index_data_length -
-                                  (sizeof(UINT32) + sizeof(TPM_BOOL)));
-  return (*nv_data_public != 0);
 }
 
 bool TpmImpl::ReadNvram(uint32_t index, SecureBlob* blob) {
@@ -2707,34 +2678,6 @@ Tpm::TpmRetryAction TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
   brillo::SecureClear(buf.value(), length);
   data->swap(tmp);
   return Tpm::kTpmRetryNone;
-}
-
-bool TpmImpl::GetCapability(TSS_HCONTEXT context_handle,
-                            TSS_HTPM tpm_handle,
-                            UINT32 capability,
-                            UINT32 sub_capability,
-                            brillo::Blob* data,
-                            UINT32* value) const {
-  UINT32 length = 0;
-  ScopedTssMemory buf(context_handle);
-  TSS_RESULT result = Tspi_TPM_GetCapability(
-      tpm_handle, capability, sizeof(UINT32),
-      reinterpret_cast<BYTE*>(&sub_capability), &length, buf.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to get capability.";
-    return false;
-  }
-  if (data) {
-    data->assign(buf.value(), buf.value() + length);
-  }
-  if (value) {
-    if (length != sizeof(UINT32)) {
-      return false;
-    }
-    UINT64 offset = 0;
-    Trspi_UnloadBlob_UINT32(&offset, value, buf.value());
-  }
-  return true;
 }
 
 void TpmImpl::SetOwnerPassword(const brillo::SecureBlob& owner_password) {

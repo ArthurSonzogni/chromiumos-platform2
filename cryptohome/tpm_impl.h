@@ -299,12 +299,6 @@ class TpmImpl : public Tpm {
                                 TSS_HTPM tpm_handle,
                                 uint32_t index);
 
-  // Returns if bWriteDefine is true for a given NVRAM space using the given
-  // context.
-  bool IsNvramLockedForContext(TSS_HCONTEXT context_handle,
-                               TSS_HTPM tpm_handle,
-                               uint32_t index);
-
   // Reads an NVRAM space using the given context.
   bool ReadNvramForContext(TSS_HCONTEXT context_handle,
                            TSS_HTPM tpm_handle,
@@ -359,16 +353,6 @@ class TpmImpl : public Tpm {
                               brillo::SecureBlob* platform_credential,
                               brillo::SecureBlob* conformance_credential);
 
-  // Wrapper for Tspi_TPM_GetCapability. If |data| is not NULL, the raw
-  // capability data will be assigned. If |value| is not NULL, the capability
-  // data must be exactly 4 bytes and it will be decoded into |value|.
-  bool GetCapability(TSS_HCONTEXT context_handle,
-                     TSS_HTPM tpm_handle,
-                     UINT32 capability,
-                     UINT32 sub_capability,
-                     brillo::Blob* data,
-                     UINT32* value) const;
-
   // Get the endorsement public key based on context and tpm handle previously
   // obtained. Returns true on success.
   TpmRetryAction GetEndorsementPublicKeyInternal(
@@ -409,10 +393,6 @@ class TpmImpl : public Tpm {
 
   // If TPM ownership is taken, owner_password_ contains the password used
   brillo::SecureBlob owner_password_;
-
-  // Used to provide thread-safe access to owner_password_, as it is set in the
-  // initialization background thread.
-  base::Lock password_sync_lock_;
 
   // Indicates if the TPM is enabled
   bool is_enabled_{false};
