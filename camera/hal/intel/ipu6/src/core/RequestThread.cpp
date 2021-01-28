@@ -289,7 +289,7 @@ int RequestThread::waitFrame(int streamId, camera_buffer_t **ubuffer)
         int ret = frameQueue.mFrameAvailableSignal.waitRelative(
                       lock,
                       kWaitFrameDuration * SLOWLY_MULTIPLIER);
-        if (!mActive) return INVALID_OPERATION;
+        if (!mActive) return NO_INIT;
 
         if (ret == TIMED_OUT) {
             LOGW("@%s, mCameraId:%d, time out happens, wait recovery", __func__, mCameraId);

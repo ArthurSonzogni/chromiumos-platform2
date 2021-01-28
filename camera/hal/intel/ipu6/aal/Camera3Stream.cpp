@@ -129,6 +129,10 @@ bool Camera3Stream::threadLoop() {
     if (!inputCam3Buf && mIsHALStream) {
         LOG1("[%p]@ dqbuf for frameNumber %d", this, frameNumber);
         int ret = icamera::camera_stream_dqbuf(mCameraId, mHALStream.id, &buffer, &parameter);
+        if (ret == icamera::NO_INIT) {
+            LOG1("[%p] stream exits", this);
+            return false;
+        }
         CheckError(ret != icamera::OK || !buffer, true, "[%p]failed to dequeue buffer, ret %d",
                    this, ret);
         LOG2("[%p]@ %s, buffer->timestamp:%lld addr %p", this, __func__, buffer->timestamp,
