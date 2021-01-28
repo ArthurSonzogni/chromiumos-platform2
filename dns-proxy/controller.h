@@ -95,6 +95,7 @@ class Controller : public brillo::DBusDaemon {
   void KillProxy(Proxy::Type type, const std::string& ifname = "");
   void Kill(const ProxyProc& proc);
   void OnProxyExit(pid_t pid, const siginfo_t& siginfo);
+  void EvalProxyExit(const ProxyProc& proc);
 
   // Callback used to run/kill default proxy based on its dependencies.
   // |has_deps| will be true if either VPN or a single-networked guest OS is

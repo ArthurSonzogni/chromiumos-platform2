@@ -11,6 +11,7 @@
 #include <base/process/launch.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/scoped_minijail.h>
+#include <shill/dbus-constants.h>
 
 namespace dns_proxy {
 namespace {
@@ -128,6 +129,7 @@ void Controller::KillProxy(Proxy::Type type, const std::string& ifname) {
 }
 
 void Controller::Kill(const ProxyProc& proc) {
+  EvalProxyExit(proc);
   process_reaper_.ForgetChild(proc.pid);
   int rc = kill(proc.pid, SIGTERM);
   if (rc < 0 && rc != ESRCH)
@@ -153,6 +155,8 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
     LOG(ERROR) << "Unexpected process (" << pid << ") exit signal received";
     return;
   }
+
+  EvalProxyExit(proc);
 
   switch (siginfo.si_code) {
     case CLD_EXITED:
@@ -182,6 +186,18 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
     default:
       NOTREACHED();
   }
+}
+
+void Controller::EvalProxyExit(const ProxyProc& proc) {
+  if (proc.opts.type != Proxy::Type::kSystem)
+    return;
+
+  // Ensure the system proxy address is cleared from shill.
+  brillo::ErrorPtr error;
+  if (!shill_->ManagerProperties()->Set(shill::kDNSProxyIPv4AddressProperty, "",
+                                        &error))
+    LOG(WARNING) << "Failed to clear shill dns-proxy property for " << proc
+                 << ": " << error->GetMessage();
 }
 
 void Controller::EvalDefaultProxyDeps(bool has_deps) {

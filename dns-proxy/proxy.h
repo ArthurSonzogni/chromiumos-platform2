@@ -57,6 +57,10 @@ class Proxy : public brillo::DBusDaemon {
   void OnDeviceChanged(bool is_default,
                        const shill::Client::Device* const device);
 
+  // Helper func for setting the dns-proxy address in shill.
+  // Only valid for the system proxy.
+  bool SetShillProperty(const std::string& addr);
+
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
   std::unique_ptr<shill::Client> shill_;

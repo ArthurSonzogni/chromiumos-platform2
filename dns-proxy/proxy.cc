@@ -11,6 +11,8 @@
 
 #include <base/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <chromeos/patchpanel/net_util.h>
+#include <shill/dbus-constants.h>
 
 namespace dns_proxy {
 
@@ -67,6 +69,7 @@ int Proxy::OnInit() {
 
 void Proxy::OnShutdown(int*) {
   LOG(INFO) << "Stopping DNS proxy " << opts_;
+  SetShillProperty("");
 }
 
 void Proxy::Setup() {
@@ -120,11 +123,39 @@ void Proxy::OnPatchpanelReady(bool success) {
   // TODO(garrick): Use the response... for now just ack it worked.
   LOG(INFO) << "Sucessfully connected private network namespace:"
             << res.second.host_ifname() << " <--> " << res.second.peer_ifname();
+
+  // If this is the system proxy, tell shill about it. We should start receiving
+  // DNS traffic on success. If this fails, we don't have much choice but to
+  // just die and try again...
+  if (opts_.type == Type::kSystem)
+    CHECK(SetShillProperty(
+        patchpanel::IPv4AddressToString(res.second.host_ipv4_address())));
 }
 
 void Proxy::OnDefaultServiceChanged(const std::string& type) {}
 
 void Proxy::OnDeviceChanged(bool is_default,
                             const shill::Client::Device* const device) {}
+
+bool Proxy::SetShillProperty(const std::string& addr) {
+  if (opts_.type != Type::kSystem)
+    return false;
+
+  if (!shill_) {
+    LOG(WARNING)
+        << "Lost connection to shill - cannot set dns-proxy address property ["
+        << addr << "]";
+    return false;
+  }
+
+  brillo::ErrorPtr error;
+  if (!shill_->ManagerProperties()->Set(shill::kDNSProxyIPv4AddressProperty,
+                                        addr, &error)) {
+    LOG(ERROR) << "Failed to set dns-proxy address property [" << addr
+               << "] on shill: " << error->GetMessage();
+    return false;
+  }
+  return true;
+}
 
 }  // namespace dns_proxy
