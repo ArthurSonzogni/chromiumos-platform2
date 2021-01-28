@@ -60,7 +60,7 @@ unshare: 1
 prctl: 1
 open: 1
 mount: 1
-writev:1
+writev: 1
 umount2: 1
 capget: 1
 setpgid: 1
@@ -72,15 +72,12 @@ bind: 1
 listen: 1
 accept: 1
 recvfrom: 1
-sendto: 1
 getsockopt: arg1 == SOL_SOCKET
 socketpair: 1
-poll: 1
 alarm: 1
 setsockopt: 1
 sendmmsg: 1
 getpeername: 1
-getsockname: 1
 setpriority: 1
 madvise: 1
 creat: 1
@@ -89,7 +86,5 @@ unlink: 1
 lstat: 1
 getrandom: 1
 getdents: 1
-recvmsg: 1
-writev: 1
 shutdown: 1
 waitid: 1

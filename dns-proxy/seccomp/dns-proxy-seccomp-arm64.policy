@@ -50,7 +50,6 @@ restart_syscall: 1
 exit: 1
 exit_group: 1
 rt_sigreturn: 1
-pipe2: 1
 clone: 1
 rt_sigtimedwait: 1
 getdents64: 1
@@ -58,9 +57,8 @@ dup: 1
 dup3: 1
 unshare: 1
 prctl: 1
-openat: 1
 mount: 1
-writev:1
+writev: 1
 umount2: 1
 capget: 1
 setpgid: 1
@@ -78,13 +76,10 @@ socketpair: 1
 setsockopt: 1
 sendmmsg: 1
 getpeername: 1
-getsockname: 1
 setpriority: 1
 madvise: 1
 lstat: 1
 getrandom: 1
 getdents: 1
-recvmsg: 1
-writev: 1
 shutdown: 1
 waitid:1
