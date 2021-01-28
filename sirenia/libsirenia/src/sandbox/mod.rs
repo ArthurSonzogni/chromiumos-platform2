@@ -148,12 +148,14 @@ mod tests {
             (w_stderr.as_raw_fd(), CROS_CONNECTION_ERR_FD),
         ];
 
+        println!("Starting sandboxed process.");
         s.run(Path::new("/bin/sh"), &["/bin/sh"], &keep_fds)
             .unwrap();
         std::mem::drop(r_stdin);
         std::mem::drop(w_stdout);
         std::mem::drop(w_stderr);
 
+        println!("Writing to stdin.");
         // The sleep was added to possibly resolve https://crbug.com/1171078.
         write!(
             &mut w_stdin,
@@ -164,14 +166,18 @@ mod tests {
         w_stdin.flush().unwrap();
         std::mem::drop(w_stdin);
 
+        println!("Reading stdout.");
         let mut stdout_result = String::new();
         r_stdout.read_to_string(&mut stdout_result).unwrap();
 
+        println!("Reading stderr.");
         let mut stderr_result = String::new();
         r_stderr.read_to_string(&mut stderr_result).unwrap();
 
+        println!("Waiting for sandboxed process.");
         let result = s.wait_for_completion();
 
+        println!("Validating result.");
         if result.is_err() {
             eprintln!("Got error code: {:?}", result)
         }
