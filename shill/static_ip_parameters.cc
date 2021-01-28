@@ -242,7 +242,8 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
 void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {
   props->address = saved_args_.Lookup<string>(kAddressProperty, "");
   props->gateway = saved_args_.Lookup<string>(kGatewayProperty, "");
-  props->mtu = saved_args_.Lookup<int32_t>(kMtuProperty, 0);
+  props->mtu =
+      saved_args_.Lookup<int32_t>(kMtuProperty, IPConfig::kUndefinedMTU);
   RestoreStrings(kNameServersProperty, &props->dns_servers);
   RestoreStrings(kSearchDomainsProperty, &props->domain_search);
   props->peer_address = saved_args_.Lookup<string>(kPeerAddressProperty, "");

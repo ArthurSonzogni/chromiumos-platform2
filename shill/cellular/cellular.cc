@@ -40,6 +40,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/external_task.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/netlink_sock_diag.h"
@@ -1137,10 +1138,14 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
       SLOG(this, 2) << "Assign static IP configuration from bearer.";
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
-      // Override the MTU with a given limit for a specific serving operator.
-      // TODO(b:138390944): Revisit this override once b:138390944 is resolved.
+      // Override the MTU with a given limit for a specific serving operator
+      // if the network doesn't report something lower.
+      // TODO(b:176060170): Combine values from IPv6 as well..
       IPConfig::Properties properties = *bearer->ipv4_config_properties();
-      if (serving_operator_info_ && serving_operator_info_->mtu() != 0) {
+      if (serving_operator_info_ &&
+          serving_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
+          (properties.mtu == IPConfig::kUndefinedMTU ||
+           serving_operator_info_->mtu() < properties.mtu)) {
         properties.mtu = serving_operator_info_->mtu();
       }
       AssignIPConfig(properties);

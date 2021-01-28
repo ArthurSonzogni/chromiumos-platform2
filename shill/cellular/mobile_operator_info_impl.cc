@@ -15,6 +15,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/repeated_field.h>
 
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/protobuf_lite_streams.h"
 
@@ -105,7 +106,7 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
       current_mno_(nullptr),
       current_mvno_(nullptr),
       requires_roaming_(false),
-      mtu_(0),
+      mtu_(IPConfig::kUndefinedMTU),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
   // Overrides need to be installed before defaults
@@ -798,7 +799,7 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   HandleOnlinePortalUpdate();
   activation_code_.clear();
   requires_roaming_ = false;
-  mtu_ = 0;
+  mtu_ = IPConfig::kUndefinedMTU;
 }
 
 void MobileOperatorInfoImpl::ReloadData(const Data& data) {
