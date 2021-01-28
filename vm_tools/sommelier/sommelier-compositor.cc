@@ -7,7 +7,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <gbm.h>
 #include <libdrm/drm_fourcc.h>
 #include <limits.h>
 #include <pixman.h>
@@ -51,28 +50,6 @@ struct sl_output_buffer {
   struct sl_host_surface* surface;
 };
 
-struct dma_buf_sync {
-  __u64 flags;
-};
-
-static void sl_dmabuf_sync(int fd, __u64 flags) {
-  struct dma_buf_sync sync = {0};
-  int rv;
-
-  sync.flags = flags;
-  do {
-    rv = ioctl(fd, DMA_BUF_IOCTL_SYNC, &sync);
-  } while (rv == -1 && errno == EINTR);
-}
-
-static void sl_dmabuf_begin_write(int fd, struct sl_context* ctx) {
-  sl_dmabuf_sync(fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_WRITE);
-}
-
-static void sl_dmabuf_end_write(int fd, struct sl_context* ctx) {
-  sl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE);
-}
-
 static void sl_virtwl_dmabuf_sync(int fd, __u32 flags, struct sl_context* ctx) {
   int rv;
   rv = ctx->channel->sync(fd, flags);
@@ -86,25 +63,6 @@ static void sl_virtwl_dmabuf_begin_write(int fd, struct sl_context* ctx) {
 
 static void sl_virtwl_dmabuf_end_write(int fd, struct sl_context* ctx) {
   sl_virtwl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE, ctx);
-}
-
-static uint32_t sl_gbm_format_for_shm_format(uint32_t format) {
-  switch (format) {
-    case WL_SHM_FORMAT_NV12:
-      return GBM_FORMAT_NV12;
-    case WL_SHM_FORMAT_RGB565:
-      return GBM_FORMAT_RGB565;
-    case WL_SHM_FORMAT_ARGB8888:
-      return GBM_FORMAT_ARGB8888;
-    case WL_SHM_FORMAT_ABGR8888:
-      return GBM_FORMAT_ABGR8888;
-    case WL_SHM_FORMAT_XRGB8888:
-      return GBM_FORMAT_XRGB8888;
-    case WL_SHM_FORMAT_XBGR8888:
-      return GBM_FORMAT_XBGR8888;
-  }
-  assert(0);
-  return 0;
 }
 
 static uint32_t sl_drm_format_for_shm_format(int format) {
@@ -222,36 +180,6 @@ static void sl_host_surface_attach(struct wl_client* client,
                                 MAX_SIZE);
 
       switch (host->ctx->shm_driver) {
-        case SHM_DRIVER_DMABUF: {
-          struct zwp_linux_buffer_params_v1* buffer_params;
-          struct gbm_bo* bo;
-          int stride0;
-          int fd;
-
-          bo = gbm_bo_create(host->ctx->gbm, width, height,
-                             sl_gbm_format_for_shm_format(shm_format),
-                             GBM_BO_USE_SCANOUT | GBM_BO_USE_LINEAR);
-          stride0 = gbm_bo_get_stride(bo);
-          fd = gbm_bo_get_fd(bo);
-
-          buffer_params = zwp_linux_dmabuf_v1_create_params(
-              host->ctx->linux_dmabuf->internal);
-          zwp_linux_buffer_params_v1_add(buffer_params, fd, 0, 0, stride0,
-                                         DRM_FORMAT_MOD_INVALID >> 32,
-                                         DRM_FORMAT_MOD_INVALID & 0xffffffff);
-          host->current_buffer->internal =
-              zwp_linux_buffer_params_v1_create_immed(
-                  buffer_params, width, height,
-                  sl_drm_format_for_shm_format(shm_format), 0);
-          zwp_linux_buffer_params_v1_destroy(buffer_params);
-
-          host->current_buffer->mmap = sl_mmap_create(
-              fd, height * stride0, bpp, 1, 0, stride0, 0, 0, 1, 0);
-          host->current_buffer->mmap->begin_write = sl_dmabuf_begin_write;
-          host->current_buffer->mmap->end_write = sl_dmabuf_end_write;
-
-          gbm_bo_destroy(bo);
-        } break;
         case SHM_DRIVER_VIRTWL: {
           size_t size = host_buffer->shm_mmap->size;
           struct WaylandBufferCreateInfo create_info = {0};

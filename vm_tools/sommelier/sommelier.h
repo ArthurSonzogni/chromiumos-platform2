@@ -89,7 +89,6 @@ enum {
 };
 
 enum {
-  SHM_DRIVER_DMABUF,
   SHM_DRIVER_VIRTWL,
   SHM_DRIVER_VIRTWL_DMABUF,
 };

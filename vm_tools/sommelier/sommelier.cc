@@ -4389,14 +4389,8 @@ int main(int argc, char** argv) {
     shm_driver = ctx.xwayland ? XWAYLAND_SHM_DRIVER : SHM_DRIVER;
 
   if (shm_driver) {
-    if (strcmp(shm_driver, "dmabuf") == 0) {
-      if (!ctx.drm_device) {
-        fprintf(stderr, "error: need drm device for dmabuf driver\n");
-        return EXIT_FAILURE;
-      }
-      ctx.shm_driver = SHM_DRIVER_DMABUF;
-    } else if (strcmp(shm_driver, "virtwl") == 0 ||
-               strcmp(shm_driver, "virtwl-dmabuf") == 0) {
+    if (strcmp(shm_driver, "virtwl") == 0 ||
+        strcmp(shm_driver, "virtwl-dmabuf") == 0) {
       ctx.shm_driver = strcmp(shm_driver, "virtwl") ? SHM_DRIVER_VIRTWL_DMABUF
                                                     : SHM_DRIVER_VIRTWL;
       // Check for compatibility with virtwl-dmabuf.
@@ -4417,9 +4411,10 @@ int main(int argc, char** argv) {
           close(create_output.fd);
         }
       }
+    } else {
+      fprintf(stderr, "unexpected shared memory driver\n");
+      return EXIT_FAILURE;
     }
-  } else if (ctx.drm_device) {
-    ctx.shm_driver = SHM_DRIVER_DMABUF;
   }
 
   wl_array_init(&ctx.dpi);

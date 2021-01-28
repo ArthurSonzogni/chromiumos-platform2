@@ -75,15 +75,6 @@ are:
 * Host compositor can avoid expensive texture uploads.
 * HW overlays can be used for presentation if support by the host compositor.
 
-### DMABuf
-
-The `dmabuf` driver is similar to the `virtwl-dmabuf` driver. It creates a set
-of intermediate buffers for each surface and copies minimal damaged areas from
-the client’s standard shared memory buffer into the DMABuf buffer. However,
-the buffer is allocated using a DRM device and a prime FD is used to access
-buffer memory inside the container. Intermediate buffers are shared with the
-host compositor using the linux_dmabuf protocol.
-
 ## Damage Tracking
 
 Shared memory drivers that use intermediate buffers require some form of
