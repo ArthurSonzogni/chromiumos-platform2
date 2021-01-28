@@ -226,6 +226,8 @@ PCI_IDS += [
     '8086:02a4',
     # USB controller
     '8086:02ed',
+    # JSL xHCI controller
+    '8086:4ded',
     # Volteer xHCI controller
     '8086:a0ed',
     # Graphics
