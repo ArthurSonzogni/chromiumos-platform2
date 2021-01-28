@@ -101,6 +101,7 @@ executable("sommelier") {
     "sommelier-xdg-shell.cc",
     "sommelier.cc",
     "virtualization/virtwl_channel.cc",
+    "virtualization/virtgpu_channel.cc",
   ]
   defines = [
     "_GNU_SOURCE",

@@ -5,6 +5,8 @@
 #define VM_TOOLS_SOMMELIER_VIRTUALIZATION_WAYLAND_CHANNEL_H_
 
 #include <cstdint>
+#include <sys/mman.h>
+#include <vector>
 
 /*
  * Copied from `VIRTWL_SEND_MAX_ALLOCS`.  It was originally set this way
@@ -143,6 +145,55 @@ class VirtWaylandChannel : public WaylandChannel {
  private:
   // virtwl device file descriptor
   int32_t virtwl_;
+};
+
+class VirtGpuChannel : public WaylandChannel {
+ public:
+  VirtGpuChannel()
+      : virtgpu_{-1},
+        ring_addr_{MAP_FAILED},
+        ring_handle_{0},
+        supports_dmabuf_(false) {}
+  ~VirtGpuChannel();
+
+  int32_t init() override;
+  int32_t create_context(int* out_socket_fd) override;
+  int32_t create_pipe(int* out_pipe_fd) override;
+  int32_t send(const struct WaylandSendReceive& send) override;
+  int32_t receive(struct WaylandSendReceive& receive) override;
+
+  int32_t allocate(const struct WaylandBufferCreateInfo& create_info,
+                   struct WaylandBufferCreateOutput& create_output) override;
+
+  int32_t sync(int dmabuf_fd, uint64_t flags) override;
+
+ private:
+  /*
+   * This provides the full description of the buffer -- width, height, strides,
+   * offsets and host_size.  Meant for internal virtgpu channel use only.
+   */
+  struct BufferDescription {
+    struct WaylandBufferCreateInfo input;
+    struct WaylandBufferCreateOutput output;
+
+    uint64_t host_size;
+    uint64_t blob_id;
+  };
+
+  int32_t image_query(const struct WaylandBufferCreateInfo& input,
+                      struct WaylandBufferCreateOutput& output,
+                      uint64_t& host_size,
+                      uint64_t& blob_id);
+
+  int32_t submit_cmd(uint32_t* cmd, uint32_t size, bool wait);
+  int32_t close_gem_handle(uint32_t gem_handle);
+
+  int32_t virtgpu_;
+  void* ring_addr_;
+  uint32_t ring_handle_;
+  bool supports_dmabuf_;
+
+  std::vector<BufferDescription> description_cache_;
 };
 
 #endif  // VM_TOOLS_SOMMELIER_VIRTUALIZATION_WAYLAND_CHANNEL_H_

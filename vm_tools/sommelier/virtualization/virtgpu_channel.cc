@@ -1,0 +1,400 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <xf86drm.h>
+#include <gbm.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+#include "virtgpu_cross_domain_protocol.h"  // NOLINT(build/include_directory)
+#include "linux-headers/virtgpu_drm.h"      // NOLINT(build/include_directory)
+#include "wayland_channel.h"                // NOLINT(build/include_directory)
+
+// The size of a page for the guest kernel
+#define PAGE_SIZE (getpagesize())
+
+// We require six virtgpu params to use the virtgpu channel
+#define REQUIRED_PARAMS_SIZE 6
+
+// The capset for the virtgpu cross domain context type (defined internally
+// for now)
+#define CAPSET_CROSS_DOMAIN 5
+
+// Constants taken from pipe_loader_drm.c in Mesa
+#define DRM_NUM_NODES 63
+
+// DRM Render nodes start at 128
+#define DRM_RENDER_NODE_START 128
+
+struct virtgpu_param {
+  uint64_t param;
+  const char* name;
+  uint32_t value;
+};
+
+#define PARAM(x) \
+  (struct virtgpu_param) { x, #x, 0 }
+
+static int open_virtgpu(void) {
+  int fd;
+  char* node;
+  drmVersionPtr drm_version;
+
+  uint32_t num_nodes = DRM_NUM_NODES;
+  uint32_t min_render_node = DRM_RENDER_NODE_START;
+  uint32_t max_render_node = (min_render_node + num_nodes);
+
+  for (uint32_t idx = min_render_node; idx < max_render_node; idx++) {
+    if (asprintf(&node, "%s/renderD%d", DRM_DIR_NAME, idx) < 0)
+      continue;
+
+    fd = open(node, O_RDWR | O_CLOEXEC);
+    free(node);
+
+    if (fd < 0)
+      continue;
+
+    drm_version = drmGetVersion(fd);
+    if (!drm_version) {
+      close(fd);
+      continue;
+    }
+
+    if (!strcmp(drm_version->name, "virtio_gpu")) {
+      drmFreeVersion(drm_version);
+      return fd;
+    }
+
+    drmFreeVersion(drm_version);
+    close(fd);
+  }
+
+  return -1;
+}
+
+VirtGpuChannel::~VirtGpuChannel() {
+  if (ring_addr_ != MAP_FAILED)
+    munmap(ring_addr_, PAGE_SIZE);
+
+  // An unwritten rule for the DRM subsystem is a valid GEM valid must be
+  // non-zero.  Checkout drm_gem_handle_create_tail in the kernel.
+  if (ring_handle_)
+    close_gem_handle(ring_handle_);
+
+  if (virtgpu_ >= 0)
+    close(virtgpu_);
+}
+
+int32_t VirtGpuChannel::init() {
+  int ret;
+  uint32_t supports_wayland;
+  struct drm_virtgpu_get_caps args = {0};
+  struct CrossDomainCapabilities cross_domain_caps = {0};
+
+  virtgpu_ = open_virtgpu();
+  if (virtgpu_ < 0) {
+    fprintf(stderr, "failed to open virtgpu\n");
+    return -errno;
+  }
+
+  struct virtgpu_param params[REQUIRED_PARAMS_SIZE] = {
+      PARAM(VIRTGPU_PARAM_3D_FEATURES),
+      PARAM(VIRTGPU_PARAM_CAPSET_QUERY_FIX),
+      PARAM(VIRTGPU_PARAM_RESOURCE_BLOB),
+      PARAM(VIRTGPU_PARAM_HOST_VISIBLE),
+      PARAM(VIRTGPU_PARAM_CONTEXT_INIT),
+      PARAM(VIRTGPU_PARAM_SUPPORTED_CAPSET_IDs),
+  };
+
+  for (uint32_t i = 0; i < REQUIRED_PARAMS_SIZE; i++) {
+    struct drm_virtgpu_getparam get_param = {0};
+
+    get_param.param = params[i].param;
+    get_param.value = (uint64_t)(uintptr_t)&params[i].value;
+    ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_GETPARAM, &get_param);
+    if (ret < 0) {
+      fprintf(stderr, "DRM_IOCTL_VIRTGPU_GET_PARAM failed with %s\n",
+              strerror(errno));
+      close(virtgpu_);
+      virtgpu_ = -1;
+      return -EINVAL;
+    }
+
+    if (params[i].param == VIRTGPU_PARAM_SUPPORTED_CAPSET_IDs) {
+      if ((params[i].value & (1 << CAPSET_CROSS_DOMAIN)) == 0)
+        return -ENOTSUP;
+    }
+  }
+
+  args.cap_set_id = CAPSET_CROSS_DOMAIN;
+  args.size = sizeof(struct CrossDomainCapabilities);
+  args.addr = (unsigned long long)&cross_domain_caps;
+
+  ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_GET_CAPS, &args);
+  if (ret) {
+    fprintf(stderr, "DRM_IOCTL_VIRTGPU_GET_CAPS failed with %s\n",
+            strerror(errno));
+    return ret;
+  }
+
+  if (cross_domain_caps.supports_dmabuf)
+    supports_dmabuf_ = true;
+
+  supports_wayland = cross_domain_caps.supported_channels &
+                     (1 << CROSS_DOMAIN_CHANNEL_TYPE_WAYLAND);
+
+  if (!supports_wayland) {
+    fprintf(stderr, "Wayland support not present on host.\n");
+    return -ENOTSUP;
+  }
+
+  return 0;
+}
+
+int32_t VirtGpuChannel::create_context(int* out_socket_fd) {
+  int ret;
+  struct drm_virtgpu_map map = {0};
+  struct drm_virtgpu_context_init init = {0};
+  struct drm_virtgpu_resource_create_blob drm_rc_blob = {0};
+  struct drm_virtgpu_context_set_param ctx_set_params[2] = {{0}};
+  struct CrossDomainInit cmd_init = {{0}};
+
+  // Initialize the cross domain context.  Create one fence context to wait for
+  // metadata queries.
+  ctx_set_params[0].param = VIRTGPU_CONTEXT_PARAM_CAPSET_ID;
+  ctx_set_params[0].value = CAPSET_CROSS_DOMAIN;
+  ctx_set_params[1].param = VIRTGPU_CONTEXT_PARAM_NUM_FENCE_CONTEXTS;
+  ctx_set_params[1].value = 1;
+
+  init.ctx_set_params = (unsigned long long)&ctx_set_params[0];
+  init.num_params = 2;
+  ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_CONTEXT_INIT, &init);
+  if (ret) {
+    fprintf(stderr, "DRM_IOCTL_VIRTGPU_CONTEXT_INIT failed with %s\n",
+            strerror(errno));
+    return ret;
+  }
+
+  // Create a shared ring buffer to read metadata queries.
+  drm_rc_blob.size = PAGE_SIZE;
+  drm_rc_blob.blob_mem = VIRTGPU_BLOB_MEM_GUEST;
+  drm_rc_blob.blob_flags = VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
+
+  ret =
+      drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_RESOURCE_CREATE_BLOB, &drm_rc_blob);
+  if (ret < 0) {
+    fprintf(stderr, "DRM_VIRTGPU_RESOURCE_CREATE_BLOB failed with %s\n",
+            strerror(errno));
+    return ret;
+  }
+
+  ring_handle_ = drm_rc_blob.bo_handle;
+
+  // Map shared ring buffer.
+  map.handle = ring_handle_;
+  ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_MAP, &map);
+  if (ret < 0) {
+    fprintf(stderr, "DRM_IOCTL_VIRTGPU_MAP failed with %s\n", strerror(errno));
+    return ret;
+  }
+
+  ring_addr_ = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, virtgpu_,
+                    map.offset);
+
+  if (ring_addr_ == MAP_FAILED) {
+    fprintf(stderr, "mmap failed with %s\n", strerror(errno));
+    return ret;
+  }
+
+  // Notify host about ring buffer
+  cmd_init.hdr.cmd = CROSS_DOMAIN_CMD_INIT;
+  cmd_init.hdr.cmd_size = sizeof(struct CrossDomainInit);
+  cmd_init.ring_id = drm_rc_blob.res_handle;
+  cmd_init.channel_type = CROSS_DOMAIN_CHANNEL_TYPE_WAYLAND;
+  ret = submit_cmd((uint32_t*)&cmd_init, cmd_init.hdr.cmd_size, false);
+  if (ret < 0)
+    return ret;
+
+  return 0;
+}
+
+int32_t VirtGpuChannel::create_pipe(int* out_pipe_fd) {
+  return -EINVAL;
+}
+
+int32_t VirtGpuChannel::send(const struct WaylandSendReceive& send) {
+  return -EINVAL;
+}
+
+int32_t VirtGpuChannel::receive(struct WaylandSendReceive& receive) {
+  return -EINVAL;
+}
+
+int32_t VirtGpuChannel::allocate(
+    const struct WaylandBufferCreateInfo& create_info,
+    struct WaylandBufferCreateOutput& create_output) {
+  int ret;
+  uint64_t blob_id, host_size;
+  struct drm_virtgpu_resource_create_blob drm_rc_blob = {0};
+
+  ret = image_query(create_info, create_output, host_size, blob_id);
+  if (ret < 0) {
+    fprintf(stderr, "image query failed\n");
+    return ret;
+  }
+
+  drm_rc_blob.size = host_size;
+  drm_rc_blob.blob_mem = VIRTGPU_BLOB_MEM_HOST3D;
+  drm_rc_blob.blob_flags =
+      VIRTGPU_BLOB_FLAG_USE_MAPPABLE | VIRTGPU_BLOB_FLAG_USE_SHAREABLE;
+  drm_rc_blob.blob_id = blob_id;
+
+  ret =
+      drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_RESOURCE_CREATE_BLOB, &drm_rc_blob);
+  if (ret < 0) {
+    fprintf(stderr, "DRM_VIRTGPU_RESOURCE_CREATE_BLOB failed with %s\n",
+            strerror(errno));
+    return -errno;
+  }
+
+  ret = drmPrimeHandleToFD(virtgpu_, drm_rc_blob.bo_handle,
+                           DRM_CLOEXEC | DRM_RDWR, &create_output.fd);
+  if (ret < 0) {
+    fprintf(stderr, "drmPrimeHandleToFD failed with with %s\n",
+            strerror(errno));
+    return -errno;
+  }
+
+  // dma-buf owns the reference to underlying memory now.
+  ret = close_gem_handle(drm_rc_blob.bo_handle);
+  if (ret < 0)
+    return ret;
+
+  return 0;
+}
+
+int32_t VirtGpuChannel::sync(int dmabuf_fd, uint64_t flags) {
+  return -EINVAL;
+}
+
+int32_t VirtGpuChannel::submit_cmd(uint32_t* cmd, uint32_t size, bool wait) {
+  int ret;
+  struct drm_virtgpu_3d_wait wait_3d = {0};
+  struct drm_virtgpu_execbuffer exec = {0};
+
+  exec.command = (uint64_t)&cmd[0];
+  exec.size = size;
+  if (wait) {
+    exec.flags = VIRTGPU_EXECBUF_FENCE_CONTEXT;
+    exec.bo_handles = (uint64_t)&ring_handle_;
+    exec.num_bo_handles = 1;
+  }
+
+  ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_EXECBUFFER, &exec);
+  if (ret < 0) {
+    fprintf(stderr, "DRM_IOCTL_VIRTGPU_EXECBUFFER failed with %s\n",
+            strerror(errno));
+    return -EINVAL;
+  }
+
+  // This is the most traditional way to wait for virtgpu to be finished.  We
+  // submit a list of handles to the GPU, and wait for the GPU to be done
+  // processing them.  In our case, the handle is the shared ring buffer between
+  // the guest proxy (Sommelier) and host compositor proxy (cross domain context
+  // type in crosvm).  More sophistication will be needed in the future if the
+  // virtgpu approach has any hope of success.
+  ret = -EAGAIN;
+  while (ret == -EAGAIN) {
+    wait_3d.handle = ring_handle_;
+    ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_WAIT, &wait_3d);
+  }
+
+  if (ret < 0) {
+    fprintf(stderr, "DRM_IOCTL_VIRTGPU_WAIT failed with %s\n", strerror(errno));
+    return ret;
+  }
+
+  return 0;
+}
+
+int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
+                                    struct WaylandBufferCreateOutput& output,
+                                    uint64_t& host_size,
+                                    uint64_t& blob_id) {
+  int ret = 0;
+  uint32_t* addr = (uint32_t*)ring_addr_;
+  struct CrossDomainGetImageRequirements cmd_get_reqs = {{0}};
+  struct BufferDescription new_desc = {{0}};
+
+  // Sommelier is single threaded, so no need for locking.
+  for (const auto& desc : description_cache_) {
+    if (desc.input.width == input.width && desc.input.height == input.height &&
+        desc.input.drm_format == input.drm_format) {
+      memcpy(&output, &desc.output, sizeof(struct WaylandBufferCreateOutput));
+      host_size = desc.host_size;
+      blob_id = desc.blob_id;
+      return 0;
+    }
+  }
+
+  cmd_get_reqs.hdr.cmd = CROSS_DOMAIN_CMD_GET_IMAGE_REQUIREMENTS;
+  cmd_get_reqs.hdr.cmd_size = sizeof(struct CrossDomainGetImageRequirements);
+
+  cmd_get_reqs.width = input.width;
+  cmd_get_reqs.height = input.height;
+  cmd_get_reqs.drm_format = input.drm_format;
+
+  // Assumes a gbm-like API on the host
+  cmd_get_reqs.flags = GBM_BO_USE_LINEAR | GBM_BO_USE_SCANOUT;
+
+  ret = submit_cmd((uint32_t*)&cmd_get_reqs, cmd_get_reqs.hdr.cmd_size, true);
+  if (ret < 0)
+    return ret;
+
+  new_desc.output.fd = -1;
+  memcpy(&new_desc.input, &input, sizeof(struct WaylandBufferCreateInfo));
+  memcpy(&new_desc.output.strides, &addr[0], 4 * sizeof(uint32_t));
+  memcpy(&new_desc.output.offsets, &addr[4], 4 * sizeof(uint32_t));
+  memcpy(&new_desc.host_size, &addr[10], sizeof(uint64_t));
+  memcpy(&new_desc.blob_id, &addr[12], sizeof(uint64_t));
+
+  // Sanity check
+  if (!input.dmabuf) {
+    if (new_desc.host_size < input.size) {
+      fprintf(stderr, "invalid host size\n");
+      return -EINVAL;
+    }
+  }
+
+  memcpy(&output.strides, &new_desc.output.strides, 4 * sizeof(uint32_t));
+  memcpy(&output.offsets, &new_desc.output.offsets, 4 * sizeof(uint32_t));
+  host_size = new_desc.host_size;
+  blob_id = new_desc.blob_id;
+
+  description_cache_.push_back(new_desc);
+  return 0;
+}
+
+int32_t VirtGpuChannel::close_gem_handle(uint32_t gem_handle) {
+  int ret;
+  struct drm_gem_close gem_close = {0};
+
+  gem_close.handle = gem_handle;
+  ret = drmIoctl(virtgpu_, DRM_IOCTL_GEM_CLOSE, &gem_close);
+  if (ret) {
+    fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed (handle=%x) error %s\n",
+            gem_handle, strerror(errno));
+    return -errno;
+  }
+
+  return 0;
+}
