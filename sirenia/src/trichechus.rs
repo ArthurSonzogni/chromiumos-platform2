@@ -17,7 +17,7 @@ use std::result::Result as StdResult;
 use getopts::Options;
 use libchromeos::linux::{getpid, getsid, setsid};
 use libsirenia::cli::TransportTypeOption;
-use libsirenia::communication::persistence::{Cronista, CronistaClient, Scope};
+use libsirenia::communication::persistence::{Cronista, CronistaClient};
 use libsirenia::linux::events::{AddEventSourceMutator, EventMultiplexer, Mutator};
 use libsirenia::linux::syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH};
 use libsirenia::rpc::{ConnectionHandler, RpcDispatcher, TransportServer};
@@ -28,6 +28,7 @@ use libsirenia::transport::{
     CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
     DEFAULT_CONNECTION_W_FD, DEFAULT_SERVER_PORT,
 };
+use sirenia::app_info::{self, AppManifest, AppManifestEntry};
 use sirenia::build_info::BUILD_TIMESTAMP;
 use sirenia::cli::initialize_common_arguments;
 use sirenia::communication::{AppInfo, TEEStorage, TEEStorageServer, Trichechus, TrichechusServer};
@@ -61,9 +62,9 @@ pub enum Error {
     /// Got a request type that wasn't expected by the handler.
     #[error("received unexpected request type")]
     UnexpectedRequest,
-    /// Invalid app id.
-    #[error("invalid app id: {0}")]
-    InvalidAppId(String),
+    /// Error retrieving form app manifest.
+    #[error("Error retrieving from  app_manifest: {0}")]
+    AppManifest(app_info::Error),
 }
 
 /// The result of an operation in this crate.
@@ -72,6 +73,7 @@ pub type Result<T> = StdResult<T, Error>;
 /* Holds the trichechus-relevant information for a TEEApp. */
 struct TEEApp {
     _sandbox: Sandbox,
+    app_info: AppManifestEntry,
 }
 
 #[derive(Clone)]
@@ -84,14 +86,13 @@ impl TEEStorage for TEEAppHandler {
     type Error = ();
 
     fn read_data(&self, id: String) -> StdResult<Vec<u8>, Self::Error> {
-        // TODO implement proper scope and domain based on TEEApp once the app manifest entry is
-        // available.
+        let app_info = &self.tee_app.borrow().app_info;
         self.state
             .borrow()
             .persistence
             .as_ref()
             .unwrap()
-            .retrieve(Scope::Test, "test".to_string(), id)
+            .retrieve(app_info.scope.clone(), app_info.domain.to_string(), id)
             .map(|x| x.1)
             .map_err(|err| {
                 error!("failed to retrieve data: {}", err);
@@ -99,12 +100,18 @@ impl TEEStorage for TEEAppHandler {
     }
 
     fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<(), Self::Error> {
+        let app_info = &self.tee_app.borrow().app_info;
         self.state
             .borrow()
             .persistence
             .as_ref()
             .unwrap()
-            .persist(Scope::Test, "test".to_string(), id, data)
+            .persist(
+                app_info.scope.clone(),
+                app_info.domain.to_string(),
+                id,
+                data,
+            )
             .map(drop)
             .map_err(|err| {
                 error!("failed to persist data: {}", err);
@@ -118,6 +125,7 @@ struct TrichechusState {
     running_apps: HashMap<TransportType, Rc<RefCell<TEEApp>>>,
     log_queue: VecDeque<String>,
     persistence: Option<CronistaClient>,
+    app_manifest: AppManifest,
 }
 
 impl TrichechusState {
@@ -128,6 +136,7 @@ impl TrichechusState {
             running_apps: HashMap::new(),
             log_queue: VecDeque::new(),
             persistence: None,
+            app_manifest: AppManifest::new(),
         }
     }
 }
@@ -196,7 +205,7 @@ impl DugongConnectionHandler {
 
     fn connect_tee_app(&mut self, app_id: &str, connection: Transport) -> Option<Box<dyn Mutator>> {
         let id = connection.id.clone();
-        match spawn_tee_app(app_id, connection) {
+        match spawn_tee_app(&self.state.borrow().app_manifest, app_id, connection) {
             Ok((app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
                 self.state
@@ -252,14 +261,11 @@ impl ConnectionHandler for DugongConnectionHandler {
     }
 }
 
-fn get_app_path(id: &str) -> Result<&str> {
-    match id {
-        "shell" => Ok("/bin/sh"),
-        id => Err(Error::InvalidAppId(id.to_string())),
-    }
-}
-
-fn spawn_tee_app(app_id: &str, transport: Transport) -> Result<(TEEApp, Transport)> {
+fn spawn_tee_app(
+    app_manifest: &AppManifest,
+    app_id: &str,
+    transport: Transport,
+) -> Result<(TEEApp, Transport)> {
     let mut sandbox = Sandbox::new(None).map_err(Error::NewSandbox)?;
     let (trichechus_transport, tee_transport) =
         create_transport_from_pipes().map_err(Error::NewTransport)?;
@@ -270,13 +276,22 @@ fn spawn_tee_app(app_id: &str, transport: Transport) -> Result<(TEEApp, Transpor
         (tee_transport.r.as_raw_fd(), DEFAULT_CONNECTION_R_FD),
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
-    let process_path = get_app_path(app_id)?;
+    let app_info = app_manifest
+        .get_app_manifest_entry(app_id)
+        .map_err(Error::AppManifest)?;
+    let process_path = app_info.path.to_string();
 
     sandbox
-        .run(Path::new(process_path), &[process_path], &keep_fds)
+        .run(Path::new(&process_path), &[&process_path], &keep_fds)
         .map_err(Error::RunSandbox)?;
 
-    Ok((TEEApp { _sandbox: sandbox }, trichechus_transport))
+    Ok((
+        TEEApp {
+            _sandbox: sandbox,
+            app_info: app_info.to_owned(),
+        },
+        trichechus_transport,
+    ))
 }
 
 // TODO: Figure out how to clean up TEEs that are no longer in use
