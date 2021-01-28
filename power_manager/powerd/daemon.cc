@@ -22,6 +22,7 @@
 #include <base/system/sys_info.h>
 #include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/ec/ec_commands.h>
 #include <dbus/message.h>
 
 #include "cryptohome/proto_bindings/rpc.pb.h"
@@ -48,6 +49,7 @@
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
+#include "power_manager/powerd/system/cros_ec_device_event.h"
 #include "power_manager/powerd/system/cros_ec_helper_interface.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -485,6 +487,10 @@ void Daemon::Init() {
   prefs_->GetInt64(kCutoffPowerUaPref, &cutoff_ua);
   prefs_->GetInt64(kHibernatePowerUaPref, &hibernate_ua);
   system::ConfigureSmartDischarge(to_zero_hr, cutoff_ua, hibernate_ua);
+
+  // Enable EC to send WLC event.
+  // Kernel will create udev events on WLC status change.
+  system::EnableCrosEcDeviceEvent(EC_DEVICE_EVENT_WLC);
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
