@@ -182,27 +182,51 @@ TEST(DatapathTest, Start) {
   EXPECT_CALL(
       runner,
       ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
+                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
                             "router-solicitation", "-j", "ACCEPT", "-w"),
                 true, nullptr));
   EXPECT_CALL(
       runner,
       ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
+                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
                             "router-advertisement", "-j", "ACCEPT", "-w"),
                 true, nullptr));
   EXPECT_CALL(
       runner,
       ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
+                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
                             "neighbour-solicitation", "-j", "ACCEPT", "-w"),
                 true, nullptr));
   EXPECT_CALL(
       runner,
       ip6tables(StrEq("mangle"),
-                ElementsAre("-A", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
+                ElementsAre("-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type",
                             "neighbour-advertisement", "-j", "ACCEPT", "-w"),
                 true, nullptr));
+  EXPECT_CALL(runner,
+              ip6tables(StrEq("mangle"),
+                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
+                                    "--icmpv6-type", "router-solicitation",
+                                    "-j", "RETURN", "-w"),
+                        true, nullptr));
+  EXPECT_CALL(runner,
+              ip6tables(StrEq("mangle"),
+                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
+                                    "--icmpv6-type", "router-advertisement",
+                                    "-j", "RETURN", "-w"),
+                        true, nullptr));
+  EXPECT_CALL(runner,
+              ip6tables(StrEq("mangle"),
+                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
+                                    "--icmpv6-type", "neighbour-solicitation",
+                                    "-j", "RETURN", "-w"),
+                        true, nullptr));
+  EXPECT_CALL(runner,
+              ip6tables(StrEq("mangle"),
+                        ElementsAre("-I", "check_routing_mark", "-p", "icmpv6",
+                                    "--icmpv6-type", "neighbour-advertisement",
+                                    "-j", "RETURN", "-w"),
+                        true, nullptr));
   // Asserts for OUTPUT CONNMARK restore rule
   EXPECT_CALL(runner, iptables(StrEq("mangle"),
                                ElementsAre("-A", "OUTPUT", "-j", "CONNMARK",
