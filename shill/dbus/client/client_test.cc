@@ -23,6 +23,7 @@ using testing::DoAll;
 using testing::Invoke;
 using testing::Return;
 using testing::ReturnRef;
+using testing::StrEq;
 
 using org::chromium::flimflam::DeviceProxyInterface;
 using org::chromium::flimflam::DeviceProxyMock;
@@ -744,6 +745,26 @@ TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceChange) {
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
 
   EXPECT_EQ(last_device_changed_, "wlan0");
+}
+
+TEST_F(ClientTest, ManagerPropertyAccessor) {
+  brillo::Any bar("bar");
+  EXPECT_CALL(*client_->manager(), SetProperty(StrEq("foo"), bar, _, -1));
+  EXPECT_CALL(*client_->manager(), SetProperty(StrEq("foo"), bar, _, 10));
+  EXPECT_CALL(*client_->manager(),
+              SetPropertyAsync(StrEq("foo"), bar, _, _, -1));
+  EXPECT_CALL(*client_->manager(),
+              SetPropertyAsync(StrEq("foo"), bar, _, _, 10));
+
+  auto props = client_->ManagerProperties();
+  props->Set("foo", "bar", nullptr);
+  props->Set("foo", "bar", base::DoNothing(),
+             base::Bind([](brillo::Error*) {}));
+
+  props = client_->ManagerProperties(base::TimeDelta::FromMilliseconds(10));
+  props->Set("foo", "bar", nullptr);
+  props->Set("foo", "bar", base::DoNothing(),
+             base::Bind([](brillo::Error*) {}));
 }
 
 }  // namespace

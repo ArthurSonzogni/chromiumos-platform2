@@ -16,11 +16,15 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <brillo/brillo_export.h>
 #include <shill/dbus-proxies.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace shill {
+
+constexpr base::TimeDelta kDefaultDBusTimeout =
+    base::TimeDelta::FromMilliseconds(dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 
 // Shill D-Bus client for listening to common manager, service and device
 // properties. This class is the result of an effort to consolidate a lot of
@@ -111,6 +115,41 @@ class BRILLO_EXPORT Client {
     IPConfig ipconfig;
   };
 
+  template <class Proxy>
+  class PropertyAccessor {
+   public:
+    PropertyAccessor(Proxy* proxy,
+                     const base::TimeDelta& timeout = kDefaultDBusTimeout)
+        : proxy_(proxy), timeout_(timeout.InMilliseconds()) {}
+    virtual ~PropertyAccessor() = default;
+    PropertyAccessor(const PropertyAccessor&) = delete;
+    PropertyAccessor& operator=(const PropertyAccessor&) = delete;
+
+    // Synchronous setter.
+    bool Set(const std::string& name,
+             const brillo::Any& value,
+             brillo::ErrorPtr* error) {
+      return proxy_->SetProperty(name, value, error, timeout_);
+    }
+
+    // Asynchronous setter.
+    void Set(const std::string& name,
+             const brillo::Any& value,
+             const base::Callback<void()>& success,
+             const base::Callback<void(brillo::Error*)>& error) {
+      proxy_->SetPropertyAsync(name, value, success, error, timeout_);
+    }
+
+    // TODO(garrick): Getters.
+
+   private:
+    Proxy* proxy_;
+    const int timeout_;
+  };
+
+  using ManagerPropertyAccessor =
+      PropertyAccessor<org::chromium::flimflam::ManagerProxyInterface>;
+
   using DefaultServiceChangedHandler =
       base::Callback<void(const std::string& type)>;
   using DeviceChangedHandler = base::Callback<void(const Device* const)>;
@@ -155,6 +194,10 @@ class BRILLO_EXPORT Client {
   // Multiple handlers may be registered.
   void RegisterDeviceAddedHandler(const DeviceChangedHandler& handler);
   void RegisterDeviceRemovedHandler(const DeviceChangedHandler& handler);
+
+  // Returns a manipulator interface for Manager properties.
+  std::unique_ptr<ManagerPropertyAccessor> ManagerProperties(
+      const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
 
  protected:
   // All of the methods and members with protected access scope are needed for

@@ -723,4 +723,10 @@ void Client::OnServicePropertyChange(const std::string& device_path,
       handler.Run(device);
 }
 
+std::unique_ptr<Client::ManagerPropertyAccessor> Client::ManagerProperties(
+    const base::TimeDelta& timeout) const {
+  return std::make_unique<PropertyAccessor<ManagerProxyInterface>>(
+      manager_proxy_.get(), timeout);
+}
+
 }  // namespace shill
