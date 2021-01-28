@@ -89,15 +89,9 @@ enum {
 };
 
 enum {
-  SHM_DRIVER_NOOP,
   SHM_DRIVER_DMABUF,
   SHM_DRIVER_VIRTWL,
   SHM_DRIVER_VIRTWL_DMABUF,
-};
-
-enum {
-  DATA_DRIVER_NOOP,
-  DATA_DRIVER_VIRTWL,
 };
 
 struct sl_context {

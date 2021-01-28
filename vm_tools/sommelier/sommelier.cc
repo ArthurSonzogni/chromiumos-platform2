@@ -3166,30 +3166,16 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
   wl_array_init(&ctx->selection_data);
   ctx->selection_data_ack_pending = 0;
 
-  switch (ctx->data_driver) {
-    case DATA_DRIVER_VIRTWL: {
-      int pipe_fd;
-      rv = ctx->channel->create_pipe(&pipe_fd);
-      if (rv) {
-        fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
-                strerror(-rv));
-        sl_send_selection_notify(ctx, XCB_ATOM_NONE);
-        return;
-      }
-
-      fd_to_receive = pipe_fd;
-      fd_to_wayland = pipe_fd;
-    } break;
-    case DATA_DRIVER_NOOP: {
-      int p[2];
-
-      rv = pipe2(p, O_CLOEXEC | O_NONBLOCK);
-      errno_assert(!rv);
-
-      fd_to_receive = p[0];
-      fd_to_wayland = p[1];
-    } break;
+  int pipe_fd;
+  rv = ctx->channel->create_pipe(&pipe_fd);
+  if (rv) {
+    fprintf(stderr, "error: failed to create virtwl pipe: %s\n", strerror(-rv));
+    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
+    return;
   }
+
+  fd_to_receive = pipe_fd;
+  fd_to_wayland = pipe_fd;
 
   xcb_get_atom_name_reply_t* atom_name_reply =
       xcb_get_atom_name_reply(ctx->connection, atom_name_cookie, NULL);
@@ -3905,7 +3891,6 @@ static void sl_print_usage() {
       "  --display=DISPLAY\t\tWayland display to connect to\n"
       "  --vm-identifier=NAME\t\tName of the VM, used to identify X11 windows\n"
       "  --shm-driver=DRIVER\t\tSHM driver to use (noop, dmabuf, virtwl)\n"
-      "  --data-driver=DRIVER\t\tData driver to use (noop, virtwl)\n"
       "  --scale=SCALE\t\t\tScale factor for contents\n"
       "  --dpi=[DPI[,DPI...]]\t\tDPI buckets\n"
       "  --peer-cmd-prefix=PREFIX\tPeer process command line prefix\n"
@@ -3963,7 +3948,6 @@ int main(int argc, char** argv) {
   ctx.sigchld_event_source = NULL;
   ctx.sigusr1_event_source = NULL;
   ctx.shm_driver = SHM_DRIVER_VIRTWL;
-  ctx.data_driver = DATA_DRIVER_VIRTWL;
   ctx.wm_fd = -1;
   ctx.virtwl_ctx_fd = -1;
   ctx.virtwl_socket_fd = -1;
@@ -4028,7 +4012,6 @@ int main(int argc, char** argv) {
   const char* glamor = getenv("SOMMELIER_GLAMOR");
   const char* fullscreen_mode = getenv("SOMMELIER_FULLSCREEN_MODE");
   const char* shm_driver = getenv("SOMMELIER_SHM_DRIVER");
-  const char* data_driver = getenv("SOMMELIER_DATA_DRIVER");
   const char* peer_cmd_prefix = getenv("SOMMELIER_PEER_CMD_PREFIX");
   const char* xwayland_cmd_prefix = getenv("SOMMELIER_XWAYLAND_CMD_PREFIX");
   const char* accelerators = getenv("SOMMELIER_ACCELERATORS");
@@ -4078,8 +4061,6 @@ int main(int argc, char** argv) {
       ctx.vm_id = sl_arg_value(arg);
     } else if (strstr(arg, "--shm-driver") == arg) {
       shm_driver = sl_arg_value(arg);
-    } else if (strstr(arg, "--data-driver") == arg) {
-      data_driver = sl_arg_value(arg);
     } else if (strstr(arg, "--peer-pid") == arg) {
       ctx.peer_pid = atoi(sl_arg_value(arg));
     } else if (strstr(arg, "--peer-cmd-prefix") == arg) {
@@ -4274,8 +4255,7 @@ int main(int argc, char** argv) {
               strstr(arg, "--accelerators") == arg ||
               strstr(arg, "--virtwl-device") == arg ||
               strstr(arg, "--drm-device") == arg ||
-              strstr(arg, "--shm-driver") == arg ||
-              strstr(arg, "--data-driver") == arg) {
+              strstr(arg, "--shm-driver") == arg) {
             args[i++] = arg;
           }
         }
@@ -4440,12 +4420,6 @@ int main(int argc, char** argv) {
     }
   } else if (ctx.drm_device) {
     ctx.shm_driver = SHM_DRIVER_DMABUF;
-  }
-
-  if (data_driver) {
-    if (strcmp(data_driver, "virtwl") == 0) {
-      ctx.data_driver = DATA_DRIVER_VIRTWL;
-    }
   }
 
   wl_array_init(&ctx.dpi);

@@ -57,12 +57,6 @@ host compositor. Sommelier provides a shared memory driver option as a
 solution for this. What's the most appropriate option depends on the host
 compositor and device drivers available for allocating buffers.
 
-### Noop
-
-The `noop` shared memory driver simply forwards buffers to the host without
-any special processing. This requires that the client inside the container is
-using memory that can be shared with the host compositor.
-
 ### VirtWL
 
 The `virtwl` driver creates a set of intermediate virtwl buffers for each
@@ -126,12 +120,6 @@ callbacks or similar mechanism.
 Socket pairs created inside a container cannot always be shared with the
 host compositor. Sommelier provides a data driver option as a solution
 for this.
-
-### Noop
-
-The `noop` driver simply forwards socket pair FDs to the host without any
-special processing. This requires that the client inside the container is
-using socket pairs that can be shared with the host compositor.
 
 ### VirtWL
 

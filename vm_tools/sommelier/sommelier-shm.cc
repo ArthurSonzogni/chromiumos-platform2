@@ -133,33 +133,25 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
   struct sl_host_shm_pool* host =
       static_cast<sl_host_shm_pool*>(wl_resource_get_user_data(resource));
 
-  if (host->shm->ctx->shm_driver == SHM_DRIVER_NOOP) {
-    assert(host->proxy);
-    sl_create_host_buffer(client, id,
-                          wl_shm_pool_create_buffer(host->proxy, offset, width,
-                                                    height, stride, format),
-                          width, height);
-  } else {
-    struct sl_host_buffer* host_buffer =
-        sl_create_host_buffer(client, id, NULL, width, height);
+  struct sl_host_buffer* host_buffer =
+      sl_create_host_buffer(client, id, NULL, width, height);
 
-    host_buffer->shm_format = format;
-    host_buffer->shm_mmap = sl_mmap_create(
-        host->fd, sl_size_for_shm_format(format, height, stride),
-        sl_shm_bpp_for_shm_format(format),
-        sl_shm_num_planes_for_shm_format(format), offset, stride,
-        offset + sl_offset_for_shm_format_plane(format, height, stride, 1),
-        stride, sl_y_subsampling_for_shm_format_plane(format, 0),
-        sl_y_subsampling_for_shm_format_plane(format, 1));
-    // In the case of mmaps created from the client buffer, we want to be able
-    // to close the FD when the client releases the shm pool (i.e. when it's
-    // done transferring) as opposed to when the pool is freed (i.e. when we're
-    // done drawing).
-    // We do this by removing the handle to the FD after it has been mmapped,
-    // which prevents a double-close.
-    host_buffer->shm_mmap->fd = -1;
-    host_buffer->shm_mmap->buffer_resource = host_buffer->resource;
-  }
+  host_buffer->shm_format = format;
+  host_buffer->shm_mmap = sl_mmap_create(
+      host->fd, sl_size_for_shm_format(format, height, stride),
+      sl_shm_bpp_for_shm_format(format),
+      sl_shm_num_planes_for_shm_format(format), offset, stride,
+      offset + sl_offset_for_shm_format_plane(format, height, stride, 1),
+      stride, sl_y_subsampling_for_shm_format_plane(format, 0),
+      sl_y_subsampling_for_shm_format_plane(format, 1));
+  // In the case of mmaps created from the client buffer, we want to be able
+  // to close the FD when the client releases the shm pool (i.e. when it's
+  // done transferring) as opposed to when the pool is freed (i.e. when we're
+  // done drawing).
+  // We do this by removing the handle to the FD after it has been mmapped,
+  // which prevents a double-close.
+  host_buffer->shm_mmap->fd = -1;
+  host_buffer->shm_mmap->buffer_resource = host_buffer->resource;
 }
 
 static void sl_host_shm_pool_destroy(struct wl_client* client,
@@ -214,11 +206,6 @@ static void sl_shm_create_host_pool(struct wl_client* client,
                                  sl_destroy_host_shm_pool);
 
   switch (host->shm->ctx->shm_driver) {
-    case SHM_DRIVER_NOOP:
-      host_shm_pool->proxy = wl_shm_create_pool(host->shm_proxy, fd, size);
-      wl_shm_pool_set_user_data(host_shm_pool->proxy, host_shm_pool);
-      close(fd);
-      break;
     case SHM_DRIVER_DMABUF:
     case SHM_DRIVER_VIRTWL:
     case SHM_DRIVER_VIRTWL_DMABUF:
@@ -315,7 +302,6 @@ static void sl_bind_host_shm(struct wl_client* client,
                                  sl_destroy_host_shm);
 
   switch (ctx->shm_driver) {
-    case SHM_DRIVER_NOOP:
     case SHM_DRIVER_VIRTWL:
       host->shm_proxy = static_cast<wl_shm*>(wl_registry_bind(
           wl_display_get_registry(ctx->display), ctx->shm->id,

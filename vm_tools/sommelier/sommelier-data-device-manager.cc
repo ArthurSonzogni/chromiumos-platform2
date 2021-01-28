@@ -178,29 +178,18 @@ static void sl_data_offer_receive(struct wl_client* client,
   struct sl_host_data_offer* host =
       static_cast<sl_host_data_offer*>(wl_resource_get_user_data(resource));
 
-  switch (host->ctx->data_driver) {
-    case DATA_DRIVER_VIRTWL: {
-      int pipe_fd, rv;
-      rv = host->ctx->channel->create_pipe(&pipe_fd);
-      if (rv) {
-        fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
-                strerror(-rv));
-        close(fd);
-        return;
-      }
-
-      sl_data_transfer_create(
-          wl_display_get_event_loop(host->ctx->host_display), pipe_fd, fd);
-
-      wl_data_offer_receive(host->proxy, mime_type, pipe_fd);
-      break;
-    }
-    case DATA_DRIVER_NOOP: {
-      wl_data_offer_receive(host->proxy, mime_type, fd);
-      close(fd);
-      break;
-    }
+  int pipe_fd, rv;
+  rv = host->ctx->channel->create_pipe(&pipe_fd);
+  if (rv) {
+    fprintf(stderr, "error: failed to create virtwl pipe: %s\n", strerror(-rv));
+    close(fd);
+    return;
   }
+
+  sl_data_transfer_create(wl_display_get_event_loop(host->ctx->host_display),
+                          pipe_fd, fd);
+
+  wl_data_offer_receive(host->proxy, mime_type, pipe_fd);
 }
 
 static void sl_data_offer_destroy(struct wl_client* client,
