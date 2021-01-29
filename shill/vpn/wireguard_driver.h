@@ -6,7 +6,9 @@
 #define SHILL_VPN_WIREGUARD_DRIVER_H_
 
 #include <string>
+#include <vector>
 
+#include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
@@ -42,11 +44,27 @@ class WireguardDriver : public VPNDriver {
   bool SpawnWireguard();
   void WireguardProcessExited(int exit_code);
 
+  // Generates a config file that will be used by wireguard-tools from the
+  // profile and write its content into a temporary file. Writes the path to the
+  // temporary file into |config_file_|;
+  bool GenerateConfigFile();
+  // Called by GenerateConfigFile(). Reads the value of |key_in_args| from the
+  // profile, and then append a line of "|key_in_config|=|value|" into lines.
+  // Returns false if |is_required| is true and the corresponding value does not
+  // exist or is empty.
+  bool AppendConfig(const std::string& key_in_config,
+                    const std::string& key_in_args,
+                    bool is_required,
+                    std::vector<std::string>* lines);
+
   // Configures the interface via wireguard-tools when the interface is ready.
-  // This function is used as a DeviceInfo::LinkReadyCallback so it has two
-  // parameters, although we don't actually need them.
   void ConfigureInterface(const std::string& interface_name,
                           int interface_index);
+  void OnConfigurationDone(int exit_code);
+
+  // Fills in |ip_properties_| (especially, the address and routes fields)
+  // according to the properties in the profile.
+  bool PopulateIPProperties();
 
   // Calls Cleanup(), and if there is a service associated through
   // ConnectAsync(), notifies it of the failure.
@@ -57,6 +75,9 @@ class WireguardDriver : public VPNDriver {
 
   EventHandler* event_handler_;
   pid_t wireguard_pid_ = -1;
+  int interface_index_ = -1;
+  IPConfig::Properties ip_properties_;
+  base::FilePath config_file_;
 
   base::WeakPtrFactory<WireguardDriver> weak_factory_{this};
 };

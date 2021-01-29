@@ -4,6 +4,8 @@
 
 #include "shill/vpn/wireguard_driver.h"
 
+#include <memory>
+
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
@@ -58,6 +60,8 @@ class WireguardDriverTest : public testing::Test {
 
   base::RepeatingCallback<void(int)> wireguard_exit_callback_;
 };
+
+// TODO(b/177876632): More tests for the connect flow and config file.
 
 TEST_F(WireguardDriverTest, Disconnect) {
   InvokeConnectAsync();
