@@ -19,7 +19,7 @@ type shm, fs_type;
 type mqueue, fs_type;
 type sysfs, fs_type, sysfs_type, mlstrustedobject;
 
-
+# proc, sysfs, or other nodes that allow accessing and configuring kernel interfaces.
 type cgroup, fs_type;
 type configfs, fs_type;
 type debugfs_sync, fs_type, debugfs_type;
@@ -60,6 +60,7 @@ type proc_version, fs_type, proc_type;
 type proc_vmallocinfo, fs_type, proc_type;
 type proc_vmstat, fs_type, proc_type;
 type proc_zoneinfo, fs_type, proc_type;
+type sysfs_fs_ext4_features, sysfs_type, fs_type;
 
 type pstorefs, fs_type;
 type qtaguid_proc, fs_type;
