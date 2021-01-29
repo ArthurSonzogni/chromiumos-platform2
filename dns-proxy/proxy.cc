@@ -11,10 +11,14 @@
 
 #include <base/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <chromeos/patchpanel/net_util.h>
 #include <shill/dbus-constants.h>
 
 namespace dns_proxy {
+
+constexpr base::TimeDelta kShillPropertyAttemptDelay =
+    base::TimeDelta::FromMilliseconds(200);
 
 constexpr char kSystemProxyType[] = "sys";
 constexpr char kDefaultProxyType[] = "def";
@@ -83,6 +87,11 @@ void Proxy::Setup() {
   shill_->RegisterDeviceChangedHandler(
       base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr(),
                           false /* is_default */));
+
+  if (opts_.type == Type::kSystem)
+    shill_->RegisterProcessChangedHandler(
+        base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
+
   // TODO(garrick) - add service state callback - proxy cannot run unless the
   // device's selected service is online
 
@@ -120,16 +129,36 @@ void Proxy::OnPatchpanelReady(bool success) {
   CHECK(res.first.is_valid())
       << "Failed to establish private network namespace";
   ns_fd_ = std::move(res.first);
-  // TODO(garrick): Use the response... for now just ack it worked.
+  ns_ = res.second;
   LOG(INFO) << "Sucessfully connected private network namespace:"
-            << res.second.host_ifname() << " <--> " << res.second.peer_ifname();
+            << ns_.host_ifname() << " <--> " << ns_.peer_ifname();
 
   // If this is the system proxy, tell shill about it. We should start receiving
   // DNS traffic on success. If this fails, we don't have much choice but to
-  // just die and try again...
+  // just crash out and try again...
   if (opts_.type == Type::kSystem)
-    CHECK(SetShillProperty(
-        patchpanel::IPv4AddressToString(res.second.host_ipv4_address())));
+    SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()),
+                     true /* die_on_failure */);
+}
+
+void Proxy::OnShillReset(bool reset) {
+  if (!reset) {
+    LOG(WARNING) << "Shill has been shutdown";
+    return;
+  }
+
+  // Really this means shill crashed. To be safe, explicitly set/clear the proxy
+  // address.
+  LOG(WARNING) << "Shill has been reset";
+  std::string addr;
+  if (ns_fd_.is_valid())
+    addr = patchpanel::IPv4AddressToString(ns_.host_ipv4_address());
+
+  // We don't want to crash on failure here because if
+  // (a) addr is empty, it means we're not set up yet, or
+  // (b) otherwise, shill might still have this address and try to use it, we
+  // can hope...
+  SetShillProperty(addr);
 }
 
 void Proxy::OnDefaultServiceChanged(const std::string& type) {}
@@ -137,25 +166,44 @@ void Proxy::OnDefaultServiceChanged(const std::string& type) {}
 void Proxy::OnDeviceChanged(bool is_default,
                             const shill::Client::Device* const device) {}
 
-bool Proxy::SetShillProperty(const std::string& addr) {
-  if (opts_.type != Type::kSystem)
-    return false;
+void Proxy::SetShillProperty(const std::string& addr,
+                             bool die_on_failure,
+                             uint8_t num_retries) {
+  if (opts_.type != Type::kSystem) {
+    LOG(DFATAL) << "Must be called from system proxy only";
+    return;
+  }
 
+  if (num_retries == 0) {
+    LOG(ERROR) << "Maximum number of retries exceeding attempt to"
+               << " set dns-proxy address property on shill";
+    CHECK(!die_on_failure);
+    return;
+  }
+
+  // This can only happen if called from OnShutdown and Setup had somehow failed
+  // to create the client... it's unlikely but regardless, that shill client
+  // isn't coming back so there's no point in retrying anything.
   if (!shill_) {
-    LOG(WARNING)
-        << "Lost connection to shill - cannot set dns-proxy address property ["
-        << addr << "]";
-    return false;
+    LOG(ERROR)
+        << "No connection to shill - cannot set dns-proxy address property ["
+        << addr << "].";
+    return;
   }
 
   brillo::ErrorPtr error;
-  if (!shill_->ManagerProperties()->Set(shill::kDNSProxyIPv4AddressProperty,
-                                        addr, &error)) {
-    LOG(ERROR) << "Failed to set dns-proxy address property [" << addr
-               << "] on shill: " << error->GetMessage();
-    return false;
-  }
-  return true;
+  if (shill_->ManagerProperties()->Set(shill::kDNSProxyIPv4AddressProperty,
+                                       addr, &error))
+    return;
+
+  LOG(ERROR) << "Failed to set dns-proxy address property [" << addr
+             << "] on shill: " << error->GetMessage() << ". Retrying...";
+
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&Proxy::SetShillProperty, weak_factory_.GetWeakPtr(), addr,
+                 die_on_failure, num_retries - 1),
+      kShillPropertyAttemptDelay);
 }
 
 }  // namespace dns_proxy

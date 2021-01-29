@@ -44,8 +44,11 @@ class Proxy : public brillo::DBusDaemon {
   void OnShutdown(int*) override;
 
  private:
+  static const uint8_t kMaxShillPropertyRetries = 10;
+
   void Setup();
   void OnPatchpanelReady(bool success);
+  void OnShillReset(bool reset);
 
   // The system proxy needs to pay attention to the default service type
   // switching to VPN since it wants to always keep the DNS configuration for
@@ -59,13 +62,18 @@ class Proxy : public brillo::DBusDaemon {
 
   // Helper func for setting the dns-proxy address in shill.
   // Only valid for the system proxy.
-  bool SetShillProperty(const std::string& addr);
+  // Will retry on failure up to |num_retries| before possibly crashing the
+  // proxy.
+  void SetShillProperty(const std::string& addr,
+                        bool die_on_failure = false,
+                        uint8_t num_retries = kMaxShillPropertyRetries);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
   std::unique_ptr<shill::Client> shill_;
 
   base::ScopedFD ns_fd_;
+  patchpanel::ConnectNamespaceResponse ns_;
 
   base::WeakPtrFactory<Proxy> weak_factory_{this};
 };
