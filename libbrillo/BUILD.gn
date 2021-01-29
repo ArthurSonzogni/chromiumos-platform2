@@ -121,15 +121,11 @@ libbrillo_sublibs = [
     deps = [ ":libbrillo-core" ]
     sources = [ "brillo/blkdev_utils/loop_device.cc" ]
     if (use.device_mapper) {
+      libs = [ "lvm2cmd" ]
       pkg_deps = [ "devmapper" ]
       sources += [
         "brillo/blkdev_utils/device_mapper.cc",
         "brillo/blkdev_utils/device_mapper_task.cc",
-      ]
-    }
-    if (use.lvm_stateful_partition) {
-      libs = [ "lvm2cmd" ]
-      sources += [
         "brillo/blkdev_utils/lvm.cc",
         "brillo/blkdev_utils/lvm_device.cc",
       ]
@@ -547,10 +543,8 @@ if (use.test) {
       ]
     }
     if (use.device_mapper) {
-      sources += [ "brillo/blkdev_utils/device_mapper_test.cc" ]
-    }
-    if (use.lvm_stateful_partition) {
       sources += [
+        "brillo/blkdev_utils/device_mapper_test.cc",
         "brillo/blkdev_utils/lvm_device_test.cc",
         "brillo/blkdev_utils/lvm_test.cc",
       ]
