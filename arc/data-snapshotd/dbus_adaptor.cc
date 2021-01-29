@@ -91,7 +91,7 @@ bool DBusAdaptor::GenerateKeyPair() {
   // Generate a key pair.
   public_key_info_.clear();
   std::unique_ptr<crypto::RSAPrivateKey> generated_private_key(
-      crypto::RSAPrivateKey::Create(1024));
+      crypto::RSAPrivateKey::Create(4096));
   if (!generated_private_key) {
     LOG(ERROR) << "Failed to generate a key pair.";
     return false;
@@ -150,7 +150,11 @@ bool DBusAdaptor::TakeSnapshot(const std::string& account_id) {
     return false;
   if (!StoreUserhash(last_snapshot_directory_, userhash))
     return false;
-  if (!SignAndStoreHash(last_snapshot_directory_, private_key_.get(),
+  std::vector<uint8_t> key_info;
+  private_key_->ExportPrivateKey(&key_info);
+  std::unique_ptr<crypto::RSAPrivateKey> key(
+      crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(key_info));
+  if (!SignAndStoreHash(last_snapshot_directory_, key.get(),
                         inode_verification_enabled_)) {
     return false;
   }

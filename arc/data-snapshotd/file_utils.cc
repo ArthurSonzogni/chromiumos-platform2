@@ -5,6 +5,7 @@
 #include "arc/data-snapshotd/file_utils.h"
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
 #if USE_SELINUX
@@ -23,6 +24,7 @@
 #include <crypto/rsa_private_key.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
+#include "crypto/sha2.h"
 #include <openssl/sha.h>
 
 namespace arc {
@@ -119,20 +121,13 @@ bool ReadSnapshotDirectory(const base::FilePath& dir,
 
 std::vector<uint8_t> CalculateDirectoryCryptographicHash(
     const SnapshotDirectory& dir) {
-  std::vector<uint8_t> hash;
   std::string serialized;
   if (!dir.SerializeToString(&serialized)) {
     LOG(ERROR) << "Failed to serialize to string snapshot directory info.";
-    return hash;
+    return {};
   }
-  hash.resize(SHA256_DIGEST_LENGTH);
-  if (!SHA256((const unsigned char*)serialized.data(), serialized.size(),
-              hash.data()) ||
-      hash.empty()) {
-    LOG(ERROR) << "Failed to calculate digest of serialized SnapshotDirectory.";
-    return std::vector<uint8_t>();
-  }
-  return hash;
+  std::string hash = crypto::SHA256HashString(serialized);
+  return std::vector<uint8_t>(hash.begin(), hash.end());
 }
 
 bool StorePublicKey(const base::FilePath& dir,
@@ -194,12 +189,19 @@ bool SignAndStoreHash(const base::FilePath& dir,
     return false;
   }
   std::vector<uint8_t> signature;
-  if (!crypto::SignatureCreator::Sign(
-          private_key, crypto::SignatureCreator::HashAlgorithm::SHA256,
-          hash.data(), hash.size(), &signature)) {
+  std::unique_ptr<crypto::SignatureCreator> signer(
+      crypto::SignatureCreator::Create(private_key,
+                                       crypto::SignatureCreator::SHA256));
+  if (!signer->Update(hash.data(), hash.size())) {
+    LOG(ERROR) << "Failed to update signing data of directory contents: "
+               << dir.value();
+    return false;
+  }
+  if (!signer->Final(&signature)) {
     LOG(ERROR) << "Failed to sign directory contents: " << dir.value();
     return false;
   }
+
   std::string encoded_signature =
       brillo::data_encoding::Base64Encode(signature.data(), signature.size());
   if (!base::WriteFile(dir.Append(kHashFile), encoded_signature.data(),
@@ -248,6 +250,7 @@ bool VerifyHash(const base::FilePath& dir,
   std::string encoded_public_key_digest =
       CalculateEncodedSha256Digest(public_key);
   if (encoded_public_key_digest.empty()) {
+    LOG(ERROR) << "Calculated encoded sha256 digest failed";
     return false;
   }
   if (encoded_public_key_digest.compare(expected_public_key_digest)) {
@@ -267,25 +270,22 @@ bool VerifyHash(const base::FilePath& dir,
     return false;
   }
   crypto::SignatureVerifier verifier;
-  if (!verifier.VerifyInit(
-          crypto::SignatureVerifier::SignatureAlgorithm::RSA_PKCS1_SHA256,
-          signature.data(), signature.size(), public_key.data(),
-          public_key.size())) {
+  if (!verifier.VerifyInit(crypto::SignatureVerifier::RSA_PKCS1_SHA256,
+                           reinterpret_cast<const uint8_t*>(signature.data()),
+                           signature.size(),
+                           reinterpret_cast<const uint8_t*>(public_key.data()),
+                           public_key.size())) {
     LOG(ERROR) << "Failed to initilize signature verifier.";
     return false;
   }
 
   SnapshotDirectory snapshot_dir;
   if (!ReadSnapshotDirectory(dir, &snapshot_dir, inode_verification_enabled)) {
+    LOG(ERROR) << "Read snapshot directory failed";
     return false;
   }
-  std::string serialized;
-  if (!snapshot_dir.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Failed to serialize snapshot dir";
-    return false;
-  }
-  verifier.VerifyUpdate(reinterpret_cast<const uint8_t*>(serialized.c_str()),
-                        serialized.size());
+  std::vector<uint8_t> hash = CalculateDirectoryCryptographicHash(snapshot_dir);
+  verifier.VerifyUpdate(hash.data(), hash.size());
   return verifier.VerifyFinal();
 }
 
