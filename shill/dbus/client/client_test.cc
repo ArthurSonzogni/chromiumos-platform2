@@ -235,15 +235,23 @@ ACTION_TEMPLATE(MovePointee,
 }
 
 TEST_F(ClientTest, ShillResetCreatesNewManagerProxy) {
+  static bool is_reset = false;
+  client_->RegisterProcessChangedHandler(
+      base::BindRepeating([](bool b) { is_reset = b; }));
   EXPECT_CALL(*client_->manager(),
               DoRegisterPropertyChangedSignalHandler(_, _));
   client_->NotifyOwnerChange("old", "new");
+  EXPECT_TRUE(is_reset);
 }
 
 TEST_F(ClientTest, ShillLostDoesNotCreateNewManagerProxy) {
+  static bool is_reset = false;
+  client_->RegisterProcessChangedHandler(
+      base::BindRepeating([](bool b) { is_reset = b; }));
   EXPECT_CALL(*client_->manager(), DoRegisterPropertyChangedSignalHandler(_, _))
       .Times(0);
   client_->NotifyOwnerChange("old", "");
+  EXPECT_FALSE(is_reset);
 }
 
 TEST_F(ClientTest, DefaultServiceHandlerCalledForValidServicePath) {

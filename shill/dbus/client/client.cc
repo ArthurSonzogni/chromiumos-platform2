@@ -185,6 +185,11 @@ void Client::SetupSelectedServiceProxy(const dbus::ObjectPath& service_path,
                  weak_factory_.GetWeakPtr(), device_path.value()));
 }
 
+void Client::RegisterProcessChangedHandler(
+    const base::RepeatingCallback<void(bool)>& handler) {
+  process_handler_ = handler;
+}
+
 void Client::RegisterDefaultServiceChangedHandler(
     const DefaultServiceChangedHandler& handler) {
   default_service_handlers_.emplace_back(handler);
@@ -227,11 +232,15 @@ void Client::OnOwnerChange(const std::string& old_owner,
 
   if (new_owner.empty()) {
     LOG(INFO) << "Shill lost";
+    if (!process_handler_.is_null())
+      process_handler_.Run(false);
     return;
   }
 
   LOG(INFO) << "Shill reset";
   SetupManagerProxy();
+  if (!process_handler_.is_null())
+    process_handler_.Run(true);
 }
 
 void Client::OnManagerPropertyChangeRegistration(const std::string& interface,

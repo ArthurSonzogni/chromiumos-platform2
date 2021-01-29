@@ -162,6 +162,14 @@ class BRILLO_EXPORT Client {
   // Initiates the connection to DBus and starts processing signals.
   void Init();
 
+  // |handler| will be invoked whenever shill exits. The boolean parameter
+  // passed to the callback will be true if a new shill process was started and
+  // now owns the dbus service; it will be false if shill is no longer running
+  // (or at least, is no longer available on dbus).
+  // Only one handler may be registered.
+  void RegisterProcessChangedHandler(
+      const base::RepeatingCallback<void(bool)>& handler);
+
   // |handler| will be invoked whenever the default service changes, i.e.
   // whenever the default service switches from "none" to a valid path or
   // vice-versa.
@@ -356,6 +364,7 @@ class BRILLO_EXPORT Client {
 
   scoped_refptr<dbus::Bus> bus_;
 
+  base::RepeatingCallback<void(bool)> process_handler_;
   std::vector<DefaultServiceChangedHandler> default_service_handlers_;
   std::vector<DeviceChangedHandler> default_device_handlers_;
   std::vector<DeviceChangedHandler> device_handlers_;
