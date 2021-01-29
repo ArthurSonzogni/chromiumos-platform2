@@ -12,7 +12,7 @@ namespace cryptohome {
 
 namespace {
 
-constexpr int kScryptNFactor = 1 << 15;  // 2^15
+constexpr int kScryptNFactor = 1 << 14;  // 2^14
 constexpr int kScryptRFactor = 8;
 constexpr int kScryptPFactor = 1;
 constexpr int kScryptSaltSize = 256 / CHAR_BIT;
