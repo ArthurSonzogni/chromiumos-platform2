@@ -291,6 +291,8 @@ type cros_run_tcsd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_udev, file_type, cros_file_type, cros_run_file_type;
 type cros_run_arcvm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_rsyslogd, file_type, cros_file_type, cros_run_file_type;
+type cros_run_namespaces, file_type, cros_file_type, cros_run_file_type;
+type cros_run_namespaces_mnt_chrome, file_type, cros_file_type, cros_run_file_type;
 
 type cros_avahi_socket, file_type, cros_file_type, cros_run_file_type;
 
