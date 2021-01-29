@@ -35,6 +35,7 @@ class Modem {
 
   // Information about this modem's installed firmware.
   virtual std::string GetMainFirmwareVersion() const = 0;
+  virtual std::string GetOemFirmwareVersion() const = 0;
   virtual std::string GetCarrierFirmwareId() const = 0;
   virtual std::string GetCarrierFirmwareVersion() const = 0;
 

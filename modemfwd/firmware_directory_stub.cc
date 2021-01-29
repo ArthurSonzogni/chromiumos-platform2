@@ -40,6 +40,19 @@ void FirmwareDirectoryStub::AddMainFirmwareForCarrier(
       std::make_pair(std::make_pair(device_id, carrier_id), info));
 }
 
+void FirmwareDirectoryStub::AddOemFirmware(const std::string& device_id,
+                                           FirmwareFileInfo info) {
+  oem_fw_info_.insert(std::make_pair(device_id, info));
+}
+
+void FirmwareDirectoryStub::AddOemFirmwareForCarrier(
+    const std::string& device_id,
+    const std::string& carrier_id,
+    FirmwareFileInfo info) {
+  oem_fw_info_for_carrier_.insert(
+      std::make_pair(std::make_pair(device_id, carrier_id), info));
+}
+
 void FirmwareDirectoryStub::AddCarrierFirmware(const std::string& device_id,
                                                const std::string& carrier_id,
                                                FirmwareFileInfo info) {
@@ -59,6 +72,15 @@ FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
                  std::make_pair(device_id, *carrier_id), &info)) {
       res.main_firmware = info;
     }
+    if (GetValue(oem_fw_info_for_carrier_,
+                 std::make_pair(device_id, *carrier_id), &info)) {
+      res.oem_firmware = info;
+    }
+  }
+
+  if (!res.oem_firmware.has_value() &&
+      GetValue(oem_fw_info_, device_id, &info)) {
+    res.oem_firmware = info;
   }
 
   if (!res.main_firmware.has_value() &&

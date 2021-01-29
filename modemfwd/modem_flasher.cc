@@ -119,6 +119,25 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     }
   }
 
+  // Check if we need to update the OEM firmware.
+  if (flash_state->ShouldFlashOemFirmware() && files.oem_firmware.has_value()) {
+    const FirmwareFileInfo& file_info = files.oem_firmware.value();
+    ELOG(INFO) << "Found OEM firmware blob " << file_info.version
+               << ", currently installed OEM firmware version: "
+               << modem->GetOemFirmwareVersion();
+    if (file_info.version == modem->GetOemFirmwareVersion()) {
+      flash_state->OnFlashedOemFirmware();
+    } else {
+      auto firmware_file = std::make_unique<FirmwareFile>();
+      if (!firmware_file->PrepareFrom(file_info))
+        return base::Closure();
+
+      flash_cfg.push_back(
+          {kFwOem, firmware_file->path_on_filesystem(), file_info.version});
+      flash_files[kFwOem] = std::move(firmware_file);
+    }
+  }
+
   // Check if we need to update the carrier firmware.
   if (!current_carrier.empty() && files.carrier_firmware.has_value() &&
       flash_state->ShouldFlashCarrierFirmware(
@@ -190,6 +209,8 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     base::FilePath path_for_logging = flash_files[fw_type]->path_for_logging();
     if (fw_type == kFwMain)
       flash_state->OnFlashedMainFirmware();
+    else if (fw_type == kFwOem)
+      flash_state->OnFlashedOemFirmware();
     else if (fw_type == kFwCarrier)
       flash_state->OnFlashedCarrierFirmware(path_for_logging);
     ELOG(INFO) << "Flashed " << fw_type << " firmware (" << path_for_logging

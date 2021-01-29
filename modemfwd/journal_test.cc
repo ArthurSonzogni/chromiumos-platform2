@@ -33,6 +33,9 @@ constexpr char kCarrierId[] = "carrier";
 constexpr char kMainFirmwarePath[] = "main_firmware.fls";
 constexpr char kMainFirmwareVersion[] = "1.0";
 
+constexpr char kOemFirmwarePath[] = "oem_cust.fls";
+constexpr char kOemFirmwareVersion[] = "1.0";
+
 constexpr char kCarrierFirmwarePath[] = "carrier_firmware.fls";
 constexpr char kCarrierFirmwareVersion[] = "1.0";
 
@@ -65,6 +68,12 @@ class JournalTest : public ::testing::Test {
                            const std::string& version) {
     FirmwareFileInfo firmware_info(firmware_path, version);
     firmware_directory_->AddMainFirmware(kDeviceId, firmware_info);
+  }
+
+  void AddOemFirmwareFile(const base::FilePath& firmware_path,
+                          const std::string& version) {
+    FirmwareFileInfo firmware_info(firmware_path, version);
+    firmware_directory_->AddOemFirmware(kDeviceId, firmware_info);
   }
 
   void AddCarrierFirmwareFile(const base::FilePath& firmware_path,
@@ -115,6 +124,34 @@ TEST_F(JournalTest, PriorRunWasInterrupted_Main) {
   journal = GetJournal();
 }
 
+TEST_F(JournalTest, PriorRunWasNotInterrupted_Oem) {
+  auto journal = GetJournal();
+  journal->MarkStartOfFlashingFirmware({kFwOem}, kDeviceId, kCarrierId);
+  journal->MarkEndOfFlashingFirmware(kDeviceId, kCarrierId);
+
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
+  // Getting a new journal simulates a crash or shutdown.
+  journal = GetJournal();
+}
+
+TEST_F(JournalTest, PriorRunWasInterrupted_Oem) {
+  const base::FilePath oem_fw_path(kOemFirmwarePath);
+  AddOemFirmwareFile(oem_fw_path, kOemFirmwareVersion);
+
+  auto journal = GetJournal();
+  journal->MarkStartOfFlashingFirmware({kFwOem}, kDeviceId, kCarrierId);
+
+  const std::vector<FirmwareConfig> oem_cfg = {
+      {kFwOem, oem_fw_path, kOemFirmwareVersion}};
+  EXPECT_CALL(modem_helper_, FlashFirmwares(oem_cfg)).WillOnce(Return(true));
+  journal = GetJournal();
+
+  // Test that the journal is cleared afterwards, so we don't try to
+  // flash a second time if we crash again.
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
+  journal = GetJournal();
+}
+
 TEST_F(JournalTest, PriorRunWasNotInterrupted_Carrier) {
   auto journal = GetJournal();
   journal->MarkStartOfFlashingFirmware({kFwCarrier}, kDeviceId, kCarrierId);
@@ -147,15 +184,18 @@ TEST_F(JournalTest, PriorRunWasInterrupted_Carrier) {
 TEST_F(JournalTest, PriorRunWasInterrupted_MultipleFirmwares) {
   const base::FilePath main_fw_path(kMainFirmwarePath);
   AddMainFirmwareFile(main_fw_path, kMainFirmwareVersion);
+  const base::FilePath oem_fw_path(kOemFirmwarePath);
+  AddOemFirmwareFile(oem_fw_path, kOemFirmwareVersion);
   const base::FilePath carrier_fw_path(kCarrierFirmwarePath);
   AddCarrierFirmwareFile(carrier_fw_path, kCarrierFirmwareVersion);
 
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingFirmware({kFwMain, kFwCarrier}, kDeviceId,
+  journal->MarkStartOfFlashingFirmware({kFwMain, kFwOem, kFwCarrier}, kDeviceId,
                                        kCarrierId);
 
   const std::vector<FirmwareConfig> all_cfg = {
       {kFwMain, main_fw_path, kMainFirmwareVersion},
+      {kFwOem, oem_fw_path, kOemFirmwareVersion},
       {kFwCarrier, carrier_fw_path, kCarrierFirmwareVersion}};
   EXPECT_CALL(modem_helper_, FlashFirmwares(all_cfg)).WillOnce(Return(true));
   journal = GetJournal();

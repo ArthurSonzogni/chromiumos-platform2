@@ -17,13 +17,16 @@ namespace modemfwd {
 struct FirmwareInfo {
   FirmwareInfo() = default;
   FirmwareInfo(const std::string& main_version,
+               const std::string& oem_version,
                const std::string& carrier_uuid,
                const std::string& carrier_version)
       : main_version(main_version),
+        oem_version(oem_version),
         carrier_uuid(carrier_uuid),
         carrier_version(carrier_version) {}
 
   std::string main_version;
+  std::string oem_version;
   std::string carrier_uuid;
   std::string carrier_version;
 };

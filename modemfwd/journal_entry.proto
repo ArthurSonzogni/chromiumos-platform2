@@ -10,6 +10,7 @@ enum JournalEntryType {
   UNKNOWN = 0;
   MAIN = 1;
   CARRIER = 2;
+  OEM = 3;
 }
 
 message JournalEntry {

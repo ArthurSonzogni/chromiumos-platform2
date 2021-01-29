@@ -182,6 +182,8 @@ class ModemHelperImpl : public ModemHelper {
         out_info->carrier_version = pair.second;
       else if (pair.first == kFwCarrierUuid)
         out_info->carrier_uuid = pair.second;
+      else if (pair.first == kFwOem)
+        out_info->oem_version = pair.second;
       else
         LOG(WARNING) << "Unknown version '" << pair.first << "', skipping.";
     }

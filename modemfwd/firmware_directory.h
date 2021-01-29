@@ -19,6 +19,7 @@ class FirmwareDirectory {
  public:
   struct Files {
     base::Optional<FirmwareFileInfo> main_firmware;
+    base::Optional<FirmwareFileInfo> oem_firmware;
     base::Optional<FirmwareFileInfo> carrier_firmware;
   };
 

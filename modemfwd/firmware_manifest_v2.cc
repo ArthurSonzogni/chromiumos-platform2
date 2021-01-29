@@ -68,6 +68,31 @@ bool ParseDevice(const Device& device,
     default_main_entry = main_firmware_infos.begin()->second.get();
   }
 
+  std::map<std::string, FirmwareFileInfo*> oem_firmware_infos;
+  for (const OemFirmwareV2& oem_firmware : device.oem_firmware()) {
+    if (oem_firmware.filename().empty() || oem_firmware.version().empty() ||
+        !Compression_IsValid(oem_firmware.compression())) {
+      LOG(ERROR) << "Found malformed OEM firmware manifest entry";
+      return false;
+    }
+
+    auto compression =
+        ToFirmwareFileInfoCompression(oem_firmware.compression());
+    if (!compression.has_value())
+      return false;
+
+    auto oem_info = std::make_unique<FirmwareFileInfo>(
+        directory_path.Append(oem_firmware.filename()), oem_firmware.version(),
+        compression.value());
+    if (oem_firmware.main_firmware_version_size() > 0) {
+      for (const std::string& version : oem_firmware.main_firmware_version())
+        oem_firmware_infos.emplace(version, oem_info.get());
+    } else {
+      oem_firmware_infos.emplace(default_main_entry->version, oem_info.get());
+    }
+    out_cache->all_files.push_back(std::move(oem_info));
+  }
+
   // If not, then each carrier firmware must specify a functional main firmware
   // version, and there must be a generic carrier firmware supplying the main
   // version if no explicitly supported carrier is found.
@@ -90,6 +115,7 @@ bool ParseDevice(const Device& device,
     // There must either be a default main firmware or an explicitly specified
     // one here.
     FirmwareFileInfo* main_firmware_for_carrier;
+    FirmwareFileInfo* oem_firmware_for_carrier;
     if (!carrier_firmware.main_firmware_version().empty()) {
       if (main_firmware_infos.count(carrier_firmware.main_firmware_version()) ==
           0) {
@@ -99,8 +125,12 @@ bool ParseDevice(const Device& device,
       }
       main_firmware_for_carrier =
           main_firmware_infos[carrier_firmware.main_firmware_version()].get();
+      oem_firmware_for_carrier =
+          oem_firmware_infos[carrier_firmware.main_firmware_version()];
     } else if (default_main_entry) {
       main_firmware_for_carrier = default_main_entry;
+      oem_firmware_for_carrier =
+          oem_firmware_infos[default_main_entry->version];
     } else {
       LOG(ERROR) << "No main firmware specified for carrier firmware "
                  << carrier_firmware.filename();
@@ -121,10 +151,13 @@ bool ParseDevice(const Device& device,
         // pointers.
         out_cache->main_firmware.clear();
         out_cache->carrier_firmware.clear();
+        out_cache->oem_firmware.clear();
         return false;
       }
 
       out_cache->main_firmware[supported_carrier] = main_firmware_for_carrier;
+      if (oem_firmware_for_carrier)
+        out_cache->oem_firmware[supported_carrier] = oem_firmware_for_carrier;
       out_cache->carrier_firmware[supported_carrier] = carrier_info.get();
     }
     out_cache->all_files.push_back(std::move(carrier_info));
@@ -144,6 +177,10 @@ bool ParseDevice(const Device& device,
     }
     out_cache->main_firmware[FirmwareDirectory::kGenericCarrierId] =
         default_main_entry;
+    auto oem_info = oem_firmware_infos.find(default_main_entry->version);
+    if (oem_info != oem_firmware_infos.end() && oem_info->second)
+      out_cache->oem_firmware[FirmwareDirectory::kGenericCarrierId] =
+          oem_info->second;
   }
 
   return true;

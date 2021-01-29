@@ -34,6 +34,12 @@ constexpr char kMainFirmware1Version[] = "versionA";
 constexpr char kMainFirmware2Path[] = "main_fw_2.fls";
 constexpr char kMainFirmware2Version[] = "versionB";
 
+constexpr char kOemFirmware1Path[] = "oem_cust_1.fls";
+constexpr char kOemFirmware1Version[] = "6000.1";
+
+constexpr char kOemFirmware2Path[] = "oem_cust_2.fls";
+constexpr char kOemFirmware2Version[] = "6000.2";
+
 constexpr char kCarrier1[] = "uuid_1";
 constexpr char kCarrier1Mvno[] = "uuid_1_1";
 constexpr char kCarrier1Firmware1Path[] = "carrier_1_fw_1.fls";
@@ -85,6 +91,22 @@ class ModemFlasherTest : public ::testing::Test {
                                                    firmware_info);
   }
 
+  void AddOemFirmwareFile(const std::string& device_id,
+                          const base::FilePath& firmware_path,
+                          const std::string& version) {
+    FirmwareFileInfo firmware_info(firmware_path, version);
+    firmware_directory_->AddOemFirmware(kDeviceId1, firmware_info);
+  }
+
+  void AddOemFirmwareFileForCarrier(const std::string& device_id,
+                                    const std::string& carrier_name,
+                                    const base::FilePath& firmware_path,
+                                    const std::string& version) {
+    FirmwareFileInfo firmware_info(firmware_path, version);
+    firmware_directory_->AddOemFirmwareForCarrier(kDeviceId1, carrier_name,
+                                                  firmware_info);
+  }
+
   void AddCarrierFirmwareFile(const std::string& device_id,
                               const std::string& carrier_name,
                               const base::FilePath& firmware_path,
@@ -101,6 +123,8 @@ class ModemFlasherTest : public ::testing::Test {
     ON_CALL(*modem, GetCarrierId()).WillByDefault(Return(kCarrier1));
     ON_CALL(*modem, GetMainFirmwareVersion())
         .WillByDefault(Return(kMainFirmware1Version));
+    ON_CALL(*modem, GetOemFirmwareVersion())
+        .WillByDefault(Return(kOemFirmware1Version));
     ON_CALL(*modem, GetCarrierFirmwareId()).WillByDefault(Return(""));
     ON_CALL(*modem, GetCarrierFirmwareVersion()).WillByDefault(Return(""));
 
@@ -157,6 +181,30 @@ TEST_F(ModemFlasherTest, SkipSameMainVersion) {
   EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
   EXPECT_CALL(*modem, FlashFirmwares(_)).Times(0);
+  modem_flasher_->TryFlash(modem.get());
+}
+
+TEST_F(ModemFlasherTest, SkipSameOemVersion) {
+  base::FilePath firmware(kOemFirmware1Path);
+  AddOemFirmwareFile(kDeviceId1, firmware, kOemFirmware1Version);
+
+  auto modem = GetDefaultModem();
+  EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, GetOemFirmwareVersion()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, FlashFirmwares(_)).Times(0);
+  modem_flasher_->TryFlash(modem.get());
+}
+
+TEST_F(ModemFlasherTest, UpgradeOemFirmware) {
+  base::FilePath new_firmware(kOemFirmware2Path);
+  AddOemFirmwareFile(kDeviceId1, new_firmware, kOemFirmware2Version);
+
+  auto modem = GetDefaultModem();
+  std::vector<FirmwareConfig> oem_cfg = {
+      {kFwOem, new_firmware, kOemFirmware2Version}};
+  EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, GetOemFirmwareVersion()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, FlashFirmwares(oem_cfg)).WillOnce(Return(true));
   modem_flasher_->TryFlash(modem.get());
 }
 
@@ -283,6 +331,26 @@ TEST_F(ModemFlasherTest, RefuseToFlashMainFirmwareTwice) {
   modem = GetDefaultModem();
   EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(0);
+  EXPECT_CALL(*modem, FlashFirmwares(_)).Times(0);
+  modem_flasher_->TryFlash(modem.get());
+}
+
+TEST_F(ModemFlasherTest, RefuseToFlashOemFirmwareTwice) {
+  base::FilePath new_firmware(kOemFirmware2Path);
+  AddOemFirmwareFile(kDeviceId1, new_firmware, kOemFirmware2Version);
+
+  auto modem = GetDefaultModem();
+  std::vector<FirmwareConfig> oem_cfg = {
+      {kFwOem, new_firmware, kOemFirmware2Version}};
+  EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, GetOemFirmwareVersion()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, FlashFirmwares(oem_cfg)).WillOnce(Return(true));
+  modem_flasher_->TryFlash(modem.get());
+
+  // Assume that the modem fails to return properly the new version.
+  modem = GetDefaultModem();
+  EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, GetOemFirmwareVersion()).Times(0);
   EXPECT_CALL(*modem, FlashFirmwares(_)).Times(0);
   modem_flasher_->TryFlash(modem.get());
 }
@@ -534,6 +602,12 @@ TEST_F(ModemFlasherTest, CarrierSwitchingMainFirmware) {
   AddMainFirmwareFileForCarrier(kDeviceId1, kCarrier2, other_main,
                                 kMainFirmware2Version);
 
+  base::FilePath original_oem(kOemFirmware1Path);
+  AddOemFirmwareFile(kDeviceId1, original_oem, kOemFirmware1Version);
+  base::FilePath other_oem(kOemFirmware2Path);
+  AddOemFirmwareFileForCarrier(kDeviceId1, kCarrier2, other_oem,
+                               kOemFirmware2Version);
+
   base::FilePath original_carrier(kCarrier1Firmware1Path);
   base::FilePath other_carrier(kCarrier2Firmware1Path);
   AddCarrierFirmwareFile(kDeviceId1, kCarrier1, original_carrier,
@@ -544,6 +618,7 @@ TEST_F(ModemFlasherTest, CarrierSwitchingMainFirmware) {
   auto modem = GetDefaultModem();
   std::vector<FirmwareConfig> other_cfg = {
       {kFwMain, other_main, kMainFirmware2Version},
+      {kFwOem, other_oem, kOemFirmware2Version},
       {kFwCarrier, other_carrier, kCarrier2Firmware1Version}};
   EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
   EXPECT_CALL(*modem, GetCarrierId())
@@ -553,16 +628,20 @@ TEST_F(ModemFlasherTest, CarrierSwitchingMainFirmware) {
   EXPECT_CALL(*modem, FlashFirmwares(other_cfg)).WillOnce(Return(true));
   modem_flasher_->TryFlash(modem.get());
 
-  // Switch the carrier back and make sure we flash both firmware blobs
+  // Switch the carrier back and make sure we flash all firmware blobs
   // again.
   modem = GetDefaultModem();
   std::vector<FirmwareConfig> orig_cfg = {
       {kFwMain, original_main, kMainFirmware1Version},
+      {kFwOem, original_oem, kOemFirmware1Version},
       {kFwCarrier, original_carrier, kCarrier1Firmware1Version}};
   EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
   EXPECT_CALL(*modem, GetMainFirmwareVersion())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(kMainFirmware2Version));
+  EXPECT_CALL(*modem, GetOemFirmwareVersion())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(kOemFirmware2Version));
   EXPECT_CALL(*modem, GetCarrierId())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(kCarrier1));

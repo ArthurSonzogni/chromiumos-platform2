@@ -72,10 +72,12 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     const DeviceFirmwareCache& cache = device_it->second;
     FirmwareFileInfo info;
 
-    // Null carrier ID -> just go for generic main firmware.
+    // Null carrier ID -> just go for generic main and OEM firmwares.
     if (!carrier_id) {
       if (FindSpecificFirmware(cache.main_firmware, kGenericCarrierId, &info))
         result.main_firmware = info;
+      if (FindSpecificFirmware(cache.oem_firmware, kGenericCarrierId, &info))
+        result.oem_firmware = info;
       return result;
     }
 
@@ -85,6 +87,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
       result.carrier_firmware = info;
     if (FindFirmwareForCarrier(cache.main_firmware, carrier_id, &info))
       result.main_firmware = info;
+    if (FindFirmwareForCarrier(cache.oem_firmware, carrier_id, &info))
+      result.oem_firmware = info;
 
     return result;
   }

@@ -46,6 +46,7 @@ struct DeviceFirmwareCache {
   std::vector<std::unique_ptr<FirmwareFileInfo>> all_files;
   CarrierIndex main_firmware;
   CarrierIndex carrier_firmware;
+  CarrierIndex oem_firmware;
 };
 
 using FirmwareIndex = std::map<DeviceType, DeviceFirmwareCache>;

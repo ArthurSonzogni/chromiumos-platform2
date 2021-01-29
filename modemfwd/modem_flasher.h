@@ -43,6 +43,9 @@ class ModemFlasher {
     void OnFlashedMainFirmware() { should_flash_main_fw_ = false; }
     bool ShouldFlashMainFirmware() const { return should_flash_main_fw_; }
 
+    void OnFlashedOemFirmware() { should_flash_oem_fw_ = false; }
+    bool ShouldFlashOemFirmware() const { return should_flash_oem_fw_; }
+
     void OnFlashedCarrierFirmware(const base::FilePath& path) {
       last_carrier_fw_flashed_ = path;
     }
@@ -56,6 +59,7 @@ class ModemFlasher {
 
       last_carrier_id_ = carrier_id;
       should_flash_main_fw_ = true;
+      should_flash_oem_fw_ = true;
     }
 
    private:
@@ -69,6 +73,7 @@ class ModemFlasher {
     // we might have different main firmware versions. As such, when we see a
     // new carrier, reset the |should_flash_main_fw_| for this modem.
     bool should_flash_main_fw_ = true;
+    bool should_flash_oem_fw_ = true;
     std::string last_carrier_id_;
 
     // For carrier firmware, once we've tried to upgrade versions on a

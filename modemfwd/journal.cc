@@ -29,6 +29,8 @@ std::string JournalTypeToFirmwareType(int t) {
       return modemfwd::kFwMain;
     case JournalEntryType::CARRIER:
       return modemfwd::kFwCarrier;
+    case JournalEntryType::OEM:
+      return modemfwd::kFwOem;
     default:
       return std::string();
   }
@@ -40,6 +42,8 @@ JournalEntryType FirmwareTypeToJournalType(std::string fw_type) {
     return JournalEntryType::MAIN;
   else if (fw_type == modemfwd::kFwCarrier)
     return JournalEntryType::CARRIER;
+  else if (fw_type == modemfwd::kFwOem)
+    return JournalEntryType::OEM;
   else
     return JournalEntryType::UNKNOWN;
 }
@@ -80,6 +84,9 @@ bool RestartOperation(const JournalEntry& entry,
         break;
       case JournalEntryType::CARRIER:
         info = base::OptionalOrNullptr<FirmwareFileInfo>(res.carrier_firmware);
+        break;
+      case JournalEntryType::OEM:
+        info = base::OptionalOrNullptr<FirmwareFileInfo>(res.oem_firmware);
         break;
     }
 
