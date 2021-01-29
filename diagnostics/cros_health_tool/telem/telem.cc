@@ -374,7 +374,9 @@ void DisplayNetworkInfo(
   }
 
   const auto& network_health = network_result->get_network_health();
-  std::cout << "type,state,guid,name,signal_strength,mac_address" << std::endl;
+  std::cout << "type,state,guid,name,signal_strength,mac_address,ipv4_address,"
+               "ipv6_addresses"
+            << std::endl;
   for (const auto& network : network_health->networks) {
     auto signal_strength = network->signal_strength
                                ? std::to_string(network->signal_strength->value)
@@ -384,7 +386,11 @@ void DisplayNetworkInfo(
               << network->guid.value_or(kNotApplicableString) << ","
               << network->name.value_or(kNotApplicableString) << ","
               << signal_strength << ","
-              << network->mac_address.value_or(kNotApplicableString)
+              << network->mac_address.value_or(kNotApplicableString) << ","
+              << network->ipv4_address.value_or(kNotApplicableString) << ","
+              << (network->ipv6_addresses.size()
+                      ? base::JoinString(network->ipv6_addresses, ":")
+                      : kNotApplicableString)
               << std::endl;
   }
 }
