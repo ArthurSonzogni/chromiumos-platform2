@@ -163,7 +163,10 @@ std::ostream& operator<<(std::ostream& stream, const LocalSourceSpecs& source);
 constexpr char kUidChronos[] = "chronos";
 // Crosh terminal and feedback reports
 constexpr char kUidDebugd[] = "debugd";
+// Printing
 constexpr char kUidCups[] = "cups";
+// Printer and print queues configuration utility used for cups
+constexpr char kUidLpadmin[] = "lpadmin";
 // Chrome OS Kerberos daemon
 constexpr char kUidKerberosd[] = "kerberosd";
 // Kerberos third party untrusted code
@@ -184,10 +187,11 @@ constexpr char kUidFuseSmbfs[] = "fuse-smbfs";
 // cstring must be defined and cannot be null), 3) the cgroup classid of the
 // source (or 0 if none is defined), and 4) if the traffic originated from that
 // source should be routed through VPN connections by default or not.
-constexpr std::array<LocalSourceSpecs, 9> kLocalSourceTypes{{
+constexpr std::array<LocalSourceSpecs, 10> kLocalSourceTypes{{
     {TrafficSource::CHROME, kUidChronos, 0, true},
     {TrafficSource::USER, kUidDebugd, 0, true},
     {TrafficSource::USER, kUidCups, 0, true},
+    {TrafficSource::USER, kUidLpadmin, 0, true},
     {TrafficSource::SYSTEM, kUidKerberosd, 0, true},
     {TrafficSource::SYSTEM, kUidKerberosdExec, 0, true},
     {TrafficSource::SYSTEM, kUidTlsdate, 0, true},

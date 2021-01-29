@@ -153,6 +153,7 @@ const char* const kUserTrafficUsernames[] = {
     "chronos",         // Traffic originating from chrome and nacl applications
     "debugd",          // crosh terminal
     "cups",            // native printing using the cups daemon
+    "lpadmin",         // printer configuration utility used by cups
     "kerberosd",       // Chrome OS Kerberos daemon
     "kerberosd-exec",  // Kerberos third party untrusted code
     // While tlsdate is not user traffic, time sync should be attempted over

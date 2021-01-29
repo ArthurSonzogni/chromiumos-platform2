@@ -250,6 +250,13 @@ TEST(DatapathTest, Start) {
       runner,
       iptables(StrEq("mangle"),
                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
+                           "--uid-owner", "lpadmin", "-j", "MARK", "--set-mark",
+                           "0x00008200/0x0000ff00", "-w"),
+               true, nullptr));
+  EXPECT_CALL(
+      runner,
+      iptables(StrEq("mangle"),
+               ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
                            "--uid-owner", "kerberosd", "-j", "MARK",
                            "--set-mark", "0x00008400/0x0000ff00", "-w"),
                true, nullptr));
@@ -327,6 +334,13 @@ TEST(DatapathTest, Start) {
                                             "cups", "-j", "MARK", "--set-mark",
                                             "0x00008200/0x0000ff00", "-w"),
                                 true, nullptr));
+  EXPECT_CALL(
+      runner,
+      ip6tables(StrEq("mangle"),
+                ElementsAre("-A", "apply_local_source_mark", "-m", "owner",
+                            "--uid-owner", "lpadmin", "-j", "MARK",
+                            "--set-mark", "0x00008200/0x0000ff00", "-w"),
+                true, nullptr));
   EXPECT_CALL(
       runner,
       ip6tables(StrEq("mangle"),
