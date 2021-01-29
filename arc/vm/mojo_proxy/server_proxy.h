@@ -33,7 +33,7 @@ class ServerProxy : public MojoProxy::Delegate,
   ~ServerProxy() override;
 
   // Sets up the ServerProxy. Specifically, start listening on virtio-wl.
-  // Then, connect to /run/chrome/arc_bridge.sock.
+  // Then, connect to /run/chrome/arc/arc_bridge.sock.
   bool Initialize();
 
   // MojoProxy::Delegate overrides:

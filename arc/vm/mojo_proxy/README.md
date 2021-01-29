@@ -45,8 +45,8 @@ communication between the host and the guest.
 1.  The guest mojo proxy process sends the host mojo proxy process a connection
     request.
 1.  In the host, the host mojo proxy process handles the connection request by
-    connecting to a named UNIX domain socket `/run/chrome/arc_bridge.sock`.
-1.  The chrome browser process listens on `/run/chrome/arc_bridge.sock` and
+    connecting to a named UNIX domain socket `/run/chrome/arc/arc_bridge.sock`.
+1.  The chrome browser process listens on `/run/chrome/arc/arc_bridge.sock` and
     accepts the connection.
 1.  Now the ARC bridge service in the guest VM and the chrome browser process in
     the host are connected by a proxied UNIX domain socket via mojo proxy
