@@ -50,9 +50,8 @@ int main(int argc, const char** argv) {
     return -1;
 
   // Delete host socket path if it exists.
-  if (!base::DeleteFile(base::FilePath(kHostSocketPath))) {
+  if (!base::DeleteFile(base::FilePath(kHostSocketPath)))
     LOG(FATAL) << "Unable to delete pre-existing socket at " << kHostSocketPath;
-  }
 
   // Listen for connection from host/Chrome. Chrome expects that by the time it
   // connects to this server, we are already listening for connections from
@@ -66,8 +65,8 @@ int main(int argc, const char** argv) {
     return -1;
 
   // Allow access to socket.
-  if (!base::SetPosixFilePermissions(base::FilePath(kHostSocketPath), 0733))
-    LOG(FATAL) << "Unable to chmod 0733 " << kHostSocketPath;
+  if (!base::SetPosixFilePermissions(base::FilePath(kHostSocketPath), 0720))
+    LOG(FATAL) << "Unable to chmod " << kHostSocketPath;
 
   // Chrome will connect first to check that the server is listening, without
   // sending anything.
