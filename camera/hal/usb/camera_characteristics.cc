@@ -124,6 +124,8 @@ void SetEntry(const std::string& key,
     info->vertical_view_angle_16_9 = stof(value);
   } else if (key == "vertical_view_angle_4_3") {
     info->vertical_view_angle_4_3 = stof(value);
+  } else if (key == "enable_face_detection") {
+    std::istringstream(value) >> std::boolalpha >> info->enable_face_detection;
   } else if (IsUsbV1Key(key)) {
     VLOGF(1) << "Ignored v1 key: " << key << " value: " << value;
   } else {

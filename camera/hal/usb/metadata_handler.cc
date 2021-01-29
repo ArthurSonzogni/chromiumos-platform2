@@ -388,13 +388,6 @@ int MetadataHandler::FillDefaultMetadata(
   update_static(ANDROID_SHADING_AVAILABLE_MODES, ANDROID_SHADING_MODE_FAST);
 
   // android.statistics
-  update_static(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
-                ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
-  update_request(ANDROID_STATISTICS_FACE_DETECT_MODE,
-                 ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
-
-  update_static(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, int32_t{0});
-
   update_static(ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES,
                 ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE_OFF);
   update_request(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
@@ -1021,6 +1014,30 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
                 available_characteristics_keys);
   update_static(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, available_request_keys);
   update_static(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, available_result_keys);
+
+  // Sets face detection.
+  if (device_info.enable_face_detection) {
+    update_static(
+        ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
+        std::vector<uint8_t>{ANDROID_STATISTICS_FACE_DETECT_MODE_OFF,
+                             ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE});
+
+    update_request(ANDROID_STATISTICS_FACE_DETECT_MODE,
+                   ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE);
+
+    // FaceSSD can detect more than 600 faces in one 320x320 image.
+    // 100 is enough for our use cases.
+    update_static(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, 100);
+  } else {
+    update_static(
+        ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
+        std::vector<uint8_t>{ANDROID_STATISTICS_FACE_DETECT_MODE_OFF});
+
+    update_request(ANDROID_STATISTICS_FACE_DETECT_MODE,
+                   ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
+
+    update_static(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, 0);
+  }
   return update_static.ok() && update_request.ok() ? 0 : -EINVAL;
 }
 
@@ -1258,9 +1275,11 @@ int MetadataHandler::PreHandleRequest(int frame_number,
   return 0;
 }
 
-int MetadataHandler::PostHandleRequest(int frame_number,
-                                       int64_t timestamp,
-                                       android::CameraMetadata* metadata) {
+int MetadataHandler::PostHandleRequest(
+    int frame_number,
+    int64_t timestamp,
+    const std::vector<human_sensing::CrosFace>& faces,
+    android::CameraMetadata* metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (current_frame_number_ != frame_number) {
     LOGF(ERROR)
@@ -1319,6 +1338,18 @@ int MetadataHandler::PostHandleRequest(int frame_number,
   update_request(ANDROID_SENSOR_TIMESTAMP, timestamp);
 
   // android.statistics
+  std::vector<int32_t> face_rectangles;
+  std::vector<uint8_t> face_scores;
+  for (auto& face : faces) {
+    face_rectangles.push_back(face.bounding_box.x1);
+    face_rectangles.push_back(face.bounding_box.y1);
+    face_rectangles.push_back(face.bounding_box.x2);
+    face_rectangles.push_back(face.bounding_box.y2);
+    face_scores.push_back(face.confidence * 100);
+  }
+  update_request(ANDROID_STATISTICS_FACE_RECTANGLES, face_rectangles);
+  update_request(ANDROID_STATISTICS_FACE_SCORES, face_scores);
+
   update_request(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE,
                  ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF);
 

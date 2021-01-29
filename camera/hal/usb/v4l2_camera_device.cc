@@ -1397,6 +1397,13 @@ bool V4L2CameraDevice::IsConstantFrameRateSupported(
   return !(query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED);
 }
 
+// static
+bool V4L2CameraDevice::IsRegionOfInterestSupported(
+    const std::string& device_path) {
+  // TODO(henryhsu): Add query when UVC and V4L2 driver support ROI.
+  return false;
+}
+
 int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
   int v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_DISABLED;
   switch (setting) {

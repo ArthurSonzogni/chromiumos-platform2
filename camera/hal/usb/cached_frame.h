@@ -11,6 +11,7 @@
 
 #include <camera/camera_metadata.h>
 
+#include "cros-camera/camera_face_detection.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/common_types.h"
 #include "cros-camera/jpeg_compressor.h"
@@ -38,7 +39,8 @@ class CachedFrame {
               int rotate_degree,
               const FrameBuffer& in_frame,
               const std::vector<std::unique_ptr<FrameBuffer>>& out_frames,
-              std::vector<int>* out_frame_status);
+              std::vector<int>* out_frame_status,
+              std::vector<human_sensing::CrosFace>* faces);
 
  private:
   int ConvertFromNV12(const android::CameraMetadata& static_metadata,
@@ -54,6 +56,10 @@ class CachedFrame {
                    const android::CameraMetadata& request_metadata,
                    const FrameBuffer& in_frame,
                    FrameBuffer* out_frame);
+
+  // |faces| stores the detected results. It will be empty if error.
+  void DetectFaces(const FrameBuffer& input_nv12_frame,
+                   std::vector<human_sensing::CrosFace>* faces);
 
   // When we have a landscape mounted camera and the current camera activity is
   // portrait, the frames shown in the activity would be stretched. Therefore,
@@ -92,6 +98,11 @@ class CachedFrame {
 
   // Flag to disable SW decode fallback when HW decode failed
   bool force_jpeg_hw_decode_;
+
+  // Face detection handler.
+  std::unique_ptr<FaceDetector> face_detector_;
+  std::vector<human_sensing::CrosFace> faces_;
+  int frame_count_;
 };
 
 }  // namespace cros

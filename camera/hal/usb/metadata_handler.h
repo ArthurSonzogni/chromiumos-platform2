@@ -14,6 +14,8 @@
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
 
+#include "cros-camera/common_types.h"
+#include "cros-camera/face_detector_client_cros_wrapper.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/v4l2_camera_device.h"
 
@@ -77,6 +79,7 @@ class MetadataHandler {
   // required metadata which can be gotton from 3A or image processor.
   int PostHandleRequest(int frame_number,
                         int64_t timestamp,
+                        const std::vector<human_sensing::CrosFace>& faces,
                         android::CameraMetadata* metadata);
 
  private:

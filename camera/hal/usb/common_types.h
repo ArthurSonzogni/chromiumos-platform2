@@ -58,6 +58,16 @@ struct DeviceInfo {
   // light environment.
   bool constant_framerate_unsupported = false;
 
+  // Region of interest is used for 3A. If this is true, it will enable
+  // face detection and report ROI information to camera.
+  bool region_of_interest_supported = false;
+
+  // Enable face detection and ROI control by camera module from
+  // camera_characteristics.conf.
+  // TODO(henryhsu): Remove it when we enable the feature for all modules which
+  // support ROI.
+  bool enable_face_detection = false;
+
   // Member definitions can be found in https://developer.android.com/
   // reference/android/hardware/camera2/CameraCharacteristics.html
   LensFacing lens_facing = LensFacing::kFront;

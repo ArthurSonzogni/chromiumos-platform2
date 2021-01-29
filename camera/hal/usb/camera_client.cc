@@ -722,8 +722,9 @@ void CameraClient::RequestHandler::HandleRequest(
   }
 
   NotifyShutter(capture_result.frame_number);
-  ret = metadata_handler_->PostHandleRequest(
-      capture_result.frame_number, CurrentBufferTimestamp(), metadata);
+  ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
+                                             CurrentBufferTimestamp(),
+                                             detected_faces_, metadata);
   if (ret) {
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";
@@ -932,9 +933,12 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
           : input_buffers_[current_v4l2_buffer_id_].get();
 
   std::vector<int> output_frame_status;
-  int ret = cached_frame_.Convert(static_metadata_, request_metadata,
-                                  crop_rotate_scale_degrees_, *input_frame,
-                                  output_frames, &output_frame_status);
+  std::vector<human_sensing::CrosFace>* faces_ptr =
+      device_info_.enable_face_detection ? &detected_faces_ : nullptr;
+  int ret = cached_frame_.Convert(
+      static_metadata_, request_metadata, crop_rotate_scale_degrees_,
+      *input_frame, output_frames, &output_frame_status, faces_ptr);
+
   if (ret) {
     EnqueueV4L2Buffer();
     return ret;

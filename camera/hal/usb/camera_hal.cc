@@ -585,6 +585,18 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   info.power_line_frequency = V4L2CameraDevice::GetPowerLineFrequency(path);
   info.constant_framerate_unsupported |=
       !V4L2CameraDevice::IsConstantFrameRateSupported(path);
+  info.region_of_interest_supported =
+      V4L2CameraDevice::IsRegionOfInterestSupported(path);
+  // The force control path is managed by chrome flag, there should be only one
+  // file.
+  if (base::PathExists(base::FilePath(constants::kForceEnableFaceAePath))) {
+    LOGF(INFO) << "force enable face ae";
+    info.enable_face_detection = true;
+  }
+  if (base::PathExists(base::FilePath(constants::kForceDisableFaceAePath))) {
+    LOGF(INFO) << "force disable face ae";
+    info.enable_face_detection = false;
+  }
   if (!is_vivid) {
     info.quirks |= GetQuirks(vid, pid);
   }

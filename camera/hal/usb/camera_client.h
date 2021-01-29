@@ -21,6 +21,7 @@
 #include <hardware/hardware.h>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/face_detector_client_cros_wrapper.h"
 #include "cros-camera/future.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_privacy_switch_monitor.h"
@@ -322,6 +323,8 @@ class CameraClient {
     int crop_rotate_scale_degrees_;
 
     bool is_video_recording_;
+
+    std::vector<human_sensing::CrosFace> detected_faces_;
 
     // Used to guard |flush_started_|.
     base::Lock flush_lock_;

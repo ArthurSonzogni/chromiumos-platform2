@@ -117,6 +117,8 @@ CachedFrame::CachedFrame()
   if (force_jpeg_hw_decode_) {
     LOGF(INFO) << "Force JPEG hardware decode";
   }
+
+  face_detector_ = FaceDetector::Create();
 }
 
 int CachedFrame::Convert(
@@ -125,7 +127,8 @@ int CachedFrame::Convert(
     int rotate_degree,
     const FrameBuffer& in_frame,
     const std::vector<std::unique_ptr<FrameBuffer>>& out_frames,
-    std::vector<int>* out_frame_status) {
+    std::vector<int>* out_frame_status,
+    std::vector<human_sensing::CrosFace>* faces) {
   //
   // Overview of the conversion graph.
   //
@@ -231,6 +234,14 @@ int CachedFrame::Convert(
     int ret = CropRotateScale(rotate_degree, nv12_frame);
     if (ret)
       return ret;
+  }
+
+  if (faces && request_metadata.exists(ANDROID_STATISTICS_FACE_DETECT_MODE)) {
+    camera_metadata_ro_entry entry =
+        request_metadata.find(ANDROID_STATISTICS_FACE_DETECT_MODE);
+    if (entry.data.u8[0] == ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE) {
+      DetectFaces(*nv12_frame, faces);
+    }
   }
 
   // Convert |nv12_frame| into the output frames. At this time, this
@@ -567,6 +578,31 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
   }
   InsertJpegBlob(out_frame, jpeg_data_size);
   return 0;
+}
+
+void CachedFrame::DetectFaces(const FrameBuffer& input_nv12_frame,
+                              std::vector<human_sensing::CrosFace>* faces) {
+  // Number of frames to detect faces once.
+  const int kFaceDetectFrameInterval = 10;
+  DCHECK(faces);
+
+  if (!face_detector_) {
+    faces->clear();
+    return;
+  }
+
+  frame_count_ = (frame_count_ + 1) % kFaceDetectFrameInterval;
+  if (frame_count_ != 1) {
+    *faces = faces_;
+    return;
+  }
+
+  FaceDetectResult ret =
+      face_detector_->Detect(input_nv12_frame.GetBufferHandle(), &faces_);
+  if (ret != FaceDetectResult::kDetectOk) {
+    faces_.clear();
+  }
+  *faces = faces_;
 }
 
 static void InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size) {
