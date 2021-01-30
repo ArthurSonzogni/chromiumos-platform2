@@ -1140,23 +1140,32 @@ string Service::GetTechnologyString() const {
   return technology().GetName();
 }
 
-void Service::NoteFailureEvent() {
-  SLOG(this, 2) << __func__;
+bool Service::ShouldIgnoreFailure() const {
   // Ignore the event if it's user-initiated explicit disconnect.
   if (explicitly_disconnected_) {
     SLOG(this, 2) << "Explicit disconnect ignored.";
-    return;
+    return true;
   }
   // Ignore the event if manager is not running (e.g., service disconnects on
   // shutdown).
   if (!manager_->running()) {
     SLOG(this, 2) << "Disconnect while manager stopped ignored.";
-    return;
+    return true;
   }
   // Ignore the event if the system is suspending.
+  // TODO(b/179949996): This is racy because the failure event isn't guaranteed
+  // to come before PowerManager::OnSuspendDone().
   PowerManager* power_manager = manager_->power_manager();
   if (!power_manager || power_manager->suspending()) {
     SLOG(this, 2) << "Disconnect in transitional power state ignored.";
+    return true;
+  }
+  return false;
+}
+
+void Service::NoteFailureEvent() {
+  SLOG(this, 2) << __func__;
+  if (ShouldIgnoreFailure()) {
     return;
   }
   int period = 0;

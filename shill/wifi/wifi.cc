@@ -1048,7 +1048,9 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
         pending_eap_failure_ != Service::kFailureNone) {
       failure = pending_eap_failure_;
     }
-    affected_service->SetFailure(failure);
+    if (!affected_service->ShouldIgnoreFailure()) {
+      affected_service->SetFailure(failure);
+    }
     LOG(ERROR) << "Disconnected due to reason: "
                << Service::ConnectFailureToString(failure);
   }

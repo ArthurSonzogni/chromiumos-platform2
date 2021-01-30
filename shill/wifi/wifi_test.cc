@@ -1774,6 +1774,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithFailure) {
       SetupConnectingService(RpcIdentifier(""), nullptr, nullptr));
   EXPECT_EQ(GetPendingService(), service);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   InitiateDisconnect(service);
@@ -1791,6 +1792,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
 
   EXPECT_EQ(GetPendingService(), service);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
@@ -1875,6 +1877,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
 
   EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
+  EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
@@ -1912,6 +1915,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
 
   EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
+  EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);

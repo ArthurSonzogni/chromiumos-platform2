@@ -245,6 +245,11 @@ class Service : public base::RefCounted<Service> {
                                           const std::string& status,
                                           int status_code);
 
+  // Whether or not the most recent failure should be ignored. This will return
+  // true if the failure was the result of a user-initiated disconnect, a
+  // disconnect on shutdown, or a disconnect due to a suspend.
+  mockable bool ShouldIgnoreFailure() const;
+
   // State utility functions
   static bool IsConnectedState(ConnectState state);
   static bool IsConnectingState(ConnectState state);

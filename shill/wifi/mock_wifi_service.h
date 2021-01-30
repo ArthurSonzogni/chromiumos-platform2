@@ -68,6 +68,7 @@ class MockWiFiService : public WiFiService {
               (const, override));
   MOCK_METHOD(bool, IsAutoConnectable, (const char**), (const, override));
   MOCK_METHOD(bool, HasStaticIPAddress, (), (const, override));
+  MOCK_METHOD(bool, ShouldIgnoreFailure, (), (const, override));
 };
 
 }  // namespace shill
