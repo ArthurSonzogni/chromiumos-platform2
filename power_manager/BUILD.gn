@@ -96,7 +96,6 @@ pkg_config("target_defaults") {
       "gio-unix-2.0",
       "glib-2.0",
       "gthread-2.0",
-      "qmi-glib",
     ]
     libs = [ "qrtr" ]
   }
