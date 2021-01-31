@@ -52,7 +52,8 @@ class DoHCurlClient {
       void* ctx, const CurlResult& res, uint8_t* msg, size_t len)>;
 
   DoHCurlClient(base::TimeDelta timeout, int max_concurrent_queries);
-  ~DoHCurlClient();
+  explicit DoHCurlClient(base::TimeDelta timeout);
+  virtual ~DoHCurlClient();
 
   // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
   // |len|. |callback| will be called with |ctx| as its parameter upon query
@@ -60,14 +61,14 @@ class DoHCurlClient {
   // before calling this function.
   // |msg| and |ctx| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
-  bool Resolve(const char* msg,
-               int len,
-               const QueryCallback& callback,
-               void* ctx);
+  virtual bool Resolve(const char* msg,
+                       int len,
+                       const QueryCallback& callback,
+                       void* ctx);
 
   // Set standard DNS and DoH servers for running `Resolve(...)`.
-  void SetNameServers(const std::vector<std::string>& name_servers);
-  void SetDoHProviders(const std::vector<std::string>& doh_providers);
+  virtual void SetNameServers(const std::vector<std::string>& name_servers);
+  virtual void SetDoHProviders(const std::vector<std::string>& doh_providers);
 
  private:
   // State of an individual query.

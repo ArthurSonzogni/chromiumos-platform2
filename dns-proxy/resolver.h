@@ -43,27 +43,6 @@ constexpr int kDefaultMaxConcurrentQueries = 3;
 // Resolver listens on UDP and TCP port 53.
 class Resolver {
  public:
-  Resolver(base::TimeDelta timeout,
-           base::TimeDelta retry_delay,
-           int max_num_retries,
-           int max_concurrent_queries = kDefaultMaxConcurrentQueries);
-  virtual ~Resolver() = default;
-
-  // Listen on an incoming DNS query on address |addr| for UDP and TCP.
-  // Listening on default DNS port (53) requires CAP_NET_BIND_SERVICE.
-  // TODO(jasongustaman): Listen on IPv6.
-  virtual bool ListenTCP(struct sockaddr* addr);
-  virtual bool ListenUDP(struct sockaddr* addr);
-
-  // Set standard DNS and DNS-over-HTTPS servers endpoints.
-  // If DoH servers are not empty, resolving domain will be done with DoH.
-  // |always_on_doh| flag is used to disallow fallback to standard plain-text
-  // DNS.
-  virtual void SetNameServers(const std::vector<std::string>& name_servers);
-  virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
-                               bool always_on_doh = false);
-
- private:
   // |SocketFd| stores client's socket data.
   // This is used to send reply to the client on callback called.
   struct SocketFd {
@@ -96,6 +75,29 @@ class Resolver {
     int num_retries;
   };
 
+  Resolver(base::TimeDelta timeout,
+           base::TimeDelta retry_delay,
+           int max_num_retries,
+           int max_concurrent_queries = kDefaultMaxConcurrentQueries);
+  // Provided for testing only.
+  Resolver(std::unique_ptr<AresClient> ares_client,
+           std::unique_ptr<DoHCurlClient> curl_client);
+  virtual ~Resolver() = default;
+
+  // Listen on an incoming DNS query on address |addr| for UDP and TCP.
+  // Listening on default DNS port (53) requires CAP_NET_BIND_SERVICE.
+  // TODO(jasongustaman): Listen on IPv6.
+  virtual bool ListenTCP(struct sockaddr* addr);
+  virtual bool ListenUDP(struct sockaddr* addr);
+
+  // Set standard DNS and DNS-over-HTTPS servers endpoints.
+  // If DoH servers are not empty, resolving domain will be done with DoH.
+  // |always_on_doh| flag is used to disallow fallback to standard plain-text
+  // DNS.
+  virtual void SetNameServers(const std::vector<std::string>& name_servers);
+  virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
+                               bool always_on_doh = false);
+
   // Handle DNS result queried through ares.
   // This function will check the response and proxies it to the client upon
   // successful. On failure, it will disregard the response.
@@ -122,6 +124,11 @@ class Resolver {
                         uint8_t* msg,
                         size_t len);
 
+  // Resolve a domain using CURL or Ares using data from |sock_fd|.
+  // If |fallback| is true, force to use standard plain-text DNS.
+  void Resolve(SocketFd* sock_fd, bool fallback = false);
+
+ private:
   // |TCPConnection| is used to track and terminate TCP connections.
   struct TCPConnection {
     TCPConnection(std::unique_ptr<patchpanel::Socket> sock,
@@ -137,10 +144,6 @@ class Resolver {
   // Handle DNS query from clients. |type| values will be either SOCK_DGRAM
   // or SOCK STREAM, for UDP and TCP respectively.
   void OnDNSQuery(int fd, int type);
-
-  // Resolve a domain using CURL or Ares using data from |sock_fd|.
-  // If |fallback| is true, force to use standard plain-text DNS.
-  void Resolve(SocketFd* sock_fd, bool fallback = false);
 
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len);

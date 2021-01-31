@@ -75,7 +75,10 @@ if (use.test) {
       "libcares",
       "libcurl",
     ]
-    sources = [ "proxy_test.cc" ]
+    sources = [
+      "proxy_test.cc",
+      "resolver_test.cc",
+    ]
     defines = [ "UNIT_TEST" ]
     deps = [
       ":libdnsproxy",

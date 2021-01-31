@@ -41,7 +41,7 @@ class AresClient {
   AresClient(base::TimeDelta timeout,
              int max_num_retries,
              int max_concurrent_queries);
-  ~AresClient();
+  virtual ~AresClient();
 
   // Resolve DNS address using wire-format data |data| of size |len|.
   // |callback| will be called with |ctx| upon query completion.
@@ -51,13 +51,13 @@ class AresClient {
   // See: |QueryCallback|
   //
   // `SetNameServers(...)` must be called before calling this function.
-  bool Resolve(const unsigned char* msg,
-               size_t len,
-               const QueryCallback& callback,
-               void* ctx);
+  virtual bool Resolve(const unsigned char* msg,
+                       size_t len,
+                       const QueryCallback& callback,
+                       void* ctx);
 
   // Set the target name servers to resolve DNS to.
-  void SetNameServers(const std::vector<std::string>& name_servers);
+  virtual void SetNameServers(const std::vector<std::string>& name_servers);
 
  private:
   // State of an individual request.
