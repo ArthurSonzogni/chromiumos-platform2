@@ -7,7 +7,9 @@
 
 #include <ares.h>
 
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -33,10 +35,12 @@ class AresClient {
   // |msg| and |len| respectively stores the response and length of the
   // response of the ares query.
   // This function follows ares's ares_callback signature.
-  using QueryCallback =
-      base::OnceCallback<void(void* ctx, int status, uint8_t* msg, size_t len)>;
+  using QueryCallback = base::RepeatingCallback<void(
+      void* ctx, int status, uint8_t* msg, size_t len)>;
 
-  explicit AresClient(base::TimeDelta timeout);
+  AresClient(base::TimeDelta timeout,
+             int max_num_retries,
+             int max_concurrent_queries);
   ~AresClient();
 
   // Resolve DNS address using wire-format data |data| of size |len|.
@@ -49,16 +53,27 @@ class AresClient {
   // `SetNameServers(...)` must be called before calling this function.
   bool Resolve(const unsigned char* msg,
                size_t len,
-               QueryCallback callback,
+               const QueryCallback& callback,
                void* ctx);
 
   // Set the target name servers to resolve DNS to.
   void SetNameServers(const std::vector<std::string>& name_servers);
 
  private:
-  // State of a request.
+  // State of an individual request.
   struct State {
-    State(QueryCallback callback, void* ctx);
+    State(AresClient* client,
+          ares_channel channel,
+          const QueryCallback& callback,
+          void* ctx);
+
+    // |client| holds the current class holding this state.
+    AresClient* client;
+
+    // Upon calling resolve, all available name servers will be queried
+    // concurrently. |channel| is a communications channel that holds the
+    // queries.
+    ares_channel channel;
 
     // |callback| given from the client will be called with |ctx| as its
     // parameter. |ctx| is owned by the caller of `Resolve(...)` and will
@@ -79,10 +94,24 @@ class AresClient {
   static void AresCallback(
       void* ctx, int status, int timeouts, uint8_t* msg, int len);
 
+  // Handle result of `AresCallback(...)`. Running ares functions on the
+  // callback results in an undefined behavior, use another function
+  // instead.
+  void HandleResult(State* state, int status, uint8_t* msg, int len);
+
   // Callback called whenever an event is ready to be handled by ares on
   // |socket_fd|.
-  void OnFileCanReadWithoutBlocking(ares_socket_t socket_fd);
-  void OnFileCanWriteWithoutBlocking(ares_socket_t socket_fd);
+  void OnFileCanReadWithoutBlocking(ares_channel channel,
+                                    ares_socket_t socket_fd);
+  void OnFileCanWriteWithoutBlocking(ares_channel channel,
+                                     ares_socket_t socket_fd);
+
+  // Reset the current timeout callback and process all timed out requests.
+  void ResetTimeout(ares_channel channel);
+
+  // Initialize an ares channel. This will used for holding multiple concurrent
+  // queries.
+  ares_channel InitChannel();
 
   // Update file descriptors to be watched.
   // |read_watchers_| and |write_watchers_| stores the watchers.
@@ -93,20 +122,40 @@ class AresClient {
   //
   // Whenever this is called, |read_watchers_| and |write_watchers_| will
   // be cleared and reset to sockets that needs to be watched.
-  void UpdateWatchers();
+  void UpdateWatchers(ares_channel channel);
 
   // Vector of watchers. This will be reconstructed on each ares action.
   // See `UpdateWatchers(...)` on how the values are set and cleared.
-  std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+  std::map<
+      ares_channel,
+      std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>>
       read_watchers_;
-  std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+  std::map<
+      ares_channel,
+      std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>>
       write_watchers_;
 
-  // |name_servers_| endpoint to resolve addresses.
-  std::vector<std::string> name_servers_;
+  // Timeout for an ares query.
+  base::TimeDelta timeout_;
 
-  // Communications channel for name service lookups.
-  ares_channel channel_;
+  // Maximum number of retries for an ares query.
+  int max_num_retries_;
+
+  // Maximum number of concurrent queries for a request.
+  int max_concurrent_queries_;
+
+  // |channels_inflight_| stores all active channels. Each channel consists of
+  // a number of queries as ares runs multiple queries concurrently.
+  // A channel will be added to the set when it is created and will be removed
+  // from the set when it is destroyed.
+  // This will be used for callbacks to know whether a request is completed.
+  std::set<ares_channel> channels_inflight_;
+
+  // |name_servers_| endpoint to resolve addresses.
+  std::string name_servers_;
+
+  // Number of stored name servers.
+  int num_name_servers_;
 
   base::WeakPtrFactory<AresClient> weak_factory_{this};
 };

@@ -50,7 +50,8 @@ Resolver::Resolver(base::TimeDelta timeout,
       doh_enabled_(false),
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
-      ares_client_(new AresClient(timeout)),
+      ares_client_(
+          new AresClient(timeout, max_num_retries, max_concurrent_queries)),
       curl_client_(new DoHCurlClient(timeout, max_concurrent_queries)) {}
 
 bool Resolver::ListenTCP(struct sockaddr* addr) {
@@ -292,9 +293,10 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
       return;
     }
   }
-  ares_client_->Resolve(
-      reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
-      base::BindOnce(&Resolver::HandleAresResult, weak_factory_.GetWeakPtr()),
-      reinterpret_cast<void*>(sock_fd));
+  ares_client_->Resolve(reinterpret_cast<const unsigned char*>(sock_fd->msg),
+                        sock_fd->len,
+                        base::BindRepeating(&Resolver::HandleAresResult,
+                                            weak_factory_.GetWeakPtr()),
+                        reinterpret_cast<void*>(sock_fd));
 }
 }  // namespace dns_proxy
