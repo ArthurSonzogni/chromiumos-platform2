@@ -44,13 +44,14 @@ Resolver::TCPConnection::TCPConnection(
 
 Resolver::Resolver(base::TimeDelta timeout,
                    base::TimeDelta retry_delay,
-                   int max_num_retries)
+                   int max_num_retries,
+                   int max_concurrent_queries)
     : always_on_doh_(false),
       doh_enabled_(false),
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
       ares_client_(new AresClient(timeout)),
-      curl_client_(new DoHCurlClient(timeout)) {}
+      curl_client_(new DoHCurlClient(timeout, max_concurrent_queries)) {}
 
 bool Resolver::ListenTCP(struct sockaddr* addr) {
   auto tcp_src = std::make_unique<patchpanel::Socket>(
@@ -284,8 +285,8 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
   // TODO(jasongustaman): Handle Chrome traffic separately.
   if (doh_enabled_ && !fallback) {
     if (curl_client_->Resolve(sock_fd->msg, sock_fd->len,
-                              base::BindOnce(&Resolver::HandleCurlResult,
-                                             weak_factory_.GetWeakPtr()),
+                              base::BindRepeating(&Resolver::HandleCurlResult,
+                                                  weak_factory_.GetWeakPtr()),
                               reinterpret_cast<void*>(sock_fd)) ||
         always_on_doh_) {
       return;

@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -47,10 +48,10 @@ class DoHCurlClient {
   // query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the CURL query.
-  using QueryCallback = base::OnceCallback<void(
+  using QueryCallback = base::RepeatingCallback<void(
       void* ctx, const CurlResult& res, uint8_t* msg, size_t len)>;
 
-  explicit DoHCurlClient(base::TimeDelta timeout);
+  DoHCurlClient(base::TimeDelta timeout, int max_concurrent_queries);
   ~DoHCurlClient();
 
   // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
@@ -59,28 +60,31 @@ class DoHCurlClient {
   // before calling this function.
   // |msg| and |ctx| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
-  bool Resolve(const char* msg, int len, QueryCallback callback, void* ctx);
+  bool Resolve(const char* msg,
+               int len,
+               const QueryCallback& callback,
+               void* ctx);
 
   // Set standard DNS and DoH servers for running `Resolve(...)`.
   void SetNameServers(const std::vector<std::string>& name_servers);
   void SetDoHProviders(const std::vector<std::string>& doh_providers);
 
  private:
-  // State of a request.
+  // State of an individual query.
   struct State {
-    State(CURL* curl, QueryCallback callback, void* ctx);
+    State(CURL* curl, const QueryCallback& callback, void* ctx, int request_id);
     ~State();
 
     // Fetch the necessary response and run |callback|.
-    void RunCallback(CURLMsg* curl_msg);
+    void RunCallback(CURLMsg* curl_msg, int64_t http_code);
 
-    // Set DNS response |msg| of length |len| to |request|.
+    // Set DNS response |msg| of length |len| to |response|.
     void SetResponse(char* msg, size_t len);
 
-    // Stores the CURL handle for the request.
+    // Stores the CURL handle for the query.
     CURL* curl;
 
-    // Stores the response of a request.
+    // Stores the response of a query.
     std::vector<uint8_t> response;
 
     // Stores the header response.
@@ -97,7 +101,23 @@ class DoHCurlClient {
     // |header_list| is owned by this struct. It is stored here in order to
     // free it when the request is done.
     curl_slist* header_list;
+
+    // Upon calling resolve, all available DoH providers will be queried
+    // concurrently. |request_id| is an identifier shared by the queries made
+    // for a single `Resolve(...)` call.
+    int request_id;
   };
+
+  // Initialize CURL handle to resolve wire-format data |data| of length |len|.
+  // This is done by querying DoH provider |doh_provider|.
+  // A state containing the CURL handle will be allocated and used to store
+  // CURL data such as header list and response.
+  // Lifecycle of the state is handled by the caller of this function.
+  std::unique_ptr<State> InitCurl(const std::string& doh_provider,
+                                  const char* msg,
+                                  int len,
+                                  const QueryCallback& callback,
+                                  void* ctx);
 
   // Callback informed about what to wait for. When called, register or remove
   // the socket given from watchers.
@@ -135,10 +155,10 @@ class DoHCurlClient {
                                size_t nitems,
                                void* userp);
 
-  // Callback informed when request timeed out.
+  // Callback informed when a query timed out.
   void TimeoutCallback();
 
-  // Callback informed to start the request and to handle timeout, method
+  // Callback informed to start the query and to handle timeout, method
   // signature matches CURL `timer_callback(...)`. This callback is registered
   // through CURL.
   //
@@ -162,12 +182,18 @@ class DoHCurlClient {
   void OnFileCanReadWithoutBlocking(curl_socket_t socket_fd);
   void OnFileCanWriteWithoutBlocking(curl_socket_t socket_fd);
 
-  // Checks for request completion and handles its result.
+  // Checks for a querycompletion and handles its result.
   // These functions are called when CURL just finished processing an event.
   // |curl_msg| is owned by CURL, DoHCurlClient should not care about its
   // lifecycle.
   void CheckMultiInfo();
   void HandleResult(CURLMsg* curl_msg);
+
+  // Cancel an in-flight request denoted by a set of states |states|.
+  void CancelRequest(const std::set<State*>& states);
+
+  // Cancel in-flight request of identifier |request_id|.
+  void CancelRequest(int request_id);
 
   // Timeout for a CURL query in seconds.
   int64_t timeout_seconds_;
@@ -186,8 +212,20 @@ class DoHCurlClient {
   // |doh_providers_| to resolve domain name using DoH.
   std::vector<std::string> doh_providers_;
 
-  // Current requests' states keyed by it's CURL handle.
+  // Maximum number of DoH providers to be queried concurrently.
+  int max_concurrent_queries_;
+
+  // Current query's states keyed by it's CURL handle.
   std::map<CURL*, std::unique_ptr<State>> states_;
+
+  // Upon calling resolve, all available DoH providers will be queried
+  // concurrently. |requests_| stores these queries together keyed by their
+  // unique identifier.
+  std::map<int, std::set<State*>> requests_;
+
+  // Stores ID of a request. |next_request_id| will be incremented for each
+  // resolve call to keep the unique value.
+  int next_request_id_;
 
   // CURL multi handle to do asynchronous requests.
   CURLM* curlm_;

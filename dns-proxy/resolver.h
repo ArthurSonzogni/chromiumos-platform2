@@ -23,6 +23,10 @@ namespace dns_proxy {
 // |kDNSBufSize| holds the maximum size of a DNS message which is the maximum
 // size of a TCP packet.
 constexpr uint32_t kDNSBufSize = 65536;
+// Given multiple DNS and DoH servers, CurlClient and DoHClient will query each
+// servers concurrently. |kDefaultMaxConcurrentQueries| sets the maximum number
+// of servers to query concurrently.
+constexpr int kDefaultMaxConcurrentQueries = 3;
 
 // Resolver receives wire-format DNS queries and proxies them to DNS server(s).
 // This class supports standard plain-text resolving using c-ares and secure
@@ -41,7 +45,8 @@ class Resolver {
  public:
   Resolver(base::TimeDelta timeout,
            base::TimeDelta retry_delay,
-           int max_num_retries);
+           int max_num_retries,
+           int max_concurrent_queries = kDefaultMaxConcurrentQueries);
   virtual ~Resolver() = default;
 
   // Listen on an incoming DNS query on address |addr| for UDP and TCP.
