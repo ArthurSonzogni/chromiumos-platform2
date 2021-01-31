@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/rand_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/patchpanel/net_util.h>
 
@@ -16,17 +17,20 @@ using patchpanel::operator<<;
 
 namespace {
 constexpr uint32_t kMaxClientTcpConn = 16;
-constexpr uint32_t kBufSize = 65536;
+// Retries are delayed by +/- |kRetryDelayJitterMultiplier| times to avoid
+// coordinated spikes.
+constexpr float kRetryDelayJitterMultiplier = 0.15;
 }  // namespace
 
 namespace dns_proxy {
 
-Resolver::SocketFd::SocketFd(int type, int fd) : type(type), fd(fd) {
+Resolver::SocketFd::SocketFd(int type, int fd)
+    : type(type), fd(fd), num_retries(0) {
   if (type == SOCK_STREAM) {
-    len = 0;
+    socklen = 0;
     return;
   }
-  len = sizeof(src);
+  socklen = sizeof(src);
 }
 
 Resolver::TCPConnection::TCPConnection(
@@ -38,9 +42,13 @@ Resolver::TCPConnection::TCPConnection(
       base::BindRepeating(callback, TCPConnection::sock->fd(), SOCK_STREAM));
 }
 
-Resolver::Resolver(base::TimeDelta timeout)
+Resolver::Resolver(base::TimeDelta timeout,
+                   base::TimeDelta retry_delay,
+                   int max_num_retries)
     : always_on_doh_(false),
       doh_enabled_(false),
+      retry_delay_(retry_delay),
+      max_num_retries_(max_num_retries),
       ares_client_(new AresClient(timeout)),
       curl_client_(new DoHCurlClient(timeout)) {}
 
@@ -117,18 +125,68 @@ void Resolver::HandleAresResult(void* ctx,
 }
 
 void Resolver::HandleCurlResult(void* ctx,
-                                int64_t http_code,
+                                const DoHCurlClient::CurlResult& res,
                                 uint8_t* msg,
                                 size_t len) {
   SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
-  // TODO(jasongustaman): Handle other HTTP status code.
-  if (http_code != kHTTPOk) {
-    LOG(ERROR) << "Failed to do curl lookup, HTTP status code " << http_code;
-    delete sock_fd;
+  if (res.curl_code != CURLE_OK) {
+    LOG(ERROR) << "DoH resolution failed: "
+               << curl_easy_strerror(res.curl_code);
+    if (always_on_doh_) {
+      // TODO(jasongustaman): Send failure reply with RCODE.
+      delete sock_fd;
+      return;
+    }
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(), sock_fd,
+                       true /* fallback */));
     return;
   }
-  ReplyDNS(sock_fd, msg, len);
-  delete sock_fd;
+
+  switch (res.http_code) {
+    case kHTTPOk: {
+      ReplyDNS(sock_fd, msg, len);
+      delete sock_fd;
+      return;
+    }
+    case kHTTPTooManyRequests: {
+      if (sock_fd->num_retries >= max_num_retries_) {
+        LOG(ERROR) << "Failed to resolve hostname, retried " << max_num_retries_
+                   << " tries";
+        delete sock_fd;
+        return;
+      }
+
+      // Add jitter to avoid coordinated spikes of retries.
+      double rand_multiplier = 1 - base::RandDouble() * 2;
+      base::TimeDelta retry_delay_jitter =
+          (1 + rand_multiplier * kRetryDelayJitterMultiplier) * retry_delay_;
+
+      // Retry resolving the domain.
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
+                         sock_fd, false /* fallback */),
+          retry_delay_jitter);
+      sock_fd->num_retries++;
+      return;
+    }
+    default: {
+      LOG(ERROR) << "Failed to do curl lookup, HTTP status code "
+                 << res.http_code;
+      if (always_on_doh_) {
+        // TODO(jasongustaman): Send failure reply with RCODE.
+        delete sock_fd;
+      } else {
+        base::ThreadTaskRunnerHandle::Get()->PostTask(
+            FROM_HERE,
+            base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
+                           sock_fd, true /* fallback */));
+      }
+      return;
+    }
+  }
 }
 
 void Resolver::ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len) {
@@ -155,7 +213,7 @@ void Resolver::ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len) {
   };
   if (sock_fd->type == SOCK_DGRAM) {
     hdr.msg_name = &sock_fd->src;
-    hdr.msg_namelen = sock_fd->len;
+    hdr.msg_namelen = sock_fd->socklen;
   }
   if (sendmsg(sock_fd->fd, &hdr, 0) < 0) {
     PLOG(ERROR) << "sendmsg() " << sock_fd->fd << " failed";
@@ -175,40 +233,38 @@ void Resolver::SetDoHProviders(const std::vector<std::string>& doh_providers,
 }
 
 void Resolver::OnDNSQuery(int fd, int type) {
-  char data[kBufSize];
-
   // Initialize SocketFd to carry necessary data. |sock_fd| must be freed when
   // it is done used.
   SocketFd* sock_fd = new SocketFd(type, fd);
 
-  char* dns_data;
   size_t buf_size;
   struct sockaddr* src;
   switch (type) {
     case SOCK_DGRAM:
-      dns_data = data;
-      buf_size = kBufSize;
+      sock_fd->msg = sock_fd->buf;
+      buf_size = kDNSBufSize;
       src = reinterpret_cast<struct sockaddr*>(&sock_fd->src);
       break;
     case SOCK_STREAM:
       // For TCP, DNS has an additional 2-bytes header representing the length
       // of the query. Move the receiving buffer, so it is 4-bytes aligned.
-      dns_data = data + 2;
-      buf_size = kBufSize - 2;
+      sock_fd->msg = sock_fd->buf + 2;
+      buf_size = kDNSBufSize - 2;
       src = nullptr;
       break;
     default:
       LOG(DFATAL) << "Unexpected socket type: " << type;
       return;
   }
-  ssize_t len = recvfrom(fd, dns_data, kBufSize, 0, src, &sock_fd->len);
-  if (len < 0) {
+  sock_fd->len =
+      recvfrom(fd, sock_fd->msg, buf_size, 0, src, &sock_fd->socklen);
+  if (sock_fd->len < 0) {
     PLOG(WARNING) << "recvfrom failed";
     delete sock_fd;
     return;
   }
   // Handle TCP connection closed.
-  if (len == 0) {
+  if (sock_fd->len == 0) {
     delete sock_fd;
     tcp_connections_.erase(fd);
     return;
@@ -216,13 +272,18 @@ void Resolver::OnDNSQuery(int fd, int type) {
 
   // For TCP, DNS have an additional 2-bytes header representing the length of
   // the query. Trim the additional header to be used by CURL or Ares.
-  if (type == SOCK_STREAM && len > 2) {
-    dns_data += 2;
-    len -= 2;
+  if (type == SOCK_STREAM && sock_fd->len > 2) {
+    sock_fd->msg += 2;
+    sock_fd->len -= 2;
   }
 
-  if (doh_enabled_) {
-    if (curl_client_->Resolve(dns_data, len,
+  Resolve(sock_fd);
+}
+
+void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
+  // TODO(jasongustaman): Handle Chrome traffic separately.
+  if (doh_enabled_ && !fallback) {
+    if (curl_client_->Resolve(sock_fd->msg, sock_fd->len,
                               base::BindOnce(&Resolver::HandleCurlResult,
                                              weak_factory_.GetWeakPtr()),
                               reinterpret_cast<void*>(sock_fd)) ||
@@ -231,7 +292,7 @@ void Resolver::OnDNSQuery(int fd, int type) {
     }
   }
   ares_client_->Resolve(
-      reinterpret_cast<const unsigned char*>(dns_data), len,
+      reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
       base::BindOnce(&Resolver::HandleAresResult, weak_factory_.GetWeakPtr()),
       reinterpret_cast<void*>(sock_fd));
 }

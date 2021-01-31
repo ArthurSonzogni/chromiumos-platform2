@@ -6,7 +6,9 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/strings/string_util.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 namespace dns_proxy {
 namespace {
@@ -17,6 +19,13 @@ constexpr std::array<const char*, 2> kDoHHeaderList{
     {"Accept: application/dns-message",
      "Content-Type: application/dns-message"}};
 }  // namespace
+
+DoHCurlClient::CurlResult::CurlResult(CURLcode curl_code,
+                                      int64_t http_code,
+                                      int64_t retry_delay_ms)
+    : curl_code(curl_code),
+      http_code(http_code),
+      retry_delay_ms(retry_delay_ms) {}
 
 DoHCurlClient::State::State(CURL* curl, QueryCallback callback, void* ctx)
     : curl(curl),
@@ -29,10 +38,20 @@ DoHCurlClient::State::~State() {
   curl_slist_free_all(header_list);
 }
 
-void DoHCurlClient::State::RunCallback() {
+void DoHCurlClient::State::RunCallback(CURLMsg* curl_msg) {
   int64_t http_code = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-  std::move(callback).Run(ctx, http_code, response.data(), response.size());
+  // TODO(jasongustaman): Use HTTP 429, Retry-After header value.
+  CurlResult res(curl_msg->data.result, http_code, 0 /* retry_delay_ms */);
+  std::move(callback).Run(ctx, res, response.data(), response.size());
+}
+
+void DoHCurlClient::State::SetResponse(char* msg, size_t len) {
+  if (len <= 0) {
+    LOG(ERROR) << "Unexpected length: " << len;
+    return;
+  }
+  response.insert(response.end(), msg, msg + len);
 }
 
 DoHCurlClient::DoHCurlClient(base::TimeDelta timeout)
@@ -70,7 +89,7 @@ void DoHCurlClient::HandleResult(CURLMsg* curl_msg) {
   curl_multi_remove_handle(curlm_, curl);
 
   State* state = states_[curl].get();
-  state->RunCallback();
+  state->RunCallback(curl_msg);
 
   // TODO(jasongustaman): Get and save curl metrics.
   states_.erase(curl);
@@ -158,16 +177,25 @@ int DoHCurlClient::SocketCallback(
   }
 }
 
+void DoHCurlClient::TimeoutCallback() {
+  int still_running;
+  curl_multi_socket_action(curlm_, CURL_SOCKET_TIMEOUT, 0, &still_running);
+  CheckMultiInfo();
+}
+
 int DoHCurlClient::TimerCallback(CURLM* multi,
                                  int64_t timeout_ms,
                                  void* userp) {
   DoHCurlClient* client = static_cast<DoHCurlClient*>(userp);
-  int still_running;
-  if (timeout_ms <= 0) {
-    curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &still_running);
+  if (timeout_ms > 0) {
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindRepeating(&DoHCurlClient::TimeoutCallback,
+                            base::Unretained(client)),
+        base::TimeDelta::FromMilliseconds(timeout_ms));
+  } else if (timeout_ms == 0) {
+    client->TimeoutCallback();
   }
-  // TODO(jasongustaman): Handle timeout.
-  client->CheckMultiInfo();
   return 0;
 }
 
@@ -177,7 +205,18 @@ size_t DoHCurlClient::WriteCallback(char* ptr,
                                     void* userdata) {
   State* state = static_cast<State*>(userdata);
   size_t len = size * nmemb;
-  state->response.insert(state->response.end(), ptr, ptr + len);
+  state->SetResponse(ptr, len);
+  return len;
+}
+
+size_t DoHCurlClient::HeaderCallback(void* data,
+                                     size_t size,
+                                     size_t nitems,
+                                     void* userp) {
+  State* state = static_cast<State*>(userp);
+  size_t len = size * nitems;
+  std::string header(static_cast<char*>(data), len);
+  state->header.emplace_back(header);
   return len;
 }
 

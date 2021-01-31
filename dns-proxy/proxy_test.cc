@@ -23,6 +23,10 @@
 namespace dns_proxy {
 namespace {
 constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
+constexpr base::TimeDelta kRequestRetryDelay =
+    base::TimeDelta::FromMilliseconds(200);
+constexpr int32_t kRequestMaxRetry = 1;
+
 }  // namespace
 using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ManagerProxyMock;
@@ -80,7 +84,8 @@ class FakePatchpanelClient : public patchpanel::FakeClient {
 
 class MockResolver : public Resolver {
  public:
-  MockResolver() : Resolver(kRequestTimeout) {}
+  MockResolver()
+      : Resolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry) {}
   ~MockResolver() = default;
 
   MOCK_METHOD(bool, ListenUDP, (struct sockaddr*), (override));
@@ -103,8 +108,9 @@ class TestProxy : public Proxy {
       : Proxy(opts, std::move(patchpanel), std::move(shill)) {}
 
   std::unique_ptr<Resolver> resolver;
-  std::unique_ptr<Resolver> NewResolver(
-      base::TimeDelta request_timeout) override {
+  std::unique_ptr<Resolver> NewResolver(base::TimeDelta timeout,
+                                        base::TimeDelta retry_delay,
+                                        int max_num_retries) override {
     return std::move(resolver);
   }
 };

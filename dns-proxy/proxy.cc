@@ -20,10 +20,13 @@ namespace dns_proxy {
 constexpr base::TimeDelta kShillPropertyAttemptDelay =
     base::TimeDelta::FromMilliseconds(200);
 constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
+constexpr base::TimeDelta kRequestRetryDelay =
+    base::TimeDelta::FromMilliseconds(200);
 
 constexpr char kSystemProxyType[] = "sys";
 constexpr char kDefaultProxyType[] = "def";
 constexpr char kARCProxyType[] = "arc";
+constexpr int32_t kRequestMaxRetry = 1;
 constexpr uint16_t kDefaultPort = 13568;  // port 53 in network order.
 // static
 const char* Proxy::TypeToString(Type t) {
@@ -159,8 +162,10 @@ void Proxy::OnShillReset(bool reset) {
   SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()));
 }
 
-std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout) {
-  return std::make_unique<Resolver>(timeout);
+std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
+                                             base::TimeDelta retry_delay,
+                                             int max_num_retries) {
+  return std::make_unique<Resolver>(timeout, retry_delay, max_num_retries);
 }
 
 void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
@@ -211,7 +216,8 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   *device_.get() = *device;
 
   if (!resolver_) {
-    resolver_ = NewResolver(kRequestTimeout);
+    resolver_ =
+        NewResolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry);
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;

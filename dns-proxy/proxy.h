@@ -51,7 +51,9 @@ class Proxy : public brillo::DBusDaemon {
   void OnShutdown(int*) override;
 
   // Added for testing.
-  virtual std::unique_ptr<Resolver> NewResolver(base::TimeDelta timeout);
+  virtual std::unique_ptr<Resolver> NewResolver(base::TimeDelta timeout,
+                                                base::TimeDelta retry_delay,
+                                                int max_num_retries);
 
  private:
   static const uint8_t kMaxShillPropertyRetries = 10;

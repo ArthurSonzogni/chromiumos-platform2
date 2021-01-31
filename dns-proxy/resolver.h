@@ -20,6 +20,10 @@
 
 namespace dns_proxy {
 
+// |kDNSBufSize| holds the maximum size of a DNS message which is the maximum
+// size of a TCP packet.
+constexpr uint32_t kDNSBufSize = 65536;
+
 // Resolver receives wire-format DNS queries and proxies them to DNS server(s).
 // This class supports standard plain-text resolving using c-ares and secure
 // DNS / DNS-over-HTTPS (DoH) using CURL.
@@ -35,7 +39,9 @@ namespace dns_proxy {
 // Resolver listens on UDP and TCP port 53.
 class Resolver {
  public:
-  explicit Resolver(base::TimeDelta timeout);
+  Resolver(base::TimeDelta timeout,
+           base::TimeDelta retry_delay,
+           int max_num_retries);
   virtual ~Resolver() = default;
 
   // Listen on an incoming DNS query on address |addr| for UDP and TCP.
@@ -62,13 +68,27 @@ class Resolver {
     const int type;
     const int fd;
 
+    // Store the data and length of the query to retry failing queries.
+    // For TCP, DNS has an additional 2-bytes header representing the length
+    // of the query. In order to make the data 4-bytes aligned, a pointer |msg|
+    // for buffer |buf| is used. |len| denotes the length of |msg|.
+    char* msg;
+    ssize_t len;
+
     // Holds the source address of the client and it's address length.
-    // At initialization, |len| value will be the size of |src|. Upon
-    // receiving, |len| should be updated to be the size of the address
+    // At initialization, |socklen| value will be the size of |src|. Upon
+    // receiving, |socklen| should be updated to be the size of the address
     // of |src|.
     // For TCP connections, |src| and |len| are not used.
     struct sockaddr_storage src;
-    socklen_t len;
+    socklen_t socklen;
+
+    // Underlying buffer of |data|.
+    char buf[kDNSBufSize];
+
+    // Number of attempted retry. Query should not be retried when reaching
+    // a certain threshold.
+    int num_retries;
   };
 
   // Handle DNS result queried through ares.
@@ -92,7 +112,10 @@ class Resolver {
   // |http_code| is the HTTP status code of the response. |msg| is the
   // wire-format response of the DNS query given through `Resolve(...)` with
   // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
-  void HandleCurlResult(void* ctx, int64_t http_code, uint8_t* msg, size_t len);
+  void HandleCurlResult(void* ctx,
+                        const DoHCurlClient::CurlResult& res,
+                        uint8_t* msg,
+                        size_t len);
 
   // |TCPConnection| is used to track and terminate TCP connections.
   struct TCPConnection {
@@ -109,6 +132,10 @@ class Resolver {
   // Handle DNS query from clients. |type| values will be either SOCK_DGRAM
   // or SOCK STREAM, for UDP and TCP respectively.
   void OnDNSQuery(int fd, int type);
+
+  // Resolve a domain using CURL or Ares using data from |sock_fd|.
+  // If |fallback| is true, force to use standard plain-text DNS.
+  void Resolve(SocketFd* sock_fd, bool fallback = false);
 
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len);
@@ -129,6 +156,12 @@ class Resolver {
   // Watch queries from |udp_src_|.
   std::unique_ptr<patchpanel::Socket> udp_src_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> udp_src_watcher_;
+
+  // Delay before retrying a failing query.
+  base::TimeDelta retry_delay_;
+
+  // Maximum number of retries before giving up.
+  int max_num_retries_;
 
   // Ares client to resolve DNS through standard plain-text DNS.
   std::unique_ptr<AresClient> ares_client_;

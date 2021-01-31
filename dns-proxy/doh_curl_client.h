@@ -19,6 +19,7 @@ namespace dns_proxy {
 
 // List of HTTP status codes.
 constexpr int64_t kHTTPOk = 200;
+constexpr int64_t kHTTPTooManyRequests = 429;
 
 // DoHCurlClient receives a wire-format DNS query and re-send it using secure
 // DNS (DNS-over-HTTPS). The caller of DoHCurlClient will get a wire-format
@@ -27,16 +28,27 @@ constexpr int64_t kHTTPOk = 200;
 // response OR the last failing response.
 class DoHCurlClient {
  public:
+  // Struct to be returned on a curl request.
+  struct CurlResult {
+    CurlResult(CURLcode curl_code, int64_t http_code, int64_t retry_delay_ms);
+
+    CURLcode curl_code;
+    int64_t http_code;
+    int64_t retry_delay_ms;
+  };
+
   // Callback to be invoked back to the client upon request completion.
   // |ctx| is an argument passed by the caller of `Resolve(...)` and passed
   // back to the caller as-is through this callback. |ctx| is owned by the
   // caller of `Resolve(...)` and the caller is responsible of its lifecycle.
   // DoHCurlClient does not own |ctx| and must not interact with |ctx|.
-  // |http_code| stores the HTTP code of the CURL query.
+  // back to the caller as-is through this callback.
+  // |res| stores the CURL result code, HTTP code, retry delay of the CURL
+  // query.
   // |msg| and |len| respectively stores the response and length of the
   // response of the CURL query.
   using QueryCallback = base::OnceCallback<void(
-      void* ctx, int64_t http_code, uint8_t* msg, size_t len)>;
+      void* ctx, const CurlResult& res, uint8_t* msg, size_t len)>;
 
   explicit DoHCurlClient(base::TimeDelta timeout);
   ~DoHCurlClient();
@@ -60,14 +72,19 @@ class DoHCurlClient {
     ~State();
 
     // Fetch the necessary response and run |callback|.
-    void RunCallback();
+    void RunCallback(CURLMsg* curl_msg);
+
+    // Set DNS response |msg| of length |len| to |request|.
+    void SetResponse(char* msg, size_t len);
 
     // Stores the CURL handle for the request.
     CURL* curl;
 
-    // Stores the response and length of a request. |response| needs to be
-    // allocated before use and freed after use.
+    // Stores the response of a request.
     std::vector<uint8_t> response;
+
+    // Stores the header response.
+    std::vector<std::string> header;
 
     // |callback| given from the client will be called with |ctx| as its
     // parameter. |ctx| is owned by the caller of `Resolve(...)` and will
@@ -112,14 +129,23 @@ class DoHCurlClient {
                               size_t nmemb,
                               void* userdata);
 
+  // Callback necessary for CURL to write header data.
+  static size_t HeaderCallback(void* data,
+                               size_t len,
+                               size_t nitems,
+                               void* userp);
+
+  // Callback informed when request timeed out.
+  void TimeoutCallback();
+
   // Callback informed to start the request and to handle timeout, method
   // signature matches CURL `timer_callback(...)`. This callback is registered
   // through CURL.
   //
   // |timeout_ms| value of -1 passed to this callback means the caller should
-  // delete the timer. All other values are valid expire times in number of
-  // milliseconds. |userp| refers to the pointer given to CURL through
-  // CURLMOPT_TIMERDATA option.
+  // delete the timer. All other values are valid expire times, in milliseconds.
+  // |userp| refers to the pointer given to CURL through CURLMOPT_TIMERDATA
+  // option.
   //
   // |userp| is owned by DoHCurlClient and should be cleaned properly upon
   // query completion.
