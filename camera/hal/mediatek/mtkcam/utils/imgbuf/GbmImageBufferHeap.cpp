@@ -17,8 +17,8 @@
 #define LOG_TAG "MtkCam/GrallocHeap"
 //
 #include "BaseImageBufferHeap.h"
-#include <camera_buffer_handle.h>
 #include <cros-camera/camera_buffer_manager.h>
+#include <cros-camera/common.h>
 #include <linux/videodev2.h>
 #include <memory>
 #include <mtkcam/utils/imgbuf/IGbmImageBufferHeap.h>

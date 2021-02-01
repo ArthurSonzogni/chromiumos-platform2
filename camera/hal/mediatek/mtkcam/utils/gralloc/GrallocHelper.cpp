@@ -17,7 +17,6 @@
 #define LOG_TAG "MtkCam/GrallocHelper"
 //
 #include <_videodev2.h>
-#include <camera_buffer_handle.h>
 #include <cros-camera/camera_buffer_manager.h>
 #include <linux/videodev2.h>
 #include <map>
@@ -539,13 +538,12 @@ int GrallocHelperImp::query(buffer_handle_t bufHandle,
     MY_LOGE("NULL buffer_handle_t");
     return BAD_VALUE;
   }
-  auto h = reinterpret_cast<const struct camera_buffer_handle*>(bufHandle);
   //
   MyRequest request;
   request.usage = usage;
-  request.format = h->hal_pixel_format;
-  request.widthInPixels = h->width;
-  request.heightInPixels = h->height;
+  request.format = cros::CameraBufferManager::GetHalPixelFormat(bufHandle);
+  request.widthInPixels = cros::CameraBufferManager::GetWidth(bufHandle);
+  request.heightInPixels = cros::CameraBufferManager::GetHeight(bufHandle);
   //
   std::lock_guard<std::mutex> _l(mLock);
   Map_t::iterator it;
@@ -558,8 +556,8 @@ int GrallocHelperImp::query(buffer_handle_t bufHandle,
             gQueryPixelFormatName(request.format).c_str());
     MyStaticInfo staticInfo;
     staticInfo.usage = usage;
-    staticInfo.widthInPixels = h->width;
-    staticInfo.heightInPixels = h->height;
+    staticInfo.widthInPixels = cros::CameraBufferManager::GetWidth(bufHandle);
+    staticInfo.heightInPixels = cros::CameraBufferManager::GetHeight(bufHandle);
 
     status = queryStaticInfo(bufHandle, &staticInfo);
     if (OK != status) {
