@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -24,10 +25,35 @@ VirtWaylandChannel::~VirtWaylandChannel() {
 
 int32_t VirtWaylandChannel::init() {
   virtwl_ = open(VIRTWL_DEVICE, O_RDWR);
+  int32_t ret;
+  struct WaylandBufferCreateInfo create_info = {0};
+  struct WaylandBufferCreateOutput create_output = {0};
+  create_output.fd = -1;
+
   if (virtwl_ == -1)
     return -errno;
 
+  create_info.dmabuf = true;
+  supports_dmabuf_ = true;
+
+  ret = allocate(create_info, create_output);
+  if (ret && errno == ENOTTY) {
+    fprintf(stderr,
+            "warning: virtwl-dmabuf driver not supported by host,"
+            " using virtwl instead\n");
+    supports_dmabuf_ = false;
+  } else if (create_output.fd >= 0) {
+    // Close the returned dmabuf fd in case the invalid dmabuf metadata
+    // given above actually manages to return an fd successfully.
+    close(create_output.fd);
+    create_output.fd = -1;
+  }
+
   return 0;
+}
+
+bool VirtWaylandChannel::supports_dmabuf(void) {
+  return supports_dmabuf_;
 }
 
 int32_t VirtWaylandChannel::create_context(int* out_socket_fd) {

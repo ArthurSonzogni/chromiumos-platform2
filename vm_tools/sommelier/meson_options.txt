@@ -14,18 +14,6 @@ option('xwayland_gl_driver_path',
   description: 'the GL driver path to use for Xwayland'
 )
 
-option('xwayland_shm_driver',
-  type: 'string',
-  value: 'virtwl',
-  description: 'shm driver to use for Xwayland'
-)
-
-option('shm_driver',
-  type: 'string',
-  value: 'virtwl-dmabuf',
-  description: 'shm driver to use for wayland clients'
-)
-
 option('frame_color',
   type: 'string',
   value: '#f2f2f2',

@@ -205,12 +205,7 @@ static void sl_shm_create_host_pool(struct wl_client* client,
                                  &sl_shm_pool_implementation, host_shm_pool,
                                  sl_destroy_host_shm_pool);
 
-  switch (host->shm->ctx->shm_driver) {
-    case SHM_DRIVER_VIRTWL:
-    case SHM_DRIVER_VIRTWL_DMABUF:
-      host_shm_pool->fd = fd;
-      break;
-  }
+  host_shm_pool->fd = fd;
 }
 
 static const struct wl_shm_interface sl_shm_implementation = {
@@ -300,25 +295,21 @@ static void sl_bind_host_shm(struct wl_client* client,
   wl_resource_set_implementation(host->resource, &sl_shm_implementation, host,
                                  sl_destroy_host_shm);
 
-  switch (ctx->shm_driver) {
-    case SHM_DRIVER_VIRTWL:
-      host->shm_proxy = static_cast<wl_shm*>(wl_registry_bind(
-          wl_display_get_registry(ctx->display), ctx->shm->id,
-          &wl_shm_interface, wl_resource_get_version(host->resource)));
-      wl_shm_set_user_data(host->shm_proxy, host);
-      wl_shm_add_listener(host->shm_proxy, &sl_shm_listener, host);
-      break;
-    case SHM_DRIVER_VIRTWL_DMABUF:
-      assert(ctx->linux_dmabuf);
-      host->linux_dmabuf_proxy =
-          static_cast<zwp_linux_dmabuf_v1*>(wl_registry_bind(
-              wl_display_get_registry(ctx->display), ctx->linux_dmabuf->id,
-              &zwp_linux_dmabuf_v1_interface,
-              wl_resource_get_version(host->resource)));
-      zwp_linux_dmabuf_v1_set_user_data(host->linux_dmabuf_proxy, host);
-      zwp_linux_dmabuf_v1_add_listener(host->linux_dmabuf_proxy,
-                                       &sl_linux_dmabuf_listener, host);
-      break;
+  if (ctx->channel->supports_dmabuf()) {
+    assert(ctx->linux_dmabuf);
+    host->linux_dmabuf_proxy = static_cast<zwp_linux_dmabuf_v1*>(
+        wl_registry_bind(wl_display_get_registry(ctx->display),
+                         ctx->linux_dmabuf->id, &zwp_linux_dmabuf_v1_interface,
+                         wl_resource_get_version(host->resource)));
+    zwp_linux_dmabuf_v1_set_user_data(host->linux_dmabuf_proxy, host);
+    zwp_linux_dmabuf_v1_add_listener(host->linux_dmabuf_proxy,
+                                     &sl_linux_dmabuf_listener, host);
+  } else {
+    host->shm_proxy = static_cast<wl_shm*>(wl_registry_bind(
+        wl_display_get_registry(ctx->display), ctx->shm->id, &wl_shm_interface,
+        wl_resource_get_version(host->resource)));
+    wl_shm_set_user_data(host->shm_proxy, host);
+    wl_shm_add_listener(host->shm_proxy, &sl_shm_listener, host);
   }
 }
 

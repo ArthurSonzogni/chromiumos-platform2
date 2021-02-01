@@ -169,6 +169,10 @@ int32_t VirtGpuChannel::init() {
   return 0;
 }
 
+bool VirtGpuChannel::supports_dmabuf(void) {
+  return supports_dmabuf_;
+}
+
 int32_t VirtGpuChannel::create_context(int* out_socket_fd) {
   int ret;
   struct drm_virtgpu_map map = {0};

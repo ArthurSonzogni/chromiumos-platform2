@@ -70,6 +70,11 @@ class WaylandChannel {
   // Initializes the Wayland Channel.  Returns 0 on success, -errno on failure.
   virtual int32_t init() = 0;
 
+  // Returns true if the Wayland channel supports dmabuf, false otherwise.  If
+  // dmabuf is supported, Sommelier will use the `zwp_linux_dmabuf_v1`
+  // protocol.
+  virtual bool supports_dmabuf(void) = 0;
+
   // Creates a new context for handling the wayland command stream.  Returns 0
   // on success, and a pollable `out_socket_fd`.  This fd represents the
   // connection to the host compositor, and used for subsequent `send` and
@@ -128,10 +133,11 @@ class WaylandChannel {
 
 class VirtWaylandChannel : public WaylandChannel {
  public:
-  VirtWaylandChannel() : virtwl_{-1} {}
+  VirtWaylandChannel() : virtwl_{-1}, supports_dmabuf_(false) {}
   ~VirtWaylandChannel();
 
   int32_t init() override;
+  bool supports_dmabuf() override;
   int32_t create_context(int* out_socket_fd) override;
   int32_t create_pipe(int* out_pipe_fd) override;
   int32_t send(const struct WaylandSendReceive& send) override;
@@ -145,6 +151,7 @@ class VirtWaylandChannel : public WaylandChannel {
  private:
   // virtwl device file descriptor
   int32_t virtwl_;
+  bool supports_dmabuf_;
 };
 
 class VirtGpuChannel : public WaylandChannel {
@@ -157,6 +164,7 @@ class VirtGpuChannel : public WaylandChannel {
   ~VirtGpuChannel();
 
   int32_t init() override;
+  bool supports_dmabuf() override;
   int32_t create_context(int* out_socket_fd) override;
   int32_t create_pipe(int* out_pipe_fd) override;
   int32_t send(const struct WaylandSendReceive& send) override;

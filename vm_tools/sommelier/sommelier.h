@@ -88,11 +88,6 @@ enum {
   ATOM_LAST = ATOM_GTK_THEME_VARIANT,
 };
 
-enum {
-  SHM_DRIVER_VIRTWL,
-  SHM_DRIVER_VIRTWL_DMABUF,
-};
-
 struct sl_context {
   char** runprog;
   struct wl_display* display;

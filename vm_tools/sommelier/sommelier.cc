@@ -57,12 +57,6 @@
 #ifndef XWAYLAND_GL_DRIVER_PATH
 #error XWAYLAND_GL_DRIVER_PATH must be defined
 #endif
-#ifndef XWAYLAND_SHM_DRIVER
-#error XWAYLAND_SHM_DRIVER must be defined
-#endif
-#ifndef SHM_DRIVER
-#error SHM_DRIVER must be defined
-#endif
 #ifndef PEER_CMD_PREFIX
 #error PEER_CMD_PREFIX must be defined
 #endif
@@ -3890,7 +3884,6 @@ static void sl_print_usage() {
       "  --socket=SOCKET\t\tName of socket to listen on\n"
       "  --display=DISPLAY\t\tWayland display to connect to\n"
       "  --vm-identifier=NAME\t\tName of the VM, used to identify X11 windows\n"
-      "  --shm-driver=DRIVER\t\tSHM driver to use (noop, dmabuf, virtwl)\n"
       "  --scale=SCALE\t\t\tScale factor for contents\n"
       "  --dpi=[DPI[,DPI...]]\t\tDPI buckets\n"
       "  --peer-cmd-prefix=PREFIX\tPeer process command line prefix\n"
@@ -3947,7 +3940,6 @@ int main(int argc, char** argv) {
   ctx.display_ready_event_source = NULL;
   ctx.sigchld_event_source = NULL;
   ctx.sigusr1_event_source = NULL;
-  ctx.shm_driver = SHM_DRIVER_VIRTWL;
   ctx.wm_fd = -1;
   ctx.virtwl_ctx_fd = -1;
   ctx.virtwl_socket_fd = -1;
@@ -4010,7 +4002,6 @@ int main(int argc, char** argv) {
   const char* dark_frame_color = getenv("SOMMELIER_DARK_FRAME_COLOR");
   const char* glamor = getenv("SOMMELIER_GLAMOR");
   const char* fullscreen_mode = getenv("SOMMELIER_FULLSCREEN_MODE");
-  const char* shm_driver = getenv("SOMMELIER_SHM_DRIVER");
   const char* peer_cmd_prefix = getenv("SOMMELIER_PEER_CMD_PREFIX");
   const char* xwayland_cmd_prefix = getenv("SOMMELIER_XWAYLAND_CMD_PREFIX");
   const char* accelerators = getenv("SOMMELIER_ACCELERATORS");
@@ -4058,8 +4049,6 @@ int main(int argc, char** argv) {
       display = sl_arg_value(arg);
     } else if (strstr(arg, "--vm-identifier") == arg) {
       ctx.vm_id = sl_arg_value(arg);
-    } else if (strstr(arg, "--shm-driver") == arg) {
-      shm_driver = sl_arg_value(arg);
     } else if (strstr(arg, "--peer-pid") == arg) {
       ctx.peer_pid = atoi(sl_arg_value(arg));
     } else if (strstr(arg, "--peer-cmd-prefix") == arg) {
@@ -4250,9 +4239,7 @@ int main(int argc, char** argv) {
           if (strstr(arg, "--display") == arg ||
               strstr(arg, "--scale") == arg ||
               strstr(arg, "--accelerators") == arg ||
-              strstr(arg, "--virtwl-device") == arg ||
-              strstr(arg, "--drm-device") == arg ||
-              strstr(arg, "--shm-driver") == arg) {
+              strstr(arg, "--drm-device") == arg) {
             args[i++] = arg;
           }
         }
@@ -4375,38 +4362,6 @@ int main(int argc, char** argv) {
     }
 
     ctx.drm_device = drm_device;
-  }
-
-  if (!shm_driver)
-    shm_driver = ctx.xwayland ? XWAYLAND_SHM_DRIVER : SHM_DRIVER;
-
-  if (shm_driver) {
-    if (strcmp(shm_driver, "virtwl") == 0 ||
-        strcmp(shm_driver, "virtwl-dmabuf") == 0) {
-      ctx.shm_driver = strcmp(shm_driver, "virtwl") ? SHM_DRIVER_VIRTWL_DMABUF
-                                                    : SHM_DRIVER_VIRTWL;
-      // Check for compatibility with virtwl-dmabuf.
-      if (ctx.shm_driver == SHM_DRIVER_VIRTWL_DMABUF) {
-        struct WaylandBufferCreateInfo create_info = {0};
-        struct WaylandBufferCreateOutput create_output = {0};
-        create_info.dmabuf = true;
-
-        rv = ctx.channel->allocate(create_info, create_output);
-        if (rv && errno == ENOTTY) {
-          fprintf(stderr,
-                  "warning: virtwl-dmabuf driver not supported by host, using "
-                  "virtwl instead\n");
-          ctx.shm_driver = SHM_DRIVER_VIRTWL;
-        } else if (create_output.fd >= 0) {
-          // Close the returned dmabuf fd in case the invalid dmabuf metadata
-          // given above actually manages to return an fd successfully.
-          close(create_output.fd);
-        }
-      }
-    } else {
-      fprintf(stderr, "unexpected shared memory driver\n");
-      return EXIT_FAILURE;
-    }
   }
 
   wl_array_init(&ctx.dpi);

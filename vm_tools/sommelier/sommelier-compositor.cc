@@ -179,80 +179,75 @@ static void sl_host_surface_attach(struct wl_client* client,
       pixman_region32_init_rect(&host->current_buffer->damage, 0, 0, MAX_SIZE,
                                 MAX_SIZE);
 
-      switch (host->ctx->shm_driver) {
-        case SHM_DRIVER_VIRTWL: {
-          size_t size = host_buffer->shm_mmap->size;
-          struct WaylandBufferCreateInfo create_info = {0};
-          struct WaylandBufferCreateOutput create_output = {0};
-          struct wl_shm_pool* pool;
-          int rv;
-          create_info.size = static_cast<__u32>(size);
+      if (host->ctx->channel->supports_dmabuf()) {
+        int rv;
+        size_t size;
+        struct zwp_linux_buffer_params_v1* buffer_params;
+        struct WaylandBufferCreateInfo create_info = {0};
+        struct WaylandBufferCreateOutput create_output = {0};
+        create_info.dmabuf = true;
 
-          rv = host->ctx->channel->allocate(create_info, create_output);
-          UNUSED(rv);
+        create_info.width = static_cast<__u32>(width);
+        create_info.height = static_cast<__u32>(height);
+        create_info.drm_format = sl_drm_format_for_shm_format(shm_format);
 
-          pool = wl_shm_create_pool(host->ctx->shm->internal, create_output.fd,
-                                    size);
-          host->current_buffer->internal = wl_shm_pool_create_buffer(
-              pool, 0, width, height, host_buffer->shm_mmap->stride[0],
-              shm_format);
-          wl_shm_pool_destroy(pool);
+        rv = host->ctx->channel->allocate(create_info, create_output);
+        if (rv) {
+          fprintf(stderr, "error: virtwl dmabuf allocation failed: %s\n",
+                  strerror(-rv));
+          _exit(EXIT_FAILURE);
+        }
 
-          host->current_buffer->mmap = sl_mmap_create(
-              create_output.fd, size, bpp, num_planes, 0,
-              host_buffer->shm_mmap->stride[0],
-              host_buffer->shm_mmap->offset[1] -
-                  host_buffer->shm_mmap->offset[0],
-              host_buffer->shm_mmap->stride[1], host_buffer->shm_mmap->y_ss[0],
-              host_buffer->shm_mmap->y_ss[1]);
-        } break;
-        case SHM_DRIVER_VIRTWL_DMABUF: {
-          int rv;
-          size_t size;
-          struct zwp_linux_buffer_params_v1* buffer_params;
-          struct WaylandBufferCreateInfo create_info = {0};
-          struct WaylandBufferCreateOutput create_output = {0};
-          create_info.dmabuf = true;
+        size = create_output.strides[0] * height;
+        buffer_params = zwp_linux_dmabuf_v1_create_params(
+            host->ctx->linux_dmabuf->internal);
+        zwp_linux_buffer_params_v1_add(buffer_params, create_output.fd, 0,
+                                       create_output.offsets[0],
+                                       create_output.strides[0], 0, 0);
+        if (num_planes > 1) {
+          zwp_linux_buffer_params_v1_add(buffer_params, create_output.fd, 1,
+                                         create_output.offsets[1],
+                                         create_output.strides[1], 0, 0);
+          size = MAX(size, create_output.offsets[1] +
+                               create_output.offsets[1] * height /
+                                   host_buffer->shm_mmap->y_ss[1]);
+        }
+        host->current_buffer->internal =
+            zwp_linux_buffer_params_v1_create_immed(
+                buffer_params, width, height, create_info.drm_format, 0);
+        zwp_linux_buffer_params_v1_destroy(buffer_params);
 
-          create_info.width = static_cast<__u32>(width);
-          create_info.height = static_cast<__u32>(height);
-          create_info.drm_format = sl_drm_format_for_shm_format(shm_format);
+        host->current_buffer->mmap = sl_mmap_create(
+            create_output.fd, size, bpp, num_planes, create_output.offsets[0],
+            create_output.strides[0], create_output.offsets[1],
+            create_output.strides[1], host_buffer->shm_mmap->y_ss[0],
+            host_buffer->shm_mmap->y_ss[1]);
+        host->current_buffer->mmap->begin_write = sl_virtwl_dmabuf_begin_write;
+        host->current_buffer->mmap->end_write = sl_virtwl_dmabuf_end_write;
+      } else {
+        size_t size = host_buffer->shm_mmap->size;
+        struct WaylandBufferCreateInfo create_info = {0};
+        struct WaylandBufferCreateOutput create_output = {0};
+        struct wl_shm_pool* pool;
+        int rv;
+        create_info.size = static_cast<__u32>(size);
 
-          rv = host->ctx->channel->allocate(create_info, create_output);
-          if (rv) {
-            fprintf(stderr, "error: virtwl dmabuf allocation failed: %s\n",
-                    strerror(-rv));
-            _exit(EXIT_FAILURE);
-          }
+        rv = host->ctx->channel->allocate(create_info, create_output);
+        UNUSED(rv);
 
-          size = create_output.strides[0] * height;
-          buffer_params = zwp_linux_dmabuf_v1_create_params(
-              host->ctx->linux_dmabuf->internal);
-          zwp_linux_buffer_params_v1_add(buffer_params, create_output.fd, 0,
-                                         create_output.offsets[0],
-                                         create_output.strides[0], 0, 0);
-          if (num_planes > 1) {
-            zwp_linux_buffer_params_v1_add(buffer_params, create_output.fd, 1,
-                                           create_output.offsets[1],
-                                           create_output.strides[1], 0, 0);
-            size = MAX(size, create_output.offsets[1] +
-                                 create_output.offsets[1] * height /
-                                     host_buffer->shm_mmap->y_ss[1]);
-          }
-          host->current_buffer->internal =
-              zwp_linux_buffer_params_v1_create_immed(
-                  buffer_params, width, height, create_info.drm_format, 0);
-          zwp_linux_buffer_params_v1_destroy(buffer_params);
+        pool = wl_shm_create_pool(host->ctx->shm->internal, create_output.fd,
+                                  size);
+        host->current_buffer->internal = wl_shm_pool_create_buffer(
+            pool, 0, width, height, host_buffer->shm_mmap->stride[0],
+            shm_format);
+        wl_shm_pool_destroy(pool);
 
-          host->current_buffer->mmap = sl_mmap_create(
-              create_output.fd, size, bpp, num_planes, create_output.offsets[0],
-              create_output.strides[0], create_output.offsets[1],
-              create_output.strides[1], host_buffer->shm_mmap->y_ss[0],
-              host_buffer->shm_mmap->y_ss[1]);
-          host->current_buffer->mmap->begin_write =
-              sl_virtwl_dmabuf_begin_write;
-          host->current_buffer->mmap->end_write = sl_virtwl_dmabuf_end_write;
-        } break;
+        host->current_buffer->mmap = sl_mmap_create(
+            create_output.fd, size, bpp, num_planes, 0,
+            host_buffer->shm_mmap->stride[0],
+            host_buffer->shm_mmap->offset[1] - host_buffer->shm_mmap->offset[0],
+            host_buffer->shm_mmap->stride[1], host_buffer->shm_mmap->y_ss[0],
+            host_buffer->shm_mmap->y_ss[1]);
       }
 
       assert(host->current_buffer->internal);
