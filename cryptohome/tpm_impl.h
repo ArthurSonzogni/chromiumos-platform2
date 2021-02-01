@@ -87,13 +87,6 @@ class TpmImpl : public Tpm {
   bool IsNvramLocked(uint32_t index) override;
   bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
-  TpmRetryAction GetEndorsementPublicKey(
-      brillo::SecureBlob* ek_public_key) override;
-  TpmRetryAction GetEndorsementPublicKeyWithDelegate(
-      brillo::SecureBlob* ek_public_key,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) override;
-  bool GetEndorsementCredential(brillo::SecureBlob* credential) override;
   QuotePcrResult QuotePCR(uint32_t pcr_index,
                           bool check_pcr_value,
                           const brillo::SecureBlob& identity_key_blob,
@@ -293,13 +286,6 @@ class TpmImpl : public Tpm {
                             const brillo::Blob& delegate_blob,
                             const brillo::Blob& delegate_secret,
                             TSS_HTPM* tpm_handle);
-
-  // Get the endorsement public key based on context and tpm handle previously
-  // obtained. Returns true on success.
-  TpmRetryAction GetEndorsementPublicKeyInternal(
-      brillo::SecureBlob* ek_public_key,
-      TSS_HCONTEXT* context_handle,
-      TSS_HTPM* tpm_handle);
 
   // Assigns the authorization value to object.
   bool SetAuthValue(TSS_HCONTEXT context_handle,

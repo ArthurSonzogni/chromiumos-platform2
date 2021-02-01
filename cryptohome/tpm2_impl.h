@@ -114,13 +114,6 @@ class Tpm2Impl : public Tpm {
   bool IsNvramLocked(uint32_t index) override;
   bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
-  TpmRetryAction GetEndorsementPublicKey(
-      brillo::SecureBlob* ek_public_key) override;
-  TpmRetryAction GetEndorsementPublicKeyWithDelegate(
-      brillo::SecureBlob* ek_public_key,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) override;
-  bool GetEndorsementCredential(brillo::SecureBlob* credential) override;
   QuotePcrResult QuotePCR(uint32_t pcr_index,
                           bool check_pcr_value,
                           const brillo::SecureBlob& identity_key_blob,

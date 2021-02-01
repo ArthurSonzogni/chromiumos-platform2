@@ -406,33 +406,6 @@ class Tpm {
   // returned.
   virtual unsigned int GetNvramSize(uint32_t index) = 0;
 
-  // Get the endorsement public key. This method requires TPM owner privilege.
-  //
-  // Parameters
-  //   ek_public_key - The EK public key in DER encoded form.
-  //
-  // Returns true on success.
-  virtual TpmRetryAction GetEndorsementPublicKey(
-      brillo::SecureBlob* ek_public_key) = 0;
-
-  // Get the endorsement public key through the TPM delegate. This method
-  // assumes the TPM is locked.
-  //
-  // Parameters
-  //   ek_public_key - The EK public key in DER encoded form.
-  virtual TpmRetryAction GetEndorsementPublicKeyWithDelegate(
-      brillo::SecureBlob* ek_public_key,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) = 0;
-
-  // Get the endorsement credential. This method requires TPM owner privilege.
-  //
-  // Parameters
-  //   credential - The EK credential as it is stored in NVRAM.
-  //
-  // Returns true on success.
-  virtual bool GetEndorsementCredential(brillo::SecureBlob* credential) = 0;
-
   // Generates a quote of a given PCR with the given identity key.
   // - PCR0 is used to differentiate normal mode from developer mode.
   // - PCR1 is used on some systems to measure the HWID.

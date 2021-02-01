@@ -21,13 +21,6 @@ MockTpm::MockTpm() {
   ON_CALL(*this, DecryptBlob(_, _, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::XorDecrypt));
   ON_CALL(*this, GetPublicKeyHash(_, _)).WillByDefault(Return(kTpmRetryNone));
-  ON_CALL(*this, GetEndorsementPublicKey(_))
-      .WillByDefault(Return(Tpm::kTpmRetryNone));
-  ON_CALL(*this, GetEndorsementPublicKeyWithDelegate(_, _, _))
-      .WillByDefault(Return(Tpm::kTpmRetryNone));
-  ON_CALL(*this, GetEndorsementCredential(_))
-      .WillByDefault(
-          DoAll(SetArgPointee<0>(brillo::SecureBlob("test")), Return(true)));
   ON_CALL(*this, QuotePCR(_, _, _, _, _, _, _))
       .WillByDefault(Return(Tpm::QuotePcrResult::kSuccess));
   ON_CALL(*this, SealToPCR0(_, _)).WillByDefault(Return(true));

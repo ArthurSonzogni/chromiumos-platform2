@@ -546,25 +546,6 @@ bool Tpm2Impl::CreateEndorsementKey() {
   return false;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::GetEndorsementPublicKey(
-    SecureBlob* ek_public_key) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return Tpm::kTpmRetryFailNoRetry;
-}
-
-Tpm::TpmRetryAction Tpm2Impl::GetEndorsementPublicKeyWithDelegate(
-    brillo::SecureBlob* ek_public_key,
-    const brillo::Blob& delegate_blob,
-    const brillo::Blob& delegate_secret) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return Tpm::kTpmRetryFailNoRetry;
-}
-
-bool Tpm2Impl::GetEndorsementCredential(SecureBlob* credential) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 Tpm::QuotePcrResult Tpm2Impl::QuotePCR(uint32_t pcr_index,
                                        bool check_pcr_value,
                                        const SecureBlob& identity_key_blob,

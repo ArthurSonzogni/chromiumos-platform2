@@ -88,18 +88,6 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, IsNvramLocked, (uint32_t), (override));
   MOCK_METHOD(bool, WriteLockNvram, (uint32_t), (override));
   MOCK_METHOD(unsigned int, GetNvramSize, (uint32_t), (override));
-  MOCK_METHOD(TpmRetryAction,
-              GetEndorsementPublicKey,
-              (brillo::SecureBlob*),
-              (override));
-  MOCK_METHOD(TpmRetryAction,
-              GetEndorsementPublicKeyWithDelegate,
-              (brillo::SecureBlob*, const brillo::Blob&, const brillo::Blob&),
-              (override));
-  MOCK_METHOD(bool,
-              GetEndorsementCredential,
-              (brillo::SecureBlob*),
-              (override));
   MOCK_METHOD(Tpm::QuotePcrResult,
               QuotePCR,
               (uint32_t,

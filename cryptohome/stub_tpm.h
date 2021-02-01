@@ -93,18 +93,6 @@ class StubTpm : public Tpm {
     return false;
   }
   bool WriteLockNvram(uint32_t index) override { return false; }
-  TpmRetryAction GetEndorsementPublicKey(SecureBlob* ek_public_key) override {
-    return Tpm::kTpmRetryFailNoRetry;
-  }
-  Tpm::TpmRetryAction GetEndorsementPublicKeyWithDelegate(
-      brillo::SecureBlob* ek_public_key,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) override {
-    return Tpm::kTpmRetryFailNoRetry;
-  }
-  bool GetEndorsementCredential(SecureBlob* credential) override {
-    return false;
-  }
   bool QuotePCR(uint32_t pcr_index,
                 bool check_pcr_value,
                 const SecureBlob& identity_key_blob,
