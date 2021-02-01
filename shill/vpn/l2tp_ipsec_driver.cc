@@ -139,9 +139,8 @@ L2TPIPSecDriver::~L2TPIPSecDriver() {
   Cleanup();
 }
 
-void L2TPIPSecDriver::ConnectAsync(
-    const VPNService::DriverEventCallback& callback) {
-  service_callback_ = callback;
+void L2TPIPSecDriver::ConnectAsync(EventHandler* handler) {
+  event_handler_ = handler;
   StartConnectTimeout(kConnectTimeoutSeconds);
   Error error;
   if (!SpawnL2TPIPSecVPN(&error)) {
@@ -152,7 +151,7 @@ void L2TPIPSecDriver::ConnectAsync(
 void L2TPIPSecDriver::Disconnect() {
   SLOG(this, 2) << __func__;
   Cleanup();
-  service_callback_.Reset();
+  event_handler_ = nullptr;
 }
 
 IPConfig::Properties L2TPIPSecDriver::GetIPProperties() const {
@@ -172,10 +171,9 @@ void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
   SLOG(this, 2) << __func__ << "(" << Service::ConnectFailureToString(failure)
                 << ")";
   Cleanup();
-  if (service_callback_) {
-    service_callback_.Run(VPNService::kEventDriverFailure, failure,
-                          Service::kErrorDetailsNone);
-    service_callback_.Reset();
+  if (event_handler_) {
+    event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
+    event_handler_ = nullptr;
   }
 }
 
@@ -187,7 +185,7 @@ void L2TPIPSecDriver::Cleanup() {
 }
 
 void L2TPIPSecDriver::OnBeforeSuspend(const ResultCallback& callback) {
-  if (service_callback_) {
+  if (event_handler_) {
     FailService(Service::kFailureDisconnect);
   }
   callback.Run(Error(Error::kSuccess));
@@ -195,7 +193,7 @@ void L2TPIPSecDriver::OnBeforeSuspend(const ResultCallback& callback) {
 
 void L2TPIPSecDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
-  if (!service_callback_) {
+  if (!event_handler_) {
     return;
   }
   if (event == kDefaultPhysicalServiceUp) {
@@ -464,9 +462,8 @@ void L2TPIPSecDriver::Notify(const string& reason,
 
 void L2TPIPSecDriver::OnLinkReady(const std::string& link_name,
                                   int interface_index) {
-  if (service_callback_) {
-    service_callback_.Run(VPNService::kEventConnectionSuccess,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+  if (event_handler_) {
+    event_handler_->OnDriverConnected();
   } else {
     LOG(DFATAL) << "Missing service callback";
   }

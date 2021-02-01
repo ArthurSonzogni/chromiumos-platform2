@@ -83,10 +83,8 @@ class ArcVpnDriverTest : public testing::Test {
 
 TEST_F(ArcVpnDriverTest, ConnectAsync) {
   LoadPropertiesFromStore(true);
-  EXPECT_CALL(*service_,
-              OnDriverEvent(VPNService::kEventConnectionSuccess, _, _))
-      .Times(1);
-  driver_->ConnectAsync(service_->GetCallback());
+  EXPECT_CALL(*service_, OnDriverConnected()).Times(1);
+  driver_->ConnectAsync(service_.get());
   dispatcher_.task_environment().RunUntilIdle();
 }
 

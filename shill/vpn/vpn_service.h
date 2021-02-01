@@ -13,24 +13,15 @@
 #include "shill/callbacks.h"
 #include "shill/default_service_observer.h"
 #include "shill/service.h"
+#include "shill/vpn/vpn_driver.h"
 
 namespace shill {
 
 class KeyValueStore;
-class VPNDriver;
-
-class VPNService : public Service, public DefaultServiceObserver {
+class VPNService : public Service,
+                   public DefaultServiceObserver,
+                   public VPNDriver::EventHandler {
  public:
-  enum DriverEvent {
-    kEventConnectionSuccess = 0,
-    kEventDriverFailure,
-    kEventDriverReconnecting
-  };
-  using DriverEventCallback =
-      base::RepeatingCallback<void(DriverEvent /*event*/,
-                                   ConnectFailure /*failure*/,
-                                   const std::string& /*error_details*/)>;
-
   VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver);
   VPNService(const VPNService&) = delete;
   VPNService& operator=(const VPNService&) = delete;
@@ -72,16 +63,21 @@ class VPNService : public Service, public DefaultServiceObserver {
   // Returns true if the service supports always-on VPN.
   bool SupportsAlwaysOnVpn();
 
+  // Inherited from VPNDriver::EventHandler. Callbacks from VPNDriver.
+  // TODO(b/178766289): The tests of child classes of VPNDriver no longer have
+  // dependency on VPNService, we can consider removing the "mockable" keyword
+  // here.
+  mockable void OnDriverConnected() override;
+  mockable void OnDriverFailure(ConnectFailure failure,
+                                const std::string& error_details) override;
+  mockable void OnDriverReconnecting() override;
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
   void OnDisconnect(Error* error, const char* reason) override;
   bool IsAutoConnectable(const char** reason) const override;
   std::string GetTethering(Error* error) const override;
-
-  virtual void OnDriverEvent(DriverEvent event,
-                             ConnectFailure failure,
-                             const std::string& error_details);
 
  private:
   friend class VPNServiceTest;

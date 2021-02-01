@@ -10,6 +10,7 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_service.h"
 
 namespace shill {
@@ -25,15 +26,12 @@ class MockVPNService : public VPNService {
   MOCK_METHOD(void, SetState, (ConnectState), (override));
   MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
   MOCK_METHOD(void, InitDriverPropertyStore, (), (override));
+  MOCK_METHOD(void, OnDriverConnected, (), (override));
   MOCK_METHOD(void,
-              OnDriverEvent,
-              (DriverEvent, ConnectFailure, const std::string&),
+              OnDriverFailure,
+              (ConnectFailure, const std::string&),
               (override));
-
-  VPNService::DriverEventCallback GetCallback() {
-    return base::BindRepeating(&MockVPNService::OnDriverEvent,
-                               weak_factory_.GetWeakPtr());
-  }
+  MOCK_METHOD(void, OnDriverReconnecting, (), (override));
 
  private:
   base::WeakPtrFactory<MockVPNService> weak_factory_{this};

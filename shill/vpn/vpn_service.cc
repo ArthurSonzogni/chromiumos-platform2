@@ -72,8 +72,8 @@ void VPNService::OnConnect(Error* error) {
   // cause the arc_device to be disabled at the end of this call.
 
   SetState(ConnectState::kStateAssociating);
-  driver_->ConnectAsync(base::BindRepeating(&VPNService::OnDriverEvent,
-                                            weak_factory_.GetWeakPtr()));
+  // driver_ is owned by VPNService, so this is safe.
+  driver_->ConnectAsync(this);
 }
 
 void VPNService::OnDisconnect(Error* error, const char* reason) {
@@ -84,40 +84,33 @@ void VPNService::OnDisconnect(Error* error, const char* reason) {
   SetState(ConnectState::kStateIdle);
 }
 
-void VPNService::OnDriverEvent(DriverEvent event,
-                               ConnectFailure failure,
-                               const std::string& error_details) {
-  switch (event) {
-    case kEventConnectionSuccess:
-      if (!CreateDevice(driver_->interface_name())) {
-        LOG(ERROR) << "Cannot create VPN device for "
-                   << driver_->interface_name();
-        SetFailure(Service::kFailureInternal);
-        SetErrorDetails(Service::kErrorDetailsNone);
-        return;
-      }
-      if (driver_->GetProviderType() == std::string(kProviderArcVpn)) {
-        device_->SetFixedIpParams(true);
-      }
-
-      SetState(ConnectState::kStateConfiguring);
-      ConfigureDevice();
-      SetState(ConnectState::kStateConnected);
-      SetState(ConnectState::kStateOnline);
-      break;
-    case kEventDriverFailure:
-      CleanupDevice();
-      SetErrorDetails(error_details);
-      SetFailure(failure);
-      break;
-    case kEventDriverReconnecting:
-      if (device_) {
-        SetState(Service::kStateAssociating);
-        device_->ResetConnection();
-      }
-      // Await further OnDriverEvent(kEventConnectionSuccess).
-      break;
+void VPNService::OnDriverConnected() {
+  if (!CreateDevice(driver_->interface_name())) {
+    LOG(ERROR) << "Cannot create VPN device for " << driver_->interface_name();
+    SetFailure(Service::kFailureInternal);
+    SetErrorDetails(Service::kErrorDetailsNone);
+    return;
   }
+  if (driver_->GetProviderType() == std::string(kProviderArcVpn)) {
+    device_->SetFixedIpParams(true);
+  }
+
+  SetState(ConnectState::kStateConfiguring);
+  ConfigureDevice();
+  SetState(ConnectState::kStateConnected);
+  SetState(ConnectState::kStateOnline);
+}
+
+void VPNService::OnDriverFailure(ConnectFailure failure,
+                                 const std::string& error_details) {
+  CleanupDevice();
+  SetErrorDetails(error_details);
+  SetFailure(failure);
+}
+
+void VPNService::OnDriverReconnecting() {
+  SetState(Service::kStateAssociating);
+  device_->ResetConnection();
 }
 
 bool VPNService::CreateDevice(const std::string& if_name) {

@@ -17,7 +17,7 @@
 #include "shill/key_value_store.h"
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
-#include "shill/vpn/vpn_service.h"
+#include "shill/service.h"
 
 namespace shill {
 
@@ -48,19 +48,38 @@ class VPNDriver {
     kDefaultPhysicalServiceChanged,
   };
 
+  // Passed in and registered in ConnectAsync(). Currently implemented by
+  // VPNService.
+  class EventHandler {
+   public:
+    // Invoked on connection or reconnection done, and GetIPProperties() is
+    // ready now.
+    virtual void OnDriverConnected() = 0;
+
+    // When a failure happens, the driver will clean up its internal state. This
+    // event is supposed to be triggered only once before the next call of
+    // ConnectAsync().
+    virtual void OnDriverFailure(Service::ConnectFailure failure,
+                                 const std::string& error_details) = 0;
+
+    // Indicates the driver is trying reconnecting now. Note that this event
+    // might be triggered multiple times before OnConnected or OnFailure
+    // happens.
+    virtual void OnDriverReconnecting() = 0;
+  };
+
   virtual ~VPNDriver();
 
   // When this function is called, a VPNDriver is responsible for 1) creating
   // the network interface (either by interacting with DeviceInfo or by letting
-  // another program do this), 2) starting and configuring the VPN tunnel,
-  // and 3) invoking |callback| to notify the VPNService of connection success
-  // (or other events). Once the success callback is invoked, the VPNService
-  // will call interface_name() (to create the VirtualDevice) and
-  // GetIPProperties() on the driver, so the driver should make sure that
-  // the interface is already known by shill (DeviceInfo) before invoking the
+  // another program do this), 2) starting and configuring the VPN tunnel, and
+  // 3) invoking functions of |handler| to notify the VPNService of connection
+  // success (or other events). Once the success callback is invoked, the
+  // VPNService will call interface_name() (to create the VirtualDevice) and
+  // GetIPProperties() on the driver, so the driver should make sure that the
+  // interface is already known by shill (DeviceInfo) before invoking the
   // success callback.
-  virtual void ConnectAsync(
-      const VPNService::DriverEventCallback& callback) = 0;
+  virtual void ConnectAsync(EventHandler* handler) = 0;
   virtual void Disconnect() = 0;
   virtual IPConfig::Properties GetIPProperties() const = 0;
   virtual std::string GetProviderType() const = 0;

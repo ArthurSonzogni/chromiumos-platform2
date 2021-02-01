@@ -66,7 +66,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // Implementation of VPNDriver
   void InitPropertyStore(PropertyStore* store) override;
-  void ConnectAsync(const VPNService::DriverEventCallback& callback) override;
+  void ConnectAsync(EventHandler* handler) override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
   void Disconnect() override;
@@ -248,7 +248,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // suspend/resume signals.
   bool reconnect_supported_;
 
-  VPNService::DriverEventCallback service_callback_;
+  EventHandler* event_handler_ = nullptr;
 
   base::WeakPtrFactory<ThirdPartyVpnDriver> weak_factory_{this};
 };

@@ -33,6 +33,7 @@ using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::ReturnRefOfCopy;
+using testing::SaveArg;
 
 namespace {
 
@@ -459,31 +460,32 @@ TEST_F(VPNServiceTest, ConnectFlow) {
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillRepeatedly(Return(kInterfaceIndex));
 
+  VPNDriver::EventHandler* driver_event_handler;
+
   // Connection
-  EXPECT_CALL(*driver_, ConnectAsync(_));
+  EXPECT_CALL(*driver_, ConnectAsync(_))
+      .WillOnce(SaveArg<0>(&driver_event_handler));
   service_->Connect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Service::kStateAssociating, service_->state());
 
   EXPECT_CALL(*driver_, GetIPProperties())
       .WillOnce(Return(IPConfig::Properties()));
-  service_->OnDriverEvent(VPNService::kEventConnectionSuccess,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+  driver_event_handler->OnDriverConnected();
   EXPECT_EQ(kInterfaceName, driver_->interface_name());
   EXPECT_TRUE(service_->device_);
   EXPECT_EQ(Service::kStateOnline, service_->state());
 
   // Driver-originated reconnection
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
-  service_->OnDriverEvent(VPNService::kEventDriverReconnecting,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+  driver_event_handler->OnDriverReconnecting();
   EXPECT_EQ(Service::kStateAssociating, service_->state());
   EXPECT_TRUE(service_->device_);
 
   // Driver-originated failure
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
-  service_->OnDriverEvent(VPNService::kEventDriverFailure,
-                          Service::kFailureUnknown, Service::kErrorDetailsNone);
+  driver_event_handler->OnDriverFailure(Service::kFailureUnknown,
+                                        Service::kErrorDetailsNone);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_FALSE(service_->device_);
 

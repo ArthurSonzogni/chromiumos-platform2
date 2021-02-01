@@ -56,10 +56,7 @@ class VPNDriverUnderTest : public VPNDriver {
   ~VPNDriverUnderTest() override = default;
 
   // Inherited from VPNDriver.
-  MOCK_METHOD(void,
-              ConnectAsync,
-              (const VPNService::DriverEventCallback& callback),
-              (override));
+  MOCK_METHOD(void, ConnectAsync, (EventHandler*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
   MOCK_METHOD(IPConfig::Properties, GetIPProperties, (), (const, override));
   MOCK_METHOD(string, GetProviderType, (), (const, override));

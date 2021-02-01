@@ -35,7 +35,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   ~L2TPIPSecDriver() override;
 
  protected:
-  void ConnectAsync(const VPNService::DriverEventCallback& callback) override;
+  void ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
@@ -127,7 +127,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   base::FilePath xauth_credentials_file_;
   std::unique_ptr<CertificateFile> certificate_file_;
   IPConfig::Properties ip_properties_;
-  VPNService::DriverEventCallback service_callback_;
+  EventHandler* event_handler_ = nullptr;
 
   base::WeakPtrFactory<L2TPIPSecDriver> weak_ptr_factory_;
 };

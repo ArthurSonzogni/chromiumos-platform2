@@ -90,7 +90,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // via DeviceInfo, and then sets up and spawns an external 'openvpn' process.
   // IP configuration settings are passed back from the external process through
   // the |Notify| RPC service method.
-  void ConnectAsync(const VPNService::DriverEventCallback& callback) override;
+  void ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
@@ -238,7 +238,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // spawned yet or the process has died.
   int pid_;
 
-  VPNService::DriverEventCallback service_callback_;
+  EventHandler* event_handler_ = nullptr;
 
   base::WeakPtrFactory<OpenVPNDriver> weak_factory_{this};
 };

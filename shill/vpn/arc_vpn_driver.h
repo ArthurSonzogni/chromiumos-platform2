@@ -30,7 +30,7 @@ class ArcVpnDriver : public VPNDriver {
 
   std::string GetProviderType() const override;
 
-  void ConnectAsync(const VPNService::DriverEventCallback& callback) override;
+  void ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;
 
@@ -38,6 +38,11 @@ class ArcVpnDriver : public VPNDriver {
   friend class ArcVpnDriverTest;
 
   static const Property kProperties[];
+
+  // Called in ConnectAsync() by PostTask(), to make sure |handler| is valid.
+  void InvokeEventHandler(EventHandler* handler);
+
+  base::WeakPtrFactory<ArcVpnDriver> weak_factory_{this};
 };
 
 }  // namespace shill

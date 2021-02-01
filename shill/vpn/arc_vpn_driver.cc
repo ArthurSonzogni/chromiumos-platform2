@@ -41,17 +41,19 @@ ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
   interface_name_ = VPNProvider::kArcBridgeIfName;
 }
 
-void ArcVpnDriver::ConnectAsync(
-    const VPNService::DriverEventCallback& callback) {
+void ArcVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(this, 2) << __func__;
   // Nothing to do here since ARC already finish connecting to VPN
   // before Chrome calls Service::OnConnect. Just return success.
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverArc,
                            Metrics::kMetricVpnDriverMax);
-  dispatcher()->PostTask(
-      FROM_HERE,
-      base::Bind(std::move(callback), VPNService::kEventConnectionSuccess,
-                 Service::kFailureNone, Service::kErrorDetailsNone));
+  dispatcher()->PostTask(FROM_HERE,
+                         base::BindOnce(&ArcVpnDriver::InvokeEventHandler,
+                                        weak_factory_.GetWeakPtr(), handler));
+}
+
+void ArcVpnDriver::InvokeEventHandler(EventHandler* handler) {
+  handler->OnDriverConnected();
 }
 
 void ArcVpnDriver::Disconnect() {

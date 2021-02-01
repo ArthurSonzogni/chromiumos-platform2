@@ -171,10 +171,9 @@ void OpenVPNDriver::FailService(Service::ConnectFailure failure,
                                 const string& error_details) {
   SLOG(this, 2) << __func__ << "(" << error_details << ")";
   Cleanup();
-  if (service_callback_) {
-    service_callback_.Run(VPNService::kEventDriverFailure, failure,
-                          error_details);
-    service_callback_.Reset();
+  if (event_handler_) {
+    event_handler_->OnDriverFailure(failure, error_details);
+    event_handler_ = nullptr;
   }
 }
 
@@ -347,9 +346,8 @@ void OpenVPNDriver::Notify(const string& reason,
   ParseIPConfiguration(dict, &ip_properties_);
   ReportConnectionMetrics();
   StopConnectTimeout();
-  if (service_callback_) {
-    service_callback_.Run(VPNService::kEventConnectionSuccess,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+  if (event_handler_) {
+    event_handler_->OnDriverConnected();
   } else {
     LOG(DFATAL) << "Missing service callback";
   }
@@ -602,18 +600,17 @@ bool OpenVPNDriver::SplitPortFromHost(const string& host,
   return true;
 }
 
-void OpenVPNDriver::ConnectAsync(
-    const VPNService::DriverEventCallback& callback) {
+void OpenVPNDriver::ConnectAsync(EventHandler* handler) {
+  event_handler_ = handler;
   if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
           &OpenVPNDriver::OnLinkReady, weak_factory_.GetWeakPtr()))) {
     dispatcher()->PostTask(
         FROM_HERE,
-        base::Bind(std::move(callback), VPNService::kEventDriverFailure,
-                   Service::kFailureInternal,
-                   "Could not create tunnel interface."));
+        base::BindOnce(&OpenVPNDriver::FailService, weak_factory_.GetWeakPtr(),
+                       Service::kFailureInternal,
+                       "Could not create tunnel interface."));
     return;
   }
-  service_callback_ = callback;
 }
 
 void OpenVPNDriver::OnLinkReady(const std::string& link_name,
@@ -961,7 +958,7 @@ bool OpenVPNDriver::AppendFlag(const string& property,
 void OpenVPNDriver::Disconnect() {
   SLOG(this, 2) << __func__;
   Cleanup();
-  service_callback_.Reset();
+  event_handler_ = nullptr;
 }
 
 void OpenVPNDriver::OnConnectTimeout() {
@@ -988,9 +985,8 @@ void OpenVPNDriver::OnReconnecting(ReconnectReason reason) {
   // successfully. The hold will be released by OnDefaultServiceChanged when a
   // new default service connects. This ensures that the client will use a fully
   // functional underlying connection to reconnect.
-  if (service_callback_) {
-    service_callback_.Run(VPNService::kEventDriverReconnecting,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+  if (event_handler_) {
+    event_handler_->OnDriverReconnecting();
   }
 }
 
@@ -1056,14 +1052,13 @@ vector<string> OpenVPNDriver::GetCommandLineArgs() {
 
 void OpenVPNDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
-  if (!service_callback_)
+  if (!event_handler_)
     return;
 
   if (event == kDefaultPhysicalServiceDown ||
       event == kDefaultPhysicalServiceChanged) {
     // Inform the user that the VPN is reconnecting.
-    service_callback_.Run(VPNService::kEventDriverReconnecting,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+    event_handler_->OnDriverReconnecting();
     StopConnectTimeout();
   }
 

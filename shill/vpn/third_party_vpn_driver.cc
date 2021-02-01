@@ -136,11 +136,11 @@ void ThirdPartyVpnDriver::UpdateConnectionState(
     error_message->append("Unexpected call");
     return;
   }
-  if (service_callback_ && connection_state == Service::kStateFailure) {
+  if (event_handler_ && connection_state == Service::kStateFailure) {
     FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
     return;
   }
-  if (!service_callback_ || connection_state != Service::kStateOnline) {
+  if (!event_handler_ || connection_state != Service::kStateOnline) {
     // We expect "failure" and "connected" messages from the client, but we
     // only set state for these "failure" messages. "connected" message (which
     // is corresponding to kStateOnline here) will simply be ignored.
@@ -418,9 +418,8 @@ void ThirdPartyVpnDriver::SetParameters(
                              Metrics::kMetricVpnDriverMax);
   }
 
-  if (service_callback_) {
-    service_callback_.Run(VPNService::kEventConnectionSuccess,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+  if (event_handler_) {
+    event_handler_->OnDriverConnected();
   } else {
     LOG(ERROR) << "Missing service callback";
   }
@@ -482,20 +481,18 @@ void ThirdPartyVpnDriver::Cleanup() {
   }
 }
 
-void ThirdPartyVpnDriver::ConnectAsync(
-    const VPNService::DriverEventCallback& callback) {
+void ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(this, 2) << __func__;
+  event_handler_ = handler;
   if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
           &ThirdPartyVpnDriver::OnLinkReady, weak_factory_.GetWeakPtr()))) {
     dispatcher()->PostTask(
         FROM_HERE,
-        base::Bind(std::move(callback), VPNService::kEventDriverFailure,
-                   Service::kFailureInternal,
-                   "Could not create tunnel interface."));
+        base::BindOnce(&ThirdPartyVpnDriver::FailService,
+                       weak_factory_.GetWeakPtr(), Service::kFailureInternal,
+                       "Could not to create tunnel interface."));
     return;
   }
-
-  service_callback_ = callback;
 }
 
 void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
@@ -533,10 +530,9 @@ void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,
                                       const std::string& error_details) {
   SLOG(this, 2) << __func__ << "(" << error_details << ")";
   Cleanup();
-  if (service_callback_) {
-    service_callback_.Run(VPNService::kEventDriverFailure, failure,
-                          error_details);
-    service_callback_.Reset();
+  if (event_handler_) {
+    event_handler_->OnDriverFailure(failure, error_details);
+    event_handler_ = nullptr;
   }
 }
 
@@ -546,7 +542,7 @@ void ThirdPartyVpnDriver::Disconnect() {
   if (active_client_ == this) {
     Cleanup();
   }
-  service_callback_.Reset();
+  event_handler_ = nullptr;
 }
 
 std::string ThirdPartyVpnDriver::GetProviderType() const {
@@ -555,7 +551,7 @@ std::string ThirdPartyVpnDriver::GetProviderType() const {
 
 void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
-  if (!service_callback_)
+  if (!event_handler_)
     return;
 
   if (event == kDefaultPhysicalServiceDown ||
@@ -565,8 +561,7 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
                   "Underlying network disconnected.");
       return;
     }
-    service_callback_.Run(VPNService::kEventDriverReconnecting,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+    event_handler_->OnDriverReconnecting();
   }
 
   PlatformMessage message;
@@ -591,7 +586,7 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
 }
 
 void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {
-  if (service_callback_ && reconnect_supported_) {
+  if (event_handler_ && reconnect_supported_) {
     // FIXME: Currently the VPN app receives this message at the same time
     // as the resume message, even if shill adds a delay to hold off the
     // suspend sequence.
@@ -602,11 +597,10 @@ void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {
 }
 
 void ThirdPartyVpnDriver::OnAfterResume() {
-  if (service_callback_ && reconnect_supported_) {
+  if (event_handler_ && reconnect_supported_) {
     // Transition back to Configuring state so that the app can perform
     // DNS lookups and reconnect.
-    service_callback_.Run(VPNService::kEventDriverReconnecting,
-                          Service::kFailureNone, Service::kErrorDetailsNone);
+    event_handler_->OnDriverReconnecting();
     StartConnectTimeout(kConnectTimeoutSeconds);
 
     adaptor_interface_->EmitPlatformMessage(
