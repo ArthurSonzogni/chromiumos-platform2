@@ -81,6 +81,9 @@ constexpr uint32_t kPluginBaseAddress = 0x64735c80;  // 100.115.92.128
 // Mac address to assign to plugin VMs.
 constexpr uint8_t kPluginVmMacAddress[] = {0x42, 0x02, 0x1f, 0xf4, 0x2d, 0xb0};
 
+// Path to the ARCVM fstab file.
+constexpr char kDefaultArcVmFstab[] = "/run/arcvm/host_generated/fstab";
+
 // Converts an IPv4 address in network byte order into a string.
 void IPv4AddressToString(uint32_t addr, string* address) {
   CHECK(address);
@@ -1154,7 +1157,7 @@ int StartArcVm(dbus::ObjectProxy* proxy,
   }
 
   if (fstab.empty()) {
-    fstab = base::StringPrintf("%s/fstab", arcvm_prefix);
+    fstab = kDefaultArcVmFstab;
     if (base::PathExists(base::FilePath(fstab))) {
       LOG(INFO) << "using default fstab " << fstab;
     } else {
