@@ -94,6 +94,10 @@ class ApnList {
 
   void AddApn(
       const std::unique_ptr<MobileOperatorInfo::MobileAPN>& mobile_apn) {
+    // Skip unnamed APN
+    if (mobile_apn->apn.empty())
+      return;
+
     ApnIndexKey index = GetKey(mobile_apn);
     if (apn_index_[index] == nullptr) {
       apn_dict_list_.emplace_back();

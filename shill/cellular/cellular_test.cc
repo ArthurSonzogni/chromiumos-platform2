@@ -2357,6 +2357,31 @@ TEST_P(CellularTest, DontMergeProfileAndOperatorApn) {
   CHECK_EQ(kUsernameFromOperator, apn_list_prop[1][kApnUsernameProperty]);
 }
 
+TEST_P(CellularTest, StripEmptyProfileApn) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
+    return;
+  }
+
+  constexpr char kApn[] = "normal.apn";
+  constexpr char kApnName[] = "Normal APN";
+  brillo::VariantDictionary profile;
+  // Keep profile empty
+  Capability3gppCallOnProfilesChanged({profile});
+
+  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list;
+  auto mobile_apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
+  mobile_apn->apn = kApn;
+  mobile_apn->operator_name_list.push_back({kApnName, ""});
+  apn_list.emplace_back(std::move(mobile_apn));
+  FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
+
+  device_->UpdateHomeProvider(&info);
+  auto apn_list_prop = device_->apn_list();
+  CHECK_EQ(1U, apn_list_prop.size());
+  CHECK_EQ(kApn, apn_list_prop[0][kApnProperty]);
+  CHECK_EQ(kApnName, apn_list_prop[0][kApnNameProperty]);
+}
+
 INSTANTIATE_TEST_SUITE_P(CellularTest,
                          CellularTest,
                          testing::Values(Cellular::kType3gpp,
