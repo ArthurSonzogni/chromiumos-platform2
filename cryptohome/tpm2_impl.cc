@@ -653,17 +653,6 @@ bool Tpm2Impl::Unseal(const brillo::SecureBlob& sealed_value,
   return true;
 }
 
-bool Tpm2Impl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
-                                  const SecureBlob& external_data,
-                                  SecureBlob* certified_public_key,
-                                  SecureBlob* certified_public_key_der,
-                                  SecureBlob* certified_key_blob,
-                                  SecureBlob* certified_key_info,
-                                  SecureBlob* certified_key_proof) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 bool Tpm2Impl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                               uint8_t delegate_family_label,
                               uint8_t delegate_label,
@@ -694,23 +683,6 @@ bool Tpm2Impl::TakeOwnership(int /*max_timeout_tries*/,
     return true;
   }
   return tpm_manager_utility_->TakeOwnership();
-}
-
-bool Tpm2Impl::InitializeSrk(const SecureBlob& owner_password) {
-  // Not necessary, tpm_managerd takes care of all this.
-  LOG(WARNING) << __func__ << ": Not implemented.";
-  return true;
-}
-
-bool Tpm2Impl::ChangeOwnerPassword(const SecureBlob& previous_owner_password,
-                                   const SecureBlob& owner_password) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
-bool Tpm2Impl::TestTpmAuth(const SecureBlob& owner_password) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
 }
 
 bool Tpm2Impl::Sign(const SecureBlob& key_blob,

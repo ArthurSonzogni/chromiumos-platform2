@@ -285,9 +285,6 @@ TEST_F(TpmInitTest, TakeOwnershipDistributedSuccess) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, CreateEndorsementKey()).WillOnce(Return(true));
   EXPECT_CALL(tpm_, TakeOwnership(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, TestTpmAuth(_)).Times(0);
-  EXPECT_CALL(tpm_, InitializeSrk(_)).Times(0);
-  EXPECT_CALL(tpm_, ChangeOwnerPassword(_, _)).Times(0);
   EXPECT_CALL(tpm_, SetOwnerPassword(_)).Times(0);
 
   bool took_ownership = false;

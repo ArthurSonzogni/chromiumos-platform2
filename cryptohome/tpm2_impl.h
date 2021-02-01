@@ -141,13 +141,6 @@ class Tpm2Impl : public Tpm {
                   brillo::SecureBlob* sealed_value) override;
   bool Unseal(const brillo::SecureBlob& sealed_value,
               brillo::SecureBlob* value) override;
-  bool CreateCertifiedKey(const brillo::SecureBlob& identity_key_blob,
-                          const brillo::SecureBlob& external_data,
-                          brillo::SecureBlob* certified_public_key,
-                          brillo::SecureBlob* certified_public_key_der,
-                          brillo::SecureBlob* certified_key_blob,
-                          brillo::SecureBlob* certified_key_info,
-                          brillo::SecureBlob* certified_key_proof) override;
   bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                       uint8_t delegate_family_label,
                       uint8_t delegate_label,
@@ -177,10 +170,6 @@ class Tpm2Impl : public Tpm {
   bool CreateEndorsementKey() override;
   bool TakeOwnership(int max_timeout_tries,
                      const brillo::SecureBlob& owner_password) override;
-  bool InitializeSrk(const brillo::SecureBlob& owner_password) override;
-  bool ChangeOwnerPassword(const brillo::SecureBlob& previous_owner_password,
-                           const brillo::SecureBlob& owner_password) override;
-  bool TestTpmAuth(const brillo::SecureBlob& owner_password) override;
   void SetOwnerPassword(const brillo::SecureBlob& owner_password) override;
   bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
                   const brillo::SecureBlob& prime_factor,

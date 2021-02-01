@@ -131,16 +131,6 @@ class MockTpm : public Tpm {
               (const brillo::SecureBlob&, brillo::SecureBlob*),
               (override));
   MOCK_METHOD(bool,
-              CreateCertifiedKey,
-              (const brillo::SecureBlob&,
-               const brillo::SecureBlob&,
-               brillo::SecureBlob*,
-               brillo::SecureBlob*,
-               brillo::SecureBlob*,
-               brillo::SecureBlob*,
-               brillo::SecureBlob*),
-              (override));
-  MOCK_METHOD(bool,
               CreateDelegate,
               (const std::set<uint32_t>&,
                uint8_t,
@@ -186,12 +176,6 @@ class MockTpm : public Tpm {
               TakeOwnership,
               (int, const brillo::SecureBlob&),
               (override));
-  MOCK_METHOD(bool, InitializeSrk, (const brillo::SecureBlob&), (override));
-  MOCK_METHOD(bool,
-              ChangeOwnerPassword,
-              (const brillo::SecureBlob&, const brillo::SecureBlob&),
-              (override));
-  MOCK_METHOD(bool, TestTpmAuth, (const brillo::SecureBlob&), (override));
   MOCK_METHOD(void, SetOwnerPassword, (const brillo::SecureBlob&), (override));
   MOCK_METHOD(bool,
               WrapRsaKey,

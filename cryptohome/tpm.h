@@ -509,23 +509,6 @@ class Tpm {
   virtual bool Unseal(const brillo::SecureBlob& sealed_value,
                       brillo::SecureBlob* value) = 0;
 
-  // Creates a certified non-migratable signing key.
-  //
-  // Parameters
-  //   identity_key_blob - The AIK key blob, as provided by MakeIdentity.
-  //   certified_public_key - The certified public key in TPM_PUBKEY form.
-  //   certified_public_key_der - The certified public key in DER encoded form.
-  //   certified_key_blob - The certified key in blob form.
-  //   certified_key_info - The key info that was signed (TPM_CERTIFY_INFO).
-  //   certified_key_proof - The signature of the certified key info by the AIK.
-  virtual bool CreateCertifiedKey(const brillo::SecureBlob& identity_key_blob,
-                                  const brillo::SecureBlob& external_data,
-                                  brillo::SecureBlob* certified_public_key,
-                                  brillo::SecureBlob* certified_public_key_der,
-                                  brillo::SecureBlob* certified_key_blob,
-                                  brillo::SecureBlob* certified_key_info,
-                                  brillo::SecureBlob* certified_key_proof) = 0;
-
   // Creates a TPM owner delegate for future use.
   //
   // Parameters
@@ -622,27 +605,6 @@ class Tpm {
   //                       times out, which it may occasionally do
   virtual bool TakeOwnership(int max_timeout_tries,
                              const brillo::SecureBlob& owner_password) = 0;
-
-  // Initializes the SRK by Zero-ing its password and unrestricting it.
-  //
-  // Parameters
-  //   owner_password - The owner password for the TPM
-  virtual bool InitializeSrk(const brillo::SecureBlob& owner_password) = 0;
-
-  // Changes the owner password
-  //
-  // Parameters
-  //   previous_owner_password - The previous owner password for the TPM
-  //   owner_password - The owner password for the TPM
-  virtual bool ChangeOwnerPassword(
-      const brillo::SecureBlob& previous_owner_password,
-      const brillo::SecureBlob& owner_password) = 0;
-
-  // Test the TPM auth by calling Tspi_TPM_GetStatus
-  //
-  // Parameters
-  //   owner_password - The owner password to use when getting the handle
-  virtual bool TestTpmAuth(const brillo::SecureBlob& owner_password) = 0;
 
   // Sets the TPM owner password to be used in subsequent commands
   //

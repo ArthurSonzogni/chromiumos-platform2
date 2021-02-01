@@ -133,15 +133,6 @@ class StubTpm : public Tpm {
               brillo::SecureBlob* value) override {
     return false;
   }
-  bool CreateCertifiedKey(const SecureBlob& identity_key_blob,
-                          const SecureBlob& external_data,
-                          SecureBlob* certified_public_key,
-                          SecureBlob* certified_public_key_der,
-                          SecureBlob* certified_key_blob,
-                          SecureBlob* certified_key_info,
-                          SecureBlob* certified_key_proof) override {
-    return false;
-  }
   bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                       uint8_t delegate_family_label,
                       uint8_t delegate_label,
@@ -187,14 +178,6 @@ class StubTpm : public Tpm {
                      const SecureBlob& owner_password) override {
     return false;
   }
-  bool InitializeSrk(const SecureBlob& owner_password) override {
-    return false;
-  }
-  bool ChangeOwnerPassword(const SecureBlob& previous_owner_password,
-                           const SecureBlob& owner_password) override {
-    return false;
-  }
-  bool TestTpmAuth(const SecureBlob& owner_password) override { return false; }
   void SetOwnerPassword(const SecureBlob& owner_password) override {}
   bool WrapRsaKey(const SecureBlob& public_modulus,
                   const SecureBlob& prime_factor,
