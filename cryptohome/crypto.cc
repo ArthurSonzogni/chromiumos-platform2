@@ -531,7 +531,7 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
   }
 
   AuthInput auth_input = {vault_key, locked_to_single_user};
-  DeprecatedAuthBlockState auth_state = {serialized};
+  AuthBlockState auth_state = {serialized};
   KeyBlobs vkk_data;
   if (!auth_block->Derive(auth_input, auth_state, &vkk_data, error)) {
     return false;

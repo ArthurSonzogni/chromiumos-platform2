@@ -241,7 +241,7 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
-  DeprecatedAuthBlockState auth_state = {
+  AuthBlockState auth_state = {
       base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
 
@@ -286,7 +286,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
-  DeprecatedAuthBlockState auth_state = {
+  AuthBlockState auth_state = {
       base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
   EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
   EXPECT_EQ(CryptoError::CE_LE_INVALID_SECRET, error);
@@ -368,7 +368,7 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   auth_input.user_input = key;
   auth_input.locked_to_single_user = false;
 
-  DeprecatedAuthBlockState auth_state = {
+  AuthBlockState auth_state = {
       base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
   CryptoError error;
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
@@ -458,7 +458,7 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   auth_input.user_input = key;
   auth_input.locked_to_single_user = false;
 
-  DeprecatedAuthBlockState auth_state = {
+  AuthBlockState auth_state = {
       base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
 
   NiceMock<MockTpm> tpm;
@@ -570,7 +570,7 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
   AuthInput auth_input;
   auth_input.user_input = key;
 
-  DeprecatedAuthBlockState auth_state = {
+  AuthBlockState auth_state = {
       base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
   CryptoError error;
   LibScryptCompatAuthBlock auth_block;

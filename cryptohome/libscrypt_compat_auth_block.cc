@@ -64,7 +64,7 @@ bool ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
 
 }  // namespace
 
-base::Optional<DeprecatedAuthBlockState> LibScryptCompatAuthBlock::Create(
+base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob input_key = auth_input.user_input.value();
 
@@ -104,7 +104,7 @@ base::Optional<DeprecatedAuthBlockState> LibScryptCompatAuthBlock::Create(
 }
 
 bool LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
-                                      const DeprecatedAuthBlockState& state,
+                                      const AuthBlockState& state,
                                       KeyBlobs* key_blobs,
                                       CryptoError* error) {
   ReportEvkkEncryptionType(kScryptBackedEncryption);
