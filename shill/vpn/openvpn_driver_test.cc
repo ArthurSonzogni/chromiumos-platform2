@@ -317,15 +317,17 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
   SetService(service_);
+  driver_->interface_name_ = kInterfaceName;
+  driver_->interface_index_ = kInterfaceIndex;
   StartConnectTimeout(0);
-  EXPECT_CALL(*service_, OnDriverConnected());
+  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->Notify("up", config);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
   IPConfig::Properties ip_properties = driver_->GetIPProperties();
   EXPECT_EQ(ip_properties.address, "");
 
   // Tests that existing properties are reused if no new ones provided.
-  EXPECT_CALL(*service_, OnDriverConnected());
+  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->ip_properties_.address = "1.2.3.4";
   driver_->Notify("up", config);
   ip_properties = driver_->GetIPProperties();

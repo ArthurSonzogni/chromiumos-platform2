@@ -84,9 +84,9 @@ void VPNService::OnDisconnect(Error* error, const char* reason) {
   SetState(ConnectState::kStateIdle);
 }
 
-void VPNService::OnDriverConnected() {
-  if (!CreateDevice(driver_->interface_name())) {
-    LOG(ERROR) << "Cannot create VPN device for " << driver_->interface_name();
+void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
+  if (!CreateDevice(if_name, if_index)) {
+    LOG(ERROR) << "Cannot create VPN device for " << if_name;
     SetFailure(Service::kFailureInternal);
     SetErrorDetails(Service::kErrorDetailsNone);
     return;
@@ -113,12 +113,7 @@ void VPNService::OnDriverReconnecting() {
   device_->ResetConnection();
 }
 
-bool VPNService::CreateDevice(const std::string& if_name) {
-  // TODO(b/178766289): Get if_index from drivers.
-  int if_index = manager()->device_info()->GetIndex(if_name);
-  if (if_index < 0) {
-    return false;
-  }
+bool VPNService::CreateDevice(const std::string& if_name, int if_index) {
   // Avoids recreating a VirtualDevice if the network interface is not changed.
   if (device_ != nullptr && device_->link_name() == if_name &&
       device_->interface_index() == if_index) {

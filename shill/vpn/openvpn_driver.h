@@ -238,6 +238,9 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // spawned yet or the process has died.
   int pid_;
 
+  std::string interface_name_;
+  int interface_index_ = -1;
+
   EventHandler* event_handler_ = nullptr;
 
   base::WeakPtrFactory<OpenVPNDriver> weak_factory_{this};

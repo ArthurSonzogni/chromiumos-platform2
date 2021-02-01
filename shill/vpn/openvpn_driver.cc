@@ -204,11 +204,9 @@ void OpenVPNDriver::Cleanup() {
   }
 
   if (!interface_name_.empty()) {
-    int interface_index = manager()->device_info()->GetIndex(interface_name_);
-    if (interface_index != -1) {
-      manager()->device_info()->DeleteInterface(interface_index);
-    }
+    manager()->device_info()->DeleteInterface(interface_index_);
     interface_name_.clear();
+    interface_index_ = -1;
   }
 }
 
@@ -347,7 +345,7 @@ void OpenVPNDriver::Notify(const string& reason,
   ReportConnectionMetrics();
   StopConnectTimeout();
   if (event_handler_) {
-    event_handler_->OnDriverConnected();
+    event_handler_->OnDriverConnected(interface_name_, interface_index_);
   } else {
     LOG(DFATAL) << "Missing service callback";
   }
@@ -616,6 +614,7 @@ void OpenVPNDriver::ConnectAsync(EventHandler* handler) {
 void OpenVPNDriver::OnLinkReady(const std::string& link_name,
                                 int interface_index) {
   interface_name_ = link_name;
+  interface_index_ = interface_index;
   StartConnectTimeout(kConnectTimeoutSeconds);
   rpc_task_.reset(new RpcTask(control_interface(), this));
   if (!SpawnOpenVPN()) {

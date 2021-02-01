@@ -40,10 +40,6 @@ class MockVPNDriver : public VPNDriver {
               OnDefaultPhysicalServiceEvent,
               (DefaultPhysicalServiceEvent),
               (override));
-
-  void set_interface_name(const std::string& ifname) {
-    interface_name_ = ifname;
-  }
 };
 
 }  // namespace shill

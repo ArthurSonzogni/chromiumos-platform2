@@ -602,7 +602,7 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 
   // Make sure that a notification of an intermediate state doesn't cause
   // the driver to fail the connection.
-  EXPECT_CALL(*service_, OnDriverConnected()).Times(0);
+  EXPECT_CALL(*service_, OnDriverConnected(_, _)).Times(0);
   EXPECT_CALL(*service_, OnDriverFailure(_, _)).Times(0);
   EXPECT_TRUE(driver_->event_handler_);
   InvokeNotify(kPPPReasonAuthenticating, config);
@@ -611,11 +611,10 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_TRUE(driver_->event_handler_);
 
   ExpectMetricsReported();
-  EXPECT_CALL(*service_, OnDriverConnected());
+  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   InvokeNotify(kPPPReasonConnect, config);
-  EXPECT_EQ(driver_->interface_name_, kInterfaceName);
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(IsConnectTimeoutStarted());
@@ -627,7 +626,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
   FilePath xauth_credentials_file;
   FakeUpConnect(&psk_file, &xauth_credentials_file);
   DeviceInfo::LinkReadyCallback link_ready_callback;
-  EXPECT_CALL(*service_, OnDriverConnected()).Times(0);
+  EXPECT_CALL(*service_, OnDriverConnected(_, _)).Times(0);
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName)).WillOnce(Return(-1));
   EXPECT_CALL(device_info_, AddVirtualInterfaceReadyCallback(kInterfaceName, _))
       .WillOnce([&link_ready_callback](const std::string&,
@@ -636,7 +635,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
       });
   InvokeNotify(kPPPReasonConnect, config);
 
-  EXPECT_CALL(*service_, OnDriverConnected());
+  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
   std::move(link_ready_callback).Run(kInterfaceName, kInterfaceIndex);
 }
 

@@ -250,6 +250,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   EventHandler* event_handler_ = nullptr;
 
+  std::string interface_name_;
+  int interface_index_ = -1;
+
   base::WeakPtrFactory<ThirdPartyVpnDriver> weak_factory_{this};
 };
 

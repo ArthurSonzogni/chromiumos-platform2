@@ -37,9 +37,7 @@ const VPNDriver::Property ArcVpnDriver::kProperties[] = {
 
 ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(
-          manager, process_manager, kProperties, base::size(kProperties)) {
-  interface_name_ = VPNProvider::kArcBridgeIfName;
-}
+          manager, process_manager, kProperties, base::size(kProperties)) {}
 
 void ArcVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(this, 2) << __func__;
@@ -53,7 +51,15 @@ void ArcVpnDriver::ConnectAsync(EventHandler* handler) {
 }
 
 void ArcVpnDriver::InvokeEventHandler(EventHandler* handler) {
-  handler->OnDriverConnected();
+  std::string if_name = VPNProvider::kArcBridgeIfName;
+  int if_index = manager()->device_info()->GetIndex(if_name);
+  if (if_index == -1) {
+    handler->OnDriverFailure(Service::kFailureInternal,
+                             "Failed to get interface index for arc bridge");
+    return;
+  }
+
+  handler->OnDriverConnected(if_name, if_index);
 }
 
 void ArcVpnDriver::Disconnect() {

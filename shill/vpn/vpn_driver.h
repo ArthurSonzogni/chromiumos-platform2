@@ -52,9 +52,11 @@ class VPNDriver {
   // VPNService.
   class EventHandler {
    public:
-    // Invoked on connection or reconnection done, and GetIPProperties() is
+    // Invoked on connection or reconnection done. The interface name and index
+    // of the VPN interface are passed via parameters. GetIPProperties() is
     // ready now.
-    virtual void OnDriverConnected() = 0;
+    virtual void OnDriverConnected(const std::string& if_name,
+                                   int if_index) = 0;
 
     // When a failure happens, the driver will clean up its internal state. This
     // event is supposed to be triggered only once before the next call of
@@ -73,12 +75,9 @@ class VPNDriver {
   // When this function is called, a VPNDriver is responsible for 1) creating
   // the network interface (either by interacting with DeviceInfo or by letting
   // another program do this), 2) starting and configuring the VPN tunnel, and
-  // 3) invoking functions of |handler| to notify the VPNService of connection
-  // success (or other events). Once the success callback is invoked, the
-  // VPNService will call interface_name() (to create the VirtualDevice) and
-  // GetIPProperties() on the driver, so the driver should make sure that the
-  // interface is already known by shill (DeviceInfo) before invoking the
-  // success callback.
+  // 3) after VPN is connected and the network interface is known by DeviceInfo,
+  // invoking callbacks in |handler| to notify the VPNService of connection
+  // success (or other events).
   virtual void ConnectAsync(EventHandler* handler) = 0;
   virtual void Disconnect() = 0;
   virtual IPConfig::Properties GetIPProperties() const = 0;
@@ -101,8 +100,6 @@ class VPNDriver {
   virtual void OnDefaultPhysicalServiceEvent(DefaultPhysicalServiceEvent event);
 
   mockable std::string GetHost() const;
-
-  std::string interface_name() const { return interface_name_; }
 
   KeyValueStore* args() { return &args_; }
   const KeyValueStore* const_args() const { return &args_; }
@@ -150,8 +147,6 @@ class VPNDriver {
   virtual void OnConnectTimeout();
 
   int connect_timeout_seconds() const { return connect_timeout_seconds_; }
-
-  std::string interface_name_;
 
  private:
   friend class VPNDriverTest;

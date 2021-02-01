@@ -181,7 +181,6 @@ void L2TPIPSecDriver::Cleanup() {
   StopConnectTimeout();
   DeleteTemporaryFiles();
   external_task_.reset();
-  interface_name_.clear();
 }
 
 void L2TPIPSecDriver::OnBeforeSuspend(const ResultCallback& callback) {
@@ -429,7 +428,7 @@ void L2TPIPSecDriver::Notify(const string& reason,
 
   DeleteTemporaryFiles();
 
-  interface_name_ = PPPDevice::GetInterfaceName(dict);
+  std::string interface_name = PPPDevice::GetInterfaceName(dict);
   ip_properties_ = PPPDevice::ParseIPConfiguration(dict);
   metrics()->SendSparseToUMA(Metrics::kMetricPPPMTUValue, ip_properties_.mtu);
 
@@ -450,20 +449,20 @@ void L2TPIPSecDriver::Notify(const string& reason,
 
   // Make sure DeviceInfo is aware of this interface before invoking the
   // connection success callback.
-  int interface_index = manager()->device_info()->GetIndex(interface_name_);
+  int interface_index = manager()->device_info()->GetIndex(interface_name);
   if (interface_index != -1) {
-    OnLinkReady(interface_name_, interface_index);
+    OnLinkReady(interface_name, interface_index);
   } else {
     manager()->device_info()->AddVirtualInterfaceReadyCallback(
-        interface_name_, base::BindOnce(&L2TPIPSecDriver::OnLinkReady,
-                                        weak_ptr_factory_.GetWeakPtr()));
+        interface_name, base::BindOnce(&L2TPIPSecDriver::OnLinkReady,
+                                       weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
 void L2TPIPSecDriver::OnLinkReady(const std::string& link_name,
                                   int interface_index) {
   if (event_handler_) {
-    event_handler_->OnDriverConnected();
+    event_handler_->OnDriverConnected(link_name, interface_index);
   } else {
     LOG(DFATAL) << "Missing service callback";
   }

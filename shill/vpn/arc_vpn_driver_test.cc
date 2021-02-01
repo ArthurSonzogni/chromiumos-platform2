@@ -22,6 +22,7 @@
 
 using testing::_;
 using testing::NiceMock;
+using testing::Return;
 
 namespace shill {
 
@@ -42,7 +43,9 @@ class ArcVpnDriverTest : public testing::Test {
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         store_(),
         driver_(new ArcVpnDriver(&manager_, nullptr)),
-        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))) {}
+        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))) {
+    manager_.set_mock_device_info(&device_info_);
+  }
 
   ~ArcVpnDriverTest() override = default;
 
@@ -83,7 +86,10 @@ class ArcVpnDriverTest : public testing::Test {
 
 TEST_F(ArcVpnDriverTest, ConnectAsync) {
   LoadPropertiesFromStore(true);
-  EXPECT_CALL(*service_, OnDriverConnected()).Times(1);
+  EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(kInterfaceIndex));
+  EXPECT_CALL(*service_,
+              OnDriverConnected(VPNProvider::kArcBridgeIfName, kInterfaceIndex))
+      .Times(1);
   driver_->ConnectAsync(service_.get());
   dispatcher_.task_environment().RunUntilIdle();
 }

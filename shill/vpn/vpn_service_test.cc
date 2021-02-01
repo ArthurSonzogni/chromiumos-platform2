@@ -455,11 +455,6 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
 
 TEST_F(VPNServiceTest, ConnectFlow) {
   Error error;
-
-  driver_->set_interface_name(kInterfaceName);
-  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
-      .WillRepeatedly(Return(kInterfaceIndex));
-
   VPNDriver::EventHandler* driver_event_handler;
 
   // Connection
@@ -471,8 +466,7 @@ TEST_F(VPNServiceTest, ConnectFlow) {
 
   EXPECT_CALL(*driver_, GetIPProperties())
       .WillOnce(Return(IPConfig::Properties()));
-  driver_event_handler->OnDriverConnected();
-  EXPECT_EQ(kInterfaceName, driver_->interface_name());
+  driver_event_handler->OnDriverConnected(kInterfaceName, kInterfaceIndex);
   EXPECT_TRUE(service_->device_);
   EXPECT_EQ(Service::kStateOnline, service_->state());
 

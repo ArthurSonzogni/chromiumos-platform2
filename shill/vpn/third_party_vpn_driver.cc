@@ -419,7 +419,7 @@ void ThirdPartyVpnDriver::SetParameters(
   }
 
   if (event_handler_) {
-    event_handler_->OnDriverConnected();
+    event_handler_->OnDriverConnected(interface_name_, interface_index_);
   } else {
     LOG(ERROR) << "Missing service callback";
   }
@@ -473,11 +473,9 @@ void ThirdPartyVpnDriver::Cleanup() {
   reconnect_supported_ = false;
 
   if (!interface_name_.empty()) {
-    int interface_index = manager()->device_info()->GetIndex(interface_name_);
-    if (interface_index != -1) {
-      manager()->device_info()->DeleteInterface(interface_index);
-    }
+    manager()->device_info()->DeleteInterface(interface_index_);
     interface_name_.clear();
+    interface_index_ = -1;
   }
 }
 
@@ -502,6 +500,7 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
   CHECK(!active_client_);
 
   interface_name_ = link_name;
+  interface_index_ = interface_index;
 
   StartConnectTimeout(kConnectTimeoutSeconds);
   ip_properties_ = IPConfig::Properties();

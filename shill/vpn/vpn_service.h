@@ -67,7 +67,8 @@ class VPNService : public Service,
   // TODO(b/178766289): The tests of child classes of VPNDriver no longer have
   // dependency on VPNService, we can consider removing the "mockable" keyword
   // here.
-  mockable void OnDriverConnected() override;
+  mockable void OnDriverConnected(const std::string& if_name,
+                                  int if_index) override;
   mockable void OnDriverFailure(ConnectFailure failure,
                                 const std::string& error_details) override;
   mockable void OnDriverReconnecting() override;
@@ -95,9 +96,8 @@ class VPNService : public Service,
 
   ConnectionConstRefPtr GetUnderlyingConnection() const;
 
-  // Create a VPN VirtualDevice as device_. Query the index from DeviceInfo
-  // first and return false if the link is not available.
-  bool CreateDevice(const std::string& if_name);
+  // Create a VPN VirtualDevice as device_.
+  bool CreateDevice(const std::string& if_name, int if_index);
   void ConfigureDevice();
   void CleanupDevice();
 
