@@ -134,7 +134,8 @@ int RunAsUser(const std::string& user,
   if (result != 0) {
     std::string error_msg;
     process.GetError(&error_msg);
-    PLOG(ERROR) << "Child process failed" << error_msg;
+    LOG(ERROR) << "Child process exited with status " << result;
+    LOG(ERROR) << "stderr was: " << error_msg;
   }
 
   return result;
