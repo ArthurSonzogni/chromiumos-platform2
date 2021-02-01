@@ -30,10 +30,10 @@ class EventDispatcher {
   virtual void DispatchPendingEvents();
 
   // These are thin wrappers around calls of the same name in
-  // <base/message_loop_proxy.h>
-  void PostTask(const base::Location& location, const base::Closure& task);
+  // <base/task_runner.h>
+  void PostTask(const base::Location& location, base::OnceClosure task);
   virtual void PostDelayedTask(const base::Location& location,
-                               const base::Closure& task,
+                               base::OnceClosure task,
                                int64_t delay_ms);
 
   virtual void QuitDispatchForever();

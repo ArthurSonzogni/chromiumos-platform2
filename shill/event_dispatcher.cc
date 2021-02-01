@@ -4,13 +4,15 @@
 
 #include "shill/event_dispatcher.h"
 
+#include <utility>
+
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
 using base::Callback;
-using base::Closure;
 using base::Location;
+using base::OnceClosure;
 
 namespace shill {
 
@@ -28,15 +30,15 @@ void EventDispatcher::DispatchPendingEvents() {
   base::RunLoop().RunUntilIdle();
 }
 
-void EventDispatcher::PostTask(const Location& location, const Closure& task) {
-  PostDelayedTask(FROM_HERE, task, 0);
+void EventDispatcher::PostTask(const Location& location, OnceClosure task) {
+  PostDelayedTask(FROM_HERE, std::move(task), 0);
 }
 
 void EventDispatcher::PostDelayedTask(const Location& location,
-                                      const Closure& task,
+                                      OnceClosure task,
                                       int64_t delay_ms) {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      location, task, base::TimeDelta::FromMilliseconds(delay_ms));
+      location, std::move(task), base::TimeDelta::FromMilliseconds(delay_ms));
 }
 
 void EventDispatcher::QuitDispatchForever() {
