@@ -281,6 +281,14 @@ off_t CameraBufferManager::GetPlaneOffset(buffer_handle_t buffer,
   return handle->offsets[plane];
 }
 
+uint32_t CameraBufferManager::GetHalPixelFormat(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+  return handle->hal_pixel_format;
+}
+
 CameraBufferManagerImpl::CameraBufferManagerImpl()
     : gbm_device_(internal::CreateGbmDevice()) {}
 
