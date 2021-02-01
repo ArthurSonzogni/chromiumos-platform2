@@ -36,6 +36,19 @@ message SerializedVaultKeyset {
   // A deprecated field was removed.
   optional int64 last_activity_timestamp = 8;
 
+  // Metadata that should be defined in one file
+  // per principal (not per key).
+  // TODO(wad) ^^^
+  // optional string human_readable_name;
+  // required bytes identifier; // Unique to the origin
+  // required string origin;
+  // optional string idp_uri; // authoritative uri for the key
+  // message OptionalMetadata {
+  //   required string name = 1;
+  //   required bytes value = 2;
+  // }
+  // repeated OptionalMetadata metadata;
+
   // This will come from system_api once we're finalized on the API.
   optional KeyData key_data = 9;
 

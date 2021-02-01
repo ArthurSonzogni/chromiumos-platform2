@@ -1439,7 +1439,7 @@ void Service::DoMassRemoveKeys(AccountIdentifier* account_id,
       std::unique_ptr<VaultKeyset> remove_vk(
           keyset_management_->GetVaultKeyset(obfuscated_username, label));
       if (!keyset_management_->ForceRemoveKeyset(obfuscated_username,
-                                                 remove_vk->GetLegacyIndex())) {
+                                                 remove_vk->legacy_index())) {
         LOG(ERROR) << "MassRemoveKeys: failed to remove keyset " << label;
         reply.set_error(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
         SendReply(context, reply);
@@ -2516,15 +2516,9 @@ void Service::DoFullChallengeResponseCheckKeyEx(
     SendReply(context, reply);
     return;
   }
-  if (!vault_keyset->HasSignatureChallengeInfo()) {
-    LOG(ERROR) << "Vault keyset missing signature challenge info.";
-    SendReply(context, reply);
-    return;
-  }
-
   challenge_credentials_helper_->Decrypt(
       account_id, authorization->key().data(),
-      vault_keyset->GetSignatureChallengeInfo(),
+      vault_keyset->serialized().signature_challenge_info(),
       std::move(key_challenge_service),
       base::Bind(&Service::OnFullChallengeResponseCheckKeyExDone,
                  base::Unretained(this), base::Unretained(context)));
@@ -2604,13 +2598,9 @@ void Service::DoChallengeResponseMountEx(
   const bool use_existing_credentials =
       vault_keyset && !mount_args.is_ephemeral;
   if (use_existing_credentials) {
-    if (!vault_keyset->HasSignatureChallengeInfo()) {
-      LOG(ERROR) << "Vault keyset missing signature challenge info.";
-      SendReply(context, reply);
-      return;
-    }
     challenge_credentials_helper_->Decrypt(
-        account_id, key_data, vault_keyset->GetSignatureChallengeInfo(),
+        account_id, key_data,
+        vault_keyset->serialized().signature_challenge_info(),
         std::move(key_challenge_service),
         base::BindOnce(&Service::OnChallengeResponseMountCredentialsObtained,
                        base::Unretained(this),

@@ -16,15 +16,15 @@ FileSystemKeyset::~FileSystemKeyset() = default;
 
 FileSystemKeyset::FileSystemKeyset(
     const cryptohome::VaultKeyset& vault_keyset) {
-  key_.fek = vault_keyset.GetFek();
-  key_.fek_salt = vault_keyset.GetFekSalt();
-  key_.fnek = vault_keyset.GetFnek();
-  key_.fnek_salt = vault_keyset.GetFnekSalt();
+  key_.fek = vault_keyset.fek();
+  key_.fek_salt = vault_keyset.fek_salt();
+  key_.fnek = vault_keyset.fnek();
+  key_.fnek_salt = vault_keyset.fnek_salt();
 
-  key_reference_.fek_sig = vault_keyset.GetFekSig();
-  key_reference_.fnek_sig = vault_keyset.GetFnekSig();
+  key_reference_.fek_sig = vault_keyset.fek_sig();
+  key_reference_.fnek_sig = vault_keyset.fnek_sig();
 
-  chaps_key_ = vault_keyset.GetChapsKey();
+  chaps_key_ = vault_keyset.chaps_key();
 }
 
 const FileSystemKey FileSystemKeyset::Key() const {

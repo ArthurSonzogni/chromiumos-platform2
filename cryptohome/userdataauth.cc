@@ -1537,11 +1537,12 @@ void UserDataAuth::DoChallengeResponseMount(
   // VaultKeyset exists) and the mount is not ephemeral, then we'll use the
   // ChallengeCredentialsHelper (which handles challenge response
   // authentication) to decrypt the VaultKeyset.
-  if (use_existing_credentials && vault_keyset->HasSignatureChallengeInfo()) {
+  if (use_existing_credentials) {
     // Home directory already exist and we are not doing ephemeral mount, so
     // we'll decrypt existing VaultKeyset.
     challenge_credentials_helper_->Decrypt(
-        account_id, key_data, vault_keyset->GetSignatureChallengeInfo(),
+        account_id, key_data,
+        vault_keyset->serialized().signature_challenge_info(),
         std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
@@ -2177,7 +2178,7 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
   }
   challenge_credentials_helper_->Decrypt(
       account_id, authorization.key().data(),
-      vault_keyset->GetSignatureChallengeInfo(),
+      vault_keyset->serialized().signature_challenge_info(),
       std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnFullChallengeResponseCheckKeyDone,
                      base::Unretained(this), std::move(on_done)));
@@ -2308,7 +2309,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MassRemoveKeys(
       std::unique_ptr<VaultKeyset> remove_vk(
           keyset_management_->GetVaultKeyset(obfuscated_username, label));
       if (!keyset_management_->ForceRemoveKeyset(obfuscated_username,
-                                                 remove_vk->GetLegacyIndex())) {
+                                                 remove_vk->legacy_index())) {
         LOG(ERROR) << "MassRemoveKeys: failed to remove keyset " << label;
         return user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
       }
@@ -2382,7 +2383,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
       obfuscated_username, request.key().data().label()));
   *found = (vk != nullptr);
   if (*found) {
-    *data_out = vk->GetKeyData();
+    *data_out = vk->serialized().key_data();
   }
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

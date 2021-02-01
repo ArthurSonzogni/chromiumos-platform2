@@ -67,7 +67,7 @@ MountError UserSession::MountVault(const Credentials& credentials,
     // code report it as FATAL.
     return code == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : code;
   }
-  SetCredentials(credentials, vk->GetLegacyIndex());
+  SetCredentials(credentials, vk->legacy_index());
   UpdateActivityTimestamp(0);
   return code;
 }
