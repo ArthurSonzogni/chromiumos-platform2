@@ -230,8 +230,6 @@ class Tpm2Impl : public Tpm {
 
   void HandleOwnershipTakenEvent() override;
 
-  bool DoesUseTpmManager() override;
-
   bool IsCurrentPCR0ValueValid() override;
   base::Optional<bool> IsDelegateBoundToPcr() override;
   bool DelegateCanResetDACounter() override;

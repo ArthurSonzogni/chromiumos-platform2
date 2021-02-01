@@ -237,7 +237,6 @@ class MockTpm : public Tpm {
               GetDelegate,
               (brillo::Blob*, brillo::Blob*, bool*),
               (override));
-  MOCK_METHOD(bool, DoesUseTpmManager, (), (override));
   MOCK_METHOD(bool, IsCurrentPCR0ValueValid, (), (override));
   MOCK_METHOD2(SetDelegateData, void(const std::string&, bool));
   MOCK_METHOD0(IsDelegateBoundToPcr, base::Optional<bool>());

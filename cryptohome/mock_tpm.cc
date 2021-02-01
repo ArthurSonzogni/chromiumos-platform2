@@ -54,7 +54,6 @@ MockTpm::MockTpm() {
   ON_CALL(*this, GetRsuDeviceId(_)).WillByDefault(Return(true));
   ON_CALL(*this, GetLECredentialBackend()).WillByDefault(Return(nullptr));
   ON_CALL(*this, GetDelegate(_, _, _)).WillByDefault(Return(true));
-  ON_CALL(*this, DoesUseTpmManager()).WillByDefault(Return(true));
   ON_CALL(*this, UnsealWithAuthorization(_, _, _, _, _))
       .WillByDefault(Return(Tpm::kTpmRetryNone));
   ON_CALL(*this, IsCurrentPCR0ValueValid()).WillByDefault(Return(true));

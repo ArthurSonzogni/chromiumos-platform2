@@ -113,10 +113,7 @@ bool TpmInit::IsTpmReady() {
   if (!tpm->IsEnabled() || !tpm->IsOwned() || tpm->IsBeingOwned()) {
     return false;
   }
-  // When |tpm| implementation uses tpm manager, readiness flag in
-  // |TpmPersistentState| is meaningless since the tpm manager also take care of
-  // all the follow-up actions after taking ownership.
-  return tpm->DoesUseTpmManager() || tpm_persistent_state_.IsReady();
+  return true;
 }
 
 bool TpmInit::IsTpmEnabled() {
@@ -264,38 +261,6 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
 
   if (OUT_took_ownership) {
     *OUT_took_ownership = took_ownership;
-  }
-
-  // In monolithic mode, if we can open the TPM with the default password, then
-  // we still need to zero the SRK password and unrestrict it, then change the
-  // owner password.
-  if (!tpm_persistent_state_.IsReady() && !get_tpm()->DoesUseTpmManager() &&
-      get_tpm()->TestTpmAuth(default_owner_password)) {
-    if (!get_tpm()->InitializeSrk(default_owner_password)) {
-      LOG(ERROR) << "Couldn't initialize the SRK";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    SecureBlob owner_password;
-    CreateOwnerPassword(&owner_password);
-
-    SecureBlob sealed_password;
-    if (!get_tpm()->SealToPCR0(owner_password, &sealed_password)) {
-      LOG(ERROR) << "Failed to seal owner password.";
-      return false;
-    }
-    if (!tpm_persistent_state_.SetSealedPassword(sealed_password)) {
-      LOG(ERROR) << "Couldn't store the owner password.";
-      return false;
-    }
-
-    if ((!get_tpm()->ChangeOwnerPassword(default_owner_password,
-                                         owner_password))) {
-      LOG(ERROR) << "Couldn't change the owner password.";
-      return false;
-    }
-    get_tpm()->SetOwnerPassword(owner_password);
   }
 
   // If we fall through here, either (1) we successfully completed the

@@ -273,36 +273,6 @@ TEST_F(TpmInitTest, AlreadyOwnedSuccess) {
   ASSERT_FALSE(took_ownership);
 }
 
-TEST_F(TpmInitTest, TakeOwnershipMonolithicSuccess) {
-  // Setup TPM.
-  EXPECT_CALL(tpm_, SetIsOwned(false)).Times(1);
-  EXPECT_CALL(tpm_, SetIsEnabled(true)).Times(1);
-  EXPECT_TRUE(tpm_init_.SetupTpm(false));
-  EXPECT_TRUE(IsTpmInitialized());
-  EXPECT_FALSE(IsTpmOwned());
-  EXPECT_FALSE(FileExists(kTpmOwnedFile));
-  ::testing::Mock::VerifyAndClearExpectations(&tpm_);
-
-  // Take Ownership.
-  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(false));
-  EXPECT_CALL(tpm_, IsEndorsementKeyAvailable())
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, CreateEndorsementKey()).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, TakeOwnership(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, TestTpmAuth(_)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, InitializeSrk(_)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, ChangeOwnerPassword(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, SetOwnerPassword(_)).Times(1);
-
-  bool took_ownership = false;
-  EXPECT_TRUE(tpm_init_.TakeOwnership(&took_ownership));
-  EXPECT_TRUE(took_ownership);
-  EXPECT_TRUE(IsTpmOwned());
-  EXPECT_FALSE(IsTpmBeingOwned());
-  EXPECT_TRUE(FileExists(kTpmOwnedFile));
-}
-
 TEST_F(TpmInitTest, TakeOwnershipDistributedSuccess) {
   // Set initial TPM states.
   SetIsTpmOwned(false);
@@ -310,7 +280,6 @@ TEST_F(TpmInitTest, TakeOwnershipDistributedSuccess) {
   SetIsTpmBeingOwned(false);
 
   // Take Ownership.
-  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(true));
   EXPECT_CALL(tpm_, IsEndorsementKeyAvailable())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -463,12 +432,7 @@ TEST_F(TpmInitTest, IsTpmReadyWithOwnedFile) {
 
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
-  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(false));
   EXPECT_TRUE(tpm_init_.IsTpmReady());
-  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(true));
-  EXPECT_TRUE(tpm_init_.IsTpmReady());
-
-  EXPECT_CALL(tpm_, DoesUseTpmManager()).Times(0);
 
   SetIsTpmOwned(false);
   EXPECT_FALSE(tpm_init_.IsTpmReady());
@@ -483,10 +447,6 @@ TEST_F(TpmInitTest, IsTpmReadyNoOwnedFile) {
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
 
-  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(false));
-  EXPECT_FALSE(tpm_init_.IsTpmReady());
-
-  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(true));
   EXPECT_TRUE(tpm_init_.IsTpmReady());
 }
 

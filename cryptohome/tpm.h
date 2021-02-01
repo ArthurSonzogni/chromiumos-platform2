@@ -780,11 +780,6 @@ class Tpm {
                            brillo::Blob* secret,
                            bool* has_reset_lock_permissions) = 0;
 
-  // Returns |true| if any function is implemented utiltizing the
-  // |tpm_manager::LocalData| coming from |tpm_managerd|, and optionally nvram
-  // related functions could also use |tpm_managerd|.
-  virtual bool DoesUseTpmManager() = 0;
-
   // Returns if current PCR0 value is valid, i.e., hasn't been extended multiple
   // times.
   //

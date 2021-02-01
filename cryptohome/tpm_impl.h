@@ -185,7 +185,6 @@ class TpmImpl : public Tpm {
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
   void HandleOwnershipTakenEvent() override;
-  bool DoesUseTpmManager() override;
   bool IsCurrentPCR0ValueValid() override;
   base::Optional<bool> IsDelegateBoundToPcr() override;
   bool DelegateCanResetDACounter() override;

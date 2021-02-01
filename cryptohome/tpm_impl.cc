@@ -3138,12 +3138,6 @@ bool TpmImpl::GetDelegate(brillo::Blob* blob,
   return !blob->empty() && !secret->empty();
 }
 
-// TODO(chingkang): DoesUseTpmManager() returns true everywhere now, maybe we
-//                  should remove it.
-bool TpmImpl::DoesUseTpmManager() {
-  return true;
-}
-
 bool TpmImpl::IsCurrentPCR0ValueValid() {
   Blob pcr_value;
   if (!ReadPCR(0, &pcr_value)) {

@@ -3798,54 +3798,14 @@ void Service::EmitLowDiskSpaceSignal(uint64_t value) {
 }
 
 void Service::ResetDictionaryAttackMitigation() {
-  if (!tpm_init_ || !tpm_init_->IsTpmReady()) {
+  if (!tpm_ || !tpm_init_ || !tpm_init_->IsTpmReady()) {
     return;
   }
-
-  // If tpm_manager exists, the DA reset and UMA reporting should happen there.
-  if (tpm_ && tpm_->DoesUseTpmManager()) {
-    // tpm_manager doesn't take delegate as input.
-    brillo::Blob unused_blob;
-    if (!tpm_->ResetDictionaryAttackMitigation(unused_blob, unused_blob)) {
-      LOG(WARNING) << "Failed to reset DA.";
-    }
-    return;
+  // tpm_manager doesn't take delegate as input.
+  brillo::Blob unused_blob;
+  if (!tpm_->ResetDictionaryAttackMitigation(unused_blob, unused_blob)) {
+    LOG(WARNING) << "Failed to reset DA.";
   }
-
-  int counter = 0;
-  int threshold;
-  int seconds_remaining;
-  bool lockout;
-  if (!tpm_->GetDictionaryAttackInfo(&counter, &threshold, &lockout,
-                                     &seconds_remaining)) {
-    ReportDictionaryAttackResetStatus(kCounterQueryFailed);
-    return;
-  }
-  ReportDictionaryAttackCounter(counter);
-  if (counter == 0) {
-    ReportDictionaryAttackResetStatus(kResetNotNecessary);
-    return;
-  }
-  brillo::Blob delegate_blob, delegate_secret;
-  bool has_reset_lock_permissions = false;
-  if (!AttestationGetDelegateCredentials(&delegate_blob, &delegate_secret,
-                                         &has_reset_lock_permissions)) {
-    ReportDictionaryAttackResetStatus(kDelegateNotAvailable);
-    return;
-  }
-  if (!has_reset_lock_permissions) {
-    ReportDictionaryAttackResetStatus(kDelegateNotAllowed);
-    return;
-  }
-  if (!tpm_->ResetDictionaryAttackMitigation(delegate_blob, delegate_secret)) {
-    if (!tpm_->IsCurrentPCR0ValueValid()) {
-      ReportDictionaryAttackResetStatus(kInvalidPcr0State);
-    } else {
-      ReportDictionaryAttackResetStatus(kResetAttemptFailed);
-    }
-    return;
-  }
-  ReportDictionaryAttackResetStatus(kResetAttemptSucceeded);
 }
 
 void Service::DetectEnterpriseOwnership() {
