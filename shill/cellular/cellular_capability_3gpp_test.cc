@@ -756,8 +756,6 @@ TEST_F(CellularCapability3gppMainTest, DisconnectNoProxy) {
 }
 
 TEST_F(CellularCapability3gppMainTest, SimLockStatusChanged) {
-  InitProxies();
-
   // Set up mock SIM properties
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
@@ -837,8 +835,6 @@ TEST_F(CellularCapability3gppMainTest, SimLockStatusChanged) {
 }
 
 TEST_F(CellularCapability3gppMainTest, PropertiesChanged) {
-  InitProxies();
-
   // Set up mock modem properties
   KeyValueStore modem_properties;
   modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
@@ -1150,8 +1146,6 @@ TEST_F(CellularCapability3gppMainTest, NormalizeMdn) {
 }
 
 TEST_F(CellularCapability3gppMainTest, SimPathChanged) {
-  InitProxies();
-
   // Set up mock modem SIM properties
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
@@ -1218,8 +1212,6 @@ TEST_F(CellularCapability3gppMainTest, SimPathChanged) {
 }
 
 TEST_F(CellularCapability3gppMainTest, SimPropertiesChanged) {
-  InitProxies();
-
   // Set up mock modem properties
   KeyValueStore modem_properties;
   modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
@@ -2050,8 +2042,6 @@ TEST_F(CellularCapability3gppMainTest, OnSimLockPropertiesChanged) {
 }
 
 TEST_F(CellularCapability3gppMainTest, MultiSimProperties) {
-  InitProxies();
-
   const char kImsi1[] = "110100000001";
   const char kEid1[] = "110100000002";
   KeyValueStore sim_properties1;

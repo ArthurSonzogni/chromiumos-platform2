@@ -148,17 +148,6 @@ void ModemProxy::SetCurrentBands(const std::vector<uint32_t>& bands,
       timeout);
 }
 
-void ModemProxy::SetPrimarySimSlot(uint32_t slot,
-                                   const ResultCallback& callback,
-                                   int timeout) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << slot;
-  brillo::ErrorPtr dbus_error;
-  proxy_->SetPrimarySimSlot(slot, &dbus_error, timeout);
-  Error error;
-  CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &error);
-  callback.Run(error);
-}
-
 void ModemProxy::Command(const std::string& cmd,
                          uint32_t user_timeout,
                          Error* error,

@@ -555,7 +555,7 @@ void CellularCapability3gpp::UpdatePendingActivationState() {
 string CellularCapability3gpp::GetMdnForOLP(
     const MobileOperatorInfo* operator_info) const {
   // TODO(benchan): This is ugly. Remove carrier specific code once we move
-  // mobile activation logic to carrier-specific extensions (crbug.com/260073).
+  // mobile activation logic to carrier-specifc extensions (crbug.com/260073).
   const string& mdn = cellular()->mdn();
   if (!operator_info->IsMobileNetworkOperatorKnown()) {
     // Can't make any carrier specific modifications.
@@ -622,7 +622,7 @@ void CellularCapability3gpp::UpdateServiceActivationState() {
 
 void CellularCapability3gpp::OnServiceCreated() {
   // ModemManager might have issued some property updates before the service
-  // object was created to receive the updates, so we explicitly refresh the
+  // object was created to receive the udpates, so we explicitly refresh the
   // properties here.
   GetProperties();
 
@@ -1326,9 +1326,6 @@ bool CellularCapability3gpp::IsValidSimPath(
 }
 
 void CellularCapability3gpp::UpdateSims() {
-  SLOG(this, 2) << __func__ << " Sim path: " << sim_path_.value()
-                << " SimSlots: " << sim_slots_.size();
-
   pending_slot_requests_.clear();
 
   if (sim_slots_.empty()) {
@@ -1348,7 +1345,7 @@ void CellularCapability3gpp::UpdateSims() {
       SLOG(this, 2) << "Invalid slot path: " << slot.value();
       continue;
     }
-    SLOG(this, 2) << "Requesting SIM properties: " << slot.value();
+    SLOG(this, 2) << "Requeting SIM properties: " << slot.value();
     pending_slot_requests_.insert(slot);
     RequestSimProperties(slot);
   }
@@ -1359,7 +1356,7 @@ void CellularCapability3gpp::UpdateSims() {
 }
 
 void CellularCapability3gpp::OnAllSimPropertiesReceived() {
-  SLOG(this, 2) << __func__ << " Primary Sim path=" << sim_path_.value();
+  SLOG(this, 2) << __func__ << " SIM path=" << sim_path_.value();
   if (IsValidSimPath(sim_path_)) {
     sim_proxy_ = control_interface()->CreateMM1SimProxy(
         sim_path_, cellular()->dbus_service());
@@ -1371,22 +1368,9 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
     SetPrimarySimProperties(sim_properties_[sim_path_]);
     cellular()->SetSimPresent(true);
   } else {
-    // Update the current state with empty SimProperties.
+    // TODO(b/169581681): Set the primary SIM slot if valid properties exist.
     SetPrimarySimProperties(SimProperties());
     cellular()->SetSimPresent(false);
-
-    // Set the primary slot to the first valid slot if any.
-    for (size_t idx = 0; idx < sim_slots_.size(); ++idx) {
-      RpcIdentifier s = sim_slots_[idx];
-      if (!IsValidSimPath(s))
-        continue;
-      uint32_t slot = idx + 1;
-      LOG(INFO) << " SetPrimarySimSlot: " << slot;
-      // This will complete immediately, at which point the Modem object will
-      // become invalid. TODO(b/169581681): Ensure this is handled gracefully.
-      modem_proxy_->SetPrimarySimSlot(slot, base::DoNothing(), kTimeoutDefault);
-      break;
-    }
   }
   // TODO(b/169581681): Update Cellular Services for secondary SIMs.
 }
@@ -1795,7 +1779,7 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
 }
 
 void CellularCapability3gpp::RequestSimProperties(RpcIdentifier sim_path) {
-  LOG(INFO) << __func__ << ": " << sim_path.value();
+  SLOG(this, 2) << __func__ << ": " << sim_path.value();
   // Ownership if this proxy will be passed to the success callback so that the
   // proxy is not destroyed before the asynchronous call completes.
   std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy =
@@ -1822,12 +1806,11 @@ void CellularCapability3gpp::OnGetSimProperties(
 
 void CellularCapability3gpp::OnSimPropertiesChanged(
     RpcIdentifier sim_path, const KeyValueStore& properties) {
-  SLOG(this, 2) << __func__ << ": " << sim_path.value();
+  SLOG(this, 2) << __func__;
   SimProperties sim_properties;
   if (properties.Contains<string>(MM_SIM_PROPERTY_SIMIDENTIFIER)) {
     sim_properties.iccid =
         properties.Get<string>(MM_SIM_PROPERTY_SIMIDENTIFIER);
-    LOG(INFO) << "SIM ICCID: " << sim_properties.iccid;
   }
   if (properties.Contains<string>(MM_SIM_PROPERTY_EID)) {
     sim_properties.eid = properties.Get<string>(MM_SIM_PROPERTY_EID);
