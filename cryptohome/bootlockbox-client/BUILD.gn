@@ -45,17 +45,17 @@ pkg_config("bootlockbox_dependent_config") {
 }
 
 shared_library("libbootlockbox-client") {
-  configs += [ ":target_defaults" ]
   sources = [
     "../bootlockbox/boot_lockbox_client.cc",
     "../bootlockbox/boot_lockbox_client.h",
   ]
+  configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":bootlockbox_dependent_config" ]
+  libs = [ "system_api" ]
   deps = [
     ":bootlockbox-proto",
     ":bootlockbox-proxies",
   ]
-  libs = [ "system_api" ]
 }
 
 group("all") {

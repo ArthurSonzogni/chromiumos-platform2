@@ -22,26 +22,26 @@ pkg_config("target_defaults") {
 }
 
 static_library("overalls_library") {
-  configs += [
-    ":target_defaults",
-    "//common-mk:pic",
-  ]
   sources = [
     "overalls/overalls_api.cc",
     "overalls/overalls_singleton.cc",
   ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
 }
 
 static_library("libhwsec_test") {
+  sources = []
+  if (!use.tpm2) {
+    sources += [ "test_utils/tpm1/test_fixture.cc" ]
+  }
   configs += [
     ":target_defaults",
     "//common-mk:nouse_thin_archive",
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
-  sources = []
-  if (!use.tpm2) {
-    sources += [ "test_utils/tpm1/test_fixture.cc" ]
-  }
 }
 
 config("libhwsec_tpm1_config") {
@@ -49,12 +49,12 @@ config("libhwsec_tpm1_config") {
 }
 
 shared_library("libhwsec") {
-  configs += [ ":target_defaults" ]
   sources = [ "crypto_utility.cc" ]
   if (!use.tpm2) {
-    deps = [ ":overalls_library" ]
     all_dependent_configs = [ ":libhwsec_tpm1_config" ]
+    deps = [ ":overalls_library" ]
   }
+  configs += [ ":target_defaults" ]
 }
 
 if (use.test) {
@@ -63,14 +63,14 @@ if (use.test) {
   }
 
   executable("hwsec_testrunner") {
+    sources = [
+      "crypto_utility_test.cc",
+      "task_dispatching_framework_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
       ":test_config",
-    ]
-    sources = [
-      "crypto_utility_test.cc",
-      "task_dispatching_framework_test.cc",
     ]
     deps = [
       ":libhwsec",

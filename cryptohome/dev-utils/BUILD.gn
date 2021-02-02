@@ -19,13 +19,13 @@ pkg_config("cryptohome-tpm-live-test_config") {
 }
 
 executable("cryptohome-tpm-live-test") {
-  configs += [
-    ":cryptohome-tpm-live-test_config",
-    "//cryptohome/libs:target_defaults",
-  ]
   sources = [
     "../cryptohome-tpm-live-test.cc",
     "../tpm_live_test.cc",
+  ]
+  configs += [
+    ":cryptohome-tpm-live-test_config",
+    "//cryptohome/libs:target_defaults",
   ]
   deps = [ "//cryptohome/libs:libcrostpm" ]
 

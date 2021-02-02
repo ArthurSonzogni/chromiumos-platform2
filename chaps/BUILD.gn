@@ -97,7 +97,6 @@ static_library("libchaps_static") {
 }
 
 shared_library("libchaps") {
-  defines = [ "USE_TPM2=${use.tpm2}" ]
   sources = [
     "attributes.cc",
     "chaps.cc",
@@ -109,7 +108,7 @@ shared_library("libchaps") {
     "proto_conversion.cc",
     "token_manager_client.cc",
   ]
-  deps = [ ":chaps-protos" ]
+  defines = [ "USE_TPM2=${use.tpm2}" ]
   libs = [ "system_api" ]
   pkg_deps = [
     "libbrillo",
@@ -121,6 +120,7 @@ shared_library("libchaps") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
+  deps = [ ":chaps-protos" ]
 }
 
 pkg_config("chapsd_config") {
@@ -166,12 +166,10 @@ executable("chapsd") {
     ":chaps-protos",
     ":libchaps_static",
   ]
-
   if (use.tpm2) {
     sources += [ "tpm2_utility_impl.cc" ]
     libs += [ "trunks" ]
   }
-
   if (!use.tpm2) {
     sources += [ "tpm_utility_impl.cc" ]
     libs += [ "tspi" ]
@@ -489,15 +487,12 @@ if (use.test) {
 if (use.fuzzer) {
   executable("chaps_attributes_fuzzer") {
     sources = [ "attributes_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [
       "libchrome-test",
       "libprotobuf-mutator",
       "protobuf",
     ]
-
     deps = [
       ":chaps-protos",
       ":libchaps_static",
@@ -509,18 +504,13 @@ if (use.fuzzer) {
       "object_store_fuzzer.cc",
       "object_store_impl.cc",
     ]
-
     libs = [
       "leveldb",
       "memenv",
     ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     defines = [ "NO_METRICS" ]
-
     pkg_deps = [ "libchrome-test" ]
-
     deps = [ ":libchaps_static" ]
   }
 }

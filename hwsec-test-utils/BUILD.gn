@@ -24,7 +24,6 @@ pkg_config("target_defaults") {
 }
 
 executable("attestation-injected-keys") {
-  configs += [ ":target_defaults" ]
   sources = [
     "attestation_injected_keys/main.cc",
     "attestation_injected_keys/utility.cc",
@@ -38,11 +37,12 @@ executable("attestation-injected-keys") {
     "system_api",
     "protobuf",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("hwsec-test-va") {
-  configs += [ ":target_defaults" ]
   sources = [ "verified_access/main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":common_library",
     ":verified_access_library",
@@ -75,8 +75,8 @@ source_set("verified_access_library") {
 }
 
 executable("fake_pca_agentd") {
-  configs += [ ":target_defaults" ]
   sources = [ "fake_pca_agent/main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":common_library",
     ":fake_pca_agent_library",
@@ -125,12 +125,12 @@ if (use.test) {
   }
 
   executable("hwsec-test-utils_testrunner") {
+    sources = [ "verified_access/verified_access_test.cc" ]
     configs += [
       ":target_defaults",
       ":hwsec-test-utils_testrunner_config",
       "//common-mk:test",
     ]
-    sources = [ "verified_access/verified_access_test.cc" ]
     deps = [
       ":common_library",
       ":fake_pca_agent_library",
