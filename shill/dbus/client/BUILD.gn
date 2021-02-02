@@ -26,11 +26,11 @@ write_deps("libshill-dbus-client_deps") {
 }
 
 shared_library("libshill-dbus-client") {
-  configs += [ ":target_defaults" ]
   sources = [
     "client.cc",
     "fake_client.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":${target_name}_deps" ]
 }
 
@@ -44,12 +44,12 @@ if (use.test) {
   }
 
   executable("libshill-dbus-client_test") {
+    sources = [ "client_test.cc" ]
     configs += [
       "//common-mk:test",
       ":libshill-dbus-client_test_config",
       ":target_defaults",
     ]
-    sources = [ "client_test.cc" ]
     deps = [
       ":libshill-dbus-client",
       "//common-mk/testrunner",

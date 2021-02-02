@@ -183,15 +183,6 @@ pkg_config("libshill_config") {
   ]
 }
 
-pkg_config("libshill_all_dependent_config") {
-  pkg_deps = [
-    "libcares",
-    "libmetrics",
-    "libpasswordprovider",
-    "libpower_manager-client",
-  ]
-}
-
 if (use.cellular) {
   pkg_config("libshill_cellular_config") {
     pkg_deps = [ "ModemManager" ]
@@ -239,11 +230,6 @@ generate_dbus_proxies("generate_supplicant_proxies") {
 }
 
 static_library("libshill") {
-  configs += [
-    ":libshill_config",
-    ":target_defaults",
-  ]
-  all_dependent_configs = [ ":libshill_all_dependent_config" ]
   sources = [
     "active_link_monitor.cc",
     "certificate_file.cc",
@@ -338,12 +324,22 @@ static_library("libshill") {
     "vpn/vpn_provider.cc",
     "vpn/vpn_service.cc",
   ]
+  configs += [
+    ":libshill_config",
+    ":target_defaults",
+  ]
   libs = [
     "bootstat",
     "rootdev",
     "rt",
   ]
 
+  all_dependent_pkg_deps = [
+    "libcares",
+    "libmetrics",
+    "libpasswordprovider",
+    "libpower_manager-client",
+  ]
   deps = [
     ":generate_dhcpcd_proxies",
     ":generate_upstart_proxies",
@@ -352,7 +348,6 @@ static_library("libshill") {
   ]
 
   if (use.cellular) {
-    configs += [ ":libshill_cellular_config" ]
     sources += [
       "cellular/cellular.cc",
       "cellular/cellular_bearer.cc",
@@ -382,6 +377,7 @@ static_library("libshill") {
       "dbus/mm1_sim_proxy.cc",
       "protobuf_lite_streams.cc",
     ]
+    configs += [ ":libshill_cellular_config" ]
     deps += [ ":generate_cellular_proxies" ]
   }
 
@@ -449,11 +445,11 @@ pkg_config("shill_config") {
 }
 
 executable("shill") {
+  sources = [ "shill_main.cc" ]
   configs += [
     ":shill_config",
     ":target_defaults",
   ]
-  sources = [ "shill_main.cc" ]
   deps = [ ":libshill" ]
 }
 
@@ -465,13 +461,13 @@ pkg_config("netfilter-queue-helper_config") {
 }
 
 executable("netfilter-queue-helper") {
-  configs += [
-    ":netfilter-queue-helper_config",
-    ":target_defaults",
-  ]
   sources = [
     "shims/netfilter_queue_helper.cc",
     "shims/netfilter_queue_processor.cc",
+  ]
+  configs += [
+    ":netfilter-queue-helper_config",
+    ":target_defaults",
   ]
 }
 
@@ -480,14 +476,14 @@ pkg_config("openvpn-script_config") {
 }
 
 executable("openvpn-script") {
-  configs += [
-    ":openvpn-script_config",
-    ":target_defaults",
-  ]
   sources = [
     "shims/environment.cc",
     "shims/openvpn_script.cc",
     "shims/task_proxy.cc",
+  ]
+  configs += [
+    ":openvpn-script_config",
+    ":target_defaults",
   ]
 }
 
@@ -497,26 +493,26 @@ if (use.cellular) {
   }
 
   executable("set-apn-helper") {
+    sources = [ "shims/set_apn_helper.c" ]
     configs += [
       ":set-apn-helper_config",
       ":target_defaults",
     ]
-    sources = [ "shims/set_apn_helper.c" ]
   }
 }
 
 if (use.cellular || use.vpn || use.pppoe) {
   shared_library("shill-pppd-plugin") {
-    configs += [
-      ":openvpn-script_config",
-      ":target_defaults",
-    ]
     sources = [
       "shims/c_ppp.cc",
       "shims/environment.cc",
       "shims/ppp.cc",
       "shims/pppd_plugin.c",
       "shims/task_proxy.cc",
+    ]
+    configs += [
+      ":openvpn-script_config",
+      ":target_defaults",
     ]
   }
 }
@@ -526,29 +522,29 @@ if (use.fuzzer) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("cellular_pco_fuzzer") {
+    sources = [ "cellular/cellular_pco_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":fuzzed_data_config",
       ":target_defaults",
     ]
-    sources = [ "cellular/cellular_pco_fuzzer.cc" ]
     deps = [ ":libshill" ]
   }
   executable("verizon_subscription_state_fuzzer") {
+    sources = [ "cellular/verizon_subscription_state_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "cellular/verizon_subscription_state_fuzzer.cc" ]
     deps = [ ":libshill" ]
   }
   executable("wifi_ies_fuzzer") {
+    sources = [ "wifi/wifi_ies_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":shill_config",
     ]
-    sources = [ "wifi/wifi_ies_fuzzer.cc" ]
     deps = [ ":libshill" ]
   }
 }
@@ -567,12 +563,6 @@ if (use.test) {
   }
 
   executable("shill_unittest") {
-    configs += [
-      "//common-mk:test",
-      ":libshill_config",
-      ":shill_unittest_config",
-      ":target_defaults",
-    ]
     sources = [
       "active_link_monitor_test.cc",
       "arp_client_test_helper.cc",
@@ -692,6 +682,12 @@ if (use.test) {
       "virtual_device_test.cc",
       "vpn/mock_vpn_provider.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":libshill_config",
+      ":shill_unittest_config",
+      ":target_defaults",
+    ]
     deps = [ ":libshill" ]
 
     if (use.cellular) {
@@ -805,10 +801,10 @@ if (use.test) {
   }
 
   executable("shill_setup_wifi") {
+    sources = [ "setup_wifi/main.cc" ]
     configs += [
       ":openvpn-script_config",
       ":target_defaults",
     ]
-    sources = [ "setup_wifi/main.cc" ]
   }
 }

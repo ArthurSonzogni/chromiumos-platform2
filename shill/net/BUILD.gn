@@ -70,9 +70,9 @@ net_sources = [
 ]
 
 shared_library("libshill-net") {
+  sources = net_sources
   configs += [ ":target_defaults" ]
   defines = [ "SLOG_MEANS_VLOG=1" ]
-  sources = net_sources
   cflags_cc = [
     # for shill::Logging declarations
     "-Wno-unused-variable",
@@ -86,29 +86,29 @@ if (use.fuzzer) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("arp_client_fuzzer") {
+    sources = [ "arp_client_fuzzer.cc" ]
     configs += [
       "//common-mk:test",
       "//common-mk/common_fuzzer",
       ":fuzzed_data_config",
       ":target_defaults",
     ]
-    sources = [ "arp_client_fuzzer.cc" ]
     deps = [ ":libshill-net" ]
   }
   executable("nl80211_message_fuzzer") {
+    sources = [ "nl80211_message_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "nl80211_message_fuzzer.cc" ]
     deps = [ ":libshill-net" ]
   }
   executable("rtnl_handler_fuzzer") {
+    sources = [ "rtnl_handler_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "rtnl_handler_fuzzer.cc" ]
     deps = [ ":libshill-net" ]
   }
 }
@@ -119,10 +119,6 @@ if (use.test) {
   }
 
   executable("shill_net_test") {
-    configs += [
-      "//common-mk:test",
-      ":shill_net_test_config",
-    ]
     sources = [
       "../mock_log.cc",
       "arp_client_test.cc",
@@ -147,6 +143,10 @@ if (use.test) {
         "nl80211_attribute_test.cc",
       ]
     }
+    configs += [
+      "//common-mk:test",
+      ":shill_net_test_config",
+    ]
     deps = [
       ":libshill-net",
       "//common-mk/testrunner",

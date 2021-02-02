@@ -21,9 +21,9 @@ pkg_config("target_defaults") {
 }
 
 static_library("libshillcli") {
+  sources = [ "command.cc" ]
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":target_defaults" ]
-  sources = [ "command.cc" ]
 }
 
 executable("shillcli") {
