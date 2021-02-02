@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "cros-camera/common_types.h"
 #include "cros-camera/timezone.h"
 
 // TODO(crbug.com/661877): Wrap this with kernel version check once the
@@ -20,20 +21,6 @@
 #endif
 
 namespace cros {
-
-template <typename T>
-struct Rect {
-  T left;
-  T top;
-  T right;
-  T bottom;
-
-  Rect() : left(0), top(0), right(0), bottom(0) {}
-  Rect(T l, T t, T r, T b) : left(l), top(t), right(r), bottom(b) {}
-  bool is_valid() const { return left < right && top < bottom; }
-  T width() const { return right - left; }
-  T height() const { return bottom - top; }
-};
 
 // The definition should match camera_metadata_enum_android_lens_facing_t
 // in camera_metadata_tags.h.
@@ -122,22 +109,6 @@ struct SupportedFormat {
 };
 
 typedef std::vector<SupportedFormat> SupportedFormats;
-
-struct Size {
-  Size(uint32_t w, uint32_t h) : width(w), height(h) {}
-  uint32_t width;
-  uint32_t height;
-  uint32_t area() const { return width * height; }
-  bool operator<(const Size& rhs) const {
-    if (area() == rhs.area()) {
-      return width < rhs.width;
-    }
-    return area() < rhs.area();
-  }
-  bool operator==(const Size& rhs) const {
-    return width == rhs.width && height == rhs.height;
-  }
-};
 
 }  // namespace cros
 
