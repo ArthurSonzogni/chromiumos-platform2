@@ -37,7 +37,7 @@ TEST(SysMetrics, Memory) {
   delete[] allocate;
 
   // Ensure vmpeak stays high.
-  EXPECT_GE(new_peak_size, GetVMPeakBytes());
+  EXPECT_GE(GetVMPeakBytes(), new_peak_size);
 }
 
 }  // namespace ml_benchmark
