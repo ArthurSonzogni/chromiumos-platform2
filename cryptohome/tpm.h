@@ -406,36 +406,6 @@ class Tpm {
   // returned.
   virtual unsigned int GetNvramSize(uint32_t index) = 0;
 
-  // Generates a quote of a given PCR with the given identity key.
-  // - PCR0 is used to differentiate normal mode from developer mode.
-  // - PCR1 is used on some systems to measure the HWID.
-  //
-  // Parameters
-  //   pcr_index - The index of the PCR to be quoted.
-  //   check_pcr_value - If set, checks if current PCR value is valid. If it's
-  //                     invalid, returns false, in which case the caller
-  //                     shouldn't use the output values. This flag is effective
-  //                     only if pcr_index is 0 and if the TPM version is 1.2.
-  //   identity_key_blob - The AIK blob, as provided by MakeIdentity.
-  //   external_data - Data to be added to the quote, this must be at least 160
-  //                   bits in length and only the first 160 bits will be used.
-  //   pcr_value - The value of PCR0 at the time of quote. This is more reliable
-  //               than separately reading the PCR value because it is not
-  //               susceptible to race conditions.
-  //   quoted_data - The exact data that was quoted (i.e. the TPM_QUOTE_INFO
-  //                 structure), this can make verifying the quote easier.
-  //   quote - The generated quote.
-  //
-  // Returns kSuccess on success, kInvalidPcrValue on a bad PCR value if
-  // |check_pcr_value| is set, and kFailure for other errors.
-  virtual QuotePcrResult QuotePCR(uint32_t pcr_index,
-                                  bool check_pcr_value,
-                                  const brillo::SecureBlob& identity_key_blob,
-                                  const brillo::SecureBlob& external_data,
-                                  brillo::Blob* pcr_value,
-                                  brillo::SecureBlob* quoted_data,
-                                  brillo::SecureBlob* quote) = 0;
-
   // Seals a secret to PCR0 with the SRK.
   //
   // Parameters
@@ -671,13 +641,6 @@ class Tpm {
   virtual bool GetDelegate(brillo::Blob* blob,
                            brillo::Blob* secret,
                            bool* has_reset_lock_permissions) = 0;
-
-  // Returns if current PCR0 value is valid, i.e., hasn't been extended multiple
-  // times.
-  //
-  // This function does the check for TPM 1.2 only. For TPM 2.0, it always
-  // returns true;
-  virtual bool IsCurrentPCR0ValueValid() = 0;
 
   // Returns whether the owner auth delegate set by is bound to PCR.
   virtual base::Optional<bool> IsDelegateBoundToPcr() = 0;

@@ -546,17 +546,6 @@ bool Tpm2Impl::CreateEndorsementKey() {
   return false;
 }
 
-Tpm::QuotePcrResult Tpm2Impl::QuotePCR(uint32_t pcr_index,
-                                       bool check_pcr_value,
-                                       const SecureBlob& identity_key_blob,
-                                       const SecureBlob& external_data,
-                                       Blob* pcr_value,
-                                       SecureBlob* quoted_data,
-                                       SecureBlob* quote) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return Tpm::QuotePcrResult::kFailure;
-}
-
 bool Tpm2Impl::SealToPCR0(const brillo::SecureBlob& value,
                           brillo::SecureBlob* sealed_value) {
   TrunksClientContext* trunks;
@@ -1496,10 +1485,6 @@ bool Tpm2Impl::GetDelegate(brillo::Blob* /*blob*/,
                            bool* has_reset_lock_permissions) {
   LOG(WARNING) << __func__ << ": No-ops to |blob| and |secret|.";
   *has_reset_lock_permissions = true;
-  return true;
-}
-
-bool Tpm2Impl::IsCurrentPCR0ValueValid() {
   return true;
 }
 

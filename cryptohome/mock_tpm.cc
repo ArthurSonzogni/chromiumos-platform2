@@ -21,8 +21,6 @@ MockTpm::MockTpm() {
   ON_CALL(*this, DecryptBlob(_, _, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::XorDecrypt));
   ON_CALL(*this, GetPublicKeyHash(_, _)).WillByDefault(Return(kTpmRetryNone));
-  ON_CALL(*this, QuotePCR(_, _, _, _, _, _, _))
-      .WillByDefault(Return(Tpm::QuotePcrResult::kSuccess));
   ON_CALL(*this, SealToPCR0(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, Unseal(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetRandomDataBlob(_, _))
@@ -43,7 +41,6 @@ MockTpm::MockTpm() {
   ON_CALL(*this, GetDelegate(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, UnsealWithAuthorization(_, _, _, _, _))
       .WillByDefault(Return(Tpm::kTpmRetryNone));
-  ON_CALL(*this, IsCurrentPCR0ValueValid()).WillByDefault(Return(true));
 }
 
 MockTpm::~MockTpm() {}

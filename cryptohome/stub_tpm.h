@@ -93,15 +93,6 @@ class StubTpm : public Tpm {
     return false;
   }
   bool WriteLockNvram(uint32_t index) override { return false; }
-  bool QuotePCR(uint32_t pcr_index,
-                bool check_pcr_value,
-                const SecureBlob& identity_key_blob,
-                const SecureBlob& external_data,
-                brillo::Blob* pcr_value,
-                SecureBlob* quoted_data,
-                SecureBlob* quote) override {
-    return false;
-  }
   bool SealToPCR0(const brillo::SecureBlob& value,
                   brillo::SecureBlob* sealed_value) override {
     return false;
@@ -190,7 +181,6 @@ class StubTpm : public Tpm {
     return nullptr;
   }
   void HandleOwnershipTakenEvent() override {}
-  bool IsCurrentPCR0ValueValid() override { return true; }
   void SetDelegateData(const std::string& delegate_blob,
                        bool has_reset_lock_permissions) override {}
   base::Optional<bool> IsDelegateBoundToPcr() override { return true; }

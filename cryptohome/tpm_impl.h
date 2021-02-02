@@ -87,13 +87,6 @@ class TpmImpl : public Tpm {
   bool IsNvramLocked(uint32_t index) override;
   bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
-  QuotePcrResult QuotePCR(uint32_t pcr_index,
-                          bool check_pcr_value,
-                          const brillo::SecureBlob& identity_key_blob,
-                          const brillo::SecureBlob& external_data,
-                          brillo::Blob* pcr_value,
-                          brillo::SecureBlob* quoted_data,
-                          brillo::SecureBlob* quote) override;
   bool SealToPCR0(const brillo::SecureBlob& value,
                   brillo::SecureBlob* sealed_value) override;
   bool Unseal(const brillo::SecureBlob& sealed_value,
@@ -152,7 +145,6 @@ class TpmImpl : public Tpm {
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
   void HandleOwnershipTakenEvent() override;
-  bool IsCurrentPCR0ValueValid() override;
   base::Optional<bool> IsDelegateBoundToPcr() override;
   bool DelegateCanResetDACounter() override;
   // Returns the map with expected PCR values for the user.

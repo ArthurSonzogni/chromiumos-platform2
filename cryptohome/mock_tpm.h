@@ -88,16 +88,6 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, IsNvramLocked, (uint32_t), (override));
   MOCK_METHOD(bool, WriteLockNvram, (uint32_t), (override));
   MOCK_METHOD(unsigned int, GetNvramSize, (uint32_t), (override));
-  MOCK_METHOD(Tpm::QuotePcrResult,
-              QuotePCR,
-              (uint32_t,
-               bool,
-               const brillo::SecureBlob&,
-               const brillo::SecureBlob&,
-               brillo::Blob*,
-               brillo::SecureBlob*,
-               brillo::SecureBlob*),
-              (override));
   MOCK_METHOD(bool,
               SealToPCR0,
               (const brillo::SecureBlob&, brillo::SecureBlob*),
@@ -188,7 +178,6 @@ class MockTpm : public Tpm {
               GetDelegate,
               (brillo::Blob*, brillo::Blob*, bool*),
               (override));
-  MOCK_METHOD(bool, IsCurrentPCR0ValueValid, (), (override));
   MOCK_METHOD2(SetDelegateData, void(const std::string&, bool));
   MOCK_METHOD0(IsDelegateBoundToPcr, base::Optional<bool>());
   MOCK_METHOD0(DelegateCanResetDACounter, bool());
