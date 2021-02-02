@@ -565,19 +565,6 @@ bool Tpm2Impl::GetEndorsementCredential(SecureBlob* credential) {
   return false;
 }
 
-bool Tpm2Impl::MakeIdentity(SecureBlob* identity_public_key_der,
-                            SecureBlob* identity_public_key,
-                            SecureBlob* identity_key_blob,
-                            SecureBlob* identity_binding,
-                            SecureBlob* identity_label,
-                            SecureBlob* pca_public_key,
-                            SecureBlob* endorsement_credential,
-                            SecureBlob* platform_credential,
-                            SecureBlob* conformance_credential) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 Tpm::QuotePcrResult Tpm2Impl::QuotePCR(uint32_t pcr_index,
                                        bool check_pcr_value,
                                        const SecureBlob& identity_key_blob,
@@ -658,16 +645,6 @@ bool Tpm2Impl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                               uint8_t delegate_label,
                               Blob* delegate_blob,
                               Blob* delegate_secret) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
-bool Tpm2Impl::ActivateIdentity(const brillo::Blob& delegate_blob,
-                                const brillo::Blob& delegate_secret,
-                                const SecureBlob& identity_key_blob,
-                                const SecureBlob& encrypted_asym_ca,
-                                const SecureBlob& encrypted_sym_ca,
-                                SecureBlob* identity_credential) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }

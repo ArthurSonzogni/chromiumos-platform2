@@ -433,32 +433,6 @@ class Tpm {
   // Returns true on success.
   virtual bool GetEndorsementCredential(brillo::SecureBlob* credential) = 0;
 
-  // Creates an Attestation Identity Key (AIK). This method requires TPM owner
-  // privilege.
-  //
-  // Parameters
-  //   identity_public_key_der - The AIK public key in DER encoded form.
-  //   identity_public_key - The AIK public key in serialized TPM_PUBKEY form.
-  //   identity_key_blob - The AIK key in blob form.
-  //   identity_binding - The EK-AIK binding (i.e. public key signature).
-  //   identity_label - The label used to create the identity binding.
-  //   pca_public_key - The public key of the temporary PCA used to create the
-  //                    identity binding in serialized TPM_PUBKEY form.
-  //   endorsement_credential - The endorsement credential.
-  //   platform_credential - The platform credential.
-  //   conformance_credential - The conformance credential.
-  //
-  // Returns true on success.
-  virtual bool MakeIdentity(brillo::SecureBlob* identity_public_key_der,
-                            brillo::SecureBlob* identity_public_key,
-                            brillo::SecureBlob* identity_key_blob,
-                            brillo::SecureBlob* identity_binding,
-                            brillo::SecureBlob* identity_label,
-                            brillo::SecureBlob* pca_public_key,
-                            brillo::SecureBlob* endorsement_credential,
-                            brillo::SecureBlob* platform_credential,
-                            brillo::SecureBlob* conformance_credential) = 0;
-
   // Generates a quote of a given PCR with the given identity key.
   // - PCR0 is used to differentiate normal mode from developer mode.
   // - PCR1 is used on some systems to measure the HWID.
@@ -530,23 +504,6 @@ class Tpm {
                               uint8_t delegate_label,
                               brillo::Blob* delegate_blob,
                               brillo::Blob* delegate_secret) = 0;
-
-  // Activates an AIK by using the EK to decrypt the AIK credential.
-  //
-  // Parameters
-  //
-  //   delegate_blob - The delegate blob, as provided by CreateDelegate.
-  //   delegate_secret - The secret to be used for delegate authorization.
-  //   identity_key_blob - The AIK key blob, as provided by MakeIdentity.
-  //   encrypted_asym_ca - Encrypted TPM_ASYM_CA_CONTENTS from the CA.
-  //   encrypted_sym_ca - Encrypted TPM_SYM_CA_CONTENTS from the CA.
-  //   identity_credential - The AIK credential created by the CA.
-  virtual bool ActivateIdentity(const brillo::Blob& delegate_blob,
-                                const brillo::Blob& delegate_secret,
-                                const brillo::SecureBlob& identity_key_blob,
-                                const brillo::SecureBlob& encrypted_asym_ca,
-                                const brillo::SecureBlob& encrypted_sym_ca,
-                                brillo::SecureBlob* identity_credential) = 0;
 
   // Signs data using the TPM_SS_RSASSAPKCS1v15_DER scheme.  This method will
   // work with any signing key that has been assigned this scheme.  This

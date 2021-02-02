@@ -94,15 +94,6 @@ class TpmImpl : public Tpm {
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret) override;
   bool GetEndorsementCredential(brillo::SecureBlob* credential) override;
-  bool MakeIdentity(brillo::SecureBlob* identity_public_key_der,
-                    brillo::SecureBlob* identity_public_key,
-                    brillo::SecureBlob* identity_key_blob,
-                    brillo::SecureBlob* identity_binding,
-                    brillo::SecureBlob* identity_label,
-                    brillo::SecureBlob* pca_public_key,
-                    brillo::SecureBlob* endorsement_credential,
-                    brillo::SecureBlob* platform_credential,
-                    brillo::SecureBlob* conformance_credential) override;
   QuotePcrResult QuotePCR(uint32_t pcr_index,
                           bool check_pcr_value,
                           const brillo::SecureBlob& identity_key_blob,
@@ -119,12 +110,6 @@ class TpmImpl : public Tpm {
                       uint8_t delegate_label,
                       brillo::Blob* delegate_blob,
                       brillo::Blob* delegate_secret) override;
-  bool ActivateIdentity(const brillo::Blob& delegate_blob,
-                        const brillo::Blob& delegate_secret,
-                        const brillo::SecureBlob& identity_key_blob,
-                        const brillo::SecureBlob& encrypted_asym_ca,
-                        const brillo::SecureBlob& encrypted_sym_ca,
-                        brillo::SecureBlob* identity_credential) override;
   bool Sign(const brillo::SecureBlob& key_blob,
             const brillo::SecureBlob& input,
             uint32_t bound_pcr_index,
@@ -308,22 +293,6 @@ class TpmImpl : public Tpm {
                             const brillo::Blob& delegate_blob,
                             const brillo::Blob& delegate_secret,
                             TSS_HTPM* tpm_handle);
-
-  // Decrypts and parses an identity request.
-  //
-  // Parameters
-  //   pca_key - The private key of the Privacy CA.
-  //   request - The identity request data.
-  //   identityBinding - The EK-AIK binding (i.e. public key signature).
-  //   endorsementCredential - The endorsement credential.
-  //   platformCredential - The platform credential.
-  //   conformanceCredential - The conformance credential.
-  bool DecryptIdentityRequest(RSA* pca_key,
-                              const brillo::SecureBlob& request,
-                              brillo::SecureBlob* identity_binding,
-                              brillo::SecureBlob* endorsement_credential,
-                              brillo::SecureBlob* platform_credential,
-                              brillo::SecureBlob* conformance_credential);
 
   // Get the endorsement public key based on context and tpm handle previously
   // obtained. Returns true on success.

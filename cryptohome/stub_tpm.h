@@ -105,17 +105,6 @@ class StubTpm : public Tpm {
   bool GetEndorsementCredential(SecureBlob* credential) override {
     return false;
   }
-  bool MakeIdentity(SecureBlob* identity_public_key_der,
-                    SecureBlob* identity_public_key,
-                    SecureBlob* identity_key_blob,
-                    SecureBlob* identity_binding,
-                    SecureBlob* identity_label,
-                    SecureBlob* pca_public_key,
-                    SecureBlob* endorsement_credential,
-                    SecureBlob* platform_credential,
-                    SecureBlob* conformance_credential) override {
-    return false;
-  }
   bool QuotePCR(uint32_t pcr_index,
                 bool check_pcr_value,
                 const SecureBlob& identity_key_blob,
@@ -138,14 +127,6 @@ class StubTpm : public Tpm {
                       uint8_t delegate_label,
                       brillo::Blob* delegate_blob,
                       brillo::Blob* delegate_secret) override {
-    return false;
-  }
-  bool ActivateIdentity(const brillo::Blob& delegate_blob,
-                        const brillo::Blob& delegate_secret,
-                        const SecureBlob& identity_key_blob,
-                        const SecureBlob& encrypted_asym_ca,
-                        const SecureBlob& encrypted_sym_ca,
-                        SecureBlob* identity_credential) override {
     return false;
   }
   bool Sign(const SecureBlob& key_blob,
