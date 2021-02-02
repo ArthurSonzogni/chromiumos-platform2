@@ -45,12 +45,11 @@ pkg_config("libcrash_config") {
 }
 
 static_library("libcrash") {
-  all_dependent_configs = [ ":libcrash_config" ]
   sources = [
     "paths.cc",
     "util.cc",
   ]
-
+  all_dependent_configs = [ ":libcrash_config" ]
   defines = [ "USE_DIRENCRYPTION=${use.direncryption}" ]
 
   if (use.direncryption) {
@@ -68,7 +67,6 @@ pkg_config("libcrash_reporter_config") {
 }
 
 static_library("libcrash_reporter") {
-  all_dependent_configs = [ ":libcrash_reporter_config" ]
   sources = [
     "bert_collector.cc",
     "chrome_collector.cc",
@@ -90,6 +88,7 @@ static_library("libcrash_reporter") {
     "vm_collector.cc",
     "vm_support.cc",
   ]
+  all_dependent_configs = [ ":libcrash_reporter_config" ]
   defines = [
     "USE_DIRENCRYPTION=${use.direncryption}",
     "USE_KVM_GUEST=${use.kvm_guest}",
@@ -124,8 +123,8 @@ pkg_config("crash_reporter_config") {
 }
 
 executable("crash_reporter") {
-  configs += [ ":crash_reporter_config" ]
   sources = [ "crash_reporter.cc" ]
+  configs += [ ":crash_reporter_config" ]
   defines = [
     "USE_CHEETS=${use.cheets}",
     "USE_KVM_GUEST=${use.kvm_guest}",
@@ -159,11 +158,11 @@ proto_library("crash_sender_proto") {
 }
 
 static_library("libcrash_sender") {
-  all_dependent_configs = [ ":libcrash_sender_config" ]
   sources = [
     "crash_sender_base.cc",
     "crash_sender_util.cc",
   ]
+  all_dependent_configs = [ ":libcrash_sender_config" ]
   defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
   deps = [ ":crash_sender_proto" ]
 }
@@ -186,8 +185,8 @@ pkg_config("crash_serializer_config") {
 }
 
 static_library("libcrash_serializer") {
-  all_dependent_configs = [ ":crash_serializer_config" ]
   sources = [ "crash_serializer.cc" ]
+  all_dependent_configs = [ ":crash_serializer_config" ]
   deps = [
     ":crash_serializer_proto",
     ":libcrash",
@@ -229,7 +228,6 @@ pkg_config("anomaly_detector_config") {
 }
 
 executable("anomaly_detector") {
-  configs += [ ":anomaly_detector_config" ]
   sources = [
     "anomaly_detector.cc",
     "anomaly_detector_log_reader.cc",
@@ -238,11 +236,12 @@ executable("anomaly_detector") {
     "anomaly_detector_text_file_reader.cc",
     "crash_reporter_parser.cc",
   ]
-  deps = [ ":libcrash" ]
+  configs += [ ":anomaly_detector_config" ]
   libs = [
     "system_api-metrics_event-protos",
     "system_api-anomaly_detector-protos",
   ]
+  deps = [ ":libcrash" ]
 }
 
 if (use.cheets) {
@@ -251,7 +250,6 @@ if (use.cheets) {
   }
 
   executable("core_collector") {
-    configs += [ ":core_collector_config" ]
     sources = [
       "core-collector/core_collector.cc",
       "core-collector/coredump_writer.cc",
@@ -277,6 +275,7 @@ if (use.cheets) {
       # and that doesn't work with PIE linking
       configs -= [ "//common-mk:pie" ]
     }
+    configs += [ ":core_collector_config" ]
   }
 }
 
@@ -298,6 +297,7 @@ if (use.test || use.fuzzer) {
   }
 
   static_library("libcrash_test_util") {
+    sources = [ "test_util.cc" ]
     all_dependent_configs = [
       ":crash_reporter_test_config",
       ":libcrash_config",
@@ -306,7 +306,6 @@ if (use.test || use.fuzzer) {
       "//common-mk:test",
       ":libcrash_reporter_config",
     ]
-    sources = [ "test_util.cc" ]
   }
 }
 
@@ -320,26 +319,22 @@ if (use.test) {
   }
 
   executable("lock_file_tester") {
+    sources = [ "lock_file_tester.cc" ]
     configs += [
       "//common-mk:test",
       ":test_helper_config",
     ]
-    sources = [ "lock_file_tester.cc" ]
   }
 
   executable("hold_lock_file") {
+    sources = [ "hold_lock_file.cc" ]
     configs += [
       "//common-mk:test",
       ":test_helper_config",
     ]
-    sources = [ "hold_lock_file.cc" ]
   }
 
   executable("crash_reporter_test") {
-    configs += [
-      "//common-mk:test",
-      ":crash_reporter_test_config",
-    ]
     sources = [
       "bert_collector_test.cc",
       "chrome_collector_test.cc",
@@ -367,6 +362,10 @@ if (use.test) {
       "user_collector_test.cc",
       "util_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":crash_reporter_test_config",
+    ]
     defines = [
       "USE_KVM_GUEST=${use.kvm_guest}",
       "USE_CHROMELESS_TTY=${use.chromeless_tty}",
@@ -393,11 +392,6 @@ if (use.test) {
   }
 
   executable("anomaly_detector_test") {
-    configs += [
-      "//common-mk:test",
-      ":anomaly_detector_config",
-      ":crash_reporter_test_config",
-    ]
     sources = [
       "anomaly_detector.cc",
       "anomaly_detector_test.cc",
@@ -406,63 +400,69 @@ if (use.test) {
       "crash_reporter_parser_test.cc",
       "test_util.cc",
     ]
-    deps = [
-      ":libcrash",
-      "//common-mk/testrunner:testrunner",
-    ]
-    libs = [ "system_api-anomaly_detector-protos" ]
-  }
-
-  executable("anomaly_detector_text_file_reader_test") {
     configs += [
       "//common-mk:test",
       ":anomaly_detector_config",
       ":crash_reporter_test_config",
     ]
+    libs = [ "system_api-anomaly_detector-protos" ]
+    deps = [
+      ":libcrash",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("anomaly_detector_text_file_reader_test") {
     sources = [
       "anomaly_detector_text_file_reader.cc",
       "anomaly_detector_text_file_reader_test.cc",
       "test_util.cc",
     ]
-    deps = [
-      ":libcrash",
-      "//common-mk/testrunner:testrunner",
-    ]
-    libs = [ "system_api-anomaly_detector-protos" ]
-  }
-
-  executable("anomaly_detector_log_reader_test") {
     configs += [
       "//common-mk:test",
       ":anomaly_detector_config",
       ":crash_reporter_test_config",
     ]
+    libs = [ "system_api-anomaly_detector-protos" ]
+    deps = [
+      ":libcrash",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("anomaly_detector_log_reader_test") {
     sources = [
       "anomaly_detector_log_reader.cc",
       "anomaly_detector_log_reader_test.cc",
       "anomaly_detector_text_file_reader.cc",
       "test_util.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":anomaly_detector_config",
+      ":crash_reporter_test_config",
+    ]
+    libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
       ":libcrash",
       "//common-mk/testrunner:testrunner",
     ]
-    libs = [ "system_api-anomaly_detector-protos" ]
   }
 }
 
 if (use.fuzzer) {
   executable("crash_sender_fuzzer") {
+    sources = [ "crash_sender_fuzzer.cc" ]
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
     deps = [
       ":libcrash",
       ":libcrash_sender",
       ":libcrash_test_util",
     ]
-    sources = [ "crash_sender_fuzzer.cc" ]
   }
 
   executable("chrome_collector_fuzzer") {
+    sources = [ "chrome_collector_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":crash_reporter_test_config",
@@ -472,23 +472,22 @@ if (use.fuzzer) {
       ":libcrash_reporter",
       ":libcrash_test_util",
     ]
-    sources = [ "chrome_collector_fuzzer.cc" ]
   }
 
   executable("anomaly_detector_fuzzer") {
-    configs += [
-      "//common-mk/common_fuzzer:common_fuzzer",
-      ":anomaly_detector_config",
-    ]
-    deps = [
-      ":libcrash",
-      ":libcrash_test_util",
-    ]
     sources = [
       "anomaly_detector.cc",
       "anomaly_detector_fuzzer.cc",
       "crash_reporter_parser.cc",
     ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":anomaly_detector_config",
+    ]
     libs = [ "system_api-anomaly_detector-protos" ]
+    deps = [
+      ":libcrash",
+      ":libcrash_test_util",
+    ]
   }
 }
