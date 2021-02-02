@@ -1114,31 +1114,6 @@ bool TpmImpl::IsNvramDefined(uint32_t index) {
   return false;
 }
 
-bool TpmImpl::IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
-                                       TSS_HTPM tpm_handle,
-                                       uint32_t index) {
-  TSS_RESULT result;
-  UINT32 nv_list_data_length = 0;
-  ScopedTssMemory nv_list_data(context_handle);
-  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle, TSS_TPMCAP_NV_LIST,
-                                                0, NULL, &nv_list_data_length,
-                                                nv_list_data.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
-    return false;
-  }
-
-  // Walk the list and check if the index exists.
-  UINT32* nv_list = reinterpret_cast<UINT32*>(nv_list_data.value());
-  UINT32 nv_list_length = nv_list_data_length / sizeof(UINT32);
-  index = htonl(index);  // TPM data is network byte order.
-  for (UINT32 i = 0; i < nv_list_length; ++i) {
-    // TODO(wad) add a NvramList method.
-    if (index == nv_list[i])
-      return true;
-  }
-  return false;
-}
-
 unsigned int TpmImpl::GetNvramSize(uint32_t index) {
   if (!InitializeTpmManagerUtility()) {
     LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
@@ -1152,32 +1127,6 @@ unsigned int TpmImpl::GetNvramSize(uint32_t index) {
     return 0;
   }
   return size;
-}
-
-unsigned int TpmImpl::GetNvramSizeForContext(TSS_HCONTEXT context_handle,
-                                             TSS_HTPM tpm_handle,
-                                             uint32_t index) {
-  unsigned int count = 0;
-  TSS_RESULT result;
-
-  UINT32 nv_index_data_length = 0;
-  ScopedTssMemory nv_index_data(context_handle);
-  if (TPM_ERROR(result = Tspi_TPM_GetCapability(
-                    tpm_handle, TSS_TPMCAP_NV_INDEX, sizeof(index),
-                    reinterpret_cast<BYTE*>(&index), &nv_index_data_length,
-                    nv_index_data.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
-    return count;
-  }
-  if (nv_index_data_length == 0) {
-    return count;
-  }
-  // TPM_NV_DATA_PUBLIC->dataSize is the last element in the struct.
-  // Since packing the struct still doesn't eliminate inconsistencies between
-  // the API and the hardware, this is the safest way to extract the data.
-  uint32_t* nv_data_public = reinterpret_cast<uint32_t*>(
-      nv_index_data.value() + nv_index_data_length - sizeof(UINT32));
-  return htonl(*nv_data_public);
 }
 
 bool TpmImpl::IsNvramLocked(uint32_t index) {
@@ -1205,75 +1154,6 @@ bool TpmImpl::ReadNvram(uint32_t index, SecureBlob* blob) {
   brillo::SecureBlob tmp(output);
   blob->swap(tmp);
   return result;
-}
-
-bool TpmImpl::ReadNvramForContext(TSS_HCONTEXT context_handle,
-                                  TSS_HTPM tpm_handle,
-                                  TSS_HPOLICY policy_handle,
-                                  uint32_t index,
-                                  SecureBlob* blob) {
-  if (!IsNvramDefinedForContext(context_handle, tpm_handle, index)) {
-    LOG(ERROR) << "Cannot read from non-existent NVRAM space.";
-    return false;
-  }
-
-  // Create an NVRAM store object handle.
-  TSS_RESULT result;
-  ScopedTssNvStore nv_handle(context_handle);
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_NV, 0,
-                                     nv_handle.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
-    return false;
-  }
-  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX, 0, index);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
-    return false;
-  }
-
-  if (policy_handle) {
-    result = Tspi_Policy_AssignToObject(policy_handle, nv_handle);
-    if (TPM_ERROR(result)) {
-      TPM_LOG(ERROR, result) << "Could not set NVRAM object policy.";
-      return false;
-    }
-  }
-
-  UINT32 size = GetNvramSizeForContext(context_handle, tpm_handle, index);
-  if (size == 0) {
-    LOG(ERROR) << "NvramSize is too small.";
-    // TODO(wad) get attrs so we can explore more
-    return false;
-  }
-  blob->resize(size);
-
-  // Read from NVRAM in conservatively small chunks. This is a limitation of the
-  // TPM that is left for the application layer to deal with. The maximum size
-  // that is supported here can vary between vendors / models, so we'll be
-  // conservative. FWIW, the Infineon chips seem to handle up to 1024.
-  const UINT32 kMaxDataSize = 128;
-  UINT32 offset = 0;
-  while (offset < size) {
-    UINT32 chunk_size = size - offset;
-    if (chunk_size > kMaxDataSize)
-      chunk_size = kMaxDataSize;
-    ScopedTssMemory space_data(context_handle);
-    if ((result = Tspi_NV_ReadValue(nv_handle, offset, &chunk_size,
-                                    space_data.ptr()))) {
-      TPM_LOG(ERROR, result) << "Could not read from NVRAM space: " << index;
-      return false;
-    }
-    if (!space_data.value()) {
-      LOG(ERROR) << "No data read from NVRAM space: " << index;
-      return false;
-    }
-    CHECK(offset + chunk_size <= blob->size());
-    unsigned char* buffer = blob->data() + offset;
-    memcpy(buffer, space_data.value(), chunk_size);
-    offset += chunk_size;
-  }
-  return true;
 }
 
 bool TpmImpl::WriteNvram(uint32_t index, const SecureBlob& blob) {

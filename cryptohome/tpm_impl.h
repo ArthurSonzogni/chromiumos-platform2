@@ -234,28 +234,6 @@ class TpmImpl : public Tpm {
   // exists in the TSS.
   bool ConnectContextAsUser(TSS_HCONTEXT* context_handle, TSS_HTPM* tpm_handle);
 
-  // Returns the size of the specified NVRAM space.
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  //   index - NVRAM Space index
-  // Returns -1 if the index, handle, or space is invalid.
-  unsigned int GetNvramSizeForContext(TSS_HCONTEXT context_handle,
-                                      TSS_HTPM tpm_handle,
-                                      uint32_t index);
-
-  // Returns if an Nvram space exists using the given context.
-  bool IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
-                                TSS_HTPM tpm_handle,
-                                uint32_t index);
-
-  // Reads an NVRAM space using the given context.
-  bool ReadNvramForContext(TSS_HCONTEXT context_handle,
-                           TSS_HTPM tpm_handle,
-                           TSS_HPOLICY policy_handle,
-                           uint32_t index,
-                           brillo::SecureBlob* blob);
-
   // Gets a handle to the TPM from the specified context
   //
   // Parameters
