@@ -51,7 +51,7 @@ enum ChromeOSError {
     ImportPathDoesNotExist,
     FailedAdjustVm(String),
     FailedAttachUsb(String),
-    FailedAllocateExtraDisk { path: String, errno: i32 },
+    FailedAllocateExtraDisk { path: String, reason: String },
     FailedCreateContainer(CreateLxdContainerResponse_Status, String),
     FailedCreateContainerSignal(LxdContainerCreatedSignal_Status, String),
     FailedDetachUsb(String),
@@ -103,8 +103,12 @@ impl fmt::Display for ChromeOSError {
             ImportPathDoesNotExist => write!(f, "disk import path does not exist"),
             FailedAdjustVm(reason) => write!(f, "failed to adjust vm: {}", reason),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
-            FailedAllocateExtraDisk { path, errno } => {
-                write!(f, "failed to allocate an extra disk at {}: {}", path, errno)
+            FailedAllocateExtraDisk { path, reason } => {
+                write!(
+                    f,
+                    "failed to allocate an extra disk at {}: {}",
+                    path, reason
+                )
             }
             FailedDetachUsb(reason) => write!(f, "failed to detach usb device from vm: {}", reason),
             FailedDlcInstall(name, reason) => write!(
@@ -2026,9 +2030,9 @@ impl Methods {
 
         // Validate `disk_size`.
         let disk_size =
-            libc::off64_t::try_from(disk_size).map_err(|_| FailedAllocateExtraDisk {
+            libc::off64_t::try_from(disk_size).map_err(|e| FailedAllocateExtraDisk {
                 path: path.to_owned(),
-                errno: libc::EINVAL,
+                reason: format!("failed to get disk size: {}", e),
             })?;
 
         let file = OpenOptions::new()
@@ -2039,13 +2043,13 @@ impl Methods {
 
         // Truncate a disk file.
         // Safe since we pass in a valid fd and disk_size.
-        let ret = unsafe { libc::fallocate64(file.as_raw_fd(), 0, 0, disk_size) };
-        if ret < 0 {
-            let errno = unsafe { *libc::__errno_location() };
+        let ret = unsafe { libc::posix_fallocate64(file.as_raw_fd(), 0, disk_size) };
+        if ret != 0 {
+            let reason = format!("{}", std::io::Error::from_raw_os_error(ret));
             let _ = remove_file(path);
             return Err(FailedAllocateExtraDisk {
                 path: path.to_owned(),
-                errno,
+                reason,
             }
             .into());
         }
