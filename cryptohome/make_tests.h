@@ -85,6 +85,7 @@ class TestUser {
   base::FilePath base_path;
   base::FilePath vault_path;
   base::FilePath vault_mount_path;
+  base::FilePath vault_cache_path;
   base::FilePath ephemeral_mount_path;
   base::FilePath tracked_directories_json_path;
   base::FilePath user_vault_path;

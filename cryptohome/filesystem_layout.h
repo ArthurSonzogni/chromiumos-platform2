@@ -38,6 +38,9 @@ constexpr char kKeyLegacyPrefix[] = "legacy-";
 constexpr int kInitialKeysetIndex = 0;
 constexpr char kTsFile[] = "timestamp";
 
+constexpr char kDmcryptContainerMountType[] = "ext4";
+constexpr char kDmcryptContainerMountOptions[] = "discard,commit=600";
+
 base::FilePath ShadowRoot();
 base::FilePath SaltFile();
 base::FilePath SkelDir();

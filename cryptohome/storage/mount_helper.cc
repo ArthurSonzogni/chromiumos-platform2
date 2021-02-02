@@ -701,6 +701,87 @@ bool MountHelper::CreateTrackedSubdirectories(
   return result;
 }
 
+std::vector<DirectoryACL> MountHelper::GetDmcryptSubdirectories(
+    uid_t uid, gid_t gid, gid_t access_gid) {
+  auto common_subdirs = GetCommonSubdirectories(uid, gid, access_gid);
+  auto cache_subdirs = GetCacheSubdirectories(uid, gid, access_gid);
+  auto gcache_subdirs =
+      GetGCacheSubdirectories(uid, gid, access_gid, /*v1_dirs=*/true);
+
+  // Construct data volume subdirectories.
+  std::vector<DirectoryACL> data_volume_subdirs;
+  data_volume_subdirs.insert(data_volume_subdirs.end(), common_subdirs.begin(),
+                             common_subdirs.end());
+  data_volume_subdirs.insert(data_volume_subdirs.end(), cache_subdirs.begin(),
+                             cache_subdirs.end());
+
+  for (auto& subdir : data_volume_subdirs) {
+    subdir.path = FilePath(kMountDir).Append(subdir.path);
+  }
+
+  // Construct cache volume subdirectories.
+  auto cache_volume_subdirs = cache_subdirs;
+  cache_volume_subdirs.insert(cache_volume_subdirs.end(),
+                              gcache_subdirs.begin(), gcache_subdirs.end());
+  for (auto& subdir : cache_volume_subdirs) {
+    subdir.path = FilePath(kDmcryptCacheDir).Append(subdir.path);
+  }
+
+  auto result = cache_volume_subdirs;
+  result.insert(result.end(), data_volume_subdirs.begin(),
+                data_volume_subdirs.end());
+  return result;
+}
+
+bool MountHelper::CreateDmcryptSubdirectories(
+    const std::string& obfuscated_username) {
+  FilePath user_shadow_dir = ShadowRoot().Append(obfuscated_username);
+  const std::vector<DirectoryACL> dmcrypt_subdirs =
+      GetDmcryptSubdirectories(default_uid_, default_gid_, default_access_gid_);
+
+  // Set up directories.
+  for (const auto& subdir : dmcrypt_subdirs) {
+    FilePath dir = user_shadow_dir.Append(subdir.path);
+    // Ensure that the directory exists.
+    if (!platform_->DirectoryExists(dir)) {
+      // Delete the existing file or symbolic link if any.
+      platform_->DeletePathRecursively(dir);
+      VLOG(1) << "Creating directory " << dir.value();
+      if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
+              dir, subdir.mode, subdir.uid, subdir.gid)) {
+        PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
+                    << dir.value();
+        platform_->DeletePathRecursively(dir);
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool MountHelper::MountCacheSubdirectories(
+    const std::string& obfuscated_username) {
+  FilePath cache_directory = GetDmcryptUserCacheDirectory(obfuscated_username);
+  FilePath data_directory = GetUserMountDirectory(obfuscated_username);
+
+  const FilePath tracked_subdir_paths[] = {
+      FilePath(kUserHomeSuffix).Append(kCacheDir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir)};
+
+  for (const auto& tracked_dir : tracked_subdir_paths) {
+    FilePath src_dir = cache_directory.Append(tracked_dir);
+    FilePath dst_dir = data_directory.Append(tracked_dir);
+
+    if (!BindAndPush(src_dir, dst_dir, true)) {
+      LOG(ERROR) << "Failed to bind mount " << src_dir;
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // The eCryptfs mount is mounted from vault/ --> mount/ except in case of
 // migration where the mount point is a temporary directory.
 bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
@@ -742,6 +823,38 @@ void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
   CreateTrackedSubdirectories(obfuscated_username, MountType::DIR_CRYPTO);
 }
 
+bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
+  const FilePath dmcrypt_data_volume =
+      GetDmcryptDataVolume(obfuscated_username);
+  const FilePath dmcrypt_cache_volume =
+      GetDmcryptCacheVolume(obfuscated_username);
+
+  const FilePath data_mount_point = GetUserMountDirectory(obfuscated_username);
+  const FilePath cache_mount_point =
+      GetDmcryptUserCacheDirectory(obfuscated_username);
+
+  // Mount the data volume at <vault>/mount and the cache volume at
+  // <vault>/cache. The directories are set up by the creation code.
+  if (!MountAndPush(dmcrypt_data_volume, data_mount_point,
+                    kDmcryptContainerMountType,
+                    kDmcryptContainerMountOptions)) {
+    LOG(ERROR) << "Failed to mount dmcrypt data volume";
+    return false;
+  }
+
+  if (!MountAndPush(dmcrypt_cache_volume, cache_mount_point,
+                    kDmcryptContainerMountType,
+                    kDmcryptContainerMountOptions)) {
+    LOG(ERROR) << "Failed to mount dmcrypt cache volume";
+    return false;
+  }
+
+  CreateHomeSubdirectories(data_mount_point);
+  CreateDmcryptSubdirectories(obfuscated_username);
+
+  return true;
+}
+
 bool MountHelper::PerformMount(const Options& mount_opts,
                                const std::string& username,
                                const std::string& fek_signature,
@@ -764,6 +877,13 @@ bool MountHelper::PerformMount(const Options& mount_opts,
   if (mount_opts.type == MountType::DIR_CRYPTO)
     SetUpDircryptoMount(obfuscated_username);
 
+  if (mount_opts.type == MountType::DMCRYPT &&
+      !SetUpDmcryptMount(obfuscated_username)) {
+    LOG(ERROR) << "Dm-crypt mount failed";
+    *error = MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+    return false;
+  }
+
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
   const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
 
@@ -775,6 +895,15 @@ bool MountHelper::PerformMount(const Options& mount_opts,
       !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
     *error = MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
+    return false;
+  }
+
+  // Mount tracked subdirectories from the cache volume.
+  if (mount_opts.type == MountType::DMCRYPT &&
+      !MountCacheSubdirectories(obfuscated_username)) {
+    LOG(ERROR)
+        << "Failed to mount tracked subdirectories from the cache volume";
+    *error = MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
     return false;
   }
 

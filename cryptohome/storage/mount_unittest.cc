@@ -359,6 +359,28 @@ class MountTest
         .WillOnce(Return(true));
   }
 
+  void ExpectCacheBindMounts(const TestUser& user) {
+    // Mounting cache/<dir> to mount/<dir> in /home/.shadow/<hash>
+    EXPECT_CALL(platform_, Bind(user.vault_cache_path.Append("user/Cache"),
+                                user.vault_mount_path.Append("user/Cache"), _,
+                                /*nosymfollow=*/true))
+        .WillOnce(Return(true));
+
+    EXPECT_CALL(platform_, Bind(user.vault_cache_path.Append("user/GCache"),
+                                user.vault_mount_path.Append("user/GCache"), _,
+                                /*nosymfollow=*/true))
+        .WillOnce(Return(true));
+  }
+
+  void ExpectCacheBindUnmounts(const TestUser& user) {
+    EXPECT_CALL(platform_,
+                Unmount(user.vault_mount_path.Append("user/Cache"), _, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_,
+                Unmount(user.vault_mount_path.Append("user/GCache"), _, _))
+        .WillOnce(Return(true));
+  }
+
   void ExpectEphemeralCryptohomeMount(const TestUser& user) {
     EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
         .WillOnce(Return(true));
@@ -706,6 +728,126 @@ TEST_P(MountTest, BindMyFilesDownloadsMoveForgottenFiles) {
                          &platform_);
 
   EXPECT_TRUE(mnt_helper.BindMyFilesDownloads(dest_dir));
+}
+
+TEST_P(MountTest, CreateDmcryptSubdirectories) {
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  TestUser* user = &helper_.users[0];
+  FilePath user_shadow_dir = ShadowRoot().Append(user->obfuscated_username);
+
+  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
+                         fake_platform::kSharedGID, helper_.system_salt,
+                         true /*legacy_mount*/, true /* bind_mount_downloads */,
+                         &platform_);
+
+  // Expect creation of all dm-crypt subdirectories.
+  for (auto dir : MountHelper::GetDmcryptSubdirectories(
+           fake_platform::kChronosUID, fake_platform::kChronosGID,
+           fake_platform::kSharedGID)) {
+    EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                               user_shadow_dir.Append(dir.path), dir.mode,
+                               dir.uid, dir.gid))
+        .WillOnce(Return(true));
+  }
+  ASSERT_TRUE(
+      mnt_helper.CreateDmcryptSubdirectories(user->obfuscated_username));
+}
+
+TEST_P(MountTest, BindTrackedSubdirectoriesFromCache) {
+  // Checks the cache subdirectories are correctly bind mounted for dm-crypt
+  // vaults but not for other vaults.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  TestUser* user = &helper_.users[0];
+
+  ASSERT_TRUE(platform_.CreateDirectory(user->vault_cache_path));
+  ExpectCacheBindMounts(*user);
+  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
+                         fake_platform::kSharedGID, helper_.system_salt,
+                         true /*legacy_mount*/, true /* bind_mount_downloads */,
+                         &platform_);
+
+  ASSERT_TRUE(mnt_helper.MountCacheSubdirectories(user->obfuscated_username));
+
+  ExpectCacheBindUnmounts(*user);
+  mnt_helper.UnmountAll();
+}
+
+TEST_P(MountTest, MountDmcrypt) {
+  // Checks that PerformMount sets up a dm-crypt vault successfully.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  TestUser* user = &helper_.users[0];
+  FilePath user_shadow_dir = ShadowRoot().Append(user->obfuscated_username);
+
+  ASSERT_TRUE(platform_.CreateDirectory(user->vault_cache_path));
+
+  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
+                         fake_platform::kSharedGID, helper_.system_salt,
+                         true /*legacy_mount*/, true /* bind_mount_downloads */,
+                         &platform_);
+
+  MountHelper::Options options;
+  options.type = MountType::DMCRYPT;
+  options.to_migrate_from_ecryptfs = false;
+  MountError error;
+
+  // Expect existing cache and mount subdirectories.
+  EXPECT_CALL(platform_, DirectoryExists(Property(
+                             &FilePath::value,
+                             StartsWith(user->vault_cache_path.value()))))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(Property(
+                             &FilePath::value,
+                             StartsWith(user->vault_mount_path.value()))))
+      .WillRepeatedly(Return(true));
+
+  // Expect bind mounts for the user/ and root/ directories.
+  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                             user->user_vault_mount_path, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                             user->root_vault_mount_path, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(user->user_vault_mount_path,
+                              user->user_vault_mount_path, true, true))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_,
+              Bind(user->user_vault_mount_path, user->user_mount_path, _, true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(user->user_vault_mount_path,
+                              user->legacy_user_mount_path, _, true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              Bind(user->user_vault_mount_path,
+                   MountHelper::GetNewUserPath(user->username), _, true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              Bind(user->root_vault_mount_path, user->root_mount_path, _, true))
+      .WillOnce(Return(true));
+
+  // Expect existing dm-crypt subdirectories.
+  for (auto dir : MountHelper::GetDmcryptSubdirectories(
+           fake_platform::kChronosUID, fake_platform::kChronosGID,
+           fake_platform::kSharedGID)) {
+    EXPECT_CALL(platform_, DirectoryExists(user_shadow_dir.Append(dir.path)))
+        .WillOnce(Return(true));
+  }
+
+  ExpectCacheBindMounts(*user);
+  ExpectDownloadsBindMounts(*user);
+  ExpectDaemonStoreMounts(*user, false /* is_ephemeral */);
+
+  EXPECT_CALL(platform_,
+              Mount(_, user->vault_mount_path, kDmcryptContainerMountType,
+                    kDefaultMountFlags, kDmcryptContainerMountOptions))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              Mount(_, user->vault_cache_path, kDmcryptContainerMountType,
+                    kDefaultMountFlags, kDmcryptContainerMountOptions))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(mnt_helper.PerformMount(options, user->username, "foo", "bar",
+                                      false, &error));
 }
 
 // A fixture for testing chaps directory checks.

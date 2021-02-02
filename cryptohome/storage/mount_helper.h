@@ -122,6 +122,19 @@ class MountHelper : public MountHelperInterface {
   bool CreateTrackedSubdirectories(const std::string& obfuscated_username,
                                    const MountType& type) const;
 
+  // Creates the subdirectories in a user's cryptohome.
+  //
+  // Parameters
+  //   obfuscated_username - The obfuscated form of the username
+  bool CreateDmcryptSubdirectories(const std::string& obfuscated_username);
+
+  // Mounts the tracked subdirectories from a separate cache directory. This
+  // is used by LVM dm-crypt cryptohomes to separate the cache directory.
+  //
+  // Parameters
+  //   obfuscated_username - The obfuscated form of the username
+  bool MountCacheSubdirectories(const std::string& obfuscated_username);
+
   // Sets up the ecryptfs mount.
   bool SetUpEcryptfsMount(const std::string& obfuscated_username,
                           const std::string& fek_signature,
@@ -130,6 +143,9 @@ class MountHelper : public MountHelperInterface {
 
   // Sets up the dircrypto mount.
   void SetUpDircryptoMount(const std::string& obfuscated_username);
+
+  // Sets up the dm-crypt mount.
+  bool SetUpDmcryptMount(const std::string& obfuscated_username);
 
   // Carries out eCryptfs/dircrypto mount(2) operations for a regular
   // cryptohome.
@@ -197,6 +213,11 @@ class MountHelper : public MountHelperInterface {
   static std::vector<DirectoryACL> GetEphemeralSubdirectories(uid_t uid,
                                                               gid_t gid,
                                                               gid_t access_gid);
+
+  // Returns the names of all dm-crypt subdirectories and its proper ACLs.
+  static std::vector<DirectoryACL> GetDmcryptSubdirectories(uid_t uid,
+                                                            gid_t gid,
+                                                            gid_t access_gid);
 
   // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
   //
@@ -368,6 +389,9 @@ class MountHelper : public MountHelperInterface {
 
   FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
   FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
+
+  FRIEND_TEST(MountTest, CreateDmcryptSubdirectories);
+  FRIEND_TEST(MountTest, MountDmcrypt);
 
   FRIEND_TEST(MountTest, RememberMountOrderingTest);
 

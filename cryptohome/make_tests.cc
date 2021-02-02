@@ -157,6 +157,7 @@ void TestUser::FromInfo(const struct TestUserInfo* info) {
   base_path = ShadowRoot().Append(obfuscated_username);
   vault_path = base_path.Append("vault");
   vault_mount_path = base_path.Append("mount");
+  vault_cache_path = base_path.Append("cache");
   ephemeral_mount_path = FilePath(kEphemeralCryptohomeDir)
                              .Append("ephemeral_mount")
                              .Append(obfuscated_username);
