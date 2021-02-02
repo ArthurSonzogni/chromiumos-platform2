@@ -4,6 +4,7 @@
  * found in the LICENSE file.
  */
 
+#include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
 #include "cros-camera/common.h"
@@ -12,9 +13,14 @@
 namespace cros {
 namespace {
 
+bool g_skip_if_no_config = false;
+
 TEST(CameraCharacteristicsTest, ConfigFileFormat) {
   if (!CameraCharacteristics::ConfigFileExists()) {
-    GTEST_SKIP() << "Camera characteristics config file does not exist";
+    if (g_skip_if_no_config) {
+      GTEST_SKIP();
+    }
+    FAIL() << "Camera characteristics file does not exist";
   }
   // This triggers crash when the characteristics file content doesn't follow
   // the format.
@@ -26,5 +32,10 @@ TEST(CameraCharacteristicsTest, ConfigFileFormat) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
+
+  DEFINE_bool(skip_if_no_config, false, "Skip test if there's no config file");
+  brillo::FlagHelper::Init(argc, argv, argv[0]);
+
+  cros::g_skip_if_no_config = FLAGS_skip_if_no_config;
   return RUN_ALL_TESTS();
 }
