@@ -1225,12 +1225,14 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
   // Checks that MountHelper::SetUpEphemeralCryptohome creates
   // MyFiles/Downloads.
   const FilePath base_path("/ephemeral_home/");
-  const FilePath downloads_path = base_path.Append("Downloads");
-  const FilePath myfiles_path = base_path.Append("MyFiles");
+  const FilePath user_home_path = base_path.Append("user");
+  const FilePath downloads_path = user_home_path.Append("Downloads");
+  const FilePath myfiles_path = user_home_path.Append("MyFiles");
   const FilePath myfiles_downloads_path = myfiles_path.Append("Downloads");
-  const FilePath gcache_path = base_path.Append("GCache");
-  const FilePath gcache_v1_path = base_path.Append("GCache").Append("v1");
-  const FilePath gcache_v2_path = base_path.Append("GCache").Append("v2");
+  const FilePath cache_path = user_home_path.Append("Cache");
+  const FilePath gcache_path = user_home_path.Append("GCache");
+  const FilePath gcache_v1_path = user_home_path.Append("GCache").Append("v1");
+  const FilePath gcache_v2_path = user_home_path.Append("GCache").Append("v2");
 
   // Expecting Downloads to not exist and then be created.
   EXPECT_CALL(platform_, DirectoryExists(downloads_path))
@@ -1257,6 +1259,15 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
               SafeCreateDirAndSetOwnershipAndPermissions(
                   myfiles_downloads_path, 0710, fake_platform::kChronosUID,
                   fake_platform::kSharedGID))
+      .WillRepeatedly(Return(true));
+
+  // Expect Cache to be created with the right user and group.
+  EXPECT_CALL(platform_, DirectoryExists(cache_path))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                             cache_path, 0700, fake_platform::kChronosUID,
+                             fake_platform::kChronosGID))
       .WillRepeatedly(Return(true));
 
   // Expect GCache and Gcache/v2 to be created with the right user and group.
@@ -1287,17 +1298,19 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
   // Checks that MountHelper::SetUpEphemeralCryptohome doesn't re-recreate if
   // already exists, just sets the ownership and group access for |base_path|.
   const FilePath base_path("/ephemeral_home/");
-  const FilePath downloads_path = base_path.Append("Downloads");
-  const FilePath myfiles_path = base_path.Append("MyFiles");
+  const FilePath user_home_path = base_path.Append("user");
+  const FilePath downloads_path = user_home_path.Append("Downloads");
+  const FilePath myfiles_path = user_home_path.Append("MyFiles");
   const FilePath myfiles_downloads_path = myfiles_path.Append("Downloads");
+  const FilePath cache_path = user_home_path.Append("Cache");
   const auto gcache_dirs = Property(
-      &FilePath::value, StartsWith(base_path.Append("GCache").value()));
+      &FilePath::value, StartsWith(user_home_path.Append("GCache").value()));
 
   // Expecting Downloads and MyFiles/Downloads to exist thus CreateDirectory
   // isn't called.
-  EXPECT_CALL(platform_,
-              DirectoryExists(AnyOf(base_path, myfiles_path, downloads_path,
-                                    myfiles_downloads_path, gcache_dirs)))
+  EXPECT_CALL(platform_, DirectoryExists(AnyOf(
+                             base_path, myfiles_path, downloads_path,
+                             myfiles_downloads_path, cache_path, gcache_dirs)))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
               SetGroupAccessible(AnyOf(base_path, myfiles_path, downloads_path,

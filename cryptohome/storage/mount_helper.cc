@@ -94,33 +94,33 @@ const char kDefaultHomeDir[] = "/home/chronos/user";
 std::vector<DirectoryACL> MountHelper::GetCommonSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
   return std::vector<DirectoryACL>{
-      {FilePath(kDownloadsDir), kTrackedDirMode | kGroupExecAccess, uid,
-       access_gid},
-      {FilePath(kMyFilesDir), kTrackedDirMode | kGroupExecAccess, uid,
-       access_gid},
-      {FilePath(kMyFilesDir).Append(kDownloadsDir),
+      {FilePath(kUserHomeSuffix).Append(kDownloadsDir),
        kTrackedDirMode | kGroupExecAccess, uid, access_gid},
-      {FilePath(kGCacheDir), kTrackedDirMode | kGroupExecAccess, uid,
-       access_gid},
-      {FilePath(kGCacheDir).Append(kGCacheVersion2Dir),
-       kTrackedDirMode | kGroupExecAccess | kGroupWriteAccess, uid, access_gid},
+      {FilePath(kUserHomeSuffix).Append(kMyFilesDir),
+       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
+      {FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
+       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
   };
 }
 
-std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
+std::vector<DirectoryACL> MountHelper::GetCacheSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
-  std::vector<DirectoryACL> durable_only_subdirs{
-      {FilePath(kRootHomeSuffix), kTrackedDirMode, uid, gid},
-      {FilePath(kUserHomeSuffix), kTrackedDirMode | kGroupExecAccess, uid,
-       access_gid},
+  return std::vector<DirectoryACL>{
+      {FilePath(kUserHomeSuffix).Append(kGCacheDir),
+       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
       {FilePath(kUserHomeSuffix).Append(kCacheDir), kTrackedDirMode, uid, gid},
   };
-  std::vector<DirectoryACL> common_subdirs =
-      GetCommonSubdirectories(uid, gid, access_gid);
-  for (auto& subdir : common_subdirs) {
-    subdir.path = FilePath(kUserHomeSuffix).Append(subdir.path);
-  }
-  std::vector<DirectoryACL> cache_subdirs{
+}
+
+std::vector<DirectoryACL> MountHelper::GetGCacheSubdirectories(uid_t uid,
+                                                               gid_t gid,
+                                                               gid_t access_gid,
+                                                               bool v1_dirs) {
+  DirectoryACL gcache_v2_subdir = {
+      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
+      kTrackedDirMode | kGroupExecAccess | kGroupWriteAccess, uid, access_gid};
+
+  std::vector<DirectoryACL> gcache_v1_subdirs = {
       {FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
        kTrackedDirMode | kGroupExecAccess, uid, access_gid},
       {FilePath(kUserHomeSuffix)
@@ -135,9 +135,35 @@ std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
        kTrackedDirMode, uid, gid},
   };
 
+  if (v1_dirs) {
+    gcache_v1_subdirs.push_back(gcache_v2_subdir);
+    return gcache_v1_subdirs;
+  }
+
+  return {gcache_v2_subdir};
+}
+
+std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
+    uid_t uid, gid_t gid, gid_t access_gid) {
+  std::vector<DirectoryACL> durable_only_subdirs{
+      {FilePath(kRootHomeSuffix), kTrackedDirMode, uid, gid},
+      {FilePath(kUserHomeSuffix), kTrackedDirMode | kGroupExecAccess, uid,
+       access_gid},
+  };
+
+  std::vector<DirectoryACL> common_subdirs =
+      GetCommonSubdirectories(uid, gid, access_gid);
+
+  std::vector<DirectoryACL> cache_subdirs =
+      GetCacheSubdirectories(uid, gid, access_gid);
+
+  std::vector<DirectoryACL> gcache_subdirs =
+      GetGCacheSubdirectories(uid, gid, access_gid, /*v1_dirs=*/true);
+
   auto result = durable_only_subdirs;
   result.insert(result.end(), common_subdirs.begin(), common_subdirs.end());
   result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
+  result.insert(result.end(), gcache_subdirs.begin(), gcache_subdirs.end());
   return result;
 }
 
@@ -348,11 +374,29 @@ void MountHelper::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(SkelDir(), destination);
 }
 
-bool MountHelper::SetUpEphemeralCryptohome(const FilePath& source_path) {
-  CopySkeleton(source_path);
+std::vector<DirectoryACL> MountHelper::GetEphemeralSubdirectories(
+    uid_t uid, gid_t gid, gid_t access_gid) {
+  std::vector<DirectoryACL> common_subdirs =
+      GetCommonSubdirectories(uid, gid, access_gid);
 
-  const auto subdirs =
-      GetCommonSubdirectories(default_uid_, default_gid_, default_access_gid_);
+  std::vector<DirectoryACL> cache_subdirs =
+      GetCacheSubdirectories(uid, gid, access_gid);
+
+  std::vector<DirectoryACL> gcache_subdirs =
+      GetGCacheSubdirectories(uid, gid, access_gid, /*v1_dirs=*/false);
+
+  auto result = common_subdirs;
+  result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
+  result.insert(result.end(), gcache_subdirs.begin(), gcache_subdirs.end());
+  return result;
+}
+
+bool MountHelper::SetUpEphemeralCryptohome(const FilePath& source_path) {
+  FilePath user_home = source_path.Append(kUserHomeSuffix);
+  CopySkeleton(user_home);
+
+  const auto subdirs = GetEphemeralSubdirectories(default_uid_, default_gid_,
+                                                  default_access_gid_);
   for (const auto& subdir : subdirs) {
     FilePath path = FilePath(source_path).Append(subdir.path);
     if (platform_->DirectoryExists(path))
@@ -821,7 +865,7 @@ bool MountHelper::PerformEphemeralMount(const std::string& username) {
   const FilePath root_home =
       GetMountedEphemeralRootHomePath(obfuscated_username);
 
-  if (!SetUpEphemeralCryptohome(user_home)) {
+  if (!SetUpEphemeralCryptohome(mount_point)) {
     return false;
   }
 
