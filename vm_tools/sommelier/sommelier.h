@@ -164,6 +164,7 @@ struct sl_context {
   const char* trace_filename;
   bool trace_system;
   bool use_explicit_fence;
+  bool use_virtgpu_channel;
   // Never freed after allocation due the fact sommelier doesn't have a
   // shutdown function yet.
   WaylandChannel* channel;

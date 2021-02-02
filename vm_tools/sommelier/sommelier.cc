@@ -3103,6 +3103,8 @@ int real_main(int argc, char** argv) {
       ctx.timing = new Timing(sl_arg_value(arg));
     } else if (strstr(arg, "--explicit-fence") == arg) {
       ctx.use_explicit_fence = true;
+    } else if (strstr(arg, "--virtgpu-channel") == arg) {
+      ctx.use_virtgpu_channel = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);
@@ -3323,7 +3325,13 @@ int real_main(int argc, char** argv) {
 
   ctx.host_display = wl_display_create();
   assert(ctx.host_display);
-  ctx.channel = new VirtWaylandChannel();
+
+  if (ctx.use_virtgpu_channel) {
+    ctx.channel = new VirtGpuChannel();
+  } else {
+    ctx.channel = new VirtWaylandChannel();
+  }
+
   event_loop = wl_display_get_event_loop(ctx.host_display);
   if (!sl_context_init_virtwl(&ctx, event_loop, display)) {
     return EXIT_FAILURE;
