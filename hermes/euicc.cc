@@ -33,6 +33,7 @@ Euicc::Euicc(uint8_t physical_slot, EuiccSlotInfo slot_info)
       dbus_adaptor_(context_->adaptor_factory()->CreateEuiccAdaptor(this)),
       weak_factory_(this) {
   dbus_adaptor_->SetPendingProfiles({});
+  dbus_adaptor_->SetPhysicalSlot(physical_slot_);
   UpdateSlotInfo(slot_info_);
 }
 
