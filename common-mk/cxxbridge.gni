@@ -38,6 +38,10 @@ template("cxxbridge_header") {
 
     all_dependent_configs = [ ":${all_dependent_config_name}" ]
 
+    if (defined(invoker.all_dependent_configs)) {
+      all_dependent_configs += invoker.all_dependent_configs
+    }
+
     deps = [ ":${action_name}" ]
     if (defined(invoker.deps)) {
       deps += invoker.deps
