@@ -24,17 +24,17 @@ pkg_config("cups_proxy_common_pkg_deps") {
 }
 
 static_library("cups_proxy_common") {
-  deps = [ ":cups_proxy_mojo_bindings" ]
-  all_dependent_configs = [ ":cups_proxy_common_pkg_deps" ]
   sources = [
     "daemon.cc",
     "mhd_http_request.cc",
     "mhd_util.cc",
     "mojo_handler.cc",
   ]
+  all_dependent_configs = [ ":cups_proxy_common_pkg_deps" ]
+  deps = [ ":cups_proxy_mojo_bindings" ]
 }
 
 executable("cups_proxy") {
-  deps = [ ":cups_proxy_common" ]
   sources = [ "main.cc" ]
+  deps = [ ":cups_proxy_common" ]
 }
