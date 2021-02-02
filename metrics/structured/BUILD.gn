@@ -15,6 +15,16 @@ static_library("structured") {
   ]
 
   public_deps = [ ":structured_events" ]
+  deps = [ ":storage" ]
+}
+
+proto_library("storage") {
+  proto_in_dir = "./proto"
+  proto_out_dir = "include/metrics/structured/proto"
+  sources = [
+    "${proto_in_dir}/storage.proto",
+    "${proto_in_dir}/structured_data.proto",
+  ]
 }
 
 action("gen_structured_events") {
