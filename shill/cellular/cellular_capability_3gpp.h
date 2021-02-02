@@ -59,7 +59,14 @@ class CellularCapability3gpp : public CellularCapability {
   static const char kConnectAllowRoaming[];
   static const char kConnectIpType[];
 
-  using SimProperties = Cellular::SimProperties;
+  // Cached SIM properties for multi-SIM support.
+  struct SimProperties {
+    std::string iccid;
+    std::string eid;
+    std::string operator_id;
+    std::string spn;
+    std::string imsi;
+  };
 
   CellularCapability3gpp(Cellular* cellular, ModemInfo* modem_info);
   CellularCapability3gpp(const CellularCapability3gpp&) = delete;
@@ -298,8 +305,7 @@ class CellularCapability3gpp : public CellularCapability {
   bool IsMdnValid() const;
 
   // 3GPP property change handlers
-  void OnModem3gppPropertiesChanged(const KeyValueStore& properties);
-  void OnProfilesChanged(const Profiles& profiles);
+  virtual void OnModem3gppPropertiesChanged(const KeyValueStore& properties);
   void On3gppRegistrationChanged(MMModem3gppRegistrationState state,
                                  const std::string& operator_code,
                                  const std::string& operator_name);
@@ -309,6 +315,8 @@ class CellularCapability3gpp : public CellularCapability {
   void OnSubscriptionStateChanged(SubscriptionState updated_subscription_state);
   void OnFacilityLocksChanged(uint32_t locks);
   void OnPcoChanged(const PcoList& pco_list);
+  void OnProfilesChanged(const Profiles& profiles);
+
   void OnModemSignalPropertiesChanged(const KeyValueStore& props);
 
   // SIM property change handlers

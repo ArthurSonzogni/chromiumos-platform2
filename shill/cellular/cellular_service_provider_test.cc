@@ -58,10 +58,8 @@ class CellularServiceProviderTest : public testing::Test {
         &modem_info_, kTestDeviceName, kTestDeviceAddress, kTestInterfaceIndex,
         Cellular::kType3gpp, kDBusService, kDBusPath);
     cellular->CreateCapability(&modem_info_);
-    Cellular::SimProperties sim_properties;
-    sim_properties.iccid = iccid;
-    sim_properties.imsi = imsi;
-    cellular->SetSimProperties(sim_properties);
+    cellular->SetImsi(imsi);
+    cellular->SetIccid(iccid);
     return cellular;
   }
 

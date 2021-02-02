@@ -1047,10 +1047,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
 TEST_P(CellularTest, StorageIdentifier) {
   // The default storage identifier should always be cellular_{iccid}
   InitCapability3gppProxies();
-  Cellular::SimProperties sim_properties;
-  sim_properties.iccid = "test_iccid";
-  sim_properties.imsi = "test_imsi";
-  device_->SetSimProperties(sim_properties);
+  device_->SetIccid("test_iccid");
   device_->CreateService();
   EXPECT_EQ("cellular_test_iccid", device_->service()->GetStorageIdentifier());
   device_->DestroyService();

@@ -1379,10 +1379,13 @@ void CellularCapability3gpp::SetPrimarySimProperties(
     const SimProperties& sim_properties) {
   const std::string& iccid = sim_properties.iccid;
   SLOG(this, 2) << __func__ << " ICCID: " << iccid;
-  cellular()->SetSimProperties(sim_properties);
+  cellular()->SetIccid(iccid);
 
   UpdateServiceActivationState();
   UpdatePendingActivationState();
+
+  cellular()->SetEid(sim_properties.eid);
+  cellular()->SetImsi(sim_properties.imsi);
 
   cellular()->home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
   spn_ = sim_properties.spn;
@@ -1738,6 +1741,32 @@ void CellularCapability3gpp::OnPcoChanged(const PcoList& pco_list) {
   }
 }
 
+void CellularCapability3gpp::RequestSimProperties(RpcIdentifier sim_path) {
+  SLOG(this, 2) << __func__ << ": " << sim_path.value();
+  // Ownership if this proxy will be passed to the success callback so that the
+  // proxy is not destroyed before the asynchronous call completes.
+  std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy =
+      control_interface()->CreateDBusPropertiesProxy(
+          sim_path, cellular()->dbus_service());
+  DBusPropertiesProxy* sim_properties_proxy_ptr = sim_properties_proxy.get();
+  sim_properties_proxy_ptr->GetAllAsync(
+      MM_DBUS_INTERFACE_SIM,
+      base::Bind(&CellularCapability3gpp::OnGetSimProperties,
+                 weak_ptr_factory_.GetWeakPtr(), sim_path,
+                 base::Passed(&sim_properties_proxy)),
+      base::Bind([](const Error& error) {
+        LOG(ERROR) << "Error fetching SIM properties: " << error;
+      }));
+}
+
+void CellularCapability3gpp::OnGetSimProperties(
+    RpcIdentifier sim_path,
+    std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
+    const KeyValueStore& properties) {
+  OnSimPropertiesChanged(sim_path, properties);
+  // |sim_properties_proxy| will be safely released here.|
+}
+
 // Chrome OS UI uses signal quality values set by this method to draw
 // network icons. UI code maps |quality| to number of bars as follows:
 // [1-25] 1 bar, [26-50] 2 bars, [51-75] 3 bars and [76-100] 4 bars.
@@ -1776,32 +1805,6 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
       return;
     }
   }
-}
-
-void CellularCapability3gpp::RequestSimProperties(RpcIdentifier sim_path) {
-  SLOG(this, 2) << __func__ << ": " << sim_path.value();
-  // Ownership if this proxy will be passed to the success callback so that the
-  // proxy is not destroyed before the asynchronous call completes.
-  std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy =
-      control_interface()->CreateDBusPropertiesProxy(
-          sim_path, cellular()->dbus_service());
-  DBusPropertiesProxy* sim_properties_proxy_ptr = sim_properties_proxy.get();
-  sim_properties_proxy_ptr->GetAllAsync(
-      MM_DBUS_INTERFACE_SIM,
-      base::Bind(&CellularCapability3gpp::OnGetSimProperties,
-                 weak_ptr_factory_.GetWeakPtr(), sim_path,
-                 base::Passed(&sim_properties_proxy)),
-      base::Bind([](const Error& error) {
-        LOG(ERROR) << "Error fetching SIM properties: " << error;
-      }));
-}
-
-void CellularCapability3gpp::OnGetSimProperties(
-    RpcIdentifier sim_path,
-    std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
-    const KeyValueStore& properties) {
-  OnSimPropertiesChanged(sim_path, properties);
-  // |sim_properties_proxy| will be safely released here.|
 }
 
 void CellularCapability3gpp::OnSimPropertiesChanged(

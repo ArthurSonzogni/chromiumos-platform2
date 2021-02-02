@@ -34,6 +34,7 @@ class MockCellular : public Cellular {
               OnPropertiesChanged,
               (const std::string&, const KeyValueStore&),
               (override));
+  MOCK_METHOD(void, DestroyService, (), (override));
   MOCK_METHOD(void, StartPPP, (const std::string&), (override));
 };
 

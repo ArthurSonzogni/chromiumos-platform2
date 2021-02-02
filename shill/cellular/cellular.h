@@ -90,16 +90,6 @@ class Cellular : public Device,
     kModemStopping,
   };
 
-  // Used in Cellular and CellularCapability3gpp to store and pass properties
-  // associated with a SIM Profile.
-  struct SimProperties {
-    std::string iccid;
-    std::string eid;
-    std::string operator_id;
-    std::string spn;
-    std::string imsi;
-  };
-
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/freedesktop/ModemManager1/Modem/0"). |service| is the modem
   // mananager service name (e.g., /org/freedesktop/ModemManager1).
@@ -151,6 +141,11 @@ class Cellular : public Device,
   MobileOperatorInfo* serving_operator_info() const {
     return serving_operator_info_.get();
   }
+
+  // Deregisters and destructs the current service and destroys the connection,
+  // if any. This also eliminates the circular references between this device
+  // and the associated service, allowing eventual device destruction.
+  virtual void DestroyService();
 
   // Creates a CellularCapability based on properties of |this| and
   // |modem_info|. Sets |capability_| to the created capability.
@@ -320,13 +315,15 @@ class Cellular : public Device,
   void set_home_provider(const Stringmap& home_provider);
   void set_carrier(const std::string& carrier);
   void set_scanning_supported(bool scanning_supported);
+  void SetEid(const std::string& eid);
   void set_equipment_id(const std::string& equipment_id);
   void set_esn(const std::string& esn);
   void set_firmware_revision(const std::string& firmware_revision);
   void set_hardware_revision(const std::string& hardware_revision);
   void set_device_id(std::unique_ptr<DeviceId> device_id);
+  void SetIccid(const std::string& iccid);
   void SetImei(const std::string& imei);
-  void SetSimProperties(SimProperties properties);
+  void SetImsi(const std::string& imsi);
   void set_mdn(const std::string& mdn);
   void set_meid(const std::string& meid);
   void set_min(const std::string& min);
@@ -469,17 +466,8 @@ class Cellular : public Device,
 
   void InitCapability(Type type);
 
-  // Called when |state_| becomes enabled or SetSimProperties are set.
-  // Creates or destroys |service_| as required.
-  void UpdateService();
-
   // Creates and registers the default CellularService for the Device.
   void CreateService();
-
-  // Deregisters and destructs the current service and destroys the connection,
-  // if any. This also eliminates the circular references between this device
-  // and the associated service, allowing eventual device destruction.
-  void DestroyService();
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
@@ -544,10 +532,6 @@ class Cellular : public Device,
   void PollLocationTask();
 
   void SetCapabilityState(CapabilityState capability_state);
-
-  // Sets a Service for testing. When set, Cellular does not create or destroy
-  // the associated Service.
-  void SetServiceForTesting(CellularServiceRefPtr service);
 
   void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
 
@@ -626,8 +610,6 @@ class Cellular : public Device,
   // The active CellularService instance for this Device. This will always be
   // set to a valid service instance.
   CellularServiceRefPtr service_;
-  // When set in tests, |service_| is not created or destroyed by Cellular.
-  CellularServiceRefPtr service_for_testing_;
 
   // User preference to allow or disallow roaming
   bool allow_roaming_;

@@ -58,6 +58,7 @@ Modem::~Modem() {
     return;
   }
 
+  device_->DestroyService();
   device_->StopLocationPolling();
   device_->DestroyCapability();
 
