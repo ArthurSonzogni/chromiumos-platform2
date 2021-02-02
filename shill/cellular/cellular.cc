@@ -1176,7 +1176,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
 
 void Cellular::OnPropertiesChanged(const string& interface,
                                    const KeyValueStore& changed_properties) {
-  SLOG(this, 2) << __func__;
   CHECK(capability_);
   capability_->OnPropertiesChanged(interface, changed_properties);
 }

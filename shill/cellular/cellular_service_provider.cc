@@ -151,50 +151,10 @@ void CellularServiceProvider::Stop() {
 
 CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
     Cellular* device) {
+  CellularServiceRefPtr active_service = nullptr;
+
   std::string sim_card_id = device->GetSimCardId();
 
-  CellularServiceRefPtr active_service = LoadMatchingServicesFromProfile(
-      sim_card_id, device->iccid(), device->imsi(), device);
-
-  // When the Cellular SIM changes or Cellular is enabled, assume that the
-  // intent is to auto connect to the CellularService (if connectable and
-  // AutoConnect are set), even if the service was previously explicitly
-  // disconnected.
-  active_service->ClearExplicitlyDisconnected();
-
-  // Remove any remaining services not associated with |device|.
-  std::vector<CellularServiceRefPtr> services_to_remove;
-  for (CellularServiceRefPtr& service : services_) {
-    if (service->cellular() != device)
-      services_to_remove.push_back(service);
-  }
-  // Note: Secondary (non selected) SIM services will be added through
-  // LoadServicesForSecondarySim, after this is called.
-  for (CellularServiceRefPtr& service : services_to_remove)
-    RemoveService(service);
-
-  // Set Device=null for services not matching |iccid|.
-  for (CellularServiceRefPtr& service : services_) {
-    if (service->iccid() != device->iccid())
-      service->SetDevice(nullptr);
-  }
-
-  return active_service;
-}
-
-void CellularServiceProvider::LoadServicesForSecondarySim(
-    const std::string& sim_card_id,
-    const std::string& iccid,
-    const std::string& imsi) {
-  SLOG(this, 1) << __func__ << ": " << sim_card_id;
-  LoadMatchingServicesFromProfile(sim_card_id, iccid, imsi, /*device=*/nullptr);
-}
-
-CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
-    const std::string& sim_card_id,
-    const std::string& iccid,
-    const std::string& imsi,
-    Cellular* device) {
   // Find Cellular profile entries matching the sim card identifier.
   CHECK(profile_);
   StoreInterface* storage = profile_->GetStorage();
@@ -204,12 +164,11 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   args.Set<std::string>(CellularService::kStorageSimCardId, sim_card_id);
   std::set<std::string> groups = storage->GetGroupsWithProperties(args);
 
-  LOG(INFO) << __func__ << ": " << sim_card_id << ": Groups: " << groups.size();
-  CellularServiceRefPtr active_service = nullptr;
+  LOG(INFO) << __func__ << ": " << device->iccid() << ": " << groups.size();
   for (const std::string& group : groups) {
-    std::string service_imsi, service_iccid, service_sim_card_id;
-    if (!GetServiceParametersFromStorage(storage, group, &service_imsi,
-                                         &service_iccid, &service_sim_card_id,
+    std::string imsi, iccid, service_sim_card_id;
+    if (!GetServiceParametersFromStorage(storage, group, &imsi, &iccid,
+                                         &service_sim_card_id,
                                          /*error=*/nullptr)) {
       LOG(ERROR) << "Unable to load service properties for: " << sim_card_id
                  << ", removing old or invalid profile entry.";
@@ -217,28 +176,49 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
       continue;
     }
     DCHECK_EQ(service_sim_card_id, sim_card_id);
-    CellularServiceRefPtr service = FindService(service_iccid);
-    if (service) {
-      SLOG(this, 2) << "Cellular service exists for ICCID: " << service_iccid;
+    CellularServiceRefPtr service = FindService(iccid);
+    if (!service) {
+      SLOG(this, 1) << "Loading Cellular service for ICCID: " << iccid;
+      service = new CellularService(manager_, imsi, iccid, sim_card_id);
+      service->Load(storage);
       service->SetDevice(device);
-      continue;
+      AddService(service);
+    } else {
+      SLOG(this, 1) << "Cellular service exists for ICCID: " << iccid;
+      service->SetDevice(device);
+      // For Cellular, when the SIM changes or when Cellular is enabled, assume
+      // that the intent is to auto connect to the CellularService (if
+      // connectable and AutoConnect is set), even if the service was previously
+      // explicitly disconnected.
+      service->ClearExplicitlyDisconnected();
     }
-    SLOG(this, 1) << "Loading secondary Cellular service for ICCID: "
-                  << service_iccid;
-    service =
-        new CellularService(manager_, service_imsi, service_iccid, sim_card_id);
-    service->Load(storage);
-    service->SetDevice(device);
-    AddService(service);
-    if (service_iccid == iccid)
+    if (iccid == device->iccid())
       active_service = service;
   }
   if (!active_service) {
-    SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
-    active_service = new CellularService(manager_, imsi, iccid, sim_card_id);
+    SLOG(this, 1) << "No existing Cellular service with ICCID: "
+                  << device->iccid();
+    active_service = new CellularService(manager_, device->imsi(),
+                                         device->iccid(), sim_card_id);
     active_service->SetDevice(device);
     AddService(active_service);
   }
+
+  // Remove any remaining services not associated with |device|.
+  std::vector<CellularServiceRefPtr> services_to_remove;
+  for (CellularServiceRefPtr& service : services_) {
+    if (!service->cellular())
+      services_to_remove.push_back(service);
+  }
+  for (CellularServiceRefPtr& service : services_to_remove)
+    RemoveService(service);
+
+  // Set Connectable=false for visible services not matching |iccid|.
+  for (CellularServiceRefPtr& service : services_) {
+    if (service->iccid() != device->iccid())
+      service->SetConnectable(false);
+  }
+
   return active_service;
 }
 

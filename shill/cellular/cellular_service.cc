@@ -110,10 +110,13 @@ void CellularService::SetDevice(Cellular* device) {
   Error ignored_error;
   adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
                                       GetDeviceRpcId(&ignored_error));
-  SetConnectable(cellular_ && iccid_ == cellular_->iccid());
+  adaptor()->EmitBoolChanged(kVisibleProperty,
+                             GetVisibleProperty(&ignored_error));
   if (!cellular_)
     return;
 
+  DCHECK_EQ(sim_card_id_, cellular_->GetSimCardId());
+  SetConnectable(!!device);
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetActivationType(kActivationTypeUnknown);
 
@@ -270,7 +273,7 @@ bool CellularService::Save(StoreInterface* storage) {
 }
 
 bool CellularService::IsVisible() const {
-  return true;
+  return !!cellular_;
 }
 
 void CellularService::SetActivationType(ActivationType type) {

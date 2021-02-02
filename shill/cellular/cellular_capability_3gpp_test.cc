@@ -137,9 +137,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
         manager_(&control_interface_, dispatcher, &metrics_),
         modem_info_(&control_interface_, &manager_),
         modem_3gpp_proxy_(new NiceMock<mm1::MockModemModem3gppProxy>()),
-        modem_proxy_(new NiceMock<mm1::MockModemProxy>()),
-        modem_signal_proxy_(new NiceMock<mm1::MockModemSignalProxy>()),
-        modem_simple_proxy_(new NiceMock<mm1::MockModemSimpleProxy>()),
+        modem_proxy_(new mm1::MockModemProxy()),
+        modem_signal_proxy_(new mm1::MockModemSignalProxy()),
+        modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         capability_(nullptr),
         device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
@@ -205,17 +205,15 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
         .Times(AnyNumber());
   }
 
-  void ClearSimProperties() { sim_properties_.clear(); }
-
   void SetSimProperties(const RpcIdentifier& path,
                         const KeyValueStore& sim_properties) {
     sim_path_ = path;
     sim_properties_[path] = sim_properties;
     RpcIdentifiers slots;
-    for (const auto& iter : sim_properties_)
+    for (auto iter : sim_properties_)
       slots.push_back(iter.first);
-    capability_->SetSimPathForTesting(path);
     capability_->SetSimSlotsForTesting(slots);
+    capability_->SetSimPathForTesting(path);
     dispatcher_->DispatchPendingEvents();
   }
 
@@ -482,7 +480,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   NiceMock<MockMetrics> metrics_;
   NiceMock<MockManager> manager_;
   MockModemInfo modem_info_;
-  std::unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
+  std::unique_ptr<NiceMock<mm1::MockModemModem3gppProxy>> modem_3gpp_proxy_;
   std::unique_ptr<mm1::MockModemProxy> modem_proxy_;
   std::unique_ptr<mm1::MockModemSignalProxy> modem_signal_proxy_;
   std::unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
@@ -759,6 +757,7 @@ TEST_F(CellularCapability3gppMainTest, DisconnectNoProxy) {
 
 TEST_F(CellularCapability3gppMainTest, SimLockStatusChanged) {
   InitProxies();
+
   // Set up mock SIM properties
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
@@ -803,7 +802,6 @@ TEST_F(CellularCapability3gppMainTest, SimLockStatusChanged) {
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is missing and SIM path is "/".
-  ClearSimProperties();
   SetSimProperties(CellularCapability3gpp::kRootPath, {});
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
@@ -1190,7 +1188,6 @@ TEST_F(CellularCapability3gppMainTest, SimPathChanged) {
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is removed, Modem.Sim path is empty.
-  ClearSimProperties();
   SetSimPath(RpcIdentifier());
   VerifyAndSetActivationExpectations();
   EXPECT_FALSE(cellular_->sim_present());
@@ -1210,7 +1207,6 @@ TEST_F(CellularCapability3gppMainTest, SimPathChanged) {
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is removed, Modem.Sim path is ".".
-  ClearSimProperties();
   SetSimPath(CellularCapability3gpp::kRootPath);
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
