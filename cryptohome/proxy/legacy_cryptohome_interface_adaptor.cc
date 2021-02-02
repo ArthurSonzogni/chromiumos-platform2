@@ -16,10 +16,10 @@
 #include "cryptohome/proxy/legacy_cryptohome_interface_adaptor.h"
 
 namespace {
-constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(5);
 constexpr base::TimeDelta kAttestationProxyTimeout =
     base::TimeDelta::FromMinutes(2);
-constexpr base::TimeDelta kMountTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kMountTimeout = base::TimeDelta::FromMinutes(5);
 }
 
 namespace cryptohome {
