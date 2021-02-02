@@ -16,11 +16,11 @@ pkg_config("cfm_dfu_notification_pkg_deps") {
 }
 
 shared_library("cfm_dfu_notification") {
-  configs += [ ":cfm_dfu_notification_pkg_deps" ]
   sources = [
     "dfu_log_notification.cc",
     "idfu_notification.cc",
   ]
+  configs += [ ":cfm_dfu_notification_pkg_deps" ]
 }
 
 if (use.test) {
@@ -29,14 +29,14 @@ if (use.test) {
   }
 
   executable("cfm_dfu_notification_test") {
-    configs += [
-      ":test_config",
-      "//common-mk:test",
-    ]
     sources = [
       "dfu_log_notification.cc",
       "dfu_log_notification_test.cc",
       "idfu_notification.cc",
+    ]
+    configs += [
+      ":test_config",
+      "//common-mk:test",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [ "//common-mk/testrunner" ]
