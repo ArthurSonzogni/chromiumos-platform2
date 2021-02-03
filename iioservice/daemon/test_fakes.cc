@@ -36,18 +36,15 @@ int64_t CalcMovingAverage(const std::vector<int64_t>& values) {
 FakeSamplesHandler::ScopedFakeSamplesHandler FakeSamplesHandler::Create(
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-    libmems::fakes::FakeIioDevice* fake_iio_device,
-    OnSampleUpdatedCallback on_sample_updated_callback,
-    OnErrorOccurredCallback on_error_occurred_callback) {
+    libmems::fakes::FakeIioDevice* fake_iio_device) {
   ScopedFakeSamplesHandler handler(nullptr, SamplesHandlerDeleter);
   double min_freq, max_freq;
   if (!fake_iio_device->GetMinMaxFrequency(&min_freq, &max_freq))
     return handler;
 
-  handler.reset(new FakeSamplesHandler(
-      std::move(ipc_task_runner), std::move(task_runner), fake_iio_device,
-      min_freq, max_freq, std::move(on_sample_updated_callback),
-      std::move(on_error_occurred_callback)));
+  handler.reset(new FakeSamplesHandler(std::move(ipc_task_runner),
+                                       std::move(task_runner), fake_iio_device,
+                                       min_freq, max_freq));
   return handler;
 }
 
@@ -69,16 +66,12 @@ FakeSamplesHandler::FakeSamplesHandler(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     libmems::fakes::FakeIioDevice* fake_iio_device,
     double min_freq,
-    double max_freq,
-    OnSampleUpdatedCallback on_sample_updated_callback,
-    OnErrorOccurredCallback on_error_occurred_callback)
+    double max_freq)
     : SamplesHandler(std::move(ipc_task_runner),
                      std::move(task_runner),
                      fake_iio_device,
                      min_freq,
-                     max_freq,
-                     std::move(on_sample_updated_callback),
-                     std::move(on_error_occurred_callback)),
+                     max_freq),
       fake_iio_device_(fake_iio_device) {}
 
 void FakeSamplesHandler::ResumeReadingOnThread() {

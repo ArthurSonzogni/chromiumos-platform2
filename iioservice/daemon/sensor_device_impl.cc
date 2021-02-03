@@ -149,25 +149,12 @@ void SensorDeviceImpl::StartReadingSamples(
     return;
   ClientData& client = it->second;
 
-  if (client.observer.is_bound()) {
-    LOGF(ERROR) << "Reading already started: " << id;
-    mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>(std::move(observer))
-        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
-    return;
-  }
-
   if (samples_handlers_.find(client.iio_device) == samples_handlers_.end()) {
     SamplesHandler::ScopedSamplesHandler handler = {
         nullptr, SamplesHandler::SamplesHandlerDeleter};
 
-    auto sample_cb = base::BindRepeating(
-        &SensorDeviceImpl::OnSampleUpdatedCallback, weak_factory_.GetWeakPtr());
-    auto error_cb = base::BindRepeating(
-        &SensorDeviceImpl::OnErrorOccurredCallback, weak_factory_.GetWeakPtr());
-
     handler = SamplesHandler::Create(
-        ipc_task_runner_, sample_thread_->task_runner(), client.iio_device,
-        std::move(sample_cb), std::move(error_cb));
+        ipc_task_runner_, sample_thread_->task_runner(), client.iio_device);
 
     if (!handler) {
       LOGF(ERROR) << "Failed to create the samples handler for device: "
@@ -178,12 +165,8 @@ void SensorDeviceImpl::StartReadingSamples(
     samples_handlers_.emplace(client.iio_device, std::move(handler));
   }
 
-  client.observer.Bind(std::move(observer));
-  client.observer.set_disconnect_handler(
-      base::BindOnce(&SensorDeviceImpl::OnSamplesObserverDisconnect,
-                     weak_factory_.GetWeakPtr(), id));
-
-  samples_handlers_.at(client.iio_device)->AddClient(&client);
+  samples_handlers_.at(client.iio_device)
+      ->AddClient(&client, std::move(observer));
 }
 
 void SensorDeviceImpl::StopReadingSamples() {
@@ -342,66 +325,17 @@ void SensorDeviceImpl::RemoveClient(mojo::ReceiverId id) {
   clients_.erase(id);
 }
 
-void SensorDeviceImpl::OnSamplesObserverDisconnect(mojo::ReceiverId id) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  LOGF(ERROR) << "SamplesObserver disconnected. ReceiverId: " << id;
-  StopReadingSamplesOnClient(id);
-}
-
 void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   auto it = clients_.find(id);
   if (it == clients_.end())
     return;
-  ClientData& client = it->second;
 
-  if (!client.observer.is_bound()) {
-    // The client is not reading samples.
-    return;
-  }
+  ClientData& client = it->second;
 
   if (samples_handlers_.find(client.iio_device) != samples_handlers_.end())
     samples_handlers_.at(client.iio_device)->RemoveClient(&client);
-
-  client.observer.reset();
-}
-
-void SensorDeviceImpl::OnSampleUpdatedCallback(
-    mojo::ReceiverId id, libmems::IioDevice::IioSample sample) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  auto it = clients_.find(id);
-  if (it == clients_.end()) {
-    LOGF(WARNING) << "Sample not sent, as the client doesn't exist: " << id;
-    return;
-  }
-
-  if (!it->second.observer.is_bound()) {
-    LOGF(WARNING) << "Sample not sent, as the client has stopped reading: "
-                  << id;
-    return;
-  }
-
-  it->second.observer->OnSampleUpdated(std::move(sample));
-}
-
-void SensorDeviceImpl::OnErrorOccurredCallback(
-    mojo::ReceiverId id, cros::mojom::ObserverErrorType type) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  auto it = clients_.find(id);
-  if (it == clients_.end()) {
-    LOGF(WARNING) << "Error not sent, as the client doesn't exist: " << id;
-    return;
-  }
-
-  if (!it->second.observer.is_bound()) {
-    LOGF(WARNING) << "Sample not sent, as the client has stopped reading: "
-                  << id;
-    return;
-  }
-
-  it->second.observer->OnErrorOccurred(type);
 }
 
 }  // namespace iioservice

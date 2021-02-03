@@ -55,30 +55,53 @@ double FixFrequency(double frequency) {
   return frequency;
 }
 
-class SamplesHandlerTestBase {
+class FakeObserver : cros::mojom::SensorDeviceSamplesObserver {
+ public:
+  explicit FakeObserver(base::RepeatingClosure quit_closure)
+      : quit_closure_(std::move(quit_closure)) {}
+
+  mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> GetRemote() {
+    CHECK(!receiver_.is_bound());
+    auto pending_remote = receiver_.BindNewPipeAndPassRemote();
+    receiver_.set_disconnect_handler(base::BindOnce(
+        &FakeObserver::OnObserverDisconnect, base::Unretained(this)));
+    return pending_remote;
+  }
+
+  // cros::mojom::SensorDeviceSamplesObserver overrides:
+  void OnSampleUpdated(const libmems::IioDevice::IioSample& sample) override {}
+  void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {}
+
+ private:
+  void OnObserverDisconnect() {
+    receiver_.reset();
+    quit_closure_.Run();
+  }
+
+  base::RepeatingClosure quit_closure_;
+  mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_{this};
+};
+
+class SamplesHandlerTestBase : cros::mojom::SensorDeviceSamplesObserver {
+ public:
+  mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> GetRemote() {
+    mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> remote;
+    receiver_set_.Add(this, remote.InitWithNewPipeAndPassReceiver());
+    return remote;
+  }
+
+  // cros::mojom::SensorDeviceSamplesObserver overrides:
+  void OnSampleUpdated(const libmems::IioDevice::IioSample& sample) override {
+    CHECK(
+        task_environment_.GetMainThreadTaskRunner()->BelongsToCurrentThread());
+  }
+  void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {
+    CHECK(
+        task_environment_.GetMainThreadTaskRunner()->BelongsToCurrentThread());
+    CHECK_EQ(type, cros::mojom::ObserverErrorType::FREQUENCY_INVALID);
+  }
+
  protected:
-  void OnSampleUpdatedCallback(mojo::ReceiverId id,
-                               libmems::IioDevice::IioSample sample) {
-    CHECK(
-        task_environment_.GetMainThreadTaskRunner()->BelongsToCurrentThread());
-
-    if (id >= observers_.size())
-      return;
-
-    observers_[id]->OnSampleUpdated(std::move(sample));
-  }
-  void OnErrorOccurredCallback(mojo::ReceiverId id,
-                               cros::mojom::ObserverErrorType type) {
-    CHECK(
-        task_environment_.GetMainThreadTaskRunner()->BelongsToCurrentThread());
-    if (id >= observers_.size()) {
-      CHECK_EQ(type, cros::mojom::ObserverErrorType::FREQUENCY_INVALID);
-      return;
-    }
-
-    observers_[id]->OnErrorOccurred(type);
-  }
-
   void SetUpAccelBase(bool with_trigger) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
@@ -102,11 +125,7 @@ class SamplesHandlerTestBase {
 
     handler_ = fakes::FakeSamplesHandler::Create(
         task_environment_.GetMainThreadTaskRunner(),
-        task_environment_.GetMainThreadTaskRunner(), device_.get(),
-        base::BindRepeating(&SamplesHandlerTestBase::OnSampleUpdatedCallback,
-                            base::Unretained(this)),
-        base::BindRepeating(&SamplesHandlerTestBase::OnErrorOccurredCallback,
-                            base::Unretained(this)));
+        task_environment_.GetMainThreadTaskRunner(), device_.get());
     EXPECT_TRUE(handler_);
   }
 
@@ -141,11 +160,7 @@ class SamplesHandlerTestBase {
 
     handler_ = fakes::FakeSamplesHandler::Create(
         task_environment_.GetMainThreadTaskRunner(),
-        task_environment_.GetMainThreadTaskRunner(), device_.get(),
-        base::BindRepeating(&SamplesHandlerTestBase::OnSampleUpdatedCallback,
-                            base::Unretained(this)),
-        base::BindRepeating(&SamplesHandlerTestBase::OnErrorOccurredCallback,
-                            base::Unretained(this)));
+        task_environment_.GetMainThreadTaskRunner(), device_.get());
     EXPECT_TRUE(handler_);
   }
 
@@ -171,6 +186,7 @@ class SamplesHandlerTestBase {
       nullptr, SamplesHandler::SamplesHandlerDeleter};
   std::vector<ClientData> clients_data_;
   std::vector<std::unique_ptr<fakes::FakeSamplesObserver>> observers_;
+  mojo::ReceiverSet<cros::mojom::SensorDeviceSamplesObserver> receiver_set_;
 };
 
 class SamplesHandlerTest : public ::testing::Test,
@@ -180,6 +196,29 @@ class SamplesHandlerTest : public ::testing::Test,
 
   void TearDown() override { TearDownBase(); }
 };
+
+TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
+  // No samples in this test
+  device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
+
+  ClientData client_data(
+      0, device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+  client_data.frequency = kFooFrequency;
+  client_data.enabled_chn_indices.emplace(3);  // timestamp
+
+  handler_->AddClient(&client_data, GetRemote());
+
+  base::RunLoop run_loop;
+  FakeObserver observer(run_loop.QuitClosure());
+  handler_->AddClient(&client_data, observer.GetRemote());
+  // Wait until |Observer| is disconnected.
+  run_loop.Run();
+
+  handler_->RemoveClient(&client_data);
+  // RemoveClient can be called multiple times.
+  handler_->RemoveClient(&client_data);
+}
 
 // Add clients with only timestamp channel enabled, enable all other channels,
 // and disable all channels except for accel_x. Enabled channels are checked
@@ -201,7 +240,7 @@ TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
     client_data.timeout = 0;
     client_data.frequency = freqs[i];
 
-    handler_->AddClient(&client_data);
+    handler_->AddClient(&client_data, GetRemote());
 
     handler_->UpdateChannelsEnabled(
         &client_data, std::vector<int32_t>{1, 0, 2}, true,
@@ -273,7 +312,7 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
         device_.get(), std::move(failures), freqs[i], freqs[i], kFooFrequency,
         kFooFrequency);
 
-    handler_->AddClient(&client_data);
+    handler_->AddClient(&client_data, fake_observer->GetRemote());
 
     observers_.emplace_back(std::move(fake_observer));
   }
@@ -321,7 +360,7 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
     client_data.timeout = 0;
     client_data.frequency = GetParam()[i].first;
 
-    handler_->AddClient(&client_data);
+    handler_->AddClient(&client_data, GetRemote());
 
     frequencies.emplace(FixFrequency(client_data.frequency));
     handler_->CheckRequestedFrequency(*frequencies.rbegin());
@@ -419,7 +458,7 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
         device_.get(), std::move(failures), FixFrequency(GetParam()[i].first),
         FixFrequency(GetParam()[i].second), max_freq, max_freq2);
 
-    handler_->AddClient(&client_data);
+    handler_->AddClient(&client_data, fake_observer->GetRemote());
 
     observers_.emplace_back(std::move(fake_observer));
   }
@@ -523,7 +562,7 @@ TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
   client_data.enabled_chn_indices.emplace(0);  // accel_x
   client_data.frequency = frequency;
 
-  handler_->AddClient(&client_data);
+  handler_->AddClient(&client_data, GetRemote());
 
   base::RunLoop().RunUntilIdle();
 
@@ -563,7 +602,7 @@ TEST_F(SamplesHandlerLightTest, CrosECLight) {
       std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>(),
       kFooFrequency, kFooFrequency, kFooFrequency, kFooFrequency);
 
-  handler_->AddClient(&client_data);
+  handler_->AddClient(&client_data, fake_observer->GetRemote());
 
   observers_.emplace_back(std::move(fake_observer));
 
@@ -604,7 +643,7 @@ TEST_F(SamplesHandlerLightTest, AcpiAls) {
       std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>(),
       kFooFrequency, kFooFrequency, kFooFrequency, kFooFrequency);
 
-  handler_->AddClient(&client_data);
+  handler_->AddClient(&client_data, fake_observer->GetRemote());
 
   observers_.emplace_back(std::move(fake_observer));
 

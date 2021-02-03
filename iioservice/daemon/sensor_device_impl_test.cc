@@ -168,26 +168,7 @@ TEST_F(SensorDeviceImplTest, StartAndStopReadingSamples) {
 
   EXPECT_TRUE(fake_observer->is_bound());
 
-  auto fake_observer2 = fakes::FakeSamplesObserver::Create(
-      device_,
-      std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>{
-          std::make_pair(0, cros::mojom::ObserverErrorType::ALREADY_STARTED)},
-      frequency, frequency, frequency, frequency);
-
-  remote_->StartReadingSamples(fake_observer2->GetRemote());
-
-  // Wait until fake_observer2 is disconnected.
-  base::RunLoop().RunUntilIdle();
-
-  EXPECT_FALSE(fake_observer2->is_bound());
-  EXPECT_TRUE(fake_observer2->NoRemainingFailures());
-
   remote_->StopReadingSamples();
-
-  // Wait until fake_observer is disconnected.
-  base::RunLoop().RunUntilIdle();
-
-  EXPECT_FALSE(fake_observer->is_bound());
 
   // StopReadingSamples can be called multiple times.
   remote_->StopReadingSamples();

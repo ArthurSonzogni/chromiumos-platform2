@@ -79,9 +79,7 @@ bool SamplesHandler::DisableBufferAndEnableChannels(
 SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
-    libmems::IioDevice* iio_device,
-    OnSampleUpdatedCallback on_sample_updated_callback,
-    OnErrorOccurredCallback on_error_occurred_callback) {
+    libmems::IioDevice* iio_device) {
   ScopedSamplesHandler handler(nullptr, SamplesHandlerDeleter);
 
   if (!DisableBufferAndEnableChannels(iio_device))
@@ -95,10 +93,9 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
     return handler;
   }
 
-  handler.reset(new SamplesHandler(
-      std::move(ipc_task_runner), std::move(sample_task_runner), iio_device,
-      min_freq, max_freq, std::move(on_sample_updated_callback),
-      std::move(on_error_occurred_callback)));
+  handler.reset(new SamplesHandler(std::move(ipc_task_runner),
+                                   std::move(sample_task_runner), iio_device,
+                                   min_freq, max_freq));
   return handler;
 }
 
@@ -109,12 +106,15 @@ SamplesHandler::~SamplesHandler() {
     LOGF(ERROR) << "Failed to set frequency";
 }
 
-void SamplesHandler::AddClient(ClientData* client_data) {
+void SamplesHandler::AddClient(
+    ClientData* client_data,
+    mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {
   DCHECK_EQ(client_data->iio_device, iio_device_);
 
   sample_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&SamplesHandler::AddClientOnThread,
-                                weak_factory_.GetWeakPtr(), client_data));
+                                weak_factory_.GetWeakPtr(), client_data,
+                                std::move(observer)));
 }
 
 void SamplesHandler::RemoveClient(ClientData* client_data) {
@@ -167,16 +167,12 @@ SamplesHandler::SamplesHandler(
     scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
     libmems::IioDevice* iio_device,
     double min_freq,
-    double max_freq,
-    OnSampleUpdatedCallback on_sample_updated_callback,
-    OnErrorOccurredCallback on_error_occurred_callback)
+    double max_freq)
     : ipc_task_runner_(std::move(ipc_task_runner)),
       sample_task_runner_(std::move(sample_task_runner)),
       iio_device_(iio_device),
       dev_min_frequency_(min_freq),
-      dev_max_frequency_(max_freq),
-      on_sample_updated_callback_(std::move(on_sample_updated_callback)),
-      on_error_occurred_callback_(std::move(on_error_occurred_callback)) {
+      dev_max_frequency_(max_freq) {
   DCHECK_GE(dev_max_frequency_, dev_min_frequency_);
 
   auto channels = iio_device_->GetAllChannels();
@@ -203,10 +199,8 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   if (!iio_device_->CreateBuffer()) {
     LOGF(ERROR) << "Failed to create buffer";
     for (auto client : clients_map_) {
-      ipc_task_runner_->PostTask(
-          FROM_HERE,
-          base::BindOnce(on_error_occurred_callback_, client.first->id,
-                         cros::mojom::ObserverErrorType::GET_FD_FAILED));
+      observers_[client.first]->OnErrorOccurred(
+          cros::mojom::ObserverErrorType::GET_FD_FAILED);
     }
 
     return;
@@ -216,10 +210,8 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   if (!fd.has_value()) {
     LOGF(ERROR) << "Failed to get fd";
     for (auto client : clients_map_) {
-      ipc_task_runner_->PostTask(
-          FROM_HERE,
-          base::BindOnce(on_error_occurred_callback_, client.first->id,
-                         cros::mojom::ObserverErrorType::GET_FD_FAILED));
+      observers_[client.first]->OnErrorOccurred(
+          cros::mojom::ObserverErrorType::GET_FD_FAILED);
     }
 
     return;
@@ -262,11 +254,8 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
         sample[index] = value_opt.value();
     }
 
-    if (!sample.empty()) {
-      ipc_task_runner_->PostTask(
-          FROM_HERE, base::BindOnce(on_sample_updated_callback_,
-                                    client_data->id, std::move(sample)));
-    }
+    if (!sample.empty())
+      observers_[client_data]->OnSampleUpdated(std::move(sample));
   }
 
   if (!watcher_.get())
@@ -277,44 +266,43 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
   if (AddFrequencyOnThread(client_data->frequency))
     return;
 
-  ipc_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(on_error_occurred_callback_, client_data->id,
-                     cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED));
+  observers_[client_data]->OnErrorOccurred(
+      cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
 }
-void SamplesHandler::AddClientOnThread(ClientData* client_data) {
+
+void SamplesHandler::AddClientOnThread(
+    ClientData* client_data,
+    mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
   DCHECK_EQ(client_data->iio_device, iio_device_);
 
   if (inactive_clients_.find(client_data) != inactive_clients_.end() ||
       clients_map_.find(client_data) != clients_map_.end()) {
-    // Shouldn't happen. Users should check observer exists or not to know
-    // whether the client is already added.
     LOGF(ERROR) << "Failed to AddClient: Already added";
-    ipc_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(on_error_occurred_callback_, client_data->id,
-                       cros::mojom::ObserverErrorType::ALREADY_STARTED));
+    mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>(std::move(observer))
+        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
     return;
   }
+
+  DCHECK(observers_.find(client_data) == observers_.end());
+  observers_[client_data].Bind(std::move(observer));
+  observers_[client_data].set_disconnect_handler(
+      base::BindOnce(&SamplesHandler::OnSamplesObserverDisconnect,
+                     weak_factory_.GetWeakPtr(), client_data));
 
   bool active = true;
 
   client_data->frequency = FixFrequency(client_data->frequency);
   if (client_data->frequency == 0.0) {
     LOGF(ERROR) << "Added an inactive client: Invalid frequency.";
-    ipc_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(on_error_occurred_callback_, client_data->id,
-                       cros::mojom::ObserverErrorType::FREQUENCY_INVALID));
+    observers_[client_data]->OnErrorOccurred(
+        cros::mojom::ObserverErrorType::FREQUENCY_INVALID);
     active = false;
   }
   if (client_data->enabled_chn_indices.empty()) {
     LOGF(ERROR) << "Added an inactive client: No enabled channels.";
-    ipc_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(on_error_occurred_callback_, client_data->id,
-                       cros::mojom::ObserverErrorType::NO_ENABLED_CHANNELS));
+    observers_[client_data]->OnErrorOccurred(
+        cros::mojom::ObserverErrorType::NO_ENABLED_CHANNELS);
     active = false;
   }
 
@@ -324,6 +312,14 @@ void SamplesHandler::AddClientOnThread(ClientData* client_data) {
   }
 
   AddActiveClientOnThread(client_data);
+}
+
+void SamplesHandler::OnSamplesObserverDisconnect(ClientData* client_data) {
+  DCHECK(sample_task_runner_->RunsTasksInCurrentSequence());
+
+  LOGF(ERROR) << "SamplesObserver disconnected. ReceiverId: "
+              << client_data->id;
+  RemoveClientOnThread(client_data);
 }
 
 void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
@@ -341,14 +337,15 @@ void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
   if (RemoveFrequencyOnThread(orig_freq))
     return;
 
-  ipc_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(on_error_occurred_callback_, client_data->id,
-                     cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED));
+  observers_[client_data]->OnErrorOccurred(
+      cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
 }
+
 void SamplesHandler::RemoveClientOnThread(ClientData* client_data) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
   DCHECK_EQ(client_data->iio_device, iio_device_);
+
+  observers_.erase(client_data);
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
@@ -419,10 +416,8 @@ void SamplesHandler::UpdateFrequencyOnThread(
     return;
 
   // Failed to set device frequency
-  ipc_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(on_error_occurred_callback_, client_data->id,
-                     cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED));
+  observers_[client_data]->OnErrorOccurred(
+      cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
 }
 
 bool SamplesHandler::AddFrequencyOnThread(double frequency) {
@@ -585,9 +580,8 @@ void SamplesHandler::SampleTimeout(ClientData* client_data,
   if (it == clients_map_.end() || it->second.sample_index != sample_index)
     return;
 
-  ipc_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(on_error_occurred_callback_, client_data->id,
-                                cros::mojom::ObserverErrorType::READ_TIMEOUT));
+  observers_[client_data]->OnErrorOccurred(
+      cros::mojom::ObserverErrorType::READ_TIMEOUT);
 }
 
 void SamplesHandler::OnSampleAvailableWithoutBlocking() {
@@ -598,10 +592,8 @@ void SamplesHandler::OnSampleAvailableWithoutBlocking() {
   if (!sample) {
     AddReadFailedLog();
     for (auto client : clients_map_) {
-      ipc_task_runner_->PostTask(
-          FROM_HERE,
-          base::BindOnce(on_error_occurred_callback_, client.first->id,
-                         cros::mojom::ObserverErrorType::READ_FAILED));
+      observers_[client.first]->OnErrorOccurred(
+          cros::mojom::ObserverErrorType::READ_FAILED);
     }
 
     return;
@@ -620,6 +612,7 @@ void SamplesHandler::OnSampleAvailableWithoutBlocking() {
   for (auto& client : clients_map_) {
     DCHECK(client.first->frequency >= libmems::kFrequencyEpsilon);
     DCHECK(!client.first->enabled_chn_indices.empty());
+    DCHECK(observers_[client.first].is_bound());
 
     int step =
         std::max(1, static_cast<int>(dev_frequency_ / client.first->frequency));
@@ -678,10 +671,7 @@ void SamplesHandler::OnSampleAvailableWithoutBlocking() {
       client.second.sample_index = samples_cnt_ + 1;
       client.second.chns.clear();
 
-      ipc_task_runner_->PostTask(
-          FROM_HERE,
-          base::BindOnce(on_sample_updated_callback_, client.first->id,
-                         std::move(client_sample)));
+      observers_[client.first]->OnSampleUpdated(std::move(client_sample));
       SetTimeoutTaskOnThread(client.first);
     }
   }

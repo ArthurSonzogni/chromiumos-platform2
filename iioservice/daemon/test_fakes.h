@@ -40,9 +40,7 @@ class FakeSamplesHandler : public SamplesHandler {
   static ScopedFakeSamplesHandler Create(
       scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-      libmems::fakes::FakeIioDevice* fake_iio_device,
-      OnSampleUpdatedCallback on_sample_updated_callback,
-      OnErrorOccurredCallback on_error_occurred_callback);
+      libmems::fakes::FakeIioDevice* fake_iio_device);
 
   void ResumeReading();
   void CheckRequestedFrequency(double max_freq);
@@ -53,9 +51,7 @@ class FakeSamplesHandler : public SamplesHandler {
       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
       libmems::fakes::FakeIioDevice* fake_iio_device,
       double min_freq,
-      double max_freq,
-      OnSampleUpdatedCallback on_sample_updated_callback,
-      OnErrorOccurredCallback on_error_occurred_callback);
+      double max_freq);
 
   void ResumeReadingOnThread();
   void CheckRequestedFrequencyOnThread(double max_freq);

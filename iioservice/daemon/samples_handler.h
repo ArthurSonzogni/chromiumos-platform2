@@ -44,16 +44,16 @@ class SamplesHandler {
   static ScopedSamplesHandler Create(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
-      libmems::IioDevice* iio_device,
-      OnSampleUpdatedCallback on_sample_updated_callback,
-      OnErrorOccurredCallback on_error_occurred_callback);
+      libmems::IioDevice* iio_device);
 
   virtual ~SamplesHandler();
 
   // It's the user's responsibility to maintain |client_data| before being
   // removed or this class being destructed.
   // |client_data.iio_device| should be the same as |iio_device_|.
-  void AddClient(ClientData* client_data);
+  void AddClient(
+      ClientData* client_data,
+      mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer);
   void RemoveClient(ClientData* client_data);
 
   void UpdateFrequency(
@@ -87,9 +87,7 @@ class SamplesHandler {
                  scoped_refptr<base::SingleThreadTaskRunner> sample_task_runner,
                  libmems::IioDevice* iio_device,
                  double min_freq,
-                 double max_freq,
-                 OnSampleUpdatedCallback on_sample_updated_callback,
-                 OnErrorOccurredCallback on_error_occurred_callback);
+                 double max_freq);
 
   void SetSampleWatcherOnThread();
   void StopSampleWatcherOnThread();
@@ -97,7 +95,11 @@ class SamplesHandler {
   double FixFrequency(double frequency);
 
   void AddActiveClientOnThread(ClientData* client_data);
-  void AddClientOnThread(ClientData* client_data);
+  void AddClientOnThread(
+      ClientData* client_data,
+      mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer);
+
+  void OnSamplesObserverDisconnect(ClientData* client_data);
 
   void RemoveActiveClientOnThread(ClientData* client_data, double orig_freq);
   void RemoveClientOnThread(ClientData* client_data);
@@ -138,6 +140,9 @@ class SamplesHandler {
   // First is the active client, second is its data.
   std::map<ClientData*, SampleData> clients_map_;
 
+  std::map<ClientData*, mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>>
+      observers_;
+
   // Requested frequencies from clients.
   std::multiset<double> frequencies_;
   // Max frequency among |frequencies_|.
@@ -155,12 +160,6 @@ class SamplesHandler {
 
   uint32_t num_read_failed_logs_ = 0;
   uint32_t num_read_failed_logs_recovery_ = 0;
-
-  base::RepeatingCallback<void(mojo::ReceiverId, libmems::IioDevice::IioSample)>
-      on_sample_updated_callback_;
-  base::RepeatingCallback<void(mojo::ReceiverId,
-                               cros::mojom::ObserverErrorType)>
-      on_error_occurred_callback_;
 
   std::set<int32_t> no_batch_chn_indices;
 
