@@ -125,7 +125,7 @@ TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDevicePurge) {
   ExpectVolumeGroup();
   ExpectLogicalVolume();
 
-  std::vector<std::string> lv_disable = {"lvremove", "stateful/foo"};
+  std::vector<std::string> lv_disable = {"lvremove", "--force", "stateful/foo"};
   EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(lv_disable))
       .Times(1)
       .WillOnce(Return(true));

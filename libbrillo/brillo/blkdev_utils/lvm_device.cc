@@ -141,7 +141,7 @@ bool LogicalVolume::Deactivate() {
 bool LogicalVolume::Remove() {
   if (volume_group_name_.empty() || !lvm_)
     return false;
-  bool ret = lvm_->RunCommand({"lvremove", GetName()});
+  bool ret = lvm_->RunCommand({"lvremove", "--force", GetName()});
   logical_volume_name_ = "";
   volume_group_name_ = "";
   return ret;
@@ -183,7 +183,7 @@ bool Thinpool::Remove() {
   if (thinpool_name_.empty() || !lvm_)
     return false;
 
-  bool ret = lvm_->RunCommand({"lvremove", GetName()});
+  bool ret = lvm_->RunCommand({"lvremove", "--force", GetName()});
   volume_group_name_ = "";
   thinpool_name_ = "";
   return ret;
