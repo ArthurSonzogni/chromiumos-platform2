@@ -343,8 +343,8 @@ bool Mount::MountCryptohome(const std::string& username,
 
   // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
   // still okay during current development progress.
-  platform_->RestoreSELinuxContexts(GetUserMountDirectory(obfuscated_username),
-                                    true);
+  platform_->RestoreSELinuxContexts(
+      GetUserDirectoryForUser(obfuscated_username), true);
 
   return true;
 }

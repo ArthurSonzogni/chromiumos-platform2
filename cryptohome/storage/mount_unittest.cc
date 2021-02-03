@@ -322,8 +322,8 @@ class MountTest
                 Bind(user.root_vault_mount_path, user.root_mount_path, _, true))
         .WillOnce(Return(true));
     ExpectDownloadsBindMounts(user);
-    EXPECT_CALL(platform_, RestoreSELinuxContexts(
-                               base::FilePath(user.vault_mount_path), true))
+    EXPECT_CALL(platform_,
+                RestoreSELinuxContexts(base::FilePath(user.base_path), true))
         .WillOnce(Return(true));
   }
 
