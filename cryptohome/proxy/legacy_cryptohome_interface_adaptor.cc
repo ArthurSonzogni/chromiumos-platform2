@@ -18,7 +18,7 @@
 namespace {
 constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(5);
 constexpr base::TimeDelta kAttestationProxyTimeout =
-    base::TimeDelta::FromMinutes(2);
+    base::TimeDelta::FromMinutes(5);
 constexpr base::TimeDelta kMountTimeout = base::TimeDelta::FromMinutes(5);
 }
 
