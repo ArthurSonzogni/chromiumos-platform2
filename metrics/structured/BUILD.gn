@@ -14,6 +14,10 @@ shared_library("libstructuredmetrics") {
     "c_structured_metrics.cc",
     "event_base.cc",
     "event_base.h",
+    "key_data.cc",
+    "key_data.h",
+    "persistent_proto.cc",
+    "persistent_proto.h",
   ]
   public_deps = [ ":structured_events" ]
   deps = [ ":storage" ]
