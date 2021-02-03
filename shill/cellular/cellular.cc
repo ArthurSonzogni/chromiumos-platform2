@@ -845,17 +845,39 @@ void Cellular::HandleNewRegistrationState() {
     // registered means we've successfully connected
     StartLocationPolling();
   }
+  UpdateService();
+}
+
+void Cellular::UpdateService() {
+  // If Cellular is disabled or does not have an associated SIM+ICCID, ensure
+  // that it does not have an associated Service.
+  if (state_ == kStateDisabled || iccid_.empty()) {
+    if (service_)
+      DestroyService();
+    return;
+  }
+
+  // If the associated Service does not have a matching ICCID, destroy it.
+  if (service_ && service_->iccid() != iccid_)
+    DestroyService();
+
+  // Ensure that a Service matching the Device SIM Profile exists.
   if (!service_)
     CreateService();
 
   if (state_ == kStateRegistered && modem_state_ == kModemStateConnected)
     OnConnected();
+
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
+
   manager()->UpdateService(service_);
 }
 
 void Cellular::CreateService() {
+  if (service_for_testing_)
+    return;
+
   SLOG(this, 2) << __func__;
   if (service_) {
     LOG(ERROR) << "Service already exists.";
@@ -875,6 +897,9 @@ void Cellular::CreateService() {
 }
 
 void Cellular::DestroyService() {
+  if (service_for_testing_)
+    return;
+
   SLOG(this, 2) << __func__;
   DropConnection();
   if (service_) {
@@ -900,6 +925,12 @@ void Cellular::CreateCapability(ModemInfo* modem_info) {
 }
 
 void Cellular::DestroyCapability() {
+  // |service_| holds a pointer to |this|. We need to disassociate it here so
+  // that this will be destroyed if the interface is removed. It will be
+  // re-associated if the Modem + Capability is restored (e.g. after Inhibit).
+  if (service_)
+    service_->SetDevice(nullptr);
+
   capability_.reset();
   modem_state_ = kModemStateUnknown;
   if (capability_state_ == CapabilityState::kModemStopping ||
@@ -1614,14 +1645,6 @@ void Cellular::set_scanning_supported(bool scanning_supported) {
                   << "| change. DBus adaptor is NULL!";
 }
 
-void Cellular::SetEid(const string& eid) {
-  if (eid_ == eid)
-    return;
-
-  eid_ = eid;
-  adaptor()->EmitStringChanged(kEidProperty, eid_);
-}
-
 void Cellular::set_equipment_id(const string& equipment_id) {
   if (equipment_id_ == equipment_id)
     return;
@@ -1658,18 +1681,6 @@ void Cellular::set_device_id(std::unique_ptr<DeviceId> device_id) {
   device_id_ = std::move(device_id);
 }
 
-void Cellular::SetIccid(const string& iccid) {
-  if (iccid_ == iccid)
-    return;
-
-  iccid_ = iccid;
-  adaptor()->EmitStringChanged(kIccidProperty, iccid_);
-
-  home_provider_info()->UpdateICCID(iccid);
-  // Provide ICCID to serving operator as well to aid in MVNO identification.
-  serving_operator_info()->UpdateICCID(iccid);
-}
-
 void Cellular::SetImei(const string& imei) {
   if (imei_ == imei)
     return;
@@ -1678,17 +1689,34 @@ void Cellular::SetImei(const string& imei) {
   adaptor()->EmitStringChanged(kImeiProperty, imei_);
 }
 
-void Cellular::SetImsi(const string& imsi) {
-  if (imsi_ == imsi)
+void Cellular::SetSimProperties(SimProperties sim_properties) {
+  if (eid_ == sim_properties.eid && iccid_ == sim_properties.iccid &&
+      imsi_ == sim_properties.imsi) {
     return;
+  }
 
-  imsi_ = imsi;
+  SLOG(this, 2) << __func__ << " EID= " << sim_properties.eid
+                << " ICCID= " << sim_properties.iccid;
+
+  eid_ = sim_properties.eid;
+  iccid_ = sim_properties.iccid;
+  imsi_ = sim_properties.imsi;
+
+  home_provider_info()->UpdateICCID(iccid_);
+  // Provide ICCID to serving operator as well to aid in MVNO identification.
+  serving_operator_info()->UpdateICCID(iccid_);
+
+  adaptor()->EmitStringChanged(kEidProperty, eid_);
+  adaptor()->EmitStringChanged(kIccidProperty, iccid_);
   adaptor()->EmitStringChanged(kImsiProperty, imsi_);
 
-  home_provider_info()->UpdateIMSI(imsi);
+  home_provider_info()->UpdateIMSI(imsi_);
   // We do not obtain IMSI OTA right now. Provide the value to serving
   // operator as well, to aid in MVNO identification.
-  serving_operator_info()->UpdateIMSI(imsi);
+  serving_operator_info()->UpdateIMSI(imsi_);
+
+  // Ensure Service creation once SIM properties are set.
+  UpdateService();
 }
 
 void Cellular::set_mdn(const string& mdn) {
@@ -1839,8 +1867,7 @@ void Cellular::SetSimPresent(bool sim_present) {
 
   sim_present_ = sim_present;
   if (!sim_present) {
-    SetImsi("");
-    SetEid("");
+    SetSimProperties(SimProperties());
   }
   adaptor()->EmitBoolChanged(kSIMPresentProperty, sim_present_);
 }
@@ -2018,6 +2045,11 @@ void Cellular::SetCapabilityState(CapabilityState capability_state) {
   SLOG(this, 1) << __func__ << ": "
                 << GetCapabilityStateString(capability_state);
   capability_state_ = capability_state;
+}
+
+void Cellular::SetServiceForTesting(CellularServiceRefPtr service) {
+  service_for_testing_ = service;
+  service_ = service;
 }
 
 }  // namespace shill
