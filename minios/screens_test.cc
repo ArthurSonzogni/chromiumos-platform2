@@ -246,61 +246,60 @@ TEST_F(ScreensTest, GetLangConsts) {
 }
 
 TEST_F(ScreensTest, UpdateButtons) {
-  int index = 1;
-  bool enter = false;
+  screens_.SetIndexForTest(1);
   int menu_items = 4;
-
-  screens_.UpdateButtons(menu_items, kKeyUp, &index, &enter);
-  EXPECT_EQ(0, index);
+  bool enter = false;
+  screens_.UpdateButtons(menu_items, kKeyUp, &enter);
+  EXPECT_EQ(0, screens_.GetIndexForTest());
 
   // Test range.
-  screens_.UpdateButtons(menu_items, kKeyUp, &index, &enter);
-  EXPECT_EQ(0, index);
+  screens_.UpdateButtons(menu_items, kKeyUp, &enter);
+  EXPECT_EQ(0, screens_.GetIndexForTest());
   // Move to last item.
-  index = menu_items - 1;
-  screens_.UpdateButtons(menu_items, kKeyDown, &index, &enter);
-  EXPECT_EQ(menu_items - 1, index);
+  screens_.SetIndexForTest(menu_items - 1);
+  screens_.UpdateButtons(menu_items, kKeyDown, &enter);
+  EXPECT_EQ(menu_items - 1, screens_.GetIndexForTest());
   EXPECT_FALSE(enter);
   // Enter key pressed.
-  index = 1;
-  screens_.UpdateButtons(menu_items, kKeyEnter, &index, &enter);
-  EXPECT_EQ(1, index);
+  screens_.SetIndexForTest(1);
+  screens_.UpdateButtons(menu_items, kKeyEnter, &enter);
+  EXPECT_EQ(1, screens_.GetIndexForTest());
   EXPECT_TRUE(enter);
 
   // Unknown key, no action taken.
-  index = 2;
+  screens_.SetIndexForTest(2);
   enter = false;
-  screens_.UpdateButtons(menu_items, 89, &index, &enter);
-  EXPECT_EQ(2, index);
+  screens_.UpdateButtons(menu_items, 89, &enter);
+  EXPECT_EQ(2, screens_.GetIndexForTest());
   EXPECT_FALSE(enter);
 
   // If index somehow goes out of range, reset to 0.
-  index = menu_items + 5;
+  screens_.SetIndexForTest(menu_items + 5);
   enter = false;
-  screens_.UpdateButtons(menu_items, kKeyEnter, &index, &enter);
-  EXPECT_EQ(0, index);
+  screens_.UpdateButtons(menu_items, kKeyEnter, &enter);
+  EXPECT_EQ(0, screens_.GetIndexForTest());
 }
 
 TEST_F(ScreensTest, UpdateButtonsIsDetachable) {
-  int index = 1;
+  screens_.SetIndexForTest(1);
   bool enter = false;
   int menu_items = 4;
 
-  screens_.UpdateButtons(menu_items, kKeyVolUp, &index, &enter);
-  EXPECT_EQ(0, index);
+  screens_.UpdateButtons(menu_items, kKeyVolUp, &enter);
+  EXPECT_EQ(0, screens_.GetIndexForTest());
 
   // Test range.
-  screens_.UpdateButtons(menu_items, kKeyVolUp, &index, &enter);
-  EXPECT_EQ(0, index);
+  screens_.UpdateButtons(menu_items, kKeyVolUp, &enter);
+  EXPECT_EQ(0, screens_.GetIndexForTest());
   // Move to last item.
-  index = menu_items - 1;
-  screens_.UpdateButtons(menu_items, kKeyVolDown, &index, &enter);
-  EXPECT_EQ(3, index);
+  screens_.SetIndexForTest(menu_items - 1);
+  screens_.UpdateButtons(menu_items, kKeyVolDown, &enter);
+  EXPECT_EQ(3, screens_.GetIndexForTest());
   EXPECT_FALSE(enter);
   // Enter key pressed.
-  index = 1;
-  screens_.UpdateButtons(menu_items, kKeyPower, &index, &enter);
-  EXPECT_EQ(1, index);
+  screens_.SetIndexForTest(1);
+  screens_.UpdateButtons(menu_items, kKeyPower, &enter);
+  EXPECT_EQ(1, screens_.GetIndexForTest());
   EXPECT_TRUE(enter);
 }
 
@@ -464,6 +463,10 @@ class MockScreens : public Screens {
                int glyph_offset_h,
                int glyph_offset_v,
                const std::string& color));
+  MOCK_METHOD(void, ShowNewScreen, ());
+  MOCK_METHOD(void, LanguageMenuOnSelect, ());
+  MOCK_METHOD(void, GetPassword, ());
+  MOCK_METHOD(void, OnLocaleChange, ());
 };
 
 class ScreensTestMocks : public ::testing::Test {
@@ -667,6 +670,98 @@ TEST_F(ScreensTestMocks, ShowFooter) {
       .WillOnce(testing::Return(true));
 
   mock_screens_.ShowFooter();
+}
+
+TEST_F(ScreensTestMocks, OnKeyPress) {
+  std::vector<int> keys = {kKeyDown, kKeyEnter, kKeyUp};
+  mock_screens_.SetIndexForTest(1);
+  // Index changes up one after both press and release are recorded in
+  // `key_state_`. `SwitchScreen` is called for every valid key release.
+
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnKeyPress(0, kKeyDown, false);
+  EXPECT_EQ(mock_screens_.GetIndexForTest(), 1);
+  mock_screens_.OnKeyPress(0, kKeyDown, true);
+  EXPECT_EQ(mock_screens_.GetIndexForTest(), 2);
+
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnKeyPress(0, kKeyEnter, false);
+  mock_screens_.OnKeyPress(0, kKeyEnter, true);
+}
+
+TEST_F(ScreensTestMocks, ScreenFlowLanguage) {
+  // Test making a selection on the language screen and then returning back to
+  // the previous screen.
+  // Index 0 on a normal screen is the language dropdown button.
+  mock_screens_.SetIndexForTest(0);
+  mock_screens_.SetScreenForTest(0);
+
+  // Calls language menu.
+  EXPECT_CALL(mock_screens_, LanguageMenuOnSelect());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(4, mock_screens_.GetScreenForTest());
+
+  // Select language from menu, make changes, and return to previous screen.
+  EXPECT_CALL(mock_screens_, OnLocaleChange());
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, ScreenFlowForward) {
+  // Test the screen flow forward starting from the welcome screen.
+  mock_screens_.SetIndexForTest(1);
+  mock_screens_.SetScreenForTest(0);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(/*enter=*/false);
+
+  // Screen has not changed since enter is false.
+  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+
+  // Moves to next screen in flow. kDropDownScreen.
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(1, mock_screens_.GetScreenForTest());
+
+  // Enter goes to kExpandedDropDownScreen.
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(2, mock_screens_.GetScreenForTest());
+
+  // Enter goes to kPasswordScreen.
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  EXPECT_CALL(mock_screens_, GetPassword());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(3, mock_screens_.GetScreenForTest());
+
+  // Enter finishes the flow with downloading and complete screens.
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(5, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, ScreenBackward) {
+  // Test the screen flow backward starting from the password screen.
+  mock_screens_.SetIndexForTest(2);
+  // Start at password screen.
+  mock_screens_.SetScreenForTest(3);
+
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  // Moves back to kDropDownScreen.
+  EXPECT_EQ(1, mock_screens_.GetScreenForTest());
+
+  // Enter goes back to kWelcomeScreen.
+  mock_screens_.SetIndexForTest(2);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+
+  // Cannot go further back from kWelcomeScreen.
+  mock_screens_.SetIndexForTest(2);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
 }
 
 }  // namespace screens

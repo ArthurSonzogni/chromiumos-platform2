@@ -24,6 +24,7 @@ class MockKeyReader : public key_reader::KeyReader {
   MOCK_METHOD(bool, GetEpEvent, (int epfd, struct input_event* ev, int* index));
   MOCK_METHOD(bool, GetValidFds, (bool check_supported_keys));
   MOCK_METHOD(bool, EpollCreate, (base::ScopedFD * epfd));
+  MOCK_METHOD(void, OnKeyEvent, ());
 };
 
 TEST_F(KeyReaderTest, BasicKeyTest) {
@@ -294,67 +295,6 @@ TEST_F(KeyReaderTest, JapaneseKeyTest) {
   EXPECT_EQ("qw#$W", key_reader.GetUserInputForTest());
 }
 
-TEST_F(KeyReaderTest, EvWaitKeyEnter) {
-  MockKeyReader key_reader;
-
-  testing::InSequence s;
-  EXPECT_CALL(key_reader, GetValidFds(true)).WillOnce(testing::Return(true));
-  EXPECT_CALL(key_reader, EpollCreate(_)).WillOnce(testing::Return(true));
-
-  // Records both key press and key release before returning. Other calls are
-  // ignored
-  struct input_event ev_press {
-    .type = EV_KEY, .code = 28, .value = 1,
-  };
-  EXPECT_CALL(key_reader, GetEpEvent(_, _, _))
-      .WillOnce(
-          DoAll(testing::SetArgPointee<1>(ev_press), testing::Return(true)));
-
-  // Other key presses are ignored.
-  ev_press.code = 45;
-  EXPECT_CALL(key_reader, GetEpEvent(_, _, _))
-      .WillOnce(
-          DoAll(testing::SetArgPointee<1>(ev_press), testing::Return(true)));
-
-  // Non EV_KEY calls are ignored
-  struct input_event ev_input {
-    .type = EV_LED, .code = 28, .value = 0,
-  };
-  EXPECT_CALL(key_reader, GetEpEvent(_, _, _))
-      .WillOnce(
-          DoAll(testing::SetArgPointee<1>(ev_input), testing::Return(true)));
-
-  // Key release recorded.
-  struct input_event ev_release {
-    .type = EV_KEY, .code = 28, .value = 0,
-  };
-  EXPECT_CALL(key_reader, GetEpEvent(_, _, _))
-      .WillOnce(
-          DoAll(testing::SetArgPointee<1>(ev_release), testing::Return(true)));
-
-  int index;
-  EXPECT_TRUE(key_reader.EvWaitForKeys({28, 103}, &index));
-}
-
-TEST_F(KeyReaderTest, EvWaitKeyFileError) {
-  MockKeyReader key_reader;
-  EXPECT_CALL(key_reader, GetValidFds(true)).WillOnce(testing::Return(false));
-
-  int index;
-  EXPECT_FALSE(key_reader.EvWaitForKeys({28, 103}, &index));
-}
-
-TEST_F(KeyReaderTest, EvWaitKeyEpollError) {
-  MockKeyReader key_reader;
-
-  EXPECT_CALL(key_reader, GetValidFds(true)).WillOnce(testing::Return(true));
-  EXPECT_CALL(key_reader, EpollCreate(_)).WillOnce(testing::Return(true));
-  EXPECT_CALL(key_reader, GetEpEvent(_, _, _)).WillOnce(testing::Return(false));
-
-  int index;
-  EXPECT_FALSE(key_reader.EvWaitForKeys({28, 103}, &index));
-}
-
 TEST_F(KeyReaderTest, OnlyEvWaitKeyFunction) {
   MockKeyReader key_reader;
   // Cannot access password functions.
@@ -461,4 +401,17 @@ TEST_F(KeyReaderTest, GetUserInputGetChar) {
 
   EXPECT_TRUE(key_reader.GetUserInput(&enter, &tab, &input));
   EXPECT_EQ("ap", input);
+}
+
+TEST_F(KeyReaderTest, InitFdFailure) {
+  MockKeyReader key_reader(false);
+  EXPECT_CALL(key_reader, GetValidFds(true)).WillOnce(testing::Return(false));
+  EXPECT_FALSE(key_reader.Init({103, 108, 28}));
+}
+
+TEST_F(KeyReaderTest, InitEpollFailure) {
+  MockKeyReader key_reader(false);
+  EXPECT_CALL(key_reader, GetValidFds(true)).WillOnce(testing::Return(true));
+  EXPECT_CALL(key_reader, EpollCreate(_)).WillOnce(testing::Return(false));
+  EXPECT_FALSE(key_reader.Init({103, 108, 28}));
 }

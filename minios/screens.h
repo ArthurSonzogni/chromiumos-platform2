@@ -36,10 +36,16 @@ extern const int kKeyVolUp;
 extern const int kKeyVolDown;
 extern const int kKeyPower;
 
-class Screens {
+// Key state parameters.
+extern const int kFdsMax;
+extern const int kKeyMax;
+
+class Screens : public key_reader::KeyReader::Delegate {
  public:
-  explicit Screens(ProcessManagerInterface* process_manager) {
+  explicit Screens(ProcessManagerInterface* process_manager)
+      : key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {
     process_manager_ = process_manager;
+    key_reader_.SetDelegate(this);
   }
   virtual ~Screens() = default;
   // Not copyable or movable.
@@ -96,12 +102,6 @@ class Screens {
   // Clears screen including the footer.
   void ClearScreen();
 
-  // Waits on evwaitkey and registers key events up/down/enter. Changes index
-  // and enter variables according to the key event, evwaitkey may block
-  // indefinitely. Function modifies the index based on up and down arrow key
-  // input. The enter bool is changed to true if enter key input is recorded.
-  void WaitMenuInput(int menu_count, int* index, bool* enter);
-
   // Show button, focus changes the button color to indicate selection. Returns
   // false on error.
   void ShowButton(const std::string& message_token,
@@ -115,14 +115,18 @@ class Screens {
   // Defaults to done if requested icon not found.
   void ShowStepper(const std::vector<std::string>& steps);
 
+  // Shows the MiniOs Screens. Users can navigate between then using up/down
+  // arrow keys.
+  void StartMiniOsFlow();
+
   // Shows the list of all supported locales with the currently selected index
   // highlighted blue. Users can 'scroll' using the up and down arrow keys.
-  void ShowLanguageDropdown(int index);
+  void ShowLanguageDropdown();
 
   // Waits for key input and repaints the screen with a changed language
   // selection, clears the whole screen including the footer and updates the
   // language dependent constants. Returns to original screen after selection,
-  void LanguageMenuOnSelect();
+  virtual void LanguageMenuOnSelect();
 
   // Shows language menu drop down button on base screen. Button is highlighted
   // if it is currently selected.
@@ -134,14 +138,8 @@ class Screens {
   // Clears screen and shows footer and language drop down menu.
   void MessageBaseScreen();
 
-  // MiniOs Screens. Users can navigate between then using up/down arrow keys.
-  // Function displays all components and buttons for that screen.
-  void MiniOsWelcomeOnSelect();
-  void MiniOsDropdownOnSelect();
-  void MiniOsGetPasswordOnSelect();
-
   // Shows a list of all available items.
-  void ShowItemDropdown(int index);
+  void ShowItemDropdown();
 
   // Shows item menu drop down button on the dropdown screen. Button is
   // highlighted if it is currently selected. Selecting this button directs to
@@ -155,17 +153,36 @@ class Screens {
 
   // Get user password using the keyboard layout stored in locale. Users can use
   // the tab key to toggle showing the password.
-  void GetPassword();
+  virtual void GetPassword();
+
+  // Controls the flow of MiniOs by changing screen based on the current index
+  // and screen and whether or not a button has been selected(entered). Called
+  // every time a valid key press is recorded.
+  void SwitchScreen(bool enter);
 
   // Override the root directory for testing. Default is '/'.
-  void SetRootForTest(const std::string& test_root);
+  void SetRootForTest(const std::string& test_root) {
+    root_ = base::FilePath(test_root);
+  }
 
   // Override the current locale without using the language menu.
-  void SetLanguageForTest(const std::string& test_locale);
+  void SetLanguageForTest(const std::string& test_locale) {
+    locale_ = test_locale;
+    // Reload locale dependent dimension constants.
+    ReadDimensionConstants();
+  }
 
   // Override whether current language is marked as being read from right to
   // left. Does not change language.
-  void SetLocaleRtlForTest(bool is_rtl);
+  void SetLocaleRtlForTest(bool is_rtl) { right_to_left_ = is_rtl; }
+
+  // Getter and setter test functions for `index_` and `current_screen`.
+  void SetIndexForTest(int index) { index_ = index; }
+  int GetIndexForTest() { return index_; }
+  void SetScreenForTest(int current_screen) {
+    current_screen_ = static_cast<ScreenType>(current_screen);
+  }
+  int GetScreenForTest() { return static_cast<int>(current_screen_); }
 
  private:
   FRIEND_TEST(ScreensTest, ReadDimension);
@@ -185,6 +202,7 @@ class Screens {
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoKeyboard);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardBadKeyboardFormat);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboard);
+  FRIEND_TEST(ScreensTestMocks, OnKeyPress);
 
   ProcessManagerInterface* process_manager_;
 
@@ -201,7 +219,7 @@ class Screens {
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items.
-  void UpdateButtons(int menu_count, int key, int* index, bool* enter);
+  void UpdateButtons(int menu_count, int key, bool* enter);
 
   // Read the language constants into memory. Does not change
   // based on the current locale.
@@ -211,15 +229,27 @@ class Screens {
   // error.
   bool GetLangConstants(const std::string& locale, int* lang_width);
 
-  // Shows the components of MiniOs screens. Index changes button focus based on
-  // button order.
-  void ShowMiniOsWelcomeButtons(int index);
-  void ShowMiniOsGetPasswordButtons(int index);
-  void ShowMiniOsDropdownButtons(int index);
-  void ShowMiniOsDownloading();
-  void ShowMiniOsComplete();
+  // This function overloads Delegate. It is only called when the key is valid
+  // and updates the key state for the given fd and key. Calls `SwitchState` to
+  // update the flow once key is recorded as being pressed and released.
+  void OnKeyPress(int fd_index, int key_changed, bool key_released) override;
 
-  // Sets list of available items to item_list_ to show in drop down. Called
+  // Does all the reloading needed when the locale is changed, including
+  // repainting the screen. Called after `LanguageDropdown` is done.
+  virtual void OnLocaleChange();
+
+  // Calls the show screen function of `current_screen`.
+  virtual void ShowNewScreen();
+
+  // Shows the buttons of MiniOs screens. Index changes button focus based on
+  // button order.
+  void ShowMiniOsWelcomeScreen();
+  void ShowMiniOsDropdownScreen();
+  void ShowMiniOsGetPasswordScreen();
+  void ShowMiniOsDownloadingScreen();
+  void ShowMiniOsCompleteScreen();
+
+  // Sets list of available items to `item_list_` to show in drop down. Called
   // every time the menu is clicked.
   void SetItems();
 
@@ -278,6 +308,35 @@ class Screens {
   // Region code read from VPD. Used to determine keyboard layout. Does not
   // change based on selected locale.
   std::string vpd_region_;
+
+  // Records the key press for each fd and key, where the index of the fd is the
+  // row and the key code the column. Resets to false after key is released.
+  // Only tracks the valid keys.
+  std::vector<std::vector<bool>> key_states_;
+
+  // The number of menu buttons on each screen corresponding to the enum
+  // numbers, used to keep the index in bounds. The dropdown menu counts are
+  // updated based on the number of items in the dropdown.
+  std::vector<int> menu_count_{3, 3, 0, 3, 0, 0};
+
+  // All the different screens in the MiniOs Flow.
+  enum class ScreenType {
+    kWelcomeScreen = 0,
+    kDropDownScreen = 1,
+    kExpandedDropDownScreen = 2,
+    kPasswordScreen = 3,
+    kLanguageDropDownScreen = 4,
+    kDoneWithFlow = 5
+  };
+
+  ScreenType current_screen_{ScreenType::kWelcomeScreen};
+  // Previous screen only used when changing the language so you know what
+  // screen to return to after selection.
+  ScreenType previous_screen_{ScreenType::kWelcomeScreen};
+
+  // The `index_` shows which button is highlighted in the `current_screen_`,
+  // uses menu_count of current screen to stay in bounds.
+  int index_{1};
 };
 
 }  // namespace screens

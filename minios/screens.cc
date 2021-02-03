@@ -40,6 +40,10 @@ const int kKeyVolUp = 115;
 const int kKeyVolDown = 114;
 const int kKeyPower = 116;
 
+// Key state parameters.
+const int kFdsMax = 10;
+const int kKeyMax = 200;
+
 namespace {
 constexpr char kConsole0[] = "dev/pts/0";
 
@@ -73,6 +77,16 @@ bool Screens::Init() {
   // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
   ReadDimensionConstants();
   ReadLangConstants();
+
+  std::vector<int> wait_keys;
+  if (!is_detachable_)
+    wait_keys = {kKeyUp, kKeyDown, kKeyEnter};
+  else
+    wait_keys = {kKeyVolDown, kKeyVolUp, kKeyPower};
+  if (!key_reader_.Init(wait_keys)) {
+    LOG(ERROR) << "Could not initialize key reader. Unable to continue. ";
+    return false;
+  }
   return true;
 }
 
@@ -245,19 +259,9 @@ void Screens::ClearScreen() {
     LOG(WARNING) << "Could not clear screen.";
 }
 
-void Screens::WaitMenuInput(int menu_count, int* index, bool* enter) {
-  std::vector<int> wait_keys;
-  if (!is_detachable_)
-    wait_keys = {kKeyUp, kKeyDown, kKeyEnter};
-  else
-    wait_keys = {kKeyVolDown, kKeyVolUp, kKeyPower};
-  int key;
-  while (!key_reader_.EvWaitForKeys(wait_keys, &key)) {
-    LOG(WARNING) << "Error while waiting for keys, trying again.";
-    // Sleep and try again.
-    base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(1));
-  }
-  return UpdateButtons(menu_count, key, index, enter);
+void Screens::StartMiniOsFlow() {
+  index_ = 1;
+  return ShowMiniOsWelcomeScreen();
 }
 
 void Screens::ShowButton(const std::string& message_token,
@@ -343,14 +347,14 @@ void Screens::ShowStepper(const std::vector<std::string>& steps) {
   }
 }
 
-void Screens::ShowLanguageDropdown(int index) {
+void Screens::ShowLanguageDropdown() {
   constexpr int kItemHeight = 40;
   constexpr int kItemPerPage = (kCanvasSize - 260) / kItemHeight;
 
   // Pick begin index such that the selected index is centered on the screen if
   // possible.
   int begin_index =
-      std::clamp(index - kItemPerPage / 2, 0,
+      std::clamp(index_ - kItemPerPage / 2, 0,
                  static_cast<int>(supported_locales_.size()) - kItemPerPage);
 
   int offset_y = -kCanvasSize / 2 + 88;
@@ -367,7 +371,7 @@ void Screens::ShowLanguageDropdown(int index) {
     int lang_x = -kCanvasSize / 2 + language_width / 2 + 40;
 
     // This is the currently selected language. Show in blue.
-    if (index == i) {
+    if (index_ == i) {
       ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
       ShowImage(screens_path_.Append(supported_locales_[i])
                     .Append("language_focused.png"),
@@ -387,36 +391,18 @@ void Screens::LanguageMenuOnSelect() {
   ShowLanguageMenu(false);
 
   // Find index of current locale to show in the dropdown.
-  int index = std::distance(
+  index_ = std::distance(
       supported_locales_.begin(),
       std::find(supported_locales_.begin(), supported_locales_.end(), locale_));
-  if (index == supported_locales_.size()) {
+  if (index_ == supported_locales_.size()) {
     // Default to en-US.
-    index = 9;
+    index_ = 9;
     LOG(WARNING) << " Could not find an index to match current locale "
-                 << locale_ << ". Defaulting to index " << index << " for  "
-                 << supported_locales_[index];
+                 << locale_ << ". Defaulting to index " << index_ << " for  "
+                 << supported_locales_[index_];
   }
 
-  ShowLanguageDropdown(index);
-
-  bool enter = false;
-  while (true) {
-    WaitMenuInput(supported_locales_.size(), &index, &enter);
-    if (enter && index >= 0) {
-      // Selected a new locale. Update the constants and whether it is read from
-      // rtl.
-      locale_ = supported_locales_[index];
-      CheckRightToLeft();
-      ReadDimensionConstants();
-      ClearScreen();
-      ShowFooter();
-      LOG(INFO) << "Changed selected locale to " << supported_locales_[index];
-      return;
-    }
-    // Update drop down menu with new highlighted selection.
-    ShowLanguageDropdown(index);
-  }
+  ShowLanguageDropdown();
 }
 
 void Screens::ShowLanguageMenu(bool is_selected) {
@@ -511,86 +497,25 @@ void Screens::MessageBaseScreen() {
   ShowFooter();
 }
 
-void Screens::MiniOsWelcomeOnSelect() {
+void Screens::ShowMiniOsWelcomeScreen() {
   MessageBaseScreen();
   ShowInstructionsWithTitle("MiniOS_welcome");
   ShowStepper({"1", "2", "3"});
 
-  int index = 1;
-  bool enter = false;
-  ShowMiniOsWelcomeButtons(index);
-  while (true) {
-    // Get key events from evwaitkey.
-    WaitMenuInput(3, &index, &enter);
-    if (enter) {
-      switch (index) {
-        case 0:
-          LanguageMenuOnSelect();
-          // Return to current screen after picking new language.
-          enter = false;
-          index = 1;
-          ShowInstructionsWithTitle("MiniOS_welcome");
-          ShowStepper({"1", "2", "3"});
-          break;
-        case 1:
-          MiniOsDropdownOnSelect();
-          return;
-        case 2:
-          index = 1;
-          ShowMiniOsWelcomeButtons(index);
-          continue;
-      }
-    }
-    // If not entered, update MiniOS Screen with new button selections.
-    ShowMiniOsWelcomeButtons(index);
-  }
-}
-
-void Screens::ShowMiniOsWelcomeButtons(int index) {
-  ShowLanguageMenu(index == 0);
+  ShowLanguageMenu(index_ == 0);
   constexpr int kBtnY = kTitleY + 80 + kBtnYStep * 2;
-  ShowButton("btn_next", kBtnY, (index == 1), default_button_width_, false);
-  ShowButton("btn_back", kBtnY + kBtnYStep, (index == 2), default_button_width_,
-             false);
+  ShowButton("btn_next", kBtnY, (index_ == 1), default_button_width_, false);
+  ShowButton("btn_back", kBtnY + kBtnYStep, (index_ == 2),
+             default_button_width_, false);
 }
 
-void Screens::MiniOsDropdownOnSelect() {
+void Screens::ShowMiniOsDropdownScreen() {
   MessageBaseScreen();
   ShowInstructions("title_MiniOS_dropdown");
   ShowStepper({"1-done", "2", "3"});
-
-  int index = 1;
-  ShowMiniOsDropdownButtons(index);
-  bool enter = false;
-  while (true) {
-    WaitMenuInput(3, &index, &enter);
-    if (enter) {
-      switch (index) {
-        case 0:
-          LanguageMenuOnSelect();
-          // Return to current screen after picking new language.
-          ShowInstructions("title_MiniOS_dropdown");
-          ShowStepper({"1-done", "2", "3"});
-          enter = false;
-          index = 1;
-          break;
-        case 1:
-          ExpandItemDropdown();
-          MiniOsGetPasswordOnSelect();
-          return;
-        case 2:
-          MiniOsWelcomeOnSelect();
-          return;
-      }
-    }
-    ShowMiniOsDropdownButtons(index);
-  }
-}
-
-void Screens::ShowMiniOsDropdownButtons(int index) {
-  ShowLanguageMenu(index == 0);
-  ShowCollapsedItemMenu((index == 1));
-  ShowButton("btn_back", kTitleY + 58 + (4 * kBtnYStep), (index == 2),
+  ShowLanguageMenu(index_ == 0);
+  ShowCollapsedItemMenu((index_ == 1));
+  ShowButton("btn_back", kTitleY + 58 + (4 * kBtnYStep), (index_ == 2),
              default_button_width_, false);
 }
 
@@ -598,29 +523,19 @@ void Screens::ExpandItemDropdown() {
   SetItems();
   ShowLanguageMenu(false);
   ShowCollapsedItemMenu(true);
-
-  int index = 0;
-  ShowItemDropdown(index);
-  bool enter = false;
-  while (true) {
-    WaitMenuInput(item_list_.size(), &index, &enter);
-    if (enter && index > 0) {
-      chosen_item_ = item_list_[index];
-      LOG(INFO) << "Changed network to " << chosen_item_;
-      return;
-    }
-    // Update drop down menu with new highlighted selection.
-    ShowItemDropdown(index);
-  }
+  ShowItemDropdown();
 }
 
-void Screens::ShowMiniOsGetPasswordButtons(int index) {
-  ShowLanguageMenu((index == 0));
+void Screens::ShowMiniOsGetPasswordScreen() {
+  MessageBaseScreen();
+  ShowInstructionsWithTitle("MiniOS_password");
+  ShowStepper({"done", "2-done", "3"});
+  ShowLanguageMenu(index_ == 0);
   constexpr int kBtnY = kTitleY + 58 + kBtnYStep * 2;
   ShowButton("Enter your password", kBtnY, false, default_button_width_ * 4,
              true);
-  ShowButton("btn_back", kBtnY + kBtnYStep, (index == 2), default_button_width_,
-             false);
+  ShowButton("btn_back", kBtnY + kBtnYStep, (index_ == 2),
+             default_button_width_, false);
 }
 
 void Screens::GetPassword() {
@@ -654,51 +569,16 @@ void Screens::GetPassword() {
   LOG(INFO) << "User password is: " << plain_text_password;
 }
 
-void Screens::MiniOsGetPasswordOnSelect() {
-  MessageBaseScreen();
-  ShowInstructionsWithTitle("MiniOS_password");
-  ShowStepper({"done", "2-done", "3"});
-
-  int index = 1;
-  ShowMiniOsGetPasswordButtons(index);
-  bool enter = false;
-  while (true) {
-    // Get key events from evwaitkey.
-    WaitMenuInput(3, &index, &enter);
-    if (enter) {
-      switch (index) {
-        case 0:
-          LanguageMenuOnSelect();
-          // Return to current screen after picking new language.
-          ShowInstructionsWithTitle("MiniOS_password");
-          ShowStepper({"done", "2-done", "3"});
-          enter = false;
-          index = 1;
-          break;
-        case 1:
-          GetPassword();
-          ShowMiniOsDownloading();
-          return;
-        case 2:
-          MiniOsDropdownOnSelect();
-          return;
-      }
-    }
-    // If not entered, update MiniOS Screen with new button selections.
-    ShowMiniOsGetPasswordButtons(index);
-  }
-}
-
-void Screens::ShowMiniOsDownloading() {
+void Screens::ShowMiniOsDownloadingScreen() {
   MessageBaseScreen();
   ShowInstructionsWithTitle("MiniOS_downloading");
   ShowStepper({"done", "done", "3-done"});
   ShowLanguageMenu(false);
   ShowProgressBar(10);
-  ShowMiniOsComplete();
+  ShowMiniOsCompleteScreen();
 }
 
-void Screens::ShowMiniOsComplete() {
+void Screens::ShowMiniOsCompleteScreen() {
   MessageBaseScreen();
   ShowInstructions("title_MiniOS_complete");
   ShowStepper({"done", "done", "done"});
@@ -750,8 +630,8 @@ bool Screens::GetDimension(const std::string& token, int* token_dimension) {
   return false;
 }
 
-void Screens::UpdateButtons(int menu_count, int key, int* index, bool* enter) {
-  int starting_index = *index;
+void Screens::UpdateButtons(int menu_count, int key, bool* enter) {
+  int starting_index = index_;
   // Make sure index is in range, if not reset to 0.
   if (starting_index < 0 || starting_index >= menu_count)
     starting_index = 0;
@@ -770,7 +650,7 @@ void Screens::UpdateButtons(int menu_count, int key, int* index, bool* enter) {
   } else {
     LOG(ERROR) << "Unknown key value: " << key;
   }
-  *index = starting_index;
+  index_ = starting_index;
 }
 
 void Screens::ReadLangConstants() {
@@ -799,6 +679,10 @@ void Screens::ReadLangConstants() {
           locale_list, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     }
   }
+
+  // Add size of language dropdown menu using the number of locales.
+  menu_count_[static_cast<int>(ScreenType::kLanguageDropDownScreen)] =
+      supported_locales_.size();
 
   if (supported_locales_.empty()) {
     LOG(WARNING) << "Unable to get supported locales. Will not be able to "
@@ -831,6 +715,17 @@ bool Screens::GetLangConstants(const std::string& locale, int* lang_width) {
   return false;
 }
 
+void Screens::OnLocaleChange() {
+  // Change locale and update constants.
+  locale_ = supported_locales_[index_];
+  CheckRightToLeft();
+  ReadDimensionConstants();
+  ClearScreen();
+  ShowFooter();
+  // Reset index state to go back to the MiniOs flow.
+  index_ = 1;
+}
+
 void Screens::ShowCollapsedItemMenu(bool is_selected) {
   constexpr int kOffsetY = -kCanvasSize / 2 + 350;
   constexpr int kBgX = -kCanvasSize / 2 + 145;
@@ -849,11 +744,11 @@ void Screens::ShowCollapsedItemMenu(bool is_selected) {
   ShowMessage("btn_MiniOS_display_options", text_x, kOffsetY);
 }
 
-void Screens::ShowItemDropdown(int index) {
+void Screens::ShowItemDropdown() {
   constexpr int kItemPerPage = 10;
   // Pick begin index such that the selected index is centered on the screen.
   int begin_index =
-      std::clamp(index - kItemPerPage / 2, 0,
+      std::clamp(index_ - kItemPerPage / 2, 0,
                  static_cast<int>(supported_locales_.size()) - kItemPerPage);
 
   int offset_y = -kCanvasSize / 2 + 350 + 40;
@@ -862,7 +757,7 @@ void Screens::ShowItemDropdown(int index) {
   constexpr int kItemHeight = 40;
   for (int i = begin_index;
        i < (begin_index + kItemPerPage) && i < item_list_.size(); i++) {
-    if (index == i) {
+    if (index_ == i) {
       ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
       ShowText(item_list_[i], kOffsetX, offset_y, "black");
     } else {
@@ -878,6 +773,10 @@ void Screens::SetItems() {
   // TODO(vyshu): temporary item names, replace with shill information.
   item_list_ = {" item 1", "item2_public", "testing ! 1 2 ",
                 "32_char_is_the_longest_item_name"};
+  // Change the menu count for the Expanded dropdown menu based on number of
+  // items.
+  menu_count_[static_cast<int>(ScreenType::kExpandedDropDownScreen)] =
+      item_list_.size();
 }
 
 void Screens::CheckRightToLeft() {
@@ -890,17 +789,6 @@ void Screens::CheckDetachable() {
       base::PathExists(root_.Append("etc/cros-initramfs/is_detachable"));
 }
 
-/*
-vpd_get_value() {
-  local file="/sys/firmware/vpd/ro/$1"
-
-  if [ -e "${file}" ]; then
-    cat "${file}"
-  else
-    vpd -g "$1"
-  fi
-}
-*/
 void Screens::GetVpdRegion() {
   if (ReadFileToString(root_.Append("sys/firmware/vpd/ro/region"),
                        &vpd_region_)) {
@@ -920,11 +808,6 @@ void Screens::GetVpdRegion() {
   return;
 }
 
-/*
-read_truncated_hwid() {
-  crossystem hwid | cut -f 1 -d ' '
-}
-*/
 void Screens::ReadHardwareId() {
   int exit_code = 0;
   std::string output, error;
@@ -989,18 +872,109 @@ bool Screens::MapRegionToKeyboard(std::string* xkb_keyboard_layout) {
   return true;
 }
 
-void Screens::SetRootForTest(const std::string& test_root) {
-  root_ = base::FilePath(test_root);
+void Screens::OnKeyPress(int fd_index, int key_changed, bool key_released) {
+  // Make sure you have seen a key press for this key before ending on key
+  // event release.
+
+  if (fd_index < 0 || key_changed < 0 || fd_index >= key_states_.size() ||
+      key_changed >= key_states_[0].size()) {
+    LOG(ERROR) << "Fd index or key code out of range.  Index: " << fd_index
+               << ". Key code: " << key_changed;
+    return;
+  }
+
+  if (key_released && key_states_[fd_index][key_changed]) {
+    key_states_[fd_index][key_changed] = false;
+    bool enter = false;
+    UpdateButtons(menu_count_[static_cast<int>(current_screen_)], key_changed,
+                  &enter);
+    SwitchScreen(enter);
+    return;
+  } else if (!key_released) {
+    key_states_[fd_index][key_changed] = true;
+  }
 }
 
-void Screens::SetLanguageForTest(const std::string& test_locale) {
-  locale_ = test_locale;
-  // Reload locale dependent dimension constants.
-  ReadDimensionConstants();
+void Screens::SwitchScreen(bool enter) {
+  if (enter && index_ == 0 &&
+      current_screen_ != ScreenType::kLanguageDropDownScreen &&
+      current_screen_ != ScreenType::kExpandedDropDownScreen &&
+      current_screen_ != ScreenType::kDoneWithFlow) {
+    previous_screen_ = current_screen_;
+    current_screen_ = ScreenType::kLanguageDropDownScreen;
+    LanguageMenuOnSelect();
+    return;
+  }
+
+  if (!enter) {
+    ShowNewScreen();
+    return;
+  }
+
+  switch (current_screen_) {
+    case ScreenType::kWelcomeScreen:
+      if (index_ == 1) {
+        current_screen_ = ScreenType::kDropDownScreen;
+      }
+      index_ = 1;
+      break;
+    case ScreenType::kDropDownScreen:
+      if (index_ == 1) {
+        index_ = 0;
+        current_screen_ = ScreenType::kExpandedDropDownScreen;
+      } else {
+        index_ = 1;
+        current_screen_ = ScreenType::kWelcomeScreen;
+      }
+      break;
+    case ScreenType::kExpandedDropDownScreen:
+      index_ = 1;
+      current_screen_ = ScreenType::kPasswordScreen;
+      break;
+    case ScreenType::kPasswordScreen:
+      if (index_ == 1) {
+        GetPassword();
+        current_screen_ = ScreenType::kDoneWithFlow;
+      } else {
+        index_ = 1;
+        current_screen_ = ScreenType::kDropDownScreen;
+      }
+      break;
+    case ScreenType::kLanguageDropDownScreen:
+      if (enter) {
+        current_screen_ = previous_screen_;
+        OnLocaleChange();
+        SwitchScreen(false);
+        return;
+      }
+      break;
+    case ScreenType::kDoneWithFlow:
+      return;
+  }
+  ShowNewScreen();
+  return;
 }
 
-void Screens::SetLocaleRtlForTest(bool is_rtl) {
-  right_to_left_ = is_rtl;
+void Screens::ShowNewScreen() {
+  switch (current_screen_) {
+    case ScreenType::kWelcomeScreen:
+      ShowMiniOsWelcomeScreen();
+      break;
+    case ScreenType::kDropDownScreen:
+      ShowMiniOsDropdownScreen();
+      break;
+    case ScreenType::kExpandedDropDownScreen:
+      ExpandItemDropdown();
+      break;
+    case ScreenType::kPasswordScreen:
+      ShowMiniOsGetPasswordScreen();
+      break;
+    case ScreenType::kLanguageDropDownScreen:
+      ShowLanguageDropdown();
+      break;
+    case ScreenType::kDoneWithFlow:
+      ShowMiniOsDownloadingScreen();
+  }
 }
 
 }  // namespace screens

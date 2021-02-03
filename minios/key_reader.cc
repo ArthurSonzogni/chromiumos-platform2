@@ -29,9 +29,6 @@ constexpr char kXkbPathName[] = "/usr/share/X11/xkb";
 // Offset between xkb layout codes and ev key codes.
 constexpr int kXkbOffset = 8;
 
-constexpr int kFdsMax = 10;
-constexpr int kKeyMax = 200;
-
 // Determines if the given |bit| is set in the |bitmask| array.
 bool TestBit(const int bit, const uint8_t* bitmask) {
   return (bitmask[bit / 8] >> (bit % 8)) & 1;
@@ -69,6 +66,26 @@ KeyReader::~KeyReader() {
     xkb_keymap_unref(keymap_);
     xkb_context_unref(ctx_);
   }
+}
+
+bool KeyReader::Init(const std::vector<int>& valid_keys) {
+  keys_ = valid_keys;
+  if (!GetValidFds(/*check_supported_keys=*/true)) {
+    LOG(ERROR) << "No valid input devices found.";
+    return false;
+  }
+  if (!EpollCreate(&epfd_)) {
+    PLOG(ERROR) << " EpollCreate failed, cannot watch epfd.";
+    return false;
+  }
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      epfd_.get(),
+      base::BindRepeating(&KeyReader::OnKeyEvent, base::Unretained(this)));
+  if (!watcher_) {
+    LOG(ERROR) << "Failed to watch epoll fd.";
+    return false;
+  }
+  return true;
 }
 
 bool KeyReader::SupportsAllKeys(const int fd) {
@@ -139,6 +156,29 @@ bool KeyReader::GetEpEvent(int epfd, struct input_event* ev, int* index) {
     return false;
   }
   return true;
+}
+
+void KeyReader::OnKeyEvent() {
+  struct input_event ev;
+  int index = 0;
+  if (!GetEpEvent(epfd_.get(), &ev, &index)) {
+    PLOG(ERROR) << "Could not get event";
+    return;
+  }
+  if (ev.type != EV_KEY || ev.code > KEY_MAX) {
+    return;
+  }
+
+  if (std::find(keys_.begin(), keys_.end(), ev.code) == keys_.end()) {
+    return;
+  }
+
+  if (!delegate_) {
+    LOG(ERROR) << "Delegate not initialized.";
+    return;
+  }
+
+  delegate_->OnKeyPress(index, ev.code, (ev.value == 0));
 }
 
 bool KeyReader::SetKeyboardContext() {
@@ -254,48 +294,6 @@ bool KeyReader::GetUserInput(bool* enter,
   }
   *user_input = user_input_;
   return true;
-}
-
-bool KeyReader::EvWaitForKeys(const std::vector<int>& keys, int* key_pressed) {
-  if (keys.empty()) {
-    LOG(ERROR) << "No keys given.";
-    return false;
-  }
-  keys_ = keys;
-
-  if (!GetValidFds(/*check_supported_keys=*/true)) {
-    LOG(ERROR) << "No valid input devices found.";
-    return false;
-  }
-
-  base::ScopedFD epfd;
-  if (!EpollCreate(&epfd)) {
-    return false;
-  }
-
-  bool key_states[kFdsMax][kKeyMax] = {{}};
-
-  while (true) {
-    struct input_event ev;
-    int index = 0;
-    if (!GetEpEvent(epfd.get(), &ev, &index)) {
-      LOG(ERROR) << "Could not get event.";
-      return false;
-    }
-
-    if (ev.type != EV_KEY || ev.code > KEY_MAX) {
-      continue;
-    }
-
-    if (std::find(keys_.begin(), keys_.end(), ev.code) != keys_.end()) {
-      if (ev.value == 0 && key_states[index][ev.code]) {
-        *key_pressed = ev.code;
-        return true;
-      } else if (ev.value == 1) {
-        key_states[index][ev.code] = true;
-      }
-    }
-  }
 }
 
 bool KeyReader::GetCharForTest(const struct input_event& ev) {

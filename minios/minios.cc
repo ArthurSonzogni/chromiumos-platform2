@@ -32,7 +32,7 @@ int MiniOs::Run() {
     LOG(ERROR) << "Screens init failed. Exiting.";
     return 1;
   }
-  screens_.MiniOsWelcomeOnSelect();
+  screens_.StartMiniOsFlow();
 
   return 0;
 }
