@@ -7,8 +7,10 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
 
+#include <cutils/native_handle.h>
 #include <stdint.h>
-#include <system/window.h>
+#include <sys/types.h>
+#include <system/graphics.h>
 
 #include "cros-camera/export.h"
 
