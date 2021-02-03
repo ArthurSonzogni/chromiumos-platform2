@@ -20,6 +20,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "u2fd/mock_allowlisting_util.h"
 #include "u2fd/mock_tpm_vendor_cmd.h"
@@ -240,8 +241,8 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
     PrepareMockCryptohome();
     handler_->Initialize(
         mock_bus_.get(), &mock_tpm_proxy_, &mock_user_state_, u2f_mode,
-        [this]() { presence_requested_count_++; },
-        std::move(allowlisting_util));
+        [this]() { presence_requested_count_++; }, std::move(allowlisting_util),
+        &mock_metrics_);
   }
 
   void PrepareMockCryptohome() {
@@ -362,6 +363,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
   scoped_refptr<dbus::MockObjectProxy> mock_auth_dialog_proxy_;
   std::unique_ptr<dbus::Response> mock_auth_dialog_response_;
   org::chromium::CryptohomeInterfaceProxyMock* mock_cryptohome_proxy_;
+  testing::NiceMock<MetricsLibraryMock> mock_metrics_;
   int presence_requested_count_ = 0;
 };
 

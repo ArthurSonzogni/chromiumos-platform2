@@ -24,6 +24,11 @@ class MockWebAuthnStorage : public WebAuthnStorage {
 
   MOCK_METHOD(bool, LoadRecords, (), (override));
 
+  MOCK_METHOD(bool,
+              SendRecordCountToUMA,
+              (MetricsLibraryInterface*),
+              (override));
+
   MOCK_METHOD(void, Reset, (), (override));
 
   MOCK_METHOD(base::Optional<brillo::Blob>,

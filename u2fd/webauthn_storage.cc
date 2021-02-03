@@ -39,6 +39,12 @@ constexpr const char kUserIdKey[] = "user_id";
 constexpr const char kUserDisplayNameKey[] = "user_display_name";
 constexpr const char kCreatedTimestampKey[] = "created";
 
+constexpr char kWebAuthnRecordCountMetric[] =
+    "WebAuthentication.ChromeOS.StartupRecordCount";
+constexpr int kMinRecordCount = 0;
+constexpr int kMaxRecordCount = 50;
+constexpr int kRecordCountBuckets = 50;
+
 }  // namespace
 
 WebAuthnStorage::WebAuthnStorage() : root_path_(kDaemonStorePath) {}
@@ -222,6 +228,12 @@ bool WebAuthnStorage::LoadRecords() {
   }
   LOG(INFO) << "Loaded " << records_.size() << " WebAuthn records to memory.";
   return read_all_records_successfully;
+}
+
+bool WebAuthnStorage::SendRecordCountToUMA(MetricsLibraryInterface* metrics) {
+  return metrics->SendToUMA(kWebAuthnRecordCountMetric, records_.size(),
+                            kMinRecordCount, kMaxRecordCount,
+                            kRecordCountBuckets);
 }
 
 base::Optional<brillo::Blob> WebAuthnStorage::GetSecretByCredentialId(

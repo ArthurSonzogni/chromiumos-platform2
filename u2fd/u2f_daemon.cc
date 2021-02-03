@@ -346,7 +346,7 @@ void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
 
   webauthn_handler_.Initialize(bus_.get(), &tpm_proxy_, user_state_.get(),
                                u2f_mode, request_presence,
-                               std::move(allowlisting_util));
+                               std::move(allowlisting_util), &metrics_library_);
 }
 
 void U2fDaemon::SendWinkSignal() {

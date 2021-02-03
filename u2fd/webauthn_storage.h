@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
+#include <metrics/metrics_library.h>
 
 namespace u2f {
 
@@ -49,6 +50,8 @@ class WebAuthnStorage {
   virtual bool WriteRecord(const WebAuthnRecord& record);
   // Loads records for |sanitized_user| to memory.
   virtual bool LoadRecords();
+
+  virtual bool SendRecordCountToUMA(MetricsLibraryInterface* metrics);
 
   // Clears in-memory records.
   virtual void Reset();

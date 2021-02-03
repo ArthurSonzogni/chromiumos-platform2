@@ -15,6 +15,7 @@
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome-client/cryptohome/dbus-proxies.h>
+#include <metrics/metrics_library.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include "u2fd/allowlisting_util.h"
@@ -82,12 +83,14 @@ class WebAuthnHandler {
   // |request_presence| - callback for performing other platform tasks when
   // expecting the user to press the power button.
   // |allowlisting_util| - utility to append allowlisting data to g2f certs.
+  // |metrics| pointer to metrics library object.
   void Initialize(dbus::Bus* bus,
                   TpmVendorCommandProxy* tpm_proxy,
                   UserState* user_state,
                   U2fMode u2f_mode,
                   std::function<void()> request_presence,
-                  std::unique_ptr<AllowlistingUtil> allowlisting_util);
+                  std::unique_ptr<AllowlistingUtil> allowlisting_util,
+                  MetricsLibraryInterface* metrics);
 
   // Called when session state changed. Loads/clears state for primary user.
   void OnSessionStarted(const std::string& account_id);
@@ -298,6 +301,8 @@ class WebAuthnHandler {
 
   // Storage for WebAuthn credential records.
   std::unique_ptr<WebAuthnStorage> webauthn_storage_;
+
+  MetricsLibraryInterface* metrics_;
 };
 
 }  // namespace u2f
