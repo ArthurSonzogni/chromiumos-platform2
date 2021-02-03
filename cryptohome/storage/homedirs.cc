@@ -576,7 +576,17 @@ bool HomeDirs::Remove(const std::string& username) {
   FilePath user_dir = ShadowRoot().Append(obfuscated);
   FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
   FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
-  return platform_->DeletePathRecursively(user_dir) &&
+
+  bool ret = true;
+
+  if (DmcryptCryptohomeExists(obfuscated)) {
+    auto vault = vault_factory_->Generate(obfuscated, FileSystemKeyReference(),
+                                          EncryptedContainerType::kDmcrypt,
+                                          EncryptedContainerType::kUnknown);
+    ret = vault->Purge();
+  }
+
+  return ret && platform_->DeletePathRecursively(user_dir) &&
          platform_->DeletePathRecursively(user_path) &&
          platform_->DeletePathRecursively(root_path);
 }

@@ -167,4 +167,24 @@ bool CryptohomeVault::Teardown() {
   return ret;
 }
 
+bool CryptohomeVault::Purge() {
+  bool ret = true;
+  if (!container_->Purge()) {
+    LOG(ERROR) << "Failed to purge container";
+    ret = false;
+  }
+
+  if (migrating_container_ && !migrating_container_->Purge()) {
+    LOG(ERROR) << "Failed to purge migrating container";
+    ret = false;
+  }
+
+  if (cache_container_ && !cache_container_->Purge()) {
+    LOG(ERROR) << "Failed to teardown cache container";
+    ret = false;
+  }
+
+  return ret;
+}
+
 }  // namespace cryptohome
