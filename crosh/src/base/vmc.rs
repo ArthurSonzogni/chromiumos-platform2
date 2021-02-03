@@ -14,10 +14,6 @@ use crate::util::is_chrome_feature_enabled;
 const EXECUTABLE: &str = "/usr/bin/vmc";
 
 pub fn register(dispatcher: &mut Dispatcher) {
-    // Only register the vmc command if the binary is present.
-    if !Path::new(EXECUTABLE).exists() {
-        return;
-    }
     dispatcher.register_command(
         Command::new("vmc".to_string(), "".to_string(), "".to_string())
             .set_command_callback(Some(execute_vmc))
@@ -42,15 +38,22 @@ fn vmc_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
 }
 
 fn execute_vmc(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
+    if !Path::new(EXECUTABLE).exists() {
+        eprintln!("Sorry, but VMs are not supported on this device.");
+        return Err(dispatcher::Error::CommandReturnedError);
+    }
+
     if !is_chrome_feature_enabled("IsCrostiniEnabled").unwrap_or(false)
         && !is_chrome_feature_enabled("IsPluginVmEnabled").unwrap_or(false)
     {
-        eprintln!("This command is not available.");
+        eprintln!("VM support is disabled by policy, or for this user session.");
+        eprintln!("Note: This only works for the first logged-in account.");
         return Err(dispatcher::Error::CommandReturnedError);
     }
 
     if !is_chrome_feature_enabled("IsVmManagementCliAllowed").unwrap_or(false) {
-        eprintln!("This command is not available.");
+        eprintln!("CLI access to VMs is disallowed by policy.");
+        eprintln!("Please contact your administrator for assistance.");
         return Err(dispatcher::Error::CommandReturnedError);
     }
 
