@@ -107,6 +107,7 @@ copies.
 | [p2p](./p2p/) | Service for sharing files between CrOS devices (e.g. updates) |
 | [patchpanel](./patchpanel/) | Platform networking daemons |
 | [pciguard](./pciguard/) | Daemon to secure external PCI devices (thunderbolt etc) |
+| [perfetto_simple_producer](./perfetto_simple_producer/) | A simple producer of perfetto: An example demonstrating how to produce Perfetto performance trace data |
 | [permission_broker](./permission_broker/) ||
 | [policy_proto](./policy_proto/) | Build file to compile policy proto file |
 | [policy_utils](./policy_utils/) | Tools and related library to set or override device policies |
