@@ -63,6 +63,13 @@ std::ostream& operator<<(std::ostream& stream, Proxy::Options opt) {
 
 Proxy::Proxy(const Proxy::Options& opts) : opts_(opts) {}
 
+Proxy::Proxy(const Options& opts,
+             std::unique_ptr<patchpanel::Client> patchpanel,
+             std::unique_ptr<shill::Client> shill)
+    : opts_(opts),
+      patchpanel_(std::move(patchpanel)),
+      shill_(std::move(shill)) {}
+
 int Proxy::OnInit() {
   LOG(INFO) << "Starting DNS proxy " << opts_;
 
@@ -79,10 +86,16 @@ void Proxy::OnShutdown(int*) {
 }
 
 void Proxy::Setup() {
-  shill_.reset(new shill::Client(bus_));
+  // This is only to account for the injected client for testing.
+  if (!shill_)
+    shill_.reset(new shill::Client(bus_));
+
   shill_->Init();
 
-  patchpanel_ = patchpanel::Client::New();
+  // This is only to account for the injected client for testing.
+  if (!patchpanel_)
+    patchpanel_ = patchpanel::Client::New();
+
   CHECK(patchpanel_) << "Failed to initialize patchpanel client";
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
       &Proxy::OnPatchpanelReady, weak_factory_.GetWeakPtr()));

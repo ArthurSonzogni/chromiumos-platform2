@@ -14,6 +14,7 @@
 #include <base/files/scoped_file.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <shill/dbus/client/client.h>
 
 #include "dns-proxy/resolver.h"
@@ -34,6 +35,10 @@ class Proxy : public brillo::DBusDaemon {
   };
 
   explicit Proxy(const Options& opts);
+  // For testing.
+  Proxy(const Options& opts,
+        std::unique_ptr<patchpanel::Client> patchpanel,
+        std::unique_ptr<shill::Client> shill);
   Proxy(const Proxy&) = delete;
   Proxy& operator=(const Proxy&) = delete;
   ~Proxy() = default;
@@ -64,6 +69,18 @@ class Proxy : public brillo::DBusDaemon {
   void SetShillProperty(const std::string& addr,
                         bool die_on_failure = false,
                         uint8_t num_retries = kMaxShillPropertyRetries);
+
+  FRIEND_TEST(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill);
+  FRIEND_TEST(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetShillPropertyWithNoRetriesCrashes);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetShillPropertyDoesntCrashIfDieFalse);
+  FRIEND_TEST(ProxyTest, SetupInitializesShill);
+  FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
+  FRIEND_TEST(ProxyTest, DefaultProxy_ConnectedNamedspace);
+  FRIEND_TEST(ProxyTest, ArcProxy_ConnectedNamedspace);
+  FRIEND_TEST(ProxyTest, CrashOnConnectNamespaceFailure);
+  FRIEND_TEST(ProxyTest, CrashOnPatchpanelNotReady);
+  FRIEND_TEST(ProxyTest, ShillResetRestoresAddressProperty);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
