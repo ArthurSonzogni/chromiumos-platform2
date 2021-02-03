@@ -215,6 +215,12 @@ impl Dispatcher {
     }
 }
 
+impl Default for Dispatcher {
+    fn default() -> Self {
+        Dispatcher::new()
+    }
+}
+
 // Owns the data required to identify the command, and serves as a node in a tree. Sub commands can
 // be registered. It contains callbacks for the following:
 // * flag/switch processing
@@ -551,16 +557,8 @@ mod tests {
         Ok(())
     }
 
-    fn false_command_callback(_cmd: &Command, _args: &Arguments) -> Result<(), Error> {
-        Err(Error::CommandReturnedError)
-    }
-
     fn panic_command_callback(_cmd: &Command, _args: &Arguments) -> Result<(), Error> {
         panic!()
-    }
-
-    fn completion_callback(_args: &Arguments) -> CompletionResult {
-        CompletionResult::NoMatches
     }
 
     fn panic_completion_callback(_args: &Arguments) -> CompletionResult {

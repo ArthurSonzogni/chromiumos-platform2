@@ -8,6 +8,12 @@ edition = "2018"
 panic = "abort"
 overflow-checks = true
 
+[lib]
+name = "crosh"
+
+[[bin]]
+name = "crosh"
+
 [dependencies]
 dbus = "0.8"
 getopts = "0.2"

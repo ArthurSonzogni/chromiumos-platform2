@@ -2,17 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-mod base;
-mod dev;
-mod dispatcher;
-mod legacy;
-mod util;
-
 use std::env::var;
 use std::io::{self, stdout, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI32, Ordering};
 
+use crosh::dispatcher::{CompletionResult, Dispatcher};
+use crosh::{setup_dispatcher, util};
 use libc::{c_int, fork, kill, pid_t, waitpid, SIGHUP, SIGINT, SIGKILL, WIFSTOPPED};
 use libchromeos::chromeos::is_dev_mode;
 use rustyline::completion::Completer;
@@ -23,8 +19,6 @@ use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{CompletionType, Config, Context, Editor, Helper};
 use sys_util::{error, syslog};
-
-use crate::dispatcher::{CompletionResult, Dispatcher};
 
 const HISTORY_FILENAME: &str = ".crosh_history";
 
@@ -312,30 +306,6 @@ fn input_loop(dispatcher: Dispatcher) {
     }
 }
 
-fn setup_dispatcher() -> Dispatcher {
-    let mut dispatcher = Dispatcher::new();
-
-    if util::dev_commands_included() {
-        legacy::register_dev_mode_commands(&mut dispatcher);
-        dev::register(&mut dispatcher);
-    }
-
-    if util::usb_commands_included() {
-        legacy::register_removable_commands(&mut dispatcher);
-    }
-
-    base::register(&mut dispatcher);
-    legacy::register(&mut dispatcher);
-
-    if let Err(err) = dispatcher.validate() {
-        // Use error! too so that the message is included in the syslog.
-        error!("FATAL: {}", err);
-        panic!("FATAL: {}", err);
-    }
-
-    dispatcher
-}
-
 fn main() -> Result<(), ()> {
     let mut args = std::env::args();
 
@@ -404,17 +374,5 @@ fn main() -> Result<(), ()> {
 
         input_loop(dispatcher);
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_validate_registered_commands() {
-        util::set_dev_commands_included(true);
-        util::set_usb_commands_included(true);
-        setup_dispatcher();
     }
 }
