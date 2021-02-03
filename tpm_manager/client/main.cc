@@ -56,6 +56,7 @@ constexpr char kBindToPCR0Switch[] = "bind_to_pcr0";
 constexpr char kFileSwitch[] = "file";
 constexpr char kUseOwnerSwitch[] = "use_owner_authorization";
 constexpr char kNonsensitiveSwitch[] = "nonsensitive";
+constexpr char kIgnoreCacheSwitch[] = "ignore_cache";
 constexpr char kLockRead[] = "lock_read";
 constexpr char kLockWrite[] = "lock_write";
 
@@ -221,10 +222,12 @@ class ClientLoop : public ClientLoopBase {
     if (command == kGetTpmStatusCommand) {
       if (!command_line->HasSwitch(kNonsensitiveSwitch)) {
         task = base::Bind(&ClientLoop::HandleGetTpmStatus,
-                          weak_factory_.GetWeakPtr());
+                          weak_factory_.GetWeakPtr(),
+                          command_line->HasSwitch(kIgnoreCacheSwitch));
       } else {
         task = base::Bind(&ClientLoop::HandleGetTpmNonsensitiveStatus,
-                          weak_factory_.GetWeakPtr());
+                          weak_factory_.GetWeakPtr(),
+                          command_line->HasSwitch(kIgnoreCacheSwitch));
       }
 
     } else if (command == kGetVersionInfoCommand) {
@@ -331,8 +334,9 @@ class ClientLoop : public ClientLoopBase {
     Quit();
   }
 
-  void HandleGetTpmStatus() {
+  void HandleGetTpmStatus(bool ignore_cache) {
     GetTpmStatusRequest request;
+    request.set_ignore_cache(ignore_cache);
     tpm_ownership_->GetTpmStatusAsync(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
@@ -341,8 +345,9 @@ class ClientLoop : public ClientLoopBase {
         kDefaultTimeout.InMilliseconds());
   }
 
-  void HandleGetTpmNonsensitiveStatus() {
+  void HandleGetTpmNonsensitiveStatus(bool ignore_cache) {
     GetTpmNonsensitiveStatusRequest request;
+    request.set_ignore_cache(ignore_cache);
     tpm_ownership_->GetTpmNonsensitiveStatusAsync(
         request,
         base::Bind(
