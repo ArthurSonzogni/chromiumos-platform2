@@ -76,6 +76,11 @@ enum ChromeOSError {
     NotAvailableForPluginVm,
     NotPluginVm,
     PluginVmDisabled,
+    PluginVmGenericError(i32),
+    PluginVmLicenseExpired(i32),
+    PluginVmLicenseInvalid(i32),
+    PluginVmNotEnoughDisk,
+    PluginVmNoPortalAccess,
     RetrieveActiveSessions,
     SourcePathDoesNotExist,
     TpmOnStable,
@@ -155,6 +160,11 @@ impl fmt::Display for ChromeOSError {
             NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
             NotPluginVm => write!(f, "this VM is not a Parallels VM"),
             PluginVmDisabled => write!(f, "Parallels VMs are currently disabled"),
+            PluginVmGenericError(rc) => write!(f, "failed to execute request: {:#X}", rc),
+            PluginVmLicenseExpired(rc) => write!(f, "expired license: {:#X}", rc),
+            PluginVmLicenseInvalid(rc) => write!(f, "invalid license: {:#X}", rc),
+            PluginVmNotEnoughDisk => write!(f, "insufficient disk space to start VM"),
+            PluginVmNoPortalAccess => write!(f, "unable to access Parallels licensing portal"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
             SourcePathDoesNotExist => write!(f, "source media path does not exist"),
             TpmOnStable => write!(f, "TPM device is not available on stable channel"),
@@ -1261,6 +1271,48 @@ impl Methods {
         }
     }
 
+    fn parse_plugin_vm_response(
+        &mut self,
+        error: VmErrorCode,
+        result_code: i32,
+    ) -> Result<(), Box<dyn Error>> {
+        const PRL_ERR_SUCCESS: u32 = 0;
+        const PRL_ERR_DISP_SHUTDOWN_IN_PROCESS: u32 = 0x80000404;
+        const PRL_ERR_NOT_ENOUGH_DISK_SPACE_TO_START_VM: u32 = 0x80000456;
+        const PRL_ERR_LICENSE_NOT_VALID: u32 = 0x80011000;
+        const PRL_ERR_LICENSE_EXPIRED: u32 = 0x80011001;
+        const PRL_ERR_LICENSE_WRONG_VERSION: u32 = 0x80011002;
+        const PRL_ERR_LICENSE_WRONG_PLATFORM: u32 = 0x80011004;
+        const PRL_ERR_LICENSE_BETA_KEY_RELEASE_PRODUCT: u32 = 0x80011011;
+        const PRL_ERR_LICENSE_RELEASE_KEY_BETA_PRODUCT: u32 = 0x80011013;
+        const PRL_ERR_LICENSE_SUBSCR_EXPIRED: u32 = 0x80011074;
+        const PRL_ERR_JLIC_WRONG_HWID: u32 = 0x80057005;
+        const PRL_ERR_JLIC_LICENSE_DISABLED: u32 = 0x80057010;
+        const PRL_ERR_JLIC_WEB_PORTAL_ACCESS_REQUIRED: u32 = 0x80057012;
+
+        match error {
+            VmErrorCode::VM_SUCCESS => Ok(()),
+            VmErrorCode::VM_ERR_NATIVE_RESULT_CODE => match result_code as u32 {
+                PRL_ERR_SUCCESS => Ok(()),
+                PRL_ERR_DISP_SHUTDOWN_IN_PROCESS => Err(PluginVmGenericError(result_code).into()),
+                PRL_ERR_NOT_ENOUGH_DISK_SPACE_TO_START_VM => Err(PluginVmNotEnoughDisk.into()),
+                PRL_ERR_LICENSE_NOT_VALID
+                | PRL_ERR_LICENSE_WRONG_VERSION
+                | PRL_ERR_LICENSE_WRONG_PLATFORM
+                | PRL_ERR_LICENSE_BETA_KEY_RELEASE_PRODUCT
+                | PRL_ERR_LICENSE_RELEASE_KEY_BETA_PRODUCT
+                | PRL_ERR_JLIC_WRONG_HWID
+                | PRL_ERR_JLIC_LICENSE_DISABLED => Err(PluginVmLicenseInvalid(result_code).into()),
+                PRL_ERR_LICENSE_EXPIRED | PRL_ERR_LICENSE_SUBSCR_EXPIRED => {
+                    Err(PluginVmLicenseExpired(result_code).into())
+                }
+                PRL_ERR_JLIC_WEB_PORTAL_ACCESS_REQUIRED => Err(PluginVmNoPortalAccess.into()),
+                _ => Err(PluginVmGenericError(result_code).into()),
+            },
+            _ => Err(BadPluginVmStatus(error).into()),
+        }
+    }
+
     /// Request that dispatcher start given Parallels VM.
     fn start_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         let mut request = vm_plugin_dispatcher::StartVmRequest::new();
@@ -1277,10 +1329,7 @@ impl Methods {
             &request,
         )?;
 
-        match response.error {
-            VmErrorCode::VM_SUCCESS => Ok(()),
-            _ => Err(BadPluginVmStatus(response.error).into()),
-        }
+        self.parse_plugin_vm_response(response.error, response.result_code)
     }
 
     /// Request that dispatcher starts application responsible for rendering Parallels VM window.
@@ -1299,10 +1348,7 @@ impl Methods {
             &request,
         )?;
 
-        match response.error {
-            VmErrorCode::VM_SUCCESS => Ok(()),
-            _ => Err(BadPluginVmStatus(response.error).into()),
-        }
+        self.parse_plugin_vm_response(response.error, response.result_code)
     }
 
     /// Request that `concierge` stop a vm with the given disk image.
