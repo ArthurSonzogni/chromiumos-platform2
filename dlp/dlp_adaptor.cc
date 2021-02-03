@@ -10,9 +10,12 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/location.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/errors/error.h>
 #include <google/protobuf/message_lite.h>
+#include <session_manager/dbus-proxies.h>
 
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
@@ -42,11 +45,29 @@ std::string ParseProto(const base::Location& from_here,
   return "";
 }
 
+// Calls Session Manager to get the user hash for the primary session. Returns
+// an empty string and logs on error.
+std::string GetSanitizedUsername(brillo::dbus_utils::DBusObject* dbus_object) {
+  std::string username;
+  std::string sanitized_username;
+  brillo::ErrorPtr error;
+  org::chromium::SessionManagerInterfaceProxy proxy(dbus_object->GetBus());
+  if (!proxy.RetrievePrimarySession(&username, &sanitized_username, &error)) {
+    const char* error_msg =
+        error ? error->GetMessage().c_str() : "Unknown error.";
+    LOG(ERROR) << "Call to RetrievePrimarySession failed. " << error_msg;
+    return std::string();
+  }
+  return sanitized_username;
+}
+
 }  // namespace
 
 DlpAdaptor::DlpAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
-    : org::chromium::DlpAdaptor(this), dbus_object_(std::move(dbus_object)) {}
+    : org::chromium::DlpAdaptor(this), dbus_object_(std::move(dbus_object)) {
+  InitDatabase();
+}
 
 DlpAdaptor::~DlpAdaptor() = default;
 
@@ -74,6 +95,40 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
       std::vector<DlpFilesRule>(request.rules().begin(), request.rules().end());
 
   return SerializeProto(response);
+}
+
+void DlpAdaptor::InitDatabase() {
+  const std::string sanitized_username =
+      GetSanitizedUsername(dbus_object_.get());
+  if (sanitized_username.empty()) {
+    LOG(ERROR) << "No active user, can't open the database";
+    return;
+  }
+  const base::FilePath database_path = base::FilePath("/run/daemon-store/dlp/")
+                                           .Append(sanitized_username)
+                                           .Append("database");
+
+  LOG(INFO) << "Opening database in: " << database_path.value();
+  leveldb::Options options;
+  options.create_if_missing = true;
+  options.paranoid_checks = true;
+  leveldb::DB* db = nullptr;
+  leveldb::Status status =
+      leveldb::DB::Open(options, database_path.value(), &db);
+
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to open database: " << status.ToString();
+    status = leveldb::RepairDB(database_path.value(), leveldb::Options());
+    if (status.ok())
+      status = leveldb::DB::Open(options, database_path.value(), &db);
+  }
+
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to repair database: " << status.ToString();
+    return;
+  }
+
+  db_.reset(db);
 }
 
 }  // namespace dlp

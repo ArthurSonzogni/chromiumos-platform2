@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libsession_manager-client",
 
     # system_api depends on protobuf (or protobuf-lite). It must
     # appear before protobuf or the linker flags won't be in the right
@@ -35,6 +36,8 @@ pkg_config("target_defaults") {
     "system_api",
     "protobuf-lite",
   ]
+
+  libs = [ "leveldb" ]
 }
 
 executable("dlp") {

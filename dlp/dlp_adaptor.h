@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <brillo/dbus/async_event_sequencer.h>
+#include <leveldb/db.h>
+
 #include "dlp/org.chromium.Dlp.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
@@ -39,6 +41,12 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       const std::vector<uint8_t>& request_blob) override;
 
  private:
+  // Opens the database |db_| to store files sources.
+  void InitDatabase();
+
+  // Can be nullptr if failed to initialize.
+  std::unique_ptr<leveldb::DB> db_;
+
   std::vector<DlpFilesRule> policy_rules_;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
