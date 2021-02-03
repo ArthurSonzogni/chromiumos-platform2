@@ -126,17 +126,17 @@ class BRILLO_EXPORT Client {
     PropertyAccessor& operator=(const PropertyAccessor&) = delete;
 
     // Synchronous setter.
-    bool Set(const std::string& name,
-             const brillo::Any& value,
-             brillo::ErrorPtr* error) {
+    virtual bool Set(const std::string& name,
+                     const brillo::Any& value,
+                     brillo::ErrorPtr* error) {
       return proxy_->SetProperty(name, value, error, timeout_);
     }
 
     // Asynchronous setter.
-    void Set(const std::string& name,
-             const brillo::Any& value,
-             const base::Callback<void()>& success,
-             const base::Callback<void(brillo::Error*)>& error) {
+    virtual void Set(const std::string& name,
+                     const brillo::Any& value,
+                     const base::Callback<void()>& success,
+                     const base::Callback<void(brillo::Error*)>& error) {
       proxy_->SetPropertyAsync(name, value, success, error, timeout_);
     }
 
@@ -160,21 +160,21 @@ class BRILLO_EXPORT Client {
   Client& operator=(const Client&) = delete;
 
   // Initiates the connection to DBus and starts processing signals.
-  void Init();
+  virtual void Init();
 
   // |handler| will be invoked whenever shill exits. The boolean parameter
   // passed to the callback will be true if a new shill process was started and
   // now owns the dbus service; it will be false if shill is no longer running
   // (or at least, is no longer available on dbus).
   // Only one handler may be registered.
-  void RegisterProcessChangedHandler(
+  virtual void RegisterProcessChangedHandler(
       const base::RepeatingCallback<void(bool)>& handler);
 
   // |handler| will be invoked whenever the default service changes, i.e.
   // whenever the default service switches from "none" to a valid path or
   // vice-versa.
   // Multiple handlers may be registered.
-  void RegisterDefaultServiceChangedHandler(
+  virtual void RegisterDefaultServiceChangedHandler(
       const DefaultServiceChangedHandler& handler);
 
   // |handler| will be invoked whenever the device associated with the default
@@ -186,25 +186,28 @@ class BRILLO_EXPORT Client {
   //
   // If the default service is disconnected, the device will be null.
   // Multiple handlers may be registered.
-  void RegisterDefaultDeviceChangedHandler(const DeviceChangedHandler& handler);
+  virtual void RegisterDefaultDeviceChangedHandler(
+      const DeviceChangedHandler& handler);
 
   // |handler| will be invoked whenever there is a change to tracked properties
   // which currently include:
   // * The device's IPConfigs,
   // * The state of the device's connected service.
   // Multiple handlers may be registered.
-  void RegisterDeviceChangedHandler(const DeviceChangedHandler& handler);
+  virtual void RegisterDeviceChangedHandler(
+      const DeviceChangedHandler& handler);
 
   // |handler| will be invoked whenever a device is added or removed from shill.
   // Note that if the default service switches to VPN, the corresponding device
   // will be added and tracked. This will not occur for any other type of
   // virtual device. Handlers can use |Device.type| to filter, if necessary.
   // Multiple handlers may be registered.
-  void RegisterDeviceAddedHandler(const DeviceChangedHandler& handler);
-  void RegisterDeviceRemovedHandler(const DeviceChangedHandler& handler);
+  virtual void RegisterDeviceAddedHandler(const DeviceChangedHandler& handler);
+  virtual void RegisterDeviceRemovedHandler(
+      const DeviceChangedHandler& handler);
 
   // Returns a manipulator interface for Manager properties.
-  std::unique_ptr<ManagerPropertyAccessor> ManagerProperties(
+  virtual std::unique_ptr<ManagerPropertyAccessor> ManagerProperties(
       const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
 
  protected:

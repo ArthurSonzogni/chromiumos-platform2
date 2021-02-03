@@ -27,7 +27,10 @@ write_deps("libshill-dbus-client_deps") {
 
 shared_library("libshill-dbus-client") {
   configs += [ ":target_defaults" ]
-  sources = [ "client.cc" ]
+  sources = [
+    "client.cc",
+    "fake_client.cc",
+  ]
   deps = [ ":${target_name}_deps" ]
 }
 
