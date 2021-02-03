@@ -12,7 +12,7 @@
 
 #include <base/bind.h>
 
-#include <system/window.h>
+#include <cutils/native_handle.h>
 
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/export.h"
