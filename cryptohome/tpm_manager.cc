@@ -26,6 +26,11 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm.h"
 
+namespace {
+// Default D-Bus call Timeout
+constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(5);
+}  // namespace
+
 namespace cryptohome {
 
 namespace tpm_manager {
@@ -83,7 +88,8 @@ int TakeOwnership(bool finalize) {
   LOG(INFO) << "Initializing TPM.";
   ::tpm_manager::TakeOwnershipRequest request;
   ::tpm_manager::TakeOwnershipReply reply;
-  if (!proxy.TakeOwnership(request, &reply, &error)) {
+  if (!proxy.TakeOwnership(request, &reply, &error,
+                           kDefaultTimeout.InMilliseconds())) {
     LOG(ERROR) << "Error sending dbus message to tpm_manager: "
                << error->GetMessage();
     return -1;
@@ -114,7 +120,8 @@ int VerifyEK(bool is_cros_core) {
   request.set_cros_core(is_cros_core);
   request.set_ek_only(true);
   attestation::VerifyReply reply;
-  if (!proxy.Verify(request, &reply, &error)) {
+  if (!proxy.Verify(request, &reply, &error,
+                    kDefaultTimeout.InMilliseconds())) {
     LOG(ERROR) << "Error sending dbus message to tpm_manager: "
                << error->GetMessage();
     return -1;
