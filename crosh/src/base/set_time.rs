@@ -9,7 +9,6 @@ use std::error;
 use std::fmt::{self, Display};
 use std::io::Read;
 use std::process::{self, Stdio};
-use std::time::Duration;
 
 use dbus::blocking::Connection;
 use remain::sorted;
@@ -17,9 +16,7 @@ use sys_util::error;
 use tlsdate_dbus::client::OrgTorprojectTlsdate;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
-
-// 25 seconds is the default timeout for dbus-send.
-const TIMEOUT_MILLIS: u64 = 25000;
+use crate::util::DEFAULT_DBUS_TIMEOUT;
 
 #[sorted]
 enum Error {
@@ -108,7 +105,7 @@ fn set_time(timestamp: i64) -> Result<(), Error> {
     let conn_path = connection.with_proxy(
         "org.torproject.tlsdate",
         "/org/torproject/tlsdate",
-        Duration::from_millis(TIMEOUT_MILLIS),
+        DEFAULT_DBUS_TIMEOUT,
     );
     match conn_path.set_time(timestamp).or(Err(Error::DBus))? {
         0 => Ok(()),

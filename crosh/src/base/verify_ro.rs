@@ -19,7 +19,7 @@ use sys_util::{error, pipe};
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
-use crate::util::{clear_signal_handlers, set_signal_handlers, TIMEOUT_MILLIS};
+use crate::util::{clear_signal_handlers, set_signal_handlers, DEFAULT_DBUS_TIMEOUT};
 
 const SCRIPT: &str = "/usr/share/cros/cr50-verify-ro.sh";
 
@@ -48,7 +48,7 @@ fn stop_verify_ro(handle: &str) -> Result<(), dispatcher::Error> {
     let conn_path = connection.with_proxy(
         "org.chromium.debugd",
         "/org/chromium/debugd",
-        Duration::from_millis(TIMEOUT_MILLIS),
+        DEFAULT_DBUS_TIMEOUT,
     );
 
     conn_path
@@ -97,7 +97,7 @@ fn execute_verify_ro(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
     let conn_path = connection.with_proxy(
         "org.chromium.debugd",
         "/org/chromium/debugd",
-        Duration::from_millis(TIMEOUT_MILLIS),
+        DEFAULT_DBUS_TIMEOUT,
     );
 
     set_signal_handlers(&[SIGINT], sigint_handler);

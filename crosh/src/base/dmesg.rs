@@ -6,7 +6,6 @@
 
 use std::collections::HashMap;
 use std::io::Write;
-use std::time::Duration;
 
 use dbus::arg::{self, Variant};
 use dbus::blocking::Connection;
@@ -15,7 +14,7 @@ use sys_util::error;
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
-use crate::util::TIMEOUT_MILLIS;
+use crate::util::DEFAULT_DBUS_TIMEOUT;
 
 /* We keep a reduced set of options here for security */
 const FLAGS: [(&str, &str, &str); 10] = [
@@ -95,7 +94,7 @@ fn execute_dmesg(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Err
     let conn_path = connection.with_proxy(
         "org.chromium.debugd",
         "/org/chromium/debugd",
-        Duration::from_millis(TIMEOUT_MILLIS),
+        DEFAULT_DBUS_TIMEOUT,
     );
 
     let output = conn_path.call_dmesg(dbus_options).map_err(|err| {

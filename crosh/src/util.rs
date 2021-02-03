@@ -22,7 +22,7 @@ use regex::Regex;
 use sys_util::error;
 
 // 25 seconds is the default timeout for dbus-send.
-pub const TIMEOUT_MILLIS: u64 = 25000;
+pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
 const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
@@ -78,7 +78,7 @@ pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool, ()> {
     let proxy = connection.with_proxy(
         "org.chromium.ChromeFeaturesService",
         "/org/chromium/ChromeFeaturesService",
-        Duration::from_millis(TIMEOUT_MILLIS),
+        DEFAULT_DBUS_TIMEOUT,
     );
 
     let (reply,): (bool,) = proxy
