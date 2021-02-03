@@ -23,6 +23,7 @@ constexpr base::TimeDelta kShillPropertyAttemptDelay =
 constexpr char kSystemProxyType[] = "sys";
 constexpr char kDefaultProxyType[] = "def";
 constexpr char kARCProxyType[] = "arc";
+constexpr uint16_t kDefaultPort = 13568;  // port 53 in network order.
 
 // static
 const char* Proxy::TypeToString(Type t) {
@@ -73,27 +74,13 @@ int Proxy::OnInit() {
 
 void Proxy::OnShutdown(int*) {
   LOG(INFO) << "Stopping DNS proxy " << opts_;
-  SetShillProperty("");
+  if (opts_.type == Type::kSystem)
+    SetShillProperty("");
 }
 
 void Proxy::Setup() {
   shill_.reset(new shill::Client(bus_));
   shill_->Init();
-  shill_->RegisterDefaultServiceChangedHandler(base::BindRepeating(
-      &Proxy::OnDefaultServiceChanged, weak_factory_.GetWeakPtr()));
-  shill_->RegisterDefaultDeviceChangedHandler(
-      base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr(),
-                          true /* is_default */));
-  shill_->RegisterDeviceChangedHandler(
-      base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr(),
-                          false /* is_default */));
-
-  if (opts_.type == Type::kSystem)
-    shill_->RegisterProcessChangedHandler(
-        base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
-
-  // TODO(garrick) - add service state callback - proxy cannot run unless the
-  // device's selected service is online
 
   patchpanel_ = patchpanel::Client::New();
   CHECK(patchpanel_) << "Failed to initialize patchpanel client";
@@ -133,12 +120,15 @@ void Proxy::OnPatchpanelReady(bool success) {
   LOG(INFO) << "Sucessfully connected private network namespace:"
             << ns_.host_ifname() << " <--> " << ns_.peer_ifname();
 
-  // If this is the system proxy, tell shill about it. We should start receiving
-  // DNS traffic on success. If this fails, we don't have much choice but to
-  // just crash out and try again...
+  // Now it's safe to register these handlers and respond to them.
+  shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
+      &Proxy::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
+  shill_->RegisterDeviceChangedHandler(
+      base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr()));
+
   if (opts_.type == Type::kSystem)
-    SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()),
-                     true /* die_on_failure */);
+    shill_->RegisterProcessChangedHandler(
+        base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
 }
 
 void Proxy::OnShillReset(bool reset) {
@@ -147,24 +137,93 @@ void Proxy::OnShillReset(bool reset) {
     return;
   }
 
-  // Really this means shill crashed. To be safe, explicitly set/clear the proxy
-  // address.
+  // Really this means shill crashed. To be safe, explicitly reset the proxy
+  // address. We don't want to crash on failure here because shill might still
+  // have this address and try to use it. This probably redundant though with us
+  // rediscovering the default device.
+  // TODO(garrick): Remove this if so.
   LOG(WARNING) << "Shill has been reset";
-  std::string addr;
-  if (ns_fd_.is_valid())
-    addr = patchpanel::IPv4AddressToString(ns_.host_ipv4_address());
-
-  // We don't want to crash on failure here because if
-  // (a) addr is empty, it means we're not set up yet, or
-  // (b) otherwise, shill might still have this address and try to use it, we
-  // can hope...
-  SetShillProperty(addr);
+  SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()));
 }
 
-void Proxy::OnDefaultServiceChanged(const std::string& type) {}
+void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
+  // ARC proxies will handle changes to their network in OnDeviceChanged.
+  if (opts_.type == Proxy::Type::kARC)
+    return;
 
-void Proxy::OnDeviceChanged(bool is_default,
-                            const shill::Client::Device* const device) {}
+  // Default service is either not ready yet or has just disconnected.
+  if (!device) {
+    // If it disconnected, shutdown the resolver.
+    if (device_) {
+      LOG(WARNING) << opts_
+                   << " is stopping because there is no default service";
+      resolver_.reset();
+      device_.reset();
+    }
+    return;
+  }
+
+  // The system proxy should ignore when a VPN is turned on as it must continue
+  // to work with the underlying physical interface.
+  // TODO(garrick): We need to handle the case when the system proxy is first
+  // started when a VPN is connected. In this case, we need to dig out the
+  // physical network device and use that from here forward.
+  if (opts_.type == Proxy::Type::kSystem &&
+      device->type == shill::Client::Device::Type::kVPN)
+    return;
+
+  // While this is enforced in shill as well, only enable resolution if the
+  // service online.
+  if (device->state != shill::Client::Device::ConnectionState::kOnline) {
+    if (device_) {
+      LOG(WARNING) << opts_ << " is stopping because the default device ["
+                   << device->ifname << "] is offline";
+      resolver_.reset();
+      device_.reset();
+    }
+    return;
+  }
+
+  if (!device_)
+    device_ = std::make_unique<shill::Client::Device>();
+
+  // The default network has changed.
+  if (device->ifname != device_->ifname)
+    LOG(INFO) << opts_ << " is now tracking [" << device_->ifname << "]";
+
+  *device_.get() = *device;
+
+  if (!resolver_) {
+    resolver_ = std::make_unique<Resolver>();
+
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    addr.sin_port = kDefaultPort;
+    addr.sin_addr.s_addr =
+        INADDR_ANY;  // Since we're running in the private namespace.
+    CHECK(resolver_->Listen(reinterpret_cast<struct sockaddr*>(&addr)))
+        << opts_ << " failed to start relay loop";
+  }
+
+  // Update the resolver with the latest DNS config.
+  auto name_servers = device_->ipconfig.ipv4_dns_addresses;
+  name_servers.insert(name_servers.end(),
+                      device_->ipconfig.ipv6_dns_addresses.begin(),
+                      device_->ipconfig.ipv6_dns_addresses.end());
+  resolver_->SetNameServers(name_servers);
+  LOG(INFO) << opts_ << " applied device DNS configuration";
+
+  // For the system proxy, we have to tell shill about it. We should start
+  // receiving DNS traffic on success. But if this fails, we don't have much
+  // choice but to just crash out and try again.
+  if (opts_.type == Type::kSystem)
+    SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()),
+                     true /* die_on_failure */);
+}
+
+void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
+  // TODO(garrick): ARC and default for VPN cases.
+}
 
 void Proxy::SetShillProperty(const std::string& addr,
                              bool die_on_failure,

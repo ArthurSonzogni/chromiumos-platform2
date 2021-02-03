@@ -16,6 +16,8 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <shill/dbus/client/client.h>
 
+#include "dns-proxy/resolver.h"
+
 namespace dns_proxy {
 
 // The process that runs the actual proxying code.
@@ -50,15 +52,10 @@ class Proxy : public brillo::DBusDaemon {
   void OnPatchpanelReady(bool success);
   void OnShillReset(bool reset);
 
-  // The system proxy needs to pay attention to the default service type
-  // switching to VPN since it wants to always keep the DNS configuration for
-  // the underlying physical network.
-  void OnDefaultServiceChanged(const std::string& type);
-
-  // Used to detect changes to the DNS configuration of interface(s) of interest
-  // to the proxy.
-  void OnDeviceChanged(bool is_default,
-                       const shill::Client::Device* const device);
+  // Triggered whenever the device attached to the default network changes.
+  // |device| can be null and indicates the default service is disconnected.
+  void OnDefaultDeviceChanged(const shill::Client::Device* const device);
+  void OnDeviceChanged(const shill::Client::Device* const device);
 
   // Helper func for setting the dns-proxy address in shill.
   // Only valid for the system proxy.
@@ -74,6 +71,8 @@ class Proxy : public brillo::DBusDaemon {
 
   base::ScopedFD ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_;
+  std::unique_ptr<Resolver> resolver_;
+  std::unique_ptr<shill::Client::Device> device_;
 
   base::WeakPtrFactory<Proxy> weak_factory_{this};
 };
