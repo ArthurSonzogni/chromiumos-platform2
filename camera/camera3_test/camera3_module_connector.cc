@@ -264,12 +264,14 @@ void CameraHalClient::SetUpChannel(cros::mojom::CameraModulePtr camera_module) {
   camera_module_.set_connection_error_handler(base::Bind(
       &CameraHalClient::onIpcConnectionLost, base::Unretained(this)));
 
-  cros::mojom::CameraModuleCallbacksPtr camera_module_callbacks_ptr;
-  cros::mojom::CameraModuleCallbacksRequest camera_module_callbacks_request =
-      mojo::MakeRequest(&camera_module_callbacks_ptr);
+  cros::mojom::CameraModuleCallbacksAssociatedPtrInfo
+      camera_module_callbacks_ptr_info;
+  cros::mojom::CameraModuleCallbacksAssociatedRequest
+      camera_module_callbacks_request =
+          mojo::MakeRequest(&camera_module_callbacks_ptr_info);
   mojo_module_callbacks_.Bind(std::move(camera_module_callbacks_request));
-  camera_module_->SetCallbacks(
-      std::move(camera_module_callbacks_ptr),
+  camera_module_->SetCallbacksAssociated(
+      std::move(camera_module_callbacks_ptr_info),
       base::Bind(&CameraHalClient::OnSetCallbacks, base::Unretained(this)));
 }
 

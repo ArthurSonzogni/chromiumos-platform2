@@ -21,6 +21,7 @@
 #include "mojo/camera_common.mojom.h"
 #include "mojo/core/embedder/scoped_ipc_support.h"
 #include "mojo/cros_camera_service.mojom.h"
+#include "mojo/public/cpp/bindings/associated_binding.h"
 
 namespace camera3_test {
 
@@ -168,7 +169,8 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
   base::Thread ipc_thread_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   mojo::Binding<cros::mojom::CameraHalClient> camera_hal_client_;
-  mojo::Binding<cros::mojom::CameraModuleCallbacks> mojo_module_callbacks_;
+  mojo::AssociatedBinding<cros::mojom::CameraModuleCallbacks>
+      mojo_module_callbacks_;
   camera_module_callbacks_t* camera_module_callbacks_;
   cros::mojom::CameraHalDispatcherPtr dispatcher_;
 
