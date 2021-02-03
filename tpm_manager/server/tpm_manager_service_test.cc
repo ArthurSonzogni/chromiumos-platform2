@@ -1127,17 +1127,21 @@ TEST_F(TpmManagerServiceTest_Preinit, RetryGetTpmStatusUntilSuccess) {
   LocalData local_data;
   local_data.set_owner_password(kOwnerPassword);
   EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)))
+      // Extra call for ignoring cache.
       .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
 
   SetupService();
-
-  auto callback_owned = [](TpmManagerServiceTestBase* self,
-                           const GetTpmStatusReply& reply) {
+  auto owned_check = [](const GetTpmStatusReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.enabled());
     EXPECT_TRUE(reply.owned());
     EXPECT_EQ(kOwnerPassword, reply.local_data().owner_password());
-    self->Quit();
+  };
+
+  auto owned_check_quit = [&](const GetTpmStatusReply& reply) {
+    owned_check(reply);
+    Quit();
   };
 
   int counter = 3;
@@ -1149,7 +1153,23 @@ TEST_F(TpmManagerServiceTest_Preinit, RetryGetTpmStatusUntilSuccess) {
     if (counter) {
       service_->GetTpmStatus(request, base::Bind(callback_fail));
     } else {
-      service_->GetTpmStatus(request, base::Bind(callback_owned, this));
+      service_->GetTpmStatus(request, base::Bind(owned_check));
+      // Call it multiple times to check the cache is working.
+      service_->GetTpmStatus(request, base::Bind(owned_check));
+      service_->GetTpmStatus(request, base::Bind(owned_check));
+      service_->GetTpmStatus(request, base::Bind(owned_check));
+      service_->GetTpmStatus(request, base::Bind(owned_check));
+
+      // Chaining the ignore cache callback.
+      auto ignore_cache_callback = [&](const GetTpmStatusReply& reply) {
+        owned_check(reply);
+        GetTpmStatusRequest request;
+        request.set_ignore_cache(true);
+        service_->GetTpmStatus(request,
+                               base::BindLambdaForTesting(owned_check_quit));
+      };
+      service_->GetTpmStatus(request,
+                             base::BindLambdaForTesting(ignore_cache_callback));
     }
   };
   callback_fail = base::BindLambdaForTesting(callback_fail_lambda);
@@ -1162,6 +1182,8 @@ TEST_F(TpmManagerServiceTest_Preinit, RetryGetTpmStatusUntilSuccess) {
         .WillOnce(Return(false))  // Called in GetTpmStatusTask()
         .WillOnce(Return(false))  // Called in GetTpmStatusTask()
         .WillOnce(Return(false))  // Called in GetTpmStatusTask()
+        .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)))
+        // Extra call for ignoring cache.
         .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
 
     GetTpmStatusRequest request;

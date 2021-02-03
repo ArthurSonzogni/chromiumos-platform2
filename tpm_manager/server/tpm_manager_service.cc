@@ -87,6 +87,13 @@ GetTpmNonsensitiveStatusReply ToGetTpmNonSensitiveStatusReply(
   return to;
 }
 
+GetTpmStatusRequest ToGetTpmStatusRequest(
+    const GetTpmNonsensitiveStatusRequest& from) {
+  GetTpmStatusRequest to;
+  to.set_ignore_cache(from.ignore_cache());
+  return to;
+}
+
 }  // namespace
 
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
@@ -306,7 +313,7 @@ void TpmManagerService::MarkTpmStatusCacheDirty() {
 
 void TpmManagerService::GetTpmStatus(const GetTpmStatusRequest& request,
                                      const GetTpmStatusCallback& callback) {
-  if (update_tpm_status_cache_dirty_) {
+  if (update_tpm_status_cache_dirty_ || request.ignore_cache()) {
     get_tpm_status_waiting_callbacks_.emplace_back(std::move(callback));
   } else {
     callback.Run(get_tpm_status_cache_);
@@ -338,7 +345,7 @@ void TpmManagerService::GetTpmNonsensitiveStatus(
       },
       callback);
 
-  GetTpmStatus(GetTpmStatusRequest(), wrapped_callback);
+  GetTpmStatus(ToGetTpmStatusRequest(request), wrapped_callback);
 }
 
 void TpmManagerService::UpdateTpmStatusCallback(
