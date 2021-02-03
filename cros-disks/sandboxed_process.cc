@@ -80,7 +80,7 @@ bool SandboxedProcess::SetUpMinimalMounts() {
   if (minijail_bind(jail_, "/proc", "/proc", 0))
     return false;
   minijail_remount_proc_readonly(jail_);
-  minijail_mount_tmp(jail_);
+  minijail_mount_tmp_size(jail_, 128 * 1024 * 1024);
 
   // Create a minimal /dev with a very restricted set of device nodes.
   minijail_mount_dev(jail_);
