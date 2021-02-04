@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2020 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/Spaced">
+  <interface name="org.chromium.Spaced">
+    <method name="GetFreeDiskSpace">
+      <tp:docstring>
+        Get free disk space available for the given file path.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="reply" type="t" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetTotalDiskSpace">
+      <tp:docstring>
+        Get total disk space available.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="reply" type="t" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
+</node>

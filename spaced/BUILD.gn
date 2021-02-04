@@ -1,0 +1,74 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":libspaced",
+    ":spaced",
+    ":spaced_adaptor",
+    ":spaced_proxy",
+  ]
+
+  if (use.test) {
+    deps += [ ":libspaced_unittests" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+generate_dbus_adaptors("spaced_adaptor") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/spaced/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.Spaced.xml" ]
+}
+
+generate_dbus_proxies("spaced_proxy") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/spaced/dbus-proxies.h"
+  mock_output_file = "include/spaced/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "spaced/dbus-proxies.h"
+  sources = [ "dbus_bindings/org.chromium.Spaced.xml" ]
+}
+
+shared_library("libspaced") {
+  sources = [
+    "disk_usage.cc",
+    "disk_usage_proxy.cc",
+  ]
+  libs = [ "rootdev" ]
+  configs += [ ":target_defaults" ]
+}
+
+executable("spaced") {
+  sources = [
+    "daemon.cc",
+    "main.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libspaced" ]
+}
+
+if (use.test) {
+  executable("libspaced_unittests") {
+    sources = [ "disk_usage_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libspaced",
+      "//common-mk/testrunner",
+    ]
+  }
+}
