@@ -11,6 +11,7 @@ _xml_file = "structured.xml"
 shared_library("libstructuredmetrics") {
   pkg_deps = [ "libchrome" ]
   sources = [
+    "c_structured_metrics.cc",
     "event_base.cc",
     "event_base.h",
   ]

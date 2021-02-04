@@ -2,6 +2,165 @@
 
 <structured-metrics>
 
+<project name="Bluetooth">
+  <owner>yudiliu@chromium.org</owner>
+  <id>per-project</id>
+  <summary>
+    Project for recording bluetooth metrics.
+  </summary>
+
+  <event name="BluetoothAdapterStateChanged">
+    <summary>
+      Records the toggle of the adapter.
+    </summary>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The system time in nanoseconds.
+      </summary>
+    </metric>
+    <metric name="AdapterState" type="int">
+      <summary>
+        The state of the bluetooth adapter, 0 for disabled and 1 for enabled.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="BluetoothPairingStateChanged">
+    <summary>
+      Records the device pairing state change.
+    </summary>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The system time in nanoseconds.
+      </summary>
+    </metric>
+    <metric name="DeviceId" type="hmac-string">
+      <summary>
+        The bluetooth device id.
+      </summary>
+    </metric>
+    <metric name="DeviceType" type="int">
+      <summary>
+        The bluetooth device type such as LE, BREDR.
+      </summary>
+    </metric>
+    <metric name="PairingState" type="int">
+      <summary>
+        The state of the pairing.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="BluetoothAclConnectionStateChanged">
+    <summary>
+      Records the ACL connection state change.
+    </summary>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The system time in nanoseconds.
+      </summary>
+    </metric>
+    <metric name="DeviceId" type="hmac-string">
+      <summary>
+        The bluetooth device id.
+      </summary>
+    </metric>
+    <metric name="DeviceType" type="int">
+      <summary>
+        The bluetooth device type such as LE, BREDR.
+      </summary>
+    </metric>
+    <metric name="StateChangeType" type="int">
+      <summary>
+        Whether it is a connection or disconnection state change.
+      </summary>
+    </metric>
+    <metric name="AclConnectionState" type="int">
+      <summary>
+        The state of the connection.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="BluetoothProfileConnectionStateChanged">
+    <summary>
+      Records the profile connection state change.
+    </summary>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The system time in nanoseconds.
+      </summary>
+    </metric>
+    <metric name="DeviceId" type="hmac-string">
+      <summary>
+        The bluetooth device id.
+      </summary>
+    </metric>
+    <metric name="StateChangeType" type="int">
+      <summary>
+        Whether it is a connection or disconnection state change.
+      </summary>
+    </metric>
+    <metric name="Profile" type="int">
+      <summary>
+        The bluetooth profile.
+      </summary>
+    </metric>
+    <metric name="ProfileConnectionState" type="int">
+      <summary>
+        The state of the profile connection.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="BluetoothDeviceInfoReport">
+    <summary>
+      Records the bluetooth device info.
+    </summary>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The system time in nanoseconds.
+      </summary>
+    </metric>
+    <metric name="DeviceId" type="hmac-string">
+      <summary>
+        The bluetooth device id.
+      </summary>
+    </metric>
+    <metric name="DeviceType" type="int">
+      <summary>
+        The bluetooth device type such as LE, BREDR.
+      </summary>
+    </metric>
+    <metric name="DeviceClass" type="int">
+      <summary>
+        The bluetooth device class such as HID, Headset.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the bluetooth device.
+      </summary>
+    </metric>
+    <metric name="VendorIdSource" type="int">
+      <summary>
+        The vendor id source such as SIG and USB.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the bluetooth device.
+      </summary>
+    </metric>
+    <metric name="ProductVersion" type="int">
+      <summary>
+        The product version of the bluetooth device.
+      </summary>
+    </metric>
+  </event>
+
+</project>
+
 <project name="TestProjectOne">
   <owner>tby@chromium.org</owner>
   <id>none</id>
