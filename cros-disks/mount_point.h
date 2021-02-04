@@ -47,7 +47,8 @@ class MountPoint {
   MountPoint(const MountPoint&) = delete;
   MountPoint& operator=(const MountPoint&) = delete;
 
-  // Unmounts the mount point. Subclasses MUST call DestructorUnmount().
+  // Unmounts the mount point as a last resort, but as it's unable to handle
+  // errors an explicit call to Unmount() is the better alternative.
   virtual ~MountPoint();
 
   // Releases (leaks) the ownership of the mount point.

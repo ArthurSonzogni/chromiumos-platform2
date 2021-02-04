@@ -51,8 +51,6 @@ class FUSEMountPoint : public MountPoint {
  public:
   using MountPoint::MountPoint;
 
-  ~FUSEMountPoint() override { CleanUp(); }
-
   base::WeakPtr<FUSEMountPoint> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();
   }
