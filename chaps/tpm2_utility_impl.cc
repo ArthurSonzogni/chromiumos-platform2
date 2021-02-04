@@ -193,6 +193,16 @@ crypto::ScopedEC_KEY GetECCPublicKeyFromTpmPublicArea(
   return ecc;
 }
 
+// Padding '\0' at the beginning of the string until it matchs the length.
+// This is for padding elliptic curve points and keys, and not for ordinary
+// string. It's needed to normalize the format of the curve point.
+std::string PaddingStringToLength(const std::string& in, size_t length) {
+  if (in.length() < length) {
+    return std::string(length - in.length(), '\0') + in;
+  }
+  return in;
+}
+
 }  // namespace
 
 namespace chaps {
@@ -651,8 +661,11 @@ bool TPM2UtilityImpl::WrapECCKey(int slot,
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
   TPM_RC result = trunks_tpm_utility_->ImportECCKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
-      ConvertNIDToTrunksCurveID(curve_nid), public_point_x, public_point_y,
-      private_value, auth_data.to_string(), session_->GetDelegate(), key_blob);
+      ConvertNIDToTrunksCurveID(curve_nid),
+      PaddingStringToLength(public_point_x, MAX_ECC_KEY_BYTES),
+      PaddingStringToLength(public_point_y, MAX_ECC_KEY_BYTES),
+      PaddingStringToLength(private_value, MAX_ECC_KEY_BYTES),
+      auth_data.to_string(), session_->GetDelegate(), key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error importing ECC key to TPM: "
                << trunks::GetErrorString(result);

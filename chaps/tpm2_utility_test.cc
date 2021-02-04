@@ -476,12 +476,22 @@ TEST_F(TPM2UtilityTest, WrapECCKeySuccess) {
   const std::string public_point_x("public_point_x");
   const std::string public_point_y("public_point_y");
   const std::string private_value("private_value");
+  const std::string padded_public_point_x =
+      std::string(MAX_ECC_KEY_BYTES - public_point_x.length(), '\0') +
+      public_point_x;
+  const std::string padded_public_point_y =
+      std::string(MAX_ECC_KEY_BYTES - public_point_y.length(), '\0') +
+      public_point_y;
+  const std::string padded_private_value =
+      std::string(MAX_ECC_KEY_BYTES - private_value.length(), '\0') +
+      private_value;
   const SecureBlob auth_data;
   std::string key_blob;
   int key_handle;
-  EXPECT_CALL(mock_tpm_utility_,
-              ImportECCKey(_, trunks::TPM_ECC_NIST_P256, public_point_x,
-                           public_point_y, private_value, _, _, _))
+  EXPECT_CALL(
+      mock_tpm_utility_,
+      ImportECCKey(_, trunks::TPM_ECC_NIST_P256, padded_public_point_x,
+                   padded_public_point_y, padded_private_value, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(utility.WrapECCKey(1, NID_X9_62_prime256v1, public_point_x,
                                  public_point_y, private_value, auth_data,
