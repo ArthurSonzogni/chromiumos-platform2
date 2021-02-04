@@ -141,13 +141,13 @@ MountErrorType MountManager::MountNewSource(const std::string& source_path,
   if (mp) {
     // TODO(dats): Some obscure legacy. Why is this even needed?
     if (mount_path->empty() || mp->path().value() == *mount_path) {
-      LOG(WARNING) << "Source " << quote(source_path)
-                   << " is already mounted to " << quote(mp->path());
+      LOG(WARNING) << "Source " << redact(source_path)
+                   << " is already mounted to " << redact(mp->path());
       *mount_path = mp->path().value();
       return GetMountErrorOfReservedMountPath(mp->path());
     }
-    LOG(ERROR) << "Source " << quote(source_path) << " is already mounted to "
-               << quote(mp->path());
+    LOG(ERROR) << "Source " << redact(source_path) << " is already mounted to "
+               << redact(mp->path());
     return MOUNT_ERROR_PATH_ALREADY_MOUNTED;
   }
 

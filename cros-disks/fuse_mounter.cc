@@ -60,11 +60,11 @@ class FUSEMountPoint : public MountPoint {
                               const siginfo_t& info) {
     CHECK_EQ(SIGCHLD, info.si_signo);
     if (info.si_code != CLD_EXITED) {
-      LOG(WARNING) << "FUSE daemon for " << quote(mount_path)
+      LOG(WARNING) << "FUSE daemon for " << redact(mount_path)
                    << " crashed with code " << info.si_code << " and status "
                    << info.si_status;
     } else if (info.si_status != 0) {
-      LOG(WARNING) << "FUSE daemon for " << quote(mount_path)
+      LOG(WARNING) << "FUSE daemon for " << redact(mount_path)
                    << " exited with status " << info.si_status;
     } else {
       LOG(INFO) << "FUSE daemon for " << quote(mount_path)
@@ -86,11 +86,11 @@ class FUSEMountPoint : public MountPoint {
   void CleanUp() {
     MountErrorType unmount_error = Unmount();
     LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
-        << "Cannot unmount FUSE mount point " << quote(path())
+        << "Cannot unmount FUSE mount point " << redact(path())
         << " after process exit: " << unmount_error;
 
     if (!platform_->RemoveEmptyDirectory(path().value())) {
-      PLOG(ERROR) << "Cannot remove FUSE mount point " << quote(path().value())
+      PLOG(ERROR) << "Cannot remove FUSE mount point " << redact(path())
                   << " after process exit";
     }
   }
@@ -344,7 +344,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     MountErrorType unmount_error =
         platform_->Unmount(target_path.value(), MNT_FORCE | MNT_DETACH);
     LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
-        << "Cannot unmount FUSE mount point " << quote(target_path)
+        << "Cannot unmount FUSE mount point " << redact(target_path)
         << " after launch failure: " << unmount_error;
     return nullptr;
   }

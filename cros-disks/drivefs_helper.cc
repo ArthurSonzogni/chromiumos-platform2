@@ -115,11 +115,11 @@ MountErrorType DrivefsHelper::ConfigureSandbox(
     SandboxedProcess* sandbox) const {
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.scheme() != kType) {
-    LOG(ERROR) << "Inavlid source format " << quote(source);
+    LOG(ERROR) << "Invalid source format " << quote(source);
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
   if (uri.path().empty()) {
-    LOG(ERROR) << "Inavlid source " << quote(source);
+    LOG(ERROR) << "Invalid source " << quote(source);
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 

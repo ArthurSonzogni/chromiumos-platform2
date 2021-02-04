@@ -71,7 +71,7 @@ bool Platform::CreateOrReuseEmptyDirectory(const std::string& path) const {
   // is not empty, is already mounted or is used by some process.
   rmdir(path.c_str());
   if (mkdir(path.c_str(), S_IRWXU) != 0) {
-    PLOG(ERROR) << "Cannot create directory " << quote(path);
+    PLOG(ERROR) << "Cannot create directory " << redact(path);
     return false;
   }
   return true;
