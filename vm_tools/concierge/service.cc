@@ -3117,6 +3117,7 @@ std::unique_ptr<dbus::Response> Service::SetVmId(
   vms_.erase(iter);
   VmId new_id(request.dest_owner_id(), request.name());
   vms_[new_id] = std::move(vm);
+  vms_[new_id]->VmIdChanged();
 
   SendVmIdChangedSignal(new_id, old_id, cid);
 

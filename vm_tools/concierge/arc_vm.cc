@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/arc_vm.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -12,6 +13,7 @@
 // Needs to be included after sys/socket.h
 #include <linux/vm_sockets.h>
 
+#include <tuple>
 #include <utility>
 
 #include <base/files/file.h>
@@ -25,6 +27,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
 #include <base/system/sys_info.h>
+#include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/constants/vm_tools.h>
 #include <vboot/crossystem.h>
@@ -45,6 +48,14 @@ constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
+
+// How long to sleep between arc-powerctl connection attempts.
+constexpr base::TimeDelta kArcPowerctlConnectDelay =
+    base::TimeDelta::FromMilliseconds(250);
+
+// How long to wait before giving up on connecting to arc-powerctl.
+constexpr base::TimeDelta kArcPowerctlConnectTimeout =
+    base::TimeDelta::FromSeconds(5);
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
@@ -75,7 +86,11 @@ constexpr char kApkCacheSharedDirTag[] = "apkcache";
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 
-base::ScopedFD ConnectVSock(int cid) {
+// ConnectVSock connects to arc-powerctl in the VM identified by |cid|. It
+// returns a pair. The first object is the connected socket if connection was
+// successful. The second is a bool that is true if the VM is already dead, and
+// false otherwise.
+std::pair<base::ScopedFD, bool> ConnectVSock(int cid) {
   DLOG(INFO) << "Creating VSOCK...";
   struct sockaddr_vm sa = {};
   sa.svm_family = AF_VSOCK;
@@ -86,7 +101,7 @@ base::ScopedFD ConnectVSock(int cid) {
       socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to create VSOCK";
-    return {};
+    return {base::ScopedFD(), false};
   }
 
   DLOG(INFO) << "Connecting VSOCK";
@@ -95,15 +110,34 @@ base::ScopedFD ConnectVSock(int cid) {
                            sizeof(sa))) == -1) {
     fd.reset();
     PLOG(ERROR) << "Failed to connect.";
-    return {};
+    // When connect() returns ENODEV, this means the host kernel cannot find a
+    // guest CID matching the address (VM is already dead). When connect returns
+    // ETIMEDOUT, this means that the host kernel was able to send the connect
+    // packet, but the guest does not respond within the timeout (VM is almost
+    // dead). In these cases, return true so that the caller will stop retrying.
+    return {base::ScopedFD(), (errno == ENODEV || errno == ETIMEDOUT)};
   }
 
   DLOG(INFO) << "VSOCK connected.";
-  return fd;
+  return {std::move(fd), false};
 }
 
 bool ShutdownArcVm(int cid) {
-  base::ScopedFD vsock(ConnectVSock(cid));
+  base::ScopedFD vsock;
+  const base::Time connect_deadline =
+      base::Time::Now() + kArcPowerctlConnectTimeout;
+  while (base::Time::Now() < connect_deadline) {
+    bool vm_is_dead = false;
+    std::tie(vsock, vm_is_dead) = ConnectVSock(cid);
+    if (vsock.is_valid())
+      break;
+    if (vm_is_dead) {
+      DLOG(INFO) << "ARCVM is already gone.";
+      return true;
+    }
+    base::PlatformThread::Sleep(kArcPowerctlConnectDelay);
+  }
+
   if (!vsock.is_valid())
     return false;
 
@@ -299,17 +333,21 @@ bool ArcVm::Shutdown() {
   LOG(INFO) << "Shutting down ARCVM";
 
   // Ask arc-powerctl running on the guest to power off the VM.
-  // TODO(yusukes): We should call ShutdownArcVm() only after the guest side
-  // service is fully started. b/143711798
-  if (ShutdownArcVm(vsock_cid_) &&
-      WaitForChild(process_.pid(), kChildExitTimeout)) {
-    LOG(INFO) << "ARCVM is shut down";
-    process_.Release();
-    return true;
+  if (vm_upgraded_) {
+    if (ShutdownArcVm(vsock_cid_)) {
+      if (WaitForChild(process_.pid(), kChildExitTimeout)) {
+        LOG(INFO) << "ARCVM is shut down";
+        process_.Release();
+        return true;
+      }
+      LOG(WARNING) << "Timed out waiting for ARCVM to shut down.";
+    }
+    LOG(WARNING) << "Failed to shut down ARCVM gracefully.";
+  } else {
+    LOG(INFO) << "ARCVM is not yet upgraded. Skip graceful shutdown.";
   }
 
-  LOG(WARNING) << "Failed to shut down ARCVM gracefully. Trying to turn it "
-               << "down via the crosvm socket.";
+  LOG(WARNING) << "Trying to shut ARCVM down via the crosvm socket.";
   RunCrosvmCommand("stop");
 
   // We can't actually trust the exit codes that crosvm gives us so just see if

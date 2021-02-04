@@ -137,6 +137,9 @@ class VmInterface {
   // or 0 for unknown.
   virtual uint64_t GetMinDiskSize() { return 0; }
 
+  // Notes that SetVmId() has been called for the VM.
+  virtual void VmIdChanged() {}
+
  private:
   // Handle the device going to suspend.
   virtual void HandleSuspendImminent() = 0;

@@ -94,6 +94,7 @@ class ArcVm final : public VmBaseImpl {
       uint64_t new_size, std::string* failure_reason) override;
   vm_tools::concierge::DiskImageStatus GetDiskResizeStatus(
       std::string* failure_reason) override;
+  void VmIdChanged() override { vm_upgraded_ = true; }
 
   // Adjusts the amount of CPU the ARCVM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
@@ -123,6 +124,9 @@ class ArcVm final : public VmBaseImpl {
 
   // Flags passed to vmc start.
   ArcVmFeatures features_;
+
+  // This is set to true once ARCVM has been upgraded.
+  bool vm_upgraded_ = false;
 };
 
 }  // namespace concierge
