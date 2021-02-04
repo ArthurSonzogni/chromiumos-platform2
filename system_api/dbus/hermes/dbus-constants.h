@@ -40,6 +40,7 @@ const char kEidProperty[] = "Eid";
 const char kInstalledProfilesProperty[] = "InstalledProfiles";
 const char kIsActiveProperty[] = "IsActive";
 const char kPendingProfilesProperty[] = "PendingProfiles";
+const char kPhysicalSlotProperty[] = "PhysicalSlot";
 
 }  // namespace euicc
 
