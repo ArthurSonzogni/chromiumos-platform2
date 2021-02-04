@@ -17,7 +17,7 @@ use crate::proto::system_api::cicerone_service::StartLxdContainerRequest_Privile
 use crate::EnvMap;
 
 enum VmcError {
-    Command(&'static str, u32, Box<dyn Error>),
+    Command(&'static str, Box<dyn Error>),
     BadProblemReportArguments(getopts::Fail),
     ExpectedCrosUserIdHash,
     ExpectedUIntSize,
@@ -55,8 +55,12 @@ static VM_NAME_OPTION: &str = "vm-name";
 // Remove useless expression items that the `try_command!()` macro captures and stringifies when
 // generating a `VmcError::Command`.
 fn trim_routine(s: &str) -> String {
+    // We are guaranteed to have at least one element after splitn()
     s.trim_start_matches("self.methods.")
-        .replace(char::is_whitespace, "")
+        .splitn(2, '(')
+        .next()
+        .unwrap()
+        .to_string()
 }
 
 fn get_user_hash(environ: &EnvMap) -> Result<String, VmcError> {
@@ -86,14 +90,9 @@ impl fmt::Display for VmcError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BadProblemReportArguments(e) => write!(f, "failed to parse arguments: {:?}", e),
-            Command(routine, line_num, e) => write!(
-                f,
-                "routine at {}:{} `{}` failed: {}",
-                file!(),
-                line_num,
-                trim_routine(&routine),
-                e
-            ),
+            Command(routine, e) => {
+                write!(f, "operation `{}` failed: {}", trim_routine(&routine), e)
+            }
             ExpectedCrosUserIdHash => write!(f, "expected CROS_USER_ID_HASH environment variable"),
             ExpectedUIntSize => write!(
                 f,
@@ -150,10 +149,10 @@ macro_rules! try_command {
     ($x:expr) => {
         if cfg!(test) {
             // Ignore the command's result for testing.
-            $x.map_err(|e| Command(stringify!($x), line!(), e))
+            $x.map_err(|e| Command(stringify!($x), e))
                 .unwrap_or_default()
         } else {
-            $x.map_err(|e| Command(stringify!($x), line!(), e))?
+            $x.map_err(|e| Command(stringify!($x), e))?
         }
     };
 }
@@ -342,7 +341,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             Ok(()) => Ok(()),
             Err(e) => {
                 self.metrics_send_sample("Vm.DiskEraseFailed");
-                Err(Command("disk_destroy", line!(), e).into())
+                Err(Command("disk_destroy", e).into())
             }
         }
     }
