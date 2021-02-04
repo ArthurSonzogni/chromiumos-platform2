@@ -66,9 +66,15 @@ class VPNDriver {
 
     // Indicates the driver is trying reconnecting now. Note that this event
     // might be triggered multiple times before OnConnected or OnFailure
-    // happens.
-    virtual void OnDriverReconnecting() = 0;
+    // happens. |timeout| suggests the handler how long this connection attempt
+    // might take at maximum.
+    virtual void OnDriverReconnecting(base::TimeDelta timeout) = 0;
   };
+
+  // Might be returned by ConnectAsync() or OnDriverReconnecting(). Indicates
+  // the VPNService should not set a timeout for this connection attempt.
+  static constexpr base::TimeDelta kTimeoutNone =
+      base::TimeDelta::FromSeconds(0);
 
   virtual ~VPNDriver();
 
@@ -78,10 +84,17 @@ class VPNDriver {
   // 3) after VPN is connected and the network interface is known by DeviceInfo,
   // invoking callbacks in |handler| to notify the VPNService of connection
   // success (or other events).
-  virtual void ConnectAsync(EventHandler* handler) = 0;
+  // Returns a timeout value which suggests the handler how long this connection
+  // attempt might take at maximum.
+  virtual base::TimeDelta ConnectAsync(EventHandler* handler) = 0;
   virtual void Disconnect() = 0;
   virtual IPConfig::Properties GetIPProperties() const = 0;
   virtual std::string GetProviderType() const = 0;
+
+  // Makes the VPN driver fail because of the connection timeout. The driver
+  // will clean up its internal state, and invokes OnDriverFailure to notify the
+  // event handler of the failure reason.
+  virtual void OnConnectTimeout() = 0;
 
   virtual void InitPropertyStore(PropertyStore* store);
 
@@ -132,22 +145,6 @@ class VPNDriver {
 
   virtual KeyValueStore GetProvider(Error* error);
 
-  // Initializes a callback that will invoke OnConnectTimeout after
-  // |timeout_seconds|. The timeout will not be restarted if it's already
-  // scheduled.
-  void StartConnectTimeout(int timeout_seconds);
-  // Cancels the connect timeout callback, if any, previously scheduled through
-  // StartConnectTimeout.
-  void StopConnectTimeout();
-  // Returns true if a connect timeout is scheduled, false otherwise.
-  bool IsConnectTimeoutStarted() const;
-
-  // Called if a connect timeout scheduled through StartConnectTimeout
-  // fires. Cancels the timeout callback.
-  virtual void OnConnectTimeout();
-
-  int connect_timeout_seconds() const { return connect_timeout_seconds_; }
-
  private:
   friend class VPNDriverTest;
 
@@ -171,11 +168,6 @@ class VPNDriver {
   const Property* const properties_;
   const size_t property_count_;
   KeyValueStore args_;
-
-  base::CancelableClosure connect_timeout_callback_;
-  int connect_timeout_seconds_;
-
-  base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
 };
 
 }  // namespace shill

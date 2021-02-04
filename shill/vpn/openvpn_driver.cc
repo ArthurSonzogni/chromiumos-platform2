@@ -150,10 +150,6 @@ const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
 const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
     RUNDIR "/openvpn_config";
 
-const int OpenVPNDriver::kConnectTimeoutSeconds = 2 * 60;
-const int OpenVPNDriver::kReconnectOfflineTimeoutSeconds = 2 * 60;
-const int OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds = 20;
-
 OpenVPNDriver::OpenVPNDriver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
       management_server_(new OpenVPNManagementServer(this)),
@@ -178,7 +174,6 @@ void OpenVPNDriver::FailService(Service::ConnectFailure failure,
 }
 
 void OpenVPNDriver::Cleanup() {
-  StopConnectTimeout();
   // Disconnecting the management interface will terminate the openvpn
   // process. Ensure this is handled robustly by first unregistering
   // the callback for OnOpenVPNDied, and then terminating and reaping
@@ -343,7 +338,6 @@ void OpenVPNDriver::Notify(const string& reason,
   // On restart/reconnect, update the existing IP configuration.
   ParseIPConfiguration(dict, &ip_properties_);
   ReportConnectionMetrics();
-  StopConnectTimeout();
   if (event_handler_) {
     event_handler_->OnDriverConnected(interface_name_, interface_index_);
   } else {
@@ -598,7 +592,7 @@ bool OpenVPNDriver::SplitPortFromHost(const string& host,
   return true;
 }
 
-void OpenVPNDriver::ConnectAsync(EventHandler* handler) {
+base::TimeDelta OpenVPNDriver::ConnectAsync(EventHandler* handler) {
   event_handler_ = handler;
   if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
           &OpenVPNDriver::OnLinkReady, weak_factory_.GetWeakPtr()))) {
@@ -607,15 +601,15 @@ void OpenVPNDriver::ConnectAsync(EventHandler* handler) {
         base::BindOnce(&OpenVPNDriver::FailService, weak_factory_.GetWeakPtr(),
                        Service::kFailureInternal,
                        "Could not create tunnel interface."));
-    return;
+    return kTimeoutNone;
   }
+  return kConnectTimeout;
 }
 
 void OpenVPNDriver::OnLinkReady(const std::string& link_name,
                                 int interface_index) {
   interface_name_ = link_name;
   interface_index_ = interface_index;
-  StartConnectTimeout(kConnectTimeoutSeconds);
   rpc_task_.reset(new RpcTask(control_interface(), this));
   if (!SpawnOpenVPN()) {
     FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
@@ -961,7 +955,6 @@ void OpenVPNDriver::Disconnect() {
 }
 
 void OpenVPNDriver::OnConnectTimeout() {
-  VPNDriver::OnConnectTimeout();
   Service::ConnectFailure failure =
       management_server_->state() == OpenVPNManagementServer::kStateResolve
           ? Service::kFailureDNSLookup
@@ -971,35 +964,24 @@ void OpenVPNDriver::OnConnectTimeout() {
 
 void OpenVPNDriver::OnReconnecting(ReconnectReason reason) {
   LOG(INFO) << __func__ << "(" << reason << ")";
-  int timeout_seconds = GetReconnectTimeoutSeconds(reason);
-  if (reason == kReconnectReasonTLSError &&
-      timeout_seconds < connect_timeout_seconds()) {
-    // Reconnect due to TLS error happens during connect so we need to cancel
-    // the original connect timeout first and then reduce the time limit.
-    StopConnectTimeout();
+  if (!event_handler_) {
+    LOG(ERROR) << "event_handler_ is not set";
+    return;
   }
-  StartConnectTimeout(timeout_seconds);
-  // On restart/reconnect, drop the VPN connection, if any. The openvpn client
-  // might be in hold state if the VPN connection was previously established
-  // successfully. The hold will be released by OnDefaultServiceChanged when a
-  // new default service connects. This ensures that the client will use a fully
-  // functional underlying connection to reconnect.
-  if (event_handler_) {
-    event_handler_->OnDriverReconnecting();
-  }
+  base::TimeDelta timeout = GetReconnectTimeout(reason);
+  event_handler_->OnDriverReconnecting(timeout);
 }
 
 // static
-int OpenVPNDriver::GetReconnectTimeoutSeconds(ReconnectReason reason) {
+base::TimeDelta OpenVPNDriver::GetReconnectTimeout(ReconnectReason reason) {
   switch (reason) {
     case kReconnectReasonOffline:
-      return kReconnectOfflineTimeoutSeconds;
+      return kReconnectOfflineTimeout;
     case kReconnectReasonTLSError:
-      return kReconnectTLSErrorTimeoutSeconds;
+      return kReconnectTLSErrorTimeout;
     default:
-      break;
+      return kConnectTimeout;
   }
-  return kConnectTimeoutSeconds;
 }
 
 string OpenVPNDriver::GetProviderType() const {
@@ -1054,27 +1036,23 @@ void OpenVPNDriver::OnDefaultPhysicalServiceEvent(
   if (!event_handler_)
     return;
 
-  if (event == kDefaultPhysicalServiceDown ||
-      event == kDefaultPhysicalServiceChanged) {
-    // Inform the user that the VPN is reconnecting.
-    event_handler_->OnDriverReconnecting();
-    StopConnectTimeout();
-  }
-
   switch (event) {
     case kDefaultPhysicalServiceUp:
       management_server_->ReleaseHold();
-      StartConnectTimeout(GetReconnectTimeoutSeconds(kReconnectReasonOffline));
+      event_handler_->OnDriverReconnecting(
+          GetReconnectTimeout(kReconnectReasonOffline));
       break;
     case kDefaultPhysicalServiceDown:
       management_server_->Hold();
       management_server_->Restart();
+      event_handler_->OnDriverReconnecting(kTimeoutNone);
       break;
     case kDefaultPhysicalServiceChanged:
       // Ask the management server to reconnect immediately.
       management_server_->ReleaseHold();
       management_server_->Restart();
-      StartConnectTimeout(GetReconnectTimeoutSeconds(kReconnectReasonOffline));
+      event_handler_->OnDriverReconnecting(
+          GetReconnectTimeout(kReconnectReasonOffline));
       break;
     default:
       NOTREACHED();

@@ -71,7 +71,7 @@ class VPNService : public Service,
                                   int if_index) override;
   mockable void OnDriverFailure(ConnectFailure failure,
                                 const std::string& error_details) override;
-  mockable void OnDriverReconnecting() override;
+  mockable void OnDriverReconnecting(base::TimeDelta timeout) override;
 
  protected:
   // Inherited from Service.
@@ -101,6 +101,17 @@ class VPNService : public Service,
   void ConfigureDevice();
   void CleanupDevice();
 
+  // Initializes a callback that will invoke OnDriverConnectTimeout() after
+  // |timeout|. The timeout will be restarted if it's already scheduled. If
+  // kTimeoutNone is passed in, only cancels the current timeout, if any.
+  void StartDriverConnectTimeout(base::TimeDelta timeout);
+  // Cancels the connect timeout callback, if any, previously scheduled through
+  // StartConnectTimeout.
+  void StopDriverConnectTimeout();
+  // Called if a connect timeout scheduled through StartConnectTimeout
+  // fires. Cancels the timeout callback.
+  void OnDriverConnectTimeout();
+
   std::string storage_id_;
   std::unique_ptr<VPNDriver> driver_;
   VirtualDeviceRefPtr device_;
@@ -115,6 +126,8 @@ class VPNService : public Service,
   bool last_default_physical_service_online_;
   // The current default physical service known from Manager.
   std::string last_default_physical_service_path_;
+
+  base::CancelableClosure driver_connect_timeout_callback_;
 
   base::WeakPtrFactory<VPNService> weak_factory_{this};
 };

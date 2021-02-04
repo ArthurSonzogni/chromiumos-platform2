@@ -35,7 +35,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   ~L2TPIPSecDriver() override;
 
  protected:
-  void ConnectAsync(EventHandler* handler) override;
+  base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;

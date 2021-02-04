@@ -39,7 +39,7 @@ ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(
           manager, process_manager, kProperties, base::size(kProperties)) {}
 
-void ArcVpnDriver::ConnectAsync(EventHandler* handler) {
+base::TimeDelta ArcVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(this, 2) << __func__;
   // Nothing to do here since ARC already finish connecting to VPN
   // before Chrome calls Service::OnConnect. Just return success.
@@ -48,6 +48,7 @@ void ArcVpnDriver::ConnectAsync(EventHandler* handler) {
   dispatcher()->PostTask(FROM_HERE,
                          base::BindOnce(&ArcVpnDriver::InvokeEventHandler,
                                         weak_factory_.GetWeakPtr(), handler));
+  return kTimeoutNone;
 }
 
 void ArcVpnDriver::InvokeEventHandler(EventHandler* handler) {
@@ -64,6 +65,10 @@ void ArcVpnDriver::InvokeEventHandler(EventHandler* handler) {
 
 void ArcVpnDriver::Disconnect() {
   SLOG(this, 2) << __func__;
+}
+
+void ArcVpnDriver::OnConnectTimeout() {
+  NOTREACHED();
 }
 
 IPConfig::Properties ArcVpnDriver::GetIPProperties() const {

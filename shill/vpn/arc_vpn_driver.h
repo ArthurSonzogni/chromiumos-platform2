@@ -30,8 +30,9 @@ class ArcVpnDriver : public VPNDriver {
 
   std::string GetProviderType() const override;
 
-  void ConnectAsync(EventHandler* handler) override;
+  base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
+  void OnConnectTimeout() override;
   IPConfig::Properties GetIPProperties() const override;
 
  private:

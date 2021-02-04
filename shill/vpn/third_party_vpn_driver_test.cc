@@ -98,7 +98,6 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kConnected)));
   std::move(link_ready_callback).Run(kInterfaceName, kInterfaceIndex);
-  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
   EXPECT_EQ(driver_->active_client_, driver_);
   EXPECT_TRUE(driver_->parameters_expected_);
   EXPECT_EQ(driver_->io_handler_.get(), io_handler);
@@ -185,6 +184,15 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kDisconnected)));
   driver_->Disconnect();
+}
+
+TEST_F(ThirdPartyVpnDriverTest, OnConnectTimeout) {
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
+  driver_->ConnectAsync(service_.get());
+
+  EXPECT_CALL(*service_, OnDriverFailure(_, _));
+  driver_->OnConnectTimeout();
+  EXPECT_FALSE(driver_->event_handler_);
 }
 
 TEST_F(ThirdPartyVpnDriverTest, SendPacket) {

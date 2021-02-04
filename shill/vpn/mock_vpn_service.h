@@ -31,7 +31,7 @@ class MockVPNService : public VPNService {
               OnDriverFailure,
               (ConnectFailure, const std::string&),
               (override));
-  MOCK_METHOD(void, OnDriverReconnecting, (), (override));
+  MOCK_METHOD(void, OnDriverReconnecting, (base::TimeDelta), (override));
 
  private:
   base::WeakPtrFactory<MockVPNService> weak_factory_{this};

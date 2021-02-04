@@ -90,7 +90,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // via DeviceInfo, and then sets up and spawns an external 'openvpn' process.
   // IP configuration settings are passed back from the external process through
   // the |Notify| RPC service method.
-  void ConnectAsync(EventHandler* handler) override;
+  base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
@@ -148,9 +148,12 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
 
   static const char kDefaultOpenVPNConfigurationDirectory[];
 
-  static const int kConnectTimeoutSeconds;
-  static const int kReconnectOfflineTimeoutSeconds;
-  static const int kReconnectTLSErrorTimeoutSeconds;
+  static constexpr base::TimeDelta kConnectTimeout =
+      base::TimeDelta::FromSeconds(2 * 60);
+  static constexpr base::TimeDelta kReconnectOfflineTimeout =
+      base::TimeDelta::FromSeconds(2 * 60);
+  static constexpr base::TimeDelta kReconnectTLSErrorTimeout =
+      base::TimeDelta::FromSeconds(20);
 
   static void ParseForeignOptions(const ForeignOptions& options,
                                   IPConfig::Properties* properties);
@@ -199,7 +202,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // state and deallocates all resources.
   void Cleanup();
 
-  static int GetReconnectTimeoutSeconds(ReconnectReason reason);
+  static base::TimeDelta GetReconnectTimeout(ReconnectReason reason);
 
   // Join a list of options into a single string.
   static std::string JoinOptions(

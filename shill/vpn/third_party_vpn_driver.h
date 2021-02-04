@@ -66,10 +66,11 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // Implementation of VPNDriver
   void InitPropertyStore(PropertyStore* store) override;
-  void ConnectAsync(EventHandler* handler) override;
+  base::TimeDelta ConnectAsync(EventHandler* handler) override;
   IPConfig::Properties GetIPProperties() const override;
   std::string GetProviderType() const override;
   void Disconnect() override;
+  void OnConnectTimeout() override;
 
   void OnDefaultPhysicalServiceEvent(
       DefaultPhysicalServiceEvent event) override;
@@ -85,14 +86,12 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   const std::string& object_path_suffix() const { return object_path_suffix_; }
 
- protected:
-  void OnConnectTimeout() override;
-
  private:
   friend class ThirdPartyVpnDriverTest;
   FRIEND_TEST(ThirdPartyVpnDriverTest, ConnectAndDisconnect);
   FRIEND_TEST(ThirdPartyVpnDriverTest, ReconnectionEvents);
   FRIEND_TEST(ThirdPartyVpnDriverTest, PowerEvents);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, OnConnectTimeout);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(ThirdPartyVpnDriverTest, UpdateConnectionState);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SendPacket);

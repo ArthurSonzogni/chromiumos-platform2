@@ -43,7 +43,7 @@ static std::string ObjectID(const ThirdPartyVpnDriver* v) {
 namespace {
 
 const int32_t kConstantMaxMtu = (1 << 16) - 1;
-const int32_t kConnectTimeoutSeconds = 60 * 5;
+constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromMinutes(5);
 
 std::string IPAddressFingerprint(const IPAddress& address) {
   static const char* const hex_to_bin[] = {
@@ -410,7 +410,6 @@ void ThirdPartyVpnDriver::SetParameters(
   }
   ip_properties_.default_route = false;
   ip_properties_.blackhole_ipv6 = true;
-  StopConnectTimeout();
   if (!ip_properties_set_) {
     ip_properties_set_ = true;
     metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
@@ -458,7 +457,6 @@ void ThirdPartyVpnDriver::OnInputError(const std::string& error) {
 }
 
 void ThirdPartyVpnDriver::Cleanup() {
-  StopConnectTimeout();
   if (tun_fd_ > 0) {
     file_io_->Close(tun_fd_);
     tun_fd_ = -1;
@@ -479,7 +477,7 @@ void ThirdPartyVpnDriver::Cleanup() {
   }
 }
 
-void ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
+base::TimeDelta ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(this, 2) << __func__;
   event_handler_ = handler;
   if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
@@ -489,8 +487,9 @@ void ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
         base::BindOnce(&ThirdPartyVpnDriver::FailService,
                        weak_factory_.GetWeakPtr(), Service::kFailureInternal,
                        "Could not to create tunnel interface."));
-    return;
+    return kTimeoutNone;
   }
+  return kConnectTimeout;
 }
 
 void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
@@ -502,7 +501,6 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
   interface_name_ = link_name;
   interface_index_ = interface_index;
 
-  StartConnectTimeout(kConnectTimeoutSeconds);
   ip_properties_ = IPConfig::Properties();
   ip_properties_set_ = false;
 
@@ -560,22 +558,21 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
                   "Underlying network disconnected.");
       return;
     }
-    event_handler_->OnDriverReconnecting();
   }
 
   PlatformMessage message;
   switch (event) {
     case kDefaultPhysicalServiceUp:
       message = PlatformMessage::kLinkUp;
-      StartConnectTimeout(kConnectTimeoutSeconds);
+      event_handler_->OnDriverReconnecting(kConnectTimeout);
       break;
     case kDefaultPhysicalServiceDown:
       message = PlatformMessage::kLinkDown;
-      StopConnectTimeout();
+      event_handler_->OnDriverReconnecting(kTimeoutNone);
       break;
     case kDefaultPhysicalServiceChanged:
       message = PlatformMessage::kLinkChanged;
-      StartConnectTimeout(kConnectTimeoutSeconds);
+      event_handler_->OnDriverReconnecting(kConnectTimeout);
       break;
     default:
       NOTREACHED();
@@ -599,9 +596,7 @@ void ThirdPartyVpnDriver::OnAfterResume() {
   if (event_handler_ && reconnect_supported_) {
     // Transition back to Configuring state so that the app can perform
     // DNS lookups and reconnect.
-    event_handler_->OnDriverReconnecting();
-    StartConnectTimeout(kConnectTimeoutSeconds);
-
+    event_handler_->OnDriverReconnecting(kConnectTimeout);
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kResume));
   }
@@ -609,7 +604,10 @@ void ThirdPartyVpnDriver::OnAfterResume() {
 
 void ThirdPartyVpnDriver::OnConnectTimeout() {
   SLOG(this, 2) << __func__;
-  VPNDriver::OnConnectTimeout();
+  if (!event_handler_) {
+    LOG(DFATAL) << "event_handler_ is not set";
+    return;
+  }
   adaptor_interface_->EmitPlatformMessage(
       static_cast<uint32_t>(PlatformMessage::kError));
   FailService(Service::kFailureConnect, "Connection timed out");

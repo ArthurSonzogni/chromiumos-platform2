@@ -73,10 +73,12 @@ void VPNService::OnConnect(Error* error) {
 
   SetState(ConnectState::kStateAssociating);
   // driver_ is owned by VPNService, so this is safe.
-  driver_->ConnectAsync(this);
+  base::TimeDelta timeout = driver_->ConnectAsync(this);
+  StartDriverConnectTimeout(timeout);
 }
 
 void VPNService::OnDisconnect(Error* error, const char* reason) {
+  StopDriverConnectTimeout();
   SetState(ConnectState::kStateDisconnecting);
   driver_->Disconnect();
   CleanupDevice();
@@ -85,6 +87,7 @@ void VPNService::OnDisconnect(Error* error, const char* reason) {
 }
 
 void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
+  StopDriverConnectTimeout();
   if (!CreateDevice(if_name, if_index)) {
     LOG(ERROR) << "Cannot create VPN device for " << if_name;
     SetFailure(Service::kFailureInternal);
@@ -103,12 +106,14 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
 
 void VPNService::OnDriverFailure(ConnectFailure failure,
                                  const std::string& error_details) {
+  StopDriverConnectTimeout();
   CleanupDevice();
   SetErrorDetails(error_details);
   SetFailure(failure);
 }
 
-void VPNService::OnDriverReconnecting() {
+void VPNService::OnDriverReconnecting(base::TimeDelta timeout) {
+  StartDriverConnectTimeout(timeout);
   SetState(Service::kStateAssociating);
   device_->ResetConnection();
 }
@@ -357,6 +362,31 @@ void VPNService::OnDefaultPhysicalServiceChanged(
 
   last_default_physical_service_online_ = default_physical_service_online;
   last_default_physical_service_path_ = physical_service_path;
+}
+
+void VPNService::StartDriverConnectTimeout(base::TimeDelta timeout) {
+  if (timeout == VPNDriver::kTimeoutNone) {
+    StopDriverConnectTimeout();
+    return;
+  }
+  LOG(INFO) << "Schedule VPN connect timeout: " << timeout.InSeconds()
+            << " seconds.";
+  driver_connect_timeout_callback_.Reset(
+      Bind(&VPNService::OnDriverConnectTimeout, weak_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(FROM_HERE,
+                                driver_connect_timeout_callback_.callback(),
+                                timeout.InMilliseconds());
+}
+
+void VPNService::StopDriverConnectTimeout() {
+  SLOG(this, 2) << __func__;
+  driver_connect_timeout_callback_.Cancel();
+}
+
+void VPNService::OnDriverConnectTimeout() {
+  LOG(INFO) << "VPN connect timeout.";
+  driver_->OnConnectTimeout();
+  StopDriverConnectTimeout();
 }
 
 }  // namespace shill

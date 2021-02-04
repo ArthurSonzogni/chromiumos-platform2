@@ -42,9 +42,7 @@ VPNDriver::VPNDriver(Manager* manager,
     : manager_(manager),
       process_manager_(process_manager),
       properties_(properties),
-      property_count_(property_count),
-      connect_timeout_seconds_(0),
-      weak_ptr_factory_(this) {}
+      property_count_(property_count) {}
 
 VPNDriver::~VPNDriver() = default;
 
@@ -276,34 +274,6 @@ KeyValueStore VPNDriver::GetProvider(Error* error) {
   }
 
   return provider_properties;
-}
-
-void VPNDriver::StartConnectTimeout(int timeout_seconds) {
-  if (IsConnectTimeoutStarted()) {
-    return;
-  }
-  LOG(INFO) << "Schedule VPN connect timeout: " << timeout_seconds
-            << " seconds.";
-  connect_timeout_seconds_ = timeout_seconds;
-  connect_timeout_callback_.Reset(
-      Bind(&VPNDriver::OnConnectTimeout, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(FROM_HERE, connect_timeout_callback_.callback(),
-                                timeout_seconds * 1000);
-}
-
-void VPNDriver::StopConnectTimeout() {
-  SLOG(this, 2) << __func__;
-  connect_timeout_callback_.Cancel();
-  connect_timeout_seconds_ = 0;
-}
-
-bool VPNDriver::IsConnectTimeoutStarted() const {
-  return !connect_timeout_callback_.IsCancelled();
-}
-
-void VPNDriver::OnConnectTimeout() {
-  LOG(INFO) << "VPN connect timeout.";
-  StopConnectTimeout();
 }
 
 void VPNDriver::OnBeforeSuspend(const ResultCallback& callback) {

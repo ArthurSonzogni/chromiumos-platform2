@@ -21,8 +21,9 @@ class MockVPNDriver : public VPNDriver {
 
   ~MockVPNDriver() override;
 
-  MOCK_METHOD(void, ConnectAsync, (EventHandler*), (override));
+  MOCK_METHOD(base::TimeDelta, ConnectAsync, (EventHandler*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
+  MOCK_METHOD(void, OnConnectTimeout, (), (override));
   MOCK_METHOD(IPConfig::Properties, GetIPProperties, (), (const, override));
   MOCK_METHOD(bool,
               Load,

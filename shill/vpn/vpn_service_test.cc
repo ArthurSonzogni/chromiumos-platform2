@@ -22,12 +22,14 @@
 #include "shill/mock_service.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/service_property_change_test.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
 
 using std::string;
 using testing::_;
 using testing::ByMove;
+using testing::DoAll;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -48,7 +50,7 @@ class VPNServiceTest : public testing::Test {
  public:
   VPNServiceTest()
       : interface_name_("test-interface"),
-        manager_(&control_, nullptr, &metrics_),
+        manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_) {
     Service::SetNextSerialNumberForTesting(0);
     driver_ = new MockVPNDriver();
@@ -126,6 +128,7 @@ class VPNServiceTest : public testing::Test {
   MockVPNDriver* driver_;  // Owned by |service_|.
   MockControl control_;
   MockMetrics metrics_;
+  EventDispatcherForTest dispatcher_;
   MockManager manager_;
   MockDeviceInfo device_info_;
   scoped_refptr<NiceMock<MockConnection>> connection_;
@@ -459,7 +462,8 @@ TEST_F(VPNServiceTest, ConnectFlow) {
 
   // Connection
   EXPECT_CALL(*driver_, ConnectAsync(_))
-      .WillOnce(SaveArg<0>(&driver_event_handler));
+      .WillOnce(DoAll(SaveArg<0>(&driver_event_handler),
+                      Return(VPNDriver::kTimeoutNone)));
   service_->Connect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Service::kStateAssociating, service_->state());
@@ -472,7 +476,7 @@ TEST_F(VPNServiceTest, ConnectFlow) {
 
   // Driver-originated reconnection
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
-  driver_event_handler->OnDriverReconnecting();
+  driver_event_handler->OnDriverReconnecting(VPNDriver::kTimeoutNone);
   EXPECT_EQ(Service::kStateAssociating, service_->state());
   EXPECT_TRUE(service_->device_);
 
@@ -528,6 +532,72 @@ TEST_F(VPNServiceTest, OnPhysicalDefaultServiceChanged) {
   EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
                             VPNDriver::kDefaultPhysicalServiceUp));
   service_->OnDefaultPhysicalServiceChanged(mock_service);
+}
+
+TEST_F(VPNServiceTest, ConnectTimeout) {
+  Error error;
+  VPNDriver::EventHandler* driver_event_handler;
+  constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromSeconds(10);
+
+  // Timeout triggered.
+  EXPECT_CALL(*driver_, ConnectAsync(_))
+      .WillRepeatedly(
+          DoAll(SaveArg<0>(&driver_event_handler), Return(kTestTimeout)));
+  service_->Connect(&error, "in test");
+  EXPECT_CALL(*driver_, OnConnectTimeout());
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
+
+  // Timeout cancelled by connection success.
+  service_->Connect(&error, "in test");
+  EXPECT_CALL(*driver_, OnConnectTimeout()).Times(0);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout / 2);
+  driver_event_handler->OnDriverConnected(kInterfaceName, kInterfaceIndex);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
+  service_->Disconnect(&error, "in test");
+
+  // Timeout cancelled by connection failure.
+  service_->Connect(&error, "in test");
+  EXPECT_CALL(*driver_, OnConnectTimeout()).Times(0);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout / 2);
+  driver_event_handler->OnDriverFailure(Service::kFailureUnknown,
+                                        Service::kErrorDetailsNone);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
+
+  // No timeout
+  EXPECT_CALL(*driver_, ConnectAsync(_))
+      .WillRepeatedly(DoAll(SaveArg<0>(&driver_event_handler),
+                            Return(VPNDriver::kTimeoutNone)));
+  service_->Connect(&error, "in test");
+  EXPECT_CALL(*driver_, OnConnectTimeout()).Times(0);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
+}
+
+TEST_F(VPNServiceTest, ReconnectTimeout) {
+  Error error;
+  VPNDriver::EventHandler* driver_event_handler;
+  constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromSeconds(10);
+  EXPECT_CALL(*driver_, ConnectAsync(_))
+      .WillRepeatedly(DoAll(SaveArg<0>(&driver_event_handler),
+                            Return(VPNDriver::kTimeoutNone)));
+  service_->Connect(&error, "in test");
+  driver_event_handler->OnDriverConnected(kInterfaceName, kInterfaceIndex);
+
+  EXPECT_CALL(*driver_, OnConnectTimeout()).Times(0);
+  driver_event_handler->OnDriverReconnecting(kTestTimeout);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout / 2);
+
+  // Timeout should be reset.
+  driver_event_handler->OnDriverReconnecting(kTestTimeout);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout / 2);
+
+  // Timeout should be cancelled.
+  driver_event_handler->OnDriverReconnecting(VPNDriver::kTimeoutNone);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
+
+  // Timeout triggered.
+  driver_event_handler->OnDriverReconnecting(kTestTimeout);
+  EXPECT_CALL(*driver_, OnConnectTimeout()).Times(1);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
 }
 
 }  // namespace shill

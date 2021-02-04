@@ -110,16 +110,6 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
     }
   }
 
-  void OnConnectTimeout() { driver_->OnConnectTimeout(); }
-
-  void StartConnectTimeout(int timeout_seconds) {
-    driver_->StartConnectTimeout(timeout_seconds);
-  }
-
-  bool IsConnectTimeoutStarted() const {
-    return driver_->IsConnectTimeoutStarted();
-  }
-
   bool IsPSKFileCleared(const FilePath& psk_file_path) const {
     return !base::PathExists(psk_file_path) && GetPSKFile().empty();
   }
@@ -151,7 +141,6 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
     *psk_file = SetupPSKFile();
     *xauth_credentials_file = SetupXauthCredentialsFile();
     SetService(service_);
-    StartConnectTimeout(0);
   }
 
   void ExpectMetricsReported() {
@@ -245,7 +234,6 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(driver_->event_handler_);
-  EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
   EXPECT_FALSE(driver_->external_task_);
 
   SetService(service_);
@@ -529,8 +517,8 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
       .WillOnce(Return(1));
-  driver_->ConnectAsync(service_.get());
-  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
+  base::TimeDelta timeout = driver_->ConnectAsync(service_.get());
+  EXPECT_NE(timeout, VPNDriver::kTimeoutNone);
 }
 
 TEST_F(L2TPIPSecDriverTest, Disconnect) {
@@ -540,12 +528,10 @@ TEST_F(L2TPIPSecDriverTest, Disconnect) {
 }
 
 TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
-  StartConnectTimeout(0);
   SetService(service_);
   EXPECT_CALL(*service_, OnDriverFailure(Service::kFailureConnect, _));
-  OnConnectTimeout();
+  driver_->OnConnectTimeout();
   EXPECT_FALSE(driver_->event_handler_);
-  EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
@@ -617,7 +603,6 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   InvokeNotify(kPPPReasonConnect, config);
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
-  EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
@@ -651,7 +636,6 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   EXPECT_CALL(*local_external_task, OnDelete());
   driver_->Notify(kPPPReasonDisconnect, dict);
   EXPECT_EQ(nullptr, driver_->external_task_);
-  EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
 }  // namespace shill

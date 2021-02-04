@@ -72,7 +72,7 @@ const char kL2TPIPSecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
 const char kL2TPIPSecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 
-constexpr int kConnectTimeoutSeconds = 60;
+constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromMinutes(1);
 
 Service::ConnectFailure ExitStatusToFailure(int status) {
   switch (status) {
@@ -139,13 +139,14 @@ L2TPIPSecDriver::~L2TPIPSecDriver() {
   Cleanup();
 }
 
-void L2TPIPSecDriver::ConnectAsync(EventHandler* handler) {
+base::TimeDelta L2TPIPSecDriver::ConnectAsync(EventHandler* handler) {
   event_handler_ = handler;
-  StartConnectTimeout(kConnectTimeoutSeconds);
   Error error;
   if (!SpawnL2TPIPSecVPN(&error)) {
     FailService(Service::kFailureInternal);
+    return kTimeoutNone;
   }
+  return kConnectTimeout;
 }
 
 void L2TPIPSecDriver::Disconnect() {
@@ -159,7 +160,6 @@ IPConfig::Properties L2TPIPSecDriver::GetIPProperties() const {
 }
 
 void L2TPIPSecDriver::OnConnectTimeout() {
-  VPNDriver::OnConnectTimeout();
   FailService(Service::kFailureConnect);
 }
 
@@ -178,7 +178,6 @@ void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
 }
 
 void L2TPIPSecDriver::Cleanup() {
-  StopConnectTimeout();
   DeleteTemporaryFiles();
   external_task_.reset();
 }
@@ -445,7 +444,6 @@ void L2TPIPSecDriver::Notify(const string& reason,
   ip_properties_.mtu = IPConfig::kMinIPv6MTU;
 
   ReportConnectionMetrics();
-  StopConnectTimeout();
 
   // Make sure DeviceInfo is aware of this interface before invoking the
   // connection success callback.

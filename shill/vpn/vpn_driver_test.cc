@@ -56,8 +56,9 @@ class VPNDriverUnderTest : public VPNDriver {
   ~VPNDriverUnderTest() override = default;
 
   // Inherited from VPNDriver.
-  MOCK_METHOD(void, ConnectAsync, (EventHandler*), (override));
+  MOCK_METHOD(base::TimeDelta, ConnectAsync, (EventHandler*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
+  MOCK_METHOD(void, OnConnectTimeout, (), (override));
   MOCK_METHOD(IPConfig::Properties, GetIPProperties, (), (const, override));
   MOCK_METHOD(string, GetProviderType, (), (const, override));
 
@@ -91,23 +92,7 @@ class VPNDriverTest : public Test {
   ~VPNDriverTest() override = default;
 
  protected:
-  const base::CancelableClosure& connect_timeout_callback() const {
-    return driver_.connect_timeout_callback_;
-  }
-
-  bool IsConnectTimeoutStarted() { return driver_.IsConnectTimeoutStarted(); }
-
-  int connect_timeout_seconds() const {
-    return driver_.connect_timeout_seconds();
-  }
-
   string credential_prefix() const { return VPNDriver::kCredentialPrefix; }
-
-  void StartConnectTimeout(int timeout_seconds) {
-    driver_.StartConnectTimeout(timeout_seconds);
-  }
-
-  void StopConnectTimeout() { driver_.StopConnectTimeout(); }
 
   void SetArg(const string& arg, const string& value) {
     driver_.args()->Set<string>(arg, value);
@@ -374,34 +359,6 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
         store.SetStringsProperty(kEapCaCertPemProperty, kValue, &error));
     EXPECT_EQ(kValue, GetArgs()->Get<Strings>(kEapCaCertPemProperty));
   }
-}
-
-TEST_F(VPNDriverTest, ConnectTimeout) {
-  EXPECT_TRUE(connect_timeout_callback().IsCancelled());
-  EXPECT_FALSE(IsConnectTimeoutStarted());
-  StartConnectTimeout(0);
-  EXPECT_EQ(0, connect_timeout_seconds());
-  EXPECT_FALSE(connect_timeout_callback().IsCancelled());
-  EXPECT_TRUE(IsConnectTimeoutStarted());
-  StartConnectTimeout(10);  // This should take no effect.
-  EXPECT_EQ(0, connect_timeout_seconds());
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_TRUE(connect_timeout_callback().IsCancelled());
-  EXPECT_FALSE(IsConnectTimeoutStarted());
-}
-
-TEST_F(VPNDriverTest, StartStopConnectTimeout) {
-  EXPECT_FALSE(IsConnectTimeoutStarted());
-  EXPECT_EQ(0, connect_timeout_seconds());
-  const int kTimeout = 123;
-  StartConnectTimeout(kTimeout);
-  EXPECT_TRUE(IsConnectTimeoutStarted());
-  EXPECT_EQ(kTimeout, connect_timeout_seconds());
-  StartConnectTimeout(kTimeout - 20);
-  EXPECT_EQ(kTimeout, connect_timeout_seconds());
-  StopConnectTimeout();
-  EXPECT_FALSE(IsConnectTimeoutStarted());
-  EXPECT_EQ(0, connect_timeout_seconds());
 }
 
 }  // namespace shill
