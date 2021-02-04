@@ -261,6 +261,15 @@ int ResultProcessor::bufferDone(const BufferEvent& event) {
 
     mCallbackOps->process_capture_result(mCallbackOps, &result);
 
+    if (event.outputBuffer->status == CAMERA3_BUFFER_STATUS_ERROR) {
+        for (auto& reqStat : mRequestStateVector) {
+            if (reqStat.frameNumber == event.frameNumber) {
+                reqStat.partialResultReturned = 1;
+                reqStat.isShutterDone = true;
+            }
+        }
+    }
+
     bool found = false;
     for (uint32_t i = 0; i < mRequestStateVector.size(); i++) {
         if (mRequestStateVector.at(i).frameNumber == event.frameNumber) {

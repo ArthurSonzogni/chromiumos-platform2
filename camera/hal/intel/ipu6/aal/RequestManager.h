@@ -66,6 +66,7 @@ class RequestManager : public RequestManagerCallback, public icamera::camera_cal
     void deleteStreams(bool inactiveOnly);
     void increaseRequestCount();
     int waitProcessRequest();
+    void waitAllRequestsDone();
     void chooseStreamForFaceDetection(uint32_t streamsNum, camera3_stream_t** streams,
                                       int* enableFDStreamNum);
     int checkStreamRotation(camera3_stream_configuration_t* stream_list);
@@ -99,6 +100,8 @@ class RequestManager : public RequestManagerCallback, public icamera::camera_cal
     // mRequestLock is used to protect mRequestInProgress
     std::mutex mRequestLock;
     uint32_t mRequestInProgress;
+    std::condition_variable mWaitAllRequestsDone;
+
     android::CameraMetadata mLastSettings;
     icamera::stream_t mHALStream[kMaxStreamNum];
 

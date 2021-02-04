@@ -107,6 +107,9 @@ class Camera3Stream : public icamera::Thread {
     // called by RequestManager indicates the frame is done, release buffers
     void requestStreamDone(uint32_t frameNumber);
 
+    // drain all pending requests
+    void drainAllPendingRequests();
+
  private:
     void handleSofAlignment();
     /* get the request status anf Camera3Buf of this stream
@@ -121,6 +124,8 @@ class Camera3Stream : public icamera::Thread {
      ** return true to continue the threadloop.
      */
     bool waitCaptureResultReady();
+
+    void drainRequest();
 
  private:
     const uint64_t kMaxDuration = 2000000000;  // 2000ms
@@ -143,6 +148,13 @@ class Camera3Stream : public icamera::Thread {
     std::unique_ptr<Camera3BufferPool> mBufferPool;
 
     camera3_stream_t mStream;
+
+    typedef enum {
+        PROCESS_REQUESTS,    // Normal working status.
+        PEND_PROCESS,        // Pending process when stopping camera.
+        DRAIN_REQUESTS       // Draining all requests after stopped camera.
+    } StreamStatus;
+    StreamStatus mStreamStatus;
 
     /* key is frame number, value is CaptureResult */
     std::map<uint32_t, std::shared_ptr<CaptureResult>> mCaptureResultMap;

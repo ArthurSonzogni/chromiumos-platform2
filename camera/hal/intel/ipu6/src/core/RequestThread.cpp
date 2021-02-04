@@ -285,6 +285,7 @@ int RequestThread::waitFrame(int streamId, camera_buffer_t **ubuffer)
     FrameQueue& frameQueue = mOutputFrames[streamId];
     ConditionLock lock(frameQueue.mFrameMutex);
 
+    if (!mActive) return NO_INIT;
     while (frameQueue.mFrameQueue.empty()) {
         int ret = frameQueue.mFrameAvailableSignal.waitRelative(
                       lock,

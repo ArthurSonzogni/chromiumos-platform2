@@ -741,6 +741,8 @@ int CameraDevice::dqbuf(int streamId, camera_buffer_t **ubuffer, Parameters* set
     while (ret == TIMED_OUT)
         ret = mRequestThread->waitFrame(streamId, ubuffer);
 
+    if (ret == NO_INIT) return ret;
+
     CheckError(!*ubuffer || ret != OK, ret, "failed to get ubuffer from stream %d", streamId);
 
     // Update and keep latest result, copy to settings when needed.

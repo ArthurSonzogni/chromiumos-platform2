@@ -43,6 +43,7 @@ Camera3Stream::Camera3Stream(int cameraId, CallbackEventInterface* callback,
           mMaxNumReqInProc(maxNumReqInProc),
           mBufferPool(nullptr),
           mStream(stream),
+          mStreamStatus(PROCESS_REQUESTS),
           mFaceDetection(nullptr),
           mFDRunDefaultInterval(icamera::PlatformData::faceEngineRunningInterval(cameraId)),
           mFDRunIntervalNoFace(icamera::PlatformData::faceEngineRunningIntervalNoFace(cameraId)),
@@ -108,8 +109,57 @@ void Camera3Stream::handleSofAlignment() {
     LOG2("%s, [%p] running post processing align with sof event", __func__, this);
 }
 
+void Camera3Stream::drainAllPendingRequests() {
+    LOG1("[%p] %s", this, __func__);
+    std::lock_guard<std::mutex> l(mLock);
+
+    mStreamStatus = DRAIN_REQUESTS;
+    mBufferDoneCondition.notify_one();
+
+    for (auto& iter : mListeners) {
+        LOG1("[%p] %s calling listener", this, __func__);
+        iter->drainAllPendingRequests();
+    }
+}
+
+void Camera3Stream::drainRequest() {
+    LOG1("[%p] %s", this, __func__);
+    if (mCaptureResultMap.empty()) {
+        mStreamStatus = PEND_PROCESS;
+        return;
+    }
+
+    auto captureResult = mCaptureResultMap.begin();
+    std::shared_ptr<CaptureResult> result = captureResult->second;
+    uint32_t frameNumber = captureResult->first;
+
+    buffer_handle_t handle = result->handle;
+    if (mBuffers.find(handle) != mBuffers.end() && mBuffers[handle] != nullptr) {
+        std::shared_ptr<Camera3Buffer> ccBuf = mBuffers[handle];
+        mBuffers.erase(handle);
+        camera3_stream_buffer* buf = &result->outputBuffer;
+
+        ccBuf->unlock();
+        ccBuf->deinit();
+        ccBuf->getFence(buf);
+
+        buf->status = CAMERA3_BUFFER_STATUS_ERROR;
+
+        // notify frame done
+        BufferEvent bufferEvent = {frameNumber, buf, 0, -1};
+        mEventCallback->bufferDone(bufferEvent);
+    }
+    mCaptureResultMap.erase(frameNumber);
+}
+
+
 bool Camera3Stream::threadLoop() {
     LOG1("[%p] isHALStream: %d @%s", this, mIsHALStream, __func__);
+
+    if (mStreamStatus == DRAIN_REQUESTS) {
+        drainRequest();
+        return true;
+    }
 
     if (!waitCaptureResultReady()) {
         return true;
@@ -130,8 +180,9 @@ bool Camera3Stream::threadLoop() {
         LOG1("[%p]@ dqbuf for frameNumber %d", this, frameNumber);
         int ret = icamera::camera_stream_dqbuf(mCameraId, mHALStream.id, &buffer, &parameter);
         if (ret == icamera::NO_INIT) {
-            LOG1("[%p] stream exits", this);
-            return false;
+            LOG1("[%p] stream exiting", this);
+            mStreamStatus = PEND_PROCESS;
+            return true;
         }
         CheckError(ret != icamera::OK || !buffer, true, "[%p]failed to dequeue buffer, ret %d",
                    this, ret);
@@ -444,6 +495,7 @@ void Camera3Stream::queueBufferDone(uint32_t frameNumber,
     result->param = param;
 
     mCaptureResultMap[frameNumber] = result;
+    mStreamStatus = PROCESS_REQUESTS;
     mBufferDoneCondition.notify_one();
 }
 
@@ -627,6 +679,10 @@ bool Camera3Stream::waitCaptureResultReady() {
         std::shared_ptr<CaptureResult> result = captureResult->second;
         needWaitBufferReady = !result->inputCam3Buf && mHALStreamOutput.empty();
     }
+
+    if (mStreamStatus == PEND_PROCESS) needWaitBufferReady = true;
+    if (mStreamStatus == DRAIN_REQUESTS && !mCaptureResultMap.empty()) return false;
+
     if (needWaitBufferReady) {
         std::cv_status ret = mBufferDoneCondition.wait_for(
             lock, std::chrono::nanoseconds(kMaxDuration * SLOWLY_MULTIPLIER));

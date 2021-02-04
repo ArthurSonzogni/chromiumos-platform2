@@ -103,7 +103,16 @@ int RequestManager::deinit() {
         mCameraDeviceStarted = false;
     }
 
-    mRequestInProgress = 0;
+    uint32_t i = 0;
+    while (i < mCamera3StreamVector.size()) {
+        Camera3Stream* s = mCamera3StreamVector.at(i);
+        s->drainAllPendingRequests();
+        i++;
+    }
+
+    waitAllRequestsDone();
+    LOG1("@%s done", __func__);
+
     StaticCapability::releaseInstance(mCameraId);
     return icamera::OK;
 }
@@ -540,18 +549,13 @@ void RequestManager::dump(int fd) {
 int RequestManager::flush() {
     LOG1("@%s", __func__);
 
-    icamera::nsecs_t startTime = icamera::CameraUtils::systemTime();
-    icamera::nsecs_t interval = 0;
     const icamera::nsecs_t ONE_SECOND = 1000000000;
+    icamera::nsecs_t startTime = icamera::CameraUtils::systemTime();
 
-    // wait 1000ms at most while there are requests in the HAL
-    while (mRequestInProgress > 0 && interval <= ONE_SECOND) {
-        usleep(10000);  // wait 10ms
-        interval = icamera::CameraUtils::systemTime() - startTime;
-    }
+    waitAllRequestsDone();
 
-    LOG2("@%s, line:%d, mRequestInProgress:%d, time spend:%ld us", __func__, __LINE__,
-         mRequestInProgress, interval / 1000);
+    icamera::nsecs_t interval = icamera::CameraUtils::systemTime() - startTime;
+    LOG2("@%s, line:%d, time spend:%ld us", __func__, __LINE__, interval / 1000);
 
     // based on API, -ENODEV (NO_INIT) error should be returned.
     CheckError(interval > ONE_SECOND, icamera::NO_INIT, "flush() > 1s, timeout:%ld us",
@@ -615,6 +619,10 @@ void RequestManager::returnRequestDone(uint32_t frameNumber) {
 
     for (auto& stream : mCamera3StreamVector) {
         stream->requestStreamDone(frameNumber);
+    }
+
+    if (mRequestInProgress == 0) {
+        mWaitAllRequestsDone.notify_one();
     }
 }
 
@@ -865,6 +873,16 @@ int RequestManager::chooseHALStreams(const uint32_t requestStreamNum, int* halSt
         LOG1("user Stream %d bind to HAL Stream %d", i, halStreamFlag[i]);
 
     return activeHALNum;
+}
+
+void RequestManager::waitAllRequestsDone()
+{
+    LOG1("@%s", __func__);
+
+    std::unique_lock<std::mutex> lock(mRequestLock);
+    while (mRequestInProgress > 0) {
+        mWaitAllRequestsDone.wait(lock);
+    }
 }
 
 }  // namespace camera3
