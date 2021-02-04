@@ -66,48 +66,33 @@ and dependencies required by them:
 
 We provide the following packages that are required to build the camera HAL:
 
-- `media-libs/cros-camera-android-headers`
+- `chromeos-base/cros-camera-android-deps`
 
-  A package that installs all the necessary Android headers files required by
-  the camera HAL.
+    A package that installs all the necessary Android headers files and libraries
+    required by the camera HAL.
 
-- `media-libs/cros-camera-libcab`
+- `chromeos-base/cros-camera-libs`
 
-  Provides functions to access the isolated camera 3A library if the camera HAL
-  requires it to work.
+    A package that provides all the base functionality and libraries for running
+    the camera HAL stack. Check the [header files](include/cros-camera) for the
+    functions provided. Some important ones are:
 
-- `media-libs/cros-camera-libcbm`
+    1. Functions to access the isolated camera 3A library if the camera HAL
+       requires it to work. See the [APIs](include/cros-camera/camera_algorithm.h)
+       for more details.
 
-  A replacement for Android gralloc. The library provides [APIs](
-  include/cros-camera/camera_buffer_manager.h) to import and map buffer handles
-  received in capture requests.
+    2. A replacement for Android gralloc. The library provides [APIs](
+       include/cros-camera/camera_buffer_manager.h) to import and map buffer
+       handles received in capture requests.
 
-- `media-libs/cros-camera-libcamera_client`
-
-  A port of the Android `libcamera_client`.
-
-- `media-libs/cros-camera-libcamera_metadata`
-
-  A port of the Android `libcamera_metadata`.
-
-- `media-libs/cros-camera-libcamera_v4l2_device`
-
-  Provides functions to access camera V4L2 devices.
+    3. JPEG [decoder](include/cros-camera/jpeg_decode_accelerator.h) and
+       [encoder](include/cros-camera/jpeg_encode_accelerator.h) APIs that adapt
+       to either software or hardware-accelerated implementations based on the
+       platform capability.
 
 - `media-libs/libsync`
 
-  A port of the Android `libsync`.
-
-In addition to the required packages, we also have some useful packages that can
-handle some general functions for the camera HAL:
-
-- `media-libs/cros-camera-libcamera_exif`
-
-  Provides utility functions to fill in the EXIF headers of a JPEG image.
-
-- `media-libs/cros-camera-libcamera_timezone`
-
-  Provides utility functions to get the local timezone.
+    A port of the Android `libsync`.
 
 ### Uploading the Camera HAL Source Code
 
