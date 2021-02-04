@@ -837,6 +837,13 @@ int IspParamAdaptor::runIspAdaptL(ia_isp_bxt_program_group programGroup,
     }
     LOG2("%s, media format: 0x%x", __func__, inputParams.media_format);
 
+    float saturationFactor = PlatformData::getManualSaturationFactor(mCameraId);
+    if (saturationFactor > 0.0f &&
+        aiqResults->mAiqParam.awbMode == AWB_MODE_MANUAL_COLOR_TRANSFORM) {
+        inputParams.pa_results->saturation_factor = saturationFactor;
+    }
+    LOG2("%s, saturation_factor: %f", __func__, inputParams.pa_results->saturation_factor);
+
     if (VIDEO_STREAM_ID == streamId) {
         inputParams.call_rate_control.mode = ia_isp_call_rate_never_on_converged;
     } else {

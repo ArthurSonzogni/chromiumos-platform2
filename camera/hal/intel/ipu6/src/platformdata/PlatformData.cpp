@@ -1405,4 +1405,9 @@ int PlatformData::getTnrExtraFrameCount(int cameraId)
 {
     return getInstance()->mStaticCfg.mCameras[cameraId].mTnrExtraFrameNum;
 }
+
+float PlatformData::getManualSaturationFactor(int cameraId)
+{
+    return getInstance()->mStaticCfg.mCameras[cameraId].mSaturationFactor;
+}
 } // namespace icamera
