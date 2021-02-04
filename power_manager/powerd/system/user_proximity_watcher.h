@@ -59,7 +59,7 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
   // Returns true on success.
   bool Init(PrefsInterface* prefs,
             UdevInterface* udev,
-            brillo::CrosConfigInterface* config,
+            std::unique_ptr<brillo::CrosConfigInterface> config,
             TabletMode tablet_mode);
 
   // UserProximityWatcherInterface implementation:
@@ -141,7 +141,7 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
 
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
   UdevInterface* udev_ = nullptr;  // non-owned
-  brillo::CrosConfigInterface* config_ = nullptr;  // non-owned
+  std::unique_ptr<brillo::CrosConfigInterface> config_;
   base::ObserverList<UserProximityObserver> observers_;
 
   // Mapping between IIO event file descriptors and sensor details.
