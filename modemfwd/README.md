@@ -44,7 +44,7 @@ All commands should return 0 on success and something non-zero on failure.
 `modemfwd` will look for these binaries in the directory passed as the
 `--helper_directory` argument on the command line.
 
-## Helper and firmawre directory structure
+## Helper and firmware directory structure
 
 The protos defined in `helper_manifest.proto` and `firmware_manifest.proto`
 define manifests that should be provided in the helper and firmware directories
