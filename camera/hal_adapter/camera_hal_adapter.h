@@ -175,6 +175,9 @@ class CameraHalAdapter {
   // Send the latest status to the newly connected client.
   void SendLatestStatus(int callbacks_id);
 
+  // Convert the public |camera_id| to its internal |camera_id|.
+  int GetInternalId(int camera_id);
+
   // Convert the |module_id| and its corresponding internal |camera_id| into the
   // unified public camera id. Returns -1 if not found.
   int GetPublicId(int module_id, int camera_id);
@@ -211,6 +214,14 @@ class CameraHalAdapter {
   // (public camera id) <=> (module id, internal camera id)
   std::map<int, std::pair<int, int>> camera_id_map_;
   std::vector<std::map<int, int>> camera_id_inverse_map_;
+
+  // A mapping from (camera ID) to their physical camera IDs.
+  // A logical multi-camera is mapped to multiple physical cameras. The string
+  // to which a camera ID is mapped, is a series of physical camera IDs in
+  // string separated by null characters. For example, if a logical multi-camera
+  // is backed by physical cameras 2, 3, and 10, the string's data will contain
+  // '2', '\0', '3', '\0', '1', '0', '\0'.
+  std::map<int, std::string> physical_camera_id_map_;
 
   // A mapping from (camera ID, camera client type) to their static metadata.
   base::flat_map<std::pair<int, mojom::CameraClientType>,

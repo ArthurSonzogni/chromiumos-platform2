@@ -176,27 +176,28 @@ cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
 ScopedCameraMetadata DeserializeCameraMetadata(
     const cros::mojom::CameraMetadataPtr& metadata) {
   ScopedCameraMetadata result;
-  if (metadata->entries.has_value()) {
-    camera_metadata_t* allocated_data = allocate_camera_metadata(
-        metadata->entry_capacity, metadata->data_capacity);
-    if (!allocated_data) {
-      LOGF(ERROR) << "Failed to allocate camera metadata";
+  if (metadata.is_null() || !metadata->entries.has_value()) {
+    return result;
+  }
+  camera_metadata_t* allocated_data = allocate_camera_metadata(
+      metadata->entry_capacity, metadata->data_capacity);
+  if (!allocated_data) {
+    LOGF(ERROR) << "Failed to allocate camera metadata";
+    return result;
+  }
+  result.reset(allocated_data);
+  for (size_t i = 0; i < metadata->entry_count; ++i) {
+    int ret = add_camera_metadata_entry(
+        result.get(), static_cast<uint32_t>((*metadata->entries)[i]->tag),
+        (*metadata->entries)[i]->data.data(), (*metadata->entries)[i]->count);
+    if (ret) {
+      LOGF(ERROR) << "Failed to add camera metadata entry";
+      result.reset();
       return result;
     }
-    result.reset(allocated_data);
-    for (size_t i = 0; i < metadata->entry_count; ++i) {
-      int ret = add_camera_metadata_entry(
-          result.get(), static_cast<uint32_t>((*metadata->entries)[i]->tag),
-          (*metadata->entries)[i]->data.data(), (*metadata->entries)[i]->count);
-      if (ret) {
-        LOGF(ERROR) << "Failed to add camera metadata entry";
-        result.reset();
-        return result;
-      }
-    }
-    VLOGF(1) << "Deserialized metadata size="
-             << get_camera_metadata_size(result.get());
   }
+  VLOGF(1) << "Deserialized metadata size="
+           << get_camera_metadata_size(result.get());
   return result;
 }
 }  // namespace internal

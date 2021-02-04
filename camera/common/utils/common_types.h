@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 #include <hardware/camera3.h>
 
@@ -26,10 +27,16 @@ struct CameraMetadataDeleter {
   }
 };
 
+struct camera3_stream_aux_t : camera3_stream_t {
+  // |physical_camera_id_string| provides a scoped object for
+  // |physical_camera_id|.
+  std::string physical_camera_id_string;
+};
+
 using ScopedCameraMetadata =
     std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>;
 
-using ScopedStreams = std::map<uint64_t, std::unique_ptr<camera3_stream_t>>;
+using ScopedStreams = std::map<uint64_t, std::unique_ptr<camera3_stream_aux_t>>;
 
 }  // namespace internal
 }  // namespace cros

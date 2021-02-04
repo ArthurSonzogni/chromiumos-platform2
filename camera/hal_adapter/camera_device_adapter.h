@@ -89,10 +89,14 @@ class CameraMonitor : public base::OneShotTimer {
 
 class CameraDeviceAdapter : public camera3_callback_ops_t {
  public:
-  explicit CameraDeviceAdapter(camera3_device_t* camera_device,
-                               const camera_metadata_t* static_info,
-                               base::Callback<void()> close_callback,
-                               bool attempt_zsl);
+  explicit CameraDeviceAdapter(
+      camera3_device_t* camera_device,
+      uint32_t device_api_version,
+      const camera_metadata_t* static_info,
+      base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
+      base::RepeatingCallback<int(int)> get_public_camera_id_callback,
+      base::Callback<void()> close_callback,
+      bool attempt_zsl);
 
   ~CameraDeviceAdapter();
 
@@ -234,6 +238,12 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // threads.
   base::Lock callback_ops_delegate_lock_;
 
+  // A callback to get the internal camera ID given its public camera ID.
+  base::RepeatingCallback<int(int)> get_internal_camera_id_callback_;
+
+  // A callback to get the public camera ID given its internal camera ID.
+  base::RepeatingCallback<int(int)> get_public_camera_id_callback_;
+
   // The callback to run when the device is closed.
   base::Callback<void()> close_callback_;
 
@@ -243,6 +253,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // The real camera device.
   camera3_device_t* camera_device_;
+
+  // The API version of the camera device (e.g., CAMERA_DEVICE_API_VERSION_3_5).
+  uint32_t device_api_version_;
 
   // The non-owning read-only view of the static camera characteristics of this
   // device.

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <set>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -191,6 +192,10 @@ int32_t CameraHalAdapter::OpenDevice(
   }
   const camera_metadata_t* metadata = GetUpdatedCameraMetadata(
       camera_id, camera_client_type, info.static_camera_characteristics);
+  base::RepeatingCallback<int(int)> get_internal_camera_id_callback =
+      base::Bind(&CameraHalAdapter::GetInternalId, base::Unretained(this));
+  base::RepeatingCallback<int(int)> get_public_camera_id_callback = base::Bind(
+      &CameraHalAdapter::GetPublicId, base::Unretained(this), module_id);
   // This method is called by |camera_module_delegate_| on its mojo IPC
   // handler thread.
   // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
@@ -200,7 +205,9 @@ int32_t CameraHalAdapter::OpenDevice(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
-      camera_device, metadata, close_callback,
+      camera_device, info.device_version, metadata,
+      std::move(get_internal_camera_id_callback),
+      std::move(get_public_camera_id_callback), close_callback,
       base::Contains(can_attempt_zsl_camera_ids_, camera_id));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
@@ -439,6 +446,19 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
     LOGF(INFO) << "Will attempt to enable ZSL by private reprocessing";
     can_attempt_zsl_camera_ids_.insert(camera_id);
   }
+  if (metadata->exists(ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS)) {
+    auto it = physical_camera_id_map_.find(camera_id);
+    if (it == physical_camera_id_map_.end()) {
+      LOGF(ERROR) << "Failed to find the physical camera IDs for camera "
+                  << camera_id;
+    } else {
+      if (metadata->update(ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS,
+                           it->second) != 0) {
+        LOGF(ERROR)
+            << "Failed to remap ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS";
+      }
+    }
+  }
   return metadata->getAndLock();
 }
 
@@ -617,6 +637,11 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
 
   std::vector<std::tuple<int, int, int>> cameras;
   std::vector<std::vector<bool>> has_flash_unit(camera_interfaces_.size());
+  // TODO(b/188111097): The mapping mechanism below is really complicated.
+  // Extract the logic to a dedicated class and add unittest coverage.
+  std::set<std::tuple<int, int, int>> unexposed_physical_cameras;
+  std::vector<std::map<int, std::vector<int>>> internal_physical_camera_id_map(
+      camera_interfaces_.size());
 
   camera_id_inverse_map_.resize(camera_interfaces_.size());
   for (size_t module_id = 0; module_id < camera_interfaces_.size();
@@ -661,10 +686,69 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
       cameras.emplace_back(info.facing, static_cast<int>(module_id), camera_id);
       has_flash_unit[module_id].push_back(entry.data.u8[0] ==
                                           ANDROID_FLASH_INFO_AVAILABLE_TRUE);
+
+      // Determine if this is a logical multi-camera and create mappings for
+      // its physical camera IDs if true.
+      if (find_camera_metadata_ro_entry(info.static_camera_characteristics,
+                                        ANDROID_REQUEST_AVAILABLE_CAPABILITIES,
+                                        &entry) != 0) {
+        LOGF(ERROR) << "Failed to find ANDROID_REQUEST_AVAILABLE_CAPABILITIES "
+                       "from camera "
+                    << camera_id << " from module " << module_id;
+        callback.Run(false);
+        return;
+      }
+      if (std::find(
+              entry.data.u8, entry.data.u8 + entry.count,
+              ANDROID_REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA) ==
+          entry.data.u8 + entry.count) {
+        // Not a logical multi-camera.
+        continue;
+      }
+      // Find all the physical camera IDs backing this logical multi-camera.
+      if (find_camera_metadata_ro_entry(
+              info.static_camera_characteristics,
+              ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS, &entry) != 0) {
+        LOGF(ERROR)
+            << "Failed to get the list of physical camera IDs for camera "
+            << camera_id;
+        callback.Run(false);
+        return;
+      }
+      auto& physical_camera_ids =
+          internal_physical_camera_id_map[module_id][camera_id];
+      int start = 0;
+      for (int i = 0; i < entry.count; ++i) {
+        if (entry.data.u8[i] == '\0') {
+          if (start != i) {
+            int physical_camera_id;
+            const char* physical_camera_id_str =
+                reinterpret_cast<const char*>(entry.data.u8) + start;
+            if (!base::StringToInt(physical_camera_id_str,
+                                   &physical_camera_id)) {
+              LOGF(ERROR) << "Invalid physical camera ID: "
+                          << physical_camera_id_str;
+              callback.Run(false);
+              return;
+            }
+            physical_camera_ids.push_back(physical_camera_id);
+            if (physical_camera_id >= n) {  // unexposed physical camera
+              unexposed_physical_cameras.emplace(
+                  info.facing, static_cast<int>(module_id), physical_camera_id);
+            }
+          }
+          start = i + 1;
+        }
+      }
     }
   }
 
+  num_builtin_cameras_ = cameras.size();
   sort(cameras.begin(), cameras.end());
+  // Ordering is important here. Unexposed physical camera IDs should be >= |n|
+  // where |n| is the number of builtin cameras.
+  cameras.insert(cameras.end(), unexposed_physical_cameras.begin(),
+                 unexposed_physical_cameras.end());
   for (size_t i = 0; i < cameras.size(); i++) {
     int module_id = std::get<1>(cameras[i]);
     int camera_id = std::get<2>(cameras[i]);
@@ -678,11 +762,33 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     default_torch_mode_status_map_[i] = torch_mode_status_map_[i];
   }
 
-  num_builtin_cameras_ = cameras.size();
-  next_external_camera_id_ = num_builtin_cameras_;
+  // Now we map internal physical camera IDs to public and store the mappings
+  // in |physical_camera_id_map_|.
+  for (int module_id = 0; module_id < internal_physical_camera_id_map.size();
+       ++module_id) {
+    const auto& module_physical_camera_id_map =
+        internal_physical_camera_id_map[module_id];
+    for (const auto& [internal_camera_id, internal_physical_camera_ids] :
+         module_physical_camera_id_map) {
+      int camera_id = camera_id_inverse_map_[module_id][internal_camera_id];
+      auto& physical_camera_ids = physical_camera_id_map_[camera_id];
+      for (int i = 0; i < internal_physical_camera_ids.size(); ++i) {
+        std::string physical_camera_id = base::NumberToString(
+            camera_id_inverse_map_[module_id][internal_physical_camera_ids[i]]);
+        if (i > 0) {
+          physical_camera_ids += '\0';
+        }
+        physical_camera_ids += physical_camera_id;
+      }
+    }
+  }
+
+  next_external_camera_id_ = cameras.size();
 
   LOGF(INFO) << "SuperHAL started with " << camera_interfaces_.size()
-             << " modules and " << num_builtin_cameras_ << " built-in cameras";
+             << " modules, " << num_builtin_cameras_ << " built-in cameras"
+             << " and " << unexposed_physical_cameras.size()
+             << " unexposed physical cameras";
 
   callback.Run(true);
 }
@@ -723,6 +829,14 @@ std::pair<camera_module_t*, int> CameraHalAdapter::GetInternalModuleAndId(
   }
   std::pair<int, int> idx = camera_id_map_[camera_id];
   return {camera_interfaces_[idx.first].first, idx.second};
+}
+
+int CameraHalAdapter::GetInternalId(int camera_id) {
+  camera_module_t* camera_module;
+  int internal_camera_id;
+  std::tie(camera_module, internal_camera_id) =
+      GetInternalModuleAndId(camera_id);
+  return internal_camera_id;
 }
 
 int CameraHalAdapter::GetPublicId(int module_id, int camera_id) {

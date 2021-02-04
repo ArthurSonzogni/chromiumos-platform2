@@ -19,6 +19,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/timer/elapsed_timer.h>
 #include <drm_fourcc.h>
 #include <hardware/camera3.h>
@@ -128,18 +129,25 @@ void CameraMonitor::MonitorTimeout() {
   is_kicked_ = false;
 }
 
-CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
-                                         const camera_metadata_t* static_info,
-                                         base::Callback<void()> close_callback,
-                                         bool attempt_zsl)
+CameraDeviceAdapter::CameraDeviceAdapter(
+    camera3_device_t* camera_device,
+    uint32_t device_api_version,
+    const camera_metadata_t* static_info,
+    base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
+    base::RepeatingCallback<int(int)> get_public_camera_id_callback,
+    base::Callback<void()> close_callback,
+    bool attempt_zsl)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
       reprocess_effect_thread_("ReprocessEffectThread"),
       notify_error_thread_("NotifyErrorThread"),
+      get_internal_camera_id_callback_(get_internal_camera_id_callback),
+      get_public_camera_id_callback_(get_public_camera_id_callback),
       close_callback_(close_callback),
       device_closed_(false),
       camera_device_(camera_device),
+      device_api_version_(device_api_version),
       static_info_(static_info),
       attempt_zsl_(attempt_zsl),
       zsl_helper_(static_info),
@@ -256,8 +264,8 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
                << ", size = " << s->width << "x" << s->height
                << ", format = " << s->format;
     uint64_t id = s->id;
-    std::unique_ptr<camera3_stream_t>& stream = new_streams[id];
-    stream.reset(new camera3_stream_t);
+    auto& stream = new_streams[id];
+    stream.reset(new internal::camera3_stream_aux_t);
     memset(stream.get(), 0, sizeof(*stream.get()));
     stream->stream_type = static_cast<camera3_stream_type_t>(s->stream_type);
     stream->width = s->width;
@@ -267,6 +275,30 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     stream->max_buffers = s->max_buffers;
     stream->data_space = static_cast<android_dataspace_t>(s->data_space);
     stream->rotation = static_cast<camera3_stream_rotation_t>(s->rotation);
+    if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+      DCHECK(s->physical_camera_id.has_value());
+      if (s->physical_camera_id.value() != "") {
+        int public_camera_id;
+        if (!base::StringToInt(s->physical_camera_id.value(),
+                               &public_camera_id)) {
+          LOGF(ERROR) << "Invalid physical camera ID: "
+                      << s->physical_camera_id.value();
+          return -EINVAL;
+        }
+        int internal_camera_id =
+            get_internal_camera_id_callback_.Run(public_camera_id);
+        if (internal_camera_id == -1) {
+          LOGF(ERROR) << "Failed to find internal camera ID for camera "
+                      << public_camera_id;
+          return -EINVAL;
+        }
+        stream->physical_camera_id_string =
+            base::NumberToString(internal_camera_id);
+      } else {
+        stream->physical_camera_id_string = "";
+      }
+      stream->physical_camera_id = stream->physical_camera_id_string.c_str();
+    }
     stream->crop_rotate_scale_degrees = 0;
     if (s->crop_rotate_scale_info) {
       stream->crop_rotate_scale_degrees =
@@ -289,6 +321,12 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   stream_list.streams = streams.data();
   stream_list.operation_mode =
       static_cast<camera3_stream_configuration_mode_t>(config->operation_mode);
+  internal::ScopedCameraMetadata session_parameters;
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    session_parameters =
+        internal::DeserializeCameraMetadata(config->session_parameters);
+    stream_list.session_parameters = session_parameters.get();
+  }
   size_t i = 0;
   for (auto it = streams_.begin(); it != streams_.end(); it++) {
     stream_list.streams[i++] = it->second.get();
@@ -314,6 +352,10 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     }
     *updated_config = mojom::Camera3StreamConfiguration::New();
     (*updated_config)->operation_mode = config->operation_mode;
+    if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+      (*updated_config)->session_parameters =
+          std::move(config->session_parameters);
+    }
     for (const auto& s : streams_) {
       mojom::Camera3StreamPtr ptr = mojom::Camera3Stream::New();
       ptr->id = s.first;
@@ -329,6 +371,21 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       ptr->crop_rotate_scale_info = mojom::CropRotateScaleInfo::New(
           static_cast<mojom::Camera3StreamRotation>(
               s.second->crop_rotate_scale_degrees));
+      if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+        ptr->physical_camera_id = s.second->physical_camera_id;
+        int internal_camera_id = 0;
+        if (!base::StringToInt(s.second->physical_camera_id,
+                               &internal_camera_id)) {
+          LOGF(ERROR) << "Invalid physical camera ID: " << internal_camera_id;
+        }
+        int public_camera_id =
+            get_public_camera_id_callback_.Run(internal_camera_id);
+        if (public_camera_id == -1) {
+          LOGF(ERROR) << "Failed to find public camera ID for internal camera "
+                      << internal_camera_id;
+        }
+        ptr->physical_camera_id = base::NumberToString(public_camera_id);
+      }
       (*updated_config)->streams.push_back(std::move(ptr));
     }
     capture_request_monitor_.StartMonitor();
@@ -448,6 +505,41 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     DeleteCameraMetadataEntry(settings.get(), ANDROID_CONTROL_ENABLE_ZSL);
   }
   req.settings = settings.get();
+
+  std::vector<const char*> phys_ids;
+  std::vector<std::string> phys_ids_string;
+  std::vector<const camera_metadata_t*> phys_settings;
+  std::vector<internal::ScopedCameraMetadata> phys_settings_scoped;
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    DCHECK(request->physcam_settings.has_value());
+    req.num_physcam_settings = request->physcam_settings.value().size();
+    if (req.num_physcam_settings > 0) {
+      for (int i = 0; i < req.num_physcam_settings; ++i) {
+        int public_camera_id = request->physcam_settings.value()[i]->id;
+        int internal_camera_id =
+            get_internal_camera_id_callback_.Run(public_camera_id);
+        if (internal_camera_id == -1) {
+          LOGF(ERROR) << "Failed to find internal camera ID for camera "
+                      << public_camera_id;
+          return -EINVAL;
+        }
+        phys_ids_string.push_back(base::NumberToString(internal_camera_id));
+        phys_settings_scoped.push_back(internal::DeserializeCameraMetadata(
+            request->physcam_settings.value()[i]->metadata));
+      }
+      for (const auto& id : phys_ids_string) {
+        phys_ids.push_back(id.c_str());
+      }
+      for (const auto& setting : phys_settings_scoped) {
+        phys_settings.push_back(setting.get());
+      }
+      req.physcam_id = phys_ids.data();
+      req.physcam_settings = phys_settings.data();
+    } else {
+      req.physcam_id = nullptr;
+      req.physcam_settings = nullptr;
+    }
+  }
 
   if (camera_metadata_inspector_) {
     camera_metadata_inspector_->InspectRequest(&req);
@@ -852,6 +944,28 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     buffer_handles_[input_buffer->buffer_id]->state = kReturned;
     RemoveBufferLocked(*result->input_buffer);
     r->input_buffer = std::move(input_buffer);
+  }
+
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    // TODO(lnishan): Handle the errors here.
+    std::vector<mojom::Camera3PhyscamMetadataPtr> phys_metadata;
+    for (int i = 0; i < result->num_physcam_metadata; ++i) {
+      phys_metadata[i] = mojom::Camera3PhyscamMetadata::New();
+      int internal_camera_id = 0;
+      if (!base::StringToInt(result->physcam_ids[i], &internal_camera_id)) {
+        LOGF(ERROR) << "Invalid physical camera ID: " << result->physcam_ids[i];
+      }
+      int public_camera_id =
+          get_public_camera_id_callback_.Run(internal_camera_id);
+      if (public_camera_id == -1) {
+        LOGF(ERROR) << "Failed to find public camera ID for internal camera "
+                    << internal_camera_id;
+      }
+      phys_metadata[i]->id = public_camera_id;
+      phys_metadata[i]->metadata =
+          internal::SerializeCameraMetadata(result->physcam_metadata[i]);
+    }
+    r->physcam_metadata = std::move(phys_metadata);
   }
 
   return r;
