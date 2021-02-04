@@ -73,8 +73,6 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   void OnSamplesObserverDisconnect(mojo::ReceiverId id);
   void StopReadingSamplesOnClient(mojo::ReceiverId id);
 
-  bool AddSamplesHandlerIfNotSet(libmems::IioDevice* iio_device);
-
   void OnSampleUpdatedCallback(mojo::ReceiverId id,
                                libmems::IioDevice::IioSample sample);
   void OnErrorOccurredCallback(mojo::ReceiverId id,

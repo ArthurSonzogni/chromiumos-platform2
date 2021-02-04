@@ -128,13 +128,13 @@ void SensorDeviceImpl::SetFrequency(double frequency,
     return;
   ClientData& client = it->second;
 
-  if (AddSamplesHandlerIfNotSet(client.iio_device)) {
-    samples_handlers_.at(client.iio_device)
-        ->UpdateFrequency(&client, frequency, std::move(callback));
+  auto it_handler = samples_handlers_.find(client.iio_device);
+  if (it_handler != samples_handlers_.end()) {
+    it_handler->second->UpdateFrequency(&client, frequency,
+                                        std::move(callback));
     return;
   }
 
-  // Failed to add the SamplesHandler
   client.frequency = frequency;
   std::move(callback).Run(frequency);
 }
@@ -156,10 +156,28 @@ void SensorDeviceImpl::StartReadingSamples(
     return;
   }
 
-  if (!AddSamplesHandlerIfNotSet(client.iio_device)) {
-    observer.reset();
-    return;
+  if (samples_handlers_.find(client.iio_device) == samples_handlers_.end()) {
+    SamplesHandler::ScopedSamplesHandler handler = {
+        nullptr, SamplesHandler::SamplesHandlerDeleter};
+
+    auto sample_cb = base::BindRepeating(
+        &SensorDeviceImpl::OnSampleUpdatedCallback, weak_factory_.GetWeakPtr());
+    auto error_cb = base::BindRepeating(
+        &SensorDeviceImpl::OnErrorOccurredCallback, weak_factory_.GetWeakPtr());
+
+    handler = SamplesHandler::Create(
+        ipc_task_runner_, sample_thread_->task_runner(), client.iio_device,
+        std::move(sample_cb), std::move(error_cb));
+
+    if (!handler) {
+      LOGF(ERROR) << "Failed to create the samples handler for device: "
+                  << client.iio_device->GetId();
+      return;
+    }
+
+    samples_handlers_.emplace(client.iio_device, std::move(handler));
   }
+
   client.observer.Bind(std::move(observer));
   client.observer.set_disconnect_handler(
       base::BindOnce(&SensorDeviceImpl::OnSamplesObserverDisconnect,
@@ -202,10 +220,10 @@ void SensorDeviceImpl::SetChannelsEnabled(
     return;
   ClientData& client = it->second;
 
-  if (AddSamplesHandlerIfNotSet(client.iio_device)) {
-    samples_handlers_.at(client.iio_device)
-        ->UpdateChannelsEnabled(&client, std::move(iio_chn_indices), en,
-                                std::move(callback));
+  auto it_handler = samples_handlers_.find(client.iio_device);
+  if (it_handler != samples_handlers_.end()) {
+    it_handler->second->UpdateChannelsEnabled(
+        &client, std::move(iio_chn_indices), en, std::move(callback));
     return;
   }
 
@@ -213,16 +231,8 @@ void SensorDeviceImpl::SetChannelsEnabled(
   std::vector<int32_t> failed_indices;
 
   if (en) {
-    for (int32_t chn_index : iio_chn_indices) {
-      auto chn = client.iio_device->GetChannel(chn_index);
-      if (!chn || !chn->IsEnabled()) {
-        LOG(ERROR) << "Failed to enable chn with index: " << chn_index;
-        failed_indices.push_back(chn_index);
-        continue;
-      }
-
+    for (int32_t chn_index : iio_chn_indices)
       client.enabled_chn_indices.emplace(chn_index);
-    }
   } else {
     for (int32_t chn_index : iio_chn_indices)
       client.enabled_chn_indices.erase(chn_index);
@@ -242,10 +252,10 @@ void SensorDeviceImpl::GetChannelsEnabled(
     return;
   ClientData& client = it->second;
 
-  if (AddSamplesHandlerIfNotSet(client.iio_device)) {
-    samples_handlers_.at(client.iio_device)
-        ->GetChannelsEnabled(&client, std::move(iio_chn_indices),
-                             std::move(callback));
+  auto it_handler = samples_handlers_.find(client.iio_device);
+  if (it_handler != samples_handlers_.end()) {
+    it_handler->second->GetChannelsEnabled(&client, std::move(iio_chn_indices),
+                                           std::move(callback));
     return;
   }
 
@@ -356,35 +366,6 @@ void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id) {
     samples_handlers_.at(client.iio_device)->RemoveClient(&client);
 
   client.observer.reset();
-}
-
-bool SensorDeviceImpl::AddSamplesHandlerIfNotSet(
-    libmems::IioDevice* iio_device) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  if (samples_handlers_.find(iio_device) != samples_handlers_.end())
-    return true;
-
-  SamplesHandler::ScopedSamplesHandler handler = {
-      nullptr, SamplesHandler::SamplesHandlerDeleter};
-
-  auto sample_cb = base::BindRepeating(
-      &SensorDeviceImpl::OnSampleUpdatedCallback, weak_factory_.GetWeakPtr());
-  auto error_cb = base::BindRepeating(
-      &SensorDeviceImpl::OnErrorOccurredCallback, weak_factory_.GetWeakPtr());
-
-  handler = SamplesHandler::Create(ipc_task_runner_,
-                                   sample_thread_->task_runner(), iio_device,
-                                   std::move(sample_cb), std::move(error_cb));
-
-  if (!handler) {
-    LOGF(ERROR) << "Failed to create the samples handler for device: "
-                << iio_device->GetId();
-    return false;
-  }
-
-  samples_handlers_.emplace(iio_device, std::move(handler));
-  return true;
 }
 
 void SensorDeviceImpl::OnSampleUpdatedCallback(
