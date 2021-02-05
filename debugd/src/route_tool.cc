@@ -59,6 +59,13 @@ std::vector<std::string> RouteTool::GetRoutes(
 
   RunOneIPCommand(&full_result, {ip_version, "rule", "list"});
 
+  if (brillo::GetVariantValueOrDefault<bool>(options, "all")) {
+    // Print all routes of all routing tables.
+    RunOneIPCommand(&cmd_result, {ip_version, "route", "show", "table", "all"});
+    full_result.push_back("");
+    full_result.insert(full_result.end(), cmd_result.begin(), cmd_result.end());
+  }
+
   // Always print the main table first.  Ignore local and default since
   // they'll just confuse the user.
   RunOneIPCommand(&cmd_result, {ip_version, "route", "show", "table", "main"});

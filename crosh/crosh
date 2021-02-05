@@ -1035,20 +1035,23 @@ cmd_ipaddrs() (
   fi
 )
 
-USAGE_route='[-4] [-6]'
+USAGE_route='[-4] [-6] [--all]'
 HELP_route='
   Display the routing tables.
   -4: Only show IPv4 routes.
   -6: Only show IPv6 routes.
+  --all: Show all routing tables.
 '
 cmd_route() (
   local option="dict:string:variant:"
   local ipver=''
+  local show_all=false
 
   while [ $# -gt 0 ]; do
     case $1 in
     -4) ipver=4;;
     -6) ipver=6;;
+    --all) show_all=true;;
     *)
       help "unknown option: $1"
       return 1
@@ -1057,13 +1060,13 @@ cmd_route() (
   done
 
   if [ "${ipver:-4}" = "4" ]; then
-    debugd GetRoutes "${option},v6,boolean:false"
+    debugd GetRoutes "${option},v6,boolean:false,all,boolean:${show_all}"
   fi
   if [ -z "${ipver}" ]; then
     echo
   fi
   if [ "${ipver:-6}" = "6" ]; then
-    debugd GetRoutes "${option},v6,boolean:true"
+    debugd GetRoutes "${option},v6,boolean:true,all,boolean:${show_all}"
   fi
 )
 
