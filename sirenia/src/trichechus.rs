@@ -205,18 +205,15 @@ impl DugongConnectionHandler {
 
     fn connect_tee_app(&mut self, app_id: &str, connection: Transport) -> Option<Box<dyn Mutator>> {
         let id = connection.id.clone();
-        match spawn_tee_app(&self.state.borrow().app_manifest, app_id, connection) {
+        let state = self.state.clone();
+        // Only borrow once.
+        let mut trichechus_state = self.state.borrow_mut();
+        match spawn_tee_app(&trichechus_state.app_manifest, app_id, connection) {
             Ok((app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
-                self.state
-                    .borrow_mut()
-                    .running_apps
-                    .insert(id, tee_app.clone())
-                    .unwrap();
-                let storage_server: Box<dyn TEEStorageServer> = Box::new(TEEAppHandler {
-                    state: self.state.clone(),
-                    tee_app,
-                });
+                trichechus_state.running_apps.insert(id, tee_app.clone());
+                let storage_server: Box<dyn TEEStorageServer> =
+                    Box::new(TEEAppHandler { state, tee_app });
                 Some(Box::new(AddEventSourceMutator(Some(Box::new(
                     RpcDispatcher::new(storage_server, transport),
                 )))))
