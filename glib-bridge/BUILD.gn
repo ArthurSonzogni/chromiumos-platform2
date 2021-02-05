@@ -25,19 +25,19 @@ pkg_config("target_defaults") {
 }
 
 static_library("glib_bridge-static") {
-  configs += [ ":target_defaults" ]
   sources = [
     "glib_bridge.cc",
     "glib_logger.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 shared_library("glib_bridge") {
-  configs += [ ":target_defaults" ]
   sources = [
     "glib_bridge.cc",
     "glib_logger.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 generate_pkg_config("libglib_bridge") {
@@ -49,16 +49,16 @@ generate_pkg_config("libglib_bridge") {
 
 if (use.test) {
   executable("glib_bridge_test_runner") {
+    sources = [
+      "glib_bridge_test.cc",
+      "glib_structured_logger_test.cc",
+      "glib_unstructured_logger_test.cc",
+    ]
     configs += [
       # //common-mk:test should be at the top. crbug.com/887845
       # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
       "//common-mk:test",
       ":target_defaults",
-    ]
-    sources = [
-      "glib_bridge_test.cc",
-      "glib_structured_logger_test.cc",
-      "glib_unstructured_logger_test.cc",
     ]
     deps = [
       ":glib_bridge-static",

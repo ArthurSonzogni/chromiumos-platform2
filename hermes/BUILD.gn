@@ -40,7 +40,6 @@ generate_dbus_adaptors("hermes_adaptors") {
 }
 
 static_library("libhermes") {
-  configs += [ ":target_defaults" ]
   sources = [
     "adaptor_factory.cc",
     "apdu.cc",
@@ -61,12 +60,13 @@ static_library("libhermes") {
     "socket_qrtr.cc",
     "uim_cmd.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":hermes_adaptors" ]
 }
 
 executable("hermes") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libhermes" ]
 }
 
@@ -76,16 +76,16 @@ if (use.test) {
   }
 
   executable("hermes_test") {
+    sources = [
+      "apdu_test.cc",
+      "modem_qrtr_test.cc",
+    ]
     configs += [
       # //common-mk:test should be at the top. crbug.com/887845
       # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
       "//common-mk:test",
       ":target_defaults",
       ":test_config",
-    ]
-    sources = [
-      "apdu_test.cc",
-      "modem_qrtr_test.cc",
     ]
     deps = [
       ":libhermes",

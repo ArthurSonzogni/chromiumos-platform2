@@ -64,11 +64,6 @@ generate_dbus_adaptors("modemfwd_adaptors") {
 }
 
 static_library("libmodemfw") {
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":modemfw-protos",
-    ":modemmanager_proxies",
-  ]
   sources = [
     "file_decompressor.cc",
     "firmware_directory.cc",
@@ -84,22 +79,35 @@ static_library("libmodemfw") {
     "modem_tracker.cc",
     "scoped_temp_file.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":modemfw-protos",
+    ":modemmanager_proxies",
+  ]
 }
 
 executable("modemfwd") {
+  sources = [
+    "daemon.cc",
+    "main.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":libmodemfw",
     ":modemfwd_adaptors",
   ]
-  sources = [
-    "daemon.cc",
-    "main.cc",
-  ]
 }
 
 if (use.test) {
   executable("modemfw_test") {
+    sources = [
+      "file_decompressor_test.cc",
+      "firmware_directory_stub.cc",
+      "firmware_directory_test.cc",
+      "firmware_file_test.cc",
+      "journal_test.cc",
+      "modem_flasher_test.cc",
+    ]
     configs += [
       ":target_defaults",
       "//common-mk:test",
@@ -109,34 +117,26 @@ if (use.test) {
       ":libmodemfw",
       "//common-mk/testrunner:testrunner",
     ]
-    sources = [
-      "file_decompressor_test.cc",
-      "firmware_directory_stub.cc",
-      "firmware_directory_test.cc",
-      "firmware_file_test.cc",
-      "journal_test.cc",
-      "modem_flasher_test.cc",
-    ]
   }
 }
 
 if (use.fuzzer) {
   executable("firmware_manifest_fuzzer") {
+    sources = [ "firmware_manifest_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
     pkg_deps = [ "libprotobuf-mutator" ]
-    sources = [ "firmware_manifest_fuzzer.cc" ]
     deps = [ ":libmodemfw" ]
   }
   executable("firmware_manifest_v2_fuzzer") {
+    sources = [ "firmware_manifest_v2_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
     pkg_deps = [ "libprotobuf-mutator" ]
-    sources = [ "firmware_manifest_v2_fuzzer.cc" ]
     deps = [ ":libmodemfw" ]
   }
 }
