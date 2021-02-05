@@ -69,6 +69,9 @@ class VPNDriver {
     // happens. |timeout| suggests the handler how long this connection attempt
     // might take at maximum.
     virtual void OnDriverReconnecting(base::TimeDelta timeout) = 0;
+
+   protected:
+    ~EventHandler() = default;
   };
 
   // Might be returned by ConnectAsync() or OnDriverReconnecting(). Indicates

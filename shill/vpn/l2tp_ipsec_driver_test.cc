@@ -27,8 +27,8 @@
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
-#include "shill/vpn/mock_vpn_service.h"
 
 using base::FilePath;
 using std::map;
@@ -48,7 +48,6 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
       : manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
         driver_(new L2TPIPSecDriver(&manager_, &process_manager_)),
-        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         certificate_file_(new MockCertificateFile()),
         weak_factory_(this) {
     manager_.set_mock_device_info(&device_info_);
@@ -67,17 +66,17 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   }
 
   void TearDown() override {
-    SetService(nullptr);
+    SetEventHandler(nullptr);
     ASSERT_TRUE(temp_dir_.Delete());
 
     // The ExternalTask instance initially held by |driver_->external_task_|
-    // could be scheduled to be destroyed after |driver_| is destroyed. To
-    // avoid leaking any ExternalTask instance when the test finishes, we
-    // explicitly destroy |service_| here, which indirectly destroys |driver_|
-    // and in turn schedules the destruction of |driver_->external_task_| in
-    // the message loop. Then we run until the message loop becomes idle to
-    // exercise the destruction task of ExternalTask.
-    service_ = nullptr;
+    // could be scheduled to be destroyed after |driver_| is destroyed. To avoid
+    // leaking any ExternalTask instance when the test finishes, we explicitly
+    // destroy |driver_| here and in turn schedules the destruction of
+    // |driver_->external_task_| in the message loop. Then we run until the
+    // message loop becomes idle to exercise the destruction task of
+    // ExternalTask.
+    driver_ = nullptr;
     dispatcher_.PostTask(
         FROM_HERE,
         base::Bind(&EventDispatcherForTest::QuitDispatchForever,
@@ -102,12 +101,8 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
 
   string GetProviderType() { return driver_->GetProviderType(); }
 
-  void SetService(const scoped_refptr<MockVPNService>& service) {
-    if (service) {
-      driver_->event_handler_ = service.get();
-    } else {
-      driver_->event_handler_ = nullptr;
-    }
+  void SetEventHandler(VPNDriver::EventHandler* handler) {
+    driver_->event_handler_ = handler;
   }
 
   bool IsPSKFileCleared(const FilePath& psk_file_path) const {
@@ -140,7 +135,7 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   void FakeUpConnect(FilePath* psk_file, FilePath* xauth_credentials_file) {
     *psk_file = SetupPSKFile();
     *xauth_credentials_file = SetupXauthCredentialsFile();
-    SetService(service_);
+    SetEventHandler(&event_handler_);
   }
 
   void ExpectMetricsReported() {
@@ -175,8 +170,8 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   MockProcessManager process_manager_;
   MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
-  L2TPIPSecDriver* driver_;  // Owned by |service_|.
-  scoped_refptr<MockVPNService> service_;
+  MockVPNDriverEventHandler event_handler_;
+  std::unique_ptr<L2TPIPSecDriver> driver_;
   MockCertificateFile* certificate_file_;  // Owned by |driver_|.
   base::WeakPtrFactory<L2TPIPSecDriverTest> weak_factory_;
 };
@@ -228,15 +223,16 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->external_task_.reset(new MockExternalTask(
       &control_, &process_manager_, weak_factory_.GetWeakPtr(),
       base::Callback<void(pid_t, int)>()));
-  SetService(service_);
-  EXPECT_CALL(*service_, OnDriverFailure(Service::kFailureBadPassphrase, _));
+  SetEventHandler(&event_handler_);
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(Service::kFailureBadPassphrase, _));
   driver_->FailService(Service::kFailureBadPassphrase);  // Trigger Cleanup.
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(driver_->event_handler_);
   EXPECT_FALSE(driver_->external_task_);
 
-  SetService(service_);
+  SetEventHandler(&event_handler_);
   driver_->Disconnect();
   EXPECT_FALSE(driver_->event_handler_);
 }
@@ -482,8 +478,8 @@ TEST_F(L2TPIPSecDriverTest, GetLogin) {
 
 TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
   const int kPID = 123456;
-  SetService(service_);
-  EXPECT_CALL(*service_, OnDriverFailure(Service::kFailureDNSLookup, _));
+  SetEventHandler(&event_handler_);
+  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDNSLookup, _));
   driver_->OnL2TPIPSecVPNDied(kPID,
                               vpn_manager::kServiceErrorResolveHostnameFailed);
   EXPECT_FALSE(driver_->event_handler_);
@@ -517,19 +513,19 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
       .WillOnce(Return(1));
-  base::TimeDelta timeout = driver_->ConnectAsync(service_.get());
+  base::TimeDelta timeout = driver_->ConnectAsync(&event_handler_);
   EXPECT_NE(timeout, VPNDriver::kTimeoutNone);
 }
 
 TEST_F(L2TPIPSecDriverTest, Disconnect) {
-  SetService(service_);
+  SetEventHandler(&event_handler_);
   driver_->Disconnect();
   EXPECT_FALSE(driver_->event_handler_);
 }
 
 TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
-  SetService(service_);
-  EXPECT_CALL(*service_, OnDriverFailure(Service::kFailureConnect, _));
+  SetEventHandler(&event_handler_);
+  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
   driver_->OnConnectTimeout();
   EXPECT_FALSE(driver_->event_handler_);
 }
@@ -588,8 +584,8 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 
   // Make sure that a notification of an intermediate state doesn't cause
   // the driver to fail the connection.
-  EXPECT_CALL(*service_, OnDriverConnected(_, _)).Times(0);
-  EXPECT_CALL(*service_, OnDriverFailure(_, _)).Times(0);
+  EXPECT_CALL(event_handler_, OnDriverConnected(_, _)).Times(0);
+  EXPECT_CALL(event_handler_, OnDriverFailure(_, _)).Times(0);
   EXPECT_TRUE(driver_->event_handler_);
   InvokeNotify(kPPPReasonAuthenticating, config);
   EXPECT_TRUE(driver_->event_handler_);
@@ -597,7 +593,8 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_TRUE(driver_->event_handler_);
 
   ExpectMetricsReported();
-  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex));
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   InvokeNotify(kPPPReasonConnect, config);
@@ -611,7 +608,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
   FilePath xauth_credentials_file;
   FakeUpConnect(&psk_file, &xauth_credentials_file);
   DeviceInfo::LinkReadyCallback link_ready_callback;
-  EXPECT_CALL(*service_, OnDriverConnected(_, _)).Times(0);
+  EXPECT_CALL(event_handler_, OnDriverConnected(_, _)).Times(0);
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName)).WillOnce(Return(-1));
   EXPECT_CALL(device_info_, AddVirtualInterfaceReadyCallback(kInterfaceName, _))
       .WillOnce([&link_ready_callback](const std::string&,
@@ -620,18 +617,19 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
       });
   InvokeNotify(kPPPReasonConnect, config);
 
-  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex));
   std::move(link_ready_callback).Run(kInterfaceName, kInterfaceIndex);
 }
 
 TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   map<string, string> dict;
-  SetService(service_);
+  SetEventHandler(&event_handler_);
   base::Callback<void(pid_t, int)> death_callback;
   MockExternalTask* local_external_task = new MockExternalTask(
       &control_, &process_manager_, weak_factory_.GetWeakPtr(), death_callback);
   driver_->external_task_.reset(local_external_task);  // passes ownership
-  EXPECT_CALL(*service_, OnDriverFailure(_, _));
+  EXPECT_CALL(event_handler_, OnDriverFailure(_, _));
   EXPECT_CALL(*local_external_task, OnDelete());
   driver_->Notify(kPPPReasonDisconnect, dict);
   EXPECT_EQ(nullptr, driver_->external_task_);

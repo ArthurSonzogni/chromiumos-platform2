@@ -64,14 +64,10 @@ class VPNService : public Service,
   bool SupportsAlwaysOnVpn();
 
   // Inherited from VPNDriver::EventHandler. Callbacks from VPNDriver.
-  // TODO(b/178766289): The tests of child classes of VPNDriver no longer have
-  // dependency on VPNService, we can consider removing the "mockable" keyword
-  // here.
-  mockable void OnDriverConnected(const std::string& if_name,
-                                  int if_index) override;
-  mockable void OnDriverFailure(ConnectFailure failure,
-                                const std::string& error_details) override;
-  mockable void OnDriverReconnecting(base::TimeDelta timeout) override;
+  void OnDriverConnected(const std::string& if_name, int if_index) override;
+  void OnDriverFailure(ConnectFailure failure,
+                       const std::string& error_details) override;
+  void OnDriverReconnecting(base::TimeDelta timeout) override;
 
  protected:
   // Inherited from Service.

@@ -10,4 +10,8 @@ MockVPNDriver::MockVPNDriver() : VPNDriver(nullptr, nullptr, nullptr, 0) {}
 
 MockVPNDriver::~MockVPNDriver() = default;
 
+MockVPNDriverEventHandler::MockVPNDriverEventHandler() = default;
+
+MockVPNDriverEventHandler::~MockVPNDriverEventHandler() = default;
+
 }  // namespace shill

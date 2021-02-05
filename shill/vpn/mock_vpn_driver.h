@@ -43,6 +43,22 @@ class MockVPNDriver : public VPNDriver {
               (override));
 };
 
+class MockVPNDriverEventHandler : public VPNDriver::EventHandler {
+ public:
+  MockVPNDriverEventHandler();
+  MockVPNDriverEventHandler(const MockVPNDriverEventHandler&) = delete;
+  MockVPNDriverEventHandler& operator=(const MockVPNDriverEventHandler&) =
+      delete;
+  ~MockVPNDriverEventHandler();
+
+  MOCK_METHOD(void, OnDriverConnected, (const std::string&, int), (override));
+  MOCK_METHOD(void,
+              OnDriverFailure,
+              (Service::ConnectFailure, const std::string&),
+              (override));
+  MOCK_METHOD(void, OnDriverReconnecting, (base::TimeDelta), (override));
+};
+
 }  // namespace shill
 
 #endif  // SHILL_VPN_MOCK_VPN_DRIVER_H_

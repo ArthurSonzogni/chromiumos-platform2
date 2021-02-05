@@ -27,14 +27,13 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
-#include "shill/mock_service.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/rpc_task.h"
 #include "shill/technology.h"
 #include "shill/virtual_device.h"
 #include "shill/vpn/mock_openvpn_management_server.h"
+#include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
-#include "shill/vpn/mock_vpn_service.h"
 #include "shill/vpn/vpn_service.h"
 
 using base::FilePath;
@@ -87,7 +86,6 @@ class OpenVPNDriverTest
       : manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
         driver_(new OpenVPNDriver(&manager_, &process_manager_)),
-        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         certificate_file_(new MockCertificateFile()),
         extra_certificates_file_(new MockCertificateFile()),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {
@@ -112,7 +110,7 @@ class OpenVPNDriverTest
 
   void TearDown() override {
     driver_->pid_ = 0;
-    SetService(nullptr);
+    SetEventHandler(nullptr);
     if (!lsb_release_file_.empty()) {
       EXPECT_TRUE(base::DeleteFile(lsb_release_file_));
       lsb_release_file_.clear();
@@ -165,12 +163,8 @@ class OpenVPNDriverTest
 
   Sockets* GetSockets() { return &driver_->sockets_; }
 
-  void SetService(const scoped_refptr<MockVPNService>& service) {
-    if (service) {
-      driver_->event_handler_ = service.get();
-    } else {
-      driver_->event_handler_ = nullptr;
-    }
+  void SetEventHandler(VPNDriver::EventHandler* handler) {
+    driver_->event_handler_ = handler;
   }
 
   static base::TimeDelta GetDefaultConnectTimeout() {
@@ -216,8 +210,8 @@ class OpenVPNDriverTest
   MockProcessManager process_manager_;
   MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
-  OpenVPNDriver* driver_;  // Owned by |service_|.
-  scoped_refptr<MockVPNService> service_;
+  MockVPNDriverEventHandler event_handler_;
+  std::unique_ptr<OpenVPNDriver> driver_;
   MockCertificateFile* certificate_file_;         // Owned by |driver_|.
   MockCertificateFile* extra_certificates_file_;  // Owned by |driver_|.
   base::ScopedTempDir temporary_directory_;
@@ -301,7 +295,7 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
               StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
       .WillOnce(Return(10101));
   EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
-  base::TimeDelta timeout = driver_->ConnectAsync(service_.get());
+  base::TimeDelta timeout = driver_->ConnectAsync(&event_handler_);
   EXPECT_EQ(timeout, GetDefaultConnectTimeout());
 
   driver_->OnLinkReady(kInterfaceName, kInterfaceIndex);
@@ -309,16 +303,18 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
 
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
-  SetService(service_);
+  SetEventHandler(&event_handler_);
   driver_->interface_name_ = kInterfaceName;
   driver_->interface_index_ = kInterfaceIndex;
-  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->Notify("up", config);
   IPConfig::Properties ip_properties = driver_->GetIPProperties();
   EXPECT_EQ(ip_properties.address, "");
 
   // Tests that existing properties are reused if no new ones provided.
-  EXPECT_CALL(*service_, OnDriverConnected(kInterfaceName, kInterfaceIndex));
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->ip_properties_.address = "1.2.3.4";
   driver_->Notify("up", config);
   ip_properties = driver_->GetIPProperties();
@@ -327,7 +323,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
 
 TEST_P(OpenVPNDriverTest, NotifyUMA) {
   map<string, string> config;
-  SetService(service_);
+  SetEventHandler(&event_handler_);
 
   // Check that UMA metrics are emitted on Notify.
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
@@ -1062,8 +1058,8 @@ TEST_F(OpenVPNDriverTest, AppendFlag) {
 
 TEST_F(OpenVPNDriverTest, FailService) {
   static const char kErrorDetails[] = "Bad password.";
-  SetService(service_);
-  EXPECT_CALL(*service_,
+  SetEventHandler(&event_handler_);
+  EXPECT_CALL(event_handler_,
               OnDriverFailure(Service::kFailureConnect, kErrorDetails));
   driver_->FailService(Service::kFailureConnect, kErrorDetails);
 }
@@ -1121,48 +1117,50 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
 
 TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
   const int kPID = 99999;
-  SetService(service_);
+  SetEventHandler(&event_handler_);
   driver_->pid_ = kPID;
-  EXPECT_CALL(*service_, OnDriverFailure(_, _));
+  EXPECT_CALL(event_handler_, OnDriverFailure(_, _));
   EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
   driver_->OnOpenVPNDied(2);
   EXPECT_EQ(0, driver_->pid_);
 }
 
 TEST_F(OpenVPNDriverTest, Disconnect) {
-  SetService(service_);
+  SetEventHandler(&event_handler_);
   driver_->Disconnect();
   EXPECT_FALSE(driver_->event_handler_);
 }
 
 TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
-  SetService(service_);
-  EXPECT_CALL(*service_, OnDriverFailure(Service::kFailureConnect, _));
+  SetEventHandler(&event_handler_);
+  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
   driver_->OnConnectTimeout();
   EXPECT_FALSE(driver_->event_handler_);
 }
 
 TEST_F(OpenVPNDriverTest, OnConnectTimeoutResolve) {
-  SetService(service_);
+  SetEventHandler(&event_handler_);
   SetClientState(OpenVPNManagementServer::kStateResolve);
-  EXPECT_CALL(*service_, OnDriverFailure(Service::kFailureDNSLookup, _));
+  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDNSLookup, _));
   driver_->OnConnectTimeout();
   EXPECT_FALSE(driver_->event_handler_);
 }
 
 TEST_F(OpenVPNDriverTest, OnReconnectingUnknown) {
-  SetService(service_);
-  EXPECT_CALL(*service_, OnDriverReconnecting(GetDefaultConnectTimeout()));
+  SetEventHandler(&event_handler_);
+  EXPECT_CALL(event_handler_, OnDriverReconnecting(GetDefaultConnectTimeout()));
   driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonUnknown);
 }
 
 TEST_F(OpenVPNDriverTest, OnReconnectingTLSError) {
-  SetService(service_);
+  SetEventHandler(&event_handler_);
 
-  EXPECT_CALL(*service_, OnDriverReconnecting(GetReconnectOfflineTimeout()));
+  EXPECT_CALL(event_handler_,
+              OnDriverReconnecting(GetReconnectOfflineTimeout()));
   driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonOffline);
 
-  EXPECT_CALL(*service_, OnDriverReconnecting(GetReconnectTLSErrorTimeout()));
+  EXPECT_CALL(event_handler_,
+              OnDriverReconnecting(GetReconnectTLSErrorTimeout()));
   driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonTLSError);
 }
 
@@ -1220,7 +1218,7 @@ TEST_F(OpenVPNDriverTest, GetCommandLineArgs) {
 }
 
 TEST_F(OpenVPNDriverTest, OnDefaultPhysicalServiceEvent) {
-  SetService(service_);
+  SetEventHandler(&event_handler_);
 
   // Switch from Online service -> no service.  VPN should be put on hold.
   EXPECT_CALL(*management_server_, Hold());
