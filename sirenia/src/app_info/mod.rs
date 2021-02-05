@@ -56,3 +56,9 @@ impl AppManifest {
         }
     }
 }
+
+impl Default for AppManifest {
+    fn default() -> Self {
+        AppManifest::new()
+    }
+}
