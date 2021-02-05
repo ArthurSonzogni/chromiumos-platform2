@@ -1859,6 +1859,17 @@ std::unique_ptr<dbus::Response> Service::AdjustVm(
           VmId(request.owner_id(), request.name()), std::move(params),
           &failure_reason);
     }
+  } else if (request.operation() == "memsize") {
+    if (params.size() != 1) {
+      failure_reason = "Incorrect number of arguments for 'memsize' operation";
+    } else if (location != STORAGE_CRYPTOHOME_PLUGINVM) {
+      failure_reason = "Operation is not supported for the VM";
+    } else {
+      success =
+          pvm::helper::SetMemorySize(bus_, vmplugin_service_proxy_,
+                                     VmId(request.owner_id(), request.name()),
+                                     std::move(params), &failure_reason);
+    }
   } else if (request.operation() == "rename") {
     if (params.size() != 1) {
       failure_reason = "Incorrect number of arguments for 'rename' operation";

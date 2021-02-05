@@ -34,6 +34,12 @@ bool CreateCdromDevice(const VmId& vm_id, const std::string& iso_name);
 
 void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path);
 
+bool SetMemorySize(scoped_refptr<dbus::Bus> bus,
+                   dbus::ObjectProxy* dispatcher_proxy,
+                   const VmId& vm_id,
+                   std::vector<std::string> params,
+                   std::string* failure_message);
+
 bool ToggleSharedProfile(scoped_refptr<dbus::Bus> bus,
                          dbus::ObjectProxy* dispatcher_proxy,
                          const VmId& vm_id,

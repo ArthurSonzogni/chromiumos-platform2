@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -323,6 +324,45 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
       }
     }
   }
+}
+
+bool SetMemorySize(scoped_refptr<dbus::Bus> bus,
+                   dbus::ObjectProxy* dispatcher_proxy,
+                   const VmId& vm_id,
+                   std::vector<std::string> params,
+                   std::string* failure_message) {
+  unsigned memsize;
+  if (params.size() != 1 ||
+      (params[0] != "auto" &&
+       (!base::StringToUint(params[0], &memsize) || memsize == 0))) {
+    *failure_message = "Invalid setting for the memory size";
+    return false;
+  }
+
+  bool is_shut_down;
+  if (!dispatcher::IsVmShutDown(bus, dispatcher_proxy, vm_id, &is_shut_down)) {
+    *failure_message = "Unable to query VM state";
+    return false;
+  }
+
+  if (!is_shut_down) {
+    *failure_message = "The VM is not shut down";
+    return false;
+  }
+
+  std::vector<std::string> args = {
+      "set",
+      vm_id.name(),
+      "--memsize",
+      params[0],
+  };
+
+  if (!ExecutePvmHelper(vm_id.owner_id(), std::move(args))) {
+    *failure_message = "Failed to adjust VM memory size";
+    return false;
+  }
+
+  return true;
 }
 
 bool ToggleSharedProfile(scoped_refptr<dbus::Bus> bus,
