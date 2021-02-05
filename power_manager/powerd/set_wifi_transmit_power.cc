@@ -69,19 +69,13 @@
 #define REALTEK_VNDCMD_ATTR_SAR_POWER 3
 
 // COMMON SAR API COMMANDS
-// The number for NL80211_CMD_SET_SAR_SPECS and NL80211_ATTR_SAR_SPEC
-// is chosen based on the NL80211_CMD_MAX and NL80211_ATTR_MAX such that
-// there won't be any collision with other commands while backporting to older
-// kernel version. Once the Common SAR API lands in to kernel upstream, the
-// Values can be changed to their actual positions.
-// TODO(b/172350519): Follow up upstream the common SAR APIs
-#define NL80211_CMD_SET_SAR_SPECS 145
-#define NL80211_ATTR_SAR_SPEC 310
+#define NL80211_CMD_SET_SAR_SPECS 140
+#define NL80211_ATTR_SAR_SPEC 300
 #define NL80211_SAR_ATTR_TYPE 1
 #define NL80211_SAR_TYPE_POWER 0
 #define NL80211_SAR_ATTR_SPECS 2
 #define NL80211_SAR_ATTR_SPECS_POWER 1
-#define NL80211_SAR_ATTR_SPECS_FREQ_RANGE_INDEX 2
+#define NL80211_SAR_ATTR_SPECS_RANGE_INDEX 2
 
 namespace {
 
@@ -379,6 +373,7 @@ void FillMessageRtw(struct nl_msg* msg,
   CHECK(!nla_nest_end(msg, vendor_cmd)) << "Failed in nla_nest_end";
 }
 
+// Fill in nl80211 message for ath10k driver
 void FillMessageAth10k(struct nl_msg* msg, bool tablet) {
   struct nlattr* sar_capa =
       nla_nest_start(msg, NL80211_ATTR_SAR_SPEC | NLA_F_NESTED);
@@ -390,10 +385,9 @@ void FillMessageAth10k(struct nl_msg* msg, bool tablet) {
   for (const auto& limit : GetAth10kChromeosConfigPowerTable(tablet)) {
     struct nlattr* sub_freq_range = nla_nest_start(msg, ++i | NLA_F_NESTED);
     CHECK(sub_freq_range) << "Failed to execute nla_nest_start";
-    CHECK(
-        !nla_put_u8(msg, NL80211_SAR_ATTR_SPECS_FREQ_RANGE_INDEX, limit.first))
+    CHECK(!nla_put_u32(msg, NL80211_SAR_ATTR_SPECS_RANGE_INDEX, limit.first))
         << "Failed to put frequency index";
-    CHECK(!nla_put_u8(msg, NL80211_SAR_ATTR_SPECS_POWER, limit.second))
+    CHECK(!nla_put_s32(msg, NL80211_SAR_ATTR_SPECS_POWER, limit.second))
         << "Failed to put band power";
     CHECK(!nla_nest_end(msg, sub_freq_range)) << "Failed in nla_nest_end";
   }
