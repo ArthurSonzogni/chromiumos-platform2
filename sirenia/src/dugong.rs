@@ -7,6 +7,8 @@
 use std::cell::RefCell;
 use std::env;
 use std::fmt::{self, Debug, Formatter};
+use std::io;
+use std::os::unix::net::UnixDatagram;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -37,6 +39,10 @@ pub enum Error {
     ProcessMessage(dbus::Error),
     #[error("failed to call rpc: {0}")]
     Rpc(rpc::Error),
+    #[error("failed connect to /dev/log: {0}")]
+    RawSyslogConnect(io::Error),
+    #[error("failed write to /dev/log: {0}")]
+    RawSyslogWrite(io::Error),
     #[error("failed to start up the syslog: {0}")]
     SysLog(sys_util::syslog::Error),
     #[error("failed to bind to socket: {0}")]
@@ -106,10 +112,34 @@ fn request_start_tee_app(device: &DugongDevice, app_id: &str) -> Result<(OwnedFd
     }
 }
 
+fn handle_manatee_logs(dugong_device: &DugongDevice) -> Result<()> {
+    const LOG_PATH: &str = "/dev/log";
+    let trichechus_client = dugong_device.trichechus_client.borrow();
+    let logs: Vec<Vec<u8>> = trichechus_client.get_logs().map_err(Error::Rpc)?;
+    if logs.is_empty() {
+        return Ok(());
+    }
+
+    // TODO(b/173600313) Decide whether to write this directly to a different log file.
+    let raw_syslog = UnixDatagram::unbound().map_err(Error::RawSyslogConnect)?;
+    for entry in logs.as_slice() {
+        raw_syslog
+            .send_to(&entry, LOG_PATH)
+            .map_err(Error::RawSyslogWrite)?;
+    }
+
+    Ok(())
+}
+
 pub fn start_dbus_handler(
     trichechus_client: TrichechusClient,
     transport_type: TransportType,
 ) -> Result<()> {
+    let dugong_device = Rc::new(DugongDevice {
+        trichechus_client: RefCell::new(trichechus_client),
+        transport_type,
+    });
+
     let c = LocalConnection::new_system().map_err(Error::ConnectionRequest)?;
     c.request_name(
         "org.chromium.ManaTEE",
@@ -127,20 +157,21 @@ pub fn start_dbus_handler(
         });
 
     let tree = f.tree(()).add(
-        f.object_path(
-            "/org/chromium/ManaTEE1",
-            Rc::new(DugongDevice {
-                trichechus_client: RefCell::new(trichechus_client),
-                transport_type,
-            }),
-        )
-        .introspectable()
-        .add(interface),
+        f.object_path("/org/chromium/ManaTEE1", dugong_device.clone())
+            .introspectable()
+            .add(interface),
     );
 
     tree.start_receive(&c);
     info!("Finished dbus setup, starting handler.");
     loop {
+        if let Err(err) = handle_manatee_logs(&dugong_device) {
+            if matches!(err, Error::Rpc(_)) {
+                error!("Trichechus disconnected: {}", err);
+                return Err(err);
+            }
+            error!("Failed to forward syslog: {}", err);
+        }
         c.process(Duration::from_millis(1000))
             .map_err(Error::ProcessMessage)?;
     }
@@ -181,7 +212,7 @@ fn main() -> Result<()> {
     if get_logs {
         let logs = client.get_logs().unwrap();
         for entry in &logs[..] {
-            print!("{}", entry);
+            print!("{}", String::from_utf8_lossy(entry));
         }
     } else {
         start_dbus_handler(client, config.connection_type).unwrap();
