@@ -39,7 +39,7 @@
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
-#include "power_manager/powerd/system/ambient_light_sensor_manager.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/cros_ec_helper.h"
@@ -98,7 +98,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
   CreateAmbientLightSensorManager(PrefsInterface* prefs) override {
     auto light_sensor_manager =
-        std::make_unique<system::AmbientLightSensorManager>(prefs);
+        std::make_unique<system::AmbientLightSensorManagerFile>(prefs);
     light_sensor_manager->Run(false /* read_immediately */);
     return light_sensor_manager;
   }

@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_INTERFACE_H_
 
+#include "power_manager/powerd/system/ambient_light_sensor_interface.h"
+
 namespace power_manager {
 namespace system {
 

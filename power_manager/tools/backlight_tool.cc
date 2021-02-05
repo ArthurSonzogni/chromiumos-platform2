@@ -27,7 +27,7 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
-#include "power_manager/powerd/system/ambient_light_sensor_manager.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -45,7 +45,7 @@ using power_manager::policy::BacklightController;
 using power_manager::policy::InternalBacklightController;
 using power_manager::policy::KeyboardBacklightController;
 using power_manager::system::AmbientLightSensorInterface;
-using power_manager::system::AmbientLightSensorManager;
+using power_manager::system::AmbientLightSensorManagerFile;
 using power_manager::system::AmbientLightSensorStub;
 using power_manager::system::BacklightStub;
 using power_manager::system::DBusWrapperStub;
@@ -229,7 +229,7 @@ void GetAmbientLightLux(bool keyboard) {
     Abort("Ambient light sensor not enabled");
   }
 
-  AmbientLightSensorManager als_manager(&prefs);
+  AmbientLightSensorManagerFile als_manager(&prefs);
   als_manager.Run(true /* read_immediately */);
 
   AmbientLightSensorInterface* sensor;
@@ -266,7 +266,7 @@ void PrintAmbientLightPath(bool keyboard) {
     Abort("Ambient light sensor not enabled");
   }
 
-  AmbientLightSensorManager als_manager(&prefs);
+  AmbientLightSensorManagerFile als_manager(&prefs);
   als_manager.Run(true /* read_immediately */);
 
   AmbientLightSensorInterface* sensor;

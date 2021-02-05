@@ -1,8 +1,8 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/ambient_light_sensor_manager.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
 
 #include <memory>
 #include <string>
@@ -57,14 +57,15 @@ class TestObserver : public AmbientLightObserver {
 
 }  // namespace
 
-class AmbientLightSensorManagerTest : public ::testing::Test {
+class AmbientLightSensorManagerFileTest : public ::testing::Test {
  public:
-  AmbientLightSensorManagerTest() {}
-  AmbientLightSensorManagerTest(const AmbientLightSensorManagerTest&) = delete;
-  AmbientLightSensorManagerTest& operator=(
-      const AmbientLightSensorManagerTest&) = delete;
+  AmbientLightSensorManagerFileTest() {}
+  AmbientLightSensorManagerFileTest(const AmbientLightSensorManagerFileTest&) =
+      delete;
+  AmbientLightSensorManagerFileTest& operator=(
+      const AmbientLightSensorManagerFileTest&) = delete;
 
-  ~AmbientLightSensorManagerTest() override {}
+  ~AmbientLightSensorManagerFileTest() override {}
 
   void SetUp() override {
     prefs_.SetInt64(kAllowAmbientEQ, 0);
@@ -105,16 +106,16 @@ class AmbientLightSensorManagerTest : public ::testing::Test {
 
   FakePrefs prefs_;
 
-  std::unique_ptr<AmbientLightSensorManager> manager_;
+  std::unique_ptr<AmbientLightSensorManagerFile> manager_;
 
   TestObserver internal_backlight_observer_;
   TestObserver keyboard_backlight_observer_;
 };
 
-TEST_F(AmbientLightSensorManagerTest, ZeroSensors) {
+TEST_F(AmbientLightSensorManagerFileTest, ZeroSensors) {
   prefs_.SetInt64(kHasAmbientLightSensorPref, 0);
 
-  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManagerFile>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->Run(false /* read_immediately */);
 
@@ -123,11 +124,11 @@ TEST_F(AmbientLightSensorManagerTest, ZeroSensors) {
   EXPECT_FALSE(manager_->HasColorSensor());
 }
 
-TEST_F(AmbientLightSensorManagerTest, OneSensor) {
+TEST_F(AmbientLightSensorManagerFileTest, OneSensor) {
   prefs_.SetInt64(kHasAmbientLightSensorPref, 1);
   base::FilePath data_file = AddSensor(0, "lid", false);
 
-  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManagerFile>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);
@@ -149,12 +150,12 @@ TEST_F(AmbientLightSensorManagerTest, OneSensor) {
   EXPECT_FALSE(manager_->HasColorSensor());
 }
 
-TEST_F(AmbientLightSensorManagerTest, TwoSensors) {
+TEST_F(AmbientLightSensorManagerFileTest, TwoSensors) {
   prefs_.SetInt64(kHasAmbientLightSensorPref, 2);
   base::FilePath data0_file = AddSensor(0, "lid", false);
   base::FilePath data1_file = AddSensor(1, "base", false);
 
-  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManagerFile>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);
@@ -176,13 +177,13 @@ TEST_F(AmbientLightSensorManagerTest, TwoSensors) {
   EXPECT_FALSE(manager_->HasColorSensor());
 }
 
-TEST_F(AmbientLightSensorManagerTest, HasColorSensor) {
+TEST_F(AmbientLightSensorManagerFileTest, HasColorSensor) {
   prefs_.SetInt64(kHasAmbientLightSensorPref, 2);
   prefs_.SetInt64(kAllowAmbientEQ, 1);
   base::FilePath data0_file = AddSensor(0, "lid", true);
   base::FilePath data1_file = AddSensor(1, "base", false);
 
-  manager_ = std::make_unique<AmbientLightSensorManager>(&prefs_);
+  manager_ = std::make_unique<AmbientLightSensorManagerFile>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);

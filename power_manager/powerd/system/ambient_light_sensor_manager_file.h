@@ -1,9 +1,9 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_H_
-#define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_FILE_H_
+#define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_FILE_H_
 
 #include <memory>
 #include <vector>
@@ -19,14 +19,15 @@ class PrefsInterface;
 
 namespace system {
 
-class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
+class AmbientLightSensorManagerFile
+    : public AmbientLightSensorManagerInterface {
  public:
-  explicit AmbientLightSensorManager(PrefsInterface* prefs);
-  AmbientLightSensorManager(const AmbientLightSensorManager&) = delete;
-  AmbientLightSensorManager& operator=(const AmbientLightSensorManager&) =
-      delete;
+  explicit AmbientLightSensorManagerFile(PrefsInterface* prefs);
+  AmbientLightSensorManagerFile(const AmbientLightSensorManagerFile&) = delete;
+  AmbientLightSensorManagerFile& operator=(
+      const AmbientLightSensorManagerFile&) = delete;
 
-  ~AmbientLightSensorManager() override;
+  ~AmbientLightSensorManagerFile() override;
 
   void set_device_list_path_for_testing(const base::FilePath& path);
   void set_poll_interval_ms_for_testing(int interval_ms);
@@ -35,6 +36,7 @@ class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
 
   bool HasColorSensor() override;
 
+  // AmbientLightSensorManagerInterface overrides:
   AmbientLightSensorInterface* GetSensorForInternalBacklight() override;
   AmbientLightSensorInterface* GetSensorForKeyboardBacklight() override;
 
@@ -44,8 +46,6 @@ class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
 
   PrefsInterface* prefs_ = nullptr;  // non-owned
 
-  // AmbientLightSensorManager object owns AmbientLightSensor object via unique
-  // pointers.
   std::vector<std::unique_ptr<system::AmbientLightSensor>> sensors_;
   // Weak pointers into the relevant entries of |sensors_|.
   system::AmbientLightSensor* lid_sensor_ = nullptr;
@@ -57,4 +57,4 @@ class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_FILE_H_

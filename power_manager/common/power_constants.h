@@ -331,6 +331,10 @@ extern const int64_t kSlowBacklightTransitionMs;
 // udev subsystem to watch for input device related events.
 extern const char kInputUdevSubsystem[];
 
+// Device names of ambient light sensors.
+extern const char kCrosECLightName[];
+extern const char kAcpiAlsName[];
+
 enum class PowerSource {
   AC,
   BATTERY,

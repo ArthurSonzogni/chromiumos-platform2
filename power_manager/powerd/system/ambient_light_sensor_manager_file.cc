@@ -1,8 +1,8 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/ambient_light_sensor_manager.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
 
 #include <memory>
 #include <utility>
@@ -14,7 +14,8 @@
 namespace power_manager {
 namespace system {
 
-AmbientLightSensorManager::AmbientLightSensorManager(PrefsInterface* prefs)
+AmbientLightSensorManagerFile::AmbientLightSensorManagerFile(
+    PrefsInterface* prefs)
     : prefs_(prefs) {
   int64_t num_sensors = 0;
   bool allow_ambient_eq = false;
@@ -36,26 +37,26 @@ AmbientLightSensorManager::AmbientLightSensorManager(PrefsInterface* prefs)
   }
 }
 
-AmbientLightSensorManager::~AmbientLightSensorManager() = default;
+AmbientLightSensorManagerFile::~AmbientLightSensorManagerFile() = default;
 
-void AmbientLightSensorManager::set_device_list_path_for_testing(
+void AmbientLightSensorManagerFile::set_device_list_path_for_testing(
     const base::FilePath& path) {
   for (auto als : als_list_)
     als->set_device_list_path_for_testing(path);
 }
 
-void AmbientLightSensorManager::set_poll_interval_ms_for_testing(
+void AmbientLightSensorManagerFile::set_poll_interval_ms_for_testing(
     int interval_ms) {
   for (auto als : als_list_)
     als->set_poll_interval_ms_for_testing(interval_ms);
 }
 
-void AmbientLightSensorManager::Run(bool read_immediately) {
+void AmbientLightSensorManagerFile::Run(bool read_immediately) {
   for (auto als : als_list_)
     als->Init(read_immediately);
 }
 
-bool AmbientLightSensorManager::HasColorSensor() {
+bool AmbientLightSensorManagerFile::HasColorSensor() {
   for (const auto& sensor : sensors_) {
     if (sensor->IsColorSensor())
       return true;
@@ -64,16 +65,16 @@ bool AmbientLightSensorManager::HasColorSensor() {
 }
 
 AmbientLightSensorInterface*
-AmbientLightSensorManager::GetSensorForInternalBacklight() {
+AmbientLightSensorManagerFile::GetSensorForInternalBacklight() {
   return lid_sensor_;
 }
 
 AmbientLightSensorInterface*
-AmbientLightSensorManager::GetSensorForKeyboardBacklight() {
+AmbientLightSensorManagerFile::GetSensorForKeyboardBacklight() {
   return base_sensor_;
 }
 
-std::unique_ptr<AmbientLightSensor> AmbientLightSensorManager::CreateSensor(
+std::unique_ptr<AmbientLightSensor> AmbientLightSensorManagerFile::CreateSensor(
     SensorLocation location, bool allow_ambient_eq) {
   auto sensor = std::make_unique<system::AmbientLightSensor>();
   auto als = std::make_unique<system::AmbientLightSensorDelegateFile>(

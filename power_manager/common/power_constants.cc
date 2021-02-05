@@ -131,6 +131,8 @@ const double kEpsilon = 0.001;
 const int64_t kFastBacklightTransitionMs = 200;
 const int64_t kSlowBacklightTransitionMs = 2000;
 const char kInputUdevSubsystem[] = "input";
+const char kCrosECLightName[] = "cros-ec-light";
+const char kAcpiAlsName[] = "acpi-als";
 
 std::string PowerSourceToString(PowerSource source) {
   switch (source) {
