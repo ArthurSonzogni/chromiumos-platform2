@@ -62,6 +62,9 @@ class ModemProxy : public ModemProxyInterface {
                        Error* error,
                        const ResultCallback& callback,
                        int timeout) override;
+  void SetPrimarySimSlot(uint32_t slot,
+                         const ResultCallback& callback,
+                         int timeout) override;
   void Command(const std::string& cmd,
                uint32_t user_timeout,
                Error* error,
