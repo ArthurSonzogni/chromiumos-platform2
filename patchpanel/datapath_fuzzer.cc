@@ -84,6 +84,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     std::vector<uint8_t> bytes = provider.ConsumeBytes<uint8_t>(mac.size());
     std::copy(bytes.begin(), bytes.end(), mac.begin());
     struct in6_addr ipv6_addr;
+    memset(&ipv6_addr, 0, sizeof(ipv6_addr));
     bytes = provider.ConsumeBytes<uint8_t>(sizeof(ipv6_addr.s6_addr));
     std::copy(bytes.begin(), bytes.end(), ipv6_addr.s6_addr);
     std::string ipv6_addr_str = IPv6AddressToString(ipv6_addr);
