@@ -1437,12 +1437,23 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNTED],
                      action.c_str())) {
     brillo::glib::ScopedError error;
-    gboolean done = false;
-    if (!org_chromium_CryptohomeInterface_is_mounted(
-            proxy.gproxy(), &done, &brillo::Resetter(&error).lvalue())) {
-      printf("IsMounted call failed: %s.\n", error->message);
+    gboolean is_mounted = false;
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    if (account_id.empty()) {
+      if (!org_chromium_CryptohomeInterface_is_mounted(
+              proxy.gproxy(), &is_mounted,
+              &brillo::Resetter(&error).lvalue())) {
+        printf("IsMounted call failed: %s.\n", error->message);
+      }
+    } else {
+      if (!org_chromium_CryptohomeInterface_is_mounted_for_user(
+              proxy.gproxy(), account_id.c_str(), &is_mounted,
+              nullptr /* OUT_is_ephemeral_mount */,
+              &brillo::Resetter(&error).lvalue())) {
+        printf("IsMountedForUser call failed: %s.\n", error->message);
+      }
     }
-    if (done) {
+    if (is_mounted) {
       printf("true\n");
     } else {
       printf("false\n");
