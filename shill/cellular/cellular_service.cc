@@ -98,6 +98,7 @@ CellularService::CellularService(Manager* manager,
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
 
   storage_identifier_ = GetDefaultStorageIdentifier();
+  SLOG(this, 2) << "CellularService Created: " << log_name();
 }
 
 CellularService::~CellularService() {
@@ -112,11 +113,11 @@ void CellularService::SetDevice(Cellular* device) {
                                       GetDeviceRpcId(&ignored_error));
   adaptor()->EmitBoolChanged(kVisibleProperty,
                              GetVisibleProperty(&ignored_error));
+  SetConnectable(!!cellular_);
   if (!cellular_)
     return;
 
   DCHECK_EQ(sim_card_id_, cellular_->GetSimCardId());
-  SetConnectable(!!device);
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetActivationType(kActivationTypeUnknown);
 
