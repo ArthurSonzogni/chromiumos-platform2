@@ -7,8 +7,13 @@ edition = "2018"
 exclude = ["*"]
 include = ["Cargo.toml", "build.rs", "src/lib.rs", "src/bindings/*"]
 
+[[bin]]
+name = "manatee"
+path = "src/manatee.rs"
+
 [build-dependencies]
 chromeos-dbus-bindings = { path = "../../chromeos-dbus-bindings"} # provided by ebuild
 
 [dependencies]
 dbus = "0.8"
+thiserror = "1.0.20"
