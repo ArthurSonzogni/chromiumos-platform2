@@ -55,9 +55,6 @@ pkg_config("liblorgnette_config") {
 }
 
 static_library("liblorgnette") {
-  all_dependent_configs = [ ":liblorgnette_config" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":lorgnette-adaptors" ]
   sources = [
     "daemon.cc",
     "enums.cc",
@@ -70,25 +67,34 @@ static_library("liblorgnette") {
     "sane_client_fake.cc",
     "sane_client_impl.cc",
   ]
+  all_dependent_configs = [ ":liblorgnette_config" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":lorgnette-adaptors" ]
 }
 
 executable("lorgnette") {
+  sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":liblorgnette" ]
-  sources = [ "main.cc" ]
 }
 
 executable("lorgnette_cli") {
-  configs += [ ":target_defaults" ]
-  deps = [ ":lorgnette-proxies" ]
   sources = [
     "guess_source.cc",
     "lorgnette_cli.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":lorgnette-proxies" ]
 }
 
 if (use.test) {
   executable("lorgnette_unittest") {
+    sources = [
+      "ippusb_device_test.cc",
+      "manager_test.cc",
+      "sane_client_test.cc",
+      "test_util.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -96,12 +102,6 @@ if (use.test) {
     deps = [
       ":liblorgnette",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "ippusb_device_test.cc",
-      "manager_test.cc",
-      "sane_client_test.cc",
-      "test_util.cc",
     ]
   }
 }

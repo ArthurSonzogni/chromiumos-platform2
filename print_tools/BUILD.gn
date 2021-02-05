@@ -17,10 +17,10 @@ pkg_config("target_defaults") {
 }
 
 executable("printer_diag") {
-  configs += [ ":target_defaults" ]
   sources = [
     "ipp_in_json.cc",
     "ipp_in_json.h",
     "printer_diag.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
