@@ -6,10 +6,21 @@
 
 #include <string>
 
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <base/logging.h>
 #include <re2/re2.h>
 
 namespace {
+
+// Give enough time for the EC to complete the ExitMode command. Calculated as
+// follows:
+// (tVDMWaitModeExit (50ms) * 3 possible signalling types (SOP, SOP', SOP''))
+// + 5 ms (typical ectool command)
+//
+// That gives us 155ms, so we double that to factor in scheduler and other
+// delays.
+constexpr uint32_t kExitModeWaitMs = 300;
 
 // Helper function to print the TypeCMode.
 std::string ModeToString(typecd::TypeCMode mode) {
@@ -191,6 +202,9 @@ void PortManager::HandleSessionStopped() {
       continue;
     }
 
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kExitModeWaitMs));
+
     // Now run mode entry again.
     RunModeEntry(port_num);
   }
@@ -221,6 +235,9 @@ void PortManager::HandleUnlock() {
       LOG(ERROR) << "Attempt to call ExitMode failed for port " << port_num;
       continue;
     }
+
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kExitModeWaitMs));
 
     // Now run mode entry again.
     RunModeEntry(port_num);
