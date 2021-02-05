@@ -32,3 +32,6 @@ allow cros_chapsd cros_home_root:dir { getattr search };
 allow cros_chapsd cros_home:dir { getattr search };
 allow cros_chapsd cros_home_shadow_uid_root_chaps:dir create_dir_perms;
 allow cros_chapsd cros_home_shadow_uid_root_chaps:file create_file_perms;
+
+# TODO(crbug.com/1175203): Find this directory and add a spesific context.
+dontaudit cros_chapsd unlabeled:dir search;
