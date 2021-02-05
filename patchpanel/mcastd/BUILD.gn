@@ -22,10 +22,10 @@ pkg_config("target_defaults") {
 }
 
 proto_library("protos") {
-  configs = [ ":target_defaults" ]
   proto_in_dir = ".."
   proto_out_dir = "include/patchpanel"
   sources = [ "${proto_in_dir}/ipc.proto" ]
+  configs = [ ":target_defaults" ]
 }
 
 executable("mcastd") {

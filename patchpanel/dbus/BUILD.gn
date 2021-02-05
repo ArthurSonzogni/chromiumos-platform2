@@ -30,10 +30,10 @@ pkg_config("target_defaults") {
 }
 
 proto_library("protos") {
-  configs = [ ":target_defaults" ]
   proto_in_dir = ".."
   proto_out_dir = "include/patchpanel"
   sources = [ "${proto_in_dir}/ipc.proto" ]
+  configs = [ ":target_defaults" ]
 }
 
 libpatchpanel_client_sources = [
@@ -43,20 +43,20 @@ libpatchpanel_client_sources = [
 ]
 
 static_library("libpatchpanel-client_test") {
+  sources = libpatchpanel_client_sources
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [
     "protobuf",
     "system_api",
   ]
-  sources = libpatchpanel_client_sources
   deps = [ ":protos" ]
 }
 
 shared_library("libpatchpanel-client") {
+  sources = libpatchpanel_client_sources
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [ "protobuf" ]
   libs = [ "system_api" ]
-  sources = libpatchpanel_client_sources
 }
 
 if (use.fuzzer) {
@@ -65,12 +65,12 @@ if (use.fuzzer) {
   }
 
   executable("patchpanel_client_fuzzer") {
+    sources = [ "client_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":fuzzing_config",
     ]
-    sources = [ "client_fuzzer.cc" ]
     deps = [ ":libpatchpanel-client" ]
   }
 }

@@ -48,10 +48,10 @@ pkg_config("target_defaults") {
 }
 
 proto_library("protos") {
-  configs = [ ":target_defaults" ]
   proto_in_dir = "."
   proto_out_dir = "include/patchpanel"
   sources = [ "${proto_in_dir}/ipc.proto" ]
+  configs = [ ":target_defaults" ]
 }
 
 util_sources = [
@@ -114,22 +114,22 @@ shared_library("libpatchpanel-util") {
 }
 
 static_library("libpatchpanel_test") {
+  sources = libpatchpanel_sources
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [
     "protobuf",
     "system_api",
   ]
-  sources = libpatchpanel_sources
   deps = [ ":protos" ]
 }
 
 static_library("libpatchpanel") {
+  sources = libpatchpanel_sources + util_sources
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [
     "protobuf",
     "system_api",
   ]
-  sources = libpatchpanel_sources + util_sources
   deps = [ ":protos" ]
 }
 
@@ -145,52 +145,52 @@ if (use.fuzzer) {
   }
 
   executable("multicast_forwarder_fuzzer") {
+    sources = [ "multicast_forwarder_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":fuzzing_config",
     ]
-    sources = [ "multicast_forwarder_fuzzer.cc" ]
     deps = [ ":libpatchpanel" ]
   }
 
   executable("ndproxy_fuzzer") {
+    sources = [ "ndproxy_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":fuzzing_config",
     ]
-    sources = [ "ndproxy_fuzzer.cc" ]
     deps = [ ":libpatchpanel" ]
   }
 
   executable("datapath_fuzzer") {
+    sources = [ "datapath_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":fuzzing_config",
     ]
-    sources = [ "datapath_fuzzer.cc" ]
     deps = [ ":libpatchpanel" ]
   }
 
   executable("firewall_fuzzer") {
+    sources = [ "firewall_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":fuzzing_config",
     ]
-    sources = [ "firewall_fuzzer.cc" ]
     deps = [ ":libpatchpanel" ]
   }
 
   executable("counters_service_fuzzer") {
+    sources = [ "counters_service_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":fuzzing_config",
     ]
-    sources = [ "counters_service_fuzzer.cc" ]
     deps = [ ":libpatchpanel" ]
   }
 }

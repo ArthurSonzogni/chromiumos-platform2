@@ -67,7 +67,6 @@ pkg_config("target_defaults") {
 
 # System-proxy library (shared between executables and tests).
 static_library("libsystemproxy") {
-  configs += [ ":target_defaults" ]
   sources = [
     "kerberos_client.cc",
     "net/ntlm/ntlm.cc",
@@ -85,6 +84,7 @@ static_library("libsystemproxy") {
     "system_proxy_adaptor.cc",
     "system_proxy_daemon.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":dbus_code_generator",
     ":worker-protos",
@@ -93,7 +93,6 @@ static_library("libsystemproxy") {
 
 # System-proxy worker library (shared between executables and tests).
 static_library("libsystemproxyworker") {
-  configs += [ ":target_defaults" ]
   sources = [
     "curl_socket.cc",
     "http_util.cc",
@@ -101,13 +100,14 @@ static_library("libsystemproxyworker") {
     "proxy_connect_job.cc",
     "server_proxy.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":worker-protos" ]
 }
 
 executable("system_proxy_worker") {
+  sources = [ "system_proxy_worker.cc" ]
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [ "libcurl" ]
-  sources = [ "system_proxy_worker.cc" ]
   deps = [
     ":libsystemproxyworker",
     ":worker-protos",
@@ -115,8 +115,8 @@ executable("system_proxy_worker") {
 }
 
 executable("system_proxy") {
-  configs += [ ":target_defaults" ]
   sources = [ "system_proxy.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libsystemproxy" ]
 }
 
@@ -129,12 +129,6 @@ if (use.test) {
     ]
   }
   executable("system-proxy_test") {
-    configs += [
-      "//common-mk:test",
-      ":system-proxy_test_config",
-      ":target_defaults",
-    ]
-    all_dependent_pkg_deps = [ "libcurl" ]
     sources = [
       "http_util_test.cc",
       "kerberos_client_test.cc",
@@ -148,6 +142,12 @@ if (use.test) {
       "system_proxy_adaptor_test.cc",
       "test_http_server.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":system-proxy_test_config",
+      ":target_defaults",
+    ]
+    all_dependent_pkg_deps = [ "libcurl" ]
     defines = [ "UNIT_TEST" ]
     deps = [
       ":libsystemproxy",
@@ -163,22 +163,22 @@ if (use.fuzzer) {
   }
   executable("system_proxy_worker_config_fuzzer") {
     all_dependent_pkg_deps = [ "libcurl" ]
+    sources = [ "worker_config_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":config_fuzzer_pkg_deps",
       ":target_defaults",
     ]
-    sources = [ "worker_config_fuzzer.cc" ]
     deps = [ ":libsystemproxyworker" ]
   }
 
   executable("system_proxy_connect_headers_parser_fuzzer") {
     all_dependent_pkg_deps = [ "libcurl" ]
+    sources = [ "connect_headers_parser_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "connect_headers_parser_fuzzer.cc" ]
     deps = [ ":libsystemproxyworker" ]
   }
 }

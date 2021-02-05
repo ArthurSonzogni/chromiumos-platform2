@@ -32,29 +32,23 @@ pkg_config("target_defaults") {
 }
 
 static_library("libl2tpipsec_vpn") {
-  configs += [ ":target_defaults" ]
   sources = [
     "daemon.cc",
     "ipsec_manager.cc",
     "l2tp_manager.cc",
     "service_manager.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("l2tpipsec_vpn") {
-  configs += [ ":target_defaults" ]
   sources = [ "l2tpipsec_vpn.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libl2tpipsec_vpn" ]
 }
 
 if (use.test) {
   executable("vpn_manager_test") {
-    configs += [
-      # //common-mk:test should be at the top. crbug.com/887845
-      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "daemon_test.cc",
       "ipsec_manager_test.cc",
@@ -62,19 +56,25 @@ if (use.test) {
       "service_manager_test.cc",
       "testrunner.cc",
     ]
+    configs += [
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     deps = [ ":libl2tpipsec_vpn" ]
   }
 }
 
 if (use.fuzzer) {
   executable("vpn_manager_service_manager_fuzzer") {
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-    ]
     sources = [
       "service_manager.cc",
       "service_manager_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
     ]
   }
 }
