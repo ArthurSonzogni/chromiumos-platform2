@@ -132,8 +132,7 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
 L2TPIPSecDriver::L2TPIPSecDriver(Manager* manager,
                                  ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
-      certificate_file_(new CertificateFile()),
-      weak_ptr_factory_(this) {}
+      certificate_file_(new CertificateFile()) {}
 
 L2TPIPSecDriver::~L2TPIPSecDriver() {
   Cleanup();
@@ -143,7 +142,10 @@ base::TimeDelta L2TPIPSecDriver::ConnectAsync(EventHandler* handler) {
   event_handler_ = handler;
   Error error;
   if (!SpawnL2TPIPSecVPN(&error)) {
-    FailService(Service::kFailureInternal);
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&L2TPIPSecDriver::FailService,
+                       weak_factory_.GetWeakPtr(), Service::kFailureInternal));
     return kTimeoutNone;
   }
   return kConnectTimeout;
@@ -215,9 +217,8 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   auto external_task_local = std::make_unique<ExternalTask>(
-      control_interface(), process_manager(), weak_ptr_factory_.GetWeakPtr(),
-      Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
-           weak_ptr_factory_.GetWeakPtr()));
+      control_interface(), process_manager(), weak_factory_.GetWeakPtr(),
+      Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied, weak_factory_.GetWeakPtr()));
 
   vector<string> options;
   map<string, string> environment;  // No env vars passed.
@@ -453,17 +454,17 @@ void L2TPIPSecDriver::Notify(const string& reason,
   } else {
     manager()->device_info()->AddVirtualInterfaceReadyCallback(
         interface_name, base::BindOnce(&L2TPIPSecDriver::OnLinkReady,
-                                       weak_ptr_factory_.GetWeakPtr()));
+                                       weak_factory_.GetWeakPtr()));
   }
 }
 
 void L2TPIPSecDriver::OnLinkReady(const std::string& link_name,
                                   int interface_index) {
-  if (event_handler_) {
-    event_handler_->OnDriverConnected(link_name, interface_index);
-  } else {
-    LOG(DFATAL) << "Missing service callback";
+  if (!event_handler_) {
+    LOG(ERROR) << "OnLinkReady() triggered in illegal service state";
+    return;
   }
+  event_handler_->OnDriverConnected(link_name, interface_index);
 }
 
 bool L2TPIPSecDriver::IsPskRequired() const {

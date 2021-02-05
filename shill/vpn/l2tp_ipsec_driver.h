@@ -129,7 +129,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   IPConfig::Properties ip_properties_;
   EventHandler* event_handler_ = nullptr;
 
-  base::WeakPtrFactory<L2TPIPSecDriver> weak_ptr_factory_;
+  base::WeakPtrFactory<L2TPIPSecDriver> weak_factory_{this};
 };
 
 }  // namespace shill

@@ -50,7 +50,7 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
         driver_(new L2TPIPSecDriver(&manager_, &process_manager_)),
         service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         certificate_file_(new MockCertificateFile()),
-        weak_ptr_factory_(this) {
+        weak_factory_(this) {
     manager_.set_mock_device_info(&device_info_);
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
   }
@@ -178,7 +178,7 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   L2TPIPSecDriver* driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   MockCertificateFile* certificate_file_;  // Owned by |driver_|.
-  base::WeakPtrFactory<L2TPIPSecDriverTest> weak_ptr_factory_;
+  base::WeakPtrFactory<L2TPIPSecDriverTest> weak_factory_;
 };
 
 const char L2TPIPSecDriverTest::kInterfaceName[] = "ppp0";
@@ -226,7 +226,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   FilePath xauth_credentials_file;
   FakeUpConnect(&psk_file, &xauth_credentials_file);
   driver_->external_task_.reset(new MockExternalTask(
-      &control_, &process_manager_, weak_ptr_factory_.GetWeakPtr(),
+      &control_, &process_manager_, weak_factory_.GetWeakPtr(),
       base::Callback<void(pid_t, int)>()));
   SetService(service_);
   EXPECT_CALL(*service_, OnDriverFailure(Service::kFailureBadPassphrase, _));
@@ -628,9 +628,8 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   map<string, string> dict;
   SetService(service_);
   base::Callback<void(pid_t, int)> death_callback;
-  MockExternalTask* local_external_task =
-      new MockExternalTask(&control_, &process_manager_,
-                           weak_ptr_factory_.GetWeakPtr(), death_callback);
+  MockExternalTask* local_external_task = new MockExternalTask(
+      &control_, &process_manager_, weak_factory_.GetWeakPtr(), death_callback);
   driver_->external_task_.reset(local_external_task);  // passes ownership
   EXPECT_CALL(*service_, OnDriverFailure(_, _));
   EXPECT_CALL(*local_external_task, OnDelete());

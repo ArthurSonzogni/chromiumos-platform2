@@ -495,6 +495,11 @@ base::TimeDelta ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
 void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
                                       int interface_index) {
   SLOG(this, 2) << __func__;
+  if (!event_handler_) {
+    LOG(ERROR) << "event_handler_ is not set";
+    return;
+  }
+
   CHECK(adaptor_interface_);
   CHECK(!active_client_);
 

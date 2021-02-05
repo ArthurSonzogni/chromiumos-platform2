@@ -608,6 +608,10 @@ base::TimeDelta OpenVPNDriver::ConnectAsync(EventHandler* handler) {
 
 void OpenVPNDriver::OnLinkReady(const std::string& link_name,
                                 int interface_index) {
+  if (!event_handler_) {
+    LOG(ERROR) << "event_handler_ is not set";
+    return;
+  }
   interface_name_ = link_name;
   interface_index_ = interface_index;
   rpc_task_.reset(new RpcTask(control_interface(), this));
