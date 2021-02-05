@@ -1840,13 +1840,6 @@ void Manager::SortServicesTask() {
              .first;
        });
 
-  std::vector<IPAddress> vpn_addresses;
-  for (const auto& service : services_) {
-    if (service->technology() == Technology::kVPN && service->connection()) {
-      vpn_addresses.push_back(service->connection()->local());
-    }
-  }
-
   uint32_t priority = Connection::kDefaultPriority;
   bool found_dns = false;
   ServiceRefPtr old_logical;
@@ -1857,11 +1850,6 @@ void Manager::SortServicesTask() {
     ConnectionRefPtr conn = service->connection();
     if (!new_physical && service->technology() != Technology::kVPN) {
       new_physical = service;
-      // This is done so that non-Android VPNs will only use the primary
-      // physical connection. Android VPNs route traffic using interface
-      // mappings set up by patchpaneld.
-      if (conn)
-        conn->set_allowed_srcs(vpn_addresses);
     }
     if (conn) {
       if (!found_dns && !conn->dns_servers().empty()) {
