@@ -8,11 +8,12 @@ use std::ffi::{CString, NulError};
 use std::os::raw::{c_char, c_int, c_ulong};
 use std::path::{Path, PathBuf};
 use std::str::{from_utf8, Utf8Error};
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use dbus::blocking::Connection;
 use dbus::Error as DbusError;
+use lazy_static::lazy_static;
 use system_api::client::OrgChromiumSessionManagerInterface;
 use thiserror::Error as ThisError;
 
@@ -131,18 +132,12 @@ fn check_return_str(ret: *const c_char) -> Result<*const c_char> {
 
 impl Crossystem {
     pub fn new() -> Self {
-        static INIT: Once = Once::new();
-        static mut REF: Option<Arc<Mutex<()>>> = None;
-        INIT.call_once(|| {
-            let init = Some(Arc::new(Mutex::new(())));
+        lazy_static! {
+            static ref MUTEX: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
+        }
 
-            // Safe because it is protected by Once.
-            unsafe { REF = init };
-        });
-
-        // Safe because REF is only written inside the Once.
         Crossystem {
-            mutex: unsafe { REF.as_ref().unwrap().clone() },
+            mutex: MUTEX.clone(),
         }
     }
 
