@@ -96,8 +96,16 @@ class VPNDriver {
   // event handler of the failure reason.
   virtual void OnConnectTimeout() = 0;
 
+  // Registers properties with |store|. These properties are exposed and can be
+  // read and/or written via RPC. The list of properties is controlled by: 1)
+  // all properties in |properties| are included, 2) GetProvider() provides a
+  // read-only "Provider" property, 3) the inherited class can override this
+  // function to register more properties.
   virtual void InitPropertyStore(PropertyStore* store);
 
+  // This group of functions control the interaction between persistent
+  // |storage| and |args_|. Also see the function with the same names in Service
+  // and VPNService.
   virtual bool Load(const StoreInterface* storage,
                     const std::string& storage_id);
   void MigrateDeprecatedStorage(StoreInterface* storage,
@@ -118,6 +126,10 @@ class VPNDriver {
   const KeyValueStore* const_args() const { return &args_; }
 
  protected:
+  // Represents a property in |args_|, which can be read and/or written over
+  // RPC, and loaded from and/or saved to storage (the accessibility is
+  // controlled by flags). Each inherited class should define the list of
+  // properties it has, and pass this list to the constructor of this class.
   struct Property {
     enum Flags {
       kEphemeral = 1 << 0,   // Never load or save.
@@ -143,6 +155,8 @@ class VPNDriver {
   Manager* manager() const { return manager_; }
   ProcessManager* process_manager() const { return process_manager_; }
 
+  // Registered for "Provider" property, which can be read over RPC. All
+  // accessible properties defined in |properties_| are included.
   virtual KeyValueStore GetProvider(Error* error);
 
  private:
