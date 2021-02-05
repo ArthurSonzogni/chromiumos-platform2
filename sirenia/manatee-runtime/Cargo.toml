@@ -1,5 +1,5 @@
 [package]
-name = "manatee_runtime"
+name = "manatee-runtime"
 version = "0.1.0"
 description = "API endpoint for TEEs to communicate with Trichechus."
 authors = ["The Chromium OS Authors"]
@@ -8,3 +8,4 @@ edition = "2018"
 [dependencies]
 libsirenia = { path = "../libsirenia" } # provided by ebuild
 serde = { version = "1.0.114", features = ["derive"] }
+sync = { path = "../../../platform/crosvm/sync" } # provided by ebuild

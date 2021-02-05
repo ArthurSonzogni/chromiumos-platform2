@@ -18,6 +18,7 @@ use getopts::Options;
 use libchromeos::linux::{getpid, getsid, setsid};
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::communication::persistence::{Cronista, CronistaClient};
+use libsirenia::communication::{StorageRPC, StorageRPCServer};
 use libsirenia::linux::events::{AddEventSourceMutator, EventMultiplexer, Mutator};
 use libsirenia::linux::syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH};
 use libsirenia::rpc::{ConnectionHandler, RpcDispatcher, TransportServer};
@@ -31,7 +32,7 @@ use libsirenia::transport::{
 use sirenia::app_info::{self, AppManifest, AppManifestEntry};
 use sirenia::build_info::BUILD_TIMESTAMP;
 use sirenia::cli::initialize_common_arguments;
-use sirenia::communication::{AppInfo, TEEStorage, TEEStorageServer, Trichechus, TrichechusServer};
+use sirenia::communication::{AppInfo, Trichechus, TrichechusServer};
 use sys_util::{self, error, info, syslog};
 use thiserror::Error as ThisError;
 
@@ -82,7 +83,7 @@ struct TEEAppHandler {
     tee_app: Rc<RefCell<TEEApp>>,
 }
 
-impl TEEStorage for TEEAppHandler {
+impl StorageRPC for TEEAppHandler {
     type Error = ();
 
     fn read_data(&self, id: String) -> StdResult<Vec<u8>, Self::Error> {
@@ -212,7 +213,7 @@ impl DugongConnectionHandler {
             Ok((app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
                 trichechus_state.running_apps.insert(id, tee_app.clone());
-                let storage_server: Box<dyn TEEStorageServer> =
+                let storage_server: Box<dyn StorageRPCServer> =
                     Box::new(TEEAppHandler { state, tee_app });
                 Some(Box::new(AddEventSourceMutator(Some(Box::new(
                     RpcDispatcher::new(storage_server, transport),

@@ -9,14 +9,16 @@ use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 use std::marker::PhantomData;
 
-use libsirenia::storage::{self, Storable, Storage};
+use libsirenia::storage::{Storable, Storage};
+
+pub mod storage;
 
 #[derive(Debug)]
 pub enum Error {
     /// Error reading data from storage
-    ReadData(storage::Error),
+    ReadData(libsirenia::storage::Error),
     /// Error writing data to storage
-    WriteData(storage::Error),
+    WriteData(libsirenia::storage::Error),
 }
 
 impl Display for Error {
@@ -31,7 +33,7 @@ impl Display for Error {
 }
 
 /// The result of an operation in this crate.
-pub type Result<T> = std::result::Result<T, storage::Error>;
+pub type Result<T> = std::result::Result<T, libsirenia::storage::Error>;
 
 /// Represents some scoped data temporarily loaded from the backing store.
 pub struct ScopedData<S: Storable, T: Storage, R: BorrowMut<T>> {
@@ -100,7 +102,7 @@ impl<S: Storable, T: Storage, R: BorrowMut<T>> ScopedData<S, T, R> {
                     storage_phantom: PhantomData,
                 })
             }
-            Err(storage::Error::IdNotFound(_)) => {
+            Err(libsirenia::storage::Error::IdNotFound(_)) => {
                 let data = f(identifier);
                 let id = identifier.to_string();
                 Ok(ScopedData {
@@ -138,8 +140,8 @@ pub type ExclusiveScopedKeyValueStore<'a, S, T> = ScopedKeyValueStore<S, T, &'a 
 mod tests {
     use super::*;
 
+    use libsirenia::storage::StorableMember;
     use std::time::{SystemTime, UNIX_EPOCH};
-    use storage::StorableMember;
 
     const TEST_ID: &str = "id";
 
@@ -156,11 +158,11 @@ mod tests {
 
     impl Storage for MockStorage {
         fn read_raw(&mut self, id: &str) -> Result<Vec<u8>> {
-            Err(storage::Error::ReadData(None))
+            Err(libsirenia::storage::Error::ReadData(None))
         }
 
         fn write_raw(&mut self, id: &str, data: &[u8]) -> Result<()> {
-            Err(storage::Error::WriteData(None))
+            Err(libsirenia::storage::Error::WriteData(None))
         }
 
         fn read_data<S: Storable>(&mut self, id: &str) -> Result<S> {
@@ -169,7 +171,7 @@ mod tests {
                     let data = val.try_borrow::<S>().unwrap();
                     Ok(data.to_owned())
                 }
-                None => Err(storage::Error::IdNotFound(id.to_string())),
+                None => Err(libsirenia::storage::Error::IdNotFound(id.to_string())),
             }
         }
 
@@ -216,7 +218,7 @@ mod tests {
     fn read_id_not_found() {
         let mut store = MockStorage::new();
         assert_eq!(
-            storage::Error::IdNotFound(TEST_ID.to_string()).to_string(),
+            libsirenia::storage::Error::IdNotFound(TEST_ID.to_string()).to_string(),
             store.read_data::<String>(TEST_ID).unwrap_err().to_string()
         );
     }

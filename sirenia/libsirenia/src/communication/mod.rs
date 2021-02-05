@@ -11,10 +11,12 @@ pub mod persistence;
 
 use std::fmt::{self, Debug, Display};
 use std::io::{self, BufWriter, Read, Write};
+use std::result::Result as StdResult;
 
 use flexbuffers::FlexbufferSerializer;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use sirenia_rpc_macros::sirenia_rpc;
 use sys_util::info;
 
 pub const LENGTH_BYTE_SIZE: usize = 4;
@@ -51,7 +53,16 @@ impl Display for Error {
 }
 
 /// The result of an operation in this crate.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = StdResult<T, Error>;
+
+/// Definition for storage rpc needed both by manatee_runtime and sirenia
+#[sirenia_rpc]
+pub trait StorageRPC {
+    type Error;
+
+    fn read_data(&self, id: String) -> StdResult<Vec<u8>, Self::Error>;
+    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<(), Self::Error>;
+}
 
 // Reads a message from the given Read. First reads a u32 that says the length
 // of the serialized message, then reads the serialized message and
