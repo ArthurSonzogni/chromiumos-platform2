@@ -20,6 +20,11 @@
 
 namespace {
 
+// Return 2 as the exit status when the .pstore file doesn't exist. This value
+// is used to distinguish the reason of failure from other critial errors.
+constexpr int EXIT_NO_PSTORE_FILE = 2;
+static_assert(EXIT_NO_PSTORE_FILE != EXIT_FAILURE);
+
 bool GetPrimaryUsername(std::string* out_username) {
   DCHECK(out_username);
 
@@ -104,7 +109,7 @@ int main(int argc, char** argv) {
   } else if (!FindARCVMPstorePath(&path)) {
     LOG(ERROR)
         << "Failed to detect the .pstore file. Please use --file option.";
-    exit(EXIT_FAILURE);
+    exit(EXIT_NO_PSTORE_FILE);
   }
 
   if (!vm_tools::pstore_dump::HandlePstore(path)) {
