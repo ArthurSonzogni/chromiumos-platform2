@@ -42,6 +42,8 @@ class EuiccDBusAdaptor : public EuiccAdaptorInterface,
                               const std::string& in_root_smds) override;
   void RequestInstalledProfiles(
       std::unique_ptr<DBusResponse<>> response) override;
+  void SetTestMode(std::unique_ptr<DBusResponse<>> response,
+                   bool in_is_test_mode) override;
 
   // EuiccAdaptorInterface override.
   dbus::ObjectPath object_path() const override { return object_path_; }

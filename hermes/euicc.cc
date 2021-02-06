@@ -335,4 +335,19 @@ void Euicc::OnPendingProfilesReceived(
   result_callback.Success();
 }
 
+void Euicc::SetTestMode(ResultCallback<> result_callback, bool is_test_mode) {
+  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+  VLOG(2) << __func__ << " : is_test_mode" << is_test_mode;
+  context_->lpa()->SetTestMode(
+      is_test_mode, context_->executor(),
+      [result_callback{std::move(result_callback)}](int error) {
+        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+        if (decoded_error) {
+          result_callback.Error(decoded_error);
+          return;
+        }
+        result_callback.Success();
+      });
+}
+
 }  // namespace hermes

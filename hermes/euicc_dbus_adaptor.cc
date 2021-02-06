@@ -71,4 +71,11 @@ void EuiccDBusAdaptor::RequestInstalledProfiles(
   ResultCallback<> result_callback(std::move(response));
   euicc_->RequestInstalledProfiles(std::move(result_callback));
 }
+
+void EuiccDBusAdaptor::SetTestMode(std::unique_ptr<DBusResponse<>> response,
+                                   bool in_is_test_mode) {
+  ResultCallback<> result_callback(std::move(response));
+  euicc_->SetTestMode(std::move(result_callback), in_is_test_mode);
+}
+
 }  // namespace hermes

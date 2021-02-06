@@ -45,6 +45,7 @@ class Euicc {
                              ResultCallback<dbus::ObjectPath> result_callback);
   void RequestPendingProfiles(ResultCallback<> result_callback,
                               std::string root_smds);
+  void SetTestMode(ResultCallback<> result_callback, bool is_test_mode);
 
   uint8_t physical_slot() const { return physical_slot_; }
   dbus::ObjectPath object_path() const { return dbus_adaptor_->object_path(); }

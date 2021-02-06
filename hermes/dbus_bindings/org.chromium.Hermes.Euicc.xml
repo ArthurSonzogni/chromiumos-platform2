@@ -74,6 +74,14 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="SetTestMode">
+      <tp:docstring>
+        Set/unset test mode. If set to true, the LPA will list test profiles
+        and allow operations on them.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg name="is_test_mode" type="b" direction="in" />
+    </method>
 
     <property name="Eid" type="s" access="read" />
     <property name="InstalledProfiles" type="ao" access="read" />
