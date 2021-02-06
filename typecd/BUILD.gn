@@ -70,6 +70,7 @@ if (use.test) {
       "cable_test.cc",
       "cros_ec_util_test.cc",
       "partner_test.cc",
+      "peripheral_test.cc",
       "port_manager_test.cc",
       "port_test.cc",
       "test_utils.cc",

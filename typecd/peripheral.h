@@ -70,10 +70,17 @@ class Peripheral {
   // VDOs.
   void UpdatePDIdentityVDOs();
 
+  // Get the PD revision from sysfs. This is called during Peripheral
+  // creation and other times (e.g "change" udev events). We mark this as void
+  // as Peripheral registration should not fail if we are unable to grab the
+  // PD revision.
+  void UpdatePDRevision();
+
  private:
   friend class PartnerTest;
   FRIEND_TEST(PartnerTest, TestAltModeManualAddition);
   FRIEND_TEST(PartnerTest, TestPDIdentityScan);
+  FRIEND_TEST(PeripheralTest, CheckPDRevision);
 
   // PD Identity Data objects; expected to be read from the peripheral sysfs.
   uint32_t id_header_vdo_;

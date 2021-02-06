@@ -4,15 +4,29 @@
 
 #include "typecd/peripheral.h"
 
+#include <string>
+
 #include <base/logging.h>
+#include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 #include "typecd/utils.h"
+
+namespace {
+constexpr char kPDRevisionRegex[] = R"((\d)\.\d)";
+
+}  // namespace
 
 namespace typecd {
 
 Peripheral::Peripheral(const base::FilePath& syspath)
-    : id_header_vdo_(0), cert_stat_vdo_(0), product_vdo_(0), syspath_(syspath) {
+    : id_header_vdo_(0),
+      cert_stat_vdo_(0),
+      product_vdo_(0),
+      pd_revision_(PDRevision::kNone),
+      syspath_(syspath) {
   UpdatePDIdentityVDOs();
+  UpdatePDRevision();
 }
 
 void Peripheral::UpdatePDIdentityVDOs() {
@@ -71,6 +85,39 @@ void Peripheral::UpdatePDIdentityVDOs() {
   SetProductTypeVDO1(product_type_vdo1);
   SetProductTypeVDO2(product_type_vdo2);
   SetProductTypeVDO3(product_type_vdo3);
+}
+
+void Peripheral::UpdatePDRevision() {
+  if (GetPDRevision() != PDRevision::kNone)
+    return;
+
+  auto path = syspath_.Append("usb_power_delivery_revision");
+
+  std::string val_str;
+  if (!base::ReadFileToString(path, &val_str)) {
+    LOG(ERROR) << "Couldn't read value from path " << path;
+    return;
+  }
+  base::TrimWhitespaceASCII(val_str, base::TRIM_TRAILING, &val_str);
+
+  int maj;
+  if (!RE2::FullMatch(val_str, kPDRevisionRegex, &maj)) {
+    LOG(ERROR) << "PD revision in incorrect format: " << val_str;
+    return;
+  }
+
+  // TODO(pmalani): Handle min revision correctly. For now, we just use the
+  // major revision.
+  if (maj == 3) {
+    SetPDRevision(PDRevision::k30);
+  } else if (maj == 2) {
+    SetPDRevision(PDRevision::k20);
+  } else {
+    LOG(INFO) << "Unsupported PD revision: " << val_str;
+    return;
+  }
+
+  LOG(INFO) << "PD revision: " << val_str;
 }
 
 }  // namespace typecd
