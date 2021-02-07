@@ -237,6 +237,10 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
   ApplyInt(kPrefixlenProperty, &props->subnet_prefix);
   ApplyStrings(kExcludedRoutesProperty, &props->exclusion_list);
   ApplyRoutes(kIncludedRoutesProperty, props->gateway, &props->routes);
+  // Remove default route from the connection if IncludedRoutes is set.
+  if (!props->routes.empty()) {
+    props->default_route = false;
+  }
 }
 
 void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {

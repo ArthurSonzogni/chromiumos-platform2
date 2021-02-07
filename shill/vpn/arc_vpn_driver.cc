@@ -76,6 +76,7 @@ IPConfig::Properties ArcVpnDriver::GetIPProperties() const {
   // Currently L3 settings for ARC VPN are set from Chrome as
   // StaticIPProperty before connecting, so this will be mostly empty.
   IPConfig::Properties ip_properties;
+  // ARC always sets IncludedRoutes through StaticIPConfig.
   ip_properties.default_route = false;
   // IPv6 is not currently supported.  If the VPN is enabled, block all
   // IPv6 traffic so there is no "leak" past the VPN.
