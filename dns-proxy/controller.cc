@@ -4,6 +4,9 @@
 
 #include "dns-proxy/controller.h"
 
+#include <sys/capability.h>
+#include <sys/prctl.h>
+
 #include <vector>
 
 #include <base/bind.h>
@@ -34,6 +37,13 @@ Controller::~Controller() {
 
 int Controller::OnInit() {
   LOG(INFO) << "Starting DNS Proxy service";
+
+  // Preserve CAP_NET_BIND_SERVICE so the child processes have the capability.
+  // Without the ambient set, file capabilities need to be used.
+  if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_NET_BIND_SERVICE, 0, 0) !=
+      0) {
+    LOG(ERROR) << "Failed to add CAP_NET_BIND_SERVICE to the ambient set";
+  }
 
   // Handle subprocess lifecycle.
   process_reaper_.Register(this);
