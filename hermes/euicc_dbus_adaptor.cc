@@ -78,4 +78,8 @@ void EuiccDBusAdaptor::SetTestMode(std::unique_ptr<DBusResponse<>> response,
   euicc_->SetTestMode(std::move(result_callback), in_is_test_mode);
 }
 
+void EuiccDBusAdaptor::UseTestCerts(bool in_use_test_certs) {
+  euicc_->UseTestCerts(in_use_test_certs);
+}
+
 }  // namespace hermes

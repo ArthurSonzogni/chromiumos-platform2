@@ -44,6 +44,7 @@ class EuiccDBusAdaptor : public EuiccAdaptorInterface,
       std::unique_ptr<DBusResponse<>> response) override;
   void SetTestMode(std::unique_ptr<DBusResponse<>> response,
                    bool in_is_test_mode) override;
+  void UseTestCerts(bool in_use_test_certs) override;
 
   // EuiccAdaptorInterface override.
   dbus::ObjectPath object_path() const override { return object_path_; }

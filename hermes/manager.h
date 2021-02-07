@@ -21,10 +21,6 @@ class Manager final : public EuiccManagerInterface {
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
 
-  // Set/unset test mode. Normally, only production profiles may be
-  // downloaded. In test mode, only test profiles may be downloaded.
-  void SetTestMode(bool is_test_mode);
-
   // EuiccManagerInterface overrides.
   void OnEuiccUpdated(uint8_t physical_slot, EuiccSlotInfo slot_info) override;
   void OnEuiccRemoved(uint8_t physical_slot) override;

@@ -82,6 +82,15 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg name="is_test_mode" type="b" direction="in" />
     </method>
+    <method name="UseTestCerts">
+      <tp:docstring>
+        Set to true if downloading profiles from an SMDX with a
+        test certificate. Use this method to download profiles to
+        an esim from a test CI.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="use_test_certs" type="b" direction="in" />
+    </method>
 
     <property name="Eid" type="s" access="read" />
     <property name="InstalledProfiles" type="ao" access="read" />

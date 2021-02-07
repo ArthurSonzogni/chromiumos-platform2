@@ -20,11 +20,6 @@ Manager::Manager()
     : context_(Context::Get()),
       dbus_adaptor_(context_->adaptor_factory()->CreateManagerAdaptor(this)) {}
 
-void Manager::SetTestMode(bool is_test_mode) {
-  const std::string kPath("/usr/share/hermes-ca-certificates/");
-  context_->lpa()->SetTlsCertsDir(kPath + (is_test_mode ? "test/" : "prod/"));
-}
-
 void Manager::OnEuiccUpdated(uint8_t physical_slot, EuiccSlotInfo slot_info) {
   auto iter = available_euiccs_.find(physical_slot);
   if (iter == available_euiccs_.end()) {

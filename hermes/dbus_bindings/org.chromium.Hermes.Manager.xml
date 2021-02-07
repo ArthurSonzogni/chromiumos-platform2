@@ -7,13 +7,6 @@
 <node name="/org/chromium/Hermes/Manager"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 <interface name="org.chromium.Hermes.Manager">
-  <method name="SetTestMode">
-    <tp:docstring>
-      Set/unset test mode.
-    </tp:docstring>
-    <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-    <arg name="is_test_mode" type="b" direction="in" />
-  </method>
   <property name="AvailableEuiccs" type="ao" access="read" />
 </interface>
 </node>

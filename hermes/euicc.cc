@@ -350,4 +350,11 @@ void Euicc::SetTestMode(ResultCallback<> result_callback, bool is_test_mode) {
       });
 }
 
+void Euicc::UseTestCerts(bool use_test_certs) {
+  const std::string kPath("/usr/share/hermes-ca-certificates/");
+  // TODO(pholla): b/180422014 - all euicc's share the same LPA. Setting a euicc
+  // to use test certs will make other euiccs use test certs too.
+  context_->lpa()->SetTlsCertsDir(kPath + (use_test_certs ? "test/" : "prod/"));
+}
+
 }  // namespace hermes
