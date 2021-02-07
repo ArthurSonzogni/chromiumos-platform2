@@ -91,6 +91,18 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="use_test_certs" type="b" direction="in" />
     </method>
+    <method name="ResetMemory">
+      <tp:docstring>
+        Erase profiles on eUICC.
+      </tp:docstring>
+      <arg name="reset_options" type="i" direction="in" />
+      <tp:docstring>
+        "reset_options" can take two values as defined in SGP.22
+        1 - deleteOperationalProfiles
+        2 - deleteFieldLoadedTestProfiles
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
 
     <property name="Eid" type="s" access="read" />
     <property name="InstalledProfiles" type="ao" access="read" />

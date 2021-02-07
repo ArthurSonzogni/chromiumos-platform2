@@ -357,4 +357,29 @@ void Euicc::UseTestCerts(bool use_test_certs) {
   context_->lpa()->SetTlsCertsDir(kPath + (use_test_certs ? "test/" : "prod/"));
 }
 
+void Euicc::ResetMemory(ResultCallback<> result_callback, int reset_options) {
+  VLOG(2) << __func__ << " : reset_options: " << reset_options;
+  if (reset_options != lpa::data::reset_options::kDeleteOperationalProfiles &&
+      reset_options !=
+          lpa::data::reset_options::kDeleteFieldLoadedTestProfiles) {
+    result_callback.Error(brillo::Error::Create(
+        FROM_HERE, brillo::errors::dbus::kDomain, kErrorInvalidParameter,
+        "Illegal value for reset_options."));
+    return;
+  }
+
+  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+  bool reset_uicc = false;  // Ignored by the lpa.
+  context_->lpa()->ResetMemory(
+      reset_options, reset_uicc, context_->executor(),
+      [result_callback{std::move(result_callback)}](int error) {
+        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+        if (decoded_error) {
+          result_callback.Error(decoded_error);
+          return;
+        }
+        result_callback.Success();
+      });
+}
+
 }  // namespace hermes

@@ -82,4 +82,10 @@ void EuiccDBusAdaptor::UseTestCerts(bool in_use_test_certs) {
   euicc_->UseTestCerts(in_use_test_certs);
 }
 
+void EuiccDBusAdaptor::ResetMemory(std::unique_ptr<DBusResponse<>> response,
+                                   int in_reset_options) {
+  ResultCallback<> result_callback(std::move(response));
+  euicc_->ResetMemory(std::move(result_callback), in_reset_options);
+}
+
 }  // namespace hermes

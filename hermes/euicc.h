@@ -47,6 +47,7 @@ class Euicc {
                               std::string root_smds);
   void SetTestMode(ResultCallback<> result_callback, bool is_test_mode);
   void UseTestCerts(bool use_test_certs);
+  void ResetMemory(ResultCallback<> result_callback, int reset_options);
 
   uint8_t physical_slot() const { return physical_slot_; }
   dbus::ObjectPath object_path() const { return dbus_adaptor_->object_path(); }
