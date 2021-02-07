@@ -77,6 +77,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
     // all system traffic can use this connection.
     std::vector<uint32_t> allowed_uids;
     std::vector<std::string> allowed_iifs;
+    // Any egress traffic sent to prefixes listed in |included_dsts| will be
+    // routed through this connection, even if it is not the default connection.
+    std::vector<IPAddress> included_dsts;
     // Any egress traffic marked with a fwmark matching a FwMark in
     // |included_fwmarks| will be routed through this connection.
     std::vector<RoutingPolicyEntry::FwMark> included_fwmarks;

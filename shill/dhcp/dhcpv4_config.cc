@@ -265,6 +265,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
   }
 
   vector<IPConfig::Route> routes;
+  vector<IPAddress> destinations;
   vector<string>::iterator route_iterator = route_strings.begin();
   // Classless routes are a space-delimited array of
   // "destination/prefix gateway" values.  As such, we iterate twice
@@ -301,6 +302,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       route.prefix = destination.prefix();
       CHECK(gateway.IntoString(&route.gateway));
       routes.push_back(route);
+      destinations.push_back(destination);
       SLOG(nullptr, 2) << "In " << __func__ << ": Adding route to to "
                        << destination_as_string << " via " << gateway_as_string;
     }
@@ -308,6 +310,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
 
   if (!routes.empty()) {
     properties->routes.swap(routes);
+    properties->included_dsts.swap(destinations);
   }
 
   return true;

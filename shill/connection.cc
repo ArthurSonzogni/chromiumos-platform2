@@ -115,7 +115,6 @@ Connection::~Connection() {
 bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties) {
   bool ret = true;
 
-  allowed_dsts_.clear();
   IPAddress::Family address_family = properties.address_family;
   for (const auto& route : properties.routes) {
     SLOG(this, 2) << "Installing route:"
@@ -144,7 +143,6 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties) {
                 .SetTable(table_id_))) {
       ret = false;
     }
-    allowed_dsts_.push_back(destination_address);
   }
   return ret;
 }
@@ -177,6 +175,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   const IPConfig::Properties& properties = config->properties();
   allowed_uids_ = properties.allowed_uids;
   allowed_iifs_ = properties.allowed_iifs;
+  allowed_dsts_ = properties.included_dsts;
   included_fwmarks_ = properties.included_fwmarks;
   use_if_addrs_ =
       properties.use_if_addrs || technology_.IsPrimaryConnectivityTechnology();

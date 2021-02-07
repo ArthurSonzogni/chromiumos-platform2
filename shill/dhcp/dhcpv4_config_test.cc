@@ -189,6 +189,7 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
                                                         &properties));
   EXPECT_TRUE(properties.routes.empty());
+  EXPECT_TRUE(properties.included_dsts.empty());
   EXPECT_TRUE(properties.gateway.empty());
 
   // Gateway argument for the second route is malformed, but we were able
@@ -199,6 +200,7 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
                                                         &properties));
   EXPECT_TRUE(properties.routes.empty());
+  EXPECT_TRUE(properties.included_dsts.empty());
   EXPECT_EQ(kRouter0, properties.gateway);
 
   const string kRouter1 = "10.0.0.253";
@@ -213,6 +215,7 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   // The two routes (including the one which would have otherwise been
   // classified as a default route) are added to the routing table.
   EXPECT_EQ(2, properties.routes.size());
+  EXPECT_EQ(2, properties.included_dsts.size());
   const IPConfig::Route& route0 = properties.routes[0];
   EXPECT_EQ(kDefaultAddress, route0.host);
   EXPECT_EQ(0, route0.prefix);
@@ -227,6 +230,7 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
                                                         &properties));
   EXPECT_EQ(2, properties.routes.size());
+  EXPECT_EQ(2, properties.included_dsts.size());
   EXPECT_EQ(kRouter0, properties.gateway);
 }
 
