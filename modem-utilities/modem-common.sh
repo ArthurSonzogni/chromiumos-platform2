@@ -120,9 +120,9 @@ esim() {
   [ -z "${euicc}" ] && error_exit "No euicc found."
 
   case "${command}" in
-    set_test_mode)
+    use_test_certs)
       poll_for_dbus_service "${HERMES}"
-      esim_set_test_mode "$@"
+      esim_use_test_certs "${euicc}" "$@"
       ;;
     refresh_profiles)
       poll_for_dbus_service "${HERMES}"
@@ -158,7 +158,7 @@ esim() {
       ;;
     *)
       error_exit "Expected one of "\
-        "{set_test_mode|refresh_profiles|request_pending_profiles|status"\
+        "{use_test_certs|refresh_profiles|request_pending_profiles|status"\
         "install|install_pending_profile|uninstall|enable|disable}"
       ;;
   esac
@@ -208,10 +208,11 @@ esim_profile_from_iccid() {
   error_exit "No matching Profile found for iccid ${iccid}."
 }
 
-esim_set_test_mode() {
-  dbus_call "${HERMES}" "${HERMES_MANAGER_OBJECT}" \
-            "${HERMES_MANAGER_IFACE}.SetTestMode" \
-            boolean:"$1"
+esim_use_test_certs() {
+  local euicc="$1"
+  dbus_call "${HERMES}" "${euicc}" \
+            "${HERMES_EUICC_IFACE}.UseTestCerts" \
+            boolean:"$2"
 }
 
 esim_status() {
@@ -260,7 +261,6 @@ esim_install_pending_profile() {
   local euicc="$1"
   local profile
   profile=$(esim_profile_from_iccid "$@")
-  local confirmation_code="$3"
   dbus_call "${HERMES}" "${euicc}" \
             "${HERMES_EUICC_IFACE}.InstallPendingProfile" \
             objpath:"${profile}" string:"${confirmation_code}"

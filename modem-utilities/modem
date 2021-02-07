@@ -136,7 +136,7 @@ usage() {
   echo "Usage: $(basename $0) <command> [args...]"
   echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
   echo "  connect [-modem <modem>] [phone number]      Connect modem"
-  echo "  esim set_test_mode <true/false>              Set hermes to test mode"
+  echo "  esim use_test_certs <true/false>             Use test certs for TLS"
   echo "  esim refresh_profiles [-euicc <euicc>]       Get list of profiles " \
     "from eSIM"
   echo "  esim request_pending_profiles [-euicc <euicc>] [smds] " \
