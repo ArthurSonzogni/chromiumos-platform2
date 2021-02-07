@@ -128,7 +128,7 @@ bool Cable::TBT3PDIdentityCheck() {
   }
 
   auto usb_speed = GetProductTypeVDO1() & kUSBSpeedBitMask;
-  if (GetPDRevision() == kPDRevision30) {
+  if (GetPDRevision() == PDRevision::k30) {
     return usb_speed == kUSBSuperSpeed32Gen1 ||
            usb_speed == kUSBSuperSpeed32Or40Gen2 ||
            usb_speed == kUSB40SuperSpeedGen3;

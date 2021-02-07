@@ -161,7 +161,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueStartech) {
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
   // PD ID VDOs for the Startech.com TB3DK2DPW Alpine Ridge Dock.
-  port->partner_->SetPDRevision(kPDRevision20);
+  port->partner_->SetPDRevision(PDRevision::k20);
   port->partner_->SetIdHeaderVDO(0xd4008087);
   port->partner_->SetCertStatVDO(0x0);
   port->partner_->SetProductVDO(0x0);
@@ -181,7 +181,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueStartech) {
   port->AddCable(base::FilePath(kFakePort0CableSysPath));
 
   // StarTech Passive Cable 40 Gbps PD 2.0
-  port->cable_->SetPDRevision(kPDRevision20);
+  port->cable_->SetPDRevision(PDRevision::k20);
   port->cable_->SetIdHeaderVDO(0x1c0020c2);
   port->cable_->SetCertStatVDO(0x000000b6);
   port->cable_->SetProductVDO(0x00010310);
@@ -201,7 +201,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckFalseStartech) {
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
   // PD ID VDOs for the Startech.com TB3DK2DPW Alpine Ridge Dock.
-  port->partner_->SetPDRevision(kPDRevision20);
+  port->partner_->SetPDRevision(PDRevision::k20);
   port->partner_->SetIdHeaderVDO(0xd4008087);
   port->partner_->SetCertStatVDO(0x0);
   port->partner_->SetProductVDO(0x0);
@@ -221,7 +221,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckFalseStartech) {
   port->AddCable(base::FilePath(kFakePort0CableSysPath));
 
   // Nekteck USB 2.0 cable (5A).
-  port->cable_->SetPDRevision(kPDRevision30);
+  port->cable_->SetPDRevision(PDRevision::k30);
   port->cable_->SetIdHeaderVDO(0x18002e98);
   port->cable_->SetCertStatVDO(0x00001533);
   port->cable_->SetProductVDO(0x00010200);
@@ -240,7 +240,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueWD19TB) {
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
   // PD ID VDOs for the Dell WD19TB Titan Ridge Dock.
-  port->partner_->SetPDRevision(kPDRevision30);
+  port->partner_->SetPDRevision(PDRevision::k30);
   port->partner_->SetIdHeaderVDO(0x4c0041c3);
   port->partner_->SetCertStatVDO(0x0);
   port->partner_->SetProductVDO(0xb0700712);
@@ -280,7 +280,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueWD19TB) {
   port->AddCable(base::FilePath(kFakePort0CableSysPath));
 
   // Dell's cable is captive.
-  port->cable_->SetPDRevision(kPDRevision30);
+  port->cable_->SetPDRevision(PDRevision::k30);
   port->cable_->SetIdHeaderVDO(0x1c00413c);
   port->cable_->SetCertStatVDO(0x0);
   port->cable_->SetProductVDO(0xb052000);
@@ -300,7 +300,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveTBT3Cable) {
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
   // PD ID VDOs for the Gatkex creek USB4 dock..
-  port->partner_->SetPDRevision(kPDRevision30);
+  port->partner_->SetPDRevision(PDRevision::k30);
   port->partner_->SetIdHeaderVDO(0x4c800000);
   port->partner_->SetCertStatVDO(0x0);
   port->partner_->SetProductVDO(0x0);
@@ -328,7 +328,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveTBT3Cable) {
   // Set up fake sysfs paths and add a cable.
   port->AddCable(base::FilePath(kFakePort0CableSysPath));
 
-  port->cable_->SetPDRevision(kPDRevision30);
+  port->cable_->SetPDRevision(PDRevision::k30);
   port->cable_->SetIdHeaderVDO(0x1c002b1d);
   port->cable_->SetCertStatVDO(0x0);
   port->cable_->SetProductVDO(0x150c0001);
@@ -356,7 +356,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveNonTBT3Cable) {
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
   // PD ID VDOs for the Gatkex creek USB4 dock..
-  port->partner_->SetPDRevision(kPDRevision30);
+  port->partner_->SetPDRevision(PDRevision::k30);
   port->partner_->SetIdHeaderVDO(0x4c800000);
   port->partner_->SetCertStatVDO(0x0);
   port->partner_->SetProductVDO(0x0);
@@ -384,7 +384,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveNonTBT3Cable) {
   // Set up fake sysfs paths and add a cable.
   port->AddCable(base::FilePath(kFakePort0CableSysPath));
 
-  port->cable_->SetPDRevision(kPDRevision20);
+  port->cable_->SetPDRevision(PDRevision::k20);
   port->cable_->SetIdHeaderVDO(0x18005694);
   port->cable_->SetCertStatVDO(0x88);
   port->cable_->SetProductVDO(0xce901a0);
@@ -406,7 +406,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexPassiveNonTBT3Cable) {
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
   // PD ID VDOs for the Gatkex creek USB4 dock..
-  port->partner_->SetPDRevision(kPDRevision30);
+  port->partner_->SetPDRevision(PDRevision::k30);
   port->partner_->SetIdHeaderVDO(0x4c800000);
   port->partner_->SetCertStatVDO(0x0);
   port->partner_->SetProductVDO(0x0);
@@ -434,7 +434,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexPassiveNonTBT3Cable) {
   // Set up fake sysfs paths and add a cable.
   port->AddCable(base::FilePath(kFakePort0CableSysPath));
 
-  port->cable_->SetPDRevision(kPDRevision30);
+  port->cable_->SetPDRevision(PDRevision::k30);
   port->cable_->SetIdHeaderVDO(0x18002e98);
   port->cable_->SetCertStatVDO(0x1533);
   port->cable_->SetProductVDO(0x10200);
@@ -459,7 +459,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
 
   port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
   // PD ID VDOs for the Gatkex creek USB4 dock..
-  port->partner_->SetPDRevision(kPDRevision30);
+  port->partner_->SetPDRevision(PDRevision::k30);
   port->partner_->SetIdHeaderVDO(0x4c800000);
   port->partner_->SetCertStatVDO(0x0);
   port->partner_->SetProductVDO(0x0);
@@ -487,7 +487,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
   // Set up fake sysfs paths and add a cable.
   port->AddCable(base::FilePath(kFakePort0CableSysPath));
 
-  port->cable_->SetPDRevision(kPDRevision20);
+  port->cable_->SetPDRevision(PDRevision::k20);
   port->cable_->SetIdHeaderVDO(0x240020c2);
   port->cable_->SetCertStatVDO(0x0);
   port->cable_->SetProductVDO(0x40010);

@@ -16,8 +16,11 @@
 
 namespace typecd {
 
-constexpr uint8_t kPDRevision30 = 0x3;
-constexpr uint8_t kPDRevision20 = 0x2;
+enum class PDRevision {
+  kNone = 0,
+  k20,
+  k30,
+};
 
 // This is a base class which can represent the components connected to a Type C
 // Port. These components (Partner and Cable) have common properties like PD
@@ -47,7 +50,7 @@ class Peripheral {
   void SetProductTypeVDO3(uint32_t product_type_vdo) {
     product_type_vdo3_ = product_type_vdo;
   }
-  void SetPDRevision(uint8_t pd_revision) { pd_revision_ = pd_revision; }
+  void SetPDRevision(PDRevision pd_revision) { pd_revision_ = pd_revision; }
 
   uint32_t GetIdHeaderVDO() { return id_header_vdo_; }
   uint32_t GetCertStateVDO() { return cert_stat_vdo_; }
@@ -56,7 +59,7 @@ class Peripheral {
   uint32_t GetProductTypeVDO1() { return product_type_vdo1_; }
   uint32_t GetProductTypeVDO2() { return product_type_vdo2_; }
   uint32_t GetProductTypeVDO3() { return product_type_vdo3_; }
-  uint8_t GetPDRevision() { return pd_revision_; }
+  PDRevision GetPDRevision() { return pd_revision_; }
 
  protected:
   base::FilePath GetSysPath() { return syspath_; }
@@ -79,7 +82,7 @@ class Peripheral {
   uint32_t product_type_vdo1_;
   uint32_t product_type_vdo2_;
   uint32_t product_type_vdo3_;
-  uint8_t pd_revision_;
+  PDRevision pd_revision_;
   // Sysfs path used to access peripheral PD information.
   base::FilePath syspath_;
 };

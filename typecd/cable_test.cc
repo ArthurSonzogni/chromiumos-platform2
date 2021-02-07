@@ -24,7 +24,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   auto cable = std::make_unique<Cable>(base::FilePath(kFakePort0CableSysPath));
 
   // Apple Active TBT3 Pro Cable PD 3.0
-  cable->SetPDRevision(kPDRevision30);
+  cable->SetPDRevision(PDRevision::k30);
   cable->SetIdHeaderVDO(0x240005ac);
   cable->SetCertStatVDO(0x0);
   cable->SetProductVDO(0x72043002);
@@ -34,7 +34,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   EXPECT_TRUE(cable->TBT3PDIdentityCheck());
 
   // Apple Active TBT3 Pro Cable PD 2.0
-  cable->SetPDRevision(kPDRevision20);
+  cable->SetPDRevision(PDRevision::k20);
   cable->SetIdHeaderVDO(0x240005ac);
   cable->SetCertStatVDO(0x0);
   cable->SetProductVDO(0x72043002);
@@ -44,7 +44,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   EXPECT_TRUE(cable->TBT3PDIdentityCheck());
 
   // StarTech Passive Cable 40 Gbps PD 2.0
-  cable->SetPDRevision(kPDRevision20);
+  cable->SetPDRevision(PDRevision::k20);
   cable->SetIdHeaderVDO(0x1c0020c2);
   cable->SetCertStatVDO(0x000000b6);
   cable->SetProductVDO(0x00010310);
@@ -54,7 +54,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   EXPECT_TRUE(cable->TBT3PDIdentityCheck());
 
   // Nekteck 100W USB 2.0 5A Cable PD 3.0
-  cable->SetPDRevision(kPDRevision20);
+  cable->SetPDRevision(PDRevision::k20);
   cable->SetIdHeaderVDO(0x18002e98);
   cable->SetCertStatVDO(0x00001533);
   cable->SetProductVDO(0x00010200);
@@ -64,7 +64,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   EXPECT_FALSE(cable->TBT3PDIdentityCheck());
 
   // Nekteck 100W USB 2.0 Cable PD 2.0
-  cable->SetPDRevision(kPDRevision20);
+  cable->SetPDRevision(PDRevision::k20);
   cable->SetIdHeaderVDO(0x18002e98);
   cable->SetCertStatVDO(0x00001533);
   cable->SetProductVDO(0x00010200);
