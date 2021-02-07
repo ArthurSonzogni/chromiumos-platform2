@@ -89,6 +89,7 @@ void Partner::UpdatePDInfoFromSysfs() {
   if (GetNumAltModes() == -1)
     SetNumAltModes(ParseNumAltModes());
   UpdatePDIdentityVDOs();
+  UpdatePDRevision();
 }
 
 int Partner::ParseNumAltModes() {
