@@ -19,11 +19,12 @@ constexpr char kPDRevisionRegex[] = R"((\d)\.\d)";
 
 namespace typecd {
 
-Peripheral::Peripheral(const base::FilePath& syspath)
+Peripheral::Peripheral(const base::FilePath& syspath, std::string type)
     : id_header_vdo_(0),
       cert_stat_vdo_(0),
       product_vdo_(0),
       pd_revision_(PDRevision::kNone),
+      type_(type),
       syspath_(syspath) {
   UpdatePDIdentityVDOs();
   UpdatePDRevision();
@@ -54,29 +55,29 @@ void Peripheral::UpdatePDIdentityVDOs() {
 
   if (!ReadHexFromPath(product, &product_vdo))
     return;
-  LOG(INFO) << "Peripheral Product VDO: " << std::hex << product_vdo;
+  LOG(INFO) << type_ << " Product VDO: " << std::hex << product_vdo;
 
   if (!ReadHexFromPath(cert_stat, &cert_stat_vdo))
     return;
-  LOG(INFO) << "Peripheral Cert stat VDO: " << std::hex << cert_stat_vdo;
+  LOG(INFO) << type_ << " Cert stat VDO: " << std::hex << cert_stat_vdo;
 
   if (!ReadHexFromPath(id_header, &id_header_vdo))
     return;
-  LOG(INFO) << "Peripheral Id Header VDO: " << std::hex << id_header_vdo;
+  LOG(INFO) << type_ << " Id Header VDO: " << std::hex << id_header_vdo;
 
   if (!ReadHexFromPath(product_type1, &product_type_vdo1))
     return;
-  LOG(INFO) << "Peripheral Product Type VDO 1: " << std::hex
+  LOG(INFO) << type_ << " Product Type VDO 1: " << std::hex
             << product_type_vdo1;
 
   if (!ReadHexFromPath(product_type2, &product_type_vdo2))
     return;
-  LOG(INFO) << "Peripheral Product Type VDO 2: " << std::hex
+  LOG(INFO) << type_ << " Product Type VDO 2: " << std::hex
             << product_type_vdo2;
 
   if (!ReadHexFromPath(product_type3, &product_type_vdo3))
     return;
-  LOG(INFO) << "Peripheral Product Type VDO 3: " << std::hex
+  LOG(INFO) << type_ << " Product Type VDO 3: " << std::hex
             << product_type_vdo3;
 
   SetIdHeaderVDO(id_header_vdo);

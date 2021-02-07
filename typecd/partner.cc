@@ -21,7 +21,7 @@ constexpr char kPartnerAltModeRegex[] = R"(port(\d+)-partner.(\d+))";
 namespace typecd {
 
 Partner::Partner(const base::FilePath& syspath)
-    : Peripheral(syspath), num_alt_modes_(-1) {
+    : Peripheral(syspath, "Partner"), num_alt_modes_(-1) {
   // Search for all alt modes which were already registered prior to daemon
   // init.
   base::FileEnumerator iter(GetSysPath(), false,

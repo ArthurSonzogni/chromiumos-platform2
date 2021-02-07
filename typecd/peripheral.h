@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -28,7 +29,8 @@ enum class PDRevision {
 // which they can then derive from.
 class Peripheral {
  public:
-  explicit Peripheral(const base::FilePath& syspath);
+  explicit Peripheral(const base::FilePath& syspath,
+                      std::string type = "Peripheral");
   Peripheral(const Peripheral&) = delete;
   Peripheral& operator=(const Peripheral&) = delete;
 
@@ -90,6 +92,9 @@ class Peripheral {
   uint32_t product_type_vdo2_;
   uint32_t product_type_vdo3_;
   PDRevision pd_revision_;
+  // Helper member to denote the type of Peripheral (Partner/Cable) while
+  // printing log messages. For the base class, set it to "Peripheral".
+  std::string type_;
   // Sysfs path used to access peripheral PD information.
   base::FilePath syspath_;
 };

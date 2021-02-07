@@ -22,7 +22,7 @@ namespace typecd {
 class Cable : public Peripheral {
  public:
   explicit Cable(const base::FilePath& syspath)
-      : Peripheral(syspath), num_alt_modes_(-1) {}
+      : Peripheral(syspath, "Cable"), num_alt_modes_(-1) {}
   Cable(const Cable&) = delete;
   Cable& operator=(const Cable&) = delete;
 
