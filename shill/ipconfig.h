@@ -62,6 +62,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::vector<std::string> domain_search;
     std::string gateway;
     std::string method;
+    // The address of the remote endpoint for pointopoint interfaces.
+    // Note that presense of this field indicates that this is a p2p interface,
+    // and a gateway won't be needed in creating routes on this interface.
     std::string peer_address;
     // Each map represents a single address or prefix in a DHCPv6 lease.
     // Multiple addresses can be returned with different lifetimes, for example

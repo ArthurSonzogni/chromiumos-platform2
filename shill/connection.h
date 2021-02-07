@@ -147,7 +147,8 @@ class Connection : public base::RefCounted<Connection> {
                               IPAddress* gateway);
   // Allow for the routes specified in |properties.routes| to be served by this
   // connection.
-  bool SetupIncludedRoutes(const IPConfig::Properties& properties);
+  bool SetupIncludedRoutes(const IPConfig::Properties& properties,
+                           bool ignore_gateway);
   // Ensure the destination subnets specified in |properties.exclusion_list|
   // will not be served by this connection.
   bool SetupExcludedRoutes(const IPConfig::Properties& properties,

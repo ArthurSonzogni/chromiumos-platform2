@@ -112,7 +112,8 @@ Connection::~Connection() {
   }
 }
 
-bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties) {
+bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
+                                     bool ignore_gateway) {
   bool ret = true;
 
   IPAddress::Family address_family = properties.address_family;
@@ -133,6 +134,9 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties) {
       LOG(ERROR) << "Failed to parse gateway " << route.gateway;
       ret = false;
       continue;
+    }
+    if (ignore_gateway) {
+      gateway_address.SetAddressToDefault();
     }
     destination_address.set_prefix(route.prefix);
     if (!routing_table_->AddRoute(
@@ -213,6 +217,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     LOG(ERROR) << "Peer address " << properties.peer_address << " is invalid";
     return;
   }
+  bool is_p2p = peer.IsValid();
 
   if (!SetupExcludedRoutes(properties, gateway)) {
     return;
@@ -268,7 +273,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
                                          IPAddress::kFamilyIPv6, 0, table_id_);
   }
 
-  if (!SetupIncludedRoutes(properties)) {
+  if (!SetupIncludedRoutes(properties, /*ignore_gateway =*/is_p2p)) {
     LOG(WARNING) << "Failed to set up additional routes";
   }
 
@@ -293,7 +298,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
 
   local_ = local;
   gateway_ = gateway;
-  has_broadcast_domain_ = !peer.IsValid();
+  has_broadcast_domain_ = !is_p2p;
 }
 
 void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
