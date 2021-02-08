@@ -123,6 +123,9 @@ union SpeechRecognizerEvent {
   FinalResult final_result;
 };
 
+// This interface is called upon by the SodaRecognizer. Implemented by
+// the client, SODA then calls these as 'events' with appropriate details
+// when recognition occurs.
 interface SodaClient {
   // After SODA successfully starts / warms up / stops, in case the client
   // cares:
@@ -138,10 +141,17 @@ interface SodaClient {
 interface SodaRecognizer {
   // Add Audio for speech recognition.
   AddAudio@0(array<uint8> audio);
-  //
+
+  // Instruct SODA to stop processing immediately. Stopping is
+  // confirmed when SodaClient::OnStop is called back.
   Stop@1();
-  //
+
+  // Instruct SODA to start processing. Noop if already
+  // processing. When Stopped, causes a SodAclient::OnStart callback.
   Start@2();
-  //
+
+  // Instruct SODA to stop processing after all queued audio is
+  // processed.  Will eventually result in a SodaClient::OnStop, but only
+  // after all audio currently in queue is decoded.
   MarkDone@3();
 };
