@@ -37,12 +37,31 @@ namespace {
 constexpr int64_t kTimeoutSeconds = 30;
 // File where the TPM seed is stored, that we have to read from.
 constexpr char kBioTpmSeedTmpFile[] = "/run/bio_crypto_init/seed";
+
+int ChildProcess(biod::BioCryptoInit* bio_crypto_init) {
+  // The first thing we do is read the buffer, and delete the file.
+  brillo::SecureVector tpm_seed(biod::FpSeedCommand::kTpmSeedSize);
+  int bytes_read =
+      base::ReadFile(base::FilePath(kBioTpmSeedTmpFile),
+                     reinterpret_cast<char*>(tpm_seed.data()), tpm_seed.size());
+  bio_crypto_init->NukeFile(base::FilePath(kBioTpmSeedTmpFile));
+
+  if (bytes_read != biod::FpSeedCommand::kTpmSeedSize) {
+    LOG(ERROR) << "Failed to read TPM seed from tmpfile: " << bytes_read;
+    return -1;
+  }
+
+  return bio_crypto_init->DoProgramSeed(tpm_seed) ? 0 : -1;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
   // Set up logging settings.
   DEFINE_string(log_dir, "/var/log/bio_crypto_init",
                 "Directory where logs are written.");
+  DEFINE_bool(seccomp, false,
+              "Exercise all code paths to generate a good strace for seccomp.");
 
   brillo::FlagHelper::Init(argc, argv,
                            "bio_crypto_init, the Chromium OS binary to program "
@@ -70,6 +89,10 @@ int main(int argc, char* argv[]) {
 
   biod::LogVersion();
 
+  if (FLAGS_seccomp) {
+    LOG(INFO) << "WARNING: The seccomp flag is enabled. Expect errors.";
+  }
+
   biod::BioCryptoInit bio_crypto_init(
       std::make_unique<biod::EcCommandFactory>());
 
@@ -83,18 +106,15 @@ int main(int argc, char* argv[]) {
   }
 
   if (pid == 0) {
-    // The first thing we do is read the buffer, and delete the file.
-    brillo::SecureVector tpm_seed(biod::FpSeedCommand::kTpmSeedSize);
-    int bytes_read = base::ReadFile(base::FilePath(kBioTpmSeedTmpFile),
-                                    reinterpret_cast<char*>(tpm_seed.data()),
-                                    tpm_seed.size());
-    bio_crypto_init.NukeFile(base::FilePath(kBioTpmSeedTmpFile));
-
-    if (bytes_read != biod::FpSeedCommand::kTpmSeedSize) {
-      LOG(ERROR) << "Failed to read TPM seed from tmpfile: " << bytes_read;
-      return -1;
+    int exit_code_child = ChildProcess(&bio_crypto_init);
+    if (FLAGS_seccomp) {
+      // Wait for timeout to terminate this process.
+      // We aren't yielding this thread, since we don't want to tamper with the
+      // strace results (syscalls seen or syscall frequency).
+      while (true) {
+      }
     }
-    return bio_crypto_init.DoProgramSeed(tpm_seed) ? 0 : -1;
+    return exit_code_child;
   }
 
   auto process = base::Process::Open(pid);

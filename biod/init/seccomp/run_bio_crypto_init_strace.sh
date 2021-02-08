@@ -27,4 +27,4 @@ dd if=/dev/urandom of="${SEED}" bs=32 count=1
 chown biod:biod "${SEED}"
 
 strace -ff -o "${OUTPUT_DIR}/strace.log" -u biod \
-    /usr/bin/bio_crypto_init --log_dir=/var/log/bio_crypto_init
+    /usr/bin/bio_crypto_init --log_dir=/var/log/bio_crypto_init --seccomp
