@@ -958,8 +958,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
-      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "upload_var_cros_milestone=82\n"
       "os_millis=%" PRId64
       "\n"
@@ -983,8 +983,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
-      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "upload_var_cros_milestone=82\n"
       "os_millis=%" PRId64
       "\n"
@@ -1006,8 +1006,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "weird__key___=weird\\nvalue\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
-      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "upload_var_cros_milestone=82\n"
       "os_millis=%" PRId64
       "\n"
@@ -1083,8 +1083,8 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=crash_reporter_failure\n"
-      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "upload_var_cros_milestone=82\n"
       "os_millis=%" PRId64
       "\n"

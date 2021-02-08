@@ -101,15 +101,14 @@ void ArcvmKernelCollector::AddArcMetadata(
   AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
   AddCrashMetaUploadData(arc_util::kProcessField, kKernelExecName);
   AddCrashMetaUploadData(arc_util::kCrashTypeField, kArcvmKernelCrashType);
-  AddCrashMetaUploadData(arc_util::kChromeOsVersionField,
-                         CrashCollector::GetOsVersion());
+  AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
   for (const auto& metadata :
        arc_util::ListMetadataForBuildProperty(build_property)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
   }
 }
 
-std::string ArcvmKernelCollector::GetOsVersion() const {
+std::string ArcvmKernelCollector::GetProductVersion() const {
   std::string version;
   return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
 }

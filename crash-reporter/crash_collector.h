@@ -369,13 +369,16 @@ class CrashCollector {
   std::string GetLsbReleaseValue(const std::string& key) const;
 
   // Returns the OS version written to the metadata file.
-  virtual std::string GetOsVersion() const;
+  std::string GetOsVersion() const;
 
   // Returns the OS milestone written to the metadata file.
-  virtual std::string GetOsMilestone() const;
+  std::string GetOsMilestone() const;
 
   // Returns the OS description written to the metadata file.
-  virtual std::string GetOsDescription() const;
+  std::string GetOsDescription() const;
+
+  // Returns the product version written to the metadata file.
+  virtual std::string GetProductVersion() const;
 
   // Returns the kernel name from uname (e.g. "Linux").
   std::string GetKernelName() const;

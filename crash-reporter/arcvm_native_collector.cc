@@ -80,8 +80,7 @@ void ArcvmNativeCollector::AddArcMetadata(
   AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
   AddCrashMetaUploadData(arc_util::kProcessField, crash_info.exec_name);
   AddCrashMetaUploadData(arc_util::kCrashTypeField, kArcvmNativeCrashType);
-  AddCrashMetaUploadData(arc_util::kChromeOsVersionField,
-                         CrashCollector::GetOsVersion());
+  AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
   for (auto metadata : arc_util::ListMetadataForBuildProperty(build_property)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
   }
@@ -109,7 +108,7 @@ bool ArcvmNativeCollector::DumpFdToFile(base::ScopedFD src_fd,
   }
 }
 
-std::string ArcvmNativeCollector::GetOsVersion() const {
+std::string ArcvmNativeCollector::GetProductVersion() const {
   std::string version;
   return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
 }

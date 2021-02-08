@@ -219,7 +219,7 @@ bool ArcCollector::ArcContext::ReadAuxvForProcess(pid_t pid,
   return base::ReadFileToStringWithMaxSize(auxv_path, contents, kMaxAuxvSize);
 }
 
-std::string ArcCollector::GetOsVersion() const {
+std::string ArcCollector::GetProductVersion() const {
   std::string version;
   return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
 }
@@ -324,8 +324,7 @@ void ArcCollector::AddArcMetaData(const std::string& process,
   AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
   AddCrashMetaUploadData(arc_util::kProcessField, process);
   AddCrashMetaUploadData(arc_util::kCrashTypeField, crash_type);
-  AddCrashMetaUploadData(arc_util::kChromeOsVersionField,
-                         CrashCollector::GetOsVersion());
+  AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
 
   arc_util::BuildProperty build_property;
 

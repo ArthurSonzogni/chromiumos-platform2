@@ -1200,6 +1200,10 @@ std::string CrashCollector::GetOsDescription() const {
   return GetLsbReleaseValue(kLsbOsDescriptionKey);
 }
 
+std::string CrashCollector::GetProductVersion() const {
+  return GetOsVersion();
+}
+
 std::string CrashCollector::GetKernelName() const {
   struct utsname buf;
   if (!test_kernel_name_.empty())
@@ -1255,7 +1259,10 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
 
   LOG(INFO) << "Finishing crash. Meta file: " << meta_path.value();
 
-  const std::string version = GetOsVersion();
+  const std::string product_version = GetProductVersion();
+  std::string product_version_info =
+      StringPrintf("ver=%s\n", product_version.c_str());
+
   const std::string milestone = GetOsMilestone();
   const std::string description = GetOsDescription();
   base::Time os_timestamp = util::GetOsTimestamp();
@@ -1268,11 +1275,9 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
 
   std::string lsb_release_info = StringPrintf(
       "upload_var_lsb-release=%s\n"
-      "ver=%s\n"
       "upload_var_cros_milestone=%s\n"
       "%s",
-      description.c_str(), version.c_str(), milestone.c_str(),
-      os_timestamp_str.c_str());
+      description.c_str(), milestone.c_str(), os_timestamp_str.c_str());
 
   const std::string kernel_name = GetKernelName();
   const std::string kernel_version = GetKernelVersion();
@@ -1281,7 +1286,8 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
       "upload_var_osVersion=%s\n",
       kernel_name.c_str(), kernel_version.c_str());
 
-  std::string version_info = lsb_release_info + kernel_info;
+  std::string version_info =
+      product_version_info + lsb_release_info + kernel_info;
 
   std::string in_progress_test;
   if (base::ReadFileToString(paths::GetAt(paths::kSystemRunStateDirectory,
