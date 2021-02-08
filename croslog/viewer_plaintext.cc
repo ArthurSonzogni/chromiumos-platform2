@@ -17,11 +17,25 @@
 #include "croslog/log_parser_audit.h"
 #include "croslog/log_parser_syslog.h"
 #include "croslog/severity.h"
-#include "croslog/standard_log_paths.h"
 
 namespace croslog {
 
 namespace {
+
+const char* kLogSources[] = {
+    // Log files from rsyslog:
+    // clang-format off
+    "/var/log/arc.log",
+    "/var/log/boot.log",
+    "/var/log/hammerd.log",
+    "/var/log/messages",
+    "/var/log/net.log",
+    "/var/log/secure",
+    "/var/log/upstart.log",
+    // clang-format on
+};
+
+const char kAuditLogSources[] = "/var/log/audit/audit.log";
 
 int64_t ToMicrosecondsSinceUnixEpoch(base::Time time) {
   return (time - base::Time::UnixEpoch()).InMicroseconds();

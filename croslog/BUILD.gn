@@ -3,13 +3,9 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
-import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [
-    ":croslog",
-    ":log-metrics-collector",
-  ]
+  deps = [ ":croslog" ]
   if (use.test) {
     deps += [ ":croslog_testrunner" ]
   }
@@ -39,19 +35,15 @@ static_library("libcroslog_static") {
     "log_parser_audit.h",
     "log_parser_syslog.cc",
     "log_parser_syslog.h",
-    "metrics_collector_util.cc",
-    "metrics_collector_util.h",
     "multiplexer.cc",
     "multiplexer.h",
     "severity.cc",
     "severity.h",
-    "standard_log_paths.h",
     "viewer_journal.cc",
     "viewer_journal.h",
     "viewer_plaintext.cc",
     "viewer_plaintext.h",
   ]
-  pkg_deps = [ "re2" ]
   configs += [ ":target_defaults" ]
 }
 
@@ -59,6 +51,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "re2",
   ]
 }
 
@@ -70,6 +63,10 @@ executable("croslog") {
 }
 
 if (use.test) {
+  pkg_config("croslog_testrunner_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
   executable("croslog_testrunner") {
     sources = [
       "boot_records_test.cc",
@@ -80,7 +77,6 @@ if (use.test) {
       "log_line_reader_test.cc",
       "log_parser_audit_test.cc",
       "log_parser_syslog_test.cc",
-      "metrics_collector_util_test.cc",
       "multiplexer_test.cc",
       "testrunner.cc",
       "viewer_plaintext_test.cc",
@@ -89,17 +85,9 @@ if (use.test) {
     defines = [ "UNIT_TEST" ]
     configs += [
       "//common-mk:test",
+      ":croslog_testrunner_config",
       ":target_defaults",
     ]
-    pkg_deps = [ "libchrome-test" ]
     deps = [ ":libcroslog_static" ]
   }
-}
-
-executable("log-metrics-collector") {
-  sources = [ "metrics_collector.cc" ]
-  install_path = "sbin"
-  configs += [ ":target_defaults" ]
-  pkg_deps = [ "libmetrics" ]
-  deps = [ ":libcroslog_static" ]
 }
