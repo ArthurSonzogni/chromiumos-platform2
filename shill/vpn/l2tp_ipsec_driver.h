@@ -17,14 +17,12 @@
 
 #include "shill/ipconfig.h"
 #include "shill/rpc_task.h"
-#include "shill/service.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
 
 class CertificateFile;
 class ExternalTask;
-class PPPDeviceFactory;
 
 class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
  public:
@@ -34,7 +32,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
 
   ~L2TPIPSecDriver() override;
 
- protected:
+  // Inherited from VPNDriver.
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   IPConfig::Properties GetIPProperties() const override;

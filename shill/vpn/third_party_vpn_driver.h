@@ -16,8 +16,6 @@
 
 #include "shill/ipconfig.h"
 #include "shill/net/io_handler.h"
-#include "shill/refptr_types.h"
-#include "shill/service.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {

@@ -7,15 +7,10 @@
 
 #include <string>
 
-#include <base/callback.h>
 #include <gtest/gtest_prod.h>
 
-#include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/ipconfig.h"
-#include "shill/refptr_types.h"
-#include "shill/service.h"
-#include "shill/virtual_device.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
@@ -36,8 +31,6 @@ class ArcVpnDriver : public VPNDriver {
   IPConfig::Properties GetIPProperties() const override;
 
  private:
-  friend class ArcVpnDriverTest;
-
   static const Property kProperties[];
 
   // Called in ConnectAsync() by PostTask(), to make sure |handler| is valid.

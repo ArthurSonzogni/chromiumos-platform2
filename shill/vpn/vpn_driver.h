@@ -16,7 +16,6 @@
 #include "shill/callbacks.h"
 #include "shill/key_value_store.h"
 #include "shill/mockable.h"
-#include "shill/refptr_types.h"
 #include "shill/service.h"
 
 namespace shill {

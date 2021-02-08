@@ -15,9 +15,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/net/sockets.h"
-#include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
-#include "shill/service.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
@@ -39,6 +37,18 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   OpenVPNDriver& operator=(const OpenVPNDriver&) = delete;
 
   ~OpenVPNDriver() override;
+
+  // Inherited from VPNDriver. This driver first creates a tunnel interface
+  // via DeviceInfo, and then sets up and spawns an external 'openvpn' process.
+  // IP configuration settings are passed back from the external process through
+  // the |Notify| RPC service method.
+  base::TimeDelta ConnectAsync(EventHandler* handler) override;
+  void Disconnect() override;
+  IPConfig::Properties GetIPProperties() const override;
+  std::string GetProviderType() const override;
+  void OnConnectTimeout() override;
+  void OnDefaultPhysicalServiceEvent(
+      DefaultPhysicalServiceEvent event) override;
 
   virtual void OnReconnecting(ReconnectReason reason);
 
@@ -84,19 +94,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   bool AppendFlag(const std::string& property,
                   const std::string& option,
                   std::vector<std::vector<std::string>>* options);
-
- protected:
-  // Inherited from VPNDriver. This driver first creates a tunnel interface
-  // via DeviceInfo, and then sets up and spawns an external 'openvpn' process.
-  // IP configuration settings are passed back from the external process through
-  // the |Notify| RPC service method.
-  base::TimeDelta ConnectAsync(EventHandler* handler) override;
-  void Disconnect() override;
-  IPConfig::Properties GetIPProperties() const override;
-  std::string GetProviderType() const override;
-  void OnConnectTimeout() override;
-  void OnDefaultPhysicalServiceEvent(
-      DefaultPhysicalServiceEvent event) override;
 
  private:
   friend class OpenVPNDriverTest;
