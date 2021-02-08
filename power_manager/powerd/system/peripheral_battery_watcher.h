@@ -36,6 +36,21 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   static const char kStatusFile[];
   // kStatusFile value used to report an unknown status.
   static const char kStatusValueUnknown[];
+  // kStatusFile value used to report battery is full.
+  static const char kStatusValueFull[];
+  // kStatusFile value used to report battery is charging.
+  static const char kStatusValueCharging[];
+  // kStatusFile value used to report battery is discharging.
+  static const char kStatusValueDischarging[];
+  // kStatusFile value used to report battery is not charging.
+  static const char kStatusValueNotcharging[];
+
+  // sysfs file containing a battery's health.
+  static const char kHealthFile[];
+  // kHealthFile value used to report an unknown health.
+  static const char kHealthValueUnknown[];
+  // kHealthFile value used to report good health.
+  static const char kHealthValueGood[];
 
   // sysfs file containing a battery's model name.
   static const char kModelNameFile[];
@@ -62,7 +77,7 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
 
  private:
   // Reads battery status of a single peripheral device and send out a signal.
-  void ReadBatteryStatus(const base::FilePath& path);
+  void ReadBatteryStatus(const base::FilePath& path, bool active_update);
 
   // Handler for a periodic event that reads the peripheral batteries'
   // level.
@@ -71,22 +86,36 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   // Detects if |device_path| in /sys/class/power_supply is a peripheral device.
   bool IsPeripheralDevice(const base::FilePath& device_path) const;
 
+  // Detects if |device_path| in /sys/class/power_supply is a charger of
+  // peripheral devices.
+  bool IsPeripheralChargerDevice(const base::FilePath& device_path) const;
+
+  // Retrieves state of charge from status and health entries in
+  // /sys/class/power_supply
+  int ReadChargeStatus(const base::FilePath& path) const;
+
   // Fills |battery_list| with paths containing information about
   // peripheral batteries.
   void GetBatteryList(std::vector<base::FilePath>* battery_list);
 
   // Sends the battery status through D-Bus using powerd's
-  // PeripheralBatteryStatus signal.
+  // PeripheralBatteryStatus signal, including current charge level and
+  // charge status. active_update is true if this was an event
+  // driven update, not just polled.
   // Note: Battery status of Bluetooth devices is not advertised using powerd's
   // PeripheralBatteryStatus signal, but communicated to BlueZ using BlueZ's
   // Battery provider API.
   void SendBatteryStatus(const base::FilePath& path,
                          const std::string& model_name,
-                         int level);
+                         int level,
+                         int charge_status,
+                         bool active_update);
 
   // Asynchronous I/O success and error handlers, respectively.
   void ReadCallback(const base::FilePath& path,
                     const std::string& model_name,
+                    int status,
+                    bool active_update,
                     const std::string& data);
   void ErrorCallback(const base::FilePath& path, const std::string& model_name);
 

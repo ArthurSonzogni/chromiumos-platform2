@@ -36,7 +36,10 @@ const char kDefaultPeripheralBatteryPath[] = "/sys/class/power_supply/";
 // Default interval for polling the device battery info.
 const int kDefaultPollIntervalMs = 600000;
 
-const char kBluetoothAddressRegex[] = "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$";
+constexpr char kBluetoothAddressRegex[] =
+    "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$";
+
+constexpr char kPeripheralChargerRegex[] = ".*/PCHG([0-9]+)$";
 
 // Reads |path| to |value_out| and trims trailing whitespace. False is returned
 // if the file doesn't exist or can't be read.
@@ -58,7 +61,14 @@ const char PeripheralBatteryWatcher::kScopeFile[] = "scope";
 const char PeripheralBatteryWatcher::kScopeValueDevice[] = "Device";
 const char PeripheralBatteryWatcher::kStatusFile[] = "status";
 const char PeripheralBatteryWatcher::kStatusValueUnknown[] = "Unknown";
+const char PeripheralBatteryWatcher::kStatusValueFull[] = "Full";
+const char PeripheralBatteryWatcher::kStatusValueCharging[] = "Charging";
+const char PeripheralBatteryWatcher::kStatusValueDischarging[] = "Discharging";
+const char PeripheralBatteryWatcher::kStatusValueNotcharging[] = "Not charging";
 const char PeripheralBatteryWatcher::kModelNameFile[] = "model_name";
+const char PeripheralBatteryWatcher::kHealthFile[] = "health";
+const char PeripheralBatteryWatcher::kHealthValueUnknown[] = "Unknown";
+const char PeripheralBatteryWatcher::kHealthValueGood[] = "Good";
 const char PeripheralBatteryWatcher::kCapacityFile[] = "capacity";
 const char PeripheralBatteryWatcher::kUdevSubsystem[] = "power_supply";
 
@@ -99,7 +109,7 @@ void PeripheralBatteryWatcher::OnUdevEvent(const UdevEvent& event) {
 
   // An event of a peripheral device is detected through udev, Refresh the
   // battery status of that device.
-  ReadBatteryStatus(path);
+  ReadBatteryStatus(path, true);
 }
 
 bool PeripheralBatteryWatcher::IsPeripheralDevice(
@@ -108,6 +118,12 @@ bool PeripheralBatteryWatcher::IsPeripheralDevice(
   std::string scope;
   return (ReadStringFromFile(device_path.Append(kScopeFile), &scope) &&
           scope == kScopeValueDevice);
+}
+
+bool PeripheralBatteryWatcher::IsPeripheralChargerDevice(
+    const base::FilePath& device_path) const {
+  // Peripheral chargers have specific names.
+  return (RE2::FullMatch(device_path.value(), kPeripheralChargerRegex));
 }
 
 void PeripheralBatteryWatcher::GetBatteryList(
@@ -122,9 +138,11 @@ void PeripheralBatteryWatcher::GetBatteryList(
       continue;
 
     // Some devices may initially have an unknown status; avoid reporting
-    // them: http://b/64392016
+    // them: http://b/64392016. Unknown status for chargers is always
+    // interesting.
     std::string status;
-    if (ReadStringFromFile(device_path.Append(kStatusFile), &status) &&
+    if (!IsPeripheralChargerDevice(device_path) &&
+        ReadStringFromFile(device_path.Append(kStatusFile), &status) &&
         status == kStatusValueUnknown)
       continue;
 
@@ -132,22 +150,64 @@ void PeripheralBatteryWatcher::GetBatteryList(
   }
 }
 
-void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path) {
+int PeripheralBatteryWatcher::ReadChargeStatus(
+    const base::FilePath& path) const {
+  // sysfs entry "status" has the current charge status, "health" has battery
+  // health.
+  base::FilePath status_path = path.Append(kStatusFile);
+  base::FilePath health_path = path.Append(kHealthFile);
+
+  // NOTE: This code is assuming that the status and health sysfs files are
+  // relatively fast to read, and will not trigger significant delays, i.e.,
+  // do not involve Bluetooth traffic to possibly non-responsive receivers.
+
+  // First check health; if it is known and not good, report an error.
+  std::string health;
+  if (ReadStringFromFile(health_path, &health)) {
+    if (health != kHealthValueUnknown && health != kHealthValueGood) {
+      return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_ERROR;
+    }
+  }
+
+  // Then check general status, looking for known states.
+  std::string status;
+  if (!ReadStringFromFile(status_path, &status))
+    return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN;
+
+  if (status == kStatusValueCharging)
+    return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_CHARGING;
+  else if (status == kStatusValueDischarging)
+    return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_DISCHARGING;
+  else if (status == kStatusValueNotcharging)
+    return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_NOT_CHARGING;
+  else if (status == kStatusValueFull)
+    return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_FULL;
+  else
+    return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN;
+}
+
+void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
+                                                 bool active_update) {
   // sysfs entry "capacity" has the current battery level.
   base::FilePath capacity_path = path.Append(kCapacityFile);
   if (!base::PathExists(capacity_path))
     return;
 
   std::string model_name;
-  if (!ReadStringFromFile(path.Append(kModelNameFile), &model_name))
+  if (!IsPeripheralChargerDevice(path) &&
+      !ReadStringFromFile(path.Append(kModelNameFile), &model_name))
     return;
+
+  int status;
+  status = ReadChargeStatus(path);
 
   battery_readers_.push_back(std::make_unique<AsyncFileReader>());
   AsyncFileReader* reader = battery_readers_.back().get();
 
   if (reader->Init(capacity_path)) {
     reader->StartRead(base::Bind(&PeripheralBatteryWatcher::ReadCallback,
-                                 base::Unretained(this), path, model_name),
+                                 base::Unretained(this), path, model_name,
+                                 status, active_update),
                       base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
                                  base::Unretained(this), path, model_name));
   } else {
@@ -162,7 +222,7 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
   GetBatteryList(&new_battery_list);
 
   for (const base::FilePath& path : new_battery_list) {
-    ReadBatteryStatus(path);
+    ReadBatteryStatus(path, false);
   }
 
   poll_timer_.Start(FROM_HERE,
@@ -172,7 +232,9 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
 
 void PeripheralBatteryWatcher::SendBatteryStatus(const base::FilePath& path,
                                                  const std::string& model_name,
-                                                 int level) {
+                                                 int level,
+                                                 int charge_status,
+                                                 bool active_update) {
   std::string address;
   RE2::FullMatch(path.value(), ".*hid-(.+)-battery", &address);
   if (RE2::FullMatch(address, kBluetoothAddressRegex)) {
@@ -184,20 +246,26 @@ void PeripheralBatteryWatcher::SendBatteryStatus(const base::FilePath& path,
   PeripheralBatteryStatus proto;
   proto.set_path(path.value());
   proto.set_name(model_name);
+  proto.set_charge_status(
+      (power_manager::PeripheralBatteryStatus_ChargeStatus)charge_status);
   if (level >= 0)
     proto.set_level(level);
+  proto.set_active_update(active_update);
+
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kPeripheralBatteryStatusSignal,
                                               proto);
 }
 
 void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
                                             const std::string& model_name,
+                                            int status,
+                                            bool active_update,
                                             const std::string& data) {
   std::string trimmed_data;
   base::TrimWhitespaceASCII(data, base::TRIM_ALL, &trimmed_data);
   int level = -1;
   if (base::StringToInt(trimmed_data, &level)) {
-    SendBatteryStatus(path, model_name, level);
+    SendBatteryStatus(path, model_name, level, status, active_update);
   } else {
     LOG(ERROR) << "Invalid battery level reading : [" << data << "]"
                << " from " << path.value();
@@ -206,7 +274,9 @@ void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
 
 void PeripheralBatteryWatcher::ErrorCallback(const base::FilePath& path,
                                              const std::string& model_name) {
-  SendBatteryStatus(path, model_name, -1);
+  SendBatteryStatus(path, model_name, -1,
+                    PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN,
+                    false);
 }
 
 void PeripheralBatteryWatcher::OnRefreshBluetoothBatteryMethodCall(
@@ -230,7 +300,8 @@ void PeripheralBatteryWatcher::OnRefreshBluetoothBatteryMethodCall(
   if (RE2::FullMatch(address, kBluetoothAddressRegex)) {
     base::FilePath path = base::FilePath(peripheral_battery_path_)
                               .Append(SysnameFromBluetoothAddress(address));
-    ReadBatteryStatus(path);
+    ReadBatteryStatus(path,
+                      true /* active, as bluetooth will interrogate device */);
   }
 
   // Best effort, always return success.
