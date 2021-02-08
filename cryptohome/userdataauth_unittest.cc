@@ -1645,8 +1645,9 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Ephemeral) {
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Invoke(EnumerateSparseFiles));
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
-      .Times(kEphemeralMountsCount);
+  EXPECT_CALL(platform_, ExpireMount(_))
+      .Times(kEphemeralMountsCount)
+      .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
   for (int i = 0; i < kEphemeralMountsCount; ++i) {
     EXPECT_CALL(platform_, Unmount(kLoopDevMounts[i].dst, true, _))
@@ -1676,16 +1677,12 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral) {
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Invoke(EnumerateSparseFiles));
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
-      .Times(kEphemeralMountsCount - 1);
-  std::vector<ProcessInformation> processes(1);
-  std::vector<std::string> cmd_line(1, "test");
-  processes[0].set_process_id(1);
-  processes[0].set_cmd_line(&cmd_line);
-  EXPECT_CALL(platform_,
-              GetProcessesWithOpenFiles(FilePath("/home/chronos/user"), _))
+  EXPECT_CALL(platform_, ExpireMount(_))
+      .Times(kEphemeralMountsCount - 1)
+      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+  EXPECT_CALL(platform_, ExpireMount(FilePath("/home/chronos/user")))
       .Times(1)
-      .WillRepeatedly(SetArgPointee<1>(processes));
+      .WillRepeatedly(Return(ExpireMountResult::kBusy));
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(FilePath("/dev/loop7"), _))
       .WillOnce(Return(false));
@@ -1710,7 +1707,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral_Forced) {
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Invoke(EnumerateSparseFiles));
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _)).Times(0);
+  EXPECT_CALL(platform_, ExpireMount(_)).Times(0);
 
   for (int i = 0; i < kEphemeralMountsCount; ++i) {
     EXPECT_CALL(platform_, Unmount(kLoopDevMounts[i].dst, true, _))
@@ -1740,8 +1737,9 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
-      .Times(kShadowMounts.size());
+  EXPECT_CALL(platform_, ExpireMount(_))
+      .Times(kShadowMounts.size())
+      .WillRepeatedly(Return(ExpireMountResult::kMarked));
   EXPECT_CALL(platform_, Unmount(_, true, _))
       .Times(kShadowMounts.size())
       .WillRepeatedly(Return(true));
@@ -1795,20 +1793,21 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Return(false));
-  std::vector<ProcessInformation> processes(1);
-  std::vector<std::string> cmd_line(1, "test");
-  processes[0].set_process_id(1);
-  processes[0].set_cmd_line(&cmd_line);
-  // In addition to /home/chronos/user mount point, /home/.shadow/a/Downloads
-  // is not considered anymore, as it is under /home/.shadow/a.
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
-      .Times(kShadowMounts.size() - 3);
   EXPECT_CALL(platform_,
-              GetProcessesWithOpenFiles(FilePath("/home/chronos/user"), _))
-      .Times(1)
-      .WillRepeatedly(SetArgPointee<1>(processes));
-  // Given /home/chronos/user is still used, a is still used, so only
-  // b mounts should be removed.
+              ExpireMount(Property(&FilePath::value, EndsWith("/0"))))
+      .WillRepeatedly(Return(ExpireMountResult::kBusy));
+  EXPECT_CALL(platform_, ExpireMount(FilePath("/home/chronos/user")))
+      .WillRepeatedly(Return(ExpireMountResult::kBusy));
+  EXPECT_CALL(platform_,
+              ExpireMount(Property(
+                  &FilePath::value,
+                  AnyOf(EndsWith("/1"), EndsWith("b/MyFiles/Downloads")))))
+      .Times(4)
+      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+  EXPECT_CALL(platform_, ExpireMount(FilePath("/daemon-store/server/b")))
+      .WillOnce(Return(ExpireMountResult::kMarked));
+  // Given /home/chronos/user and a is marked as active, only b mounts should be
+  // removed.
   EXPECT_CALL(
       platform_,
       Unmount(Property(&FilePath::value,
@@ -1818,6 +1817,11 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Unmount(FilePath("/daemon-store/server/b"), true, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              Unmount(Property(&FilePath::value, EndsWith("/0")), true, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), true, _))
+      .Times(0);
   EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
 }
 
@@ -1884,7 +1888,9 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
       .WillOnce(Return(false));
   // Only 5 look ups: user/1 and root/1 are owned, children of these
   // directories are excluded.
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _)).Times(5);
+  EXPECT_CALL(platform_, ExpireMount(_))
+      .Times(5)
+      .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
   EXPECT_CALL(*mount, OwnsMountPoint(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/user/1")))
@@ -1985,7 +1991,7 @@ TEST_F(UserDataAuthTest,
       .WillOnce(Return(false));
   // Only 5 look ups: user/1 and root/1 are owned, children of these
   // directories are excluded.
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _)).Times(5);
+  EXPECT_CALL(platform_, ExpireMount(_)).Times(5);
 
   EXPECT_CALL(*mount, OwnsMountPoint(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/user/1")))

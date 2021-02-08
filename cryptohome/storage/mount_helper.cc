@@ -1046,19 +1046,6 @@ void MountHelper::ForceUnmount(const FilePath& src, const FilePath& dest) {
   if (!platform_->Unmount(dest, false, &was_busy)) {
     LOG(ERROR) << "Couldn't unmount '" << dest.value()
                << "' immediately, was_busy=" << std::boolalpha << was_busy;
-    if (was_busy) {
-      std::vector<ProcessInformation> processes;
-      platform_->GetProcessesWithOpenFiles(dest, &processes);
-      for (const auto& proc : processes) {
-        LOG(ERROR) << "Process " << proc.get_process_id() << " had "
-                   << proc.get_open_files().size()
-                   << " open files.  Command line: " << proc.GetCommandLine();
-        if (proc.get_cwd().length()) {
-          LOG(ERROR) << "  (" << proc.get_process_id()
-                     << ") CWD: " << proc.get_cwd();
-        }
-      }
-    }
     // Failed to unmount immediately, do a lazy unmount.  If |was_busy| we also
     // want to sync before the unmount to help prevent data loss.
     if (was_busy)

@@ -243,10 +243,6 @@ class MockPlatform : public Platform {
               CreateProcessInstance,
               (),
               (override));
-  MOCK_METHOD(void,
-              GetProcessesWithOpenFiles,
-              (const base::FilePath&, std::vector<ProcessInformation>*),
-              (override));
   MOCK_METHOD(bool,
               SetGroupAccessible,
               (const base::FilePath&, gid_t group_id, mode_t group_mode),

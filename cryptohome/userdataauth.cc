@@ -651,15 +651,21 @@ bool UserDataAuth::FilterActiveMounts(
 
       // Optionally, ignore mounts with open files.
       if (!keep && !include_busy_mount) {
-        std::vector<ProcessInformation> processes;
-        platform_->GetProcessesWithOpenFiles(match->second, &processes);
-        if (processes.size()) {
-          const std::vector<std::string> cmd_line = processes[0].get_cmd_line();
-          const std::string first_cmd =
-              (cmd_line.size() > 0 ? cmd_line[0] : "<empty>");
+        // Mark the mount points that are not in use as 'expired'. Add the mount
+        // points to the |active_mounts| list if they are not expired.
+        ExpireMountResult expire_mount_result =
+            platform_->ExpireMount(match->second);
+        if (expire_mount_result == ExpireMountResult::kBusy) {
           LOG(WARNING) << "Stale mount " << match->second.value() << " from "
-                       << match->first.value() << " has " << processes.size()
-                       << " active holders. First one " << first_cmd;
+                       << match->first.value() << " has active holders.";
+          keep = true;
+          skipped = true;
+        } else if (expire_mount_result == ExpireMountResult::kError) {
+          // To avoid unloading any pkcs11 token that is in use, add mount point
+          // to the |active_mounts| if it is failed to be expired.
+          LOG(ERROR) << "Stale mount " << match->second.value() << " from "
+                     << match->first.value()
+                     << " failed to be removed from active mounts list.";
           keep = true;
           skipped = true;
         }

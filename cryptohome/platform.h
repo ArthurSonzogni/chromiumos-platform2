@@ -53,8 +53,6 @@ extern const std::vector<std::string> kDefaultExt4FormatOpts;
 // Loop devices prefix.
 extern const char kLoopPrefix[];
 
-class ProcessInformation;
-
 // Decoded content of /proc/<id>/mountinfo file that has format:
 // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=..
 // (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9)         (10)
@@ -241,15 +239,6 @@ class Platform {
   // Returns an instance of class brillo::Process that can be mocked out in
   // tests.
   virtual std::unique_ptr<brillo::Process> CreateProcessInstance();
-
-  // GetProcessesWithOpenFiles
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  //   pids (OUT) - The PIDs found
-  virtual void GetProcessesWithOpenFiles(
-      const base::FilePath& path_in,
-      std::vector<ProcessInformation>* processes);
 
   // Calls the platform stat() or lstat() function to obtain the ownership of
   // a given path. The path may be a directory or a file.
@@ -934,24 +923,6 @@ class Platform {
   virtual base::FilePath GetStatefulDevice();
 
  private:
-  // Returns the process and open file information for the specified process id
-  // with files open on the given path
-  //
-  // Parameters
-  //   pid - The process to check
-  //   path_in - The file path to check for
-  //   process_info (OUT) - The ProcessInformation to store the results in
-  void GetProcessOpenFileInformation(pid_t pid,
-                                     const base::FilePath& path_in,
-                                     ProcessInformation* process_info);
-
-  // Returns a vector of PIDs that have files open on the given path
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  //   pids (OUT) - The PIDs found
-  void LookForOpenFiles(const base::FilePath& path, std::vector<pid_t>* pids);
-
   // Returns true if child is a file or folder below or equal to parent.  If
   // parent is a directory, it should end with a '/' character.
   //
