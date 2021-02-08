@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 # This file lists out the seccomp policy for allowed syscalls on cups_proxy.
+access: 1
 accept4: 1
 bind: 1
 brk: 1
