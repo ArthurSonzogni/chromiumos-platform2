@@ -1150,7 +1150,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     // Check if l1tf and mds mitigations are present on the host. Skip the
     // checks if untrusted VMs are requested in developer mode on insecure
     // kernels. This is done to support testing by developers.
-    if (untrusted_vm_check_result.skip_host_checks) {
+    if (!untrusted_vm_check_result.skip_host_checks) {
       switch (untrusted_vm_utils_->CheckUntrustedVMMitigationStatus()) {
         // If the host kernel version isn't supported or the host doesn't have
         // l1tf and mds mitigations then fail to start an untrusted VM.
