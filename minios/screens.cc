@@ -957,9 +957,7 @@ bool Screens::MapRegionToKeyboard(std::string* xkb_keyboard_layout) {
   base::JSONReader::ValueWithError json_output =
       base::JSONReader::ReadAndReturnValueWithError(cros_region_json);
   if (!json_output.value || !json_output.value->is_dict()) {
-    LOG(ERROR) << "Could not read json. " << json_output.error_message
-               << " and exit code "
-               << base::JSONReader::ErrorCodeToString(json_output.error_code);
+    LOG(ERROR) << "Could not read json. " << json_output.error_message;
     return false;
   }
 
