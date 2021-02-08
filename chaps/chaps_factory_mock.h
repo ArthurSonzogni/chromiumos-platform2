@@ -32,7 +32,7 @@ class ChapsFactoryMock : public ChapsFactory {
   MOCK_METHOD1(CreateObjectPolicy, ObjectPolicy*(CK_OBJECT_CLASS));
   MOCK_METHOD3(CreateObjectImporter,
                ObjectImporter*(int, const base::FilePath&, TPMUtility*));
-  MOCK_METHOD0(CreateSlotPolicy, SlotPolicy*());
+  MOCK_METHOD1(CreateSlotPolicy, SlotPolicy*(bool));
 };
 
 }  // namespace chaps

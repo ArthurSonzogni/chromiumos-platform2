@@ -45,7 +45,7 @@ class ChapsFactory {
   virtual ObjectImporter* CreateObjectImporter(int slot_id,
                                                const base::FilePath& path,
                                                TPMUtility* tpm_utility) = 0;
-  virtual SlotPolicy* CreateSlotPolicy() = 0;
+  virtual SlotPolicy* CreateSlotPolicy(bool is_shared_slot) = 0;
 };
 
 }  // namespace chaps

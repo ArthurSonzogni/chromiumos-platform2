@@ -28,6 +28,7 @@
 #include "chaps/object_importer.h"
 #include "chaps/session.h"
 #include "chaps/slot_policy_default.h"
+#include "chaps/slot_policy_shared_slot.h"
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
@@ -659,7 +660,8 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
     return true;
   }
 
-  shared_ptr<SlotPolicy> slot_policy(factory_->CreateSlotPolicy());
+  shared_ptr<SlotPolicy> slot_policy(
+      factory_->CreateSlotPolicy(IsSharedSlot(path)));
 
   // Setup the object pool.
   *slot_id = FindEmptySlot();
@@ -776,6 +778,10 @@ bool SlotManagerImpl::InitializeSoftwareToken(const SecureBlob& auth_data,
     return false;
   }
   return true;
+}
+
+bool SlotManagerImpl::IsSharedSlot(const FilePath& path) {
+  return path == FilePath(kSystemTokenPath);
 }
 
 void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,

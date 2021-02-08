@@ -490,7 +490,7 @@ class SoftwareOnlyTest : public TestSlotManager {
 
   void SetUp() override {
     // Use our own SlotPolicyFactory and ObjectPoolFactory.
-    EXPECT_CALL(factory_, CreateSlotPolicy())
+    EXPECT_CALL(factory_, CreateSlotPolicy(false))
         .WillRepeatedly(
             InvokeWithoutArgs(this, &SoftwareOnlyTest::SlotPolicyFactory));
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
@@ -583,6 +583,20 @@ TEST_F(SoftwareOnlyTest, CreateNew) {
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
                                        kTokenLabel, &slot_id));
+  EXPECT_TRUE(slot_manager_->IsTokenAccessible(ic_, slot_id));
+  // Check that an encryption key gets set for a load.
+  EXPECT_EQ(1, set_encryption_key_num_calls_);
+  // Check that there was no attempt to destroy a previous token.
+  EXPECT_EQ(0, delete_all_num_calls_);
+}
+
+TEST_F(SoftwareOnlyTest, CreateNewShared) {
+  int slot_id = 0;
+  EXPECT_CALL(factory_, CreateSlotPolicy(true))
+      .WillOnce(InvokeWithoutArgs(this, &SoftwareOnlyTest::SlotPolicyFactory));
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_, base::FilePath(kSystemTokenPath),
+                                       MakeBlob(kAuthData), kTokenLabel,
+                                       &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(ic_, slot_id));
   // Check that an encryption key gets set for a load.
   EXPECT_EQ(1, set_encryption_key_num_calls_);

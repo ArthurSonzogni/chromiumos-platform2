@@ -22,6 +22,7 @@
 #include "chaps/opencryptoki_importer.h"
 #include "chaps/session_impl.h"
 #include "chaps/slot_policy_default.h"
+#include "chaps/slot_policy_shared_slot.h"
 
 using base::FilePath;
 using std::string;
@@ -79,9 +80,10 @@ ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
   return new OpencryptokiImporter(slot_id, path, tpm_utility, this);
 }
 
-SlotPolicy* ChapsFactoryImpl::CreateSlotPolicy() {
-  // TODO(https://crbug.com/1132030): Create a special slot policy for shared
-  // slots.
+SlotPolicy* ChapsFactoryImpl::CreateSlotPolicy(bool is_shared_slot) {
+  if (is_shared_slot) {
+    return new SlotPolicySharedSlot();
+  }
   return new SlotPolicyDefault();
 }
 

@@ -2,24 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chaps/slot_policy_default.h"
+#include "chaps/slot_policy_shared_slot.h"
 
 #include "chaps/slot_policy_common.h"
 
 namespace chaps {
 
-SlotPolicyDefault::SlotPolicyDefault() = default;
+SlotPolicySharedSlot::SlotPolicySharedSlot() = default;
 
-SlotPolicyDefault::~SlotPolicyDefault() = default;
+SlotPolicySharedSlot::~SlotPolicySharedSlot() = default;
 
-bool SlotPolicyDefault::IsObjectClassAllowedForNewObject(
+bool SlotPolicySharedSlot::IsObjectClassAllowedForNewObject(
     CK_OBJECT_CLASS object_class) {
   // TODO(https://crbug.com/1132030): Disallow NSS trust objects.
   return true;
 }
 
-bool SlotPolicyDefault::IsObjectClassAllowedForImportedObject(
+bool SlotPolicySharedSlot::IsObjectClassAllowedForImportedObject(
     CK_OBJECT_CLASS object_class) {
+  // TODO(https://crbug.com/1132030): Disallow NSS trust objects.
   return true;
 }
 

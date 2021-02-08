@@ -179,6 +179,8 @@ class SlotManagerImpl : public SlotManager,
   bool InitializeSoftwareToken(const brillo::SecureBlob& auth_data,
                                ObjectPool* object_pool);
 
+  bool IsSharedSlot(const base::FilePath& path);
+
   ChapsFactory* factory_;
   int last_handle_;
   MechanismMap mechanism_info_;

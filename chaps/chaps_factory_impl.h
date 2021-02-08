@@ -33,7 +33,7 @@ class ChapsFactoryImpl : public ChapsFactory {
   ObjectImporter* CreateObjectImporter(int slot_id,
                                        const base::FilePath& path,
                                        TPMUtility* tpm_utility) override;
-  SlotPolicy* CreateSlotPolicy() override;
+  SlotPolicy* CreateSlotPolicy(bool is_shared_slot) override;
 
   static ObjectPolicy* GetObjectPolicyForType(CK_OBJECT_CLASS type);
 };
