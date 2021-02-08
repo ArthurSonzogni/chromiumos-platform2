@@ -9,6 +9,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 
 # Chrome OS file contexts.
 /([^/]+)?                       u:object_r:rootfs:s0
+/sys                            u:object_r:sysfs:s0
 /usr/[^/]+                      u:object_r:cros_usr_dirs:s0
 /usr/share(/.*)?                u:object_r:cros_usr_dirs:s0
 /usr/local/[^/]+                u:object_r:cros_dev_image_files:s0
