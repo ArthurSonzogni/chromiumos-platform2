@@ -819,7 +819,25 @@ bool Platform::SafeCreateDirAndSetOwnershipAndPermissions(
 
   auto path_result =
       root_fd_result.first.MakeDir(path, mode, user_id, group_id);
-  return path_result.second == brillo::SafeFD::Error::kNoError;
+  if (path_result.second != brillo::SafeFD::Error::kNoError) {
+    return false;
+  }
+
+  // mkdirat, which is used within MakeDir, only sets permissions under 01777
+  // mask. There should be a separate chmod to allow SetGid and SetUid modes.
+  // It is done here in a safe manner by doing fchmod on the returned
+  // descriptor.
+  constexpr mode_t mkdirat_mask = 01777;
+  if ((mode & ~mkdirat_mask) == 0) {
+    return true;
+  }
+  if (HANDLE_EINTR(fchmod(path_result.first.get(), mode)) != 0) {
+    PLOG(ERROR) << "Failed to set permissions in MakeDir() for \""
+                << path.value() << '"';
+    return false;
+  }
+
+  return true;
 }
 
 bool Platform::SafeCreateDirAndSetOwnership(const base::FilePath& path,

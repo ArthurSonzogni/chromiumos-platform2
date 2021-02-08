@@ -533,17 +533,6 @@ bool MountHelper::MountDaemonStoreDirectories(
       LOG(ERROR) << "Failed to create directory " << mount_source.value();
       return false;
     }
-    // TODO(dlunev): Find a way to remove this case. The only reason it is
-    // present here is because makedir ignores SetGid permissions, which causes
-    // crash-reporter to try to change permissions on a mounted crash directory,
-    // which causes SIGSYS.
-    if (etc_daemon_path_stat.st_mode & S_ISGID) {
-      if (!platform_->SetPermissions(mount_source,
-                                     etc_daemon_path_stat.st_mode)) {
-        LOG(ERROR) << "Failed to set permissions for " << mount_source.value();
-        return false;
-      }
-    }
 
     // The target directory's parent exists in the root mount namespace so the
     // directory itself can be created in the root mount namespace and it will
