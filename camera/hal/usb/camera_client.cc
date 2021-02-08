@@ -50,7 +50,7 @@ CameraClient::CameraClient(int id,
       request_thread_("Capture request thread") {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
-  camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_3;
+  camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_5;
   camera3_device_.common.close = cros::camera_device_close;
   camera3_device_.common.module = const_cast<hw_module_t*>(module);
   camera3_device_.ops = &g_camera_device_ops;
@@ -730,6 +730,11 @@ void CameraClient::RequestHandler::HandleRequest(
   }
 
   capture_result.partial_result = 1;
+
+  // We don't support logical multi camera currently.
+  capture_result.num_physcam_metadata = 0;
+  capture_result.physcam_ids = nullptr;
+  capture_result.physcam_metadata = nullptr;
 
   // The HAL retains ownership of result structure, which only needs to be valid
   // to access during process_capture_result. The framework will copy whatever
