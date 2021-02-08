@@ -14,7 +14,11 @@ SlotPolicyDefault::~SlotPolicyDefault() = default;
 
 bool SlotPolicyDefault::IsObjectClassAllowedForNewObject(
     CK_OBJECT_CLASS object_class) {
-  // TODO(https://crbug.com/1132030): Disallow NSS trust objects.
+  // Disallow creating new NSS trust objects in shared slots
+  // (https://crbug.com/1132030).
+  if (object_class == CKO_NSS_TRUST) {
+    return false;
+  }
   return true;
 }
 

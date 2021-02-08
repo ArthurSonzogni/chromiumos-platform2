@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "chaps/slot_policy_common.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -22,6 +23,14 @@ TEST_F(SlotPolicyDefaultTest, AcceptsRegularObjects) {
       slot_policy_default.IsObjectClassAllowedForNewObject(CKO_CERTIFICATE));
   EXPECT_TRUE(slot_policy_default.IsObjectClassAllowedForImportedObject(
       CKO_CERTIFICATE));
+}
+
+TEST_F(SlotPolicyDefaultTest, RejectsNewNssTrustObjects) {
+  SlotPolicyDefault slot_policy_default;
+  EXPECT_FALSE(
+      slot_policy_default.IsObjectClassAllowedForNewObject(CKO_NSS_TRUST));
+  EXPECT_TRUE(
+      slot_policy_default.IsObjectClassAllowedForImportedObject(CKO_NSS_TRUST));
 }
 
 }  // namespace
