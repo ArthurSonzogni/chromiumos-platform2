@@ -197,6 +197,8 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
     return;
 
   if (!helper->FlashModeCheck()) {
+    LOG(WARNING) << "Modem not found after " << kWedgeCheckDelay << " seconds, "
+                 << "trying to reset it...";
     if (helper->Reboot()) {
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
           FROM_HERE,
