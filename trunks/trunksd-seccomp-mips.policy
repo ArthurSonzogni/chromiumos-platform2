@@ -80,3 +80,5 @@ prctl: return 1
 
 # Allow metrics sending.
 flock: 1
+
+access: 1
