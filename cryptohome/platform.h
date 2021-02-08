@@ -71,6 +71,14 @@ struct DecodedProcMountInfo {
   std::string mount_source;
 };
 
+// List of return values of a mount expire operation.
+enum class ExpireMountResult {
+  kMarked,
+  kUnmounted,
+  kBusy,
+  kError,
+};
+
 // A class for enumerating the files in a provided path. The order of the
 // results is not guaranteed.
 //
@@ -188,6 +196,16 @@ class Platform {
   //   path - The destination path to unmount
   virtual void LazyUnmount(const base::FilePath& path);
 
+  // Calls the platform unmount with the flag MNT_EXPIRE.
+  // This marks inactive mounts as expired and returns |kMarked|. Calling
+  // `ExpireMount` on an expired mount point at |path| unmounts the mount point
+  // and returns |kUnmounted|, if it has not been accessed since it was marked
+  // as expired. Attempting to mark an active mount as expired fails with
+  // EBUSY and returns |kBusy|. Returns |kError| for other unmount() errors.
+  //
+  // Parameters
+  //   path - The path to unmount
+  virtual ExpireMountResult ExpireMount(const base::FilePath& path);
   // Returns true if any mounts match. Populates |mounts| with list of mounts
   // from loop device to user directories that are used in ephemeral mode.
   //

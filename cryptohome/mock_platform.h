@@ -220,6 +220,10 @@ class MockPlatform : public Platform {
               (const base::FilePath&, const base::FilePath&, bool, bool),
               (override));
   MOCK_METHOD(bool, Unmount, (const base::FilePath&, bool, bool*), (override));
+  MOCK_METHOD(ExpireMountResult,
+              ExpireMount,
+              (const base::FilePath&),
+              (override));
   MOCK_METHOD(void, LazyUnmount, (const base::FilePath&), (override));
   MOCK_METHOD(bool,
               GetLoopDeviceMounts,

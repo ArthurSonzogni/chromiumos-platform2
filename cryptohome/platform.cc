@@ -308,6 +308,22 @@ bool Platform::Bind(const FilePath& from,
   return true;
 }
 
+ExpireMountResult Platform::ExpireMount(const FilePath& path) {
+  if (umount2(path.value().c_str(), MNT_EXPIRE)) {
+    if (errno == EAGAIN) {
+      return ExpireMountResult::kMarked;
+    } else {
+      PLOG(ERROR) << "ExpireMount(" << path.value() << ") failed";
+      if (errno == EBUSY) {
+        return ExpireMountResult::kBusy;
+      } else {
+        return ExpireMountResult::kError;
+      }
+    }
+  }
+  return ExpireMountResult::kUnmounted;
+}
+
 bool Platform::Unmount(const FilePath& path, bool lazy, bool* was_busy) {
   if (lazy) {
     if (umount2(path.value().c_str(), MNT_DETACH)) {
