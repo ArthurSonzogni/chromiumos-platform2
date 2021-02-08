@@ -3,8 +3,77 @@ type cros_cryptohome_namespace_mounter, chromeos_domain, domain;
 permissive cros_cryptohome_namespace_mounter;
 
 domain_auto_trans(cros_cryptohomed, cros_cryptohome_namespace_mounter_exec, cros_cryptohome_namespace_mounter);
+domain_auto_trans(cros_cryptohome_namespace_mounter, cros_unconfined_exec, chromeos);
+
+allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd                  use;
+
+arc_cts_fails_release(`
+# Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
+# TODO(betuls): Define a cryptohome domain and add these rules to there.
+allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file w_file_perms;
+allow cros_cryptohome_namespace_mounter cros_home_chronos:dir                { create_dir_perms mounton };
+allow cros_cryptohome_namespace_mounter cros_home_root:dir                   { create_dir_perms mounton };
+allow cros_cryptohome_namespace_mounter cros_home_shadow_uid_root:dir        { create_dir_perms relabelfrom };
+r_dir_file(cros_cryptohome_namespace_mounter, cros_home_shadow);
+create_mounton_dir_file(cros_cryptohome_namespace_mounter, cros_home_user);
+create_mounton_dir_file(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_user);
+create_relabelto_dir_file(cros_cryptohome_namespace_mounter, cros_home_shadow_uid);
+
+# TODO(betuls): Add access for daemon-stores of the daemons 'cdm-oemcrypto',
+# 'crash', 'crosvm', 'debugd', 'kerberosd', 'pvm', 'pvm-dispatcher', 'smbfs',
+# 'smbproviderd' after adding context for these daemon-stores.
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, session_manager);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, session_manager, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, authpolicyd);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, authpolicyd, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, chaps);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, chaps, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, shill);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, shill, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, usb_bouncer);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, usb_bouncer, relabelto);
+
+# Kernel and key related pemrissions.
+allow cros_cryptohome_namespace_mounter cros_init:key                        link;
+allow cros_cryptohome_namespace_mounter kernel:key                           { link search };
+allow cros_cryptohome_namespace_mounter kernel:system                        module_request;
+
+# Permissions to create and bind-mount daemon-store directories.
+allow cros_cryptohome_namespace_mounter cros_run:dir                         { create_dir_perms mounton };
+
+# Permissions to create and bind-mount ephemeral cryptohome directory.
+create_mounton_dir_file(cros_cryptohome_namespace_mounter, cros_run_cryptohome);
+
+allow cros_cryptohome_namespace_mounter device:blk_file                      w_file_perms;
+allow cros_cryptohome_namespace_mounter tpm_device:chr_file                  r_file_perms;
+has_arc(`
+allow cros_cryptohome_namespace_mounter media_rw_data_file:dir               { create_dir_perms mounton };
+')
+allow cros_cryptohome_namespace_mounter proc_swaps:file                      r_file_perms;
+allow cros_cryptohome_namespace_mounter rootfs:dir                           r_dir_perms;
+
+# cryptohome_namespace_mounter capabilities
+allow cros_cryptohome_namespace_mounter self:capability   { chown dac_override dac_read_search fowner fsetid sys_admin sys_chroot };
+allow cros_cryptohome_namespace_mounter self:key          { search write };
+
+r_dir_file(cros_cryptohome_namespace_mounter, sysfs_fs_ext4_features);
+
+# TODO(b/178237710) Label the directories and files with specific contexts.
+r_dir_file(cros_cryptohome_namespace_mounter, unlabeled);
+allow cros_cryptohome_namespace_mounter unlabeled:dir                        relabelfrom;
+allow cros_cryptohome_namespace_mounter labeledfs:filesystem                 { mount remount unmount };
+
+# TODO(b/178237004) Label the processes with specific contexts.
+allow cros_cryptohome_namespace_mounter cros_unconfined_exec:file            x_file_perms;
+
+allow cros_cryptohome_namespace_mounter cros_run_namespaces_mnt_chrome:file                   { r_file_perms mounton };
+', (cros_cryptohome_namespace_mounter));
+# 'arc_cts_fails_release' ends here.
+
+allow kernel cros_cryptohome_namespace_mounter:fd                            use;
 
 log_writer(cros_cryptohome_namespace_mounter);
+uma_writer(cros_cryptohome_namespace_mounter);
 
 filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home, cros_home_shadow, dir, ".shadow");
 filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow, cros_home_shadow_low_entropy_creds, dir, "low_entropy_creds");

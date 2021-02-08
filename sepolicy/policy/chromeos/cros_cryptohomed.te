@@ -3,8 +3,78 @@ type cros_cryptohomed, chromeos_domain, domain;
 permissive cros_cryptohomed;
 
 domain_auto_trans(cros_init_scripts, cros_cryptohomed_exec, cros_cryptohomed);
+domain_auto_trans(cros_cryptohomed, cros_unconfined_exec, chromeos);
 
-allow domain cros_cryptohomed:key search;
+allow domain cros_cryptohomed:key                                     search;
+
+arc_cts_fails_release(`
+allow cros_cryptohomed cros_coreutils_exec:file                       x_file_perms;
+allow cros_cryptohomed cros_cryptohome_namespace_mounter:process      signal;
+
+# Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
+# TODO(betuls): Reevaluate after OOP flags are removed from the cryptohome code.
+allow cros_cryptohomed cros_cryptohomed:fifo_file w_file_perms;
+allow cros_cryptohomed cros_home_chronos:dir                { create_dir_perms mounton };
+allow cros_cryptohomed cros_home_root:dir                   { create_dir_perms mounton };
+allow cros_cryptohomed cros_home_shadow_uid_root:dir        { create_dir_perms relabelfrom };
+r_dir_file(cros_cryptohomed, cros_home_shadow);
+create_mounton_dir_file(cros_cryptohomed, cros_home_user);
+create_mounton_dir_file(cros_cryptohomed, cros_home_shadow_uid_user);
+create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
+
+# TODO(betuls): Add access for daemon-stores of the daemons 'cdm-oemcrypto',
+# 'crash', 'crosvm', 'debugd', 'kerberosd', 'pvm', 'pvm-dispatcher', 'smbfs',
+# 'smbproviderd' after adding context for these daemon-stores.
+cros_daemon_store_create(cros_cryptohomed, session_manager);
+cros_daemon_store_perms(cros_cryptohomed, session_manager, relabelto);
+cros_daemon_store_create(cros_cryptohomed, authpolicyd);
+cros_daemon_store_perms(cros_cryptohomed, authpolicyd, relabelto);
+cros_daemon_store_create(cros_cryptohomed, chaps);
+cros_daemon_store_perms(cros_cryptohomed, chaps, relabelto);
+cros_daemon_store_create(cros_cryptohomed, shill);
+cros_daemon_store_perms(cros_cryptohomed, shill, relabelto);
+cros_daemon_store_create(cros_cryptohomed, usb_bouncer);
+cros_daemon_store_perms(cros_cryptohomed, usb_bouncer, relabelto);
+
+allow cros_cryptohomed chromeos_startup_tmp_file:file        mounton;
+allow cros_cryptohomed cros_init_scripts:fd                  use;
+allow cros_cryptohomed cros_init:key                         { link write };
+allow cros_cryptohomed kernel:key                            { link search write };
+allow cros_cryptohomed cros_passwd_file:file                 r_file_perms;
+
+allow cros_cryptohomed cros_init:unix_stream_socket          connectto;
+allow cros_cryptohomed cros_dbus_daemon:unix_stream_socket   connectto;
+
+allow cros_cryptohomed cros_run:file                         r_file_perms;
+allow cros_cryptohomed cros_run_cryptohome:file              create_file_perms;
+allow cros_cryptohomed cros_run_dbus:dir                     create_dir_perms;
+allow cros_cryptohomed cros_system_bus_socket:sock_file      write;
+
+allow cros_cryptohomed cros_var_lib_whitelist:dir            create_dir_perms;
+allow cros_cryptohomed cros_var_lib_whitelist:file           r_file_perms;
+has_arc(`
+allow cros_cryptohomed media_rw_data_file:dir                create_dir_perms;
+')
+
+# cryptohomed capabilities
+allow cros_cryptohomed self:capability               { chown dac_override dac_read_search ipc_lock sys_admin };
+allow cros_cryptohomed self:key                      { setattr write };
+
+allow cros_cryptohomed sysfs:dir                             r_dir_perms;
+allow cros_cryptohomed sysfs:file                            r_file_perms;
+allow cros_cryptohomed sysfs_dm:dir                          r_dir_perms;
+allow cros_cryptohomed sysfs_zram:dir                        r_dir_perms;
+
+# TODO(b/178237710) Label the directories and files with specific contexts.
+allow cros_cryptohomed unlabeled:file                        { r_file_perms mounton };
+allow cros_cryptohomed unlabeled:dir                         { ioctl open read search};
+allow cros_cryptohomed unlabeled:filesystem                  { mount remount unmount };
+allow cros_cryptohomed labeledfs:filesystem                  { quotaget unmount };
+
+# TODO(b/178237004) Label the processes with specific contexts.
+allow cros_cryptohomed cros_unconfined_exec:file             x_file_perms;
+', (`cros_cryptohomed'));
+# 'arc_cts_fails_release' ends here.
 
 log_writer(cros_cryptohomed);
 uma_writer(cros_cryptohomed);
