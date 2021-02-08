@@ -511,10 +511,8 @@ force_clean_file_attrs /mnt/stateful_partition/unencrypted
 # Checks and updates stateful partition.
 dev_update_stateful_partition
 
-# Apply /var and /home specific tmpfiles.d configurations.
+# Apply /mnt/stateful_partition specific tmpfiles.d configurations.
 /bin/systemd-tmpfiles --create --remove --boot \
-  --prefix /home \
-  --prefix /var \
   --prefix /mnt/stateful_partition || :
 
 # Make sure unencrypted stateful partition has the needed common directories.
@@ -636,6 +634,11 @@ mount -o bind /run /var/run
 remember_mount /var/run
 mount -o bind /run/lock /var/lock
 remember_mount /var/lock
+
+# Apply /var and /home specific tmpfiles.d configurations.
+/bin/systemd-tmpfiles --create --remove --boot \
+  --prefix /home \
+  --prefix /var || :
 
 # Create daemon store folders.
 # See https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders.
