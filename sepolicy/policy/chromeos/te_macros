@@ -4,11 +4,38 @@ domain_auto_trans($1, $2, $3);
 allow $1 $3:process2 nnp_transition;
 ');
 
-
+# rw_dir_file(domain, type)
+# Allow the specified domain to read/write directories, files
+# and symbolic links of the specified type.
 define(`rw_dir_file', `
 allow $1 $2:dir rw_dir_perms;
 allow $1 $2:file rw_file_perms;
 allow $1 $2:lnk_file rw_file_perms;
+')
+
+# create_dir_file(domain, type)
+# Allow the specified domain to read/write/create directories, files
+# and symbolic links of the specified type.
+define(`create_dir_file', `
+allow $1 $2:dir create_dir_perms;
+allow $1 $2:file create_file_perms;
+allow $1 $2:lnk_file create_file_perms;
+')
+
+# create_mounton_dir_file(domain, type)
+# Allow the specified domain to create directories and files
+# and mounton the directories of the specified type.
+define(`create_mounton_dir_file', `
+allow $1 $2:dir { create_dir_perms mounton };
+allow $1 $2:file { create_file_perms };
+')
+
+# create_relabelto_dir_file(domain, type)
+# Allow the specified domain to create directories and files
+# and relabelto the directories of the specified type.
+define(`create_relabelto_dir_file', `
+allow $1 $2:dir { create_dir_perms relabelto};
+allow $1 $2:file { create_file_perms };
 ')
 
 define(`execute_file_follow_link', `
@@ -51,6 +78,22 @@ allow $1 logger_device:sock_file write;
 define(`log_reader', `
 allow $1 cros_log_type:file r_file_perms;
 allow $1 cros_log_type:dir r_dir_perms;
+')
+
+# cros_daemon_store_perms(domain, daemon, access_vector)
+# Allow the specified domain to access the specified daemon's daemon-store
+# directories and files with the specified access vector.
+define(`cros_daemon_store_perms', `
+allow $1 cros_home_shadow_uid_root_$2:dir  $3;
+allow $1 cros_home_shadow_uid_root_$2:file $3;
+')
+
+# cros_daemon_store_create(domain, daemon)
+# Allow the specified domain to create files and directories in
+# the specified daemon's daemon-store.
+define(`cros_daemon_store_create', `
+allow $1 cros_home_shadow_uid_root_$2:dir create_dir_perms;
+allow $1 cros_home_shadow_uid_root_$2:file create_file_perms;
 ')
 
 define(`cros_net', `
