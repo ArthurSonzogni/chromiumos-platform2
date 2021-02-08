@@ -61,7 +61,7 @@ class CellularServiceProviderTest : public testing::Test {
     Cellular::SimProperties sim_properties;
     sim_properties.iccid = iccid;
     sim_properties.imsi = imsi;
-    cellular->SetSimProperties(sim_properties);
+    cellular->SetPrimarySimProperties(sim_properties);
     return cellular;
   }
 

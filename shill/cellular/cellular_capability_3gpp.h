@@ -307,13 +307,12 @@ class CellularCapability3gpp : public CellularCapability {
   void OnModemSignalPropertiesChanged(const KeyValueStore& props);
 
   // SIM property change handlers
-  void RequestSimProperties(RpcIdentifier sim_path);
+  void RequestSimProperties(size_t slot, RpcIdentifier sim_path);
   void OnGetSimProperties(
+      size_t slot,
       RpcIdentifier sim_path,
       std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
       const KeyValueStore& properties);
-  void OnSimPropertiesChanged(RpcIdentifier sim_path,
-                              const KeyValueStore& properties);
 
   // Method callbacks
   void OnRegisterReply(const ResultCallback& callback, const Error& error);
@@ -388,7 +387,7 @@ class CellularCapability3gpp : public CellularCapability {
   // SIM properties
   RpcIdentifier sim_path_;
   RpcIdentifiers sim_slots_;
-  base::flat_set<RpcIdentifier> pending_slot_requests_;
+  base::flat_set<RpcIdentifier> pending_sim_requests_;
   base::flat_map<RpcIdentifier, SimProperties> sim_properties_;
 
   // If the modem is not in a state to be enabled when StartModem is called,

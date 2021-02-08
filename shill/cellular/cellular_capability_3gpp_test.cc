@@ -244,11 +244,11 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
     sim_properties.eid = kEid;
     sim_properties.iccid = kIccid;
     sim_properties.imsi = kImsi;
-    cellular_->SetSimProperties(sim_properties);
+    cellular_->SetPrimarySimProperties(sim_properties);
   }
 
   void ClearCellularSimProperties() {
-    cellular_->SetSimProperties(Cellular::SimProperties());
+    cellular_->SetPrimarySimProperties(Cellular::SimProperties());
   }
 
   void ClearCapabilitySimProperties() {
@@ -1231,46 +1231,6 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
   EXPECT_EQ("", capability_->spn_);
 }
 
-TEST_F(CellularCapability3gppTest, SimPropertiesChanged) {
-  InitProxies();
-
-  // Set up mock modem properties
-  KeyValueStore modem_properties;
-  modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
-
-  // Set up mock modem sim properties
-  KeyValueStore sim_properties;
-  sim_properties.Set<string>(MM_SIM_PROPERTY_IMSI, kImsi);
-  sim_properties.Set<string>(MM_SIM_PROPERTY_EID, kEid);
-  SetSimProperties(kSimPath1, sim_properties);
-
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
-  EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
-  EXPECT_NE(nullptr, capability_->sim_proxy_);
-  EXPECT_EQ(kImsi, cellular_->imsi());
-  EXPECT_EQ(kEid, cellular_->eid());
-  VerifyAndSetActivationExpectations();
-
-  // Updating the SIM
-  KeyValueStore new_properties;
-  const char kNewImsi[] = "310240123456789";
-  const char kSimIdentifier[] = "9999888";
-  const char kOperatorIdentifier[] = "310240";
-  const char kOperatorName[] = "Custom SPN";
-  new_properties.Set<string>(MM_SIM_PROPERTY_IMSI, kNewImsi);
-  new_properties.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kSimIdentifier);
-  new_properties.Set<string>(MM_SIM_PROPERTY_OPERATORIDENTIFIER,
-                             kOperatorIdentifier);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM, new_properties);
-  EXPECT_EQ(kNewImsi, cellular_->imsi());
-  EXPECT_EQ(kSimIdentifier, cellular_->iccid());
-  EXPECT_EQ("", capability_->spn_);
-
-  new_properties.Set<string>(MM_SIM_PROPERTY_OPERATORNAME, kOperatorName);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM, new_properties);
-  EXPECT_EQ(kOperatorName, capability_->spn_);
-}
-
 TEST_F(CellularCapability3gppTest, Reset) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
@@ -1622,7 +1582,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
   Cellular::SimProperties sim_properties;
   sim_properties.iccid = "6";
   sim_properties.imsi = "2";
-  cellular_->SetSimProperties(sim_properties);
+  cellular_->SetPrimarySimProperties(sim_properties);
   cellular_->set_mdn("10123456789");
   cellular_->set_min("5");
 
@@ -2066,43 +2026,88 @@ TEST_F(CellularCapability3gppTest, OnSimLockPropertiesChanged) {
 TEST_F(CellularCapability3gppTest, MultiSimProperties) {
   InitProxies();
 
-  const char kImsi1[] = "110100000001";
+  const char kIccid1[] = "110100000001";
   const char kEid1[] = "110100000002";
   KeyValueStore sim_properties1;
-  sim_properties1.Set<string>(MM_SIM_PROPERTY_IMSI, kImsi1);
+  sim_properties1.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
   sim_properties1.Set<string>(MM_SIM_PROPERTY_EID, kEid1);
-
-  const char kImsi2[] = "210100000001";
-  const char kEid2[] = "210100000002";
-  KeyValueStore sim_properties2;
-  sim_properties2.Set<string>(MM_SIM_PROPERTY_IMSI, kImsi2);
-  sim_properties2.Set<string>(MM_SIM_PROPERTY_EID, kEid2);
-
-  SetSimProperties(kSimPath2, sim_properties2);
   SetSimProperties(kSimPath1, sim_properties1);
 
-  KeyValueStore modem_properties;
-  modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
-  modem_properties.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS,
-                                       {kSimPath1, kSimPath2});
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
-  dispatcher_.DispatchPendingEvents();
+  const char kIccid2[] = "210100000001";
+  const char kEid2[] = "210100000002";
+  KeyValueStore sim_properties2;
+  sim_properties2.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid2);
+  sim_properties2.Set<string>(MM_SIM_PROPERTY_EID, kEid2);
+  SetSimProperties(kSimPath2, sim_properties2);
+
+  UpdateSims(kSimPath1);
 
   EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_EQ(kImsi1, cellular_->imsi());
+  EXPECT_EQ(kIccid1, cellular_->iccid());
   EXPECT_EQ(kEid1, cellular_->eid());
   VerifyAndSetActivationExpectations();
 
   // Switch active slot to 2.
+  KeyValueStore modem_properties;
   modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath2);
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_EQ(kSimPath2, capability_->sim_path_for_testing());
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_EQ(kImsi2, cellular_->imsi());
+  EXPECT_EQ(kIccid2, cellular_->iccid());
   EXPECT_EQ(kEid2, cellular_->eid());
+  VerifyAndSetActivationExpectations();
+}
+
+// Test behavior when a SIM path is set but not SIMSLOTS.
+TEST_F(CellularCapability3gppTest, SimPathOnly) {
+  InitProxies();
+
+  const char kIccid1[] = "110100000001";
+  const char kEid1[] = "110100000002";
+  KeyValueStore sim_properties;
+  sim_properties.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
+  sim_properties.Set<string>(MM_SIM_PROPERTY_EID, kEid1);
+  sim_properties_[kSimPath1] = sim_properties;
+
+  KeyValueStore modem_properties;
+  modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
+  EXPECT_TRUE(cellular_->sim_present());
+  EXPECT_EQ(kIccid1, cellular_->iccid());
+  EXPECT_EQ(kEid1, cellular_->eid());
+  VerifyAndSetActivationExpectations();
+}
+
+// Tests that when the primary SIM ICCID is empty, and another SIM has a valid
+// ICCID, the other SIM is selected.
+TEST_F(CellularCapability3gppTest, SetPrimarySimSlot) {
+  EXPECT_CALL(*modem_proxy_, SetPrimarySimSlot(2, _, _)).Times(1);
+  InitProxies();
+
+  const char kIccid1[] = "";
+  const char kEid1[] = "110100000002";
+  KeyValueStore sim_properties1;
+  sim_properties1.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
+  sim_properties1.Set<string>(MM_SIM_PROPERTY_EID, kEid1);
+  SetSimProperties(kSimPath1, sim_properties1);
+
+  const char kIccid2[] = "210100000001";
+  const char kEid2[] = "210100000002";
+  KeyValueStore sim_properties2;
+  sim_properties2.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid2);
+  sim_properties2.Set<string>(MM_SIM_PROPERTY_EID, kEid2);
+  SetSimProperties(kSimPath2, sim_properties2);
+
+  UpdateSims(kSimPath1);
+
+  // TODO(b/169581681): Fake Modem.SetPrimarySimSlot() behavior to provide
+  // updated SIM properties.
   VerifyAndSetActivationExpectations();
 }
 

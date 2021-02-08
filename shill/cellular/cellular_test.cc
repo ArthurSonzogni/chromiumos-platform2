@@ -1044,13 +1044,59 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
                     kServingOperatorName, kServingOperatorCountry);
 }
 
+TEST_P(CellularTest, SetPrimarySimProperties) {
+  // The default storage identifier should always be cellular_{iccid}
+  Cellular::SimProperties sim_properties;
+  sim_properties.eid = "test_eid";
+  sim_properties.iccid = "test_iccid";
+  sim_properties.imsi = "test_imsi";
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(kEidProperty, sim_properties.eid))
+      .Times(1);
+  EXPECT_CALL(*adaptor, EmitStringChanged(kIccidProperty, sim_properties.iccid))
+      .Times(1);
+  EXPECT_CALL(*adaptor, EmitStringChanged(kImsiProperty, sim_properties.imsi))
+      .Times(1);
+  device_->SetPrimarySimProperties(sim_properties);
+  EXPECT_EQ("test_eid", device_->eid());
+  EXPECT_EQ("test_iccid", device_->iccid());
+  EXPECT_EQ("test_imsi", device_->imsi());
+}
+
+TEST_P(CellularTest, SetSimSlotProperties) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
+    return;
+  }
+  std::vector<Cellular::SimProperties> slot_properties = {
+      {0, "iccid1", "eid1", "operator_id1", "spn1", "imsi1"},
+      {1, "iccid2", "eid2", "operator_id2", "spn2", "imsi2"},
+  };
+  KeyValueStores expected;
+  KeyValueStore expected1, expected2;
+  expected1.Set(kSIMSlotInfoEID, slot_properties[0].eid);
+  expected1.Set(kSIMSlotInfoICCID, slot_properties[0].iccid);
+  expected1.Set(kSIMSlotInfoPrimary, false);
+  expected.push_back(expected1);
+  expected2.Set(kSIMSlotInfoEID, slot_properties[1].eid);
+  expected2.Set(kSIMSlotInfoICCID, slot_properties[1].iccid);
+  expected2.Set(kSIMSlotInfoPrimary, true);
+  expected.push_back(expected2);
+  EXPECT_CALL(*static_cast<DeviceMockAdaptor*>(device_->adaptor()),
+              EmitKeyValueStoresChanged(kSIMSlotInfoProperty, expected))
+      .Times(1);
+
+  device_->SetPrimarySimProperties(slot_properties[1]);
+  device_->SetSimSlotProperties(slot_properties);
+}
+
 TEST_P(CellularTest, StorageIdentifier) {
   // The default storage identifier should always be cellular_{iccid}
   InitCapability3gppProxies();
   Cellular::SimProperties sim_properties;
   sim_properties.iccid = "test_iccid";
   sim_properties.imsi = "test_imsi";
-  device_->SetSimProperties(sim_properties);
+  device_->SetPrimarySimProperties(sim_properties);
   device_->CreateService();
   EXPECT_EQ("cellular_test_iccid", device_->service()->GetStorageIdentifier());
   device_->DestroyService();

@@ -1304,7 +1304,9 @@ void CellularCapability3gpp::OnPropertiesChanged(
     OnModemSignalPropertiesChanged(changed_properties);
   }
   if (interface == MM_DBUS_INTERFACE_SIM) {
-    OnSimPropertiesChanged(sim_path_, changed_properties);
+    // A SIM change will generate a new Modem object so we do not expect a SIM
+    // interface change event.
+    LOG(ERROR) << "Unexpected SIM properties change, ignoring";
   }
 }
 
@@ -1327,40 +1329,49 @@ bool CellularCapability3gpp::IsValidSimPath(
 }
 
 void CellularCapability3gpp::UpdateSims() {
-  SLOG(this, 2) << __func__ << " Sim path: " << sim_path_.value()
-                << " SimSlots: " << sim_slots_.size();
+  LOG(INFO) << __func__ << " Sim path: " << sim_path_.value()
+            << " SimSlots: " << sim_slots_.size();
 
-  pending_slot_requests_.clear();
+  // Clear current properties and requests.
+  sim_properties_.clear();
+  pending_sim_requests_.clear();
 
+  // Ensure |sim_slots_| has a SIM (use |sim_path_| if slots property is empty).
   if (sim_slots_.empty()) {
     if (!IsValidSimPath(sim_path_)) {
-      SLOG(this, 2) << "No SIMSLOTS or SIM path.";
+      LOG(WARNING) << "No valid SIM path or SIMSLOTS";
       OnAllSimPropertiesReceived();
       return;
     }
-    SLOG(this, 2) << "No SIMSLOTS, requesting SIM path.";
-    pending_slot_requests_.insert(sim_path_);
-    RequestSimProperties(sim_path_);
+    // No SIMSLOTS property, use SIM path only.
+    sim_slots_.push_back(sim_path_);
+  }
+
+  // Build the list of pending requests first so that RequestSimProperties()
+  // won't call OnAllSimPropertiesReceived() early (e.g. in tests).
+  std::vector<std::pair<size_t, RpcIdentifier>> sim_requests;
+  for (size_t i = 0; i < sim_slots_.size(); ++i) {
+    const RpcIdentifier& path = sim_slots_[i];
+    if (!IsValidSimPath(path)) {
+      LOG(WARNING) << "Invalid slot path: " << path.value();
+      continue;
+    }
+    sim_requests.push_back(std::make_pair(i, path));
+    pending_sim_requests_.insert(path);
+  }
+  if (sim_requests.empty()) {
+    LOG(WARNING) << "No valid SIM slots.";
+    OnAllSimPropertiesReceived();
     return;
   }
 
-  for (const auto& slot : sim_slots_) {
-    if (!IsValidSimPath(slot)) {
-      SLOG(this, 2) << "Invalid slot path: " << slot.value();
-      continue;
-    }
-    SLOG(this, 2) << "Requesting SIM properties: " << slot.value();
-    pending_slot_requests_.insert(slot);
-    RequestSimProperties(slot);
-  }
-  if (pending_slot_requests_.empty()) {
-    SLOG(this, 2) << "No valid SIM slots.";
-    OnAllSimPropertiesReceived();
-  }
+  // Request the SIM properties for each slot.
+  for (const auto& request : sim_requests)
+    RequestSimProperties(request.first, request.second);
 }
 
 void CellularCapability3gpp::OnAllSimPropertiesReceived() {
-  SLOG(this, 2) << __func__ << " Primary Sim path=" << sim_path_.value();
+  SLOG(this, 1) << __func__ << " Primary Sim path=" << sim_path_.value();
   if (IsValidSimPath(sim_path_)) {
     sim_proxy_ = control_interface()->CreateMM1SimProxy(
         sim_path_, cellular()->dbus_service());
@@ -1368,33 +1379,46 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
     sim_proxy_ = nullptr;
   }
 
-  if (base::Contains(sim_properties_, sim_path_)) {
-    SetPrimarySimProperties(sim_properties_[sim_path_]);
-    cellular()->SetSimPresent(true);
-  } else {
-    // Update the current state with empty SimProperties.
-    SetPrimarySimProperties(SimProperties());
-    cellular()->SetSimPresent(false);
-
-    // Set the primary slot to the first valid slot if any.
-    for (size_t idx = 0; idx < sim_slots_.size(); ++idx) {
-      RpcIdentifier s = sim_slots_[idx];
-      if (!IsValidSimPath(s))
+  // Ensure that the primary SIM slot is set correctly.
+  const SimProperties* primary_sim_properties = nullptr;
+  auto iter = sim_properties_.find(sim_path_);
+  if (iter != sim_properties_.end())
+    primary_sim_properties = &iter->second;
+  if (!primary_sim_properties || primary_sim_properties->iccid.empty()) {
+    // Check secondary SIM slots for a non empty ICCID.
+    for (const auto& iter : sim_properties_) {
+      if (iter.first == sim_path_)
         continue;
-      uint32_t slot = idx + 1;
-      LOG(INFO) << " SetPrimarySimSlot: " << slot;
-      // This will complete immediately, at which point the Modem object will
-      // become invalid. TODO(b/169581681): Ensure this is handled gracefully.
-      modem_proxy_->SetPrimarySimSlot(slot, base::DoNothing(), kTimeoutDefault);
-      break;
+      const SimProperties* properties = &iter.second;
+      if (!properties->iccid.empty()) {
+        // This will complete immediately, at which point the Modem object will
+        // become invalid. TODO(b/169581681): Ensure this is handled gracefully.
+        size_t slot = properties->slot + 1;
+        LOG(INFO) << " SetPrimarySimSlot: " << slot;
+        modem_proxy_->SetPrimarySimSlot(slot, base::DoNothing(),
+                                        kTimeoutDefault);
+        return;
+      }
     }
   }
-  // TODO(b/169581681): Update Cellular Services for secondary SIMs.
+
+  // Update SIM properties for the primary SIM slot.
+  if (primary_sim_properties) {
+    SetPrimarySimProperties(*primary_sim_properties);
+  } else {
+    LOG(INFO) << " No Primary SIM properties.";
+    SetPrimarySimProperties(SimProperties());
+  }
+  // Update SIM slot properties for each SIM slot.
+  std::vector<SimProperties> sim_slot_properties;
+  for (const auto& iter : sim_properties_)
+    sim_slot_properties.push_back(iter.second);
+  cellular()->SetSimSlotProperties(sim_slot_properties);
 }
 
 void CellularCapability3gpp::SetPrimarySimProperties(
     const SimProperties& sim_properties) {
-  cellular()->SetSimProperties(sim_properties);
+  cellular()->SetPrimarySimProperties(sim_properties);
 
   UpdateServiceActivationState();
   UpdatePendingActivationState();
@@ -1793,8 +1817,9 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
   }
 }
 
-void CellularCapability3gpp::RequestSimProperties(RpcIdentifier sim_path) {
-  LOG(INFO) << __func__ << ": " << sim_path.value();
+void CellularCapability3gpp::RequestSimProperties(size_t slot,
+                                                  RpcIdentifier sim_path) {
+  LOG(INFO) << __func__ << ": " << slot << ": " << sim_path.value();
   // Ownership if this proxy will be passed to the success callback so that the
   // proxy is not destroyed before the asynchronous call completes.
   std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy =
@@ -1804,7 +1829,7 @@ void CellularCapability3gpp::RequestSimProperties(RpcIdentifier sim_path) {
   sim_properties_proxy_ptr->GetAllAsync(
       MM_DBUS_INTERFACE_SIM,
       base::Bind(&CellularCapability3gpp::OnGetSimProperties,
-                 weak_ptr_factory_.GetWeakPtr(), sim_path,
+                 weak_ptr_factory_.GetWeakPtr(), slot, sim_path,
                  base::Passed(&sim_properties_proxy)),
       base::Bind([](const Error& error) {
         LOG(ERROR) << "Error fetching SIM properties: " << error;
@@ -1812,17 +1837,13 @@ void CellularCapability3gpp::RequestSimProperties(RpcIdentifier sim_path) {
 }
 
 void CellularCapability3gpp::OnGetSimProperties(
+    size_t slot,
     RpcIdentifier sim_path,
     std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
     const KeyValueStore& properties) {
-  OnSimPropertiesChanged(sim_path, properties);
-  // |sim_properties_proxy| will be safely released here.|
-}
-
-void CellularCapability3gpp::OnSimPropertiesChanged(
-    RpcIdentifier sim_path, const KeyValueStore& properties) {
-  SLOG(this, 2) << __func__ << ": " << sim_path.value();
+  SLOG(this, 2) << __func__ << ": " << slot << ": " << sim_path.value();
   SimProperties sim_properties;
+  sim_properties.slot = slot;
   if (properties.Contains<string>(MM_SIM_PROPERTY_SIMIDENTIFIER)) {
     sim_properties.iccid =
         properties.Get<string>(MM_SIM_PROPERTY_SIMIDENTIFIER);
@@ -1841,9 +1862,11 @@ void CellularCapability3gpp::OnSimPropertiesChanged(
     sim_properties.imsi = properties.Get<string>(MM_SIM_PROPERTY_IMSI);
   }
   sim_properties_[sim_path] = sim_properties;
-  pending_slot_requests_.erase(sim_path);
-  if (pending_slot_requests_.empty())
+  pending_sim_requests_.erase(sim_path);
+  if (pending_sim_requests_.empty())
     OnAllSimPropertiesReceived();
+
+  // |sim_properties_proxy| will be safely released here.
 }
 
 double CellularCapability3gpp::SignalQualityBounds::GetAsPercentage(

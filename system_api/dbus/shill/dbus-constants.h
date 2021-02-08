@@ -361,6 +361,7 @@ const char kProviderRequiresRoamingProperty[] =
     "Cellular.ProviderRequiresRoaming";
 const char kSelectedNetworkProperty[] = "Cellular.SelectedNetwork";
 const char kSIMPresentProperty[] = "Cellular.SIMPresent";
+const char kSIMSlotInfoProperty[] = "Cellular.SIMSlotInfo";
 const char kSupportNetworkScanProperty[] = "Cellular.SupportNetworkScan";
 const char kUseAttachAPNProperty[] = "Cellular.UseAttachAPN";
 const char kDBusObjectProperty[] = "DBus.Object";
@@ -443,6 +444,11 @@ const char kSIMLockStatusProperty[] = "Cellular.SIMLockStatus";
 const char kSIMLockTypeProperty[] = "LockType";
 const char kSIMLockRetriesLeftProperty[] = "RetriesLeft";
 const char kSIMLockEnabledProperty[] = "LockEnabled";
+
+// Shill SIMSlotInfo properties.
+const char kSIMSlotInfoEID[] = "EID";
+const char kSIMSlotInfoICCID[] = "ICCID";
+const char kSIMSlotInfoPrimary[] = "Primary";
 
 // Flimflam property names for Cellular.FoundNetworks.
 const char kLongNameProperty[] = "long_name";

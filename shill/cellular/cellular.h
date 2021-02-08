@@ -93,6 +93,7 @@ class Cellular : public Device,
   // Used in Cellular and CellularCapability3gpp to store and pass properties
   // associated with a SIM Profile.
   struct SimProperties {
+    size_t slot;
     std::string iccid;
     std::string eid;
     std::string operator_id;
@@ -319,7 +320,10 @@ class Cellular : public Device,
   void set_hardware_revision(const std::string& hardware_revision);
   void set_device_id(std::unique_ptr<DeviceId> device_id);
   void SetImei(const std::string& imei);
-  void SetSimProperties(SimProperties properties);
+  // Sets |eid_|, |iccid_|, |imsi_|, and |sim_present_| from |properties|.
+  void SetPrimarySimProperties(SimProperties properties);
+  // Sets |sim_slot_info_| from |slot_properties| for providing SIMSlotInfo.
+  void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties);
   void set_mdn(const std::string& mdn);
   void set_meid(const std::string& meid);
   void set_min(const std::string& min);
@@ -332,7 +336,6 @@ class Cellular : public Device,
   void clear_found_networks();
   void set_found_networks(const Stringmaps& found_networks);
   void set_provider_requires_roaming(bool provider_requires_roaming);
-  void SetSimPresent(bool sim_present);
   void set_apn_list(const Stringmaps& apn_list);
 
   // Takes ownership.
@@ -502,6 +505,7 @@ class Cellular : public Device,
   bool SetInhibited(const bool& inhibited, Error* error);
   void OnInhibitDevice(bool inhibited, const Error& error);
   KeyValueStore GetSimLockStatus(Error* error);
+  void SetSimPresent(bool sim_present);
 
   // DBUS accessors to read/modify the use of an Attach APN
   bool GetUseAttachApn(Error* /*error*/) { return use_attach_apn_; }
@@ -573,14 +577,12 @@ class Cellular : public Device,
   Stringmap home_provider_;
 
   bool scanning_supported_;
-  std::string eid_;  // SIM eID, aka eUICCID
   std::string equipment_id_;
   std::string esn_;
   std::string firmware_revision_;
   std::string hardware_revision_;
   std::unique_ptr<DeviceId> device_id_;
   std::string imei_;
-  std::string imsi_;
   std::string manufacturer_;
   std::string mdn_;
   std::string meid_;
@@ -597,9 +599,16 @@ class Cellular : public Device,
   Stringmaps found_networks_;
   bool provider_requires_roaming_;
   uint16_t scan_interval_;
-  bool sim_present_;
   Stringmaps apn_list_;
+
+  // Primary SIM properties.
+  std::string eid_;  // SIM eID, aka eUICCID
   std::string iccid_;
+  std::string imsi_;
+  bool sim_present_;
+
+  // vector of KeyValueStore dictionaries, emitted as Device.SIMSlotInfo.
+  KeyValueStores sim_slot_info_;
 
   // End of DBus properties.
   // ///////////////////////////////////////////////////////////////////////////

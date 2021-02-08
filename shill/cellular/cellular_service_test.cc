@@ -52,7 +52,7 @@ class CellularServiceTest : public testing::Test {
     Cellular::SimProperties sim_properties;
     sim_properties.iccid = kIccid;
     sim_properties.imsi = kImsi;
-    device_->SetSimProperties(sim_properties);
+    device_->SetPrimarySimProperties(sim_properties);
     service_ =
         new CellularService(&manager_, kImsi, kIccid, device_->GetSimCardId());
     service_->SetDevice(device_.get());

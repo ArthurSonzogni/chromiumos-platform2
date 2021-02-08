@@ -1386,6 +1386,14 @@ KeyValueStore Cellular::GetSimLockStatus(Error* error) {
   return capability_->SimLockStatusToProperty(error);
 }
 
+void Cellular::SetSimPresent(bool sim_present) {
+  if (sim_present_ == sim_present)
+    return;
+
+  sim_present_ = sim_present;
+  adaptor()->EmitBoolChanged(kSIMPresentProperty, sim_present_);
+}
+
 void Cellular::StartTermination() {
   SLOG(this, 2) << __func__;
   OnBeforeSuspend(
@@ -1595,6 +1603,7 @@ void Cellular::RegisterProperties() {
   store->RegisterConstBool(kProviderRequiresRoamingProperty,
                            &provider_requires_roaming_);
   store->RegisterConstBool(kSIMPresentProperty, &sim_present_);
+  store->RegisterConstKeyValueStores(kSIMSlotInfoProperty, &sim_slot_info_);
   store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
   store->RegisterConstString(kIccidProperty, &iccid_);
 
@@ -1717,18 +1726,21 @@ void Cellular::SetImei(const string& imei) {
   adaptor()->EmitStringChanged(kImeiProperty, imei_);
 }
 
-void Cellular::SetSimProperties(SimProperties sim_properties) {
+void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
   if (eid_ == sim_properties.eid && iccid_ == sim_properties.iccid &&
       imsi_ == sim_properties.imsi) {
     return;
   }
 
-  SLOG(this, 2) << __func__ << " EID= " << sim_properties.eid
-                << " ICCID= " << sim_properties.iccid;
+  // TODO(stevenjb): Change to SLOG once b/172064665 is thoroughly vetted.
+  LOG(INFO) << __func__ << " EID= " << sim_properties.eid
+            << " ICCID= " << sim_properties.iccid;
 
   eid_ = sim_properties.eid;
   iccid_ = sim_properties.iccid;
   imsi_ = sim_properties.imsi;
+
+  SetSimPresent(!iccid_.empty());
 
   home_provider_info()->UpdateICCID(iccid_);
   // Provide ICCID to serving operator as well to aid in MVNO identification.
@@ -1745,6 +1757,22 @@ void Cellular::SetSimProperties(SimProperties sim_properties) {
 
   // Ensure Service creation once SIM properties are set.
   UpdateService();
+}
+
+void Cellular::SetSimSlotProperties(
+    const std::vector<SimProperties>& slot_properties) {
+  sim_slot_info_.clear();
+  for (const SimProperties& sim_properties : slot_properties) {
+    size_t slot = sim_properties.slot;
+    if (slot >= sim_slot_info_.size())
+      sim_slot_info_.resize(slot + 1);
+    KeyValueStore& properties = sim_slot_info_[slot];
+    properties.Set(kSIMSlotInfoEID, sim_properties.eid);
+    properties.Set(kSIMSlotInfoICCID, sim_properties.iccid);
+    bool is_primary = !iccid_.empty() && sim_properties.iccid == iccid_;
+    properties.Set(kSIMSlotInfoPrimary, is_primary);
+  }
+  adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
 }
 
 void Cellular::set_mdn(const string& mdn) {
@@ -1887,17 +1915,6 @@ void Cellular::set_provider_requires_roaming(bool provider_requires_roaming) {
   provider_requires_roaming_ = provider_requires_roaming;
   adaptor()->EmitBoolChanged(kProviderRequiresRoamingProperty,
                              provider_requires_roaming_);
-}
-
-void Cellular::SetSimPresent(bool sim_present) {
-  if (sim_present_ == sim_present)
-    return;
-
-  sim_present_ = sim_present;
-  if (!sim_present) {
-    SetSimProperties(SimProperties());
-  }
-  adaptor()->EmitBoolChanged(kSIMPresentProperty, sim_present_);
 }
 
 void Cellular::set_apn_list(const Stringmaps& apn_list) {
