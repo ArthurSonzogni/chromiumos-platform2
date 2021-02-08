@@ -4,11 +4,15 @@
 
 #include "ml/soda_recognizer_impl.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/logging.h>
+#include <base/memory/free_deleter.h>
+#include <base/optional.h>
+#include <base/strings/string_util.h>
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
 #include "ml/request_metrics.h"
 #include "ml/soda.h"
@@ -27,8 +31,8 @@ using ::chromeos::machine_learning::mojom::SpeechRecognizerEvent;
 using ::chromeos::machine_learning::mojom::SpeechRecognizerEventPtr;
 using ::speech::soda::chrome::SodaResponse;
 
-constexpr char kSodaDefaultLanguagePackDirectory[] =
-    "/opt/google/chrome/ml_models/soda/models/en_us/";
+constexpr char kSodaLibraryName[] = "libsoda.so";
+constexpr char kDlcBasePath[] = "/run/imageloader";
 
 void SodaCallback(const char* soda_response_str,
                   int size,
@@ -41,6 +45,22 @@ void SodaCallback(const char* soda_response_str,
   reinterpret_cast<SodaRecognizerImpl*>(soda_recognizer_impl)
       ->OnSodaEvent(response.SerializeAsString());
 }
+
+bool IsDlcFilePath(const base::FilePath& path) {
+  return base::StartsWith(path.value(), kDlcBasePath);
+}
+
+// Gives resolved path using realpath(3), or empty Optional upon error. Leaves
+// realpath's errno unchanged.
+base::Optional<base::FilePath> RealPath(const base::FilePath& path) {
+  const std::unique_ptr<char, base::FreeDeleter> result(
+      realpath(path.value().c_str(), nullptr));
+  if (!result) {
+    return {};
+  }
+  return base::FilePath(result.get());
+}
+
 }  // namespace
 
 bool SodaRecognizerImpl::Create(
@@ -98,16 +118,42 @@ SodaRecognizerImpl::SodaRecognizerImpl(
     SodaConfigPtr spec,
     mojo::PendingRemote<SodaClient> soda_client,
     mojo::PendingReceiver<SodaRecognizer> soda_recognizer)
-    : receiver_(this, std::move(soda_recognizer)),
+    : successfully_loaded_(false),
+      receiver_(this, std::move(soda_recognizer)),
       client_remote_(std::move(soda_client)) {
-  soda_library_ = ml::SodaLibrary::GetInstance();
-  DCHECK(soda_library_->GetStatus() == ml::SodaLibrary::Status::kOk)
-      << "SodaRecognizerImpl should be created only if "
-         "SodaLibrary is initialized successfully.";
+  const base::Optional<base::FilePath> real_library_dlc_path =
+      RealPath(base::FilePath(spec->library_dlc_path));
+  if (!real_library_dlc_path) {
+    PLOG(ERROR) << "Bad library path " << spec->library_dlc_path;
+    return;
+  }
+  if (!IsDlcFilePath(*real_library_dlc_path)) {
+    LOG(DFATAL) << "Non DLC library path " << *real_library_dlc_path;
+    return;
+  }
+
+  const base::Optional<base::FilePath> real_language_dlc_path =
+      RealPath(base::FilePath(spec->language_dlc_path));
+  if (!real_language_dlc_path) {
+    PLOG(ERROR) << "Bad language path " << spec->language_dlc_path;
+    return;
+  }
+  if (!IsDlcFilePath(*real_language_dlc_path)) {
+    LOG(DFATAL) << "Non DLC language path " << *real_language_dlc_path;
+    return;
+  }
+
+  soda_library_ = ml::SodaLibrary::GetInstanceAt(
+      real_library_dlc_path->Append(kSodaLibraryName));
+  if (soda_library_->GetStatus() != ml::SodaLibrary::Status::kOk) {
+    LOG(ERROR) << "Soda library initialization failed";
+    return;
+  }
+
   speech::soda::chrome::ExtendedSodaConfigMsg cfg_msg;
   cfg_msg.set_channel_count(spec->channel_count);
   cfg_msg.set_sample_rate(spec->sample_rate);
-  cfg_msg.set_language_pack_directory(kSodaDefaultLanguagePackDirectory);
+  cfg_msg.set_language_pack_directory(real_language_dlc_path->value());
   cfg_msg.set_api_key(spec->api_key);
   std::string serialized = cfg_msg.SerializeAsString();
 

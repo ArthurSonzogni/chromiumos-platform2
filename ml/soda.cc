@@ -11,16 +11,14 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/native_library.h>
+
 namespace ml {
 
 namespace {
 
-constexpr char kSodaLibraryPath[] =
-    "/opt/google/chrome/ml_models/soda/libsoda.so";
-
 }  // namespace
 
-SodaLibrary::SodaLibrary(const std::string& library_path)
+SodaLibrary::SodaLibrary(const base::FilePath& library_path)
     : status_(Status::kUninitialized),
       create_soda_async_(nullptr),
       add_audio_(nullptr),
@@ -28,10 +26,12 @@ SodaLibrary::SodaLibrary(const std::string& library_path)
   // Load the library with an option preferring own symbols. Otherwise the
   // library will try to call, e.g., external tflite, which leads to crash.
   base::NativeLibraryOptions native_library_options;
+  base::NativeLibraryLoadError load_error;
   native_library_options.prefer_own_symbols = true;
   library_.emplace(base::LoadNativeLibraryWithOptions(
-      base::FilePath(library_path), native_library_options, nullptr));
+      library_path, native_library_options, &load_error));
   if (!library_->is_valid()) {
+    LOG(ERROR) << "Soda library load error: " << load_error.ToString();
     status_ = Status::kLoadLibraryFailed;
     return;
   }
@@ -66,12 +66,8 @@ SodaLibrary::Status SodaLibrary::GetStatus() const {
   return status_;
 }
 
-SodaLibrary* SodaLibrary::GetInstance() {
-  return GetInstanceAt(kSodaLibraryPath);
-}
-
-SodaLibrary* SodaLibrary::GetInstanceAt(const std::string& library_path) {
-  static base::NoDestructor<std::unordered_map<std::string, SodaLibrary*>>
+SodaLibrary* SodaLibrary::GetInstanceAt(const base::FilePath& library_path) {
+  static base::NoDestructor<std::unordered_map<base::FilePath, SodaLibrary*>>
       instances;
   auto* const std_map = instances.get();
   auto it = std_map->find(library_path);

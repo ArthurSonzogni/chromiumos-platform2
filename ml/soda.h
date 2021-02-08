@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/no_destructor.h>
 #include <base/optional.h>
 #include <base/scoped_native_library.h>
@@ -16,7 +17,7 @@
 namespace ml {
 // A singleton proxy class for the soda DSO.
 // Usage:
-//   auto* const soda_library = SodaLibrary::GetInstance();
+//   auto* const soda_library = SodaLibrary::GetInstanceAt("path/to/lib.so");
 //   if (soda_library->GetStatus() == SodaLibrary::kOk) {
 //     // Do the real speech recognition here.
 //     auto soda_instance = soda_library->CreateSodaAsync();
@@ -37,8 +38,10 @@ class SodaLibrary {
 
   virtual ~SodaLibrary() = default;
 
-  static SodaLibrary* GetInstance();
-  static SodaLibrary* GetInstanceAt(const std::string& library_path);
+  // Gets an instance by loading the .so at the specified path. The result is
+  // cached and reused if the same library_path is passed again to this
+  // function.
+  static SodaLibrary* GetInstanceAt(const base::FilePath& library_path);
 
   // Get whether the library is successfully initialized.
   // Initially, the status is `Status::kUninitialized` (this value should never
@@ -85,7 +88,7 @@ class SodaLibrary {
   friend class base::NoDestructor<SodaLibrary>;
 
   // Initializes the soda library.
-  explicit SodaLibrary(const std::string& library_path);
+  explicit SodaLibrary(const base::FilePath& library_path);
   SodaLibrary(const SodaLibrary&) = delete;
   SodaLibrary& operator=(const SodaLibrary&) = delete;
 
