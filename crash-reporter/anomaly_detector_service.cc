@@ -65,7 +65,7 @@ const base::FilePath kAuditLogPath("/var/log/audit/audit.log");
 const base::FilePath kUpstartLogPath("/var/log/upstart.log");
 
 constexpr base::TimeDelta kTimeBetweenLogReads =
-    base::TimeDelta::FromMilliseconds(100);
+    base::TimeDelta::FromMilliseconds(500);
 
 Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
     : shutdown_callback_(std::move(shutdown_callback)),
