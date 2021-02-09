@@ -18,6 +18,11 @@ CHROMIUMOS_PROCESS_MGMT_POLICIES="/sys/kernel/security/chromiumos\
 SAFESETID_PROCESS_MGMT_POLICIES="/sys/kernel/security/safesetid\
 /whitelist_policy"
 
+# Path to the securityfs file for configuring process management security
+# policies, for UIDs, in the SafeSetID LSM (used for kernel version >= 5.9).
+SAFESETID_PROCESS_UID_MGMT_POLICIES="/sys/kernel/security/safesetid\
+/uid_allowlist_policy"
+
 # Project-specific process management policies. Projects may add policies by
 # adding a file under /usr/share/cros/startup/process_management_policies/
 # whose contents are one or more lines specifying a parent UID and a child UID
@@ -54,7 +59,10 @@ configure_process_mgmt_security() {
       done < "${file}"
     fi
   done
-  if [ -e "${SAFESETID_PROCESS_MGMT_POLICIES}" ]; then
+
+  if [ -e "${SAFESETID_PROCESS_UID_MGMT_POLICIES}" ]; then
+    printf "%b" "${accum}" > "${SAFESETID_PROCESS_UID_MGMT_POLICIES}"
+  elif [ -e "${SAFESETID_PROCESS_MGMT_POLICIES}" ]; then
     printf "%b" "${accum}" > "${SAFESETID_PROCESS_MGMT_POLICIES}"
   fi
 }
