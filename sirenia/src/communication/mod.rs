@@ -22,5 +22,5 @@ pub trait Trichechus {
     type Error;
 
     fn start_session(&self, app_info: AppInfo) -> StdResult<(), Self::Error>;
-    fn get_logs(&self) -> StdResult<Vec<String>, Self::Error>;
+    fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, Self::Error>;
 }

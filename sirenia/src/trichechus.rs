@@ -124,7 +124,7 @@ struct TrichechusState {
     expected_port: u32,
     pending_apps: HashMap<TransportType, String>,
     running_apps: HashMap<TransportType, Rc<RefCell<TEEApp>>>,
-    log_queue: VecDeque<String>,
+    log_queue: VecDeque<Vec<u8>>,
     persistence: Option<CronistaClient>,
     app_manifest: AppManifest,
 }
@@ -143,7 +143,7 @@ impl TrichechusState {
 }
 
 impl SyslogReceiverMut for TrichechusState {
-    fn receive(&mut self, data: String) {
+    fn receive(&mut self, data: Vec<u8>) {
         self.log_queue.push_back(data);
     }
 }
@@ -188,8 +188,8 @@ impl Trichechus for TrichechusServerImpl {
         Ok(())
     }
 
-    fn get_logs(&self) -> StdResult<Vec<String>, ()> {
-        let mut replacement: VecDeque<String> = VecDeque::new();
+    fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, ()> {
+        let mut replacement: VecDeque<Vec<u8>> = VecDeque::new();
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
         Ok(replacement.into())
     }
