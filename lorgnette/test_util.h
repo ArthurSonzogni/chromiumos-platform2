@@ -5,11 +5,16 @@
 #ifndef LORGNETTE_TEST_UTIL_H_
 #define LORGNETTE_TEST_UTIL_H_
 
+#include <cstdint>
 #include <ostream>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
+
+using ::testing::ExplainMatchResult;
+using ::testing::UnorderedElementsAreArray;
 
 namespace lorgnette {
 
@@ -18,7 +23,9 @@ void PrintTo(const lorgnette::DocumentSource& ds, std::ostream* os);
 DocumentSource CreateDocumentSource(const std::string& name,
                                     SourceType type,
                                     double width,
-                                    double height);
+                                    double height,
+                                    const std::vector<uint32_t>& resolutions,
+                                    const std::vector<ColorMode>& color_modes);
 
 MATCHER_P(EqualsDocumentSource, expected, "") {
   if (arg.type() != expected.type()) {
@@ -55,7 +62,13 @@ MATCHER_P(EqualsDocumentSource, expected, "") {
     return false;
   }
 
-  return true;
+  if (!ExplainMatchResult(UnorderedElementsAreArray(expected.resolutions()),
+                          arg.resolutions(), result_listener)) {
+    return false;
+  }
+
+  return ExplainMatchResult(UnorderedElementsAreArray(expected.color_modes()),
+                            arg.color_modes(), result_listener);
 }
 
 }  // namespace lorgnette

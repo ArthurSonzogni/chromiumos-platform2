@@ -38,6 +38,12 @@ message DocumentSource {
 
   // The dimensions of the scannable area for this source.
   ScannableArea area = 3;
+
+  // Discrete scanning resolutions.
+  repeated uint32 resolutions = 4;
+
+  // Color modes to use for a document.
+  repeated ColorMode color_modes = 5;
 }
 
 // The color modes that may be supported for a particular scanner.

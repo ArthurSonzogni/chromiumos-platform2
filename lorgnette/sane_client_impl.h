@@ -156,6 +156,10 @@ class SaneDeviceImpl : public SaneDevice {
   template <typename T>
   base::Optional<T> GetOption(brillo::ErrorPtr* error, ScanOption option);
 
+  base::Optional<std::vector<uint32_t>> GetResolutions(brillo::ErrorPtr* error);
+  base::Optional<std::vector<std::string>> GetColorModes(
+      brillo::ErrorPtr* error);
+
   SANE_Handle handle_;
   std::string name_;
   std::shared_ptr<DeviceSet> open_devices_;

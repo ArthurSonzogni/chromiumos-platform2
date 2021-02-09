@@ -499,6 +499,9 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
                                                        200, 300, 600};
 
   ScannerCapabilities capabilities;
+
+  // TODO(b/179492658): Once the scan app is using the resolutions from
+  // DocumentSource instead of ScannerCapabilities, remove this logic.
   for (const uint32_t resolution : options->resolutions) {
     if (base::Contains(supported_resolutions, resolution))
       capabilities.add_resolutions(resolution);
@@ -512,6 +515,8 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
     }
   }
 
+  // TODO(b/179492658): Once the scan app is using the color modes from
+  // DocumentSource instead of ScannerCapabilities, remove this logic.
   for (const std::string& mode : options->color_modes) {
     const ColorMode color_mode = impl::ColorModeFromSaneString(mode);
     if (color_mode != MODE_UNSPECIFIED)

@@ -6,6 +6,7 @@
 
 #include <base/containers/flat_map.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <sane/saneopts.h>
 
@@ -26,6 +27,16 @@ DocumentSource CreateDocumentSource(const std::string& name) {
     source.set_type(type.value());
   }
   return source;
+}
+
+ColorMode ColorModeFromSaneString(const std::string& mode) {
+  if (mode == kScanPropertyModeLineart)
+    return MODE_LINEART;
+  else if (mode == kScanPropertyModeGray)
+    return MODE_GRAYSCALE;
+  else if (mode == kScanPropertyModeColor)
+    return MODE_COLOR;
+  return MODE_UNSPECIFIED;
 }
 
 }  // namespace
@@ -145,26 +156,14 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
   }
 
   ValidOptionValues values;
-  if (options_.count(kResolution) != 0) {
-    int index = options_.at(kResolution).GetIndex();
-    const SANE_Option_Descriptor* descriptor =
-        sane_get_option_descriptor(handle_, index);
-    if (!descriptor) {
-      brillo::Error::AddToPrintf(
-          error, FROM_HERE, kDbusDomain, kManagerServiceError,
-          "Unable to get resolution option at index %d", index);
-      return base::nullopt;
-    }
 
-    base::Optional<std::vector<uint32_t>> resolutions =
-        GetValidIntOptionValues(error, *descriptor);
-    if (!resolutions.has_value()) {
-      brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                           "Failed to get valid values for resolution setting");
-      return base::nullopt;
-    }
-    values.resolutions = std::move(resolutions.value());
+  // TODO(b/179492658): Once the scan app is using the resolutions from
+  // DocumentSource instead of ScannerCapabilities, remove this logic.
+  base::Optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
+  if (!resolutions.has_value()) {
+    return base::nullopt;
   }
+  values.resolutions = std::move(resolutions.value());
 
   if (options_.count(kSource) != 0) {
     int index = options_.at(kSource).GetIndex();
@@ -201,9 +200,10 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
       options_.count(kBottomRightY) != 0) {
     DCHECK(!values.sources.empty())
         << "Sources is missing default source value.";
-    // We can get the scan dimensions for each scan source by setting the
+    // We can get the capabilities for each scan source by setting the
     // document source to each possible value, and then calculating the area
-    // for that source.
+    // for that source and retrieving the source's supported resolutions and
+    // color modes.
     base::Optional<std::string> initial_source = GetDocumentSource(error);
     if (!initial_source.has_value()) {
       return base::nullopt;
@@ -220,6 +220,37 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
       }
 
       *source.mutable_area() = std::move(area.value());
+
+      base::Optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
+      if (!resolutions.has_value()) {
+        return base::nullopt;
+      }
+
+      // These values correspond to the values of Chromium's
+      // ScanJobSettingsResolution enum in
+      // src/chromeos/components/scanning/scanning_uma.h. Before adding values
+      // here, add them to the ScanJobSettingsResolution enum.
+      const std::vector<uint32_t> supported_resolutions = {75,  100, 150,
+                                                           200, 300, 600};
+
+      for (const uint32_t resolution : resolutions.value()) {
+        if (base::Contains(supported_resolutions, resolution)) {
+          source.add_resolutions(resolution);
+        }
+      }
+
+      base::Optional<std::vector<std::string>> color_modes =
+          GetColorModes(error);
+      if (!color_modes.has_value()) {
+        return base::nullopt;
+      }
+
+      for (const std::string& mode : color_modes.value()) {
+        const ColorMode color_mode = ColorModeFromSaneString(mode);
+        if (color_mode != MODE_UNSPECIFIED) {
+          source.add_color_modes(color_mode);
+        }
+      }
     }
 
     // Restore DocumentSource to its initial value.
@@ -228,27 +259,13 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
     }
   }
 
-  if (options_.count(kScanMode) != 0) {
-    int index = options_.at(kScanMode).GetIndex();
-    const SANE_Option_Descriptor* descriptor =
-        sane_get_option_descriptor(handle_, index);
-    if (!descriptor) {
-      brillo::Error::AddToPrintf(
-          error, FROM_HERE, kDbusDomain, kManagerServiceError,
-          "Unable to get scan mode option at index %d", index);
-      return base::nullopt;
-    }
-
-    base::Optional<std::vector<std::string>> color_modes =
-        GetValidStringOptionValues(error, *descriptor);
-
-    if (!color_modes.has_value()) {
-      brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                           "Failed to get valid values for scan modes setting");
-      return base::nullopt;
-    }
-    values.color_modes = std::move(color_modes.value());
+  // TODO(b/179492658): Once the scan app is using the color modes from
+  // DocumentSource instead of ScannerCapabilities, remove this logic.
+  base::Optional<std::vector<std::string>> color_modes = GetColorModes(error);
+  if (!color_modes.has_value()) {
+    return base::nullopt;
   }
+  values.color_modes = std::move(color_modes.value());
 
   return values;
 }
@@ -863,6 +880,59 @@ base::Optional<T> SaneDeviceImpl::GetOption(brillo::ErrorPtr* error,
   }
 
   return value;
+}
+
+base::Optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
+    brillo::ErrorPtr* error) {
+  if (options_.count(kResolution) == 0) {
+    return std::vector<uint32_t>{};
+  }
+
+  int index = options_.at(kResolution).GetIndex();
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, index);
+  if (!descriptor) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Unable to get resolution option at index %d", index);
+    return base::nullopt;
+  }
+
+  base::Optional<std::vector<uint32_t>> resolutions =
+      GetValidIntOptionValues(error, *descriptor);
+  if (!resolutions.has_value()) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "Failed to get valid values for resolution setting");
+    return base::nullopt;
+  }
+  return resolutions.value();
+}
+
+base::Optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
+    brillo::ErrorPtr* error) {
+  if (options_.count(kScanMode) == 0) {
+    return std::vector<std::string>{};
+  }
+
+  int index = options_.at(kScanMode).GetIndex();
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, index);
+  if (!descriptor) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Unable to get scan mode option at index %d", index);
+    return base::nullopt;
+  }
+
+  base::Optional<std::vector<std::string>> color_modes =
+      GetValidStringOptionValues(error, *descriptor);
+
+  if (!color_modes.has_value()) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "Failed to get valid values for scan modes setting");
+    return base::nullopt;
+  }
+  return color_modes.value();
 }
 
 }  // namespace lorgnette

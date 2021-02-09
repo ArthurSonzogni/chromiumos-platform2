@@ -45,12 +45,15 @@ TEST_F(SaneDeviceImplTest, GetValidOptionValuesSuccess) {
   for (int i = 0; i < 1200; i++)
     EXPECT_EQ(values->resolutions[i], i + 1);
 
+  std::vector<ColorMode> color_modes = {MODE_GRAYSCALE, MODE_COLOR};
+  std::vector<uint32_t> resolutions = {75, 100, 150, 200, 300, 600};
   EXPECT_THAT(values->sources,
               ElementsAre(EqualsDocumentSource(CreateDocumentSource(
-                              "Flatbed", SOURCE_PLATEN, 200.0, 200.0)),
+                              "Flatbed", SOURCE_PLATEN, 200.0, 200.0,
+                              resolutions, color_modes)),
                           EqualsDocumentSource(CreateDocumentSource(
                               "Automatic Document Feeder", SOURCE_ADF_SIMPLEX,
-                              200.0, 200.0))));
+                              200.0, 200.0, resolutions, color_modes))));
 
   EXPECT_THAT(values->color_modes,
               ElementsAre(kScanPropertyModeGray, kScanPropertyModeColor));

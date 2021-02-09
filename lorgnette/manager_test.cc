@@ -247,10 +247,12 @@ TEST_F(ManagerTest, GetScannerCapabilitiesSuccess) {
   ValidOptionValues opts;
   opts.resolutions = {50, 100, 200, 300, 500, 600};
   opts.sources = {
-      CreateDocumentSource("FB", SOURCE_PLATEN, 355.2, 417.9),
-      CreateDocumentSource("Negative", SOURCE_UNSPECIFIED, 355.2, 204.0),
+      CreateDocumentSource("FB", SOURCE_PLATEN, 355.2, 417.9, {75, 150},
+                           {MODE_COLOR}),
+      CreateDocumentSource("Negative", SOURCE_UNSPECIFIED, 355.2, 204.0,
+                           {200, 300, 600}, {MODE_GRAYSCALE}),
       CreateDocumentSource("Automatic Document Feeder", SOURCE_ADF_SIMPLEX,
-                           212.9, 212.2)};
+                           212.9, 212.2, {100, 200}, {MODE_GRAYSCALE})};
   opts.color_modes = {kScanPropertyModeColor};
   device->SetValidOptionValues(opts);
   sane_client_->SetDeviceForName("TestDevice", std::move(device));
@@ -266,10 +268,11 @@ TEST_F(ManagerTest, GetScannerCapabilitiesSuccess) {
 
   EXPECT_THAT(caps.sources(),
               ElementsAre(EqualsDocumentSource(CreateDocumentSource(
-                              "FB", SOURCE_PLATEN, 355.2, 417.9)),
+                              "FB", SOURCE_PLATEN, 355.2, 417.9, {75, 150},
+                              {MODE_COLOR})),
                           EqualsDocumentSource(CreateDocumentSource(
                               "Automatic Document Feeder", SOURCE_ADF_SIMPLEX,
-                              212.9, 212.2))));
+                              212.9, 212.2, {100, 200}, {MODE_GRAYSCALE}))));
 
   EXPECT_THAT(caps.color_modes(), ElementsAre(MODE_COLOR));
 }
