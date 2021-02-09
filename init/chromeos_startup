@@ -188,22 +188,9 @@ if [ "${CROS_DEBUG}" -eq 1 ]; then
   . /usr/share/cros/dev_utils.sh
 fi
 
-# Create a directory where PID files can be placed to override suspend and
-# shutdown (e.g. during firmware updates). This needs to happen early since
-# flashrom may run before the powerd job has started.
-POWER_OVERRIDE_DIR="/run/lock/power_override"
-mkdir -p "${POWER_OVERRIDE_DIR}"
-chmod 1777 "${POWER_OVERRIDE_DIR}"
-
-# Create a directory where we can keep persistent references to namespaces.
-mkdir -p /run/namespaces
+# Protect a bind mount to the Chrome mount namespace.
 mount --bind /run/namespaces /run/namespaces
 mount --make-private /run/namespaces
-# Create a file where we can bind-mount the Chrome mount namespace.
-touch /run/namespaces/mnt_chrome
-
-# Create a directory for mount-encrypted related logs and metrics.
-mkdir -p /run/mount_encrypted
 
 # Prepare to mount stateful partition
 ROOT_DEV="$(rootdev -s)"
@@ -513,16 +500,8 @@ dev_update_stateful_partition
 
 # Apply /mnt/stateful_partition specific tmpfiles.d configurations.
 /bin/systemd-tmpfiles --create --remove --boot \
-  --prefix /mnt/stateful_partition || :
-
-# Make sure unencrypted stateful partition has the needed common directories.
-# Any non-common directories should be created in the device implementation of
-# "mount_var_and_home_chronos".
-for d in home home/chronos home/root home/user \
-         unencrypted unencrypted/cache unencrypted/preserve; do
-  mkdir -p -m 0755 "/mnt/stateful_partition/${d}"
-  check_directory "/mnt/stateful_partition/${d}"
-done
+  --prefix /mnt/stateful_partition ||
+    cleanup_mounts "tmpfiles.d for /mnt/stateful_partition failed"
 
 # Mount /home.  This mount inherits nodev,noexec,nosuid from
 # /mnt/stateful_partition above.
@@ -623,26 +602,23 @@ if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
   done
 fi
 
+# Apply /var and /home specific tmpfiles.d configurations.
+/bin/systemd-tmpfiles --create --remove --boot \
+  --prefix /home \
+  --prefix /var ||
+    cleanup_mounts "tmpfiles.d for /home and /var failed"
+
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are
 # bind-mounted to /run and /run/lock respectively for backwards compatibility.
-# We recreate these all the time in case they were corrupted to point somewhere
-# else than what we want.
-rm -rf /var/run /var/lock || \
-    cleanup_mounts "failed to delete /var/run and /var/lock"
-mkdir -m 0755 /var/run /var/lock
+# tmpfiles.d recreates these each boot in case they were corrupted to point
+# somewhere other than what we want.
 mount -o bind /run /var/run
 remember_mount /var/run
 mount -o bind /run/lock /var/lock
 remember_mount /var/lock
 
-# Apply /var and /home specific tmpfiles.d configurations.
-/bin/systemd-tmpfiles --create --remove --boot \
-  --prefix /home \
-  --prefix /var || :
-
 # Create daemon store folders.
 # See https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders.
-mkdir -p -m 0755 /run/daemon-store
 for etc_daemon_store in /etc/daemon-store/*; do
   # If /etc/daemon-store is empty, $etc_daemon_store is /etc/daemon-store/*.
   # This if statement filters that out.
@@ -652,17 +628,6 @@ for etc_daemon_store in /etc/daemon-store/*; do
     mkdir -p -m 0755 "${run_daemon_store}"
     mount -o bind --make-shared "${run_daemon_store}" "${run_daemon_store}"
   fi
-done
-
-# Make sure required /var subdirectories exist.
-mkdir -p -m 0755 /var/cache /var/db /var/log/metrics \
-                 /var/spool /var/tmp /var/lib/misc
-
-# Before operating on them, verify that all stateful partition paths are
-# directories (as opposed to say, symlinks).
-for d in /var/cache /var/db /var/log /var/log/metrics \
-         /var/spool /var/tmp /var/lib /var/lib/misc /home/chronos /home/root; do
-  check_directory "${d}"
 done
 
 # Remove /var/empty if it exists. Use /mnt/empty instead.
@@ -695,19 +660,6 @@ find /var/log -xdev -type l -exec sh -e -c '
 if [ "$?" -ne 0 ]; then
   cleanup_mounts "Failed to remove symlinks under /var/log"
 fi
-
-# /var/tmp must be world-writable and sticky
-chmod 1777 /var/tmp
-# /home/root must be sticky
-chmod 1751 /home/root
-# Selected directories must belong to the chronos user.
-chown chronos:chronos /home/chronos /var/log/metrics
-# rsyslog needs to be able to create new logfiles, but not delete other logs
-chgrp syslog /var/log
-chmod 1775 /var/log
-# /var/cache, and /var/db may already exist with wrong permissions.
-# Force the correct ones.
-chmod 0755 /var/cache /var/db /var/spool /var/lib /var/lib/misc
 
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
