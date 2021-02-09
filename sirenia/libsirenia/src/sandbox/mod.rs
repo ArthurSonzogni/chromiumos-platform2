@@ -4,6 +4,7 @@
 
 //! Encapsulates the logic used to setup sandboxes for TEE applications.
 
+use std::fs::create_dir_all;
 use std::os::unix::io::RawFd;
 use std::path::Path;
 
@@ -61,8 +62,8 @@ impl Sandbox {
             j.use_seccomp_filter();
         }
 
-        j.enter_pivot_root(Path::new(PIVOT_ROOT))
-            .map_err(Error::PivotRoot)?;
+        // TODO(b/179815569) Fix the pivot root.
+        // j.enter_pivot_root(pivot_root).map_err(Error::PivotRoot)?;
 
         let limit = 1024u64;
         j.set_rlimit(libc::RLIMIT_NOFILE as i32, limit, limit)
