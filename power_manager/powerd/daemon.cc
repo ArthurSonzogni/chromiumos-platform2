@@ -710,6 +710,10 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   suspend_configurator_->PrepareForSuspend(duration);
 
+  // Sync filesystems since outstanding operations can significantly delay
+  // freeze, causing it to time out.
+  sync();
+
   system::FreezeResult freeze_result =
       suspend_freezer_->FreezeUserspace(wakeup_count, wakeup_count_valid);
   if (freeze_result == system::FreezeResult::FAILURE) {
