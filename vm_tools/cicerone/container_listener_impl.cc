@@ -218,6 +218,8 @@ grpc::Status ContainerListenerImpl::OpenUrl(
     return grpc::Status(grpc::RESOURCE_EXHAUSTED,
                         "OpenUrl rate limit exceeded, blocking request");
   }
+  LOG(INFO) << "Got OpenUrl request from container";
+
   uint32_t cid = ExtractCidFromPeerAddress(ctx);
   // Plugin VMs (i.e. containerless) can call this, so allow a zero value CID.
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,

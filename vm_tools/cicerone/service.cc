@@ -1062,6 +1062,7 @@ void Service::OpenUrl(const std::string& container_token,
   VirtualMachine* vm;
   if (!GetVirtualMachineForCidOrToken(cid, container_token, &vm, &owner_id,
                                       &vm_name)) {
+    LOG(ERROR) << "Requesting VM does not exist";
     event->Signal();
     return;
   }
