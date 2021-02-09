@@ -5,61 +5,6 @@
 
 # dev-mode functionality for crosh
 
-USAGE_packet_capture="[--device <device>] [--frequency <frequency>] \
-[--ht-location <above|below>] [--vht-width <80|160>] \
-[--monitor-connection-on <monitored_device>]"
-HELP_packet_capture='
-  Start packet capture.  Start a device-based capture on <device>,
-  or do an over-the-air capture on <frequency> with an optionally
-  provided HT channel location or VHT channel width.  An over-the-air
-  capture can also be initiated using the channel parameters of a
-  currently connected <monitored_device>.  Note that over-the-air
-  captures are not available with all 802.11 devices.
-'
-cmd_packet_capture() (
-  local option="dict:string:variant:"
-
-  while [ $# -gt 0 ]; do
-    # Do just enough parsing to filter/map options; we
-    # depend on capture_utility to handle final validation.
-    case "$1" in
-    --device)
-      shift; option="${option}device,string:$1," ;;
-    --frequency)
-      shift; option="${option}frequency,int32:$1," ;;
-    --ht-location)
-      shift; option="${option}ht_location,string:$1," ;;
-    --vht-width)
-      shift; option="${option}vht_width,string:$1," ;;
-    --monitor-connection-on)
-      shift; option="${option}monitor_connection_on,string:$1," ;;
-    --output-file)
-      help "crosh will determine the output file, please do not use $1"
-      return 1 ;;
-    *)
-      help "unknown option: $1"
-      return 1
-    esac
-
-    shift
-  done
-
-  local downloads_dir="/home/${USER}/user/Downloads"
-  if ! capture_file="$(mktemp "${downloads_dir}/packet_capture_XXXXXX.pcap")"
-  then
-    echo "Couldn't create capture file."
-    return 1
-  fi
-  # Remove trailing comma in the options list if it exists.
-  debugd_poll PacketCapture "fd:1" "fd:3" "${option%,}" 3>"${capture_file}"
-  if [ -s "${capture_file}" ]; then
-    echo "Capture stored in ${capture_file}"
-  else
-    echo "No packets captured!"
-    rm -f "${capture_file}"
-  fi
-)
-
 USAGE_systrace='[<start | stop | status>]'
 HELP_systrace='
   Start/stop system tracing.  Turning tracing off will generate a trace

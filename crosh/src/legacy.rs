@@ -67,7 +67,7 @@ const BASE_COMMANDS: &[&str] = &[
     "wpa_debug",
 ];
 
-const DEV_COMMANDS: &[&str] = &["live_in_a_coal_mine", "packet_capture", "systrace"];
+const DEV_COMMANDS: &[&str] = &["live_in_a_coal_mine", "systrace"];
 
 const USB_COMMANDS: &[&str] = &["update_firmware", "install", "upgrade"];
 
