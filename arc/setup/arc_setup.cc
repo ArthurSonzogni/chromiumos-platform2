@@ -2077,6 +2077,20 @@ void ArcSetup::DeleteAndroidDataOnUpgrade(AndroidSdkVersion data_sdk_version) {
                                  arc_paths_->android_data_old_directory));
 }
 
+void ArcSetup::DeleteAndroidMediaProviderDataOnUpgrade(
+    AndroidSdkVersion data_sdk_version) {
+  if (GetSdkVersion() < AndroidSdkVersion::ANDROID_R)
+    return;
+  if (data_sdk_version != AndroidSdkVersion::ANDROID_P)
+    return;
+  LOG(INFO) << "Deleting old Android Media Provider data";
+  const auto media_provider_data_directory =
+      arc_paths_->android_data_directory.Append(
+          "data/data/com.android.providers.media");
+  EXIT_IF(!MoveDirIntoDataOldDir(media_provider_data_directory,
+                                 arc_paths_->android_data_old_directory));
+}
+
 void ArcSetup::OnSetup() {
   const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
   const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
@@ -2423,6 +2437,7 @@ void ArcSetup::OnHandleUpgrade() {
   GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
 
   SendUpgradeMetrics(data_sdk_version);
+  DeleteAndroidMediaProviderDataOnUpgrade(data_sdk_version);
   DeleteAndroidDataOnUpgrade(data_sdk_version);
 }
 

@@ -335,6 +335,11 @@ class ArcSetup {
   // Deletes Android data if we are doing an unsupported upgrade.
   void DeleteAndroidDataOnUpgrade(AndroidSdkVersion data_sdk_version);
 
+  // Deletes Android media provider data on upgrade. Currently this is only
+  // implemented for upgrade from P (b/179233339).
+  void DeleteAndroidMediaProviderDataOnUpgrade(
+      AndroidSdkVersion data_sdk_version);
+
   // Converts |version_str| to the enum.
   AndroidSdkVersion SdkVersionFromString(const std::string& version_str);
 
