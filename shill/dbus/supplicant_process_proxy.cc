@@ -125,9 +125,9 @@ bool SupplicantProcessProxy::RemoveInterface(
 
   brillo::ErrorPtr error;
   if (!supplicant_proxy_->RemoveInterface(rpc_identifier, &error)) {
-    LOG(FATAL) << "Failed to remove interface " << rpc_identifier.value()
+    LOG(ERROR) << "Failed to remove interface " << rpc_identifier.value()
                << ": " << error->GetCode() << " " << error->GetMessage();
-    return false;  // Make the compiler happy.
+    return false;
   }
   return true;
 }
