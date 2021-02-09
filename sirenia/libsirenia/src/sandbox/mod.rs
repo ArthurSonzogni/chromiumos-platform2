@@ -4,42 +4,26 @@
 
 //! Encapsulates the logic used to setup sandboxes for TEE applications.
 
-use std::fmt::{self, Display};
 use std::os::unix::io::RawFd;
 use std::path::Path;
 
 use libc::pid_t;
 use minijail::{self, Minijail};
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
-    /// Failed to initialize the jail.
+    #[error("failed to setup jail: {0}")]
     Jail(minijail::Error),
-    /// An error occurred when spawning the child process.
+    #[error("failed to fork jail process: {0}")]
     ForkingJail(minijail::Error),
-    /// Failed to set the pivot root path.
+    #[error("failed to pivot root: {0}")]
     PivotRoot(minijail::Error),
-    /// Failed to parse the seccomp policy.
+    #[error("failed to parse seccomp policy: {0}")]
     SeccompPolicy(minijail::Error),
-    /// Failed to set the maximum number of open files.
+    #[error("failed to set max open files: {0}")]
     SettingMaxOpenFiles(minijail::Error),
-    /// An error returned while waiting for a child process.
+    #[error("failed to wait on jailed process to complete: {0}")]
     Wait(minijail::Error),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::Error::*;
-
-        match self {
-            Jail(e) => write!(f, "failed to setup jail: {}", e),
-            ForkingJail(e) => write!(f, "failed to fork jail process: {}", e),
-            PivotRoot(e) => write!(f, "failed to pivot root: {}", e),
-            SeccompPolicy(e) => write!(f, "failed to parse seccomp policy: {}", e),
-            SettingMaxOpenFiles(e) => write!(f, "error setting max open files: {}", e),
-            Wait(e) => write!(f, "failed waiting on jailed process to complete: {}", e),
-        }
-    }
 }
 
 /// The result of an operation in this crate.
