@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
@@ -25,6 +26,7 @@ using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ManagerProxyMock;
 using testing::_;
 using testing::Return;
+using testing::StrEq;
 
 class FakeShillClient : public shill::FakeClient {
  public:
@@ -72,6 +74,35 @@ class FakePatchpanelClient : public patchpanel::FakeClient {
   patchpanel::TrafficCounter::Source ns_ts_;
   int ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_resp_;
+};
+
+class MockResolver : public Resolver {
+ public:
+  MockResolver() = default;
+  ~MockResolver() = default;
+
+  MOCK_METHOD(bool, Listen, (struct sockaddr*), (override));
+  MOCK_METHOD(void,
+              SetNameServers,
+              (const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(void,
+              SetDoHProviders,
+              (const std::vector<std::string>&, bool),
+              (override));
+};
+
+class TestProxy : public Proxy {
+ public:
+  TestProxy(const Options& opts,
+            std::unique_ptr<patchpanel::Client> patchpanel,
+            std::unique_ptr<shill::Client> shill)
+      : Proxy(opts, std::move(patchpanel), std::move(shill)) {}
+
+  std::unique_ptr<Resolver> resolver;
+  std::unique_ptr<Resolver> NewResolver() override {
+    return std::move(resolver);
+  }
 };
 
 class ProxyTest : public ::testing::Test {
@@ -183,6 +214,7 @@ TEST_F(ProxyTest, ArcProxy_ConnectedNamedspace) {
 }
 
 TEST_F(ProxyTest, CrashOnConnectNamespaceFailure) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   auto pp = PatchpanelClient();
   pp->SetConnectNamespaceResult(-1 /* invalid fd */,
                                 patchpanel::ConnectNamespaceResponse());
@@ -192,6 +224,7 @@ TEST_F(ProxyTest, CrashOnConnectNamespaceFailure) {
 }
 
 TEST_F(ProxyTest, CrashOnPatchpanelNotReady) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
               PatchpanelClient(), ShillClient());
   EXPECT_DEATH(proxy.OnPatchpanelReady(false), "patchpanel");
@@ -210,6 +243,106 @@ TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
                           brillo::Any(std::string("10.10.10.10")), _, _))
       .WillOnce(Return(true));
   proxy.OnShillReset(true);
+}
+
+TEST_F(ProxyTest, StateClearedIfDefaultServiceDrops) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.OnDefaultDeviceChanged(nullptr /* no service */);
+  EXPECT_FALSE(proxy.device_);
+  EXPECT_FALSE(proxy.resolver_);
+}
+
+TEST_F(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.OnDefaultDeviceChanged(nullptr /* no service */);
+  EXPECT_TRUE(proxy.device_);
+  EXPECT_TRUE(proxy.resolver_);
+}
+
+TEST_F(ProxyTest, StateClearedIfDefaultServiceIsNotOnline) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  proxy.resolver_ = std::make_unique<MockResolver>();
+  shill::Client::Device dev;
+  dev.state = shill::Client::Device::ConnectionState::kReady;
+  proxy.OnDefaultDeviceChanged(&dev);
+  EXPECT_FALSE(proxy.device_);
+  EXPECT_FALSE(proxy.resolver_);
+}
+
+TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
+  TestProxy proxy(Proxy::Options{.type = Proxy::Type::kDefault},
+                  PatchpanelClient(), ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver = std::move(resolver);
+  shill::Client::Device dev;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  EXPECT_CALL(*mock_resolver, Listen(_)).WillOnce(Return(true));
+  proxy.OnDefaultDeviceChanged(&dev);
+  EXPECT_TRUE(proxy.resolver_);
+}
+
+TEST_F(ProxyTest, CrashOnListenFailure) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
+                  PatchpanelClient(), ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver = std::move(resolver);
+  shill::Client::Device dev;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  ON_CALL(*mock_resolver, Listen(_)).WillByDefault(Return(false));
+  EXPECT_DEATH(proxy.OnDefaultDeviceChanged(&dev), "relay loop");
+}
+
+TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  shill::Client::Device dev;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
+  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  // Doesn't call listen since the resolver already exists.
+  EXPECT_CALL(*mock_resolver, Listen(_)).Times(0);
+  EXPECT_CALL(*mock_resolver,
+              SetNameServers(
+                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+  proxy.OnDefaultDeviceChanged(&dev);
+}
+
+TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  shill::Client::Device dev;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  EXPECT_CALL(*mock_resolver, SetNameServers(_));
+  EXPECT_CALL(mock_manager_,
+              SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
+      .WillOnce(Return(true));
+  proxy.OnDefaultDeviceChanged(&dev);
 }
 
 }  // namespace dns_proxy

@@ -159,6 +159,10 @@ void Proxy::OnShillReset(bool reset) {
   SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()));
 }
 
+std::unique_ptr<Resolver> Proxy::NewResolver() {
+  return std::make_unique<Resolver>();
+}
+
 void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   // ARC proxies will handle changes to their network in OnDeviceChanged.
   if (opts_.type == Proxy::Type::kARC)
@@ -207,13 +211,14 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   *device_.get() = *device;
 
   if (!resolver_) {
-    resolver_ = std::make_unique<Resolver>();
+    resolver_ = NewResolver();
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
     addr.sin_port = kDefaultPort;
     addr.sin_addr.s_addr =
         INADDR_ANY;  // Since we're running in the private namespace.
+
     CHECK(resolver_->Listen(reinterpret_cast<struct sockaddr*>(&addr)))
         << opts_ << " failed to start relay loop";
   }

@@ -50,6 +50,9 @@ class Proxy : public brillo::DBusDaemon {
   int OnInit() override;
   void OnShutdown(int*) override;
 
+  // Added for testing.
+  virtual std::unique_ptr<Resolver> NewResolver();
+
  private:
   static const uint8_t kMaxShillPropertyRetries = 10;
 
@@ -81,6 +84,14 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, CrashOnConnectNamespaceFailure);
   FRIEND_TEST(ProxyTest, CrashOnPatchpanelNotReady);
   FRIEND_TEST(ProxyTest, ShillResetRestoresAddressProperty);
+  FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceDrops);
+  FRIEND_TEST(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops);
+  FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceIsNotOnline);
+  FRIEND_TEST(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline);
+  FRIEND_TEST(ProxyTest, CrashOnListenFailure);
+  FRIEND_TEST(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline);
+  FRIEND_TEST(ProxyTest,
+              SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;

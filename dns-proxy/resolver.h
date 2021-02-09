@@ -31,19 +31,19 @@ namespace dns_proxy {
 class Resolver {
  public:
   Resolver() = default;
-  ~Resolver() = default;
+  virtual ~Resolver() = default;
 
   // Listens for incoming requests on address |addr|.
   // Listening on default DNS port (53) requires CAP_NET_BIND_SERVICE.
   // TODO(jasongustaman): Listen on IPv6.
-  bool Listen(struct sockaddr* addr);
+  virtual bool Listen(struct sockaddr* addr);
 
   // Set standard DNS and DNS-over-HTTPS servers endpoints.
   // If DoH servers are not empty, resolving domain will be done with DoH.
   // |always_on| flag is used to disallow fallback to standard plain-text DNS.
-  void SetNameServers(const std::vector<std::string>& name_servers);
-  void SetDoHProviders(const std::vector<std::string>& doh_providers,
-                       bool always_on = false);
+  virtual void SetNameServers(const std::vector<std::string>& name_servers);
+  virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
+                               bool always_on = false);
 
  private:
   // |SocketFd| stores client's socket data.
