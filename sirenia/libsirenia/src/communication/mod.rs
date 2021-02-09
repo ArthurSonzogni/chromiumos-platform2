@@ -68,8 +68,6 @@ pub trait StorageRPC {
 // of the serialized message, then reads the serialized message and
 // deserializes it.
 pub fn read_message<R: Read, D: DeserializeOwned>(r: &mut R) -> Result<D> {
-    info!("Reading message");
-
     // Read the length of the serialized message first
     let mut buf = [0; LENGTH_BYTE_SIZE];
     r.read_exact(&mut buf).map_err(Error::Read)?;
