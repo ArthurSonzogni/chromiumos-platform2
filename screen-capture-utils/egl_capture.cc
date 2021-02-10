@@ -143,6 +143,14 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
   return image;
 }
 
+void WaitVBlank(int fd) {
+  drmVBlank vbl;
+  memset(&vbl, 0, sizeof vbl);
+  vbl.request.type = DRM_VBLANK_RELATIVE;
+  vbl.request.sequence = 1;
+  drmWaitVBlank(fd, &vbl);
+}
+
 }  // namespace
 
 EglDisplayBuffer::EglDisplayBuffer(
@@ -277,6 +285,8 @@ EglDisplayBuffer::~EglDisplayBuffer() {
 }
 
 DisplayBuffer::Result EglDisplayBuffer::Capture() {
+  WaitVBlank(crtc_.file().GetPlatformFile());
+
   const GLuint indices[4] = {0, 1, 2, 3};
 
   if (crtc_.planes().empty()) {
