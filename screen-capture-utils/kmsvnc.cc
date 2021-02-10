@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <sys/time.h>
+#include <time.h>
 
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -28,6 +29,9 @@ constexpr const char kExternalSwitch[] = "external";
 constexpr const char kCrtcIdSwitch[] = "crtc-id";
 constexpr const char kMethodSwitch[] = "method";
 constexpr int kBytesPerPixel = 4;
+
+constexpr const int kFindCrtcMaxRetries = 5;
+const timespec kFindCrtcRetryInterval{0, 100000000};  // 100ms
 
 class ScopedPowerLock {
  public:
@@ -161,6 +165,11 @@ int VncMain() {
   }
 
   auto crtc = finder.Find();
+  for (int retries = 0; !crtc && retries < kFindCrtcMaxRetries; retries++) {
+    LOG(WARNING) << "CRTC not found, retrying";
+    ::nanosleep(&kFindCrtcRetryInterval, nullptr);
+    crtc = finder.Find();
+  }
   if (!crtc) {
     LOG(ERROR) << "CRTC not found. Is the screen on?";
     return 1;
