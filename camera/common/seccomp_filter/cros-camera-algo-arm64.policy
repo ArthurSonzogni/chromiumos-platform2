@@ -21,6 +21,7 @@ getdents64: 1
 getegid: 1
 geteuid: 1
 getgid: 1
+getrandom: 1
 getpid: 1
 gettid: 1
 gettimeofday: 1
