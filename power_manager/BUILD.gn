@@ -51,10 +51,7 @@ group("all") {
     ]
   }
   if (use.trogdor_sar_hack) {
-    deps += [
-      ":set_cellular_transmit_power_trogdor",
-      ":upstart_proxies",
-    ]
+    deps += [ ":upstart_proxies" ]
   }
 }
 
@@ -284,11 +281,6 @@ executable("powerd_setuid_helper") {
 executable("set_cellular_transmit_power") {
   configs += [ ":target_defaults" ]
   sources = [ "powerd/set_cellular_transmit_power.cc" ]
-}
-
-executable("set_cellular_transmit_power_trogdor") {
-  configs += [ ":target_defaults" ]
-  sources = [ "powerd/set_cellular_transmit_power_trogdor.cc" ]
 }
 
 pkg_config("set_wifi_transmit_power_config") {
