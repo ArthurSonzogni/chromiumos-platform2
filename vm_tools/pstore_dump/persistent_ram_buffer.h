@@ -36,12 +36,11 @@ struct persistent_ram_buffer {
 // From fs/pstore/ram_core.c
 #define PERSISTENT_RAM_SIG (0x43474244) /* DBGC */
 
-const persistent_ram_buffer* FindPersistentRamBufferForConsoleOutput(
-    const void* pstore, size_t pstore_size);
 bool GetPersistentRamBufferContent(const persistent_ram_buffer* buf,
                                    size_t buf_capacity,
                                    std::string* out_content);
 bool HandlePstore(const base::FilePath& path);
+bool HandlePstoreDmesg(const base::FilePath& path);
 
 }  // namespace pstore_dump
 }  // namespace vm_tools
