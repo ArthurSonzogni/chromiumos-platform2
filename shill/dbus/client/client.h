@@ -162,6 +162,14 @@ class BRILLO_EXPORT Client {
   // Initiates the connection to DBus and starts processing signals.
   virtual void Init();
 
+  // |handler| will be invoked when shill's DBus service is available.
+  // If called and the service is up, it will return true immediately,
+  // if there is an internal error, it will return false immediately,
+  // otherwise it will be called at a future point when the service owner
+  // is updated.
+  virtual void RegisterOnAvailableCallback(
+      base::OnceCallback<void(bool)> handler);
+
   // |handler| will be invoked whenever shill exits. The boolean parameter
   // passed to the callback will be true if a new shill process was started and
   // now owns the dbus service; it will be false if shill is no longer running

@@ -96,8 +96,8 @@ Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
 
 void Client::Init() {
   bus_->GetObjectProxy(kFlimflamServiceName, dbus::ObjectPath{"/"})
-      ->SetNameOwnerChangedCallback(
-          base::Bind(&Client::OnOwnerChange, weak_factory_.GetWeakPtr()));
+      ->SetNameOwnerChangedCallback(base::BindRepeating(
+          &Client::OnOwnerChange, weak_factory_.GetWeakPtr()));
   SetupManagerProxy();
 }
 
@@ -183,6 +183,13 @@ void Client::SetupSelectedServiceProxy(const dbus::ObjectPath& service_path,
                  device_path.value()),
       base::Bind(&Client::OnServicePropertyChangeRegistration,
                  weak_factory_.GetWeakPtr(), device_path.value()));
+}
+
+void Client::RegisterOnAvailableCallback(
+    base::OnceCallback<void(bool)> handler) {
+  bus_->GetObjectProxy(kFlimflamServiceName,
+                       dbus::ObjectPath(kFlimflamServicePath))
+      ->WaitForServiceToBeAvailable(std::move(handler));
 }
 
 void Client::RegisterProcessChangedHandler(
