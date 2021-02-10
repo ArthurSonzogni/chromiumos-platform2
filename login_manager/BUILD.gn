@@ -69,7 +69,6 @@ generate_dbus_adaptors("session_manager-adaptors") {
 }
 
 static_library("libsession_manager") {
-  configs += [ ":target_defaults" ]
   sources = [
     "android_oci_wrapper.cc",
     "blob_util.cc",
@@ -118,6 +117,7 @@ static_library("libsession_manager") {
   } else {
     sources += [ "arc_sideload_status_stub.cc" ]
   }
+  configs += [ ":target_defaults" ]
   libs = [
     "bootstat",
     "installattributes",
@@ -132,7 +132,6 @@ static_library("libsession_manager") {
 }
 
 executable("keygen") {
-  configs += [ ":target_defaults" ]
   sources = [
     "child_job.cc",
     "keygen.cc",
@@ -141,11 +140,12 @@ executable("keygen") {
     "policy_key.cc",
     "system_utils_impl.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("session_manager") {
-  configs += [ ":target_defaults" ]
   sources = [ "session_manager_main.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [
     "rootdev",
     "container",
@@ -162,11 +162,6 @@ if (use.test) {
     ]
   }
   executable("session_manager_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":test_config",
-    ]
     sources = [
       "android_oci_wrapper_test.cc",
       "browser_job_test.cc",
@@ -207,6 +202,11 @@ if (use.test) {
     if (use.arc_adb_sideloading) {
       sources += [ "arc_sideload_status_test.cc" ]
     }
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
     defines = [ "UNIT_TEST" ]
     libs = [ "keyutils" ]
     deps = [
@@ -229,21 +229,21 @@ if (use.fuzzer) {
   }
 
   executable("login_manager_validator_utils_policy_desc_fuzzer") {
+    sources = [ "fuzzers/validator_utils_policy_desc_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":run_fuzzer_config",
       ":target_defaults",
     ]
     deps = [ ":libsession_manager" ]
-    sources = [ "fuzzers/validator_utils_policy_desc_fuzzer.cc" ]
   }
 
   executable("login_manager_validator_utils_fuzzer") {
+    sources = [ "fuzzers/validator_utils_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
     deps = [ ":libsession_manager" ]
-    sources = [ "fuzzers/validator_utils_fuzzer.cc" ]
   }
 }

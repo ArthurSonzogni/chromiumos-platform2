@@ -23,7 +23,6 @@ pkg_config("target_defaults") {
 }
 
 shared_library("libcontainer") {
-  configs += [ ":target_defaults" ]
   sources = [
     "cgroup.cc",
     "config.cc",
@@ -31,6 +30,7 @@ shared_library("libcontainer") {
     "libcontainer.cc",
     "libcontainer_util.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 if (use.test) {
@@ -39,13 +39,6 @@ if (use.test) {
   }
 
   executable("libcontainer_test") {
-    configs += [
-      # //common-mk:test should be at the top. crbug.com/887845
-      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
-      "//common-mk:test",
-      ":target_defaults",
-      ":test_config",
-    ]
     sources = [
       "cgroup.cc",
       "cgroup_test.cc",
@@ -54,6 +47,13 @@ if (use.test) {
       "libcontainer.cc",
       "libcontainer_test.cc",
       "libcontainer_util.cc",
+    ]
+    configs += [
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
     ]
     defines = [ "UNIT_TEST" ]
     ldflags = [

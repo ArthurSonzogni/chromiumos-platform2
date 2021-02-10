@@ -336,6 +336,17 @@ generate_pkg_config("libbrillo-test_pc") {
 }
 
 static_library("libbrillo-test") {
+  sources = [
+    "brillo/blkdev_utils/loop_device_fake.cc",
+    "brillo/http/http_connection_fake.cc",
+    "brillo/http/http_transport_fake.cc",
+    "brillo/message_loops/fake_message_loop.cc",
+    "brillo/streams/fake_stream.cc",
+    "brillo/unittest_utils.cc",
+  ]
+  if (use.device_mapper) {
+    sources += [ "brillo/blkdev_utils/device_mapper_fake.cc" ]
+  }
   configs -= [ "//common-mk:use_thin_archive" ]
   configs += [
     "//common-mk:nouse_thin_archive",
@@ -348,31 +359,28 @@ static_library("libbrillo-test") {
   foreach(name, libbrillo_test_deps) {
     deps += [ ":" + name ]
   }
-  sources = [
-    "brillo/blkdev_utils/loop_device_fake.cc",
-    "brillo/http/http_connection_fake.cc",
-    "brillo/http/http_transport_fake.cc",
-    "brillo/message_loops/fake_message_loop.cc",
-    "brillo/streams/fake_stream.cc",
-    "brillo/unittest_utils.cc",
-  ]
-  if (use.device_mapper) {
-    sources += [ "brillo/blkdev_utils/device_mapper_fake.cc" ]
-  }
 }
 
 shared_library("libinstallattributes") {
+  sources = [ "install_attributes/libinstallattributes.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":libinstallattributes-includes",
     "../common-mk/external_dependencies:install_attributes-proto",
   ]
   all_dependent_pkg_deps = [ "protobuf-lite" ]
-  sources = [ "install_attributes/libinstallattributes.cc" ]
 }
 
 shared_library("libpolicy") {
+  sources = [
+    "policy/device_policy.cc",
+    "policy/device_policy_impl.cc",
+    "policy/libpolicy.cc",
+    "policy/policy_util.cc",
+    "policy/resilient_policy_util.cc",
+  ]
   configs += [ ":target_defaults" ]
+  ldflags = [ "-Wl,--version-script,${platform2_root}/libbrillo/libpolicy.ver" ]
   deps = [
     ":libinstallattributes",
     ":libpolicy-includes",
@@ -381,14 +389,6 @@ shared_library("libpolicy") {
   all_dependent_pkg_deps = [
     "openssl",
     "protobuf-lite",
-  ]
-  ldflags = [ "-Wl,--version-script,${platform2_root}/libbrillo/libpolicy.ver" ]
-  sources = [
-    "policy/device_policy.cc",
-    "policy/device_policy_impl.cc",
-    "policy/libpolicy.cc",
-    "policy/policy_util.cc",
-    "policy/resilient_policy_util.cc",
   ]
 }
 
@@ -414,6 +414,10 @@ generate_pkg_config("libbrillo-glib_pc") {
 
 shared_library("libbrillo-glib") {
   configs += [ ":target_defaults" ]
+  cflags = [
+    # glib uses the deprecated "register" attribute in some header files.
+    "-Wno-deprecated-register",
+  ]
   deps = [
     ":libbrillo",
     ":libbrillo-glib_pc",
@@ -425,15 +429,12 @@ shared_library("libbrillo-glib") {
       "brillo/glib/dbus.cc",
     ]
   }
-  cflags = [
-    # glib uses the deprecated "register" attribute in some header files.
-    "-Wno-deprecated-register",
-  ]
 }
 
 if (use.test) {
   static_library("libbrillo_static") {
     configs += [ ":target_defaults" ]
+    public_configs = [ ":libbrillo_configs" ]
     deps = [
       ":libbrillo_pc",
       ":libinstallattributes",
@@ -442,7 +443,6 @@ if (use.test) {
     foreach(sublib, libbrillo_sublibs) {
       deps += [ ":lib" + sublib.library_name ]
     }
-    public_configs = [ ":libbrillo_configs" ]
   }
   proto_library("libbrillo_tests_proto") {
     proto_in_dir = "brillo/dbus"
@@ -456,27 +456,6 @@ if (use.test) {
     gen_grpc = true
   }
   executable("libbrillo_tests") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libbrillo-glib",
-      ":libbrillo-test",
-      ":libbrillo_static",
-      ":libbrillo_tests_proto",
-    ]
-    pkg_deps = [ "libchrome-test" ]
-    cflags = [ "-Wno-format-zero-length" ]
-
-    if (is_debug) {
-      cflags += [
-        "-fprofile-arcs",
-        "-ftest-coverage",
-        "-fno-inline",
-      ]
-      libs = [ "gcov" ]
-    }
     sources = [
       "brillo/asynchronous_signal_handler_test.cc",
       "brillo/backoff_entry_test.cc",
@@ -549,9 +528,31 @@ if (use.test) {
         "brillo/blkdev_utils/lvm_test.cc",
       ]
     }
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    cflags = [ "-Wno-format-zero-length" ]
+    pkg_deps = [ "libchrome-test" ]
+    deps = [
+      ":libbrillo-glib",
+      ":libbrillo-test",
+      ":libbrillo_static",
+      ":libbrillo_tests_proto",
+    ]
+
+    if (is_debug) {
+      cflags += [
+        "-fprofile-arcs",
+        "-ftest-coverage",
+        "-fno-inline",
+      ]
+      libs = [ "gcov" ]
+    }
   }
 
   executable("libinstallattributes_tests") {
+    sources = [ "install_attributes/tests/libinstallattributes_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -561,10 +562,16 @@ if (use.test) {
       "../common-mk/external_dependencies:install_attributes-proto",
       "../common-mk/testrunner:testrunner",
     ]
-    sources = [ "install_attributes/tests/libinstallattributes_test.cc" ]
   }
 
   executable("libpolicy_tests") {
+    sources = [
+      "install_attributes/mock_install_attributes_reader.cc",
+      "policy/tests/device_policy_impl_test.cc",
+      "policy/tests/libpolicy_test.cc",
+      "policy/tests/policy_util_test.cc",
+      "policy/tests/resilient_policy_util_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -576,16 +583,14 @@ if (use.test) {
       "../common-mk/external_dependencies:policy-protos",
       "../common-mk/testrunner:testrunner",
     ]
-    sources = [
-      "install_attributes/mock_install_attributes_reader.cc",
-      "policy/tests/device_policy_impl_test.cc",
-      "policy/tests/libpolicy_test.cc",
-      "policy/tests/policy_util_test.cc",
-      "policy/tests/resilient_policy_util_test.cc",
-    ]
   }
 
   executable("libbrillo-grpc_tests") {
+    sources = [
+      "brillo/grpc/async_grpc_client_server_test.cc",
+      "brillo/grpc/async_grpc_server_test.cc",
+      "brillo/grpc/grpc_completion_queue_dispatcher_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -595,48 +600,31 @@ if (use.test) {
       ":libbrillo-grpc",
       "../common-mk/testrunner:testrunner",
     ]
-    sources = [
-      "brillo/grpc/async_grpc_client_server_test.cc",
-      "brillo/grpc/async_grpc_server_test.cc",
-      "brillo/grpc/grpc_completion_queue_dispatcher_test.cc",
-    ]
   }
 }
 
 if (use.fuzzer) {
   executable("libbrillo_data_encoding_fuzzer") {
     sources = [ "brillo/data_encoding_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome" ]
-
     include_dirs = [ "../libbrillo" ]
-
     deps = [ ":libbrillo-core" ]
   }
 
   executable("libbrillo_dbus_data_serialization_fuzzer") {
     sources = [ "brillo/dbus/data_serialization_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome" ]
-
     include_dirs = [ "../libbrillo" ]
-
     deps = [ ":libbrillo-core" ]
   }
 
   executable("libbrillo_http_form_data_fuzzer") {
     sources = [ "brillo/http/http_form_data_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome" ]
-
     include_dirs = [ "../libbrillo" ]
-
     deps = [
       ":libbrillo-http",
       ":libbrillo-streams",
@@ -645,13 +633,9 @@ if (use.fuzzer) {
 
   executable("libbrillo_url_utils_fuzzer") {
     sources = [ "brillo/url_utils_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome" ]
-
     include_dirs = [ "../libbrillo" ]
-
     deps = [ ":libbrillo-core" ]
   }
 }
