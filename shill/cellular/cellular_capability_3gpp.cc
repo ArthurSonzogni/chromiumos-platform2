@@ -1848,22 +1848,6 @@ void CellularCapability3gpp::OnSimPropertiesChanged(
     OnAllSimPropertiesReceived();
 }
 
-void CellularCapability3gpp::SetSimPathForTesting(
-    const RpcIdentifier& sim_path) {
-  if (sim_path == sim_path_)
-    return;
-  sim_path_ = sim_path;
-  UpdateSims();
-}
-
-void CellularCapability3gpp::SetSimSlotsForTesting(
-    const RpcIdentifiers& sim_slots) {
-  if (sim_slots == sim_slots_)
-    return;
-  sim_slots_ = sim_slots;
-  UpdateSims();
-}
-
 double CellularCapability3gpp::SignalQualityBounds::GetAsPercentage(
     double signal_quality) const {
   double clamped_signal_quality =

@@ -54,11 +54,11 @@ class CellularCapabilityCdmaTest : public testing::Test {
         capability_(nullptr),
         device_adaptor_(nullptr),
         modem_info_(&control_interface_, &manager_),
-        modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
-        modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
-        modem_proxy_(new mm1::MockModemProxy()),
-        modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
-        sim_proxy_(new mm1::MockSimProxy()),
+        modem_3gpp_proxy_(new NiceMock<mm1::MockModemModem3gppProxy>()),
+        modem_cdma_proxy_(new NiceMock<mm1::MockModemModemCdmaProxy>()),
+        modem_proxy_(new NiceMock<mm1::MockModemProxy>()),
+        modem_simple_proxy_(new NiceMock<mm1::MockModemSimpleProxy>()),
+        sim_proxy_(new NiceMock<mm1::MockSimProxy>()),
         properties_proxy_(
             DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting()),
         cellular_(new Cellular(&modem_info_,
@@ -164,7 +164,7 @@ class CellularCapabilityCdmaTest : public testing::Test {
 
   EventDispatcher* dispatcher_;
   TestControl control_interface_;
-  MockMetrics metrics_;
+  NiceMock<MockMetrics> metrics_;
   NiceMock<MockManager> manager_;
   CellularCapabilityCdma* capability_;
   NiceMock<DeviceMockAdaptor>* device_adaptor_;

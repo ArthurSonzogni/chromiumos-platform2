@@ -555,9 +555,8 @@ class Manager {
   friend class VPNServiceTest;
   friend class WiFiObjectTest;
 
-  FRIEND_TEST(CellularCapability3gppMainTest, TerminationAction);
-  FRIEND_TEST(CellularCapability3gppMainTest,
-              TerminationActionRemovedByStopModem);
+  FRIEND_TEST(CellularCapability3gppTest, TerminationAction);
+  FRIEND_TEST(CellularCapability3gppTest, TerminationActionRemovedByStopModem);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(DefaultProfileTest, LoadManagerDefaultProperties);
   FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);

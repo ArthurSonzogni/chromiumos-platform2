@@ -243,7 +243,6 @@ class CellularCapability {
   friend class CellularCapability3gppTest;
   friend class CellularCapabilityCdmaTest;
   friend class CellularTest;
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdateActiveBearer);
   FRIEND_TEST(CellularTest, Connect);
 
   Cellular* cellular_;

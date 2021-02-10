@@ -353,24 +353,20 @@ class Cellular : public Device,
   CellularCapability* capability_for_testing() { return capability_.get(); }
   mm1::Mm1ProxyInterface* mm1_proxy_for_testing() { return mm1_proxy_.get(); }
 
+  // Sets a Service for testing. When set, Cellular does not create or destroy
+  // the associated Service.
+  void SetServiceForTesting(CellularServiceRefPtr service);
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
   void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
+  void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
+  void set_state_for_testing(const State& state) { state_ = state; }
 
  private:
   friend class CellularTest;
-  friend class CellularCapability3gppTest;
   friend class CellularCapabilityCdmaTest;
   friend class CellularServiceTest;
   friend class CellularServiceProviderTest;
   friend class ModemTest;
-  FRIEND_TEST(CellularCapability3gppMainTest, Connect);
-  FRIEND_TEST(CellularCapability3gppMainTest, IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapability3gppMainTest, SetInitialEpsBearer);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdateRegistrationState);
-  FRIEND_TEST(CellularCapability3gppMainTest,
-              UpdateRegistrationStateModemNotConnected);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdateServiceActivationState);
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
   FRIEND_TEST(CellularTest, Connect);
@@ -544,12 +540,6 @@ class Cellular : public Device,
   void PollLocationTask();
 
   void SetCapabilityState(CapabilityState capability_state);
-
-  // Sets a Service for testing. When set, Cellular does not create or destroy
-  // the associated Service.
-  void SetServiceForTesting(CellularServiceRefPtr service);
-
-  void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
 
   State state_;
   ModemState modem_state_;

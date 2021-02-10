@@ -197,36 +197,34 @@ class CellularCapability3gpp : public CellularCapability {
   friend class CellularCapabilityCdmaTest;
   // CellularCapability3gppTimerTest
   FRIEND_TEST(CellularCapabilityCdmaMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, GetMdnForOLP);
-  FRIEND_TEST(CellularCapability3gppMainTest, GetTypeString);
-  FRIEND_TEST(CellularCapability3gppMainTest, IsMdnValid);
-  FRIEND_TEST(CellularCapability3gppMainTest, IsRegistered);
-  FRIEND_TEST(CellularCapability3gppMainTest, IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapability3gppMainTest, IsValidSimPath);
-  FRIEND_TEST(CellularCapability3gppMainTest, NormalizeMdn);
-  FRIEND_TEST(CellularCapability3gppMainTest, OnLockRetriesChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, OnLockTypeChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest,
-              OnModemCurrentCapabilitiesChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, OnSimLockPropertiesChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, SignalPropertiesChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, Reset);
-  FRIEND_TEST(CellularCapability3gppMainTest, SetInitialEpsBearer);
-  FRIEND_TEST(CellularCapability3gppMainTest, SimLockStatusChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, SimLockStatusToProperty);
-  FRIEND_TEST(CellularCapability3gppMainTest, SimPathChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, SimPropertiesChanged);
-  FRIEND_TEST(CellularCapability3gppMainTest, StartModemInWrongState);
-  FRIEND_TEST(CellularCapability3gppMainTest,
-              StartModemWithDeferredEnableFailure);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdateActiveBearer);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdateRegistrationState);
-  FRIEND_TEST(CellularCapability3gppMainTest,
+  FRIEND_TEST(CellularCapability3gppTest, GetMdnForOLP);
+  FRIEND_TEST(CellularCapability3gppTest, GetTypeString);
+  FRIEND_TEST(CellularCapability3gppTest, IsMdnValid);
+  FRIEND_TEST(CellularCapability3gppTest, IsRegistered);
+  FRIEND_TEST(CellularCapability3gppTest, IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapability3gppTest, IsValidSimPath);
+  FRIEND_TEST(CellularCapability3gppTest, NormalizeMdn);
+  FRIEND_TEST(CellularCapability3gppTest, OnLockRetriesChanged);
+  FRIEND_TEST(CellularCapability3gppTest, OnLockTypeChanged);
+  FRIEND_TEST(CellularCapability3gppTest, OnModemCurrentCapabilitiesChanged);
+  FRIEND_TEST(CellularCapability3gppTest, OnSimLockPropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppTest, SignalPropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppTest, Reset);
+  FRIEND_TEST(CellularCapability3gppTest, SetInitialEpsBearer);
+  FRIEND_TEST(CellularCapability3gppTest, SimLockStatusChanged);
+  FRIEND_TEST(CellularCapability3gppTest, SimLockStatusToProperty);
+  FRIEND_TEST(CellularCapability3gppTest, SimPathChanged);
+  FRIEND_TEST(CellularCapability3gppTest, SimPropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppTest, StartModemInWrongState);
+  FRIEND_TEST(CellularCapability3gppTest, StartModemWithDeferredEnableFailure);
+  FRIEND_TEST(CellularCapability3gppTest, UpdateActiveBearer);
+  FRIEND_TEST(CellularCapability3gppTest, UpdatePendingActivationState);
+  FRIEND_TEST(CellularCapability3gppTest, UpdateRegistrationState);
+  FRIEND_TEST(CellularCapability3gppTest,
               UpdateRegistrationStateModemNotConnected);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdateServiceActivationState);
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdateServiceOLP);
+  FRIEND_TEST(CellularCapability3gppTest, UpdateServiceActivationState);
+  FRIEND_TEST(CellularCapability3gppTest, UpdateServiceOLP);
   FRIEND_TEST(CellularCapability3gppTimerTest, CompleteActivation);
   // CellularTest
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
@@ -353,9 +351,6 @@ class CellularCapability3gpp : public CellularCapability {
   void ResetAfterActivation();
   void UpdateServiceActivationState();
   void OnResetAfterActivationReply(const Error& error);
-
-  void SetSimPathForTesting(const RpcIdentifier& sim_path);
-  void SetSimSlotsForTesting(const RpcIdentifiers& sim_slots);
 
   // Convenience pointer to modem_info()->manager()->metrics().
   Metrics* metrics_;

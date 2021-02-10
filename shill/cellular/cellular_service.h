@@ -116,6 +116,10 @@ class CellularService : public Service {
   static const char kStoragePPPPassword[];
   static const char kStorageSimCardId[];
 
+  void set_activation_state_for_testing(const std::string& activation_state) {
+    activation_state_ = activation_state;
+  }
+
  protected:
   // Protected Service overrides
   void OnConnect(Error* error) override;
@@ -134,7 +138,6 @@ class CellularService : public Service {
   template <typename key_type, typename value_type>
   friend class ContainsCellularPropertiesMatcherP2;
 
-  FRIEND_TEST(CellularCapability3gppMainTest, UpdatePendingActivationState);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, FriendlyServiceName);
   FRIEND_TEST(CellularTest, GetLogin);  // ppp_username_, ppp_password_
