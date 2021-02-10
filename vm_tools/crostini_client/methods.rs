@@ -47,6 +47,7 @@ enum ChromeOSError {
     BadVmStatus(VmStatus, String),
     BadVmPluginDispatcherStatus,
     CrostiniVmDisabled,
+    CrostiniVmDisabledReason(String),
     ExportPathExists,
     ImportPathDoesNotExist,
     FailedAdjustVm(String),
@@ -76,6 +77,7 @@ enum ChromeOSError {
     NotAvailableForPluginVm,
     NotPluginVm,
     PluginVmDisabled,
+    PluginVmDisabledReason(String),
     PluginVmGenericError(i32),
     PluginVmLicenseExpired(i32),
     PluginVmLicenseInvalid(i32),
@@ -98,18 +100,19 @@ impl fmt::Display for ChromeOSError {
             BadPluginVmStatus(s) => write!(f, "bad VM status: `{:?}`", s),
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
             BadVmPluginDispatcherStatus => write!(f, "failed to start Parallels dispatcher"),
-            CrostiniVmDisabled => write!(f, "Crostini VMs are currently disabled"),
+            CrostiniVmDisabled => write!(f, "Crostini VMs are not available"),
+            CrostiniVmDisabledReason(reason) => {
+                write!(f, "Crostini VMs are not available: {}", reason)
+            }
             ExportPathExists => write!(f, "disk export path already exists"),
             ImportPathDoesNotExist => write!(f, "disk import path does not exist"),
             FailedAdjustVm(reason) => write!(f, "failed to adjust vm: {}", reason),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
-            FailedAllocateExtraDisk { path, reason } => {
-                write!(
-                    f,
-                    "failed to allocate an extra disk at {}: {}",
-                    path, reason
-                )
-            }
+            FailedAllocateExtraDisk { path, reason } => write!(
+                f,
+                "failed to allocate an extra disk at {}: {}",
+                path, reason
+            ),
             FailedDetachUsb(reason) => write!(f, "failed to detach usb device from vm: {}", reason),
             FailedDlcInstall(name, reason) => write!(
                 f,
@@ -163,7 +166,10 @@ impl fmt::Display for ChromeOSError {
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
             NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
             NotPluginVm => write!(f, "this VM is not a Parallels VM"),
-            PluginVmDisabled => write!(f, "Parallels VMs are currently disabled"),
+            PluginVmDisabled => write!(f, "Parallels VMs are not available"),
+            PluginVmDisabledReason(reason) => {
+                write!(f, "Parallels VMs are not available: {}", reason)
+            }
             PluginVmGenericError(rc) => write!(f, "failed to execute request: {:#X}", rc),
             PluginVmLicenseExpired(rc) => write!(f, "expired license: {:#X}", rc),
             PluginVmLicenseInvalid(rc) => write!(f, "invalid license: {:#X}", rc),
@@ -357,13 +363,19 @@ pub struct UserDisks {
     pub extra_disk: Option<String>,
 }
 
+#[derive(Clone)]
+pub enum VmTypeStatus {
+    Enabled,
+    Disabled(Option<String>),
+}
+
 /// Uses the standard ChromeOS interfaces to implement the methods with the least possible
 /// privilege. Uses a combination of D-Bus, protobufs, and shell protocols.
 pub struct Methods {
     connection: ConnectionProxy,
-    crostini_enabled: Option<bool>,
+    crostini_enabled: Option<VmTypeStatus>,
     crostini_dlc: Option<bool>,
-    plugin_vm_enabled: Option<bool>,
+    plugin_vm_enabled: Option<VmTypeStatus>,
 }
 
 impl Methods {
@@ -382,9 +394,9 @@ impl Methods {
     pub fn dummy() -> Methods {
         Methods {
             connection: ConnectionProxy::dummy(),
-            crostini_enabled: Some(true),
+            crostini_enabled: Some(VmTypeStatus::Enabled),
             crostini_dlc: Some(true),
-            plugin_vm_enabled: Some(true),
+            plugin_vm_enabled: Some(VmTypeStatus::Enabled),
         }
     }
 
@@ -488,11 +500,11 @@ impl Methods {
         Ok(())
     }
 
-    fn is_vm_type_enabled(
+    fn check_vm_type_status(
         &mut self,
         user_id_hash: &str,
         method_name: &str,
-    ) -> Result<bool, Box<dyn Error>> {
+    ) -> Result<VmTypeStatus, Box<dyn Error>> {
         let method = Message::new_method_call(
             CHROME_FEATURES_SERVICE_NAME,
             CHROME_FEATURES_SERVICE_PATH,
@@ -504,10 +516,82 @@ impl Methods {
         let message = self
             .connection
             .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
-        match message.get1() {
-            Some(true) => Ok(true),
-            Some(false) => Ok(false),
+        let (enabled, reason): (Option<bool>, Option<String>) = message.get2();
+        match enabled {
+            Some(true) => Ok(VmTypeStatus::Enabled),
+            Some(false) => Ok(VmTypeStatus::Disabled(reason)),
             _ => Err(BadChromeFeatureStatus.into()),
+        }
+    }
+
+    fn check_crostini_status(
+        &mut self,
+        user_id_hash: &str,
+    ) -> Result<VmTypeStatus, Box<dyn Error>> {
+        let status = match &self.crostini_enabled {
+            Some(value) => value.clone(),
+            None => {
+                let value = self.check_vm_type_status(
+                    user_id_hash,
+                    CHROME_FEATURES_SERVICE_IS_CROSTINI_ENABLED_METHOD,
+                )?;
+                self.crostini_enabled = Some(value.clone());
+                value
+            }
+        };
+        Ok(status)
+    }
+
+    fn is_crostini_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
+        match self.check_crostini_status(user_id_hash)? {
+            VmTypeStatus::Enabled => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
+    fn ensure_crostini_available(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
+        match self.check_crostini_status(user_id_hash)? {
+            VmTypeStatus::Enabled => Ok(()),
+            VmTypeStatus::Disabled(reason) => match reason {
+                Some(r) => Err(CrostiniVmDisabledReason(r).into()),
+                None => Err(CrostiniVmDisabled.into()),
+            },
+        }
+    }
+
+    fn check_plugin_vm_status(
+        &mut self,
+        user_id_hash: &str,
+    ) -> Result<VmTypeStatus, Box<dyn Error>> {
+        let status = match &self.plugin_vm_enabled {
+            Some(value) => value.clone(),
+            None => {
+                let value = self.check_vm_type_status(
+                    user_id_hash,
+                    CHROME_FEATURES_SERVICE_IS_PLUGIN_VM_ENABLED_METHOD,
+                )?;
+                self.plugin_vm_enabled = Some(value.clone());
+                value
+            }
+        };
+        Ok(status)
+    }
+
+    fn is_plugin_vm_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
+        match self.check_plugin_vm_status(user_id_hash)? {
+            VmTypeStatus::Enabled => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
+    // Checks if Parallels is enabled, and starts the dispatcher.
+    fn ensure_plugin_vm_available(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
+        match self.check_plugin_vm_status(user_id_hash)? {
+            VmTypeStatus::Enabled => self.start_vm_plugin_dispatcher(user_id_hash),
+            VmTypeStatus::Disabled(reason) => match reason {
+                Some(r) => Err(PluginVmDisabledReason(r).into()),
+                None => Err(PluginVmDisabled.into()),
+            },
         }
     }
 
@@ -550,36 +634,6 @@ impl Methods {
             None => {
                 let value = self.is_chrome_feature_enabled("CrostiniUseDlc")?;
                 self.crostini_dlc = Some(value);
-                value
-            }
-        };
-        Ok(enabled)
-    }
-
-    fn is_crostini_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
-        let enabled = match self.crostini_enabled {
-            Some(value) => value,
-            None => {
-                let value = self.is_vm_type_enabled(
-                    user_id_hash,
-                    CHROME_FEATURES_SERVICE_IS_CROSTINI_ENABLED_METHOD,
-                )?;
-                self.crostini_enabled = Some(value);
-                value
-            }
-        };
-        Ok(enabled)
-    }
-
-    fn is_plugin_vm_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
-        let enabled = match self.plugin_vm_enabled {
-            Some(value) => value,
-            None => {
-                let value = self.is_vm_type_enabled(
-                    user_id_hash,
-                    CHROME_FEATURES_SERVICE_IS_PLUGIN_VM_ENABLED_METHOD,
-                )?;
-                self.plugin_vm_enabled = Some(value);
                 value
             }
         };
@@ -701,14 +755,8 @@ impl Methods {
         request.cryptohome_id = user_id_hash.to_owned();
         request.image_type = DiskImageType::DISK_IMAGE_AUTO;
         request.storage_location = if plugin_vm {
-            if !self.is_plugin_vm_enabled(user_id_hash)? {
-                return Err(PluginVmDisabled.into());
-            }
             StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM
         } else {
-            if !self.is_crostini_enabled(user_id_hash)? {
-                return Err(CrostiniVmDisabled.into());
-            }
             StorageLocation::STORAGE_CRYPTOHOME_ROOT
         };
 
@@ -916,14 +964,8 @@ impl Methods {
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.storage_location = if plugin_vm {
-            if !self.is_plugin_vm_enabled(user_id_hash)? {
-                return Err(PluginVmDisabled.into());
-            }
             StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM
         } else {
-            if !self.is_crostini_enabled(user_id_hash)? {
-                return Err(CrostiniVmDisabled.into());
-            }
             StorageLocation::STORAGE_CRYPTOHOME_ROOT
         };
         request.source_size = file_size;
@@ -1801,7 +1843,11 @@ impl Methods {
         removable_media: Option<&str>,
         params: &[&str],
     ) -> Result<Option<String>, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        if plugin_vm {
+            self.ensure_plugin_vm_available(user_id_hash)?;
+        } else {
+            self.ensure_crostini_available(user_id_hash)?;
+        }
         self.create_vm_image(
             name,
             user_id_hash,
@@ -1831,17 +1877,12 @@ impl Methods {
         user_disks: UserDisks,
         start_lxd: bool,
     ) -> Result<(), Box<dyn Error>> {
-        self.notify_vm_starting()?;
-        self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(name, user_id_hash)? {
-            if !self.is_plugin_vm_enabled(user_id_hash)? {
-                return Err(PluginVmDisabled.into());
-            }
+            self.ensure_plugin_vm_available(user_id_hash)?;
+            self.notify_vm_starting()?;
             self.start_plugin_vm(name, user_id_hash)
         } else {
-            if !self.is_crostini_enabled(user_id_hash)? {
-                return Err(CrostiniVmDisabled.into());
-            }
+            self.ensure_crostini_available(user_id_hash)?;
 
             let is_stable_channel = is_stable_channel();
             if features.software_tpm && is_stable_channel {
@@ -1849,6 +1890,7 @@ impl Methods {
             }
 
             let disk_image_path = self.create_disk_image(name, user_id_hash)?;
+            self.notify_vm_starting()?;
             self.start_vm_with_disk(
                 name,
                 user_id_hash,
@@ -1889,7 +1931,11 @@ impl Methods {
         file_name: &str,
         removable_media: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
+        if plugin_vm {
+            self.ensure_plugin_vm_available(user_id_hash)?;
+        } else {
+            self.ensure_crostini_available(user_id_hash)?;
+        }
         self.import_disk_image(name, user_id_hash, plugin_vm, file_name, removable_media)
     }
 
