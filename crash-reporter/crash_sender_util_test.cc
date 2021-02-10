@@ -27,12 +27,16 @@
 #include <base/macros.h>
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/strcat.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/flag_helper.h>
+#include <brillo/http/http_transport.h>
+#include <brillo/http/http_transport_fake.h>
 #include <brillo/key_value_store.h>
+#include <brillo/mime_utils.h>
 #include <brillo/process/process.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -44,6 +48,7 @@
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
+#include "crash-reporter/util.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -77,6 +82,54 @@ class MockClock : public base::Clock {
  public:
   ~MockClock() override {}
   MOCK_METHOD(base::Time, Now, (), (const override));
+};
+
+// Reply with either a 200 or a 429 status code depending on what tests need.
+void MockMethodHandler(bool success,
+                       std::string response_text,
+                       const brillo::http::fake::ServerRequest& request,
+                       brillo::http::fake::ServerResponse* response) {
+  int response_code;
+  if (success) {
+    response_code = brillo::http::status_code::Ok;
+  } else {
+    // If the response is a number, let's use it. Default to error 429
+    if (!base::StringToInt(response_text, &response_code)) {
+      response_code = brillo::http::status_code::TooManyRequests;
+    }
+  }
+  LOG(INFO) << "Mock HTTP request - replying with status code: "
+            << response_code << ", text: " << response_text;
+
+  response->ReplyText(response_code, response_text, brillo::mime::text::kPlain);
+}
+
+// Replaces Sender's functionality with a predefined behavior.
+class MockSender : public util::Sender {
+ private:
+  bool success_;
+  std::string response_;
+
+ protected:
+  std::shared_ptr<brillo::http::Transport> GetTransport() override {
+    std::shared_ptr<brillo::http::fake::Transport> fake_transport =
+        std::make_shared<brillo::http::fake::Transport>();
+    fake_transport->AddHandler(
+        kReportUploadProdUrl, brillo::http::request_type::kPost,
+        base::Bind(MockMethodHandler, success_, response_));
+
+    return fake_transport;
+  }
+
+ public:
+  MockSender(bool is_success,
+             std::string response_text,
+             std::unique_ptr<MetricsLibraryMock> metrics_lib,
+             std::unique_ptr<base::Clock> clock,
+             const Sender::Options& options)
+      : Sender(std::move(metrics_lib), std::move(clock), options),
+        success_(is_success),
+        response_(std::move(response_text)) {}
 };
 
 // Parses the Chrome uploads.log file from Sender to a vector of items per line.
@@ -133,14 +186,16 @@ std::vector<base::FilePath> GetFileNamesIn(const base::FilePath& directory) {
   return files;
 }
 
-// Set the file flag which indicates we are mocking crash sending, either
-// successfully or as a a failure. This also creates the directory where
-// uploads.log is written to since Chrome would normally be doing that.
-bool SetMockCrashSending(bool success) {
-  return test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
-                                            paths::kMockCrashSending),
-                               success ? "" : "0") &&
-         base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
+// Set the flag which indicates we are mocking crash sending, either
+// successfully or as a a failure.
+void SetMockCrashSending(bool success) {
+  util::g_force_is_mock = true;
+  util::g_force_is_mock_successful = success;
+}
+
+// Clears out the flag which indicates we're mocking crash sending.
+void ClearMockCrashSending() {
+  util::g_force_is_mock = false;
 }
 
 // Handles calls for getting the network state.
@@ -172,12 +227,18 @@ class CrashSenderUtilTest : public testing::Test {
     const base::FilePath lock_file_directory = lock_file_path.DirName();
     ASSERT_TRUE(base::CreateDirectory(lock_file_directory));
 
+    // Creates the directory where crashes will be stored, normally done by
+    // Chrome
+    ASSERT_TRUE(
+        base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName()));
+
     // We need to properly init the CommandLine object for the command line
     // parsing tests.
     base::CommandLine::Init(0, nullptr);
   }
 
   void TearDown() override {
+    ClearMockCrashSending();
     paths::SetPrefixForTesting(base::FilePath());
 
     // ParseCommandLine() uses base::CommandLine via
@@ -915,10 +976,12 @@ TEST_F(CrashSenderUtilDeathTest, ChooseActionCrash) {
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
   Sender::Options options;
-  Sender sender(std::move(metrics_lib_),
-                std::make_unique<test_util::AdvancingClock>(), options);
+  MockSender sender(true,   // success=true
+                    "123",  // Response
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
 
-  ASSERT_TRUE(SetMockCrashSending(true));
+  SetMockCrashSending(true);
   sender.SetCrashDuringSendForTesting(true);
 
   std::string reason;
@@ -1104,17 +1167,35 @@ TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
 TEST_F(CrashSenderUtilTest, FailRemoveReportFilesSendsMetric) {
   Sender::Options options;
   EXPECT_CALL(*metrics_lib_,
+              SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
+                            Sender::kTotalRemoval, Sender::kSendReasonCount))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics_lib_,
               SendCrosEventToUMA("Crash.Sender.AttemptedCrashRemoval"))
       .WillOnce(Return(true));
   EXPECT_CALL(*metrics_lib_,
               SendCrosEventToUMA("Crash.Sender.FailedCrashRemoval"))
       .WillOnce(Return(true));
 
-  Sender sender(std::move(metrics_lib_),
-                std::make_unique<test_util::AdvancingClock>(), options);
+  MockSender sender(true,   // success
+                    "123",  // Response (report ID)
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
+  // Should return true because the channel is testimage.
+  LOG(WARNING) << "Creating release track image";
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kEtcDirectory, paths::kLsbRelease),
+      "CHROMEOS_RELEASE_TRACK=testimage-channel"));
+  EXPECT_TRUE(IsTestImage());
+  // Set up a crash consent file
+  LOG(WARNING) << "Creating consent file";
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockConsent), ""));
+  EXPECT_TRUE(util::HasMockConsent());
 
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_FALSE(base::DirectoryExists(crash_directory));
   ASSERT_TRUE(base::CreateDirectory(crash_directory));
 
   const base::FilePath foo_meta = crash_directory.Append("foo.meta");
@@ -1589,7 +1670,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
 
   // Set up the crash sender so that it succeeds.
-  ASSERT_TRUE(SetMockCrashSending(true));
+  SetMockCrashSending(true);
 
   // Set up the sender.
   std::vector<base::TimeDelta> sleep_times;
@@ -1600,8 +1681,10 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   options.max_crash_bytes = 0;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
-  Sender sender(std::move(metrics_lib_),
-                std::make_unique<test_util::AdvancingClock>(), options);
+  MockSender sender(true /*success*/,
+                    "123",  // upload_id
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
 
   // Send crashes.
   EXPECT_CALL(
@@ -1625,8 +1708,10 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   sleep_times.clear();
 
   // Exit from guest mode/re-enable metrics, and send crashes again.
+  LOG(INFO) << "Reenabling metrics to send crashes again";
   raw_metrics_lib->set_guest_mode(false);
   raw_metrics_lib->set_metrics_enabled(true);
+
   // 2 times because there are 2 valid crashes to send
   EXPECT_CALL(
       *raw_metrics_lib,
@@ -1674,7 +1759,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   ASSERT_TRUE(row.has_value());
   ASSERT_EQ(6, row->DictSize());
   EXPECT_TRUE(row->FindKey("upload_time"));
-  EXPECT_EQ("456", row->FindKey("upload_id")->GetString());
+  EXPECT_EQ("123", row->FindKey("upload_id")
+                       ->GetString());  // This is the value we set before
   EXPECT_EQ("bar", row->FindKey("local_id")->GetString());
   EXPECT_EQ("2000", row->FindKey("capture_time")->GetString());
   EXPECT_EQ(3, row->FindKey("state")->GetInt());
@@ -1689,6 +1775,84 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   // The following should be kept since the crash report was not uploaded.
   EXPECT_TRUE(base::PathExists(user_meta_file2));
   EXPECT_TRUE(base::PathExists(user_log2));
+}
+
+TEST_F(CrashSenderUtilTest, SendCrashes_TooManyRequests) {
+  // Set up the mock session manager client.
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  test_util::SetActiveSessions(mock.get(), {{"user", "hash"}});
+  std::vector<MetaFile> crashes_to_send;
+
+  // Establish the client ID.
+  ASSERT_TRUE(CreateClientIdFile());
+
+  // Create a user crash directory, and crash files in it.
+  const base::FilePath user_dir = paths::Get("/home/user/hash/crash");
+  ASSERT_TRUE(base::CreateDirectory(user_dir));
+  const base::FilePath user_meta_file = user_dir.Append("0.0.0.0.0.meta");
+  const base::FilePath user_log = user_dir.Append("0.0.0.0.0.log");
+  const base::FilePath user_processing =
+      user_dir.Append("0.0.0.0.0.processing");
+  const char user_meta[] =
+      "payload=0.0.0.0.0.log\n"
+      "exec_name=exec_bar\n"
+      "fake_report_id=456\n"
+      "upload_var_prod=bar\n"
+      "done=1\n"
+      "upload_var_reportTimeMillis=2000000\n";
+  ASSERT_TRUE(test_util::CreateFile(user_meta_file, user_meta));
+  ASSERT_TRUE(test_util::CreateFile(user_log, ""));
+  CrashInfo user_info;
+  EXPECT_TRUE(user_info.metadata.LoadFromString(user_meta));
+  user_info.payload_file = user_log;
+  user_info.payload_kind = "log";
+  EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:24:01 GMT",
+                                     &user_info.last_modified));
+  crashes_to_send.emplace_back(user_meta_file, std::move(user_info));
+
+  // Set up the conditions to emulate a device with metrics enabled.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+  // Keep the raw pointer, that's needed to exit from guest mode later.
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+
+  // Set up the crash sender so that it succeeds.
+  SetMockCrashSending(true);
+
+  // Set up the sender.
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.session_manager_proxy = mock.release();
+  options.max_crash_rate = 2;
+  // Setting max_crash_bytes to 0 will limit to the uploader to max_crash_rate.
+  options.max_crash_bytes = 0;
+  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.always_write_uploads_log = true;
+  MockSender sender(false,                // success=false
+                    "Too Many Requests",  // Response
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
+
+  // Send crashes.
+  EXPECT_CALL(*raw_metrics_lib,
+              SendCrosEventToUMA("Crash.Sender.AttemptedCrashRemoval"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*raw_metrics_lib,
+              SendCrosEventToUMA("Crash.Sender.FailedCrashRemoval"))
+      .Times(0);  // We don't expect it to record failure
+  EXPECT_CALL(*raw_metrics_lib,
+              SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
+                            Sender::kTotalRemoval, Sender::kSendReasonCount))
+      .Times(1);  // Record as if we did all of the uploads
+  EXPECT_CALL(*raw_metrics_lib,
+              SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
+                            Sender::kTooManyRequests, Sender::kSendReasonCount))
+      .Times(1);  // We should be removing the Crash after being throttled
+
+  sender.SendCrashes(crashes_to_send);
+
+  // We shouldn't be processing any crashes still.
+  EXPECT_FALSE(base::PathExists(user_processing));
 }
 
 TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
@@ -1721,7 +1885,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
   // Set up the crash sender so that it fails.
-  ASSERT_TRUE(SetMockCrashSending(false));
+  SetMockCrashSending(false);
 
   // Set up the sender.
   std::vector<base::TimeDelta> sleep_times;
@@ -1730,8 +1894,10 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
-  Sender sender(std::move(metrics_lib_),
-                std::make_unique<test_util::AdvancingClock>(), options);
+  MockSender sender(false,  // success=false
+                    "500",  // Response code
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
 
   sender.SendCrashes(crashes_to_send);
 
@@ -1784,10 +1950,12 @@ TEST_F(CrashSenderUtilDeathTest, SendCrashes_Crash) {
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
-  Sender sender(std::move(metrics_lib_),
-                std::make_unique<test_util::AdvancingClock>(), options);
+  MockSender sender(true,                 // success=true
+                    "Too Many Requests",  // Response
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
 
-  ASSERT_TRUE(SetMockCrashSending(true));
+  SetMockCrashSending(true);
   sender.SetCrashDuringSendForTesting(true);
   EXPECT_DEATH(sender.SendCrashes(crashes_to_send), "crashing as requested");
 

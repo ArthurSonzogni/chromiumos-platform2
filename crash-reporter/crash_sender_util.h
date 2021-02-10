@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/http/http_form_data.h>
+#include <brillo/http/http_transport.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
@@ -25,6 +26,13 @@
 #include "crash-reporter/crash_sender_base.h"
 
 namespace util {
+
+// URL to send official build crash reports to.
+constexpr char kReportUploadProdUrl[] = "https://clients2.google.com/cr/report";
+
+// URL to send test/dev build crash reports to.
+constexpr char kReportUploadStagingUrl[] =
+    "https://clients2.google.com/cr/staging_report";
 
 // Maximum crashes to send per 24 hours.
 constexpr int kMaxCrashRate = 32;
@@ -173,6 +181,9 @@ class Sender : public SenderBase {
   void RemoveAndPickCrashFiles(const base::FilePath& directory,
                                std::vector<MetaFile>* reports_to_send);
 
+  // Creates an Http transport object for invoking the Crash Server.
+  virtual std::shared_ptr<brillo::http::Transport> GetTransport();
+
   // Sends each crash in |crash_meta_files|, in multiple steps:
   //
   // For each meta file:
@@ -210,7 +221,10 @@ class Sender : public SenderBase {
                                                 const CrashDetails& details);
 
   // Requests to send a crash report represented with the given crash details.
-  bool RequestToSendCrash(const CrashDetails& details);
+  // If the return code is kRetryUploading, the failure can be retried and the
+  // caller should not remove the crash report. Otherwise, the caller should
+  // remove the crash report using the returned removal reason code.
+  SenderBase::CrashRemoveReason RequestToSendCrash(const CrashDetails& details);
 
   // Returns true if we have consent to send crashes to Google.
   bool HasCrashUploadingConsent();

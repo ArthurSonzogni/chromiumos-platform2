@@ -149,6 +149,11 @@ bool IsMock() {
   if (g_force_is_mock) {
     return true;
   }
+
+  return IsIntegrationTest();
+}
+
+bool IsIntegrationTest() {
   return base::PathExists(
       paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending));
 }

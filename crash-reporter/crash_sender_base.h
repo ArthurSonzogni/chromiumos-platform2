@@ -109,6 +109,9 @@ void RecordCrashDone();
 // Returns true if mock is enabled.
 bool IsMock();
 
+// Returns true if we're running under an Integration test.
+bool IsIntegrationTest();
+
 // Returns true if mock is enabled and we should succeed.
 bool IsMockSuccessful();
 
@@ -196,8 +199,11 @@ class SenderBase {
     kOldIncompleteMeta = 11,
     kFinishedUploading = 12,
     kAlreadyUploaded = 13,
+    kTooManyRequests = 14,
+    // Do not remove just yet
+    kRetryUploading = 15,
     // Keep kSendReasonCount one larger than any other enum value.
-    kSendReasonCount = 14,
+    kSendReasonCount = 16,
   };
 
   // Lock the lock file so no concurrently running process can access the

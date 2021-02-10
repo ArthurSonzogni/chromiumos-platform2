@@ -32,6 +32,20 @@ bool CreateClientIdFile() {
 // successfully or as a a failure. This also creates the directory where
 // uploads.log is written to since Chrome would normally be doing that.
 bool SetMockCrashSending(bool success) {
+  util::g_force_is_mock = true;
+  util::g_force_is_mock_successful = success;
+  return base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
+}
+
+// Reset "force" flags to clear out IsMock flags
+void ClearMockCrashSending() {
+  util::g_force_is_mock = false;
+  util::g_force_is_mock_successful = false;
+}
+
+// Set the flag which indicates we're mocking crash sending for Integration
+// Tests, successfully or as a failure.
+bool SetIntegrationTesting(bool success) {
   return test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
                                             paths::kMockCrashSending),
                                success ? "" : "0") &&
@@ -46,7 +60,10 @@ class CrashSenderBaseTest : public testing::Test {
     paths::SetPrefixForTesting(test_dir_);
   }
 
-  void TearDown() override { paths::SetPrefixForTesting(base::FilePath()); }
+  void TearDown() override {
+    ClearMockCrashSending();
+    paths::SetPrefixForTesting(base::FilePath());
+  }
 
   base::ScopedTempDir temp_dir_;
   base::FilePath test_dir_;
@@ -195,11 +212,36 @@ TEST_F(CrashSenderBaseTest, GetSleepTime) {
 }
 
 TEST_F(CrashSenderBaseTest, IsMock) {
+  // Ensure the state is clean
   EXPECT_FALSE(IsMock());
+  EXPECT_FALSE(IsIntegrationTest());
+
   ASSERT_TRUE(SetMockCrashSending(false));
   EXPECT_TRUE(IsMock());
   EXPECT_FALSE(IsMockSuccessful());
+  EXPECT_FALSE(IsIntegrationTest());  // Shouldn't change
+
   ASSERT_TRUE(SetMockCrashSending(true));
+  EXPECT_TRUE(IsMock());
+  EXPECT_TRUE(IsMockSuccessful());
+  EXPECT_FALSE(IsIntegrationTest());  // Shouldn't change
+
+  ClearMockCrashSending();
+  EXPECT_FALSE(IsMock());
+}
+
+// Ensure that IsIntegrationTest implies IsMock, but not the opposite
+TEST_F(CrashSenderBaseTest, IsIntegrationTest) {
+  EXPECT_FALSE(IsMock());
+  EXPECT_FALSE(IsIntegrationTest());
+
+  ASSERT_TRUE(SetIntegrationTesting(false));
+  EXPECT_TRUE(IsIntegrationTest());
+  EXPECT_TRUE(IsMock());
+  EXPECT_FALSE(IsMockSuccessful());
+
+  ASSERT_TRUE(SetIntegrationTesting(true));
+  EXPECT_TRUE(IsIntegrationTest());
   EXPECT_TRUE(IsMock());
   EXPECT_TRUE(IsMockSuccessful());
 }

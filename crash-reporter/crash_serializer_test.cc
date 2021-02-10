@@ -32,9 +32,9 @@ namespace {
 // Set the file flag which indicates we are mocking crash sending, either
 // successfully or as a failure.
 bool SetMockCrashSending(bool success) {
-  return test_util::CreateFile(
-      paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending),
-      success ? "" : "0");
+  util::g_force_is_mock = true;
+  util::g_force_is_mock_successful = success;
+  return base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
 }
 
 }  // namespace

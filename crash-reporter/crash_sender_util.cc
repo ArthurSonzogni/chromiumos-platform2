@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -29,6 +30,7 @@
 #include <brillo/http/http_proxy.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
+#include <brillo/mime_utils.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -42,11 +44,6 @@ namespace util {
 
 namespace {
 
-// URL to send official build crash reports to.
-constexpr char kReportUploadProdUrl[] = "https://clients2.google.com/cr/report";
-// URL to send test/dev build crash reports to.
-constexpr char kReportUploadStagingUrl[] =
-    "https://clients2.google.com/cr/staging_report";
 constexpr char kAlreadyUploadedExt[] = ".alreadyuploaded";
 
 // Keys used in uploads.log file. (All timestamps are measured in seconds.)
@@ -519,16 +516,22 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
           .client_id = client_id,
           .metadata = info.metadata,
       };
-      if (!RequestToSendCrash(details)) {
+      Sender::CrashRemoveReason result = RequestToSendCrash(details);
+      if (SenderBase::CrashRemoveReason::kRetryUploading == result) {
         LOG(WARNING) << "Failed to send " << meta_file.value()
                      << ", not removing; will retry later";
         continue;
       }
+      if (SenderBase::CrashRemoveReason::kFinishedUploading == result) {
+        LOG(INFO) << "Successfully sent crash " << meta_file.value()
+                  << " and removing.";
+      } else {
+        LOG(WARNING) << "Failed to send " << meta_file.value()
+                     << " due to error code " << result << ". Removing";
+      }
+      RecordCrashRemoveReason(result);
+      RemoveReportFiles(meta_file);
     }
-    LOG(INFO) << "Successfully sent crash " << meta_file.value()
-              << " and removing.";
-    RecordCrashRemoveReason(kFinishedUploading);
-    RemoveReportFiles(meta_file);
   }
 }
 
@@ -617,6 +620,14 @@ std::unique_ptr<brillo::http::FormData> Sender::CreateCrashFormData(
   return form_data;
 }
 
+std::shared_ptr<brillo::http::Transport> Sender::GetTransport() {
+  if (proxy_servers_.empty() || proxy_servers_[0] == "direct://") {
+    return brillo::http::Transport::CreateDefault();
+  } else {
+    return brillo::http::Transport::CreateDefaultWithProxy(proxy_servers_[0]);
+  }
+}
+
 void Sender::RemoveReportFiles(const base::FilePath& meta_file) {
   if (meta_file.Extension() != ".meta") {
     LOG(ERROR) << "Not a meta file: " << meta_file.value();
@@ -702,17 +713,19 @@ std::unique_ptr<base::Value> Sender::CreateJsonEntity(
   return root_dict;
 }
 
-bool Sender::RequestToSendCrash(const CrashDetails& details) {
+SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
+    const CrashDetails& details) {
   std::string product_name;
   std::unique_ptr<brillo::http::FormData> form_data =
       CreateCrashFormData(details, &product_name);
   if (!form_data) {
-    return false;
+    // No form data, retry later
+    return CrashRemoveReason::kRetryUploading;
   }
 
   if (test_mode_) {
     LOG(WARNING) << kTestModeSuccessful;
-    return true;
+    return CrashRemoveReason::kFinishedUploading;
   }
 
   std::string report_id;
@@ -734,74 +747,74 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
   }
   RecordSendAttempt(timestamps_dir, size);
 
-  if (!IsMock()) {
+  if (IsMock()) {
+    CHECK(!crash_during_testing_) << "crashing as requested";
+    // Integration Tests-specific behavior
+    if (IsIntegrationTest()) {
+      if (!IsMockSuccessful()) {
+        LOG(INFO) << "Mocking unsuccessful send";
+        return CrashRemoveReason::kRetryUploading;
+      }
+
+      LOG(INFO) << "Mocking successful send";
+      return CrashRemoveReason::kFinishedUploading;
+    }
+  } else {
     // Determine the proxy server if it's not given from the options.
     if (proxy_servers_.empty()) {
       EnsureDBusIsReady();
       brillo::http::GetChromeProxyServers(bus_, kReportUploadProdUrl,
                                           &proxy_servers_);
     }
-
-    std::shared_ptr<brillo::http::Transport> transport;
-    if (proxy_servers_.empty() || proxy_servers_[0] == "direct://") {
-      transport = brillo::http::Transport::CreateDefault();
-    } else {
-      transport =
-          brillo::http::Transport::CreateDefaultWithProxy(proxy_servers_[0]);
-    }
-
-    brillo::ErrorPtr upload_error;
-    std::unique_ptr<brillo::http::Response> response;
-    if (!compressed_form_data.empty()) {
-      response = brillo::http::PostBinaryAndBlock(
-          allow_dev_sending_ ? kReportUploadStagingUrl : kReportUploadProdUrl,
-          compressed_form_data.data(), compressed_form_data.size(),
-          form_data->GetContentType(),
-          {{brillo::http::request_header::kContentEncoding, "gzip"}}, transport,
-          &upload_error);
-    } else {
-      LOG(ERROR) << "Failed compressing crash data for upload, perform the "
-                 << "upload uncompressed";
-      // This really should never happen, but it's probably better to try to
-      // send this uncompressed even though it requires regenerating all the
-      // data since extracting the data stream from the FormData is a
-      // potentially destructive operation.
-      form_data = CreateCrashFormData(details, &product_name);
-      if (!form_data) {
-        return false;
-      }
-      response = brillo::http::PostFormDataAndBlock(
-          allow_dev_sending_ ? kReportUploadStagingUrl : kReportUploadProdUrl,
-          std::move(form_data), {} /* headers */, transport, &upload_error);
-    }
-
-    if (!response) {
-      LOG(ERROR) << "Crash sending failed with error: "
-                 << upload_error->GetMessage();
-      return false;
-    }
-    if (!response->IsSuccessful()) {
-      LOG(ERROR) << "Crash sending failed with HTTP "
-                 << response->GetStatusCode() << ": "
-                 << response->GetStatusText();
-      return false;
-    }
-
-    report_id = response->ExtractDataAsString();
-  } else {
-    if (!IsMockSuccessful()) {
-      LOG(INFO) << "Mocking unsuccessful send";
-      return false;
-    }
-    CHECK(!crash_during_testing_) << "crashing as requested";
-    LOG(INFO) << "Mocking successful send";
-
-    if (!always_write_uploads_log_)
-      return true;
-
-    if (!details.metadata.GetString("fake_report_id", &report_id))
-      report_id = kUndefined;
   }
+
+  std::shared_ptr<brillo::http::Transport> transport = GetTransport();
+
+  brillo::ErrorPtr upload_error;
+  std::unique_ptr<brillo::http::Response> response;
+  if (!compressed_form_data.empty()) {
+    response = brillo::http::PostBinaryAndBlock(
+        allow_dev_sending_ ? kReportUploadStagingUrl : kReportUploadProdUrl,
+        compressed_form_data.data(), compressed_form_data.size(),
+        form_data->GetContentType(),
+        {{brillo::http::request_header::kContentEncoding, "gzip"}}, transport,
+        &upload_error);
+  } else {
+    LOG(ERROR) << "Failed compressing crash data for upload, perform the "
+               << "upload uncompressed";
+    // This really should never happen, but it's probably better to try to
+    // send this uncompressed even though it requires regenerating all the
+    // data since extracting the data stream from the FormData is a
+    // potentially destructive operation.
+    form_data = CreateCrashFormData(details, &product_name);
+    if (!form_data) {
+      return CrashRemoveReason::kRetryUploading;
+    }
+    response = brillo::http::PostFormDataAndBlock(
+        allow_dev_sending_ ? kReportUploadStagingUrl : kReportUploadProdUrl,
+        std::move(form_data), {} /* headers */, transport, &upload_error);
+  }
+
+  if (!response) {
+    LOG(ERROR) << "Crash sending failed with error: "
+               << upload_error->GetMessage();
+    return CrashRemoveReason::kRetryUploading;
+  }
+  if (!response->IsSuccessful()) {
+    int statusCode = response->GetStatusCode();
+
+    if (statusCode == brillo::http::status_code::TooManyRequests) {
+      LOG(WARNING) << "Crash being discarded due to throttling, HTTP "
+                   << statusCode << ": " << response->GetStatusText();
+      return CrashRemoveReason::kTooManyRequests;
+    }
+
+    LOG(ERROR) << "Crash sending failed with HTTP " << statusCode << ": "
+               << response->GetStatusText();
+    return CrashRemoveReason::kRetryUploading;
+  }
+
+  report_id = response->ExtractDataAsString();
 
   if (product_name == "Chrome_ChromeOS")
     product_name = "Chrome";
@@ -827,7 +840,7 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
       if (!base::JSONWriter::Write(*json_entity, &upload_log_entry)) {
         LOG(WARNING) << "Cannot construct a valid uploads.log entry in JSON "
                         "format, so skip the update.";
-        return true;
+        return CrashRemoveReason::kUnparseableMetaFile;
       }
 
       upload_log_entry += "\n";
@@ -845,7 +858,7 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
     }
   }
   LOG(INFO) << "Crash report receipt ID " << report_id;
-  return true;
+  return CrashRemoveReason::kFinishedUploading;
 }
 
 bool Sender::IsNetworkOnline() {
