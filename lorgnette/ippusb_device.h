@@ -15,10 +15,10 @@ namespace lorgnette {
 
 // Convert an ippusb backend name to a real backend string, e.g.
 // ippusb:escl:Device:1234_5678/eSCL/ to
-// airscan:escl:Device:unix://1234_5678.sock/eSCL/.  In the process, contacts
-// ippusb_manager to find a matching devices and create an IPP-USB tunnel to it.
-// Returns base::nullopt if the device can't be found or an error occurs
-// starting the tunnel.
+// airscan:escl:Device:unix://1234-5678.sock/eSCL/.  In the process, checks for
+// a matching ippusb_bridge socket, but does not make a connection to the
+// bridge.  Return base::nullopt if the device can't be found or an error occurs
+// waiting for the socket.
 base::Optional<std::string> BackendForDevice(const std::string& device_name);
 
 // Get a list of potential eSCL-over-USB devices attached to the system.  Each
