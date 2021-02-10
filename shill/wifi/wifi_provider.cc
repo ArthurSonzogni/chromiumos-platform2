@@ -457,6 +457,13 @@ void WiFiProvider::UpdateStorage(Profile* profile) {
   storage->DeleteGroup(kWiFiProviderStorageId);
 }
 
+void WiFiProvider::SortServices() {
+  std::sort(services_.begin(), services_.end(),
+            [](const WiFiServiceRefPtr& a, const WiFiServiceRefPtr& b) -> bool {
+              return Service::Compare(a, b, true, {}).first;
+            });
+}
+
 WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t>& ssid,
                                            const string& mode,
                                            const string& security_class,
@@ -482,15 +489,21 @@ WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t>& ssid,
 }
 
 ByteArrays WiFiProvider::GetHiddenSSIDList() {
-  // Create a unique set of hidden SSIDs.
-  std::set<ByteArray> hidden_ssids_set;
+  SortServices();
+
+  // Create a unique container of hidden SSIDs.
+  ByteArrays hidden_ssids;
   for (const auto& service : services_) {
     if (service->hidden_ssid() && service->IsRemembered()) {
-      hidden_ssids_set.insert(service->ssid());
+      if (base::Contains(hidden_ssids, service->ssid())) {
+        LOG(WARNING) << "Duplicate HiddenSSID: " << service->log_name();
+        continue;
+      }
+      hidden_ssids.push_back(service->ssid());
     }
   }
-  SLOG(this, 2) << "Found " << hidden_ssids_set.size() << " hidden services";
-  return ByteArrays(hidden_ssids_set.begin(), hidden_ssids_set.end());
+  SLOG(this, 2) << "Found " << hidden_ssids.size() << " hidden services";
+  return hidden_ssids;
 }
 
 void WiFiProvider::ForgetService(const WiFiServiceRefPtr& service) {

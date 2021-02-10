@@ -1324,7 +1324,7 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
   const vector<uint8_t> ssid3(1, '3');
   MockWiFiServiceRefPtr service3 =
       AddMockService(ssid3, kModeManaged, kSecurityNone, false);
-  EXPECT_CALL(*service2, IsRemembered()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service3, IsRemembered()).WillRepeatedly(Return(true));
 
   ssid_list = provider_.GetHiddenSSIDList();
   EXPECT_EQ(1, ssid_list.size());
@@ -1339,6 +1339,18 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
   EXPECT_EQ(2, ssid_list.size());
   EXPECT_TRUE(ssid_list[0] == ssid2);
   EXPECT_TRUE(ssid_list[1] == ssid4);
+
+  service4->source_ = Service::ONCSource::kONCSourceUserPolicy;
+  const vector<uint8_t> ssid5(1, '5');
+  MockWiFiServiceRefPtr service5 =
+      AddMockService(ssid5, kModeManaged, kSecurityNone, true);
+  EXPECT_CALL(*service5, IsRemembered()).WillRepeatedly(Return(true));
+  service5->source_ = Service::ONCSource::kONCSourceDevicePolicy;
+  ssid_list = provider_.GetHiddenSSIDList();
+  EXPECT_EQ(3, ssid_list.size());
+  EXPECT_TRUE(ssid_list[0] == ssid4);
+  EXPECT_TRUE(ssid_list[1] == ssid5);
+  EXPECT_TRUE(ssid_list[2] == ssid2);
 }
 
 TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {

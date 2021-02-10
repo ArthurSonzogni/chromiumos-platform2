@@ -2124,6 +2124,25 @@ TEST_F(ServiceTest, ComparePreferEthernetOverWifi) {
   EXPECT_TRUE(DefaultSortingOrderIs(ethernet_service, wifi_service));
 }
 
+TEST_F(ServiceTest, CompareSources) {
+  // Check that given the exactly same other parameters,
+  // services with different sources are sorted properly.
+  scoped_refptr<MockService> service1(new NiceMock<MockService>(manager()));
+  scoped_refptr<MockService> service2(new NiceMock<MockService>(manager()));
+  service1->source_ = Service::ONCSource::kONCSourceUnknown;
+  service2->source_ = Service::ONCSource::kONCSourceNone;
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service1));
+
+  service1->source_ = Service::ONCSource::kONCSourceUserImport;
+  EXPECT_TRUE(DefaultSortingOrderIs(service1, service2));
+
+  service2->source_ = Service::ONCSource::kONCSourceDevicePolicy;
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service1));
+
+  service1->source_ = Service::ONCSource::kONCSourceUserPolicy;
+  EXPECT_TRUE(DefaultSortingOrderIs(service1, service2));
+}
+
 TEST_F(ServiceTest, SanitizeStorageIdentifier) {
   EXPECT_EQ("", Service::SanitizeStorageIdentifier(""));
 

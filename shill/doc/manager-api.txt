@@ -577,6 +577,7 @@ Properties 	object ActiveProfile [readonly]
 			the same state bucket and with the same Technology type are then
 			compared with the following (in order):
 			  * "Priority"
+			  * "Source"
 			  * "ManagedCredentials"
 			  * "AutoConnect"
 			  * "Security" (currently only for WiFi)

@@ -159,6 +159,7 @@ const char kTetheringProperty[] = "Tethering";
 const char kTypeProperty[] = "Type";
 const char kUIDataProperty[] = "UIData";
 const char kVisibleProperty[] = "Visible";
+const char kONCSourceProperty[] = "ONCSource";
 
 // Cellular Service property names.
 const char kActivationStateProperty[] = "Cellular.ActivationState";
@@ -740,6 +741,13 @@ const char kWakeOnIPIP[] = "IPIP";
 const char kWakeOnIGMP[] = "IGMP";
 const char kWakeOnICMP[] = "ICMP";
 const char kWakeOnIP[] = "IP";
+
+// ONC Source constants.
+static constexpr char kONCSourceUnknown[] = "Unknown";
+static constexpr char kONCSourceNone[] = "None";
+static constexpr char kONCSourceUserImport[] = "UserImport";
+static constexpr char kONCSourceDevicePolicy[] = "DevicePolicy";
+static constexpr char kONCSourceUserPolicy[] = "UserPolicy";
 
 // Cellular service carriers.
 const char kCarrierGenericUMTS[] = "Generic UMTS";

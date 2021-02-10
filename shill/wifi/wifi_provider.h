@@ -125,6 +125,9 @@ class WiFiProvider : public ProviderInterface {
 
   Metrics* metrics() const;
 
+  // Sort the internal list of services.
+  void SortServices();
+
   Manager* manager_;
 
   std::vector<WiFiServiceRefPtr> services_;

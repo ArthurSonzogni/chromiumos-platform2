@@ -79,6 +79,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageGUID[];
   static const char kStorageHasEverConnected[];
   static const char kStorageName[];
+  static const char kStorageONCSource[];
   static const char kStoragePriority[];
   static const char kStorageProxyConfig[];
   static const char kStorageSaveCredentials[];
@@ -179,6 +180,16 @@ class Service : public base::RefCounted<Service> {
   enum UpdateCredentialsReason {
     kReasonCredentialsLoaded,
     kReasonPropertyUpdate
+  };
+
+  // Enumeration of possible ONC sources.
+  enum class ONCSource : size_t {
+    kONCSourceUnknown,
+    kONCSourceNone,
+    kONCSourceUserImport,
+    kONCSourceDevicePolicy,
+    kONCSourceUserPolicy,
+    kONCSourcesNum,  // Number of enum values above. Keep it last.
   };
 
   static const int kPriorityNone;
@@ -283,6 +294,9 @@ class Service : public base::RefCounted<Service> {
 
   unsigned int serial_number() const { return serial_number_; }
   const std::string& log_name() const { return log_name_; }
+
+  ONCSource Source() const { return source_; }
+  int SourcePriority();
 
   // Returns |serial_number_| as a string for constructing a dbus object path.
   std::string GetDBusObjectPathIdentifer() const;
@@ -770,6 +784,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, CalculateTechnology);
   FRIEND_TEST(ServiceTest, Certification);
   FRIEND_TEST(ServiceTest, Compare);
+  FRIEND_TEST(ServiceTest, CompareSources);
   FRIEND_TEST(ServiceTest, ComparePreferEthernetOverWifi);
   FRIEND_TEST(ServiceTest, ConfigureEapStringProperty);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
@@ -797,6 +812,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, UniqueAttributes);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(ServiceTest, UserInitiatedConnectionResult);
+  FRIEND_TEST(WiFiProviderTest, GetHiddenSSIDList);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
@@ -853,6 +869,12 @@ class Service : public base::RefCounted<Service> {
   bool GetMeteredProperty(Error* error);
   bool SetMeteredProperty(const bool& metered, Error* error);
   void ClearMeteredProperty(Error* error);
+
+  std::string GetONCSource(Error* error);
+  bool SetONCSource(const std::string& source, Error* error);
+
+  // Try to guess ONC Source in case it is not known.
+  ONCSource ParseONCSourceFromUIData();
 
   void ReEnableAutoConnectTask();
   // Disables autoconnect and posts a task to re-enable it after a cooldown.
@@ -998,6 +1020,8 @@ class Service : public base::RefCounted<Service> {
   // Flag indicating if this service is unreliable (experiencing multiple
   // link monitor failures in a short period of time).
   bool unreliable_;
+  // Source of the service (user/policy).
+  ONCSource source_;
 
   // Current traffic counter values.
   TrafficCounterMap current_traffic_counters_;

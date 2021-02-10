@@ -57,6 +57,7 @@ const char kServiceSortIsOnline[] = "IsOnline";
 const char kServiceSortIsPortalled[] = "IsPortal";
 const char kServiceSortPriority[] = "Priority";
 const char kServiceSortSecurity[] = "Security";
+const char kServiceSortSource[] = "Source";
 const char kServiceSortProfileOrder[] = "ProfileOrder";
 const char kServiceSortEtc[] = "Etc";
 const char kServiceSortSerialNumber[] = "SerialNumber";
@@ -67,6 +68,20 @@ std::valarray<uint64_t> CounterToValArray(
   return std::valarray<uint64_t>{counter.rx_bytes(), counter.tx_bytes(),
                                  counter.rx_packets(), counter.tx_packets()};
 }
+
+// Extracts enum value but with enum's underlying type.
+// This is a part of c++23, but it's quite useful even now.
+template <typename T>
+static constexpr auto toUnderlying(T val) {
+  return static_cast<std::underlying_type_t<T>>(val);
+}
+
+// This is the mapping of ONC enum values and their textual representation.
+static constexpr std::array<const char*,
+                            toUnderlying(Service::ONCSource::kONCSourcesNum)>
+    ONCSourceMapping = {kONCSourceUnknown, kONCSourceNone, kONCSourceUserImport,
+                        kONCSourceDevicePolicy, kONCSourceUserPolicy};
+
 }  // namespace
 
 namespace Logging {
@@ -111,6 +126,7 @@ const char Service::kStorageProxyConfig[] = "ProxyConfig";
 const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
+const char Service::kStorageONCSource[] = "ONCSource";
 const char Service::kStorageConnectionId[] = "ConnectionId";
 const char Service::kStorageLinkMonitorDisabled[] = "LinkMonitorDisabled";
 const char Service::kStorageManagedCredentials[] = "ManagedCredentials";
@@ -180,7 +196,8 @@ Service::Service(Manager* manager, Technology technology)
       is_dns_auto_fallback_allowed_(false),
       link_monitor_disabled_(false),
       managed_credentials_(false),
-      unreliable_(false) {
+      unreliable_(false),
+      source_(ONCSource::kONCSourceUnknown) {
   // Provide a default name.
   friendly_name_ = "service_" + base::NumberToString(serial_number_);
   log_name_ = friendly_name_;
@@ -271,6 +288,8 @@ Service::Service(Manager* manager, Technology technology)
   store_.RegisterConstInt32(kPortalDetectionFailedStatusCodeProperty,
                             &portal_detection_failure_status_code_);
 
+  HelpRegisterDerivedString(kONCSourceProperty, &Service::GetONCSource,
+                            &Service::SetONCSource);
   metrics()->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
@@ -644,6 +663,21 @@ bool Service::IsLoadableFrom(const StoreInterface& storage) const {
   return storage.ContainsGroup(GetStorageIdentifier());
 }
 
+Service::ONCSource Service::ParseONCSourceFromUIData() {
+  // If ONC Source was not stored directly, we may still guess it
+  // from ONC Data blob.
+  if (ui_data_.find("\"onc_source\":\"device_policy\"") != std::string::npos) {
+    return ONCSource::kONCSourceDevicePolicy;
+  }
+  if (ui_data_.find("\"onc_source\":\"user_policy\"") != std::string::npos) {
+    return ONCSource::kONCSourceUserPolicy;
+  }
+  if (ui_data_.find("\"onc_source\":\"user_import\"") != std::string::npos) {
+    return ONCSource::kONCSourceUserImport;
+  }
+  return ONCSource::kONCSourceUnknown;
+}
+
 bool Service::Load(const StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
@@ -664,6 +698,16 @@ bool Service::Load(const StoreInterface* storage) {
   LoadString(storage, id, kStorageProxyConfig, "", &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
   LoadString(storage, id, kStorageUIData, "", &ui_data_);
+
+  // Check if service comes from a managed policy.
+  int source;
+  auto ret = storage->GetInt(id, kStorageONCSource, &source);
+  if (!ret || (source > static_cast<int>(ONCSource::kONCSourceUserPolicy))) {
+    source_ = ONCSource::kONCSourceUnknown;
+  } else {
+    source_ = static_cast<ONCSource>(source);
+  }
+  SLOG(this, 2) << " Service source = " << static_cast<size_t>(source_);
 
   storage->GetInt(id, kStorageConnectionId, &connection_id_);
   storage->GetBool(id, kStorageDNSAutoFallback, &is_dns_auto_fallback_allowed_);
@@ -727,6 +771,13 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
     eap()->MigrateDeprecatedStorage(storage, id);
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
+  // Prior to M91, Chrome did not tell us the source directly. We derive it
+  // from UIData for old services. Remove this migration code in M97+.
+  if (source_ == ONCSource::kONCSourceUnknown) {
+    source_ = ParseONCSourceFromUIData();
+    storage->SetInt(id, kStorageONCSource, toUnderlying(source_));
+  }
 }
 
 bool Service::Unload() {
@@ -744,6 +795,7 @@ bool Service::Unload() {
   is_dns_auto_fallback_allowed_ = false;
   link_monitor_disabled_ = false;
   managed_credentials_ = false;
+  source_ = ONCSource::kONCSourceUnknown;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (mutable_eap()) {
     mutable_eap()->Reset();
@@ -794,7 +846,7 @@ bool Service::Save(StoreInterface* storage) {
   SaveStringOrClear(storage, id, kStorageProxyConfig, proxy_config_);
   storage->SetBool(id, kStorageSaveCredentials, save_credentials_);
   SaveStringOrClear(storage, id, kStorageUIData, ui_data_);
-
+  storage->SetInt(id, kStorageONCSource, static_cast<int>(source_));
   storage->SetInt(id, kStorageConnectionId, connection_id_);
   storage->SetBool(id, kStorageDNSAutoFallback, is_dns_auto_fallback_allowed_);
   storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
@@ -1346,6 +1398,10 @@ std::pair<bool, const char*> Service::Compare(
     return std::make_pair(ret, kServiceSortPriority);
   }
 
+  if (DecideBetween(a->SourcePriority(), b->SourcePriority(), &ret)) {
+    return std::make_pair(ret, kServiceSortSource);
+  }
+
   if (DecideBetween(a->managed_credentials_, b->managed_credentials_, &ret)) {
     return std::make_pair(ret, kServiceSortManagedCredentials);
   }
@@ -1878,6 +1934,47 @@ void Service::ClearMeteredProperty(Error* /*error*/) {
   bool is_metered = IsMetered();
   if (was_metered != is_metered)
     adaptor_->EmitBoolChanged(kMeteredProperty, is_metered);
+}
+
+std::string Service::GetONCSource(Error* error) {
+  if (toUnderlying(source_) >= ONCSourceMapping.size()) {
+    LOG(WARNING) << "Bad source value: " << toUnderlying(source_);
+    return kONCSourceUnknown;
+  }
+
+  return ONCSourceMapping[toUnderlying(source_)];
+}
+
+bool Service::SetONCSource(const string& source, Error* error) {
+  if (ONCSourceMapping[toUnderlying(source_)] == source) {
+    return false;
+  }
+  auto it = std::find(ONCSourceMapping.begin(), ONCSourceMapping.end(), source);
+  if (it == ONCSourceMapping.end()) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        base::StringPrintf("Service %s: Source property value %s invalid.",
+                           log_name_.c_str(), source.c_str()));
+    return false;
+  }
+  source_ = static_cast<ONCSource>(std::distance(ONCSourceMapping.begin(), it));
+  adaptor_->EmitStringChanged(kONCSourceProperty,
+                              ONCSourceMapping[toUnderlying(source_)]);
+  return true;
+}
+
+int Service::SourcePriority() {
+  static constexpr std::array<Service::ONCSource,
+                              toUnderlying(Service::ONCSource::kONCSourcesNum)>
+      priorities = {Service::ONCSource::kONCSourceUnknown,
+                    Service::ONCSource::kONCSourceNone,
+                    Service::ONCSource::kONCSourceUserImport,
+                    Service::ONCSource::kONCSourceDevicePolicy,
+                    Service::ONCSource::kONCSourceUserPolicy};
+
+  auto it = std::find(priorities.begin(), priorities.end(), Source());
+  DCHECK(it != priorities.end());
+  return std::distance(priorities.begin(), it);
 }
 
 bool Service::GetVisibleProperty(Error* /*error*/) {
