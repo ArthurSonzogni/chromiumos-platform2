@@ -31,6 +31,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libcrypto",
     "libminijail",
+    "vboot_host",
   ]
 
   if (use.fuzzer) {
@@ -66,6 +67,7 @@ static_library("libimageloader_static") {
   sources = [
     "component.cc",
     "dlc.cc",
+    "global_context.cc",
     "helper_process_proxy.cc",
     "helper_process_receiver.cc",
     "imageloader.cc",
@@ -109,6 +111,7 @@ if (use.test) {
     sources = [
       "component_test.cc",
       "dlc_test.cc",
+      "global_context.cc",
       "imageloader.cc",
       "imageloader_test.cc",
       "manifest_test.cc",

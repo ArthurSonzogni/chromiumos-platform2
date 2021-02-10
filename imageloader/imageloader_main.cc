@@ -15,6 +15,7 @@
 #include <brillo/userdb_utils.h>
 
 #include "imageloader/component.h"
+#include "imageloader/global_context.h"
 #include "imageloader/helper_process_proxy.h"
 #include "imageloader/helper_process_receiver.h"
 #include "imageloader/imageloader.h"
@@ -145,6 +146,9 @@ int main(int argc, char** argv) {
                   "set at a time.";
     return 1;
   }
+
+  imageloader::GlobalContext g_ctx;
+  g_ctx.SetAsCurrent();
 
   // Executes the setup process.
   if (FLAGS_init_only) {
