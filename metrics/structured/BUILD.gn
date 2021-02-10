@@ -8,12 +8,12 @@ import("//common-mk/proto_library.gni")
 _event_output_dir = "${root_gen_dir}/include/metrics/structured"
 _xml_file = "structured.xml"
 
-static_library("structured") {
+shared_library("libstructured") {
+  pkg_deps = [ "libchrome" ]
   sources = [
     "event_base.cc",
     "event_base.h",
   ]
-
   public_deps = [ ":structured_events" ]
   deps = [ ":storage" ]
 }
@@ -25,6 +25,7 @@ proto_library("storage") {
     "${proto_in_dir}/storage.proto",
     "${proto_in_dir}/structured_data.proto",
   ]
+  use_pic = true
 }
 
 action("gen_structured_events") {
