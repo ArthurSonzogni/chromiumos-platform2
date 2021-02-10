@@ -40,7 +40,7 @@ class ScopedPowerLock {
   ScopedPowerLock& operator=(const ScopedPowerLock&) = delete;
 
   ~ScopedPowerLock() {
-    PCHECK(system("set_power_policy --screen_wake_lock=0") != -1)
+    PCHECK(system("set_power_policy --screen_wake_lock=-1") != -1)
         << "Invoking set_power_policy to restore wake lock";
   }
 };
