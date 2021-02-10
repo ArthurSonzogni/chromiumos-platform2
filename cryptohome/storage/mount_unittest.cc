@@ -459,10 +459,15 @@ class MountTest
     const FilePath mount_target =
         run_daemon_store_path.Append(user.obfuscated_username);
 
+    // TODO(dlunev): made those repeated since in some cases it is strictly
+    // impossible to have the mocks perform correctly with current test
+    // architecture. Once service.cc and related are gone, re-architect.
+    EXPECT_CALL(platform_, DirectoryExists(mount_source))
+        .WillRepeatedly(Return(false));
     EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
                                mount_source, stat_data.st_mode,
                                stat_data.st_uid, stat_data.st_gid))
-        .WillOnce(Return(true));
+        .WillRepeatedly(Return(true));
 
     EXPECT_CALL(platform_, CreateDirectory(mount_target))
         .WillOnce(Return(true));
