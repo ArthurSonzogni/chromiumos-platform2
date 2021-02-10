@@ -31,26 +31,15 @@ void EventHandler::LogEvent(const char ev[]) {
 void EventHandler::OnUserLogin() {
   DCHECK(!authorizer_);
 
-  bool valid_user_login = false;
-  {
-    std::lock_guard<std::mutex> lock(lock_);
-    LogEvent("User-Login");
+  std::lock_guard<std::mutex> lock(lock_);
+  LogEvent("User-Login");
 
-    // It is important to have this state check, whenever we go from a more
-    // restrictive state to a less restrictive state to ensure that we always
-    // err on the cautious side should the events arrive out of order or are
-    // processed out of order.
-    if (state_ == NO_USER_LOGGED_IN) {
-      state_ = USER_LOGGED_IN_SCREEN_UNLOCKED;
-      valid_user_login = true;
-    }
-  }
-
-  // TODO(b/172397647): Once chrome flag implementation is complete, that
-  // allows the user to flip the permission for external PCI devices, there
-  // shall be no need for this.
-  if (valid_user_login)
-    OnUserPermissionChanged(true);
+  // It is important to have this state check, whenever we go from a more
+  // restrictive state to a less restrictive state to ensure that we always
+  // err on the cautious side should the events arrive out of order or are
+  // processed out of order.
+  if (state_ == NO_USER_LOGGED_IN)
+    state_ = USER_LOGGED_IN_SCREEN_UNLOCKED;
 }
 
 void EventHandler::OnUserLogout() {
@@ -112,7 +101,8 @@ void EventHandler::OnUserPermissionChanged(bool new_permission) {
   std::lock_guard<std::mutex> lock(lock_);
 
   if (new_permission == user_permission_) {
-    LOG(INFO) << "UserPermissionChange notification, but no change. Ignoring.";
+    LOG(INFO) << "UserPermissionChange notification (new val=" << new_permission
+              << "), but no change. Ignoring.";
     return;
   }
 
