@@ -173,39 +173,28 @@ bool Crtc::IsInternalDisplay() const {
   }
 }
 
-// static
-std::unique_ptr<Crtc> CrtcFinder::FindAnyDisplay() {
+std::unique_ptr<Crtc> CrtcFinder::Find() const {
   auto crtcs = GetConnectedCrtcs();
-  if (crtcs.empty())
-    return nullptr;
-  return std::move(crtcs[0]);
-}
-
-// static
-std::unique_ptr<Crtc> CrtcFinder::FindInternalDisplay() {
-  auto crtcs = GetConnectedCrtcs();
-  for (auto& crtc : crtcs)
-    if (crtc->IsInternalDisplay())
+  for (auto& crtc : crtcs) {
+    if (MatchesSpec(crtc.get()))
       return std::move(crtc);
+  }
   return nullptr;
 }
 
-// static
-std::unique_ptr<Crtc> CrtcFinder::FindExternalDisplay() {
-  auto crtcs = GetConnectedCrtcs();
-  for (auto& crtc : crtcs)
-    if (!crtc->IsInternalDisplay())
-      return std::move(crtc);
-  return nullptr;
-}
-
-// static
-std::unique_ptr<Crtc> CrtcFinder::FindById(uint32_t crtc_id) {
-  auto crtcs = GetConnectedCrtcs();
-  for (auto& crtc : crtcs)
-    if (crtc->crtc()->crtc_id == crtc_id)
-      return std::move(crtc);
-  return nullptr;
+bool CrtcFinder::MatchesSpec(const Crtc* crtc) const {
+  switch (spec_) {
+    case Spec::kAnyDisplay:
+      return true;
+    case Spec::kInternalDisplay:
+      return crtc->IsInternalDisplay();
+    case Spec::kExternalDisplay:
+      return !crtc->IsInternalDisplay();
+    case Spec::kById:
+      return crtc->crtc()->crtc_id == crtc_id_;
+  }
+  NOTREACHED() << "Invalid spec";
+  return false;
 }
 
 std::vector<Crtc::PlaneInfo> Crtc::GetConnectedPlanes() const {

@@ -144,11 +144,11 @@ int VncMain() {
     return 1;
   }
 
-  std::unique_ptr<Crtc> crtc;
+  CrtcFinder finder;
   if (cmdline->HasSwitch(kInternalSwitch)) {
-    crtc = screenshot::CrtcFinder::FindInternalDisplay();
+    finder.SetSpec(CrtcFinder::Spec::kInternalDisplay);
   } else if (cmdline->HasSwitch(kExternalSwitch)) {
-    crtc = screenshot::CrtcFinder::FindExternalDisplay();
+    finder.SetSpec(CrtcFinder::Spec::kExternalDisplay);
   } else if (cmdline->HasSwitch(kCrtcIdSwitch)) {
     uint32_t crtc_id;
     if (!base::StringToUint(cmdline->GetSwitchValueASCII(kCrtcIdSwitch),
@@ -156,11 +156,11 @@ int VncMain() {
       LOG(ERROR) << "Invalid --crtc-id specification";
       return 1;
     }
-    crtc = screenshot::CrtcFinder::FindById(crtc_id);
-  } else {
-    crtc = screenshot::CrtcFinder::FindAnyDisplay();
+    finder.SetSpec(CrtcFinder::Spec::kById);
+    finder.SetCrtcId(crtc_id);
   }
 
+  auto crtc = finder.Find();
   if (!crtc) {
     LOG(ERROR) << "CRTC not found. Is the screen on?";
     return 1;

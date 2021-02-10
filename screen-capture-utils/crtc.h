@@ -64,15 +64,28 @@ class Crtc {
   ScopedDrmPlaneResPtr plane_res_;
 };
 
-class CrtcFinder {
+class CrtcFinder final {
  public:
-  static std::unique_ptr<Crtc> FindAnyDisplay();
-  static std::unique_ptr<Crtc> FindInternalDisplay();
-  static std::unique_ptr<Crtc> FindExternalDisplay();
-  static std::unique_ptr<Crtc> FindById(uint32_t crtc_id);
+  enum class Spec {
+    kAnyDisplay = 0,
+    kInternalDisplay,
+    kExternalDisplay,
+    kById,
+  };
+
+  CrtcFinder() = default;
+  ~CrtcFinder() = default;
+
+  inline void SetSpec(Spec spec) { spec_ = spec; }
+  inline void SetCrtcId(uint32_t crtc_id) { crtc_id_ = crtc_id; }
+
+  std::unique_ptr<Crtc> Find() const;
 
  private:
-  CrtcFinder() = delete;
+  bool MatchesSpec(const Crtc* crtc) const;
+
+  Spec spec_ = Spec::kAnyDisplay;
+  uint32_t crtc_id_;
 };
 
 }  // namespace screenshot
