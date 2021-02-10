@@ -21,8 +21,6 @@ pkg_config("target_defaults_pkg_deps") {
 }
 
 static_library("libiioservice") {
-  configs += [ ":target_defaults_pkg_deps" ]
-
   sources = [
     "common_types.cc",
     "daemon.cc",
@@ -31,8 +29,8 @@ static_library("libiioservice") {
     "sensor_hal_server_impl.cc",
     "sensor_service_impl.cc",
   ]
+  configs += [ ":target_defaults_pkg_deps" ]
   public_pkg_deps = [ "libmems" ]
-
   deps = [
     "//iioservice/libiioservice_ipc:libiioservice_ipc",
     "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
@@ -40,9 +38,8 @@ static_library("libiioservice") {
 }
 
 executable("iioservice") {
-  configs += [ ":target_defaults_pkg_deps" ]
-
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults_pkg_deps" ]
   deps = [ ":libiioservice" ]
 }
 
@@ -56,19 +53,6 @@ if (use.test) {
   }
 
   executable("iioservice_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":iioservice_testrunner_pkg_deps",
-      ":target_defaults_pkg_deps",
-    ]
-
-    deps = [
-      ":libiioservice",
-      "//common-mk/testrunner",
-    ]
-
-    pkg_deps = [ "libmems_test_support" ]
-
     sources = [
       "samples_handler_test.cc",
       "sensor_device_impl_test.cc",
@@ -76,6 +60,16 @@ if (use.test) {
       "sensor_service_impl_test.cc",
       "test_fakes.cc",
       "testrunner.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":iioservice_testrunner_pkg_deps",
+      ":target_defaults_pkg_deps",
+    ]
+    pkg_deps = [ "libmems_test_support" ]
+    deps = [
+      ":libiioservice",
+      "//common-mk/testrunner",
     ]
   }
 }

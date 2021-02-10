@@ -17,13 +17,11 @@ pkg_config("target_defaults_pkg_deps") {
 }
 
 static_library("libiioservice_simpleclient") {
-  configs += [ ":target_defaults_pkg_deps" ]
-
   sources = [
     "daemon.cc",
     "observer_impl.cc",
   ]
-
+  configs += [ ":target_defaults_pkg_deps" ]
   deps = [
     "//iioservice/libiioservice_ipc:libiioservice_ipc",
     "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
@@ -31,8 +29,7 @@ static_library("libiioservice_simpleclient") {
 }
 
 executable("iioservice_simpleclient") {
-  configs += [ ":target_defaults_pkg_deps" ]
-
   sources = [ "iioservice_simpleclient.cc" ]
+  configs += [ ":target_defaults_pkg_deps" ]
   deps = [ ":libiioservice_simpleclient" ]
 }
