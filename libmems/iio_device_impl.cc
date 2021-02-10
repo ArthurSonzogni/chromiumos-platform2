@@ -23,6 +23,7 @@ namespace libmems {
 namespace {
 
 constexpr int kNumSamples = 1;
+constexpr char kHWFifoWatermarkMaxAttr[] = "hwfifo_watermark_max";
 
 };  // namespace
 
