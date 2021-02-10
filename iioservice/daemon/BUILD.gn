@@ -30,7 +30,6 @@ static_library("libiioservice") {
     "sensor_device_impl.cc",
     "sensor_hal_server_impl.cc",
     "sensor_service_impl.cc",
-    "udev_watcher.cc",
   ]
   public_pkg_deps = [ "libmems" ]
 
@@ -77,7 +76,6 @@ if (use.test) {
       "sensor_service_impl_test.cc",
       "test_fakes.cc",
       "testrunner.cc",
-      "udev_watcher_test.cc",
     ]
   }
 }

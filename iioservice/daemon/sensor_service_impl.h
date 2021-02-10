@@ -11,21 +11,16 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/memory/weak_ptr.h>
 #include <base/sequenced_task_runner.h>
-#include <base/single_thread_task_runner.h>
-#include <brillo/udev/udev.h>
 #include <libmems/iio_context.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "iioservice/daemon/sensor_device_impl.h"
-#include "iioservice/daemon/udev_watcher.h"
 #include "mojo/sensor.mojom.h"
 
 namespace iioservice {
 
-class SensorServiceImpl : public cros::mojom::SensorService,
-                          public UdevWatcher::Observer {
+class SensorServiceImpl : public cros::mojom::SensorService {
  public:
   static void SensorServiceImplDeleter(SensorServiceImpl* service);
   using ScopedSensorServiceImpl =
@@ -33,11 +28,12 @@ class SensorServiceImpl : public cros::mojom::SensorService,
 
   static ScopedSensorServiceImpl Create(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-      std::unique_ptr<libmems::IioContext> context,
-      std::unique_ptr<brillo::Udev> udev);
+      std::unique_ptr<libmems::IioContext> context);
 
   virtual void AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorService> request);
+
+  void OnDeviceAdded(int iio_device_id);
 
   // cros::mojom::SensorService overrides:
   void GetDeviceIds(cros::mojom::DeviceType type,
@@ -50,26 +46,16 @@ class SensorServiceImpl : public cros::mojom::SensorService,
       mojo::PendingRemote<cros::mojom::SensorServiceNewDevicesObserver>
           observer) override;
 
-  // Implementation of UdevWatcher::Observer.
-  void OnDeviceAdded(int iio_device_id) override;
-
  protected:
   SensorServiceImpl(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
                     std::unique_ptr<libmems::IioContext> context,
-                    std::unique_ptr<brillo::Udev> udev,
                     SensorDeviceImpl::ScopedSensorDeviceImpl sensor_device);
 
  private:
-  static const uint32_t kNumFailedPermTrialsBeforeGivingUp = 10;
-
-  void FailedToLoadDevice(libmems::IioDevice* device);
   void AddDevice(libmems::IioDevice* device);
 
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
   std::unique_ptr<libmems::IioContext> context_;
-
-  // Used to watch late-present sensors.
-  std::unique_ptr<UdevWatcher> udev_watcher_;
 
   SensorDeviceImpl::ScopedSensorDeviceImpl sensor_device_;
 
@@ -79,11 +65,6 @@ class SensorServiceImpl : public cros::mojom::SensorService,
   mojo::ReceiverSet<cros::mojom::SensorService> receiver_set_;
   std::vector<mojo::Remote<cros::mojom::SensorServiceNewDevicesObserver>>
       observers_;
-
-  // First is the device id, second is the number of failed permission trials.
-  std::map<int32_t, int32_t> iio_device_permission_trials_;
-
-  base::WeakPtrFactory<SensorServiceImpl> weak_factory_{this};
 };
 
 }  // namespace iioservice

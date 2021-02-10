@@ -90,9 +90,8 @@ class SensorServiceImplTest : public ::testing::Test {
     context->AddDevice(std::move(accel));
     context->AddDevice(std::move(gyro));
 
-    sensor_service_ =
-        SensorServiceImpl::Create(task_environment_.GetMainThreadTaskRunner(),
-                                  std::move(context), nullptr);
+    sensor_service_ = SensorServiceImpl::Create(
+        task_environment_.GetMainThreadTaskRunner(), std::move(context));
     EXPECT_TRUE(sensor_service_);
   }
 
@@ -184,9 +183,8 @@ class SensorServiceImplTestDeviceTypesWithParam
 
     context->AddDevice(std::move(device));
 
-    sensor_service_ =
-        SensorServiceImpl::Create(task_environment_.GetMainThreadTaskRunner(),
-                                  std::move(context), nullptr);
+    sensor_service_ = SensorServiceImpl::Create(
+        task_environment_.GetMainThreadTaskRunner(), std::move(context));
     EXPECT_TRUE(sensor_service_.get());
   }
 

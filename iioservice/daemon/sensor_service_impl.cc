@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
-#include <brillo/udev/udev.h>
 #include <libmems/iio_device.h>
 #include <libmems/iio_channel.h>
 #include <mojo/core/embedder/embedder.h>
@@ -22,8 +21,6 @@ namespace iioservice {
 
 // Add a namespace here to not leak |DeviceHasType|.
 namespace {
-
-constexpr int kPermTrialDelayInMilliseconds = 100;
 
 // Prefixes for each cros::mojom::DeviceType channel.
 constexpr char kChnPrefixes[][12] = {
@@ -90,8 +87,7 @@ void SensorServiceImpl::SensorServiceImplDeleter(SensorServiceImpl* service) {
 // static
 SensorServiceImpl::ScopedSensorServiceImpl SensorServiceImpl::Create(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-    std::unique_ptr<libmems::IioContext> context,
-    std::unique_ptr<brillo::Udev> udev) {
+    std::unique_ptr<libmems::IioContext> context) {
   DCHECK(ipc_task_runner->RunsTasksInCurrentSequence());
 
   auto sensor_device = SensorDeviceImpl::Create(ipc_task_runner, context.get());
@@ -103,13 +99,34 @@ SensorServiceImpl::ScopedSensorServiceImpl SensorServiceImpl::Create(
 
   return ScopedSensorServiceImpl(
       new SensorServiceImpl(std::move(ipc_task_runner), std::move(context),
-                            std::move(udev), std::move(sensor_device)),
+                            std::move(sensor_device)),
       SensorServiceImplDeleter);
 }
 
 void SensorServiceImpl::AddReceiver(
     mojo::PendingReceiver<cros::mojom::SensorService> request) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
   receiver_set_.Add(this, std::move(request), ipc_task_runner_);
+}
+
+void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  if (device_types_map_.find(iio_device_id) != device_types_map_.end()) {
+    // Device is already added. Skipping.
+    return;
+  }
+
+  // Reload to check if there are new devices available.
+  context_->Reload();
+  auto device = context_->GetDeviceById(iio_device_id);
+  if (!device) {
+    LOGF(ERROR) << "Cannot find device by id: " << iio_device_id;
+    return;
+  }
+
+  AddDevice(device);
 }
 
 void SensorServiceImpl::GetDeviceIds(cros::mojom::DeviceType type,
@@ -149,7 +166,13 @@ void SensorServiceImpl::GetDevice(
     return;
   }
 
-  const auto& types = device_types_map_[iio_device_id];
+  auto it = device_types_map_.find(iio_device_id);
+  if (it == device_types_map_.end()) {
+    LOGF(ERROR) << "No available device with id: " << iio_device_id;
+    return;
+  }
+
+  const auto& types = it->second;
   sensor_device_->AddReceiver(
       iio_device_id, std::move(device_request),
       std::set<cros::mojom::DeviceType>(types.begin(), types.end()));
@@ -165,69 +188,20 @@ void SensorServiceImpl::RegisterNewDevicesObserver(
           std::move(observer)));
 }
 
-void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  if (device_types_map_.find(iio_device_id) != device_types_map_.end()) {
-    // Device is already added. Skipping.
-    return;
-  }
-
-  // Reload to check if there are new devices available.
-  context_->Reload();
-  auto device = context_->GetDeviceById(iio_device_id);
-  if (!device) {
-    LOG(ERROR) << "Failed to load device with id: " << iio_device_id;
-    return;
-  }
-
-  iio_device_permission_trials_[iio_device_id] = 0;
-  AddDevice(device);
-}
-
 SensorServiceImpl::SensorServiceImpl(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     std::unique_ptr<libmems::IioContext> context,
-    std::unique_ptr<brillo::Udev> udev,
     SensorDeviceImpl::ScopedSensorDeviceImpl sensor_device)
     : ipc_task_runner_(ipc_task_runner),
       context_(std::move(context)),
-      udev_watcher_(UdevWatcher::Create(this, std::move(udev))),
       sensor_device_(std::move(sensor_device)) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (!sensor_device_)
     LOGF(ERROR) << "Failed to get SensorDevice";
 
-  if (!udev_watcher_.get())
-    LOGF(ERROR) << "Late-present sensors won't be tracked.";
-
-  for (auto device : context_->GetAllDevices()) {
-    if (device_types_map_.find(device->GetId()) != device_types_map_.end())
-      continue;
-
+  for (auto device : context_->GetAllDevices())
     AddDevice(device);
-  }
-}
-
-void SensorServiceImpl::FailedToLoadDevice(libmems::IioDevice* device) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  const int32_t id = device->GetId();
-  if (++iio_device_permission_trials_[id] >=
-      kNumFailedPermTrialsBeforeGivingUp) {
-    LOGF(ERROR) << "Too many failed permission trials. Giving up on device: "
-                << id;
-    return;
-  }
-
-  LOGF(WARNING) << "Permissions and ownerships may not be set yet for device: "
-                << id;
-  ipc_task_runner_->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&SensorServiceImpl::AddDevice, weak_factory_.GetWeakPtr(),
-                     device),
-      base::TimeDelta::FromMilliseconds(kPermTrialDelayInMilliseconds));
 }
 
 void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
@@ -235,18 +209,14 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
 
   const int32_t id = device->GetId();
   if (!device->DisableBuffer()) {
-    FailedToLoadDevice(device);
+    LOGF(ERROR) << "Permissions and ownerships hasn't been set for device: "
+                << id;
     return;
   }
 
   if (strcmp(device->GetName(), "acpi-als") == 0 && !device->GetTrigger()) {
-    // Reloads context for the hrtimer, as it'd be added after mems_setup.
-    context_->Reload();
-
-    if (!device->GetTrigger()) {
-      FailedToLoadDevice(device);
-      return;
-    }
+    LOGF(ERROR) << "No trigger in acpi-als";
+    return;
   }
 
   std::vector<cros::mojom::DeviceType> types;
