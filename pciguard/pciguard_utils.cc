@@ -136,15 +136,21 @@ int AuthorizeAllDevices(void) {
     ret = EXIT_FAILURE;
   }
 
-  // Create an ordered set of thunderbolt devices.
-  std::set<base::FilePath> thunderbolt_devs;
+  // Create an BFS ordered set of thunderbolt devices.
+  auto cmp = [](const base::FilePath& dev1, const base::FilePath& dev2) {
+    base::FilePath symlink1, symlink2;
+    (void)base::ReadSymbolicLink(dev1, &symlink1);
+    (void)base::ReadSymbolicLink(dev2, &symlink2);
+    return symlink1 < symlink2;
+  };
+  std::set<base::FilePath, decltype(cmp)> thunderbolt_devs(cmp);
   base::FileEnumerator iter(base::FilePath("/sys/bus/thunderbolt/devices"),
                             false, base::FileEnumerator::DIRECTORIES);
   for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next())
     thunderbolt_devs.insert(devpath);
 
-  // Authorize the thunderbolt devices in BFS order (Due to kernel device
-  // naming scheme, the ordered set always results in BFS order). This is
+  // Authorize the thunderbolt devices in BFS order (sorting using the
+  // symlinks to which the devices point, gives us BFS). This is
   // required because if a parent is deauthorized, the children are
   // automatically deauthorized, but vice versa is not true.
   for (auto dev : thunderbolt_devs) {
