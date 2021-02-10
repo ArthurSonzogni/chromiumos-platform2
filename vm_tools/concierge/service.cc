@@ -3490,7 +3490,7 @@ Service::VMImageSpec Service::GetImageSpec(
     // User-chosen VMs (i.e. with arbitrary paths) can not be trusted.
     return VMImageSpec{
         .kernel = std::move(kernel),
-        .initrd = base::FilePath(vm.initrd()),
+        .initrd = std::move(initrd),
         .rootfs = std::move(rootfs),
         .tools_disk = {},
         .is_trusted_image = false,
