@@ -70,6 +70,9 @@ class Component {
   // Loads and verifies the manfiest. Returns false on failure. |public_key| is
   // the public key used to check the manifest signature.
   bool LoadManifest(const std::vector<uint8_t>& public_key);
+  // Same as the above function, but it skips the verification.
+  bool LoadManifestWithoutVerifyingKeyForTestingOnly();
+
   bool CopyComponentFile(const base::FilePath& src,
                          const base::FilePath& dest,
                          const std::vector<uint8_t>& expected_hash);

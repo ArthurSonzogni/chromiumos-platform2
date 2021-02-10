@@ -50,6 +50,10 @@ base::FilePath GetNonDictMetadataComponentPath() {
   return GetTestDataPath(kNonDictMetadataComponentName);
 }
 
+base::FilePath GetNoSignatureComponentPath() {
+  return GetTestDataPath(kNoSignatureComponentName);
+}
+
 void GetFilesInDir(const base::FilePath& dir, std::list<std::string>* files) {
   base::FileEnumerator file_enum(dir, false, base::FileEnumerator::FILES);
   for (base::FilePath name = file_enum.Next(); !name.empty();

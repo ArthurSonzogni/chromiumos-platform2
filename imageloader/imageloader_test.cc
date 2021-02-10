@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "imageloader/component.h"
+#include "imageloader/mock_global_context.h"
 #include "imageloader/mock_helper_process_proxy.h"
 #include "imageloader/test_utilities.h"
 #include "imageloader/verity_mounter.h"
@@ -34,6 +35,11 @@ class ImageLoaderTest : public testing::Test {
     CHECK(base::SetPosixFilePermissions(temp_dir_, kComponentDirPerms));
   }
 
+  void SetUp() override {
+    g_ctx_.SetAsCurrent();
+    ON_CALL(g_ctx_, IsOfficialBuild()).WillByDefault(testing::Return(true));
+  }
+
   ImageLoaderConfig GetConfig(const char* path) {
     Keys keys;
     keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
@@ -46,6 +52,8 @@ class ImageLoaderTest : public testing::Test {
 
   base::ScopedTempDir scoped_temp_dir_;
   base::FilePath temp_dir_;
+
+  MockGlobalContext g_ctx_;
 };
 
 // Test the RegisterComponent public interface.
@@ -460,6 +468,24 @@ TEST_F(ImageLoaderTest, ValidIdTest) {
   // ID is too long.
   EXPECT_FALSE(
       ImageLoaderImpl::IsIdValid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+}
+
+TEST_F(ImageLoaderTest, NoSignatureOfficialImage) {
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
+  // On official builds a component with no signature file should fail.
+  EXPECT_FALSE(loader.RegisterComponent(kNoSignatureComponentName,
+                                        kTestOciComponentVersion,
+                                        GetNoSignatureComponentPath().value()));
+}
+
+TEST_F(ImageLoaderTest, NoSignatureNonOfficialImage) {
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
+
+  // On non-official builds a component with no signature file should succeed.
+  EXPECT_CALL(g_ctx_, IsOfficialBuild()).WillRepeatedly(testing::Return(false));
+  EXPECT_TRUE(loader.RegisterComponent(kNoSignatureComponentName,
+                                       kTestOciComponentVersion,
+                                       GetNoSignatureComponentPath().value()));
 }
 
 }  // namespace imageloader

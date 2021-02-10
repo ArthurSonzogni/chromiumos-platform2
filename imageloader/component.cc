@@ -27,6 +27,7 @@
 #include <crypto/sha2.h>
 #include <crypto/signature_verifier.h>
 
+#include "imageloader/global_context.h"
 #include "imageloader/helper_process_proxy.h"
 
 namespace imageloader {
@@ -144,21 +145,35 @@ Component::Component(const base::FilePath& component_dir, int key_number)
 
 std::unique_ptr<Component> Component::Create(
     const base::FilePath& component_dir, const Keys& public_keys) {
+  bool is_official_build = GlobalContext::Current()->IsOfficialBuild();
+
+  // Try to verify signatures in all type of images (signed/test/etc) if they
+  // exists. Only for non-official images, if the signature is missing, ignore
+  // verification otherwise fail.
   base::FilePath signature_path;
-  size_t key_number;
-  if (!GetSignaturePath(component_dir, &signature_path, &key_number)) {
-    LOG(ERROR) << "Could not find manifest signature";
+  size_t key_number = 0;
+  if (GetSignaturePath(component_dir, &signature_path, &key_number)) {
+    if (key_number < 1 || key_number > public_keys.size()) {
+      LOG(ERROR) << "Invalid key number.";
+      return nullptr;
+    }
+  } else if (is_official_build) {
+    LOG(ERROR) << "Could not find manifest signature.";
     return nullptr;
-  }
-  if (key_number < 1 || key_number > public_keys.size()) {
-    LOG(ERROR) << "Invalid key number";
-    return nullptr;
+  } else {
+    LOG(WARNING) << "Could not find manifest signature, but since this is not "
+                 << "an official image, we allow loading the component.";
   }
 
   std::unique_ptr<Component> component(
       new Component(component_dir, key_number));
-  if (!component->LoadManifest(public_keys[key_number - 1]))
+  if (key_number > 0) {
+    if (!component->LoadManifest(public_keys[key_number - 1])) {
+      return nullptr;
+    }
+  } else if (!component->LoadManifestWithoutVerifyingKeyForTestingOnly()) {
     return nullptr;
+  }
   return component;
 }
 
@@ -186,6 +201,15 @@ bool Component::Mount(HelperProcessProxy* mounter,
 
   return mounter->SendMountCommand(image_fd.get(), dest_dir.value(),
                                    manifest_.fs_type(), table);
+}
+
+bool Component::LoadManifestWithoutVerifyingKeyForTestingOnly() {
+  if (!base::ReadFileToStringWithMaxSize(GetManifestPath(component_dir_),
+                                         &manifest_raw_, kMaximumFilesize)) {
+    LOG(ERROR) << "Could not read manifest file.";
+    return false;
+  }
+  return manifest_.ParseManifest(manifest_raw_);
 }
 
 bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
@@ -224,8 +248,9 @@ bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
 
 bool Component::CopyTo(const base::FilePath& dest_dir) {
   if (!WriteFileToDisk(GetManifestPath(dest_dir), manifest_raw_) ||
-      !WriteFileToDisk(GetSignaturePathForKey(dest_dir, key_number_),
-                       manifest_sig_)) {
+      (key_number_ > 0 &&
+       !WriteFileToDisk(GetSignaturePathForKey(dest_dir, key_number_),
+                        manifest_sig_))) {
     LOG(ERROR) << "Could not write manifest and signature to disk.";
     return false;
   }

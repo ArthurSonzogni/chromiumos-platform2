@@ -61,6 +61,9 @@ base::FilePath GetMetadataComponentPath();
 base::FilePath GetBadMetadataComponentPath();
 base::FilePath GetNonDictMetadataComponentPath();
 
+constexpr char kNoSignatureComponentName[] = "adb-with-no-signature";
+base::FilePath GetNoSignatureComponentPath();
+
 // Enumerate all files in a directory and return them as a list of filenames.
 void GetFilesInDir(const base::FilePath& dir, std::list<std::string>* files);
 

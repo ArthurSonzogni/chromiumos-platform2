@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "imageloader/imageloader_impl.h"
+#include "imageloader/mock_global_context.h"
 #include "imageloader/mock_helper_process_proxy.h"
 #include "imageloader/test_utilities.h"
 
@@ -36,6 +37,11 @@ class ComponentTest : public testing::Test {
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     temp_dir_ = scoped_temp_dir_.GetPath();
     CHECK(base::SetPosixFilePermissions(temp_dir_, kComponentDirPerms));
+  }
+
+  void SetUp() override {
+    g_ctx_.SetAsCurrent();
+    ON_CALL(g_ctx_, IsOfficialBuild()).WillByDefault(testing::Return(true));
   }
 
   bool TestCopyWithCorruptFile(const std::string& component_name,
@@ -122,6 +128,8 @@ class ComponentTest : public testing::Test {
   Keys keys_;
   base::ScopedTempDir scoped_temp_dir_;
   base::FilePath temp_dir_;
+
+  MockGlobalContext g_ctx_;
 };
 
 TEST_F(ComponentTest, InitComponentAndCheckManifest) {
@@ -230,6 +238,44 @@ TEST_F(ComponentTest, CheckFilesAfterCopy) {
                   "image.squash", "manifest.fingerprint"));
   EXPECT_TRUE(
       CompareFileContents(GetTestComponentPath(), copied_dir, copied_files));
+}
+
+TEST_F(ComponentTest, CheckNoSignatureComponentFail) {
+  EXPECT_FALSE(Component::Create(GetNoSignatureComponentPath(), keys_));
+}
+
+TEST_F(ComponentTest, CheckNoSignatureFilesAfterCopy) {
+  // Make non-official build.
+  EXPECT_CALL(g_ctx_, IsOfficialBuild()).WillRepeatedly(testing::Return(false));
+
+  base::FilePath component_path = GetNoSignatureComponentPath();
+  std::unique_ptr<Component> component =
+      Component::Create(component_path, keys_);
+  ASSERT_TRUE(component);
+
+  const base::FilePath copied_dir = temp_dir_.Append("dest");
+  ASSERT_TRUE(base::CreateDirectory(copied_dir));
+  ASSERT_TRUE(base::SetPosixFilePermissions(copied_dir, kComponentDirPerms));
+
+  ASSERT_TRUE(component->CopyTo(copied_dir));
+
+  std::unique_ptr<Component> copied_component =
+      Component::Create(copied_dir, keys_);
+  ASSERT_NE(nullptr, copied_component);
+
+  // Check that all the files are present. The signature file should just be
+  // ignored.
+  std::list<std::string> original_files;
+  std::list<std::string> copied_files;
+  GetFilesInDir(component_path, &original_files);
+  GetFilesInDir(copied_dir, &copied_files);
+
+  EXPECT_THAT(original_files,
+              testing::UnorderedElementsAre("imageloader.json", "manifest.json",
+                                            "table", "image.squash"));
+  ASSERT_THAT(copied_files, testing::UnorderedElementsAre(
+                                "imageloader.json", "table", "image.squash"));
+  EXPECT_TRUE(CompareFileContents(component_path, copied_dir, copied_files));
 }
 
 TEST_F(ComponentTest, IsValidFingerprintFile) {
