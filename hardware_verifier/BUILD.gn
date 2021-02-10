@@ -33,8 +33,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libhardware_verifier") {
-  configs += [ ":target_defaults" ]
-  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
   sources = [
     "cli.cc",
     "hw_verification_spec_getter_impl.cc",
@@ -42,42 +40,44 @@ static_library("libhardware_verifier") {
     "probe_result_getter_impl.cc",
     "verifier_impl.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
 }
 
 executable("hardware_verifier") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libhardware_verifier" ]
 }
 
 if (use.test) {
   static_library("libhardware_verifier_test") {
-    configs += [ ":target_defaults" ]
-    deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
     sources = [
       "hw_verification_spec_getter_fake.cc",
       "probe_result_getter_fake.cc",
       "test_utils.cc",
       "verifier_fake.cc",
     ]
+    configs += [ ":target_defaults" ]
+    deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
   }
 
   executable("unittest_runner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "cli_test.cc",
       "hw_verification_spec_getter_impl_test.cc",
       "probe_result_getter_impl_test.cc",
       "verifier_impl_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    data = [ "testdata/" ]
     deps = [
       ":libhardware_verifier",
       ":libhardware_verifier_test",
       "//common-mk/testrunner",
     ]
-    data = [ "testdata/" ]
   }
 }

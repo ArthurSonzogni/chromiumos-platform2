@@ -39,7 +39,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libruntime_probe") {
-  configs += [ ":target_defaults" ]
   sources = [
     "component_category.cc",
     "daemon.cc",
@@ -75,20 +74,17 @@ static_library("libruntime_probe") {
     "utils/type_utils.cc",
     "utils/value_utils.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("runtime_probe") {
-  configs += [ ":target_defaults" ]
   sources = [ "runtime_probe.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libruntime_probe" ]
 }
 
 if (use.test) {
   executable("unittest_runner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "functions/sequence_test.cc",
       "functions/sysfs_test.cc",
@@ -97,27 +93,31 @@ if (use.test) {
       "probe_result_checker_test.cc",
       "probe_statement_test.cc",
     ]
-    deps = [
-      ":libruntime_probe",
-      "//common-mk/testrunner",
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     data = [
       "testdata/probe_config.json",
       "testdata/test.txt",
+    ]
+    deps = [
+      ":libruntime_probe",
+      "//common-mk/testrunner",
     ]
   }
 }
 
 if (use.fuzzer) {
   executable("runtime_probe_resultchecker_fuzzer") {
-    configs += [ "//common-mk/common_fuzzer" ]
     sources = [ "runtime_probe_resultchecker_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer" ]
     deps = [ ":libruntime_probe" ]
     pkg_deps = [ "libchrome-test" ]
   }
   executable("runtime_probe_probestatement_fuzzer") {
-    configs += [ "//common-mk/common_fuzzer" ]
     sources = [ "runtime_probe_probestatement_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer" ]
     deps = [ ":libruntime_probe" ]
     pkg_deps = [ "libchrome-test" ]
   }
