@@ -181,6 +181,8 @@ static const int RequestTooLarge = 413;
 static const int UriTooLong = 414;
 // Unsupported media type
 static const int UnsupportedMedia = 415;
+// Too many requests
+static const int TooManyRequests = 429;
 // Retry after doing the appropriate action.
 static const int RetryWith = 449;
 

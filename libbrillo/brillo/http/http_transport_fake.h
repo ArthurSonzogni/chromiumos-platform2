@@ -16,6 +16,7 @@
 #include <base/callback.h>
 #include <base/location.h>
 #include <base/values.h>
+#include <brillo/brillo_export.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
 
@@ -31,7 +32,7 @@ class Connection;
 // A fake implementation of http::Transport that simulates HTTP communication
 // with a server.
 ///////////////////////////////////////////////////////////////////////////////
-class Transport : public http::Transport {
+class BRILLO_EXPORT Transport : public http::Transport {
  public:
   Transport();
   Transport(const Transport&) = delete;
