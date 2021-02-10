@@ -191,6 +191,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/cache                      u:object_r:cros_var_cache:s0
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
 /var/cache/camera(/.*)?         u:object_r:cros_var_cache_camera:s0
+/var/db                         u:object_r:cros_var_db:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
 /var/lib/bluetooth(/.*)?        u:object_r:cros_var_lib_bluetooth:s0
@@ -201,6 +202,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/imageloader(/.*)?      u:object_r:cros_var_lib_imageloader:s0
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
+/var/lib/misc                   u:object_r:cros_var_lib_misc:s0
 /var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
@@ -212,6 +214,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/update_engine(/.*)?    u:object_r:cros_var_lib_update_engine:s0
 /var/lib/ureadahead(/.*)?       u:object_r:cros_var_lib_ureadahead:s0
 /var/lib/whitelist(/.*)?        u:object_r:cros_var_lib_whitelist:s0
+/var/lock                       u:object_r:cros_var_lock:s0
 /var/log                        u:object_r:cros_var_log:s0
 /var/log/arc.log                u:object_r:cros_arc_log:s0
 /var/log/asan(/.*)?             u:object_r:cros_var_log_asan:s0
@@ -226,6 +229,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/hammerd.log            u:object_r:cros_hammerd_log:s0
 /var/log/journal(/.*)?          u:object_r:cros_var_log_journal:s0
 /var/log/messages               u:object_r:cros_syslog:s0
+/var/log/metrics(/.*)?          u:object_r:cros_var_log_metrics:s0
 /var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/log/net.log                u:object_r:cros_net_log:s0
 /var/log/powerd.out             u:object_r:cros_powerd_log:s0
@@ -238,10 +242,13 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/ui(/.*)?               u:object_r:cros_var_log_ui:s0
 /var/log/upstart.log            u:object_r:cros_var_log_upstart:s0
 /var/log/vmlog(/.*)?            u:object_r:cros_var_log_vmlog:s0
+# This gets bind-mounted to /run so the label needs to match.
+/var/run                        u:object_r:cros_run:s0
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
 /var/spool/crash(/.*)?          u:object_r:cros_crash_spool:s0
 /var/spool/power_manager(/.*)?  u:object_r:cros_var_spool_power_manager:s0
+/var/tmp                        u:object_r:cros_var_tmp:s0
 
 # /opt
 /opt(/.*)          u:object_r:cros_system_file:s0
@@ -265,16 +272,19 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # All the following files are created dynamically and need to be labeled at
 # runtime.
 /run                            u:object_r:cros_run:s0
-/run/lock                       u:object_r:cros_run_lock:s0
 /run/arc/debugfs                u:object_r:debugfs:s0
 /run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
+/run/daemon-store               u:object_r:cros_run_daemon_store:s0
 /run/dbus                       u:object_r:cros_run_dbus:s0
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
+/run/lock                       u:object_r:cros_run_lock:s0
+/run/lock/power_override        u:object_r:cros_run_lock_power_override:s0
 /run/metrics                    u:object_r:cros_run_metrics:s0
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
+/run/mount_encrypted            u:object_r:cros_run_mount_encrypted:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
 /run/namespaces                 u:object_r:cros_run_namespaces:s0
 /run/namespaces/mnt_chrome      u:object_r:cros_run_namespaces_mnt_chrome:s0
@@ -307,6 +317,18 @@ has_arc(`
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
 /lib/modules(/.*)?                     u:object_r:cros_kernel_modules_file:s0
 /lib/modules/.*\.ko                    u:object_r:cros_kernel_modules_ko_file:s0
+
+# /mnt
+/mnt/stateful_partition                      u:object_r:cros_stateful_partition:s0
+/mnt/stateful_partition/unencrypted          u:object_r:cros_stateful_partition_unencrypted:s0
+/mnt/stateful_partition/unencrypted/cache    u:object_r:cros_stateful_partition_unencrypted_cache:s0
+/mnt/stateful_partition/unencrypted/preserve u:object_r:cros_stateful_partition_unencrypted_preserve:s0
+
+# These are bind mounts so they need to match their other labels.
+/mnt/stateful_partition/home                      u:object_r:cros_home:s0
+/mnt/stateful_partition/home/root(/[0-9a-z]{40})? u:object_r:cros_home_root:s0
+/mnt/stateful_partition/home/user(/[0-9a-z]{40})? u:object_r:cros_home_user:s0
+/mnt/stateful_partition/home/chronos(/(?!(u-[0-9a-z]{40}|user)).*)?   u:object_r:cros_home_chronos:s0
 
 # /home
 /home                            u:object_r:cros_home:s0

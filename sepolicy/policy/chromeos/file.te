@@ -216,12 +216,16 @@ type cros_var_empty, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_shill, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_camera, file_type, cros_file_type, cros_var_file_type;
 
+# /var/db
+type cros_var_db, file_type, cros_file_type, cros_var_file_type;
+
 # var/lib
 type cros_var_lib_bluetooth, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_chaps, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_crash_reporter, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_dbus, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_imageloader, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_misc, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
@@ -233,6 +237,9 @@ type cros_var_lib_ui, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_update_engine, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ureadahead, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_whitelist, file_type, cros_file_type, cros_var_file_type;
+
+# /var/lock
+type cros_var_lock, file_type, cros_file_type, cros_var_file_type;
 
 # /var/log
 type cros_arc_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
@@ -254,6 +261,7 @@ type cros_var_log_audit, file_type, cros_log_type, cros_file_type, cros_var_file
 type cros_var_log_eventlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_faillog, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_journal, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_metrics, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_recover_duts, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_session_manager, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_tpm_firmware_updater, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
@@ -266,6 +274,9 @@ type cros_crash_spool, file_type, cros_file_type, cros_var_file_type;
 type cros_periodic_scheduler_cache_t, file_type, cros_file_type, cros_var_file_type;
 type cros_var_spool_power_manager, file_type, cros_file_type, cros_var_file_type;
 
+# /var/tmp
+type cros_var_tmp, file_type, cros_file_type, cros_var_file_type;
+
 type arc_dir, file_type, cros_file_type, cros_run_file_type; # compatible to pre-work label names for /run/chrome.
 type camera_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type cras_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
@@ -275,14 +286,17 @@ type cros_run_containers, file_type, cros_file_type, cros_run_file_type;
 type cros_run_crash_reporter, file_type, cros_file_type, cros_run_file_type;
 type cros_run_cryptohome, file_type, cros_file_type, cros_run_file_type;
 type cros_ephemeral_mount, file_type, cros_file_type, cros_run_file_type;
+type cros_run_daemon_store, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dbus, file_type, cros_file_type, cros_run_file_type;
 type cros_run_frecon, file_type, cros_file_type, cros_run_file_type;
 type cros_run_ipsec, file_type, cros_file_type, cros_run_file_type;
 type cros_run_journal, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lock, file_type, cros_file_type, cros_run_file_type;
+type cros_run_lock_power_override, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics_external, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics_external_crash, file_type, cros_file_type, cros_run_file_type;
+type cros_run_mount_encrypted, file_type, cros_file_type, cros_run_file_type;
 type cros_run_power_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_session_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_shill, file_type, cros_file_type, cros_run_file_type;
@@ -343,6 +357,8 @@ type cros_tcsd_socket, file_type, cros_file_type, cros_run_file_type;
 
 type cros_stateful_partition, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_stateful_partition_unencrypted_cache, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_stateful_partition_unencrypted_preserve, file_type, cros_file_type, cros_uncategorized_file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;
