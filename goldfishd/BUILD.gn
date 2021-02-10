@@ -22,13 +22,13 @@ pkg_config("target_defaults") {
 }
 
 static_library("libgoldfishd") {
-  configs += [ ":target_defaults" ]
   sources = [ "goldfish_library.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("goldfishd") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libgoldfishd" ]
 }
 
@@ -37,6 +37,7 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("goldfishd_test_runner") {
+    sources = [ "goldfish_library_test.cc" ]
     configs += [
       # //common-mk:test should be at the top. crbug.com/887845
       # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
@@ -44,7 +45,6 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
-    sources = [ "goldfish_library_test.cc" ]
     deps = [
       ":libgoldfishd",
       "//common-mk/testrunner",
