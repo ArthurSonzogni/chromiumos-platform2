@@ -240,7 +240,8 @@ class WebAuthnHandler {
       const std::vector<uint8_t>& credential_id,
       const std::vector<uint8_t>& credential_public_key,
       bool user_verified,
-      bool include_attested_credential_data);
+      bool include_attested_credential_data,
+      bool is_fido_u2f_attestation);
 
   // Appends a none attestation to |response|. Only used in MakeCredential.
   void AppendNoneAttestation(MakeCredentialResponse* response);

@@ -62,6 +62,11 @@ const std::vector<uint8_t> kKeyHandle(sizeof(struct u2f_key_handle), 0xab);
 // Dummy hash to sign.
 const std::vector<uint8_t> kHashToSign(U2F_P256_SIZE, 0xcd);
 
+// AAGUID for none attestation.
+const std::vector<uint8_t> kAaguid = {0x84, 0x03, 0x98, 0x77, 0xa5, 0x4b,
+                                      0xdf, 0xbb, 0x04, 0xa8, 0x2d, 0xf2,
+                                      0xfa, 0x2a, 0x11, 0x6e};
+
 // Only used to test DoU2fSign, where the hash to sign can be determined.
 const std::string ExpectedDeterministicU2fSignRequestRegex() {
   // See U2F_SIGN_REQ in //platform/ec/include/u2f.h
@@ -328,10 +333,11 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
       const std::vector<uint8_t>& credential_id,
       const std::vector<uint8_t>& credential_public_key,
       bool user_verified,
-      bool include_attested_credential_data) {
-    return handler_->MakeAuthenticatorData(kRpIdHash, credential_id,
-                                           credential_public_key, user_verified,
-                                           include_attested_credential_data);
+      bool include_attested_credential_data,
+      bool is_fido_u2f_attestation) {
+    return handler_->MakeAuthenticatorData(
+        kRpIdHash, credential_id, credential_public_key, user_verified,
+        include_attested_credential_data, is_fido_u2f_attestation);
   }
 
   // Set up an auth-time secret hash as if a user has logged in.
@@ -572,8 +578,9 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialVerificationSuccess) {
       std::string(
           "45"          // Flag: user present, user verified, attested
                         // credential data included.
-          "(..){4}"     // Signature counter
-          "(00){16}"    // AAGUID
+          "(..){4}") +  // Signature counter
+      base::HexEncode(kAaguid.data(), kAaguid.size()) +  // AAGUID
+      std::string(
           "0091"        // Credential ID length
                         // Credential ID, from kU2fGenerateVersionedResponse:
           "(FD){65}"    // Versioned key handle header
@@ -1023,7 +1030,8 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataWithAttestedCredData) {
 
   std::vector<uint8_t> authenticator_data =
       MakeAuthenticatorData(cred_id, cred_pubkey, /* user_verified = */ false,
-                            /* include_attested_credential_data = */ true);
+                            /* include_attested_credential_data = */ true,
+                            /* is_fido_u2f_attestation = */ false);
   EXPECT_EQ(authenticator_data.size(),
             kRpIdHashBytes + kAuthenticatorDataFlagBytes +
                 kSignatureCounterBytes + kAaguidBytes +
@@ -1035,8 +1043,9 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataWithAttestedCredData) {
       rp_id_hash_hex +  // RP ID hash
       std::string(
           "41"          // Flag: user present, attested credential data included
-          "(..){4}"     // Signature counter
-          "(00){16}"    // AAGUID
+          "(..){4}") +  // Signature counter
+      base::HexEncode(kAaguid.data(), kAaguid.size()) +  // AAGUID
+      std::string(
           "0040"        // Credential ID length
           "(AA){64}"    // Credential ID
           "(BB){65}");  // Credential public key
@@ -1049,7 +1058,8 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataNoAttestedCredData) {
   std::vector<uint8_t> authenticator_data =
       MakeAuthenticatorData(std::vector<uint8_t>(), std::vector<uint8_t>(),
                             /* user_verified = */ false,
-                            /* include_attested_credential_data = */ false);
+                            /* include_attested_credential_data = */ false,
+                            /* is_fido_u2f_attestation = */ false);
   EXPECT_EQ(
       authenticator_data.size(),
       kRpIdHashBytes + kAuthenticatorDataFlagBytes + kSignatureCounterBytes);
