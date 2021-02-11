@@ -302,7 +302,6 @@ static_library("libcryptohome") {
     "../keyset_management.cc",
     "../lockbox-cache.cc",
     "../scrypt_password_verifier.cc",
-    "../service.cc",
     "../service_distributed.cc",
     "../service_userdataauth.cc",
     "../stateful_recovery.cc",
