@@ -55,6 +55,13 @@ bool ReadKeyFile(const base::FilePath& path,
     return false;
   }
 
+  // The decryption is succeed when the plaintext size is correct.
+  if (plaintext->size() != DIGEST_LENGTH) {
+    LOG(ERROR) << "Decryption result size mismatch for data from " << path
+               << ", expected size:" << DIGEST_LENGTH
+               << ", actual size:" << plaintext->size();
+    return false;
+  }
   return true;
 }
 
