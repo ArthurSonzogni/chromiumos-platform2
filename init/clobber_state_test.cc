@@ -25,6 +25,9 @@
 #include "init/crossystem_fake.h"
 
 namespace {
+using ::testing::_;
+using ::testing::DoAll;
+
 // Commands for disk formatting utility sfdisk.
 // Specify that partition table should use gpt format.
 constexpr char kSfdiskPartitionTableTypeCommand[] = "label: gpt\n";
