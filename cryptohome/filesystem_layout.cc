@@ -13,6 +13,7 @@
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -95,7 +96,12 @@ bool InitializeFilesystemLayout(Platform* platform,
   const base::FilePath shadow_root = ShadowRoot();
   if (!platform->DirectoryExists(shadow_root)) {
     platform->CreateDirectory(shadow_root);
-    platform->RestoreSELinuxContexts(shadow_root, true);
+    if (platform->RestoreSELinuxContexts(shadow_root, true /*recursive*/)) {
+      ReportRestoreSELinuxContextResultForShadowDir(true);
+    } else {
+      ReportRestoreSELinuxContextResultForShadowDir(false);
+      LOG(ERROR) << "RestoreSELinuxContexts(" << shadow_root << ") failed.";
+    }
   }
   const base::FilePath salt_file = SaltFile();
   if (!crypto->GetOrCreateSalt(salt_file, CRYPTOHOME_DEFAULT_SALT_LENGTH, false,

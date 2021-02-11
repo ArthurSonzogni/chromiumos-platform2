@@ -467,6 +467,13 @@ void ReportAttestationOpsStatus(const std::string& operation,
 // Reports the result of an InvalidateDirCryptoKey operation.
 void ReportInvalidateDirCryptoKeyResult(bool result);
 
+// Reports the result of a RestoreSELinuxContexts operation for /home/.shadow.
+void ReportRestoreSELinuxContextResultForShadowDir(bool success);
+
+// Reports the result of a RestoreSELinuxContexts operation for the bind mounted
+// directories under user home directory.
+void ReportRestoreSELinuxContextResultForHomeDir(bool success);
+
 // Initialization helper.
 class ScopedMetricsInitializer {
  public:

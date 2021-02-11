@@ -336,8 +336,18 @@ bool Mount::MountCryptohome(const std::string& username,
 
   // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
   // still okay during current development progress.
-  platform_->RestoreSELinuxContexts(
-      GetUserDirectoryForUser(obfuscated_username), true);
+  // Report the success rate of the restore SELinux context operation for user
+  // directory to decide on the action on failure when we  move on to the next
+  // phase in the cryptohome SELinux development, i.e. making cryptohome
+  // enforcing.
+  if (platform_->RestoreSELinuxContexts(
+          GetUserDirectoryForUser(obfuscated_username), true /*recursive*/)) {
+    ReportRestoreSELinuxContextResultForHomeDir(true);
+  } else {
+    ReportRestoreSELinuxContextResultForHomeDir(false);
+    LOG(ERROR) << "RestoreSELinuxContexts("
+               << GetUserDirectoryForUser(obfuscated_username) << ") failed.";
+  }
 
   return true;
 }

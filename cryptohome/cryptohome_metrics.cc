@@ -86,6 +86,10 @@ constexpr char kOOPMountCleanupResultHistogram[] =
     "Cryptohome.OOPMountCleanupResult";
 constexpr char kInvalidateDirCryptoKeyResultHistogram[] =
     "Cryptohome.InvalidateDirCryptoKeyResult";
+constexpr char kRestoreSELinuxContextResultForHome[] =
+    "Cryptohome.RestoreSELinuxContextResultForHome";
+constexpr char kRestoreSELinuxContextResultForShadow[] =
+    "Cryptohome.RestoreSELinuxContextResultForShadow";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -547,6 +551,22 @@ void ReportAttestationOpsStatus(const std::string& operation,
       std::string(kAttestationStatusHistogramPrefix) + "." + operation;
   g_metrics->SendEnumToUMA(histogram, static_cast<int>(status),
                            static_cast<int>(AttestationOpsStatus::kMaxValue));
+}
+
+void ReportRestoreSELinuxContextResultForHomeDir(bool success) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendBoolToUMA(kRestoreSELinuxContextResultForHome, success);
+}
+
+void ReportRestoreSELinuxContextResultForShadowDir(bool success) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendBoolToUMA(kRestoreSELinuxContextResultForShadow, success);
 }
 
 void ReportInvalidateDirCryptoKeyResult(bool result) {
