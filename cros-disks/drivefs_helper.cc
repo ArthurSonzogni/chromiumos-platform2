@@ -4,6 +4,11 @@
 
 #include "cros-disks/drivefs_helper.h"
 
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <sysexits.h>
+#include <unistd.h>
+
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -12,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <brillo/files/safe_fd.h>
 
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mount_options.h"
@@ -34,6 +40,9 @@ const char kType[] = "drivefs";
 const char kDbusSocketPath[] = "/run/dbus";
 const char kHomeBaseDir[] = "/home";
 
+// UID of fuse-drivefs user.
+constexpr uid_t kOldDriveUID = 304;
+
 bool FindPathOption(const std::vector<std::string>& options,
                     const std::string& name,
                     base::FilePath* path) {
@@ -45,7 +54,84 @@ bool FindPathOption(const std::vector<std::string>& options,
   return true;
 }
 
-bool ValidateDirectory(const Platform* platform, base::FilePath* dir) {
+error_t RemoveDirectory(brillo::SafeFD* parent, const base::FilePath& name) {
+  if (setresuid(kOldDriveUID, kOldDriveUID, kOldDriveUID) != 0) {
+    return errno;
+  }
+
+  // This function accounts for various gotchas like filesystem boundaries,
+  // types, etc. If we were to chown the dir we'd have to replicate that
+  // traversal approach. But for now just nuke the dir.
+  brillo::SafeFD::Error error = parent->Rmdir(name.value(),
+                                              /*recursive=*/true,
+                                              /*max_depth=*/7,
+                                              /*keep_going=*/false);
+  switch (error) {
+    case brillo::SafeFD::Error::kNoError:
+      return 0;
+    case brillo::SafeFD::Error::kIOError:
+    case brillo::SafeFD::Error::kWrongType:
+      return errno;
+    case brillo::SafeFD::Error::kBoundaryDetected:
+      return EXDEV;
+    default:
+      return EINVAL;
+  }
+}
+
+bool FixDirectory(const base::FilePath& path) {
+  brillo::SafeFD::SafeFDResult root = brillo::SafeFD::Root();
+  if (brillo::SafeFD::IsError(root.second)) {
+    PLOG(ERROR) << "Failed to open root dir: " << static_cast<int>(root.second);
+    return false;
+  }
+  brillo::SafeFD::SafeFDResult parent = root.first.OpenExistingDir(
+      path.DirName(), O_PATH | O_CLOEXEC | O_NONBLOCK | O_NOFOLLOW);
+  if (brillo::SafeFD::IsError(parent.second)) {
+    PLOG(ERROR) << "Failed to open parent dir: "
+                << static_cast<int>(parent.second);
+    return false;
+  }
+
+  // Permission on the datadir won't allow cros-disks to manipulate it
+  // directly, chowning it based off path is unsafe, and fchown requires
+  // an FD, which we can't obtain because permissions, so instead we fork
+  // and change child's UID to freely navigate the directory tree.
+  pid_t pid = fork();
+  if (pid == -1) {
+    PLOG(ERROR) << "Failed to fork";
+    return false;
+  } else if (pid == 0) {
+    _exit(RemoveDirectory(&parent.first, path.BaseName()));
+  } else {
+    int wstatus;
+    PCHECK(pid == waitpid(pid, &wstatus, 0));
+    int status = EXIT_FAILURE;
+    if (WIFEXITED(wstatus)) {
+      status = WEXITSTATUS(wstatus);
+      errno = status;
+    }
+    if (status != EXIT_SUCCESS) {
+      PLOG(ERROR) << "Cannot remove datadir " << quote(path);
+      return false;
+    }
+  }
+
+  brillo::SafeFD::SafeFDResult datadir =
+      parent.first.MakeDir(path.BaseName(), S_IRWXU | S_IRWXG | S_ISGID,
+                           kChronosUID, kChronosAccessGID);
+
+  if (brillo::SafeFD::IsError(datadir.second)) {
+    PLOG(ERROR) << "Cannot create datadir " << quote(path);
+    return false;
+  }
+
+  return true;
+}
+
+bool ValidateDirectory(const Platform* platform,
+                       base::FilePath* dir,
+                       bool fix_non_compliant) {
   if (dir->empty() || !dir->IsAbsolute() || dir->ReferencesParent()) {
     LOG(ERROR) << "Unsafe path " << quote(*dir);
     return false;
@@ -55,8 +141,8 @@ bool ValidateDirectory(const Platform* platform, base::FilePath* dir) {
     LOG(ERROR) << "Unable to find real path of " << quote(*dir);
     return false;
   }
-
   *dir = base::FilePath(path_string);
+
   CHECK(dir->IsAbsolute() && !dir->ReferencesParent());
 
   if (!platform->DirectoryExists(dir->value())) {
@@ -71,8 +157,16 @@ bool ValidateDirectory(const Platform* platform, base::FilePath* dir) {
   }
 
   if (current_uid != kChronosUID) {
-    LOG(ERROR) << "Wrong owner of datadir: " << current_uid;
-    return false;
+    if (!fix_non_compliant || current_uid != kOldDriveUID) {
+      LOG(ERROR) << "Wrong owner of datadir: " << current_uid;
+      return false;
+    }
+
+    LOG(WARNING) << "Unmigrated drivefs datadir detected";
+    if (!FixDirectory(*dir)) {
+      LOG(ERROR) << "Could not repair drivefs datadir ownership";
+      return false;
+    }
   }
 
   return true;
@@ -128,7 +222,7 @@ MountErrorType DrivefsHelper::ConfigureSandbox(
     LOG(ERROR) << "No data directory provided";
     return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
   }
-  if (!ValidateDirectory(platform(), &data_dir)) {
+  if (!ValidateDirectory(platform(), &data_dir, true)) {
     return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
   }
 
@@ -140,7 +234,7 @@ MountErrorType DrivefsHelper::ConfigureSandbox(
 
   base::FilePath my_files;
   if (FindPathOption(params, kMyFilesOptionPrefix, &my_files)) {
-    if (!ValidateDirectory(platform(), &my_files)) {
+    if (!ValidateDirectory(platform(), &my_files, false)) {
       LOG(ERROR) << "User files inaccessible";
       return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
     }

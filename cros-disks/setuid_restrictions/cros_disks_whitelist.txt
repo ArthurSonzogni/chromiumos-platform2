@@ -15,3 +15,5 @@
 213:300
 # fuse-smbfs
 213:307
+# fuse-drivefs (for migrating legacy data)
+213:304
