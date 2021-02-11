@@ -27,12 +27,16 @@ if len(sys.argv) > 2:
     passphrase = sys.argv[2]
 else:
     security = 'none'
-    passphrase = ''
+    passphrase = None
 
-flim.manager.ConfigureService(({
+params = {
     'Type': 'wifi',
     'Mode': 'managed',
     'SSID': ssid,
     'WiFi.HiddenSSID': True,
-    'Security': security,
-    'Passphrase': passphrase}))
+    'SecurityClass': security,
+}
+if passphrase:
+    params['Passphrase'] = passphrase
+
+flim.manager.ConfigureService(params, signature='a{sv}')
