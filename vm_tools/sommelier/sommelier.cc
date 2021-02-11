@@ -288,6 +288,8 @@ static const char* sl_context_atom_name(int atom_enum) {
       return "_NET_WM_STATE_MAXIMIZED_VERT";
     case ATOM_NET_WM_STATE_MAXIMIZED_HORZ:
       return "_NET_WM_STATE_MAXIMIZED_HORZ";
+    case ATOM_NET_WM_STATE_FOCUSED:
+      return "_NET_WM_STATE_FOCUSED";
     case ATOM_CLIPBOARD:
       return "CLIPBOARD";
     case ATOM_CLIPBOARD_MANAGER:
@@ -639,8 +641,11 @@ static void sl_internal_xdg_toplevel_configure(
       window->next_config.states[i++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
     }
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_ACTIVATED)
+    if (*state == ZXDG_TOPLEVEL_V6_STATE_ACTIVATED) {
       activated = 1;
+      window->next_config.states[i++] =
+          window->ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value;
+    }
     if (*state == ZXDG_TOPLEVEL_V6_STATE_RESIZING)
       window->allow_resize = 0;
   }
@@ -3375,6 +3380,7 @@ static void sl_set_supported(struct sl_context* ctx) {
       ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value,
       ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value,
       ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value,
+      ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value,
       // TODO(hollingum): STATE_MODAL and CLIENT_LIST, based on what wlroots
       // has.
   };
