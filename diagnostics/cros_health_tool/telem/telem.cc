@@ -36,6 +36,7 @@ namespace {
 
 using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
 using chromeos::network_config::mojom::NetworkType;
+using chromeos::network_config::mojom::PortalState;
 using chromeos::network_health::mojom::NetworkState;
 
 // Value printed for optional fields when they aren't populated.
@@ -152,6 +153,23 @@ std::string NetworkStateToString(NetworkState state) {
       return "Connected";
     case NetworkState::kOnline:
       return "Online";
+  }
+}
+
+std::string PortalStateToString(PortalState state) {
+  switch (state) {
+    case PortalState::kUnknown:
+      return "Unknown";
+    case PortalState::kOnline:
+      return "Online";
+    case PortalState::kPortalSuspected:
+      return "Portal Suspected";
+    case PortalState::kPortal:
+      return "Portal Detected";
+    case PortalState::kProxyAuthRequired:
+      return "Proxy Auth Required";
+    case PortalState::kNoInternet:
+      return "No Internet";
   }
 }
 
@@ -374,8 +392,8 @@ void DisplayNetworkInfo(
   }
 
   const auto& network_health = network_result->get_network_health();
-  std::cout << "type,state,guid,name,signal_strength,mac_address,ipv4_address,"
-               "ipv6_addresses"
+  std::cout << "type,state,portal_state,guid,name,signal_strength,mac_address,"
+               "ipv4_address,ipv6_addresses"
             << std::endl;
   for (const auto& network : network_health->networks) {
     auto signal_strength = network->signal_strength
@@ -383,6 +401,7 @@ void DisplayNetworkInfo(
                                : kNotApplicableString;
     std::cout << NetworkTypeToString(network->type) << ","
               << NetworkStateToString(network->state) << ","
+              << PortalStateToString(network->portal_state) << ","
               << network->guid.value_or(kNotApplicableString) << ","
               << network->name.value_or(kNotApplicableString) << ","
               << signal_strength << ","
