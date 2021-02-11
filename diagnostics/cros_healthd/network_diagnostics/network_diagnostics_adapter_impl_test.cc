@@ -704,4 +704,14 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
   run_loop.Run();
 }
 
+// Test that the correct status of the bound remote is returned on request.
+TEST_F(NetworkDiagnosticsAdapterImplTest, RemoteBoundCheck) {
+  EXPECT_FALSE(network_diagnostics_adapter()->ServiceRemoteBound());
+
+  MockNetworkDiagnosticsRoutines network_diagnostics_routines;
+  network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
+      network_diagnostics_routines.pending_remote());
+  EXPECT_TRUE(network_diagnostics_adapter()->ServiceRemoteBound());
+}
+
 }  // namespace diagnostics

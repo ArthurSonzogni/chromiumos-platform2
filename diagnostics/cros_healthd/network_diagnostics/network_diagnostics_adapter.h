@@ -26,6 +26,9 @@ class NetworkDiagnosticsAdapter {
           chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
           network_diagnostics_routines) = 0;
 
+  // Checks to see if the internal NetworkDiagnostics remote is bound.
+  virtual bool ServiceRemoteBound() = 0;
+
   // Requests that the browser invokes the LanConnectivity routine.
   virtual void RunLanConnectivityRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::

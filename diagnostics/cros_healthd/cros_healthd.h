@@ -51,6 +51,9 @@ class CrosHealthd final
   void GetEventService(
       chromeos::cros_healthd::mojom::CrosHealthdEventServiceRequest service)
       override;
+  void GetSystemService(
+      chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest service)
+      override;
   void SendNetworkHealthService(
       mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
           remote) override;

@@ -38,6 +38,9 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
       delete;
   ~CrosHealthdMojoAdapterImpl() override;
 
+  // Gets cros_healthd service status.
+  chromeos::cros_healthd::mojom::ServiceStatusPtr GetServiceStatus() override;
+
   // Gets telemetry information from cros_healthd.
   chromeos::cros_healthd::mojom::TelemetryInfoPtr GetTelemetryInfo(
       const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&
@@ -223,6 +226,11 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   // event-related mojo methods.
   chromeos::cros_healthd::mojom::CrosHealthdEventServicePtr
       cros_healthd_event_service_;
+  // Binds to an implementation of CrosHealthdSystemService. The
+  // implementation is provided by cros_healthd. Allows calling cros_healthd's
+  // system-related mojo methods.
+  chromeos::cros_healthd::mojom::CrosHealthdSystemServicePtr
+      cros_healthd_system_service_;
 };
 
 // Saves |response| to |response_destination|.
@@ -246,6 +254,22 @@ CrosHealthdMojoAdapterImpl::CrosHealthdMojoAdapterImpl(
 }
 
 CrosHealthdMojoAdapterImpl::~CrosHealthdMojoAdapterImpl() = default;
+
+// Gets cros_healthd service status.
+chromeos::cros_healthd::mojom::ServiceStatusPtr
+CrosHealthdMojoAdapterImpl::GetServiceStatus() {
+  if (!cros_healthd_system_service_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::ServiceStatusPtr response;
+  base::RunLoop run_loop;
+  cros_healthd_system_service_->GetServiceStatus(base::Bind(
+      &OnMojoResponseReceived<chromeos::cros_healthd::mojom::ServiceStatusPtr>,
+      &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
 
 chromeos::cros_healthd::mojom::TelemetryInfoPtr
 CrosHealthdMojoAdapterImpl::GetTelemetryInfo(
@@ -855,6 +879,8 @@ void CrosHealthdMojoAdapterImpl::Connect() {
       mojo::MakeRequest(&cros_healthd_diagnostics_service_));
   cros_healthd_service_factory_->GetEventService(
       mojo::MakeRequest(&cros_healthd_event_service_));
+  cros_healthd_service_factory_->GetSystemService(
+      mojo::MakeRequest(&cros_healthd_system_service_));
 }
 
 }  // namespace

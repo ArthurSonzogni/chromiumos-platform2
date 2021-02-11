@@ -178,6 +178,11 @@ void CrosHealthd::GetEventService(
   mojo_service_->AddEventBinding(std::move(service));
 }
 
+void CrosHealthd::GetSystemService(
+    chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest service) {
+  mojo_service_->AddSystemBinding(std::move(service));
+}
+
 void CrosHealthd::SendNetworkHealthService(
     mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
         remote) {

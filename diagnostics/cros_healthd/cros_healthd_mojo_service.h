@@ -24,7 +24,8 @@ namespace diagnostics {
 // cros_healthd daemon (see the API definition at mojo/cros_healthd.mojom)
 class CrosHealthdMojoService final
     : public chromeos::cros_healthd::mojom::CrosHealthdEventService,
-      public chromeos::cros_healthd::mojom::CrosHealthdProbeService {
+      public chromeos::cros_healthd::mojom::CrosHealthdProbeService,
+      public chromeos::cros_healthd::mojom::CrosHealthdSystemService {
  public:
   using ProbeCategoryEnum = chromeos::cros_healthd::mojom::ProbeCategoryEnum;
 
@@ -61,11 +62,16 @@ class CrosHealthdMojoService final
   void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,
                           ProbeTelemetryInfoCallback callback) override;
 
+  // chromeos::cros_healthd::mojom::CrosHealthdSystemService overrides:
+  void GetServiceStatus(GetServiceStatusCallback callback) override;
+
   // Adds a new binding to the internal binding sets.
   void AddProbeBinding(
       chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest request);
   void AddEventBinding(
       chromeos::cros_healthd::mojom::CrosHealthdEventServiceRequest request);
+  void AddSystemBinding(
+      chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest request);
 
  private:
   // Mojo binding sets that connect |this| with message pipes, allowing the
@@ -74,6 +80,8 @@ class CrosHealthdMojoService final
       probe_binding_set_;
   mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdEventService>
       event_binding_set_;
+  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdSystemService>
+      system_binding_set_;
 
   // Unowned. The Context instance should outlive this instance.
   Context* const context_ = nullptr;

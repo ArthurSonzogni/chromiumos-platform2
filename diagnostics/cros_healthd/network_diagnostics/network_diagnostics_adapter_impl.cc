@@ -23,6 +23,10 @@ void NetworkDiagnosticsAdapterImpl::SetNetworkDiagnosticsRoutines(
   network_diagnostics_routines_.Bind(std::move(network_diagnostics_routines));
 }
 
+bool NetworkDiagnosticsAdapterImpl::ServiceRemoteBound() {
+  return network_diagnostics_routines_.is_bound();
+}
+
 void NetworkDiagnosticsAdapterImpl::RunLanConnectivityRoutine(
     network_diagnostics_ipc::NetworkDiagnosticsRoutines::LanConnectivityCallback
         callback) {

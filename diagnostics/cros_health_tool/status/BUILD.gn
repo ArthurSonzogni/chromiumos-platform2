@@ -1,0 +1,20 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("libstatus_pkg_deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+# The status tool executable.
+source_set("libstatus") {
+  sources = [ "status.cc" ]
+  configs += [ ":libstatus_pkg_deps" ]
+  deps =
+      [ "//diagnostics/cros_healthd_mojo_adapter:libcros_healthd_mojo_adapter" ]
+}

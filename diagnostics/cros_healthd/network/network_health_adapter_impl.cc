@@ -80,4 +80,8 @@ void NetworkHealthAdapterImpl::OnSignalStrengthChanged(
   }
 }
 
+bool NetworkHealthAdapterImpl::ServiceRemoteBound() {
+  return network_health_remote_.is_bound();
+}
+
 }  // namespace diagnostics

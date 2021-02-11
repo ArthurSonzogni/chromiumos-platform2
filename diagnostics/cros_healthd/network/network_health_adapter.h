@@ -35,6 +35,9 @@ class NetworkHealthAdapter {
   virtual void AddObserver(
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer) = 0;
+
+  // Method that checks if the internal NetworkHealthService remote is bound.
+  virtual bool ServiceRemoteBound() = 0;
 };
 
 }  // namespace diagnostics

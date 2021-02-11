@@ -35,6 +35,10 @@ class CrosHealthdMojoAdapter {
   // Creates an instance of CrosHealthdMojoAdapter.
   static std::unique_ptr<CrosHealthdMojoAdapter> Create();
 
+  // Gets cros_healthd service status.
+  virtual chromeos::cros_healthd::mojom::ServiceStatusPtr
+  GetServiceStatus() = 0;
+
   // Gets telemetry information from cros_healthd.
   virtual chromeos::cros_healthd::mojom::TelemetryInfoPtr GetTelemetryInfo(
       const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&

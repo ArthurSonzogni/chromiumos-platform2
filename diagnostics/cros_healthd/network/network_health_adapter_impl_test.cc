@@ -259,4 +259,13 @@ TEST_F(NetworkHealthAdapterImplTest, NoRemote) {
   run_loop.Run();
 }
 
+// Test that the correct status of the bound remote is returned on request.
+TEST_F(NetworkHealthAdapterImplTest, RemoteBoundCheck) {
+  EXPECT_FALSE(network_health_adapter()->ServiceRemoteBound());
+
+  MockNetworkHealthService service;
+  network_health_adapter()->SetServiceRemote(service.pending_remote());
+  EXPECT_TRUE(network_health_adapter()->ServiceRemoteBound());
+}
+
 }  // namespace diagnostics

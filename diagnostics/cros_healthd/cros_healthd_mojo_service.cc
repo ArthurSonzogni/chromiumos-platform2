@@ -69,6 +69,16 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
   return fetch_aggregator_->Run(categories, std::move(callback));
 }
 
+void CrosHealthdMojoService::GetServiceStatus(
+    GetServiceStatusCallback callback) {
+  auto response = chromeos::cros_healthd::mojom::ServiceStatus::New();
+  response->network_health_bound =
+      context_->network_health_adapter()->ServiceRemoteBound();
+  response->network_diagnostics_bound =
+      context_->network_diagnostics_adapter()->ServiceRemoteBound();
+  std::move(callback).Run(std::move(response));
+}
+
 void CrosHealthdMojoService::AddProbeBinding(
     chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest request) {
   probe_binding_set_.AddBinding(this /* impl */, std::move(request));
@@ -77,6 +87,11 @@ void CrosHealthdMojoService::AddProbeBinding(
 void CrosHealthdMojoService::AddEventBinding(
     chromeos::cros_healthd::mojom::CrosHealthdEventServiceRequest request) {
   event_binding_set_.AddBinding(this /* impl */, std::move(request));
+}
+
+void CrosHealthdMojoService::AddSystemBinding(
+    chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest request) {
+  system_binding_set_.AddBinding(this /* impl */, std::move(request));
 }
 
 }  // namespace diagnostics

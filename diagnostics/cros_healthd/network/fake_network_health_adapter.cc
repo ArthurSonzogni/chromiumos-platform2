@@ -31,6 +31,10 @@ void FakeNetworkHealthAdapter::GetNetworkHealthState(
   std::move(callback).Run(network_health_state_.Clone());
 }
 
+bool FakeNetworkHealthAdapter::ServiceRemoteBound() {
+  return bound_;
+}
+
 void FakeNetworkHealthAdapter::SetRemoteBound(bool bound) {
   bound_ = bound;
 }

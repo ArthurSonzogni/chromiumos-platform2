@@ -36,6 +36,7 @@ class NetworkHealthAdapterImpl final
   void AddObserver(mojo::PendingRemote<
                    chromeos::network_health::mojom::NetworkEventsObserver>
                        observer) override;
+  bool ServiceRemoteBound() override;
 
  private:
   // network_health::mojom::NetworkEventsObserver overrides:

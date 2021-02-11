@@ -29,6 +29,7 @@ class MockNetworkDiagnosticsAdapter final : public NetworkDiagnosticsAdapter {
       (mojo::PendingRemote<
           chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>),
       (override));
+  MOCK_METHOD(bool, ServiceRemoteBound, (), (override));
   MOCK_METHOD(void,
               RunLanConnectivityRoutine,
               (chromeos::network_diagnostics::mojom::

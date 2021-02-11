@@ -9,13 +9,14 @@
 
 #include "diagnostics/cros_health_tool/diag/diag.h"
 #include "diagnostics/cros_health_tool/event/event.h"
+#include "diagnostics/cros_health_tool/status/status.h"
 #include "diagnostics/cros_health_tool/telem/telem.h"
 
 namespace {
 
 void PrintHelp() {
   std::cout << "cros-health-tool" << std::endl;
-  std::cout << "    subtools: diag, telem, event" << std::endl;
+  std::cout << "    subtools: diag, telem, event, status" << std::endl;
   std::cout << "    Usage: cros-health-tool {subtool} $@" << std::endl;
   std::cout << "    Help: cros-health-tool {subtool} --help" << std::endl;
 }
@@ -39,6 +40,8 @@ int main(int argc, char* argv[]) {
     return diagnostics::event_main(subtool_argc, subtool_argv);
   } else if (subtool == "telem") {
     return diagnostics::telem_main(subtool_argc, subtool_argv);
+  } else if (subtool == "status") {
+    return diagnostics::status_main(subtool_argc, subtool_argv);
   } else if (subtool == "help" || subtool == "--help" || subtool == "-h") {
     PrintHelp();
     return EXIT_SUCCESS;
