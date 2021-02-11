@@ -17,7 +17,6 @@ use flexbuffers::FlexbufferSerializer;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sirenia_rpc_macros::sirenia_rpc;
-use sys_util::info;
 
 pub const LENGTH_BYTE_SIZE: usize = 4;
 

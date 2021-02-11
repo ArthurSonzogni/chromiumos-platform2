@@ -16,4 +16,5 @@ chromeos-dbus-bindings = { path = "../../chromeos-dbus-bindings"} # provided by 
 
 [dependencies]
 dbus = "0.8"
+getopts = "0.2"
 thiserror = "1.0.20"

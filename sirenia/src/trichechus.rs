@@ -29,7 +29,7 @@ use libsirenia::transport::{
     CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
     DEFAULT_CONNECTION_W_FD, DEFAULT_SERVER_PORT,
 };
-use sirenia::app_info::{self, AppManifest, AppManifestEntry};
+use sirenia::app_info::{self, AppManifest, AppManifestEntry, SandboxType};
 use sirenia::build_info::BUILD_TIMESTAMP;
 use sirenia::cli::initialize_common_arguments;
 use sirenia::communication::{AppInfo, Trichechus, TrichechusServer};
@@ -66,6 +66,8 @@ pub enum Error {
     /// Error retrieving form app manifest.
     #[error("Error retrieving from  app_manifest: {0}")]
     AppManifest(app_info::Error),
+    #[error("Sandbox type not implemented for: {0:?}")]
+    SandboxTypeNotImplemented(AppManifestEntry),
 }
 
 /// The result of an operation in this crate.
@@ -264,7 +266,14 @@ fn spawn_tee_app(
     app_id: &str,
     transport: Transport,
 ) -> Result<(TEEApp, Transport)> {
-    let mut sandbox = Sandbox::new(None).map_err(Error::NewSandbox)?;
+    let app_info = app_manifest
+        .get_app_manifest_entry(app_id)
+        .map_err(Error::AppManifest)?;
+    let mut sandbox = match &app_info.sandbox_type {
+        SandboxType::DeveloperEnvironment => Sandbox::passthrough().map_err(Error::NewSandbox)?,
+        SandboxType::Container => Sandbox::new(None).map_err(Error::NewSandbox)?,
+        SandboxType::VirtualMachine => Err(Error::SandboxTypeNotImplemented(app_info.to_owned()))?,
+    };
     let (trichechus_transport, tee_transport) =
         create_transport_from_pipes().map_err(Error::NewTransport)?;
     let keep_fds: [(RawFd, RawFd); 5] = [
@@ -274,9 +283,6 @@ fn spawn_tee_app(
         (tee_transport.r.as_raw_fd(), DEFAULT_CONNECTION_R_FD),
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
-    let app_info = app_manifest
-        .get_app_manifest_entry(app_id)
-        .map_err(Error::AppManifest)?;
     let process_path = app_info.path.to_string();
 
     sandbox

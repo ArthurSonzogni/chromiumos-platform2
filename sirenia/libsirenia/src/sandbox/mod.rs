@@ -73,14 +73,9 @@ impl Sandbox {
     }
 
     /// A version of the sandbox for use with tests because it doesn't require
-    /// elevated privilege.
-    pub fn new_test() -> Result<Self> {
-        let mut j = Minijail::new().map_err(Error::Jail)?;
-
-        j.namespace_user();
-        j.namespace_user_disable_setgroups();
-        j.no_new_privs();
-
+    /// elevated privilege. It is also used for developer tools.
+    pub fn passthrough() -> Result<Self> {
+        let j = Minijail::new().map_err(Error::Jail)?;
         Ok(Sandbox(j))
     }
 
@@ -184,7 +179,7 @@ mod tests {
 
     #[test]
     fn sandbox_unpriviledged() {
-        let s = Sandbox::new_test().unwrap();
+        let s = Sandbox::passthrough().unwrap();
         do_test(s);
     }
 }

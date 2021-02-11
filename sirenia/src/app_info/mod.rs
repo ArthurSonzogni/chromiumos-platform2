@@ -24,29 +24,55 @@ pub type Result<T> = StdResult<T, Error>;
 pub struct AppManifest {
     entries: HashMap<String, AppManifestEntry>,
 }
-// The tee developer will define all of these fields for their app and the
-// manifest will be used when starting up the TEE app.
+
+/// Defines the type of isolation given to the TEE app instance.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum SandboxType {
+    Container,
+    DeveloperEnvironment,
+    VirtualMachine,
+}
+
+/// The TEE developer will define all of these fields for their app and the
+/// manifest will be used when starting up the TEE app.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AppManifestEntry {
     pub app_name: String,
     pub scope: Scope,
     pub path: String,
     pub domain: String,
+    pub sandbox_type: SandboxType,
 }
 
-// TODO: Manifests are hardcoded here for now while we determine the best way
-// to store manifests.
+/// Provides a lookup for registered AppManifestEntries that represent which
+/// TEE apps are recognized.
 impl AppManifest {
     pub fn new() -> Self {
-        let mut entries = HashMap::new();
-        let shell = AppManifestEntry {
+        let mut manifest = AppManifest {
+            entries: HashMap::new(),
+        };
+        // TODO: Manifests are hardcoded here for now while we determine the
+        // best way to store manifests.
+        manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "shell".to_string(),
             scope: Scope::Test,
             path: "/bin/sh".to_string(),
             domain: "test".to_string(),
-        };
-        entries.insert("shell".to_string(), shell);
-        AppManifest { entries }
+            sandbox_type: SandboxType::DeveloperEnvironment,
+        });
+        manifest.add_app_manifest_entry(AppManifestEntry {
+            app_name: "sandboxed-shell".to_string(),
+            scope: Scope::Test,
+            path: "/bin/sh".to_string(),
+            domain: "test".to_string(),
+            sandbox_type: SandboxType::Container,
+        });
+        manifest
+    }
+
+    fn add_app_manifest_entry(&mut self, entry: AppManifestEntry) -> Option<AppManifestEntry> {
+        let id = entry.app_name.clone();
+        self.entries.insert(id, entry)
     }
 
     pub fn get_app_manifest_entry(&self, id: &str) -> Result<&AppManifestEntry> {

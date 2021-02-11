@@ -4,6 +4,7 @@
 
 //! The client binary for interacting with ManaTEE from command line on Chrome OS.
 
+use std::env;
 use std::fs::File;
 use std::io::{self, copy, stdin, stdout};
 use std::os::unix::io::FromRawFd;
@@ -12,15 +13,19 @@ use std::thread::spawn;
 use std::time::Duration;
 
 use dbus::blocking::Connection;
+use getopts::Options;
 use manatee_client::client::OrgChromiumManaTEEInterface;
 use thiserror::Error as ThisError;
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
-const TEE_APP_ID: &str = "shell";
+const DEVELOPER_SHELL_APP_ID: &str = "shell";
+const SANDBOXED_SHELL_APP_ID: &str = "sandboxed-shell";
 
 #[derive(ThisError, Debug)]
 enum Error {
+    #[error("failed parse command line options: {0:}")]
+    Options(getopts::Fail),
     #[error("failed to get D-Bus connection: {0:}")]
     NewDBusConnection(dbus::Error),
     #[error("failed to call D-Bus method: {0:}")]
@@ -34,7 +39,7 @@ enum Error {
 /// The result of an operation in this crate.
 type Result<T> = std::result::Result<T, Error>;
 
-fn start_manatee_shell() -> Result<()> {
+fn start_manatee_app(app_id: &str) -> Result<()> {
     let connection = Connection::new_system().map_err(Error::NewDBusConnection)?;
     let conn_path = connection.with_proxy(
         "org.chromium.ManaTEE",
@@ -42,7 +47,7 @@ fn start_manatee_shell() -> Result<()> {
         DEFAULT_DBUS_TIMEOUT,
     );
     let (fd_in, fd_out) = match conn_path
-        .start_teeapplication(TEE_APP_ID)
+        .start_teeapplication(app_id)
         .map_err(Error::DBusCall)?
     {
         (0, fd_in, fd_out) => (fd_in, fd_out),
@@ -69,5 +74,31 @@ fn start_manatee_shell() -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    start_manatee_shell()
+    const HELP_SHORT_NAME: &str = "h";
+    const SANDBOX_SHORT_NAME: &str = "s";
+
+    let mut options = Options::new();
+    options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
+    options.optflag(
+        SANDBOX_SHORT_NAME,
+        "enable-sandbox",
+        "Run the shell in the default sandbox.",
+    );
+
+    let args: Vec<String> = env::args().collect();
+    let matches = options.parse(&args[1..]).map_err(|err| {
+        eprintln!("{}", options.usage(""));
+        Error::Options(err)
+    })?;
+    if matches.opt_present(HELP_SHORT_NAME) {
+        println!("{}", options.usage(""));
+        return Ok(());
+    }
+
+    let app_id = if matches.opt_present(SANDBOX_SHORT_NAME) {
+        SANDBOXED_SHELL_APP_ID
+    } else {
+        DEVELOPER_SHELL_APP_ID
+    };
+    start_manatee_app(app_id)
 }
