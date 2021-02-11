@@ -282,10 +282,14 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
 /run/lock                       u:object_r:cros_run_lock:s0
 /run/lock/power_override        u:object_r:cros_run_lock_power_override:s0
+/run/log                        u:object_r:cros_run_log:s0
 /run/metrics                    u:object_r:cros_run_metrics:s0
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
 /run/mount_encrypted            u:object_r:cros_run_mount_encrypted:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
+/run/systemd                    u:object_r:cros_run_systemd:s0
+/run/systemd/journal            u:object_r:cros_run_systemd_journal:s0
+/run/systemd/journal/pids       u:object_r:cros_run_systemd_journal_pids:s0
 /run/namespaces                 u:object_r:cros_run_namespaces:s0
 /run/namespaces/mnt_chrome      u:object_r:cros_run_namespaces_mnt_chrome:s0
 

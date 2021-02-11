@@ -6,13 +6,20 @@ log_writer(cros_journald);
 allow cros_journald cros_run_systemd:dir { search getattr };
 allow cros_journald {proc_cmdline proc_hostname}:file r_file_perms;
 
-filetrans_pattern(cros_journald, cros_run_journal, logger_device, sock_file, "dev-log");
+filetrans_pattern(cros_journald, cros_run_systemd_journal, logger_device, sock_file, "dev-log");
 allow cros_journald logger_device:sock_file create_file_perms;
+allow cros_journald cros_run_systemd_journal:file create_file_perms;
+allow cros_journald cros_run_systemd_journal:dir create_dir_perms;
+allow cros_journald cros_run_systemd_journal:sock_file create_file_perms;
+
+allow cros_journald cros_run_systemd_journal:dir rw_dir_perms;
+
+allow cros_journald cros_run_systemd_journal_pids:file create_file_perms;
+allow cros_journald cros_run_systemd_journal_pids:dir rw_dir_perms;
+
+filetrans_pattern(cros_journald, cros_run_log, cros_run_journal, dir, "journal");
 allow cros_journald cros_run_journal:file create_file_perms;
 allow cros_journald cros_run_journal:dir create_dir_perms;
-allow cros_journald cros_run_journal:sock_file create_file_perms;
-
-allow cros_journald cros_run_journal:dir rw_dir_perms;
 
 allow cros_journald proc_kmsg:file rw_file_perms;
 allow cros_journald proc_meminfo:file r_file_perms;
