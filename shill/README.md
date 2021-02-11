@@ -87,6 +87,42 @@ document](doc/architecture.md).
 *   [`Profile` D-Bus Specification](doc/profile-api.txt)
 *   [`IPConfig` D-Bus Specification](doc/ipconfig-api.txt)
 
+## Command Line Interface
+
+Shill is controlled exclusively via D-Bus, and currently (see also
+[b/172222930](https://issuetracker.google.com/172222930)), there is no proper
+Command Line Interface for it. Instead, there are a patchwork of scripts and
+utilities that can be useful in a pinch.
+
+*   ["flimflam" test scripts](test-scripts/): these provide many small scripts
+    wrapping parts of the D-Bus API; they are [inconsistently
+    maintained](https://issuetracker.google.com/172228096) and may not all
+    work. Written in Python, and only available on test images.
+*   [`/usr/local/autotest/cros/scripts/wifi`](https://chromium.googlesource.com/chromiumos/third_party/autotest/+/HEAD/client/cros/scripts/wifi):
+    useful for connecting to WiFi networks. Written in Python, and only available on test images.
+*   [`connectivity`](../modem-utilities/connectivity): shell script that dumps
+    Device or Service information. Available on all images.
+*   [`ff_debug`](bin/ff_debug): configures "flimflam" debugging level. See also
+    [TESTING docs](TESTING.md#verbose-messages). Available on all images.
+*   [network_diag](../crosh/network_diag): dump general networking and
+    connectivity diagnostics.
+
+There are a variety of other connectivity-related CLI tools which are useful,
+even if not directly tied to Shill:
+
+*   [iw](https://wireless.wiki.kernel.org/en/users/documentation/iw): tool for
+    interacting with WiFi devices.
+*   [iproute2](https://wiki.linuxfoundation.org/networking/iproute2): link and
+    routing management tools (such as `ip`, `tc`, `ss`, ...).
+*   [tcpdump](https://www.tcpdump.org/): packet capturing and analysis.
+*   `iptables`, `ip6tables`: packet filtering utility.
+*   `ping`: generate ICMP traffic.
+*   `traceroute`, `traceroute6`: tool to track the route taken by IP packets from source to destination.
+*   `dig`: DNS lookup utility.
+
+Some of these CLI utilities (or wrapper helpers) are also available in
+[crosh](../crosh). See its `help_advanced` output for info.
+
 
 [ConnMan]: https://git.kernel.org/pub/scm/network/connman/connman.git/
 [Flimflam]: https://chromium.googlesource.com/chromiumos/platform/flimflam
