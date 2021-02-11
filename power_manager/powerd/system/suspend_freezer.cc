@@ -245,7 +245,6 @@ FreezeResult SuspendFreezer::FreezeUserspace(uint64_t wakeup_count,
                                              bool wakeup_count_valid) {
   std::vector<base::FilePath> cgroup_paths;
   std::unordered_map<base::FilePath, struct CgroupNode> cgroup_graph;
-  FreezeResult ret;
 
   if (!GetCgroups(&cgroup_paths)) {
     return FreezeResult::FAILURE;
@@ -285,12 +284,7 @@ FreezeResult SuspendFreezer::FreezeUserspace(uint64_t wakeup_count,
     PopulateCgroupDepsFromPref(cgroup.first, &cgroup_graph);
   }
 
-  ret = TopologicalFreeze(wakeup_count, wakeup_count_valid, &cgroup_graph);
-  if (ret != FreezeResult::SUCCESS) {
-    ThawUserspace();
-  }
-
-  return ret;
+  return TopologicalFreeze(wakeup_count, wakeup_count_valid, &cgroup_graph);
 }
 
 bool SuspendFreezer::ThawUserspace() {

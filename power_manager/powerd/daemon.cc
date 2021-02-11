@@ -717,9 +717,15 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   system::FreezeResult freeze_result =
       suspend_freezer_->FreezeUserspace(wakeup_count, wakeup_count_valid);
   if (freeze_result == system::FreezeResult::FAILURE) {
-    LOG(ERROR) << "Failed to freeze userspace processes. Aborting suspend";
-    return policy::Suspender::Delegate::SuspendResult::FAILURE;
+    // The kernel may succeed in freezing the rest of userspace, but even if it
+    // doesn't, it will provide better logging, detailed stack traces, for our
+    // crash reports.
+    LOG(ERROR) << "Failed to freeze userspace processes. Attempting suspend "
+               << "anyways";
   } else if (freeze_result == system::FreezeResult::CANCELED) {
+    if (!suspend_freezer_->ThawUserspace())
+      LOG(ERROR) << "Failed to thaw userspace after canceled suspend";
+
     return policy::Suspender::Delegate::SuspendResult::CANCELED;
   }
 
