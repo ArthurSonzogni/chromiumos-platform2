@@ -25,6 +25,7 @@ group("all") {
     ":netif",
     ":network_status",
     ":scheduler_configuration_helper",
+    ":usb4_devinfo_helper",
   ]
   if (use.test) {
     deps += [ ":debugd_testrunner" ]
@@ -230,6 +231,18 @@ executable("scheduler_configuration_helper") {
     "src/helpers/scheduler_configuration_helper.cc",
     "src/helpers/scheduler_configuration_utils.cc",
   ]
+}
+
+pkg_config("usb4_devinfo_helper_config") {
+  pkg_deps = [ "re2" ]
+}
+
+executable("usb4_devinfo_helper") {
+  configs += [
+    ":target_defaults",
+    ":usb4_devinfo_helper_config",
+  ]
+  sources = [ "src/helpers/usb4_devinfo_helper.cc" ]
 }
 
 if (use.test) {
