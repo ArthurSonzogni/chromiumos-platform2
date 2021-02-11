@@ -84,6 +84,7 @@ stat64: 1
 timerfd_create: 1
 timerfd_settime: 1
 ugetrlimit: 1
+umask: 1
 uname: 1
 unlink: 1
 write: 1

@@ -300,6 +300,9 @@ fn run() -> Result<()> {
     let sigint_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
     add_sigint_handler(sigint_shutdown_fd).map_err(Error::RegisterHandler)?;
 
+    // Safe because the syscall doesn't touch any memory and always succeeds.
+    unsafe { libc::umask(0o117) };
+
     let keep_alive_socket = args
         .keep_alive
         .map(|keep_alive_path| {
