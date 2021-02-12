@@ -1,0 +1,54 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":secanomalyd" ]
+  if (use.test) {
+    deps += [ ":secanomalyd_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "vboot_host",
+  ]
+}
+
+static_library("libsecanomaly") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "daemon.cc",
+    "mount_entry.cc",
+  ]
+}
+
+executable("secanomalyd") {
+  configs += [ ":target_defaults" ]
+  sources = [ "main.cc" ]
+
+  deps = [ ":libsecanomaly" ]
+}
+
+if (use.test) {
+  pkg_config("secanomalyd_testrunner_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("secanomalyd_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":secanomalyd_testrunner_config",
+      ":target_defaults",
+    ]
+    sources = []
+    deps = [
+      ":libsecanomaly",
+      "//common-mk/testrunner",
+    ]
+  }
+}

@@ -123,6 +123,7 @@ copies.
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |
 | [screen-capture-utils](./screen-capture-utils/) | Utilities for screen capturing (screenshot) |
 | [sealed_storage](./sealed_storage/) | Library for sealing data to device identity and state |
+| [secanomalyd](./secanomalyd/) | Daemon for detecting and reporting security anomalies |
 | [secure-wipe](./secure-wipe/) | Secure disk wipe |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
 | [sepolicy](./sepolicy/) | SELinux policy for Chrome OS |
