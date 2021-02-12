@@ -4,6 +4,9 @@
 
 //! A TEE application life-cycle manager.
 
+use std::io::stderr;
+use std::os::unix::io::AsRawFd;
+
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::env;
@@ -279,7 +282,7 @@ fn spawn_tee_app(
     let keep_fds: [(RawFd, RawFd); 5] = [
         (transport.r.as_raw_fd(), CROS_CONNECTION_R_FD),
         (transport.w.as_raw_fd(), CROS_CONNECTION_W_FD),
-        (transport.w.as_raw_fd(), CROS_CONNECTION_ERR_FD),
+        (stderr().as_raw_fd(), CROS_CONNECTION_ERR_FD),
         (tee_transport.r.as_raw_fd(), DEFAULT_CONNECTION_R_FD),
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];

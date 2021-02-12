@@ -67,6 +67,13 @@ impl AppManifest {
             domain: "test".to_string(),
             sandbox_type: SandboxType::Container,
         });
+        manifest.add_app_manifest_entry(AppManifestEntry {
+            app_name: "demo_app".to_string(),
+            scope: Scope::Test,
+            path: "/usr/bin/demo_app".to_string(),
+            domain: "test".to_string(),
+            sandbox_type: SandboxType::DeveloperEnvironment,
+        });
         manifest
     }
 
