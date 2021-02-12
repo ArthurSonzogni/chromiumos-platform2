@@ -24,6 +24,8 @@ allow cros_chapsd sysfs:file r_file_perms;
 
 allow cros_chapsd kernel:system module_request;
 
+# TODO(crbug.com/1177773): Replace this with appropriate macro.
+allow cros_chapsd cros_run_daemon_store:dir { getattr search };
 allow cros_chapsd cros_home_shadow_uid_root:dir { getattr search };
 allow cros_chapsd cros_home_root:dir { getattr search };
 allow cros_chapsd cros_home:dir { getattr search };
