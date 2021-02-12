@@ -12,6 +12,7 @@
 #include <selinux/selinux.h>
 #endif
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -20,12 +21,17 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/threading/scoped_blocking_call.h>
 #include <brillo/data_encoding.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
 #include "crypto/sha2.h"
 #include <openssl/sha.h>
+
+#include <base/command_line.h>
+#include <base/process/launch.h>
+#include <brillo/process/process.h>
 
 namespace arc {
 namespace data_snapshotd {
@@ -61,7 +67,8 @@ bool ReadSnapshotDirectory(const base::FilePath& dir,
     SnapshotFile snapshot_file;
     snapshot_file.set_name(relative_path.value());
     std::string contents;
-    if (!dir_enumerator.GetInfo().IsDirectory() &&
+    if (!dir_enumerator.GetInfo().IsDirectory() && !base::IsLink(file) &&
+        dir_enumerator.GetInfo().GetSize() != 0 &&
         !base::ReadFileToString(file, &contents)) {
       LOG(ERROR) << "Failed to read file " << file.value();
       return false;
@@ -304,69 +311,21 @@ std::string CalculateEncodedSha256Digest(const std::vector<uint8_t>& value) {
 
 bool CopySnapshotDirectory(const base::FilePath& from,
                            const base::FilePath& to) {
-  if (!base::CopyDirectory(from, to, true /* recursive */)) {
-    LOG(ERROR) << "Failed to copy " << from.value() << " to " << to.value();
+  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                base::BlockingType::MAY_BLOCK);
+
+  base::CommandLine cmd{base::FilePath("/bin/cp")};
+  cmd.AppendArg("-r");
+  cmd.AppendArg("--preserve=all");
+  cmd.AppendArg(from.value().c_str());
+  cmd.AppendArg(to.value().c_str());
+  int exit_code;
+  auto p = base::LaunchProcess(cmd, base::LaunchOptions());
+  if (!p.WaitForExitWithTimeout(base::TimeDelta::FromSeconds(30), &exit_code) ||
+      exit_code != EXIT_SUCCESS) {
+    LOG(ERROR) << "Copy snapshot directory failed: from " << from.value()
+               << " to " << to.value();
     return false;
-  }
-  // Support all file types which are supported by base::CopyDirectory:
-  // directories, files and symlinks.
-  // Note: only relative symlinks might be functional after copying.
-  base::FileEnumerator from_enumerator(
-      from, true /* recursive */,
-      base::FileEnumerator::FileType::DIRECTORIES |
-          base::FileEnumerator::FileType::FILES |
-          base::FileEnumerator::FileType::SHOW_SYM_LINKS);
-  for (auto file = from_enumerator.Next(); !file.empty();
-       file = from_enumerator.Next()) {
-    base::FilePath relative_path;
-    if (!from.IsParent(file) ||
-        !from.AppendRelativePath(file, &relative_path)) {
-      LOG(ERROR) << from.value() << " is not a parent of " << file.value();
-      return false;
-    }
-    base::FilePath to_path = to.Append(relative_path);
-    if (!to.IsParent(to_path)) {
-      LOG(ERROR) << to.value() << " is not a parent of " << to_path.value();
-      return false;
-    }
-#if USE_SELINUX
-    char* con = nullptr;
-    if (lgetfilecon(file.value().c_str(), &con) < 0) {
-      PLOG(ERROR) << "Failed to getfilecon of file " << file.value();
-      return false;
-    }
-    if (lsetfilecon(to_path.value().c_str(), con) < 0) {
-      PLOG(ERROR) << "Failed to set a security context " << to_path.value();
-      return false;
-    }
-    if (con != nullptr) {
-      free(con);
-    }
-#endif  // USE_SELINUX
-
-    struct stat stat_buf;
-    if (lstat(file.value().c_str(), &stat_buf)) {
-      PLOG(ERROR) << "Failed to get stat of file " << file.value();
-      return false;
-    }
-
-    struct utimbuf time_buf;
-    time_buf.actime = stat_buf.st_atime;
-    time_buf.modtime = stat_buf.st_mtime;
-
-    if (utime(to_path.value().c_str(), &time_buf) != 0) {
-      LOG(ERROR) << "Failed to update modification time " << to_path.value();
-      return false;
-    }
-    if (chown(to_path.value().c_str(), stat_buf.st_uid, stat_buf.st_gid) != 0) {
-      LOG(ERROR) << "Failed to set ownership of " << to_path.value();
-      return false;
-    }
-    if (chmod(to_path.value().c_str(),
-              stat_buf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) != 0) {
-      LOG(ERROR) << "Failed to change mode for " << to_path.value();
-      return false;
-    }
   }
   return true;
 }

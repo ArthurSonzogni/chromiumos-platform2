@@ -11,6 +11,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
+#include <brillo/secure_blob.h>
 #include <dbus/bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -79,7 +80,7 @@ class DBusAdaptorTest : public testing::Test {
     boot_lockbox_client_ = boot_lockbox_client.get();
     dbus_adaptor_ = DBusAdaptor::CreateForTesting(
         root_tempdir_.GetPath(), root_tempdir_.GetPath(),
-        std::move(boot_lockbox_client));
+        std::move(boot_lockbox_client), salt_);
   }
 
   void TearDown() override {
@@ -101,7 +102,8 @@ class DBusAdaptorTest : public testing::Test {
     return root_tempdir_.GetPath().Append(kRandomDir);
   }
   std::string hash(const std::string& account_id) const {
-    return brillo::cryptohome::home::SanitizeUserName(account_id);
+    return brillo::cryptohome::home::SanitizeUserNameWithSalt(
+        account_id, brillo::SecureBlob(salt_));
   }
   base::FilePath user_directory() const { return user_directory_; }
 
@@ -302,7 +304,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataNotDirFile) {
   EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
 }
 
-// Test failure flow when android-data is a sym link.
+// Test success flow when android-data is a sym link.
 TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataSymLink) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
@@ -313,7 +315,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataSymLink) {
   EXPECT_TRUE(base::IsLink(android_data_dir()));
   EXPECT_TRUE(base::DirectoryExists(android_data_dir()));
 
-  EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
+  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
 }
 
 // Test failure flow when android-data is a fifo.
@@ -559,9 +561,7 @@ TEST_F(DBusAdaptorTest, LoadSnapshotSuccess) {
 
   // Verify the integrity of the last snapshot with disabld inode verification.
   EXPECT_TRUE(last);
-  EXPECT_TRUE(VerifyHash(android_data_dir(), hash(kFakeAccountID),
-                         expected_public_key_digest,
-                         false /* inode_verification_enabled */));
+
   dbus_adaptor()->set_inode_verification_enabled_for_testing(
       true /* enabled */);
 }
@@ -636,9 +636,7 @@ TEST_F(DBusAdaptorTest, LoadSnapshotPreviousSuccess) {
   dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
   EXPECT_TRUE(success);
   EXPECT_FALSE(last);
-  EXPECT_TRUE(VerifyHash(android_data_dir(), hash(kFakeAccountID),
-                         expected_public_key_digest,
-                         false /* inode_verification_enabled */));
+
   dbus_adaptor()->set_inode_verification_enabled_for_testing(
       true /* enabled */);
 }

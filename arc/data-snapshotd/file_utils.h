@@ -77,14 +77,12 @@ std::string CalculateEncodedSha256Digest(const std::vector<uint8_t>& value);
 
 // Copies the given path, all subdirectories and their contents as well.
 //
-// If there are files existing under to_path, always overwrite. Returns true
+// If there are files existing under |to| path, always overwrite. Returns true
 // if successful, false otherwise. Wildcards on the names are not supported.
 //
-// This function uses base::CopyDirectory, but preserves file attributes, such
-// as modification_time.
+// This function uses 'cp --preserve=all -r'.
 bool CopySnapshotDirectory(const base::FilePath& from,
                            const base::FilePath& to);
-
 }  // namespace data_snapshotd
 }  // namespace arc
 

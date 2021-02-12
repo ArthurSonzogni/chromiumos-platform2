@@ -13,8 +13,10 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/data_encoding.h>
 #include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/rsa_private_key.h>
 
@@ -33,6 +35,9 @@ constexpr char kLastSnapshotPath[] = "last";
 constexpr char kPreviousSnapshotPath[] = "previous";
 constexpr char kHomeRootDirectory[] = "/home/root";
 
+// System salt local path should match the one in init/arc-data-snapshotd.conf.
+constexpr char kSystemSaltPath[] = "/run/arc-data-snapshotd/salt";
+
 }  // namespace
 
 // BootLockbox snapshot keys:
@@ -40,11 +45,13 @@ const char kLastSnapshotPublicKey[] = "snapshot_public_key_last";
 const char kPreviousSnapshotPublicKey[] = "snapshot_public_key_previous";
 // Android data directory name:
 const char kAndroidDataDirectory[] = "android-data";
+const char kDataDirectory[] = "data";
 
 DBusAdaptor::DBusAdaptor()
     : DBusAdaptor(base::FilePath(kCommonSnapshotPath),
                   base::FilePath(kHomeRootDirectory),
-                  cryptohome::BootLockboxClient::CreateBootLockboxClient()) {}
+                  cryptohome::BootLockboxClient::CreateBootLockboxClient(),
+                  "" /* system_salt */) {}
 
 DBusAdaptor::~DBusAdaptor() = default;
 
@@ -52,9 +59,11 @@ DBusAdaptor::~DBusAdaptor() = default;
 std::unique_ptr<DBusAdaptor> DBusAdaptor::CreateForTesting(
     const base::FilePath& snapshot_directory,
     const base::FilePath& home_root_directory,
-    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client) {
-  return base::WrapUnique(new DBusAdaptor(
-      snapshot_directory, home_root_directory, std::move(boot_lockbox_client)));
+    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+    const std::string& system_salt) {
+  return base::WrapUnique(
+      new DBusAdaptor(snapshot_directory, home_root_directory,
+                      std::move(boot_lockbox_client), system_salt));
 }
 
 void DBusAdaptor::RegisterAsync(
@@ -86,7 +95,8 @@ bool DBusAdaptor::GenerateKeyPair() {
     }
   }
   // Clear last snapshot - a new one will be created soon.
-  ClearSnapshot(true /* last */);
+  if (!ClearSnapshot(true /* last */))
+    return false;
 
   // Generate a key pair.
   public_key_info_.clear();
@@ -122,17 +132,19 @@ bool DBusAdaptor::TakeSnapshot(const std::string& account_id) {
     return false;
   }
 
-  std::string userhash = brillo::cryptohome::home::SanitizeUserName(account_id);
-  base::FilePath android_data_dir =
-      home_root_directory_.Append(userhash).Append(kAndroidDataDirectory);
+  std::string userhash = brillo::cryptohome::home::SanitizeUserNameWithSalt(
+      account_id, brillo::SecureBlob(system_salt_));
+  base::FilePath android_data_dir = home_root_directory_.Append(userhash);
   if (!base::DirectoryExists(android_data_dir)) {
-    LOG(ERROR) << "Android data directory does not exist for user "
-               << account_id;
+    LOG(ERROR) << "The snapshotting directory does not exist. "
+               << android_data_dir.value();
     return false;
   }
-  if (base::IsLink(android_data_dir)) {
-    LOG(ERROR) << android_data_dir.value()
-               << " is a symbolic link, not snapshotting.";
+  android_data_dir = android_data_dir.Append(kAndroidDataDirectory);
+
+  if (!base::DirectoryExists(android_data_dir)) {
+    LOG(ERROR) << "The snapshotting directory does not exist. "
+               << android_data_dir.value();
     return false;
   }
 
@@ -142,6 +154,12 @@ bool DBusAdaptor::TakeSnapshot(const std::string& account_id) {
                << last_snapshot_directory_.value();
     return false;
   }
+
+  if (!base::DirectoryExists(last_snapshot_directory_)) {
+    LOG(ERROR) << "The snapshot directory was not copied";
+    return false;
+  }
+
   // This callback will be executed or released before the end of this function.
   base::ScopedClosureRunner snapshot_clearer(
       base::BindOnce(base::IgnoreResult(&DBusAdaptor::ClearSnapshot),
@@ -184,7 +202,8 @@ bool DBusAdaptor::ClearSnapshot(bool last) {
 void DBusAdaptor::LoadSnapshot(const std::string& account_id,
                                bool* last,
                                bool* success) {
-  std::string userhash = brillo::cryptohome::home::SanitizeUserName(account_id);
+  std::string userhash = brillo::cryptohome::home::SanitizeUserNameWithSalt(
+      account_id, brillo::SecureBlob(system_salt_));
   if (!base::DirectoryExists(home_root_directory_.Append(userhash))) {
     LOG(ERROR) << "User directory does not exist for user " << account_id;
     *success = false;
@@ -228,10 +247,16 @@ bool DBusAdaptor::TryToLoadSnapshot(const std::string& userhash,
 
   if (!VerifyHash(snapshot_dir, userhash, expected_public_key_digest,
                   inode_verification_enabled_)) {
+    LOG(ERROR) << "Hash verification failed.";
     return false;
   }
 
-  if (!CopySnapshotDirectory(snapshot_dir, android_data_dir)) {
+  if (!base::DeletePathRecursively(android_data_dir.Append(kDataDirectory))) {
+    LOG(ERROR) << "Failed to remove android-data directory.";
+    return false;
+  }
+  if (!CopySnapshotDirectory(snapshot_dir.Append(kDataDirectory),
+                             android_data_dir)) {
     LOG(ERROR) << "Failed to copy a snapshot directory.";
     return false;
   }
@@ -241,14 +266,20 @@ bool DBusAdaptor::TryToLoadSnapshot(const std::string& userhash,
 DBusAdaptor::DBusAdaptor(
     const base::FilePath& snapshot_directory,
     const base::FilePath& home_root_directory,
-    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client)
+    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+    const std::string& system_salt)
     : org::chromium::ArcDataSnapshotdAdaptor(this),
       last_snapshot_directory_(snapshot_directory.Append(kLastSnapshotPath)),
       previous_snapshot_directory_(
           snapshot_directory.Append(kPreviousSnapshotPath)),
       home_root_directory_(home_root_directory),
-      boot_lockbox_client_(std::move(boot_lockbox_client)) {
+      boot_lockbox_client_(std::move(boot_lockbox_client)),
+      system_salt_(system_salt) {
   DCHECK(boot_lockbox_client_);
+  if (system_salt_.empty() &&
+      !base::ReadFileToString(base::FilePath(kSystemSaltPath), &system_salt_)) {
+    LOG(ERROR) << "No available system salt.";
+  }
 }
 
 }  // namespace data_snapshotd

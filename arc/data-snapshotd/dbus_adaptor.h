@@ -52,7 +52,8 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   static std::unique_ptr<DBusAdaptor> CreateForTesting(
       const base::FilePath& snapshot_directory,
       const base::FilePath& home_root_directory,
-      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client);
+      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+      const std::string& system_salt);
 
   // Registers the D-Bus object that the arc-data-snapshotd daemon exposes and
   // ties methods exposed by this object with the actual implementation.
@@ -100,7 +101,8 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   DBusAdaptor(
       const base::FilePath& snapshot_directory,
       const base::FilePath& home_root_directory,
-      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client);
+      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+      const std::string& system_salt);
 
   // Manages the D-Bus interfaces exposed by the arc-data-snapshotd daemon.
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
@@ -113,6 +115,9 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
 
   // Manages the communication with BootLockbox.
   std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client_;
+  // System salt to get a cryptohome id for user name.
+  std::string system_salt_;
+
   // This private key is generated once GenerateKeyPair is called and used once
   // per snapshot in TakeSnapshot.
   std::unique_ptr<crypto::RSAPrivateKey> private_key_;
