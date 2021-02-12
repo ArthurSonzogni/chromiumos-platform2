@@ -7,6 +7,7 @@ log_writer(cros_chapsd);
 uma_writer(cros_chapsd);
 cros_dbus_client(cros_chapsd);
 cros_tcsd_client(cros_chapsd);
+cros_power_override(cros_chapsd);
 
 r_dir_file(cros_chapsd, cgroup);
 
@@ -20,10 +21,6 @@ r_dir_file(cros_chapsd, cros_passwd_file);
 cros_tcp_connect(cros_chapsd);
 
 allow cros_chapsd sysfs:file r_file_perms;
-
-
-allow cros_chapsd cros_power_override_lock_file:dir rw_dir_perms;
-allow cros_chapsd cros_power_override_lock_file:file create_file_perms;
 
 allow cros_chapsd kernel:system module_request;
 

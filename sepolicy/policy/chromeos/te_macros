@@ -123,6 +123,12 @@ define(`cros_netlink', `
 allow $1 self:$2 { create_socket_perms_no_ioctl nlmsg_read };
 ')
 
+# Contexts that write to /run/lock/power_override to block resume need to call
+# this macro with the context name as the only argument.
+define(`cros_power_override', `
+filetrans_pattern($1, cros_run_lock_power_override, cros_power_override_lock_file, file);
+')
+
 define(`cros_dbus_client', `
 typeattribute $1 cros_dbus_client_domain;
 ')
