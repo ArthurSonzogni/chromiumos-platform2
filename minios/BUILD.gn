@@ -39,6 +39,7 @@ static_library("libminios") {
     "key_reader.cc",
     "minios.cc",
     "process_manager.cc",
+    "screen_base.cc",
     "screens.cc",
   ]
   configs += [ ":target_defaults" ]

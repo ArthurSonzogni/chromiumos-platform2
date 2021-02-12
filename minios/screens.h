@@ -9,22 +9,17 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file.h>
-#include <base/strings/string_split.h>
 #include <gtest/gtest_prod.h>
 
 #include "minios/key_reader.h"
 #include "minios/process_manager.h"
+#include "minios/screen_base.h"
 
 namespace screens {
 
 extern const char kScreens[];
 
-// Colors.
-extern const char kMenuBlack[];
-extern const char kMenuBlue[];
-extern const char kMenuGrey[];
-extern const char kMenuButtonFrameGrey[];
+// Dropdown Menu Colors.
 extern const char kMenuDropdownFrameNavy[];
 extern const char kMenuDropdownBackgroundBlack[];
 
@@ -40,7 +35,11 @@ extern const int kKeyPower;
 extern const int kFdsMax;
 extern const int kKeyMax;
 
-class Screens : public key_reader::KeyReader::Delegate {
+// Screens contains the different MiniOs Screens as well as specific components
+// such as dropdowns and footers which are built using the pieces of
+// ScreenBase.
+
+class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
  public:
   explicit Screens(ProcessManagerInterface* process_manager)
       : key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {
@@ -59,61 +58,6 @@ class Screens : public key_reader::KeyReader::Delegate {
   // Has the minimum needed to set up tests, to reduce excessive logging. All
   // other components are tested separately.
   bool InitForTest();
-
-  // Show dynamic text using pre-rendered glyphs. Colors 'white', 'grey' and
-  // 'black'. Returns true on success.
-  virtual bool ShowText(const std::string& text,
-                        int glyph_offset_h,
-                        int glyph_offset_v,
-                        const std::string& color);
-
-  // Uses frecon to show image given a full file path. Returns true on success.
-  virtual bool ShowImage(const base::FilePath& image_name,
-                         int offset_x,
-                         int offset_y);
-
-  // Uses frecon to show a box. Color should be given as a hex string. Returns
-  // true on success.
-  virtual bool ShowBox(int offset_x,
-                       int offset_y,
-                       int size_x,
-                       int size_y,
-                       const std::string& color);
-
-  // Shows message image at the given offset. All message tokens are in
-  // `/etc/screens`. Falls back to English if chosen locale is not available.
-  virtual bool ShowMessage(const std::string& message_token,
-                           int offset_x,
-                           int offset_y);
-
-  // Shows title and uses title offsets.
-  void ShowInstructions(const std::string& message_token);
-
-  // Shows the title and corresponding description using offsets from
-  // `constants` to place.
-  void ShowInstructionsWithTitle(const std::string& message_token);
-
-  // Shows on screen progress bar.
-  void ShowProgressBar(double seconds);
-
-  // Clears full screen except the footer.
-  void ClearMainArea();
-
-  // Clears screen including the footer.
-  void ClearScreen();
-
-  // Show button, focus changes the button color to indicate selection. Returns
-  // false on error.
-  void ShowButton(const std::string& message_token,
-                  int offset_y,
-                  bool is_selected,
-                  int inner_width,
-                  bool is_text);
-
-  // Shows stepper icons given a list of steps. Currently icons available in
-  // 'kScreens' only go up to 3. Steps can be a number '1', 'error', or 'done'.
-  // Defaults to done if requested icon not found.
-  void ShowStepper(const std::vector<std::string>& steps);
 
   // Shows the MiniOs Screens. Users can navigate between then using up/down
   // arrow keys.
@@ -160,22 +104,6 @@ class Screens : public key_reader::KeyReader::Delegate {
   // every time a valid key press is recorded.
   void SwitchScreen(bool enter);
 
-  // Override the root directory for testing. Default is '/'.
-  void SetRootForTest(const std::string& test_root) {
-    root_ = base::FilePath(test_root);
-  }
-
-  // Override the current locale without using the language menu.
-  void SetLanguageForTest(const std::string& test_locale) {
-    locale_ = test_locale;
-    // Reload locale dependent dimension constants.
-    ReadDimensionConstants();
-  }
-
-  // Override whether current language is marked as being read from right to
-  // left. Does not change language.
-  void SetLocaleRtlForTest(bool is_rtl) { right_to_left_ = is_rtl; }
-
   // Getter and setter test functions for `index_` and `current_screen`.
   void SetIndexForTest(int index) { index_ = index; }
   int GetIndexForTest() { return index_; }
@@ -208,14 +136,6 @@ class Screens : public key_reader::KeyReader::Delegate {
 
   key_reader::KeyReader key_reader_ =
       key_reader::KeyReader(/*include_usb=*/true);
-
-  // Read dimension constants for current locale into memory. Must be updated
-  // every time the language changes.
-  void ReadDimensionConstants();
-
-  // Sets the height or width of an image given the token. Returns false on
-  // error.
-  bool GetDimension(const std::string& token, int* token_dimension);
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items.
@@ -269,14 +189,8 @@ class Screens : public key_reader::KeyReader::Delegate {
   // Get XKB keyboard layout based on the VPD region. Return false on error.
   bool MapRegionToKeyboard(std::string* xkb_keyboard_layout);
 
-  // Whether the locale is read from right to left.
-  bool right_to_left_{false};
-
   // Whether the device has a detachable keyboard.
   bool is_detachable_{false};
-
-  // Key value pairs that store token name and measurements.
-  base::StringPairs image_dimensions_;
 
   // Key value pairs that store language widths.
   base::StringPairs lang_constants_;
@@ -289,18 +203,6 @@ class Screens : public key_reader::KeyReader::Delegate {
 
   // The item the user has picked from the dropdown menu.
   std::string chosen_item_;
-
-  // Default button width. Changes for each locale.
-  int default_button_width_;
-
-  // Default root directory.
-  base::FilePath root_{"/"};
-
-  // Default screens path, set in init.
-  base::FilePath screens_path_;
-
-  // Default and fall back locale directory.
-  std::string locale_{"en-US"};
 
   // Hardware Id read from crossystem.
   std::string hwid_;
