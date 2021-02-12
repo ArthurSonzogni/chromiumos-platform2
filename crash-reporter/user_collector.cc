@@ -308,13 +308,15 @@ bool UserCollector::RunCoreToMinidump(const FilePath& core_path,
     return false;
   }
 
-  if (!base::PathExists(minidump_path)) {
-    LOG(ERROR) << "Minidump file " << minidump_path.value()
-               << " was not created";
+  // Change the minidump to be not-world-readable. chmod will change permissions
+  // on symlinks. Use fchmod instead.
+  base::ScopedFD minidump(
+      open(minidump_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
+  if (!minidump.is_valid()) {
+    PLOG(ERROR) << "Could not open minidump file: " << minidump_path.value();
     return false;
   }
-
-  if (chmod(minidump_path.value().c_str(), kSystemCrashFilesMode) < 0) {
+  if (fchmod(minidump.get(), kSystemCrashFilesMode) < 0) {
     PLOG(ERROR) << "Couldn't chmod minidump file: " << minidump_path.value();
     return false;
   }
