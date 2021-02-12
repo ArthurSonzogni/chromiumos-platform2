@@ -60,6 +60,7 @@ class Proxy : public brillo::DBusDaemon {
 
   void Setup();
   void OnPatchpanelReady(bool success);
+  void OnShillReady(bool success);
   void OnShillReset(bool reset);
 
   // Triggered whenever the device attached to the default network changes.

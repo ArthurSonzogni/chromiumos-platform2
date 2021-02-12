@@ -90,18 +90,20 @@ void Proxy::OnShutdown(int*) {
 
 void Proxy::Setup() {
   // This is only to account for the injected client for testing.
-  if (!shill_)
-    shill_.reset(new shill::Client(bus_));
-
-  shill_->Init();
-
-  // This is only to account for the injected client for testing.
   if (!patchpanel_)
     patchpanel_ = patchpanel::Client::New();
 
   CHECK(patchpanel_) << "Failed to initialize patchpanel client";
+
+  // This is only to account for the injected client for testing.
+  if (!shill_)
+    shill_.reset(new shill::Client(bus_));
+
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
       &Proxy::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
+
+  shill_->RegisterOnAvailableCallback(
+      base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
 }
 
 void Proxy::OnPatchpanelReady(bool success) {
@@ -147,9 +149,17 @@ void Proxy::OnPatchpanelReady(bool success) {
         base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
 }
 
+void Proxy::OnShillReady(bool success) {
+  CHECK(success) << "Failed to connect to shill";
+  shill_->Init();
+}
+
 void Proxy::OnShillReset(bool reset) {
   if (!reset) {
     LOG(WARNING) << "Shill has been shutdown";
+    // Watch for it to return.
+    shill_->RegisterOnAvailableCallback(
+        base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
     return;
   }
 
@@ -211,7 +221,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
 
   // The default network has changed.
   if (device->ifname != device_->ifname)
-    LOG(INFO) << opts_ << " is now tracking [" << device_->ifname << "]";
+    LOG(INFO) << opts_ << " is now tracking [" << device->ifname << "]";
 
   *device_.get() = *device;
 
