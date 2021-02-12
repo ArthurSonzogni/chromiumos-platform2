@@ -11,6 +11,7 @@
 #include <xcb/xcb.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "sommelier-timing.h"  // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"
 
 #define SOMMELIER_VERSION "0.20"
@@ -182,6 +183,7 @@ struct sl_context {
   } atoms[ATOM_LAST + 1];
   xcb_visualid_t visual_ids[256];
   xcb_colormap_t colormaps[256];
+  Timing* timing;
   const char* trace_filename;
   bool trace_system;
   // Never freed after allocation due the fact sommelier doesn't have a
@@ -272,6 +274,7 @@ struct sl_host_region {
 };
 
 struct sl_host_buffer {
+  struct sl_context* ctx;
   struct wl_resource* resource;
   struct wl_buffer* proxy;
   uint32_t width;
@@ -518,7 +521,8 @@ struct sl_host_gamepad {
 };
 #endif
 
-struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
+struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
+                                             struct wl_client* client,
                                              uint32_t id,
                                              struct wl_buffer* proxy,
                                              int32_t width,

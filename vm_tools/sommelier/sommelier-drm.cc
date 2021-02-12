@@ -156,7 +156,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
                                  DRM_FORMAT_MOD_INVALID & 0xffffffff);
 
   struct sl_host_buffer* host_buffer =
-      sl_create_host_buffer(client, id,
+      sl_create_host_buffer(host->ctx, client, id,
                             zwp_linux_buffer_params_v1_create_immed(
                                 buffer_params, width, height, format, 0),
                             width, height);

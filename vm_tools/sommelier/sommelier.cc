@@ -959,9 +959,11 @@ static void sl_buffer_release(void* data, struct wl_buffer* buffer) {
   struct sl_host_buffer* host =
       static_cast<sl_host_buffer*>(wl_buffer_get_user_data(buffer));
 
-  TRACE_EVENT("surface", "sl_buffer_release", "resource_id",
-              wl_resource_get_id(host->resource));
-
+  auto resource_id = wl_resource_get_id(host->resource);
+  TRACE_EVENT("surface", "sl_buffer_release", "resource_id", resource_id);
+  if (host->ctx->timing != NULL) {
+    host->ctx->timing->UpdateLastRelease(resource_id);
+  }
   wl_buffer_send_release(host->resource);
 }
 
@@ -986,7 +988,8 @@ static void sl_destroy_host_buffer(struct wl_resource* resource) {
   free(host);
 }
 
-struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
+struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
+                                             struct wl_client* client,
                                              uint32_t id,
                                              struct wl_buffer* proxy,
                                              int32_t width,
@@ -996,6 +999,7 @@ struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
       static_cast<sl_host_buffer*>(malloc(sizeof(*host_buffer)));
   assert(host_buffer);
 
+  host_buffer->ctx = ctx;
   host_buffer->width = width;
   host_buffer->height = height;
   host_buffer->resource =
@@ -3591,6 +3595,9 @@ static int sl_handle_sigusr1(int signal_number, void* data) {
   struct sl_context* ctx = (struct sl_context*)data;
   fprintf(stderr, "dumping trace %s\n", ctx->trace_filename);
   dump_trace(ctx->trace_filename);
+  if (ctx->timing != NULL) {
+    ctx->timing->OutputLog();
+  }
   return 1;
 }
 
@@ -3906,6 +3913,7 @@ static void sl_print_usage() {
       "  --virtwl-device=DEVICE\tVirtWL device to use\n"
       "  --drm-device=DEVICE\t\tDRM device to use\n"
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
+      "  --timing-filename=PATH\t\tPath to timing output log\n"
 #ifdef PERFETTO_TRACING
       "  --trace-filename=PATH\t\tPath to Perfetto trace filename\n"
       "  --trace-system\t\tPerfetto trace to system daemon\n"
@@ -3999,6 +4007,7 @@ int main(int argc, char** argv) {
     assert(name != NULL);
     ctx.atoms[i].name = name;
   }
+  ctx.timing = NULL;
   ctx.trace_filename = NULL;
   ctx.trace_system = false;
   const char* display = getenv("SOMMELIER_DISPLAY");
@@ -4100,6 +4109,8 @@ int main(int argc, char** argv) {
       xauth_path = sl_arg_value(arg);
     } else if (strstr(arg, "--x-font-path") == arg) {
       xfont_path = sl_arg_value(arg);
+    } else if (strstr(arg, "--timing-filename") == arg) {
+      ctx.timing = new Timing(sl_arg_value(arg));
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "sommelier.h"          // NOLINT(build/include_directory)
+#include "sommelier-timing.h"   // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
@@ -118,11 +119,15 @@ static void sl_host_surface_attach(struct wl_client* client,
                                    struct wl_resource* buffer_resource,
                                    int32_t x,
                                    int32_t y) {
-  TRACE_EVENT("surface", "sl_host_surface_attach", "resource_id",
-              wl_resource_get_id(resource), "buffer_id",
-              wl_resource_get_id(buffer_resource));
+  auto resource_id = wl_resource_get_id(resource);
+  auto buffer_id = wl_resource_get_id(buffer_resource);
+  TRACE_EVENT("surface", "sl_host_surface_attach", "resource_id", resource_id,
+              "buffer_id", buffer_id);
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
+  if (host->ctx->timing != NULL) {
+    host->ctx->timing->UpdateLastAttach(resource_id, buffer_id);
+  }
   struct sl_host_buffer* host_buffer =
       buffer_resource ? static_cast<sl_host_buffer*>(
                             wl_resource_get_user_data(buffer_resource))
@@ -400,10 +405,13 @@ static void sl_host_surface_set_input_region(
 
 static void sl_host_surface_commit(struct wl_client* client,
                                    struct wl_resource* resource) {
-  TRACE_EVENT("surface", "sl_host_surface_commit", "resource_id",
-              wl_resource_get_id(resource));
+  auto resource_id = wl_resource_get_id(resource);
+  TRACE_EVENT("surface", "sl_host_surface_commit", "resource_id", resource_id);
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
+  if (host->ctx->timing != NULL) {
+    host->ctx->timing->UpdateLastCommit(resource_id);
+  }
   struct sl_viewport* viewport = NULL;
   struct sl_window* window;
 
