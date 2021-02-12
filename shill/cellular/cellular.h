@@ -232,13 +232,6 @@ class Cellular : public Device,
   void OnAfterResume() override;
   std::vector<GeolocationInfo> GetGeolocationObjects() const override;
 
-  void OnDisabled();
-  void OnEnabled();
-  void OnConnecting();
-  void OnConnected() override;
-  void OnConnectFailed(const Error& error);
-  void OnDisconnected();
-  void OnDisconnectFailed();
   std::string GetTechnologyFamily(Error* error);
   std::string GetDeviceId(Error* error);
   void OnModemStateChanged(ModemState new_state);
@@ -458,6 +451,16 @@ class Cellular : public Device,
   bool ShouldBringNetworkInterfaceDownAfterDisabled() const override;
 
   void SetState(State state);
+  void SetModemState(ModemState modem_state_state);
+  void SetCapabilityState(CapabilityState capability_state);
+
+  void OnDisabled();
+  void OnEnabled();
+  void OnConnecting();
+  void OnConnected() override;
+  void OnConnectFailed(const Error& error);
+  void OnDisconnected();
+  void OnDisconnectFailed();
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
@@ -539,10 +542,9 @@ class Cellular : public Device,
 
   void PollLocationTask();
 
-  void SetCapabilityState(CapabilityState capability_state);
-
-  State state_;
-  ModemState modem_state_;
+  State state_ = kStateDisabled;
+  ModemState modem_state_ = kModemStateUnknown;
+  CapabilityState capability_state_ = CapabilityState::kCellularStopped;
 
   struct LocationInfo {
     std::string mcc;
@@ -634,8 +636,6 @@ class Cellular : public Device,
 
   // Flag indicating that a disconnect has been explicitly requested.
   bool explicit_disconnect_;
-
-  CapabilityState capability_state_ = CapabilityState::kCellularStopped;
 
   std::unique_ptr<ExternalTask> ppp_task_;
   PPPDeviceRefPtr ppp_device_;

@@ -153,8 +153,6 @@ Cellular::Cellular(ModemInfo* modem_info,
              address,
              interface_index,
              Technology::kCellular),
-      state_(kStateDisabled),
-      modem_state_(kModemStateUnknown),
       home_provider_info_(new MobileOperatorInfo(
           modem_info->manager()->dispatcher(), "HomeProvider")),
       serving_operator_info_(new MobileOperatorInfo(
@@ -359,6 +357,19 @@ void Cellular::SetState(State state) {
   state_ = state;
 }
 
+void Cellular::SetModemState(ModemState modem_state) {
+  SLOG(this, 2) << __func__ << ": " << GetModemStateString(modem_state_)
+                << " -> " << GetModemStateString(modem_state);
+  modem_state_ = modem_state;
+}
+
+void Cellular::SetCapabilityState(CapabilityState capability_state) {
+  SLOG(this, 2) << __func__ << ": "
+                << GetCapabilityStateString(capability_state_) << " -> "
+                << GetCapabilityStateString(capability_state);
+  capability_state_ = capability_state;
+}
+
 void Cellular::HelpRegisterDerivedBool(const string& name,
                                        bool (Cellular::*get)(Error* error),
                                        bool (Cellular::*set)(const bool& value,
@@ -466,7 +477,7 @@ void Cellular::StartModem(Error* error,
 
 void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
                                   const Error& error) {
-  SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
+  SLOG(this, 1) << __func__ << ": state=" << GetStateString(state_);
   SetCapabilityState(CapabilityState::kModemStarted);
 
   if (inhibited_) {
@@ -475,6 +486,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
   }
 
   if (!error.IsSuccess()) {
+    LOG(ERROR) << "StartModem failed: " << error;
     if (callback)
       callback.Run(error);
     return;
@@ -505,6 +517,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
 
 void Cellular::StartModemGetDeviceCallback(
     const EnabledStateChangedCallback& callback, const brillo::Any& device) {
+  SLOG(this, 2) << __func__;
   if (!device.IsEmpty())
     uid_ = device.Get<std::string>();
 
@@ -704,7 +717,7 @@ void Cellular::OnAfterResume() {
     // CellularCapability3gpp should generate separate
     // notifications for Stop_Disable, and Stop_PowerDown. Then we'd
     // update our state to kStateDisabled when Stop_Disable completes.
-    state_ = kStateDisabled;
+    SetState(kStateDisabled);
 
     Error error;
     SetEnabledUnchecked(true, &error, Bind(LogRestartModemResult));
@@ -811,7 +824,7 @@ void Cellular::HandleNewSignalQuality(uint32_t strength) {
 }
 
 void Cellular::HandleNewRegistrationState() {
-  SLOG(this, 2) << __func__ << ": (new state " << GetStateString(state_) << ")";
+  SLOG(this, 2) << __func__ << ": state = " << GetStateString(state_);
   CHECK(capability_);
   if (!capability_->IsRegistered()) {
     if (!explicit_disconnect_ &&
@@ -921,6 +934,7 @@ void Cellular::CreateCapability(ModemInfo* modem_info) {
 }
 
 void Cellular::DestroyCapability() {
+  SLOG(this, 1) << __func__;
   // |service_| holds a pointer to |this|. We need to disassociate it here so
   // that this will be destroyed if the interface is removed. It will be
   // re-associated if the Modem + Capability is restored (e.g. after Inhibit).
@@ -928,7 +942,7 @@ void Cellular::DestroyCapability() {
     service_->SetDevice(nullptr);
 
   capability_.reset();
-  modem_state_ = kModemStateUnknown;
+  SetModemState(kModemStateUnknown);
   if (capability_state_ == CapabilityState::kModemStopping ||
       capability_state_ == CapabilityState::kCellularStopped) {
     // If Cellular::StopModem has been called, nothing more to do.
@@ -1001,7 +1015,10 @@ void Cellular::OnEnabled() {
   manager()->AddTerminationAction(
       link_name(),
       Bind(&Cellular::StartTermination, weak_ptr_factory_.GetWeakPtr()));
-  SetEnabled(true);
+  if (!enabled() && !enabled_pending()) {
+    LOG(WARNING) << "OnEnabled called while not enabling, setting enabled.";
+    SetEnabled(true);
+  }
 }
 
 void Cellular::OnConnecting() {
@@ -1200,10 +1217,9 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
     return;
   }
 
+  SLOG(this, 1) << __func__;
+  SetModemState(new_state);
   CHECK(capability_);
-  SLOG(this, 1) << __func__ << ": " << GetModemStateString(old_state) << " -> "
-                << GetModemStateString(new_state);
-  modem_state_ = new_state;
 
   // Skip calls to OnDisabled|Enabled|Connected|Disconnected while the
   // capability is starting or stopping the modem since ModemState transitions
@@ -1589,9 +1605,10 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
                                      const std::string& mac_address) {
   if (dbus_path_ == dbus_path)
     return;
+  SLOG(this, 1) << __func__;
   dbus_path_ = dbus_path;
   dbus_path_str_ = dbus_path.value();
-  modem_state_ = kModemStateUnknown;
+  SetModemState(kModemStateUnknown);
   set_mac_address(mac_address);
   UpdateScanning();
 }
@@ -2034,13 +2051,6 @@ void Cellular::OnOperatorChanged() {
   } else if (home_provider_known) {
     UpdateServingOperator(home_provider_info_.get(), home_provider_info_.get());
   }
-}
-
-void Cellular::SetCapabilityState(CapabilityState capability_state) {
-  // TODO(stevenjb): Lower this SLOG to 2 once b/172064665 is thoroughly vetted.
-  SLOG(this, 1) << __func__ << ": "
-                << GetCapabilityStateString(capability_state);
-  capability_state_ = capability_state;
 }
 
 void Cellular::SetServiceForTesting(CellularServiceRefPtr service) {

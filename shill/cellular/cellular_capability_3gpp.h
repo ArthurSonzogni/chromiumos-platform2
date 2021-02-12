@@ -282,9 +282,6 @@ class CellularCapability3gpp : public CellularCapability {
 
   void OnModemCurrentCapabilitiesChanged(uint32_t current_capabilities);
   void OnMdnChanged(const std::string& mdn);
-  void OnModemRevisionChanged(const std::string& revision);
-  void OnModemHardwareRevisionChanged(const std::string& hardware_revision);
-  void OnModemDevicePathChanged(const std::string& path);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32_t access_technologies);
   void OnBearersChanged(const RpcIdentifiers& bearers);

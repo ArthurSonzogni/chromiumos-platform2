@@ -578,6 +578,7 @@ class Device : public base::RefCounted<Device> {
 
   // Property getters reserved for subclasses
   ControlInterface* control_interface() const;
+  bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
   const LinkMonitor* link_monitor() const { return link_monitor_.get(); }

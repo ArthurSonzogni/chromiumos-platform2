@@ -80,8 +80,8 @@ const char Service::kAutoConnDisconnecting[] = "disconnecting";
 const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
 const char Service::kAutoConnNotConnectable[] = "not connectable";
 const char Service::kAutoConnOffline[] = "offline";
-const char Service::kAutoConnTechnologyNotConnectable[] =
-    "technology not connectable";
+const char Service::kAutoConnTechnologyNotAutoConnectable[] =
+    "technology not auto connectable";
 const char Service::kAutoConnThrottled[] = "throttled";
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -289,20 +289,25 @@ Service::~Service() {
 
 void Service::AutoConnect() {
   const char* reason = nullptr;
-  if (IsAutoConnectable(&reason)) {
-    Error error;
-    LOG(INFO) << "Auto-connecting to " << log_name();
-    ThrottleFutureAutoConnects();
-    Connect(&error, __func__);
-  } else {
-    if (reason == kAutoConnConnected || reason == kAutoConnBusy) {
-      SLOG(this, 1) << "Suppressed autoconnect to " << log_name() << " "
-                    << "(" << reason << ")";
+  if (!IsAutoConnectable(&reason)) {
+    if (reason == kAutoConnTechnologyNotAutoConnectable ||
+        reason == kAutoConnConnected) {
+      SLOG(this, 3) << "Suppressed autoconnect to " << log_name()
+                    << " Reason: " << reason;
+    } else if (reason == kAutoConnBusy) {
+      SLOG(this, 1) << "Suppressed autoconnect to " << log_name()
+                    << " Reason: " << reason;
     } else {
-      LOG(INFO) << "Suppressed autoconnect to " << log_name() << " "
-                << "(" << reason << ")";
+      LOG(INFO) << "Suppressed autoconnect to " << log_name()
+                << " Reason: " << reason;
     }
+    return;
   }
+
+  Error error;
+  LOG(INFO) << "Auto-connecting to " << log_name();
+  ThrottleFutureAutoConnects();
+  Connect(&error, __func__);
 }
 
 void Service::Connect(Error* error, const char* reason) {
@@ -1518,7 +1523,7 @@ string Service::GetStateString() const {
 
 bool Service::IsAutoConnectable(const char** reason) const {
   if (manager_->IsTechnologyAutoConnectDisabled(technology_)) {
-    *reason = kAutoConnTechnologyNotConnectable;
+    *reason = kAutoConnTechnologyNotAutoConnectable;
     return false;
   }
 

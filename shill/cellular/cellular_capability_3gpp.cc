@@ -211,7 +211,9 @@ CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
   mobile_operator_info_->Init();
 }
 
-CellularCapability3gpp::~CellularCapability3gpp() = default;
+CellularCapability3gpp::~CellularCapability3gpp() {
+  SLOG(this, 2) << "Cellular capability destroyed: 3GPP";
+}
 
 KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
     Error* /*error*/) {
@@ -1185,7 +1187,7 @@ string CellularCapability3gpp::GetTypeString() const {
 
 void CellularCapability3gpp::OnModemPropertiesChanged(
     const KeyValueStore& properties) {
-  SLOG(this, 1) << __func__;
+  SLOG(this, 3) << __func__;
 
   // Update the bearers property before the modem state property as
   // OnModemStateChanged may call UpdateActiveBearer, which reads the bearers
@@ -1242,14 +1244,16 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
     cellular()->set_mm_plugin(properties.Get<string>(MM_MODEM_PROPERTY_PLUGIN));
   }
   if (properties.Contains<string>(MM_MODEM_PROPERTY_REVISION)) {
-    OnModemRevisionChanged(properties.Get<string>(MM_MODEM_PROPERTY_REVISION));
+    cellular()->set_firmware_revision(
+        properties.Get<string>(MM_MODEM_PROPERTY_REVISION));
   }
   if (properties.Contains<string>(MM_MODEM_PROPERTY_HARDWAREREVISION)) {
-    OnModemHardwareRevisionChanged(
+    cellular()->set_hardware_revision(
         properties.Get<string>(MM_MODEM_PROPERTY_HARDWAREREVISION));
   }
   if (properties.Contains<string>(MM_MODEM_PROPERTY_DEVICE)) {
-    OnModemDevicePathChanged(properties.Get<string>(MM_MODEM_PROPERTY_DEVICE));
+    std::string path = properties.Get<string>(MM_MODEM_PROPERTY_DEVICE);
+    cellular()->set_device_id(DeviceId::CreateFromSysfs(base::FilePath(path)));
   }
   if (properties.Contains<string>(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER)) {
     cellular()->set_equipment_id(
@@ -1292,7 +1296,6 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
 
 void CellularCapability3gpp::OnPropertiesChanged(
     const string& interface, const KeyValueStore& changed_properties) {
-  SLOG(this, 2) << __func__ << "(" << interface << ")";
   if (interface == MM_DBUS_INTERFACE_MODEM) {
     OnModemPropertiesChanged(changed_properties);
   }
@@ -1393,8 +1396,6 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
 
 void CellularCapability3gpp::SetPrimarySimProperties(
     const SimProperties& sim_properties) {
-  const std::string& iccid = sim_properties.iccid;
-  SLOG(this, 2) << __func__ << " ICCID: " << iccid;
   cellular()->SetSimProperties(sim_properties);
 
   UpdateServiceActivationState();
@@ -1407,6 +1408,10 @@ void CellularCapability3gpp::SetPrimarySimProperties(
 
 void CellularCapability3gpp::OnModemCurrentCapabilitiesChanged(
     uint32_t current_capabilities) {
+  if (current_capabilities == current_capabilities_)
+    return;
+
+  SLOG(this, 2) << __func__;
   current_capabilities_ = current_capabilities;
 
   // Only allow network scan when the modem's current capabilities support
@@ -1419,26 +1424,18 @@ void CellularCapability3gpp::OnModemCurrentCapabilitiesChanged(
 }
 
 void CellularCapability3gpp::OnMdnChanged(const string& mdn) {
-  cellular()->set_mdn(NormalizeMdn(mdn));
+  std::string normalized_mdn = NormalizeMdn(mdn);
+  if (cellular()->mdn() == normalized_mdn)
+    return;
+
+  SLOG(this, 2) << __func__ << ": " << normalized_mdn;
+  cellular()->set_mdn(normalized_mdn);
   UpdateServiceActivationState();
   UpdatePendingActivationState();
 }
 
-void CellularCapability3gpp::OnModemRevisionChanged(const string& revision) {
-  cellular()->set_firmware_revision(revision);
-}
-
-void CellularCapability3gpp::OnModemHardwareRevisionChanged(
-    const string& hardware_revision) {
-  cellular()->set_hardware_revision(hardware_revision);
-}
-
-void CellularCapability3gpp::OnModemDevicePathChanged(const string& path) {
-  cellular()->set_device_id(DeviceId::CreateFromSysfs(base::FilePath(path)));
-}
-
 void CellularCapability3gpp::OnModemStateChanged(Cellular::ModemState state) {
-  SLOG(this, 3) << __func__ << ": " << Cellular::GetModemStateString(state);
+  SLOG(this, 1) << __func__ << ": " << Cellular::GetModemStateString(state);
 
   if (state == Cellular::kModemStateConnected) {
     // This assumes that ModemManager updates the Bearers list and the Bearer
@@ -1461,23 +1458,27 @@ void CellularCapability3gpp::OnModemStateChanged(Cellular::ModemState state) {
 
 void CellularCapability3gpp::OnAccessTechnologiesChanged(
     uint32_t access_technologies) {
-  if (access_technologies_ != access_technologies) {
-    const string old_type_string(GetTypeString());
-    access_technologies_ = access_technologies;
-    const string new_type_string(GetTypeString());
-    if (new_type_string != old_type_string) {
-      // TODO(jglasgow): address layering violation of emitting change
-      // signal here for a property owned by Cellular.
-      cellular()->adaptor()->EmitStringChanged(kTechnologyFamilyProperty,
-                                               new_type_string);
-    }
-    if (cellular()->service().get()) {
-      cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
-    }
+  if (access_technologies_ == access_technologies)
+    return;
+
+  SLOG(this, 2) << __func__;
+  const string old_type_string(GetTypeString());
+  access_technologies_ = access_technologies;
+  const string new_type_string(GetTypeString());
+  if (new_type_string != old_type_string) {
+    cellular()->adaptor()->EmitStringChanged(kTechnologyFamilyProperty,
+                                             new_type_string);
+  }
+  if (cellular()->service().get()) {
+    cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
   }
 }
 
 void CellularCapability3gpp::OnBearersChanged(const RpcIdentifiers& bearers) {
+  if (bearers == bearer_paths_)
+    return;
+
+  SLOG(this, 2) << __func__;
   bearer_paths_ = bearers;
 }
 
@@ -1515,7 +1516,7 @@ void CellularCapability3gpp::OnLockTypeChanged(MMModemLock lock_type) {
 }
 
 void CellularCapability3gpp::OnSimLockStatusChanged() {
-  SLOG(this, 3) << __func__;
+  SLOG(this, 2) << __func__;
   cellular()->adaptor()->EmitKeyValueStoreChanged(
       kSIMLockStatusProperty, SimLockStatusToProperty(nullptr));
 
@@ -1625,7 +1626,7 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
     MMModem3gppRegistrationState state,
     const string& operator_code,
     const string& operator_name) {
-  SLOG(this, 3) << __func__ << ": regstate=" << state
+  SLOG(this, 2) << __func__ << ": regstate=" << state
                 << ", opercode=" << operator_code
                 << ", opername=" << operator_name;
 
@@ -1827,7 +1828,6 @@ void CellularCapability3gpp::OnSimPropertiesChanged(
   if (properties.Contains<string>(MM_SIM_PROPERTY_SIMIDENTIFIER)) {
     sim_properties.iccid =
         properties.Get<string>(MM_SIM_PROPERTY_SIMIDENTIFIER);
-    LOG(INFO) << "SIM ICCID: " << sim_properties.iccid;
   }
   if (properties.Contains<string>(MM_SIM_PROPERTY_EID)) {
     sim_properties.eid = properties.Get<string>(MM_SIM_PROPERTY_EID);

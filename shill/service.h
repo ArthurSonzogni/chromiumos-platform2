@@ -797,7 +797,7 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnExplicitDisconnect[];
   static const char kAutoConnNotConnectable[];
   static const char kAutoConnOffline[];
-  static const char kAutoConnTechnologyNotConnectable[];
+  static const char kAutoConnTechnologyNotAutoConnectable[];
   static const char kAutoConnThrottled[];
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)

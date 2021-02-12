@@ -395,6 +395,7 @@ void Manager::Start() {
 }
 
 void Manager::Stop() {
+  SLOG(this, 1) << __func__;
   running_ = false;
   // Persist device information to disk;
   for (const auto& device : devices_) {
@@ -1289,6 +1290,8 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
 
   if (IsTechnologyProhibited(to_manage->technology())) {
     Error unused_error;
+    LOG(INFO) << "Technology prohibited, disabling: "
+              << to_manage->technology().GetName();
     to_manage->SetEnabledNonPersistent(false, &unused_error, ResultCallback());
   }
 
@@ -1310,8 +1313,11 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   // In normal usage, running_ will always be true when we are here, however
   // unit tests sometimes do things in otherwise invalid states.
   if (running_ && (to_manage->enabled_persistent() ||
-                   to_manage->IsUnderlyingDeviceEnabled()))
+                   to_manage->IsUnderlyingDeviceEnabled())) {
+    SLOG(this, 2) << "Enabling registered device type: "
+                  << to_manage->technology().GetName();
     to_manage->SetEnabled(true);
+  }
 
   EmitDeviceProperties();
 }
@@ -1430,6 +1436,7 @@ bool Manager::SetProhibitedTechnologies(const string& prohibited_technologies,
                                      &technology_vector, error)) {
     return false;
   }
+  SLOG(this, 1) << __func__ << ": " << prohibited_technologies;
   for (const auto& technology : technology_vector) {
     ResultCallback result_callback(
         Bind(&Manager::OnTechnologyProhibited, Unretained(this), technology));

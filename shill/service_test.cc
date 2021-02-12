@@ -945,26 +945,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
               IsTechnologyAutoConnectDisabled(service_->technology_))
       .WillOnce(Return(true));
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-  EXPECT_STREQ(Service::kAutoConnTechnologyNotConnectable, reason);
-}
-
-TEST_F(ServiceTest, AutoConnectLogging) {
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, _));
-  service_->SetConnectable(true);
-
-  ScopeLogger::GetInstance()->EnableScopesByName("+service");
-  ScopeLogger::GetInstance()->set_verbose_level(1);
-  service_->SetState(Service::kStateConnected);
-  EXPECT_CALL(log, Log(-1, _, HasSubstr(Service::kAutoConnConnected)));
-  service_->AutoConnect();
-
-  ScopeLogger::GetInstance()->EnableScopesByName("-service");
-  ScopeLogger::GetInstance()->set_verbose_level(0);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
-                       HasSubstr(Service::kAutoConnNotConnectable)));
-  service_->SetConnectable(false);
-  service_->AutoConnect();
+  EXPECT_STREQ(Service::kAutoConnTechnologyNotAutoConnectable, reason);
 }
 
 TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
