@@ -194,8 +194,12 @@ int VncMain() {
   LOG(INFO) << "Starting with CRTC size of: " << crtc_width << " "
             << crtc_height;
 
+  if (crtc->planes().empty()) {
+    LOG(INFO) << "Capturing primary plane only\n";
+  }
+
   if (method == CaptureMethod::AUTODETECT) {
-    if (crtc->fb2())
+    if (crtc->fb2() || !crtc->planes().empty())
       method = CaptureMethod::EGL;
     else
       method = CaptureMethod::BO;

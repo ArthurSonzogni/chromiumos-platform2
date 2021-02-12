@@ -34,9 +34,14 @@ class Crtc {
        ScopedDrmModeEncoderPtr encoder,
        ScopedDrmModeCrtcPtr crtc,
        ScopedDrmModeFBPtr fb,
-       ScopedDrmModeFB2Ptr fb2,
-       ScopedDrmPlaneResPtr plane_res);
+       ScopedDrmModeFB2Ptr fb2);
 
+  Crtc(base::File file,
+       ScopedDrmModeConnectorPtr connector,
+       ScopedDrmModeEncoderPtr encoder,
+       ScopedDrmModeCrtcPtr crtc,
+       ScopedDrmModeFBPtr fb,
+       std::vector<PlaneInfo> planes);
   Crtc(const Crtc&) = delete;
   Crtc& operator=(const Crtc&) = delete;
 
@@ -47,12 +52,12 @@ class Crtc {
 
   drmModeFB* fb() const { return fb_.get(); }
   drmModeFB2* fb2() const { return fb2_.get(); }
+  const std::vector<PlaneInfo>& planes() const { return planes_; }
 
   uint32_t width() const { return crtc_->width; }
   uint32_t height() const { return crtc_->height; }
 
   bool IsInternalDisplay() const;
-  std::vector<Crtc::PlaneInfo> GetConnectedPlanes() const;
 
  private:
   base::File file_;
@@ -61,7 +66,8 @@ class Crtc {
   ScopedDrmModeCrtcPtr crtc_;
   ScopedDrmModeFBPtr fb_;
   ScopedDrmModeFB2Ptr fb2_;
-  ScopedDrmPlaneResPtr plane_res_;
+
+  std::vector<PlaneInfo> planes_;
 };
 
 class CrtcFinder final {
