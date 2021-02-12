@@ -43,6 +43,28 @@ void SessionManagerProxy::AddObserver(
   observer_list_.AddObserver(observer);
 }
 
+bool SessionManagerProxy::IsScreenLocked() {
+  brillo::ErrorPtr error;
+  bool locked;
+  if (!proxy_.IsScreenLocked(&locked, &error)) {
+    LOG(ERROR) << "Failed to get lockscreen state: " << error->GetMessage();
+    return false;
+  }
+
+  return locked;
+}
+
+bool SessionManagerProxy::IsSessionStarted() {
+  brillo::ErrorPtr error;
+  std::string state;
+  if (!proxy_.RetrieveSessionState(&state, &error)) {
+    LOG(ERROR) << "Failed to get session state: " << error->GetMessage();
+    return false;
+  }
+
+  return state == "started";
+}
+
 void SessionManagerProxy::OnScreenIsLocked() {
   for (SessionManagerObserverInterface& observer : observer_list_)
     observer.OnScreenIsLocked();

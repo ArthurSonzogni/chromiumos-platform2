@@ -39,9 +39,7 @@ int Daemon::OnInit() {
     LOG(INFO) << "Mode entry not supported on this device.";
   port_manager_->SetModeEntrySupported(mode_entry_supported);
 
-  // TODO(b/171839508): Get the initial screen state at init(instead of assuming
-  // it's at boot).
-  port_manager_->SetUserActive(false);
+  InitUserActiveState();
   session_manager_proxy_->AddObserver(port_manager_.get());
 
   // Add any observers to |udev_monitor_| here.
@@ -51,6 +49,13 @@ int Daemon::OnInit() {
   udev_monitor_->BeginMonitoring();
 
   return 0;
+}
+
+void Daemon::InitUserActiveState() {
+  bool active = !session_manager_proxy_->IsScreenLocked() &&
+                session_manager_proxy_->IsSessionStarted();
+
+  port_manager_->SetUserActive(active);
 }
 
 }  // namespace typecd

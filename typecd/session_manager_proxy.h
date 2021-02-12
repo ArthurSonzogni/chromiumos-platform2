@@ -27,6 +27,15 @@ class SessionManagerProxy {
 
   void AddObserver(SessionManagerObserverInterface* observer);
 
+  // Calls the SessionManager IsScreenLocked() D-Bus function and returns the
+  // value returned by it. If there is a D-Bus error, returns false.
+  bool IsScreenLocked();
+
+  // Uses the SessionManager RetrieveSessionState() D-Bus function and returns
+  // true if a session is in the "started" state. If there is a D-Bus error,
+  // returns false.
+  bool IsSessionStarted();
+
  private:
   // Handles the ScreenIsLocked DBus signal.
   void OnScreenIsLocked();

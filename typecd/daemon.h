@@ -29,6 +29,10 @@ class Daemon : public brillo::DBusDaemon {
   int OnInit() override;
 
  private:
+  // Set the initial UserActive state for the |port_manager_| using
+  // state retrieved from the |session_manager_proxy_|.
+  void InitUserActiveState();
+
   std::unique_ptr<UdevMonitor> udev_monitor_;
   std::unique_ptr<PortManager> port_manager_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
