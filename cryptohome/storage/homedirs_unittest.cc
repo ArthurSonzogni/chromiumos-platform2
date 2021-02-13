@@ -35,6 +35,7 @@
 #include "cryptohome/timestamp.pb.h"
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::NiceMock;
 using ::testing::Return;
 
