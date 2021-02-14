@@ -8,7 +8,7 @@ import("//common-mk/proto_library.gni")
 _event_output_dir = "${root_gen_dir}/include/metrics/structured"
 _xml_file = "structured.xml"
 
-shared_library("libstructured") {
+shared_library("libstructuredmetrics") {
   pkg_deps = [ "libchrome" ]
   sources = [
     "event_base.cc",

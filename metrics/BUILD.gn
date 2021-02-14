@@ -15,7 +15,7 @@ group("all") {
     ":libmetrics_daemon",
     ":libupload_service",
     ":metrics_client",
-    "//metrics/structured:libstructured",
+    "//metrics/structured:libstructuredmetrics",
   ]
   if (use.passive_metrics) {
     deps += [ ":metrics_daemon" ]
