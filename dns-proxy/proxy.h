@@ -80,7 +80,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill);
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillPropertyWithNoRetriesCrashes);
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillPropertyDoesntCrashIfDieFalse);
-  FRIEND_TEST(ProxyTest, SetupInitializesShill);
+  FRIEND_TEST(ProxyTest, ShillInitializedWhenReady);
   FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, DefaultProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, ArcProxy_ConnectedNamedspace);

@@ -175,12 +175,12 @@ TEST_F(ProxyTest, SystemProxy_SetShillPropertyDoesntCrashIfDieFalse) {
   proxy.SetShillProperty("10.10.10.10", false, 0);
 }
 
-TEST_F(ProxyTest, SetupInitializesShill) {
+TEST_F(ProxyTest, ShillInitializedWhenReady) {
   auto shill = ShillClient();
   auto* shill_ptr = shill.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               std::move(shill));
-  proxy.Setup();
+  proxy.OnShillReady(true);
   EXPECT_TRUE(shill_ptr->IsInitialized());
 }
 
@@ -243,7 +243,7 @@ TEST_F(ProxyTest, CrashOnPatchpanelNotReady) {
 TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   auto pp = PatchpanelClient();
   patchpanel::ConnectNamespaceResponse resp;
-  resp.set_host_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+  resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
   pp->SetConnectNamespaceResult(make_fd(), resp);
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
               ShillClient());
