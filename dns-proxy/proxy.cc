@@ -169,7 +169,7 @@ void Proxy::OnShillReset(bool reset) {
   // rediscovering the default device.
   // TODO(garrick): Remove this if so.
   LOG(WARNING) << "Shill has been reset";
-  SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()));
+  SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
 }
 
 std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
@@ -253,7 +253,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   // receiving DNS traffic on success. But if this fails, we don't have much
   // choice but to just crash out and try again.
   if (opts_.type == Type::kSystem)
-    SetShillProperty(patchpanel::IPv4AddressToString(ns_.host_ipv4_address()),
+    SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
                      true /* die_on_failure */);
 }
 
