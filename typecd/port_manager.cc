@@ -285,6 +285,18 @@ void PortManager::RunModeEntry(int port_num) {
     return;
   }
 
+  // Send TBT device-connected notification.
+  // While we can probably optimize this to avoid the repeat CanEnter* calls, we
+  // handle the notification calls ahead, in order to prevent the logic from
+  // becoming difficult to follow.
+  if (notify_mgr_) {
+    if (port->CanEnterTBTCompatibilityMode()) {
+      auto notif = port->CanEnterDPAltMode() ? ConnectNotification::kTBTDP
+                                             : ConnectNotification::kTBTOnly;
+      notify_mgr_->NotifyConnected(notif);
+    }
+  }
+
   // If the host supports USB4 and we can enter USB4 in this partner, do so.
   if (port->CanEnterUSB4()) {
     if (ec_util_->EnterMode(port_num, TypeCMode::kUSB4)) {

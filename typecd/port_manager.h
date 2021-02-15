@@ -12,6 +12,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "typecd/ec_util.h"
+#include "typecd/notification_manager.h"
 #include "typecd/port.h"
 #include "typecd/session_manager_observer_interface.h"
 #include "typecd/udev_monitor.h"
@@ -38,6 +39,8 @@ class PortManager : public UdevMonitor::Observer,
 
   bool GetUserActive() { return user_active_; }
   void SetUserActive(bool active) { user_active_ = active; }
+
+  void SetNotificationManager(NotificationManager* mgr) { notify_mgr_ = mgr; }
 
  private:
   friend class PortManagerTest;
@@ -84,6 +87,9 @@ class PortManager : public UdevMonitor::Observer,
   std::map<int, std::unique_ptr<Port>> ports_;
   bool mode_entry_supported_;
   ECUtil* ec_util_;
+  // Pointer to the NotificationManager instance. NOTE: This is owned by the
+  // parent Daemon, and not PortManager.
+  NotificationManager* notify_mgr_;
 
   // Variable that is used to determine what alt mode should be entered. It is
   // updated in response to session manager events. It is set to false when the

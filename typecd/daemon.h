@@ -11,6 +11,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "typecd/cros_ec_util.h"
+#include "typecd/notification_manager.h"
 #include "typecd/port_manager.h"
 #include "typecd/session_manager_proxy.h"
 #include "typecd/udev_monitor.h"
@@ -37,6 +38,7 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<PortManager> port_manager_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<CrosECUtil> cros_ec_util_;
+  std::unique_ptr<NotificationManager> notify_mgr_;
   base::WeakPtrFactory<Daemon> weak_factory_;
 };
 
