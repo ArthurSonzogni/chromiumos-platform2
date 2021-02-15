@@ -5,6 +5,7 @@
 #include "dns-proxy/proxy.h"
 
 #include <sys/types.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <utility>
@@ -101,6 +102,8 @@ void Proxy::Setup() {
 
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
       &Proxy::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
+  patchpanel_->RegisterProcessChangedCallback(base::BindRepeating(
+      &Proxy::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
 
   shill_->RegisterOnAvailableCallback(
       base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
@@ -147,6 +150,16 @@ void Proxy::OnPatchpanelReady(bool success) {
   if (opts_.type == Type::kSystem)
     shill_->RegisterProcessChangedHandler(
         base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
+}
+
+void Proxy::OnPatchpanelReset(bool reset) {
+  // If patchpanel crashes, the proxy is useless since the connected virtual
+  // network is gone. So the best bet is to exit and have the controller restart
+  // us. Note if this is the system proxy, it will inform shill on shutdown.
+  LOG(ERROR) << "Patchpanel has been shutdown - restarting DNS proxy " << opts_;
+  QuitWithExitCode(EX_UNAVAILABLE);
+
+  LOG(WARNING) << "Patchpanel has been reset";
 }
 
 void Proxy::OnShillReady(bool success) {

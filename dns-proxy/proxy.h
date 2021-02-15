@@ -60,6 +60,7 @@ class Proxy : public brillo::DBusDaemon {
 
   void Setup();
   void OnPatchpanelReady(bool success);
+  void OnPatchpanelReset(bool reset);
   void OnShillReady(bool success);
   void OnShillReset(bool reset);
 
