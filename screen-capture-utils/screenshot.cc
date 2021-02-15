@@ -140,12 +140,13 @@ int Main() {
   CHECK_LE(x + width, crtc_width);
   CHECK_LE(y + height, crtc_height);
 
-  if (crtc->planes().empty()) {
-    LOG(INFO) << "Capturing primary plane only\n";
-  }
-
   if (method == CaptureMethod::AUTODETECT) {
-    if (crtc->fb2() || !crtc->planes().empty())
+    // TODO(andrescj): is it possible to still use the EGL path even if this
+    // is nullptr? e.g., if drmModeGetFB2() fails for the CRTC but not for
+    // individual planes.
+    //
+    // Also, it might be cleaner to move this logic to Crtc.
+    if (crtc->fb2())
       method = CaptureMethod::EGL;
     else
       method = CaptureMethod::BO;

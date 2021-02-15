@@ -287,9 +287,8 @@ EglDisplayBuffer::~EglDisplayBuffer() {
 DisplayBuffer::Result EglDisplayBuffer::Capture() {
   WaitVBlank(crtc_.file().GetPlatformFile());
 
-  const GLuint indices[4] = {0, 1, 2, 3};
-
-  if (crtc_.planes().empty()) {
+  auto connected_planes = crtc_.GetConnectedPlanes();
+  if (connected_planes.empty()) {
     EGLImageKHR image =
         CreateImage(createImageKHR_, import_modifiers_exist_,
                     crtc_.file().GetPlatformFile(), display_, crtc_.fb2());
@@ -298,14 +297,14 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
     glViewport(0, 0, width_, height_);
     glEGLImageTargetTexture2DOES_(GL_TEXTURE_EXTERNAL_OES, image);
 
-    glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, indices);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     destroyImageKHR_(display_, image);
   } else {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    for (auto& plane : crtc_.planes()) {
+    for (auto& plane : connected_planes) {
       EGLImageKHR image = CreateImage(createImageKHR_, import_modifiers_exist_,
                                       crtc_.file().GetPlatformFile(), display_,
                                       plane.first.get());
@@ -317,15 +316,15 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
 
       glEGLImageTargetTexture2DOES_(GL_TEXTURE_EXTERNAL_OES, image);
 
-      glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, indices);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
       destroyImageKHR_(display_, image);
     }
   }
 
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  // TODO(uekawa): potentially improve speed by creating a bo and writing to it
-  // instead of reading out.
+  // TODO(uekawa): potentially improve speed by creating a bo and writing to
+  // it instead of reading out.
   glReadPixels(x_, y_, width_, height_, GL_BGRA_EXT, GL_UNSIGNED_BYTE,
                buffer_.data());
 

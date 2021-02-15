@@ -71,7 +71,7 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
                                 base::FileEnumerator::FILES, kDrmDeviceGlob);
     for (base::FilePath name = lister.Next(); !name.empty();
          name = lister.Next()) {
-      paths.push_back(name);
+      paths.emplace_back(name);
     }
   }
   std::sort(paths.begin(), paths.end());
@@ -121,51 +121,29 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
       std::unique_ptr<Crtc> res_crtc;
 
       // Multiplane is only handled by egl_capture, so don't bother if
-      // GETFB2 isn't supported.
+      // GETFB2 isn't supported. Obtain the |plane_res_| for later use.
+      //
+      // TODO(andrescj): is it possible for |fb2| to be nullptr even if it's
+      // possible to query multiple planes? i.e., is there a case where doing
+      // drmModeGetFB2() for |crtc->buffer_id| fails but doing it for the planes
+      // doesn't?
       if (fb2 && atomic_modeset) {
         ScopedDrmPlaneResPtr plane_res(
             drmModeGetPlaneResources(file.GetPlatformFile()));
         CHECK(plane_res) << " Failed to get plane resources";
-
-        std::vector<Crtc::PlaneInfo> planes;
-        for (uint32_t i = 0; i < plane_res->count_planes; i++) {
-          ScopedDrmPlanePtr plane(
-              drmModeGetPlane(file.GetPlatformFile(), plane_res->planes[i]));
-          if (plane->crtc_id != encoder->crtc_id) {
-            continue;
-          }
-
-          PlanePosition pos{};
-          bool res = PopulatePlanePosition(file.GetPlatformFile(),
-                                           plane->plane_id, &pos);
-          if (!res) {
-            LOG(WARNING) << "Failed to query plane position, skipping.\n";
-            continue;
-          }
-          ScopedDrmModeFB2Ptr fb_info(
-              drmModeGetFB2(file.GetPlatformFile(), plane->fb_id));
-          if (!fb_info) {
-            LOG(WARNING) << "Failed to query plane fb info, skipping.\n";
-            continue;
-          }
-
-          planes.push_back(std::make_pair(std::move(fb_info), pos));
-        }
-
-        if (!planes.empty()) {
-          res_crtc = std::make_unique<Crtc>(
-              file.Duplicate(), std::move(connector), std::move(encoder),
-              std::move(crtc), std::move(fb), std::move(planes));
-        }
+        res_crtc = std::make_unique<Crtc>(
+            file.Duplicate(), std::move(connector), std::move(encoder),
+            std::move(crtc), std::move(fb), std::move(fb2),
+            std::move(plane_res));
       }
 
       if (!res_crtc) {
         res_crtc = std::make_unique<Crtc>(
             file.Duplicate(), std::move(connector), std::move(encoder),
-            std::move(crtc), std::move(fb), std::move(fb2));
+            std::move(crtc), std::move(fb), std::move(fb2), nullptr);
       }
 
-      crtcs.push_back(std::move(res_crtc));
+      crtcs.emplace_back(std::move(res_crtc));
     }
   }
 
@@ -179,26 +157,15 @@ Crtc::Crtc(base::File file,
            ScopedDrmModeEncoderPtr encoder,
            ScopedDrmModeCrtcPtr crtc,
            ScopedDrmModeFBPtr fb,
-           ScopedDrmModeFB2Ptr fb2)
+           ScopedDrmModeFB2Ptr fb2,
+           ScopedDrmPlaneResPtr plane_res)
     : file_(std::move(file)),
       connector_(std::move(connector)),
       encoder_(std::move(encoder)),
       crtc_(std::move(crtc)),
       fb_(std::move(fb)),
-      fb2_(std::move(fb2)) {}
-
-Crtc::Crtc(base::File file,
-           ScopedDrmModeConnectorPtr connector,
-           ScopedDrmModeEncoderPtr encoder,
-           ScopedDrmModeCrtcPtr crtc,
-           ScopedDrmModeFBPtr fb,
-           std::vector<PlaneInfo> planes)
-    : file_(std::move(file)),
-      connector_(std::move(connector)),
-      encoder_(std::move(encoder)),
-      crtc_(std::move(crtc)),
-      fb_(std::move(fb)),
-      planes_(std::move(planes)) {}
+      fb2_(std::move(fb2)),
+      plane_res_(std::move(plane_res)) {}
 
 bool Crtc::IsInternalDisplay() const {
   switch (connector_->connector_type) {
@@ -234,6 +201,41 @@ bool CrtcFinder::MatchesSpec(const Crtc* crtc) const {
   }
   NOTREACHED() << "Invalid spec";
   return false;
+}
+
+std::vector<Crtc::PlaneInfo> Crtc::GetConnectedPlanes() const {
+  CHECK(fb2())
+      << "This code path is supported only if drmModeGetFB2() succeeded "
+         "for the CRTC.";
+  std::vector<Crtc::PlaneInfo> planes;
+  if (!plane_res_.get()) {
+    // Return the empty list if we decided not to query the plane resources or
+    // if doing so failed.
+    return planes;
+  }
+  for (uint32_t i = 0; i < plane_res_->count_planes; i++) {
+    ScopedDrmPlanePtr plane(
+        drmModeGetPlane(file_.GetPlatformFile(), plane_res_->planes[i]));
+    if (plane->crtc_id != crtc_->crtc_id) {
+      continue;
+    }
+
+    PlanePosition pos{};
+    bool res =
+        PopulatePlanePosition(file_.GetPlatformFile(), plane->plane_id, &pos);
+    if (!res) {
+      LOG(WARNING) << "Failed to query plane position, skipping.\n";
+      continue;
+    }
+    ScopedDrmModeFB2Ptr fb_info(
+        drmModeGetFB2(file_.GetPlatformFile(), plane->fb_id));
+    if (!fb_info) {
+      LOG(WARNING) << "Failed to query plane fb info, skipping.\n";
+      continue;
+    }
+    planes.emplace_back(std::make_pair(std::move(fb_info), pos));
+  }
+  return planes;
 }
 
 }  // namespace screenshot
