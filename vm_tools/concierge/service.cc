@@ -1129,8 +1129,15 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     const auto untrusted_vm_check_result =
         IsUntrustedVMAllowed(request.run_as_untrusted(), host_kernel_version_);
     if (!untrusted_vm_check_result.untrusted_vm_allowed) {
-      LOG(ERROR) << "Untrusted VMs are not allowed";
-      response.set_failure_reason("Untrusted VMs are not allowed");
+      std::stringstream ss;
+      ss << "Untrusted VMs are not allowed: "
+         << "the host kernel version (" << host_kernel_version_.first << "."
+         << host_kernel_version_.second << ") must be newer than or equal to "
+         << kMinKernelVersionForUntrustedAndNestedVM.first << "."
+         << kMinKernelVersionForUntrustedAndNestedVM.second
+         << ", or the device must be in the developer mode";
+      LOG(ERROR) << ss.str();
+      response.set_failure_reason(ss.str());
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
