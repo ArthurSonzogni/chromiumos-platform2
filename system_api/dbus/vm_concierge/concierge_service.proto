@@ -252,6 +252,9 @@ message StartArcVmRequest {
 
   // Ignore development configuration directives when ARCVM is started.
   bool ignore_dev_conf = 9;
+
+  // Whether rt-vcpus are enabled.
+  bool enable_rt_vcpu = 10;
 }
 
 enum VmStatus {
