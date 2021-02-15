@@ -208,7 +208,11 @@ TEST(DatapathTest, Start) {
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {IPv4, "nat -L redirect_dns -w"},
+      {IPv4, "nat -F redirect_dns -w"},
+      {IPv4, "nat -X redirect_dns -w"},
       {IPv4, "nat -F POSTROUTING -w"},
+      {IPv4, "nat -F OUTPUT -w"},
       // Asserts for SNAT rules.
       {IPv4,
        "filter -A FORWARD -m mark --mark 1/1 -m state --state INVALID -j DROP "
@@ -318,6 +322,8 @@ TEST(DatapathTest, Start) {
       {Dual,
        "mangle -A POSTROUTING -m mark ! --mark 0x0/0xffff0000 -j "
        "check_routing_mark -w"},
+      // Asserts for redirect_dns chain creation
+      {IPv4, "nat -N redirect_dns -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(runner, c.first, c.second);
@@ -355,7 +361,11 @@ TEST(DatapathTest, Stop) {
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {IPv4, "nat -L redirect_dns -w"},
+      {IPv4, "nat -F redirect_dns -w"},
+      {IPv4, "nat -X redirect_dns -w"},
       {IPv4, "nat -F POSTROUTING -w"},
+      {IPv4, "nat -F OUTPUT -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(runner, c.first, c.second);
@@ -811,6 +821,9 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   "--restore-mark --mask 0x00003f00 -w");
   Verify_iptables(runner, IPv4,
                   "nat -A POSTROUTING -o arcbr0 -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
+                  "redirect_dns -w");
 
   // Teardown
   Verify_iptables(runner, Dual,
@@ -830,6 +843,9 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   "--restore-mark --mask 0x00003f00 -w");
   Verify_iptables(runner, IPv4,
                   "nat -D POSTROUTING -o arcbr0 -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
+                  "redirect_dns -w");
 
   Datapath datapath(&runner, &firewall);
   datapath.SetIfnameIndex("arcbr0", 5);
@@ -858,6 +874,9 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "mangle -A PREROUTING -i tun0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
   Verify_iptables(runner, IPv4, "nat -A POSTROUTING -o tun0 -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
+                  "redirect_dns -w");
   // Teardown
   Verify_iptables(runner, Dual,
                   "mangle -D check_routing_mark -o tun0 -m mark ! "
@@ -875,6 +894,9 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "mangle -D PREROUTING -i tun0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
   Verify_iptables(runner, IPv4, "nat -D POSTROUTING -o tun0 -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
+                  "redirect_dns -w");
   // Start tun0 <-> arcbr0 routing
   Verify_iptables(runner, IPv4,
                   "filter -A FORWARD -i tun0 -o arcbr0 -j ACCEPT -w");
@@ -1050,6 +1072,57 @@ TEST(DatapathTest, AddIPv4Route) {
   EXPECT_EQ(route2, captured_routes[3]);
   ioctl_reqs.clear();
   ioctl_rtentry_args.clear();
+}
+
+TEST(DatapathTest, RedirectDnsRules) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
+                  "--to-destination 192.168.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
+                  "--to-destination 192.168.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 1.1.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 1.1.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 1.1.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 1.1.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 8.8.8.8 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 8.8.8.8 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
+                  "--to-destination 192.168.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
+                  "--to-destination 192.168.1.1 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 8.8.8.8 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
+                  "--to-destination 8.8.8.8 -w");
+
+  Datapath datapath(&runner, &firewall);
+  datapath.RemoveRedirectDnsRule("wlan0");
+  datapath.RemoveRedirectDnsRule("unknown");
+  datapath.AddRedirectDnsRule("eth0", "192.168.1.1");
+  datapath.AddRedirectDnsRule("wlan0", "1.1.1.1");
+  datapath.AddRedirectDnsRule("wlan0", "8.8.8.8");
+  datapath.RemoveRedirectDnsRule("eth0");
+  datapath.RemoveRedirectDnsRule("wlan0");
 }
 
 TEST(DatapathTest, ArcVethHostName) {

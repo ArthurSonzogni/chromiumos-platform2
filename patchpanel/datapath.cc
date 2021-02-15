@@ -50,12 +50,8 @@ constexpr std::array<const char*, 6> kPhysicalIfnamePrefixes{
 constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
 constexpr char kCheckRoutingMarkChain[] = "check_routing_mark";
-constexpr char kDropGuestIpv4Prefix[] = "drop_guest_ipv4_prefix";
-
-// Constant fwmark mask for matching local socket traffic that should be routed
-// through a VPN connection. The traffic must not be part of an existing
-// connection and must match exactly the VPN routing intent policy bit.
-const Fwmark kFwmarkVpnMatchingMask = kFwmarkRoutingMask | kFwmarkVpnMask;
+constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
+constexpr char kRedirectDnsChain[] = "redirect_dns";
 
 std::string PrefixIfname(const std::string& prefix, const std::string& ifname) {
   std::string n = prefix + ifname;
@@ -128,13 +124,13 @@ void Datapath::Start() {
   // for VMs, containers, and connected namespaces This is needed to prevent
   // packets leaking with an incorrect src IP when a local process binds to the
   // wrong interface.
-  if (!ModifyChain(IpFamily::IPv4, "filter", "-N", kDropGuestIpv4Prefix))
-    LOG(ERROR) << "Failed to create " << kDropGuestIpv4Prefix
+  if (!ModifyChain(IpFamily::IPv4, "filter", "-N", kDropGuestIpv4PrefixChain))
+    LOG(ERROR) << "Failed to create " << kDropGuestIpv4PrefixChain
                << " filter chain";
   if (!ModifyIptables(IpFamily::IPv4, "filter",
-                      {"-I", "OUTPUT", "-j", kDropGuestIpv4Prefix, "-w"}))
+                      {"-I", "OUTPUT", "-j", kDropGuestIpv4PrefixChain, "-w"}))
     LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
-               << kDropGuestIpv4Prefix;
+               << kDropGuestIpv4PrefixChain;
   for (const auto& oif : kPhysicalIfnamePrefixes) {
     if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet))
       LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
@@ -221,6 +217,12 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to add POSTROUTING jump rule to "
                << kCheckRoutingMarkChain;
 
+  // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS queries
+  // of system services. When a VPN is connected, a query routed through a
+  // physical network is redirected to the primary nameserver of that network.
+  if (!ModifyChain(IpFamily::IPv4, "nat", "-N", kRedirectDnsChain))
+    LOG(ERROR) << "Failed to set up " << kRedirectDnsChain << " nat chain";
+
   // b/176260499: on 4.4 kernel, the following connmark rules are observed to
   // incorrectly cause neighbor discovery icmpv6 packets to be dropped. Add
   // these rules to bypass connmark rule for those packets.
@@ -260,7 +262,7 @@ void Datapath::ResetIptables() {
   // If it exists, remove jump rules from a built-in chain to a custom routing
   // or tagging chain.
   ModifyIptables(IpFamily::IPv4, "filter",
-                 {"-D", "OUTPUT", "-j", kDropGuestIpv4Prefix, "-w"},
+                 {"-D", "OUTPUT", "-j", kDropGuestIpv4PrefixChain, "-w"},
                  false /*log_failures*/);
 
   // Flush chains used for routing and fwmark tagging. Also delete additional
@@ -282,8 +284,10 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain, true},
       {IpFamily::Dual, "mangle", kApplyVpnMarkChain, true},
       {IpFamily::Dual, "mangle", kCheckRoutingMarkChain, true},
-      {IpFamily::IPv4, "filter", kDropGuestIpv4Prefix, true},
+      {IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain, true},
+      {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
       {IpFamily::IPv4, "nat", "POSTROUTING", false},
+      {IpFamily::IPv4, "nat", "OUTPUT", false},
   };
   for (const auto& op : resetOps) {
     // Chains to delete are custom chains and will not exist the first time
@@ -554,15 +558,15 @@ void Datapath::RemoveInterface(const std::string& ifname) {
 bool Datapath::AddSourceIPv4DropRule(const std::string& oif,
                                      const std::string& src_ip) {
   return process_runner_->iptables(
-             "filter", {"-I", kDropGuestIpv4Prefix, "-o", oif, "-s", src_ip,
-                        "-j", "DROP", "-w"}) == 0;
+             "filter", {"-I", kDropGuestIpv4PrefixChain, "-o", oif, "-s",
+                        src_ip, "-j", "DROP", "-w"}) == 0;
 }
 
 bool Datapath::RemoveSourceIPv4DropRule(const std::string& oif,
                                         const std::string& src_ip) {
   return process_runner_->iptables(
-             "filter", {"-D", kDropGuestIpv4Prefix, "-o", oif, "-s", src_ip,
-                        "-j", "DROP", "-w"}) == 0;
+             "filter", {"-D", kDropGuestIpv4PrefixChain, "-o", oif, "-s",
+                        src_ip, "-j", "DROP", "-w"}) == 0;
 }
 
 bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
@@ -785,6 +789,64 @@ void Datapath::RemoveOutboundIPv4SNATMark(const std::string& ifname) {
                                        "MARK", "--set-mark", "1/1", "-w"});
 }
 
+bool Datapath::AddRedirectDnsRule(const std::string& ifname,
+                                  const std::string dns_ipv4_addr) {
+  bool success = true;
+  success &= RemoveRedirectDnsRule(ifname);
+  // Use Insert operation to ensure that the new DNS address is used first.
+  success &= ModifyRedirectDnsDNATRule("-I", "tcp", ifname, dns_ipv4_addr);
+  success &= ModifyRedirectDnsDNATRule("-I", "udp", ifname, dns_ipv4_addr);
+  physical_dns_addresses_[ifname] = dns_ipv4_addr;
+  return success;
+}
+
+bool Datapath::RemoveRedirectDnsRule(const std::string& ifname) {
+  const auto it = physical_dns_addresses_.find(ifname);
+  if (it == physical_dns_addresses_.end())
+    return true;
+
+  bool success = true;
+  success &= ModifyRedirectDnsDNATRule("-D", "tcp", ifname, it->second);
+  success &= ModifyRedirectDnsDNATRule("-D", "udp", ifname, it->second);
+  physical_dns_addresses_.erase(it);
+  return success;
+}
+
+bool Datapath::ModifyRedirectDnsDNATRule(const std::string& op,
+                                         const std::string& protocol,
+                                         const std::string& ifname,
+                                         const std::string& dns_ipv4_addr) {
+  std::vector<std::string> args = {op,
+                                   kRedirectDnsChain,
+                                   "-p",
+                                   protocol,
+                                   "--dport",
+                                   "53",
+                                   "-o",
+                                   ifname,
+                                   "-j",
+                                   "DNAT",
+                                   "--to-destination",
+                                   dns_ipv4_addr,
+                                   "-w"};
+  return process_runner_->iptables("nat", args) != 0;
+}
+
+bool Datapath::ModifyRedirectDnsJumpRule(const std::string& op) {
+  std::vector<std::string> args = {
+      op,
+      "OUTPUT",
+      "-m",
+      "mark",
+      "!",
+      "--mark",
+      kFwmarkRouteOnVpn.ToString() + "/" + kFwmarkVpnMask.ToString(),
+      "-j",
+      kRedirectDnsChain,
+      "-w"};
+  return process_runner_->iptables("nat", args) != 0;
+}
+
 bool Datapath::MaskInterfaceFlags(const std::string& ifname,
                                   uint16_t on,
                                   uint16_t off) {
@@ -901,6 +963,8 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   if (vpn_ifname != kArcBridge)
     StartRoutingDevice(vpn_ifname, kArcBridge, 0 /*no inbound DNAT */,
                        TrafficSource::ARC, true /* route_on_vpn */);
+  if (!ModifyRedirectDnsJumpRule("-A"))
+    LOG(ERROR) << "Failed to set jump rule to " << kRedirectDnsChain;
 }
 
 void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
@@ -913,6 +977,8 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   if (process_runner_->iptables("nat", {"-D", "POSTROUTING", "-o", vpn_ifname,
                                         "-j", "MASQUERADE", "-w"}) != 0)
     LOG(ERROR) << "Could not stop SNAT for traffic outgoing " << vpn_ifname;
+  if (!ModifyRedirectDnsJumpRule("-D"))
+    LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
 }
 
 bool Datapath::ModifyConnmarkSetPostrouting(IpFamily family,

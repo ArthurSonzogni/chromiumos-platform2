@@ -224,6 +224,8 @@ void Manager::InitialSetup() {
         &Manager::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
     shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
         &Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+    shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
+        &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
   }
 
   nd_proxy_->RegisterNDProxyMessageHandler(
@@ -325,12 +327,30 @@ void Manager::OnDevicesChanged(const std::set<std::string>& added,
                                const std::set<std::string>& removed) {
   for (const std::string& ifname : removed) {
     datapath_->StopConnectionPinning(ifname);
+    datapath_->RemoveRedirectDnsRule(ifname);
     counters_svc_->OnPhysicalDeviceRemoved(ifname);
   }
 
   for (const std::string& ifname : added) {
     datapath_->StartConnectionPinning(ifname);
+    ShillClient::Device device;
+    if (!shill_client_->GetDeviceProperties(ifname, &device))
+      continue;
+
+    if (!device.ipconfig.ipv4_dns_addresses.empty())
+      datapath_->AddRedirectDnsRule(ifname,
+                                    device.ipconfig.ipv4_dns_addresses.front());
+
     counters_svc_->OnPhysicalDeviceAdded(ifname);
+  }
+}
+
+void Manager::OnIPConfigsChanged(const std::string& device,
+                                 const ShillClient::IPConfig& ipconfig) {
+  if (ipconfig.ipv4_dns_addresses.empty()) {
+    datapath_->RemoveRedirectDnsRule(device);
+  } else {
+    datapath_->AddRedirectDnsRule(device, ipconfig.ipv4_dns_addresses.front());
   }
 }
 

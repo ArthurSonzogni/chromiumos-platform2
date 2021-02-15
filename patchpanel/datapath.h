@@ -250,6 +250,16 @@ class Datapath {
   virtual bool AddAdbPortAccessRule(const std::string& ifname);
   virtual void DeleteAdbPortAccessRule(const std::string& ifname);
 
+  // Create (or delete) DNAT rules for redirecting DNS queries from system
+  // services to the nameservers of a particular physical networks. These
+  // DNAT rules are only applied if a VPN is connected and allows system
+  // services to resolve hostnames even if a VPN application configures DNS
+  // addresses only routable through the VPN (b/178331695).
+  // TODO(b/171157837) Replaces these rules with the system DNS proxy.
+  bool AddRedirectDnsRule(const std::string& ifname,
+                          const std::string dns_ipv4_addr);
+  bool RemoveRedirectDnsRule(const std::string& ifname);
+
   // Set or override the interface name to index mapping for |ifname|.
   // Only used for testing.
   void SetIfnameIndex(const std::string& ifname, int ifindex);
@@ -309,6 +319,11 @@ class Datapath {
   // add a fwmark mask in the generated rule.
   bool AddOutboundIPv4SNATMark(const std::string& ifname);
   void RemoveOutboundIPv4SNATMark(const std::string& ifname);
+  bool ModifyRedirectDnsDNATRule(const std::string& op,
+                                 const std::string& protocol,
+                                 const std::string& ifname,
+                                 const std::string& dns_ipv4_addr);
+  bool ModifyRedirectDnsJumpRule(const std::string& op);
 
   bool ModifyConnmarkSetPostrouting(IpFamily family,
                                     const std::string& op,
@@ -384,6 +399,11 @@ class Datapath {
   // TODO(b/161507671) Rely on RoutingService to obtain this information once
   // shill/routing_table.cc has been migrated to patchpanel.
   std::map<std::string, int> if_nametoindex_;
+
+  // A map used for tracking the primary IPv4 dns address associated to a given
+  // Shill Device known by its interface name. This is used for redirecting
+  // DNS queries of system services when a VPN is connected.
+  std::map<std::string, std::string> physical_dns_addresses_;
 };
 
 }  // namespace patchpanel

@@ -75,6 +75,8 @@ class Manager final : public brillo::DBusDaemon, private TrafficForwarder {
                               const ShillClient::Device& prev_device);
   void OnDevicesChanged(const std::set<std::string>& added,
                         const std::set<std::string>& removed);
+  void OnIPConfigsChanged(const std::string& device,
+                          const ShillClient::IPConfig& ipconfig);
 
   void OnDeviceChanged(const Device& device,
                        Device::ChangeEvent event,
