@@ -32,6 +32,7 @@ using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ManagerProxyMock;
 using testing::_;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::StrEq;
 
 class FakeShillClient : public shill::FakeClient {
@@ -46,7 +47,14 @@ class FakeShillClient : public shill::FakeClient {
         manager_proxy_);
   }
 
+  std::unique_ptr<shill::Client::Device> DefaultDevice(
+      bool exclude_vpn) override {
+    return std::move(default_device_);
+  }
+
   bool IsInitialized() const { return init_; }
+
+  std::unique_ptr<shill::Client::Device> default_device_;
 
  private:
   ManagerProxyInterface* manager_proxy_;
@@ -356,6 +364,74 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
               SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
       .WillOnce(Return(true));
   proxy.OnDefaultDeviceChanged(&dev);
+}
+
+TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
+  TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
+                  PatchpanelClient(), ShillClient());
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(true));
+  EXPECT_CALL(mock_manager_,
+              SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
+      .WillOnce(Return(true));
+  proxy.resolver = std::move(resolver);
+  shill::Client::Device dev;
+  dev.type = shill::Client::Device::Type::kWifi;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  proxy.OnDefaultDeviceChanged(&dev);
+  EXPECT_TRUE(proxy.device_);
+  EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kWifi);
+  dev.type = shill::Client::Device::Type::kVPN;
+  proxy.OnDefaultDeviceChanged(&dev);
+  EXPECT_TRUE(proxy.device_);
+  EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kWifi);
+}
+
+TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
+  auto shill = ShillClient();
+  auto* shill_ptr = shill.get();
+  TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
+                  PatchpanelClient(), std::move(shill));
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(true));
+  EXPECT_CALL(mock_manager_,
+              SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
+      .WillOnce(Return(true));
+  proxy.resolver = std::move(resolver);
+  shill::Client::Device vpn;
+  vpn.type = shill::Client::Device::Type::kVPN;
+  vpn.state = shill::Client::Device::ConnectionState::kOnline;
+  shill_ptr->default_device_ = std::make_unique<shill::Client::Device>();
+  shill_ptr->default_device_->type = shill::Client::Device::Type::kWifi;
+  shill_ptr->default_device_->state =
+      shill::Client::Device::ConnectionState::kOnline;
+  proxy.OnDefaultDeviceChanged(&vpn);
+  EXPECT_TRUE(proxy.device_);
+  EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kWifi);
+}
+
+TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
+  TestProxy proxy(Proxy::Options{.type = Proxy::Type::kDefault},
+                  PatchpanelClient(), ShillClient());
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(true));
+  proxy.resolver = std::move(resolver);
+  shill::Client::Device dev;
+  dev.type = shill::Client::Device::Type::kWifi;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  proxy.OnDefaultDeviceChanged(&dev);
+  EXPECT_TRUE(proxy.device_);
+  EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kWifi);
+  dev.type = shill::Client::Device::Type::kVPN;
+  proxy.OnDefaultDeviceChanged(&dev);
+  EXPECT_TRUE(proxy.device_);
+  EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kVPN);
 }
 
 }  // namespace dns_proxy

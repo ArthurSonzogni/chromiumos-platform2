@@ -210,21 +210,33 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     return;
   }
 
+  shill::Client::Device new_default_device = *device;
+
   // The system proxy should ignore when a VPN is turned on as it must continue
   // to work with the underlying physical interface.
-  // TODO(garrick): We need to handle the case when the system proxy is first
-  // started when a VPN is connected. In this case, we need to dig out the
-  // physical network device and use that from here forward.
   if (opts_.type == Proxy::Type::kSystem &&
-      device->type == shill::Client::Device::Type::kVPN)
-    return;
+      device->type == shill::Client::Device::Type::kVPN) {
+    if (device_)
+      return;
+
+    // No device means that the system proxy has started up with a VPN as the
+    // default network; which means we need to dig out the physical network
+    // device and use that from here forward.
+    auto dd = shill_->DefaultDevice(true /* exclude_vpn */);
+    if (!dd) {
+      LOG(ERROR) << "No default non-VPN device found";
+      return;
+    }
+    new_default_device = *dd.get();
+  }
 
   // While this is enforced in shill as well, only enable resolution if the
   // service online.
-  if (device->state != shill::Client::Device::ConnectionState::kOnline) {
+  if (new_default_device.state !=
+      shill::Client::Device::ConnectionState::kOnline) {
     if (device_) {
       LOG(WARNING) << opts_ << " is stopping because the default device ["
-                   << device->ifname << "] is offline";
+                   << new_default_device.ifname << "] is offline";
       resolver_.reset();
       device_.reset();
     }
@@ -235,10 +247,11 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     device_ = std::make_unique<shill::Client::Device>();
 
   // The default network has changed.
-  if (device->ifname != device_->ifname)
-    LOG(INFO) << opts_ << " is now tracking [" << device->ifname << "]";
+  if (new_default_device.ifname != device_->ifname)
+    LOG(INFO) << opts_ << " is now tracking [" << new_default_device.ifname
+              << "]";
 
-  *device_.get() = *device;
+  *device_.get() = new_default_device;
 
   if (!resolver_) {
     resolver_ =

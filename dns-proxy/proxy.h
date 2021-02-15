@@ -96,6 +96,9 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline);
   FRIEND_TEST(ProxyTest,
               SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline);
+  FRIEND_TEST(ProxyTest, SystemProxy_IgnoresVPN);
+  FRIEND_TEST(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN);
+  FRIEND_TEST(ProxyTest, DefaultProxy_UsesVPN);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
