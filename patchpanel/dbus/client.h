@@ -46,6 +46,12 @@ class BRILLO_EXPORT Client {
   virtual void RegisterOnAvailableCallback(
       base::RepeatingCallback<void(bool)> callback) = 0;
 
+  // |callback| will be invoked if patchpanel exits and/or the DBus service
+  // owner changes. The parameter will be false if the process is gone (no
+  // owner) or true otherwise.
+  virtual void RegisterProcessChangedCallback(
+      base::RepeatingCallback<void(bool)> callback) = 0;
+
   virtual bool NotifyArcStartup(pid_t pid) = 0;
   virtual bool NotifyArcShutdown() = 0;
 

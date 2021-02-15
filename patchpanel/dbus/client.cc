@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
@@ -113,6 +114,9 @@ class ClientImpl : public Client {
   void RegisterOnAvailableCallback(
       base::RepeatingCallback<void(bool)> callback) override;
 
+  void RegisterProcessChangedCallback(
+      base::RepeatingCallback<void(bool)> callback) override;
+
   bool NotifyArcStartup(pid_t pid) override;
   bool NotifyArcShutdown() override;
 
@@ -167,8 +171,15 @@ class ClientImpl : public Client {
   dbus::ObjectProxy* proxy_ = nullptr;  // owned by |bus_|
   bool owns_bus_;  // Yes if |bus_| is created by Client::New
 
+  base::RepeatingCallback<void(bool)> owner_callback_;
+
+  void OnOwnerChanged(const std::string& old_owner,
+                      const std::string& new_owner);
+
   bool SendSetVpnIntentRequest(int socket,
                                SetVpnIntentRequest::VpnRoutingPolicy policy);
+
+  base::WeakPtrFactory<ClientImpl> weak_factory_{this};
 };
 
 ClientImpl::~ClientImpl() {
@@ -183,6 +194,28 @@ void ClientImpl::RegisterOnAvailableCallback(
     return;
   }
   proxy_->WaitForServiceToBeAvailable(callback);
+}
+
+void ClientImpl::RegisterProcessChangedCallback(
+    base::RepeatingCallback<void(bool)> callback) {
+  owner_callback_ = callback;
+  bus_->GetObjectProxy(kPatchPanelServiceName, dbus::ObjectPath{"/"})
+      ->SetNameOwnerChangedCallback(
+          base::Bind(&ClientImpl::OnOwnerChanged, weak_factory_.GetWeakPtr()));
+}
+
+void ClientImpl::OnOwnerChanged(const std::string& old_owner,
+                                const std::string& new_owner) {
+  if (new_owner.empty()) {
+    LOG(INFO) << "Patchpanel lost";
+    if (!owner_callback_.is_null())
+      owner_callback_.Run(false);
+    return;
+  }
+
+  LOG(INFO) << "Patchpanel reset";
+  if (!owner_callback_.is_null())
+    owner_callback_.Run(true);
 }
 
 bool ClientImpl::NotifyArcStartup(pid_t pid) {
