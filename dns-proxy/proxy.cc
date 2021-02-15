@@ -29,6 +29,8 @@ constexpr char kDefaultProxyType[] = "def";
 constexpr char kARCProxyType[] = "arc";
 constexpr int32_t kRequestMaxRetry = 1;
 constexpr uint16_t kDefaultPort = 13568;  // port 53 in network order.
+constexpr char kIfAddrAny[] = "0.0.0.0";
+
 // static
 const char* Proxy::TypeToString(Type t) {
   switch (t) {
@@ -256,6 +258,11 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
 
   // Update the resolver with the latest DNS config.
   auto name_servers = device_->ipconfig.ipv4_dns_addresses;
+  // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
+  name_servers.erase(
+      std::remove_if(name_servers.begin(), name_servers.end(),
+                     [](const std::string& s) { return s == kIfAddrAny; }),
+      name_servers.end());
   name_servers.insert(name_servers.end(),
                       device_->ipconfig.ipv6_dns_addresses.begin(),
                       device_->ipconfig.ipv6_dns_addresses.end());
