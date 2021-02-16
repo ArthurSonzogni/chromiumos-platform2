@@ -775,5 +775,82 @@ TEST_F(ClientTest, ManagerPropertyAccessor) {
              base::Bind([](brillo::Error*) {}));
 }
 
+TEST_F(ClientTest, DefaultDeviceReturnsCorrectDeviceForVPN) {
+  dbus::ObjectPath service0_path("/service/0"), service1_path("/service/1"),
+      device0_path("/dev/0"), device1_path("/dev/1");
+  brillo::VariantDictionary mgr_props;
+  mgr_props[kServicesProperty] =
+      std::vector<dbus::ObjectPath>({service0_path, service1_path});
+  EXPECT_CALL(*client_->manager(), GetProperties(_, _, _))
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(mgr_props), Return(true)));
+
+  auto* service0 = client_->PreMakeService(service0_path);
+  brillo::VariantDictionary service0_props;
+  service0_props[kTypeProperty] = std::string(kTypeVPN);
+  service0_props[kStateProperty] = std::string(kStateOnline);
+  service0_props[kDeviceProperty] = device0_path;
+  EXPECT_CALL(*service0, GetProperties(_, _, _))
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(service0_props), Return(true)));
+
+  auto* device0 = client_->PreMakeDevice(device0_path);
+  brillo::VariantDictionary device0_props;
+  device0_props[kTypeProperty] = std::string(kTypePPP);
+  device0_props[kInterfaceProperty] = std::string("ppp0");
+  EXPECT_CALL(*device0, GetProperties(_, _, _))
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(device0_props), Return(true)));
+
+  auto dev = client_->DefaultDevice(false /*exclude_vpn*/);
+  EXPECT_TRUE(dev);
+  EXPECT_EQ(dev->ifname, "ppp0");
+  EXPECT_EQ(dev->type, Client::Device::Type::kPPP);
+  EXPECT_EQ(dev->state, Client::Device::ConnectionState::kOnline);
+}
+
+TEST_F(ClientTest, DefaultDeviceReturnsCorrectDeviceExcludingVPN) {
+  dbus::ObjectPath service0_path("/service/0"), service1_path("/service/1"),
+      device0_path("/dev/0"), device1_path("/dev/1");
+  brillo::VariantDictionary mgr_props;
+  mgr_props[kServicesProperty] =
+      std::vector<dbus::ObjectPath>({service0_path, service1_path});
+  EXPECT_CALL(*client_->manager(), GetProperties(_, _, _))
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(mgr_props), Return(true)));
+
+  auto* service0 = client_->PreMakeService(service0_path);
+  brillo::VariantDictionary service0_props;
+  service0_props[kTypeProperty] = std::string(kTypeVPN);
+  service0_props[kStateProperty] = std::string(kStateOnline);
+  service0_props[kDeviceProperty] = device0_path;
+  EXPECT_CALL(*service0, GetProperties(_, _, _))
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(service0_props), Return(true)));
+
+  auto* service1 = client_->PreMakeService(service1_path);
+  brillo::VariantDictionary service1_props;
+  service1_props[kTypeProperty] = std::string(kTypeWifi);
+  service1_props[kStateProperty] = std::string(kStateOnline);
+  service1_props[kDeviceProperty] = device1_path;
+  EXPECT_CALL(*service1, GetProperties(_, _, _))
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(service1_props), Return(true)));
+
+  auto* device1 = client_->PreMakeDevice(device1_path);
+  brillo::VariantDictionary device1_props;
+  device1_props[kTypeProperty] = std::string(kTypeWifi);
+  device1_props[kInterfaceProperty] = std::string("wlan0");
+  EXPECT_CALL(*device1, GetProperties(_, _, _))
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(device1_props), Return(true)));
+
+  auto dev = client_->DefaultDevice(true /*exclude_vpn*/);
+  EXPECT_TRUE(dev);
+  EXPECT_EQ(dev->ifname, "wlan0");
+  EXPECT_EQ(dev->type, Client::Device::Type::kWifi);
+  EXPECT_EQ(dev->state, Client::Device::ConnectionState::kOnline);
+}
+
 }  // namespace
 }  // namespace shill

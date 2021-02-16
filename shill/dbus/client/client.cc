@@ -558,7 +558,7 @@ Client::Device* Client::HandleSelectedServiceChanged(
 }
 
 Client::IPConfig Client::ParseIPConfigsProperty(
-    const std::string& device_path, const brillo::Any& property_value) {
+    const std::string& device_path, const brillo::Any& property_value) const {
   IPConfig ipconfig;
   auto paths = property_value.TryGet<std::vector<dbus::ObjectPath>>();
   if (paths.empty()) {
@@ -743,6 +743,74 @@ std::unique_ptr<Client::ManagerPropertyAccessor> Client::ManagerProperties(
     const base::TimeDelta& timeout) const {
   return std::make_unique<PropertyAccessor<ManagerProxyInterface>>(
       manager_proxy_.get(), timeout);
+}
+
+std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
+  brillo::ErrorPtr error;
+  brillo::VariantDictionary properties;
+  if (!manager_proxy_->GetProperties(&properties, &error)) {
+    LOG(ERROR) << "Failed to obtain manager properties";
+    return nullptr;
+  }
+  auto services =
+      brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
+          properties, shill::kServicesProperty);
+
+  dbus::ObjectPath device_path;
+  shill::Client::Device::ConnectionState conn_state;
+  for (const auto& s : services) {
+    properties.clear();
+    if (!NewServiceProxy(s)->GetProperties(&properties, &error)) {
+      LOG(ERROR) << "Failed to obtain service [" << s.value()
+                 << "] properties: " << error->GetMessage();
+      return nullptr;
+    }
+    if (exclude_vpn) {
+      auto type = brillo::GetVariantValueOrDefault<std::string>(properties,
+                                                                kTypeProperty);
+      if (type.empty()) {
+        LOG(ERROR) << "Failed to obtain property [" << shill::kTypeProperty
+                   << "] on service [" << s.value() << "]";
+        return nullptr;
+      }
+      if (type == kTypeVPN)
+        continue;
+    }
+
+    conn_state =
+        ParseConnectionState(brillo::GetVariantValueOrDefault<std::string>(
+            properties, kStateProperty));
+    device_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
+        properties, kDeviceProperty);
+    if (device_path.IsValid())
+      break;
+
+    LOG(WARNING) << "Failed to obtain device for service [" << s.value() << "]";
+    continue;
+  }
+  if (!device_path.IsValid()) {
+    LOG(ERROR) << "No devices found";
+    return nullptr;
+  }
+
+  auto proxy = NewDeviceProxy(device_path);
+  properties.clear();
+  if (!proxy->GetProperties(&properties, &error)) {
+    LOG(ERROR) << "Failed to obtain properties for device ["
+               << device_path.value() << "]: " << error->GetMessage();
+    return nullptr;
+  }
+  auto device = std::make_unique<Device>();
+  device->type = ParseDeviceType(
+      brillo::GetVariantValueOrDefault<std::string>(properties, kTypeProperty));
+  device->ifname = brillo::GetVariantValueOrDefault<std::string>(
+      properties, kInterfaceProperty);
+  device->state = conn_state;
+  device->ipconfig = ParseIPConfigsProperty(
+      device_path.value(),
+      brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
+          properties, kIPConfigsProperty));
+  return device;
 }
 
 }  // namespace shill

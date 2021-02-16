@@ -140,7 +140,27 @@ class BRILLO_EXPORT Client {
       proxy_->SetPropertyAsync(name, value, success, error, timeout_);
     }
 
-    // TODO(garrick): Getters.
+    // Get all properties.
+    virtual bool Get(brillo::VariantDictionary* properties,
+                     brillo::ErrorPtr* error) const {
+      return proxy_->GetProperties(properties, error, timeout_);
+    }
+
+    // Get one property or its default empty value if not found.
+    template <class T>
+    bool Get(const std::string& name,
+             T* property,
+             brillo::ErrorPtr* error) const {
+      brillo::VariantDictionary properties;
+      if (!Get(&properties, error))
+        return false;
+
+      *property = brillo::GetVariantValueOrDefault<T>(properties, name);
+      return true;
+    }
+
+    // TODO(garrick): Async getters.
+    // TODO(garrick): Clear.
 
    private:
     Proxy* proxy_;
@@ -149,6 +169,8 @@ class BRILLO_EXPORT Client {
 
   using ManagerPropertyAccessor =
       PropertyAccessor<org::chromium::flimflam::ManagerProxyInterface>;
+  using ServicePropertyAccessor =
+      PropertyAccessor<org::chromium::flimflam::ServiceProxyInterface>;
 
   using DefaultServiceChangedHandler =
       base::Callback<void(const std::string& type)>;
@@ -217,6 +239,14 @@ class BRILLO_EXPORT Client {
   // Returns a manipulator interface for Manager properties.
   virtual std::unique_ptr<ManagerPropertyAccessor> ManagerProperties(
       const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
+
+  // Returns the default device.
+  // If |exclude_vpn| is true, then the device returned will be associated with
+  // the highest priority service that is not of type "vpn".
+  // This method always queries the Manager for the latest proeprties. The
+  // default device can be passively tracked by registering the appropriate
+  // handler (assuming one is interested in the VPN device).
+  virtual std::unique_ptr<Device> DefaultDevice(bool exclude_vpn);
 
  protected:
   // All of the methods and members with protected access scope are needed for
@@ -371,7 +401,7 @@ class BRILLO_EXPORT Client {
   // Reads the list of IPConfigs for a device and composes them into an IPConfig
   // data structure.
   IPConfig ParseIPConfigsProperty(const std::string& device_path,
-                                  const brillo::Any& property_value);
+                                  const brillo::Any& property_value) const;
 
   scoped_refptr<dbus::Bus> bus_;
 

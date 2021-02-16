@@ -47,4 +47,8 @@ std::unique_ptr<Client::ManagerPropertyAccessor> FakeClient::ManagerProperties(
   return nullptr;
 }
 
+std::unique_ptr<Client::Device> FakeClient::DefaultDevice(bool exlcude_vpn) {
+  return nullptr;
+}
+
 }  // namespace shill
