@@ -114,10 +114,16 @@ void CellularService::SetDevice(Cellular* device) {
                                       GetDeviceRpcId(&ignored_error));
   adaptor()->EmitBoolChanged(kVisibleProperty,
                              GetVisibleProperty(&ignored_error));
-  SetConnectable(!!cellular_);
-  if (!cellular_)
+  if (!cellular_) {
+    // Do not destroy the service here, Modem may be Inhibited or have reset.
+    // If it comes back, the appropriate services will be updated, created, or
+    // destroyed from the available SIM properties.
+    SetConnectable(false);
+    SetState(kStateIdle);
     return;
+  }
 
+  SetConnectable(true);
   DCHECK_EQ(sim_card_id_, cellular_->GetSimCardId());
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetActivationType(kActivationTypeUnknown);

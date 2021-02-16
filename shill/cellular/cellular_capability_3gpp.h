@@ -79,7 +79,6 @@ class CellularCapability3gpp : public CellularCapability {
   void StartModem(Error* error, const ResultCallback& callback) override;
   void StopModem(Error* error, const ResultCallback& callback) override;
   void Reset(Error* error, const ResultCallback& callback) override;
-  bool AreProxiesInitialized() const override;
   bool IsServiceActivationRequired() const override;
   bool IsActivating() const override;
   void CompleteActivation(Error* error) override;
@@ -241,12 +240,7 @@ class CellularCapability3gpp : public CellularCapability {
   };
 
   // Methods used in starting a modem
-  void EnableModem(bool deferralbe,
-                   Error* error,
-                   const ResultCallback& callback);
-  void EnableModemCompleted(bool deferrable,
-                            const ResultCallback& callback,
-                            const Error& error);
+  void EnableModemCompleted(const ResultCallback& callback, const Error& error);
 
   // Methods used in stopping a modem
   void Stop_Disable(const ResultCallback& callback);
@@ -351,6 +345,7 @@ class CellularCapability3gpp : public CellularCapability {
   // Convenience pointer to modem_info()->manager()->metrics().
   Metrics* metrics_;
 
+  bool proxies_initialized_ = false;
   std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   std::unique_ptr<mm1::ModemProxyInterface> modem_proxy_;
   std::unique_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
@@ -389,10 +384,6 @@ class CellularCapability3gpp : public CellularCapability {
   RpcIdentifiers sim_slots_;
   base::flat_set<RpcIdentifier> pending_sim_requests_;
   base::flat_map<RpcIdentifier, SimProperties> sim_properties_;
-
-  // If the modem is not in a state to be enabled when StartModem is called,
-  // enabling is deferred using this callback.
-  base::Closure deferred_enable_modem_callback_;
 
   // Sometimes flaky cellular network causes the 3GPP registration state to
   // rapidly change from registered --> searching and back. Delay such updates

@@ -575,8 +575,10 @@ TEST_F(CellularCapability3gppTest, StartModemInWrongState) {
           Invoke(this, &CellularCapability3gppTest::InvokeEnableInWrongState))
       .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
 
-  EXPECT_CALL(*this, TestCallback(_)).Times(0);
+  EXPECT_CALL(*this, TestCallback(_)).Times(1);
   Error error;
+  cellular_->set_capability_state_for_testing(
+      Cellular::CapabilityState::kCellularStarted);
   StartModem(&error);
   EXPECT_TRUE(error.IsOngoing());
 
@@ -601,31 +603,11 @@ TEST_F(CellularCapability3gppTest, StartModemInWrongState) {
   Mock::VerifyAndClearExpectations(this);
 
   // Change the state of the modem to disabled and verify that it gets enabled.
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
   EXPECT_EQ(kImei, cellular_->imei());
   EXPECT_EQ(kAccessTechnologies,
             capability_->access_technologies_for_testing());
-}
-
-TEST_F(CellularCapability3gppTest, StartModemWithDeferredEnableFailure) {
-  EXPECT_CALL(*modem_proxy_,
-              Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .Times(2)
-      .WillRepeatedly(
-          Invoke(this, &CellularCapability3gppTest::InvokeEnableInWrongState));
-
-  EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  Error error;
-  StartModem(&error);
-  EXPECT_TRUE(error.IsOngoing());
   Mock::VerifyAndClearExpectations(this);
-
-  // Change the state of the modem to disabled but fail the deferred enable
-  // operation with the WrongState error in order to verify that the deferred
-  // enable operation does not trigger another deferred enable operation.
-  EXPECT_CALL(*this, TestCallback(IsFailure()));
-  capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
 }
 
 TEST_F(CellularCapability3gppTest, StopModem) {

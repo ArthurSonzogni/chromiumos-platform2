@@ -179,11 +179,6 @@ void CellularCapabilityCdma::UpdatePendingActivationState() {
   }
 }
 
-bool CellularCapabilityCdma::AreProxiesInitialized() const {
-  return modem_cdma_proxy_ != nullptr &&
-         CellularCapability3gpp::AreProxiesInitialized();
-}
-
 bool CellularCapabilityCdma::IsServiceActivationRequired() const {
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.

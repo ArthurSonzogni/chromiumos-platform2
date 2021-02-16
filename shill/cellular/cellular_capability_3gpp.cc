@@ -239,6 +239,10 @@ KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
 }
 
 void CellularCapability3gpp::InitProxies() {
+  if (proxies_initialized_)
+    return;
+  SLOG(this, 3) << __func__;
+  proxies_initialized_ = true;
   modem_3gpp_proxy_ = control_interface()->CreateMM1ModemModem3gppProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_proxy_ = control_interface()->CreateMM1ModemProxy(
@@ -256,32 +260,21 @@ void CellularCapability3gpp::InitProxies() {
   modem_proxy_->set_state_changed_callback(
       Bind(&CellularCapability3gpp::OnModemStateChangedSignal,
            weak_ptr_factory_.GetWeakPtr()));
-  // Do not create a SIM proxy until the device is enabled because we
-  // do not yet know the object path of the sim object.
-  // TODO(jglasgow): register callbacks
+
+  // |sim_proxy_| is created when |sim_path_| is known.
 }
 
 void CellularCapability3gpp::StartModem(Error* error,
                                         const ResultCallback& callback) {
   SLOG(this, 1) << __func__;
   InitProxies();
-
-  deferred_enable_modem_callback_.Reset();
-  EnableModem(/*deferrable=*/true, error, callback);
-}
-
-void CellularCapability3gpp::EnableModem(bool deferrable,
-                                         Error* error,
-                                         const ResultCallback& callback) {
-  SLOG(this, 1) << __func__ << "(deferrable=" << deferrable << ")";
   CHECK(!callback.is_null());
   Error local_error(Error::kOperationInitiated);
   metrics_->NotifyDeviceEnableStarted(cellular()->interface_index());
-  modem_proxy_->Enable(
-      true, &local_error,
-      Bind(&CellularCapability3gpp::EnableModemCompleted,
-           weak_ptr_factory_.GetWeakPtr(), deferrable, callback),
-      kTimeoutEnable);
+  modem_proxy_->Enable(true, &local_error,
+                       Bind(&CellularCapability3gpp::EnableModemCompleted,
+                            weak_ptr_factory_.GetWeakPtr(), callback),
+                       kTimeoutEnable);
   if (local_error.IsFailure()) {
     SLOG(this, 2) << __func__ << "Call to modem_proxy_->Enable() failed";
   }
@@ -291,36 +284,11 @@ void CellularCapability3gpp::EnableModem(bool deferrable,
 }
 
 void CellularCapability3gpp::EnableModemCompleted(
-    bool deferrable, const ResultCallback& callback, const Error& error) {
-  SLOG(this, 1) << __func__ << "(deferrable=" << deferrable
-                << ", error=" << error << ")";
+    const ResultCallback& callback, const Error& error) {
+  SLOG(this, 1) << __func__ << " error=" << error;
 
-  // If the enable operation failed with Error::kWrongState, the modem is not
-  // in the expected state (i.e. disabled). If |deferrable| indicates that the
-  // enable operation can be deferred, we defer the operation until the modem
-  // goes into the expected state (see OnModemStateChangedSignal).
-  //
-  // Note that when the SIM is locked, the enable operation also fails with
-  // Error::kWrongState. The enable operation is deferred until the modem goes
-  // into the disabled state after the SIM is unlocked. We may choose not to
-  // defer the enable operation when the SIM is locked, but the UI needs to
-  // trigger the enable operation after the SIM is unlocked, which is currently
-  // not the case.
   if (error.IsFailure()) {
-    if (!deferrable || error.type() != Error::kWrongState) {
-      callback.Run(error);
-      return;
-    }
-
-    if (deferred_enable_modem_callback_.is_null()) {
-      SLOG(this, 1) << "Defer enable operation.";
-      // The Enable operation to be deferred should not be further deferrable.
-      deferred_enable_modem_callback_ = Bind(
-          &CellularCapability3gpp::EnableModem, weak_ptr_factory_.GetWeakPtr(),
-          false,  // non-deferrable
-          nullptr, callback);
-    }
-
+    callback.Run(error);
     return;
   }
 
@@ -356,7 +324,6 @@ void CellularCapability3gpp::StopModem(Error* error,
   cellular()->dispatcher()->PostTask(
       FROM_HERE, Bind(&CellularCapability3gpp::Stop_Disable,
                       weak_ptr_factory_.GetWeakPtr(), callback));
-  deferred_enable_modem_callback_.Reset();
 }
 
 void CellularCapability3gpp::Stop_Disable(const ResultCallback& callback) {
@@ -578,7 +545,10 @@ string CellularCapability3gpp::GetMdnForOLP(
 }
 
 void CellularCapability3gpp::ReleaseProxies() {
+  if (!proxies_initialized_)
+    return;
   SLOG(this, 3) << __func__;
+  proxies_initialized_ = false;
   modem_3gpp_proxy_.reset();
   modem_proxy_.reset();
   modem_location_proxy_.reset();
@@ -588,13 +558,6 @@ void CellularCapability3gpp::ReleaseProxies() {
 
   // |sim_proxy_| is managed through OnAllSimPropertiesReceived() and thus
   // shouldn't be cleared here in order to keep it in sync with |sim_path_|.
-}
-
-bool CellularCapability3gpp::AreProxiesInitialized() const {
-  return (modem_3gpp_proxy_.get() && modem_proxy_.get() &&
-          modem_signal_proxy_.get() && modem_simple_proxy_.get() &&
-          sim_proxy_.get() && modem_location_proxy_.get() &&
-          dbus_properties_proxy_.get());
 }
 
 void CellularCapability3gpp::UpdateServiceActivationState() {
@@ -1468,15 +1431,6 @@ void CellularCapability3gpp::OnModemStateChanged(Cellular::ModemState state) {
   }
 
   cellular()->OnModemStateChanged(state);
-
-  // TODO(armansito): Move the deferred enable logic to Cellular
-  // (See crbug.com/279499).
-  if (!deferred_enable_modem_callback_.is_null() &&
-      state == Cellular::kModemStateDisabled) {
-    SLOG(this, 1) << "Enabling modem after deferring.";
-    deferred_enable_modem_callback_.Run();
-    deferred_enable_modem_callback_.Reset();
-  }
 }
 
 void CellularCapability3gpp::OnAccessTechnologiesChanged(

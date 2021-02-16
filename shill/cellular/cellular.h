@@ -352,6 +352,10 @@ class Cellular : public Device,
   // Sets a Service for testing. When set, Cellular does not create or destroy
   // the associated Service.
   void SetServiceForTesting(CellularServiceRefPtr service);
+
+  void set_capability_state_for_testing(CapabilityState state) {
+    capability_state_ = state;
+  }
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
   void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
   void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
@@ -457,7 +461,6 @@ class Cellular : public Device,
   void SetModemState(ModemState modem_state_state);
   void SetCapabilityState(CapabilityState capability_state);
 
-  void OnDisabled();
   void OnEnabled();
   void OnConnecting();
   void OnConnected() override;

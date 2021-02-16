@@ -86,9 +86,6 @@ class CellularCapability {
   // Resets the modem.
   virtual void Reset(Error* error, const ResultCallback& callback) = 0;
 
-  // Checks to see if all proxies have been initialized.
-  virtual bool AreProxiesInitialized() const = 0;
-
   // -------------------------------------------------------------------------
   // Activation
   // -------------------------------------------------------------------------

@@ -1741,7 +1741,10 @@ TEST_P(CellularTest, DropConnection) {
 TEST_P(CellularTest, DropConnectionPPP) {
   scoped_refptr<MockPPPDevice> ppp_device(
       new MockPPPDevice(&manager_, "fake_ppp0", -1));
-  EXPECT_CALL(*ppp_device, DropConnection());
+  // Calling device_->DropConnection() explicitly will trigger
+  // DestroyCapability() which also triggers a (redundant and harmless)
+  // ppp_device->DropConnection() call.
+  EXPECT_CALL(*ppp_device, DropConnection()).Times(AtLeast(1));
   device_->ppp_device_ = ppp_device;
   device_->DropConnection();
 }
@@ -1881,6 +1884,7 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   // The tests exists to document this corner case, which we get wrong.
 
   // Initial state.
+  auto dbus_properties_proxy = dbus_properties_proxy_.get();
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
@@ -1894,13 +1898,6 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   EXPECT_FALSE(device_->running());                     // changes immediately
   EXPECT_TRUE(device_->enabled_persistent());           // no change
   EXPECT_EQ(Cellular::kStateEnabled, device_->state_);  // changes on completion
-
-  // Refresh proxies, since CellularCapability3gpp::StartModem wants
-  // new proxies. Also, stash away references for later.
-  PopulateProxies();
-  SetCommonOnAfterResumeExpectations();
-  mm1_modem_proxy = mm1_modem_proxy_.get();
-  auto dbus_properties_proxy = dbus_properties_proxy_.get();
 
   // Resume, with disable still in progress.
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
@@ -1958,6 +1955,7 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   // device is currently enabled.
 
   // Initial state.
+  auto dbus_properties_proxy = dbus_properties_proxy_.get();
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
@@ -1992,30 +1990,15 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   // No response to power-down yet. It probably completed while the host
   // was asleep, and so the reply from the modem was lost.
 
-  // Refresh proxies, since CellularCapability3gpp::StartModem wants
-  // new proxies. Also, stash away references for later.
-  PopulateProxies();
-  SetCommonOnAfterResumeExpectations();
-  auto new_mm1_modem_proxy = mm1_modem_proxy_.get();
-  auto dbus_properties_proxy = dbus_properties_proxy_.get();
-
   // Resume.
   ResultCallback new_callback;
   EXPECT_EQ(Cellular::kStateEnabled, device_->state_);  // disable still pending
-  EXPECT_CALL(*new_mm1_modem_proxy, Enable(true, _, _, _))
+  EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(SaveArg<2>(&modem_proxy_enable_callback));
   device_->OnAfterResume();
   EXPECT_TRUE(device_->running());                       // changes immediately
   EXPECT_TRUE(device_->enabled_persistent());            // no change
   EXPECT_EQ(Cellular::kStateDisabled, device_->state_);  // by OnAfterResume
-
-  // We should have a fresh proxy OnAfterResume. Otherwise, we may get
-  // confused when the SetPowerState call completes (either naturally,
-  // or via a time-out from dbus-c++).
-  //
-  // The pointers must differ, because the new proxy is constructed
-  // before the old one is destructed.
-  EXPECT_FALSE(new_mm1_modem_proxy == mm1_modem_proxy);
 
   // Set up state that we need.
   KeyValueStore modem_properties;
