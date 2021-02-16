@@ -4,6 +4,7 @@
 
 import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -47,6 +48,13 @@ executable("dlp") {
     "dlp_adaptor.cc",
     "dlp_daemon.cc",
   ]
+  deps = [ ":dlp_proto" ]
+}
+
+proto_library("dlp_proto") {
+  proto_in_dir = "./proto"
+  proto_out_dir = "include/dlp"
+  sources = [ "${proto_in_dir}/database.proto" ]
 }
 
 # Unit tests.

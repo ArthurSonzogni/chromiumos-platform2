@@ -39,6 +39,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // org::chromium::DlpInterface: (see org.chromium.Dlp.xml).
   std::vector<uint8_t> SetDlpFilesPolicy(
       const std::vector<uint8_t>& request_blob) override;
+  std::vector<uint8_t> AddFile(
+      const std::vector<uint8_t>& request_blob) override;
 
  private:
   // Opens the database |db_| to store files sources.

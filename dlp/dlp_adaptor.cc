@@ -6,17 +6,21 @@
 
 #include <cstdint>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/location.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 #include <google/protobuf/message_lite.h>
 #include <session_manager/dbus-proxies.h>
 
+#include "dlp/database.pb.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
 namespace dlp {
@@ -61,6 +65,24 @@ std::string GetSanitizedUsername(brillo::dbus_utils::DBusObject* dbus_object) {
   return sanitized_username;
 }
 
+ino_t GetInodeValue(const std::string& path) {
+  struct stat file_stats;
+  if (stat(path.c_str(), &file_stats) != 0) {
+    PLOG(ERROR) << "Could not access " << path;
+    return 0;
+  }
+  return file_stats.st_ino;
+}
+
+FileEntry ConvertToFileEntryProto(AddFileRequest request) {
+  FileEntry result;
+  if (request.has_source_url())
+    result.set_source_url(request.source_url());
+  if (request.has_referrer_url())
+    result.set_referrer_url(request.referrer_url());
+  return result;
+}
+
 }  // namespace
 
 DlpAdaptor::DlpAdaptor(
@@ -93,6 +115,48 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
 
   policy_rules_ =
       std::vector<DlpFilesRule>(request.rules().begin(), request.rules().end());
+
+  return SerializeProto(response);
+}
+
+std::vector<uint8_t> DlpAdaptor::AddFile(
+    const std::vector<uint8_t>& request_blob) {
+  AddFileRequest request;
+  AddFileResponse response;
+
+  const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
+  if (!parse_error.empty()) {
+    LOG(ERROR) << "Failed to parse AddFile request: " << parse_error;
+    response.set_error_message(parse_error);
+    return SerializeProto(response);
+  }
+
+  LOG(INFO) << "Adding file to the database: " << request.file_path();
+  leveldb::WriteOptions options;
+  options.sync = true;
+
+  const ino_t inode = GetInodeValue(request.file_path());
+  if (!inode) {
+    LOG(ERROR) << "Failed to get inode";
+    response.set_error_message("Failed to get inode");
+    return SerializeProto(response);
+  }
+  const std::string inode_s = base::NumberToString(inode);
+
+  FileEntry file_entry = ConvertToFileEntryProto(request);
+  std::string serialized_proto;
+  if (!file_entry.SerializeToString(&serialized_proto)) {
+    LOG(ERROR) << "Failed to serialize database entry to string";
+    response.set_error_message("Failed to serialize database entry to string");
+    return SerializeProto(response);
+  }
+
+  const leveldb::Status status = db_->Put(options, inode_s, serialized_proto);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to write value to database: " << status.ToString();
+    response.set_error_message(status.ToString());
+    return SerializeProto(response);
+  }
 
   return SerializeProto(response);
 }
