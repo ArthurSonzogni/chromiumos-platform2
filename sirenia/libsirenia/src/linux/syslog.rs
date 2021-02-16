@@ -111,7 +111,6 @@ impl EventSource for Syslog {
 pub(crate) mod tests {
     use super::*;
 
-    use std::io::Write;
     use std::sync::{Arc, Barrier};
     use std::thread::spawn;
 
@@ -164,7 +163,7 @@ pub(crate) mod tests {
     #[test]
     fn syslog_overflow() {
         let log_path = Syslog::get_test_log_path();
-        let test_path = ScopedPath::create(log_path.parent().unwrap()).unwrap();
+        let _test_path = ScopedPath::create(log_path.parent().unwrap()).unwrap();
         let message: Vec<u8> = vec![' ' as u8; MAX_MESSAGE + 1];
         let receiver = get_test_receiver();
         let mut syslog = Syslog::new(log_path.clone(), receiver.clone()).unwrap();
@@ -175,7 +174,7 @@ pub(crate) mod tests {
         let local_check = Arc::new(Barrier::new(2));
         let client_check = Arc::clone(&local_check);
         let client = spawn(move || {
-            let mut socket = UnixDatagram::unbound().unwrap();
+            let socket = UnixDatagram::unbound().unwrap();
             socket.send_to(&message, connect_path).unwrap();
 
             // Make sure the read happens before dropping the socket.
@@ -185,6 +184,7 @@ pub(crate) mod tests {
         assert_eq!(receiver.as_ref().borrow().as_ref().len(), 1);
         assert_eq!(receiver.as_ref().borrow().as_ref()[0].len(), MAX_MESSAGE);
         local_check.wait();
+        client.join().unwrap();
     }
 
     #[test]
@@ -204,7 +204,7 @@ pub(crate) mod tests {
         let local_check = Arc::new(Barrier::new(2));
         let client_check = Arc::clone(&local_check);
         let client = spawn(move || {
-            let mut socket = UnixDatagram::unbound().unwrap();
+            let socket = UnixDatagram::unbound().unwrap();
             socket
                 .send_to("Test Data\n".as_bytes(), connect_path)
                 .unwrap();
@@ -217,5 +217,6 @@ pub(crate) mod tests {
         context.run_once().unwrap();
         assert_eq!(receiver.as_ref().borrow().as_ref().len(), 1);
         local_check.wait();
+        client.join().unwrap();
     }
 }
