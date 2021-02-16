@@ -191,8 +191,9 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
     " /run/daemon-store/crosvm/*/log/*.log.1"
     " /run/daemon-store/crosvm/*/log/*.log'", kRoot, kRoot},
+  // dmesg: add full timestamps to dmesg to match other logs.
   // 'dmesg' needs CAP_SYSLOG.
-  {kCommand, "dmesg", "/bin/dmesg", kRoot, kRoot},
+  {kCommand, "dmesg", "TZ=UTC /bin/dmesg --time-format iso", kRoot, kRoot},
   {kGlob, "drm_gem_objects", "/sys/kernel/debug/dri/?/gem",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kGlob, "drm_state", "/sys/kernel/debug/dri/?/state",
