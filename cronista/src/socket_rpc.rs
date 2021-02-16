@@ -102,7 +102,10 @@ impl Cronista for CronistaServerImpl {
         Ok(
             match storage::persist(scope, &domain, &identifier, data.as_slice()) {
                 Ok(_) => Status::Success,
-                _ => Status::Failure,
+                Err(err) => {
+                    error!("persist failure: {}", err);
+                    Status::Failure
+                }
             },
         )
     }
@@ -117,7 +120,10 @@ impl Cronista for CronistaServerImpl {
         Ok(
             match storage::retrieve(scope, &domain, &identifier).map_err(Error::Persist) {
                 Ok(data) => (Status::Success, data),
-                _ => (Status::Failure, Vec::new()),
+                Err(err) => {
+                    error!("retrieve failure: {}", err);
+                    (Status::Failure, Vec::new())
+                }
             },
         )
     }
