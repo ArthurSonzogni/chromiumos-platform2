@@ -436,6 +436,14 @@ const std::vector<Log> kExtraLogs {
 
 // clang-format off
 const std::vector<Log> kFeedbackLogs {
+  {kGlob, "iwlwifi_firmware_version",
+    "/sys/kernel/debug/iwlwifi/*/iwlmvm/fw_ver", kRoot, kRoot},
+  {kCommand, "iwlwifi_sysasserts",
+    "croslog --show-cursor=false --identifier=kernel --priority=err"
+    "  --grep='iwlwifi.*ADVANCED_SYSASSERT' | tail -n 3"},
+  {kCommand, "iwlwifi_sysasserts_count",
+    "croslog --show-cursor=false --identifier=kernel --priority=err"
+    "  --grep='iwlwifi.*ADVANCED_SYSASSERT' | wc -l"},
 #if USE_CELLULAR
   {kCommand, "mm-status", "/usr/bin/modem status-feedback"},
 #endif  // USE_CELLULAR
@@ -443,6 +451,21 @@ const std::vector<Log> kFeedbackLogs {
       "/usr/bin/connectivity show-feedback devices"},
   {kCommand, "network-services",
       "/usr/bin/connectivity show-feedback services"},
+  {kCommand, "shill_connection_diagnostic",
+    "croslog --show-cursor=false --identifier=shill"
+    "  --grep='Connection issue:' | tail -n 3"},
+  {kCommand, "wifi_connection_attempts",
+    "croslog --show-cursor=false --identifier=kernel"
+    "  --grep='(authenticate|associate) with' | wc -l"},
+  {kCommand, "wifi_connection_timeouts",
+    "croslog --show-cursor=false --identifier=kernel"
+    "  --grep='(authentication|association).*timed out' | wc -l"},
+  {kCommand, "wifi_driver_errors",
+    "croslog --show-cursor=false --identifier=kernel --priority=err"
+    "  --grep='(iwlwifi|mwifiex|ath10k)' | tail -n 3"},
+  {kCommand, "wifi_driver_errors_count",
+    "croslog --show-cursor=false --identifier=kernel --priority=err"
+    "  --grep='(iwlwifi|mwifiex|ath10k)' | wc -l"},
   {kCommand, "wifi_status",
       "/usr/bin/network_diag --wifi-internal --no-log --anonymize"},
 };
