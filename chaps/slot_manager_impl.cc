@@ -949,7 +949,10 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
                          base::size(slot_info->slotDescription));
   CopyStringToCharBuffer(kManufacturerID, slot_info->manufacturerID,
                          base::size(slot_info->manufacturerID));
-  slot_info->flags = CKF_HW_SLOT | CKF_REMOVABLE_DEVICE;
+  // By default private key objects stored in this token is hardware backed and
+  // unextractable, so the absence of CKF_HW_SLOT doesn't indicate a lowered
+  // security guarantee.
+  slot_info->flags = CKF_REMOVABLE_DEVICE;
   slot_info->hardwareVersion = kDefaultVersion;
   slot_info->firmwareVersion = kDefaultVersion;
 
