@@ -14,11 +14,6 @@
 
 namespace {
 
-struct SymlinkPair {
-  std::string target;
-  std::string symlink;
-};
-
 bool ForceCreateSymbolicLink(const base::FilePath& target,
                              const base::FilePath& symlink) {
   if (base::PathExists(symlink) && !base::DeleteFile(symlink))
@@ -57,14 +52,15 @@ bool InitMounts() {
     PLOG(ERROR) << "Failed to mount dev";
     return false;
   }
-  for (const auto& pr :
-       {SymlinkPair{.target = "/proc/self/fd", .symlink = "/dev/fd"},
-        SymlinkPair{.target = "fd/0", .symlink = "/dev/stdin"},
-        SymlinkPair{.target = "fd/1", .symlink = "/dev/stdout"},
-        SymlinkPair{.target = "fd/2", .symlink = "/dev/stderr"}}) {
-    if (!ForceCreateSymbolicLink(base::FilePath(pr.target),
-                                 base::FilePath(pr.symlink))) {
-      PLOG(ERROR) << "Failed to create " << pr.symlink << " symlink";
+  for (const auto& [target, symlink] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"/proc/self/fd", "/dev/fd"},
+           {"/proc/self/fd/0", "/dev/stdin"},
+           {"/proc/self/fd/1", "/dev/stdout"},
+           {"/proc/self/fd/2", "/dev/stderr"}}) {
+    if (!ForceCreateSymbolicLink(base::FilePath(target),
+                                 base::FilePath(symlink))) {
+      PLOG(ERROR) << "Failed to create " << symlink << " symlink";
       return false;
     }
   }
