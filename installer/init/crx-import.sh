@@ -15,20 +15,23 @@ TO=/var/cache/external_cache
 VALIDATION=/usr/share/import_extensions/validation
 
 if [ ! -d "${TO}" ]; then
-  mkdir -m 700 "${TO}"
+  TMPDIR="${TO}.tmp"
+  rm -rf "${TMPDIR}"
+  mkdir -m 700 "${TMPDIR}"
 
   # If the source directory exists, and we can validate it... import.
   if [ -d "${FROM}" ]; then
     for val in "${VALIDATION}"/*; do
       # If the import fails, we want to just keep going.
       logger -t "${JOB}" "Performing CRX import for: ${val}"
-      encrypted_import "${FROM}" "${val}" "${TO}" 2>&1 | \
+      encrypted_import "${FROM}" "${val}" "${TMPDIR}" 2>&1 | \
         logger -t "${JOB}"
     done
   else
     logger -t "${JOB}" "CRX Source not present. No import performed."
   fi
-  chown -R chronos:chronos "${TO}"
+  chown -R chronos:chronos "${TMPDIR}"
+  mv "${TMPDIR}" "${TO}"
 else
   logger -t "${JOB}" "CRX Cache exists. No import performed."
 fi
