@@ -44,3 +44,20 @@ message SetDlpFilesPolicyResponse {
   // Error message, empty if no error occurred.
   optional string error_message = 1;
 }
+
+message AddFileRequest {
+  // Path to the downloaded file.
+  optional string file_path = 1;
+
+  // Downloaded file source URL (the URL it was downloaded from).
+  optional string source_url = 2;
+
+  // Downloaded file referrer URL (the URL the download process was initiated
+  // from).
+  optional string referrer_url = 3;
+}
+
+message AddFileResponse {
+  // Error message, empty if no error occurred.
+  optional string error_message = 1;
+}

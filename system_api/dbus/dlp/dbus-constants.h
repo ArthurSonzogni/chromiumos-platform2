@@ -12,6 +12,7 @@ constexpr char kDlpServiceName[] = "org.chromium.Dlp";
 
 // Methods
 constexpr char kSetDlpFilesPolicyMethod[] = "SetDlpFilesPolicy";
+constexpr char kAddFileMethod[] = "AddFile";
 
 }  // namespace dlp
 #endif  // SYSTEM_API_DBUS_DLP_DBUS_CONSTANTS_H_
