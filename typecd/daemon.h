@@ -18,7 +18,7 @@
 
 namespace typecd {
 
-class Daemon : public brillo::DBusDaemon {
+class Daemon : public brillo::DBusServiceDaemon {
  public:
   Daemon();
   Daemon(const Daemon&) = delete;
@@ -28,6 +28,8 @@ class Daemon : public brillo::DBusDaemon {
 
  protected:
   int OnInit() override;
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
   // Set the initial UserActive state for the |port_manager_| using
@@ -39,6 +41,7 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<CrosECUtil> cros_ec_util_;
   std::unique_ptr<NotificationManager> notify_mgr_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   base::WeakPtrFactory<Daemon> weak_factory_;
 };
 

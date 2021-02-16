@@ -6,17 +6,24 @@
 
 #include "typecd/daemon.h"
 
+#include <dbus/typecd/dbus-constants.h>
+
+namespace {
+const char kObjectServicePath[] = "/org/chromium/typecd/ObjectManager";
+}  // namespace
+
 namespace typecd {
 
 Daemon::Daemon()
-    : udev_monitor_(new UdevMonitor()),
+    : DBusServiceDaemon(kTypecdServiceName, kObjectServicePath),
+      udev_monitor_(new UdevMonitor()),
       port_manager_(new PortManager()),
       weak_factory_(this) {}
 
 Daemon::~Daemon() {}
 
 int Daemon::OnInit() {
-  int exit_code = DBusDaemon::OnInit();
+  int exit_code = DBusServiceDaemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
 
@@ -59,6 +66,16 @@ void Daemon::InitUserActiveState() {
                 session_manager_proxy_->IsSessionStarted();
 
   port_manager_->SetUserActive(active);
+}
+
+void Daemon::RegisterDBusObjectsAsync(
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  DCHECK(!dbus_object_);
+  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
+      object_manager_.get(), bus_, dbus::ObjectPath(kTypecdServicePath));
+
+  dbus_object_->RegisterAsync(sequencer->GetHandler(
+      "Failed to register D-Bus object", true /* failure_is_fatal */));
 }
 
 }  // namespace typecd
