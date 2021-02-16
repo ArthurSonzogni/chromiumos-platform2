@@ -369,7 +369,8 @@ bool Profile::GetAlwaysOnVpnSettings(std::string* mode, RpcIdentifier* id) {
     return false;
   }
   if (!store().GetRpcIdentifierProperty(kAlwaysOnVpnServiceProperty, id,
-                                        &error)) {
+                                        &error) ||
+      !id->IsValid()) {
     return false;
   }
   return true;
@@ -393,7 +394,7 @@ bool Profile::DBusSetAlwaysOnVpnMode(const string& mode, Error* error) {
 
 RpcIdentifier Profile::DBusGetAlwaysOnVpnService(Error* error) {
   ServiceRefPtr service = manager()->GetServiceWithStorageIdentifier(
-      properties_.always_on_vpn_service, error);
+      properties_.always_on_vpn_service);
   if (service == nullptr) {
     return manager()->control_interface()->NullRpcIdentifier();
   }

@@ -936,15 +936,12 @@ map<RpcIdentifier, string> Manager::GetLoadableProfileEntriesForService(
 }
 
 ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
-    const std::string& entry_name, Error* error) {
+    const std::string& entry_name) {
   for (const auto& service : services_) {
     if (service->GetStorageIdentifier() == entry_name) {
       return service;
     }
   }
-
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
-                        "service not found");
   return nullptr;
 }
 
@@ -2011,9 +2008,16 @@ void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
   if (profile->GetAlwaysOnVpnSettings(&mode, &service_id)) {
     always_on_vpn_mode_ = mode;
     ServiceRefPtr service = GetServiceWithRpcIdentifier(service_id);
-    // The service type is enforced by the profile when the service is set.
-    DCHECK_EQ(service->technology(), Technology::kVPN);
-    always_on_vpn_service_ = static_cast<VPNService*>(service.get());
+    if (service != nullptr) {
+      // The service type is enforced by the profile when the service is set.
+      DCHECK_EQ(service->technology(), Technology::kVPN);
+      always_on_vpn_service_ = static_cast<VPNService*>(service.get());
+    } else {
+      // No valid service configured. It's ok to set the service to null as
+      // always-on VPN is designed to handle a mode set while the service is not
+      // set/not available anymore.
+      always_on_vpn_service_ = nullptr;
+    }
   }
 }
 

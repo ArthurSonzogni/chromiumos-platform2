@@ -287,7 +287,7 @@ class Manager {
                                            Error* error);
   // Find a service that has a storage identifier that matches |entry_name|.
   virtual ServiceRefPtr GetServiceWithStorageIdentifier(
-      const std::string& entry_name, Error* error);
+      const std::string& entry_name);
   // Find a service that is both the member of |profile| and has a
   // storage identifier that matches |entry_name|.  This function is
   // called by the Profile in order to return a profile entry's properties.
