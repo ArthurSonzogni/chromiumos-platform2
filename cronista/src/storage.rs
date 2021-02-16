@@ -39,17 +39,17 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn is_empty_read(&self) -> bool {
-        matches!(self, Error::ReadData(storage::Error::EmptyRead))
+    pub fn is_unwritten_id(&self) -> bool {
+        matches!(self, Error::ReadData(storage::Error::IdNotFound(_)))
     }
 }
 
 pub type Result<R> = std::result::Result<R, Error>;
 
-/// A helper function to check if failure was the result of an empty read.
-pub fn is_empty_read<R>(res: &Result<R>) -> bool {
+/// Check if an error was caused by looking up an entry that was not written yet.
+pub fn is_unwritten_id<R>(res: &Result<R>) -> bool {
     if let Err(e) = res {
-        e.is_empty_read()
+        e.is_unwritten_id()
     } else {
         false
     }
@@ -188,12 +188,16 @@ mod test {
     }
 
     #[test]
-    fn retrieve_emptyread() {
+    fn retrieve_unwrittenid() {
         let path = ScopedPath::create(get_temp_path(None)).unwrap();
         let domain_path = path.join(TEST_DOMAIN);
         create_dir(&domain_path).unwrap();
 
-        assert!(is_empty_read(&retrieve(Scope::Test, TEST_DOMAIN, TEST_ID)));
+        assert!(is_unwritten_id(&retrieve(
+            Scope::Test,
+            TEST_DOMAIN,
+            TEST_ID
+        )));
     }
 
     #[test]

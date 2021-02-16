@@ -57,7 +57,7 @@ impl Storage for FileStorage {
         let filepath = self.root.join(Self::validate_id(id)?);
 
         if !filepath.exists() {
-            return Err(Error::EmptyRead);
+            return Err(Error::IdNotFound(id.to_string()));
         }
 
         let mut contents: Vec<u8> = Vec::new();
@@ -147,12 +147,12 @@ mod test {
     }
 
     #[test]
-    fn storage_read_emptyread() {
+    fn storage_read_idnotfound() {
         let mut storage = TestFileStorage::new();
 
         assert!(matches!(
             storage.as_mut().read_data::<u64>(VALID_TEST_ID),
-            Err(Error::EmptyRead)
+            Err(Error::IdNotFound(_))
         ));
     }
 

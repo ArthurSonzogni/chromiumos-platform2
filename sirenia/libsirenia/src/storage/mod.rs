@@ -20,7 +20,7 @@ use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
-    #[error("id not found {0}")]
+    #[error("id '{0}' not written yet")]
     IdNotFound(String),
     #[error("storage regjected id {0}")]
     InvalidIdForStorage(String),
@@ -30,8 +30,6 @@ pub enum Error {
     // used anyways
     #[error("failed to read data")]
     ReadData(Option<Box<dyn StdError>>),
-    #[error("id not written yet")]
-    EmptyRead,
     #[error("failed to write data")]
     WriteData(Option<Box<dyn StdError>>),
 }
