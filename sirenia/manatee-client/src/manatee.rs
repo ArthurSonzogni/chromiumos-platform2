@@ -25,7 +25,9 @@ const SANDBOXED_SHELL_APP_ID: &str = "sandboxed-shell";
 #[derive(ThisError, Debug)]
 enum Error {
     #[error("failed parse command line options: {0:}")]
-    Options(getopts::Fail),
+    OptionsParse(getopts::Fail),
+    #[error("failed set incompatible options: {0:} {1:}")]
+    ConflictingOptions(String, String),
     #[error("failed to get D-Bus connection: {0:}")]
     NewDBusConnection(dbus::Error),
     #[error("failed to call D-Bus method: {0:}")]
@@ -76,6 +78,7 @@ fn start_manatee_app(app_id: &str) -> Result<()> {
 fn main() -> Result<()> {
     const HELP_SHORT_NAME: &str = "h";
     const SANDBOX_SHORT_NAME: &str = "s";
+    const APP_ID_SHORT_NAME: &str = "a";
 
     let mut options = Options::new();
     options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
@@ -84,11 +87,17 @@ fn main() -> Result<()> {
         "enable-sandbox",
         "Run the shell in the default sandbox.",
     );
+    options.optopt(
+        APP_ID_SHORT_NAME,
+        "app-id",
+        "Specify the app ID to invoke.",
+        "demo_app",
+    );
 
     let args: Vec<String> = env::args().collect();
     let matches = options.parse(&args[1..]).map_err(|err| {
         eprintln!("{}", options.usage(""));
-        Error::Options(err)
+        Error::OptionsParse(err)
     })?;
     if matches.opt_present(HELP_SHORT_NAME) {
         println!("{}", options.usage(""));
@@ -96,9 +105,18 @@ fn main() -> Result<()> {
     }
 
     let app_id = if matches.opt_present(SANDBOX_SHORT_NAME) {
-        SANDBOXED_SHELL_APP_ID
+        if matches.opt_present(APP_ID_SHORT_NAME) {
+            eprintln!("Error: -s is incompatible with -a \n{}", options.usage(""));
+            return Err(Error::ConflictingOptions(
+                SANDBOX_SHORT_NAME.to_string(),
+                APP_ID_SHORT_NAME.to_string(),
+            ));
+        }
+        SANDBOXED_SHELL_APP_ID.to_string()
+    } else if let Some(app_id) = matches.opt_get(APP_ID_SHORT_NAME).unwrap() {
+        app_id
     } else {
-        DEVELOPER_SHELL_APP_ID
+        DEVELOPER_SHELL_APP_ID.to_string()
     };
-    start_manatee_app(app_id)
+    start_manatee_app(&app_id)
 }
