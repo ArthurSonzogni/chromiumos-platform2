@@ -28,6 +28,8 @@ pub enum Error {
     InvalidDomain(String),
     #[error("failed to create domain '{0:?}': {1:?}")]
     FailedToCreateDomain(String, IoError),
+    #[error("failed to create test scope path '{0:?}': {1:?}")]
+    CreateTestPath(String, IoError),
     #[error("failed to create filestorage: '{0:?}'")]
     FileStorage(IoError),
     #[error("failed to write data: '{0:?}'")]
@@ -78,6 +80,15 @@ fn get_storage_path(scope: Scope, domain: &str) -> Result<PathBuf> {
     }
     let sub_path = path.join(&domain);
     Ok(sub_path)
+}
+
+pub fn initialize_storage() -> Result<()> {
+    let test_path = get_temp_path(None);
+    if !test_path.is_dir() {
+        create_dir(&test_path)
+            .map_err(|err| Error::CreateTestPath(test_path.to_string_lossy().to_string(), err))?;
+    }
+    Ok(())
 }
 
 /// Persists the data at the specified location denoted by (scope, domain, identifier).

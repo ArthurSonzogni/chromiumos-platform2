@@ -14,6 +14,7 @@ use libsirenia::linux::events::EventMultiplexer;
 use sys_util::{error, info, syslog};
 
 use socket_rpc::register_socket_rpc;
+use storage::initialize_storage;
 
 fn get_usage() -> String {
     "cronista".to_string()
@@ -30,6 +31,7 @@ fn main() {
     let matches = help_opt.parse_and_check_self(&opts, &args, get_usage);
     syslog::init().unwrap();
     info!("starting cronista");
+    initialize_storage().unwrap();
     let mut ctx = EventMultiplexer::new().unwrap();
 
     // Initialize and register event handlers.
