@@ -320,15 +320,14 @@ void CellularCapability3gpp::EnableModemCompleted(
           nullptr, callback);
     }
 
-    if (IsLocationUpdateSupported()) {
-      ResultCallback setup_callback =
-          Bind(&CellularCapability3gpp::OnSetupLocationReply,
-               weak_ptr_factory_.GetWeakPtr());
-      SetupLocation(MM_MODEM_LOCATION_SOURCE_3GPP_LAC_CI, false,
-                    setup_callback);
-    }
-
     return;
+  }
+
+  if (IsLocationUpdateSupported()) {
+    SetupLocation(MM_MODEM_LOCATION_SOURCE_3GPP_LAC_CI,
+                  /*signal_location=*/false,
+                  Bind(&CellularCapability3gpp::OnSetupLocationReply,
+                       weak_ptr_factory_.GetWeakPtr()));
   }
 
   ResultCallback setup_signal_callback =
