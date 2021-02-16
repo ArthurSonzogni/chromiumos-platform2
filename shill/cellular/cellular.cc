@@ -478,7 +478,6 @@ void Cellular::StartModem(Error* error,
 void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
                                   const Error& error) {
   SLOG(this, 1) << __func__ << ": state=" << GetStateString(state_);
-  SetCapabilityState(CapabilityState::kModemStarted);
 
   if (inhibited_) {
     inhibited_ = false;
@@ -491,6 +490,8 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
       callback.Run(error);
     return;
   }
+
+  SetCapabilityState(CapabilityState::kModemStarted);
 
   if (state_ == kStateDisabled) {
     SetState(kStateEnabled);
@@ -520,6 +521,8 @@ void Cellular::StartModemGetDeviceCallback(
   SLOG(this, 2) << __func__;
   if (!device.IsEmpty())
     uid_ = device.Get<std::string>();
+
+  metrics()->NotifyDeviceEnableFinished(interface_index());
 
   if (callback)
     callback.Run(Error());
@@ -1211,13 +1214,15 @@ bool Cellular::IsDefaultFriendlyServiceName(const string& service_name) const {
 }
 
 void Cellular::OnModemStateChanged(ModemState new_state) {
-  ModemState old_state = modem_state_;
-  if (old_state == new_state) {
+  ModemState old_modem_state = modem_state_;
+  if (old_modem_state == new_state) {
     SLOG(this, 3) << "The new state matches the old state. Nothing to do.";
     return;
   }
 
-  SLOG(this, 1) << __func__;
+  SLOG(this, 1) << __func__ << " State: " << GetModemStateString(new_state)
+                << " Capability State: "
+                << GetCapabilityStateString(capability_state_);
   SetModemState(new_state);
   CHECK(capability_);
 
@@ -1237,31 +1242,48 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
     return;
   }
 
-  if (old_state >= kModemStateRegistered && new_state < kModemStateRegistered) {
-    capability_->SetUnregistered(new_state == kModemStateSearching);
+  if (old_modem_state >= kModemStateRegistered &&
+      modem_state_ < kModemStateRegistered) {
+    capability_->SetUnregistered(modem_state_ == kModemStateSearching);
     HandleNewRegistrationState();
   }
 
-  if (new_state == kModemStateDisabled) {
-    OnDisabled();
-  } else if (new_state >= kModemStateEnabled) {
-    if (old_state < kModemStateEnabled) {
-      // Just became enabled, update enabled state.
-      OnEnabled();
-    }
-    if (new_state == kModemStateEnabled || new_state == kModemStateSearching ||
-        new_state == kModemStateRegistered) {
-      if (old_state == kModemStateConnected ||
-          old_state == kModemStateConnecting ||
-          old_state == kModemStateDisconnecting) {
+  if (old_modem_state < kModemStateEnabled &&
+      modem_state_ >= kModemStateEnabled) {
+    // Just became enabled, update enabled state.
+    OnEnabled();
+  }
+
+  switch (modem_state_) {
+    case kModemStateFailed:
+    case kModemStateUnknown:
+    case kModemStateInitializing:
+    case kModemStateLocked:
+      break;
+    case kModemStateDisabled:
+      OnDisabled();
+      break;
+    case kModemStateDisabling:
+    case kModemStateEnabling:
+      break;
+    case kModemStateEnabled:
+    case kModemStateSearching:
+    case kModemStateRegistered:
+      if (old_modem_state == kModemStateConnected ||
+          old_modem_state == kModemStateConnecting ||
+          old_modem_state == kModemStateDisconnecting) {
         OnDisconnected();
       }
-    } else if (new_state == kModemStateConnecting) {
+      break;
+    case kModemStateDisconnecting:
+      break;
+    case kModemStateConnecting:
       OnConnecting();
-    } else if (new_state == kModemStateConnected) {
-      if (old_state == kModemStateConnecting)
+      break;
+    case kModemStateConnected:
+      if (old_modem_state == kModemStateConnecting)
         OnConnected();
-    }
+      break;
   }
 
   // Update the kScanningProperty property after we've handled the current state
@@ -1530,21 +1552,14 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 }
 
 void Cellular::UpdateScanning() {
-  if (proposed_scan_in_progress_) {
-    SetScanning(true);
-    return;
-  }
+  bool scanning =
+      capability_state_ == CapabilityState::kModemStarting ||
+      (capability_state_ == CapabilityState::kModemStarted &&
+       (proposed_scan_in_progress_ || modem_state_ == kModemStateEnabled ||
+        modem_state_ == kModemStateEnabling ||
+        modem_state_ == kModemStateSearching));
 
-  // Modem is Scanning until it is Registered / Connecting / Connected.
-  if (capability_state_ != CapabilityState::kModemStarted ||
-      modem_state_ == kModemStateEnabled ||
-      modem_state_ == kModemStateEnabling ||
-      modem_state_ == kModemStateSearching) {
-    SetScanning(true);
-    return;
-  }
-
-  SetScanning(false);
+  SetScanning(scanning);
 }
 
 void Cellular::RegisterProperties() {

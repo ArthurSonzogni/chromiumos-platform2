@@ -338,7 +338,6 @@ void CellularCapability3gpp::EnableModemCompleted(
   // After modem is enabled, it should be possible to get properties
   // TODO(jglasgow): handle errors from GetProperties
   GetProperties();
-  metrics_->NotifyDeviceEnableFinished(cellular()->interface_index());
   callback.Run(error);
 }
 
