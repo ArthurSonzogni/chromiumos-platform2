@@ -59,8 +59,8 @@ pub type Result<T> = StdResult<T, Error>;
 pub trait StorageRPC {
     type Error;
 
-    fn read_data(&self, id: String) -> StdResult<Vec<u8>, Self::Error>;
-    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<(), Self::Error>;
+    fn read_data(&self, id: String) -> StdResult<(persistence::Status, Vec<u8>), Self::Error>;
+    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<persistence::Status, Self::Error>;
 }
 
 // Reads a message from the given Read. First reads a u32 that says the length

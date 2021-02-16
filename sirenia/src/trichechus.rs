@@ -17,7 +17,7 @@ use std::result::Result as StdResult;
 use getopts::Options;
 use libchromeos::linux::{getpid, getsid, setsid};
 use libsirenia::cli::TransportTypeOption;
-use libsirenia::communication::persistence::{Cronista, CronistaClient};
+use libsirenia::communication::persistence::{Cronista, CronistaClient, Status};
 use libsirenia::communication::{StorageRPC, StorageRPCServer};
 use libsirenia::linux::events::{AddEventSourceMutator, EventMultiplexer, Mutator};
 use libsirenia::linux::syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH};
@@ -88,7 +88,7 @@ struct TEEAppHandler {
 impl StorageRPC for TEEAppHandler {
     type Error = ();
 
-    fn read_data(&self, id: String) -> StdResult<Vec<u8>, Self::Error> {
+    fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
         let app_info = &self.tee_app.borrow().app_info;
         self.state
             .borrow()
@@ -96,13 +96,12 @@ impl StorageRPC for TEEAppHandler {
             .as_ref()
             .unwrap()
             .retrieve(app_info.scope.clone(), app_info.domain.to_string(), id)
-            .map(|x| x.1)
             .map_err(|err| {
                 error!("failed to retrieve data: {}", err);
             })
     }
 
-    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<(), Self::Error> {
+    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
         let app_info = &self.tee_app.borrow().app_info;
         self.state
             .borrow()
@@ -115,7 +114,6 @@ impl StorageRPC for TEEAppHandler {
                 id,
                 data,
             )
-            .map(drop)
             .map_err(|err| {
                 error!("failed to persist data: {}", err);
             })
@@ -272,7 +270,9 @@ fn spawn_tee_app(
     let mut sandbox = match &app_info.sandbox_type {
         SandboxType::DeveloperEnvironment => Sandbox::passthrough().map_err(Error::NewSandbox)?,
         SandboxType::Container => Sandbox::new(None).map_err(Error::NewSandbox)?,
-        SandboxType::VirtualMachine => Err(Error::SandboxTypeNotImplemented(app_info.to_owned()))?,
+        SandboxType::VirtualMachine => {
+            return Err(Error::SandboxTypeNotImplemented(app_info.to_owned()))
+        }
     };
     let (trichechus_transport, tee_transport) =
         create_transport_from_pipes().map_err(Error::NewTransport)?;

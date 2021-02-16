@@ -9,8 +9,9 @@ use std::sync::{Arc, Once};
 
 use sync::Mutex;
 
+use libsirenia::communication::persistence::Status;
 use libsirenia::communication::{StorageRPC, StorageRPCClient};
-use libsirenia::storage::{to_read_data_error, to_write_data_error, Result, Storage};
+use libsirenia::storage::{to_read_data_error, to_write_data_error, Error, Result, Storage};
 use libsirenia::transport::{create_transport_from_default_fds, Transport};
 
 /// Holds the rpc client for the specific instance of the TEE App.
@@ -63,7 +64,9 @@ impl Storage for TrichechusStorage {
     fn read_raw(&mut self, id: &str) -> Result<Vec<u8>> {
         // TODO: Log the rpc error.
         match self.rpc.lock().read_data(id.to_string()) {
-            Ok(res) => Ok(res),
+            Ok((Status::Success, res)) => Ok(res),
+            Ok((Status::IdNotFound, _)) => Err(Error::IdNotFound(id.to_string())),
+            Ok((Status::Failure, _)) => Err(Error::ReadData(None)),
             Err(err) => Err(to_read_data_error(err)),
         }
     }
@@ -71,7 +74,8 @@ impl Storage for TrichechusStorage {
     /// Write without serializing.
     fn write_raw(&mut self, id: &str, data: &[u8]) -> Result<()> {
         match self.rpc.lock().write_data(id.to_string(), data.to_vec()) {
-            Ok(_) => Ok(()),
+            Ok(Status::Success) => Ok(()),
+            Ok(_) => Err(Error::WriteData(None)),
             Err(err) => Err(to_write_data_error(err)),
         }
     }
@@ -105,16 +109,16 @@ pub mod tests {
         type Error = ();
 
         // TODO: Want to return nested Result - but Error needs to be serializable first
-        fn read_data(&self, id: String) -> StdResult<Vec<u8>, Self::Error> {
+        fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
             match self.map.borrow().get(&id) {
-                Some(val) => Ok(val.to_vec()),
+                Some(val) => Ok((Status::Success, val.to_vec())),
                 None => Err(()),
             }
         }
 
-        fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<(), Self::Error> {
+        fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
             self.map.borrow_mut().insert(id, data);
-            Ok(())
+            Ok(Status::Success)
         }
     }
 
