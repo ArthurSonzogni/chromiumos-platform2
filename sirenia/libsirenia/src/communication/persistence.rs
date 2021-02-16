@@ -14,6 +14,8 @@ use sirenia_rpc_macros::sirenia_rpc;
 pub enum Status {
     Success = 0,
     Failure = 1,
+    /// The operation failed because the ID hasn't been written to yet.
+    IdNotFound = 2,
 }
 
 /// Should the data be globally available or only available within the users' sessions.

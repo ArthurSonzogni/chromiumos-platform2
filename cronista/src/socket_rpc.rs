@@ -17,14 +17,12 @@ use libsirenia::transport::TransportType;
 use sys_util::{self, error, info};
 use thiserror::Error as ThisError;
 
-use crate::storage;
+use crate::storage::{self, is_unwritten_id};
 
 #[derive(ThisError, Debug)]
 pub enum Error {
     #[error("failed to parse the transport: {0:?}")]
     ParseTransport(cli::Error),
-    #[error("failed to persist data: {0:?}")]
-    Persist(storage::Error),
 }
 
 type Result<T> = StdResult<T, Error>;
@@ -98,7 +96,6 @@ impl Cronista for CronistaServerImpl {
         data: Vec<u8>,
     ) -> std::result::Result<Status, Self::Error> {
         info!("Received persist message",);
-        let data: Vec<u8> = data.into();
         Ok(
             match storage::persist(scope, &domain, &identifier, data.as_slice()) {
                 Ok(_) => Status::Success,
@@ -117,14 +114,16 @@ impl Cronista for CronistaServerImpl {
         identifier: String,
     ) -> std::result::Result<(Status, Vec<u8>), Self::Error> {
         info!("Received retrieve message");
-        Ok(
-            match storage::retrieve(scope, &domain, &identifier).map_err(Error::Persist) {
-                Ok(data) => (Status::Success, data),
-                Err(err) => {
-                    error!("retrieve failure: {}", err);
-                    (Status::Failure, Vec::new())
-                }
-            },
-        )
+        let res = storage::retrieve(scope, &domain, &identifier);
+        if is_unwritten_id(&res) {
+            return Ok((Status::IdNotFound, Vec::new()));
+        }
+        Ok(match res {
+            Ok(data) => (Status::Success, data),
+            Err(err) => {
+                error!("retrieve failure: {}", err);
+                (Status::Failure, Vec::new())
+            }
+        })
     }
 }
