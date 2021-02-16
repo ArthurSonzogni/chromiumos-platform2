@@ -154,6 +154,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   ArcVmFeatures features;
   features.rootfs_writable = request.rootfs_writable();
   features.use_dev_conf = !request.ignore_dev_conf();
+  features.rt_vcpu_enabled = request.enable_rt_vcpu();
 
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
   if (!base::PathExists(data_dir)) {
@@ -172,21 +173,9 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   std::string shared_data_media =
       CreateSharedDataParam(data_dir, "_data_media", false, true);
 
-  // TODO(kansho): should rt_vcpu_num be changed by DBus params?
-  const int rt_vcpu_num = 1;
-  // Add rt-vcpus following non rt-vcpus
-  Cpus rt_vcpus;
-  for (int i = 0; i < rt_vcpu_num; i++)
-    rt_vcpus.set(request.cpus() + i);
-  std::string s_rt_vcpus = ConvertCpusetToString(rt_vcpus);
-  params.emplace_back(base::StringPrintf("isolcpus=%s", s_rt_vcpus.c_str()));
-  params.emplace_back(
-      base::StringPrintf("androidboot.rtcpus=%s", s_rt_vcpus.c_str()));
-
   VmBuilder vm_builder;
   vm_builder.AppendDisks(std::move(disks))
       .SetCpus(request.cpus())
-      .SetRtCpus(rt_vcpus)
       .AppendKernelParam(base::JoinString(params, " "))
       .AppendCustomParam("--android-fstab", fstab.value())
       .AppendCustomParam("--pstore",

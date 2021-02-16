@@ -7,7 +7,6 @@
 
 #include <sys/types.h>
 
-#include <bitset>
 #include <string>
 #include <vector>
 
@@ -57,10 +56,6 @@ extern const char kCrosvmBin[];
 // from platform2/arc/container-bundle/pi/config.json.
 extern const char kAndroidUidMap[];
 extern const char kAndroidGidMap[];
-
-// No Chromebook today has more than 64 cores.
-constexpr int MAX_CPU = 64;
-using Cpus = std::bitset<MAX_CPU>;
 
 // Calculates the amount of memory to give the virtual machine. Currently
 // configured to provide 75% of system memory. This is deliberately over
@@ -132,9 +127,6 @@ std::string CreateSharedDataParam(const base::FilePath& data_dir,
                                   const std::string& tag,
                                   bool enable_caches,
                                   bool ascii_casefold);
-
-// Convert from Cpus, which is bitset, to a comma-separated list of cpus.
-std::string ConvertCpusetToString(Cpus cpus);
 
 }  // namespace concierge
 }  // namespace vm_tools

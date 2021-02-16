@@ -39,7 +39,6 @@ class VmBuilder {
   VmBuilder& SetInitrd(base::FilePath initrd);
   VmBuilder& SetRootfs(const struct Rootfs& rootfs);
   VmBuilder& SetCpus(int32_t cpus);
-  VmBuilder& SetRtCpus(Cpus rtcpus);
   VmBuilder& SetVsockCid(uint32_t vsock_cid);
   VmBuilder& AppendDisks(std::vector<Disk> disks);
   VmBuilder& SetMemory(const std::string& memory_in_mb);
@@ -64,6 +63,7 @@ class VmBuilder {
   VmBuilder& EnableVideoEncoder(bool enable);
   VmBuilder& EnableBattery(bool enable);
   VmBuilder& EnableSmt(bool enable);
+  VmBuilder& EnableRtVcpu(bool enable);
 
   // Builds the command line required to start a VM.
   base::StringPairs BuildVmArgs() const;
@@ -73,7 +73,6 @@ class VmBuilder {
   base::FilePath initrd_;
   base::Optional<Rootfs> rootfs_;
   int32_t cpus_ = 0;
-  Cpus rtcpus_;
   base::Optional<uint32_t> vsock_cid_;
   std::string memory_in_mib_;
   std::string balloon_bias_mib_;
@@ -88,6 +87,7 @@ class VmBuilder {
   bool enable_video_encoder_ = false;
   bool enable_battery_ = false;
   base::Optional<bool> enable_smt_ = false;
+  bool enable_rt_vcpu_ = false;
 
   std::vector<Disk> disks_;
   std::vector<std::string> kernel_params_;

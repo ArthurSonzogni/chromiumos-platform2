@@ -4,7 +4,11 @@
 
 #include "vm_tools/concierge/vm_builder.h"
 
+#include <cassert>
 #include <utility>
+
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 
 #include "vm_tools/concierge/vm_util.h"
 
@@ -36,11 +40,6 @@ VmBuilder& VmBuilder::SetRootfs(const struct Rootfs& rootfs) {
 
 VmBuilder& VmBuilder::SetCpus(int32_t cpus) {
   cpus_ = cpus;
-  return *this;
-}
-
-VmBuilder& VmBuilder::SetRtCpus(Cpus rtcpus) {
-  rtcpus_ = rtcpus;
   return *this;
 }
 
@@ -151,33 +150,47 @@ VmBuilder& VmBuilder::EnableSmt(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableRtVcpu(bool enable) {
+  enable_rt_vcpu_ = enable;
+  return *this;
+}
+
 base::StringPairs VmBuilder::BuildVmArgs() const {
   base::StringPairs args = {{kCrosvmBin, "run"}};
 
-  args.emplace_back("--cpus", std::to_string(cpus_ + rtcpus_.count()));
+  args.emplace_back("--cpus", std::to_string(cpus_));
 
-  if (rtcpus_.any()) {
-    args.emplace_back("--rt-cpus", ConvertCpusetToString(rtcpus_));
+  // Add RT-vcpus following non RT-vcpus if enabled.
+  // The number of non RT-vcpus is reduced by the number of RT-vcpus.
+  if (enable_rt_vcpu_) {
+    // Add one RT-vcpu.
+    const int rt_vcpu_num = 1;
+    // Ensure that non RT-vcpus exist.
+    assert(cpus_ - rt_vcpu_num > 0);
 
     // Isolate non RT-vcpus and RT-vcpus.
-    // Guarantee that any non RT-vcpus and any rt-vcpus are never assigned to
+    // Guarantee that any non RT-vcpus and any RT-vcpus are never assigned to
     // a same pCPU to avoid lock-holder preemption problem.
     const int pcpu_num_for_rt_vcpus = 1;
     std::vector<std::string> cpu_affinities;
-    for (int i = 0; i < cpus_; i++) {
-      cpu_affinities.emplace_back(
-          std::to_string(i) + "=" + "0-" +
-          std::to_string(cpus_ - pcpu_num_for_rt_vcpus - 1));
+    for (int i = 0; i < cpus_ - rt_vcpu_num; i++) {
+      cpu_affinities.emplace_back(base::StringPrintf(
+          "%d=%d-%d", i, 0, cpus_ - pcpu_num_for_rt_vcpus - 1));
     }
-    for (int i = 0; i < rtcpus_.size(); i++) {
-      if (!rtcpus_.test(i))
-        continue;
-      cpu_affinities.emplace_back(
-          std::to_string(i) + "=" +
-          std::to_string(cpus_ - pcpu_num_for_rt_vcpus) + "-" +
-          std::to_string(cpus_ - 1));
+    for (int i = cpus_ - rt_vcpu_num; i < cpus_; i++) {
+      cpu_affinities.emplace_back(base::StringPrintf(
+          "%d=%d-%d", i, cpus_ - pcpu_num_for_rt_vcpus, cpus_ - 1));
     }
     args.emplace_back("--cpu-affinity", base::JoinString(cpu_affinities, ":"));
+
+    std::vector<std::string> rt_vcpus;
+    for (int i = cpus_ - rt_vcpu_num; i < cpus_; i++) {
+      rt_vcpus.emplace_back(std::to_string(i));
+    }
+    const std::string s_rt_vcpus = base::JoinString(rt_vcpus, ",");
+    args.emplace_back("--rt-cpus", s_rt_vcpus);
+    args.emplace_back("--params", "isolcpus=" + s_rt_vcpus);
+    args.emplace_back("--params", "androidboot.rtcpus=" + s_rt_vcpus);
   }
 
   if (!memory_in_mib_.empty())
