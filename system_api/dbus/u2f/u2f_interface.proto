@@ -54,6 +54,11 @@ message MakeCredentialRequest {
   bytes client_data_hash = 9;
   // What kind of attestation is desired.
   AttestationConveyancePreference attestation_conveyance_preference = 10;
+  // The name of RP to display in credential management UI.
+  string rp_display_name = 11;
+  // Whether the credential should be a resident key, a.k.a. discoverable
+  // credential.
+  bool resident_key_required = 12;
 }
 
 message MakeCredentialResponse {
