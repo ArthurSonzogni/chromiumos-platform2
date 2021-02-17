@@ -536,6 +536,12 @@ Client::Device* Client::HandleSelectedServiceChanged(
   auto* device = it->second->device();
 
   auto service_path = property_value.TryGet<dbus::ObjectPath>();
+  if (!service_path.IsValid() || service_path.value() == "/") {
+    device->state = Device::ConnectionState::kUnknown;
+    LOG(INFO) << "Device [" << device_path << "] has no service";
+    return device;
+  }
+
   SetupSelectedServiceProxy(service_path, dbus::ObjectPath(device_path));
   brillo::VariantDictionary properties;
   if (auto* proxy = it->second->service_proxy()) {

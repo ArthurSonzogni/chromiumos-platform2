@@ -633,7 +633,7 @@ TEST_F(ClientTest, DeviceSelectedServiceConnectStateObtained) {
 TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceStateChange) {
   // Set up 2 devices here to ensure the changes are captured correctly.
   const dbus::ObjectPath eth0_path("/device/eth0"), wlan0_path("/device/wlan0"),
-      eth0_service_path("service/0"), wlan0_service_path("/service/1");
+      eth0_service_path("/service/0"), wlan0_service_path("/service/1");
   auto* eth0_device = client_->PreMakeDevice(eth0_path);
   auto* wlan0_device = client_->PreMakeDevice(wlan0_path);
   auto* eth0_service = client_->PreMakeService(eth0_service_path);
@@ -706,7 +706,7 @@ TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceStateChange) {
 
 TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceChange) {
   const dbus::ObjectPath wlan0_path("/device/wlan0"),
-      service0_path("service/0"), service1_path("/service/1");
+      service0_path("/service/0"), service1_path("/service/1");
   auto* wlan0_device = client_->PreMakeDevice(wlan0_path);
   auto* service0 = client_->PreMakeService(service0_path);
   auto* service1 = client_->PreMakeService(service1_path);
