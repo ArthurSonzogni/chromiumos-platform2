@@ -1050,15 +1050,23 @@ uint8_t WiFiService::SignalToStrength(int16_t signal_dbm) {
                    << "Assuming value " << signal_dbm << " is not in dBm.";
       logged_signal_warning = true;
     }
-    strength = signal_dbm;
-  } else {
-    strength = 120 + signal_dbm;  // Call -20dBm "perfect".
   }
 
-  if (strength > kStrengthMax) {
+  // The signal strength in dBm and relation with signal quality is non linear.
+  // The signal strength can typically vary from -20 to -90 dBm.
+  // The UI maps signal strength [0-100] vs RSSI(in dBm) is as follows:
+  // [100-75] -> 4 Bars in UI for Signal Strength -44 to -55 dBm
+  // [75-50]  -> 3 Bars in UI for Signal Strength -55 to -66 dBm
+  // [50-25]  -> 2 Bars in UI for Signal Strength -66 to -77 dBm
+  // [25-0]   -> 1 Bar in UI for Signal Strength -77 to -88 dBm
+  // This can be converted to eq.: y = 25x/11 + 200
+  // Ref: b/170208961 doc: http://go/cros-wifi-signalstrength
+  if (signal_dbm > -44) {
     strength = kStrengthMax;
-  } else if (strength < kStrengthMin) {
+  } else if (signal_dbm < -88) {
     strength = kStrengthMin;
+  } else {
+    strength = (25 * signal_dbm) / 11 + 200;
   }
   return strength;
 }

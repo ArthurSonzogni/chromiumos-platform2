@@ -290,9 +290,9 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   static const uint16_t kOkEndpointFrequency = 2422;
   static const uint16_t kBadEndpointFrequency = 2417;
   static const uint16_t kGoodEndpointFrequency = 2412;
-  static const int16_t kOkEndpointSignal = -50;
+  static const int16_t kOkEndpointSignal = -60;
   static const int16_t kBadEndpointSignal = -75;
-  static const int16_t kGoodEndpointSignal = -25;
+  static const int16_t kGoodEndpointSignal = -50;
   static const char kOkEndpointBssId[];
   static const char kGoodEndpointBssId[];
   static const char kBadEndpointBssId[];
@@ -1190,23 +1190,37 @@ TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
 
 TEST_F(WiFiServiceTest, SignalToStrength) {
   // Verify that our mapping is sane, in the sense that it preserves ordering.
-  // We break the test into two domains, because we assume that positive
-  // values aren't actually in dBm.
-  for (int16_t i = std::numeric_limits<int16_t>::min(); i < 0; ++i) {
+  // We test that the current_map returns results as expect and fall into
+  // correct category of Excellent, Good, Medium, Poor signal quality.
+  for (int16_t i = std::numeric_limits<int16_t>::min();
+       i < std::numeric_limits<int16_t>::max(); ++i) {
     int16_t current_mapped = WiFiService::SignalToStrength(i);
     int16_t next_mapped = WiFiService::SignalToStrength(i + 1);
     EXPECT_LE(current_mapped, next_mapped)
         << "(original values " << i << " " << i + 1 << ")";
     EXPECT_GE(current_mapped, Service::kStrengthMin);
     EXPECT_LE(current_mapped, Service::kStrengthMax);
-  }
-  for (int16_t i = 1; i < std::numeric_limits<int16_t>::max(); ++i) {
-    int16_t current_mapped = WiFiService::SignalToStrength(i);
-    int16_t next_mapped = WiFiService::SignalToStrength(i + 1);
-    EXPECT_LE(current_mapped, next_mapped)
-        << "(original values " << i << " " << i + 1 << ")";
-    EXPECT_GE(current_mapped, Service::kStrengthMin);
-    EXPECT_LE(current_mapped, Service::kStrengthMax);
+
+    if (i >= -55) {
+      // Excellent signal quality
+      EXPECT_GE(current_mapped, 75);
+      EXPECT_LE(current_mapped, Service::kStrengthMax);
+    } else if (i < -55 && i >= -66) {
+      // Good signal quality
+      EXPECT_GE(current_mapped, 50);
+      EXPECT_LE(current_mapped, 75);
+    } else if (i < -66 && i >= -77) {
+      // Medium signal quality
+      EXPECT_GE(current_mapped, 25);
+      EXPECT_LE(current_mapped, 50);
+    } else if (i < -77 && i >= -88) {
+      // Poor signal quality
+      EXPECT_GE(current_mapped, Service::kStrengthMin);
+      EXPECT_LE(current_mapped, 25);
+    } else if (i < -88) {
+      // No signal
+      EXPECT_EQ(current_mapped, Service::kStrengthMin);
+    }
   }
 }
 
