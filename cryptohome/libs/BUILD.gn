@@ -139,6 +139,9 @@ pkg_config("libcrosplatform_dependent_config") {
 # Common objects.
 static_library("libcrosplatform") {
   sources = [
+    "../crypto/elliptic_curve.cc",
+    "../crypto/openssl_util.cc",
+    "../crypto/recovery_crypto.cc",
     "../cryptohome_metrics.cc",
     "../cryptolib.cc",
     "../dircrypto_util.cc",
