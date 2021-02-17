@@ -190,6 +190,9 @@ main() {
     return 0
   fi
 
+  # Collect log-related metrics before rotation.
+  log-metrics-collector
+
   # Rotate other logs
   rotate_logs
 
