@@ -29,6 +29,8 @@ struct WebAuthnRecord {
   brillo::Blob secret;
   // The relying party id.
   std::string rp_id;
+  // The relying party display name.
+  std::string rp_display_name;
   // The PublicKeyCredentialUserEntity.id property in bytes. Will be
   // hex-encoded.
   std::string user_id;
@@ -36,6 +38,8 @@ struct WebAuthnRecord {
   std::string user_display_name;
   // Timestamp of record creation.
   double timestamp;
+  // Whether this credential is a resident_key.
+  bool is_resident_key;
 };
 
 // WebAuthnStorage manages the WebAuthn credential id records for the current

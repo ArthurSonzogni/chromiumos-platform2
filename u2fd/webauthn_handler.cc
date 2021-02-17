@@ -577,9 +577,11 @@ void WebAuthnHandler::DoMakeCredential(
     AppendToString(credential_id, &record.credential_id);
     record.secret = std::move(credential_secret);
     record.rp_id = session.request.rp_id();
+    record.rp_display_name = session.request.rp_display_name();
     record.user_id = session.request.user_id();
     record.user_display_name = session.request.user_display_name();
     record.timestamp = base::Time::Now().ToDoubleT();
+    record.is_resident_key = session.request.resident_key_required();
     if (!webauthn_storage_->WriteRecord(std::move(record))) {
       response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
       session.response->Return(response);

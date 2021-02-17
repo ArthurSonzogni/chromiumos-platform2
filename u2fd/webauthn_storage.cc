@@ -36,9 +36,11 @@ constexpr const char kAuthTimeSecretHashFileName[] = "AuthTimeSecretHash";
 constexpr const char kCredentialIdKey[] = "credential_id";
 constexpr const char kSecretKey[] = "secret";
 constexpr const char kRpIdKey[] = "rp_id";
+constexpr const char kRpDisplayNameKey[] = "rp_display_name";
 constexpr const char kUserIdKey[] = "user_id";
 constexpr const char kUserDisplayNameKey[] = "user_display_name";
 constexpr const char kCreatedTimestampKey[] = "created";
+constexpr const char kIsResidentKeyKey[] = "is_resident_key";
 
 constexpr char kWebAuthnRecordCountMetric[] =
     "WebAuthentication.ChromeOS.StartupRecordCount";
@@ -66,10 +68,12 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
   record_value.SetStringKey(kCredentialIdKey, credential_id_hex);
   record_value.SetStringKey(kSecretKey, base::Base64Encode(record.secret));
   record_value.SetStringKey(kRpIdKey, record.rp_id);
+  record_value.SetStringKey(kRpDisplayNameKey, record.rp_display_name);
   record_value.SetStringKey(kUserIdKey, base::HexEncode(record.user_id.data(),
                                                         record.user_id.size()));
   record_value.SetStringKey(kUserDisplayNameKey, record.user_display_name);
   record_value.SetDoubleKey(kCreatedTimestampKey, record.timestamp);
+  record_value.SetBoolKey(kIsResidentKeyKey, record.is_resident_key);
 
   std::string json_string;
   JSONStringValueSerializer json_serializer(&json_string);
@@ -189,6 +193,15 @@ bool WebAuthnStorage::LoadRecords() {
       continue;
     }
 
+    const std::string* rp_display_name =
+        record_dictionary.FindStringKey(kRpDisplayNameKey);
+    if (!rp_display_name) {
+      LOG(ERROR) << "Cannot read rp_display_name from " << record_path.value()
+                 << ".";
+      read_all_records_successfully = false;
+      continue;
+    }
+
     const std::string* user_id_hex =
         record_dictionary.FindStringKey(kUserIdKey);
     std::string user_id;
@@ -223,9 +236,19 @@ bool WebAuthnStorage::LoadRecords() {
       continue;
     }
 
+    const base::Optional<bool> is_resident_key =
+        record_dictionary.FindBoolKey(kIsResidentKeyKey);
+    if (!is_resident_key.has_value()) {
+      LOG(ERROR) << "Cannot read is_resident_key from " << record_path.value()
+                 << ".";
+      read_all_records_successfully = false;
+      continue;
+    }
+
     records_.emplace_back(WebAuthnRecord{
         credential_id, brillo::Blob(secret.begin(), secret.end()), *rp_id,
-        user_id, *user_display_name, *timestamp});
+        *rp_display_name, user_id, *user_display_name, *timestamp,
+        *is_resident_key});
   }
   LOG(INFO) << "Loaded " << records_.size() << " WebAuthn records to memory.";
   return read_all_records_successfully;
