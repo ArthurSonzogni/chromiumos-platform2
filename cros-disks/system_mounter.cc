@@ -56,13 +56,19 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
     return nullptr;
   }
 
+  std::string option_string;
+  if (!JoinParamsIntoOptions(options, &option_string)) {
+    *error = MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return nullptr;
+  }
+
   return MountPoint::Mount(
       {
           .mount_path = target_path,
           .source = source,
           .filesystem_type = filesystem_type_,
           .flags = flags,
-          .data = base::JoinString(options, ","),
+          .data = option_string,
       },
       platform_, error);
 }

@@ -193,8 +193,14 @@ MountErrorType SshfsHelper::ConfigureSandbox(const std::string& source,
   }
 
   sandbox->AddArgument(uri.path());
+
+  std::string option_string;
+  if (!JoinParamsIntoOptions(options, &option_string)) {
+    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+  }
   sandbox->AddArgument("-o");
-  sandbox->AddArgument(base::JoinString(options, ","));
+  sandbox->AddArgument(option_string);
+
   return MOUNT_ERROR_NONE;
 }
 

@@ -59,8 +59,13 @@ MountErrorType RarMounter::FormatInvocationCommand(
       base::StringPrintf("uid=%d", kChronosUID),
       base::StringPrintf("gid=%d", kChronosAccessGID)};
 
+  std::string options;
+  if (!JoinParamsIntoOptions(opts, &options)) {
+    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+  }
   sandbox->AddArgument("-o");
-  sandbox->AddArgument(base::JoinString(opts, ","));
+  sandbox->AddArgument(options);
+
   sandbox->AddArgument(archive.value());
 
   return MOUNT_ERROR_NONE;

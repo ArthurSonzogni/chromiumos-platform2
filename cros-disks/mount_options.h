@@ -23,7 +23,7 @@ bool IsReadOnlyMount(const std::vector<std::string>& options);
 // found.
 bool GetParamValue(const std::vector<std::string>& params,
                    base::StringPiece name,
-                   std::string* value);
+                   std::string* value) WARN_UNUSED_RESULT;
 
 // Adds a '|name|=|value|' parameter to the container.
 void SetParamValue(std::vector<std::string>* params,
@@ -43,6 +43,11 @@ size_t RemoveParamsEqualTo(std::vector<std::string>* params,
 // provided and returns the count of removed elements.
 size_t RemoveParamsWithSameName(std::vector<std::string>* params,
                                 base::StringPiece name);
+
+// Joins params into a comma separated string. Returns false if comma is
+// encountered in an element.
+bool JoinParamsIntoOptions(const std::vector<std::string>& params,
+                           std::string* out) WARN_UNUSED_RESULT;
 
 }  // namespace cros_disks
 

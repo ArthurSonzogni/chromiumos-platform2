@@ -66,4 +66,21 @@ TEST(MountOptionsTest, RemoveParamsWithSameName) {
   EXPECT_THAT(params, ElementsAre("abc"));
 }
 
+TEST(MountOptionsTest, JoinParamsIntoOptions) {
+  std::string result;
+
+  EXPECT_TRUE(JoinParamsIntoOptions({}, &result));
+  EXPECT_EQ("", result);
+
+  EXPECT_TRUE(JoinParamsIntoOptions({"foo"}, &result));
+  EXPECT_EQ("foo", result);
+
+  EXPECT_TRUE(JoinParamsIntoOptions({"foo", "bar=baz", "abc=123"}, &result));
+  EXPECT_EQ("foo,bar=baz,abc=123", result);
+
+  EXPECT_FALSE(JoinParamsIntoOptions({"foo", "bar,zoo"}, &result));
+
+  EXPECT_FALSE(JoinParamsIntoOptions({"foo", "bar=baz,zoo"}, &result));
+}
+
 }  // namespace cros_disks

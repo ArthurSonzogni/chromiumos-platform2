@@ -120,8 +120,13 @@ class DiskFUSEMounter : public FUSEMounter {
     }
 
     if (!options_.empty()) {
+      std::string options;
+      if (!JoinParamsIntoOptions(options_, &options)) {
+        *error = MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+        return nullptr;
+      }
       sandbox->AddArgument("-o");
-      sandbox->AddArgument(base::JoinString(options_, ","));
+      sandbox->AddArgument(options);
     }
 
     sandbox->AddArgument(device.value());

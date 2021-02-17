@@ -96,9 +96,14 @@ MountErrorType SmbfsHelper::ConfigureSandbox(
     return MOUNT_ERROR_INTERNAL;
   }
 
+  std::string options;
+  if (!JoinParamsIntoOptions(
+          {"uid=1000", "gid=1001", kMojoIdOptionPrefix + uri.path()},
+          &options)) {
+    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+  }
   sandbox->AddArgument("-o");
-  sandbox->AddArgument(base::JoinString(
-      {"uid=1000", "gid=1001", kMojoIdOptionPrefix + uri.path()}, ","));
+  sandbox->AddArgument(options);
 
   return MOUNT_ERROR_NONE;
 }

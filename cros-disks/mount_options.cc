@@ -73,4 +73,14 @@ size_t RemoveParamsWithSameName(std::vector<std::string>* params,
   });
 }
 
+bool JoinParamsIntoOptions(const std::vector<std::string>& params,
+                           std::string* out) {
+  for (const auto& element : params) {
+    if (element.find(',') != std::string::npos)
+      return false;
+  }
+  *out = base::JoinString(params, ",");
+  return true;
+}
+
 }  // namespace cros_disks

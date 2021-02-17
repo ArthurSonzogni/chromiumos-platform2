@@ -179,8 +179,12 @@ MountErrorType DrivefsHelper::ConfigureSandbox(
   if (!my_files.empty()) {
     SetParamValue(&args, kMyFilesOptionPrefix, my_files.value());
   }
+  std::string options;
+  if (!JoinParamsIntoOptions(args, &options)) {
+    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+  }
   sandbox->AddArgument("-o");
-  sandbox->AddArgument(base::JoinString(args, ","));
+  sandbox->AddArgument(options);
 
   return MOUNT_ERROR_NONE;
 }
