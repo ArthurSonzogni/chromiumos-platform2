@@ -17,6 +17,7 @@
 #endif  // USE_DIRENCRYPTION
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -539,6 +540,21 @@ unsigned HashString(base::StringPiece input) {
   for (auto c : input)
     hash = hash * 16127 + c;
   return hash;
+}
+
+base::FilePath GetPathToThisBinary(const char* const argv[]) {
+  // To support usage with lddtree, allow overriding argv[0] with the LD_ARGV0
+  // environment variable set by lddtree wrappers. Without this, core_pattern
+  // will include a .elf suffix, bypassing the lddtree wrapper, leaving
+  // crash_reporter unable to start in response to crashes.
+  //
+  // TODO(crbug.com/1003841): Remove LD_ARGV0 once ld.so supports forwarding
+  // the binary name.
+  const char* arg0 = getenv("LD_ARGV0");
+  if (arg0 == nullptr || arg0[0] == '\0') {
+    arg0 = argv[0];
+  }
+  return base::MakeAbsoluteFilePath(base::FilePath(arg0));
 }
 
 }  // namespace util

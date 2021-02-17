@@ -139,6 +139,10 @@ void JoinSessionKeyring();
 // be dependent on a C++ library that might change.
 unsigned HashString(base::StringPiece input);
 
+// Get the absolute path to this binary given its command-line arguments,
+// and allowing override with the LD_ARGV0 environment variable.
+base::FilePath GetPathToThisBinary(const char* const argv[]);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_

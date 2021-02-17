@@ -12,6 +12,7 @@
 #include <sys/mman.h>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/rand_util.h>
@@ -53,6 +54,8 @@ constexpr int kRandomDataMinLength = 32768;   // 32kB
 constexpr int kRandomDataMaxLength = 262144;  // 256kB
 
 constexpr char kReadFdToStreamContents[] = "1234567890";
+
+constexpr char kLdArgv0[] = "LD_ARGV0";
 
 // Verifies that |raw_file| corresponds to the gzip'd version of
 // |compressed_file| by decompressing it and comparing the contents. Returns
@@ -465,5 +468,66 @@ TEST_F(CrashCommonUtilTest, IsFeedbackAllowedRespectsMetricsLib) {
   EXPECT_TRUE(IsFeedbackAllowed(&mock_metrics));
 }
 #endif  // USE_KVM_GUEST
+
+// Test fixture for |GetPathToThisBinary()|.
+class CrashCommonUtilGetPathToThisBinaryTest : public CrashCommonUtilTest {
+ public:
+  CrashCommonUtilGetPathToThisBinaryTest()
+      : argv_path_("fake_crash_reporter"), override_path_("override") {}
+
+ protected:
+  void SetUp() override {
+    CrashCommonUtilTest::SetUp();
+
+    // Set working directory and create temp files to serve as fake "binaries".
+    // Needed because the paths given to GetPathToThisBinary() must actually
+    // exist for it to operate as intended.
+    EXPECT_TRUE(GetCurrentDirectory(&original_cwd_));
+    EXPECT_TRUE(SetCurrentDirectory(test_dir_));
+    ASSERT_TRUE(base::WriteFile(argv_path_, ""));
+    ASSERT_TRUE(base::WriteFile(override_path_, ""));
+  }
+
+  void TearDown() override {
+    EXPECT_TRUE(SetCurrentDirectory(original_cwd_));
+    EXPECT_EQ(unsetenv(kLdArgv0), 0);
+
+    CrashCommonUtilTest::TearDown();
+  }
+
+  const char* test_argv_[2] = {"fake_crash_reporter", "--install"};
+  base::FilePath argv_path_;
+  base::FilePath override_path_;
+
+ private:
+  base::FilePath original_cwd_;
+};
+
+TEST_F(CrashCommonUtilGetPathToThisBinaryTest, UsesArgv) {
+  // If the overriding environment variable is not set, argv[0] is used
+  // to determine this binary's path.
+  EXPECT_EQ(unsetenv(kLdArgv0), 0);
+  base::FilePath path = util::GetPathToThisBinary(test_argv_);
+
+  EXPECT_EQ(path.DirName(), test_dir_);
+  EXPECT_EQ(path.BaseName(), argv_path_);
+}
+
+TEST_F(CrashCommonUtilGetPathToThisBinaryTest, UsesEnvVar) {
+  EXPECT_EQ(setenv(kLdArgv0, override_path_.value().c_str(), 1 /* replace */),
+            0);
+  base::FilePath path = util::GetPathToThisBinary(test_argv_);
+
+  EXPECT_EQ(path.DirName(), test_dir_);
+  EXPECT_EQ(path.BaseName(), override_path_);
+}
+
+TEST_F(CrashCommonUtilGetPathToThisBinaryTest, IgnoresEmptyEnvVar) {
+  EXPECT_EQ(setenv(kLdArgv0, "", 1 /* replace */), 0);
+  base::FilePath path = util::GetPathToThisBinary(test_argv_);
+
+  EXPECT_EQ(path.DirName(), test_dir_);
+  EXPECT_EQ(path.BaseName(), argv_path_);
+}
 
 }  // namespace util
