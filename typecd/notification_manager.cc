@@ -8,26 +8,16 @@
 
 #include <base/logging.h>
 
-namespace {
-
-// TODO(b/179711675): Get rid of this when you implement the Chrome i/f.
-std::string ToString(typecd::ConnectNotification notify) {
-  switch (notify) {
-    case typecd::ConnectNotification::kTBTOnly:
-      return "TBT Only";
-    case typecd::ConnectNotification::kTBTDP:
-      return "TBT+DP";
-  }
-}
-
-}  // namespace
-
 namespace typecd {
 
-void NotificationManager::NotifyConnected(ConnectNotification notify) {
-  // TODO(b/179711675): Surface this to Chrome either by emitting
-  // a D-Bus or calling a D-Bus method.
-  LOG(INFO) << "Sending connect notification: " << ToString(notify);
+NotificationManager::NotificationManager(
+    brillo::dbus_utils::DBusObject* dbus_object)
+    : org::chromium::typecdAdaptor(this) {
+  RegisterWithDBusObject(dbus_object);
+}
+
+void NotificationManager::NotifyConnected(DeviceConnectedType type) {
+  SendDeviceConnectedSignal(static_cast<uint32_t>(type));
 }
 
 }  // namespace typecd

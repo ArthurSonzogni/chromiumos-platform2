@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<node name="/org/chromium/typecd"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.typecd">
+    <signal name="DeviceConnected">
+      <tp:docstring>
+        Signal sent out when a device is connected. Currently, the signal is only
+        sent out for devices that have Thunderbolt (TBT) capability. This signal
+        is sent out every time an alt mode is entered; this includes events like
+        login/logout/screen unlock.
+      </tp:docstring>
+      <arg name="type" type="u">
+        <tp:docstring>
+          Type of the device which was connected. It can be one of the enum
+          values of typecd::DeviceConnectedType.
+          See platform2/system_api/dbus/typecd/dbus-constants.h
+        </tp:docstring>
+      </arg>
+    </signal>
+  </interface>
+</node>

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -31,6 +32,11 @@ executable("typecd") {
   ]
 }
 
+generate_dbus_adaptors("typecd-adaptors") {
+  sources = [ "dbus_bindings/org.chromium.typecd.xml" ]
+  dbus_adaptors_out_dir = "include/typecd/dbus_adaptors"
+}
+
 static_library("typecd_common") {
   all_dependent_configs = [ ":target_defaults" ]
   sources = [
@@ -46,6 +52,7 @@ static_library("typecd_common") {
     "udev_monitor.cc",
     "utils.cc",
   ]
+  deps = [ ":typecd-adaptors" ]
 }
 
 if (use.test) {

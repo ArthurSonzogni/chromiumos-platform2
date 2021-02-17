@@ -39,7 +39,7 @@ int Daemon::OnInit() {
   cros_ec_util_ = std::make_unique<CrosECUtil>(bus_);
   port_manager_->SetECUtil(cros_ec_util_.get());
 
-  notify_mgr_ = std::make_unique<NotificationManager>();
+  notify_mgr_ = std::make_unique<NotificationManager>(dbus_object_.get());
   port_manager_->SetNotificationManager(notify_mgr_.get());
 
   // Stash whether mode entry is supported at init, instead of querying it

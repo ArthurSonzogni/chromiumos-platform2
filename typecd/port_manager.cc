@@ -9,6 +9,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/logging.h>
+#include <dbus/typecd/dbus-constants.h>
 #include <re2/re2.h>
 
 namespace {
@@ -41,7 +42,8 @@ std::string ModeToString(typecd::TypeCMode mode) {
 
 namespace typecd {
 
-PortManager::PortManager() : mode_entry_supported_(true), user_active_(false) {}
+PortManager::PortManager()
+    : mode_entry_supported_(true), notify_mgr_(nullptr), user_active_(false) {}
 
 void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
                                        int port_num,
@@ -291,8 +293,9 @@ void PortManager::RunModeEntry(int port_num) {
   // becoming difficult to follow.
   if (notify_mgr_) {
     if (port->CanEnterTBTCompatibilityMode()) {
-      auto notif = port->CanEnterDPAltMode() ? ConnectNotification::kTBTDP
-                                             : ConnectNotification::kTBTOnly;
+      auto notif = port->CanEnterDPAltMode()
+                       ? DeviceConnectedType::kThunderboltDp
+                       : DeviceConnectedType::kThunderboltOnly;
       notify_mgr_->NotifyConnected(notif);
     }
   }

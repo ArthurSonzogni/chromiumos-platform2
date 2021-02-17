@@ -5,18 +5,19 @@
 #ifndef TYPECD_NOTIFICATION_MANAGER_H_
 #define TYPECD_NOTIFICATION_MANAGER_H_
 
+#include <brillo/daemons/dbus_daemon.h>
+#include <dbus/typecd/dbus-constants.h>
+
+#include "typecd/dbus_adaptors/org.chromium.typecd.h"
+
 namespace typecd {
 
-enum class ConnectNotification {
-  kTBTOnly = 0,
-  kTBTDP = 1,
-};
-
-class NotificationManager {
+class NotificationManager : public org::chromium::typecdAdaptor,
+                            public org::chromium::typecdInterface {
  public:
-  NotificationManager() = default;
+  explicit NotificationManager(brillo::dbus_utils::DBusObject* dbus_object);
 
-  void NotifyConnected(ConnectNotification notify);
+  void NotifyConnected(DeviceConnectedType type);
 };
 
 }  // namespace typecd
