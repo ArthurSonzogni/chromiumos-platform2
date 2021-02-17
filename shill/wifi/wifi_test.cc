@@ -1152,6 +1152,28 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   MOCK_METHOD(void, SuspendCallback, (const Error&));
 
+  // Reporting of MaxScanSSID capability can (in theory) behave in three ways:
+  // - failing D-Bus communication (provide optional arg with 'false')
+  // - having capabilities w/o MaxScanSSID (provide limit < 0)
+  // - having capabilities w/  MaxScanSSID (provide limit >= 0)
+  void SetInterfaceScanLimit(int limit, bool success = true) {
+    brillo::VariantDictionary caps{};
+
+    if (!success) {
+      EXPECT_CALL(*GetSupplicantInterfaceProxy(), GetCapabilities(_))
+          .WillOnce(Return(false));
+    } else {
+      if (limit >= 0)
+        caps[WPASupplicant::kInterfaceCapabilityMaxScanSSID] = limit;
+
+      EXPECT_CALL(*GetSupplicantInterfaceProxy(), GetCapabilities(_))
+          .WillOnce(
+              DoAll(SetArgPointee<0>(
+                        KeyValueStore::ConvertFromVariantDictionary(caps)),
+                    Return(true)));
+    }
+  }
+
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -2217,19 +2239,151 @@ MATCHER_P(ScanRequestHasHiddenSSID, ssid, "") {
   return ssids.size() == 2 && ssids[0] == ssid && ssids[1].empty();
 }
 
+MATCHER_P(ScanRequestHasHiddenSSIDs, hidden_ssids, "") {
+  if (!arg.template Contains<ByteArrays>(WPASupplicant::kPropertyScanSSIDs)) {
+    return false;
+  }
+
+  ByteArrays ssids =
+      arg.template Get<ByteArrays>(WPASupplicant::kPropertyScanSSIDs);
+  // A valid Scan containing a N SSIDs should contain N+1 SSID entries: one for
+  // each SSID we are looking for, and an empty entry, signifying that we also
+  // want to do a broadcast probe request for all non-hidden APs as well.
+  if (ssids.size() != hidden_ssids.size() + 1)
+    return false;
+
+  for (size_t i = 0; i < hidden_ssids.size(); ++i) {
+    if (ssids[i] != hidden_ssids[i])
+      return false;
+  }
+
+  return ssids[ssids.size() - 1].empty();
+}
+
 MATCHER(ScanRequestHasNoHiddenSSID, "") {
   return !arg.template Contains<ByteArrays>(WPASupplicant::kPropertyScanSSIDs);
 }
 
-TEST_F(WiFiMainTest, ScanHidden) {
-  vector<uint8_t> kSSID(1, 'a');
-  ByteArrays ssids;
-  ssids.push_back(kSSID);
+// When the driver reports that it supports 0 SSIDs in the scan request, no
+// hidden SSIDs should be included.
+TEST_F(WiFiMainTest, ScanHiddenRespectsMaxSSIDs0) {
+  SetInterfaceScanLimit(0);
 
+  // Introduce 8 hidden SSIDs.
+  ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'}};
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
   StartWiFi();
-  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList()).WillOnce(Return(ssids));
+
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-              Scan(ScanRequestHasHiddenSSID(kSSID)));
+              Scan(ScanRequestHasNoHiddenSSID()));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+// When the driver reports that it supports 1 SSIDs in the scan request, no
+// hidden SSIDs should be included either, because shill would also need to
+// include a brodacast entry.
+TEST_F(WiFiMainTest, ScanHiddenRespectsMaxSSIDs1) {
+  SetInterfaceScanLimit(1);
+
+  // Introduce 8 hidden SSIDs.
+  ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'}};
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
+  StartWiFi();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasNoHiddenSSID()));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+// When the driver reports that it supports smaller number of SSIDs than we have
+// in our configuration, we should respect that and send one less than the
+// driver capability with additional empty entry signalling broadcast scan.
+// Here we test this with driver/configuration values 2/8 respectively.
+TEST_F(WiFiMainTest, ScanHiddenLimitToCapability) {
+  SetInterfaceScanLimit(2);
+
+  // Introduce 8 hidden SSIDs.
+  ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'}};
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
+  StartWiFi();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasHiddenSSID(ssids[0])));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+// When the driver reports that it supports more SSIDs in the scan request than
+// we have in our configuration then all hidden SSIDs should be included (along
+// with the broadcast entry).  Here we test this with driver/configuration
+// values 9/8 respectively.
+TEST_F(WiFiMainTest, ScanHiddenUseAllSSIDs) {
+  SetInterfaceScanLimit(9);
+
+  // Introduce 8 hidden SSIDs.
+  ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'}};
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
+  StartWiFi();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasHiddenSSIDs(ssids)));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+// WPA supplicant has its own limit of number of hidden networks that it accepts
+// for scan (as of writing this: 16) so let's test that when driver reports more
+// and we have that many hidden networks then we remove those above the limit
+// (as usual the limit includes 1 additional empty entry for broadcast scan).
+TEST_F(WiFiMainTest, ScanHiddenLimitCapToSupplicantLimit) {
+  SetInterfaceScanLimit(20);
+
+  ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'},
+                   {'i'}, {'j'}, {'k'}, {'l'}, {'m'}, {'n'}, {'o'}, {'p'}};
+  ByteArrays first_15{ssids.begin(), ssids.begin() + 15};
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
+  StartWiFi();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasHiddenSSIDs(first_15)));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+// Obtaining MaxScanSSID can fail in two ways - either we can fail in D-Bus
+// communication or we can get capabilities with this property missing.  In
+// both cases we should fall back to a default value (4) so at most 3 hidden
+// networks are requested. This test checks the "failed D-Bus" (see comments
+// at SetInterfaceScanLimit()).
+TEST_F(WiFiMainTest, ScanHiddenFailedDBusRespectsDefaultMaxSSIDs) {
+  SetInterfaceScanLimit(0, false);
+
+  ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'}};
+  ByteArrays first_3{ssids.begin(), ssids.begin() + 3};
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
+  StartWiFi();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasHiddenSSIDs(first_3)));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+// See comment above - this test checks the case of Capabilities with missing
+// MaxScanSSID property.
+TEST_F(WiFiMainTest, ScanHiddenMissingValueRespectsDefaultMaxSSIDs) {
+  SetInterfaceScanLimit(-1);
+
+  ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'}};
+  ByteArrays first_3{ssids.begin(), ssids.begin() + 3};
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
+  StartWiFi();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasHiddenSSIDs(first_3)));
   event_dispatcher_->DispatchPendingEvents();
 }
 

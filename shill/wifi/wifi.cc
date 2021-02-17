@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <map>
@@ -120,6 +121,7 @@ const int kMaxRetryCreateInterfaceAttempts = 6;
 const int kRetryCreateInterfaceIntervalSeconds = 10;
 const int16_t kDefaultDisconnectDbm = 0;
 const int16_t kDefaultDisconnectThresholdDbm = -75;
+const int kInvalidMaxSSIDs = -1;
 
 bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');
@@ -143,6 +145,7 @@ WiFi::WiFi(Manager* manager,
       supplicant_disconnect_reason_(IEEE_80211::kReasonCodeInvalid),
       disconnect_signal_dbm_(kDefaultDisconnectDbm),
       disconnect_threshold_dbm_(kDefaultDisconnectThresholdDbm),
+      max_ssids_per_scan_(kInvalidMaxSSIDs),
       supplicant_auth_mode_(WPASupplicant::kAuthModeUnknown),
       need_bss_flush_(false),
       resumed_at_((struct timeval){0}),
@@ -1811,6 +1814,34 @@ void WiFi::UpdateScanStateAfterScanDone() {
   }
 }
 
+void WiFi::GetAndUseInterfaceCapabilities() {
+  KeyValueStore caps;
+
+  if (!supplicant_interface_proxy_->GetCapabilities(&caps))
+    LOG(ERROR) << "Failed to obtain interface capabilities";
+
+  ConfigureScanSSIDLimit(caps);
+}
+
+void WiFi::ConfigureScanSSIDLimit(const KeyValueStore& caps) {
+  if (caps.Contains<int>(WPASupplicant::kInterfaceCapabilityMaxScanSSID)) {
+    int value = caps.Get<int>(WPASupplicant::kInterfaceCapabilityMaxScanSSID);
+    SLOG(this, 2) << "Obtained MaxScanSSID capability: " << value;
+    max_ssids_per_scan_ =
+        std::min(static_cast<int>(WPASupplicant::kMaxMaxSSIDsPerScan),
+                 std::max(0, value));
+    if (max_ssids_per_scan_ != value)
+      SLOG(this, 2) << "MaxScanSSID trimmed to: " << max_ssids_per_scan_;
+  } else {
+    LOG(WARNING) << "Missing MaxScanSSID capability, using default value: "
+                 << WPASupplicant::kDefaultMaxSSIDsPerScan;
+    max_ssids_per_scan_ = WPASupplicant::kDefaultMaxSSIDsPerScan;
+  }
+
+  if (max_ssids_per_scan_ <= 1)
+    LOG(WARNING) << "MaxScanSSID <= 1, no hidden SSID will be used.";
+}
+
 void WiFi::ScanTask() {
   SLOG(this, 2) << "WiFi " << link_name() << " scan requested.";
   if (!enabled()) {
@@ -1833,20 +1864,25 @@ void WiFi::ScanTask() {
                         WPASupplicant::kScanTypeActive);
 
   ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
-  if (!hidden_ssids.empty()) {
-    // TODO(pstew): Devise a better method for time-sharing with SSIDs that do
-    // not fit in.
-    if (hidden_ssids.size() >= WPASupplicant::kScanMaxSSIDsPerScan) {
-      hidden_ssids.erase(
-          hidden_ssids.begin() + WPASupplicant::kScanMaxSSIDsPerScan - 1,
-          hidden_ssids.end());
-    }
-    // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
-    // SSIDs to wpa_supplicant, we need to explicitly specify the default
-    // behavior of doing a broadcast probe.
-    hidden_ssids.push_back(ByteArray());
 
-    scan_args.Set<ByteArrays>(WPASupplicant::kPropertyScanSSIDs, hidden_ssids);
+  if (!hidden_ssids.empty()) {
+    // The empty '' "broadcast SSID" counts toward the max scan limit, so the
+    // capability needs to be >= 2 to have at least 1 hidden SSID.
+    if (max_ssids_per_scan_ > 1) {
+      if (hidden_ssids.size() >= static_cast<size_t>(max_ssids_per_scan_)) {
+        // TODO(b/172220260): Devise a better method for time-sharing with SSIDs
+        // that do not fit in.
+        hidden_ssids.erase(hidden_ssids.begin() + max_ssids_per_scan_ - 1,
+                           hidden_ssids.end());
+      }
+      // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
+      // SSIDs to wpa_supplicant, we need to explicitly specify the default
+      // behavior of doing a broadcast probe.
+      hidden_ssids.push_back(ByteArray());
+
+      scan_args.Set<ByteArrays>(WPASupplicant::kPropertyScanSSIDs,
+                                hidden_ssids);
+    }
   }
 
   if (!supplicant_interface_proxy_->Scan(scan_args)) {
@@ -2746,6 +2782,8 @@ void WiFi::ConnectToSupplicant() {
     SLOG(this, 2) << "Reusing existing interface at "
                   << supplicant_interface_path_.value();
   }
+
+  GetAndUseInterfaceCapabilities();
 
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);

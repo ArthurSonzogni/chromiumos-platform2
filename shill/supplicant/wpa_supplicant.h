@@ -57,6 +57,7 @@ class WPASupplicant {
   static const char kErrorInterfaceExists[];
   static const char kInterfacePropertyAssocStatusCode[];
   static const char kInterfacePropertyAuthStatusCode[];
+  static const char kInterfacePropertyCapabilities[];
   static const char kInterfacePropertyConfigFile[];
   static const char kInterfacePropertyCurrentBSS[];
   static const char kInterfacePropertyDepth[];
@@ -146,6 +147,8 @@ class WPASupplicant {
   static const char kSecurityModeRSN[];
   static const char kSecurityModeWPA[];
 
+  static const char kInterfaceCapabilityMaxScanSSID[];
+
   static const char kFlagDisableEapTLS1p1[];
   static const char kFlagDisableEapTLS1p2[];
   static const char kFlagInnerEapAuthMSCHAPV2[];
@@ -158,7 +161,8 @@ class WPASupplicant {
   static const uint32_t kNetworkModeInfrastructureInt;
   static const uint32_t kNetworkModeAdHocInt;
   static const uint32_t kNetworkModeAccessPointInt;
-  static const uint32_t kScanMaxSSIDsPerScan;
+  static const uint32_t kDefaultMaxSSIDsPerScan;
+  static const uint32_t kMaxMaxSSIDsPerScan;
 
   static const uint32_t kProactiveKeyCachingDisabled;
   static const uint32_t kProactiveKeyCachingEnabled;

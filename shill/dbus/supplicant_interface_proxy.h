@@ -59,6 +59,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool SetFastReauth(bool enabled) override;
   bool SetScanInterval(int seconds) override;
   bool SetScan(bool enable) override;
+  bool GetCapabilities(KeyValueStore* capabilities) override;
 
  private:
   class PropertySet : public dbus::PropertySet {
@@ -75,6 +76,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
     brillo::dbus_utils::Property<bool> sched_scan;
     brillo::dbus_utils::Property<std::map<std::string, std::vector<uint8_t>>>
         mac_address_randomization_mask;
+    brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
 
    private:
   };
@@ -85,6 +87,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   static const char kPropertyScanInterval[];
   static const char kPropertySchedScan[];
   static const char kPropertyMacAddressRandomizationMask[];
+  static const char kPropertyCapabilities[];
 
   // Signal handlers.
   void BlobAdded(const std::string& blobname);

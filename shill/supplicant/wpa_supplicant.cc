@@ -61,6 +61,7 @@ const char WPASupplicant::kErrorInterfaceExists[] =
 const char WPASupplicant::kInterfacePropertyAssocStatusCode[] =
     "AssocStatusCode";
 const char WPASupplicant::kInterfacePropertyAuthStatusCode[] = "AuthStatusCode";
+const char WPASupplicant::kInterfacePropertyCapabilities[] = "Capabilities";
 const char WPASupplicant::kInterfacePropertyConfigFile[] = "ConfigFile";
 const char WPASupplicant::kInterfacePropertyCurrentBSS[] = "CurrentBSS";
 const char WPASupplicant::kInterfacePropertyDepth[] = "depth";
@@ -150,6 +151,8 @@ const char WPASupplicant::kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
 const char WPASupplicant::kSecurityModeRSN[] = "RSN";
 const char WPASupplicant::kSecurityModeWPA[] = "WPA";
 
+const char WPASupplicant::kInterfaceCapabilityMaxScanSSID[] = "MaxScanSSID";
+
 const char WPASupplicant::kFlagDisableEapTLS1p1[] = "tls_disable_tlsv1_1=1";
 const char WPASupplicant::kFlagDisableEapTLS1p2[] = "tls_disable_tlsv1_2=1";
 const char WPASupplicant::kFlagInnerEapAuthMSCHAPV2[] = "auth=MSCHAPV2";
@@ -162,7 +165,10 @@ const uint32_t WPASupplicant::kNetworkIeee80211wRequired = 2;
 const uint32_t WPASupplicant::kNetworkModeInfrastructureInt = 0;
 const uint32_t WPASupplicant::kNetworkModeAdHocInt = 1;
 const uint32_t WPASupplicant::kNetworkModeAccessPointInt = 2;
-const uint32_t WPASupplicant::kScanMaxSSIDsPerScan = 4;
+const uint32_t WPASupplicant::kDefaultMaxSSIDsPerScan = 4;
+// A maximum value to which MaxScanSSID capability should be clipped - the value
+// is aligned with limit in WPA Supplicant (see WPAS_MAX_SCAN_SSIDS there).
+const uint32_t WPASupplicant::kMaxMaxSSIDsPerScan = 16;
 
 const uint32_t WPASupplicant::kProactiveKeyCachingDisabled = 0;
 const uint32_t WPASupplicant::kProactiveKeyCachingEnabled = 1;

@@ -614,6 +614,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void SetSupplicantInterfaceProxy(
       std::unique_ptr<SupplicantInterfaceProxyInterface> proxy);
 
+  // Helper function that obtains interface capabilities and uses them to
+  // reconfigure WiFi behavior
+  void GetAndUseInterfaceCapabilities();
+
+  // Helper function that configures max # of hidden SSIDs to scan for according
+  // to the contents of interface capabilities
+  void ConfigureScanSSIDLimit(const KeyValueStore& caps);
+
   // Bringing the interface down before disabling the device means that
   // wpa_supplicant can receive a deauth event from the kernel before
   // shill asks for a disconnection. wpa_supplicant reads this as an
@@ -666,6 +674,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   IEEE_80211::WiFiReasonCode supplicant_disconnect_reason_;
   int16_t disconnect_signal_dbm_;
   int16_t disconnect_threshold_dbm_;
+
+  // The maximum number of SSIDs that may be included in scan requests.
+  int max_ssids_per_scan_;
 
   // The auth mode of the last successful connection.
   std::string supplicant_auth_mode_;

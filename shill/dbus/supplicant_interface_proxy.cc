@@ -30,6 +30,7 @@ const char SupplicantInterfaceProxy::kPropertyScanInterval[] = "ScanInterval";
 const char SupplicantInterfaceProxy::kPropertySchedScan[] = "SchedScan";
 const char SupplicantInterfaceProxy::kPropertyMacAddressRandomizationMask[] =
     "MACAddressRandomizationMask";
+const char SupplicantInterfaceProxy::kPropertyCapabilities[] = "Capabilities";
 
 SupplicantInterfaceProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
@@ -42,6 +43,7 @@ SupplicantInterfaceProxy::PropertySet::PropertySet(
   RegisterProperty(kPropertySchedScan, &sched_scan);
   RegisterProperty(kPropertyMacAddressRandomizationMask,
                    &mac_address_randomization_mask);
+  RegisterProperty(kPropertyCapabilities, &capabilities);
 }
 
 SupplicantInterfaceProxy::SupplicantInterfaceProxy(
@@ -343,6 +345,22 @@ bool SupplicantInterfaceProxy::SetScan(bool enable) {
   return true;
 }
 
+bool SupplicantInterfaceProxy::GetCapabilities(KeyValueStore* capabilities) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  CHECK(capabilities);
+
+  if (!properties_->capabilities.GetAndBlock() ||
+      !properties_->capabilities.is_valid()) {
+    LOG(ERROR) << "Failed to obtain interface capabilities";
+    return false;
+  }
+
+  *capabilities = KeyValueStore::ConvertFromVariantDictionary(
+      properties_->capabilities.value());
+
+  return true;
+}
+
 void SupplicantInterfaceProxy::BlobAdded(const std::string& /*blobname*/) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   // XXX
@@ -423,7 +441,7 @@ void SupplicantInterfaceProxy::OnSignalConnected(
     bool success) {
   SLOG(&interface_proxy_->GetObjectPath(), 2)
       << __func__ << "interface: " << interface_name
-      << " signal: " << signal_name << "success: " << success;
+      << " signal: " << signal_name << " success: " << success;
   if (!success) {
     LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
                << interface_name;

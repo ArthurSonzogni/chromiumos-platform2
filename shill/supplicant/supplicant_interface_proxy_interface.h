@@ -40,6 +40,7 @@ class SupplicantInterfaceProxyInterface {
   virtual bool EnableMacAddressRandomization(
       const std::vector<unsigned char>& mask, bool sched_scan) = 0;
   virtual bool DisableMacAddressRandomization() = 0;
+  virtual bool GetCapabilities(KeyValueStore* capabilities) = 0;
 };
 
 }  // namespace shill
