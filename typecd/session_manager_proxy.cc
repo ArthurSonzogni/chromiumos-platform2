@@ -77,6 +77,22 @@ void SessionManagerProxy::OnScreenIsUnlocked() {
 
 void SessionManagerProxy::OnSessionStateChanged(const std::string& state) {
   if (state == "started") {
+    // Guest sessions are treated the same as login screens.
+    bool guest_active;
+    brillo::ErrorPtr error;
+    if (!proxy_.IsGuestSessionActive(&guest_active, &error)) {
+      LOG(ERROR) << "Failed to check guest session state: "
+                 << error->GetMessage();
+      return;
+    }
+
+    if (guest_active) {
+      LOG(INFO) << "Guest session started.";
+      return;
+    }
+
+    // If it's not a guest session, proceed with notifying the observers (they
+    // can then change alt modes if appropriate).
     for (SessionManagerObserverInterface& observer : observer_list_)
       observer.OnSessionStarted();
   } else if (state == "stopped") {
