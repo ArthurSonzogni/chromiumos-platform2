@@ -16,7 +16,14 @@ pub fn get_temp_path(label: Option<&str>) -> PathBuf {
     if let Some(label) = label {
         temp_dir().join(format!("{}-{}-{}", label, getpid(), gettid()))
     } else {
-        get_temp_path(Some(current_exe().unwrap().to_str().unwrap()))
+        get_temp_path(Some(
+            current_exe()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+        ))
     }
 }
 
@@ -69,13 +76,28 @@ pub(crate) mod tests {
     #[test]
     fn gettemppath() {
         assert_ne!("", get_temp_path(None).to_string_lossy());
+        assert!(get_temp_path(None).starts_with(temp_dir()));
         assert_eq!(
             get_temp_path(None),
-            get_temp_path(Some(current_exe().unwrap().to_str().unwrap()))
+            get_temp_path(Some(
+                current_exe()
+                    .unwrap()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+            ))
         );
         assert_ne!(
             get_temp_path(Some("label")),
-            get_temp_path(Some(current_exe().unwrap().to_str().unwrap()))
+            get_temp_path(Some(
+                current_exe()
+                    .unwrap()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+            ))
         );
     }
 
