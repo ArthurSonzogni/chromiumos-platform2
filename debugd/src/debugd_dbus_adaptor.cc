@@ -52,6 +52,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   example_tool_ = std::make_unique<ExampleTool>();
   icmp_tool_ = std::make_unique<ICMPTool>();
   ipaddrs_tool_ = std::make_unique<IpAddrsTool>();
+  kernel_feature_tool_ = std::make_unique<KernelFeatureTool>();
   log_tool_ = std::make_unique<LogTool>(bus);
   memory_tool_ = std::make_unique<MemtesterTool>();
   netif_tool_ = std::make_unique<NetifTool>();
@@ -629,6 +630,20 @@ bool DebugdDBusAdaptor::EcTypeCExitMode(brillo::ErrorPtr* error,
                                         uint32_t port_num,
                                         std::string* output) {
   return ec_typec_tool_->ExitMode(error, port_num, output);
+}
+
+bool DebugdDBusAdaptor::KernelFeatureEnable(brillo::ErrorPtr* error,
+                                            const std::string& name,
+                                            bool* result,
+                                            std::string* err_str) {
+  return kernel_feature_tool_->KernelFeatureEnable(error, name, result,
+                                                   err_str);
+}
+
+bool DebugdDBusAdaptor::KernelFeatureList(brillo::ErrorPtr* error,
+                                          bool* result,
+                                          std::string* csv) {
+  return kernel_feature_tool_->KernelFeatureList(error, result, csv);
 }
 
 }  // namespace debugd

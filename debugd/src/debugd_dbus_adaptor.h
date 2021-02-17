@@ -34,6 +34,7 @@
 #include "debugd/src/example_tool.h"
 #include "debugd/src/icmp_tool.h"
 #include "debugd/src/ipaddrs_tool.h"
+#include "debugd/src/kernel_feature_tool.h"
 #include "debugd/src/log_tool.h"
 #include "debugd/src/memory_tool.h"
 #include "debugd/src/netif_tool.h"
@@ -229,6 +230,14 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                        uint32_t port_num,
                        std::string* output) override;
 
+  bool KernelFeatureEnable(brillo::ErrorPtr* error,
+                           const std::string& name,
+                           bool* result,
+                           std::string* err_str) override;
+  bool KernelFeatureList(brillo::ErrorPtr* error,
+                         bool* result,
+                         std::string* csv) override;
+
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
   brillo::dbus_utils::ExportedProperty<bool> crash_sender_test_mode_;
@@ -271,6 +280,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<ProbeTool> probe_tool_;
   std::unique_ptr<CrosHealthdTool> cros_healthd_tool_;
+  std::unique_ptr<KernelFeatureTool> kernel_feature_tool_;
 };
 
 }  // namespace debugd
