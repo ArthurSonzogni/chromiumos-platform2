@@ -22,9 +22,9 @@ pub enum Error {
     DaemonstorePath(chromeos::Error),
     #[error("storage path doesn't exist for scope: {0:?}")]
     StoragePathNotExist(Scope),
-    #[error("storage path doesn't exist for scope: {0:?}")]
+    #[error("domain path doesn't exist: '{0:?}'")]
     DomainNotExist(String),
-    #[error("domain doesn't exist: {0}")]
+    #[error("domain is invalid: '{0}'")]
     InvalidDomain(String),
     #[error("failed to create domain '{0:?}': {1:?}")]
     FailedToCreateDomain(String, IoError),
@@ -40,7 +40,7 @@ pub enum Error {
 
 impl Error {
     pub fn is_unwritten_id(&self) -> bool {
-        matches!(self, Error::ReadData(storage::Error::IdNotFound(_)))
+        matches!(self, Error::DomainNotExist(_) | Error::ReadData(storage::Error::IdNotFound(_)))
     }
 }
 
@@ -191,6 +191,13 @@ mod test {
     fn retrieve_unwrittenid() {
         let path = ScopedPath::create(get_temp_path(None)).unwrap();
         let domain_path = path.join(TEST_DOMAIN);
+
+        assert!(is_unwritten_id(&retrieve(
+            Scope::Test,
+            TEST_DOMAIN,
+            TEST_ID
+        )));
+
         create_dir(&domain_path).unwrap();
 
         assert!(is_unwritten_id(&retrieve(
