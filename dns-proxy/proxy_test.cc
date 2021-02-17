@@ -434,4 +434,66 @@ TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
   EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kVPN);
 }
 
+TEST_F(ProxyTest, NameServersUpdatedOnDeviceChangeEvent) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  shill::Client::Device dev;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
+  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  // Doesn't call listen since the resolver already exists.
+  EXPECT_CALL(mock_manager_,
+              SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
+  EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
+  EXPECT_CALL(*mock_resolver,
+              SetNameServers(
+                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+  proxy.OnDefaultDeviceChanged(&dev);
+
+  // Now trigger an ipconfig change.
+  dev.ipconfig.ipv4_dns_addresses = {"X"};
+  EXPECT_CALL(*mock_resolver,
+              SetNameServers(ElementsAre(StrEq("X"), StrEq("c"), StrEq("d"))));
+  proxy.OnDeviceChanged(&dev);
+}
+
+TEST_F(ProxyTest, DeviceChangeEventIgnored) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  shill::Client::Device dev;
+  dev.ifname = "eth0";
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
+  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  // Doesn't call listen since the resolver already exists.
+  EXPECT_CALL(mock_manager_,
+              SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
+  EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
+  EXPECT_CALL(*mock_resolver,
+              SetNameServers(
+                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+  proxy.OnDefaultDeviceChanged(&dev);
+
+  // No change to ipconfig, no call to SetNameServers
+  proxy.OnDeviceChanged(&dev);
+
+  // Different ifname, no call to SetNameServers
+  dev.ifname = "wlan0";
+  proxy.OnDeviceChanged(&dev);
+}
+
 }  // namespace dns_proxy

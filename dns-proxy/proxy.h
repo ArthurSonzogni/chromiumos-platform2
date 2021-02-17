@@ -69,6 +69,8 @@ class Proxy : public brillo::DBusDaemon {
   void OnDefaultDeviceChanged(const shill::Client::Device* const device);
   void OnDeviceChanged(const shill::Client::Device* const device);
 
+  void UpdateNameServers(const shill::Client::IPConfig& ipconfig);
+
   // Helper func for setting the dns-proxy address in shill.
   // Only valid for the system proxy.
   // Will retry on failure up to |num_retries| before possibly crashing the
@@ -99,6 +101,8 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, SystemProxy_IgnoresVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN);
   FRIEND_TEST(ProxyTest, DefaultProxy_UsesVPN);
+  FRIEND_TEST(ProxyTest, NameServersUpdatedOnDeviceChangeEvent);
+  FRIEND_TEST(ProxyTest, DeviceChangeEventIgnored);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;

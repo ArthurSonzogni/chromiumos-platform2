@@ -270,17 +270,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   }
 
   // Update the resolver with the latest DNS config.
-  auto name_servers = device_->ipconfig.ipv4_dns_addresses;
-  // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
-  name_servers.erase(
-      std::remove_if(name_servers.begin(), name_servers.end(),
-                     [](const std::string& s) { return s == kIfAddrAny; }),
-      name_servers.end());
-  name_servers.insert(name_servers.end(),
-                      device_->ipconfig.ipv6_dns_addresses.begin(),
-                      device_->ipconfig.ipv6_dns_addresses.end());
-  resolver_->SetNameServers(name_servers);
-  LOG(INFO) << opts_ << " applied device DNS configuration";
+  UpdateNameServers(device_->ipconfig);
 
   // For the system proxy, we have to tell shill about it. We should start
   // receiving DNS traffic on success. But if this fails, we don't have much
@@ -291,7 +281,35 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
 }
 
 void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
-  // TODO(garrick): ARC and default for VPN cases.
+  // Ignore if there is no tracked device or it's different.
+  if (!device || !device_ || device_->ifname != device->ifname)
+    return;
+
+  // We don't need to worry about this here since the default proxy always/only
+  // tracks the default device and any update will be handled by
+  // OnDefaultDeviceChanged.
+  if (opts_.type == Type::kDefault)
+    return;
+
+  if (device_->ipconfig == device->ipconfig)
+    return;
+
+  UpdateNameServers(device->ipconfig);
+  device_->ipconfig = device->ipconfig;
+}
+
+void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
+  auto name_servers = ipconfig.ipv4_dns_addresses;
+  // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
+  name_servers.erase(
+      std::remove_if(name_servers.begin(), name_servers.end(),
+                     [](const std::string& s) { return s == kIfAddrAny; }),
+      name_servers.end());
+  name_servers.insert(name_servers.end(),
+                      device_->ipconfig.ipv6_dns_addresses.begin(),
+                      device_->ipconfig.ipv6_dns_addresses.end());
+  resolver_->SetNameServers(name_servers);
+  LOG(INFO) << opts_ << " applied device DNS configuration";
 }
 
 void Proxy::SetShillProperty(const std::string& addr,
