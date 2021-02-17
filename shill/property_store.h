@@ -31,9 +31,9 @@ class PropertyStore {
   PropertyStore(const PropertyStore&) = delete;
   PropertyStore& operator=(const PropertyStore&) = delete;
 
-  virtual ~PropertyStore();
+  ~PropertyStore();
 
-  virtual bool Contains(const std::string& property) const;
+  bool Contains(const std::string& property) const;
 
   // Setting properties using brillo::Any variant type.
   bool SetAnyProperty(const std::string& name,
@@ -61,6 +61,9 @@ class PropertyStore {
   bool GetKeyValueStoreProperty(const std::string& name,
                                 KeyValueStore* value,
                                 Error* error) const;
+  bool GetKeyValueStoresProperty(const std::string& name,
+                                 KeyValueStores* value,
+                                 Error* error) const;
   bool GetStringProperty(const std::string& name,
                          std::string* value,
                          Error* error) const;
@@ -104,67 +107,56 @@ class PropertyStore {
   // these methods return false, and leave |error| untouched.
   // If the property change fails, these methods return false, and update
   // |error|. However, updating |error| is skipped if |error| is NULL.
-  virtual bool SetBoolProperty(const std::string& name,
-                               bool value,
-                               Error* error);
+  bool SetBoolProperty(const std::string& name, bool value, Error* error);
 
-  virtual bool SetInt16Property(const std::string& name,
-                                int16_t value,
+  bool SetInt16Property(const std::string& name, int16_t value, Error* error);
+
+  bool SetInt32Property(const std::string& name, int32_t value, Error* error);
+
+  bool SetKeyValueStoreProperty(const std::string& name,
+                                const KeyValueStore& value,
                                 Error* error);
 
-  virtual bool SetInt32Property(const std::string& name,
-                                int32_t value,
-                                Error* error);
-
-  virtual bool SetKeyValueStoreProperty(const std::string& name,
-                                        const KeyValueStore& value,
-                                        Error* error);
-
-  virtual bool SetStringProperty(const std::string& name,
-                                 const std::string& value,
+  bool SetKeyValueStoresProperty(const std::string& name,
+                                 const KeyValueStores& value,
                                  Error* error);
 
-  virtual bool SetStringmapProperty(
-      const std::string& name,
-      const std::map<std::string, std::string>& values,
-      Error* error);
+  bool SetStringProperty(const std::string& name,
+                         const std::string& value,
+                         Error* error);
 
-  virtual bool SetStringmapsProperty(
+  bool SetStringmapProperty(const std::string& name,
+                            const std::map<std::string, std::string>& values,
+                            Error* error);
+
+  bool SetStringmapsProperty(
       const std::string& name,
       const std::vector<std::map<std::string, std::string>>& values,
       Error* error);
 
-  virtual bool SetStringsProperty(const std::string& name,
-                                  const std::vector<std::string>& values,
-                                  Error* error);
+  bool SetStringsProperty(const std::string& name,
+                          const std::vector<std::string>& values,
+                          Error* error);
 
-  virtual bool SetUint8Property(const std::string& name,
-                                uint8_t value,
+  bool SetUint8Property(const std::string& name, uint8_t value, Error* error);
+
+  bool SetByteArrayProperty(const std::string& name,
+                            const ByteArray& value,
+                            Error* error);
+
+  bool SetUint16Property(const std::string& name, uint16_t value, Error* error);
+
+  bool SetUint16sProperty(const std::string& name,
+                          const std::vector<uint16_t>& value,
+                          Error* error);
+
+  bool SetUint32Property(const std::string& name, uint32_t value, Error* error);
+
+  bool SetUint64Property(const std::string& name, uint64_t value, Error* error);
+
+  bool SetRpcIdentifierProperty(const std::string& name,
+                                const RpcIdentifier& value,
                                 Error* error);
-
-  virtual bool SetByteArrayProperty(const std::string& name,
-                                    const ByteArray& value,
-                                    Error* error);
-
-  virtual bool SetUint16Property(const std::string& name,
-                                 uint16_t value,
-                                 Error* error);
-
-  virtual bool SetUint16sProperty(const std::string& name,
-                                  const std::vector<uint16_t>& value,
-                                  Error* error);
-
-  virtual bool SetUint32Property(const std::string& name,
-                                 uint32_t value,
-                                 Error* error);
-
-  virtual bool SetUint64Property(const std::string& name,
-                                 uint64_t value,
-                                 Error* error);
-
-  virtual bool SetRpcIdentifierProperty(const std::string& name,
-                                        const RpcIdentifier& value,
-                                        Error* error);
 
   // Clearing a property resets it to its "factory" value. This value
   // is generally the value that it (the property) had when it was
@@ -178,7 +170,7 @@ class PropertyStore {
   // |name| is the key used to access the property. If the property
   // cannot be cleared, |error| is set, and the method returns false.
   // Otherwise, |error| is unchanged, and the method returns true.
-  virtual bool ClearProperty(const std::string& name, Error* error);
+  bool ClearProperty(const std::string& name, Error* error);
 
   // Accessors for iterators over property maps. Useful for dumping all
   // properties.
@@ -187,6 +179,8 @@ class PropertyStore {
   ReadablePropertyConstIterator<int32_t> GetInt32PropertiesIter() const;
   ReadablePropertyConstIterator<KeyValueStore> GetKeyValueStorePropertiesIter()
       const;
+  ReadablePropertyConstIterator<KeyValueStores>
+  GetKeyValueStoresPropertiesIter() const;
   ReadablePropertyConstIterator<RpcIdentifier> GetRpcIdentifierPropertiesIter()
       const;
   ReadablePropertyConstIterator<RpcIdentifiers>
@@ -249,11 +243,19 @@ class PropertyStore {
   void RegisterByteArray(const std::string& name, ByteArray* prop);
   void RegisterConstByteArray(const std::string& name, const ByteArray* prop);
   void RegisterWriteOnlyByteArray(const std::string& name, ByteArray* prop);
+  void RegisterKeyValueStore(const std::string& name, KeyValueStore* prop);
+  void RegisterConstKeyValueStore(const std::string& name,
+                                  const KeyValueStore* prop);
+  void RegisterKeyValueStores(const std::string& name, KeyValueStores* prop);
+  void RegisterConstKeyValueStores(const std::string& name,
+                                   const KeyValueStores* prop);
 
   void RegisterDerivedBool(const std::string& name, BoolAccessor accessor);
   void RegisterDerivedInt32(const std::string& name, Int32Accessor accessor);
   void RegisterDerivedKeyValueStore(const std::string& name,
                                     KeyValueStoreAccessor accessor);
+  void RegisterDerivedKeyValueStores(const std::string& name,
+                                     KeyValueStoresAccessor accessor);
   void RegisterDerivedRpcIdentifier(const std::string& name,
                                     RpcIdentifierAccessor acc);
   void RegisterDerivedRpcIdentifiers(const std::string& name,
@@ -293,6 +295,7 @@ class PropertyStore {
   std::map<std::string, Int16Accessor> int16_properties_;
   std::map<std::string, Int32Accessor> int32_properties_;
   std::map<std::string, KeyValueStoreAccessor> key_value_store_properties_;
+  std::map<std::string, KeyValueStoresAccessor> key_value_stores_properties_;
   std::map<std::string, RpcIdentifierAccessor> rpc_identifier_properties_;
   std::map<std::string, RpcIdentifiersAccessor> rpc_identifiers_properties_;
   std::map<std::string, StringAccessor> string_properties_;

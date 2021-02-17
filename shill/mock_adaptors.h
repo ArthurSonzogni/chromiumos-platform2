@@ -57,6 +57,10 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
               (const std::string&, const KeyValueStore&),
               (override));
   MOCK_METHOD(void,
+              EmitKeyValueStoresChanged,
+              (const std::string&, const KeyValueStores&),
+              (override));
+  MOCK_METHOD(void,
               EmitRpcIdentifierChanged,
               (const std::string&, const RpcIdentifier&),
               (override));

@@ -96,6 +96,18 @@ void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const string& name,
   SendPropertyChangedSignal(name, brillo::Any(dict));
 }
 
+void DeviceDBusAdaptor::EmitKeyValueStoresChanged(const string& name,
+                                                  const KeyValueStores& value) {
+  SLOG(this, 2) << __func__ << ": " << name;
+  std::vector<brillo::VariantDictionary> dicts;
+  for (const auto& element : value) {
+    brillo::VariantDictionary dict =
+        KeyValueStore::ConvertToVariantDictionary(element);
+    dicts.push_back(dict);
+  }
+  SendPropertyChangedSignal(name, brillo::Any(dicts));
+}
+
 void DeviceDBusAdaptor::EmitRpcIdentifierChanged(const std::string& name,
                                                  const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;

@@ -696,23 +696,73 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetUint32Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
-  {
-    // KeyValueStoreProperty is only defined for derived types so handle
-    // this case manually here.
-    const string key = "keyvaluestorep";
-    EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
-        .WillOnce(Return(KeyValueStore()));
-    store.RegisterDerivedKeyValueStore(
-        key, KeyValueStoreAccessor(
-                 new CustomAccessor<PropertyStoreTest, KeyValueStore>(
-                     this, &PropertyStoreTest::GetKeyValueStoreCallback,
-                     &PropertyStoreTest::SetKeyValueStoreCallback)));
+}
 
-    brillo::VariantDictionary value;
-    EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
-    Error error;
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(value), &error));
-  }
+TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStore) {
+  PropertyStore store;
+
+  // Register property value.
+  const string key = "key_value_store";
+  const bool bool_value = true;
+  const string string_value = "string1";
+  KeyValueStore value;
+  value.Set("bool_key", bool_value);
+  value.Set("string_key", string_value);
+  store.RegisterKeyValueStore(key, &value);
+
+  // Verify property value.
+  KeyValueStore test_value;
+  Error error;
+  EXPECT_TRUE(store.GetKeyValueStoreProperty(key, &test_value, &error));
+  EXPECT_EQ(value, test_value);
+
+  // Set property using brillo::Any variant type. Note: This modifies value.
+  const bool new_bool_value = false;
+  const string new_string_value = "string2";
+  brillo::VariantDictionary new_value;
+  new_value["bool_key"] = new_bool_value;
+  new_value["string_key"] = new_string_value;
+  EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+  test_value.Clear();
+  EXPECT_TRUE(store.GetKeyValueStoreProperty(key, &test_value, &error));
+  KeyValueStore new_key_value_store =
+      KeyValueStore::ConvertFromVariantDictionary(new_value);
+  EXPECT_EQ(new_key_value_store, test_value);
+}
+
+TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStores) {
+  PropertyStore store;
+
+  // Register property value.
+  const string key = "key_value_stores";
+  const bool bool_value = true;
+  const string string_value = "string1";
+  KeyValueStores values;
+  KeyValueStore value;
+  value.Set("bool_key", bool_value);
+  value.Set("string_key", string_value);
+  values.push_back(value);
+  store.RegisterKeyValueStores(key, &values);
+
+  // Verify property value.
+  KeyValueStores test_values;
+  Error error;
+  EXPECT_TRUE(store.GetKeyValueStoresProperty(key, &test_values, &error));
+  EXPECT_EQ(values, test_values);
+
+  // Set property using brillo::Any variant type. Note: This modifies values.
+  std::vector<brillo::VariantDictionary> new_values;
+  const bool new_bool_value = false;
+  const string new_string_value = "string2";
+  brillo::VariantDictionary new_value;
+  new_value["bool_key"] = new_bool_value;
+  new_value["string_key"] = new_string_value;
+  new_values.push_back(new_value);
+  EXPECT_TRUE(store.SetAnyProperty(key, new_values, &error));
+  test_values.clear();
+  EXPECT_TRUE(store.GetKeyValueStoresProperty(key, &test_values, &error));
+  EXPECT_EQ(test_values.size(), 1u);
+  EXPECT_EQ(new_values[0], test_values[0].properties());
 }
 
 TEST_F(PropertyStoreTest, SetAndGetProperties) {
@@ -721,6 +771,7 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   // Register properties.
   const string kBoolKey = "boolp";
   const string kKeyValueStoreKey = "keyvaluestorep";
+  const string kKeyValueStoresKey = "keyvaluestoresp";
   const string kInt16Key = "int16p";
   const string kInt32Key = "int32p";
   const string kStringKey = "stringp";
@@ -761,9 +812,20 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
               this, &PropertyStoreTest::GetKeyValueStoreCallback,
               &PropertyStoreTest::SetKeyValueStoreCallback)));
 
+  // Special handling for KeyValueStores property.
+  EXPECT_CALL(*this, GetKeyValueStoresCallback(_))
+      .WillOnce(Return(KeyValueStores()));
+  store.RegisterDerivedKeyValueStores(
+      kKeyValueStoresKey,
+      KeyValueStoresAccessor(
+          new CustomAccessor<PropertyStoreTest, KeyValueStores>(
+              this, &PropertyStoreTest::GetKeyValueStoresCallback,
+              &PropertyStoreTest::SetKeyValueStoresCallback)));
+
   // Update properties.
   bool new_bool_value = false;
   brillo::VariantDictionary new_key_value_store_value;
+  std::vector<brillo::VariantDictionary> new_key_value_stores_value;
   int16_t new_int16_value = 17;
   int32_t new_int32_value = 33;
   string new_string_value = "strings";
@@ -779,6 +841,8 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   dict.insert(std::make_pair(kBoolKey, brillo::Any(new_bool_value)));
   dict.insert(std::make_pair(kKeyValueStoreKey,
                              brillo::Any(new_key_value_store_value)));
+  dict.insert(std::make_pair(kKeyValueStoresKey,
+                             brillo::Any(new_key_value_stores_value)));
   dict.insert(std::make_pair(kInt16Key, brillo::Any(new_int16_value)));
   dict.insert(std::make_pair(kInt32Key, brillo::Any(new_int32_value)));
   dict.insert(std::make_pair(kStringKey, brillo::Any(new_string_value)));
@@ -789,12 +853,17 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   dict.insert(std::make_pair(kUint32Key, brillo::Any(new_uint32_value)));
 
   EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*this, SetKeyValueStoresCallback(_, _)).WillOnce(Return(true));
+
   Error error;
   EXPECT_TRUE(store.SetProperties(dict, &error));
 
   // Retrieve properties.
   EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
       .WillOnce(Return(KeyValueStore()));
+  EXPECT_CALL(*this, GetKeyValueStoresCallback(_))
+      .WillOnce(Return(KeyValueStores()));
+
   brillo::VariantDictionary result_dict;
   EXPECT_TRUE(store.GetProperties(&result_dict, &error));
 

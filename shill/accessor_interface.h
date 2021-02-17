@@ -57,6 +57,8 @@ using StringmapAccessor = std::unique_ptr<AccessorInterface<Stringmap>>;
 using StringmapsAccessor = std::unique_ptr<AccessorInterface<Stringmaps>>;
 using StringsAccessor = std::unique_ptr<AccessorInterface<Strings>>;
 using KeyValueStoreAccessor = std::unique_ptr<AccessorInterface<KeyValueStore>>;
+using KeyValueStoresAccessor =
+    std::unique_ptr<AccessorInterface<KeyValueStores>>;
 using Uint8Accessor = std::unique_ptr<AccessorInterface<uint8_t>>;
 using ByteArrayAccessor = std::unique_ptr<AccessorInterface<ByteArray>>;
 using Uint16Accessor = std::unique_ptr<AccessorInterface<uint16_t>>;

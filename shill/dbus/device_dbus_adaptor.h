@@ -50,6 +50,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::DeviceAdaptor,
                           const Strings& value) override;
   void EmitKeyValueStoreChanged(const std::string& name,
                                 const KeyValueStore& value) override;
+  void EmitKeyValueStoresChanged(const std::string& name,
+                                 const KeyValueStores& value) override;
   void EmitRpcIdentifierChanged(const std::string& name,
                                 const RpcIdentifier& value) override;
   void EmitRpcIdentifierArrayChanged(const std::string& name,

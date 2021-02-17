@@ -41,6 +41,7 @@ bool PropertyStore::Contains(const string& prop) const {
           base::Contains(int16_properties_, prop) ||
           base::Contains(int32_properties_, prop) ||
           base::Contains(key_value_store_properties_, prop) ||
+          base::Contains(key_value_stores_properties_, prop) ||
           base::Contains(string_properties_, prop) ||
           base::Contains(stringmap_properties_, prop) ||
           base::Contains(stringmaps_properties_, prop) ||
@@ -93,6 +94,13 @@ bool PropertyStore::SetAnyProperty(const string& name,
     KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(
         value.Get<brillo::VariantDictionary>());
     ret = SetKeyValueStoreProperty(name, store, error);
+  } else if (value.IsTypeCompatible<std::vector<brillo::VariantDictionary>>()) {
+    KeyValueStores dicts;
+    for (const auto& d : value.Get<std::vector<brillo::VariantDictionary>>()) {
+      KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(d);
+      dicts.push_back(store);
+    }
+    ret = SetKeyValueStoresProperty(name, dicts, error);
   } else {
     NOTREACHED() << " unknown type: " << value.GetUndecoratedTypeName();
     error->Populate(Error::kInternalError);
@@ -214,6 +222,19 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
       (*out)[it.Key()] = dict;
     }
   }
+  {
+    ReadablePropertyConstIterator<KeyValueStores> it =
+        GetKeyValueStoresPropertiesIter();
+    for (; !it.AtEnd(); it.Advance()) {
+      std::vector<brillo::VariantDictionary> dicts;
+      for (const auto& d : it.value()) {
+        brillo::VariantDictionary dict =
+            KeyValueStore::ConvertToVariantDictionary(d);
+        dicts.push_back(dict);
+      }
+      (*out)[it.Key()] = dicts;
+    }
+  }
 
   return true;
 }
@@ -241,6 +262,13 @@ bool PropertyStore::GetKeyValueStoreProperty(const string& name,
                                              Error* error) const {
   return GetProperty(name, value, error, key_value_store_properties_,
                      "a key value store");
+}
+
+bool PropertyStore::GetKeyValueStoresProperty(const string& name,
+                                              KeyValueStores* value,
+                                              Error* error) const {
+  return GetProperty(name, value, error, key_value_stores_properties_,
+                     "a key value stores");
 }
 
 bool PropertyStore::GetRpcIdentifierProperty(const string& name,
@@ -338,6 +366,13 @@ bool PropertyStore::SetKeyValueStoreProperty(const string& name,
                      "a key value store");
 }
 
+bool PropertyStore::SetKeyValueStoresProperty(const string& name,
+                                              const KeyValueStores& value,
+                                              Error* error) {
+  return SetProperty(name, value, error, &key_value_stores_properties_,
+                     "a key value stores");
+}
+
 bool PropertyStore::SetStringProperty(const string& name,
                                       const string& value,
                                       Error* error) {
@@ -422,6 +457,8 @@ bool PropertyStore::ClearProperty(const string& name, Error* error) {
     int32_properties_[name]->Clear(error);
   } else if (base::Contains(key_value_store_properties_, name)) {
     key_value_store_properties_[name]->Clear(error);
+  } else if (base::Contains(key_value_stores_properties_, name)) {
+    key_value_stores_properties_[name]->Clear(error);
   } else if (base::Contains(string_properties_, name)) {
     string_properties_[name]->Clear(error);
   } else if (base::Contains(stringmap_properties_, name)) {
@@ -475,6 +512,12 @@ ReadablePropertyConstIterator<KeyValueStore>
 PropertyStore::GetKeyValueStorePropertiesIter() const {
   return ReadablePropertyConstIterator<KeyValueStore>(
       key_value_store_properties_);
+}
+
+ReadablePropertyConstIterator<KeyValueStores>
+PropertyStore::GetKeyValueStoresPropertiesIter() const {
+  return ReadablePropertyConstIterator<KeyValueStores>(
+      key_value_stores_properties_);
 }
 
 ReadablePropertyConstIterator<RpcIdentifier>
@@ -689,6 +732,34 @@ void PropertyStore::RegisterWriteOnlyByteArray(const string& name,
       new WriteOnlyPropertyAccessor<ByteArray>(prop));
 }
 
+void PropertyStore::RegisterKeyValueStore(const std::string& name,
+                                          KeyValueStore* prop) {
+  DCHECK(!Contains(name)) << "(Already registered " << name << ")";
+  key_value_store_properties_[name].reset(
+      new PropertyAccessor<KeyValueStore>(prop));
+}
+
+void PropertyStore::RegisterConstKeyValueStore(const std::string& name,
+                                               const KeyValueStore* prop) {
+  DCHECK(!Contains(name)) << "(Already registered " << name << ")";
+  key_value_store_properties_[name].reset(
+      new ConstPropertyAccessor<KeyValueStore>(prop));
+}
+
+void PropertyStore::RegisterKeyValueStores(const std::string& name,
+                                           KeyValueStores* prop) {
+  DCHECK(!Contains(name)) << "(Already registered " << name << ")";
+  key_value_stores_properties_[name].reset(
+      new PropertyAccessor<KeyValueStores>(prop));
+}
+
+void PropertyStore::RegisterConstKeyValueStores(const std::string& name,
+                                                const KeyValueStores* prop) {
+  DCHECK(!Contains(name)) << "(Already registered " << name << ")";
+  key_value_stores_properties_[name].reset(
+      new ConstPropertyAccessor<KeyValueStores>(prop));
+}
+
 void PropertyStore::RegisterUint16(const string& name, uint16_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16_properties_[name].reset(new PropertyAccessor<uint16_t>(prop));
@@ -744,6 +815,12 @@ void PropertyStore::RegisterDerivedKeyValueStore(
     const string& name, KeyValueStoreAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   key_value_store_properties_[name] = std::move(accessor);
+}
+
+void PropertyStore::RegisterDerivedKeyValueStores(
+    const string& name, KeyValueStoresAccessor accessor) {
+  DCHECK(!Contains(name)) << "(Already registered " << name << ")";
+  key_value_stores_properties_[name] = std::move(accessor);
 }
 
 void PropertyStore::RegisterDerivedRpcIdentifier(

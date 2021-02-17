@@ -38,6 +38,8 @@ class DeviceAdaptorInterface {
                                   const Strings& value) = 0;
   virtual void EmitKeyValueStoreChanged(const std::string& name,
                                         const KeyValueStore& value) = 0;
+  virtual void EmitKeyValueStoresChanged(const std::string& name,
+                                         const KeyValueStores& value) = 0;
   virtual void EmitRpcIdentifierChanged(const std::string& name,
                                         const RpcIdentifier& value) = 0;
   virtual void EmitRpcIdentifierArrayChanged(const std::string& name,

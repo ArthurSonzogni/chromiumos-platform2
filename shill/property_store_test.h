@@ -63,7 +63,9 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
 
   MOCK_METHOD(void, TestCallback, (const std::string&));
   MOCK_METHOD(KeyValueStore, GetKeyValueStoreCallback, (Error*));
+  MOCK_METHOD(KeyValueStores, GetKeyValueStoresCallback, (Error*));
   MOCK_METHOD(bool, SetKeyValueStoreCallback, (const KeyValueStore&, Error*));
+  MOCK_METHOD(bool, SetKeyValueStoresCallback, (const KeyValueStores&, Error*));
 
   // Convenience overloads for GetProperty. Normally, we don't overload
   // functions. But this is extremely useful for type-parameterized tests.
