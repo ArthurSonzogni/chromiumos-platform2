@@ -41,7 +41,7 @@ class Proxy : public brillo::DBusDaemon {
         std::unique_ptr<shill::Client> shill);
   Proxy(const Proxy&) = delete;
   Proxy& operator=(const Proxy&) = delete;
-  ~Proxy() = default;
+  ~Proxy();
 
   static const char* TypeToString(Type t);
   static std::optional<Type> StringToType(const std::string& s);

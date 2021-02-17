@@ -76,6 +76,11 @@ Proxy::Proxy(const Options& opts,
       patchpanel_(std::move(patchpanel)),
       shill_(std::move(shill)) {}
 
+Proxy::~Proxy() {
+  if (bus_)
+    bus_->ShutdownAndBlock();
+}
+
 int Proxy::OnInit() {
   LOG(INFO) << "Starting DNS proxy " << opts_;
 

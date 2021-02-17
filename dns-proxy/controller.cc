@@ -33,6 +33,9 @@ Controller::Controller(const std::string& progname) : progname_(progname) {
 Controller::~Controller() {
   for (const auto& p : proxies_)
     Kill(p);
+
+  if (bus_)
+    bus_->ShutdownAndBlock();
 }
 
 int Controller::OnInit() {
