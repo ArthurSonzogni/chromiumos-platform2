@@ -26,12 +26,30 @@ void OnConnectionClosedOrError(const std::string& interface_type) {
 
 }  // namespace
 
+OutputManager::~OutputManager() {
+  if (thread_.IsRunning()) {
+    base::WaitableEvent destruction_complete(
+        base::WaitableEvent::ResetPolicy::MANUAL,
+        base::WaitableEvent::InitialState::NOT_SIGNALED);
+    thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&OutputManager::DestructDbus, base::Unretained(this),
+                       &destruction_complete));
+    destruction_complete.Wait();
+  }
+}
+
+void OutputManager::DestructDbus(base::WaitableEvent* destruction_complete) {
+  dbus_connection_.reset();
+  destruction_complete->Signal();
+}
+
 OutputManager::OutputManager(
     const std::string& configuration_name,
     std::shared_ptr<Rtanalytics> rtanalytics,
     const PerceptionInterfaces& interfaces,
-    chromeos::media_perception::mojom::PerceptionInterfacesPtr*
-        interfaces_ptr) {
+    chromeos::media_perception::mojom::PerceptionInterfacesPtr* interfaces_ptr)
+    : thread_("OutputManager Dbus Thread") {
   // Save the configuration name in case we need to reference it later.
   configuration_name_ = configuration_name;
   rtanalytics_ = rtanalytics;
@@ -257,19 +275,31 @@ OutputManager::OutputManager(
                        << output.stream_name();
             continue;
           }
-          // Setup D-Bus connection.
-          bus_ = dbus_connection_.Connect();
-          if (bus_ == nullptr) {
-            LOG(FATAL) << "Unable to connect to Dbus from OutputManager.";
+
+          if (!thread_.StartWithOptions(
+                  base::Thread::Options(base::MessagePumpType::IO, 0))) {
+            LOG(ERROR) << "Failed to create dbus thread.";
+            continue;
           }
-          dbus_proxy_ = bus_->GetObjectProxy(
-              "org.chromium.IpPeripheralService",
-              dbus::ObjectPath("/org/chromium/IpPeripheralService"));
+          dbus_connection_ = std::make_unique<brillo::DBusConnection>();
+          thread_.task_runner()->PostTask(
+              FROM_HERE, base::Bind(&OutputManager::InitializeDbus,
+                                    base::Unretained(this)));
         }
       }
       continue;
     }
   }
+}
+
+void OutputManager::InitializeDbus() {
+  bus_ = dbus_connection_->Connect();
+  if (bus_ == nullptr) {
+    LOG(FATAL) << "Unable to connect to Dbus from OutputManager.";
+  }
+  dbus_proxy_ = bus_->GetObjectProxy(
+      "org.chromium.IpPeripheralService",
+      dbus::ObjectPath("/org/chromium/IpPeripheralService"));
 }
 
 void OutputManager::HandleFramePerception(const std::vector<uint8_t>& bytes) {
@@ -372,6 +402,15 @@ void OutputManager::HandleSmartFraming(const std::vector<uint8_t>& bytes) {
 
 void OutputManager::HandleIndexedTransitions(
     const std::vector<uint8_t>& bytes) {
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&OutputManager::HandleIndexedTransitionsOnDbusThread,
+                     base::Unretained(this), bytes));
+}
+
+void OutputManager::HandleIndexedTransitionsOnDbusThread(
+    const std::vector<uint8_t>& bytes) {
+  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   std::string falcon_ip = rtanalytics_->GetFalconIp(configuration_name_);
   std::size_t found = falcon_ip.find_last_of(".");
   if (found == -1) {

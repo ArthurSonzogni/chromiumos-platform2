@@ -11,6 +11,10 @@
 #include <brillo/dbus/dbus_connection.h>
 #include <dbus/message.h>
 
+#include <base/bind.h>
+#include <base/single_thread_task_runner.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/threading/thread.h>
 #include "base/memory/weak_ptr.h"
 #include "media_perception/media_perception_mojom.pb.h"
 #include "media_perception/perception_interface.pb.h"
@@ -25,13 +29,15 @@ namespace mri {
 // output types for a particular pipeline are.
 class OutputManager {
  public:
-  OutputManager() {}
+  OutputManager() : thread_("OutputManager Dbus Thread") {}
 
   OutputManager(const std::string& configuration_name,
                 std::shared_ptr<Rtanalytics> rtanalytics,
                 const PerceptionInterfaces& interfaces,
                 chromeos::media_perception::mojom::PerceptionInterfacesPtr*
                     interfaces_ptr);
+
+  ~OutputManager();
 
   void HandleFramePerception(const std::vector<uint8_t>& bytes);
 
@@ -51,12 +57,19 @@ class OutputManager {
  private:
   void HandleFalconPtzTransitionResponse(dbus::Response* response);
 
+  void InitializeDbus();
+
+  void HandleIndexedTransitionsOnDbusThread(const std::vector<uint8_t>& bytes);
+
+  void DestructDbus(base::WaitableEvent* destruction_complete);
+
   std::string configuration_name_;
 
   std::shared_ptr<Rtanalytics> rtanalytics_;
 
   // D-Bus objects for sending messages to the Falcon camera.
-  brillo::DBusConnection dbus_connection_;
+  base::Thread thread_;
+  std::unique_ptr<brillo::DBusConnection> dbus_connection_;
   scoped_refptr<::dbus::Bus> bus_;
   dbus::ObjectProxy* dbus_proxy_;
 

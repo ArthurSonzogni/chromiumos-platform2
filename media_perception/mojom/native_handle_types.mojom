@@ -15,7 +15,7 @@ struct NativePixmapPlane {
   uint64 size;
 
   // A platform-specific handle the underlying memory object.
-  handle buffer_handle;
+  handle<platform> buffer_handle;
 };
 
 // gfx::NativePixmapHandle
@@ -39,7 +39,7 @@ struct NativePixmapHandle {
 struct AHardwareBufferHandle {
   // The actual file descriptor used to wrap the AHardwareBuffer object for
   // serialization.
-  handle buffer_handle;
+  handle<platform> buffer_handle;
 
   // A message pipe handle which tracks the lifetime of this
   // AHardwareBufferHandle. The sender may use this to observe the lifetime
@@ -56,10 +56,10 @@ union GpuMemoryBufferPlatformHandle {
   NativePixmapHandle native_pixmap_handle;
 
   [EnableIf=is_mac]
-  handle mach_port;
+  handle<platform> mach_port;
 
   [EnableIf=is_win]
-  handle dxgi_handle;
+  handle<platform> dxgi_handle;
 
   [EnableIf=is_android]
   AHardwareBufferHandle android_hardware_buffer_handle;

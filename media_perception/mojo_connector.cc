@@ -363,6 +363,12 @@ void MojoConnector::CreateVirtualDeviceOnIpcThread(
   info->descriptor->device_id = video_device.id();
   info->descriptor->display_name = video_device.display_name();
   info->descriptor->capture_api = media::mojom::VideoCaptureApi::VIRTUAL_DEVICE;
+  // No PTZ controls supported.
+  info->descriptor->control_support =
+      media::mojom::VideoCaptureControlSupport::New();
+  info->descriptor->control_support->pan = false;
+  info->descriptor->control_support->tilt = false;
+  info->descriptor->control_support->zoom = false;
   producer_impl->RegisterVirtualDevice(&video_source_provider_,
                                        std::move(info));
 

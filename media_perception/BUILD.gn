@@ -50,6 +50,7 @@ generate_mojom_bindings("media_perception_mojo_bindings") {
     "mojom/devices_changed_observer.mojom",
     "mojom/frame_perception.mojom",
     "mojom/geometry.mojom",
+    "mojom/hdr_metadata.mojom",
     "mojom/hotword_detection.mojom",
     "mojom/image_capture.mojom",
     "mojom/mailbox.mojom",
