@@ -107,9 +107,10 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   const std::string flag_t = "--t=" + std::string(Proxy::TypeToString(type));
   argv.push_back(const_cast<char*>(progname_.c_str()));
   argv.push_back(const_cast<char*>(flag_t.c_str()));
+  std::string flag_i = "--i=";
   if (!ifname.empty()) {
-    const std::string flag_if = "--i=" + ifname;
-    argv.push_back(const_cast<char*>(flag_if.c_str()));
+    flag_i += ifname;
+    argv.push_back(const_cast<char*>(flag_i.c_str()));
   }
   argv.push_back(nullptr);
 
@@ -248,6 +249,10 @@ void Controller::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
     case patchpanel::NetworkDevice::PLUGIN_VM:
       default_proxy_deps_->guest_up(device.ifname());
       break;
+    case patchpanel::NetworkDevice::ARC:
+    case patchpanel::NetworkDevice::ARCVM:
+      RunProxy(Proxy::Type::kARC, device.phys_ifname());
+      break;
     default:
       break;
   }
@@ -258,6 +263,10 @@ void Controller::VirtualDeviceRemoved(const patchpanel::NetworkDevice& device) {
     case patchpanel::NetworkDevice::TERMINA_VM:
     case patchpanel::NetworkDevice::PLUGIN_VM:
       default_proxy_deps_->guest_down(device.ifname());
+      break;
+    case patchpanel::NetworkDevice::ARC:
+    case patchpanel::NetworkDevice::ARCVM:
+      KillProxy(Proxy::Type::kARC, device.phys_ifname());
       break;
     default:
       break;
