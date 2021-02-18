@@ -32,7 +32,12 @@ SharedLibraryBenchmarkFunctions::SharedLibraryBenchmarkFunctions(
     const base::FilePath& path) {
   base::NativeLibraryLoadError load_error;
   base::NativeLibraryOptions native_library_options;
+#if !defined(ADDRESS_SANITIZER) && !defined(THREAD_SANITIZER) && \
+    !defined(MEMORY_SANITIZER) && !defined(LEAK_SANITIZER)
+  // Sanitizer builds cannot support RTLD_DEEPBIND, but they also disable
+  // allocator shims, so it's unnecessary there.
   native_library_options.prefer_own_symbols = true;
+#endif
   library_ = base::ScopedNativeLibrary(base::LoadNativeLibraryWithOptions(
       path, native_library_options, &load_error));
 
