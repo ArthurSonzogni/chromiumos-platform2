@@ -3,6 +3,8 @@
 Utilities for screen capturing for dev/test
 images for working with screen capture.
 
+[TOC]
+
 ## screenshot
 
 Provides a screenshot of the current display. Useful for capturing what's on the
@@ -14,6 +16,8 @@ so your mileage may vary.
 VNC server using the same infrastructure as screenshot for grabbing display.
 
 Here’s a quick rundown of how to use kmsvnc.
+
+![kmsvnc usage diagram](kmsvnc-usage.png)
 
 ```shell
 (DUT)# kmsvnc
@@ -53,31 +57,3 @@ For debugging I typically need to deploy to /usr/sbin, from inside chroot
 $ cros deploy localhost:2229 chromeos-base/screen-capture-utils
 $ gdb-${BOARD} --remote=localhost:2229 /usr/sbin/kmsvnc
 ```
-
-### Type of graphics importer
-
-There are three major types of boards that this code handles.  The flags
-`--method=bo` or `--method=egl` would try to force which method is being used.
-
-#### non-getfb2-capable
-
-Kernel before 4.4 do not have [getfb2 ioctl
-backported](https://chromium-review.googlesource.com/c/chromiumos/third_party/kernel/+/2001263/4),
-so they will use the `--method=bo`. This does not support multiple planes and
-assumes framebuffer is readable in ARGB format.
-
-Development was done typically with caroline.
-
-#### getfb2-capable
-
-framebuffer is converted every frame to ARGB format using EGL call. This depends
-on getfb2 ioctl being available, which is only available on kernel 4.4 or later.
-
-Development was done typically with samus.
-
-#### getfb2-capable and atomic_modeset capable
-
-planes are scanned and merged so that when multiple planes are being used they
-are correctly rendered.
-
-Development was done typically with rammus.
