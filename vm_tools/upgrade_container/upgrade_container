@@ -34,6 +34,10 @@ sed -i 's/stretch/buster/g' /etc/apt/sources.list \
 APT_OPTIONS="-o Dpkg::Options::=--force-confdef
  -o Dpkg::Options::=--force-confold"
 
+# If a previous run of this script was killed, it might have left packages in a
+# half-configured state. Complete the configurations.
+dpkg --configure -a || true
+
 # Upgrade everything to Buster versions.
 apt-get ${APT_OPTIONS} update -y
 apt-get ${APT_OPTIONS} upgrade -y
