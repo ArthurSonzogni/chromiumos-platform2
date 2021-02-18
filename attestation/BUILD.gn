@@ -119,24 +119,6 @@ source_set("common_library") {
   }
 }
 
-# A library for client code.
-source_set("client_library") {
-  configs += [
-    "//common-mk:pic",
-    ":target_defaults",
-    "//common-mk:nouse_thin_archive",
-    ":local_proto_include",
-
-    # TODO: Use brillo/brillo_export.h instead to export symbols.
-    "//common-mk:visibility_default",
-  ]
-  sources = [ "client/dbus_proxy.cc" ]
-  deps = [
-    ":proto_library",
-    ":proto_library_proto",
-  ]
-}
-
 # A shared library for clients.
 shared_library("libattestation") {
   configs += [
@@ -149,7 +131,6 @@ shared_library("libattestation") {
   ]
   libs = [ "system_api" ]
   deps = [
-    ":client_library",
     ":proto_library",
     ":proto_library_proto",
   ]
@@ -172,7 +153,6 @@ executable("attestation_client") {
     "protobuf",
   ]
   deps = [
-    ":client_library",
     ":common_library",
     ":proto_library",
     ":proto_library_proto",
@@ -316,7 +296,6 @@ if (use.test) {
   executable("attestation_testrunner") {
     sources = [
       "attestation_testrunner.cc",
-      "client/dbus_proxy_test.cc",
       "common/crypto_utility_impl_test.cc",
       "common/mock_crypto_utility.cc",
       "common/mock_tpm_utility.cc",
@@ -361,7 +340,6 @@ if (use.test) {
       "protobuf-lite",
     ]
     deps = [
-      ":client_library",
       ":common_library",
       ":pca_agent_server_library",
       ":proto_library",
