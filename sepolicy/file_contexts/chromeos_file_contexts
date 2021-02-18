@@ -280,6 +280,9 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/dbus                       u:object_r:cros_run_dbus:s0
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
+/run/dhcpcd                     u:object_r:cros_run_dhcpcd:s0
+/run/ipsec                      u:object_r:cros_run_ipsec:s0
+/run/l2tpipsec_vpn              u:object_r:cros_run_l2tpipsec_vpn:s0
 /run/lock                       u:object_r:cros_run_lock:s0
 /run/lock/power_override        u:object_r:cros_run_lock_power_override:s0
 /run/log                        u:object_r:cros_run_log:s0
@@ -287,6 +290,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
 /run/mount_encrypted            u:object_r:cros_run_mount_encrypted:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
+/run/shill                      u:object_r:cros_run_shill:s0
 /run/systemd                    u:object_r:cros_run_systemd:s0
 /run/systemd/journal            u:object_r:cros_run_systemd_journal:s0
 /run/systemd/journal/pids       u:object_r:cros_run_systemd_journal_pids:s0
@@ -316,6 +320,8 @@ has_arc(`
 # (USB device nodes passed by Chrome / permission broker)
 /dev/bus/usb(/.*)?              u:object_r:usb_device:s0
 
+# Needed for tmpfiles.d to chgrp ip_conntrack
+/proc/net(/.*)?                 u:object_r:proc_net:s0
 
 (/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
