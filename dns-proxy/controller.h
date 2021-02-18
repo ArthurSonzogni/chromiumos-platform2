@@ -102,8 +102,8 @@ class Controller : public brillo::DBusDaemon {
   // running.
   void EvalDefaultProxyDeps(bool has_deps);
 
-  // Notified by shill whenever the device service changes.
-  void OnDefaultServiceChanged(const std::string& type);
+  // Notified by shill whenever the default device changes.
+  void OnDefaultDeviceChanged(const shill::Client::Device* const device);
 
   // Notified by patchpanel whenever a change occurs in one of its virtual
   // network devices.
