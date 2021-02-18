@@ -51,6 +51,7 @@
 #if USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
 #endif  // USE_IIOSERVICE
+#include "power_manager/powerd/system/ambient_light_sensor_watcher.h"
 #include "power_manager/powerd/system/arc_timer_manager.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
@@ -335,6 +336,10 @@ void Daemon::Init() {
   if (lid_state == LidState::CLOSED)
     LOG(INFO) << "Lid closed at startup";
 
+  if (BoolPrefIsTrue(kExternalAmbientLightSensorPref)) {
+    ambient_light_sensor_watcher_ =
+        delegate_->CreateAmbientLightSensorWatcher(udev_.get());
+  }
   display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
   display_power_setter_ =
       delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());

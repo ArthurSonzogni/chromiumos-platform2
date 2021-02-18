@@ -50,6 +50,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
 #endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/cros_ec_helper.h"
 #include "power_manager/powerd/system/dark_resume.h"
@@ -115,6 +116,13 @@ class DaemonDelegateImpl : public DaemonDelegate {
     light_sensor_manager->Run(false /* read_immediately */);
 #endif  // USE_IIOSERVICE
     return light_sensor_manager;
+  }
+
+  std::unique_ptr<system::AmbientLightSensorWatcherInterface>
+  CreateAmbientLightSensorWatcher(system::UdevInterface* udev) override {
+    auto watcher = std::make_unique<system::AmbientLightSensorWatcher>();
+    watcher->Init(udev);
+    return watcher;
   }
 
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(

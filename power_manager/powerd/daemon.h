@@ -74,6 +74,7 @@ class WifiController;
 namespace system {
 class AcpiWakeupHelperInterface;
 class AmbientLightSensorManagerInterface;
+class AmbientLightSensorWatcherInterface;
 class ArcTimerManager;
 class AudioClientInterface;
 class BacklightInterface;
@@ -317,6 +318,8 @@ class Daemon :
   // configuration.
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
       light_sensor_manager_;
+  std::unique_ptr<system::AmbientLightSensorWatcherInterface>
+      ambient_light_sensor_watcher_;
   std::unique_ptr<system::DisplayWatcherInterface> display_watcher_;
   std::unique_ptr<system::DisplayPowerSetterInterface> display_power_setter_;
   std::unique_ptr<system::BacklightInterface> display_backlight_;

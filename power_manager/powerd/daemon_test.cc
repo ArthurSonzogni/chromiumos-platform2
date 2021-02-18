@@ -30,6 +30,7 @@
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_stub.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_stub.h"
 #include "power_manager/powerd/system/audio_client_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
@@ -62,6 +63,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_udev_(new system::UdevStub()),
         passed_ambient_light_sensor_manager_(
             new system::AmbientLightSensorManagerStub()),
+        passed_ambient_light_sensor_watcher_(
+            new system::AmbientLightSensorWatcherStub()),
         passed_display_watcher_(new system::DisplayWatcherStub()),
         passed_display_power_setter_(new system::DisplayPowerSetterStub()),
         passed_internal_backlight_(new system::BacklightStub(
@@ -92,6 +95,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         udev_(passed_udev_.get()),
         ambient_light_sensor_manager_(
             passed_ambient_light_sensor_manager_.get()),
+        ambient_light_sensor_watcher_(
+            passed_ambient_light_sensor_watcher_.get()),
         display_watcher_(passed_display_watcher_.get()),
         display_power_setter_(passed_display_power_setter_.get()),
         internal_backlight_(passed_internal_backlight_.get()),
@@ -162,6 +167,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
   CreateAmbientLightSensorManager(PrefsInterface* prefs) override {
     return std::move(passed_ambient_light_sensor_manager_);
+  }
+  std::unique_ptr<system::AmbientLightSensorWatcherInterface>
+  CreateAmbientLightSensorWatcher(system::UdevInterface* udev) override {
+    EXPECT_EQ(udev_, udev);
+    return std::move(passed_ambient_light_sensor_watcher_);
   }
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) override {
@@ -368,6 +378,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::UdevStub> passed_udev_;
   std::unique_ptr<system::AmbientLightSensorManagerStub>
       passed_ambient_light_sensor_manager_;
+  std::unique_ptr<system::AmbientLightSensorWatcherStub>
+      passed_ambient_light_sensor_watcher_;
   std::unique_ptr<system::DisplayWatcherStub> passed_display_watcher_;
   std::unique_ptr<system::DisplayPowerSetterStub> passed_display_power_setter_;
   std::unique_ptr<system::BacklightStub> passed_internal_backlight_;
@@ -401,6 +413,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::DBusWrapperStub* dbus_wrapper_;
   system::UdevStub* udev_;
   system::AmbientLightSensorManagerStub* ambient_light_sensor_manager_;
+  system::AmbientLightSensorWatcherStub* ambient_light_sensor_watcher_;
   system::DisplayWatcherStub* display_watcher_;
   system::DisplayPowerSetterStub* display_power_setter_;
   system::BacklightStub* internal_backlight_;

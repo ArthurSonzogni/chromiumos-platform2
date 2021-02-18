@@ -24,6 +24,7 @@ namespace system {
 class AcpiWakeupHelperInterface;
 class AmbientLightSensorInterface;
 class AmbientLightSensorManagerInterface;
+class AmbientLightSensorWatcherInterface;
 class AudioClientInterface;
 class BacklightInterface;
 class ChargeControllerHelperInterface;
@@ -68,6 +69,9 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<system::AmbientLightSensorManagerInterface>
   CreateAmbientLightSensorManager(PrefsInterface* prefs) = 0;
+
+  virtual std::unique_ptr<system::AmbientLightSensorWatcherInterface>
+  CreateAmbientLightSensorWatcher(system::UdevInterface* udev) = 0;
 
   virtual std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) = 0;
