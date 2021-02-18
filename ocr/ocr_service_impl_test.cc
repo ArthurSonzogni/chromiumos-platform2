@@ -15,6 +15,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
