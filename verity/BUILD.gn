@@ -20,28 +20,28 @@ pkg_config("target_defaults") {
 }
 
 shared_library("libdm-bht") {
-  configs += [ ":target_defaults" ]
   sources = [
     "dm-bht.cc",
     "file_hasher.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("verity") {
+  sources = [ "verity_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libdm-bht" ]
-  sources = [ "verity_main.cc" ]
 }
 
 if (use.test) {
   executable("verity_tests") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "dm-bht_test.cc",
       "file_hasher_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libdm-bht",

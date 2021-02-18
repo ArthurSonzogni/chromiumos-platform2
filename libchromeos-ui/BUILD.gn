@@ -46,15 +46,15 @@ shared_library("libchromeos-ui") {
 
 if (use.test) {
   executable("libchromeos-ui-test") {
+    sources = [
+      "chromeos/ui/chromium_command_builder_test.cc",
+      "chromeos/ui/util_test.cc",
+    ]
     configs += [
       # //common-mk:test should be at the top. crbug.com/887845
       # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
       "//common-mk:test",
       ":target_defaults",
-    ]
-    sources = [
-      "chromeos/ui/chromium_command_builder_test.cc",
-      "chromeos/ui/util_test.cc",
     ]
     deps = [
       ":libchromeos-ui_source_set",
