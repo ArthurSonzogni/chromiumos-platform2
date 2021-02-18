@@ -71,6 +71,11 @@ message NetworkDevice {
   // The name of the host device interface.
   string ifname = 1;
 
+  // The name of the physical interface to which the virtual device is mapped.
+  // Only valid for virtual devices and will be empty for those tracking default
+  // logical or physical networks.
+  string phys_ifname = 5;
+
   // The assigned IPv4 address in network order.
   uint32 ipv4_addr = 2;
 

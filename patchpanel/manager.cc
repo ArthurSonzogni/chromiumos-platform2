@@ -364,6 +364,7 @@ void Manager::OnDeviceChanged(const Device& device,
                       : NetworkDeviceChangedSignal::DEVICE_REMOVED);
   auto* dev = proto.mutable_device();
   dev->set_ifname(device.host_ifname());
+  dev->set_phys_ifname(device.phys_ifname());
   dev->set_ipv4_addr(device.config().guest_ipv4_addr());
   if (const auto* subnet = device.config().ipv4_subnet()) {
     auto* sub = dev->mutable_ipv4_subnet();
@@ -488,6 +489,7 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
       [](patchpanel::GetDevicesResponse* resp, const Device& device) {
         auto* dev = resp->add_devices();
         dev->set_ifname(device.host_ifname());
+        dev->set_phys_ifname(device.phys_ifname());
         dev->set_ipv4_addr(device.config().guest_ipv4_addr());
         dev->set_guest_type(arc_guest_type);
         if (const auto* subnet = device.config().ipv4_subnet()) {
@@ -503,6 +505,7 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
          const Device& device) {
         auto* dev = resp->add_devices();
         dev->set_ifname(device.host_ifname());
+        dev->set_phys_ifname(device.phys_ifname());
         dev->set_ipv4_addr(device.config().guest_ipv4_addr());
         dev->set_guest_type(is_termina ? NetworkDevice::TERMINA_VM
                                        : NetworkDevice::PLUGIN_VM);
