@@ -12,9 +12,11 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cros_config/cros_config.h>
 
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/logging.h"
@@ -30,6 +32,34 @@ constexpr base::TimeDelta kRebootCheckDelay = base::TimeDelta::FromMinutes(1);
 
 std::string ToOnOffString(bool b) {
   return b ? "on" : "off";
+}
+
+// Returns the delay to wait before rebooting the modem if it hasn't appeared
+// on the USB bus by reading the /modem/wedge-reboot-delay-ms property of the
+// current model via chromeos-config, or using the default `kWedgeCheckDelay`
+// constant if it fails to read it from chromeos-config or nothing is specified.
+base::TimeDelta GetModemWedgeCheckDelay() {
+  brillo::CrosConfig config;
+  if (!config.Init()) {
+    LOG(WARNING) << "Failed to load Chrome OS configuration";
+    return kWedgeCheckDelay;
+  }
+
+  std::string delay_ms;
+  if (!config.GetString("/modem", "wedge-reboot-delay-ms", &delay_ms)) {
+    return kWedgeCheckDelay;
+  }
+
+  int64_t ms;
+  if (!base::StringToInt64(delay_ms, &ms)) {
+    LOG(WARNING) << "Invalid wedge-reboot-delay-ms attribute " << delay_ms
+                 << " using default " << kWedgeCheckDelay;
+    return kWedgeCheckDelay;
+  }
+
+  base::TimeDelta wedge_delay = base::TimeDelta::FromMilliseconds(ms);
+  LOG(INFO) << "Use customized wedge reboot delay: " << wedge_delay;
+  return wedge_delay;
 }
 
 }  // namespace
@@ -129,7 +159,7 @@ int Daemon::CompleteInitialization() {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&Daemon::CheckForWedgedModems, weak_ptr_factory_.GetWeakPtr()),
-      kWedgeCheckDelay);
+      GetModemWedgeCheckDelay());
 
   return EX_OK;
 }
@@ -197,8 +227,7 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
     return;
 
   if (!helper->FlashModeCheck()) {
-    LOG(WARNING) << "Modem not found after " << kWedgeCheckDelay << " seconds, "
-                 << "trying to reset it...";
+    LOG(WARNING) << "Modem not found, trying to reset it...";
     if (helper->Reboot()) {
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
           FROM_HERE,
