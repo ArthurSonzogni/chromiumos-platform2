@@ -316,7 +316,12 @@ fn run() -> Result<()> {
     let usb =
         UsbConnector::new(args.verbose_log, args.bus_device).map_err(Error::CreateUsbConnector)?;
     let unplug_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
-    let _unplug = UnplugDetector::new(usb.device(), unplug_shutdown_fd, &SHUTDOWN);
+    let _unplug = UnplugDetector::new(
+        usb.device(),
+        unplug_shutdown_fd,
+        &SHUTDOWN,
+        args.upstart_mode,
+    );
 
     if let Some(unix_socket_path) = args.unix_socket {
         info!("Listening on {}", unix_socket_path.display());

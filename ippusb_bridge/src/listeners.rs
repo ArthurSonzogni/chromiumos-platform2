@@ -57,7 +57,9 @@ impl Drop for ScopedUnixListener {
         if let Ok(sa) = self.0.local_addr() {
             if let Some(path) = sa.as_pathname() {
                 if let Err(e) = fs::remove_file(path) {
-                    error!("Failed to remove socket at {}: {}", path.display(), e);
+                    if e.kind() != io::ErrorKind::NotFound {
+                        error!("Failed to remove socket at {}: {}", path.display(), e);
+                    }
                 }
             }
         }

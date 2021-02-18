@@ -12,7 +12,7 @@ use std::vec::Vec;
 
 use rusb::{Direction, GlobalContext, Registration, TransferType, UsbContext};
 use sync::{Condvar, Mutex};
-use sys_util::{debug, error, info, EventFd};
+use sys_util::{debug, error, info, EventFd, PollContext};
 
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -30,6 +30,7 @@ pub enum Error {
     NoDevice,
     NoFreeInterface,
     NotIppUsb,
+    PollError(sys_util::Error),
 }
 
 impl std::error::Error for Error {}
@@ -50,6 +51,7 @@ impl fmt::Display for Error {
             NoDevice => write!(f, "No valid IPP USB device found."),
             NoFreeInterface => write!(f, "There is no free IPP USB interface to claim."),
             NotIppUsb => write!(f, "The specified device is not an IPP USB device."),
+            PollError(err) => write!(f, "Error polling shutdown fd: {}", err),
         }
     }
 }
@@ -229,8 +231,9 @@ impl UnplugDetector {
         device: rusb::Device<GlobalContext>,
         shutdown_fd: EventFd,
         shutdown: &'static AtomicBool,
+        delay_shutdown: bool,
     ) -> Result<Self> {
-        let handler = CallbackHandler::new(device, shutdown_fd, shutdown);
+        let handler = CallbackHandler::new(device, shutdown_fd, shutdown, delay_shutdown);
         let context = GlobalContext::default();
         let registration = context
             .register_callback(None, None, None, Box::new(handler))
@@ -276,20 +279,43 @@ impl Drop for UnplugDetector {
 struct CallbackHandler {
     device: rusb::Device<GlobalContext>,
     shutdown_fd: EventFd,
-    shutdown: &'static AtomicBool,
+    shutdown_requested: &'static AtomicBool,
+    delay_shutdown: bool,
 }
 
 impl CallbackHandler {
     fn new(
         device: rusb::Device<GlobalContext>,
         shutdown_fd: EventFd,
-        shutdown: &'static AtomicBool,
+        shutdown_requested: &'static AtomicBool,
+        delay_shutdown: bool,
     ) -> Self {
         Self {
             device,
             shutdown_fd,
-            shutdown,
+            shutdown_requested,
+            delay_shutdown,
         }
+    }
+
+    // If delayed shutdown is requested, wait for another shutdown event for up to 2s.
+    // This gives upstart time to send the process a signal after a USB devices is unplugged.
+    fn wait_for_shutdown(&mut self) -> Result<()> {
+        if !self.delay_shutdown {
+            return Ok(());
+        }
+
+        if self.shutdown_requested.load(Ordering::Relaxed) {
+            // No need to wait if shutdown has already been requested from another source.
+            return Ok(());
+        }
+
+        info!("Waiting for shutdown signal");
+        let timeout = Duration::from_secs(2);
+        let ctx: PollContext<u32> = PollContext::new().map_err(Error::PollError)?;
+        ctx.add(&self.shutdown_fd, 1).map_err(Error::PollError)?;
+        ctx.wait_timeout(timeout).map_err(Error::PollError)?;
+        Ok(())
     }
 }
 
@@ -301,7 +327,12 @@ impl rusb::Hotplug<GlobalContext> for CallbackHandler {
     fn device_left(&mut self, device: rusb::Device<GlobalContext>) {
         if device == self.device {
             info!("Device was unplugged, shutting down");
-            self.shutdown.store(true, Ordering::Relaxed);
+
+            if let Err(e) = self.wait_for_shutdown() {
+                error!("Failed to wait for signal: {}", e);
+            }
+
+            self.shutdown_requested.store(true, Ordering::Relaxed);
             if let Err(e) = self.shutdown_fd.write(1) {
                 error!("Failed to trigger shutdown: {}", e);
             }

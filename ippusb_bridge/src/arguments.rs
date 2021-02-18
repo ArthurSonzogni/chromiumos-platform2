@@ -40,6 +40,7 @@ pub struct Args {
     pub bus_device: Option<(u8, u8)>,
     pub keep_alive: Option<PathBuf>,
     pub unix_socket: Option<PathBuf>,
+    pub upstart_mode: bool,
     pub verbose_log: bool,
 }
 
@@ -55,6 +56,11 @@ impl Args {
                 "unix-socket",
                 "Path to unix socket to listen on",
                 "PATH",
+            )
+            .optflag(
+                "",
+                "upstart",
+                "Let upstart manage shutdown instead of immediately exiting after USB disconnect.",
             )
             .optflag("v", "verbose", "Enable verbose logging")
             .optflag("h", "help", "Print help message");
@@ -97,11 +103,13 @@ impl Args {
         let keep_alive = matches.opt_str("keep-alive").map(PathBuf::from);
         let unix_socket = matches.opt_str("unix-socket").map(PathBuf::from);
         let verbose_log = matches.opt_present("v");
+        let upstart_mode = matches.opt_present("upstart");
 
         Ok(Some(Args {
             bus_device,
             keep_alive,
             unix_socket,
+            upstart_mode,
             verbose_log,
         }))
     }
