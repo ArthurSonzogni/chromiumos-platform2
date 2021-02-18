@@ -842,6 +842,13 @@ properties:
                     of a firmware entry in a firmware manifest. In most cases,
                     we simply use the model name as the value.
                   type: string
+                wedge-reboot-delay-ms:
+                  description: Delay in milliseconds after which we pulse the
+                    modem reset GPIO if it hasn't appeared on the USB bus.
+                    This value is used by modemfwd and defaults to 5 minutes
+                    if not defined.
+                  type: string
+                  pattern: "[0-9]+"
               additionalProperties: false
             cross-device:
               type: object

@@ -41,7 +41,8 @@
           "smbios-name-match": "Some"
         },
         "modem": {
-          "firmware-variant": "some"
+          "firmware-variant": "some",
+          "wedge-reboot-delay-ms": "20000"
         },
         "name": "some",
         "oem-id": "0",
@@ -114,7 +115,8 @@
           "smbios-name-match": "Some"
         },
         "modem": {
-          "firmware-variant": "some"
+          "firmware-variant": "some",
+          "wedge-reboot-delay-ms": "20000"
         },
         "name": "some",
         "oem-id": "0",
@@ -187,7 +189,8 @@
           "smbios-name-match": "Some"
         },
         "modem": {
-          "firmware-variant": "some"
+          "firmware-variant": "some",
+          "wedge-reboot-delay-ms": "20000"
         },
         "name": "some2",
         "oem-id": "0",

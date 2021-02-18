@@ -103,6 +103,7 @@ some_config: &some_config
     sku-id: "{{$sku-id}}"
   modem:
     firmware-variant: "some"
+    wedge-reboot-delay-ms : "20000"
   wallpaper: "some"
   $oem-id: "0"
 
