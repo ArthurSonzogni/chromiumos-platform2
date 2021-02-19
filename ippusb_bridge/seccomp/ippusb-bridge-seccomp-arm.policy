@@ -8,6 +8,7 @@ access: 1
 bind: 1
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 clone: arg0 & CLONE_THREAD
 close: 1
 connect: 1
@@ -31,6 +32,7 @@ getresgid32: 1
 getresuid32: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 # The following ioctls are:
 # USBDEVFS_REAPURBNDELAY: 0x4008550d
 # USBDEVFS_GETDRIVER: 0x41045508
