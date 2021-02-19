@@ -43,14 +43,6 @@ fn execute_vmc(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error
         return Err(dispatcher::Error::CommandReturnedError);
     }
 
-    if !is_chrome_feature_enabled("IsCrostiniEnabled").unwrap_or(false)
-        && !is_chrome_feature_enabled("IsPluginVmEnabled").unwrap_or(false)
-    {
-        eprintln!("VM support is disabled by policy, or for this user session.");
-        eprintln!("Note: This only works for the first logged-in account.");
-        return Err(dispatcher::Error::CommandReturnedError);
-    }
-
     if !is_chrome_feature_enabled("IsVmManagementCliAllowed").unwrap_or(false) {
         eprintln!("CLI access to VMs is disallowed by policy.");
         eprintln!("Please contact your administrator for assistance.");
