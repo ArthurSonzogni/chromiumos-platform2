@@ -13,11 +13,11 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 
+#include "croslog/constants.h"
 #include "croslog/cursor_util.h"
 #include "croslog/log_parser_audit.h"
 #include "croslog/log_parser_syslog.h"
 #include "croslog/severity.h"
-#include "croslog/standard_log_paths.h"
 
 #include <base/check.h>
 #include <base/check_op.h>

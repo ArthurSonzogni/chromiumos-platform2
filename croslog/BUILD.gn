@@ -8,10 +8,18 @@ group("all") {
   deps = [
     ":croslog",
     ":log-metrics-collector",
+    "//croslog/log_rotator",
   ]
   if (use.test) {
-    deps += [ ":croslog_testrunner" ]
+    deps += [
+      ":croslog_testrunner",
+      "//croslog/log_rotator:log_rotator_testrunner",
+    ]
   }
+}
+
+source_set("log_constants") {
+  sources = [ "constants.h" ]
 }
 
 static_library("libcroslog_static") {
@@ -44,12 +52,12 @@ static_library("libcroslog_static") {
     "multiplexer.h",
     "severity.cc",
     "severity.h",
-    "standard_log_paths.h",
     "viewer_journal.cc",
     "viewer_journal.h",
     "viewer_plaintext.cc",
     "viewer_plaintext.h",
   ]
+  deps = [ ":log_constants" ]
   pkg_deps = [ "re2" ]
   configs += [ ":target_defaults" ]
 }

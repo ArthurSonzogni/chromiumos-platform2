@@ -16,10 +16,10 @@
 #include <brillo/syslog_logging.h>
 #include <metrics/metrics_library.h>
 
+#include "croslog/constants.h"
 #include "croslog/log_parser_audit.h"
 #include "croslog/log_parser_syslog.h"
 #include "croslog/metrics_collector_util.h"
-#include "croslog/standard_log_paths.h"
 
 namespace {
 
