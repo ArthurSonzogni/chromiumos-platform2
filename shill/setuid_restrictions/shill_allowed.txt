@@ -1,11 +1,15 @@
 # shill spawns dhcpcd as 'dhcp' user
 20104:224
-# shill spawns openvpn as 'openvpn' user
+# shill spawns openvpn as 'openvpn' user now. We plan to replace it with
+# 'vpn' user. See b/177984585
 20104:217
 # charon daemon (part of strongswan IPSec package) drops to 'ipsec' user
+# now. We plan to replace it with 'vpn' user. See b/177984585
 20104:212
 # shill spawns logger as 'syslog' user
 20104:202
+# shill spawns VPN clients as 'vpn' user
+20104:20174
 # shill spawns tc as 'nobody' user
 20104:65534
 # We can't allow any of the target UIDs to switch to other UIDs, or
@@ -15,4 +19,5 @@
 212:212
 224:224
 202:202
+20174:20174
 65534:65534
