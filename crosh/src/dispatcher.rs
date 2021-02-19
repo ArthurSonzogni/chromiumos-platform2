@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 use std::fmt::{self, Display};
-use std::io::Write;
+use std::io::{stdout, Write};
 use std::process::Child;
 
 use remain::sorted;
@@ -253,6 +253,12 @@ impl Command {
         }
     }
 
+    pub fn new_disabled_command(name: String, message: String) -> Command {
+        Command::new(name, message, "".to_string())
+            .set_command_callback(Some(print_help_command_callback))
+            .set_help_callback(disabled_command_help_callback)
+    }
+
     // Set the callback that is executed when this command or a sub command is invoked primarily for
     // the purpose of filtering or handling flags.
     pub fn set_flag_callback(mut self, replacement: Option<CommandCallback>) -> Command {
@@ -369,6 +375,19 @@ pub fn default_help_callback(cmd: &Command, w: &mut dyn Write, level: usize) {
     } else {
         writeln!(w).unwrap();
     }
+}
+
+fn disabled_command_help_callback(cmd: &Command, w: &mut dyn Write, level: usize) {
+    writeln!(w, "{}{}: {}\n", INDENT.repeat(level), cmd.name, cmd.usage).unwrap();
+}
+
+pub fn print_help_command_callback(cmd: &Command, _: &Arguments) -> Result<(), Error> {
+    let mut buffer = Vec::<u8>::new();
+    (cmd.help_callback)(cmd, &mut buffer, 0);
+    stdout().write(&buffer).map(drop).map_err(|err| {
+        eprintln!("cmd '{}' help failed with: {}", cmd.name, err);
+        Error::CommandReturnedError
+    })
 }
 
 impl HasName for Command {
