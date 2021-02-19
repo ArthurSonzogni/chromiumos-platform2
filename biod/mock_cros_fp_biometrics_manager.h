@@ -74,9 +74,9 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
   void OnMaintenanceTimerFiredDelegate() {
     CrosFpBiometricsManager::OnMaintenanceTimerFired();
   }
-
   // Expose protected methods for testing
   using CrosFpBiometricsManager::GetDirtyList;
+  using CrosFpBiometricsManager::LoadRecord;
   using CrosFpBiometricsManager::UpdateTemplatesOnDisk;
 };
 

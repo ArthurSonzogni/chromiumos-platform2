@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -391,6 +392,36 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   EXPECT_CALL(*mock_, WriteRecord).Times(0);
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest, TestCallDeleteRecord) {
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(5));
+
+  EXPECT_CALL(*mock_biod_storage_, DeleteRecord);
+
+  struct ec_fp_template_encryption_metadata Data = {0};
+  Data.struct_version = 0x3;  // Correct version is zero.
+  const BiodStorageInterface::RecordMetadata mock_test_recordmetadata{
+      1, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiodStorageInterface::Record mock_test_record{
+      mock_test_recordmetadata,
+      base::Base64Encode(base::as_bytes(base::make_span(&Data, sizeof(Data))))};
+  mock_->LoadRecord(mock_test_record);
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest, TestSkipDeleteRecord) {
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(5));
+
+  EXPECT_CALL(*mock_biod_storage_, DeleteRecord).Times(0);
+
+  struct ec_fp_template_encryption_metadata Data = {0};
+  // Template version is zero because it comes from mock.
+  const BiodStorageInterface::RecordMetadata mock_test_recordmetadata{
+      1, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiodStorageInterface::Record mock_test_record{
+      mock_test_recordmetadata,
+      base::Base64Encode(base::as_bytes(base::make_span(&Data, sizeof(Data))))};
+  mock_->LoadRecord(mock_test_record);
 }
 
 }  // namespace biod

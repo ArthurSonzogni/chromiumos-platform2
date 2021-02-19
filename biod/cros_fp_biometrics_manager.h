@@ -83,6 +83,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
       const std::vector<int>& dirty_list,
       const std::unordered_set<uint32_t>& suspicious_templates);
 
+  bool LoadRecord(const BiodStorage::Record record);
+
  private:
   // For testing.
   friend class CrosFpBiometricsManagerPeer;
@@ -139,7 +141,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   void OnTaskComplete();
 
-  bool LoadRecord(const BiodStorageInterface::Record record);
   // Clear FPMCU context and re-upload all records from storage.
   bool ReloadAllRecords(std::string user_id);
   // BiodMetrics must come before CrosFpDevice, since CrosFpDevice has a
