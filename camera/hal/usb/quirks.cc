@@ -36,6 +36,8 @@ const QuirksMap& GetQuirksMap() {
       {{"1778", "0225"}, kQuirkDisableFrameRateSetting},
       // Chicony CNFFH37 (b/158957477)
       {{"0c45", "6a05"}, kQuirkUserSpaceTimestamp},
+      // HoverCam Solo 8 Plus document camera (b/171609393)
+      {{"2894", "0029"}, kQuirkReportLeastFpsRanges},
   });
   return *kQuirksMap;
 }
