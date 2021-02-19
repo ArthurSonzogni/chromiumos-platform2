@@ -71,8 +71,8 @@ class ScreenBase {
   // `constants` to place.
   void ShowInstructionsWithTitle(const std::string& message_token);
 
-  // Shows on screen progress bar.
-  void ShowProgressBar(double seconds);
+  // Show progress bar at percentage given.
+  void ShowProgressPercentage(double progress);
 
   // Clears full screen except the footer.
   void ClearMainArea();

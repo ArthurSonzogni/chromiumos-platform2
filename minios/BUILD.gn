@@ -27,6 +27,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libshill-client",
+    "libupdate_engine-client",
     "protobuf-lite",
     "system_api",
     "xkbcommon",
@@ -45,6 +46,7 @@ static_library("libminios") {
     "screens.cc",
     "shill_proxy.cc",
     "shill_utils.cc",
+    "update_engine_proxy.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":minios_adaptors" ]

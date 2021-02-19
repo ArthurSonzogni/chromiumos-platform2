@@ -4,6 +4,8 @@
 
 #include "minios/daemon.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <brillo/message_loops/message_loop.h>
 #include <dbus/minios/dbus-constants.h>
@@ -11,6 +13,7 @@
 
 #include "minios/network_manager.h"
 #include "minios/shill_proxy.h"
+#include "minios/update_engine_proxy.h"
 
 namespace minios {
 
@@ -38,7 +41,10 @@ void Daemon::RegisterDBusObjectsAsync(
   bus_for_proxies_ = dbus_connection_for_proxies_.Connect();
   CHECK(bus_for_proxies_);
 
-  mini_os_ = std::make_shared<MiniOs>();
+  mini_os_ = std::make_shared<MiniOs>(std::make_unique<UpdateEngineProxy>(
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
+          bus_for_proxies_)));
+
   dbus_adaptor_ = std::make_unique<DBusAdaptor>(std::make_unique<DBusService>(
       mini_os_, std::make_shared<NetworkManager>(
                     std::make_unique<ShillProxy>(bus_for_proxies_))));

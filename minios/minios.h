@@ -5,8 +5,11 @@
 #ifndef MINIOS_MINIOS_H_
 #define MINIOS_MINIOS_H_
 
+#include <memory>
+
 #include "minios/minios_interface.h"
 #include "minios/screens.h"
+#include "minios/update_engine_proxy.h"
 
 namespace minios {
 
@@ -15,7 +18,7 @@ extern const char kLogFile[];
 
 class MiniOs : public MiniOsInterface {
  public:
-  MiniOs() = default;
+  explicit MiniOs(std::unique_ptr<UpdateEngineProxy> update_engine_proxy);
   virtual ~MiniOs() = default;
 
   // Runs the miniOS flow.
@@ -30,6 +33,8 @@ class MiniOs : public MiniOsInterface {
 
   // The current state of MiniOs.
   State state_;
+
+  std::unique_ptr<UpdateEngineProxy> update_engine_proxy_;
 
   ProcessManager process_manager_;
   screens::Screens screens_{&process_manager_};

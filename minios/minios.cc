@@ -4,6 +4,8 @@
 
 #include "minios/minios.h"
 
+#include <utility>
+
 #include <base/logging.h>
 
 #include "minios/process_manager.h"
@@ -12,6 +14,12 @@ namespace minios {
 
 const char kDebugConsole[] = "/dev/pts/2";
 const char kLogFile[] = "/log/recovery.log";
+
+MiniOs::MiniOs(std::unique_ptr<UpdateEngineProxy> update_engine_proxy)
+    : update_engine_proxy_(std::move(update_engine_proxy)) {
+  update_engine_proxy_->SetDelegate(&screens_);
+  update_engine_proxy_->Init();
+}
 
 int MiniOs::Run() {
   LOG(INFO) << "Starting miniOS.";

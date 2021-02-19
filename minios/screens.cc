@@ -4,6 +4,8 @@
 
 #include "minios/screens.h"
 
+#include <utility>
+
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
@@ -289,6 +291,9 @@ void Screens::GetPassword() {
   } while (!enter);
   // TODO(vyshu) : Logging password for development purposes only. Remove.
   LOG(INFO) << "User password is: " << plain_text_password;
+
+  // Set update engine callbacks.
+  display_update_engine_state_ = true;
 }
 
 void Screens::ShowMiniOsDownloadingScreen() {
@@ -296,8 +301,8 @@ void Screens::ShowMiniOsDownloadingScreen() {
   ShowInstructionsWithTitle("MiniOS_downloading");
   ShowStepper({"done", "done", "3-done"});
   ShowLanguageMenu(false);
-  ShowProgressBar(10);
-  ShowMiniOsCompleteScreen();
+  constexpr int kProgressHeight = 4;
+  ShowBox(0, 0, 1000, kProgressHeight, kMenuGrey);
 }
 
 void Screens::ShowMiniOsCompleteScreen() {
@@ -305,9 +310,16 @@ void Screens::ShowMiniOsCompleteScreen() {
   ShowInstructions("title_MiniOS_complete");
   ShowStepper({"done", "done", "done"});
   ShowLanguageMenu(false);
-  ShowProgressBar(5);
   // TODO(vyshu): Automatically reboot after timeout or on button selection.
   ShowButton("Reboot", -100, false, default_button_width_, true);
+}
+
+void Screens::ShowMiniOsErrorScreen() {
+  MessageBaseScreen();
+  ShowInstructionsWithTitle("MiniOS_general_error");
+  ShowStepper({"done", "done", "stepper_error"});
+  ShowLanguageMenu(index_ == 0);
+  ShowButton("btn_try_again", -100, index_ == 1, default_button_width_, false);
 }
 
 void Screens::UpdateButtons(int menu_count, int key, bool* enter) {
@@ -630,6 +642,12 @@ void Screens::SwitchScreen(bool enter) {
       break;
     case ScreenType::kDoneWithFlow:
       return;
+    case ScreenType::kDownloadError:
+      if (index_ == 1) {
+        // Back to beginning.
+        current_screen_ = ScreenType::kWelcomeScreen;
+      }
+      break;
   }
   ShowNewScreen();
   return;
@@ -654,7 +672,65 @@ void Screens::ShowNewScreen() {
       break;
     case ScreenType::kDoneWithFlow:
       ShowMiniOsDownloadingScreen();
+      break;
+    case ScreenType::kDownloadError:
+      ShowMiniOsErrorScreen();
+      break;
   }
+}
+
+void Screens::OnProgressChanged(const update_engine::StatusResult& status) {
+  // Only make UI changes when needed to prevent unnecessary screen changes.
+  if (!display_update_engine_state_)
+    return;
+
+  // Only reshow base screen if moving to a new update stage. This prevents
+  // flickering as the screen repaints.
+  update_engine::Operation operation = status.current_operation();
+  switch (operation) {
+    case update_engine::Operation::DOWNLOADING:
+      if (previous_update_state_ != operation)
+        ShowMiniOsDownloadingScreen();
+      ShowProgressPercentage(status.progress());
+      break;
+    case update_engine::Operation::FINALIZING:
+      if (previous_update_state_ != operation)
+        LOG(INFO) << "Finalizing installation please wait.";
+      // TODO(vyshu): Add a new screen and progress bar for this stage.
+      break;
+    case update_engine::Operation::UPDATED_NEED_REBOOT:
+      ShowMiniOsCompleteScreen();
+      // Don't make any more updates to the UI.
+      display_update_engine_state_ = false;
+      break;
+    case update_engine::Operation::REPORTING_ERROR_EVENT:
+    case update_engine::Operation::DISABLED:
+    case update_engine::Operation::ERROR:
+      LOG(ERROR) << "Could not finish the installation, failed with status: "
+                 << status.current_operation();
+      ChangeToDownloadErrorScreen();
+      break;
+    default:
+      // Only `IDLE` and `CHECKING_FOR_UPDATE` can go back to `IDLE` without
+      // any error.
+      if (previous_update_state_ != update_engine::Operation::IDLE &&
+          previous_update_state_ !=
+              update_engine::Operation::CHECKING_FOR_UPDATE &&
+          operation == update_engine::Operation::IDLE) {
+        LOG(WARNING) << "Update engine went from " << operation
+                     << "back to IDLE.";
+        ChangeToDownloadErrorScreen();
+      }
+      break;
+  }
+  previous_update_state_ = operation;
+}
+
+void Screens::ChangeToDownloadErrorScreen() {
+  current_screen_ = ScreenType::kDownloadError;
+  display_update_engine_state_ = false;
+  index_ = 1;
+  ShowNewScreen();
 }
 
 }  // namespace screens

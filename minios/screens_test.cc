@@ -510,6 +510,7 @@ class MockScreens : public Screens {
   MOCK_METHOD(void, LanguageMenuOnSelect, ());
   MOCK_METHOD(void, GetPassword, ());
   MOCK_METHOD(void, OnLocaleChange, ());
+  MOCK_METHOD(void, ShowMiniOsCompleteScreen, ());
 };
 
 class ScreensTestMocks : public ::testing::Test {
@@ -805,6 +806,41 @@ TEST_F(ScreensTestMocks, ScreenBackward) {
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, UpdateEngineError) {
+  mock_screens_.display_update_engine_state_ = true;
+  update_engine::StatusResult status;
+  status.set_current_operation(update_engine::Operation::ERROR);
+
+  // Show download error.
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnProgressChanged(status);
+  EXPECT_FALSE(mock_screens_.display_update_engine_state_);
+}
+
+TEST_F(ScreensTestMocks, UpdateEngineProgressComplete) {
+  mock_screens_.display_update_engine_state_ = true;
+  update_engine::StatusResult status;
+  status.set_current_operation(update_engine::Operation::UPDATED_NEED_REBOOT);
+
+  EXPECT_CALL(mock_screens_, ShowMiniOsCompleteScreen());
+  mock_screens_.OnProgressChanged(status);
+  // Freeze UI, nothing left to do but reboot.
+  EXPECT_FALSE(mock_screens_.display_update_engine_state_);
+}
+
+TEST_F(ScreensTestMocks, IdleError) {
+  mock_screens_.display_update_engine_state_ = true;
+  update_engine::StatusResult status;
+  status.set_current_operation(update_engine::Operation::FINALIZING);
+  mock_screens_.OnProgressChanged(status);
+
+  // If it changes to `IDLE` from an incorrect state it is an error.
+  status.set_current_operation(update_engine::Operation::IDLE);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnProgressChanged(status);
+  EXPECT_FALSE(mock_screens_.display_update_engine_state_);
 }
 
 }  // namespace screens

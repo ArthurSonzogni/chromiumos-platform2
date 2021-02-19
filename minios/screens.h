@@ -14,6 +14,7 @@
 #include "minios/key_reader.h"
 #include "minios/process_manager.h"
 #include "minios/screen_base.h"
+#include "minios/update_engine_proxy.h"
 
 namespace screens {
 
@@ -39,7 +40,9 @@ extern const int kKeyMax;
 // such as dropdowns and footers which are built using the pieces of
 // ScreenBase.
 
-class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
+class Screens : public ScreenBase,
+                public key_reader::KeyReader::Delegate,
+                public UpdateEngineProxy::UpdaterDelegate {
  public:
   explicit Screens(ProcessManagerInterface* process_manager)
       : key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {
@@ -134,6 +137,9 @@ class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardBadKeyboardFormat);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboard);
   FRIEND_TEST(ScreensTestMocks, OnKeyPress);
+  FRIEND_TEST(ScreensTestMocks, UpdateEngineError);
+  FRIEND_TEST(ScreensTestMocks, UpdateEngineProgressComplete);
+  FRIEND_TEST(ScreensTestMocks, IdleError);
 
   ProcessManagerInterface* process_manager_;
 
@@ -170,7 +176,8 @@ class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
   void ShowMiniOsDropdownScreen();
   void ShowMiniOsGetPasswordScreen();
   void ShowMiniOsDownloadingScreen();
-  void ShowMiniOsCompleteScreen();
+  virtual void ShowMiniOsCompleteScreen();
+  void ShowMiniOsErrorScreen();
 
   // Sets list of available items to `item_list_` to show in drop down. Called
   // every time the menu is clicked.
@@ -191,6 +198,13 @@ class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
 
   // Get XKB keyboard layout based on the VPD region. Return false on error.
   bool MapRegionToKeyboard(std::string* xkb_keyboard_layout);
+
+  // Calls corresponding MiniOs screen based on update engine status. If UE is
+  // `DOWNLOADING` then shows a progress bar with percentage.
+  void OnProgressChanged(const update_engine::StatusResult& status) override;
+
+  // Changes screen to download error.
+  void ChangeToDownloadErrorScreen();
 
   // Whether the device has a detachable keyboard.
   bool is_detachable_{false};
@@ -222,7 +236,7 @@ class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
   // The number of menu buttons on each screen corresponding to the enum
   // numbers, used to keep the index in bounds. The dropdown menu counts are
   // updated based on the number of items in the dropdown.
-  std::vector<int> menu_count_{3, 3, 0, 3, 0, 0};
+  std::vector<int> menu_count_{3, 3, 0, 3, 0, 0, 2};
 
   // All the different screens in the MiniOs Flow.
   enum class ScreenType {
@@ -231,7 +245,8 @@ class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
     kExpandedDropDownScreen = 2,
     kPasswordScreen = 3,
     kLanguageDropDownScreen = 4,
-    kDoneWithFlow = 5
+    kDoneWithFlow = 5,
+    kDownloadError = 6,
   };
 
   ScreenType current_screen_{ScreenType::kWelcomeScreen};
@@ -242,6 +257,16 @@ class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
   // The `index_` shows which button is highlighted in the `current_screen_`,
   // uses menu_count of current screen to stay in bounds.
   int index_{1};
+
+  // Determines whether we want to display the update engine state changes to
+  // the UI. Only necessary after user has entered their password and connected
+  // to the network.
+  bool display_update_engine_state_{false};
+
+  // Used to keep track of the last seen Update Engine stage to prevent
+  // unnecessary screen changes.
+  update_engine::Operation previous_update_state_{
+      update_engine::Operation::IDLE};
 };
 
 }  // namespace screens

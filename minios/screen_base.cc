@@ -10,8 +10,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/platform_thread.h>
-#include <base/time/time.h>
 
 namespace screens {
 
@@ -165,31 +163,17 @@ void ScreenBase::ShowInstructionsWithTitle(const std::string& message_token) {
     LOG(WARNING) << "Unable to show description " << message_token;
 }
 
-void ScreenBase::ShowProgressBar(double seconds) {
+void ScreenBase::ShowProgressPercentage(double progress) {
+  if (progress < 0 || progress > 1) {
+    LOG(WARNING) << "Invalid value of progress: " << progress;
+    return;
+  }
   constexpr int kProgressIncrement = 10;
   constexpr int kProgressHeight = 4;
-
-  ShowBox(0, 0, kProgressIncrement * 100, kProgressHeight, kMenuGrey);
-
   constexpr int kLeftIncrement = -500;
-  int leftmost = kLeftIncrement;
-
-  // Can be increased for a smoother progress bar.
-  constexpr int kUpdatesPerSecond = 10;
-  const double kPercentUpdate = 100 / (seconds * kUpdatesPerSecond);
-  double current_percent = 0;
-
-  while (current_percent < 100) {
-    current_percent += kPercentUpdate;
-    int rightmost = kLeftIncrement + kProgressIncrement * current_percent;
-    while (leftmost < rightmost) {
-      ShowBox(leftmost + kProgressIncrement / 2, 0, kProgressIncrement + 2,
-              kProgressHeight, kMenuBlue);
-      leftmost += kProgressIncrement;
-    }
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(1000 / kUpdatesPerSecond));
-  }
+  int progress_length = kProgressIncrement * progress * 100;
+  ShowBox(kLeftIncrement + progress_length / 2, 0, progress_length,
+          kProgressHeight, kMenuBlue);
 }
 
 void ScreenBase::ClearMainArea() {
