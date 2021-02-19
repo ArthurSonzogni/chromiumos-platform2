@@ -196,7 +196,7 @@ int32_t CameraHalAdapter::OpenDevice(
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
       camera_device, info.static_camera_characteristics, close_callback,
-      base::Contains(can_attempt_zsl_camera_ids_, internal_camera_id));
+      base::Contains(can_attempt_zsl_camera_ids_, camera_id));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback =
@@ -274,7 +274,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
   reprocess_effect_manager_.UpdateStaticMetadata(&metadata);
   if (ZslHelper::TryAddEnableZslKey(&metadata)) {
     LOGF(INFO) << "Will attempt to enable ZSL by private reprocessing";
-    can_attempt_zsl_camera_ids_.insert(internal_camera_id);
+    can_attempt_zsl_camera_ids_.insert(camera_id);
   }
 
   mojom::CameraInfoPtr info_ptr = mojom::CameraInfo::New();
