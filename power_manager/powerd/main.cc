@@ -141,11 +141,13 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
+      system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper) override {
     auto controller = std::make_unique<policy::ExternalBacklightController>();
-    controller->Init(display_watcher, display_power_setter, dbus_wrapper);
+    controller->Init(ambient_light_sensor_watcher, display_watcher,
+                     display_power_setter, dbus_wrapper);
     return controller;
   }
 

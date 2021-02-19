@@ -81,6 +81,7 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
+      system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper) = 0;

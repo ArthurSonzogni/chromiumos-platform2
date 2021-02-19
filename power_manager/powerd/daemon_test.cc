@@ -185,9 +185,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   }
   std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
+      system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper) override {
+    EXPECT_EQ(ambient_light_sensor_watcher_, ambient_light_sensor_watcher);
     EXPECT_EQ(display_watcher_, display_watcher);
     EXPECT_EQ(display_power_setter_, display_power_setter);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);

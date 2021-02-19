@@ -10,6 +10,7 @@
 
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/policy/backlight_controller_test_util.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
@@ -22,7 +23,8 @@ class ExternalBacklightControllerTest : public ::testing::Test {
  public:
   ExternalBacklightControllerTest() {
     controller_.AddObserver(&observer_);
-    controller_.Init(&display_watcher_, &display_power_setter_, &dbus_wrapper_);
+    controller_.Init(&ambient_light_sensor_watcher_, &display_watcher_,
+                     &display_power_setter_, &dbus_wrapper_);
   }
 
   ~ExternalBacklightControllerTest() override {
@@ -31,6 +33,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
 
  protected:
   BacklightControllerObserverStub observer_;
+  system::AmbientLightSensorWatcherStub ambient_light_sensor_watcher_;
   system::DisplayWatcherStub display_watcher_;
   system::DisplayPowerSetterStub display_power_setter_;
   system::DBusWrapperStub dbus_wrapper_;

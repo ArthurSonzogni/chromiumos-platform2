@@ -8,12 +8,14 @@
 #include <cmath>
 #include <memory>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
 
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
@@ -39,12 +41,20 @@ ExternalBacklightController::ExternalBacklightController()
 ExternalBacklightController::~ExternalBacklightController() {
   if (display_watcher_)
     display_watcher_->RemoveObserver(this);
+  if (ambient_light_sensor_watcher_) {
+    ambient_light_sensor_watcher_->RemoveObserver(this);
+  }
 }
 
 void ExternalBacklightController::Init(
+    system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
     system::DisplayWatcherInterface* display_watcher,
     system::DisplayPowerSetterInterface* display_power_setter,
     system::DBusWrapperInterface* dbus_wrapper) {
+  ambient_light_sensor_watcher_ = ambient_light_sensor_watcher;
+  if (ambient_light_sensor_watcher_) {
+    ambient_light_sensor_watcher_->AddObserver(this);
+  }
   display_watcher_ = display_watcher;
   display_power_setter_ = display_power_setter;
   display_watcher_->AddObserver(this);
@@ -68,6 +78,10 @@ void ExternalBacklightController::Init(
                  weak_ptr_factory_.GetWeakPtr()));
 
   UpdateDisplays(display_watcher_->GetDisplays());
+  if (ambient_light_sensor_watcher_) {
+    external_ambient_light_sensors_info_ =
+        ambient_light_sensor_watcher_->GetAmbientLightSensors();
+  }
 }
 
 void ExternalBacklightController::AddObserver(
@@ -187,6 +201,11 @@ int64_t ExternalBacklightController::PercentToLevel(double percent) const {
 void ExternalBacklightController::OnDisplaysChanged(
     const std::vector<system::DisplayInfo>& displays) {
   UpdateDisplays(displays);
+}
+
+void ExternalBacklightController::OnAmbientLightSensorsChanged(
+    const std::vector<system::AmbientLightSensorInfo>& ambient_light_sensors) {
+  external_ambient_light_sensors_info_ = ambient_light_sensors;
 }
 
 void ExternalBacklightController::HandleIncreaseBrightnessRequest() {

@@ -14,12 +14,15 @@
 #include <base/observer_list.h>
 
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 
 namespace system {
+struct AmbientLightSensorInfo;
+class AmbientLightSensorWatcherInterface;
 class DBusWrapperInterface;
 struct DisplayInfo;
 class DisplayPowerSetterInterface;
@@ -31,8 +34,10 @@ namespace policy {
 
 // Controls the brightness of an external display on machines that lack internal
 // displays.
-class ExternalBacklightController : public BacklightController,
-                                    public system::DisplayWatcherObserver {
+class ExternalBacklightController
+    : public BacklightController,
+      public system::DisplayWatcherObserver,
+      public system::AmbientLightSensorWatcherObserver {
  public:
   ExternalBacklightController();
   ExternalBacklightController(const ExternalBacklightController&) = delete;
@@ -42,9 +47,11 @@ class ExternalBacklightController : public BacklightController,
   ~ExternalBacklightController() override;
 
   // Initializes the object. Ownership of raw pointers remains with the caller.
-  void Init(system::DisplayWatcherInterface* display_watcher,
-            system::DisplayPowerSetterInterface* display_power_setter,
-            system::DBusWrapperInterface* dbus_wrapper);
+  void Init(
+      system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
+      system::DisplayWatcherInterface* display_watcher,
+      system::DisplayPowerSetterInterface* display_power_setter,
+      system::DBusWrapperInterface* dbus_wrapper);
 
   // BacklightController implementation:
   void AddObserver(BacklightControllerObserver* observer) override;
@@ -77,6 +84,11 @@ class ExternalBacklightController : public BacklightController,
   void OnDisplaysChanged(
       const std::vector<system::DisplayInfo>& displays) override;
 
+  // system::AmbientLightSensorWatcherObserver implementation:
+  void OnAmbientLightSensorsChanged(
+      const std::vector<system::AmbientLightSensorInfo>& ambient_light_sensors)
+      override;
+
  private:
   // Handlers for requests sent via D-Bus.
   void HandleIncreaseBrightnessRequest();
@@ -101,6 +113,8 @@ class ExternalBacklightController : public BacklightController,
   void AdjustBrightnessByPercent(double percent_offset);
 
   // These pointers aren't owned by this class.
+  system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher_ =
+      nullptr;
   system::DisplayWatcherInterface* display_watcher_ = nullptr;
   system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
@@ -121,6 +135,10 @@ class ExternalBacklightController : public BacklightController,
   typedef std::map<base::FilePath, std::unique_ptr<system::ExternalDisplay>>
       ExternalDisplayMap;
   ExternalDisplayMap external_displays_;
+
+  // Vector of currently connected external ambient light sensors.
+  std::vector<system::AmbientLightSensorInfo>
+      external_ambient_light_sensors_info_;
 
   // Number of times the user has requested that the brightness be changed in
   // the current session.
