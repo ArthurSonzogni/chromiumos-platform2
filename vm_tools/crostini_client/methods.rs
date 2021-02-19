@@ -45,7 +45,6 @@ const DLCSERVICE_NO_IMAGE_FOUND_ERROR: &str = "org.chromium.DlcServiceInterface.
 enum ChromeOSError {
     BadChromeFeatureStatus,
     BadDiskImageStatus(DiskImageStatus, String),
-    BadPluginVmStatus(VmErrorCode),
     BadVmStatus(VmStatus, String),
     BadVmPluginDispatcherStatus,
     CrostiniVmDisabled,
@@ -100,7 +99,6 @@ impl fmt::Display for ChromeOSError {
             BadDiskImageStatus(s, reason) => {
                 write!(f, "bad disk image status: `{:?}`: {}", s, reason)
             }
-            BadPluginVmStatus(s) => write!(f, "bad VM status: `{:?}`", s),
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
             BadVmPluginDispatcherStatus => write!(f, "failed to start Parallels dispatcher"),
             CrostiniVmDisabled => write!(f, "Crostini VMs are not available"),
@@ -1381,7 +1379,6 @@ impl Methods {
                 PRL_ERR_JLIC_WEB_PORTAL_ACCESS_REQUIRED => Err(PluginVmNoPortalAccess.into()),
                 _ => Err(PluginVmGenericError(result_code).into()),
             },
-            _ => Err(BadPluginVmStatus(error).into()),
         }
     }
 
