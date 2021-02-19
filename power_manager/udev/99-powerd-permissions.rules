@@ -17,7 +17,8 @@ ACTION!="remove", ATTR{name}=="cros-ec-activity", RUN+="/usr/bin/find /sys/bus/i
 SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", GROUP="cros_ec-access" MODE="0660"
 
 # Allow powerd to change proximity sensor attributes
-ACTION=="add", SUBSYSTEM=="iio", ATTR{name}=="sx9310|sx9311|cros-ec-mkbp-proximity", \
+ACTION=="add", SUBSYSTEM=="iio", \
+  ATTR{name}=="sx9310|sx9311|sx932x|cros-ec-mkbp-proximity", \
   RUN+="/bin/chown -R power:power $sys/$devpath/events", \
   RUN+="/bin/chown power:power $sys/$devpath/in_proximity0_hardwaregain \
                                $sys/$devpath/in_proximity1_hardwaregain \
