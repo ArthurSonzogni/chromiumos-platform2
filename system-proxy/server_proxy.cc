@@ -12,7 +12,6 @@
 #include <curl/curl.h>
 
 #include <base/bind.h>
-#include <base/bind_helpers.h>
 #include <base/callback_helpers.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/files/file_util.h>

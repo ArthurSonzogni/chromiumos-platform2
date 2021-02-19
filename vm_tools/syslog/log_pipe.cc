@@ -13,7 +13,7 @@
 #include <utility>
 
 #include <anomaly_detector/proto_bindings/anomaly_detector.pb.h>
-#include <base/bind_helpers.h>
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/scoped_file.h>

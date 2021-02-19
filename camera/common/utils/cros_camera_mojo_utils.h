@@ -15,7 +15,7 @@
 #include <hardware/camera3.h>
 
 #include <base/bind.h>
-#include <base/bind_helpers.h>
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/single_thread_task_runner.h>
 #include <base/synchronization/lock.h>

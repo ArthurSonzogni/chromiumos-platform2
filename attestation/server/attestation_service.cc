@@ -13,8 +13,8 @@
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <base/bind.h>
-#include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/hash/sha1.h>

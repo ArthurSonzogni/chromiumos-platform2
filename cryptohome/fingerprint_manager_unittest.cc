@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/test/bind_test_util.h>
+#include <base/test/bind.h>
 #include <biod/biod_proxy/mock_biometrics_manager_proxy_base.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>

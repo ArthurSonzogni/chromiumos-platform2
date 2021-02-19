@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/bind_helpers.h>
+#include <base/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <brillo/http/http_request.h>
 #include <brillo/mime_utils.h>

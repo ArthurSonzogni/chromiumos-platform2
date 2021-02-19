@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/bind_helpers.h>
+#include <base/callback_helpers.h>
 #include <dbus/mock_bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

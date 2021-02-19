@@ -8,7 +8,7 @@
 #include <base/callback.h>
 #include <base/optional.h>
 #include <base/run_loop.h>
-#include <base/test/bind_test_util.h>
+#include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

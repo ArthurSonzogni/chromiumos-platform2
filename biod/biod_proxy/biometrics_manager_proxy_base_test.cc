@@ -6,7 +6,7 @@
 #include <memory>
 #include <utility>
 
-#include <base/test/bind_test_util.h>
+#include <base/test/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>

@@ -7,7 +7,7 @@
 #include <string>
 
 #include <base/bind.h>
-#include <base/bind_helpers.h>
+#include <base/callback_helpers.h>
 
 #include "shill/logging.h"
 #include "shill/supplicant/wpa_supplicant.h"

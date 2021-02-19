@@ -19,7 +19,7 @@
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/test/bind_test_util.h>
+#include <base/test/bind.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
