@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/at_exit.h>
+#include <base/notreached.h>
 #include <brillo/syslog_logging.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 #include <gmock/gmock.h>

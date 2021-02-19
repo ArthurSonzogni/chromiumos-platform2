@@ -5,6 +5,7 @@
 #include "mist/usb_constants.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 namespace mist {
 

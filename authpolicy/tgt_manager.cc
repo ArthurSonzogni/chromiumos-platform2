@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/location.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread_task_runner_handle.h>

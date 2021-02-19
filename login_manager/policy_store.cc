@@ -6,6 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <policy/policy_util.h>
 
 #include "login_manager/system_utils_impl.h"

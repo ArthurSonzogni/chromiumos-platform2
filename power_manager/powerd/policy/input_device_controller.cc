@@ -5,6 +5,7 @@
 #include "power_manager/powerd/policy/input_device_controller.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <vector>
 
 #include "power_manager/common/power_constants.h"

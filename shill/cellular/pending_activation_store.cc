@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/notreached.h>
+
 #include "shill/logging.h"
 #include "shill/store_interface.h"
 

@@ -9,6 +9,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/daemons/daemon.h>

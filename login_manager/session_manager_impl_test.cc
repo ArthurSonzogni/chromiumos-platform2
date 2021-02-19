@@ -32,6 +32,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/notreached.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/optional.h>
 #include <base/run_loop.h>

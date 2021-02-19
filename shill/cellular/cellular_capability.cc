@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/notreached.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular/cellular.h"

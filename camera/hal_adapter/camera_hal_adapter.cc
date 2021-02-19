@@ -17,6 +17,7 @@
 #include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/stl_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <camera/camera_metadata.h>

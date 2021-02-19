@@ -15,6 +15,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/synchronization/waitable_event.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>

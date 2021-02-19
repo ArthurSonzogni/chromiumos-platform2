@@ -16,6 +16,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <base/sys_byteorder.h>
 #include <base/threading/platform_thread.h>

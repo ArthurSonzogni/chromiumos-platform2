@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <hardware/gralloc.h>
 
 #include "common/vendor_tag_manager.h"

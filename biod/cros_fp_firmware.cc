@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/memory_mapped_file.h>
+#include <base/notreached.h>
 
 #include <chromeos/ec/ec_commands.h>
 #include <fmap.h>

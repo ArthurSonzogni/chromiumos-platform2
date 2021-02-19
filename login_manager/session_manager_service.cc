@@ -5,6 +5,7 @@
 #include "login_manager/session_manager_service.h"
 
 #include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/stat.h>
@@ -23,6 +24,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>

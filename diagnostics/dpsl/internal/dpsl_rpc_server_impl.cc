@@ -11,6 +11,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/notreached.h>
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 

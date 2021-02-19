@@ -6,6 +6,8 @@
 
 #include <time.h>
 
+#include <base/notreached.h>
+
 namespace power_manager {
 namespace {
 

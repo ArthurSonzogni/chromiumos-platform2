@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>

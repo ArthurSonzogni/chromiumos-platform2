@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/format_macros.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>

@@ -4,6 +4,7 @@
 
 #include "shill/cellular/cellular_capability_cdma.h"
 
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>

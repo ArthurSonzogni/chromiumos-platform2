@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/notreached.h>
 #include <base/optional.h>
 #include <brillo/udev/udev.h>
 

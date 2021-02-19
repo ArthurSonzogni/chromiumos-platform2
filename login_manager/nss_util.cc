@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <crypto/nss_util.h>
 #include <crypto/nss_util_internal.h>

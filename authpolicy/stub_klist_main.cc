@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 
 #include "authpolicy/samba_helper.h"

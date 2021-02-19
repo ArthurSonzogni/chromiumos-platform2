@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/notreached.h>
 
 #include "vm_tools/concierge/vm_util.h"
 

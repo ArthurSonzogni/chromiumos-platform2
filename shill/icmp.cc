@@ -7,6 +7,8 @@
 #include <netinet/icmp6.h>
 #include <netinet/ip_icmp.h>
 
+#include <base/notreached.h>
+
 #include "shill/logging.h"
 #include "shill/net/sockets.h"
 

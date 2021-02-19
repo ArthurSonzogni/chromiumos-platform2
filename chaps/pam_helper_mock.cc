@@ -4,6 +4,7 @@
 
 #include "chaps/pam_helper_mock.h"
 
+#include <base/notreached.h>
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 

@@ -20,6 +20,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/notreached.h>
 #include <brillo/process/process.h>
 #include <dbus/exported_object.h>
 #include <chromeos/patchpanel/subnet.h>

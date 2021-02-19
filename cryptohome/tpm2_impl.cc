@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
+#include <base/notreached.h>
 #include <base/numerics/safe_conversions.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>

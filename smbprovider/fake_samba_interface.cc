@@ -12,6 +12,7 @@
 #include <base/bits.h>
 #include <base/macros.h>
 #include <base/files/file_path.h>
+#include <base/notreached.h>
 #include <brillo/any.h>
 
 #include "smbprovider/constants.h"

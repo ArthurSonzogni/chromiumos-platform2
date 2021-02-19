@@ -9,6 +9,7 @@
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
+#include <base/notreached.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 

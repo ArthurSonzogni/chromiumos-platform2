@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/logging.h>

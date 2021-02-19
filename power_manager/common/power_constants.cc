@@ -5,6 +5,7 @@
 #include "power_manager/common/power_constants.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 
 namespace power_manager {

@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 
 #include "cryptohome/install_attributes.pb.h"

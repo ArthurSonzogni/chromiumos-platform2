@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/notreached.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 

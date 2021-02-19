@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>

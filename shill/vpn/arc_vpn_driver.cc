@@ -9,6 +9,7 @@
 
 #include <utility>
 
+#include <base/notreached.h>
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>

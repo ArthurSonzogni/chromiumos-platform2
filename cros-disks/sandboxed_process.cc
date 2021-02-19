@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/posix/safe_strerror.h>
 #include <chromeos/libminijail.h>
 

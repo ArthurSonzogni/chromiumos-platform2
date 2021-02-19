@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <gtest/gtest.h>
 
 #include "kerberos/kerberos_metrics.h"

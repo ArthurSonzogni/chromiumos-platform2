@@ -6,6 +6,7 @@
 
 #include "cros-camera/common.h"
 
+#include <base/notreached.h>
 #include <utility>
 
 #include "common/libcamera_connector/camera_module_callbacks.h"

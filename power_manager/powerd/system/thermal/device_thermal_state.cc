@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 #include "power_manager/proto_bindings/thermal.pb.h"
 

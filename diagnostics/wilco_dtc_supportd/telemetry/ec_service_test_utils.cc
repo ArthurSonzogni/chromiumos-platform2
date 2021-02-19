@@ -5,6 +5,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service_test_utils.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 namespace diagnostics {
 

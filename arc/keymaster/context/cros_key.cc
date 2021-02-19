@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/optional.h>
 #include <keymaster/authorization_set.h>
 #include <keymaster/keymaster_tags.h>

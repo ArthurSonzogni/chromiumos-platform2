@@ -8,6 +8,7 @@
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
 
+#include <base/notreached.h>
 #include <base/time/default_tick_clock.h>
 
 #include "shill/event_dispatcher.h"

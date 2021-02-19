@@ -9,6 +9,7 @@
 #include <set>
 
 #include "base/logging.h"
+#include "base/notreached.h"
 
 #include "permission_broker/port_tracker.h"
 

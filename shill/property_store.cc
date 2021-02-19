@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/notreached.h>
 #include <base/stl_util.h>
 #include <dbus/object_path.h>
 

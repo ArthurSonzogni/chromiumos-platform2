@@ -11,6 +11,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/notreached.h>
+
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 

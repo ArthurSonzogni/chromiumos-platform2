@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/guid.h>
+#include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 #include <base/values.h>

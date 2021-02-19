@@ -19,6 +19,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>

@@ -15,6 +15,7 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/notreached.h>
 #include <base/single_thread_task_runner.h>
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>

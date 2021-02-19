@@ -13,6 +13,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/libminijail.h>
 

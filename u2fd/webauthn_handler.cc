@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/bind_helpers.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>

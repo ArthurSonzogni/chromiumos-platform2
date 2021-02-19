@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>

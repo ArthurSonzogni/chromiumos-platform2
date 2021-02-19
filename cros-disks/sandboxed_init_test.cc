@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

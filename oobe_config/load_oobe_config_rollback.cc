@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
+#include <base/notreached.h>
 #include <base/values.h>
 #include <power_manager-client/power_manager/dbus-constants.h>
 

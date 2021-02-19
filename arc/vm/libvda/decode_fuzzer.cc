@@ -12,6 +12,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/memory/writable_shared_memory_region.h>
+#include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/thread.h>
 

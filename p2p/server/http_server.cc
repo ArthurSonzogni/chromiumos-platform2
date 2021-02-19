@@ -15,6 +15,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 
 #include "p2p/common/constants.h"
 #include "p2p/common/server_message.h"

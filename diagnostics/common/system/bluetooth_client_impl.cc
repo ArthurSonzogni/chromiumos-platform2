@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <dbus/bluetooth/dbus-constants.h>
 
 namespace diagnostics {

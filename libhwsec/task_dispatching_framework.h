@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/location.h>
+#include <base/notreached.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_method_response.h>
 

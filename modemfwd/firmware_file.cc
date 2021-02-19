@@ -5,6 +5,7 @@
 #include "modemfwd/firmware_file.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 #include "modemfwd/file_decompressor.h"
 
