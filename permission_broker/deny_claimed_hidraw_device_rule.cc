@@ -102,10 +102,6 @@ void UnsetCapabilityBit(std::vector<uint64_t>* bitfield, size_t bit) {
   (*bitfield)[offset] &= ~(1ULL << (bit - offset * sizeof(uint64_t) * 8));
 }
 
-constexpr bool IsCfmDevice() {
-  return USE_CFM_ENABLED_DEVICE;
-}
-
 // Joydev devices expose a devnode string with the format:
 //     /dev/input/js#
 // Where # is the numeric index of the joydev device.
@@ -247,7 +243,7 @@ bool DenyClaimedHidrawDeviceRule::ShouldSiblingSubsystemExcludeHidAccess(
   }
 
   // Don't block hidraw access due to leds subsystem.
-  if (IsCfmDevice() && strcmp(subsystem, "leds") == 0) {
+  if (strcmp(subsystem, "leds") == 0) {
     return false;
   }
 
