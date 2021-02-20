@@ -39,6 +39,12 @@ namespace {
 constexpr base::TimeDelta KWaitForExternalDisplayTimeout =
     base::TimeDelta::FromSeconds(25);
 
+// Time to wait for display mode change when external displays undergo
+// alternate mode switches and the lid is still closed, before triggering idle
+// and lid closed action.
+constexpr base::TimeDelta KWaitForExternalDisplayTimeoutModeSwitch =
+    base::TimeDelta::FromSeconds(10);
+
 // Time to wait for the display mode and policy after Init() is called.
 constexpr base::TimeDelta kInitialStateTimeout =
     base::TimeDelta::FromSeconds(10);
@@ -481,6 +487,12 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
   }
 
   StopWaitForExternalDisplayTimer();
+
+  if (defer_external_display_timeout_ && lid_state_ == LidState::CLOSED)
+    wait_for_external_display_timer_.Start(
+        FROM_HERE, KWaitForExternalDisplayTimeoutModeSwitch, this,
+        &StateController::HandleWaitForExternalDisplayTimeout);
+
   UpdateSettingsAndState();
 }
 
@@ -871,6 +883,8 @@ void StateController::LoadPrefs() {
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
   prefs_->GetBool(kFactoryModePref, &factory_mode_);
   prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
+  prefs_->GetBool(kDeferExternalDisplayTimeoutPref,
+                  &defer_external_display_timeout_);
 
   int64_t tpm_threshold = 0;
   prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);

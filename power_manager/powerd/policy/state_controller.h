@@ -131,7 +131,6 @@ class StateController : public PrefsObserver {
 
    private:
     StateController* controller_;  // weak
-
   };
 
   // Delays are lengthened if user activity is observed while the screen is
@@ -504,6 +503,10 @@ class StateController : public PrefsObserver {
 
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_ = false;
+
+  // Should you wait another 10 seconds for external displays when a
+  // display mode change occurs and the lid is closed?
+  bool defer_external_display_timeout_ = false;
 
   // Should powerd request smart dim decision via D-Bus service? May be disabled
   // by tests.

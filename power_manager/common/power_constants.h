@@ -280,6 +280,11 @@ extern const char kCutoffPowerUaPref[];
 // device should enter S5 or hibernate if EC can wake up by timer.
 extern const char kHibernatePowerUaPref[];
 
+// If true, wait for 10 seconds when the device encounters a DisplayMode change,
+// to allow external monitors to switch alternate modes and re-enumerate without
+// the system suspending when we log in with the system lid closed.
+extern const char kDeferExternalDisplayTimeoutPref[];
+
 // Miscellaneous constants.
 
 // Name of the cros_fp fingerprint sensor input device.

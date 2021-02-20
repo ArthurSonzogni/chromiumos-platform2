@@ -106,6 +106,8 @@ const char kWakeOnDpPref[] = "wake_on_dp";
 const char kSmartDischargeToZeroHrPref[] = "smart_discharge_to_zero_hr";
 const char kCutoffPowerUaPref[] = "cutoff_power_ua";
 const char kHibernatePowerUaPref[] = "hibernate_power_ua";
+const char kDeferExternalDisplayTimeoutPref[] =
+    "defer_external_display_timeout";
 
 // This pref is incomplete. Prefs based on it are defined by other packages
 // populating them.
