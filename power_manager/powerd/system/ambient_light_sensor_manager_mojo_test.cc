@@ -235,5 +235,69 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithColorSensor) {
   EXPECT_TRUE(sensor_devices_[kFakeBaseId]->HasReceivers());
 }
 
+TEST_F(AmbientLightSensorManagerMojoTest, OneLateColorSensor) {
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 1);
+  prefs_.SetInt64(kAllowAmbientEQ, 1);
+
+  SetBaseSensor(/*name=*/base::nullopt);
+
+  SetManager();
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  // Wait until all initialization tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+  EXPECT_TRUE(internal_backlight_sensor);
+  EXPECT_EQ(internal_backlight_sensor, keyboard_backlight_sensor);
+
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  EXPECT_TRUE(sensor_devices_[kFakeBaseId]->HasReceivers());
+
+  SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
+
+  // Wait until all initialization tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(manager_->HasColorSensor());
+
+  EXPECT_TRUE(sensor_devices_[kFakeLidId]->HasReceivers());
+  EXPECT_FALSE(sensor_devices_[kFakeBaseId]->HasReceivers());
+}
+
+TEST_F(AmbientLightSensorManagerMojoTest, AeqWithLateColorSensor) {
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 2);
+  prefs_.SetInt64(kAllowAmbientEQ, 1);
+
+  SetBaseSensor(kCrosECLightName);
+
+  SetManager();
+
+  // Wait until all initialization tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+
+  EXPECT_NE(internal_backlight_sensor, keyboard_backlight_sensor);
+  EXPECT_FALSE(manager_->HasColorSensor());
+  EXPECT_FALSE(keyboard_backlight_sensor->IsColorSensor());
+
+  EXPECT_TRUE(sensor_devices_[kFakeBaseId]->HasReceivers());
+
+  SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
+
+  // Wait until all initialization tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(manager_->HasColorSensor());
+  EXPECT_TRUE(internal_backlight_sensor->IsColorSensor());
+  EXPECT_FALSE(keyboard_backlight_sensor->IsColorSensor());
+
+  EXPECT_TRUE(sensor_devices_[kFakeLidId]->HasReceivers());
+}
+
 }  // namespace system
 }  // namespace power_manager

@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/bind.h>
@@ -136,10 +137,55 @@ void AmbientLightSensorManagerMojo::SetUpChannel(
   }
 
   if (need_device_ids) {
+    sensor_service_remote_->RegisterNewDevicesObserver(
+        new_devices_observer_.BindNewPipeAndPassRemote());
+    new_devices_observer_.set_disconnect_handler(base::BindOnce(
+        &AmbientLightSensorManagerMojo::OnNewDevicesObserverDisconnect,
+        base::Unretained(this)));
+
     sensor_service_remote_->GetDeviceIds(
         cros::mojom::DeviceType::LIGHT,
         base::BindOnce(&AmbientLightSensorManagerMojo::GetDeviceIdsCallback,
                        base::Unretained(this)));
+  }
+}
+
+void AmbientLightSensorManagerMojo::OnNewDeviceAdded(
+    int32_t iio_device_id, const std::vector<cros::mojom::DeviceType>& types) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_GT(num_sensors_, 0);
+
+  if (std::find(types.begin(), types.end(), cros::mojom::DeviceType::LIGHT) ==
+      types.end()) {
+    // Not a light sensor. Ignoring this device.
+    return;
+  }
+
+  if (lights_.find(iio_device_id) != lights_.end()) {
+    // Has already added this device.
+    return;
+  }
+
+  auto& light = lights_[iio_device_id];
+
+  sensor_service_remote_->GetDevice(iio_device_id,
+                                    light.remote.BindNewPipeAndPassReceiver());
+  light.remote.set_disconnect_handler(
+      base::BindOnce(&AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect,
+                     base::Unretained(this), iio_device_id));
+
+  if (num_sensors_ == 1) {
+    light.remote->GetAttributes(
+        std::vector<std::string>{cros::mojom::kDeviceName},
+        base::BindOnce(&AmbientLightSensorManagerMojo::GetNameCallback,
+                       base::Unretained(this), iio_device_id));
+  } else {  // num_sensors_ >= 2
+    light.remote->GetAttributes(
+        std::vector<std::string>{cros::mojom::kDeviceName,
+                                 cros::mojom::kLocation},
+        base::BindOnce(
+            &AmbientLightSensorManagerMojo::GetNameAndLocationCallback,
+            base::Unretained(this), iio_device_id));
   }
 }
 
@@ -170,7 +216,17 @@ void AmbientLightSensorManagerMojo::ResetSensorService() {
   for (auto& light : lights_)
     light.second.remote.reset();
 
+  new_devices_observer_.reset();
   sensor_service_remote_.reset();
+}
+
+void AmbientLightSensorManagerMojo::OnNewDevicesObserverDisconnect() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  LOG(ERROR)
+      << "OnNewDevicesObserverDisconnect, resetting SensorService as "
+         "IIO Service should be destructed and waiting for it to relaunch.";
+  ResetSensorService();
 }
 
 void AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect(int32_t id) {
@@ -188,24 +244,11 @@ void AmbientLightSensorManagerMojo::GetDeviceIdsCallback(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK_GT(num_sensors_, 0);
 
-  if (iio_device_ids.empty()) {
-    // TODO(b/180777073): Wait for late-present sensors.
+  if (iio_device_ids.empty())
     return;
-  }
 
   if (num_sensors_ == 1) {
     DCHECK_EQ(sensors_.size(), 1);
-
-    // TODO(b/180777073): Remove this after the feature is added.
-    if (!lid_sensor_.iio_device_id.has_value() && iio_device_ids.size() == 1) {
-      LOG(INFO) << "Using ALS with id: " << iio_device_ids.front();
-
-      // Use the only light sensor available.
-      lid_sensor_.iio_device_id = base_sensor_.iio_device_id =
-          iio_device_ids.front();
-      SetSensorDeviceMojo(&lid_sensor_, allow_ambient_eq_);
-      return;
-    }
 
     for (int32_t id : iio_device_ids) {
       auto& light = lights_[id];
@@ -415,6 +458,9 @@ void AmbientLightSensorManagerMojo::AllDevicesFound() {
     light.second.ignored = true;
     light.second.remote.reset();
   }
+
+  // Don't need to wait for other devices.
+  new_devices_observer_.reset();
 }
 
 void AmbientLightSensorManagerMojo::SetSensorDeviceMojo(Sensor* sensor,

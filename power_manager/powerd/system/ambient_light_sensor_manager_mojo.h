@@ -30,8 +30,10 @@ class PrefsInterface;
 namespace system {
 
 // AmbientLightSensorManagerMojo should be used on the same thread.
-class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
-                                      public cros::mojom::SensorHalClient {
+class AmbientLightSensorManagerMojo
+    : public AmbientLightSensorManagerInterface,
+      public cros::mojom::SensorHalClient,
+      public cros::mojom::SensorServiceNewDevicesObserver {
  public:
   using OnMojoDisconnectCallback = base::OnceCallback<void()>;
 
@@ -49,6 +51,11 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
   // cros::mojom::SensorHalClient overrides:
   void SetUpChannel(
       mojo::PendingRemote<cros::mojom::SensorService> pending_remote) override;
+
+  // cros::mojom::SensorServiceNewDevicesObserver overrides:
+  void OnNewDeviceAdded(
+      int32_t iio_device_id,
+      const std::vector<cros::mojom::DeviceType>& types) override;
 
   void BindSensorHalClient(
       mojo::PendingReceiver<cros::mojom::SensorHalClient> pending_receiver,
@@ -78,6 +85,7 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
   void OnSensorServiceDisconnect();
   void ResetSensorService();
 
+  void OnNewDevicesObserverDisconnect();
   void OnSensorDeviceDisconnect(int32_t id);
 
   // Gets device ids from IIO Service and chooses sensors among them.
@@ -99,6 +107,10 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
   OnMojoDisconnectCallback on_mojo_disconnect_callback_;
 
   mojo::Remote<cros::mojom::SensorService> sensor_service_remote_;
+
+  // The Mojo channel to get notified when new devices are added to IIO Service.
+  mojo::Receiver<cros::mojom::SensorServiceNewDevicesObserver>
+      new_devices_observer_{this};
 
   // First is the device id, second is it's data and mojo remote. Only used if
   // |num_sensors_| is greater or equals to 2.
