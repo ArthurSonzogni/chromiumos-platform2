@@ -786,15 +786,6 @@ void ArcSetup::UnmountSdcard() {
 }
 
 void ArcSetup::CreateContainerFilesAndDirectories() {
-  // If the log file exists, change the UID/GID here. We used to use
-  // android-root for the file, but now we use just root. The Upstart
-  // job does not (and cannot efficiently) do it.
-  // TODO(yusukes): This is a temporary migration code. Remove it once
-  // we hit M68.
-  const base::FilePath android_kmsg("/var/log/android.kmsg");
-  if (base::PathExists(android_kmsg))
-    EXIT_IF(!Chown(kHostRootUid, kHostRootGid, android_kmsg));
-
   // Create the FIFO file and start its reader job.
   RemoveAndroidKmsgFifo();
   EXIT_IF(mkfifo(arc_paths_->android_kmsg_fifo.value().c_str(), 0644) < 0);
