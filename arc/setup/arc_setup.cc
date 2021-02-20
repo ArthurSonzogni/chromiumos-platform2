@@ -442,27 +442,6 @@ bool WaitForSdcardSource(const base::FilePath& android_root,
   return ret;
 }
 
-// Don't use this, use GetOrCreateArcSalt instead. Reads the 16-byte per-machine
-// random salt. The salt is created once when the machine is first used, and
-// wiped/regenerated on powerwash/recovery. When it's not available yet (which
-// could happen only on OOBE boot), returns an empty string.
-// TODO(yusukes): Remove this function after M73.
-std::string GetSystemSalt() {
-  constexpr char kSaltFile[] = "/home/.shadow/salt";
-
-  std::string per_machine_salt;
-  if (!base::ReadFileToString(base::FilePath(kSaltFile), &per_machine_salt) ||
-      per_machine_salt.size() < kSaltFileSize) {
-    LOG(WARNING) << kSaltFile << " is not available yet. OOBE boot?";
-    return std::string();
-  }
-  if (per_machine_salt.size() != kSaltFileSize) {
-    LOG(WARNING) << "Unexpected " << kSaltFile
-                 << " size: " << per_machine_salt.size();
-  }
-  return per_machine_salt;
-}
-
 // Reads a random number for the container from /var/lib/misc/arc_salt. If
 // the file does not exist, generates a new one. This file will be cleared
 // and regenerated after powerwash.
@@ -474,14 +453,9 @@ std::string GetOrCreateArcSalt() {
   const base::FilePath arc_salt_file(kArcSaltFile);
   if (!base::ReadFileToString(arc_salt_file, &arc_salt) ||
       arc_salt.size() != kSaltFileSize) {
-    // If system salt value is available, reuse the system salt to avoid
-    // clearing existing relocated boot*.art code.
-    arc_salt = GetSystemSalt();
-    if (arc_salt.size() != kSaltFileSize) {
-      char rand_value[kSaltFileSize];
-      crypto::RandBytes(rand_value, kSaltFileSize);
-      arc_salt = std::string(rand_value, kSaltFileSize);
-    }
+    char rand_value[kSaltFileSize];
+    crypto::RandBytes(rand_value, kSaltFileSize);
+    arc_salt = std::string(rand_value, kSaltFileSize);
     if (!brillo::WriteToFileAtomic(arc_salt_file, arc_salt.data(),
                                    arc_salt.size(), kArcSaltFilePermissions)) {
       LOG(ERROR) << "Failed to write arc salt file.";
