@@ -420,6 +420,8 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   bool is_v1_builtin = device_info.quirks & kQuirkV1Device;
 
   if (supported_formats.empty()) {
+    LOGF(ERROR)
+        << "Failed to fill metadata since there is no supported formats";
     return -EINVAL;
   }
   std::vector<int32_t> stream_configurations;
