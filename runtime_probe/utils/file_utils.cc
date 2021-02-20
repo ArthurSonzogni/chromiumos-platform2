@@ -12,7 +12,6 @@
 #include "runtime_probe/utils/file_utils.h"
 
 using base::FilePath;
-using base::PathExists;
 using base::ReadFileToStringWithMaxSize;
 using base::TrimWhitespaceASCII;
 using base::Value;
@@ -55,12 +54,16 @@ base::Optional<Value> MapFilesToDict(const FilePath& dir_path,
 
   for (const auto& key : keys) {
     string file_name = GetFileName(key);
+    if (base::FilePath{file_name}.IsAbsolute()) {
+      LOG(ERROR) << "file_name " << file_name << " is absolute";
+      return base::nullopt;
+    }
     string key_name = GetKeyName(key);
     const auto file_path = dir_path.Append(file_name);
     string content;
 
     // missing file
-    if (!PathExists(file_path)) {
+    if (!base::PathExists(file_path)) {
       LOG(ERROR) << file_path.value() << " doesn't exist";
       return base::nullopt;
     }
@@ -76,6 +79,10 @@ base::Optional<Value> MapFilesToDict(const FilePath& dir_path,
 
   for (const auto& key : optional_keys) {
     string file_name = GetFileName(key);
+    if (base::FilePath{file_name}.IsAbsolute()) {
+      LOG(ERROR) << "file_name " << file_name << " is absolute";
+      return base::nullopt;
+    }
     string key_name = GetKeyName(key);
     const auto file_path = dir_path.Append(file_name);
     string content;

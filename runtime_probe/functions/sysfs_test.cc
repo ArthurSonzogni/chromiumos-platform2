@@ -72,6 +72,23 @@ TEST(SysfsFunctionTest, TestRead) {
         break;
     }
   }
+
+  auto json_val_abs = base::JSONReader::Read(R"({
+      "keys": ["/1"],
+      "optional_keys": ["2"]
+  })");
+
+  json_val_abs->SetStringKey("dir_path",
+                             temp_dir.GetPath().Append("D*").value());
+  auto p_abs = SysfsFunction::FromKwargsValue(*json_val_abs);
+  ASSERT_TRUE(p_abs) << "Failed to create SysfsFunction: " << *json_val_abs;
+
+  auto f_abs = dynamic_cast<SysfsFunction*>(p_abs.get());
+  ASSERT_TRUE(f_abs) << "Loaded function is not a SysfsFunction";
+  f_abs->MockSysfsPathForTesting(temp_dir.GetPath());
+
+  auto results_abs = f_abs->Eval();
+  ASSERT_EQ(results_abs.size(), 0);
 }
 
 }  // namespace runtime_probe
