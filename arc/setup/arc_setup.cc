@@ -1749,15 +1749,6 @@ std::string ArcSetup::GetSerialNumber() {
   return arc::GenerateFakeSerialNumber(chromeos_user, salt);
 }
 
-// TODO(yusukes): Delete this function in M85.
-void ArcSetup::DeleteUnusedCacheDirectory() {
-  // /home/.../android-data/cache is bind-mounted to /cache on N in
-  // MountSharedAndroidDirectories, but it is no longer bind-mounted on P.
-  EXIT_IF(
-      !MoveDirIntoDataOldDir(arc_paths_->android_data_directory.Append("cache"),
-                             arc_paths_->android_data_old_directory));
-}
-
 void ArcSetup::MountSharedAndroidDirectories() {
   const base::FilePath cache_directory =
       arc_paths_->android_data_directory.Append("cache");
@@ -2220,8 +2211,6 @@ void ArcSetup::OnBootContinue() {
   // Unmount /run/arc/shared_mounts and its children. They are unnecessary at
   // this point.
   UnmountSharedAndroidDirectories();
-
-  DeleteUnusedCacheDirectory();
 
   const std::string env_to_pass = base::StringPrintf(
       "CONTAINER_PID=%d", config_.GetIntOrDie("CONTAINER_PID"));
