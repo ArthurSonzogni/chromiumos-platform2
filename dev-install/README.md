@@ -144,7 +144,7 @@ status-quo is perfect (we know it's not) or otherwise immutable.
 
 All symlinks on the system at this point are from the dev-install package.
 Once that's installed, we also generate package lists and a tarball of the
-existing `/uar/local` state (otherwise we'd discard it).
+existing `/usr/local` state (otherwise we'd discard it).
 
 Paths installed by the `dev-install` package:
 
