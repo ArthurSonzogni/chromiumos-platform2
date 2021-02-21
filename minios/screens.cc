@@ -139,7 +139,7 @@ void Screens::ShowLanguageMenu(bool is_selected) {
     LOG(WARNING) << "Could not get language width for " << locale_
                  << ". Defaulting to 100.";
   }
-  const int text_x = -kCanvasSize / 2 + 40 + language_width / 2;
+  const int kTextX = -kCanvasSize / 2 + 40 + language_width / 2;
 
   base::FilePath menu_background =
       is_selected ? screens_path_.Append("language_menu_bg_focused.png")
@@ -149,7 +149,7 @@ void Screens::ShowLanguageMenu(bool is_selected) {
   ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
 
   ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
-  ShowMessage("language_folded", text_x, kOffsetY);
+  ShowMessage("language_folded", kTextX, kOffsetY);
 }
 
 void Screens::ShowFooter() {
@@ -164,7 +164,7 @@ void Screens::ShowFooter() {
   constexpr int kFooterY = (kCanvasSize / 2) - kQrCodeSize + 9 - 56;
   const int kFooterLeftX =
       kQrCodeX + (kQrCodeSize / 2) + 16 + (kDefaultMessageWidth / 2);
-  const int footer_right_x = kSeparatorX + 32 + (kDefaultMessageWidth / 2);
+  const int kFooterRightX = kSeparatorX + 32 + (kDefaultMessageWidth / 2);
 
   ShowMessage("footer_left_1", kFooterLeftX, kFooterY);
   ShowMessage("footer_left_2", kFooterLeftX,
@@ -176,41 +176,41 @@ void Screens::ShowFooter() {
   constexpr int kNavButtonY = (kCanvasSize / 2) - (kNavButtonHeight / 2) - 56;
   int nav_btn_x = kSeparatorX + 32;
   // Navigation key icons.
-  const std::string footer_type = is_detachable_ ? "tablet" : "clamshell";
-  const std::string nav_key_enter =
+  const std::string kFooterType = is_detachable_ ? "tablet" : "clamshell";
+  const std::string kNavKeyEnter =
       is_detachable_ ? "button_power" : "key_enter";
-  const std::string nav_key_up = is_detachable_ ? "button_volume_up" : "key_up";
-  const std::string nav_key_down =
+  const std::string kNavKeyUp = is_detachable_ ? "button_volume_up" : "key_up";
+  const std::string kNavKeyDown =
       is_detachable_ ? "button_volume_down" : "key_down";
 
   constexpr int kUpDownIconWidth = 24;
   constexpr int kIconPadding = 8;
-  const int enter_icon_width = is_detachable_ ? 40 : 66;
+  const int kEnterIconWidth = is_detachable_ ? 40 : 66;
 
-  ShowMessage("footer_right_1_" + footer_type, footer_right_x, kFooterY);
-  ShowMessage("footer_right_2_" + footer_type, footer_right_x,
+  ShowMessage("footer_right_1_" + kFooterType, kFooterRightX, kFooterY);
+  ShowMessage("footer_right_2_" + kFooterType, kFooterRightX,
               kFooterY + kFooterLineHeight + 8);
 
-  nav_btn_x += enter_icon_width / 2;
-  ShowImage(screens_path_.Append("nav-" + nav_key_enter + ".png"), nav_btn_x,
+  nav_btn_x += kEnterIconWidth / 2;
+  ShowImage(screens_path_.Append("nav-" + kNavKeyEnter + ".png"), nav_btn_x,
             kNavButtonY);
-  nav_btn_x += enter_icon_width / 2 + kIconPadding + kUpDownIconWidth / 2;
-  ShowImage(screens_path_.Append("nav-" + nav_key_up + ".png"), nav_btn_x,
+  nav_btn_x += kEnterIconWidth / 2 + kIconPadding + kUpDownIconWidth / 2;
+  ShowImage(screens_path_.Append("nav-" + kNavKeyUp + ".png"), nav_btn_x,
             kNavButtonY);
   nav_btn_x += kIconPadding + kUpDownIconWidth;
-  ShowImage(screens_path_.Append("nav-" + nav_key_down + ".png"), nav_btn_x,
+  ShowImage(screens_path_.Append("nav-" + kNavKeyDown + ".png"), nav_btn_x,
             kNavButtonY);
 
   ShowImage(screens_path_.Append("qr_code.png"), kQrCodeX, kQrCodeY);
   int hwid_len = hwid_.size();
   int hwid_x = kQrCodeX + (kQrCodeSize / 2) + 16 + 5;
-  const int hwid_y = kFooterY + kFooterLineHeight;
+  const int kHwidY = kFooterY + kFooterLineHeight;
 
   if (right_to_left_) {
     hwid_x = -hwid_x - kMonospaceGlyphWidth * (hwid_len - 2);
   }
 
-  ShowText(hwid_, hwid_x, hwid_y, "grey");
+  ShowText(hwid_, hwid_x, kHwidY, "grey");
   ShowBox(kSeparatorX, kSeparatorY, 1, kQrCodeSize, kMenuGrey);
 }
 
@@ -412,7 +412,7 @@ void Screens::ShowCollapsedItemMenu(bool is_selected) {
   constexpr int kBgX = -kCanvasSize / 2 + 145;
   constexpr int kGlobeX = -kCanvasSize / 2 + 20;
   constexpr int kArrowX = -kCanvasSize / 2 + 268;
-  const int text_x = -kCanvasSize / 2 + 100;
+  constexpr int kTextX = -kCanvasSize / 2 + 100;
 
   // Currently using language and globe icons as placeholders.
   base::FilePath menu_background =
@@ -422,7 +422,7 @@ void Screens::ShowCollapsedItemMenu(bool is_selected) {
   ShowImage(menu_background, kBgX, kOffsetY);
   ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
   ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
-  ShowMessage("btn_MiniOS_display_options", text_x, kOffsetY);
+  ShowMessage("btn_MiniOS_display_options", kTextX, kOffsetY);
 }
 
 void Screens::ShowItemDropdown() {
@@ -526,23 +526,23 @@ bool Screens::MapRegionToKeyboard(std::string* xkb_keyboard_layout) {
   }
 
   // Look up mapping between vpd region and xkb keyboard layout.
-  const base::Value* region_info = json_output.value->FindDictKey(vpd_region_);
-  if (!region_info) {
+  const base::Value* kRegionInfo = json_output.value->FindDictKey(vpd_region_);
+  if (!kRegionInfo) {
     LOG(ERROR) << "Region " << vpd_region_ << " not found.";
     return false;
   }
 
-  const base::Value* keyboard = region_info->FindListKey("keyboards");
-  if (!keyboard || keyboard->GetList().empty()) {
+  const base::Value* kKeyboard = kRegionInfo->FindListKey("keyboards");
+  if (!kKeyboard || kKeyboard->GetList().empty()) {
     LOG(ERROR) << "Could not retrieve keyboards for given region "
                << vpd_region_
-               << ". Available region information: " << *region_info;
+               << ". Available region information: " << *kRegionInfo;
     return false;
   }
 
   // Always use the first keyboard in the list.
   std::vector<std::string> keyboard_parts =
-      base::SplitString(keyboard->GetList()[0].GetString(), ":",
+      base::SplitString(kKeyboard->GetList()[0].GetString(), ":",
                         base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (keyboard_parts.size() < 2) {
     LOG(ERROR) << "Could not parse keyboard information for region  "

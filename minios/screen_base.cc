@@ -157,11 +157,11 @@ void ScreenBase::ShowInstructionsWithTitle(const std::string& message_token) {
                  << ". Defaulting to " << desc_height;
   }
 
-  const int title_y = (-kCanvasSize / 2) + 220 + (title_height / 2);
-  const int desc_y = title_y + (title_height / 2) + 16 + (desc_height / 2);
-  if (!ShowMessage("title_" + message_token, kXOffset, title_y))
+  const int kTitleY = (-kCanvasSize / 2) + 220 + (title_height / 2);
+  const int kDescY = kTitleY + (title_height / 2) + 16 + (desc_height / 2);
+  if (!ShowMessage("title_" + message_token, kXOffset, kTitleY))
     LOG(WARNING) << "Unable to show title " << message_token;
-  if (!ShowMessage("desc_" + message_token, kXOffset, desc_y))
+  if (!ShowMessage("desc_" + message_token, kXOffset, kDescY))
     LOG(WARNING) << "Unable to show description " << message_token;
 }
 
@@ -176,11 +176,11 @@ void ScreenBase::ShowProgressBar(double seconds) {
 
   // Can be increased for a smoother progress bar.
   constexpr int kUpdatesPerSecond = 10;
-  const double percent_update = 100 / (seconds * kUpdatesPerSecond);
+  const double kPercentUpdate = 100 / (seconds * kUpdatesPerSecond);
   double current_percent = 0;
 
   while (current_percent < 100) {
-    current_percent += percent_update;
+    current_percent += kPercentUpdate;
     int rightmost = kLeftIncrement + kProgressIncrement * current_percent;
     while (leftmost < rightmost) {
       ShowBox(leftmost + kProgressIncrement / 2, 0, kProgressIncrement + 2,
@@ -209,12 +209,12 @@ void ScreenBase::ShowButton(const std::string& message_token,
                             bool is_selected,
                             int inner_width,
                             bool is_text) {
-  const int btn_padding = 32;  // Left and right padding.
-  int left_padding_x = (-kCanvasSize / 2) + (btn_padding / 2);
-  const int offset_x = left_padding_x + (btn_padding / 2) + (inner_width / 2);
-  int right_padding_x = offset_x + (btn_padding / 2) + (inner_width / 2);
+  const int kBtnPadding = 32;  // Left and right padding.
+  int left_padding_x = (-kCanvasSize / 2) + (kBtnPadding / 2);
+  const int kOffsetX = left_padding_x + (kBtnPadding / 2) + (inner_width / 2);
+  int right_padding_x = kOffsetX + (kBtnPadding / 2) + (inner_width / 2);
   // Clear previous state.
-  if (!ShowBox(offset_x, offset_y, (btn_padding * 2 + inner_width),
+  if (!ShowBox(kOffsetX, offset_y, (kBtnPadding * 2 + inner_width),
                kButtonHeight, kMenuBlack)) {
     LOG(WARNING) << "Could not clear button area.";
   }
@@ -229,25 +229,25 @@ void ScreenBase::ShowButton(const std::string& message_token,
     ShowImage(screens_path_.Append("btn_bg_right_focused.png"), right_padding_x,
               offset_y);
 
-    ShowBox(offset_x, offset_y, inner_width, kButtonHeight, kMenuBlue);
+    ShowBox(kOffsetX, offset_y, inner_width, kButtonHeight, kMenuBlue);
     if (is_text) {
       ShowText(message_token, left_padding_x, offset_y, "black");
     } else {
-      ShowMessage(message_token + "_focused", offset_x, offset_y);
+      ShowMessage(message_token + "_focused", kOffsetX, offset_y);
     }
   } else {
     ShowImage(screens_path_.Append("btn_bg_left.png"), left_padding_x,
               offset_y);
     ShowImage(screens_path_.Append("btn_bg_right.png"), right_padding_x,
               offset_y);
-    ShowBox(offset_x, offset_y - (kButtonHeight / 2) + 1, inner_width, 1,
+    ShowBox(kOffsetX, offset_y - (kButtonHeight / 2) + 1, inner_width, 1,
             kMenuButtonFrameGrey);
-    ShowBox(offset_x, offset_y + (kButtonHeight / 2), inner_width, 1,
+    ShowBox(kOffsetX, offset_y + (kButtonHeight / 2), inner_width, 1,
             kMenuButtonFrameGrey);
     if (is_text) {
       ShowText(message_token, left_padding_x, offset_y, "white");
     } else {
-      ShowMessage(message_token, offset_x, offset_y);
+      ShowMessage(message_token, kOffsetX, offset_y);
     }
   }
 }
