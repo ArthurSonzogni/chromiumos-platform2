@@ -588,3 +588,33 @@ mvno {
     uuid: "uuid127001-mvno"
   }
 }
+
+# Test[128] MVNOIMSIMatchByRange
+mno {
+  data {
+    mccmnc: "128001"
+    localized_name {
+      name: "name128001"
+    }
+    uuid: "uuid128001"
+  }
+  mvno {
+    mvno_filter {
+      type: IMSI
+      range: {
+          start: 128001432154321
+          end:   128001432164321
+      }
+      range: {
+          start: 128001437999999
+          end:   128001438111111
+      }
+    }
+    data {
+      localized_name {
+        name: "name128002"
+      }
+      uuid: "uuid128002"
+    }
+  }
+}

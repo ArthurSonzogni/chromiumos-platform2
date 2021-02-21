@@ -7,6 +7,12 @@ option optimize_for = LITE_RUNTIME;
 
 package shill.mobile_operator_db;
 
+message FilterRange {
+  // Numerical range to filter a value.
+  required uint64 start = 1;
+  required uint64 end = 2;
+}
+
 message Filter {
   // A filter can be one of the following types.
   enum Type {
@@ -21,7 +27,11 @@ message Filter {
   // filter. The field to be tested is chosen by the |type|.
   // The regular expression should be specified as an extended POSIX regular
   // expression.
-  required string regex = 2;
+  optional string regex = 2;
+  // Rather than a regular expression, the filter can be expressed by one
+  // or several numerical ranges.
+  // The value will be accepted if start <= value <= end for one of the ranges.
+  repeated FilterRange range = 3;
 }
 
 message LocalizedName {

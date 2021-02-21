@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/repeated_field.h>
@@ -26,6 +27,7 @@ using google::protobuf::RepeatedPtrField;
 using google::protobuf::io::CopyingInputStreamAdaptor;
 using shill::mobile_operator_db::Data;
 using shill::mobile_operator_db::Filter;
+using shill::mobile_operator_db::FilterRange;
 using shill::mobile_operator_db::LocalizedName;
 using shill::mobile_operator_db::MobileAPN;
 using shill::mobile_operator_db::MobileNetworkOperator;
@@ -694,7 +696,7 @@ const MobileNetworkOperator* MobileOperatorInfoImpl::PickOneFromDuplicates(
 }
 
 bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
-  DCHECK(filter.has_regex());
+  DCHECK(filter.has_regex() || filter.range_size());
   string to_match;
   switch (filter.type()) {
     case mobile_operator_db::Filter_Type_IMSI:
@@ -721,6 +723,25 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
   if (to_match.empty()) {
     SLOG(this, 2) << "Nothing to match against (filter: " << filter.regex()
                   << ").";
+    return false;
+  }
+
+  // Match against numerical ranges rather than a regular expression
+  if (filter.range_size()) {
+    DCHECK(!filter.has_regex());
+
+    uint64_t match_value;
+    if (!base::StringToUint64(to_match, &match_value)) {
+      SLOG(this, 3) << "Need a number to match against a range (" << match_value
+                    << ").";
+      return false;
+    }
+
+    for (auto r : filter.range()) {
+      if ((r.start() <= match_value) && (match_value <= r.end()))
+        return true;
+    }
+    // No range is matching
     return false;
   }
 

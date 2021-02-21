@@ -794,6 +794,60 @@ TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatch) {
   VerifyMVNOWithUUID("uuid118002");
 }
 
+TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatchByRange) {
+  // message: MNO with one MVNO (IMSI filter with 2 numerical ranges).
+  // match by: MNO matches by MCCMNC,
+  //           MVNO fails to match by first IMSI update,
+  //           then MVNO matches in the first IMSI,
+  //           then alternately put IMSI inside and outside the ranges.
+  // verify: Observer events: alternately MNO when no match,
+  //                          then MVNO when match.
+  ExpectEventCount(1);
+  UpdateMCCMNC("128001");
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid128001");
+
+  ExpectEventCount(0);
+  UpdateIMSI("128001234512345");  // No match before 1st range
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid128001");
+
+  ExpectEventCount(1);
+  UpdateIMSI("128001432159321");  // Match, middle of 1st range
+  VerifyEventCount();
+  VerifyMVNOWithUUID("uuid128002");
+
+  ExpectEventCount(1);
+  UpdateIMSI("128001435124321");  // No match between ranges
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid128001");
+
+  ExpectEventCount(1);
+  UpdateIMSI("128001438055555");  // Match, middle of 2nd range
+  VerifyEventCount();
+  VerifyMVNOWithUUID("uuid128002");
+
+  ExpectEventCount(1);
+  UpdateIMSI("128001432154320");  // No match 1 before 1st range
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid128001");
+
+  ExpectEventCount(1);
+  UpdateIMSI("128001437999999");  // Match, first of 2nd range
+  VerifyEventCount();
+  VerifyMVNOWithUUID("uuid128002");
+
+  ExpectEventCount(1);
+  UpdateIMSI("128001432164322");  // No match 1 after 1st range
+  VerifyEventCount();
+  VerifyMNOWithUUID("uuid128001");
+
+  ExpectEventCount(1);
+  UpdateIMSI("128001438111111");  // Match, last of 2nd range
+  VerifyEventCount();
+  VerifyMVNOWithUUID("uuid128002");
+}
+
 TEST_P(MobileOperatorInfoMainTest, MVNOICCIDMatch) {
   // message: MNO with one MVNO (iccid filter).
   // match by: MNO matches by MCCMNC,
