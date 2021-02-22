@@ -49,25 +49,6 @@ class TpmInit {
   // Returns false if the instance has already been setup.
   virtual bool SetupTpm(bool load_key);
 
-  // Asynchronously takes ownership of the TPM. The TPM is initialized following
-  // these steps:
-  //
-  //   1. The TPM is owned with default owner password.
-  //   2. The SRK password is cleared. The SRK is then unrestricted.
-  //   3. New owner password is established.
-  //   4. (This new password WILL be wiped later when all owner dependencies
-  //       have been removed.)
-  //
-  // At each step in the process, a status file is updated so that we can
-  // resume the initialization later (see SetupTpm above).
-  //
-  // The initialization is usually done asynchronously. Attestation and
-  // InstallAttributes must remove themselves from owner dependency list so that
-  // the owner password can be cleared.
-  //
-  // Returns true if a thread was spawn to do the actual initialization.
-  virtual bool AsyncTakeOwnership();
-
   // Synchronously takes ownership of the TPM.
   //
   // Returns true if the TPM initialization process (as outlined above) is
@@ -86,24 +67,8 @@ class TpmInit {
   // Marks the TPM as being owned.
   virtual void SetTpmOwned(bool owned);
 
-  // Returns true if the TPM is being owned.
-  virtual bool IsTpmBeingOwned();
-
   // Marks the TPM as being or not being been owned.
   virtual void SetTpmBeingOwned(bool being_owned);
-
-  // Returns true if AsyncTakeOwnership() has been called to request TPM
-  // ownership to be established.
-  virtual bool OwnershipRequested();
-
-  // Gets the TPM password if the TPM initialization took ownership.
-  //
-  // Parameters
-  //   password (OUT) - The owner password used for the TPM
-  virtual bool GetTpmPassword(brillo::SecureBlob* password);
-
-  // Clears the TPM password from memory and disk.
-  virtual void ClearStoredTpmPassword();
 
   // Removes the given owner dependency. When all dependencies have been removed
   // the owner password can be cleared.
@@ -123,10 +88,6 @@ class TpmInit {
 
   virtual bool ReloadCryptohomeKey();
 
-  virtual bool GetVersion(Tpm::TpmVersionInfo* version_info);
-
-  virtual bool ShallInitialize();
-
  private:
   FRIEND_TEST(TpmInitTest, ContinueInterruptedInitializeSrk);
 
@@ -134,12 +95,6 @@ class TpmInit {
 
   // Invoked by SetupTpm to restore TPM state from saved state in storage.
   void RestoreTpmStateFromStorage();
-
-  // Creates a random owner password.
-  //
-  // Parameters
-  //   password (OUT) - the generated password
-  void CreateOwnerPassword(brillo::SecureBlob* password);
 
   // Retrieves the TPM owner password.
   bool LoadOwnerPassword(brillo::SecureBlob* owner_password);

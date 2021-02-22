@@ -26,8 +26,6 @@ class MockTpmInit : public TpmInit {
   MOCK_METHOD(bool, IsTpmReady, (), (override));
   MOCK_METHOD(bool, IsTpmEnabled, (), (override));
   MOCK_METHOD(bool, IsTpmOwned, (), (override));
-  MOCK_METHOD(bool, GetTpmPassword, (brillo::SecureBlob*), (override));
-  MOCK_METHOD(bool, ShallInitialize, (), (override));
 };
 
 }  // namespace cryptohome

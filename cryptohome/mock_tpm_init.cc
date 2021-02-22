@@ -12,7 +12,6 @@ namespace cryptohome {
 MockTpmInit::MockTpmInit() : TpmInit(NULL, NULL) {
   ON_CALL(*this, SetupTpm(_)).WillByDefault(Return(true));
   ON_CALL(*this, HasCryptohomeKey()).WillByDefault(Return(true));
-  ON_CALL(*this, ShallInitialize()).WillByDefault(Return(false));
 }
 
 MockTpmInit::~MockTpmInit() {}

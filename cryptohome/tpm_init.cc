@@ -35,7 +35,6 @@ const FilePath kTpmTpmCheckEnabledFile("/sys/class/tpm/tpm0/device/enabled");
 const FilePath kTpmTpmCheckOwnedFile("/sys/class/tpm/tpm0/device/owned");
 const FilePath kDefaultCryptohomeKeyFile("/home/.shadow/cryptohome.key");
 
-const int kOwnerPasswordLength = 12;
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
 
 // TpmInitTask is a private class used to handle asynchronous initialization of
@@ -98,16 +97,6 @@ void TpmInit::Init(OwnershipCallback ownership_callback) {
   tpm_init_task_->Init(this);
 }
 
-bool TpmInit::AsyncTakeOwnership() {
-  tpm_persistent_state_.SetShallInitialize(true);
-  take_ownership_called_ = true;
-  if (!PlatformThread::Create(0, tpm_init_task_.get(), &init_thread_)) {
-    LOG(ERROR) << "Unable to create background thread to take TPM ownership.";
-    return false;
-  }
-  return true;
-}
-
 bool TpmInit::IsTpmReady() {
   // The TPM is "ready" if it is enabled, owned, and not being owned.
   Tpm* tpm = tpm_init_task_->get_tpm();
@@ -129,26 +118,8 @@ void TpmInit::SetTpmOwned(bool owned) {
   tpm_init_task_->get_tpm()->SetIsOwned(owned);
 }
 
-bool TpmInit::IsTpmBeingOwned() {
-  return tpm_init_task_->get_tpm()->IsBeingOwned();
-}
-
 void TpmInit::SetTpmBeingOwned(bool being_owned) {
   tpm_init_task_->get_tpm()->SetIsBeingOwned(being_owned);
-}
-
-bool TpmInit::OwnershipRequested() {
-  return take_ownership_called_;
-}
-
-bool TpmInit::GetTpmPassword(brillo::SecureBlob* password) {
-  return tpm_init_task_->get_tpm()->GetOwnerPassword(password);
-}
-
-void TpmInit::ClearStoredTpmPassword() {
-  if (tpm_persistent_state_.ClearStoredPasswordIfNotNeeded()) {
-    get_tpm()->ClearStoredPassword();
-  }
 }
 
 void TpmInit::ThreadMain() {
@@ -275,17 +246,6 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
 
   SetTpmBeingOwned(false);
   return true;
-}
-
-void TpmInit::CreateOwnerPassword(SecureBlob* password) {
-  // Generate a random owner password.  The default is a 12-character,
-  // hex-encoded password created from 6 bytes of random data.
-  const auto random =
-      CryptoLib::CreateSecureRandomBlob(kOwnerPasswordLength / 2);
-  SecureBlob tpm_password(kOwnerPasswordLength);
-  CryptoLib::SecureBlobToHexToBuffer(random, tpm_password.data(),
-                                     tpm_password.size());
-  password->swap(tpm_password);
 }
 
 bool TpmInit::LoadOwnerPassword(brillo::SecureBlob* owner_password) {
@@ -435,14 +395,6 @@ bool TpmInit::ReloadCryptohomeKey() {
     return false;
   }
   return true;
-}
-
-bool TpmInit::GetVersion(Tpm::TpmVersionInfo* version_info) {
-  return get_tpm() && get_tpm()->GetVersionInfo(version_info);
-}
-
-bool TpmInit::ShallInitialize() {
-  return tpm_persistent_state_.ShallInitialize();
 }
 
 }  // namespace cryptohome
