@@ -40,7 +40,7 @@ class Service {
   void OnVmStoppedSignal(dbus::Signal* signal);
 
   void ForwardPstore(const std::string& owner_id);
-  void ForwardContents(const std::string& owner_id);
+  bool ForwardContents(const std::string& owner_id);
   void CopyPstoreToSourcePath(const std::string& owner_id);
 
   scoped_refptr<dbus::Bus> bus_;

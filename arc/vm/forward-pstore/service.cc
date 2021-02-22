@@ -227,25 +227,31 @@ void Service::ForwardPstore(const std::string& owner_id) {
                << ", error:" << static_cast<int>(err);
   }
 
-  // Start forwarding the contents to cryptohome location.
+  // Start forwarding the contents to cryptohome location. The timer will run
+  // ForwardContents() every kReadDelay seconds. If it fails, the timer will be
+  // stopped to avoid spamming the log.
   root_fd_ = std::move(root_fd);
   pstore_fd_ = std::move(pstore_fd);
-  timer_.Start(FROM_HERE, kReadDelay,
-               base::BindRepeating(&Service::ForwardContents,
-                                   weak_ptr_factory_.GetWeakPtr(), owner_id));
-  ForwardContents(owner_id);
+  auto task = base::BindRepeating(
+      [](base::WeakPtr<Service> service, std::string owner_id) {
+        if (!service->ForwardContents(owner_id))
+          service->timer_.Stop();
+      },
+      weak_ptr_factory_.GetWeakPtr(), owner_id);
+  timer_.Start(FROM_HERE, kReadDelay, task);
+  task.Run();
 }
 
-void Service::ForwardContents(const std::string& owner_id) {
+bool Service::ForwardContents(const std::string& owner_id) {
   if (!pstore_fd_.is_valid()) {
     LOG(ERROR) << "Pstore source fd is invalid";
-    return;
+    return false;
   }
 
   // Seek to beginning of file before reading.
   if (lseek(pstore_fd_.get(), 0, SEEK_SET) != 0) {
     PLOG(ERROR) << "Cannot seek to beginning of pstore file";
-    return;
+    return false;
   }
   // Read pstore.
   std::vector<char> content;
@@ -254,30 +260,53 @@ void Service::ForwardContents(const std::string& owner_id) {
   if (brillo::SafeFD::IsError(err)) {
     LOG(ERROR) << "Failed to read pstore source fd, error:"
                << static_cast<int>(err);
-    return;
+    return false;
   }
 
   // Write to cryptohome path.
   if (!dest_fd_.is_valid()) {
     base::FilePath dest = GetPstoreDest(owner_id);
+    // Delete the destination pstore if it exists, because
+    // brillo::SafeFD::MakeFile will return an error if the pstore exists and
+    // does not have the expected file mode.
+    if (base::PathExists(dest)) {
+      brillo::SafeFD dest_dir_fd;
+      std::tie(dest_dir_fd, err) = root_fd_.OpenExistingDir(dest.DirName());
+      if (brillo::SafeFD::IsError(err) || !dest_dir_fd.is_valid()) {
+        LOG(ERROR) << "Failed to open " << dest.DirName()
+                   << ", error:" << static_cast<int>(err);
+        return false;
+      }
+
+      err = dest_dir_fd.Unlink(dest.BaseName().value());
+      if (brillo::SafeFD::IsError(err)) {
+        LOG(ERROR) << "Failed to unlink " << dest
+                   << ", error:" << static_cast<int>(err);
+        return false;
+      }
+    }
+
     std::tie(dest_fd_, err) = root_fd_.MakeFile(dest, 0600, getuid(), getgid(),
                                                 O_RDWR | O_CLOEXEC | O_TRUNC);
     if (brillo::SafeFD::IsError(err) || !dest_fd_.is_valid()) {
       LOG(ERROR) << "Failed to open destination fd " << dest
                  << ", error:" << static_cast<int>(err);
-      return;
+      return false;
     }
   }
   // Seek to beginning of file before writing.
   if (lseek(dest_fd_.get(), 0, SEEK_SET) != 0) {
     PLOG(ERROR) << "Cannot seek to beginning of pstore destination";
-    return;
+    return false;
   }
   err = dest_fd_.Write(content.data(), content.size());
   if (brillo::SafeFD::IsError(err)) {
     LOG(ERROR) << "Failed to write to pstore destination, error:"
                << static_cast<int>(err);
+    return false;
   }
+
+  return true;
 }
 
 void Service::CopyPstoreToSourcePath(const std::string& owner_id) {
