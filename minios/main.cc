@@ -3,7 +3,13 @@
 // found in the LICENSE file.
 
 #include "minios/daemon.h"
+#include "minios/minios.h"
 
 int main() {
+  logging::InitLogging({
+      .logging_dest = logging::LOG_TO_ALL,
+      .log_file_path = minios::kDebugConsole,
+      .lock_log = logging::DONT_LOCK_LOG_FILE,
+  });
   return minios::Daemon().Run();
 }

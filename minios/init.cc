@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <sys/mount.h>
+#include <unistd.h>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -93,9 +94,8 @@ int main() {
     LOG(ERROR) << "Failed to init mounts.";
     return -1;
   }
-  return ProcessManager().RunCommand({"/init.sh"},
-                                     ProcessManager::IORedirection{
-                                         .input = "/dev/null",
-                                         .output = minios::kLogFile,
-                                     });
+
+  // TODO(vyshu) : Remove init.sh and call upstart directly.
+  char* args[] = {const_cast<char*>("/init.sh"), NULL};
+  return execvp(args[0], args);
 }
