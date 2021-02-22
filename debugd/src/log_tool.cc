@@ -107,7 +107,8 @@ const std::vector<Log> kCommandLogs {
   // in our own mount namespace (by design).  https://crbug.com/884249
   {kCommand, "CLIENT_ID", "/usr/bin/nsenter -t1 -m /usr/bin/metrics_client -i",
     kRoot, kDebugfsGroup},
-  {kCommand, "LOGDATE", "/bin/date"},
+  // We consistently use UTC in feedback reports.
+  {kCommand, "LOGDATE", "/bin/date --utc; /bin/date"},
   // We need to enter init's mount namespace to access /home/root. Also, we use
   // neither ARC container's mount namespace (with android-sh) nor
   // /opt/google/containers/android/rootfs/android-data/ so that we can get
