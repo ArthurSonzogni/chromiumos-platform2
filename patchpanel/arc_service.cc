@@ -4,12 +4,10 @@
 
 #include "patchpanel/arc_service.h"
 
-#include <fcntl.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/utsname.h>
-#include <unistd.h>
 
 #include <utility>
 #include <vector>
@@ -17,7 +15,6 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -36,6 +33,7 @@
 
 namespace patchpanel {
 namespace {
+// UID of Android root, relative to the host pid namespace.
 const int32_t kAndroidRootUid = 655360;
 constexpr uint32_t kInvalidId = 0;
 constexpr char kArcNetnsName[] = "arc_netns";
@@ -60,7 +58,21 @@ bool KernelVersion(int* major, int* minor) {
   return true;
 }
 
-void OneTimeContainerSetup(const Datapath& datapath) {
+// Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
+// container pid.
+void SetSysfsOwnerToAndroidRoot(uint32_t pid, const std::string& path) {
+  ScopedNS ns(pid, ScopedNS::Type::Mount);
+  if (!ns.IsValid()) {
+    LOG(ERROR) << "Cannot enter mnt namespace for pid " << pid;
+    return;
+  }
+
+  const std::string sysfs_path = "/sys/class/" + path;
+  if (chown(sysfs_path.c_str(), kAndroidRootUid, kAndroidRootUid) == -1)
+    PLOG(ERROR) << "Failed to change ownership of " + sysfs_path;
+}
+
+void OneTimeContainerSetup(const Datapath& datapath, uint32_t pid) {
   static bool done = false;
   if (done)
     return;
@@ -113,44 +125,9 @@ void OneTimeContainerSetup(const Datapath& datapath) {
   }
 
   // This is only needed for CTS (b/27932574).
-  if (runner.chown("655360", "655360", "/sys/class/xt_idletimer") != 0) {
-    LOG(ERROR) << "Failed to change ownership of xt_idletimer.";
-  }
+  SetSysfsOwnerToAndroidRoot(pid, "xt_idletimer");
 
   done = true;
-}
-
-// Makes Android root(the owner of the mtu sysfs file for device |ifname|.
-void SetContainerSysfsMtuOwner(uint32_t pid,
-                               const std::string& ifname,
-                               const std::string& basename) {
-  const std::string current_mnt_ns = "/proc/self/ns/mnt";
-  const std::string target_mnt_ns = "/proc/" + std::to_string(pid) + "/ns/mnt";
-  const std::string sysfs_mtu_path =
-      "/sys/class/net/" + ifname + "/" + basename;
-
-  base::ScopedFD current_ns_fd(open(current_mnt_ns.c_str(), O_RDONLY));
-  if (!current_ns_fd.is_valid()) {
-    PLOG(ERROR) << " Could not open " << current_mnt_ns;
-    return;
-  }
-
-  base::ScopedFD target_ns_fd(open(target_mnt_ns.c_str(), O_RDONLY));
-  if (!target_ns_fd.is_valid()) {
-    PLOG(ERROR) << " Could not open " << target_mnt_ns;
-    return;
-  }
-
-  if (setns(target_ns_fd.get(), CLONE_NEWNS) == -1) {
-    PLOG(ERROR) << "Could not enter " << target_mnt_ns;
-    return;
-  }
-
-  if (chown(sysfs_mtu_path.c_str(), kAndroidRootUid, kAndroidRootUid) == -1)
-    LOG(ERROR) << "Failed to change ownership of " + sysfs_mtu_path;
-
-  if (setns(current_ns_fd.get(), CLONE_NEWNS) == -1)
-    PLOG(ERROR) << "Could not re-enter " << current_mnt_ns;
 }
 
 ArcService::InterfaceType InterfaceTypeFor(const std::string& ifname) {
@@ -367,7 +344,7 @@ bool ArcService::Start(uint32_t id) {
     }
     arc_device_ifname = arc_device_->config().tap_ifname();
   } else {
-    OneTimeContainerSetup(*datapath_);
+    OneTimeContainerSetup(*datapath_, id);
     if (!datapath_->NetnsAttachName(kArcNetnsName, id)) {
       LOG(ERROR) << "Failed to attach name " << kArcNetnsName << " to pid "
                  << id;
@@ -384,7 +361,8 @@ bool ArcService::Start(uint32_t id) {
       return false;
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
-    SetContainerSysfsMtuOwner(id, arc_device_->guest_ifname(), "mtu");
+    SetSysfsOwnerToAndroidRoot(id,
+                               "net/" + arc_device_->guest_ifname() + "/mtu");
   }
   id_ = id;
 
@@ -529,7 +507,7 @@ void ArcService::AddDevice(const std::string& ifname) {
       return;
     }
     // Allow netd to write to /sys/class/net/<guest_ifname>/mtu (b/169936104).
-    SetContainerSysfsMtuOwner(id_, device->guest_ifname(), "mtu");
+    SetSysfsOwnerToAndroidRoot(id_, "net/" + device->guest_ifname() + "/mtu");
   }
 
   if (!datapath_->AddToBridge(device->host_ifname(), virtual_device_ifname)) {

@@ -80,18 +80,6 @@ TEST_F(MinijailProcessRunnerTest, sysctl_w) {
   runner_.sysctl_w("a.b.c", "1");
 }
 
-TEST_F(MinijailProcessRunnerTest, chown) {
-  uint64_t caps = CAP_TO_MASK(CAP_CHOWN);
-
-  const std::vector<std::string> args = {"12345:23456", "foo"};
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunPipesAndDestroy(_, IsProcessArgs("/bin/chown", args), _,
-                                      _, _, _));
-  runner_.chown("12345", "23456", "foo");
-}
-
 TEST_F(MinijailProcessRunnerTest, brctl) {
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   const std::vector<std::string> args = {"cmd", "arg", "arg"};

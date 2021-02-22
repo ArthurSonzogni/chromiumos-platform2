@@ -859,7 +859,7 @@ std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
     return dbus_response;
   }
   {
-    ScopedNS ns(pid);
+    ScopedNS ns(pid, ScopedNS::Type::Network);
     if (!ns.IsValid()) {
       LOG(ERROR) << "ConnectNamespaceRequest: invalid namespace pid " << pid;
       writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());

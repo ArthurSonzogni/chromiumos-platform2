@@ -46,12 +46,6 @@ class MinijailedProcessRunner {
                     const std::vector<std::string>& argv,
                     bool log_failures = true);
 
-  // Runs chown to update file ownership.
-  virtual int chown(const std::string& uid,
-                    const std::string& gid,
-                    const std::string& file,
-                    bool log_failures = true);
-
   // Runs ip.
   virtual int ip(const std::string& obj,
                  const std::string& cmd,

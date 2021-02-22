@@ -23,7 +23,6 @@ namespace {
 
 constexpr char kUnprivilegedUser[] = "nobody";
 constexpr char kNetworkUnprivilegedUser[] = "patchpaneld";
-constexpr char kChownCapMask = CAP_TO_MASK(CAP_CHOWN);
 constexpr uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
 constexpr uint64_t kNetRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr uint64_t kNetRawAdminCapMask =
@@ -31,7 +30,6 @@ constexpr uint64_t kNetRawAdminCapMask =
 
 // These match what is used in iptables.cc in firewalld.
 constexpr char kBrctlPath[] = "/sbin/brctl";
-constexpr char kChownPath[] = "/bin/chown";
 constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
 constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
@@ -156,17 +154,6 @@ int MinijailedProcessRunner::brctl(const std::string& cmd,
   std::vector<std::string> args = {kBrctlPath, cmd};
   args.insert(args.end(), argv.begin(), argv.end());
   return Run(args, log_failures);
-}
-
-int MinijailedProcessRunner::chown(const std::string& uid,
-                                   const std::string& gid,
-                                   const std::string& file,
-                                   bool log_failures) {
-  minijail* jail = mj_->New();
-  CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
-  mj_->UseCapabilities(jail, kChownCapMask);
-  std::vector<std::string> args = {kChownPath, uid + ":" + gid, file};
-  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
 int MinijailedProcessRunner::ip(const std::string& obj,

@@ -487,7 +487,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
 
   // Configure the remote veth in namespace |netns_name|.
   {
-    ScopedNS ns(netns_pid);
+    ScopedNS ns(netns_pid, ScopedNS::Type::Network);
     if (!ns.IsValid() && netns_pid != kTestPID) {
       LOG(ERROR)
           << "Cannot create virtual link -- invalid container namespace?";
@@ -604,7 +604,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   {
-    ScopedNS ns(nsinfo.pid);
+    ScopedNS ns(nsinfo.pid, ScopedNS::Type::Network);
     if (!ns.IsValid() && nsinfo.pid != kTestPID) {
       LOG(ERROR) << "Invalid namespace pid " << nsinfo.pid;
       RemoveInterface(nsinfo.host_ifname);

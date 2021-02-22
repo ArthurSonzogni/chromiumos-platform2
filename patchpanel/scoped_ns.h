@@ -10,19 +10,26 @@
 
 namespace patchpanel {
 
-// Utility class for running code blocks within the network namespace.
+// Utility class for running code blocks within a network namespace or a mount
+// namespace.
 class ScopedNS {
  public:
-  explicit ScopedNS(pid_t pid);
+  enum Type {
+    Network = 1,
+    Mount,
+  };
+
+  explicit ScopedNS(pid_t pid, Type type);
   ScopedNS(const ScopedNS&) = delete;
   ScopedNS& operator=(const ScopedNS&) = delete;
 
   ~ScopedNS();
 
-  // Returns whether or not the object was able to enter the network namespace.
+  // Returns whether or not the object was able to enter the target namespace.
   bool IsValid() const { return valid_; }
 
  private:
+  int nstype_;
   bool valid_;
   base::ScopedFD ns_fd_;
   base::ScopedFD self_fd_;
