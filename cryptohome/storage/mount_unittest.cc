@@ -514,6 +514,20 @@ TEST_P(MountTest, BadInitTest) {
   EXPECT_FALSE(mount_->Init());
 }
 
+TEST_P(MountTest, NamespaceCreationPass) {
+  mount_->set_mount_guest_session_non_root_namespace(true);
+  brillo::ProcessMock* mock_process = platform_.mock_process();
+  EXPECT_CALL(*mock_process, Run()).WillOnce(Return(0));
+  EXPECT_TRUE(mount_->Init());
+}
+
+TEST_P(MountTest, NamespaceCreationFail) {
+  mount_->set_mount_guest_session_non_root_namespace(true);
+  brillo::ProcessMock* mock_process = platform_.mock_process();
+  EXPECT_CALL(*mock_process, Run()).WillOnce(Return(1));
+  EXPECT_FALSE(mount_->Init());
+}
+
 TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   // Check that Mount only works if the mount permission is given.
   InsertTestUsers(&kDefaultUsers[10], 1);
