@@ -5,6 +5,7 @@
 #include "patchpanel/datapath.h"
 
 #include <linux/if_tun.h>
+#include <linux/sockios.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 
@@ -35,6 +36,7 @@ constexpr pid_t kTestPID = -2;
 
 std::vector<ioctl_req_t> ioctl_reqs;
 std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;
+std::vector<std::pair<std::string, struct ifreq>> ioctl_ifreq_args;
 
 // Capture all ioctls and succeed.
 int ioctl_req_cap(int fd, ioctl_req_t req, ...) {
@@ -56,6 +58,24 @@ int ioctl_rtentry_cap(int fd, ioctl_req_t req, struct rtentry* arg) {
   return 0;
 }
 
+// Capture ifreq ioctls operations and succeed.
+int ioctl_ifreq_cap(int fd, ioctl_req_t req, void* arg) {
+  ioctl_reqs.push_back(req);
+  switch (req) {
+    case SIOCBRADDBR:
+    case SIOCBRDELBR: {
+      ioctl_ifreq_args.push_back({std::string(static_cast<char*>(arg)), {}});
+      break;
+    }
+    case SIOCBRADDIF: {
+      struct ifreq* ifr = static_cast<struct ifreq*>(arg);
+      ioctl_ifreq_args.push_back({std::string(ifr->ifr_name), *ifr});
+      break;
+    }
+  }
+  return 0;
+}
+
 std::vector<std::string> SplitCommand(const std::string& command) {
   return base::SplitString(command, " ",
                            base::WhitespaceHandling::TRIM_WHITESPACE,
@@ -73,10 +93,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MockProcessRunner() = default;
   ~MockProcessRunner() = default;
 
-  MOCK_METHOD3(brctl,
-               int(const std::string& cmd,
-                   const std::vector<std::string>& argv,
-                   bool log_failures));
   MOCK_METHOD4(ip,
                int(const std::string& obj,
                    const std::string& cmd,
@@ -108,13 +124,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MOCK_METHOD2(ip_netns_delete,
                int(const std::string& netns_name, bool log_failures));
 };
-
-void Verify_brctl(MockProcessRunner& runner, const std::string& command) {
-  auto args = SplitCommand(command);
-  const auto action = args[0];
-  args.erase(args.begin());
-  EXPECT_CALL(runner, brctl(StrEq(action), ElementsAreArray(args), _));
-}
 
 void Verify_ip(MockProcessRunner& runner, const std::string& command) {
   auto args = SplitCommand(command);
@@ -450,13 +459,53 @@ TEST(DatapathTest, NetnsDeleteName) {
 TEST(DatapathTest, AddBridge) {
   MockProcessRunner runner;
   MockFirewall firewall;
-  Datapath datapath(&runner, &firewall);
-  Verify_brctl(runner, "addbr br");
   Verify_ip(runner, "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
   Verify_ip(runner, "link set br up");
   Verify_iptables(runner, IPv4,
                   "mangle -A PREROUTING -i br -j MARK --set-mark 1/1 -w");
+
+  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
   datapath.AddBridge("br", Ipv4Addr(1, 1, 1, 1), 30);
+
+  EXPECT_EQ(1, ioctl_reqs.size());
+  EXPECT_EQ(SIOCBRADDBR, ioctl_reqs[0]);
+  EXPECT_EQ("br", ioctl_ifreq_args[0].first);
+  ioctl_reqs.clear();
+  ioctl_ifreq_args.clear();
+}
+
+TEST(DatapathTest, RemoveBridge) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+  Verify_iptables(runner, IPv4,
+                  "mangle -D PREROUTING -i br -j MARK --set-mark 1/1 -w");
+  Verify_ip(runner, "link set br down");
+
+  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
+  datapath.RemoveBridge("br");
+
+  EXPECT_EQ(1, ioctl_reqs.size());
+  EXPECT_EQ(SIOCBRDELBR, ioctl_reqs[0]);
+  EXPECT_EQ("br", ioctl_ifreq_args[0].first);
+  ioctl_reqs.clear();
+  ioctl_ifreq_args.clear();
+}
+
+TEST(DatapathTest, AddToBridge) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
+  datapath.SetIfnameIndex("vethwlan0", 5);
+  datapath.AddToBridge("arcbr0", "vethwlan0");
+
+  EXPECT_EQ(1, ioctl_reqs.size());
+  EXPECT_EQ(SIOCBRADDIF, ioctl_reqs[0]);
+  EXPECT_EQ("arcbr0", ioctl_ifreq_args[0].first);
+  EXPECT_EQ(5, ioctl_ifreq_args[0].second.ifr_ifindex);
+
+  ioctl_reqs.clear();
+  ioctl_ifreq_args.clear();
 }
 
 TEST(DatapathTest, ConnectVethPair) {
@@ -513,17 +562,6 @@ TEST(DatapathTest, RemoveInterface) {
   Verify_ip(runner, "link delete foo");
   Datapath datapath(&runner, &firewall);
   datapath.RemoveInterface("foo");
-}
-
-TEST(DatapathTest, RemoveBridge) {
-  MockProcessRunner runner;
-  MockFirewall firewall;
-  Verify_iptables(runner, IPv4,
-                  "mangle -D PREROUTING -i br -j MARK --set-mark 1/1 -w");
-  Verify_ip(runner, "link set br down");
-  Verify_brctl(runner, "delbr br");
-  Datapath datapath(&runner, &firewall);
-  datapath.RemoveBridge("br");
 }
 
 TEST(DatapathTest, AddRemoveSourceIPv4DropRule) {

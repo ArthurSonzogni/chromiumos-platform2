@@ -29,7 +29,6 @@ constexpr uint64_t kNetRawAdminCapMask =
     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
 
 // These match what is used in iptables.cc in firewalld.
-constexpr char kBrctlPath[] = "/sbin/brctl";
 constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
 constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
@@ -146,14 +145,6 @@ int MinijailedProcessRunner::Run(const std::vector<std::string>& argv,
   CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
   return RunSyncDestroy(argv, mj_, jail, log_failures, nullptr);
-}
-
-int MinijailedProcessRunner::brctl(const std::string& cmd,
-                                   const std::vector<std::string>& argv,
-                                   bool log_failures) {
-  std::vector<std::string> args = {kBrctlPath, cmd};
-  args.insert(args.end(), argv.begin(), argv.end());
-  return Run(args, log_failures);
 }
 
 int MinijailedProcessRunner::ip(const std::string& obj,

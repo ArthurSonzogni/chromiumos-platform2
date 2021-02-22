@@ -66,6 +66,19 @@ std::string PrefixIfname(const std::string& prefix, const std::string& ifname) {
   return n;
 }
 
+bool Ioctl(ioctl_t ioctl_h, unsigned long req, const char* arg) {
+  base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!control_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create control socket for ioctl request=" << req;
+    return false;
+  }
+  if ((*ioctl_h)(control_fd.get(), req, arg) != 0) {
+    PLOG(ERROR) << "ioctl request=" << req << " failed";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 std::string ArcVethHostName(const std::string& ifname) {
@@ -322,11 +335,12 @@ bool Datapath::NetnsDeleteName(const std::string& netns_name) {
 bool Datapath::AddBridge(const std::string& ifname,
                          uint32_t ipv4_addr,
                          uint32_t ipv4_prefix_len) {
-  // Configure the persistent Chrome OS bridge interface with static IP.
-  if (process_runner_->brctl("addbr", {ifname}) != 0) {
+  if (!Ioctl(ioctl_, SIOCBRADDBR, ifname.c_str())) {
+    LOG(ERROR) << "Failed to create bridge " << ifname;
     return false;
   }
 
+  // Configure the persistent Chrome OS bridge interface with static IP.
   if (process_runner_->ip(
           "addr", "add",
           {IPv4AddressToCidrString(ipv4_addr, ipv4_prefix_len), "brd",
@@ -353,12 +367,23 @@ bool Datapath::AddBridge(const std::string& ifname,
 void Datapath::RemoveBridge(const std::string& ifname) {
   RemoveOutboundIPv4SNATMark(ifname);
   process_runner_->ip("link", "set", {ifname, "down"});
-  process_runner_->brctl("delbr", {ifname});
+  if (!Ioctl(ioctl_, SIOCBRDELBR, ifname.c_str()))
+    LOG(ERROR) << "Failed to destroy bridge " << ifname;
 }
 
 bool Datapath::AddToBridge(const std::string& br_ifname,
                            const std::string& ifname) {
-  return (process_runner_->brctl("addif", {br_ifname, ifname}) == 0);
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, br_ifname.c_str(), sizeof(ifr.ifr_name));
+  ifr.ifr_ifindex = FindIfIndex(ifname);
+
+  if (!Ioctl(ioctl_, SIOCBRADDIF, reinterpret_cast<const char*>(&ifr))) {
+    LOG(ERROR) << "Failed to add " << ifname << " to bridge " << br_ifname;
+    return false;
+  }
+
+  return true;
 }
 
 std::string Datapath::AddTAP(const std::string& name,

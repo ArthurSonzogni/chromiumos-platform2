@@ -41,11 +41,6 @@ class MinijailedProcessRunner {
 
   virtual ~MinijailedProcessRunner() = default;
 
-  // Runs brctl.
-  virtual int brctl(const std::string& cmd,
-                    const std::vector<std::string>& argv,
-                    bool log_failures = true);
-
   // Runs ip.
   virtual int ip(const std::string& obj,
                  const std::string& cmd,
