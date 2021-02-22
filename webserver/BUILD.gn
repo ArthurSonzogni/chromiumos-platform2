@@ -56,7 +56,6 @@ generate_dbus_proxies("generate_webservd_proxies") {
 }
 
 static_library("libwebserv_common") {
-  configs += [ ":target_defaults" ]
   sources = [
     "libwebserv/dbus_protocol_handler.cc",
     "libwebserv/dbus_response.cc",
@@ -68,10 +67,7 @@ static_library("libwebserv_common") {
     "libwebserv/response.cc",
     "libwebserv/server.cc",
   ]
-  deps = [
-    ":generate_webservd_adaptors",
-    ":generate_webservd_proxies",
-  ]
+  configs += [ ":target_defaults" ]
 
   # This static library is used in libwebserv shared library, which means
   # we must generate position-independent code for the files comprising
@@ -81,6 +77,10 @@ static_library("libwebserv_common") {
   # in //common-mk/BUILDCONFIG.gn) with -fPIC.
   configs -= [ "//common-mk:pie" ]
   configs += [ "//common-mk:pic" ]
+  deps = [
+    ":generate_webservd_adaptors",
+    ":generate_webservd_proxies",
+  ]
 }
 
 pkg_config("webservd_common_config") {
@@ -112,14 +112,6 @@ generate_dbus_proxies("generate_libwebserv_proxies") {
 }
 
 static_library("webservd_common") {
-  configs += [ ":target_defaults" ]
-  all_dependent_configs = [ ":webservd_common_config" ]
-
-  deps = [
-    ":generate_libwebserv_adaptors",
-    ":generate_libwebserv_proxies",
-  ]
-
   sources = [
     "webservd/config.cc",
     "webservd/dbus_protocol_handler.cc",
@@ -133,6 +125,12 @@ static_library("webservd_common") {
     "webservd/server.cc",
     "webservd/temp_file_manager.cc",
     "webservd/utils.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":webservd_common_config" ]
+  deps = [
+    ":generate_libwebserv_adaptors",
+    ":generate_libwebserv_proxies",
   ]
 }
 
@@ -154,11 +152,11 @@ pkg_config("webservd_config") {
 }
 
 executable("webservd") {
+  sources = [ "webservd/main.cc" ]
   configs += [
     ":target_defaults",
     ":webservd_config",
   ]
-  sources = [ "webservd/main.cc" ]
   deps = [ ":webservd_common" ]
 }
 
@@ -175,13 +173,13 @@ if (use.test) {
   }
 
   executable("webservd_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "webservd/config_test.cc",
       "webservd/log_manager_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":webservd_common",
