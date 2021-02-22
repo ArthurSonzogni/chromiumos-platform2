@@ -3034,7 +3034,7 @@ bool UserDataAuth::StartAuthSession(
     return false;
   }
   reply.set_auth_session_id(serialized_string.value());
-
+  reply.set_user_exists(auth_session->user_exists());
   auth_sessions_[auth_session->token()] = std::move(auth_session);
   std::move(on_done).Run(reply);
 

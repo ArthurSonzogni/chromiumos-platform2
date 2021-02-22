@@ -523,6 +523,8 @@ message StartAuthSessionReply {
   CryptohomeErrorCode error = 1;
   // Token that would be used to conduct any auth-related operation.
   bytes auth_session_id = 2;
+  // True if the user that the Auth Session is created for exists or not.
+  bool user_exists = 3;
 }
 
 message AuthenticateAuthSessionRequest {

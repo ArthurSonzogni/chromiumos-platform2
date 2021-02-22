@@ -57,6 +57,9 @@ class AuthSession final {
   // This function return the current status of this AuthSession.
   AuthStatus GetStatus() const { return status_; }
 
+  // This function return if the user that AuthSession was created with exists.
+  bool user_exists() const { return user_exists_; }
+
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
   // steps involved in multi-factor authentication.
@@ -99,6 +102,8 @@ class AuthSession final {
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
   KeysetManagement* keyset_management_;
+
+  bool user_exists_;
 
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);

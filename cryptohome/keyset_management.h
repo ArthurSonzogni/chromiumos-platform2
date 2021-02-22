@@ -75,6 +75,9 @@ class KeysetManagement {
   virtual std::unique_ptr<VaultKeyset> LoadUnwrappedKeyset(
       const Credentials& credentials, MountError* error);
 
+  // Checks if the directory containing user keys exists.
+  virtual bool UserExists(const std::string& obfuscated_username);
+
   // Adds initial keyset for the credentials.
   virtual bool AddInitialKeyset(const Credentials& credentials);
 

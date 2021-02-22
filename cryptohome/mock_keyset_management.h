@@ -63,6 +63,7 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(bool, ForceRemoveKeyset, (const std::string&, int), (override));
   MOCK_METHOD(bool, MoveKeyset, (const std::string&, int, int), (override));
   MOCK_METHOD(void, RemoveLECredentials, (const std::string&), (override));
+  MOCK_METHOD(bool, UserExists, (const std::string&), (override));
 };
 
 }  // namespace cryptohome

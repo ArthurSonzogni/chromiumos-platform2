@@ -7,9 +7,13 @@
 #include <string>
 #include <utility>
 
+#include <brillo/cryptohome.h>
+
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/vault_keyset.h"
+
+using brillo::cryptohome::home::SanitizeUserName;
 
 namespace cryptohome {
 
@@ -36,6 +40,7 @@ AuthSession::AuthSession(
   timer_.Start(
       FROM_HERE, kAuthSessionTimeoutInMinutes,
       base::Bind(&AuthSession::AuthSessionTimedOut, base::Unretained(this)));
+  user_exists_ = keyset_management_->UserExists(SanitizeUserName(username_));
 }
 
 AuthSession::~AuthSession() = default;

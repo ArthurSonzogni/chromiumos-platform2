@@ -779,4 +779,9 @@ void KeysetManagement::RemoveLECredentials(
   }
 }
 
+bool KeysetManagement::UserExists(const std::string& obfuscated_username) {
+  base::FilePath user_dir = ShadowRoot().Append(obfuscated_username);
+  return platform_->DirectoryExists(user_dir);
+}
+
 }  // namespace cryptohome
