@@ -16,8 +16,5 @@ if [ -O $LOCKBOX_NVRAM_FILE ]; then
                 --lockbox=$INSTALL_ATTRS_FILE
   # There are no other consumers; remove the nvram data
   rm $LOCKBOX_NVRAM_FILE
-# For VMs and legacy firmware devices, pretend like lockbox is supported.
-elif crossystem "mainfw_type?nonchrome"; then
-  cp $INSTALL_ATTRS_FILE $INSTALL_ATTRS_CACHE
 fi
 bootstat lockbox-cache-end
