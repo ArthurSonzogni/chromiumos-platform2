@@ -20,6 +20,22 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrictMock;
 
+SecretStatus ToSecretStatus(int flags) {
+  const SecretStatus status = {
+      .has_owner_password =
+          static_cast<bool>(flags & kSecretStatusHasOwnerPassword),
+      .has_endorsement_password =
+          static_cast<bool>(flags & kSecretStatusHasEndorsementPassword),
+      .has_lockout_password =
+          static_cast<bool>(flags & kSecretStatusHasLockoutPassword),
+      .has_owner_delegate =
+          static_cast<bool>(flags & kSecretStatusHasOwnerDelegate),
+      .has_reset_lock_permissions =
+          static_cast<bool>(flags & kSecretStatusHasResetLockPermissions),
+  };
+  return status;
+}
+
 }  // namespace
 
 class TpmManagerMetricsTest : public ::testing::Test {
@@ -60,6 +76,19 @@ TEST_F(TpmManagerMetricsTest, ReportDictionaryAttackCounter) {
               SendEnumToUMA(kDictionaryAttackCounterHistogram, 10, _))
       .WillOnce(Return(true));
   tpm_manager_metrics_.ReportDictionaryAttackCounter(10);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportSecretStatus) {
+  for (int i = 0; i < (1 << 5); ++i) {
+    int expected_entry = i;
+    if (USE_TPM2) {
+      expected_entry |= kSecretStatusIsTpm2;
+    }
+    EXPECT_CALL(mock_metrics_library_,
+                SendEnumToUMA(kSecretStatusHitogram, expected_entry, _))
+        .WillOnce(Return(true));
+    tpm_manager_metrics_.ReportSecretStatus(ToSecretStatus(i));
+  }
 }
 
 }  // namespace tpm_manager

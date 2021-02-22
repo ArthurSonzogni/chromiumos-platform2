@@ -20,6 +20,7 @@
 #include "tpm_manager/server/mock_tpm_manager_metrics.h"
 #include "tpm_manager/server/mock_tpm_nvram.h"
 #include "tpm_manager/server/mock_tpm_status.h"
+#include "tpm_manager/server/tpm_manager_metrics_names.h"
 #include "tpm_manager/server/tpm_manager_service.h"
 
 using testing::_;
@@ -33,7 +34,6 @@ using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
-using testing::StrictMock;
 using testing::WithoutArgs;
 
 namespace {
@@ -100,7 +100,7 @@ class TpmManagerServiceTestBase : public testing::Test {
   NiceMock<MockTpmInitializer> mock_tpm_initializer_;
   NiceMock<MockTpmNvram> mock_tpm_nvram_;
   NiceMock<MockTpmStatus> mock_tpm_status_;
-  StrictMock<MockTpmManagerMetrics> mock_tpm_manager_metrics_;
+  NiceMock<MockTpmManagerMetrics> mock_tpm_manager_metrics_;
   std::unique_ptr<TpmManagerService> service_;
 
  private:
@@ -1194,6 +1194,121 @@ TEST_F(TpmManagerServiceTest_Preinit, RetryGetTpmStatusUntilSuccess) {
   service_->GetTpmStatus(request,
                          base::BindLambdaForTesting(callback_first_fail));
   Run();
+}
+
+namespace {
+
+bool operator==(const SecretStatus& lhs, const SecretStatus& rhs) {
+  return lhs.has_owner_password == rhs.has_owner_password &&
+         lhs.has_endorsement_password == rhs.has_endorsement_password &&
+         lhs.has_lockout_password == rhs.has_lockout_password &&
+         lhs.has_owner_delegate == rhs.has_owner_delegate &&
+         lhs.has_reset_lock_permissions == rhs.has_reset_lock_permissions;
+}
+
+}  // namespace
+
+class TpmManagerServiceTest_SecretStatus
+    : public TpmManagerServiceTest_Preinit {};
+
+TEST_F(TpmManagerServiceTest_SecretStatus, OwnerPassword) {
+  LocalData local_data;
+  local_data.set_owner_password(kOwnerPassword);
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
+  const SecretStatus expected_status = {
+      .has_owner_password = true,
+  };
+  SecretStatus result_status;
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportSecretStatus(_))
+      .WillOnce(SaveArg<0>(&result_status));
+
+  SetupService();
+  RunServiceWorkerAndQuit();
+
+  EXPECT_TRUE(expected_status == result_status);
+}
+
+TEST_F(TpmManagerServiceTest_SecretStatus, EndorsementPassword) {
+  LocalData local_data;
+  local_data.set_endorsement_password("endorsement");
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
+  const SecretStatus expected_status = {
+      .has_endorsement_password = true,
+  };
+  SecretStatus result_status;
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportSecretStatus(_))
+      .WillOnce(SaveArg<0>(&result_status));
+
+  SetupService();
+  RunServiceWorkerAndQuit();
+
+  EXPECT_TRUE(expected_status == result_status);
+}
+
+TEST_F(TpmManagerServiceTest_SecretStatus, LockoutPassword) {
+  LocalData local_data;
+  local_data.set_lockout_password("lockout");
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
+  const SecretStatus expected_status = {
+      .has_lockout_password = true,
+      .has_reset_lock_permissions = true,
+  };
+  SecretStatus result_status;
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportSecretStatus(_))
+      .WillOnce(SaveArg<0>(&result_status));
+
+  SetupService();
+  RunServiceWorkerAndQuit();
+
+  EXPECT_TRUE(expected_status == result_status);
+}
+
+TEST_F(TpmManagerServiceTest_SecretStatus, OwnerDelegate) {
+  LocalData local_data;
+  local_data.mutable_owner_delegate()->set_secret("secret");
+  local_data.mutable_owner_delegate()->set_blob("blob");
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
+  const SecretStatus expected_status = {
+      .has_owner_delegate = true,
+  };
+  SecretStatus result_status;
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportSecretStatus(_))
+      .WillOnce(SaveArg<0>(&result_status));
+
+  SetupService();
+  RunServiceWorkerAndQuit();
+
+  EXPECT_TRUE(expected_status == result_status);
+}
+
+TEST_F(TpmManagerServiceTest_SecretStatus, OwnerDelegateCanResetDA) {
+  LocalData local_data;
+  local_data.mutable_owner_delegate()->set_secret("secret");
+  local_data.mutable_owner_delegate()->set_blob("blob");
+  local_data.mutable_owner_delegate()->set_has_reset_lock_permissions(true);
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
+  const SecretStatus expected_status = {
+      .has_owner_delegate = true,
+      .has_reset_lock_permissions = true,
+  };
+  SecretStatus result_status;
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportSecretStatus(_))
+      .WillOnce(SaveArg<0>(&result_status));
+
+  SetupService();
+  RunServiceWorkerAndQuit();
+
+  EXPECT_TRUE(expected_status == result_status);
 }
 
 }  // namespace tpm_manager

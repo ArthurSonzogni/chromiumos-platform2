@@ -181,6 +181,8 @@ class TpmManagerService : public TpmNvramInterface,
   // effect.
   void InitializeTask(const std::shared_ptr<GetTpmStatusReply>& result);
 
+  void ReportSecretStatus(const LocalData& local_data);
+
   // Updating TPM status cache and calling all pending GetTpmStatus callback.
   void UpdateTpmStatusCallback(const GetTpmStatusReply& reply);
 

@@ -11,6 +11,14 @@
 
 namespace tpm_manager {
 
+struct SecretStatus {
+  bool has_owner_password = false;
+  bool has_endorsement_password = false;
+  bool has_lockout_password = false;
+  bool has_owner_delegate = false;
+  bool has_reset_lock_permissions = false;
+};
+
 // This class provides wrapping functions for callers to report DA-related
 // metrics without bothering to know all the constant declarations.
 class TpmManagerMetrics : private MetricsLibrary {
@@ -25,6 +33,8 @@ class TpmManagerMetrics : private MetricsLibrary {
       DictionaryAttackResetStatus status);
 
   virtual void ReportDictionaryAttackCounter(int counter);
+
+  virtual void ReportSecretStatus(const SecretStatus& status);
 
   // Reports the TPM version fingerprint to the
   // "Platform.TPM.VersionFingerprint" histogram.

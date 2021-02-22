@@ -254,6 +254,7 @@ void TpmManagerService::InitializeTask(
     }
     LocalData local_data;
     if (local_data_store_ && local_data_store_->Read(&local_data)) {
+      ReportSecretStatus(local_data);
       *(reply->mutable_local_data()) = std::move(local_data);
     }
     reply->set_status(STATUS_SUCCESS);
@@ -287,6 +288,20 @@ void TpmManagerService::InitializeTask(
   if (reply->owned()) {
     NotifyTpmIsOwned();
   }
+}
+
+void TpmManagerService::ReportSecretStatus(const LocalData& local_data) {
+  SecretStatus status = {
+      .has_owner_password = !local_data.owner_password().empty(),
+      .has_endorsement_password = !local_data.endorsement_password().empty(),
+      .has_lockout_password = !local_data.lockout_password().empty(),
+      .has_owner_delegate = !local_data.owner_delegate().secret().empty() &&
+                            !local_data.owner_delegate().blob().empty(),
+      .has_reset_lock_permissions =
+          !local_data.lockout_password().empty() ||
+          local_data.owner_delegate().has_reset_lock_permissions(),
+  };
+  tpm_manager_metrics_->ReportSecretStatus(status);
 }
 
 void TpmManagerService::NotifyTpmIsOwned() {
