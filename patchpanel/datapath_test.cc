@@ -76,10 +76,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
                    const std::vector<std::string>& argv,
                    bool log_failures,
                    std::string* output));
-  MOCK_METHOD3(sysctl_w,
-               int(const std::string& key,
-                   const std::string& value,
-                   bool log_failures));
   MOCK_METHOD2(ip_netns_add,
                int(const std::string& netns_name, bool log_failures));
   MOCK_METHOD3(ip_netns_attach,
@@ -174,6 +170,11 @@ class FakeSystem : public System {
     return 0;
   }
 
+  MOCK_METHOD3(SysNetSet,
+               bool(SysNet target,
+                    const std::string& content,
+                    const std::string& iface));
+
   std::vector<ioctl_req_t> ioctl_reqs;
   std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;
   std::vector<std::pair<std::string, struct ifreq>> ioctl_ifreq_args;
@@ -219,12 +220,6 @@ void Verify_iptables(MockProcessRunner& runner,
         .Times(call_count);
 }
 
-void Verify_sysctl_w(MockProcessRunner& runner,
-                     const std::string& key,
-                     const std::string& value) {
-  EXPECT_CALL(runner, sysctl_w(StrEq(key), StrEq(value), _));
-}
-
 void Verify_ip_netns_add(MockProcessRunner& runner,
                          const std::string& netns_name) {
   EXPECT_CALL(runner, ip_netns_add(StrEq(netns_name), _));
@@ -258,9 +253,10 @@ TEST(DatapathTest, Start) {
   auto system = new FakeSystem();
 
   // Asserts for sysctl modifications
-  Verify_sysctl_w(*runner, "net.ipv4.ip_forward", "1");
-  Verify_sysctl_w(*runner, "net.ipv4.ip_local_port_range", "32768 47103");
-  Verify_sysctl_w(*runner, "net.ipv6.conf.all.forwarding", "1");
+  EXPECT_CALL(*system, SysNetSet(System::SysNet::IPv4Forward, "1", ""));
+  EXPECT_CALL(*system,
+              SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103", ""));
+  EXPECT_CALL(*system, SysNetSet(System::SysNet::IPv6Forward, "1", ""));
 
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       // Asserts for iptables chain reset.
@@ -446,9 +442,10 @@ TEST(DatapathTest, Stop) {
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
   // Asserts for sysctl modifications
-  Verify_sysctl_w(*runner, "net.ipv4.ip_local_port_range", "32768 61000");
-  Verify_sysctl_w(*runner, "net.ipv6.conf.all.forwarding", "0");
-  Verify_sysctl_w(*runner, "net.ipv4.ip_forward", "0");
+  EXPECT_CALL(*system, SysNetSet(System::SysNet::IPv4Forward, "0", ""));
+  EXPECT_CALL(*system,
+              SysNetSet(System::SysNet::IPLocalPortRange, "32768 61000", ""));
+  EXPECT_CALL(*system, SysNetSet(System::SysNet::IPv6Forward, "0", ""));
   // Asserts for iptables chain reset.
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
@@ -1359,8 +1356,8 @@ TEST(DatapathTest, SetConntrackHelpers) {
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
 
-  Verify_sysctl_w(*runner, "net.netfilter.nf_conntrack_helper", "1");
-  Verify_sysctl_w(*runner, "net.netfilter.nf_conntrack_helper", "0");
+  EXPECT_CALL(*system, SysNetSet(System::SysNet::ConntrackHelper, "1", ""));
+  EXPECT_CALL(*system, SysNetSet(System::SysNet::ConntrackHelper, "0", ""));
 
   Datapath datapath(runner, firewall, system);
   datapath.SetConntrackHelpers(true);
@@ -1582,8 +1579,10 @@ TEST(DatapathTest, SetRouteLocalnet) {
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
 
-  Verify_sysctl_w(*runner, "net.ipv4.conf.eth0.route_localnet", "1");
-  Verify_sysctl_w(*runner, "net.ipv4.conf.wlan0.route_localnet", "0");
+  EXPECT_CALL(*system,
+              SysNetSet(System::SysNet::IPv4RouteLocalnet, "1", "eth0"));
+  EXPECT_CALL(*system,
+              SysNetSet(System::SysNet::IPv4RouteLocalnet, "0", "wlan0"));
 
   Datapath datapath(runner, firewall, system);
   datapath.SetRouteLocalnet("eth0", true);

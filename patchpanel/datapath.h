@@ -21,7 +21,7 @@
 #include "patchpanel/firewall.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/minijailed_process_runner.h"
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/system.h"

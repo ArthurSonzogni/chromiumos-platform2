@@ -28,7 +28,6 @@
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
@@ -118,20 +117,19 @@ void Datapath::Start() {
   ResetIptables();
 
   // Enable IPv4 packet forwarding
-  if (process_runner_->sysctl_w("net.ipv4.ip_forward", "1") != 0)
+  if (!system_->SysNetSet(System::SysNet::IPv4Forward, "1"))
     LOG(ERROR) << "Failed to update net.ipv4.ip_forward."
                << " Guest connectivity will not work correctly.";
 
   // Limit local port range: Android owns 47104-61000.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (process_runner_->sysctl_w("net.ipv4.ip_local_port_range",
-                                "32768 47103") != 0)
+  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103"))
     LOG(ERROR) << "Failed to limit local port range. Some Android features or"
                << " apps may not work correctly.";
 
   // Enable IPv6 packet forwarding
-  if (process_runner_->sysctl_w("net.ipv6.conf.all.forwarding", "1") != 0)
+  if (!system_->SysNetSet(System::SysNet::IPv6Forward, "1"))
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
                << " IPv6 functionality may be broken.";
 
@@ -333,15 +331,14 @@ void Datapath::Stop() {
   // Restore original local port range.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (process_runner_->sysctl_w("net.ipv4.ip_local_port_range",
-                                "32768 61000") != 0)
+  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 61000"))
     LOG(ERROR) << "Failed to restore local port range";
 
   // Disable packet forwarding
-  if (process_runner_->sysctl_w("net.ipv6.conf.all.forwarding", "0") != 0)
+  if (!system_->SysNetSet(System::SysNet::IPv6Forward, "0"))
     LOG(ERROR) << "Failed to restore net.ipv6.conf.all.forwarding.";
 
-  if (process_runner_->sysctl_w("net.ipv4.ip_forward", "0") != 0)
+  if (!system_->SysNetSet(System::SysNet::IPv4Forward, "0"))
     LOG(ERROR) << "Failed to restore net.ipv4.ip_forward.";
 
   ResetIptables();
@@ -1784,23 +1781,13 @@ void Datapath::DeleteAdbPortAccessRule(const std::string& ifname) {
 }
 
 bool Datapath::SetConntrackHelpers(const bool enable_helpers) {
-  if (process_runner_->sysctl_w("net.netfilter.nf_conntrack_helper",
-                                enable_helpers ? "1" : "0") != 0) {
-    LOG(ERROR) << "Failed to " << (enable_helpers ? "enable" : "disable")
-               << " netfilter conntrack helpers";
-    return false;
-  }
-  return true;
+  return system_->SysNetSet(System::SysNet::ConntrackHelper,
+                            enable_helpers ? "1" : "0");
 }
 
 bool Datapath::SetRouteLocalnet(const std::string& ifname, const bool enable) {
-  if (process_runner_->sysctl_w("net.ipv4.conf." + ifname + ".route_localnet",
-                                enable ? "1" : "0") != 0) {
-    LOG(ERROR) << "Failed to " << (enable ? "enable" : "disable")
-               << " route_localnet on " << ifname;
-    return false;
-  }
-  return true;
+  return system_->SysNetSet(System::SysNet::IPv4RouteLocalnet,
+                            enable ? "1" : "0", ifname);
 }
 
 bool Datapath::ModprobeAll(const std::vector<std::string>& modules) {

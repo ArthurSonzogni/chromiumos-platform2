@@ -137,7 +137,6 @@ BRILLO_EXPORT uint16_t Icmpv6Checksum(const ip6_hdr* ip6,
                                       const icmp6_hdr* icmp6);
 
 // Returns true if multicast forwarding should be enabled for this interface.
-// TODO(hugobenichi): Move to NetUtil, pending crosreview.com/2738499.
 BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);
 
 // Returns the IP family from the string |ip_address|. If |ip_address| is

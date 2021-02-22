@@ -72,14 +72,6 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
   runner_.modprobe_all({"module1", "module2"});
 }
 
-TEST_F(MinijailProcessRunnerTest, sysctl_w) {
-  const std::vector<std::string> args = {"-w", "a.b.c=1"};
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, RunPipesAndDestroy(
-                       _, IsProcessArgs("/usr/sbin/sysctl", args), _, _, _, _));
-  runner_.sysctl_w("a.b.c", "1");
-}
-
 TEST_F(MinijailProcessRunnerTest, ip) {
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   const std::vector<std::string> args = {"obj", "cmd", "arg", "arg"};

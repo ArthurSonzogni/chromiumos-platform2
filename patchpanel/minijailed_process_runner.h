@@ -67,11 +67,6 @@ class MinijailedProcessRunner {
   virtual int modprobe_all(const std::vector<std::string>& modules,
                            bool log_failures = true);
 
-  // Updates kernel parameter |key| to |value| using sysctl.
-  virtual int sysctl_w(const std::string& key,
-                       const std::string& value,
-                       bool log_failures = true);
-
   // Creates a new named network namespace with name |netns_name|.
   virtual int ip_netns_add(const std::string& netns_name,
                            bool log_failures = true);

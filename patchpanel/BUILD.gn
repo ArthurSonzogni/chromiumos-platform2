@@ -115,7 +115,7 @@ shared_library("libpatchpanel-util") {
 }
 
 static_library("libpatchpanel_test") {
-  sources = libpatchpanel_sources
+  sources = libpatchpanel_sources + util_sources
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [
     "protobuf",

@@ -34,7 +34,6 @@ constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
 constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
 constexpr char kModprobePath[] = "/sbin/modprobe";
-constexpr char kSysctlPath[] = "/usr/sbin/sysctl";
 
 // An empty string will be returned if read fails.
 std::string ReadBlockingFDToStringAndClose(base::ScopedFD fd) {
@@ -192,13 +191,6 @@ int MinijailedProcessRunner::modprobe_all(
   std::vector<std::string> args = {kModprobePath, "-a"};
   args.insert(args.end(), modules.begin(), modules.end());
   return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
-}
-
-int MinijailedProcessRunner::sysctl_w(const std::string& key,
-                                      const std::string& value,
-                                      bool log_failures) {
-  std::vector<std::string> args = {kSysctlPath, "-w", key + "=" + value};
-  return RunSync(args, log_failures, nullptr);
 }
 
 int MinijailedProcessRunner::ip_netns_add(const std::string& netns_name,
