@@ -3,13 +3,10 @@
 # found in the LICENSE file.
 #
 
-# provides --MARK-- message capability
-$ModLoad immark.so
-
+$ModLoad immark.so # provides --MARK-- message capability
 module(load="imuxsock"
-       SysSock.Name="/dev/log"
-       SysSock.UsePIDFromSystem="on")
-
+       SysSock.Use="on"
+       SysSock.Name="/run/systemd/journal/syslog")
 # Allow messages from upstart, which logs through /dev/klog.
 module(load="imklog"
        PermitNonKernelFacility="on")
