@@ -52,7 +52,8 @@ DBusAdaptor::DBusAdaptor()
     : DBusAdaptor(base::FilePath(kCommonSnapshotPath),
                   base::FilePath(kHomeRootDirectory),
                   cryptohome::BootLockboxClient::CreateBootLockboxClient(),
-                  "" /* system_salt */) {}
+                  "" /* system_salt */,
+                  nullptr) {}
 
 DBusAdaptor::~DBusAdaptor() = default;
 
@@ -61,17 +62,18 @@ std::unique_ptr<DBusAdaptor> DBusAdaptor::CreateForTesting(
     const base::FilePath& snapshot_directory,
     const base::FilePath& home_root_directory,
     std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-    const std::string& system_salt) {
-  return base::WrapUnique(
-      new DBusAdaptor(snapshot_directory, home_root_directory,
-                      std::move(boot_lockbox_client), system_salt));
+    const std::string& system_salt,
+    std::unique_ptr<BlockUiController> block_ui_controller) {
+  return base::WrapUnique(new DBusAdaptor(
+      snapshot_directory, home_root_directory, std::move(boot_lockbox_client),
+      system_salt, std::move(block_ui_controller)));
 }
 
 void DBusAdaptor::RegisterAsync(
     const scoped_refptr<dbus::Bus>& bus,
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
-      nullptr /* object_manager */, bus, GetObjectPath()),
+      nullptr /* object_manager */, bus, GetObjectPath());
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object" /* descriptive_message */,
@@ -79,7 +81,6 @@ void DBusAdaptor::RegisterAsync(
 }
 
 bool DBusAdaptor::GenerateKeyPair() {
-  // TODO(b/160387490): Implement showing a spinner screen.
   std::string last_public_key_digest;
   // Try to move last snapshot to previous for consistency.
   if (base::PathExists(last_snapshot_directory_) &&
@@ -120,6 +121,17 @@ bool DBusAdaptor::GenerateKeyPair() {
   }
   // Save private key for later usage.
   private_key_ = std::move(generated_private_key);
+
+  // block_ui_controller_ is pre-initialized for tests or if already present.
+  if (!block_ui_controller_) {
+    block_ui_controller_ = std::make_unique<BlockUiController>();
+  }
+
+  if (!block_ui_controller_->ShowScreen()) {
+    LOG(ERROR) << "update_arc_data_snapshot failed to be shown";
+    block_ui_controller_.reset();
+    return false;
+  }
   return true;
 }
 
@@ -268,14 +280,16 @@ DBusAdaptor::DBusAdaptor(
     const base::FilePath& snapshot_directory,
     const base::FilePath& home_root_directory,
     std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-    const std::string& system_salt)
+    const std::string& system_salt,
+    std::unique_ptr<BlockUiController> block_ui_controller)
     : org::chromium::ArcDataSnapshotdAdaptor(this),
       last_snapshot_directory_(snapshot_directory.Append(kLastSnapshotPath)),
       previous_snapshot_directory_(
           snapshot_directory.Append(kPreviousSnapshotPath)),
       home_root_directory_(home_root_directory),
       boot_lockbox_client_(std::move(boot_lockbox_client)),
-      system_salt_(system_salt) {
+      system_salt_(system_salt),
+      block_ui_controller_(std::move(block_ui_controller)) {
   DCHECK(boot_lockbox_client_);
   if (system_salt_.empty() &&
       !base::ReadFileToString(base::FilePath(kSystemSaltPath), &system_salt_)) {

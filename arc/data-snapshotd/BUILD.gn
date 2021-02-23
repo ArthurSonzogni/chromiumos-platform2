@@ -45,6 +45,7 @@ proto_library("arc-data-snapshotd-protos") {
 
 source_set("libarc-data-snapshotd") {
   sources = [
+    "block_ui_controller.cc",
     "dbus_adaptor.cc",
     "file_utils.cc",
   ]
@@ -87,7 +88,11 @@ if (use.test) {
     ]
   }
   executable("arc-data-snapshotd_test") {
-    sources = [ "dbus_adaptor_test.cc" ]
+    sources = [
+      "block_ui_controller_test.cc",
+      "dbus_adaptor_test.cc",
+      "fake_process_launcher.cc",
+    ]
     configs += [
       ":test_pkg_deps",
       "//common-mk:test",

@@ -1,0 +1,107 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <memory>
+#include <utility>
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "arc/data-snapshotd/block_ui_controller.h"
+#include "arc/data-snapshotd/fake_process_launcher.h"
+
+namespace arc {
+namespace data_snapshotd {
+
+namespace {
+
+constexpr int kPercent = 10;
+
+}  // namespace
+
+class BlockUiControllerTest : public testing::Test {
+ public:
+  void SetUp() override {
+    process_launcher_ = std::make_unique<FakeProcessLauncher>();
+  }
+
+  void TearDown() override { process_launcher_.reset(); }
+
+  void ExpectUiScreenShown(bool shown = true) {
+    process_launcher_->ExpectUiScreenShown(shown);
+  }
+
+  void ExpectProgressUpdated(int percent, bool updated = true) {
+    process_launcher_->ExpectProgressUpdated(percent, updated);
+  }
+
+  BlockUiController::LaunchProcessCallback GetLaunchProcessCallback() const {
+    return process_launcher_->GetLaunchProcessCallback();
+  }
+
+ private:
+  std::unique_ptr<FakeProcessLauncher> process_launcher_;
+};
+
+TEST_F(BlockUiControllerTest, ShowScreenSucces) {
+  ExpectUiScreenShown();
+  auto controller =
+      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  EXPECT_TRUE(controller->ShowScreen());
+}
+
+TEST_F(BlockUiControllerTest, ShowScreenFailure) {
+  ExpectUiScreenShown(false /* shown */);
+
+  auto controller =
+      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  EXPECT_FALSE(controller->ShowScreen());
+}
+
+TEST_F(BlockUiControllerTest, UpdateProgressSuccess) {
+  ExpectUiScreenShown();
+  auto controller =
+      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  EXPECT_TRUE(controller->ShowScreen());
+
+  ExpectProgressUpdated(kPercent);
+  EXPECT_TRUE(controller->UpdateProgress(kPercent));
+}
+
+TEST_F(BlockUiControllerTest, UpdateProgressNoScreenFailure) {
+  ExpectUiScreenShown(false /* shown */);
+  auto controller =
+      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  EXPECT_FALSE(controller->ShowScreen());
+
+  ExpectUiScreenShown(false /* shown */);
+  EXPECT_FALSE(controller->UpdateProgress(kPercent));
+  EXPECT_FALSE(controller->shown());
+}
+
+TEST_F(BlockUiControllerTest, UpdateProgressShowScreenSuccess) {
+  ExpectUiScreenShown(false /* shown */);
+  auto controller =
+      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  EXPECT_FALSE(controller->ShowScreen());
+
+  ExpectUiScreenShown();
+  ExpectProgressUpdated(kPercent);
+  EXPECT_TRUE(controller->UpdateProgress(kPercent));
+  EXPECT_TRUE(controller->shown());
+}
+
+TEST_F(BlockUiControllerTest, UpdateProgressFailure) {
+  ExpectUiScreenShown();
+  auto controller =
+      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  EXPECT_TRUE(controller->ShowScreen());
+
+  ExpectProgressUpdated(kPercent, false /* updated */);
+  EXPECT_FALSE(controller->UpdateProgress(kPercent));
+  EXPECT_TRUE(controller->shown());
+}
+
+}  // namespace data_snapshotd
+}  // namespace arc

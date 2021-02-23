@@ -16,7 +16,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "arc/data-snapshotd/block_ui_controller.h"
 #include "arc/data-snapshotd/dbus_adaptor.h"
+#include "arc/data-snapshotd/fake_process_launcher.h"
 #include "arc/data-snapshotd/file_utils.h"
 #include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
 // Note that boot_lockbox_rpc.pb.h have to be included before
@@ -78,14 +80,19 @@ class DBusAdaptorTest : public testing::Test {
     auto boot_lockbox_client =
         std::make_unique<testing::StrictMock<MockBootLockboxClient>>(bus_);
     boot_lockbox_client_ = boot_lockbox_client.get();
+
+    process_launcher_ = std::make_unique<FakeProcessLauncher>();
     dbus_adaptor_ = DBusAdaptor::CreateForTesting(
         root_tempdir_.GetPath(), root_tempdir_.GetPath(),
-        std::move(boot_lockbox_client), salt_);
+        std::move(boot_lockbox_client), salt_,
+        BlockUiController::CreateForTesting(
+            process_launcher_->GetLaunchProcessCallback()));
   }
 
   void TearDown() override {
     dbus_adaptor_.reset();
     EXPECT_TRUE(base::DeletePathRecursively(root_tempdir_.GetPath()));
+    process_launcher_.reset();
   }
 
   DBusAdaptor* dbus_adaptor() { return dbus_adaptor_.get(); }
@@ -115,12 +122,17 @@ class DBusAdaptorTest : public testing::Test {
         base::WriteFile(dir.Append(kRandomFile), kContent, strlen(kContent)));
   }
 
+  void ExpectUiScreenShown(bool shown = true) {
+    process_launcher_->ExpectUiScreenShown(shown);
+  }
+
   MockBootLockboxClient* boot_lockbox_client() { return boot_lockbox_client_; }
 
  private:
   std::string salt_ = "salt";
   scoped_refptr<dbus::Bus> bus_;
   MockBootLockboxClient* boot_lockbox_client_;
+  std::unique_ptr<FakeProcessLauncher> process_launcher_;
   std::unique_ptr<DBusAdaptor> dbus_adaptor_;
   base::ScopedTempDir root_tempdir_;
   base::FilePath user_directory_;
@@ -148,6 +160,7 @@ TEST_F(DBusAdaptorTest, ClearSnapshotBasic) {
 TEST_F(DBusAdaptorTest, GenerateKeyPairBasic) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 }
 
@@ -187,6 +200,7 @@ TEST_F(DBusAdaptorTest, GenerateKeyPairExisting) {
               Store(Eq(kLastSnapshotPublicKey), nEq("")))
       .WillOnce(Return(true));
 
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
   {
     SnapshotDirectory previous_dir;
@@ -210,6 +224,7 @@ TEST_F(DBusAdaptorTest, GenerateKeyPairReadFailure) {
               Store(Eq(kLastSnapshotPublicKey), nEq("")))
       .WillOnce(Return(true));
 
+  ExpectUiScreenShown();
   // Generating key pair should be still successful.
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 }
@@ -228,6 +243,7 @@ TEST_F(DBusAdaptorTest, GenerateKeyPairReadEmpty) {
               Store(Eq(kLastSnapshotPublicKey), nEq("")))
       .WillOnce(Return(true));
 
+  ExpectUiScreenShown();
   // Generating key pair should be still successful.
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 }
@@ -250,9 +266,20 @@ TEST_F(DBusAdaptorTest, GenerateKeyPairMoveError) {
               Store(Eq(kLastSnapshotPublicKey), nEq("")))
       .WillOnce(Return(true));
 
+  ExpectUiScreenShown();
   // Generating key pair should be still successful, because the last snapshot
   // will be re-generated anyway.
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+}
+
+// Test failure flow when showing a UI screen is failed.
+TEST_F(DBusAdaptorTest, GenerateKeyPairUiFailure) {
+  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
+      .WillOnce(Return(true));
+
+  ExpectUiScreenShown(false /* shown */);
+  // Since the screen is not shown, do not dismiss it.
+  EXPECT_FALSE(dbus_adaptor()->GenerateKeyPair());
 }
 
 // Test failure flow when storing freshly generated public key is failed.
@@ -274,6 +301,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotNoPrivateKeyFailure) {
 TEST_F(DBusAdaptorTest, TakeSnapshotLastSnapshotExistFailure) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 
   CreateDir(last_snapshot_dir());
@@ -285,6 +313,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotLastSnapshotExistFailure) {
 TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataDirNotExist) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
   EXPECT_FALSE(base::DirectoryExists(android_data_dir()));
 
@@ -295,6 +324,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataDirNotExist) {
 TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataNotDirFile) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
   // Create a file instead of android-data directory.
   EXPECT_TRUE(base::WriteFile(android_data_dir(), kContent, strlen(kContent)));
@@ -308,6 +338,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataNotDirFile) {
 TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataSymLink) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
   // Create a symlink.
   CreateDir(random_dir());
@@ -322,6 +353,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataSymLink) {
 TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataFiFo) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
   // Create a fifo android-data.
   mkfifo(android_data_dir().value().c_str(), 0666);
@@ -348,6 +380,7 @@ TEST_F(DBusAdaptorTest, DISABLED_TakeSnapshotSuccess) {
         expected_public_key_digest = digest;
         return true;
       }));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 
   CreateDir(android_data_dir());
@@ -386,6 +419,7 @@ TEST_F(DBusAdaptorTest, DISABLED_TakeSnapshotSuccess) {
 TEST_F(DBusAdaptorTest, TakeSnapshotDouble) {
   EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
       .WillOnce(Return(true));
+  ExpectUiScreenShown();
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 
   CreateDir(android_data_dir());
@@ -489,6 +523,7 @@ TEST_F(DBusAdaptorTest, LoadSnapshotUnknownUser) {
         expected_public_key_digest = digest;
         return true;
       }));
+  ExpectUiScreenShown();
   // Generate key pair.
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 
@@ -529,6 +564,7 @@ TEST_F(DBusAdaptorTest, LoadSnapshotSuccess) {
         expected_public_key_digest = digest;
         return true;
       }));
+  ExpectUiScreenShown();
   // Generate key pair.
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
 
@@ -588,6 +624,7 @@ TEST_F(DBusAdaptorTest, LoadSnapshotPreviousSuccess) {
             }
             return true;
           }));
+  ExpectUiScreenShown();
   // First time snapshot generating flow.
   // Generate a key pair.
   EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());

@@ -15,6 +15,7 @@
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
+#include "arc/data-snapshotd/block_ui_controller.h"
 #include "dbus_adaptors/org.chromium.ArcDataSnapshotd.h"
 
 namespace crypto {
@@ -53,7 +54,8 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
       const base::FilePath& snapshot_directory,
       const base::FilePath& home_root_directory,
       std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-      const std::string& system_salt);
+      const std::string& system_salt,
+      std::unique_ptr<BlockUiController> block_ui_controller);
 
   // Registers the D-Bus object that the arc-data-snapshotd daemon exposes and
   // ties methods exposed by this object with the actual implementation.
@@ -102,7 +104,8 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
       const base::FilePath& snapshot_directory,
       const base::FilePath& home_root_directory,
       std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-      const std::string& system_salt);
+      const std::string& system_salt,
+      std::unique_ptr<BlockUiController> block_ui_controller);
 
   // Manages the D-Bus interfaces exposed by the arc-data-snapshotd daemon.
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
@@ -128,6 +131,8 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   // Inode verification of snapshot directories is enabled in production ny
   // default.
   bool inode_verification_enabled_ = true;
+
+  std::unique_ptr<BlockUiController> block_ui_controller_;
 };
 
 }  // namespace data_snapshotd
