@@ -48,6 +48,7 @@ enum ChromeOSError {
     BadVmPluginDispatcherStatus,
     CrostiniVmDisabled,
     CrostiniVmDisabledReason(String),
+    DiskImageOutOfSpace,
     ExportPathExists,
     ImportPathDoesNotExist,
     FailedAdjustVm(String),
@@ -104,6 +105,7 @@ impl fmt::Display for ChromeOSError {
             CrostiniVmDisabledReason(reason) => {
                 write!(f, "Crostini VMs are not available: {}", reason)
             }
+            DiskImageOutOfSpace => write!(f, "not enough disk space"),
             ExportPathExists => write!(f, "disk export path already exists"),
             ImportPathDoesNotExist => write!(f, "disk import path does not exist"),
             FailedAdjustVm(reason) => write!(f, "failed to adjust vm: {}", reason),
@@ -736,6 +738,7 @@ impl Methods {
             DiskImageStatus::DISK_STATUS_EXISTS | DiskImageStatus::DISK_STATUS_CREATED => {
                 Ok(response.disk_path)
             }
+            DiskImageStatus::DISK_STATUS_NOT_ENOUGH_SPACE => Err(DiskImageOutOfSpace.into()),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
     }
@@ -813,6 +816,7 @@ impl Methods {
         match response.status {
             DiskImageStatus::DISK_STATUS_CREATED => Ok(None),
             DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
+            DiskImageStatus::DISK_STATUS_NOT_ENOUGH_SPACE => Err(DiskImageOutOfSpace.into()),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
     }
@@ -924,6 +928,7 @@ impl Methods {
         match response.status {
             DiskImageStatus::DISK_STATUS_CREATED => Ok(None),
             DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
+            DiskImageStatus::DISK_STATUS_NOT_ENOUGH_SPACE => Err(DiskImageOutOfSpace.into()),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
     }
@@ -989,6 +994,7 @@ impl Methods {
         match response.status {
             DiskImageStatus::DISK_STATUS_CREATED => Ok(None),
             DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
+            DiskImageStatus::DISK_STATUS_NOT_ENOUGH_SPACE => Err(DiskImageOutOfSpace.into()),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
     }
@@ -1018,6 +1024,7 @@ impl Methods {
         match response.status {
             DiskImageStatus::DISK_STATUS_RESIZED => Ok(None),
             DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
+            DiskImageStatus::DISK_STATUS_NOT_ENOUGH_SPACE => Err(DiskImageOutOfSpace.into()),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
     }
@@ -1031,10 +1038,13 @@ impl Methods {
             DiskOpType::Create => DiskImageStatus::DISK_STATUS_CREATED,
             DiskOpType::Resize => DiskImageStatus::DISK_STATUS_RESIZED,
         };
+
         if response.status == expected_status {
             Ok((true, response.progress))
         } else if response.status == DiskImageStatus::DISK_STATUS_IN_PROGRESS {
             Ok((false, response.progress))
+        } else if response.status == DiskImageStatus::DISK_STATUS_NOT_ENOUGH_SPACE {
+            Err(DiskImageOutOfSpace.into())
         } else {
             Err(BadDiskImageStatus(response.status, response.failure_reason).into())
         }
