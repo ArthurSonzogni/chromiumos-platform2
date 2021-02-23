@@ -10,6 +10,7 @@ poll: 1
 close: 1
 gettid: 1
 clock_gettime: 1
+clock_gettime64: 1
 recvmsg: 1
 send: 1
 fstat64: 1
@@ -30,6 +31,7 @@ gettimeofday: 1
 stat64: 1
 ftruncate64: 1
 clock_getres: 1
+clock_getres_time64: 1
 getresgid32: 1
 getresuid32: 1
 umask: 1

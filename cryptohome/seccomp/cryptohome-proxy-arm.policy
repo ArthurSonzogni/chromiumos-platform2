@@ -42,6 +42,7 @@ uname: 1
 set_tid_address: 1
 ugetrlimit: 1
 clock_getres: 1
+clock_getres_time64: 1
 getresuid32: 1
 getresgid32: 1
 clone: 1
@@ -55,5 +56,6 @@ restart_syscall: 1
 rt_sigreturn: 1
 gettimeofday: 1
 clock_gettime: 1
+clock_gettime64: 1
 nanosleep: 1
 flock: 1
