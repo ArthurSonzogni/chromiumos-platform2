@@ -26,6 +26,12 @@ class Daemon : public brillo::DBusServiceDaemon {
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() = default;
 
+  // Daemon will automatically shutdown after this length of idle time.
+  static const int kNormalShutdownTimeoutMilliseconds;
+
+  // A longer shutdown timeout that can be requested during slow operations.
+  static const int kExtendedShutdownTimeoutMilliseconds;
+
  protected:
   int OnInit() override;
   void RegisterDBusObjectsAsync(
@@ -35,11 +41,8 @@ class Daemon : public brillo::DBusServiceDaemon {
  private:
   friend class DaemonTest;
 
-  // Daemon will automatically shutdown after this length of idle time.
-  static const int kShutdownTimeoutMilliseconds;
-
   // Restarts a timer for the termination of the daemon process.
-  void PostponeShutdown();
+  void PostponeShutdown(size_t ms);
 
   std::unique_ptr<Manager> manager_;
   base::Closure startup_callback_;

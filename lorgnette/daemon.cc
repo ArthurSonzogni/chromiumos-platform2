@@ -23,7 +23,8 @@ namespace lorgnette {
 // static
 const char Daemon::kScanGroupName[] = "scanner";
 const char Daemon::kScanUserName[] = "saned";
-const int Daemon::kShutdownTimeoutMilliseconds = 20000;
+const int Daemon::kNormalShutdownTimeoutMilliseconds = 2000;
+const int Daemon::kExtendedShutdownTimeoutMilliseconds = 300000;
 
 Daemon::Daemon(const base::Closure& startup_callback)
     : DBusServiceDaemon(kManagerServiceName, "/ObjectManager"),
@@ -35,7 +36,7 @@ int Daemon::OnInit() {
     return return_code;
   }
 
-  PostponeShutdown();
+  PostponeShutdown(kNormalShutdownTimeoutMilliseconds);
 
   // Signal that we've acquired all resources.
   startup_callback_.Run();
@@ -55,12 +56,12 @@ void Daemon::OnShutdown(int* return_code) {
   brillo::DBusServiceDaemon::OnShutdown(return_code);
 }
 
-void Daemon::PostponeShutdown() {
+void Daemon::PostponeShutdown(size_t ms) {
   shutdown_callback_.Reset(
       base::Bind(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(),
-      base::TimeDelta::FromMilliseconds(kShutdownTimeoutMilliseconds));
+      base::TimeDelta::FromMilliseconds(ms));
 }
 
 }  // namespace lorgnette

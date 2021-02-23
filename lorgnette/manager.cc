@@ -311,7 +311,7 @@ const char Manager::kMetricScanRequested[] = "DocumentScan.ScanRequested";
 const char Manager::kMetricScanSucceeded[] = "DocumentScan.ScanSucceeded";
 const char Manager::kMetricScanFailed[] = "DocumentScan.ScanFailed";
 
-Manager::Manager(base::Callback<void()> activity_callback,
+Manager::Manager(base::Callback<void(size_t)> activity_callback,
                  std::unique_ptr<SaneClient> sane_client)
     : org::chromium::lorgnette::ManagerAdaptor(this),
       activity_callback_(activity_callback),
@@ -371,12 +371,12 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
 
   LOG(INFO) << "Finding IPP-USB devices";
   std::vector<ScannerInfo> ippusb_devices = FindIppUsbDevices();
-  activity_callback_.Run();
+  activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
   LOG(INFO) << "Found " << ippusb_devices.size() << " possible IPP-USB devices";
   for (const ScannerInfo& scanner : ippusb_devices) {
     std::unique_ptr<SaneDevice> device =
         sane_client_->ConnectToDevice(nullptr, scanner.name());
-    activity_callback_.Run();
+    activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
 
     if (!device) {
       LOG(INFO) << "IPP-USB device doesn't support eSCL: " << scanner.name();
@@ -430,17 +430,17 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
                           sane_scanners.value());
   LOG(INFO) << scanners.size() << " scanners in list after de-duplication";
 
-  activity_callback_.Run();
+  activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
 
   LOG(INFO) << "Probing for network scanners";
   std::vector<ScannerInfo> probed_scanners =
       epson_probe::ProbeForScanners(firewall_manager_.get());
-  activity_callback_.Run();
+  activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
   for (const ScannerInfo& scanner : probed_scanners) {
     brillo::ErrorPtr error;
     std::unique_ptr<SaneDevice> device =
         sane_client_->ConnectToDevice(&error, scanner.name());
-    activity_callback_.Run();
+    activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
     if (device) {
       scanners.push_back(scanner);
     } else {
@@ -574,7 +574,7 @@ std::vector<uint8_t> Manager::StartScan(
   }
 
   if (!activity_callback_.is_null())
-    activity_callback_.Run();
+    activity_callback_.Run(Daemon::kExtendedShutdownTimeoutMilliseconds);
 
   response.set_scan_uuid(uuid);
   response.set_state(SCAN_STATE_IN_PROGRESS);
@@ -880,6 +880,11 @@ void Manager::GetNextImageInternal(const std::string& uuid,
   SendStatusSignal(uuid, SCAN_STATE_PAGE_COMPLETED, scan_state->current_page,
                    100, !scan_complete);
 
+  // Reset activity timer back to normal now that the page is done.  If there
+  // are more pages, we'll extend it again below.
+  if (!activity_callback_.is_null())
+    activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
+
   if (scan_complete) {
     ReportScanSucceeded(scan_state->device_name);
     SendStatusSignal(uuid, SCAN_STATE_COMPLETED, scan_state->current_page, 100,
@@ -917,7 +922,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
 
   scan_state->current_page++;
   if (!activity_callback_.is_null())
-    activity_callback_.Run();
+    activity_callback_.Run(Daemon::kExtendedShutdownTimeoutMilliseconds);
 }
 
 ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
