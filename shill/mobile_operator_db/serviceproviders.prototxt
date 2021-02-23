@@ -14250,6 +14250,27 @@ mno {
     mvno_filter {
       type : IMSI
       range {
+        start: 311580712188710
+        end:   311580712193709
+      }
+    }
+    data {
+      uuid : "c5e28745-55be-4ced-96e2-e340585c3bee"
+      localized_name {
+        name : "Kajeet"
+      }
+      mobile_apn {
+        apn : "uscc05016.enterprise3.usc-cdp"
+      }
+      mobile_apn {
+        apn : "uscc05140.enterprise3.usc-cdp"
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      range {
         start: 311580712000000
         end:   311580716999999
       }
@@ -14265,27 +14286,6 @@ mno {
       }
       mobile_apn {
         apn : "uscc00000.enterprise0.usc-cdp"
-      }
-    }
-  }
-  mvno {
-    mvno_filter {
-      type : IMSI
-      range {
-        start: 311580712188710
-        end:   311580712193709
-      }
-    }
-    data {
-      uuid : "c5e28745-55be-4ced-96e2-e340585c3bee"
-      localized_name {
-        name : "Kajeet"
-      }
-      mobile_apn {
-        apn : "uscc05016.enterprise3.usc-cdp"
-      }
-      mobile_apn {
-        apn : "uscc05140.enterprise3.usc-cdp"
       }
     }
   }
@@ -15184,7 +15184,7 @@ mno {
     uuid : "e46650bd-ac00-433f-a6df-b94fdc1a20e4"
     country : "int"
     localized_name {
-      name : "Vodaphone"
+      name : "Vodafone"
     }
     mccmnc : "90128"
   }
