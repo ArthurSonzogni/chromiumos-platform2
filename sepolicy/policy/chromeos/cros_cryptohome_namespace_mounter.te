@@ -7,7 +7,6 @@ domain_auto_trans(cros_cryptohome_namespace_mounter, cros_unconfined_exec, chrom
 
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd                  use;
 
-arc_cts_fails_release(`
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
 # TODO(betuls): Define a cryptohome domain and add these rules to there.
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file w_file_perms;
@@ -53,7 +52,7 @@ allow cros_cryptohome_namespace_mounter proc_swaps:file                      r_f
 allow cros_cryptohome_namespace_mounter rootfs:dir                           r_dir_perms;
 
 # cryptohome_namespace_mounter capabilities
-allow cros_cryptohome_namespace_mounter self:capability   { chown dac_override dac_read_search fowner fsetid sys_admin sys_chroot };
+allow cros_cryptohome_namespace_mounter self:capability   { chown fowner fsetid sys_admin sys_chroot };
 allow cros_cryptohome_namespace_mounter self:key          { search write };
 
 r_dir_file(cros_cryptohome_namespace_mounter, sysfs_fs_ext4_features);
@@ -61,14 +60,16 @@ r_dir_file(cros_cryptohome_namespace_mounter, sysfs_fs_ext4_features);
 # TODO(b/178237710) Label the directories and files with specific contexts.
 r_dir_file(cros_cryptohome_namespace_mounter, unlabeled);
 allow cros_cryptohome_namespace_mounter unlabeled:dir                        relabelfrom;
-allow cros_cryptohome_namespace_mounter labeledfs:filesystem                 { mount remount unmount };
 
 # TODO(b/178237004) Label the processes with specific contexts.
 allow cros_cryptohome_namespace_mounter cros_unconfined_exec:file            x_file_perms;
 
 allow cros_cryptohome_namespace_mounter cros_run_namespaces_mnt_chrome:file                   { r_file_perms mounton };
+
+arc_cts_fails_release(`
+allow cros_cryptohome_namespace_mounter self:capability                      { dac_override dac_read_search };
+allow cros_cryptohome_namespace_mounter labeledfs:filesystem                 { mount remount unmount };
 ', (cros_cryptohome_namespace_mounter));
-# 'arc_cts_fails_release' ends here.
 
 allow kernel cros_cryptohome_namespace_mounter:fd                            use;
 
