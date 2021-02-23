@@ -160,7 +160,7 @@ int32_t CameraHalAdapter::OpenDevice(
   hw_module_t* common = &camera_module->common;
   camera3_device_t* camera_device;
   int ret;
-  if (cros_camera_hal->camera_device_open_ext) {
+  if (cros_camera_hal && cros_camera_hal->camera_device_open_ext) {
     ret = cros_camera_hal->camera_device_open_ext(
         common, std::to_string(internal_camera_id).c_str(),
         reinterpret_cast<hw_device_t**>(&camera_device),
@@ -177,7 +177,7 @@ int32_t CameraHalAdapter::OpenDevice(
   activity_callback_.Run(camera_id, /*opened=*/true, camera_client_type);
 
   camera_info_t info;
-  if (cros_camera_hal->get_camera_info_ext) {
+  if (cros_camera_hal && cros_camera_hal->get_camera_info_ext) {
     ret = cros_camera_hal->get_camera_info_ext(
         internal_camera_id, &info, static_cast<ClientType>(camera_client_type));
   } else {
@@ -250,7 +250,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
   int module_id = camera_id_map_[camera_id].first;
   camera_info_t info;
   cros_camera_hal_t* cros_camera_hal = camera_interfaces_[module_id].second;
-  if (cros_camera_hal->get_camera_info_ext) {
+  if (cros_camera_hal && cros_camera_hal->get_camera_info_ext) {
     ret = cros_camera_hal->get_camera_info_ext(
         internal_camera_id, &info, static_cast<ClientType>(camera_client_type));
   } else {

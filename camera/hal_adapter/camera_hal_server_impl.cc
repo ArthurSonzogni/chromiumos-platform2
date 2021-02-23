@@ -229,12 +229,11 @@ int CameraHalServerImpl::LoadCameraHal() {
 
     cros_camera_hal_t* cros_camera_hal = static_cast<cros_camera_hal_t*>(
         dlsym(handle, CROS_CAMERA_HAL_INFO_SYM_AS_STR));
-    if (!cros_camera_hal) {
-      LOGF(ERROR) << "Failed to get cros_camera_hal_t pointer with symbol name "
-                  << CROS_CAMERA_HAL_INFO_SYM_AS_STR << " from " << dll.value();
-      return ELIBBAD;
+    if (cros_camera_hal) {
+      // libcamera may not implement the interface.
+      cros_camera_hal->set_up(mojo_manager_.get());
+      cros_camera_hals_.push_back(cros_camera_hal);
     }
-    cros_camera_hal->set_up(mojo_manager_.get());
 
     auto* module = static_cast<camera_module_t*>(
         dlsym(handle, HAL_MODULE_INFO_SYM_AS_STR));
@@ -244,7 +243,6 @@ int CameraHalServerImpl::LoadCameraHal() {
       return ELIBBAD;
     }
 
-    cros_camera_hals_.push_back(cros_camera_hal);
     camera_interfaces.push_back({module, cros_camera_hal});
   }
 
