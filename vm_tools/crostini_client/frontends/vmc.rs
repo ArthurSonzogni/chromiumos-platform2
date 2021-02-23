@@ -19,6 +19,7 @@ use crate::EnvMap;
 enum VmcError {
     Command(&'static str, Box<dyn Error>),
     BadProblemReportArguments(getopts::Fail),
+    DiskOperation(String, Box<dyn Error>),
     ExpectedCrosUserIdHash,
     ExpectedUIntSize,
     ExpectedName,
@@ -93,6 +94,7 @@ impl fmt::Display for VmcError {
             Command(routine, e) => {
                 write!(f, "operation `{}` failed: {}", trim_routine(&routine), e)
             }
+            DiskOperation(op, e) => write!(f, "{} failed: {}", op, e),
             ExpectedCrosUserIdHash => write!(f, "expected CROS_USER_ID_HASH environment variable"),
             ExpectedUIntSize => write!(
                 f,
@@ -310,7 +312,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             params,
         )) {
             println!("VM creation in progress: {}", uuid);
-            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create)?;
+            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "VM creation")?;
         }
         Ok(())
     }
@@ -353,17 +355,33 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         uuid: &str,
         user_id_hash: &str,
         op_type: DiskOpType,
+        op_name: &str,
     ) -> VmcResult {
+        let mut progress_reported = false;
         loop {
-            let (done, progress) =
-                try_command!(self.methods.wait_disk_op(&uuid, &user_id_hash, op_type));
-            if done {
-                println!("\rOperation completed successfully");
-                return Ok(());
-            }
+            match self.methods.wait_disk_op(&uuid, &user_id_hash, op_type) {
+                Ok((done, progress)) => {
+                    if done {
+                        println!("\rOperation completed successfully");
+                        return Ok(());
+                    }
 
-            print!("\rOperation in progress: {}% done", progress);
-            stdout().flush()?;
+                    print!("\rOperation in progress: {}% done", progress);
+                    stdout().flush()?;
+                    progress_reported = true;
+                }
+                Err(e) => {
+                    // Ignore the result for testing.
+                    if cfg!(test) {
+                        return Ok(());
+                    }
+
+                    if progress_reported {
+                        println!("");
+                    }
+                    return Err(DiskOperation(op_name.to_string(), e).into());
+                }
+            }
         }
     }
 
@@ -380,7 +398,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         match try_command!(self.methods.disk_resize(vm_name, &user_id_hash, size)) {
             Some(uuid) => {
                 println!("Resize in progress: {}", uuid);
-                self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Resize)?;
+                self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Resize, "resize")?;
             }
             None => {
                 println!("Operation completed successfully");
@@ -419,7 +437,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             removable_media
         )) {
             println!("Export in progress: {}", uuid);
-            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create)?;
+            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "export")?;
         }
         Ok(())
     }
@@ -446,7 +464,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             removable_media
         )) {
             println!("Import in progress: {}", uuid);
-            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create)?;
+            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "import")?;
         }
         Ok(())
     }
@@ -930,10 +948,17 @@ mod tests {
             &["vmc", "start", "termina", "--no-start-lxd"],
             &["vmc", "start", "termina", "--dlc-id=foo"],
             &["vmc", "start", "termina", "--initrd=myinitrd"],
-            &["vmc", "start", "termina", "--initrd" ,"myinitrd"],
-            &["vmc", "start", "termina", "--rootfs" ,"myrootfs"],
+            &["vmc", "start", "termina", "--initrd", "myinitrd"],
+            &["vmc", "start", "termina", "--rootfs", "myrootfs"],
             &["vmc", "start", "termina", "--rootfs=myrootfs"],
-            &["vmc", "start", "termina", "--rootfs" ,"myrootfs", "--writable-rootfs"],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--rootfs",
+                "myrootfs",
+                "--writable-rootfs",
+            ],
             &["vmc", "stop", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
