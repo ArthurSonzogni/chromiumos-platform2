@@ -18,6 +18,12 @@ constexpr uint8_t kIDHeaderVDOProductTypeBitOffset = 27;
 constexpr uint8_t kIDHeaderVDOProductTypeMask = 0x7;
 constexpr uint8_t kIDHeaderVDOProductTypeCablePassive = 0x3;
 constexpr uint8_t kIDHeaderVDOProductTypeCableActive = 0x4;
+constexpr uint32_t kIdHeaderVDOVidMask = 0x0000ffff;
+
+// Bit Masks for Product VDO
+// USB PD spec rev 3.0, v 2.0.
+// Table 6-34 Product VDO
+constexpr uint32_t kProductVDOPidMask = 0xffff0000;
 
 // Bit Masks for Product Type VDOs
 // USB PD spec rev 3.0, v 2.0.

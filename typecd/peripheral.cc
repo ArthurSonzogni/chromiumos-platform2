@@ -4,16 +4,28 @@
 
 #include "typecd/peripheral.h"
 
+#include <iomanip>
 #include <string>
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
 
+#include "typecd/pd_vdo_constants.h"
 #include "typecd/utils.h"
 
 namespace {
 constexpr char kPDRevisionRegex[] = R"((\d)\.\d)";
+
+// We don't want to display VID in the logs, so zero it out.
+uint32_t ObfuscatedIdHeaderVDO(uint32_t id_header_vdo) {
+  return id_header_vdo & ~typecd::kIdHeaderVDOVidMask;
+}
+
+// We don't want to display PID in the logs, so zero it out.
+uint32_t ObfuscatedProductVDO(uint32_t product_vdo) {
+  return product_vdo & ~typecd::kProductVDOPidMask;
+}
 
 }  // namespace
 
@@ -55,7 +67,8 @@ void Peripheral::UpdatePDIdentityVDOs() {
 
   if (!ReadHexFromPath(product, &product_vdo))
     return;
-  LOG(INFO) << type_ << " Product VDO: " << std::hex << product_vdo;
+  LOG(INFO) << type_ << " Product VDO: " << std::hex << std::setfill('0')
+            << std::setw(8) << ObfuscatedProductVDO(product_vdo);
 
   if (!ReadHexFromPath(cert_stat, &cert_stat_vdo))
     return;
@@ -63,7 +76,8 @@ void Peripheral::UpdatePDIdentityVDOs() {
 
   if (!ReadHexFromPath(id_header, &id_header_vdo))
     return;
-  LOG(INFO) << type_ << " Id Header VDO: " << std::hex << id_header_vdo;
+  LOG(INFO) << type_ << " Id Header VDO: " << std::hex << std::setfill('0')
+            << std::setw(8) << ObfuscatedIdHeaderVDO(id_header_vdo);
 
   if (!ReadHexFromPath(product_type1, &product_type_vdo1))
     return;
