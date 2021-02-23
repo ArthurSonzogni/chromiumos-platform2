@@ -110,11 +110,12 @@ bool PluginVmCreateOperation::PrepareOutput(const base::FilePath& iso_dir) {
 }
 
 void PluginVmCreateOperation::MarkFailed(const char* msg, int error_code) {
-  set_status(DISK_STATUS_FAILED);
-
   if (error_code != 0) {
+    set_status(error_code == ENOSPC ? DISK_STATUS_NOT_ENOUGH_SPACE
+                                    : DISK_STATUS_FAILED);
     set_failure_reason(base::StringPrintf("%s: %s", msg, strerror(error_code)));
   } else {
+    set_status(DISK_STATUS_FAILED);
     set_failure_reason(msg);
   }
 
@@ -336,13 +337,14 @@ int VmExportOperation::OutputFileCloseCallback(archive* a, void* data) {
 }
 
 void VmExportOperation::MarkFailed(const char* msg, struct archive* a) {
-  set_status(DISK_STATUS_FAILED);
-
   if (a) {
+    set_status(archive_errno(a) == ENOSPC ? DISK_STATUS_NOT_ENOUGH_SPACE
+                                          : DISK_STATUS_FAILED);
     set_failure_reason(base::StringPrintf("%s: %s, %s", msg,
                                           archive_error_string(a),
                                           strerror(archive_errno(a))));
   } else {
+    set_status(DISK_STATUS_FAILED);
     set_failure_reason(msg);
   }
 
@@ -597,13 +599,14 @@ bool PluginVmImportOperation::PrepareOutput() {
 }
 
 void PluginVmImportOperation::MarkFailed(const char* msg, struct archive* a) {
-  set_status(DISK_STATUS_FAILED);
-
   if (a) {
+    set_status(archive_errno(a) == ENOSPC ? DISK_STATUS_NOT_ENOUGH_SPACE
+                                          : DISK_STATUS_FAILED);
     set_failure_reason(base::StringPrintf("%s: %s, %s", msg,
                                           archive_error_string(a),
                                           strerror(archive_errno(a))));
   } else {
+    set_status(DISK_STATUS_FAILED);
     set_failure_reason(msg);
   }
 
