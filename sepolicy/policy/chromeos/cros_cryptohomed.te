@@ -71,10 +71,18 @@ allow cros_cryptohomed labeledfs:filesystem                  { quotaget unmount 
 # TODO(b/178237004) Label the processes with specific contexts.
 allow cros_cryptohomed cros_unconfined_exec:file             x_file_perms;
 
+# Chrome OS with ARCVM doesn't undergo CTS tests. Thus remove the
+# arc_cts_fails_release macro for ARCVM devices so that cros_cryptohomed is not
+# converted into a permissive domain after being flipped to enforcing.
+is_arc_vm(`
+allow cros_cryptohomed self:capability               { dac_override dac_read_search };
+allow cros_cryptohomed unlabeled:filesystem                  { mount remount unmount };
+',`
 arc_cts_fails_release(`
 allow cros_cryptohomed self:capability               { dac_override dac_read_search };
 allow cros_cryptohomed unlabeled:filesystem                  { mount remount unmount };
 ', (`cros_cryptohomed'));
+')
 
 log_writer(cros_cryptohomed);
 uma_writer(cros_cryptohomed);

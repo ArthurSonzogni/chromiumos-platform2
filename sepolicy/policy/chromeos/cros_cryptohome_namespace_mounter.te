@@ -66,11 +66,19 @@ allow cros_cryptohome_namespace_mounter cros_unconfined_exec:file            x_f
 
 allow cros_cryptohome_namespace_mounter cros_run_namespaces_mnt_chrome:file                   { r_file_perms mounton };
 
+# Chrome OS with ARCVM doesn't undergo CTS tests. Thus remove the
+# arc_cts_fails_release macro for ARCVM devices so that
+# cros_cryptohome_namespace_mounter is not converted into a permissive domain
+# after being flipped to enforcing.
+is_arc_vm(`
+allow cros_cryptohome_namespace_mounter self:capability                      { dac_override dac_read_search };
+allow cros_cryptohome_namespace_mounter labeledfs:filesystem                 { mount remount unmount };
+',`
 arc_cts_fails_release(`
 allow cros_cryptohome_namespace_mounter self:capability                      { dac_override dac_read_search };
 allow cros_cryptohome_namespace_mounter labeledfs:filesystem                 { mount remount unmount };
 ', (cros_cryptohome_namespace_mounter));
-
+')
 allow kernel cros_cryptohome_namespace_mounter:fd                            use;
 
 log_writer(cros_cryptohome_namespace_mounter);
