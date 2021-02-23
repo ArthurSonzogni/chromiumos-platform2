@@ -207,6 +207,16 @@ class UserDataAuthAdaptor
           user_data_auth::StartAuthSessionReply>> response,
       const user_data_auth::StartAuthSessionRequest& in_request);
 
+  void AddCredentials(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::AddCredentialsReply>> response,
+      const user_data_auth::AddCredentialsRequest& in_request) override;
+
+  void DoAddCredentials(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::AddCredentialsReply>> response,
+      const user_data_auth::AddCredentialsRequest& in_request);
+
   void AuthenticateAuthSession(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::AuthenticateAuthSessionReply>> response,

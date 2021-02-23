@@ -51,6 +51,24 @@ void AuthSession::AuthSessionTimedOut() {
   std::move(on_timeout_).Run(token_);
 }
 
+user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
+    const cryptohome::AuthorizationRequest& authorization_request) {
+  if (user_exists_) {
+    return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
+  }
+  auto credentials = std::make_unique<Credentials>(
+      username_, brillo::SecureBlob(authorization_request.key().secret()));
+  credentials->set_key_data(authorization_request.key().data());
+
+  user_data_auth::CryptohomeErrorCode errorCode =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  // An assumption here is that keyset management saves the user keys on disk.
+  if (!keyset_management_->AddInitialKeyset(*credentials)) {
+    errorCode = user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+  return errorCode;
+}
+
 user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     const cryptohome::AuthorizationRequest& authorization_request) {
   auto credentials = std::make_unique<Credentials>(

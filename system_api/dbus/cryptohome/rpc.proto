@@ -81,6 +81,7 @@ enum CryptohomeErrorCode {
   CRYPTOHOME_ERROR_FIDO_GET_ASSERTION_FAILED = 47;
   CRYPTOHOME_TOKEN_SERIALIZATION_FAILED = 48;
   CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN = 49;
+  CRYPTOHOME_ADD_CREDENTIALS_FAILED = 50;
 }
 
 message AccountIdentifier {
@@ -574,6 +575,15 @@ message StartAuthSessionReply {
   extend BaseReply { optional StartAuthSessionReply reply = 1017; }
 
   optional bytes auth_session_id = 1;
+}
+
+message AddCredentialsRequest {
+  // Serialized form of token that is used to identify Auth Session.
+  optional bytes auth_session_id = 1;
+  // Authorization data for the users credentials that need to be created.
+  optional AuthorizationRequest authorization = 2;
+  // Are we adding more credentials for existing user?
+  optional bool add_more_credentials = 3;
 }
 
 message AuthenticateAuthSessionRequest {

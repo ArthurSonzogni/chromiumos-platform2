@@ -85,6 +85,7 @@ enum CryptohomeErrorCode {
   CRYPTOHOME_ERROR_FIDO_GET_ASSERTION_FAILED = 47;
   CRYPTOHOME_TOKEN_SERIALIZATION_FAILED = 48;
   CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN = 49;
+  CRYPTOHOME_ADD_CREDENTIALS_FAILED = 50;
 }
 
 // This is used by MountRequest to store details about the mount to create
@@ -527,6 +528,21 @@ message StartAuthSessionReply {
   bytes auth_session_id = 2;
   // True if the user that the Auth Session is created for exists or not.
   bool user_exists = 3;
+}
+
+message AddCredentialsRequest {
+  // Serialized form of token that is used to identify Auth Session that needs
+  // to be authenticated.
+  bytes auth_session_id = 1;
+  // Authorization data from the user.
+  cryptohome.AuthorizationRequest authorization = 2;
+  // Adding a new credentials for an existing user?
+  bool add_more_credentials = 3;
+}
+
+message AddCredentialsReply {
+  // Error if any to add new credentials with the Auth Session.
+  CryptohomeErrorCode error = 1;
 }
 
 message AuthenticateAuthSessionRequest {

@@ -170,6 +170,7 @@ static const char* kActions[] = {"mount_ex",
                                  "start_fingerprint_auth_session",
                                  "end_fingerprint_auth_session",
                                  "start_auth_session",
+                                 "add_credentials",
                                  "authenticate_auth_session",
                                  NULL};
 enum ActionEnum {
@@ -254,6 +255,7 @@ enum ActionEnum {
   ACTION_START_FINGERPRINT_AUTH_SESSION,
   ACTION_END_FINGERPRINT_AUTH_SESSION,
   ACTION_START_AUTH_SESSION,
+  ACTION_ADD_CREDENTIALS,
   ACTION_AUTHENTICATE_AUTH_SESSION
 };
 static const char kUserSwitch[] = "user";
@@ -3186,6 +3188,39 @@ int main(int argc, char** argv) {
                            auth_session_reply.auth_session_id().size())
                .c_str());
     printf("Auth session start succeeded.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_CREDENTIALS],
+                     action.c_str())) {
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+
+    cryptohome::AddCredentialsRequest req;
+    req.set_auth_session_id(auth_session_id);
+
+    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+                            req.mutable_authorization()))
+      return 1;
+
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
+    if (!req_ary.get())
+      return 1;
+
+    cryptohome::BaseReply reply;
+    brillo::glib::ScopedError error;
+
+    GArray* out_reply = NULL;
+    if (!org_chromium_CryptohomeInterface_add_credentials(
+            proxy.gproxy(), req_ary.get(), &out_reply,
+            &brillo::Resetter(&error).lvalue())) {
+      return 1;
+    }
+    ParseBaseReply(out_reply, &reply, true /* print_reply */);
+    if (reply.has_error()) {
+      printf("Auth session failed to add credentials.\n");
+      return reply.error();
+    }
+    printf("Auth session added credentials successfully.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_SESSION],
                  action.c_str())) {

@@ -3110,6 +3110,36 @@ void LegacyCryptohomeInterfaceAdaptor::StartAuthSessionOnStarted(
   response->Return(result);
 }
 
+void LegacyCryptohomeInterfaceAdaptor::AddCredentials(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
+    const cryptohome::AddCredentialsRequest& in_request) {
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::AddCredentialsRequest request;
+  request.set_auth_session_id(in_request.auth_session_id());
+  request.mutable_authorization()->CopyFrom(in_request.authorization());
+  userdataauth_proxy_->AddCredentialsAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::AddCredentialsOnDone,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared),
+      kDefaultTimeout.InMilliseconds());
+}
+
+void LegacyCryptohomeInterfaceAdaptor::AddCredentialsOnDone(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::AddCredentialsReply& reply) {
+  cryptohome::BaseReply result;
+  result.set_error(static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
+  ClearErrorIfNotSet(&result);
+  response->Return(result);
+}
+
 void LegacyCryptohomeInterfaceAdaptor::AuthenticateAuthSession(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,

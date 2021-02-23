@@ -60,6 +60,13 @@ class AuthSession final {
   // This function return if the user that AuthSession was created with exists.
   bool user_exists() const { return user_exists_; }
 
+  // AddCredentials is called when newly created or existing user wants to add
+  // new credentials.
+  // TODO(crbug.com/1181102): Add functionality for adding credentials for an
+  // existing user.
+  user_data_auth::CryptohomeErrorCode AddCredentials(
+      const cryptohome::AuthorizationRequest& authorization_request);
+
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
   // steps involved in multi-factor authentication.

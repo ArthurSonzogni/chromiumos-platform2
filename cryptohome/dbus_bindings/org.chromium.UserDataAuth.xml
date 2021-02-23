@@ -314,6 +314,24 @@ do.
       </arg>
     </method>
 
+    <!-- This API will be used to call AuthSession to create new credentials,
+         either for new user or add new ones for existing user.
+         All arguments are protobufs:
+         request: AddCredentialsRequest
+         reply: AddCredentialsReply -->
+    <method name="AddCredentials">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AddCredentialsRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AddCredentialsReply" />
+      </arg>
+    </method>
+
     <method name="AuthenticateAuthSession">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

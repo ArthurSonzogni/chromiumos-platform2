@@ -579,6 +579,10 @@ class LegacyCryptohomeInterfaceAdaptor
           cryptohome::BaseReply>> response,
       const cryptohome::AccountIdentifier& in_account_id,
       const cryptohome::StartAuthSessionRequest& in_request) override;
+  void AddCredentials(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          cryptohome::BaseReply>> response,
+      const cryptohome::AddCredentialsRequest& in_request) override;
   void AuthenticateAuthSession(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           cryptohome::BaseReply>> response,
@@ -903,6 +907,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void StartAuthSessionOnStarted(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::StartAuthSessionReply& reply);
+  void AddCredentialsOnDone(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::AddCredentialsReply& reply);
   void AuthenticateAuthSessionOnDone(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::AuthenticateAuthSessionReply& reply);

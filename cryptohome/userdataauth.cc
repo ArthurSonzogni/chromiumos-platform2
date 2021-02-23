@@ -3046,6 +3046,30 @@ void UserDataAuth::RemoveAuthSessionWithToken(
   auth_sessions_.erase(token);
 }
 
+bool UserDataAuth::AddCredentials(
+    user_data_auth::AddCredentialsRequest request,
+    base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+        on_done) {
+  AssertOnMountThread();
+  base::Optional<base::UnguessableToken> token =
+      AuthSession::GetTokenFromSerializedString(request.auth_session_id());
+  user_data_auth::AddCredentialsReply reply;
+  if (!token.has_value() ||
+      auth_sessions_.find(token.value()) == auth_sessions_.end()) {
+    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+
+  // Add credentials using data in AuthorizationRequest and
+  // auth_session_token.
+  user_data_auth::CryptohomeErrorCode error =
+      auth_sessions_[token.value()]->AddCredentials(request.authorization());
+  reply.set_error(error);
+  std::move(on_done).Run(reply);
+  return true;
+}
+
 bool UserDataAuth::AuthenticateAuthSession(
     user_data_auth::AuthenticateAuthSessionRequest request,
     base::OnceCallback<
