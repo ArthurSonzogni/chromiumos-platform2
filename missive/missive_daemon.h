@@ -12,7 +12,7 @@
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 
-#include "protos/test.pb.h"
+#include "proto/interface.pb.h"
 
 #include "dbus_adaptors/org.chromium.Missived.h"
 
@@ -33,16 +33,19 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   // Forward org::chromium::MissivedInterface
-  void EnqueueRecords(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                          reporting::test::TestMessage>> response,
-                      const reporting::test::TestMessage& in_request) override;
-  void FlushPriority(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                         reporting::test::TestMessage>> response,
-                     const reporting::test::TestMessage& in_request) override;
+  void EnqueueRecords(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          reporting::EnqueueRecordResponse>> response,
+      const reporting::EnqueueRecordRequest& in_request) override;
+  void FlushPriority(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          reporting::FlushPriorityResponse>> response,
+      const reporting::FlushPriorityRequest& in_request) override;
+
   void ConfirmRecordUpload(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          reporting::test::TestMessage>> response,
-      const reporting::test::TestMessage& in_request) override;
+          reporting::ConfirmRecordUploadResponse>> response,
+      const reporting::ConfirmRecordUploadRequest& in_request) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 

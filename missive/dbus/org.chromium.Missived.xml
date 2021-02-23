@@ -14,11 +14,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="reporting::test::TestMessage" />
+                    value="reporting::EnqueueRecordRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="reporting::test::TestMessage" />
+                    value="reporting::EnqueueRecordResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
@@ -28,11 +28,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="reporting::test::TestMessage" />
+                    value="reporting::FlushPriorityRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="reporting::test::TestMessage" />
+                    value="reporting::FlushPriorityResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
@@ -43,11 +43,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="reporting::test::TestMessage" />
+                    value="reporting::ConfirmRecordUploadRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="reporting::test::TestMessage" />
+                    value="reporting::ConfirmRecordUploadResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>

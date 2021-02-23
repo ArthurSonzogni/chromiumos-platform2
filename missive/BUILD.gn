@@ -35,15 +35,6 @@ pkg_config("target_defaults") {
   }
 }
 
-# TODO(zatrudo): Remove after daemon testing
-proto_library("test_cc_proto") {
-  proto_in_dir = "protos"
-  proto_out_dir = "include/protos"
-  sources = [ "protos/test.proto" ]
-  all_dependent_pkg_deps = [ "protobuf" ]
-  standalone = true
-}
-
 generate_dbus_adaptors("missive_dbus_adaptors") {
   dbus_adaptors_out_dir = "include/dbus_adaptors"
   dbus_service_config = "dbus/dbus-service-config.json"
@@ -65,7 +56,8 @@ static_library("libmessaging_layer") {
   deps = [
     ":missive_dbus_adaptors",
     ":missive_dbus_proxies",
-    ":test_cc_proto",
+    "//missive/proto:interface_proto",
+    "//missive/scheduler",
   ]
 }
 
@@ -92,7 +84,17 @@ if (use.test) {
     deps = [
       ":libmessaging_layer",
       "//common-mk/testrunner",
+      "//missive/scheduler",
+      "//missive/util:shared_queue",
+      "//missive/util:status",
     ]
-    sources = [ "missive_daemon_test.cc" ]
+    sources = [
+      "missive_daemon_test.cc",
+      "scheduler/scheduler_test.cc",
+      "util/shared_queue_test.cc",
+      "util/status_macros_test.cc",
+      "util/status_test.cc",
+      "util/statusor_test.cc",
+    ]
   }
 }

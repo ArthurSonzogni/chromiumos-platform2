@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/test/task_environment.h>
 #include <brillo/brillo_export.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -18,6 +19,7 @@ class MissiveDaemonTest : public ::testing::Test {
 
  protected:
   std::unique_ptr<MissiveDaemon> missived_;
+  base::test::TaskEnvironment task_environment_;
 };
 
 TEST_F(MissiveDaemonTest, InitServiceContext) {

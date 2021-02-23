@@ -1,0 +1,56 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+static_library("backoff_settings") {
+  sources = [
+    "backoff_settings.cc",
+    "backoff_settings.h",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
+static_library("status") {
+  sources = [
+    "status.cc",
+    "status.h",
+    "statusor.cc",
+    "statusor.h",
+  ]
+  public_deps = [ "//missive/proto:status_proto" ]
+  configs += [ ":target_defaults" ]
+}
+
+source_set("shared_queue") {
+  sources = [ "shared_queue.h" ]
+  deps = [ ":status" ]
+  configs += [ ":target_defaults" ]
+}
+
+source_set("status_macros") {
+  sources = [ "status_macros.h" ]
+
+  deps = [ ":status" ]
+}
+
+source_set("task_runner_context") {
+  sources = [ "task_runner_context.h" ]
+
+  configs += [ ":target_defaults" ]
+}

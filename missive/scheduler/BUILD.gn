@@ -1,0 +1,24 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "libchrome" ]
+}
+
+static_library("scheduler") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "scheduler.cc",
+    "scheduler.h",
+  ]
+
+  deps = [
+    "//missive/util:shared_queue",
+    "//missive/util:status",
+    "//missive/util:task_runner_context",
+  ]
+}

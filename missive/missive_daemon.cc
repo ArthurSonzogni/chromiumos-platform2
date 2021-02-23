@@ -16,6 +16,9 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "missive/proto/interface.pb.h"
+#include "missive/scheduler/scheduler.h"
+
 namespace reporting {
 
 namespace {
@@ -59,8 +62,8 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
 
 void MissiveDaemon::EnqueueRecords(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::test::TestMessage>> response,
-    const reporting::test::TestMessage& in_request) {
+        reporting::EnqueueRecordResponse>> response,
+    const reporting::EnqueueRecordRequest& in_request) {
   // TODO(zatrudo): Consider wrapping this in a task and reply and posting to a
   // separate task runner off of DBus.
   brillo::ErrorPtr err = LogError("Function EnqueueRecords not implemented");
@@ -69,16 +72,16 @@ void MissiveDaemon::EnqueueRecords(
 
 void MissiveDaemon::FlushPriority(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::test::TestMessage>> response,
-    const reporting::test::TestMessage& in_request) {
+        reporting::FlushPriorityResponse>> response,
+    const reporting::FlushPriorityRequest& in_request) {
   brillo::ErrorPtr err = LogError("Function FlushPriority not implemented");
   std::move(response)->ReplyWithError(err.get());
 }
 
 void MissiveDaemon::ConfirmRecordUpload(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::test::TestMessage>> response,
-    const reporting::test::TestMessage& in_request) {
+        reporting::ConfirmRecordUploadResponse>> response,
+    const reporting::ConfirmRecordUploadRequest& in_request) {
   brillo::ErrorPtr err =
       LogError("Function ConfirmRecordUpload not implemented");
   std::move(response)->ReplyWithError(err.get());
