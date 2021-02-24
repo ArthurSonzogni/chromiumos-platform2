@@ -4845,6 +4845,7 @@ mno {
       username : "eesecure"
       password : "secure"
       authentication : PAP
+      ip_type : IPV4V6
     }
   }
   mvno {
