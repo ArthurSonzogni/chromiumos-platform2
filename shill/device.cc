@@ -972,15 +972,12 @@ void Device::HelpRegisterConstDerivedUint64(const string& name,
 void Device::ConnectionTesterCallback(
     const PortalDetector::Result& http_result,
     const PortalDetector::Result& https_result) {
-  LOG(INFO) << StringPrintf(
-      "ConnectionTester completed with HTTP probe phase==%s, "
-      "status==%s and HTTPS probe phase==%s, status==%s",
-      PortalDetector::PhaseToString(http_result.phase).c_str(),
-      PortalDetector::StatusToString(http_result.status).c_str(),
-      PortalDetector::PhaseToString(https_result.phase).c_str(),
-      PortalDetector::StatusToString(https_result.status).c_str());
-  LOG(INFO) << "Device " << link_name() << ": Completed Connectivity Test";
-
+  LOG(INFO)
+      << "Device " << link_name()
+      << " ConnectionTester completed connectivity test with HTTP probe phase="
+      << http_result.phase << ", status=" << http_result.status
+      << " and HTTPS probe phase=" << https_result.phase
+      << ", status=" << https_result.status;
   SetLooseRouting(false);
 }
 
@@ -1938,8 +1935,7 @@ void Device::PortalDetectorCallback(
     const PortalDetector::Result& https_result) {
   SLOG(this, 2) << __func__ << " Device: " << link_name() << " Service: "
                 << GetSelectedServiceRpcIdentifier(nullptr).value()
-                << " Received status: "
-                << PortalDetector::StatusToString(http_result.status);
+                << " Received status: " << http_result.status;
 
   SetLooseRouting(false);
 

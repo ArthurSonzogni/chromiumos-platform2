@@ -47,6 +47,7 @@ class HttpRequest {
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
   HttpRequest(EventDispatcher* dispatcher,
+              const std::string& logging_tag,
               const std::string& interface_name,
               const IPAddress& src_address,
               const std::vector<std::string>& dns_list,
@@ -90,6 +91,7 @@ class HttpRequest {
                      const brillo::Error* error);
   void SendStatus(Result result);
 
+  std::string logging_tag_;
   std::string interface_name_;
   IPAddress::Family ip_family_;
 

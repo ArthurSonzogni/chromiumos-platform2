@@ -57,6 +57,7 @@ const char kTextSiteName[] = "www.chromium.org";
 const char kTextURL[] = "http://www.chromium.org/path/to/resource";
 const char kNumericURL[] = "http://10.1.1.1";
 const char kInterfaceName[] = "int0";
+const char kLoggingTag[] = "int0 IPv4 attempt=1";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
@@ -119,7 +120,7 @@ class HttpRequestTest : public Test {
   };
 
   void SetUp() override {
-    request_.reset(new HttpRequest(&dispatcher_, interface_name_,
+    request_.reset(new HttpRequest(&dispatcher_, kLoggingTag, interface_name_,
                                    IPAddress(IPAddress::kFamilyIPv4), dns_list_,
                                    true));
     // Passes ownership.

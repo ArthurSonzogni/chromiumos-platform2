@@ -5,6 +5,7 @@
 #include "shill/mock_http_request.h"
 
 namespace {
+constexpr const char kMockLoggingTag[] = "mock0 IPv4 attempt=1 HTTP probe";
 constexpr const char kMockInterfaceName[] = "mock0";
 }  // namespace
 
@@ -12,6 +13,7 @@ namespace shill {
 
 MockHttpRequest::MockHttpRequest()
     : HttpRequest(nullptr,
+                  kMockLoggingTag,
                   kMockInterfaceName,
                   IPAddress(IPAddress::kFamilyIPv4),
                   {},

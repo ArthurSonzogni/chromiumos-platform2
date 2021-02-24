@@ -23,7 +23,6 @@
 
 using base::Bind;
 using base::Callback;
-using base::StringPrintf;
 using std::string;
 
 namespace {
@@ -104,36 +103,43 @@ bool PortalDetector::StartTrial(const Properties& props,
                                 int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
+  logging_tag_ = connection_->interface_name() + " " +
+                 IPAddress::GetAddressFamilyName(connection_->local().family());
+
   // This step is rerun on each attempt, but trying it here will allow
   // Start() to abort on any obviously malformed URL strings.
   HttpUrl http_url, https_url;
   http_url_string_ = PickHttpProbeUrl(props);
   https_url_string_ = props.https_url_string;
   if (!http_url.ParseFromString(http_url_string_)) {
-    LOG(ERROR) << "Failed to parse URL string: " << props.http_url_string;
+    LOG(ERROR) << LoggingTag() << ": Failed to parse HTTP probe URL string: "
+               << props.http_url_string;
     return false;
   }
   if (!https_url.ParseFromString(https_url_string_)) {
-    LOG(ERROR) << "Failed to parse URL string: " << props.https_url_string;
+    LOG(ERROR) << "Failed to parse HTTPS probe URL string: "
+               << props.https_url_string;
     return false;
   }
 
+  attempt_count_++;
   if (http_request_ || https_request_) {
     CleanupTrial();
   } else {
     const std::string& iface = connection_->interface_name();
     const IPAddress& src_address = connection_->local();
     const std::vector<std::string>& dns_list = connection_->dns_servers();
-    http_request_ = std::make_unique<HttpRequest>(dispatcher_, iface,
-                                                  src_address, dns_list);
+    http_request_ =
+        std::make_unique<HttpRequest>(dispatcher_, LoggingTag() + " HTTP probe",
+                                      iface, src_address, dns_list);
     // For non-default URLs, allow for secure communication with both Google and
     // non-Google servers.
     bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
     https_request_ = std::make_unique<HttpRequest>(
-        dispatcher_, iface, src_address, dns_list, allow_non_google_https);
+        dispatcher_, LoggingTag() + " HTTPS probe", iface, src_address,
+        dns_list, allow_non_google_https);
   }
   StartTrialAfterDelay(start_delay_milliseconds);
-  attempt_count_++;
   return true;
 }
 
@@ -147,6 +153,7 @@ void PortalDetector::StartTrialAfterDelay(int start_delay_milliseconds) {
 }
 
 void PortalDetector::StartTrialTask() {
+  LOG(INFO) << LoggingTag() << ": Starting trial";
   base::Callback<void(std::shared_ptr<brillo::http::Response>)>
       http_request_success_callback(
           Bind(&PortalDetector::HttpRequestSuccessCallback,
@@ -158,7 +165,9 @@ void PortalDetector::StartTrialTask() {
       http_url_string_, kHeaders, http_request_success_callback,
       http_request_error_callback);
   if (http_result != HttpRequest::kResultInProgress) {
-    // Return successful HTTPS probe by default.
+    // If the http probe fails to start, complete the trial with a failure
+    // Result for https.
+    LOG(ERROR) << LoggingTag() << ": HTTP probe failed to start";
     CompleteTrial(PortalDetector::GetPortalResultForRequestResult(http_result),
                   Result(Phase::kContent, Status::kFailure));
     return;
@@ -177,13 +186,7 @@ void PortalDetector::StartTrialTask() {
   if (https_result != HttpRequest::kResultInProgress) {
     https_result_ =
         std::make_unique<Result>(GetPortalResultForRequestResult(https_result));
-    LOG(ERROR) << connection_->interface_name()
-               << StringPrintf(
-                      " HTTPS probe start failed phase==%s, status==%s, "
-                      "attempt count==%d",
-                      PhaseToString(https_result_->phase).c_str(),
-                      StatusToString(https_result_->status).c_str(),
-                      attempt_count_);
+    LOG(ERROR) << LoggingTag() << ": HTTPS probe failed to start";
   }
   is_active_ = true;
 }
@@ -193,13 +196,11 @@ bool PortalDetector::IsActive() {
 }
 
 void PortalDetector::CompleteTrial(Result http_result, Result https_result) {
-  SLOG(connection_.get(), 3) << StringPrintf(
-      "Trial completed. HTTP probe finished with phase==%s, status==%s, HTTPS "
-      "probe finished with phase==%s, status==%s, attempt count==%d.",
-      PhaseToString(http_result.phase).c_str(),
-      StatusToString(http_result.status).c_str(),
-      PhaseToString(https_result.phase).c_str(),
-      StatusToString(https_result.status).c_str(), attempt_count_);
+  LOG(INFO) << LoggingTag()
+            << ": Trial completed. HTTP probe: phase=" << http_result.phase
+            << ", status=" << http_result.status
+            << ". HTTPS probe: phase=" << https_result.phase
+            << ", status=" << https_result.status;
   CompleteAttempt(http_result, https_result);
 }
 
@@ -245,14 +246,15 @@ void PortalDetector::HttpRequestSuccessCallback(
     string redirect_url_string =
         response->GetHeader(brillo::http::response_header::kLocation);
     if (redirect_url_string.empty()) {
-      LOG(ERROR) << "No Location field in redirect header.";
+      LOG(ERROR) << LoggingTag() << ": No Location field in redirect header.";
     } else {
       HttpUrl redirect_url;
       if (!redirect_url.ParseFromString(redirect_url_string)) {
-        LOG(ERROR) << "Unable to parse redirect URL: " << redirect_url_string;
+        LOG(ERROR) << LoggingTag()
+                   << ": Unable to parse redirect URL: " << redirect_url_string;
         http_result_->status = Status::kFailure;
       } else {
-        LOG(INFO) << "Redirect URL: " << redirect_url_string;
+        LOG(INFO) << LoggingTag() << ": Redirect URL: " << redirect_url_string;
         http_result_->redirect_url_string = redirect_url_string;
         http_result_->probe_url_string = http_url_string_;
       }
@@ -260,6 +262,8 @@ void PortalDetector::HttpRequestSuccessCallback(
   } else {
     http_result_ = std::make_unique<Result>(Phase::kContent, Status::kFailure);
   }
+  LOG(INFO) << LoggingTag() << ": HTTP probe response code=" << status_code
+            << " status=" << http_result_->status;
   http_result_->status_code = status_code;
 
   CompleteRequest();
@@ -268,37 +272,32 @@ void PortalDetector::HttpRequestSuccessCallback(
 void PortalDetector::HttpsRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
   int status_code = response->GetStatusCode();
-  if (status_code == brillo::http::status_code::NoContent) {
-    // HTTPS probe success, probably no portal
-    https_result_ = std::make_unique<Result>(Phase::kContent, Status::kSuccess);
-    LOG(INFO) << connection_->interface_name()
-              << " HTTPS probe succeeded, probably no portal, attempt count=="
-              << attempt_count_;
-  } else {
-    // HTTPS probe didn't get 204, inconclusive
-    https_result_ = std::make_unique<Result>(Phase::kContent, Status::kFailure);
-    LOG(ERROR) << connection_->interface_name()
-               << " HTTPS probe returned with status code " << status_code
-               << ". Portal detection inconclusive, attempt count=="
-               << attempt_count_;
-  }
+  // The HTTPS probe is successful and indicates no portal was present only if
+  // it gets the expected 204 status code. Any other result is a failure.
+  Status probe_status = (status_code == brillo::http::status_code::NoContent)
+                            ? Status::kSuccess
+                            : Status::kFailure;
+  LOG(INFO) << LoggingTag() << ": HTTPS probe response code=" << status_code
+            << " status=" << probe_status;
+  https_result_ = std::make_unique<Result>(Phase::kContent, probe_status);
   CompleteRequest();
 }
 
 void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result result) {
   http_result_ =
       std::make_unique<Result>(GetPortalResultForRequestResult(result));
+  LOG(INFO) << LoggingTag()
+            << ": HTTP probe failed with phase=" << http_result_.get()->phase
+            << " status=" << http_result_.get()->status;
   CompleteRequest();
 }
 
 void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Result result) {
   https_result_ =
       std::make_unique<Result>(GetPortalResultForRequestResult(result));
-  LOG(INFO) << connection_->interface_name()
-            << " HTTPS probe failed with phase=="
-            << PortalDetector::PhaseToString(https_result_.get()->phase)
-            << ", status=="
-            << PortalDetector::StatusToString(https_result_.get()->status);
+  LOG(INFO) << LoggingTag()
+            << ": HTTPS probe failed with phase=" << https_result_.get()->phase
+            << " status=" << https_result_.get()->status;
   CompleteRequest();
 }
 
@@ -307,14 +306,6 @@ bool PortalDetector::IsInProgress() {
 }
 
 void PortalDetector::CompleteAttempt(Result http_result, Result https_result) {
-  LOG(INFO) << connection_->interface_name()
-            << StringPrintf(
-                   " Portal detection completed attempt %d with "
-                   "phase==%s, status==%s",
-                   attempt_count_,
-                   PortalDetector::PhaseToString(http_result.phase).c_str(),
-                   PortalDetector::StatusToString(http_result.status).c_str());
-
   http_result.num_attempts = attempt_count_;
   CleanupTrial();
   portal_result_callback_.Run(http_result, https_result);
@@ -400,6 +391,18 @@ PortalDetector::Result PortalDetector::GetPortalResultForRequestResult(
     default:
       return Result(Phase::kUnknown, Status::kFailure);
   }
+}
+
+std::string PortalDetector::LoggingTag() const {
+  return logging_tag_ + " attempt=" + std::to_string(attempt_count_);
+}
+
+std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase) {
+  return stream << PortalDetector::PhaseToString(phase);
+}
+
+std::ostream& operator<<(std::ostream& stream, PortalDetector::Status status) {
+  return stream << PortalDetector::StatusToString(status);
 }
 
 }  // namespace shill

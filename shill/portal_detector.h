@@ -6,6 +6,7 @@
 #define SHILL_PORTAL_DETECTOR_H_
 
 #include <memory>
+#include <ostream>
 #include <set>
 #include <string>
 #include <vector>
@@ -231,6 +232,10 @@ class PortalDetector {
   // Method to return if the connection is being actively tested.
   virtual bool IsActive();
 
+  // Return |logging_tag_| appended with the |attempt_count_|.
+  std::string LoggingTag() const;
+
+  std::string logging_tag_;
   int attempt_count_;
   struct timeval attempt_start_time_;
   ConnectionRefPtr connection_;
@@ -249,6 +254,9 @@ class PortalDetector {
   base::CancelableClosure trial_;
   bool is_active_;
 };
+
+std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase);
+std::ostream& operator<<(std::ostream& stream, PortalDetector::Status status);
 
 }  // namespace shill
 

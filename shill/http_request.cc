@@ -43,11 +43,13 @@ static string ObjectID(const HttpRequest* r) {
 const int HttpRequest::kRequestTimeoutSeconds = 10;
 
 HttpRequest::HttpRequest(EventDispatcher* dispatcher,
+                         const std::string& logging_tag,
                          const std::string& interface_name,
                          const IPAddress& src_address,
                          const std::vector<std::string>& dns_list,
                          bool allow_non_google_https)
-    : interface_name_(interface_name),
+    : logging_tag_(logging_tag),
+      interface_name_(interface_name),
       ip_family_(src_address.family()),
       weak_ptr_factory_(this),
       dns_client_callback_(
@@ -92,7 +94,7 @@ HttpRequest::Result HttpRequest::Start(
 
   HttpUrl url;
   if (!url.ParseFromString(url_string)) {
-    LOG(ERROR) << interface_name_
+    LOG(ERROR) << logging_tag_
                << ": Failed to parse URL string: " << url_string;
     return kResultInvalidInput;
   }
@@ -116,7 +118,7 @@ HttpRequest::Result HttpRequest::Start(
     SLOG(this, 3) << "Looking up host: " << server_hostname_;
     Error error;
     if (!dns_client_->Start(server_hostname_, &error)) {
-      LOG(ERROR) << interface_name_
+      LOG(ERROR) << logging_tag_
                  << ": Failed to start DNS client: " << error.message();
       Stop();
       return kResultDNSFailure;
@@ -127,6 +129,7 @@ HttpRequest::Result HttpRequest::Start(
 }
 
 void HttpRequest::StartRequest() {
+  LOG(INFO) << logging_tag_ << ": Starting request to " << url_string_;
   request_id_ = brillo::http::Get(url_string_, headers_, transport_,
                                   success_callback_, error_callback_);
 }
@@ -135,7 +138,7 @@ void HttpRequest::SuccessCallback(
     brillo::http::RequestID request_id,
     std::unique_ptr<brillo::http::Response> response) {
   if (request_id != request_id_) {
-    LOG(ERROR) << interface_name_ << ": Expected request ID " << request_id_
+    LOG(ERROR) << logging_tag_ << ": Expected request ID " << request_id_
                << " but got " << request_id;
     SendStatus(kResultUnknown);
     return;
@@ -154,19 +157,19 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
                                 const brillo::Error* error) {
   int error_code;
   if (error->GetDomain() != kCurlEasyError) {
-    LOG(ERROR) << interface_name_ << ": Expected error domain "
-               << kCurlEasyError << " but got " << error->GetDomain();
+    LOG(ERROR) << logging_tag_ << ": Expected error domain " << kCurlEasyError
+               << " but got " << error->GetDomain();
     SendStatus(kResultUnknown);
     return;
   }
   if (request_id != request_id_) {
-    LOG(ERROR) << interface_name_ << ": Expected request ID " << request_id_
+    LOG(ERROR) << logging_tag_ << ": Expected request ID " << request_id_
                << " but got " << request_id;
     SendStatus(kResultUnknown);
     return;
   }
   if (!StringToInt(error->GetCode(), &error_code)) {
-    LOG(ERROR) << interface_name_ << ": Unable to convert error code "
+    LOG(ERROR) << logging_tag_ << ": Unable to convert error code "
                << error->GetCode() << " to Int";
     SendStatus(kResultUnknown);
     return;
@@ -213,8 +216,8 @@ void HttpRequest::Stop() {
 void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
   SLOG(this, 3) << "In " << __func__;
   if (!error.IsSuccess()) {
-    LOG(ERROR) << interface_name_ << ": Could not resolve hostname "
-               << server_hostname_ << ": " << error.message();
+    LOG(ERROR) << logging_tag_ << ": Could not resolve " << server_hostname_
+               << ": " << error.message();
     if (error.message() == DnsClient::kErrorTimedOut) {
       SendStatus(kResultDNSTimeout);
     } else {
@@ -233,6 +236,8 @@ void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
   // the URL to the given IP. Otherwise, will do its own DNS resolution and not
   // use the IP we provide to it.
   transport_->ResolveHostToIp(server_hostname_, server_port_, addr_string);
+  LOG(INFO) << logging_tag_ << ": Resolved " << server_hostname_ << " to "
+            << addr_string;
   StartRequest();
 }
 
