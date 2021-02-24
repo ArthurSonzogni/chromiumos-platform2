@@ -348,6 +348,7 @@ class Cellular : public Device,
 
   CellularCapability* capability_for_testing() { return capability_.get(); }
   mm1::Mm1ProxyInterface* mm1_proxy_for_testing() { return mm1_proxy_.get(); }
+  const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
 
   // Sets a Service for testing. When set, Cellular does not create or destroy
   // the associated Service.

@@ -1786,14 +1786,12 @@ void Cellular::SetSimSlotProperties(
   // Set |sim_slot_info_| and emit SIMSlotInfo
   sim_slot_info_.clear();
   for (const SimProperties& sim_properties : slot_properties) {
-    size_t slot = sim_properties.slot;
-    if (slot >= sim_slot_info_.size())
-      sim_slot_info_.resize(slot + 1);
-    KeyValueStore& properties = sim_slot_info_[slot];
+    KeyValueStore properties;
     properties.Set(kSIMSlotInfoEID, sim_properties.eid);
     properties.Set(kSIMSlotInfoICCID, sim_properties.iccid);
     bool is_primary = !iccid_.empty() && sim_properties.iccid == iccid_;
     properties.Set(kSIMSlotInfoPrimary, is_primary);
+    sim_slot_info_.push_back(properties);
   }
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
 

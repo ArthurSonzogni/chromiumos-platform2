@@ -216,7 +216,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   // Saves |sim_properties| for |path| to be provided by FakePropertiesProxy.
   void SetSimProperties(const RpcIdentifier& path,
                         const KeyValueStore& sim_properties) {
-    sim_properties_[path] = sim_properties;
+    sim_paths_.push_back(path);
+    sim_properties_.push_back(sim_properties);
   }
 
   // Calls capability_->OnPropertiesChanged with Modem.SIM = |path|.
@@ -233,8 +234,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
     KeyValueStore modem_properties;
     modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, path);
     RpcIdentifiers slots;
-    for (auto iter : sim_properties_)
-      slots.push_back(iter.first);
+    for (const auto& path : sim_paths_)
+      slots.push_back(path);
     modem_properties.Set<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS, slots);
     capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
     dispatcher_.DispatchPendingEvents();
@@ -260,6 +261,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   }
 
   void ClearCapabilitySimProperties() {
+    sim_paths_.clear();
     sim_properties_.clear();
     UpdateSims(RpcIdentifier());
   }
@@ -399,7 +401,11 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
 
  protected:
   brillo::VariantDictionary GetSimProperties(const RpcIdentifier& sim_path) {
-    return sim_properties_[sim_path].properties();
+    const auto iter = std::find(sim_paths_.begin(), sim_paths_.end(), sim_path);
+    if (iter == sim_paths_.end())
+      return brillo::VariantDictionary();
+    size_t idx = iter - sim_paths_.begin();
+    return sim_properties_[idx].properties();
   }
 
   class TestControl : public MockControl {
@@ -526,8 +532,6 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   // Properties provided by TestControl::CreateDBusPropertiesProxy()
   KeyValueStore modem_properties_;
   KeyValueStore modem_3gpp_properties_;
-  std::map<RpcIdentifier, KeyValueStore> sim_properties_;
-
   KeyValueStore modem_signal_properties_;
 
   // saved for testing connect operations.
@@ -536,6 +540,10 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   // Set when required and passed to |cellular_|. Owned by |cellular_|.
   MockMobileOperatorInfo* mock_home_provider_info_;
   MockMobileOperatorInfo* mock_serving_operator_info_;
+
+ private:
+  std::vector<RpcIdentifier> sim_paths_;
+  std::vector<KeyValueStore> sim_properties_;
 };
 
 TEST_F(CellularCapability3gppTest, StartModem) {
@@ -2038,6 +2046,13 @@ TEST_F(CellularCapability3gppTest, MultiSimProperties) {
   EXPECT_TRUE(cellular_->sim_present());
   EXPECT_EQ(kIccid1, cellular_->iccid());
   EXPECT_EQ(kEid1, cellular_->eid());
+
+  const KeyValueStores& sim_slot_info = cellular_->sim_slot_info_for_testing();
+  ASSERT_EQ(2u, sim_slot_info.size());
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoICCID), kIccid1);
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoEID), kEid1);
+  EXPECT_EQ(sim_slot_info[1].Get<std::string>(kSIMSlotInfoICCID), kIccid2);
+  EXPECT_EQ(sim_slot_info[1].Get<std::string>(kSIMSlotInfoEID), kEid2);
   VerifyAndSetActivationExpectations();
 
   // Switch active slot to 2.
@@ -2062,7 +2077,7 @@ TEST_F(CellularCapability3gppTest, SimPathOnly) {
   KeyValueStore sim_properties;
   sim_properties.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
   sim_properties.Set<string>(MM_SIM_PROPERTY_EID, kEid1);
-  sim_properties_[kSimPath1] = sim_properties;
+  SetSimProperties(kSimPath1, sim_properties);
 
   KeyValueStore modem_properties;
   modem_properties.Set<RpcIdentifier>(MM_MODEM_PROPERTY_SIM, kSimPath1);
@@ -2100,6 +2115,35 @@ TEST_F(CellularCapability3gppTest, SetPrimarySimSlot) {
 
   // TODO(b/169581681): Fake Modem.SetPrimarySimSlot() behavior to provide
   // updated SIM properties.
+  VerifyAndSetActivationExpectations();
+}
+
+TEST_F(CellularCapability3gppTest, EmptySimSlot) {
+  InitProxies();
+
+  const char kIccid1[] = "110100000001";
+  const char kEid1[] = "110100000002";
+  KeyValueStore sim_properties1;
+  sim_properties1.Set<string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
+  sim_properties1.Set<string>(MM_SIM_PROPERTY_EID, kEid1);
+  SetSimProperties(kSimPath1, sim_properties1);
+
+  KeyValueStore sim_properties2;
+  SetSimProperties(CellularCapability3gpp::kRootPath, sim_properties2);
+
+  UpdateSims(kSimPath1);
+
+  EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
+  EXPECT_TRUE(cellular_->sim_present());
+  EXPECT_EQ(kIccid1, cellular_->iccid());
+  EXPECT_EQ(kEid1, cellular_->eid());
+
+  const KeyValueStores& sim_slot_info = cellular_->sim_slot_info_for_testing();
+  ASSERT_EQ(2u, sim_slot_info.size());
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoICCID), kIccid1);
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoEID), kEid1);
+  EXPECT_TRUE(sim_slot_info[1].Get<std::string>(kSIMSlotInfoICCID).empty());
+  EXPECT_TRUE(sim_slot_info[1].Get<std::string>(kSIMSlotInfoEID).empty());
   VerifyAndSetActivationExpectations();
 }
 

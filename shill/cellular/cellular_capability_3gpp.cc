@@ -1373,10 +1373,16 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
     LOG(INFO) << " No Primary SIM properties.";
     SetPrimarySimProperties(SimProperties());
   }
-  // Update SIM slot properties for each SIM slot.
-  std::vector<SimProperties> sim_slot_properties;
-  for (const auto& iter : sim_properties_)
-    sim_slot_properties.push_back(iter.second);
+  // Update SIM slot properties for each SIM slot. Slots with an empty path
+  // will contain an empty SimProperties entry.
+  size_t num_slots = sim_slots_.size();
+  std::vector<SimProperties> sim_slot_properties(num_slots);
+  for (const auto& iter : sim_properties_) {
+    size_t slot = iter.second.slot;
+    DCHECK_GE(slot, 0u);
+    DCHECK_LT(slot, num_slots);
+    sim_slot_properties[slot] = iter.second;
+  }
   cellular()->SetSimSlotProperties(sim_slot_properties);
 }
 
