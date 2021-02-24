@@ -13,6 +13,8 @@
 #include <base/command_line.h>
 #include <base/process/launch.h>
 
+#include "arc/data-snapshotd/esc_key_watcher.h"
+
 namespace arc {
 namespace data_snapshotd {
 
@@ -30,13 +32,13 @@ class BlockUiController final {
   using LaunchProcessCallback = base::RepeatingCallback<bool(
       const base::CommandLine&, const base::LaunchOptions&)>;
 
-  BlockUiController();
+  explicit BlockUiController(std::unique_ptr<EscKeyWatcher> watcher);
   BlockUiController(const BlockUiController&) = delete;
   BlockUiController& operator=(const BlockUiController&) = delete;
   ~BlockUiController();
 
   static std::unique_ptr<BlockUiController> CreateForTesting(
-      LaunchProcessCallback callback);
+      std::unique_ptr<EscKeyWatcher> watcher, LaunchProcessCallback callback);
 
   // Shows update_arc_data_snapshot. Returns true if succeeds to show a UI
   // screen.
@@ -51,10 +53,13 @@ class BlockUiController final {
   bool shown() const { return shown_; }
 
  private:
-  explicit BlockUiController(LaunchProcessCallback callback);
+  explicit BlockUiController(std::unique_ptr<EscKeyWatcher> watcher,
+                             LaunchProcessCallback callback);
 
   // True if the screen is shown.
   bool shown_ = false;
+
+  std::unique_ptr<EscKeyWatcher> watcher_;
 
   LaunchProcessCallback launch_process_callback_;
 };

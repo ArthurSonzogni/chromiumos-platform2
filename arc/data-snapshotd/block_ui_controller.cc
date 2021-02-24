@@ -77,15 +77,17 @@ base::LaunchOptions GetUpdateProgressOptions() {
   return options;
 }
 
-BlockUiController::BlockUiController()
-    : BlockUiController(base::BindRepeating(&LaunchProcessImpl)) {}
+BlockUiController::BlockUiController(std::unique_ptr<EscKeyWatcher> watcher)
+    : BlockUiController(std::move(watcher),
+                        base::BindRepeating(&LaunchProcessImpl)) {}
 
 BlockUiController::~BlockUiController() {}
 
 // static
 std::unique_ptr<BlockUiController> BlockUiController::CreateForTesting(
-    LaunchProcessCallback callback) {
-  return base::WrapUnique(new BlockUiController(std::move(callback)));
+    std::unique_ptr<EscKeyWatcher> watcher, LaunchProcessCallback callback) {
+  return base::WrapUnique(
+      new BlockUiController(std::move(watcher), std::move(callback)));
 }
 
 bool BlockUiController::ShowScreen() {
@@ -100,6 +102,8 @@ bool BlockUiController::ShowScreen() {
                                         GetShowScreenOptions());
   if (!shown_)
     LOG(ERROR) << "Failed to launch update_arc_data_snapshot screen";
+
+  watcher_->Init();
   return shown_;
 }
 
@@ -118,8 +122,12 @@ bool BlockUiController::UpdateProgress(int percent) {
   return true;
 }
 
-BlockUiController::BlockUiController(LaunchProcessCallback callback)
-    : launch_process_callback_(std::move(callback)) {}
+BlockUiController::BlockUiController(std::unique_ptr<EscKeyWatcher> watcher,
+                                     LaunchProcessCallback callback)
+    : watcher_(std::move(watcher)),
+      launch_process_callback_(std::move(callback)) {
+  DCHECK(watcher_);
+}
 
 }  // namespace data_snapshotd
 }  // namespace arc

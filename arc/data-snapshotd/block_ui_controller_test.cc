@@ -10,6 +10,7 @@
 
 #include "arc/data-snapshotd/block_ui_controller.h"
 #include "arc/data-snapshotd/fake_process_launcher.h"
+#include "arc/data-snapshotd/mock_esc_key_watcher.h"
 
 namespace arc {
 namespace data_snapshotd {
@@ -40,29 +41,34 @@ class BlockUiControllerTest : public testing::Test {
     return process_launcher_->GetLaunchProcessCallback();
   }
 
+  std::unique_ptr<FakeEscKeyWatcher> CreateWatcher() {
+    return std::make_unique<FakeEscKeyWatcher>(&delegate_);
+  }
+
  private:
   std::unique_ptr<FakeProcessLauncher> process_launcher_;
+  MockEscKeyWatcherDelegate delegate_;
 };
 
 TEST_F(BlockUiControllerTest, ShowScreenSucces) {
   ExpectUiScreenShown();
-  auto controller =
-      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  auto controller = BlockUiController::CreateForTesting(
+      CreateWatcher(), GetLaunchProcessCallback());
   EXPECT_TRUE(controller->ShowScreen());
 }
 
 TEST_F(BlockUiControllerTest, ShowScreenFailure) {
   ExpectUiScreenShown(false /* shown */);
 
-  auto controller =
-      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  auto controller = BlockUiController::CreateForTesting(
+      CreateWatcher(), GetLaunchProcessCallback());
   EXPECT_FALSE(controller->ShowScreen());
 }
 
 TEST_F(BlockUiControllerTest, UpdateProgressSuccess) {
   ExpectUiScreenShown();
-  auto controller =
-      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  auto controller = BlockUiController::CreateForTesting(
+      CreateWatcher(), GetLaunchProcessCallback());
   EXPECT_TRUE(controller->ShowScreen());
 
   ExpectProgressUpdated(kPercent);
@@ -71,8 +77,8 @@ TEST_F(BlockUiControllerTest, UpdateProgressSuccess) {
 
 TEST_F(BlockUiControllerTest, UpdateProgressNoScreenFailure) {
   ExpectUiScreenShown(false /* shown */);
-  auto controller =
-      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  auto controller = BlockUiController::CreateForTesting(
+      CreateWatcher(), GetLaunchProcessCallback());
   EXPECT_FALSE(controller->ShowScreen());
 
   ExpectUiScreenShown(false /* shown */);
@@ -82,8 +88,9 @@ TEST_F(BlockUiControllerTest, UpdateProgressNoScreenFailure) {
 
 TEST_F(BlockUiControllerTest, UpdateProgressShowScreenSuccess) {
   ExpectUiScreenShown(false /* shown */);
-  auto controller =
-      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  auto controller = BlockUiController::CreateForTesting(
+      CreateWatcher(), GetLaunchProcessCallback());
+
   EXPECT_FALSE(controller->ShowScreen());
 
   ExpectUiScreenShown();
@@ -94,8 +101,8 @@ TEST_F(BlockUiControllerTest, UpdateProgressShowScreenSuccess) {
 
 TEST_F(BlockUiControllerTest, UpdateProgressFailure) {
   ExpectUiScreenShown();
-  auto controller =
-      BlockUiController::CreateForTesting(GetLaunchProcessCallback());
+  auto controller = BlockUiController::CreateForTesting(
+      CreateWatcher(), GetLaunchProcessCallback());
   EXPECT_TRUE(controller->ShowScreen());
 
   ExpectProgressUpdated(kPercent, false /* updated */);

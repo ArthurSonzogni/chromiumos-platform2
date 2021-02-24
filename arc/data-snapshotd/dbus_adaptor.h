@@ -16,6 +16,7 @@
 #include <dbus/bus.h>
 
 #include "arc/data-snapshotd/block_ui_controller.h"
+#include "arc/data-snapshotd/esc_key_watcher.h"
 #include "dbus_adaptors/org.chromium.ArcDataSnapshotd.h"
 
 namespace crypto {
@@ -43,7 +44,8 @@ extern const char kAndroidDataDirectory[];
 // exposed by the arc-data-snapshotd daemon (see constants for the API methods
 // at src/platform/system_api/dbus/arc-data-snapshotd/dbus-constants.h).
 class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
-                          public org::chromium::ArcDataSnapshotdInterface {
+                          public org::chromium::ArcDataSnapshotdInterface,
+                          public EscKeyWatcher::Delegate {
  public:
   DBusAdaptor();
   DBusAdaptor(const DBusAdaptor&) = delete;
@@ -71,6 +73,9 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
                     bool* last,
                     bool* success) override;
   bool Update(int percent) override;
+
+  // Implementation of EscKeyWatcher::Delegate:
+  void SendCancelSignal() override;
 
   const base::FilePath& get_last_snapshot_directory() const {
     return last_snapshot_directory_;

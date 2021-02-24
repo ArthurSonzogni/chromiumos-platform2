@@ -99,5 +99,11 @@
         </tp:docstring>
       </arg>
     </method>
+    <signal name="UiCancelled">
+      <tp:docstring>
+        Detected ESC key press on the blocked UI screen. The snapshot creation
+        flow must be cancelled.
+      </tp:docstring>
+    </signal>
   </interface>
 </node>

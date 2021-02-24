@@ -20,6 +20,7 @@
 #include "arc/data-snapshotd/dbus_adaptor.h"
 #include "arc/data-snapshotd/fake_process_launcher.h"
 #include "arc/data-snapshotd/file_utils.h"
+#include "arc/data-snapshotd/mock_esc_key_watcher.h"
 #include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
 // Note that boot_lockbox_rpc.pb.h have to be included before
 // dbus_adaptors/org.chromium.BootLockboxInterface.h because it is used in
@@ -86,6 +87,7 @@ class DBusAdaptorTest : public testing::Test {
         root_tempdir_.GetPath(), root_tempdir_.GetPath(),
         std::move(boot_lockbox_client), salt_,
         BlockUiController::CreateForTesting(
+            std::make_unique<FakeEscKeyWatcher>(&delegate_),
             process_launcher_->GetLaunchProcessCallback()));
   }
 
@@ -134,6 +136,7 @@ class DBusAdaptorTest : public testing::Test {
 
  private:
   std::string salt_ = "salt";
+  MockEscKeyWatcherDelegate delegate_;
   scoped_refptr<dbus::Bus> bus_;
   MockBootLockboxClient* boot_lockbox_client_;
   std::unique_ptr<FakeProcessLauncher> process_launcher_;
