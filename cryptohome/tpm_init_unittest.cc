@@ -164,8 +164,6 @@ class TpmInitTest : public ::testing::Test {
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned())
         .WillByDefault(Invoke(this, &TpmInitTest::IsTpmOwned));
-    ON_CALL(tpm_, SetIsOwned(_))
-        .WillByDefault(Invoke(this, &TpmInitTest::SetIsTpmOwned));
     ON_CALL(tpm_, IsBeingOwned())
         .WillByDefault(Invoke(this, &TpmInitTest::IsTpmBeingOwned));
     ON_CALL(tpm_, SetIsBeingOwned(_))
@@ -275,7 +273,6 @@ TEST_F(TpmInitTest, AlreadyOwnedSuccess) {
 
 TEST_F(TpmInitTest, TakeOwnershipDistributedSuccess) {
   // Set initial TPM states.
-  SetIsTpmOwned(false);
   SetIsTpmInitialized(true);
   SetIsTpmBeingOwned(false);
 
@@ -285,12 +282,10 @@ TEST_F(TpmInitTest, TakeOwnershipDistributedSuccess) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, CreateEndorsementKey()).WillOnce(Return(true));
   EXPECT_CALL(tpm_, TakeOwnership(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, SetOwnerPassword(_)).Times(0);
 
   bool took_ownership = false;
   EXPECT_TRUE(tpm_init_.TakeOwnership(&took_ownership));
   EXPECT_TRUE(took_ownership);
-  EXPECT_TRUE(IsTpmOwned());
   EXPECT_FALSE(IsTpmBeingOwned());
   EXPECT_TRUE(FileExists(kTpmOwnedFile));
 }

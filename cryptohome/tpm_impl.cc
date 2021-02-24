@@ -1754,18 +1754,6 @@ Tpm::TpmRetryAction TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
   return Tpm::kTpmRetryNone;
 }
 
-void TpmImpl::SetOwnerPassword(const brillo::SecureBlob& owner_password) {
-  LOG(WARNING) << __func__ << ": no-ops.";
-}
-
-void TpmImpl::SetIsEnabled(bool) {
-  LOG(WARNING) << __func__ << ": no-ops.";
-}
-
-void TpmImpl::SetIsOwned(bool) {
-  LOG(WARNING) << __func__ << ": no-ops.";
-}
-
 bool TpmImpl::IsEnabled() {
   if (!is_enabled_) {
     if (!CacheTpmManagerStatus()) {
@@ -2186,10 +2174,6 @@ LECredentialBackend* TpmImpl::GetLECredentialBackend() {
 
 SignatureSealingBackend* TpmImpl::GetSignatureSealingBackend() {
   return &signature_sealing_backend_;
-}
-
-void TpmImpl::HandleOwnershipTakenEvent() {
-  SetIsOwned(true);
 }
 
 bool TpmImpl::GetDelegate(brillo::Blob* blob,

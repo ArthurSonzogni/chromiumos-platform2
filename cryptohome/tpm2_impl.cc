@@ -260,10 +260,6 @@ bool Tpm2Impl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
   return !owner_password->empty();
 }
 
-void Tpm2Impl::SetOwnerPassword(const SecureBlob& /* owner_password */) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-}
-
 bool Tpm2Impl::InitializeTpmManagerUtility() {
   if (!tpm_manager_utility_) {
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
@@ -291,10 +287,6 @@ bool Tpm2Impl::IsEnabled() {
     }
   }
   return is_enabled_;
-}
-
-void Tpm2Impl::SetIsEnabled(bool /* enabled */) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
 }
 
 bool Tpm2Impl::IsOwned() {
@@ -333,10 +325,6 @@ bool Tpm2Impl::HasResetLockPermissions() {
     return false;
   }
   return has_reset_lock_permissions;
-}
-
-void Tpm2Impl::SetIsOwned(bool /* owned */) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
 }
 
 bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
@@ -1311,10 +1299,6 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
   }
   key_handle->reset(this, key_handle_raw);
   return true;
-}
-
-void Tpm2Impl::HandleOwnershipTakenEvent() {
-  // Not necessary, tpm_manager client takes care of this.
 }
 
 bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,

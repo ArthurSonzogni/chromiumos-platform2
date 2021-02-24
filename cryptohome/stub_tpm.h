@@ -60,9 +60,7 @@ class StubTpm : public Tpm {
     return kTpmRetryNone;
   }
   bool IsEnabled() override { return false; }
-  void SetIsEnabled(bool enabled) override {}
   bool IsOwned() override { return false; }
-  void SetIsOwned(bool owned) override {}
   bool ReadNvram(uint32_t index, SecureBlob* blob) override { return false; }
   bool IsNvramDefined(uint32_t index) override { return false; }
   bool IsNvramLocked(uint32_t index) override { return false; }
@@ -138,7 +136,6 @@ class StubTpm : public Tpm {
                      const SecureBlob& owner_password) override {
     return false;
   }
-  void SetOwnerPassword(const SecureBlob& owner_password) override {}
   bool WrapRsaKey(const SecureBlob& public_modulus,
                   const SecureBlob& prime_factor,
                   SecureBlob* wrapped_key) override {
@@ -180,7 +177,6 @@ class StubTpm : public Tpm {
   SignatureSealingBackend* GetSignatureSealingBackend() override {
     return nullptr;
   }
-  void HandleOwnershipTakenEvent() override {}
   void SetDelegateData(const std::string& delegate_blob,
                        bool has_reset_lock_permissions) override {}
   base::Optional<bool> IsDelegateBoundToPcr() override { return true; }

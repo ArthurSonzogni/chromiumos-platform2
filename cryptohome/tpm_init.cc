@@ -114,10 +114,6 @@ bool TpmInit::IsTpmOwned() {
   return tpm_init_task_->get_tpm()->IsOwned();
 }
 
-void TpmInit::SetTpmOwned(bool owned) {
-  tpm_init_task_->get_tpm()->SetIsOwned(owned);
-}
-
 void TpmInit::SetTpmBeingOwned(bool being_owned) {
   tpm_init_task_->get_tpm()->SetIsBeingOwned(being_owned);
 }
@@ -173,18 +169,13 @@ void TpmInit::RestoreTpmStateFromStorage() {
     }
   }
 
-  get_tpm()->SetIsOwned(is_owned);
-  get_tpm()->SetIsEnabled(is_enabled);
-
   if (successful_check && !is_owned) {
     tpm_persistent_state_.SetReady(false);
     tpm_persistent_state_.ClearStatus();
   }
 
   SecureBlob local_owner_password;
-  if (LoadOwnerPassword(&local_owner_password)) {
-    get_tpm()->SetOwnerPassword(local_owner_password);
-  }
+  LoadOwnerPassword(&local_owner_password);
 }
 
 bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
@@ -227,7 +218,6 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
     }
 
     tpm_persistent_state_.SetDefaultPassword();
-    SetTpmOwned(true);
     took_ownership = true;
   }
 

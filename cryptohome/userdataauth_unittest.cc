@@ -1469,8 +1469,6 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
 
   SetupMount("foo@gmail.com");
 
-  // Called by OwnershipCallback().
-  EXPECT_CALL(tpm_, HandleOwnershipTakenEvent).WillOnce(Return());
   // Called by ResetAllTPMContext().
   EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
   // Called by InitializeInstallAttributes()
@@ -1493,8 +1491,6 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
 
   SetupMount("foo@gmail.com");
 
-  // Called by OwnershipCallback().
-  EXPECT_CALL(tpm_, HandleOwnershipTakenEvent).WillOnce(Return());
   // Called by ResetAllTPMContext().
   EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
   // Called by InitializeInstallAttributes()

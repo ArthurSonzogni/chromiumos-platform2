@@ -1032,11 +1032,6 @@ void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
     // Since ownership is already taken, we are not currently taking ownership.
     tpm_init_->SetTpmBeingOwned(false);
 
-    // Let the |tpm_| object know as well.
-    if (tpm_) {
-      tpm_->HandleOwnershipTakenEvent();
-    }
-
     // Reset the TPM context of all mounts, that is, force a reload of
     // cryptohome keys, and make sure it is loaded and ready for every mount.
     ResetAllTPMContext();

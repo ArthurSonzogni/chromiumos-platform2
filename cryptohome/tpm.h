@@ -279,13 +279,11 @@ class Tpm {
   // cached result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
   virtual bool IsEnabled() = 0;
-  virtual void SetIsEnabled(bool enabled) = 0;
 
   // Returns whether or not the TPM is owned.  This method call returns a cached
   // result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
   virtual bool IsOwned() = 0;
-  virtual void SetIsOwned(bool owned) = 0;
 
   // Returns whether or not the owner password is still retained.
   virtual bool IsOwnerPasswordPresent() = 0;
@@ -506,12 +504,6 @@ class Tpm {
   virtual bool TakeOwnership(int max_timeout_tries,
                              const brillo::SecureBlob& owner_password) = 0;
 
-  // Sets the TPM owner password to be used in subsequent commands
-  //
-  // Parameters
-  //   owner_password - The owner password for the TPM
-  virtual void SetOwnerPassword(const brillo::SecureBlob& owner_password) = 0;
-
   // Returns true if |retry_action| represents a transient error.
   //
   // Parameters
@@ -621,11 +613,6 @@ class Tpm {
   // performing signature-sealing operations. Returns nullptr if the
   // implementation does not support signature-sealing operations.
   virtual SignatureSealingBackend* GetSignatureSealingBackend() = 0;
-
-  // Callback function that is called after ownership is taken, regardless of
-  // how we know that ownership is taken. (i.e. signal from tpm_managerd,
-  // ownership taken in cryptohomed.)
-  virtual void HandleOwnershipTakenEvent() = 0;
 
   // Gets owner auth delegate. Returns |true| iff the operation succeeds. Once
   // returning |true|, |blob| and |secret| are set to the blob and secret of

@@ -61,9 +61,7 @@ class MockTpm : public Tpm {
               (override));
   MOCK_METHOD(bool, GetOwnerPassword, (brillo::SecureBlob*), (override));
   MOCK_METHOD(bool, IsEnabled, (), (override));
-  MOCK_METHOD(void, SetIsEnabled, (bool), (override));
   MOCK_METHOD(bool, IsOwned, (), (override));
-  MOCK_METHOD(void, SetIsOwned, (bool), (override));
   MOCK_METHOD(bool, IsOwnerPasswordPresent, (), (override));
   MOCK_METHOD(bool, HasResetLockPermissions, (), (override));
   MOCK_METHOD(bool, PerformEnabledOwnedCheck, (bool*, bool*), (override));
@@ -133,7 +131,6 @@ class MockTpm : public Tpm {
               TakeOwnership,
               (int, const brillo::SecureBlob&),
               (override));
-  MOCK_METHOD(void, SetOwnerPassword, (const brillo::SecureBlob&), (override));
   MOCK_METHOD(bool,
               WrapRsaKey,
               (const brillo::SecureBlob&,
@@ -173,7 +170,6 @@ class MockTpm : public Tpm {
               GetSignatureSealingBackend,
               (),
               (override));
-  MOCK_METHOD(void, HandleOwnershipTakenEvent, (), (override));
   MOCK_METHOD(bool,
               GetDelegate,
               (brillo::Blob*, brillo::Blob*, bool*),

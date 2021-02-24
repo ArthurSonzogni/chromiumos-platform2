@@ -92,9 +92,7 @@ class Tpm2Impl : public Tpm {
                                   brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
   bool IsEnabled() override;
-  void SetIsEnabled(bool enabled) override;
   bool IsOwned() override;
-  void SetIsOwned(bool owned) override;
   bool IsOwnerPasswordPresent() override;
   bool HasResetLockPermissions() override;
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
@@ -141,7 +139,6 @@ class Tpm2Impl : public Tpm {
   bool CreateEndorsementKey() override;
   bool TakeOwnership(int max_timeout_tries,
                      const brillo::SecureBlob& owner_password) override;
-  void SetOwnerPassword(const brillo::SecureBlob& owner_password) override;
   bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
                   const brillo::SecureBlob& prime_factor,
                   brillo::SecureBlob* wrapped_key) override;
@@ -187,8 +184,6 @@ class Tpm2Impl : public Tpm {
                              trunks::TPM_ALG_ID hash_alg,
                              trunks::AuthorizationDelegate* session_delegate,
                              ScopedKeyHandle* key_handle);
-
-  void HandleOwnershipTakenEvent() override;
 
   base::Optional<bool> IsDelegateBoundToPcr() override;
   bool DelegateCanResetDACounter() override;

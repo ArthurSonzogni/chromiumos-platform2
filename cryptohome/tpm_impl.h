@@ -65,9 +65,7 @@ class TpmImpl : public Tpm {
                                   brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
   bool IsEnabled() override;
-  void SetIsEnabled(bool enabled) override;
   bool IsOwned() override;
-  void SetIsOwned(bool owned) override;
   bool IsOwnerPasswordPresent() override;
   bool HasResetLockPermissions() override;
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
@@ -114,7 +112,6 @@ class TpmImpl : public Tpm {
   bool CreateEndorsementKey() override;
   bool TakeOwnership(int max_timeout_tries,
                      const brillo::SecureBlob& owner_password) override;
-  void SetOwnerPassword(const brillo::SecureBlob& owner_password) override;
   bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
                   const brillo::SecureBlob& prime_factor,
                   brillo::SecureBlob* wrapped_key) override;
@@ -144,7 +141,6 @@ class TpmImpl : public Tpm {
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
-  void HandleOwnershipTakenEvent() override;
   base::Optional<bool> IsDelegateBoundToPcr() override;
   bool DelegateCanResetDACounter() override;
   // Returns the map with expected PCR values for the user.

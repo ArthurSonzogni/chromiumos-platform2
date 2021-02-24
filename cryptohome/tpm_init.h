@@ -64,9 +64,6 @@ class TpmInit {
   // Returns true if the TPM is owned.
   virtual bool IsTpmOwned();
 
-  // Marks the TPM as being owned.
-  virtual void SetTpmOwned(bool owned);
-
   // Marks the TPM as being or not being been owned.
   virtual void SetTpmBeingOwned(bool being_owned);
 
