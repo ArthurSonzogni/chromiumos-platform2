@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
               "Exit with success if \"freeze\" (rather than \"mem\") will be "
               "written to /sys/power/state when suspending");
   DEFINE_bool(defer_external_display_timeout, false,
-              "Exit with success if external display timeout deferral support "
-              "is enabled");
+              "Prints the external display timeout deferral time (in seconds) "
+              "to stdout");
 
   brillo::FlagHelper::Init(argc, argv,
                            "Check the device's power-related configuration");
@@ -110,10 +110,11 @@ int main(int argc, char* argv[]) {
     prefs.GetBool(power_manager::kSuspendToIdlePref, &suspend_to_idle);
     exit(suspend_to_idle ? 0 : 1);
   } else if (FLAGS_defer_external_display_timeout) {
-    bool defer_external_display_timeout_enabled = false;
-    prefs.GetBool(power_manager::kDeferExternalDisplayTimeoutPref,
-                  &defer_external_display_timeout_enabled);
-    exit(defer_external_display_timeout_enabled ? 0 : 1);
+    int64_t defer_external_display_timeout = 0;
+    prefs.GetInt64(power_manager::kDeferExternalDisplayTimeoutPref,
+                   &defer_external_display_timeout);
+    printf("%" PRId64 "\n", defer_external_display_timeout);
+    exit(0);
   } else {
     NOTREACHED();
     exit(1);

@@ -185,6 +185,7 @@ class StateControllerTest : public testing::Test {
         default_require_usb_input_device_to_suspend_(0),
         default_avoid_suspend_when_headphone_jack_plugged_(0),
         default_ignore_external_policy_(0),
+        default_defer_external_display_timeout_(0),
         initial_power_source_(PowerSource::AC),
         initial_lid_state_(LidState::OPEN),
         initial_display_mode_(DisplayMode::NORMAL),
@@ -224,6 +225,8 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAvoidSuspendWhenHeadphoneJackPluggedPref,
                     default_avoid_suspend_when_headphone_jack_plugged_);
     prefs_.SetInt64(kIgnoreExternalPolicyPref, default_ignore_external_policy_);
+    prefs_.SetInt64(kDeferExternalDisplayTimeoutPref,
+                    default_defer_external_display_timeout_);
 
     test_api_.clock()->set_current_time_for_testing(now_);
     controller_.Init(&delegate_, &prefs_, &dbus_wrapper_, initial_power_source_,
@@ -422,6 +425,7 @@ class StateControllerTest : public testing::Test {
   int64_t default_require_usb_input_device_to_suspend_;
   int64_t default_avoid_suspend_when_headphone_jack_plugged_;
   int64_t default_ignore_external_policy_;
+  int64_t default_defer_external_display_timeout_;
 
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;

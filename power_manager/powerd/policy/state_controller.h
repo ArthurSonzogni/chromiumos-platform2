@@ -504,10 +504,6 @@ class StateController : public PrefsObserver {
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_ = false;
 
-  // Should you wait another 10 seconds for external displays when a
-  // display mode change occurs and the lid is closed?
-  bool defer_external_display_timeout_ = false;
-
   // Should powerd request smart dim decision via D-Bus service? May be disabled
   // by tests.
   bool request_smart_dim_decision_ = true;
@@ -522,6 +518,10 @@ class StateController : public PrefsObserver {
   // suspend instead of shutting down in some cases (see
   // http://crbug.com/462428), or 0 if disabled.
   int tpm_dictionary_attack_suspend_threshold_ = 0;
+
+  // Amount of time (in seconds) to wait for external displays when a display
+  // mode change occurs and the lid is closed.
+  int defer_external_display_timeout_s_ = 0;
 
   // Time of the last report of user activity, video activity or wake
   // notification.
