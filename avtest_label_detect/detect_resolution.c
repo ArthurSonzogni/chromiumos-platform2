@@ -37,6 +37,11 @@ static const VAProfile va_profiles_vp9[] = {VAProfileVP9Profile0,
 static const VAProfile va_profiles_av1[] = {VAProfileAV1Profile0,
                                             VAProfileNone};
 
+static const VAProfile va_profiles_hevc[] = {VAProfileHEVCMain, VAProfileNone};
+
+static const VAProfile va_profiles_hevc_10bpp[] = {VAProfileHEVCMain10,
+                                                   VAProfileNone};
+
 /* Determines if a VAAPI device associated with given |fd| supports
  * |va_profiles| for |va_entrypoint|, and its maximum resolution is larger
  * than 3840x2160.
@@ -103,6 +108,16 @@ static bool is_vaapi_4k_device_dec_av1(int fd) {
 // Determines if is_vaapi_4k_device() for AV1 decoding 10BPP.
 static bool is_vaapi_4k_device_dec_av1_10bpp(int fd) {
   return is_vaapi_4k_device(fd, va_profiles_av1, VAEntrypointVLD, true);
+}
+
+// Determines if is_vaapi_4k_device() for HEVC decoding.
+static bool is_vaapi_4k_device_dec_hevc(int fd) {
+  return is_vaapi_4k_device(fd, va_profiles_hevc, VAEntrypointVLD, false);
+}
+
+// Determines if is_vaapi_4k_device() for HEVC decoding 10BPP.
+static bool is_vaapi_4k_device_dec_hevc_10bpp(int fd) {
+  return is_vaapi_4k_device(fd, va_profiles_hevc_10bpp, VAEntrypointVLD, true);
 }
 #endif  // VA_CHECK_VERSION(0, 38, 1)
 #endif  // defined(USE_VAAPI)
@@ -251,6 +266,32 @@ bool detect_4k_device_av1(void) {
 bool detect_4k_device_av1_10bpp(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_av1_10bpp))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "4k_video_hevc". Return true, if the VAAPI device supports 4k
+ * resolution HEVC main decoding, has decoding entry point, and outputs YUV420
+ * format.
+ */
+bool detect_4k_device_hevc(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_hevc))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "4k_video_hevc_10bpp". Return true, if the VAAPI device supports
+ * 4k resolution HEVC main10 10BPP decoding, has decoding entry point, and
+ * outputs YUV420 format.
+ */
+bool detect_4k_device_hevc_10bpp(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_hevc_10bpp))
     return true;
 #endif  // defined(USE_VAAPI)
 

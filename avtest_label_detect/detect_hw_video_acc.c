@@ -219,6 +219,38 @@ static bool is_vaapi_dec_av1_10bpp_device(int fd) {
   return false;
 }
 
+/* Helper function for detect_video_acc_hevc.
+ * Determine if a VAAPI device supports HEVC decoding, i.e. it
+ * supports HEVC main profile, has decoding entry point, and can output
+ * YUV420 format.
+ */
+static bool is_vaapi_dec_hevc_device(int fd) {
+#if VA_CHECK_VERSION(1, 0, 0)
+  VAProfile va_profiles[] = {VAProfileHEVCMain, VAProfileNone};
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
+                               VA_RT_FORMAT_YUV420)) {
+    return true;
+  }
+#endif
+  return false;
+}
+
+/* Helper function for detect_video_acc_hevc_10bpp.
+ * Determine if a VAAPI device supports HEVC decoding main
+ * profile 10 (10 bit), i.e. it supports HEVC main profile 10 (10 bit),
+ * has decoding entry point, and can output YUV420 10BPP format.
+ */
+static bool is_vaapi_dec_hevc_10bpp_device(int fd) {
+#if VA_CHECK_VERSION(1, 0, 0)
+  VAProfile va_profiles[] = {VAProfileHEVCMain10, VAProfileNone};
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
+                               VA_RT_FORMAT_YUV420_10)) {
+    return true;
+  }
+#endif
+  return false;
+}
+
 /* Helper function for detect_video_acc_enc_h264.
  * Determine given |fd| is a VAAPI device supports H.264 encoding, i.e. it
  * support one of H.264 profile, has encoding entry point, and input YUV420
@@ -390,6 +422,31 @@ bool detect_video_acc_av1(void) {
 bool detect_video_acc_av1_10bpp(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_dec_av1_10bpp_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "hw_video_acc_hevc" label. That is, the VAAPI device supports HEVC
+ * main profile, has decoding entry point, and outputs YUV420 format.
+ */
+bool detect_video_acc_hevc(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_hevc_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "hw_video_acc_hevc_10bpp" label. That is, the VAAPI device
+ * supports HEVC main profile 10 (10bit), has decoding entry point, and outputs
+ * YUV420 10BPP format.
+ */
+bool detect_video_acc_hevc_10bpp(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_hevc_10bpp_device))
     return true;
 #endif  // defined(USE_VAAPI)
 
