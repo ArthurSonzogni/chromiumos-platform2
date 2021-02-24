@@ -194,7 +194,7 @@ dev_mount_packages() {
     # dev_image subtree.
     local d
     for d in "/mnt/stateful_partition/dev_image" "/var/tmp/portage"; do
-      mkdir "${d}"
+      mkdir -p "${d}"
       allow_symlink "${d}"
       allow_fifo "${d}"
     done
