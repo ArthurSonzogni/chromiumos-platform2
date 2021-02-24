@@ -548,22 +548,20 @@ bool IsDevModeEnabled() {
 
 // Returns whether the VM is trusted or untrusted based on the source image, the
 // host kernel version and a flag passed down by the user.
-// Note it's the caller's responsibility to ensure |run_as_untrusted| is true
-// only when developer mode is enabled.
 bool IsUntrustedVM(bool run_as_untrusted,
                    bool is_trusted_image,
                    KernelVersionAndMajorRevision host_kernel_version) {
-  if (run_as_untrusted)
+  // Nested virtualization is enabled for all kernels >=
+  // |kMinKernelVersionForUntrustedAndNestedVM|. This means that even with a
+  // trusted image the VM started will essentially be untrusted.
+  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM)
     return true;
 
   // Any untrusted image definitely results in an unstrusted VM.
   if (!is_trusted_image)
     return true;
 
-  // Nested virtualization is enabled for all kernels >=
-  // |kMinKernelVersionForUntrustedAndNestedVM|. This means that even with a
-  // trusted image the VM started will essentially be untrusted.
-  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM)
+  if (run_as_untrusted)
     return true;
 
   return false;
@@ -571,25 +569,25 @@ bool IsUntrustedVM(bool run_as_untrusted,
 
 // Returns whether an untrusted VM is allowed on the host and whether checking
 // for security patches while starting the untrusted VM should be skipped.
-// Note it's the caller's responsibility to ensure |run_as_untrusted| is true
-// only when developer mode is enabled.
 UntrustedVMCheckResult IsUntrustedVMAllowed(
     bool run_as_untrusted, KernelVersionAndMajorRevision host_kernel_version) {
-  // If |run_as_untrusted| is true it means that the device is definitely in
-  // developer mode and the user wants to start the VM irrespective of the
-  // host's kernel version or security mitigation state. In this mode allow
-  // untrusted VMs without any restrictions on the host having security
-  // mitigations.
-  if (run_as_untrusted) {
-    return UntrustedVMCheckResult(true /* untrusted_vm_allowed */,
-                                  true /* skip_host_checks */);
-  }
-
   // For host >= |kMinKernelVersionForUntrustedAndNestedVM| untrusted VMs are
-  // always allowed. But the host still needs to be checked for vulnerabilities.
+  // always allowed. But the host still needs to be checked for vulnerabilities,
+  // even in developer mode. This is done because it'd be a huge error to not
+  // have required security patches on these kernels regardless of dev or
+  // production mode.
   if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM) {
     return UntrustedVMCheckResult(true /* untrusted_vm_allowed */,
                                   false /* skip_host_checks */);
+  }
+
+  // On lower kernel versions |run_as_untrusted| is only respected in developer
+  // mode. The user wants to start the VM irrespective of the host's kernel
+  // version or security mitigation state. In this mode, allow untrusted VMs
+  // without any restrictions on the host having security mitigations.
+  if (run_as_untrusted && IsDevModeEnabled()) {
+    return UntrustedVMCheckResult(true /* untrusted_vm_allowed */,
+                                  true /* skip_host_checks */);
   }
 
   // Lower kernel version are deemed insecure to handle untrusted VMs.
@@ -1092,15 +1090,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  // Only forcibly treat VMs as untrusted in developer mode.
-  if (request.run_as_untrusted() && !IsDevModeEnabled()) {
-    LOG(ERROR) << "Allow untrusted flag not respected in verified mode";
-    response.set_failure_reason(
-        "Allow untrusted flag not respected in verified mode");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   string failure_reason;
   VMImageSpec image_spec =
       GetImageSpec(request.vm(), kernel_fd, rootfs_fd, initrd_fd,
@@ -1136,9 +1125,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   const bool is_untrusted_vm =
       IsUntrustedVM(request.run_as_untrusted(), image_spec.is_trusted_image,
                     host_kernel_version_);
-  const auto untrusted_vm_check_result =
-      IsUntrustedVMAllowed(request.run_as_untrusted(), host_kernel_version_);
   if (is_untrusted_vm) {
+    const auto untrusted_vm_check_result =
+        IsUntrustedVMAllowed(request.run_as_untrusted(), host_kernel_version_);
     if (!untrusted_vm_check_result.untrusted_vm_allowed) {
       LOG(ERROR) << "Untrusted VMs are not allowed";
       response.set_failure_reason("Untrusted VMs are not allowed");
