@@ -7,7 +7,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/minios.h"
+#include "minios/minios_interface.h"
 
 namespace minios {
 

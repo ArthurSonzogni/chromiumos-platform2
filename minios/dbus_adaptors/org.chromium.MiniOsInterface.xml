@@ -21,5 +21,33 @@
                   value="minios::State"/>
     </arg>
   </method>
+  <method name="Connect">
+    <tp:docstring>
+      Connect to given wireless network.
+    </tp:docstring>
+    <arg name="ssid" type="s" direction="in">
+      <tp:docstring>
+        The SSID of the wireless network to connect to.
+      </tp:docstring>
+    </arg>
+    <arg name="passphrase" type="s" direction="in">
+      <tp:docstring>
+        The passphrase for the SSID.
+        Pass an empty string if there is no passphrase.
+      </tp:docstring>
+    </arg>
+    <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+  </method>
+  <method name="GetNetworks">
+    <tp:docstring>
+      Get the list of network SSIDs.
+    </tp:docstring>
+    <arg name="networks" type="as" direction="out">
+      <tp:docstring>
+        The list of networks.
+      </tp:docstring>
+    </arg>
+    <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+  </method>
 </interface>
 </node>

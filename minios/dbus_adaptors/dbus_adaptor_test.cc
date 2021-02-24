@@ -6,6 +6,7 @@
 
 #include "minios/dbus_adaptors/dbus_adaptor.h"
 #include "minios/mock_minios.h"
+#include "minios/mock_network_manager.h"
 
 namespace minios {
 
@@ -13,10 +14,13 @@ class DBusServiceTest : public testing::Test {
  public:
   DBusServiceTest()
       : mock_mini_os_(std::make_shared<MockMiniOs>()),
-        dbus_service_(std::make_unique<DBusService>(mock_mini_os_)) {}
+        mock_network_manager_(std::make_shared<MockNetworkManager>()),
+        dbus_service_(std::make_unique<DBusService>(mock_mini_os_,
+                                                    mock_network_manager_)) {}
 
  protected:
   std::shared_ptr<MockMiniOs> mock_mini_os_;
+  std::shared_ptr<MockNetworkManager> mock_network_manager_;
   std::unique_ptr<DBusService> dbus_service_;
 
  private:

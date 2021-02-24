@@ -16,12 +16,12 @@ extern const char kLogFile[];
 class MiniOs : public MiniOsInterface {
  public:
   MiniOs() = default;
-  ~MiniOs() = default;
+  virtual ~MiniOs() = default;
 
   // Runs the miniOS flow.
   virtual int Run();
 
-  // MiniOsInterface overrides.
+  // `MiniOsInterface` overrides.
   bool GetState(State* state_out, brillo::ErrorPtr* error) override;
 
  private:

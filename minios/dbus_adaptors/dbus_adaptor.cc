@@ -8,11 +8,61 @@
 
 namespace minios {
 
-DBusService::DBusService(std::shared_ptr<MiniOsInterface> mini_os)
-    : mini_os_(std::move(mini_os)) {}
+DBusService::DBusService(
+    std::shared_ptr<MiniOsInterface> mini_os,
+    std::shared_ptr<NetworkManagerInterface> network_manager)
+    : mini_os_(std::move(mini_os)),
+      network_manager_(std::move(network_manager)) {
+  network_manager_->AddObserver(this);
+}
 
 bool DBusService::GetState(brillo::ErrorPtr* error, State* state_out) {
   return mini_os_->GetState(state_out, error);
+}
+
+void DBusService::Connect(ConnectResponse response,
+                          const std::string& ssid,
+                          const std::string& passphrase) {
+  if (connect_response_) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED,
+                             "Another Connect already in progress.");
+    return;
+  }
+  connect_response_ = std::move(response);
+  network_manager_->Connect(ssid, passphrase);
+}
+
+void DBusService::GetNetworks(GetNetworksResponse response) {
+  if (get_networks_response_) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED,
+                             "Another GetNetworks already in progress.");
+    return;
+  }
+  get_networks_response_ = std::move(response);
+  network_manager_->GetNetworks();
+}
+
+void DBusService::OnConnect(const std::string& ssid, brillo::Error* error) {
+  if (!connect_response_)
+    return;
+  if (error)
+    connect_response_->ReplyWithError(error);
+  else
+    connect_response_->Return();
+  connect_response_.reset();
+}
+
+void DBusService::OnGetNetworks(const std::vector<std::string>& networks,
+                                brillo::Error* error) {
+  if (!get_networks_response_)
+    return;
+  if (error)
+    get_networks_response_->ReplyWithError(error);
+  else
+    get_networks_response_->Return(networks);
+  get_networks_response_.reset();
 }
 
 DBusAdaptor::DBusAdaptor(std::unique_ptr<DBusService> dbus_service)

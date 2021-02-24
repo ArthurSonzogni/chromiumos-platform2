@@ -8,6 +8,9 @@
 #include <dbus/minios/dbus-constants.h>
 #include <sysexits.h>
 
+#include "minios/network_manager.h"
+#include "minios/shill_proxy.h"
+
 namespace minios {
 
 Daemon::Daemon() : DBusServiceDaemon(kMiniOsServiceName) {}
@@ -31,9 +34,13 @@ void Daemon::RegisterDBusObjectsAsync(
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr, bus_, org::chromium::MiniOsInterfaceAdaptor::GetObjectPath());
 
+  bus_for_proxies_ = dbus_connection_for_proxies_.Connect();
+  CHECK(bus_for_proxies_);
+
   mini_os_ = std::make_shared<MiniOs>();
-  dbus_adaptor_ =
-      std::make_unique<DBusAdaptor>(std::make_unique<DBusService>(mini_os_));
+  dbus_adaptor_ = std::make_unique<DBusAdaptor>(std::make_unique<DBusService>(
+      mini_os_, std::make_shared<NetworkManager>(
+                    std::make_unique<ShillProxy>(bus_for_proxies_))));
 
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

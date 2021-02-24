@@ -5,9 +5,6 @@
 #ifndef MINIOS_MINIOS_INTERFACE_H_
 #define MINIOS_MINIOS_INTERFACE_H_
 
-#include <string>
-#include <vector>
-
 #include <brillo/errors/error.h>
 #include <minios/proto_bindings/minios.pb.h>
 
