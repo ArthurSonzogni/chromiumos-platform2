@@ -226,8 +226,8 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
     if (service_iccid == iccid)
       active_service = service;
   }
-  // The Cellular Device requires an active Service.
-  if (device && !active_service) {
+  // Ensure that a Service exists for the ICCID.
+  if (!active_service) {
     SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
     active_service = new CellularService(manager_, imsi, iccid, sim_card_id);
     active_service->SetDevice(device);
@@ -238,6 +238,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
 
 void CellularServiceProvider::LoadServicesForSecondarySim(
     const std::string& eid, const std::string& iccid, const std::string& imsi) {
+  DCHECK(!iccid.empty());
   // Use EID if available or ICCID if not to look up associated services.
   std::string sim_card_id = eid.empty() ? iccid : eid;
   SLOG(this, 1) << __func__ << ": " << sim_card_id;

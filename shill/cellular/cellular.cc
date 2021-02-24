@@ -414,6 +414,7 @@ void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
     // disabled state.
     SetCapabilityState(CapabilityState::kCellularStopped);
     callback.Run(Error());
+    UpdateScanning();
   }
 
   // Sockets should be destroyed here to ensure we make new connections
@@ -492,6 +493,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
         callback.Run(error);
       }
     }
+    UpdateScanning();
     return;
   }
 
@@ -503,6 +505,8 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
     // modem was not yet marked enabled.
     HandleNewRegistrationState();
   }
+
+  UpdateScanning();
 
   // Request Device property for setting uid_.
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy =
@@ -557,6 +561,7 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   // was not invoked) in response to a suspend request, any registered
   // termination action needs to be removed explicitly.
   manager()->RemoveTerminationAction(link_name());
+  UpdateScanning();
 }
 
 void Cellular::CompleteActivation(Error* error) {
@@ -1363,6 +1368,9 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
   if (!mm1_proxy_)
     return false;
 
+  if (inhibited && capability_state_ != CapabilityState::kModemStarted)
+    return false;
+
   mm1_proxy_->InhibitDevice(
       uid_, inhibited,
       base::Bind(&Cellular::OnInhibitDevice, weak_ptr_factory_.GetWeakPtr(),
@@ -1378,6 +1386,7 @@ void Cellular::OnInhibitDevice(bool inhibited, const Error& error) {
   LOG(INFO) << __func__ << " Succeeded. Inhibited= " << inhibited;
   inhibited_ = inhibited;
   adaptor()->EmitBoolChanged(kInhibitedProperty, inhibited_);
+  UpdateScanning();
 }
 
 KeyValueStore Cellular::GetSimLockStatus(Error* error) {
@@ -1570,8 +1579,9 @@ void Cellular::UpdateScanning() {
       break;
     case CapabilityState::kCellularStarted:
       // CellularStarted indicates that Cellular is enabled, but no Modem
-      // object or Capability exists. Treat as scanning for the UI.
-      scanning = true;
+      // object or Capability exists. Treat as scanning for the UI, unless
+      // |inhibited_| is true.
+      scanning = !inhibited_;
       break;
     case CapabilityState::kModemStarting:
       // ModemStarting indicates that a Modem object exists but has not started.
@@ -1783,6 +1793,7 @@ void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
 
 void Cellular::SetSimSlotProperties(
     const std::vector<SimProperties>& slot_properties) {
+  SLOG(this, 1) << __func__;
   // Set |sim_slot_info_| and emit SIMSlotInfo
   sim_slot_info_.clear();
   for (const SimProperties& sim_properties : slot_properties) {
