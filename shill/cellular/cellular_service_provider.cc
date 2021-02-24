@@ -151,8 +151,9 @@ void CellularServiceProvider::Stop() {
 
 CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
     Cellular* device) {
-  CellularServiceRefPtr active_service = LoadMatchingServicesFromProfile(
-      device->GetSimCardId(), device->iccid(), device->imsi(), device);
+  CellularServiceRefPtr active_service =
+      LoadMatchingServicesFromProfile(device->GetSimCardId(), device->iccid(),
+                                      device->imsi(), device->eid(), device);
 
   // When the Cellular SIM changes or Cellular is enabled, assume that the
   // intent is to auto connect to the CellularService (if connectable and
@@ -184,6 +185,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
     const std::string& sim_card_id,
     const std::string& iccid,
     const std::string& imsi,
+    const std::string& eid,
     Cellular* device) {
   // Find Cellular profile entries matching the sim card identifier.
   CHECK(profile_);
@@ -214,6 +216,8 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
                                     sim_card_id);
       service->Load(storage);
       service->SetDevice(device);
+      if (!device)
+        service->set_eid(eid);
       AddService(service);
     } else {
       SLOG(this, 2) << "Cellular service exists for ICCID: " << service_iccid;
@@ -237,7 +241,8 @@ void CellularServiceProvider::LoadServicesForSecondarySim(
   // Use EID if available or ICCID if not to look up associated services.
   std::string sim_card_id = eid.empty() ? iccid : eid;
   SLOG(this, 1) << __func__ << ": " << sim_card_id;
-  LoadMatchingServicesFromProfile(sim_card_id, iccid, imsi, /*device=*/nullptr);
+  LoadMatchingServicesFromProfile(sim_card_id, iccid, imsi, eid,
+                                  /*device=*/nullptr);
 }
 
 void CellularServiceProvider::RemoveServicesForDevice(Cellular* device) {

@@ -86,6 +86,7 @@ CellularService::CellularService(Manager* manager,
                                &CellularService::SetApn);
   store->RegisterConstString(kIccidProperty, &iccid_);
   store->RegisterConstString(kImsiProperty, &imsi_);
+  store->RegisterConstString(kEidProperty, &eid_);
   store->RegisterConstStringmap(kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
   store->RegisterConstString(kNetworkTechnologyProperty, &network_technology_);
@@ -128,11 +129,11 @@ void CellularService::SetDevice(Cellular* device) {
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetActivationType(kActivationTypeUnknown);
 
-  // The IMSI may not be available on construction, so set it here if the ICCID
-  // matches. |sim_card_id_| may not match when support for eId is added, so
-  // also update that here.
+  // The IMSI and EID may not be available on construction, so set them here if
+  // the ICCID matches. |sim_card_id_| may also depend on EID.
   if (iccid_ == cellular_->iccid()) {
     imsi_ = cellular_->imsi();
+    eid_ = cellular_->eid();
     sim_card_id_ = cellular_->GetSimCardId();
   }
 }

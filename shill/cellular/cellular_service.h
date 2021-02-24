@@ -53,6 +53,7 @@ class CellularService : public Service {
   ~CellularService() override;
 
   void SetDevice(Cellular* device);
+  void set_eid(const std::string& eid) { eid_ = eid; }
 
   // Public Service overrides
   void AutoConnect() override;
@@ -211,6 +212,10 @@ class CellularService : public Service {
 
   // ICCID uniquely identifies a SIM profile.
   std::string iccid_;
+
+  // EID of the associated eSIM card, or empty for a SIM profile associated with
+  // a physical SIM card.
+  std::string eid_;
 
   // Uniquely identifies a SIM Card (physical or eSIM). This value is used to
   // identify services that may be available on the active SIM Card.

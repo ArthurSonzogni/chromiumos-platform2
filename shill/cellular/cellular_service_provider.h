@@ -63,6 +63,7 @@ class CellularServiceProvider : public ProviderInterface {
       const std::string& sim_card_id,
       const std::string& iccid,
       const std::string& imsi,
+      const std::string& eid,
       Cellular* device);
   void AddService(CellularServiceRefPtr service);
   void RemoveService(CellularServiceRefPtr service);

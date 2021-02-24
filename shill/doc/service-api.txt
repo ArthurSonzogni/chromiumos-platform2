@@ -242,10 +242,16 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			This property is relevant only for services
 			associated with a CDMA cellular device.
 
+		string Cellular.EID [readonly]
+
+			(Cellular only) The EUICCID (Embedded Universal
+			Integrated Circuit Card Identifier) of the eSIM card
+			associated with the service if applicable.
+
 		string Cellular.ICCID [readonly]
 
 			(Cellular only) The Integrated Circuit Card Identifier
-			of the SIM associated with the service if applicable.
+			of the SIM associated with the service.
 
 		string Cellular.IMSI [readonly]
 
