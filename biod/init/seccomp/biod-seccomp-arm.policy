@@ -68,3 +68,11 @@ rt_sigreturn: 1
 madvise: 1
 mlock: 1
 munlock: 1
+nanosleep: 1
+# chown is needed to request DBus name org.chromium.BiometricsDaemon.
+chown: 1
+umask: 1
+mkdir: 1
+# getdents64 and fdatasync are needed to write records to daemon store.
+getdents64: 1
+fdatasync: 1

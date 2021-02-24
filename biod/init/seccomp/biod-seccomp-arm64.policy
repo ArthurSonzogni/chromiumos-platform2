@@ -66,3 +66,10 @@ clock_gettime: 1
 madvise: 1
 mlock: 1
 munlock: 1
+# fchown is needed to request DBus name org.chromium.BiometricsDaemon.
+fchown: 1
+umask: 1
+mkdirat: 1
+# getdents64 and fdatasync are needed to write records to daemon store.
+getdents64: 1
+fdatasync: 1
