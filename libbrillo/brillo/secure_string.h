@@ -28,15 +28,15 @@ namespace brillo {
 // compilers implement this function as intrinsic and know of its side effects),
 // this function will not be optimized out.
 //
-// SecureClearBytes is used to write beyond the size() in several functions.
+// SecureClear is used to write beyond the size() in several functions.
 // Since this is intentional, disable address sanitizer from analyzing it.
-BRILLO_EXPORT BRILLO_DISABLE_ASAN void SecureClearBytes(void* v, size_t n);
+BRILLO_EXPORT BRILLO_DISABLE_ASAN void SecureClear(void* v, size_t n);
 
 // SecureClear overload that works with containers (vector, array, etc.) and
 // strings.
 template <typename T>
 BRILLO_EXPORT void SecureClear(T& v) {  // NOLINT(runtime/references)
-  SecureClearBytes(v.data(), v.size());
+  SecureClear(v.data(), v.size());
 }
 
 // Compare [n] bytes starting at [s1] with [s2] and return 0 if they match,

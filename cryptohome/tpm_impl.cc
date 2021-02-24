@@ -603,7 +603,7 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(
 
   plaintext->resize(dec_data_length);
   memcpy(plaintext->data(), dec_data.value(), dec_data_length);
-  brillo::SecureClearBytes(dec_data.value(), dec_data_length);
+  brillo::SecureClear(dec_data.value(), dec_data_length);
 
   return kTpmRetryNone;
 }
@@ -767,7 +767,7 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
     return ResultToRetryAction(result);
   }
   plaintext->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
-  brillo::SecureClearBytes(dec_data.value(), dec_data_length);
+  brillo::SecureClear(dec_data.value(), dec_data_length);
 
   return kTpmRetryNone;
 }
@@ -787,7 +787,7 @@ bool TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
 
   SecureBlob local_data(blob_size);
   memcpy(local_data.data(), blob.value(), blob_size);
-  brillo::SecureClearBytes(blob.value(), blob_size);
+  brillo::SecureClear(blob.value(), blob_size);
   data_out->swap(local_data);
   return true;
 }
@@ -1014,7 +1014,7 @@ bool TpmImpl::GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) {
     return false;
   }
   memcpy(random.data(), tpm_data.value(), random.size());
-  brillo::SecureClearBytes(tpm_data.value(), random.size());
+  brillo::SecureClear(tpm_data.value(), random.size());
   data->swap(random);
   return true;
 }
@@ -1276,7 +1276,7 @@ bool TpmImpl::Unseal(const brillo::SecureBlob& sealed_value,
     return false;
   }
   value->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
-  brillo::SecureClearBytes(dec_data.value(), dec_data_length);
+  brillo::SecureClear(dec_data.value(), dec_data_length);
   return true;
 }
 
@@ -1478,7 +1478,7 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
     return false;
   }
   SecureBlob tmp(buffer.value(), buffer.value() + length);
-  brillo::SecureClearBytes(buffer.value(), length);
+  brillo::SecureClear(buffer.value(), length);
   signature->swap(tmp);
   return true;
 }
@@ -1747,7 +1747,7 @@ Tpm::TpmRetryAction TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
     return ResultToRetryAction(result);
   }
   SecureBlob tmp(buf.value(), buf.value() + length);
-  brillo::SecureClearBytes(buf.value(), length);
+  brillo::SecureClear(buf.value(), length);
   data->swap(tmp);
   return Tpm::kTpmRetryNone;
 }
