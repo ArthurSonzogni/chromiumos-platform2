@@ -20,16 +20,16 @@ namespace midis {
 Client::Client(DeviceTracker* device_tracker,
                uint32_t client_id,
                ClientDeletionCallback del_cb,
-               arc::mojom::MidisServerRequest request,
-               arc::mojom::MidisClientPtr client_ptr)
+               mojo::PendingReceiver<arc::mojom::MidisServer> receiver,
+               mojo::PendingRemote<arc::mojom::MidisClient> client)
     : device_tracker_(device_tracker),
       client_id_(client_id),
       del_cb_(del_cb),
-      client_ptr_(std::move(client_ptr)),
-      binding_(this, std::move(request)),
+      client_(std::move(client)),
+      receiver_(this, std::move(receiver)),
       weak_factory_(this) {
   device_tracker_->AddDeviceObserver(this);
-  binding_.set_connection_error_handler(
+  receiver_.set_disconnect_handler(
       base::Bind(&Client::TriggerClientDeletion, weak_factory_.GetWeakPtr()));
 }
 
@@ -54,9 +54,9 @@ void Client::OnDeviceAddedOrRemoved(const Device& dev, bool added) {
   dev_info->name = dev.GetName();
   dev_info->manufacturer = dev.GetManufacturer();
   if (added) {
-    client_ptr_->OnDeviceAdded(std::move(dev_info));
+    client_->OnDeviceAdded(std::move(dev_info));
   } else {
-    client_ptr_->OnDeviceRemoved(std::move(dev_info));
+    client_->OnDeviceRemoved(std::move(dev_info));
   }
 }
 

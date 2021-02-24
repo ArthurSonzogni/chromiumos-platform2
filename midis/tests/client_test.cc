@@ -7,8 +7,7 @@
 #include <gtest/gtest.h>
 #include <mojo/core/core.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "midis/client.h"
 #include "midis/device_tracker.h"
@@ -22,15 +21,12 @@ class ClientImpl : public arc::mojom::MidisClient {
 
   void OnDeviceRemoved(arc::mojom::MidisDeviceInfoPtr device) override {}
 
-  void BindClientPtr(arc::mojom::MidisClientPtr* ptr) {
-    mojo::InterfaceRequest<arc::mojom::MidisClient> request =
-        mojo::MakeRequest<arc::mojom::MidisClient>(ptr);
-    binding_ = std::make_unique<mojo::Binding<arc::mojom::MidisClient>>(
-        this, std::move(request));
+  mojo::PendingRemote<arc::mojom::MidisClient> CreatePendingRemote() {
+    return receiver_.BindNewPipeAndPassRemote();
   }
 
  private:
-  std::unique_ptr<mojo::Binding<arc::mojom::MidisClient>> binding_;
+  mojo::Receiver<arc::mojom::MidisClient> receiver_{this};
 };
 
 namespace midis {
@@ -64,18 +60,17 @@ class ClientTest : public ::testing::Test {
 // number of devices.
 TEST_F(ClientTest, ListDevices) {
   DeviceTracker tracker;
-  arc::mojom::MidisServerPtr server;
+  mojo::Remote<arc::mojom::MidisServer> remote_server;
 
   ClientImpl client;
-  arc::mojom::MidisClientPtr ptr;
-  client.BindClientPtr(&ptr);
 
   Client client_class(&tracker, 0, base::Bind([](uint32_t client_id) {}),
-                      mojo::MakeRequest(&server), std::move(ptr));
+                      remote_server.BindNewPipeAndPassReceiver(),
+                      client.CreatePendingRemote());
 
   // Check that initially there are no devices listed.
   int64_t num_devices = -1;
-  server->ListDevices(base::Bind(
+  remote_server->ListDevices(base::Bind(
       [](int64_t* num_devices,
          std::vector<arc::mojom::MidisDeviceInfoPtr> devices) {
         *num_devices = devices.size();

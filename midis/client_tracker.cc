@@ -17,7 +17,9 @@
 #include <base/location.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/system/invitation.h>
 
 namespace {
@@ -36,7 +38,7 @@ constexpr char kMidisPipe[] = "arc-midis-pipe";
 class MidisHostImpl : public arc::mojom::MidisHost {
  public:
   // |client_tracker|, which must outlive MidisHostImpl, is owned by the caller.
-  MidisHostImpl(arc::mojom::MidisHostRequest request,
+  MidisHostImpl(mojo::PendingReceiver<arc::mojom::MidisHost> receiver,
                 midis::ClientTracker* client_tracker);
   MidisHostImpl(const MidisHostImpl&) = delete;
   MidisHostImpl& operator=(const MidisHostImpl&) = delete;
@@ -44,39 +46,42 @@ class MidisHostImpl : public arc::mojom::MidisHost {
   ~MidisHostImpl() override = default;
 
   // mojom::MidisHost:
-  void Connect(arc::mojom::MidisServerRequest request,
-               arc::mojom::MidisClientPtr client_ptr) override;
+  void Connect(mojo::PendingReceiver<arc::mojom::MidisServer> receiver,
+               mojo::PendingRemote<arc::mojom::MidisClient> client) override;
 
  private:
   // It's safe to hold a raw pointer to ClientTracker since we can assume
   // that the lifecycle of ClientTracker is a superset of the lifecycle of
   // MidisHostImpl.
   midis::ClientTracker* client_tracker_;
-  mojo::Binding<arc::mojom::MidisHost> binding_;
+  mojo::Receiver<arc::mojom::MidisHost> receiver_;
 };
 
-MidisHostImpl::MidisHostImpl(arc::mojom::MidisHostRequest request,
-                             midis::ClientTracker* client_tracker)
-    : client_tracker_(client_tracker), binding_(this, std::move(request)) {}
+MidisHostImpl::MidisHostImpl(
+    mojo::PendingReceiver<arc::mojom::MidisHost> receiver,
+    midis::ClientTracker* client_tracker)
+    : client_tracker_(client_tracker), receiver_(this, std::move(receiver)) {}
 
-void MidisHostImpl::Connect(arc::mojom::MidisServerRequest request,
-                            arc::mojom::MidisClientPtr client_ptr) {
+void MidisHostImpl::Connect(
+    mojo::PendingReceiver<arc::mojom::MidisServer> receiver,
+    mojo::PendingRemote<arc::mojom::MidisClient> client) {
   VLOG(1) << "Connect() called.";
-  client_tracker_->MakeMojoClient(std::move(request), std::move(client_ptr));
+  client_tracker_->MakeMojoClient(std::move(receiver), std::move(client));
 }
 
 }  // namespace
 
 namespace midis {
 
-void ClientTracker::MakeMojoClient(arc::mojom::MidisServerRequest request,
-                                   arc::mojom::MidisClientPtr client_ptr) {
+void ClientTracker::MakeMojoClient(
+    mojo::PendingReceiver<arc::mojom::MidisServer> receiver,
+    mojo::PendingRemote<arc::mojom::MidisClient> client) {
   client_id_counter_++;
   VLOG(1) << "MakeMojoClient called.";
   auto new_cli = std::make_unique<Client>(
       device_tracker_, client_id_counter_,
       base::Bind(&ClientTracker::RemoveClient, weak_factory_.GetWeakPtr()),
-      std::move(request), std::move(client_ptr));
+      std::move(receiver), std::move(client));
 
   if (new_cli) {
     clients_.emplace(client_id_counter_, std::move(new_cli));
@@ -115,7 +120,7 @@ void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
   mojo::ScopedMessagePipeHandle child_pipe =
       invitation.ExtractMessagePipe(kMidisPipe);
   midis_host_ = std::make_unique<MidisHostImpl>(
-      mojo::InterfaceRequest<arc::mojom::MidisHost>(std::move(child_pipe)),
+      mojo::PendingReceiver<arc::mojom::MidisHost>(std::move(child_pipe)),
       this);
 }
 

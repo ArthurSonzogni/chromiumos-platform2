@@ -11,7 +11,10 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/message_loops/message_loop.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "midis/device.h"
 #include "midis/device_tracker.h"
@@ -25,8 +28,8 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
   Client(DeviceTracker* device_tracker,
          uint32_t client_id,
          ClientDeletionCallback del_cb,
-         arc::mojom::MidisServerRequest request,
-         arc::mojom::MidisClientPtr client_ptr);
+         mojo::PendingReceiver<arc::mojom::MidisServer> receiver,
+         mojo::PendingRemote<arc::mojom::MidisClient> client);
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
 
@@ -64,8 +67,8 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
 
   // Handle to the Mojo client interface. This is used to send necessary
   // information to the clients when required.
-  arc::mojom::MidisClientPtr client_ptr_;
-  mojo::Binding<arc::mojom::MidisServer> binding_;
+  mojo::Remote<arc::mojom::MidisClient> client_;
+  mojo::Receiver<arc::mojom::MidisServer> receiver_;
 
   base::WeakPtrFactory<Client> weak_factory_;
 };

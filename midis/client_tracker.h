@@ -42,8 +42,8 @@ class ClientTracker {
   bool IsProxyConnected();
 
   // Create a new Mojo Client and place it in the list of clients.
-  void MakeMojoClient(arc::mojom::MidisServerRequest request,
-                      arc::mojom::MidisClientPtr client_ptr);
+  void MakeMojoClient(mojo::PendingReceiver<arc::mojom::MidisServer> receiver,
+                      mojo::PendingRemote<arc::mojom::MidisClient> client);
 
  private:
   friend class ClientTrackerTest;

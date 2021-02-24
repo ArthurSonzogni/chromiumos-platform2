@@ -9,7 +9,6 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "midis/client_tracker.h"
 #include "midis/tests/test_helper.h"
@@ -31,12 +30,11 @@ TEST_F(ClientTrackerTest, AddClientPositive) {
   cli_tracker.SetDeviceTracker(&device_tracker);
   cli_tracker.InitClientTracker();
 
-  arc::mojom::MidisServerPtr server;
-  mojo::InterfaceRequest<arc::mojom::MidisServer> request =
-      mojo::MakeRequest(&server);
+  mojo::Remote<arc::mojom::MidisServer> remote_server;
 
-  auto client_pointer = std::make_unique<arc::mojom::MidisClientPtr>();
-  cli_tracker.MakeMojoClient(std::move(request), std::move(*client_pointer));
+  mojo::PendingRemote<arc::mojom::MidisClient> remote_client;
+  cli_tracker.MakeMojoClient(remote_server.BindNewPipeAndPassReceiver(),
+                             std::move(remote_client));
   EXPECT_EQ(1, cli_tracker.GetNumClientsForTesting());
 
   // Try removing a non-existent client.
