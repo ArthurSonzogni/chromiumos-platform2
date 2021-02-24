@@ -154,7 +154,6 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   ArcVmFeatures features;
   features.rootfs_writable = request.rootfs_writable();
   features.use_dev_conf = !request.ignore_dev_conf();
-  features.rt_vcpu_enabled = request.enable_rt_vcpu();
 
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
   if (!base::PathExists(data_dir)) {
@@ -173,9 +172,75 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   std::string shared_data_media =
       CreateSharedDataParam(data_dir, "_data_media", false, true);
 
+  // TOOD(kansho): |non_rt_cpus_num|, |rt_cpus_num| and |rt_vcpu_affinity|
+  // should be passed from chrome instead of |enable_rt_vcpu|.
+  uint32_t non_rt_cpus_num;
+  uint32_t rt_cpus_num;
+  bool rt_vcpu_affinity;
+  if (request.enable_rt_vcpu()) {
+    // RT-vcpu will not work when only one logical core is online.
+    if (request.cpus() < 2) {
+      LOG(ERROR)
+          << "RT-vcpu doesn't support device with only one logical core online";
+
+      response.set_failure_reason(
+          "RT-vcpu doesn't support device with only one logical core online");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    rt_cpus_num = 1;
+    if (request.cpus() == 2) {
+      // When two logical cores are online, use 2 non rt-vcpus and 1 rt-vcpu
+      // without pinning.
+      non_rt_cpus_num = request.cpus();
+      rt_vcpu_affinity = false;
+    } else {  // online logical cores > 2
+      // When 3+ logical cores are online, use #cpu-1 non rt-vcpus and
+      // 1 rt-vcpu with pinning. As a result, the number of vcpus is equal to
+      // the number of online logical core which is passed from chrome.
+      non_rt_cpus_num = request.cpus() - rt_cpus_num;
+      rt_vcpu_affinity = true;
+    }
+  } else {  // rt-vcpu disabled
+    non_rt_cpus_num = request.cpus();
+    rt_cpus_num = 0;
+  }
+
+  // Add RT-vcpus following non RT-vcpus.
+  const uint32_t cpus = non_rt_cpus_num + rt_cpus_num;
+  std::string rt_vcpus_comma_separated;
+  std::string cpu_affinity;
+  if (rt_cpus_num > 0) {
+    std::vector<std::string> rt_vcpus;
+    for (uint32_t i = non_rt_cpus_num; i < cpus; i++) {
+      rt_vcpus.emplace_back(std::to_string(i));
+    }
+    rt_vcpus_comma_separated = base::JoinString(rt_vcpus, ",");
+    params.emplace_back("isolcpus=" + rt_vcpus_comma_separated);
+    params.emplace_back("androidboot.rtcpus=" + rt_vcpus_comma_separated);
+
+    // Isolate non RT-vcpus and RT-vcpus.
+    // Guarantee that any non RT-vcpus and any RT-vcpus are never assigned to
+    // a same pCPU to avoid lock-holder preemption problem.
+    if (rt_vcpu_affinity) {
+      const uint32_t pcpu_num_for_rt_vcpus = 1;
+      std::vector<std::string> cpu_affinities;
+      for (uint32_t i = 0; i < non_rt_cpus_num; i++) {
+        cpu_affinities.emplace_back(base::StringPrintf(
+            "%d=%d-%d", i, 0, cpus - pcpu_num_for_rt_vcpus - 1));
+      }
+      for (uint32_t i = non_rt_cpus_num; i < cpus; i++) {
+        cpu_affinities.emplace_back(base::StringPrintf(
+            "%d=%d-%d", i, cpus - pcpu_num_for_rt_vcpus, cpus - 1));
+      }
+      cpu_affinity = base::JoinString(cpu_affinities, ":");
+    }
+  }
+
   VmBuilder vm_builder;
   vm_builder.AppendDisks(std::move(disks))
-      .SetCpus(request.cpus())
+      .SetCpus(cpus)
       .AppendKernelParam(base::JoinString(params, " "))
       .AppendCustomParam("--android-fstab", fstab.value())
       .AppendCustomParam("--pstore",
@@ -184,6 +249,12 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
       .EnableSmt(false /* enable */);
+
+  if (rt_cpus_num > 0) {
+    vm_builder.AppendCustomParam("--rt-cpus", rt_vcpus_comma_separated);
+    if (rt_vcpu_affinity)
+      vm_builder.AppendCustomParam("--cpu-affinity", cpu_affinity);
+  }
 
   auto vm =
       ArcVm::Create(std::move(kernel), vsock_cid, std::move(network_client),

@@ -227,8 +227,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableVideoEncoder(true /* enable */);
   }
 
-  vm_builder.EnableRtVcpu(rt_vcpu_enabled());
-
   std::string oem_etc_uid_map =
       base::StringPrintf(kOemEtcUgidMapTemplate, geteuid());
   std::string oem_etc_gid_map =

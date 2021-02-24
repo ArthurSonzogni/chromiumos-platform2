@@ -33,9 +33,6 @@ struct ArcVmFeatures {
 
   // Use development configuration directives in the started VM.
   bool use_dev_conf;
-
-  // Whether rt-vcpus are enabled.
-  bool rt_vcpu_enabled;
 };
 
 // Represents a single instance of a running termina VM.
@@ -59,7 +56,6 @@ class ArcVm final : public VmBaseImpl {
   // ArcVmFeatures settings.
   bool rootfs_writable() const { return features_.rootfs_writable; }
   bool use_dev_conf() const { return features_.use_dev_conf; }
-  bool rt_vcpu_enabled() const { return features_.rt_vcpu_enabled; }
 
   // The 9p server managed by seneschal that provides access to shared files for
   // this VM.  Returns 0 if there is no seneschal server associated with this
