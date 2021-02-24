@@ -111,6 +111,22 @@ MountError AttemptUserMount(const Credentials& credentials,
   return user_session->MountVault(credentials, mount_args);
 }
 
+// Performs a single attempt to Mount a non-annonimous user with AuthSession
+MountError AttemptUserMount(AuthSession* auth_session,
+                            const Mount::MountArgs& mount_args,
+                            scoped_refptr<UserSession> user_session) {
+  if (user_session->GetMount()->IsMounted()) {
+    return MOUNT_ERROR_MOUNT_POINT_BUSY;
+  }
+  // Ephemeral mounts currently not supported with AuthSession.
+  // TODO(crbug.com/1182441): Support ephemeral mounts with AuthSession
+  if (mount_args.is_ephemeral) {
+    return MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
+  }
+
+  return user_session->MountVault(auth_session, mount_args);
+}
+
 // Returns true if any of the path in |prefixes| starts with |path|
 // Note that this function is case insensitive
 bool PrefixPresent(const std::vector<FilePath>& prefixes,
@@ -1763,11 +1779,36 @@ void UserDataAuth::ContinueMountWithCredentials(
   if (homedirs_->AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
 
+  MountError code;
+  base::Optional<base::UnguessableToken> token;
+  if (!request.auth_session_id().empty()) {
+    token =
+        AuthSession::GetTokenFromSerializedString(request.auth_session_id());
+    if (!token.has_value() ||
+        auth_sessions_.find(token.value()) == auth_sessions_.end()) {
+      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+      LOG(ERROR) << "Invalid AuthSession token provided.";
+      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+      std::move(on_done).Run(reply);
+      return;
+    }
+  }
+
+  if (token.has_value()) {
+    code = AttemptUserMount(auth_sessions_[token.value()].get(), mount_args,
+                            user_session);
+  } else {
+    code = AttemptUserMount(*credentials, mount_args, user_session);
+  }
   // Does actual mounting here.
-  MountError code = AttemptUserMount(*credentials, mount_args, user_session);
   if (code == MOUNT_ERROR_TPM_COMM_ERROR) {
     LOG(WARNING) << "TPM communication error. Retrying.";
-    code = AttemptUserMount(*credentials, mount_args, user_session);
+    if (token.has_value()) {
+      code = AttemptUserMount(auth_sessions_[token.value()].get(), mount_args,
+                              user_session);
+    } else {
+      code = AttemptUserMount(*credentials, mount_args, user_session);
+    }
   }
 
   if (code == MOUNT_ERROR_VAULT_UNRECOVERABLE) {

@@ -10,11 +10,14 @@
 
 #include <base/memory/ref_counted.h>
 
+#include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_password_verifier.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/storage/mount.h"
+
+using brillo::cryptohome::home::SanitizeUserName;
 
 namespace cryptohome {
 
@@ -86,6 +89,33 @@ MountError UserSession::MountVault(const Credentials& credentials,
   return code;
 }
 
+MountError UserSession::MountVault(AuthSession* auth_session,
+                                   const Mount::MountArgs& mount_args) {
+  // Cannot proceed with mount if the AuthSession is not authenticated yet.
+  if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
+    return MOUNT_ERROR_FATAL;
+  }
+  const std::string obfuscated_username =
+      SanitizeUserName(auth_session->username());
+  // If the AuthSession is authenticated and the user did not exist when
+  // AuthSession was started, then that means the user was created.
+  bool created = !auth_session->user_exists();
+
+  MountError code = MOUNT_ERROR_NONE;
+  const FileSystemKeyset fs_keyset = auth_session->file_system_keyset();
+
+  if (!mount_->MountCryptohome(auth_session->username(), fs_keyset, mount_args,
+                               created, &code)) {
+    // In the weird case where MountCryptohome returns false with ERROR_NONE
+    // code report it as FATAL.
+    return code == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : code;
+  }
+  // Set credentials for verification using AuthSession.
+  SetCredentials(auth_session);
+  UpdateActivityTimestamp(0);
+  return code;
+}
+
 MountError UserSession::MountEphemeral(const Credentials& credentials) {
   MountError code = mount_->MountEphemeralCryptohome(credentials.username());
   if (code == MOUNT_ERROR_NONE) {
@@ -148,6 +178,14 @@ bool UserSession::SetCredentials(const Credentials& credentials,
 
   password_verifier_.reset(new ScryptPasswordVerifier());
   return password_verifier_->Set(credentials.passkey());
+}
+
+void UserSession::SetCredentials(AuthSession* auth_session) {
+  username_ = auth_session->username();
+  obfuscated_username_ = SanitizeUserName(username_);
+  key_data_ = auth_session->current_key_data();
+  key_index_ = auth_session->key_index();
+  password_verifier_ = auth_session->TakePasswordVerifier();
 }
 
 bool UserSession::VerifyUser(const std::string& obfuscated_username) const {

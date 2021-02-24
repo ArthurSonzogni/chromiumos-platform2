@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/timer/timer.h>
 #include <base/unguessable_token.h>
@@ -14,6 +15,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/password_verifier.h"
 #include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/UserDataAuth.pb.h"
@@ -73,6 +75,23 @@ class AuthSession final {
   user_data_auth::CryptohomeErrorCode Authenticate(
       const cryptohome::AuthorizationRequest& authorization_request);
 
+  // Return a const reference to FileSystemKeyset.
+  const FileSystemKeyset& file_system_keyset() { return *file_system_keyset_; }
+
+  // Transfer ownership of password verifier that can be used to verify
+  // credentials during unlock.
+  std::unique_ptr<PasswordVerifier> TakePasswordVerifier();
+
+  // This function returns the current index of the keyset that was used to
+  // Authenticate. This is useful during verification of challenge credentials.
+  int key_index() { return key_index_; }
+
+  // This functions returns if user existed when the AuthSession was started.
+  bool user_exists() { return user_exists_; }
+
+  // Returns the key data with which this AuthSession is authenticated with.
+  cryptohome::KeyData current_key_data() { return current_key_data_; }
+
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
@@ -104,7 +123,11 @@ class AuthSession final {
   // TODO(crbug.com/1171025): Replace FileSystemKeyset with intermediate key as
   // a proof of authentication.
   std::unique_ptr<FileSystemKeyset> file_system_keyset_;
+  // This is used by User Session to verify users credentials at unlock.
+  std::unique_ptr<PasswordVerifier> password_verifier_;
 
+  cryptohome::KeyData current_key_data_;
+  int key_index_;
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.

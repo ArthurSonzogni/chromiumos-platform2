@@ -792,13 +792,22 @@ int main(int argc, char** argv) {
     bool is_public_mount = cl->HasSwitch(switches::kPublicMount);
 
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
-      return 1;
     cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, !is_public_mount, &auth))
-      return 1;
-
     cryptohome::MountRequest mount_req;
+
+    if (cl->HasSwitch(switches::kAuthSessionId)) {
+      std::string auth_session_id_hex, auth_session_id;
+      if (GetAuthSessionId(cl, &auth_session_id_hex)) {
+        base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+        mount_req.set_auth_session_id(auth_session_id);
+      }
+    } else {
+      if (!BuildAccountId(cl, &id))
+        return 1;
+      if (!BuildAuthorization(cl, proxy, !is_public_mount, &auth))
+        return 1;
+    }
+
     mount_req.set_require_ephemeral(
         cl->HasSwitch(switches::kEnsureEphemeralSwitch));
     mount_req.set_to_migrate_from_ecryptfs(

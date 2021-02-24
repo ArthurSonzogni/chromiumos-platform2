@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <brillo/cryptohome.h>
+#include <cryptohome/scrypt_password_verifier.h>
 
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -82,7 +83,15 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     file_system_keyset_ = std::make_unique<FileSystemKeyset>(*vault_keyset);
     status_ = AuthStatus::kAuthStatusAuthenticated;
   }
+  password_verifier_.reset(new ScryptPasswordVerifier());
+  password_verifier_->Set(credentials->passkey());
+  current_key_data_ = credentials->key_data();
+  key_index_ = vault_keyset->GetLegacyIndex();
   return MountErrorToCryptohomeError(code);
+}
+
+std::unique_ptr<PasswordVerifier> AuthSession::TakePasswordVerifier() {
+  return std::move(password_verifier_);
 }
 
 // static

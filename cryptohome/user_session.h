@@ -12,6 +12,7 @@
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_session.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/password_verifier.h"
 #include "cryptohome/storage/homedirs.h"
@@ -44,6 +45,10 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   MountError MountVault(const Credentials& credentials,
                         const Mount::MountArgs& mount_args);
 
+  // Mounts disk backed vault for the user of supplied auth_session.
+  MountError MountVault(AuthSession* auth_session,
+                        const Mount::MountArgs& mount_args);
+
   // Creates and mounts a ramdisk backed ephemeral session for the user
   // of supplied credentials;
   MountError MountEphemeral(const Credentials& credentials);
@@ -68,6 +73,10 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // index of the keyset those credentials belong to. Returns false in case
   // anything went wrong in setting up new re-auth state.
   bool SetCredentials(const Credentials& credentials, int key_index);
+
+  // Sets credentials for the current session to re-authenticated with and the
+  // index of the keyset those credentials belong to.
+  void SetCredentials(AuthSession* auth_session);
 
   // Checks that the session belongs to the obfuscated_user.
   bool VerifyUser(const std::string& obfuscated_username) const;
