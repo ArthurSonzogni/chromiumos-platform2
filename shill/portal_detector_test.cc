@@ -48,6 +48,7 @@ const vector<string> kFallbackHttpUrls{
     "http://www.google.com/gen_204",
     "http://play.googleapis.com/generate_204",
 };
+const IPAddress kIpAddress = IPAddress("1.2.3.4");
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
@@ -81,6 +82,7 @@ class PortalDetectorTest : public Test {
   }
 
   void SetUp() override {
+    EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(kIpAddress));
     EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
     EXPECT_CALL(*connection_, interface_name())
         .WillRepeatedly(ReturnRef(interface_name_));

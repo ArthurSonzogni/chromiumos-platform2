@@ -11,8 +11,11 @@ constexpr const char kMockInterfaceName[] = "mock0";
 namespace shill {
 
 MockHttpRequest::MockHttpRequest()
-    : HttpRequest(
-          nullptr, kMockInterfaceName, IPAddress::kFamilyIPv4, {}, true) {}
+    : HttpRequest(nullptr,
+                  kMockInterfaceName,
+                  IPAddress(IPAddress::kFamilyIPv4),
+                  {},
+                  true) {}
 
 MockHttpRequest::~MockHttpRequest() = default;
 

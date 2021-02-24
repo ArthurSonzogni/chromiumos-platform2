@@ -1976,6 +1976,8 @@ TEST_F(DevicePortalDetectionTest, TechnologyPortalDetectionDisabled) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   ExpectPortalEnabled();
+  const string kInterfaceName("int0");
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string http_portal_url, https_portal_url;
   const vector<string> fallback_urls;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
@@ -1985,14 +1987,21 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(fallback_urls));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_CALL(*connection_, interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_FALSE(StartPortalDetection());
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   ExpectPortalEnabled();
+  const string kInterfaceName("int0");
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string http_portal_url(PortalDetector::kDefaultHttpUrl);
   const string https_portal_url(PortalDetector::kDefaultHttpsUrl);
   const vector<string> fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const vector<string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -2000,11 +2009,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(fallback_urls));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
-  const vector<string> kDNSServers;
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_TRUE(StartPortalDetection());
@@ -2016,9 +2024,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
   ExpectPortalEnabled();
+  const string kInterfaceName("int0");
+  const IPAddress ip_addr = IPAddress("2001:db8:0:1::1");
   const string http_portal_url(PortalDetector::kDefaultHttpUrl);
   const string https_portal_url(PortalDetector::kDefaultHttpsUrl);
   const vector<string> fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const vector<string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -2026,11 +2037,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(fallback_urls));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(true));
-  const vector<string> kDNSServers;
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_TRUE(StartPortalDetection());
@@ -2047,6 +2057,7 @@ MATCHER_P(IsPortalDetectorResult, result, "") {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
   const int kFailureStatusCode = 204;
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   PortalDetector::Result http_result(PortalDetector::Phase::kConnection,
                                      PortalDetector::Status::kFailure,
                                      kPortalAttempts);
@@ -2067,7 +2078,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
       SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline", _, _, _, _))
       .Times(0);
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(http_result),
                             IsPortalDetectorResult(https_result)));
@@ -2098,6 +2110,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
@@ -2111,7 +2124,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
       SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline", _, _, _, _))
       .Times(0);
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   PortalDetectorCallback(
       PortalDetector::Result(PortalDetector::Phase::kConnection,
                              PortalDetector::Status::kFailure, kPortalAttempts),
@@ -2163,6 +2177,7 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   // a new one.
   StopPortalDetection();
 
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string kPortalCheckHttpUrl("http://portal");
   const string kPortalCheckHttpsUrl("https://portal");
   const vector<string> kPortalCheckFallbackHttpUrls(
@@ -2174,6 +2189,7 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(kPortalCheckFallbackHttpUrls));
   const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
@@ -2184,9 +2200,11 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
 }
 
 TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   const vector<string> kDNSServers;
   EXPECT_CALL(*connection_, dns_servers())
@@ -2270,6 +2288,7 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
   vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
@@ -2291,7 +2310,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_dns_failure),
                             IsPortalDetectorResult(https_result)));
@@ -2310,7 +2330,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
                                         kPortalDetectionStatusTimeout, 0));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_dns_timeout),
                             IsPortalDetectorResult(https_result)));
@@ -2330,7 +2351,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_connection_failure),
                             IsPortalDetectorResult(https_result)));
@@ -2489,6 +2511,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(*service_, is_dns_auto_fallback_allowed()).WillOnce(Return(true));
 
   ExpectPortalEnabled();
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string kPortalCheckHttpUrl("http://portal");
   const string kPortalCheckHttpsUrl("https://portal");
   const vector<string> kPortalCheckFallbackHttpUrls(
@@ -2500,6 +2523,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(kPortalCheckFallbackHttpUrls));
   const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
@@ -2535,21 +2559,23 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
 
   // DNS test succeed for configured DNS servers.
   ExpectPortalEnabled();
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string kPortalCheckHttpUrl("http://portal");
   const string kPortalCheckHttpsUrl("https://portal");
   const vector<string> kPortalCheckFallbackHttpUrls(
       {"http://fallback", "http://other"});
+  const string kInterfaceName("int0");
+  const vector<string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillOnce(ReturnRef(kPortalCheckHttpUrl));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(kPortalCheckFallbackHttpUrls));
-  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
-  const vector<string> kDNSServers;
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(1);
@@ -2570,20 +2596,22 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
   SetConnection(connection);
 
   ExpectPortalEnabled();
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string http_portal_url(PortalDetector::kDefaultHttpUrl);
   const string https_portal_url(PortalDetector::kDefaultHttpsUrl);
   const vector<string> fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const string kInterfaceName("int0");
+  const vector<string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillRepeatedly(ReturnRef(https_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(fallback_urls));
-  const string kInterfaceName("int0");
   EXPECT_CALL(*connection, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
-  const vector<string> kDNSServers;
   EXPECT_CALL(*connection, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
 

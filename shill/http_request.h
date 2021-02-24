@@ -48,7 +48,7 @@ class HttpRequest {
   // will not change any behavior for HTTP communication.
   HttpRequest(EventDispatcher* dispatcher,
               const std::string& interface_name,
-              IPAddress::Family family,
+              const IPAddress& src_address,
               const std::vector<std::string>& dns_list,
               bool allow_non_google_https = false);
   HttpRequest(const HttpRequest&) = delete;

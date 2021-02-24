@@ -44,11 +44,11 @@ const int HttpRequest::kRequestTimeoutSeconds = 10;
 
 HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          const std::string& interface_name,
-                         IPAddress::Family ip_family,
+                         const IPAddress& src_address,
                          const std::vector<std::string>& dns_list,
                          bool allow_non_google_https)
     : interface_name_(interface_name),
-      ip_family_(ip_family),
+      ip_family_(src_address.family()),
       weak_ptr_factory_(this),
       dns_client_callback_(
           Bind(&HttpRequest::GetDNSResult, weak_ptr_factory_.GetWeakPtr())),
@@ -66,6 +66,10 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
       request_id_(-1),
       server_port_(-1),
       is_running_(false) {
+  // b/180521518 Force the transport to bind to |src_address|. Otherwise, the
+  // request would be routed by default through the current physical default
+  // network.
+  transport_->SetLocalIpAddress(src_address.ToString());
   if (allow_non_google_https) {
     transport_->UseCustomCertificate(
         brillo::http::Transport::Certificate::kNss);
