@@ -39,7 +39,8 @@ bool Partner::AddAltMode(const base::FilePath& mode_syspath) {
     return false;
 
   if (IsAltModePresent(index)) {
-    LOG(INFO) << "Alt mode already registered for syspath " << mode_syspath;
+    LOG(INFO) << "Alt mode already registered for syspath "
+              << mode_syspath.BaseName();
     return true;
   }
 
