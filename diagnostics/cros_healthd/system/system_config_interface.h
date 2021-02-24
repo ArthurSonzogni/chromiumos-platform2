@@ -31,6 +31,9 @@ class SystemConfigInterface {
   // Returns if the device has an Nvme drive and the associated utilities.
   virtual bool NvmeSupported() = 0;
 
+  // Returns if the device can run the Nvme device-self-test command.
+  virtual bool NvmeSelfTestSupported() = 0;
+
   // Returns if the device has support for smartctl.
   virtual bool SmartCtlSupported() = 0;
 

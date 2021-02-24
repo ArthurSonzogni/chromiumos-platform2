@@ -61,6 +61,12 @@ void DebugdAdapterImpl::GetNvmeIdentity(const StringResultCallback& callback) {
                            CreateErrorCallback(callback));
 }
 
+DebugdAdapter::StringResult DebugdAdapterImpl::GetNvmeIdentitySync() {
+  StringResult result;
+  debugd_proxy_->Nvme(kNvmeIdentityOption, &result.value, &result.error);
+  return result;
+}
+
 void DebugdAdapterImpl::RunNvmeShortSelfTest(
     const StringResultCallback& callback) {
   debugd_proxy_->NvmeAsync(kNvmeShortSelfTestOption,

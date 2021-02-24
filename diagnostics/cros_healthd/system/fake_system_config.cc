@@ -33,6 +33,10 @@ bool FakeSystemConfig::NvmeSupported() {
   return nvme_supported_;
 }
 
+bool FakeSystemConfig::NvmeSelfTestSupported() {
+  return nvme_self_test_supported_;
+}
+
 bool FakeSystemConfig::SmartCtlSupported() {
   return smart_ctrl_supported_;
 }
@@ -67,6 +71,10 @@ void FakeSystemConfig::SetHasSkuNumber(bool value) {
 
 void FakeSystemConfig::SetNvmeSupported(bool value) {
   nvme_supported_ = value;
+}
+
+void FakeSystemConfig::SetNvmeSelfTestSupported(bool value) {
+  nvme_self_test_supported_ = value;
 }
 
 void FakeSystemConfig::SetSmartCtrlSupported(bool value) {

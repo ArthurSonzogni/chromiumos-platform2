@@ -113,6 +113,7 @@ class CrosHealthdRoutineServiceTest : public testing::Test {
     mock_context_.fake_system_config()->SetFioSupported(true);
     mock_context_.fake_system_config()->SetHasBattery(true);
     mock_context_.fake_system_config()->SetNvmeSupported(true);
+    mock_context_.fake_system_config()->SetNvmeSupported(true);
     mock_context_.fake_system_config()->SetSmartCtrlSupported(true);
     mock_context_.fake_system_config()->SetIsWilcoDevice(true);
 
@@ -198,7 +199,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoBattery) {
 }
 
 // Test that GetAvailableRoutines returns the expected list of routines when
-// NVME routines are not supported.
+// NVMe routines are not supported.
 TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoNvme) {
   mock_context()->fake_system_config()->SetNvmeSupported(false);
   CreateService();
@@ -209,6 +210,21 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoNvme) {
   auto expected_routines = GetAllAvailableRoutines();
   for (const auto r : GetNvmeRoutines())
     expected_routines.erase(r);
+
+  EXPECT_EQ(reply_set, expected_routines);
+}
+
+// Test that GetAvailableRoutines returns the expected list of routines when
+// NVMe self test is not supported.
+TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoNvmeSelfTest) {
+  mock_context()->fake_system_config()->SetNvmeSelfTestSupported(false);
+  CreateService();
+  auto reply = ExecuteGetAvailableRoutines();
+  std::set<mojo_ipc::DiagnosticRoutineEnum> reply_set(reply.begin(),
+                                                      reply.end());
+
+  auto expected_routines = GetAllAvailableRoutines();
+  expected_routines.erase(mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest);
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -475,7 +491,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunNvmeWearLevelRoutine) {
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
-// Test that the nvme self-test routine can be run.
+// Test that the NVMe self-test routine can be run.
 TEST_F(CrosHealthdRoutineServiceTest, RunNvmeSelfTestRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;

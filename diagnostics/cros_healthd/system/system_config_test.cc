@@ -11,8 +11,12 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/common/system/mock_debugd_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
+
+using ::testing::ByMove;
+using ::testing::Return;
 
 namespace diagnostics {
 
@@ -27,8 +31,8 @@ class SystemConfigTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    system_config_ =
-        std::make_unique<SystemConfig>(&fake_cros_config_, temp_dir_.GetPath());
+    system_config_ = std::make_unique<SystemConfig>(
+        &fake_cros_config_, &mock_debugd_adapter_, temp_dir_.GetPath());
   }
 
   brillo::FakeCrosConfig* fake_cros_config() { return &fake_cros_config_; }
@@ -36,6 +40,8 @@ class SystemConfigTest : public ::testing::Test {
   SystemConfig* system_config() { return system_config_.get(); }
 
   const base::FilePath& GetTempPath() const { return temp_dir_.GetPath(); }
+
+  testing::StrictMock<MockDebugdAdapter> mock_debugd_adapter_;
 
  private:
   brillo::FakeCrosConfig fake_cros_config_;
@@ -129,6 +135,20 @@ TEST_F(SystemConfigTest, NvmeSupportedToolOnlyFalse) {
 
 TEST_F(SystemConfigTest, NvmeSupportedFalse) {
   ASSERT_FALSE(system_config()->NvmeSupported());
+}
+
+TEST_F(SystemConfigTest, NvmeSelfTestSupportedTrue) {
+  constexpr char kResult[] = "test      : 0x100\noacs      : 0x17 ";
+  EXPECT_CALL(mock_debugd_adapter_, GetNvmeIdentitySync())
+      .WillOnce(Return(ByMove(DebugdAdapter::StringResult{kResult, nullptr})));
+  EXPECT_TRUE(system_config()->NvmeSelfTestSupported());
+}
+
+TEST_F(SystemConfigTest, NvmeSelfTestSupportedFalse) {
+  constexpr char kResult[] = "test      : 0x100\noacs      : 0x27 ";
+  EXPECT_CALL(mock_debugd_adapter_, GetNvmeIdentitySync())
+      .WillOnce(Return(ByMove(DebugdAdapter::StringResult{kResult, nullptr})));
+  EXPECT_FALSE(system_config()->NvmeSelfTestSupported());
 }
 
 TEST_F(SystemConfigTest, SmartCtlSupportedTrue) {

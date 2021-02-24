@@ -57,7 +57,8 @@ bool Context::Initialize() {
     return false;
   }
 
-  system_config_ = std::make_unique<SystemConfig>(cros_config_.get());
+  system_config_ =
+      std::make_unique<SystemConfig>(cros_config_.get(), debugd_adapter_.get());
   system_utils_ = std::make_unique<SystemUtilitiesImpl>();
 
   // Create and connect the adapter for the root-level executor.

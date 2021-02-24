@@ -18,6 +18,11 @@ class DebugdAdapter {
   using StringResultCallback =
       base::Callback<void(const std::string& result, brillo::Error* error)>;
 
+  struct StringResult {
+    std::string value;
+    brillo::ErrorPtr error;
+  };
+
   virtual ~DebugdAdapter() = default;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
@@ -27,6 +32,10 @@ class DebugdAdapter {
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to retrieve NVMe identity data and returns output via callback.
   virtual void GetNvmeIdentity(const StringResultCallback& callback) = 0;
+
+  // Sends synchonous request to debugd via D-Bus call. On success, debugd runs
+  // nvme util to retrieve NVMe identity data and returns output or an error.
+  virtual StringResult GetNvmeIdentitySync() = 0;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to start NVMe short-time self-test and returns start result

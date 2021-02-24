@@ -10,16 +10,19 @@
 #include <chromeos/chromeos-config/libcros_config/cros_config_interface.h>
 #include <base/files/file_path.h>
 
+#include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 
 namespace diagnostics {
 
 class SystemConfig final : public SystemConfigInterface {
  public:
-  explicit SystemConfig(brillo::CrosConfigInterface* cros_config);
+  SystemConfig(brillo::CrosConfigInterface* cros_config,
+               DebugdAdapter* debugd_adapter);
   // Constructor that overrides root_dir is only meant to be used for testing.
-  explicit SystemConfig(brillo::CrosConfigInterface* cros_config,
-                        const base::FilePath& root_dir);
+  SystemConfig(brillo::CrosConfigInterface* cros_config,
+               DebugdAdapter* debugd_adapter,
+               const base::FilePath& root_dir);
   SystemConfig(const SystemConfig&) = delete;
   SystemConfig& operator=(const SystemConfig&) = delete;
   ~SystemConfig() override;
@@ -31,6 +34,7 @@ class SystemConfig final : public SystemConfigInterface {
   bool HasSmartBattery() override;
   bool HasSkuNumber() override;
   bool NvmeSupported() override;
+  bool NvmeSelfTestSupported() override;
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
   std::string GetMarketingName() override;
@@ -38,6 +42,8 @@ class SystemConfig final : public SystemConfigInterface {
  private:
   // Unowned pointer. The CrosConfigInterface should outlive this instance.
   brillo::CrosConfigInterface* cros_config_;
+  // Unowned pointer. The DebugdAdapter should outlive this instance.
+  DebugdAdapter* debugd_adapter_;
   base::FilePath root_dir_;
 };
 

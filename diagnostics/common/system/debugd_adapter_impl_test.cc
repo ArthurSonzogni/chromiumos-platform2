@@ -114,6 +114,32 @@ TEST_F(DebugdAdapterImplTest, GetNvmeIdentityError) {
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
+// Tests that GetNvmeIdentitySync returns the output on success.
+TEST_F(DebugdAdapterImplTest, GetNvmeIdentitySync) {
+  constexpr char kResult[] = "NVMe identity data";
+  EXPECT_CALL(*debugd_proxy_mock_, Nvme(kNvmeIdentity, _, _, _))
+      .WillOnce(WithArg<1>(Invoke([kResult](std::string* out_string) {
+        *out_string = kResult;
+        return true;
+      })));
+  auto result = debugd_adapter_->GetNvmeIdentitySync();
+  EXPECT_EQ(result.value, kResult);
+  EXPECT_FALSE(result.error);
+}
+
+// Tests that GetNvmeIdentitySync returns an error on failure.
+TEST_F(DebugdAdapterImplTest, GetNvmeIdentitySyncError) {
+  brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(*debugd_proxy_mock_, Nvme(kNvmeIdentity, _, _, _))
+      .WillOnce(WithArg<2>(Invoke([&kError](brillo::ErrorPtr* error) {
+        *error = kError->Clone();
+        return false;
+      })));
+  auto result = debugd_adapter_->GetNvmeIdentitySync();
+  EXPECT_TRUE(result.error);
+  EXPECT_EQ(result.error->GetLocation(), kError->GetLocation());
+}
+
 // Tests that RunNvmeShortSelfTest calls callback with output on success.
 TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTest) {
   constexpr char kResult[] = "Device self-test started";

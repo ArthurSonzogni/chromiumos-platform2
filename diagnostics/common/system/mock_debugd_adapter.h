@@ -23,6 +23,7 @@ class MockDebugdAdapter : public DebugdAdapter {
               (const StringResultCallback&),
               (override));
   MOCK_METHOD(void, GetNvmeIdentity, (const StringResultCallback&), (override));
+  MOCK_METHOD(StringResult, GetNvmeIdentitySync, (), (override));
   MOCK_METHOD(void,
               RunNvmeShortSelfTest,
               (const StringResultCallback&),

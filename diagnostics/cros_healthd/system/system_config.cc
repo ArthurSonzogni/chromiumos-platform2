@@ -10,18 +10,40 @@
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
 
 namespace diagnostics {
 
-SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config)
-    : cros_config_(cros_config), root_dir_("/") {}
+namespace {
+
+// The field that contains the bitvalue if the NVMe self test is supported by
+// the device.
+constexpr char kNvmeSelfTestCtrlField[] = "oacs";
+
+// Bitmask for the bit that shows if the device supports the self test feature.
+// 4th bit zero index.
+constexpr uint8_t kNvmeSelfTestBitmask = 16;
+
+}  // namespace
 
 SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
+                           DebugdAdapter* debugd_adapter)
+    : SystemConfig(cros_config, debugd_adapter, base::FilePath("/")) {}
+
+SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
+                           DebugdAdapter* debugd_adapter,
                            const base::FilePath& root_dir)
-    : cros_config_(cros_config), root_dir_(root_dir) {}
+    : cros_config_(cros_config),
+      debugd_adapter_(debugd_adapter),
+      root_dir_(root_dir) {
+  DCHECK(cros_config_);
+  DCHECK(debugd_adapter_);
+}
 
 SystemConfig::~SystemConfig() = default;
 
@@ -78,6 +100,39 @@ bool SystemConfig::NvmeSupported() {
                                base::FileEnumerator::FILES, "nvme*")
               .Next()
               .empty();
+}
+
+bool SystemConfig::NvmeSelfTestSupported() {
+  auto result = debugd_adapter_->GetNvmeIdentitySync();
+  if (result.error.get())
+    return false;
+
+  // Example output:
+  // oacs      : 0x17
+  // acl       : 3
+  // aerl      : 7
+  // frmw      : 0x16
+  base::StringPairs pairs;
+  base::SplitStringIntoKeyValuePairs(result.value, ':', '\n', &pairs);
+  for (auto& p : pairs) {
+    if (base::TrimWhitespaceASCII(p.first,
+                                  base::TrimPositions::TRIM_TRAILING) !=
+        kNvmeSelfTestCtrlField) {
+      continue;
+    }
+
+    u_int32_t value;
+    if (!base::HexStringToUInt(
+            base::TrimWhitespaceASCII(p.second, base::TrimPositions::TRIM_ALL),
+            &value)) {
+      return false;
+    }
+
+    // Check to see if the device-self-test support bit is set
+    return ((value & kNvmeSelfTestBitmask) == kNvmeSelfTestBitmask);
+  }
+
+  return false;
 }
 
 bool SystemConfig::SmartCtlSupported() {

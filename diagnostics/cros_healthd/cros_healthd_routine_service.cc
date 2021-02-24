@@ -383,7 +383,10 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines() {
       available_routines_.insert(
           mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel);
     }
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest);
+    if (context_->system_config()->NvmeSelfTestSupported()) {
+      available_routines_.insert(
+          mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest);
+    }
   }
 
   if (context_->system_config()->SmartCtlSupported()) {

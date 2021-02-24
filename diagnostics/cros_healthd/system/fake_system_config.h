@@ -25,6 +25,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool HasSmartBattery() override;
   bool HasSkuNumber() override;
   bool NvmeSupported() override;
+  bool NvmeSelfTestSupported() override;
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
   std::string GetMarketingName() override;
@@ -36,6 +37,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetHasSmartBattery(bool value);
   void SetHasSkuNumber(bool value);
   void SetNvmeSupported(bool value);
+  void SetNvmeSelfTestSupported(bool value);
   void SetSmartCtrlSupported(bool value);
   void SetIsWilcoDevice(bool value);
   void SetMarketingName(const std::string& value);
@@ -47,6 +49,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool has_smart_battery_ = true;
   bool has_sku_number_property_ = true;
   bool nvme_supported_ = true;
+  bool nvme_self_test_supported_ = true;
   bool smart_ctrl_supported_ = true;
   bool wilco_device_ = true;
   std::string marketing_name_;

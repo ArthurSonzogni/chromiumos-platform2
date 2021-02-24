@@ -28,6 +28,7 @@ class DebugdAdapterImpl final : public DebugdAdapter {
   // DebugdAdapter overrides:
   void GetSmartAttributes(const StringResultCallback& callback) override;
   void GetNvmeIdentity(const StringResultCallback& callback) override;
+  StringResult GetNvmeIdentitySync() override;
   void RunNvmeShortSelfTest(const StringResultCallback& callback) override;
   void RunNvmeLongSelfTest(const StringResultCallback& callback) override;
   void StopNvmeSelfTest(const StringResultCallback& callback) override;
