@@ -53,7 +53,7 @@ class DBusAdaptor : public org::chromium::ArcSensorServiceAdaptor,
         invitation.ExtractMessagePipe(in_token);
 
     service_ = std::make_unique<arc::SensorServiceImpl>();
-    if (!service_->Initialize(mojo::InterfaceRequest<arc::mojom::SensorService>(
+    if (!service_->Initialize(mojo::PendingReceiver<arc::mojom::SensorService>(
             std::move(child_pipe)))) {
       LOG(ERROR) << "Failed to initialize SensorServiceImpl.";
       return false;

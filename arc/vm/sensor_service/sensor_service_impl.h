@@ -9,7 +9,8 @@
 #include <memory>
 #include <string>
 
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "arc/vm/sensor_service/sensor_device_impl.h"
 #include "arc/vm/sensor_service/sensor_service.mojom.h"
@@ -25,15 +26,16 @@ class SensorServiceImpl : public mojom::SensorService {
   SensorServiceImpl& operator=(const SensorServiceImpl&) = delete;
 
   // Initializes this object.
-  bool Initialize(mojo::InterfaceRequest<mojom::SensorService> request);
+  bool Initialize(mojo::PendingReceiver<mojom::SensorService> receiver);
 
   // mojom::SensorService overrides:
   void GetDeviceNames(GetDeviceNamesCallback callback) override;
-  void GetDeviceByName(const std::string& name,
-                       mojom::SensorDeviceRequest request) override;
+  void GetDeviceByName(
+      const std::string& name,
+      mojo::PendingReceiver<mojom::SensorDevice> receiver) override;
 
  private:
-  mojo::Binding<mojom::SensorService> binding_{this};
+  mojo::Receiver<mojom::SensorService> receiver_{this};
 
   // Map from device names to SensorDeviceImpl objects.
   std::map<std::string, std::unique_ptr<SensorDeviceImpl>> devices_;

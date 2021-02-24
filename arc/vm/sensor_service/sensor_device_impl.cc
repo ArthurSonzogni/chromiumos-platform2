@@ -35,13 +35,14 @@ base::FilePath GetAttributePath(const base::FilePath& iio_sysfs_dir,
 SensorDeviceImpl::SensorDeviceImpl(const base::FilePath& iio_sysfs_dir,
                                    const base::FilePath& device_file)
     : iio_sysfs_dir_(iio_sysfs_dir), device_file_(device_file) {
-  bindings_.set_connection_error_handler(base::BindRepeating(
+  receivers_.set_disconnect_handler(base::BindRepeating(
       []() { LOG(INFO) << "SensorDevice connection closed."; }));
 }
 SensorDeviceImpl::~SensorDeviceImpl() = default;
 
-void SensorDeviceImpl::Bind(mojom::SensorDeviceRequest request) {
-  bindings_.AddBinding(this, std::move(request));
+void SensorDeviceImpl::Bind(
+    mojo::PendingReceiver<mojom::SensorDevice> receiver) {
+  receivers_.Add(this, std::move(receiver));
 }
 
 void SensorDeviceImpl::GetAttribute(const std::string& name,

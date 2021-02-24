@@ -26,7 +26,7 @@ SensorServiceImpl::SensorServiceImpl() = default;
 SensorServiceImpl::~SensorServiceImpl() = default;
 
 bool SensorServiceImpl::Initialize(
-    mojo::InterfaceRequest<mojom::SensorService> request) {
+    mojo::PendingReceiver<mojom::SensorService> receiver) {
   // List the devices in the IIO sysfs.
   brillo::ScopedDIR dir(opendir(kIioDeviceDir));
   if (!dir.is_valid()) {
@@ -48,8 +48,8 @@ bool SensorServiceImpl::Initialize(
     }
   }
   // Bind the request to this object.
-  binding_.Bind(std::move(request));
-  binding_.set_connection_error_handler(base::BindOnce(
+  receiver_.Bind(std::move(receiver));
+  receiver_.set_disconnect_handler(base::BindOnce(
       []() { LOG(ERROR) << "SensorService connection closed."; }));
   return true;
 }
@@ -61,8 +61,9 @@ void SensorServiceImpl::GetDeviceNames(GetDeviceNamesCallback callback) {
   std::move(callback).Run(std::move(device_names));
 }
 
-void SensorServiceImpl::GetDeviceByName(const std::string& name,
-                                        mojom::SensorDeviceRequest request) {
+void SensorServiceImpl::GetDeviceByName(
+    const std::string& name,
+    mojo::PendingReceiver<mojom::SensorDevice> receiver) {
   auto it = devices_.find(name);
   if (it == devices_.end()) {
     // This will close the message pipe attached to the request and the
@@ -70,7 +71,7 @@ void SensorServiceImpl::GetDeviceByName(const std::string& name,
     LOG(ERROR) << "Device not found: " << name;
     return;
   }
-  it->second->Bind(std::move(request));
+  it->second->Bind(std::move(receiver));
 }
 
 }  // namespace arc
