@@ -291,6 +291,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/metrics                    u:object_r:cros_run_metrics:s0
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
 /run/mount_encrypted            u:object_r:cros_run_mount_encrypted:s0
+/run/perfetto                   u:object_r:cros_run_perfetto:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
 /run/shill                      u:object_r:cros_run_shill:s0
 /run/systemd                    u:object_r:cros_run_systemd:s0

@@ -302,6 +302,7 @@ type cros_run_metrics, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics_external, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics_external_crash, file_type, cros_file_type, cros_run_file_type;
 type cros_run_mount_encrypted, file_type, cros_file_type, cros_run_file_type;
+type cros_run_perfetto, file_type, cros_file_type, cros_run_file_type;
 type cros_run_power_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_session_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_shill, file_type, cros_file_type, cros_run_file_type;
