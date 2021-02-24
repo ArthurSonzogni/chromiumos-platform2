@@ -31,6 +31,8 @@ const int kUpdateTimeoutMs = 5000;
 // Frequency with which the ambient light sensor file is polled.
 const int kPollIntervalMs = 100;
 
+constexpr char kDeviceName[] = "device0";
+
 // Simple AmbientLightObserver implementation that runs the event loop
 // until it receives notification that the ambient light level has changed.
 class TestObserver : public AmbientLightObserver {
@@ -69,7 +71,7 @@ class AmbientLightSensorDelegateFileTest : public ::testing::Test {
  protected:
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    device_dir_ = temp_dir_.GetPath().Append("device0");
+    device_dir_ = temp_dir_.GetPath().Append(kDeviceName);
     CHECK(base::CreateDirectory(device_dir_));
     data_file_ = device_dir_.Append("in_illuminance_input");
 
@@ -79,9 +81,19 @@ class AmbientLightSensorDelegateFileTest : public ::testing::Test {
 
   void TearDown() override { sensor_->RemoveObserver(&observer_); }
 
-  void CreateSensor(SensorLocation location, bool allow_ambient_eq) {
+  void CreateSensorByLocation(SensorLocation location, bool allow_ambient_eq) {
     auto als = std::make_unique<system::AmbientLightSensorDelegateFile>(
         location, allow_ambient_eq);
+    als_ = als.get();
+    sensor_->SetDelegate(std::move(als));
+    als_->set_device_list_path_for_testing(temp_dir_.GetPath());
+    als_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+    als_->Init(false /* read_immediately */);
+  }
+
+  void CreateSensorByName(const std::string& device, bool allow_ambient_eq) {
+    auto als = std::make_unique<system::AmbientLightSensorDelegateFile>(
+        device, allow_ambient_eq);
     als_ = als.get();
     sensor_->SetDelegate(std::move(als));
     als_->set_device_list_path_for_testing(temp_dir_.GetPath());
@@ -112,7 +124,7 @@ class AmbientLightSensorDelegateFileTest : public ::testing::Test {
 };
 
 TEST_F(AmbientLightSensorDelegateFileTest, Basic) {
-  CreateSensor(SensorLocation::UNKNOWN, false);
+  CreateSensorByLocation(SensorLocation::UNKNOWN, false);
 
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
@@ -129,7 +141,7 @@ TEST_F(AmbientLightSensorDelegateFileTest, Basic) {
 }
 
 TEST_F(AmbientLightSensorDelegateFileTest, GiveUpAfterTooManyFailures) {
-  CreateSensor(SensorLocation::UNKNOWN, false);
+  CreateSensorByLocation(SensorLocation::UNKNOWN, false);
 
   // Test that the timer is eventually stopped after many failures.
   base::DeleteFile(data_file_);
@@ -147,7 +159,7 @@ TEST_F(AmbientLightSensorDelegateFileTest, GiveUpAfterTooManyFailures) {
 TEST_F(AmbientLightSensorDelegateFileTest, FailToFindSensorAtLid) {
   // Test that the timer is eventually stopped after many failures if |sensor_|
   // is unable to find the sensor at the expected location.
-  CreateSensor(SensorLocation::LID, false);
+  CreateSensorByLocation(SensorLocation::LID, false);
 
   for (int i = 0;
        i < AmbientLightSensorDelegateFile::kNumInitAttemptsBeforeGivingUp;
@@ -166,7 +178,7 @@ TEST_F(AmbientLightSensorDelegateFileTest, FindSensorAtBase) {
   base::FilePath loc_file = device_dir_.Append("location");
   CHECK(brillo::WriteStringToFile(loc_file, "base"));
 
-  CreateSensor(SensorLocation::BASE, false);
+  CreateSensorByLocation(SensorLocation::BASE, false);
 
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
@@ -174,7 +186,7 @@ TEST_F(AmbientLightSensorDelegateFileTest, FindSensorAtBase) {
 }
 
 TEST_F(AmbientLightSensorDelegateFileTest, IsColorSensor) {
-  CreateSensor(SensorLocation::UNKNOWN, false);
+  CreateSensorByLocation(SensorLocation::UNKNOWN, false);
 
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
@@ -186,7 +198,7 @@ TEST_F(AmbientLightSensorDelegateFileTest, IsColorSensor) {
   base::FilePath color_file = device_dir_.Append("in_illuminance_red_raw");
   CHECK(brillo::WriteStringToFile(color_file, "50"));
 
-  CreateSensor(SensorLocation::UNKNOWN, false);
+  CreateSensorByLocation(SensorLocation::UNKNOWN, false);
 
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
@@ -200,13 +212,37 @@ TEST_F(AmbientLightSensorDelegateFileTest, IsColorSensor) {
   color_file = device_dir_.Append("in_illuminance_blue_raw");
   CHECK(brillo::WriteStringToFile(color_file, "50"));
 
-  CreateSensor(SensorLocation::UNKNOWN, true);
+  CreateSensorByLocation(SensorLocation::UNKNOWN, true);
 
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(100, sensor_->GetAmbientLightLux());
   // Now we have all channels. The sensor should support color.
   EXPECT_TRUE(sensor_->IsColorSensor());
+}
+
+TEST_F(AmbientLightSensorDelegateFileTest, FindSensorByName) {
+  CreateSensorByName(kDeviceName, false);
+
+  WriteLux(100);
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  EXPECT_EQ(100, sensor_->GetAmbientLightLux());
+}
+
+TEST_F(AmbientLightSensorDelegateFileTest, FailToFindSensorByName) {
+  // Test that the timer is eventually stopped after many failures if |sensor_|
+  // is unable to find the sensor with the expected name.
+  CreateSensorByName("bad-name", false);
+
+  for (int i = 0;
+       i < AmbientLightSensorDelegateFile::kNumInitAttemptsBeforeGivingUp;
+       ++i) {
+    EXPECT_TRUE(als_->TriggerPollTimerForTesting());
+    EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
+  }
+
+  EXPECT_FALSE(als_->TriggerPollTimerForTesting());
+  EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
 }
 
 }  // namespace system

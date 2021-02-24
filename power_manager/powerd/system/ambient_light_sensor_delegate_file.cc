@@ -65,7 +65,7 @@ bool ParseLuxData(const std::string& data, int* value) {
                << trimmed_data << "]";
     return false;
   }
-  VLOG(1) << "Read lux value " << value;
+  VLOG(1) << "Read lux value " << *value;
   return true;
 }
 
@@ -81,6 +81,15 @@ AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
       enable_color_support_(enable_color_support),
       num_init_attempts_(0),
       expected_sensor_location_(expected_sensor_location) {}
+
+AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
+    const std::string& device, bool enable_color_support)
+    : device_list_path_(kDefaultDeviceListPath),
+      device_(device),
+      poll_interval_ms_(kDefaultPollIntervalMs),
+      enable_color_support_(enable_color_support),
+      num_init_attempts_(0),
+      expected_sensor_location_(SensorLocation::UNKNOWN) {}
 
 AmbientLightSensorDelegateFile::~AmbientLightSensorDelegateFile() {}
 
@@ -241,43 +250,59 @@ void AmbientLightSensorDelegateFile::InitColorAlsFiles(
   LOG(INFO) << "ALS at path " << device_dir.value() << " has color support";
 }
 
-bool AmbientLightSensorDelegateFile::InitAlsFile() {
-  CHECK(!als_file_.HasOpenedFile());
-
-  // Search the iio/devices directory for a subdirectory (eg "device0" or
-  // "iio:device0") that contains the "[in_]illuminance[0]_{input|raw}" file.
-  base::FileEnumerator dir_enumerator(device_list_path_, false,
-                                      base::FileEnumerator::DIRECTORIES);
+bool AmbientLightSensorDelegateFile::CheckPath(
+    const base::FilePath& check_path) {
   const char* input_names[] = {
       "in_illuminance0_input", "in_illuminance_input", "in_illuminance0_raw",
       "in_illuminance_raw",    "illuminance0_input",
   };
 
+  if (expected_sensor_location_ != SensorLocation::UNKNOWN) {
+    base::FilePath loc_path = check_path.Append("location");
+    std::string location;
+    if (!base::ReadFileToString(loc_path, &location)) {
+      return false;
+    }
+    base::TrimWhitespaceASCII(location, base::TRIM_ALL, &location);
+    SensorLocation als_loc = StringToSensorLocation(location);
+    if (als_loc != expected_sensor_location_) {
+      return false;
+    }
+  }
+  for (unsigned int i = 0; i < base::size(input_names); i++) {
+    base::FilePath als_path = check_path.Append(input_names[i]);
+    if (!base::PathExists(als_path))
+      continue;
+    if (!als_file_.Init(als_path))
+      continue;
+    if (enable_color_support_)
+      InitColorAlsFiles(check_path);
+    LOG(INFO) << "Using lux file " << GetIlluminancePath().value() << " for "
+              << SensorLocationToString(expected_sensor_location_) << " ALS";
+    return true;
+  }
+  return false;
+}
+
+bool AmbientLightSensorDelegateFile::InitAlsFile() {
+  CHECK(!als_file_.HasOpenedFile());
+
   num_init_attempts_++;
-  for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
-       check_path = dir_enumerator.Next()) {
-    if (expected_sensor_location_ != SensorLocation::UNKNOWN) {
-      base::FilePath loc_path = check_path.Append("location");
-      std::string location;
-      if (!base::ReadFileToString(loc_path, &location)) {
-        continue;
-      }
-      base::TrimWhitespaceASCII(location, base::TRIM_ALL, &location);
-      SensorLocation als_loc = StringToSensorLocation(location);
-      if (als_loc != expected_sensor_location_) {
-        continue;
+
+  if (device_.empty()) {
+    // Search the iio/devices directory for a subdirectory (eg "device0" or
+    // "iio:device0") that contains the "[in_]illuminance[0]_{input|raw}" file.
+    base::FileEnumerator dir_enumerator(device_list_path_, false,
+                                        base::FileEnumerator::DIRECTORIES);
+
+    for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
+         check_path = dir_enumerator.Next()) {
+      if (CheckPath(check_path)) {
+        return true;
       }
     }
-    for (unsigned int i = 0; i < base::size(input_names); i++) {
-      base::FilePath als_path = check_path.Append(input_names[i]);
-      if (!base::PathExists(als_path))
-        continue;
-      if (!als_file_.Init(als_path))
-        continue;
-      if (enable_color_support_)
-        InitColorAlsFiles(check_path);
-      LOG(INFO) << "Using lux file " << GetIlluminancePath().value() << " for "
-                << SensorLocationToString(expected_sensor_location_) << " ALS";
+  } else {
+    if (CheckPath(device_list_path_.Append(device_))) {
       return true;
     }
   }

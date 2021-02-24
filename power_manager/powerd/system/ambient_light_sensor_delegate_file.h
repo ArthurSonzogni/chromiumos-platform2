@@ -31,6 +31,9 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
 
   AmbientLightSensorDelegateFile(SensorLocation expected_sensor_location,
                                  bool allow_ambient_eq);
+  // Select a specific device in |device_list_path_| to use.
+  AmbientLightSensorDelegateFile(const std::string& expected_device,
+                                 bool allow_ambient_eq);
   AmbientLightSensorDelegateFile(const AmbientLightSensorDelegateFile&) =
       delete;
   AmbientLightSensorDelegateFile& operator=(
@@ -75,6 +78,9 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
   void ErrorColorChannelCallback(const ColorChannelInfo* channel);
   void CollectChannelReadings();
 
+  // Attempts to initialize for a specific device path.
+  bool CheckPath(const base::FilePath& check_path);
+
   // Initializes |als_file_| and optionally color ALS support if it exists.
   // Returns true if at least lux information is available for use.
   bool InitAlsFile();
@@ -85,6 +91,9 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
   // Path containing backlight devices.  Typically under /sys, but can be
   // overridden by tests.
   base::FilePath device_list_path_;
+
+  // If this isn't the empty string, only attempt to open this specific device.
+  const std::string device_;
 
   // Runs ReadAls().
   base::RepeatingTimer poll_timer_;
