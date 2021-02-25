@@ -104,6 +104,11 @@ class Manager {
     // The IPv4 address of the DNS Proxy, if applicable. When this value is set,
     // resolv.conf should use this address as the name server.
     std::string dns_proxy_ipv4_address;
+    // Maps DNS-over-HTTPS service providers to a list of standard DNS name
+    // servers. This member stores the value set via the DBus
+    // |DNSProxyDOHProviders| property.
+    std::map<std::string, std::string> dns_proxy_doh_providers;
+
 #if !defined(DISABLE_WIFI)
     base::Optional<bool> ft_enabled;
 #endif  // !DISABLE_WIFI
@@ -658,6 +663,9 @@ class Manager {
   bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
   void UseDNSProxy(const std::string& proxy_addr);
 
+  Stringmap GetDNSProxyDOHProviders(Error* error);
+  bool SetDNSProxyDOHProviders(const Stringmap& providers, Error* error);
+
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.
   void DetectMultiHomedDevices();
@@ -684,6 +692,10 @@ class Manager {
                                                       Error*));
   void HelpRegisterConstDerivedStrings(const std::string& name,
                                        Strings (Manager::*get)(Error*));
+  void HelpRegisterDerivedStringmap(const std::string& name,
+                                    Stringmap (Manager::*get)(Error* error),
+                                    bool (Manager::*set)(const Stringmap& value,
+                                                         Error* error));
   void HelpRegisterDerivedBool(const std::string& name,
                                bool (Manager::*get)(Error* error),
                                bool (Manager::*set)(const bool& value,

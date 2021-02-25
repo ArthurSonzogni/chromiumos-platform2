@@ -651,3 +651,11 @@ Properties 	object ActiveProfile [readonly]
 
 			This address is enforced to be within a predetermined
 			system local subnet.
+
+		array{string, string} DNSProxyDOHProviders [readwrite]
+
+			The DNS-over-HTTPS service providers. URLs of the secure
+			DNS service endpoints are used as keys. If applicable,
+			each value is a comma-separated list of the IP addresses
+			(both v4 and v6 are supported) of the standard DNS name
+			servers that map to the secure DNS service provider.

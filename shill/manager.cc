@@ -44,6 +44,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
+#include "shill/http_url.h"
 #include "shill/logging.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
@@ -303,6 +304,9 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kDNSProxyIPv4AddressProperty,
                             &Manager::GetDNSProxyIPv4Address,
                             &Manager::SetDNSProxyIPv4Address);
+  HelpRegisterDerivedStringmap(kDNSProxyDOHProvidersProperty,
+                               &Manager::GetDNSProxyDOHProviders,
+                               &Manager::SetDNSProxyDOHProviders);
 
   UpdateProviderMapping();
 
@@ -1814,6 +1818,15 @@ void Manager::HelpRegisterConstDerivedStrings(const string& name,
                 new CustomAccessor<Manager, Strings>(this, get, nullptr)));
 }
 
+void Manager::HelpRegisterDerivedStringmap(
+    const string& name,
+    Stringmap (Manager::*get)(Error* error),
+    bool (Manager::*set)(const Stringmap& value, Error* error)) {
+  store_.RegisterDerivedStringmap(
+      name, StringmapAccessor(
+                new CustomAccessor<Manager, Stringmap>(this, get, set)));
+}
+
 void Manager::HelpRegisterDerivedBool(const string& name,
                                       bool (Manager::*get)(Error* error),
                                       bool (Manager::*set)(const bool&,
@@ -3014,6 +3027,38 @@ void Manager::UseDNSProxy(const string& proxy_addr) {
     return;
 
   resolver_->SetDNSProxy(proxy_addr);
+}
+
+Stringmap Manager::GetDNSProxyDOHProviders(Error* /* error */) {
+  return props_.dns_proxy_doh_providers;
+}
+
+bool Manager::SetDNSProxyDOHProviders(const Stringmap& providers,
+                                      Error* error) {
+  if (error)
+    error->Reset();
+
+  if (providers == props_.dns_proxy_doh_providers)
+    return false;
+
+  for (const auto& [url, nameservers] : providers) {
+    if (!HttpUrl().ParseFromString(url)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Invalid URL: " + url);
+      return false;
+    }
+    for (const auto& ns : base::SplitString(
+             nameservers, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
+      if (!IPAddress(ns).IsValid()) {
+        Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                              "Invalid address: " + ns);
+        return false;
+      }
+    }
+  }
+
+  props_.dns_proxy_doh_providers = providers;
+  return true;
 }
 
 bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,
