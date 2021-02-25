@@ -134,9 +134,6 @@ class ZslHelper {
 
   ~ZslHelper();
 
-  // Whether ZSL is enabled for the device adapter that owns this helper.
-  bool IsZslEnabled();
-
   // Attaches the ZSL bidirectional stream to the stream configuration.
   bool AttachZslStream(camera3_stream_configuration_t* stream_list,
                        std::vector<camera3_stream_t*>* streams);
@@ -217,11 +214,6 @@ class ZslHelper {
 
   // Whether this buffer is 3A-converged (AE, AF, AWB).
   bool Is3AConverged(const android::CameraMetadata& android_metadata);
-
-  // Whether ZSL mechanism is enabled.
-  bool enabled_;
-  // Lock to protect |enabled_|.
-  base::Lock enabled_lock_;
 
   // The actual ZSL stream.
   std::unique_ptr<camera3_stream_t> bi_stream_;

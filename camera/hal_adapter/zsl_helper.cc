@@ -189,7 +189,7 @@ bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
 }
 
 ZslHelper::ZslHelper(const camera_metadata_t* static_info)
-    : enabled_(false), fence_sync_thread_("FenceSyncThread") {
+    : fence_sync_thread_("FenceSyncThread") {
   VLOGF_ENTER();
   if (!IsCapabilitySupported(
           static_info,
@@ -257,11 +257,6 @@ ZslHelper::~ZslHelper() {
   fence_sync_thread_.Stop();
 }
 
-bool ZslHelper::IsZslEnabled() {
-  base::AutoLock enabled_lock(enabled_lock_);
-  return enabled_;
-}
-
 bool ZslHelper::AttachZslStream(camera3_stream_configuration_t* stream_list,
                                 std::vector<camera3_stream_t*>* streams) {
   if (!CanEnableZsl(streams)) {
@@ -313,11 +308,9 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
         return max_buffers;
       };
 
-  base::AutoLock enable_lock(enabled_lock_);
   base::AutoLock ring_buffer_lock(ring_buffer_lock_);
 
   // First, clear all the buffers and states.
-  enabled_ = false;
   ring_buffer_.clear();
   zsl_buffer_manager_.Reset();
 
@@ -358,8 +351,6 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
     return false;
   }
 
-  LOGF(INFO) << "Enabling ZSL";
-  enabled_ = true;
   return true;
 }
 
@@ -475,10 +466,6 @@ void ZslHelper::AttachRequest(
     camera3_capture_request_t* request,
     std::vector<camera3_stream_buffer_t>* output_buffers) {
   VLOGF_ENTER();
-  if (!IsZslEnabled()) {
-    LOGF(WARNING) << "Trying to attach a request when ZSL is disabled";
-    return;
-  }
 
   base::AutoLock l(ring_buffer_lock_);
   TryReleaseBuffer();
@@ -514,11 +501,6 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
     }
     return *entry.data.i32;
   };
-
-  if (!IsZslEnabled()) {
-    LOGF(WARNING) << "Trying to transform a request when ZSL is disabled";
-    return false;
-  }
 
   // Select the best buffer.
   ZslBufferIterator selected_buffer_it = SelectZslBuffer(strategy);

@@ -7,6 +7,7 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 #define CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 
+#include <atomic>
 #include <deque>
 #include <map>
 #include <memory>
@@ -251,6 +252,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // A helper class that includes various functions for the mechanisms of ZSL.
   ZslHelper zsl_helper_;
+
+  // Whether ZSL is enabled. The value can change after each ConfigureStreams().
+  std::atomic<bool> zsl_enabled_;
 
   // The stream configured for ZSL requests.
   camera3_stream_t* zsl_stream_;
