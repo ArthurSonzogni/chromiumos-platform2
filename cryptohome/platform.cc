@@ -528,11 +528,17 @@ int64_t Platform::GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
 
 bool Platform::SetQuotaProjectId(int project_id,
                                  const base::FilePath& path) const {
+  base::stat_wrapper_t stat;
+  if (base::File::Lstat(path.value().c_str(), &stat) != 0) {
+    PLOG(ERROR) << "Failed to stat " << path.value();
+    return false;
+  }
   brillo::SafeFD fd;
   brillo::SafeFD::Error err;
-  std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(path);
-  if (err == brillo::SafeFD::Error::kWrongType) {
+  if (S_ISDIR(stat.st_mode)) {
     std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingDir(path);
+  } else {
+    std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(path);
   }
   if (brillo::SafeFD::IsError(err)) {
     PLOG(ERROR) << "Failed to open " << path.value() << " with error "

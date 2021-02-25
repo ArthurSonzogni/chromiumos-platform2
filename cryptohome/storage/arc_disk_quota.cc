@@ -31,13 +31,10 @@ bool ArcDiskQuota::IsQuotaSupported() const {
     return false;
   }
 
-  // TODO(risan): Support quota for more than 1 Android user,
-  // after that, the following check could be removed.
   int cnt = homedirs_->GetUnmountedAndroidDataCount();
   if (cnt != 0) {
-    LOG(ERROR) << "Quota is supported only if there are no unmounted Android "
-                  "users. Found extra unmounted "
-               << cnt << " Android users.";
+    // Quota is not supported if there are one or more unmounted Android users.
+    // (b/181159107)
     return false;
   }
 
