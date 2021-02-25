@@ -18,7 +18,6 @@ namespace cryptohome {
 
 const FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
 const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
-const FilePath kShallInitializeFile("/home/.shadow/.can_attempt_ownership");
 
 TpmPersistentState::TpmPersistentState(Platform* platform)
     : platform_(platform) {}
@@ -144,24 +143,6 @@ bool TpmPersistentState::ClearStatus() {
   return true;
 }
 
-bool TpmPersistentState::ShallInitialize() const {
-  base::AutoLock lock(tpm_status_lock_);
-  return ShallInitializeLocked();
-}
-
-bool TpmPersistentState::SetShallInitialize(bool shall_initialize) {
-  base::AutoLock lock(tpm_status_lock_);
-
-  if (ShallInitializeLocked() == shall_initialize) {
-    return true;
-  }
-  shall_initialize_ = shall_initialize;
-  // See SetReady() above for the decision why we set the cached flag
-  // first despite possible filesystem errors later.
-  return shall_initialize ? platform_->TouchFileDurable(kShallInitializeFile)
-                          : platform_->DeleteFileDurable(kShallInitializeFile);
-}
-
 bool TpmPersistentState::LoadTpmStatus() {
   if (read_tpm_status_) {
     return true;
@@ -201,16 +182,6 @@ bool TpmPersistentState::StoreTpmStatus() {
       static_cast<google::protobuf::uint8*>(final_blob.data()));
   return platform_->WriteSecureBlobToFileAtomicDurable(kTpmStatusFile,
                                                        final_blob, 0600);
-}
-
-bool TpmPersistentState::ShallInitializeLocked() const {
-  tpm_status_lock_.AssertAcquired();
-
-  if (!read_shall_initialize_) {
-    shall_initialize_ = platform_->FileExists(kShallInitializeFile);
-    read_shall_initialize_ = true;
-  }
-  return shall_initialize_;
 }
 
 }  // namespace cryptohome
