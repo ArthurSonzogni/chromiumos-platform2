@@ -24,6 +24,10 @@ extern const char kMenuButtonFrameGrey[];
 extern const int kMonospaceGlyphWidth;
 extern const int kDefaultMessageWidth;
 
+// Frecon constants
+extern const int kFreconScalingFactor;
+extern const int kCanvasSize;
+
 // ScreenBase contains all the different components needed to show MiniOS
 // Screens.
 class ScreenBase {
@@ -114,6 +118,9 @@ class ScreenBase {
   // error.
   bool GetDimension(const std::string& token, int* token_dimension);
 
+  // Gets frecon constants defined at initialization by Upstart job.
+  void GetFreconConstants();
+
   // Whether the locale is read from right to left.
   bool right_to_left_{false};
 
@@ -131,6 +138,9 @@ class ScreenBase {
 
   // Key value pairs that store token name and measurements.
   base::StringPairs image_dimensions_;
+
+  int frecon_canvas_size_{1080};
+  int frecon_scale_factor_{1};
 };
 
 }  // namespace screens

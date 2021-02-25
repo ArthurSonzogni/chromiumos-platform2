@@ -25,12 +25,12 @@ const char kMenuButtonFrameGrey[] = "0x9AA0A6";
 const int kMonospaceGlyphWidth = 10;
 const int kDefaultMessageWidth = 720;
 
-namespace {
-constexpr char kConsole0[] = "dev/pts/0";
 // Frecon constants
-// TODO(vyshu): Get this from frecon.
 constexpr int kFreconScalingFactor = 1;
 constexpr int kCanvasSize = 1080;
+
+namespace {
+constexpr char kConsole0[] = "dev/pts/0";
 
 // Dimensions and spacing.
 constexpr int kDefaultButtonWidth = 80;
@@ -75,7 +75,7 @@ bool ScreenBase::ShowImage(const base::FilePath& image_name,
     offset_x = -offset_x;
   std::string command = base::StringPrintf(
       "\033]image:file=%s;offset=%d,%d;scale=%d\a", image_name.value().c_str(),
-      offset_x, offset_y, kFreconScalingFactor);
+      offset_x, offset_y, frecon_scale_factor_);
   if (!base::AppendToFile(base::FilePath(root_).Append(kConsole0),
                           command.c_str(), command.size())) {
     LOG(ERROR) << "Could not write " << image_name << "  to console.";
@@ -97,7 +97,7 @@ bool ScreenBase::ShowBox(int offset_x,
 
   std::string command = base::StringPrintf(
       "\033]box:color=%s;size=%d,%d;offset=%d,%d;scale=%d\a", color.c_str(),
-      size_x, size_y, offset_x, offset_y, kFreconScalingFactor);
+      size_x, size_y, offset_x, offset_y, frecon_scale_factor_);
 
   if (!base::AppendToFile(base::FilePath(root_).Append(kConsole0),
                           command.c_str(), command.size())) {
@@ -135,14 +135,14 @@ bool ScreenBase::ShowMessage(const std::string& message_token,
 }
 
 void ScreenBase::ShowInstructions(const std::string& message_token) {
-  constexpr int kXOffset = (-kCanvasSize / 2) + (kDefaultMessageWidth / 2);
-  constexpr int kYOffset = (-kCanvasSize / 2) + 283;
+  const int kXOffset = (-frecon_canvas_size_ / 2) + (kDefaultMessageWidth / 2);
+  const int kYOffset = (-frecon_canvas_size_ / 2) + 283;
   if (!ShowMessage(message_token, kXOffset, kYOffset))
     LOG(WARNING) << "Unable to show " << message_token;
 }
 
 void ScreenBase::ShowInstructionsWithTitle(const std::string& message_token) {
-  constexpr int kXOffset = (-kCanvasSize / 2) + (kDefaultMessageWidth / 2);
+  const int kXOffset = (-frecon_canvas_size_ / 2) + (kDefaultMessageWidth / 2);
 
   int title_height;
   if (!GetDimension("TITLE_" + message_token + "_HEIGHT", &title_height)) {
@@ -157,7 +157,7 @@ void ScreenBase::ShowInstructionsWithTitle(const std::string& message_token) {
                  << ". Defaulting to " << desc_height;
   }
 
-  const int kTitleY = (-kCanvasSize / 2) + 220 + (title_height / 2);
+  const int kTitleY = (-frecon_canvas_size_ / 2) + 220 + (title_height / 2);
   const int kDescY = kTitleY + (title_height / 2) + 16 + (desc_height / 2);
   if (!ShowMessage("title_" + message_token, kXOffset, kTitleY))
     LOG(WARNING) << "Unable to show title " << message_token;
@@ -194,13 +194,14 @@ void ScreenBase::ShowProgressBar(double seconds) {
 
 void ScreenBase::ClearMainArea() {
   constexpr int kFooterHeight = 142;
-  if (!ShowBox(0, -kFooterHeight / 2, kCanvasSize + 100,
-               (kCanvasSize - kFooterHeight), kMenuBlack))
+  if (!ShowBox(0, -kFooterHeight / 2, frecon_canvas_size_ + 100,
+               (frecon_canvas_size_ - kFooterHeight), kMenuBlack))
     LOG(WARNING) << "Could not clear main area.";
 }
 
 void ScreenBase::ClearScreen() {
-  if (!ShowBox(0, 0, kCanvasSize + 100, kCanvasSize, kMenuBlack))
+  if (!ShowBox(0, 0, frecon_canvas_size_ + 100, frecon_canvas_size_,
+               kMenuBlack))
     LOG(WARNING) << "Could not clear screen.";
 }
 
@@ -210,7 +211,7 @@ void ScreenBase::ShowButton(const std::string& message_token,
                             int inner_width,
                             bool is_text) {
   const int kBtnPadding = 32;  // Left and right padding.
-  int left_padding_x = (-kCanvasSize / 2) + (kBtnPadding / 2);
+  int left_padding_x = (-frecon_canvas_size_ / 2) + (kBtnPadding / 2);
   const int kOffsetX = left_padding_x + (kBtnPadding / 2) + (inner_width / 2);
   int right_padding_x = kOffsetX + (kBtnPadding / 2) + (inner_width / 2);
   // Clear previous state.
@@ -259,11 +260,11 @@ void ScreenBase::ShowStepper(const std::vector<std::string>& steps) {
   constexpr int kSeparatorLength = 46;
   constexpr int kPadding = 6;
 
-  int stepper_x = (-kCanvasSize / 2) + (kIconSize / 2);
+  int stepper_x = (-frecon_canvas_size_ / 2) + (kIconSize / 2);
   constexpr int kStepperXStep = kIconSize + kSeparatorLength + (kPadding * 2);
-  constexpr int kStepperY = 144 - (kCanvasSize / 2);
-  int separator_x =
-      (-kCanvasSize / 2) + kIconSize + kPadding + (kSeparatorLength / 2);
+  const int kStepperY = 144 - (frecon_canvas_size_ / 2);
+  int separator_x = (-frecon_canvas_size_ / 2) + kIconSize + kPadding +
+                    (kSeparatorLength / 2);
 
   for (const auto& step : steps) {
     base::FilePath stepper_image = screens_path_.Append("ic_" + step + ".png");
@@ -329,4 +330,39 @@ bool ScreenBase::GetDimension(const std::string& token, int* token_dimension) {
   return false;
 }
 
+void ScreenBase::GetFreconConstants() {
+  base::FilePath scale_factor_path =
+      root_.Append("etc").Append("frecon").Append("scale");
+  std::string frecon_scale_factor;
+  if (!ReadFileToString(scale_factor_path, &frecon_scale_factor)) {
+    frecon_scale_factor_ = kFreconScalingFactor;
+    LOG(WARNING) << "Could not read frecon scale factor from /etc. Defaulting "
+                    "to scale "
+                 << kFreconScalingFactor;
+  } else {
+    base::TrimString(frecon_scale_factor, " \n", &frecon_scale_factor);
+    if (!base::StringToInt(frecon_scale_factor, &frecon_scale_factor_)) {
+      frecon_scale_factor_ = kFreconScalingFactor;
+      LOG(WARNING) << "Could not convert " << frecon_scale_factor_
+                   << " to an int. Defaulting to scale "
+                   << kFreconScalingFactor;
+    }
+  }
+
+  base::FilePath canvas_size_path =
+      root_.Append("etc").Append("frecon").Append("size");
+  std::string frecon_canvas_size;
+  if (!ReadFileToString(canvas_size_path, &frecon_canvas_size)) {
+    frecon_canvas_size_ = kCanvasSize;
+    LOG(WARNING) << "Could not read frecon canvas size from /etc/frecon."
+                 << " Defaulting to canvas size " << kCanvasSize;
+  } else {
+    base::TrimString(frecon_canvas_size, " \n", &frecon_canvas_size);
+    if (!base::StringToInt(frecon_canvas_size, &frecon_canvas_size_)) {
+      frecon_canvas_size_ = kCanvasSize;
+      LOG(WARNING) << "Could not convert " << frecon_canvas_size
+                   << " to int. Defaulting to canvas size " << kCanvasSize;
+    }
+  }
+}
 }  // namespace screens

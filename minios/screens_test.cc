@@ -380,6 +380,49 @@ TEST_F(ScreensTest, MapRegionToKeyboardNoFile) {
   EXPECT_TRUE(keyboard.empty());
 }
 
+TEST_F(ScreensTest, GetFreconConstFile) {
+  std::string frecon_scale_factor = "2";
+  std::string frecon_canvas_size = "1100";
+  ASSERT_TRUE(CreateDirectory(
+      base::FilePath(test_root_).Append("etc").Append("frecon")));
+  ASSERT_TRUE(
+      base::WriteFile(base::FilePath(test_root_).Append("etc/frecon/scale"),
+                      frecon_scale_factor));
+  ASSERT_TRUE(
+      base::WriteFile(base::FilePath(test_root_).Append("etc/frecon/size"),
+                      frecon_canvas_size));
+
+  screens_.GetFreconConstants();
+  EXPECT_EQ(screens_.frecon_scale_factor_, 2);
+  EXPECT_EQ(screens_.frecon_canvas_size_, 1100);
+}
+
+TEST_F(ScreensTest, GetFreconConstNoInt) {
+  // Set  the values to be incorrectly formatted.
+  std::string frecon_scale_factor = " not a scale ";
+  std::string frecon_canvas_size = " not a number ";
+  ASSERT_TRUE(CreateDirectory(
+      base::FilePath(test_root_).Append("etc").Append("frecon")));
+  ASSERT_TRUE(
+      base::WriteFile(base::FilePath(test_root_).Append("etc/frecon/scale"),
+                      frecon_scale_factor));
+  ASSERT_TRUE(
+      base::WriteFile(base::FilePath(test_root_).Append("etc/frecon/size"),
+                      frecon_canvas_size));
+
+  screens_.GetFreconConstants();
+  // Keeps default value.
+  EXPECT_EQ(screens_.frecon_scale_factor_, kFreconScalingFactor);
+  EXPECT_EQ(screens_.frecon_canvas_size_, kCanvasSize);
+}
+
+TEST_F(ScreensTest, GetFreconConstNoFile) {
+  // Should keep the default value.
+  screens_.GetFreconConstants();
+  EXPECT_EQ(screens_.frecon_scale_factor_, kFreconScalingFactor);
+  EXPECT_EQ(screens_.frecon_canvas_size_, kCanvasSize);
+}
+
 TEST_F(ScreensTest, MapRegionToKeyboardNotDict) {
   std::string not_dict =
       "{ au : { region_code :  au ,  confirmed : true, "

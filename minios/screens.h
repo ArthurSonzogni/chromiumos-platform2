@@ -125,6 +125,9 @@ class Screens : public key_reader::KeyReader::Delegate, public ScreenBase {
   FRIEND_TEST(ScreensTest, GetVpdFromDefault);
   FRIEND_TEST(ScreensTest, GetHwidFromCommand);
   FRIEND_TEST(ScreensTest, GetHwidFromDefault);
+  FRIEND_TEST(ScreensTest, GetFreconConstFile);
+  FRIEND_TEST(ScreensTest, GetFreconConstNoInt);
+  FRIEND_TEST(ScreensTest, GetFreconConstNoFile);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoFile);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNotDict);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoKeyboard);

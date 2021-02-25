@@ -29,10 +29,8 @@ const int kFdsMax = 10;
 const int kKeyMax = 200;
 
 namespace {
-constexpr int kCanvasSize = 1080;
-
 // Buttons Spacing
-constexpr int kTitleY = (-kCanvasSize / 2) + 238;
+constexpr int kTitleY = (-1080 / 2) + 238;
 constexpr int kBtnYStep = 40;
 }  // namespace
 
@@ -72,7 +70,7 @@ void Screens::StartMiniOsFlow() {
 
 void Screens::ShowLanguageDropdown() {
   constexpr int kItemHeight = 40;
-  constexpr int kItemPerPage = (kCanvasSize - 260) / kItemHeight;
+  const int kItemPerPage = (frecon_canvas_size_ - 260) / kItemHeight;
 
   // Pick begin index such that the selected index is centered on the screen if
   // possible.
@@ -80,8 +78,8 @@ void Screens::ShowLanguageDropdown() {
       std::clamp(index_ - kItemPerPage / 2, 0,
                  static_cast<int>(supported_locales_.size()) - kItemPerPage);
 
-  int offset_y = -kCanvasSize / 2 + 88;
-  constexpr int kBackgroundX = -kCanvasSize / 2 + 360;
+  int offset_y = -frecon_canvas_size_ / 2 + 88;
+  const int kBackgroundX = -frecon_canvas_size_ / 2 + 360;
   for (int i = begin_index;
        i < (begin_index + kItemPerPage) && i < supported_locales_.size(); i++) {
     // Get placement for the language image.
@@ -91,7 +89,7 @@ void Screens::ShowLanguageDropdown() {
       LOG(WARNING) << "Could not get width for " << supported_locales_[i]
                    << ". Defaulting to " << language_width;
     }
-    int lang_x = -kCanvasSize / 2 + language_width / 2 + 40;
+    int lang_x = -frecon_canvas_size_ / 2 + language_width / 2 + 40;
 
     // This is the currently selected language. Show in blue.
     if (index_ == i) {
@@ -129,17 +127,17 @@ void Screens::LanguageMenuOnSelect() {
 }
 
 void Screens::ShowLanguageMenu(bool is_selected) {
-  constexpr int kOffsetY = -kCanvasSize / 2 + 40;
-  constexpr int kBgX = -kCanvasSize / 2 + 145;
-  constexpr int kGlobeX = -kCanvasSize / 2 + 20;
-  constexpr int kArrowX = -kCanvasSize / 2 + 268;
+  const int kOffsetY = -frecon_canvas_size_ / 2 + 40;
+  const int kBgX = -frecon_canvas_size_ / 2 + 145;
+  const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
+  const int kArrowX = -frecon_canvas_size_ / 2 + 268;
   int language_width;
   if (!GetLangConstants(locale_, &language_width)) {
     language_width = 100;
     LOG(WARNING) << "Could not get language width for " << locale_
                  << ". Defaulting to 100.";
   }
-  const int kTextX = -kCanvasSize / 2 + 40 + language_width / 2;
+  const int kTextX = -frecon_canvas_size_ / 2 + 40 + language_width / 2;
 
   base::FilePath menu_background =
       is_selected ? screens_path_.Append("language_menu_bg_focused.png")
@@ -154,14 +152,14 @@ void Screens::ShowLanguageMenu(bool is_selected) {
 
 void Screens::ShowFooter() {
   constexpr int kQrCodeSize = 86;
-  constexpr int kQrCodeX = (-kCanvasSize / 2) + (kQrCodeSize / 2);
-  constexpr int kQrCodeY = (kCanvasSize / 2) - (kQrCodeSize / 2) - 56;
+  const int kQrCodeX = (-frecon_canvas_size_ / 2) + (kQrCodeSize / 2);
+  const int kQrCodeY = (frecon_canvas_size_ / 2) - (kQrCodeSize / 2) - 56;
 
-  constexpr int kSeparatorX = 410 - (kCanvasSize / 2);
-  constexpr int kSeparatorY = kQrCodeY;
+  const int kSeparatorX = 410 - (frecon_canvas_size_ / 2);
+  const int kSeparatorY = kQrCodeY;
   constexpr int kFooterLineHeight = 18;
 
-  constexpr int kFooterY = (kCanvasSize / 2) - kQrCodeSize + 9 - 56;
+  const int kFooterY = (frecon_canvas_size_ / 2) - kQrCodeSize + 9 - 56;
   const int kFooterLeftX =
       kQrCodeX + (kQrCodeSize / 2) + 16 + (kDefaultMessageWidth / 2);
   const int kFooterRightX = kSeparatorX + 32 + (kDefaultMessageWidth / 2);
@@ -173,7 +171,8 @@ void Screens::ShowFooter() {
               kFooterY + kFooterLineHeight * 3 + 14);
 
   constexpr int kNavButtonHeight = 24;
-  constexpr int kNavButtonY = (kCanvasSize / 2) - (kNavButtonHeight / 2) - 56;
+  const int kNavButtonY =
+      (frecon_canvas_size_ / 2) - (kNavButtonHeight / 2) - 56;
   int nav_btn_x = kSeparatorX + 32;
   // Navigation key icons.
   const std::string kFooterType = is_detachable_ ? "tablet" : "clamshell";
@@ -408,11 +407,11 @@ void Screens::OnLocaleChange() {
 }
 
 void Screens::ShowCollapsedItemMenu(bool is_selected) {
-  constexpr int kOffsetY = -kCanvasSize / 2 + 350;
-  constexpr int kBgX = -kCanvasSize / 2 + 145;
-  constexpr int kGlobeX = -kCanvasSize / 2 + 20;
-  constexpr int kArrowX = -kCanvasSize / 2 + 268;
-  constexpr int kTextX = -kCanvasSize / 2 + 100;
+  const int kOffsetY = -frecon_canvas_size_ / 2 + 350;
+  const int kBgX = -frecon_canvas_size_ / 2 + 145;
+  const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
+  const int kArrowX = -frecon_canvas_size_ / 2 + 268;
+  const int kTextX = -frecon_canvas_size_ / 2 + 100;
 
   // Currently using language and globe icons as placeholders.
   base::FilePath menu_background =
@@ -432,9 +431,9 @@ void Screens::ShowItemDropdown() {
       std::clamp(index_ - kItemPerPage / 2, 0,
                  static_cast<int>(supported_locales_.size()) - kItemPerPage);
 
-  int offset_y = -kCanvasSize / 2 + 350 + 40;
-  constexpr int kBackgroundX = -kCanvasSize / 2 + 360;
-  constexpr int kOffsetX = -kCanvasSize / 2 + 60;
+  int offset_y = -frecon_canvas_size_ / 2 + 350 + 40;
+  const int kBackgroundX = -frecon_canvas_size_ / 2 + 360;
+  const int kOffsetX = -frecon_canvas_size_ / 2 + 60;
   constexpr int kItemHeight = 40;
   for (int i = begin_index;
        i < (begin_index + kItemPerPage) && i < item_list_.size(); i++) {
