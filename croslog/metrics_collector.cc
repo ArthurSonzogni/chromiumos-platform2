@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/files/file_enumerator.h>
 
+#include <brillo/syslog_logging.h>
 #include <metrics/metrics_library.h>
 
 #include "croslog/log_parser_audit.h"
@@ -324,6 +325,9 @@ class MetricsCollector {
 };
 
 int main(int argc, char* argv[]) {
+  // Configure the log destination.
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+
   std::unique_ptr<MetricsCollector> collector =
       std::make_unique<MetricsCollector>();
   collector->Run();
