@@ -546,10 +546,12 @@ bool IsDevModeEnabled() {
   return VbGetSystemPropertyInt("cros_debug") == 1;
 }
 
-// Returns whether the VM is trusted or untrusted based on the source image, the
-// host kernel version and a flag passed down by the user.
+// Returns whether the VM is trusted or untrusted based on the source image,
+// whether we're passing custom kernel args, the host kernel version and a
+// flag passed down by the user.
 bool IsUntrustedVM(bool run_as_untrusted,
                    bool is_trusted_image,
+                   bool has_custom_kernel_params,
                    KernelVersionAndMajorRevision host_kernel_version) {
   // Nested virtualization is enabled for all kernels >=
   // |kMinKernelVersionForUntrustedAndNestedVM|. This means that even with a
@@ -559,6 +561,10 @@ bool IsUntrustedVM(bool run_as_untrusted,
 
   // Any untrusted image definitely results in an unstrusted VM.
   if (!is_trusted_image)
+    return true;
+
+  // Arbitrary kernel params cannot be trusted.
+  if (has_custom_kernel_params)
     return true;
 
   if (run_as_untrusted)
@@ -1124,7 +1130,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   const bool is_untrusted_vm =
       IsUntrustedVM(request.run_as_untrusted(), image_spec.is_trusted_image,
-                    host_kernel_version_);
+                    !request.kernel_params().empty(), host_kernel_version_);
   if (is_untrusted_vm) {
     const auto untrusted_vm_check_result =
         IsUntrustedVMAllowed(request.run_as_untrusted(), host_kernel_version_);
@@ -1322,6 +1328,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .software_tpm = request.software_tpm(),
       .audio_capture = request.enable_audio_capture(),
   };
+
+  std::vector<std::string> params(
+      std::make_move_iterator(request.mutable_kernel_params()->begin()),
+      std::make_move_iterator(request.mutable_kernel_params()->end()));
+  features.kernel_params = std::move(params);
 
   // We use _SC_NPROCESSORS_ONLN here rather than
   // base::SysInfo::NumberOfProcessors() so that offline CPUs are not counted.

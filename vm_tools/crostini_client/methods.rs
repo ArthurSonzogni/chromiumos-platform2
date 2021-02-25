@@ -206,6 +206,7 @@ pub struct VmFeatures {
     pub audio_capture: bool,
     pub run_as_untrusted: bool,
     pub dlc: Option<String>,
+    pub kernel_params: Vec<String>,
 }
 
 pub enum ContainerSource {
@@ -1178,6 +1179,7 @@ impl Methods {
         request.enable_audio_capture = features.audio_capture;
         request.run_as_untrusted = features.run_as_untrusted;
         request.name = vm_name.to_owned();
+        request.kernel_params = protobuf::RepeatedField::from_vec(features.kernel_params);
         {
             let disk_image = request.mut_disks().push_default();
             disk_image.path = stateful_disk_path;

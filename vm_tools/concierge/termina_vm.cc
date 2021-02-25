@@ -233,6 +233,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     vm_builder.AppendAudioDevice("backend=cras");
   }
 
+  for (const std::string& p : features_.kernel_params)
+    vm_builder.AppendKernelParam(p);
+
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
   // cpu cgroup for Termina crosvm processes.

@@ -165,6 +165,9 @@ message StartVmRequest {
   // Make the rootfs writable.
   bool writable_rootfs = 15;
 
+  // Kernel cmdline parameters that will be passed to crosvm.
+  repeated string kernel_params = 17;
+
   enum FdType {
     // Kernel image.
     KERNEL = 0;

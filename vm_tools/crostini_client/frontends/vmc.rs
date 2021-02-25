@@ -231,6 +231,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "Don't start LXD (the container manager)",
         );
         opts.optflag("", "writable-rootfs", "Mount the rootfs as writable.");
+        opts.optmulti(
+            "",
+            "kernel-param",
+            "Additional kernel cmdline parameter for the host. Only valid on untrusted VMs.",
+            "PARAM",
+        );
 
         let matches = opts.parse(self.args)?;
 
@@ -246,6 +252,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             audio_capture: matches.opt_present("enable-audio-capture"),
             run_as_untrusted: matches.opt_present("untrusted"),
             dlc: matches.opt_str("dlc-id"),
+            kernel_params: matches.opt_strs("kernel-param"),
         };
 
         let user_disks = UserDisks {
@@ -774,7 +781,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--initrd PATH] [--writable-rootfs] <name> |
+   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] <name> |
      stop <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
@@ -959,6 +966,32 @@ mod tests {
                 "myrootfs",
                 "--writable-rootfs",
             ],
+            &["vmc", "start", "termina", "--kernel-param=quiet"],
+            &["vmc", "start", "termina", "--kernel-param", "quiet"],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--kernel-param=quiet",
+                "--kernel-param=slub_debug",
+            ],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--kernel-param",
+                "quiet",
+                "--kernel-param",
+                "slub_debug",
+            ],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--kernel-param",
+                "quiet slub_debug",
+            ],
+            &["vmc", "start", "--kernel-param", "quiet", "termina"],
             &["vmc", "stop", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
@@ -1058,6 +1091,7 @@ mod tests {
             &["vmc", "start", "termina", "--initrd"],
             &["vmc", "start", "termina", "--rootfs"],
             &["vmc", "start", "termina", "--writable-rootfs", "myrootfs"],
+            &["vmc", "start", "termina", "--kernel-param"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "create"],

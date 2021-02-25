@@ -42,6 +42,9 @@ struct VmFeatures {
 
   // Enable audio capture function in the started VM.
   bool audio_capture;
+
+  // Extra kernel cmdline params passed to the VM.
+  std::vector<std::string> kernel_params;
 };
 
 // Represents a single instance of a running termina VM.
