@@ -66,6 +66,20 @@ class DisplayWatcherTest : public testing::Test {
     return device_path;
   }
 
+  // Creates a directory named |device_name| in |device_dir_|. Returns the path
+  // to the directory.
+  base::FilePath CreateDevice(const std::string& device_name) {
+    base::FilePath device_path = device_dir_.GetPath().Append(device_name);
+    CHECK(base::CreateDirectory(device_path));
+    return device_path;
+  }
+
+  // Adds a symlink to the parent device in the device's directory.
+  void SetDeviceParent(const base::FilePath& device_path,
+                       const base::FilePath& parent_path) {
+    CHECK(base::CreateSymbolicLink(parent_path, device_path.Append("device")));
+  }
+
   // Creates a file named |device_name| in |device_dir_|. Returns the path to
   // the file.
   base::FilePath CreateI2CDevice(const std::string& device_name) {
@@ -281,6 +295,77 @@ TEST_F(DisplayWatcherTest, DebounceTimer) {
   EXPECT_EQ(1, observer.num_display_changes());
 
   watcher_.RemoveObserver(&observer);
+}
+
+TEST_F(DisplayWatcherTest, EvdiDeviceSysPath) {
+  watcher_.Init(&udev_);
+  EXPECT_EQ(0, watcher_.GetDisplays().size());
+
+  // usb -> evdi -> card0 -> card0-DP-1
+  base::FilePath usb_path = CreateDevice("usb");
+  base::FilePath evdi_path = CreateDevice("evdi");
+  base::FilePath card_path = CreateDrmDevice("card0");
+  base::FilePath device_path = CreateDrmDevice("card0-DP-1");
+  base::FilePath status_path =
+      device_path.Append(DisplayWatcher::kDrmStatusFile);
+
+  ASSERT_TRUE(base::WriteFile(status_path, DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
+  SetDeviceParent(device_path, card_path);
+  SetDeviceParent(card_path, evdi_path);
+  SetDeviceParent(evdi_path, usb_path);
+
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(1, watcher_.GetDisplays().size());
+  // For evdi devices we should return the evdi device's parent as the syspath.
+  EXPECT_EQ(usb_path.value(), watcher_.GetDisplays()[0].sys_path.value());
+}
+
+TEST_F(DisplayWatcherTest, EvdiDeviceWithoutParentSysPath) {
+  watcher_.Init(&udev_);
+  EXPECT_EQ(0, watcher_.GetDisplays().size());
+
+  // evdi -> card0 -> card0-DP-1
+  base::FilePath evdi_path = CreateDevice("evdi");
+  base::FilePath card_path = CreateDrmDevice("card0");
+  base::FilePath device_path = CreateDrmDevice("card0-DP-1");
+  base::FilePath status_path =
+      device_path.Append(DisplayWatcher::kDrmStatusFile);
+
+  ASSERT_TRUE(base::WriteFile(status_path, DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
+  SetDeviceParent(device_path, card_path);
+  SetDeviceParent(card_path, evdi_path);
+
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(1, watcher_.GetDisplays().size());
+  // If the evdi device doesn't have a parent, then use the evdi device's
+  // syspath.
+  EXPECT_EQ(evdi_path.value(), watcher_.GetDisplays()[0].sys_path.value());
+}
+
+TEST_F(DisplayWatcherTest, NonEvdiDeviceSysPath) {
+  watcher_.Init(&udev_);
+  EXPECT_EQ(0, watcher_.GetDisplays().size());
+
+  // usb -> pci -> card0 -> card0-DP-1
+  base::FilePath usb_path = CreateDevice("usb");
+  base::FilePath pci_path = CreateDevice("pci");
+  base::FilePath card_path = CreateDrmDevice("card0");
+  base::FilePath device_path = CreateDrmDevice("card0-DP-1");
+  base::FilePath status_path =
+      device_path.Append(DisplayWatcher::kDrmStatusFile);
+
+  ASSERT_TRUE(base::WriteFile(status_path, DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
+  SetDeviceParent(device_path, card_path);
+  SetDeviceParent(card_path, pci_path);
+  SetDeviceParent(pci_path, usb_path);
+
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(1, watcher_.GetDisplays().size());
+  // If it's not an evdi device, use the syspath of the card's parent device.
+  EXPECT_EQ(pci_path.value(), watcher_.GetDisplays()[0].sys_path.value());
 }
 
 }  // namespace system

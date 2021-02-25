@@ -9,14 +9,11 @@
 namespace power_manager {
 namespace system {
 
-DisplayInfo::DisplayInfo() {}
-
-DisplayInfo::~DisplayInfo() {}
-
 bool DisplayInfo::operator<(const DisplayInfo& rhs) const {
-  return std::tie(drm_path.value(), i2c_path.value(), connector_status) <
+  return std::tie(drm_path.value(), i2c_path.value(), sys_path.value(),
+                  connector_status) <
          std::tie(rhs.drm_path.value(), rhs.i2c_path.value(),
-                  rhs.connector_status);
+                  rhs.sys_path.value(), rhs.connector_status);
 }
 
 bool DisplayInfo::operator==(const DisplayInfo& o) const {

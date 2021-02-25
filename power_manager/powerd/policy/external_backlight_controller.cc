@@ -267,18 +267,16 @@ void ExternalBacklightController::UpdateDisplays(
         system::DisplayInfo::ConnectorStatus::CONNECTED)
       continue;
 
-    auto existing_display_it = external_displays_.find(info.drm_path);
+    auto existing_display_it = external_displays_.find(info);
     if (existing_display_it != external_displays_.end()) {
       // TODO(chromeos-power): Need to handle changed I2C paths?
-      updated_displays.emplace(info.drm_path,
-                               std::move(existing_display_it->second));
+      updated_displays.emplace(info, std::move(existing_display_it->second));
       continue;
     }
     auto delegate = std::make_unique<system::ExternalDisplay::RealDelegate>();
     delegate->Init(info.i2c_path);
     updated_displays.emplace(
-        info.drm_path,
-        std::make_unique<system::ExternalDisplay>(std::move(delegate)));
+        info, std::make_unique<system::ExternalDisplay>(std::move(delegate)));
   }
   external_displays_.swap(updated_displays);
 }

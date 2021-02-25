@@ -23,9 +23,6 @@ struct DisplayInfo {
     UNKNOWN,
   };
 
-  DisplayInfo();
-  ~DisplayInfo();
-
   bool operator<(const DisplayInfo& rhs) const;
   bool operator==(const DisplayInfo& o) const;
 
@@ -36,6 +33,9 @@ struct DisplayInfo {
   // Path to the I2C device in /dev that can be used to communicate with this
   // display.
   base::FilePath i2c_path;
+
+  // Path to the parent device in /sys/devices.
+  base::FilePath sys_path;
 
   // Connector status.
   ConnectorStatus connector_status = ConnectorStatus::UNKNOWN;

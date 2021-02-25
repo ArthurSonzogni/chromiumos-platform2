@@ -85,6 +85,9 @@ class DisplayWatcher : public DisplayWatcherInterface,
   void OnUdevEvent(const UdevEvent& event) override;
 
  private:
+  // Returns the sys path of the parent device of the DRM device.
+  base::FilePath GetSysPath(const base::FilePath& drm_dir);
+
   // Returns the path to the I2C device used for communicating with the display
   // connected to the device described by |drm_dir|. Returns an empty path if
   // the device isn't found.

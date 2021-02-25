@@ -100,6 +100,29 @@ void DisplayWatcher::OnUdevEvent(const UdevEvent& event) {
   UpdateDisplays();
 }
 
+base::FilePath DisplayWatcher::GetSysPath(const base::FilePath& drm_dir) {
+  base::FilePath sys_path(drm_dir);
+
+  sys_path = sys_path.Append("device");  // symlink to the drm card
+  sys_path = sys_path.Append("device");  // symlink to the parent device
+
+  sys_path = base::MakeAbsoluteFilePath(sys_path);
+
+  // EVDI devices have an additional symlink to their parent device.
+  std::vector<std::string> components;
+  sys_path.GetComponents(&components);
+  for (const auto& component : components) {
+    if (base::StartsWith(component, "evdi", base::CompareCase::SENSITIVE) &&
+        base::PathExists(sys_path.Append("device"))) {
+      sys_path = sys_path.Append("device");
+      sys_path = base::MakeAbsoluteFilePath(sys_path);
+      break;
+    }
+  }
+
+  return sys_path;
+}
+
 base::FilePath DisplayWatcher::GetI2CDevicePath(const base::FilePath& drm_dir) {
   base::FilePath i2c_dev;
 
@@ -156,9 +179,11 @@ void DisplayWatcher::UpdateDisplays() {
 
     info.drm_path = device_path;
     info.i2c_path = GetI2CDevicePath(device_path);
+    info.sys_path = GetSysPath(device_path);
     new_displays.push_back(info);
     VLOG(1) << "Found connected display: drm_path=" << info.drm_path.value()
-            << ", i2c_path=" << info.i2c_path.value();
+            << ", i2c_path=" << info.i2c_path.value()
+            << ", sys_path=" << info.sys_path.value();
   }
 
   std::sort(new_displays.begin(), new_displays.end());
