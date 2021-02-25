@@ -41,8 +41,8 @@ OutputManager::OutputManager(
     if (interface.interface_type() ==
         PerceptionInterfaceType::INTERFACE_FRAME_PERCEPTION) {
       (*interfaces_ptr)->frame_perception_handler_request =
-          mojo::MakeRequest(&frame_perception_handler_ptr_);
-      frame_perception_handler_ptr_.set_connection_error_handler(
+          frame_perception_handler_.BindNewPipeAndPassReceiver();
+      frame_perception_handler_.set_disconnect_handler(
           base::Bind(&OnConnectionClosedOrError, "INTERFACE_FRAME_PERCEPTION"));
 
       // Frame perception outputs setup.
@@ -70,8 +70,8 @@ OutputManager::OutputManager(
     if (interface.interface_type() ==
         PerceptionInterfaceType::INTERFACE_HOTWORD_DETECTION) {
       (*interfaces_ptr)->hotword_detection_handler_request =
-          mojo::MakeRequest(&hotword_detection_handler_ptr_);
-      hotword_detection_handler_ptr_.set_connection_error_handler(base::Bind(
+          hotword_detection_handler_.BindNewPipeAndPassReceiver();
+      hotword_detection_handler_.set_disconnect_handler(base::Bind(
           &OnConnectionClosedOrError, "INTERFACE_HOTWORD_DETECTION"));
 
       // Hotword detection outputs setup.
@@ -99,8 +99,8 @@ OutputManager::OutputManager(
     if (interface.interface_type() ==
         PerceptionInterfaceType::INTERFACE_PRESENCE_PERCEPTION) {
       (*interfaces_ptr)->presence_perception_handler_request =
-          mojo::MakeRequest(&presence_perception_handler_ptr_);
-      presence_perception_handler_ptr_.set_connection_error_handler(base::Bind(
+          presence_perception_handler_.BindNewPipeAndPassReceiver();
+      presence_perception_handler_.set_disconnect_handler(base::Bind(
           &OnConnectionClosedOrError, "INTERFACE_PRESENCE_PERCEPTION"));
 
       // Presence perception outputs setup.
@@ -128,8 +128,8 @@ OutputManager::OutputManager(
     if (interface.interface_type() ==
         PerceptionInterfaceType::INTERFACE_OCCUPANCY_TRIGGER) {
       (*interfaces_ptr)->occupancy_trigger_handler_request =
-          mojo::MakeRequest(&occupancy_trigger_handler_ptr_);
-      occupancy_trigger_handler_ptr_.set_connection_error_handler(base::Bind(
+          occupancy_trigger_handler_.BindNewPipeAndPassReceiver();
+      occupancy_trigger_handler_.set_disconnect_handler(base::Bind(
           &OnConnectionClosedOrError, "INTERFACE_OCCUPANCY_TRIGGER"));
 
       // Occpancy trigger outputs setup.
@@ -157,8 +157,8 @@ OutputManager::OutputManager(
     if (interface.interface_type() ==
         PerceptionInterfaceType::INTERFACE_APPEARANCES) {
       (*interfaces_ptr)->appearances_handler_request =
-          mojo::MakeRequest(&appearances_handler_ptr_);
-      appearances_handler_ptr_.set_connection_error_handler(
+          appearances_handler_.BindNewPipeAndPassReceiver();
+      appearances_handler_.set_disconnect_handler(
           base::Bind(&OnConnectionClosedOrError, "APPEARANCES"));
 
       // Appearances outputs setup.
@@ -185,8 +185,8 @@ OutputManager::OutputManager(
     if (interface.interface_type() ==
         PerceptionInterfaceType::INTERFACE_ONE_TOUCH_AUTOZOOM) {
       (*interfaces_ptr)->one_touch_autozoom_handler_request =
-          mojo::MakeRequest(&one_touch_autozoom_handler_ptr_);
-      one_touch_autozoom_handler_ptr_.set_connection_error_handler(
+          one_touch_autozoom_handler_.BindNewPipeAndPassReceiver();
+      one_touch_autozoom_handler_.set_disconnect_handler(
           base::Bind(&OnConnectionClosedOrError, "ONE_TOUCH_AUTOZOOM"));
 
       // One touch Autozoom outputs setup.
@@ -213,8 +213,8 @@ OutputManager::OutputManager(
     if (interface.interface_type() ==
         PerceptionInterfaceType::INTERFACE_SOFTWARE_AUTOZOOM) {
       (*interfaces_ptr)->software_autozoom_handler_request =
-          mojo::MakeRequest(&software_autozoom_handler_ptr_);
-      software_autozoom_handler_ptr_.set_connection_error_handler(
+          software_autozoom_handler_.BindNewPipeAndPassReceiver();
+      software_autozoom_handler_.set_disconnect_handler(
           base::Bind(&OnConnectionClosedOrError, "SOFTWARE_AUTOZOOM"));
 
       // Software Autozoom outputs setup.
@@ -273,98 +273,98 @@ OutputManager::OutputManager(
 }
 
 void OutputManager::HandleFramePerception(const std::vector<uint8_t>& bytes) {
-  if (!frame_perception_handler_ptr_.is_bound()) {
+  if (!frame_perception_handler_.is_bound()) {
     LOG(WARNING) << "Got frame perception output but handler ptr is not bound.";
     return;
   }
 
-  if (frame_perception_handler_ptr_.get() == nullptr) {
+  if (frame_perception_handler_.get() == nullptr) {
     LOG(ERROR) << "Handler ptr is null.";
     return;
   }
 
   FramePerception frame_perception =
       Serialized<FramePerception>(bytes).Deserialize();
-  frame_perception_handler_ptr_->OnFramePerception(
+  frame_perception_handler_->OnFramePerception(
       chromeos::media_perception::mojom::ToMojom(frame_perception));
 }
 
 void OutputManager::HandleHotwordDetection(const std::vector<uint8_t>& bytes) {
-  if (!hotword_detection_handler_ptr_.is_bound()) {
+  if (!hotword_detection_handler_.is_bound()) {
     LOG(WARNING)
         << "Got hotword detection output but handler ptr is not bound.";
     return;
   }
 
-  if (hotword_detection_handler_ptr_.get() == nullptr) {
+  if (hotword_detection_handler_.get() == nullptr) {
     LOG(ERROR) << "Handler ptr is null.";
     return;
   }
 
   HotwordDetection hotword_detection =
       Serialized<HotwordDetection>(bytes).Deserialize();
-  hotword_detection_handler_ptr_->OnHotwordDetection(
+  hotword_detection_handler_->OnHotwordDetection(
       chromeos::media_perception::mojom::ToMojom(hotword_detection));
 }
 
 void OutputManager::HandlePresencePerception(
     const std::vector<uint8_t>& bytes) {
-  if (!presence_perception_handler_ptr_.is_bound()) {
+  if (!presence_perception_handler_.is_bound()) {
     LOG(WARNING)
         << "Got presence perception output but handler ptr is not bound.";
     return;
   }
 
-  if (presence_perception_handler_ptr_.get() == nullptr) {
+  if (presence_perception_handler_.get() == nullptr) {
     LOG(ERROR) << "Handler ptr is null.";
     return;
   }
 
   PresencePerception presence_perception =
       Serialized<PresencePerception>(bytes).Deserialize();
-  presence_perception_handler_ptr_->OnPresencePerception(
+  presence_perception_handler_->OnPresencePerception(
       chromeos::media_perception::mojom::ToMojom(presence_perception));
 }
 
 void OutputManager::HandleOccupancyTrigger(const std::vector<uint8_t>& bytes) {
-  if (!occupancy_trigger_handler_ptr_.is_bound()) {
+  if (!occupancy_trigger_handler_.is_bound()) {
     LOG(WARNING)
         << "Got occupancy trigger output but handler ptr is not bound.";
     return;
   }
 
-  if (occupancy_trigger_handler_ptr_.get() == nullptr) {
+  if (occupancy_trigger_handler_.get() == nullptr) {
     LOG(ERROR) << "Handler ptr is null.";
     return;
   }
 
   OccupancyTrigger occupancy_trigger =
       Serialized<OccupancyTrigger>(bytes).Deserialize();
-  occupancy_trigger_handler_ptr_->OnOccupancyTrigger(
+  occupancy_trigger_handler_->OnOccupancyTrigger(
       chromeos::media_perception::mojom::ToMojom(occupancy_trigger));
 }
 
 void OutputManager::HandleAppearances(const std::vector<uint8_t>& bytes) {
-  if (!appearances_handler_ptr_.is_bound()) {
+  if (!appearances_handler_.is_bound()) {
     LOG(WARNING) << "Got appearances but handler ptr is not bound.";
     return;
   }
 
-  if (appearances_handler_ptr_.get() == nullptr) {
+  if (appearances_handler_.get() == nullptr) {
     LOG(ERROR) << "Handler ptr is null.";
     return;
   }
 
-  appearances_handler_ptr_->OnAppearances(bytes);
+  appearances_handler_->OnAppearances(bytes);
 }
 
 void OutputManager::HandleSmartFraming(const std::vector<uint8_t>& bytes) {
-  if (one_touch_autozoom_handler_ptr_.is_bound() &&
-      one_touch_autozoom_handler_ptr_.get() != nullptr) {
-    one_touch_autozoom_handler_ptr_->OnSmartFraming(bytes);
-  } else if (software_autozoom_handler_ptr_.is_bound() &&
-             software_autozoom_handler_ptr_.get() != nullptr) {
-    software_autozoom_handler_ptr_->OnSmartFraming(bytes);
+  if (one_touch_autozoom_handler_.is_bound() &&
+      one_touch_autozoom_handler_.get() != nullptr) {
+    one_touch_autozoom_handler_->OnSmartFraming(bytes);
+  } else if (software_autozoom_handler_.is_bound() &&
+             software_autozoom_handler_.get() != nullptr) {
+    software_autozoom_handler_->OnSmartFraming(bytes);
   } else {
     LOG(WARNING) << "Got smart framing but handler ptr is not bound.";
   }

@@ -27,35 +27,39 @@ MediaPerceptionServiceImpl::MediaPerceptionServiceImpl(
     std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client,
     std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client,
     std::shared_ptr<Rtanalytics> rtanalytics)
-    : binding_(this,
-               mojo::InterfaceRequest<
-                   chromeos::media_perception::mojom::MediaPerceptionService>(
-                   std::move(pipe))),
+    : receiver_(this,
+                mojo::InterfaceRequest<
+                    chromeos::media_perception::mojom::MediaPerceptionService>(
+                    std::move(pipe))),
       video_capture_service_client_(video_capture_service_client),
       chrome_audio_service_client_(chrome_audio_service_client),
       rtanalytics_(rtanalytics) {
-  binding_.set_connection_error_handler(std::move(connection_error_handler));
+  receiver_.set_disconnect_handler(std::move(connection_error_handler));
 }
 
 void MediaPerceptionServiceImpl::GetController(
-    chromeos::media_perception::mojom::MediaPerceptionControllerRequest request,
-    chromeos::media_perception::mojom::MediaPerceptionControllerClientPtr
+    mojo::PendingReceiver<
+        chromeos::media_perception::mojom::MediaPerceptionController> receiver,
+    mojo::PendingRemote<
+        chromeos::media_perception::mojom::MediaPerceptionControllerClient>
         client) {
-  client_ = std::move(client);
+  client_ = mojo::Remote<
+      chromeos::media_perception::mojom::MediaPerceptionControllerClient>(
+      std::move(client));
 
   // Use a connection error handler to strongly bind |controller| to |request|.
   MediaPerceptionControllerImpl* const controller =
       new MediaPerceptionControllerImpl(
-          std::move(request), video_capture_service_client_,
+          std::move(receiver), video_capture_service_client_,
           chrome_audio_service_client_, rtanalytics_);
   controller->set_connection_error_handler(
       base::Bind(&OnConnectionClosedOrError, base::Unretained(controller)));
 }
 
 void MediaPerceptionServiceImpl::ConnectToVideoCaptureService(
-    video_capture::mojom::VideoSourceProviderRequest request) {
+    mojo::PendingReceiver<video_capture::mojom::VideoSourceProvider> receiver) {
   if (client_)
-    client_->ConnectToVideoCaptureService(std::move(request));
+    client_->ConnectToVideoCaptureService(std::move(receiver));
 }
 
 }  // namespace mri

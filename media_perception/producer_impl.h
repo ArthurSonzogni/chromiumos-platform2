@@ -9,10 +9,10 @@
 #include <memory>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include <base/time/time.h>
 #include <base/memory/writable_shared_memory_region.h>
-#include <mojo/public/cpp/bindings/binding.h>
 
 #include "mojom/producer.mojom.h"
 #include "mojom/video_source_provider.mojom.h"
@@ -26,7 +26,7 @@ class ProducerImpl : public video_capture::mojom::Producer {
 
   // factory is owned by the caller.
   void RegisterVirtualDevice(
-      video_capture::mojom::VideoSourceProviderPtr* provider,
+      mojo::Remote<video_capture::mojom::VideoSourceProvider>* provider,
       media::mojom::VideoCaptureDeviceInfoPtr info);
 
   void PushNextFrame(std::shared_ptr<ProducerImpl> producer_impl,

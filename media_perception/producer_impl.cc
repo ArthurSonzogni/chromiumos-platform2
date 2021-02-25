@@ -29,7 +29,7 @@ ProducerImpl::CreateInterfacePendingRemote() {
 }
 
 void ProducerImpl::RegisterVirtualDevice(
-    video_capture::mojom::VideoSourceProviderPtr* provider,
+    mojo::Remote<video_capture::mojom::VideoSourceProvider>* provider,
     media::mojom::VideoCaptureDeviceInfoPtr info) {
   (*provider)->AddSharedMemoryVirtualDevice(
       std::move(info), CreateInterfacePendingRemote(), true,

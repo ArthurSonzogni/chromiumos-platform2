@@ -148,8 +148,8 @@ void MojoConnector::ConnectToVideoCaptureServiceOnIpcThread() {
   unique_device_counter_ = 1;
 
   media_perception_service_impl_->ConnectToVideoCaptureService(
-      mojo::MakeRequest(&video_source_provider_));
-  video_source_provider_.set_connection_error_handler(
+      video_source_provider_.BindNewPipeAndPassReceiver());
+  video_source_provider_.set_disconnect_handler(
       base::Bind(&MojoConnector::OnVideoSourceProviderConnectionErrorOrClosed,
                  base::Unretained(this)));
 }

@@ -10,7 +10,8 @@
 #include <string>
 #include <vector>
 
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/output_manager.h"
@@ -24,7 +25,8 @@ class MediaPerceptionImpl
     : public chromeos::media_perception::mojom::MediaPerception {
  public:
   MediaPerceptionImpl(
-      chromeos::media_perception::mojom::MediaPerceptionRequest request,
+      mojo::PendingReceiver<chromeos::media_perception::mojom::MediaPerception>
+          receiver,
       std::shared_ptr<VideoCaptureServiceClient> vidcap_client,
       std::shared_ptr<ChromeAudioServiceClient> cras_client,
       std::shared_ptr<Rtanalytics> rtanalytics);
@@ -68,7 +70,7 @@ class MediaPerceptionImpl
   void set_connection_error_handler(base::Closure connection_error_handler);
 
  private:
-  mojo::Binding<chromeos::media_perception::mojom::MediaPerception> binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::MediaPerception> receiver_;
 
   std::map<std::string /* configuration_name */, std::unique_ptr<OutputManager>>
       configuration_name_to_output_manager_map_;

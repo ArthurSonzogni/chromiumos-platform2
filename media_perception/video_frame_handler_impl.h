@@ -6,13 +6,11 @@
 #define MEDIA_PERCEPTION_VIDEO_FRAME_HANDLER_IMPL_H_
 
 #include <map>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/pending_remote.h>
-#include <mojo/public/cpp/bindings/receiver.h>
 #include <string>
 
 #include <base/memory/unsafe_shared_memory_region.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "media_perception/device_management.pb.h"
 #include "media_perception/video_capture_service_client.h"

@@ -15,7 +15,6 @@
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#include <mojo/public/cpp/bindings/binding.h>
 
 #include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/device_management.pb.h"
@@ -155,7 +154,8 @@ class MojoConnector {
   std::unique_ptr<MediaPerceptionServiceImpl> media_perception_service_impl_;
 
   // Entry point Mojo object for talking to the video capture service API.
-  video_capture::mojom::VideoSourceProviderPtr video_source_provider_;
+  mojo::Remote<video_capture::mojom::VideoSourceProvider>
+      video_source_provider_;
 
   struct VideoSourceAndPushSubscription {
     video_capture::mojom::VideoSourcePtr video_source;

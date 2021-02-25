@@ -8,7 +8,8 @@
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "media_perception/fake_rtanalytics.h"
 #include "media_perception/frame_perception.pb.h"
@@ -25,9 +26,10 @@ class FramePerceptionHandlerImpl
     : public chromeos::media_perception::mojom::FramePerceptionHandler {
  public:
   FramePerceptionHandlerImpl(
-      chromeos::media_perception::mojom::FramePerceptionHandlerRequest request)
-      : binding_(this, std::move(request)) {
-    EXPECT_TRUE(binding_.is_bound());
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::FramePerceptionHandler> receiver)
+      : receiver_(this, std::move(receiver)) {
+    EXPECT_TRUE(receiver_.is_bound());
   }
 
   void OnFramePerception(chromeos::media_perception::mojom::FramePerceptionPtr
@@ -37,17 +39,18 @@ class FramePerceptionHandlerImpl
 
   FramePerception frame_perception_;
 
-  mojo::Binding<chromeos::media_perception::mojom::FramePerceptionHandler>
-      binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::FramePerceptionHandler>
+      receiver_;
 };
 
 class HotwordDetectionHandlerImpl
     : public chromeos::media_perception::mojom::HotwordDetectionHandler {
  public:
   HotwordDetectionHandlerImpl(
-      chromeos::media_perception::mojom::HotwordDetectionHandlerRequest request)
-      : binding_(this, std::move(request)) {
-    EXPECT_TRUE(binding_.is_bound());
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::HotwordDetectionHandler> receiver)
+      : receiver_(this, std::move(receiver)) {
+    EXPECT_TRUE(receiver_.is_bound());
   }
 
   void OnHotwordDetection(chromeos::media_perception::mojom::HotwordDetectionPtr
@@ -57,18 +60,19 @@ class HotwordDetectionHandlerImpl
 
   HotwordDetection hotword_detection_;
 
-  mojo::Binding<chromeos::media_perception::mojom::HotwordDetectionHandler>
-      binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::HotwordDetectionHandler>
+      receiver_;
 };
 
 class PresencePerceptionHandlerImpl
     : public chromeos::media_perception::mojom::PresencePerceptionHandler {
  public:
   PresencePerceptionHandlerImpl(
-      chromeos::media_perception::mojom::PresencePerceptionHandlerRequest
-          request)
-      : binding_(this, std::move(request)) {
-    EXPECT_TRUE(binding_.is_bound());
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::PresencePerceptionHandler>
+          receiver)
+      : receiver_(this, std::move(receiver)) {
+    EXPECT_TRUE(receiver_.is_bound());
   }
 
   void OnPresencePerception(
@@ -79,17 +83,18 @@ class PresencePerceptionHandlerImpl
 
   PresencePerception presence_perception_;
 
-  mojo::Binding<chromeos::media_perception::mojom::PresencePerceptionHandler>
-      binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::PresencePerceptionHandler>
+      receiver_;
 };
 
 class OccupancyTriggerHandlerImpl
     : public chromeos::media_perception::mojom::OccupancyTriggerHandler {
  public:
   OccupancyTriggerHandlerImpl(
-      chromeos::media_perception::mojom::OccupancyTriggerHandlerRequest request)
-      : binding_(this, std::move(request)) {
-    EXPECT_TRUE(binding_.is_bound());
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::OccupancyTriggerHandler> receiver)
+      : receiver_(this, std::move(receiver)) {
+    EXPECT_TRUE(receiver_.is_bound());
   }
 
   void OnOccupancyTrigger(chromeos::media_perception::mojom::OccupancyTriggerPtr
@@ -99,17 +104,18 @@ class OccupancyTriggerHandlerImpl
 
   OccupancyTrigger occupancy_trigger_;
 
-  mojo::Binding<chromeos::media_perception::mojom::OccupancyTriggerHandler>
-      binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::OccupancyTriggerHandler>
+      receiver_;
 };
 
 class AppearancesHandlerImpl
     : public chromeos::media_perception::mojom::AppearancesHandler {
  public:
   AppearancesHandlerImpl(
-      chromeos::media_perception::mojom::AppearancesHandlerRequest request)
-      : binding_(this, std::move(request)) {
-    EXPECT_TRUE(binding_.is_bound());
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::AppearancesHandler> receiver)
+      : receiver_(this, std::move(receiver)) {
+    EXPECT_TRUE(receiver_.is_bound());
   }
 
   void OnAppearances(const std::vector<uint8_t>& appearances) override {
@@ -118,16 +124,18 @@ class AppearancesHandlerImpl
 
   std::vector<uint8_t> appearances_;
 
-  mojo::Binding<chromeos::media_perception::mojom::AppearancesHandler> binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::AppearancesHandler>
+      receiver_;
 };
 
 class OneTouchAutozoomHandlerImpl
     : public chromeos::media_perception::mojom::OneTouchAutozoomHandler {
  public:
   OneTouchAutozoomHandlerImpl(
-      chromeos::media_perception::mojom::OneTouchAutozoomHandlerRequest request)
-      : binding_(this, std::move(request)) {
-    EXPECT_TRUE(binding_.is_bound());
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::OneTouchAutozoomHandler> receiver)
+      : receiver_(this, std::move(receiver)) {
+    EXPECT_TRUE(receiver_.is_bound());
   }
 
   void OnSmartFraming(const std::vector<uint8_t>& smart_framing) override {
@@ -136,17 +144,18 @@ class OneTouchAutozoomHandlerImpl
 
   std::vector<uint8_t> smart_framing_;
 
-  mojo::Binding<chromeos::media_perception::mojom::OneTouchAutozoomHandler>
-      binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::OneTouchAutozoomHandler>
+      receiver_;
 };
 
 class SoftwareAutozoomHandlerImpl
     : public chromeos::media_perception::mojom::SoftwareAutozoomHandler {
  public:
   SoftwareAutozoomHandlerImpl(
-      chromeos::media_perception::mojom::SoftwareAutozoomHandlerRequest request)
-      : binding_(this, std::move(request)) {
-    EXPECT_TRUE(binding_.is_bound());
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::SoftwareAutozoomHandler> receiver)
+      : receiver_(this, std::move(receiver)) {
+    EXPECT_TRUE(receiver_.is_bound());
   }
 
   void OnSmartFraming(const std::vector<uint8_t>& smart_framing) override {
@@ -155,8 +164,8 @@ class SoftwareAutozoomHandlerImpl
 
   std::vector<uint8_t> smart_framing_;
 
-  mojo::Binding<chromeos::media_perception::mojom::SoftwareAutozoomHandler>
-      binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::SoftwareAutozoomHandler>
+      receiver_;
 };
 
 class OutputManagerTest : public testing::Test {

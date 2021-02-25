@@ -8,22 +8,23 @@
 #include <vector>
 
 #include "base/callback_helpers.h"
+#include "base/check.h"
 #include "base/logging.h"
 #include "media_perception/media_perception_mojom.pb.h"
 #include "media_perception/perception_interface.pb.h"
 #include "media_perception/proto_mojom_conversion.h"
 #include "media_perception/serialized_proto.h"
 
-#include <base/check.h>
 
 namespace mri {
 
 MediaPerceptionImpl::MediaPerceptionImpl(
-    chromeos::media_perception::mojom::MediaPerceptionRequest request,
+    mojo::PendingReceiver<chromeos::media_perception::mojom::MediaPerception>
+        receiver,
     std::shared_ptr<VideoCaptureServiceClient> vidcap_client,
     std::shared_ptr<ChromeAudioServiceClient> cras_client,
     std::shared_ptr<Rtanalytics> rtanalytics)
-    : binding_(this, std::move(request)),
+    : receiver_(this, std::move(receiver)),
       vidcap_client_(vidcap_client),
       cras_client_(cras_client),
       rtanalytics_(rtanalytics) {
@@ -41,7 +42,7 @@ MediaPerceptionImpl::MediaPerceptionImpl(
 
 void MediaPerceptionImpl::set_connection_error_handler(
     base::Closure connection_error_handler) {
-  binding_.set_connection_error_handler(std::move(connection_error_handler));
+  receiver_.set_disconnect_handler(std::move(connection_error_handler));
 }
 
 void MediaPerceptionImpl::SetupConfiguration(

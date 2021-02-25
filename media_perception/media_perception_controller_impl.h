@@ -6,7 +6,8 @@
 #define MEDIA_PERCEPTION_MEDIA_PERCEPTION_CONTROLLER_IMPL_H_
 
 #include <memory>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/rtanalytics.h"
@@ -19,8 +20,9 @@ class MediaPerceptionControllerImpl
     : public chromeos::media_perception::mojom::MediaPerceptionController {
  public:
   MediaPerceptionControllerImpl(
-      chromeos::media_perception::mojom::MediaPerceptionControllerRequest
-          request,
+      mojo::PendingReceiver<
+          chromeos::media_perception::mojom::MediaPerceptionController>
+          receiver,
       std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client,
       std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client,
       std::shared_ptr<Rtanalytics> rtanalytics);
@@ -32,12 +34,12 @@ class MediaPerceptionControllerImpl
 
   // chromeos::media_perception::mojom::MediaPerceptionController:
   void ActivateMediaPerception(
-      chromeos::media_perception::mojom::MediaPerceptionRequest request)
-      override;
+      mojo::PendingReceiver<chromeos::media_perception::mojom::MediaPerception>
+          receiver) override;
 
  private:
-  mojo::Binding<chromeos::media_perception::mojom::MediaPerceptionController>
-      binding_;
+  mojo::Receiver<chromeos::media_perception::mojom::MediaPerceptionController>
+      receiver_;
 
   std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client_;
   std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client_;

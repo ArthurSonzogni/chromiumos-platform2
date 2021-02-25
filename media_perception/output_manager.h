@@ -15,6 +15,7 @@
 #include "media_perception/media_perception_mojom.pb.h"
 #include "media_perception/perception_interface.pb.h"
 #include "media_perception/rtanalytics.h"
+#include "mojo/public/cpp/bindings/remote.h"
 #include "mojom/media_perception.mojom.h"
 
 namespace mri {
@@ -59,26 +60,26 @@ class OutputManager {
   scoped_refptr<::dbus::Bus> bus_;
   dbus::ObjectProxy* dbus_proxy_;
 
-  chromeos::media_perception::mojom::FramePerceptionHandlerPtr
-      frame_perception_handler_ptr_;
+  mojo::Remote<chromeos::media_perception::mojom::FramePerceptionHandler>
+      frame_perception_handler_;
 
-  chromeos::media_perception::mojom::HotwordDetectionHandlerPtr
-      hotword_detection_handler_ptr_;
+  mojo::Remote<chromeos::media_perception::mojom::HotwordDetectionHandler>
+      hotword_detection_handler_;
 
-  chromeos::media_perception::mojom::PresencePerceptionHandlerPtr
-      presence_perception_handler_ptr_;
+  mojo::Remote<chromeos::media_perception::mojom::PresencePerceptionHandler>
+      presence_perception_handler_;
 
-  chromeos::media_perception::mojom::OccupancyTriggerHandlerPtr
-      occupancy_trigger_handler_ptr_;
+  mojo::Remote<chromeos::media_perception::mojom::OccupancyTriggerHandler>
+      occupancy_trigger_handler_;
 
-  chromeos::media_perception::mojom::AppearancesHandlerPtr
-      appearances_handler_ptr_;
+  mojo::Remote<chromeos::media_perception::mojom::AppearancesHandler>
+      appearances_handler_;
 
-  chromeos::media_perception::mojom::OneTouchAutozoomHandlerPtr
-      one_touch_autozoom_handler_ptr_;
+  mojo::Remote<chromeos::media_perception::mojom::OneTouchAutozoomHandler>
+      one_touch_autozoom_handler_;
 
-  chromeos::media_perception::mojom::SoftwareAutozoomHandlerPtr
-      software_autozoom_handler_ptr_;
+  mojo::Remote<chromeos::media_perception::mojom::SoftwareAutozoomHandler>
+      software_autozoom_handler_;
 
   base::WeakPtrFactory<OutputManager> weak_ptr_factory_{this};
 };
