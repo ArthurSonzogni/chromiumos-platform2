@@ -263,33 +263,6 @@ ACTION_P(LoadWrappedKeyToHandle, handle) {
   return Tpm::kTpmRetryNone;
 }
 
-TEST_F(TpmInitTest, AlreadyOwnedSuccess) {
-  bool took_ownership = false;
-  SetIsTpmOwned(true);
-  FileTouch(kTpmOwnedFile);
-  ASSERT_TRUE(tpm_init_.TakeOwnership(&took_ownership));
-  ASSERT_FALSE(took_ownership);
-}
-
-TEST_F(TpmInitTest, TakeOwnershipDistributedSuccess) {
-  // Set initial TPM states.
-  SetIsTpmInitialized(true);
-  SetIsTpmBeingOwned(false);
-
-  // Take Ownership.
-  EXPECT_CALL(tpm_, IsEndorsementKeyAvailable())
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, CreateEndorsementKey()).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, TakeOwnership(_, _)).WillOnce(Return(true));
-
-  bool took_ownership = false;
-  EXPECT_TRUE(tpm_init_.TakeOwnership(&took_ownership));
-  EXPECT_TRUE(took_ownership);
-  EXPECT_FALSE(IsTpmBeingOwned());
-  EXPECT_TRUE(FileExists(kTpmOwnedFile));
-}
-
 TEST_F(TpmInitTest, RemoveTpmOwnerDependencySuccess) {
   TpmStatus tpm_status;
   tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER |

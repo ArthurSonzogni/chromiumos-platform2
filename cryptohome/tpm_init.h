@@ -38,8 +38,6 @@ class TpmInit {
 
   virtual ~TpmInit();
 
-  virtual void Init(OwnershipCallback ownership_callback);
-
   // Sets the TPM to the state where we last left it in. This must be called
   // before the *TakeOwnership functions below, if we need to.
   //
@@ -48,12 +46,6 @@ class TpmInit {
   //
   // Returns false if the instance has already been setup.
   virtual bool SetupTpm(bool load_key);
-
-  // Synchronously takes ownership of the TPM.
-  //
-  // Returns true if the TPM initialization process (as outlined above) is
-  // completed at step 3.
-  virtual bool TakeOwnership(bool* OUT_took_ownership);
 
   // Returns true if the TPM is initialized and ready for use.
   virtual bool IsTpmReady();
@@ -87,8 +79,6 @@ class TpmInit {
 
  private:
   FRIEND_TEST(TpmInitTest, ContinueInterruptedInitializeSrk);
-
-  virtual void ThreadMain();
 
   // Invoked by SetupTpm to restore TPM state from saved state in storage.
   void RestoreTpmStateFromStorage();

@@ -27,8 +27,6 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-const int kMaxTimeoutRetries = 5;
-
 const FilePath kMiscTpmCheckEnabledFile("/sys/class/misc/tpm0/device/enabled");
 const FilePath kMiscTpmCheckOwnedFile("/sys/class/misc/tpm0/device/owned");
 const FilePath kTpmTpmCheckEnabledFile("/sys/class/tpm/tpm0/device/enabled");
@@ -41,28 +39,16 @@ const unsigned int kDefaultTpmRsaKeyBits = 2048;
 // the TPM.
 class TpmInitTask : public PlatformThread::Delegate {
  public:
-  TpmInitTask() : tpm_(NULL), init_(NULL) {}
+  TpmInitTask() : tpm_(nullptr) {}
   virtual ~TpmInitTask() {}
 
-  void Init(TpmInit* init) {
-    init_ = init;
-    if (tpm_) {
-      init->SetupTpm(false);
-    }
-  }
-
-  virtual void ThreadMain() {
-    if (init_) {
-      init_->ThreadMain();
-    }
-  }
+  virtual void ThreadMain() {}
 
   void set_tpm(Tpm* tpm) { tpm_ = tpm; }
   Tpm* get_tpm() { return tpm_; }
 
  private:
   Tpm* tpm_;
-  TpmInit* init_;
 };
 
 TpmInit::TpmInit(Tpm* tpm, Platform* platform)
@@ -92,11 +78,6 @@ Tpm* TpmInit::get_tpm() {
   return NULL;
 }
 
-void TpmInit::Init(OwnershipCallback ownership_callback) {
-  ownership_callback_ = ownership_callback;
-  tpm_init_task_->Init(this);
-}
-
 bool TpmInit::IsTpmReady() {
   // The TPM is "ready" if it is enabled, owned, and not being owned.
   Tpm* tpm = tpm_init_task_->get_tpm();
@@ -116,19 +97,6 @@ bool TpmInit::IsTpmOwned() {
 
 void TpmInit::SetTpmBeingOwned(bool being_owned) {
   tpm_init_task_->get_tpm()->SetIsBeingOwned(being_owned);
-}
-
-void TpmInit::ThreadMain() {
-  base::TimeTicks start = base::TimeTicks::Now();
-  bool ownership_result = TakeOwnership(&took_ownership_);
-  base::TimeDelta delta = (base::TimeTicks::Now() - start);
-  initialization_time_ = delta.InMilliseconds();
-  if (took_ownership_) {
-    LOG(ERROR) << "Taking TPM ownership took " << initialization_time_ << "ms";
-  }
-  if (!ownership_callback_.is_null()) {
-    ownership_callback_.Run(ownership_result, took_ownership_);
-  }
 }
 
 bool TpmInit::SetupTpm(bool load_key) {
@@ -176,66 +144,6 @@ void TpmInit::RestoreTpmStateFromStorage() {
 
   SecureBlob local_owner_password;
   LoadOwnerPassword(&local_owner_password);
-}
-
-bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
-  if (OUT_took_ownership) {
-    *OUT_took_ownership = false;
-  }
-
-  if (!IsTpmEnabled()) {
-    return false;
-  }
-
-  SecureBlob default_owner_password(sizeof(kTpmWellKnownPassword));
-  memcpy(default_owner_password.data(), kTpmWellKnownPassword,
-         sizeof(kTpmWellKnownPassword));
-
-  bool took_ownership = false;
-  if (!IsTpmOwned()) {
-    SetTpmBeingOwned(true);
-    tpm_persistent_state_.SetReady(false);
-    tpm_persistent_state_.ClearStatus();
-
-    if (!get_tpm()->IsEndorsementKeyAvailable()) {
-      if (!get_tpm()->CreateEndorsementKey()) {
-        LOG(ERROR) << "Failed to create endorsement key";
-        SetTpmBeingOwned(false);
-        return false;
-      }
-    }
-
-    if (!get_tpm()->IsEndorsementKeyAvailable()) {
-      LOG(ERROR) << "Endorsement key is not available";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    if (!get_tpm()->TakeOwnership(kMaxTimeoutRetries, default_owner_password)) {
-      LOG(ERROR) << "Take Ownership failed";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    tpm_persistent_state_.SetDefaultPassword();
-    took_ownership = true;
-  }
-
-  if (OUT_took_ownership) {
-    *OUT_took_ownership = took_ownership;
-  }
-
-  // If we fall through here, either (1) we successfully completed the
-  // initialization, or (2) then the TPM owned file doesn't exist, but we
-  // couldn't auth with the well-known password. In the second case, we must
-  // assume that the TPM has already been owned and set to a random password.
-  // In any case, it's time to touch the TPM owned file to indicate that we
-  // don't need to re-attempt completing initialization on the next boot.
-  tpm_persistent_state_.SetReady(true);
-  tpm_persistent_state_.SetShallInitialize(false);
-
-  SetTpmBeingOwned(false);
-  return true;
 }
 
 bool TpmInit::LoadOwnerPassword(brillo::SecureBlob* owner_password) {
