@@ -7,10 +7,11 @@ the master configuration for Chrome OS.
 
 ## Design Documentation
 
-See the [design doc](https://docs.google.com/document/d/1zonifFp8UpE6ISxsnzUrUb9ikx1pXeqs0UzW08ce6aY/edit)
+See the
+[design doc](https://docs.google.com/document/d/1zonifFp8UpE6ISxsnzUrUb9ikx1pXeqs0UzW08ce6aY/edit)
 for information about the design. This is accessible from the
-[public page](https://dev.chromium.org/chromium-os/chromiumos-design-docs)
-too ('Unified Builds').
+[public page](https://dev.chromium.org/chromium-os/chromiumos-design-docs) too
+('Unified Builds').
 
 ## Important classes
 
@@ -54,8 +55,8 @@ The following components make up the YAML based chromeos-config support:
 The YAML source is designed for human maintainability. It allows for easy config
 sharing across many different devices (via anchors).
 
-For background on YAML, see: [Learn YAML in 10
-minutes](https://learnxinyminutes.com/docs/yaml/)
+For background on YAML, see:
+[Learn YAML in 10 minutes](https://learnxinyminutes.com/docs/yaml/)
 
 The source is generally located at:
 
@@ -108,8 +109,8 @@ that allow for even better re-use and expressiveness in the YAML config.
         $sku-id).
 
 3.  File Imports - File imports allow common snippets of YAML to be shared
-    across multiple different implementations.  File importing works the same as
-    if the YAML files were cat'd together and then evaluated.  File importing is
+    across multiple different implementations. File importing works the same as
+    if the YAML files were cat'd together and then evaluated. File importing is
     recursive also, so it will support importing files that import other files.
     Import paths must be relative to the file that specifies the import.
 
@@ -181,8 +182,8 @@ multiple different repos in separate YAML files.
 
 E.g.
 
-* Permissions based control via git repo access to specific config
-* Extending overlays for device customization (e.g. Moblab)
+*   Permissions based control via git repo access to specific config
+*   Extending overlays for device customization (e.g. Moblab)
 
 This is supported through cros_config_schema tool and is invoked as part of the
 chromeos-config ebuild.
@@ -192,103 +193,105 @@ they wish to be merged together into: /usr/share/chromeos-config/yaml
 
 E.g.
 
-* models.yaml
-* models-private.yaml (private config overlaid on the public config)
+*   models.yaml
+*   models-private.yaml (private config overlaid on the public config)
 
 These files are then merged together based on their lexicographic name order.
 
 Merging of YAML files applies the following characteristics:
 
-1. Order is important.  If two files supply the same config, the last file wins.
-2. Identity is important.  Config is merged based on ONE OF the following:
+1.  Order is important. If two files supply the same config, the last file wins.
+2.  Identity is important. Config is merged based on ONE OF the following:
 
-   1. name - If the name attribute matches, the config is merged
-   2. identity - all fields of identity must match explicitly for code
-      generation purposes. The fields are documented in [identity](#identity).
-      All fields that are present in the second file must be present in the
-      first file.
-      Note that a null value (the field is not present) and an empty string
-      (the field is assigned the value of "") are not considered a match
-      for code generation purposes.
+    1.  name - If the name attribute matches, the config is merged
+    2.  identity - all fields of identity must match explicitly for code
+        generation purposes. The fields are documented in [identity](#identity).
+        All fields that are present in the second file must be present in the
+        first file. Note that a null value (the field is not present) and an
+        empty string (the field is assigned the value of "") are not considered
+        a match for code generation purposes.
 
 For a detailed example of how merging works, see the following test files:
 
-1. [test_merge_base.yaml](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge_base.yaml) - First file passed to the merge routine.
-2. [test_merge_overlay.yaml](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge_overlay.yaml) - Second file passed (winner of any conflicts).
-3. [test_merge.json](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge.json) - Result generated from the merge.
+1.  [test_merge_base.yaml](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge_base.yaml) -
+    First file passed to the merge routine.
+2.  [test_merge_overlay.yaml](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge_overlay.yaml) -
+    Second file passed (winner of any conflicts).
+3.  [test_merge.json](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge.json) -
+    Result generated from the merge.
 
 ### YAML Transform (to SquashFS)
 
-Before the config gets used on the device, it's translated to a
-flattened filesystem view of the configuration, and stored as a
-SquashFS image.  This keeps the runtime code on the device very
-simple.
+Before the config gets used on the device, it's translated to a flattened
+filesystem view of the configuration, and stored as a SquashFS image. This keeps
+the runtime code on the device very simple.
 
 First, the configuration is flattened using the following algorithm:
 
-* FOREACH device in chromeos/devices
-    * FOREACH product in device/products
-        * FOREACH sku in device/skus
-            * sku varibles are put into scope
-            * config variables are put into scope
-            * device variables are put into scope
-            * product variables are put into scope
-            * with sku/config
-                * config template variables are evaluated
+*   FOREACH device in chromeos/devices
+    *   FOREACH product in device/products
+        *   FOREACH sku in device/skus
+            *   sku varibles are put into scope
+            *   config variables are put into scope
+            *   device variables are put into scope
+            *   product variables are put into scope
+            *   with sku/config
+                *   config template variables are evaluated
 
-After this, the configuration is stored in a SquashFS, with paths
-representing directories, and properties representing files.
+After this, the configuration is stored in a SquashFS, with paths representing
+directories, and properties representing files.
 
-    /
-    ├── identity.bin        # "Table of contents" to efficiently lookup device identity.
-    └── v1
-        └── chromeos
-            └── configs
-                ├── 0
-                │   ├── ...
-                │   ├── power
-                │   │   └── ...
-                │   ├── wallpaper
-                │   └── ...
-                ├── 1
-                │   ├── ...
-                │   ├── power
-                │   │   └── ...
-                │   ├── wallpaper
-                │   └── ...
-                └── ...
+```
+/
+├── identity.bin        # "Table of contents" to efficiently lookup device identity.
+└── v1
+    └── chromeos
+        └── configs
+            ├── 0
+            │   ├── ...
+            │   ├── power
+            │   │   └── ...
+            │   ├── wallpaper
+            │   └── ...
+            ├── 1
+            │   ├── ...
+            │   ├── power
+            │   │   └── ...
+            │   ├── wallpaper
+            │   └── ...
+            └── ...
+```
 
-This file gets installed at `/usr/share/chromeos-config/configfs.img`,
-and is used internally by the `cros_configfs` tool.
+This file gets installed at `/usr/share/chromeos-config/configfs.img`, and is
+used internally by the `cros_configfs` tool.
 
 ### Making changes to a YAML model file
 
 When modifying a `model.yaml` file there are few steps that need to be taken to
- manifest the change in a board target. Since the actual work to combine and
- process the YAML files is done in the chromeos-config ebuild, it needs to be
- remerged after the input YAML has been modified.
+manifest the change in a board target. Since the actual work to combine and
+process the YAML files is done in the chromeos-config ebuild, it needs to be
+remerged after the input YAML has been modified.
 
+1.  Start cros_workon on the ebuild where your source model.yaml lives:
 
-1. Start cros_workon on the ebuild where your source model.yaml lives:
+    ```bash
+    (chroot) $ cros_workon start chromeos-base/chromeos-config-bsp-${BOARD}
+    ```
 
-   ```bash
-   (chroot) $ cros_workon start chromeos-base/chromeos-config-bsp-${BOARD}
-   ```
+1.  Make and install your incremental changes:
 
-1. Make and install your incremental changes:
+    ```bash
+    (chroot) $ cros_workon_make chromeos-base/chromeos-config-bsp-${BOARD} --install
+    ```
 
-   ```bash
-   (chroot) $ cros_workon_make chromeos-base/chromeos-config-bsp-${BOARD} --install
-   ```
+1.  Remerge the chromeos-config ebuild:
 
-1. Remerge the chromeos-config ebuild:
+    Note: The config-bsp overlay path may be slightly different depending on the
+    board and if it is public or private.
 
-   Note: The config-bsp overlay path may be slightly different depending on the
-   board and if it is public or private.
-
-   ```bash
-   (chroot) $ emerge-$BOARD chromeos-config
-   ```
+    ```bash
+    (chroot) $ emerge-$BOARD chromeos-config
+    ```
 
 ### Schema Validation
 
@@ -312,8 +315,10 @@ The schema definition is below:
 
 In the tables below,
 
-* *Build-only* attributes get automatically stripped from the platform JSON as
-  part of the build.
+*   *Build-only* attributes get automatically stripped from the platform JSON as
+    part of the build.
+
+<!-- mdformat off(text below is auto-generated by script) -->
 
 [](begin_definitions)
 
@@ -835,6 +840,7 @@ In the tables below,
 
 
 [](end_definitions)
+<!-- mdformat on -->
 
 ## On the Device
 
