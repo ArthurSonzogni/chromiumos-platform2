@@ -7,7 +7,7 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_
 
-#include <cutils/native_handle.h>
+#include <system/window.h>
 
 #include <memory>
 

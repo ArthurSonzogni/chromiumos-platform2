@@ -7,7 +7,7 @@
 #ifndef CAMERA_COMMON_CAMERA_BUFFER_HANDLE_H_
 #define CAMERA_COMMON_CAMERA_BUFFER_HANDLE_H_
 
-#include <cutils/native_handle.h>
+#include <system/window.h>
 
 #include "cros-camera/common.h"
 
