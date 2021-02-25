@@ -78,19 +78,6 @@ class TpmPersistentState {
   // update the state, false otherwise.
   bool ClearStoredPasswordIfNotNeeded();
 
-  // Returns the flag that indicates if the tpm is marked as 'ready', meaning
-  // that tpm initialization has been completed for it. Caches the 'ready'
-  // flag in memory on the first access. Subsequent checks return the cached
-  // value.
-  bool IsReady();
-
-  // Sets the 'ready' flag for the tpm (in memory and in the persistent
-  // storage).
-  // If there were any changes, saves the updated flag in the persistent
-  // storage before returning.
-  // Returns true on success, false otherwise.
-  bool SetReady(bool is_ready);
-
   // Returns the global flag indicating if cryptohomed shall attempt TPM
   // initialization. Reads the flag from persistent storage and caches it in
   // memory on the first access. Subsequent checks return the cached value.
@@ -119,9 +106,6 @@ class TpmPersistentState {
   // Returns true on success, false otherwise.
   bool StoreTpmStatus();
 
-  // Checks whether the TPM is ready. Requires that |tpm_status_lock_| is held.
-  bool IsReadyLocked();
-
   // Checks whether shall initialize is set. Requires that |tpm_status_lock_| is
   // held.
   bool ShallInitializeLocked() const;
@@ -135,12 +119,6 @@ class TpmPersistentState {
   // TODO(apronin): replace with std::optional / base::Optional when available.
   bool read_tpm_status_ = false;
   TpmStatus tpm_status_;
-
-  // Cached "readiness" flag (read_tpm_ready_ tells if was already read and
-  // cached).
-  // TODO(apronin): replace with std::optional / base::Optional when available.
-  bool read_tpm_ready_ = false;
-  bool tpm_ready_ = false;
 
   // Cached "shall initialize" flag implementation:
   //  - checked_shall_initialize_ - indicates if a non-volatile

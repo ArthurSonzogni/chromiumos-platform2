@@ -138,7 +138,6 @@ void TpmInit::RestoreTpmStateFromStorage() {
   }
 
   if (successful_check && !is_owned) {
-    tpm_persistent_state_.SetReady(false);
     tpm_persistent_state_.ClearStatus();
   }
 

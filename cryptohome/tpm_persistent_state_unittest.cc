@@ -24,7 +24,6 @@ namespace cryptohome {
 
 using TpmOwnerDependency = TpmPersistentState::TpmOwnerDependency;
 
-extern const base::FilePath kTpmOwnedFile;
 const base::FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
 const base::FilePath kShallInitializeFile(
     "/home/.shadow/.can_attempt_ownership");
@@ -208,34 +207,6 @@ TEST_F(TpmPersistentStateTest, TpmStatusCached) {
   // Clearing the status leads to deleting the file.
   EXPECT_TRUE(tpm_persistent_state_.ClearStatus());
   EXPECT_FALSE(FileExists(kTpmStatusFile));
-}
-
-TEST_F(TpmPersistentStateTest, TpmReady) {
-  // The file is read only once, after that the flag is cached in memory.
-  ASSERT_FALSE(FileExists(kTpmOwnedFile));
-  EXPECT_CALL(platform_, FileExists(kTpmOwnedFile)).Times(1);
-  // Initially, there's no file, so tpm is not ready.
-  EXPECT_FALSE(tpm_persistent_state_.IsReady());
-  EXPECT_FALSE(tpm_persistent_state_.IsReady());
-
-  // Saying that it's ready creates the file and returns correct status
-  // afterwards.
-  EXPECT_TRUE(tpm_persistent_state_.SetReady(true));
-  EXPECT_TRUE(tpm_persistent_state_.IsReady());
-  EXPECT_TRUE(FileExists(kTpmOwnedFile));
-
-  // Setting the flag back to false...
-  EXPECT_TRUE(tpm_persistent_state_.SetReady(false));
-  EXPECT_FALSE(tpm_persistent_state_.IsReady());
-  EXPECT_FALSE(FileExists(kTpmOwnedFile));
-}
-
-TEST_F(TpmPersistentStateTest, TpmReadyPreExisting) {
-  // If there's a kTpmOwnedFile at start, IsReady returns true.
-  FileTouch(kTpmOwnedFile);
-  EXPECT_CALL(platform_, FileExists(kTpmOwnedFile)).Times(1);
-  EXPECT_TRUE(tpm_persistent_state_.IsReady());
-  EXPECT_TRUE(tpm_persistent_state_.IsReady());
 }
 
 TEST_F(TpmPersistentStateTest, ShallInitialize) {

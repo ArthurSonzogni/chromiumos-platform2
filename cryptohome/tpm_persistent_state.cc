@@ -16,7 +16,6 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-extern const FilePath kTpmOwnedFile("/mnt/stateful_partition/.tpm_owned");
 const FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
 const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
 const FilePath kShallInitializeFile("/home/.shadow/.can_attempt_ownership");
@@ -145,31 +144,6 @@ bool TpmPersistentState::ClearStatus() {
   return true;
 }
 
-bool TpmPersistentState::IsReady() {
-  base::AutoLock lock(tpm_status_lock_);
-  return IsReadyLocked();
-}
-
-bool TpmPersistentState::SetReady(bool is_ready) {
-  base::AutoLock lock(tpm_status_lock_);
-
-  if (IsReadyLocked() == is_ready) {
-    return true;
-  }
-  tpm_ready_ = is_ready;
-  // Even if creating/deleting the file below fails, set the in-memory
-  // flag to the right value for this boot. If is_ready = true, but the file
-  // is not there, next boot will quickly go through checks and attempt
-  // to create the file again. if is_ready = false, but the file remained
-  // there, we either expect to initialize the tpm on this boot, or leave
-  // it as-is (in which case we will deduce it is not actually ready on the
-  // next boot in the same way we did it this time).
-  // In any case, let's keep the in-memory flag up-to-date ven if it can't
-  // be saved in persistent storage.
-  return is_ready ? platform_->TouchFileDurable(kTpmOwnedFile)
-                  : platform_->DeleteFileDurable(kTpmOwnedFile);
-}
-
 bool TpmPersistentState::ShallInitialize() const {
   base::AutoLock lock(tpm_status_lock_);
   return ShallInitializeLocked();
@@ -227,16 +201,6 @@ bool TpmPersistentState::StoreTpmStatus() {
       static_cast<google::protobuf::uint8*>(final_blob.data()));
   return platform_->WriteSecureBlobToFileAtomicDurable(kTpmStatusFile,
                                                        final_blob, 0600);
-}
-
-bool TpmPersistentState::IsReadyLocked() {
-  tpm_status_lock_.AssertAcquired();
-
-  if (!read_tpm_ready_) {
-    tpm_ready_ = platform_->FileExists(kTpmOwnedFile);
-    read_tpm_ready_ = true;
-  }
-  return tpm_ready_;
 }
 
 bool TpmPersistentState::ShallInitializeLocked() const {

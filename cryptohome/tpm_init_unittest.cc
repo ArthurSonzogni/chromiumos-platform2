@@ -22,7 +22,6 @@ using ::testing::Return;
 
 namespace cryptohome {
 
-extern const base::FilePath kTpmOwnedFile;
 const base::FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
 const base::FilePath kDefaultCryptohomeKeyFile("/home/.shadow/cryptohome.key");
 const TpmKeyHandle kTestKeyHandle = 17;  // any non-zero value
@@ -156,7 +155,6 @@ class TpmInitTest : public ::testing::Test {
   void SetTpmReady() {
     SetIsTpmOwned(true);
     SetIsTpmBeingOwned(false);
-    FileTouch(kTpmOwnedFile);
     ASSERT_TRUE(tpm_init_.IsTpmReady());
   }
 
@@ -393,8 +391,6 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
 }
 
 TEST_F(TpmInitTest, IsTpmReadyWithOwnedFile) {
-  FileTouch(kTpmOwnedFile);
-
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
   EXPECT_TRUE(tpm_init_.IsTpmReady());
@@ -408,7 +404,6 @@ TEST_F(TpmInitTest, IsTpmReadyWithOwnedFile) {
 }
 
 TEST_F(TpmInitTest, IsTpmReadyNoOwnedFile) {
-  FileDelete(kTpmOwnedFile);
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
 

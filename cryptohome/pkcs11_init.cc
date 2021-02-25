@@ -28,8 +28,6 @@ constexpr char Pkcs11Init::kDefaultPin[];
 constexpr char Pkcs11Init::kDefaultSystemLabel[];
 constexpr char Pkcs11Init::kDefaultUserLabelPrefix[];
 
-extern const FilePath kTpmOwnedFile;
-
 Pkcs11Init::Pkcs11Init()
     : default_platform_(new Platform), platform_(default_platform_.get()) {}
 
@@ -91,10 +89,6 @@ bool Pkcs11Init::GetTpmTokenSlotForPath(const FilePath& path,
 }
 
 bool Pkcs11Init::IsUserTokenOK() {
-  if (!platform_->FileExists(kTpmOwnedFile)) {
-    LOG(WARNING) << __func__ << ": TPM might not even be owned.";
-  }
-
   CK_RV rv;
   rv = C_Initialize(NULL);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
