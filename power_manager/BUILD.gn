@@ -218,6 +218,7 @@ static_library("libpolicy") {
     "powerd/policy/backlight_controller.cc",
     "powerd/policy/cellular_controller.cc",
     "powerd/policy/charge_controller.cc",
+    "powerd/policy/external_ambient_light_handler.cc",
     "powerd/policy/external_backlight_controller.cc",
     "powerd/policy/input_device_controller.cc",
     "powerd/policy/input_event_handler.cc",

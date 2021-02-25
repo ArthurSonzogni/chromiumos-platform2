@@ -7,6 +7,8 @@
 #include <base/compiler_specific.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <string>
+#include <utility>
 
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/policy/backlight_controller_test_util.h"
@@ -16,6 +18,15 @@
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
+
+namespace {
+
+constexpr char kFirstDisplay[] = "/sys/devices/usb1/mydisplay";
+constexpr char kFirstSensor[] = "/sys/devices/usb1/mysensor";
+constexpr char kSecondDisplay[] = "/sys/devices/usb2/mydisplay";
+constexpr char kSecondSensor[] = "/sys/devices/usb2/mysensor";
+
+}  // namespace
 
 namespace power_manager {
 namespace policy {
@@ -34,6 +45,39 @@ class ExternalBacklightControllerTest : public ::testing::Test {
   }
 
  protected:
+  void AddDisplay(const std::string& syspath) {
+    system::DisplayInfo display = {
+        .drm_path = base::FilePath(),
+        .i2c_path = base::FilePath("/dev/i2c-1"),
+        .sys_path = base::FilePath(syspath),
+        .connector_status = system::DisplayInfo::ConnectorStatus::CONNECTED,
+    };
+    display_watcher_.AddDisplay(display);
+  }
+  void RemoveDisplay(const std::string& syspath) {
+    system::DisplayInfo display = {
+        .drm_path = base::FilePath(),
+        .i2c_path = base::FilePath("/dev/i2c-1"),
+        .sys_path = base::FilePath(syspath),
+        .connector_status = system::DisplayInfo::ConnectorStatus::CONNECTED,
+    };
+    display_watcher_.RemoveDisplay(display);
+  }
+  void AddSensor(const std::string& syspath) {
+    system::AmbientLightSensorInfo als = {
+        .iio_path = base::FilePath(syspath),
+        .device = std::string(),
+    };
+    ambient_light_sensor_watcher_.AddSensor(als);
+  }
+  void RemoveSensor(const std::string& syspath) {
+    system::AmbientLightSensorInfo als = {
+        .iio_path = base::FilePath(syspath),
+        .device = std::string(),
+    };
+    ambient_light_sensor_watcher_.RemoveSensor(als);
+  }
+
   BacklightControllerObserverStub observer_;
   system::AmbientLightSensorWatcherStub ambient_light_sensor_watcher_;
   system::ExternalAmbientLightSensorFactoryStub ambient_light_sensor_factory_;
@@ -153,6 +197,69 @@ TEST_F(ExternalBacklightControllerTest, ForcedOff) {
   controller_.SetForcedOff(false);
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+}
+
+TEST_F(ExternalBacklightControllerTest,
+       MatchTwoDisplaysWithAmbientLightSensors) {
+  AddDisplay(kFirstDisplay);
+
+  // Connecting just the first display should not generate any matches.
+  EXPECT_EQ(
+      0, controller_.GetAmbientLightSensorAndDisplayMatchesForTesting().size());
+
+  AddSensor(kFirstSensor);
+
+  // After adding the first sensor, one match should be generated.
+  std::vector<std::pair<base::FilePath, system::DisplayInfo>> matches =
+      controller_.GetAmbientLightSensorAndDisplayMatchesForTesting();
+  ASSERT_EQ(1, matches.size());
+  EXPECT_STREQ(kFirstSensor, matches[0].first.value().c_str());
+  EXPECT_STREQ(kFirstDisplay, matches[0].second.sys_path.value().c_str());
+
+  AddSensor(kSecondSensor);
+
+  // Adding a second sensor without the second display should still result in
+  // one match.
+  matches = controller_.GetAmbientLightSensorAndDisplayMatchesForTesting();
+  ASSERT_EQ(1, matches.size());
+  EXPECT_STREQ(kFirstSensor, matches[0].first.value().c_str());
+  EXPECT_STREQ(kFirstDisplay, matches[0].second.sys_path.value().c_str());
+
+  AddDisplay(kSecondDisplay);
+
+  // After adding both sensors/displays, there should be two matches.
+  matches = controller_.GetAmbientLightSensorAndDisplayMatchesForTesting();
+  ASSERT_EQ(2, matches.size());
+  if (matches[0].first.value().compare(kFirstSensor) == 0) {
+    EXPECT_STREQ(kFirstSensor, matches[0].first.value().c_str());
+    EXPECT_STREQ(kFirstDisplay, matches[0].second.sys_path.value().c_str());
+    EXPECT_STREQ(kSecondSensor, matches[1].first.value().c_str());
+    EXPECT_STREQ(kSecondDisplay, matches[1].second.sys_path.value().c_str());
+  } else if (matches[0].first.value().compare(kSecondSensor) == 0) {
+    EXPECT_STREQ(kSecondSensor, matches[0].first.value().c_str());
+    EXPECT_STREQ(kSecondDisplay, matches[0].second.sys_path.value().c_str());
+    EXPECT_STREQ(kFirstSensor, matches[1].first.value().c_str());
+    EXPECT_STREQ(kFirstDisplay, matches[1].second.sys_path.value().c_str());
+  } else {
+    ADD_FAILURE();
+  }
+
+  RemoveDisplay(kFirstDisplay);
+
+  // Removing the first display should drop that match.
+  matches = controller_.GetAmbientLightSensorAndDisplayMatchesForTesting();
+  ASSERT_EQ(1, matches.size());
+  EXPECT_STREQ(kSecondSensor, matches[0].first.value().c_str());
+  EXPECT_STREQ(kSecondDisplay, matches[0].second.sys_path.value().c_str());
+
+  RemoveSensor(kSecondSensor);
+
+  // There should be 0 matches after removing the second sensor. The first
+  // sensor and second display should not match even though they are both
+  // connected because their association score of 3 is not above the minimum
+  // threshold.
+  EXPECT_EQ(
+      0, controller_.GetAmbientLightSensorAndDisplayMatchesForTesting().size());
 }
 
 }  // namespace policy

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/compiler_specific.h>
@@ -14,6 +15,7 @@
 #include <base/observer_list.h>
 
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/external_ambient_light_handler.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
@@ -27,6 +29,7 @@ class DBusWrapperInterface;
 struct DisplayInfo;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
+class ExternalAmbientLightHandler;
 class ExternalAmbientLightSensorFactoryInterface;
 class ExternalDisplay;
 }  // namespace system
@@ -38,7 +41,8 @@ namespace policy {
 class ExternalBacklightController
     : public BacklightController,
       public system::DisplayWatcherObserver,
-      public system::AmbientLightSensorWatcherObserver {
+      public system::AmbientLightSensorWatcherObserver,
+      public ExternalAmbientLightHandler::Delegate {
  public:
   ExternalBacklightController();
   ExternalBacklightController(const ExternalBacklightController&) = delete;
@@ -92,6 +96,15 @@ class ExternalBacklightController
       const std::vector<system::AmbientLightSensorInfo>& ambient_light_sensors)
       override;
 
+  // ExternalAmbientLightHandler::Delegate implementation:
+  void SetBrightnessPercentForAmbientLight(
+      const system::DisplayInfo& display_info,
+      double brightness_percent) override;
+
+  // Get ambient light sensor to display matches. For testing.
+  std::vector<std::pair<base::FilePath, system::DisplayInfo>>
+  GetAmbientLightSensorAndDisplayMatchesForTesting();
+
  private:
   // Handlers for requests sent via D-Bus.
   void HandleIncreaseBrightnessRequest();
@@ -114,6 +127,15 @@ class ExternalBacklightController
   // Adjusts |external_displays_| by |percent_offset|, a linearly-calculated
   // percent in the range [-100.0, 100.0].
   void AdjustBrightnessByPercent(double percent_offset);
+
+  // Compute an association score between two syspaths. The score used is a
+  // count of how many prefix path components they share.
+  int CalculateAssociationScore(const base::FilePath& a,
+                                const base::FilePath& b);
+
+  // Tries to match any external ambient light sensors to the corresponding
+  // external display.
+  void MatchAmbientLightSensorsToDisplays();
 
   // These pointers aren't owned by this class.
   system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher_ =
@@ -141,6 +163,12 @@ class ExternalBacklightController
                    std::unique_ptr<system::ExternalDisplay>>
       ExternalDisplayMap;
   ExternalDisplayMap external_displays_;
+
+  // Map from IIO device directories to ExternalAmbientLightHandler for reading
+  // the corresponding ALS and adjusting the display brightness.
+  typedef std::map<base::FilePath, std::unique_ptr<ExternalAmbientLightHandler>>
+      ExternalAmbientLightSensorMap;
+  ExternalAmbientLightSensorMap external_ambient_light_sensors_;
 
   // Vector of currently connected external ambient light sensors.
   std::vector<system::AmbientLightSensorInfo>

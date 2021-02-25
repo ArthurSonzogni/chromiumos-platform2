@@ -5,6 +5,7 @@
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <memory>
 #include <set>
@@ -15,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
+#include "power_manager/powerd/system/ambient_light_sensor_delegate_file.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
@@ -32,7 +34,18 @@ namespace {
 
 // Amount the brightness will be adjusted up or down in response to a user
 // request, as a linearly-calculated percent in the range [0.0, 100.0].
-const double kBrightnessAdjustmentPercent = 5.0;
+constexpr double kBrightnessAdjustmentPercent = 5.0;
+
+// Minimum number of syspath components that must be the same for an external
+// display to be matched with an external ambient light sensor.
+constexpr int kMinimumAssociationScore = 4;
+
+// Constants used to initialize ExternalAmbientLightHandlers. See
+// AmbientLightHandler::Init for a more detailed explanation of these values.
+constexpr char kExternalAmbientLightHandlerSteps[] =
+    "50.0 -1 600\n75.0 500 5000\n100.0 4500 -1";
+constexpr double kExternalAmbientLightHandlerInitialBrightness = 100.0;
+constexpr double kExternalAmbientLightHandlerSmoothingConstant = 1.0;
 
 }  // namespace
 
@@ -86,6 +99,7 @@ void ExternalBacklightController::Init(
   if (ambient_light_sensor_watcher_) {
     external_ambient_light_sensors_info_ =
         ambient_light_sensor_watcher_->GetAmbientLightSensors();
+    MatchAmbientLightSensorsToDisplays();
   }
 }
 
@@ -101,7 +115,11 @@ void ExternalBacklightController::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
-void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {}
+void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {
+  for (auto& [path, handler] : external_ambient_light_sensors_) {
+    handler->HandlePowerSourceChange(source);
+  }
+}
 
 void ExternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
@@ -156,6 +174,12 @@ void ExternalBacklightController::SetSuspended(bool suspended) {
     return;
   suspended_ = suspended;
   UpdateScreenPowerState(BacklightBrightnessChange_Cause_OTHER);
+
+  if (!suspended) {
+    for (auto& [path, handler] : external_ambient_light_sensors_) {
+      handler->HandleResume();
+    }
+  }
 }
 
 void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
@@ -206,11 +230,15 @@ int64_t ExternalBacklightController::PercentToLevel(double percent) const {
 void ExternalBacklightController::OnDisplaysChanged(
     const std::vector<system::DisplayInfo>& displays) {
   UpdateDisplays(displays);
+  if (ambient_light_sensor_watcher_) {
+    MatchAmbientLightSensorsToDisplays();
+  }
 }
 
 void ExternalBacklightController::OnAmbientLightSensorsChanged(
     const std::vector<system::AmbientLightSensorInfo>& ambient_light_sensors) {
   external_ambient_light_sensors_info_ = ambient_light_sensors;
+  MatchAmbientLightSensorsToDisplays();
 }
 
 void ExternalBacklightController::HandleIncreaseBrightnessRequest() {
@@ -293,6 +321,74 @@ void ExternalBacklightController::AdjustBrightnessByPercent(
        it != external_displays_.end(); ++it) {
     it->second->AdjustBrightnessByPercent(percent_offset);
   }
+}
+
+int ExternalBacklightController::CalculateAssociationScore(
+    const base::FilePath& a, const base::FilePath& b) {
+  std::vector<std::string> a_components;
+  std::vector<std::string> b_components;
+  a.GetComponents(&a_components);
+  b.GetComponents(&b_components);
+
+  size_t score = 0;
+  while (score < a_components.size() && score < b_components.size() &&
+         a_components[score] == b_components[score]) {
+    score++;
+  }
+  return score;
+}
+
+void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
+  ExternalAmbientLightSensorMap updated_ambient_light_sensors;
+  for (const auto& als_info : external_ambient_light_sensors_info_) {
+    int highest_score = 0;
+    system::DisplayInfo best_matching_display;
+    for (const auto& [display_info, external_display] : external_displays_) {
+      int score =
+          CalculateAssociationScore(display_info.sys_path, als_info.iio_path);
+      if (score > highest_score) {
+        highest_score = score;
+        best_matching_display = display_info;
+      }
+    }
+    if (highest_score >= kMinimumAssociationScore) {
+      auto existing_als_it =
+          external_ambient_light_sensors_.find(als_info.iio_path);
+      if (existing_als_it != external_ambient_light_sensors_.end()) {
+        updated_ambient_light_sensors.emplace(
+            als_info.iio_path, std::move(existing_als_it->second));
+        continue;
+      }
+
+      auto sensor =
+          external_ambient_light_sensor_factory_->CreateSensor(als_info.device);
+      auto handler = std::make_unique<ExternalAmbientLightHandler>(
+          std::move(sensor), best_matching_display, this);
+      handler->Init(kExternalAmbientLightHandlerSteps,
+                    kExternalAmbientLightHandlerInitialBrightness,
+                    kExternalAmbientLightHandlerSmoothingConstant);
+      updated_ambient_light_sensors.emplace(als_info.iio_path,
+                                            std::move(handler));
+
+      LOG(INFO) << "Matched ALS (" << als_info.iio_path.value()
+                << ") with display (" << best_matching_display.sys_path.value()
+                << ") with score " << highest_score;
+    }
+  }
+  external_ambient_light_sensors_.swap(updated_ambient_light_sensors);
+}
+
+void ExternalBacklightController::SetBrightnessPercentForAmbientLight(
+    const system::DisplayInfo& display_info, double brightness_percent) {}
+
+std::vector<std::pair<base::FilePath, system::DisplayInfo>>
+ExternalBacklightController::
+    GetAmbientLightSensorAndDisplayMatchesForTesting() {
+  std::vector<std::pair<base::FilePath, system::DisplayInfo>> matches;
+  for (const auto& [path, handler] : external_ambient_light_sensors_) {
+    matches.push_back(std::make_pair(path, handler->GetDisplayInfo()));
+  }
+  return matches;
 }
 
 }  // namespace policy

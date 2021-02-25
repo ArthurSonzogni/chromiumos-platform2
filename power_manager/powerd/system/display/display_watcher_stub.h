@@ -5,6 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_STUB_H_
 
+#include <base/observer_list.h>
 #include <vector>
 
 #include "power_manager/powerd/system/display/display_watcher.h"
@@ -30,7 +31,11 @@ class DisplayWatcherStub : public DisplayWatcherInterface {
   void AddObserver(DisplayWatcherObserver* observer) override;
   void RemoveObserver(DisplayWatcherObserver* observer) override;
 
+  void AddDisplay(const DisplayInfo& display_info);
+  void RemoveDisplay(const DisplayInfo& display_info);
+
  private:
+  base::ObserverList<DisplayWatcherObserver> observers_;
   // Currently-connected displays.
   std::vector<DisplayInfo> displays_;
 };
