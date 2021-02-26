@@ -163,7 +163,7 @@ EXPORT_SPEC void SetRetryTimeParameters(uint32_t timeout_ms,
 
 // PKCS #11 v2.20 section 11.4 page 102.
 // Connects to the D-Bus service.
-CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
+EXPORT_SPEC CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (g_is_initialized)
     return CKR_CRYPTOKI_ALREADY_INITIALIZED;
   // Validate args (if any).
@@ -205,7 +205,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 
 // PKCS #11 v2.20 section 11.4 page 104.
 // Closes the D-Bus service connection.
-CK_RV C_Finalize(CK_VOID_PTR pReserved) {
+EXPORT_SPEC CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   LOG_CK_RV_AND_RETURN_IF(pReserved, CKR_ARGUMENTS_BAD);
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   TearDown();
@@ -216,7 +216,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
 // PKCS #11 v2.20 section 11.4 page 105.
 // Provide library info locally.
 // TODO(dkrahn): i18n of strings - crosbug.com/20637
-CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
+EXPORT_SPEC CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
@@ -252,9 +252,9 @@ CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
 }
 
 // PKCS #11 v2.20 section 11.5 page 106.
-CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
-                    CK_SLOT_ID_PTR pSlotList,
-                    CK_ULONG_PTR pulCount) {
+EXPORT_SPEC CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
+                                CK_SLOT_ID_PTR pSlotList,
+                                CK_ULONG_PTR pulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
   vector<uint64_t> slot_list;
@@ -276,7 +276,7 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
 }
 
 // PKCS #11 v2.20 section 11.5 page 108.
-CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
+EXPORT_SPEC CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   chaps::SlotInfo slot_info;
@@ -291,7 +291,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
 }
 
 // PKCS #11 v2.20 section 11.5 page 109.
-CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
+EXPORT_SPEC CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   chaps::TokenInfo token_info;
@@ -309,9 +309,9 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
 // Currently, slot events via D-Bus are not supported because no slot events
 // occur with TPM-based tokens.  We want this call to behave properly so we'll
 // block the calling thread (if not CKF_DONT_BLOCK) until C_Finalize is called.
-CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
-                         CK_SLOT_ID_PTR pSlot,
-                         CK_VOID_PTR pReserved) {
+EXPORT_SPEC CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
+                                     CK_SLOT_ID_PTR pSlot,
+                                     CK_VOID_PTR pReserved) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pSlot, CKR_ARGUMENTS_BAD);
   // Currently, all supported tokens are not removable - i.e. no slot events.
@@ -328,9 +328,9 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
 }
 
 // PKCS #11 v2.20 section 11.5 page 111.
-CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
-                         CK_MECHANISM_TYPE_PTR pMechanismList,
-                         CK_ULONG_PTR pulCount) {
+EXPORT_SPEC CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
+                                     CK_MECHANISM_TYPE_PTR pMechanismList,
+                                     CK_ULONG_PTR pulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
   vector<uint64_t> mechanism_list;
@@ -353,9 +353,9 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 }
 
 // PKCS #11 v2.20 section 11.5 page 112.
-CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
-                         CK_MECHANISM_TYPE type,
-                         CK_MECHANISM_INFO_PTR pInfo) {
+EXPORT_SPEC CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
+                                     CK_MECHANISM_TYPE type,
+                                     CK_MECHANISM_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   chaps::MechanismInfo mechanism_info;
@@ -371,10 +371,10 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 }
 
 // PKCS #11 v2.20 section 11.5 page 113.
-CK_RV C_InitToken(CK_SLOT_ID slotID,
-                  CK_UTF8CHAR_PTR pPin,
-                  CK_ULONG ulPinLen,
-                  CK_UTF8CHAR_PTR pLabel) {
+EXPORT_SPEC CK_RV C_InitToken(CK_SLOT_ID slotID,
+                              CK_UTF8CHAR_PTR pPin,
+                              CK_ULONG ulPinLen,
+                              CK_UTF8CHAR_PTR pLabel) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pLabel, CKR_ARGUMENTS_BAD);
   string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
@@ -390,9 +390,9 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 }
 
 // PKCS #11 v2.20 section 11.5 page 115.
-CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
-                CK_UTF8CHAR_PTR pPin,
-                CK_ULONG ulPinLen) {
+EXPORT_SPEC CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
+                            CK_UTF8CHAR_PTR pPin,
+                            CK_ULONG ulPinLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
   string* pin_ptr = (!pPin) ? NULL : &pin;
@@ -404,11 +404,11 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.5 page 116.
-CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
-               CK_UTF8CHAR_PTR pOldPin,
-               CK_ULONG ulOldLen,
-               CK_UTF8CHAR_PTR pNewPin,
-               CK_ULONG ulNewLen) {
+EXPORT_SPEC CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
+                           CK_UTF8CHAR_PTR pOldPin,
+                           CK_ULONG ulOldLen,
+                           CK_UTF8CHAR_PTR pNewPin,
+                           CK_ULONG ulNewLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   string old_pin = chaps::ConvertCharBufferToString(pOldPin, ulOldLen);
   string* old_pin_ptr = (!pOldPin) ? NULL : &old_pin;
@@ -423,11 +423,11 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.6 page 117.
-CK_RV C_OpenSession(CK_SLOT_ID slotID,
-                    CK_FLAGS flags,
-                    CK_VOID_PTR pApplication,
-                    CK_NOTIFY Notify,
-                    CK_SESSION_HANDLE_PTR phSession) {
+EXPORT_SPEC CK_RV C_OpenSession(CK_SLOT_ID slotID,
+                                CK_FLAGS flags,
+                                CK_VOID_PTR pApplication,
+                                CK_NOTIFY Notify,
+                                CK_SESSION_HANDLE_PTR phSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!phSession, CKR_ARGUMENTS_BAD);
   // pApplication and Notify are intentionally ignored.  We don't support
@@ -448,7 +448,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,
 }
 
 // PKCS #11 v2.20 section 11.6 page 118.
-CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
+EXPORT_SPEC CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = PerformNonBlocking(
       [&] { return g_proxy->CloseSession(*g_user_isolate, hSession); });
@@ -462,7 +462,7 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
 }
 
 // PKCS #11 v2.20 section 11.6 page 120.
-CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
+EXPORT_SPEC CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
 
   CK_RV result = CKR_OK;
@@ -491,7 +491,8 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
 }
 
 // PKCS #11 v2.20 section 11.6 page 120.
-CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
+EXPORT_SPEC CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,
+                                   CK_SESSION_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   chaps::SessionInfo session_info;
@@ -506,9 +507,9 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
 }
 
 // PKCS #11 v2.20 section 11.6 page 121.
-CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
-                          CK_BYTE_PTR pOperationState,
-                          CK_ULONG_PTR pulOperationStateLen) {
+EXPORT_SPEC CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
+                                      CK_BYTE_PTR pOperationState,
+                                      CK_ULONG_PTR pulOperationStateLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulOperationStateLen, CKR_ARGUMENTS_BAD);
 
@@ -531,11 +532,11 @@ CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.6 page 123.
-CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
-                          CK_BYTE_PTR pOperationState,
-                          CK_ULONG ulOperationStateLen,
-                          CK_OBJECT_HANDLE hEncryptionKey,
-                          CK_OBJECT_HANDLE hAuthenticationKey) {
+EXPORT_SPEC CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
+                                      CK_BYTE_PTR pOperationState,
+                                      CK_ULONG ulOperationStateLen,
+                                      CK_OBJECT_HANDLE hEncryptionKey,
+                                      CK_OBJECT_HANDLE hAuthenticationKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pOperationState, CKR_ARGUMENTS_BAD);
 
@@ -552,10 +553,10 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.6 page 125.
-CK_RV C_Login(CK_SESSION_HANDLE hSession,
-              CK_USER_TYPE userType,
-              CK_UTF8CHAR_PTR pPin,
-              CK_ULONG ulPinLen) {
+EXPORT_SPEC CK_RV C_Login(CK_SESSION_HANDLE hSession,
+                          CK_USER_TYPE userType,
+                          CK_UTF8CHAR_PTR pPin,
+                          CK_ULONG ulPinLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
   string* pin_ptr = (!pPin) ? NULL : &pin;
@@ -568,7 +569,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.6 page 127.
-CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
+EXPORT_SPEC CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = PerformNonBlocking(
       [&] { return g_proxy->Logout(*g_user_isolate, hSession); });
@@ -578,10 +579,10 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
 }
 
 // PKCS #11 v2.20 section 11.7 page 128.
-CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
-                     CK_ATTRIBUTE_PTR pTemplate,
-                     CK_ULONG ulCount,
-                     CK_OBJECT_HANDLE_PTR phObject) {
+EXPORT_SPEC CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
+                                 CK_ATTRIBUTE_PTR pTemplate,
+                                 CK_ULONG ulCount,
+                                 CK_OBJECT_HANDLE_PTR phObject) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (pTemplate == NULL_PTR || phObject == NULL_PTR)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -600,11 +601,11 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.7 page 130.
-CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,
-                   CK_OBJECT_HANDLE hObject,
-                   CK_ATTRIBUTE_PTR pTemplate,
-                   CK_ULONG ulCount,
-                   CK_OBJECT_HANDLE_PTR phNewObject) {
+EXPORT_SPEC CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,
+                               CK_OBJECT_HANDLE hObject,
+                               CK_ATTRIBUTE_PTR pTemplate,
+                               CK_ULONG ulCount,
+                               CK_OBJECT_HANDLE_PTR phNewObject) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (pTemplate == NULL_PTR || phNewObject == NULL_PTR)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -623,7 +624,8 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.7 page 131.
-CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
+EXPORT_SPEC CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,
+                                  CK_OBJECT_HANDLE hObject) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->DestroyObject(*g_user_isolate, hSession, hObject);
@@ -634,9 +636,9 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
 }
 
 // PKCS #11 v2.20 section 11.7 page 132.
-CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,
-                      CK_OBJECT_HANDLE hObject,
-                      CK_ULONG_PTR pulSize) {
+EXPORT_SPEC CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,
+                                  CK_OBJECT_HANDLE hObject,
+                                  CK_ULONG_PTR pulSize) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulSize, CKR_ARGUMENTS_BAD);
   CK_RV result = PerformNonBlocking([&] {
@@ -649,10 +651,10 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.7 page 133.
-CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
-                          CK_OBJECT_HANDLE hObject,
-                          CK_ATTRIBUTE_PTR pTemplate,
-                          CK_ULONG ulCount) {
+EXPORT_SPEC CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
+                                      CK_OBJECT_HANDLE hObject,
+                                      CK_ATTRIBUTE_PTR pTemplate,
+                                      CK_ULONG ulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pTemplate, CKR_ARGUMENTS_BAD);
   chaps::Attributes attributes(pTemplate, ulCount);
@@ -677,10 +679,10 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.7 page 135.
-CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
-                          CK_OBJECT_HANDLE hObject,
-                          CK_ATTRIBUTE_PTR pTemplate,
-                          CK_ULONG ulCount) {
+EXPORT_SPEC CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
+                                      CK_OBJECT_HANDLE hObject,
+                                      CK_ATTRIBUTE_PTR pTemplate,
+                                      CK_ULONG ulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pTemplate, CKR_ARGUMENTS_BAD);
   chaps::Attributes attributes(pTemplate, ulCount);
@@ -697,9 +699,9 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.7 page 136.
-CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,
-                        CK_ATTRIBUTE_PTR pTemplate,
-                        CK_ULONG ulCount) {
+EXPORT_SPEC CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,
+                                    CK_ATTRIBUTE_PTR pTemplate,
+                                    CK_ULONG ulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pTemplate && ulCount > 0, CKR_ARGUMENTS_BAD);
   chaps::Attributes attributes(pTemplate, ulCount);
@@ -716,10 +718,10 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.7 page 137.
-CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
-                    CK_OBJECT_HANDLE_PTR phObject,
-                    CK_ULONG ulMaxObjectCount,
-                    CK_ULONG_PTR pulObjectCount) {
+EXPORT_SPEC CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
+                                CK_OBJECT_HANDLE_PTR phObject,
+                                CK_ULONG ulMaxObjectCount,
+                                CK_ULONG_PTR pulObjectCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!phObject || !pulObjectCount, CKR_ARGUMENTS_BAD);
   vector<uint64_t> object_list;
@@ -739,7 +741,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.7 page 138.
-CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
+EXPORT_SPEC CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = PerformNonBlocking(
       [&] { return g_proxy->FindObjectsFinal(*g_user_isolate, hSession); });
@@ -749,9 +751,9 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
 }
 
 // PKCS #11 v2.20 section 11.8 page 139.
-CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,
-                    CK_MECHANISM_PTR pMechanism,
-                    CK_OBJECT_HANDLE hKey) {
+EXPORT_SPEC CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,
+                                CK_MECHANISM_PTR pMechanism,
+                                CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   CK_RV result = PerformNonBlocking([&] {
@@ -768,11 +770,11 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.8 page 140.
-CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
-                CK_BYTE_PTR pData,
-                CK_ULONG ulDataLen,
-                CK_BYTE_PTR pEncryptedData,
-                CK_ULONG_PTR pulEncryptedDataLen) {
+EXPORT_SPEC CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
+                            CK_BYTE_PTR pData,
+                            CK_ULONG ulDataLen,
+                            CK_BYTE_PTR pEncryptedData,
+                            CK_ULONG_PTR pulEncryptedDataLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if ((!pData && ulDataLen > 0) || !pulEncryptedDataLen) {
     g_proxy->EncryptCancel(*g_user_isolate, hSession);
@@ -795,11 +797,11 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.8 page 141.
-CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
-                      CK_BYTE_PTR pPart,
-                      CK_ULONG ulPartLen,
-                      CK_BYTE_PTR pEncryptedPart,
-                      CK_ULONG_PTR pulEncryptedPartLen) {
+EXPORT_SPEC CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
+                                  CK_BYTE_PTR pPart,
+                                  CK_ULONG ulPartLen,
+                                  CK_BYTE_PTR pEncryptedPart,
+                                  CK_ULONG_PTR pulEncryptedPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pPart || !pulEncryptedPartLen) {
     g_proxy->EncryptCancel(*g_user_isolate, hSession);
@@ -823,9 +825,9 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.8 page 141.
-CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
-                     CK_BYTE_PTR pLastEncryptedPart,
-                     CK_ULONG_PTR pulLastEncryptedPartLen) {
+EXPORT_SPEC CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
+                                 CK_BYTE_PTR pLastEncryptedPart,
+                                 CK_ULONG_PTR pulLastEncryptedPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pulLastEncryptedPartLen) {
     g_proxy->EncryptCancel(*g_user_isolate, hSession);
@@ -847,9 +849,9 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.9 page 144.
-CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,
-                    CK_MECHANISM_PTR pMechanism,
-                    CK_OBJECT_HANDLE hKey) {
+EXPORT_SPEC CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,
+                                CK_MECHANISM_PTR pMechanism,
+                                CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   CK_RV result = PerformNonBlocking([&] {
@@ -866,11 +868,11 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.9 page 145.
-CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
-                CK_BYTE_PTR pEncryptedData,
-                CK_ULONG ulEncryptedDataLen,
-                CK_BYTE_PTR pData,
-                CK_ULONG_PTR pulDataLen) {
+EXPORT_SPEC CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
+                            CK_BYTE_PTR pEncryptedData,
+                            CK_ULONG ulEncryptedDataLen,
+                            CK_BYTE_PTR pData,
+                            CK_ULONG_PTR pulDataLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if ((!pEncryptedData && ulEncryptedDataLen > 0) || !pulDataLen) {
     g_proxy->DecryptCancel(*g_user_isolate, hSession);
@@ -893,11 +895,11 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.9 page 146.
-CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
-                      CK_BYTE_PTR pEncryptedPart,
-                      CK_ULONG ulEncryptedPartLen,
-                      CK_BYTE_PTR pPart,
-                      CK_ULONG_PTR pulPartLen) {
+EXPORT_SPEC CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
+                                  CK_BYTE_PTR pEncryptedPart,
+                                  CK_ULONG ulEncryptedPartLen,
+                                  CK_BYTE_PTR pPart,
+                                  CK_ULONG_PTR pulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pEncryptedPart || !pulPartLen) {
     g_proxy->DecryptCancel(*g_user_isolate, hSession);
@@ -920,9 +922,9 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.9 page 146.
-CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
-                     CK_BYTE_PTR pLastPart,
-                     CK_ULONG_PTR pulLastPartLen) {
+EXPORT_SPEC CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
+                                 CK_BYTE_PTR pLastPart,
+                                 CK_ULONG_PTR pulLastPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pulLastPartLen) {
     g_proxy->DecryptCancel(*g_user_isolate, hSession);
@@ -944,7 +946,8 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.10 page 148.
-CK_RV C_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism) {
+EXPORT_SPEC CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,
+                               CK_MECHANISM_PTR pMechanism) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   vector<uint8_t> parameter = chaps::ConvertByteBufferToVector(
@@ -960,11 +963,11 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism) {
 }
 
 // PKCS #11 v2.20 section 11.10 page 149.
-CK_RV C_Digest(CK_SESSION_HANDLE hSession,
-               CK_BYTE_PTR pData,
-               CK_ULONG ulDataLen,
-               CK_BYTE_PTR pDigest,
-               CK_ULONG_PTR pulDigestLen) {
+EXPORT_SPEC CK_RV C_Digest(CK_SESSION_HANDLE hSession,
+                           CK_BYTE_PTR pData,
+                           CK_ULONG ulDataLen,
+                           CK_BYTE_PTR pDigest,
+                           CK_ULONG_PTR pulDigestLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if ((!pData && ulDataLen > 0) || !pulDigestLen) {
     g_proxy->DigestCancel(*g_user_isolate, hSession);
@@ -986,9 +989,9 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.10 page 150.
-CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
-                     CK_BYTE_PTR pPart,
-                     CK_ULONG ulPartLen) {
+EXPORT_SPEC CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
+                                 CK_BYTE_PTR pPart,
+                                 CK_ULONG ulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pPart) {
     g_proxy->DigestCancel(*g_user_isolate, hSession);
@@ -1005,7 +1008,8 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.10 page 150.
-CK_RV C_DigestKey(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hKey) {
+EXPORT_SPEC CK_RV C_DigestKey(CK_SESSION_HANDLE hSession,
+                              CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = PerformNonBlocking(
       [&] { return g_proxy->DigestKey(*g_user_isolate, hSession, hKey); });
@@ -1015,9 +1019,9 @@ CK_RV C_DigestKey(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hKey) {
 }
 
 // PKCS #11 v2.20 section 11.10 page 151.
-CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
-                    CK_BYTE_PTR pDigest,
-                    CK_ULONG_PTR pulDigestLen) {
+EXPORT_SPEC CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
+                                CK_BYTE_PTR pDigest,
+                                CK_ULONG_PTR pulDigestLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pulDigestLen) {
     g_proxy->DigestCancel(*g_user_isolate, hSession);
@@ -1038,9 +1042,9 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.11 page 152.
-CK_RV C_SignInit(CK_SESSION_HANDLE hSession,
-                 CK_MECHANISM_PTR pMechanism,
-                 CK_OBJECT_HANDLE hKey) {
+EXPORT_SPEC CK_RV C_SignInit(CK_SESSION_HANDLE hSession,
+                             CK_MECHANISM_PTR pMechanism,
+                             CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   vector<uint8_t> parameter = chaps::ConvertByteBufferToVector(
@@ -1056,11 +1060,11 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.11 page 153.
-CK_RV C_Sign(CK_SESSION_HANDLE hSession,
-             CK_BYTE_PTR pData,
-             CK_ULONG ulDataLen,
-             CK_BYTE_PTR pSignature,
-             CK_ULONG_PTR pulSignatureLen) {
+EXPORT_SPEC CK_RV C_Sign(CK_SESSION_HANDLE hSession,
+                         CK_BYTE_PTR pData,
+                         CK_ULONG ulDataLen,
+                         CK_BYTE_PTR pSignature,
+                         CK_ULONG_PTR pulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if ((!pData && ulDataLen > 0) || !pulSignatureLen) {
     g_proxy->SignCancel(*g_user_isolate, hSession);
@@ -1083,9 +1087,9 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.11 page 154.
-CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,
-                   CK_BYTE_PTR pPart,
-                   CK_ULONG ulPartLen) {
+EXPORT_SPEC CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,
+                               CK_BYTE_PTR pPart,
+                               CK_ULONG ulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pPart) {
     g_proxy->SignCancel(*g_user_isolate, hSession);
@@ -1102,9 +1106,9 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.11 page 154.
-CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
-                  CK_BYTE_PTR pSignature,
-                  CK_ULONG_PTR pulSignatureLen) {
+EXPORT_SPEC CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
+                              CK_BYTE_PTR pSignature,
+                              CK_ULONG_PTR pulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pulSignatureLen) {
     g_proxy->SignCancel(*g_user_isolate, hSession);
@@ -1126,9 +1130,9 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.11 page 155.
-CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,
-                        CK_MECHANISM_PTR pMechanism,
-                        CK_OBJECT_HANDLE hKey) {
+EXPORT_SPEC CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,
+                                    CK_MECHANISM_PTR pMechanism,
+                                    CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   vector<uint8_t> parameter = chaps::ConvertByteBufferToVector(
@@ -1144,11 +1148,11 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.11 page 156.
-CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
-                    CK_BYTE_PTR pData,
-                    CK_ULONG ulDataLen,
-                    CK_BYTE_PTR pSignature,
-                    CK_ULONG_PTR pulSignatureLen) {
+EXPORT_SPEC CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
+                                CK_BYTE_PTR pData,
+                                CK_ULONG ulDataLen,
+                                CK_BYTE_PTR pSignature,
+                                CK_ULONG_PTR pulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if ((!pData && ulDataLen > 0) || !pulSignatureLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1170,9 +1174,9 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.12 page 157.
-CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,
-                   CK_MECHANISM_PTR pMechanism,
-                   CK_OBJECT_HANDLE hKey) {
+EXPORT_SPEC CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,
+                               CK_MECHANISM_PTR pMechanism,
+                               CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   vector<uint8_t> parameter = chaps::ConvertByteBufferToVector(
@@ -1188,11 +1192,11 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.12 page 158.
-CK_RV C_Verify(CK_SESSION_HANDLE hSession,
-               CK_BYTE_PTR pData,
-               CK_ULONG ulDataLen,
-               CK_BYTE_PTR pSignature,
-               CK_ULONG ulSignatureLen) {
+EXPORT_SPEC CK_RV C_Verify(CK_SESSION_HANDLE hSession,
+                           CK_BYTE_PTR pData,
+                           CK_ULONG ulDataLen,
+                           CK_BYTE_PTR pSignature,
+                           CK_ULONG ulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pSignature || (!pData && ulDataLen > 0)) {
     g_proxy->VerifyCancel(*g_user_isolate, hSession);
@@ -1210,9 +1214,9 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.12 page 159.
-CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,
-                     CK_BYTE_PTR pPart,
-                     CK_ULONG ulPartLen) {
+EXPORT_SPEC CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,
+                                 CK_BYTE_PTR pPart,
+                                 CK_ULONG ulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pPart) {
     g_proxy->VerifyCancel(*g_user_isolate, hSession);
@@ -1229,9 +1233,9 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.12 page 159.
-CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,
-                    CK_BYTE_PTR pSignature,
-                    CK_ULONG ulSignatureLen) {
+EXPORT_SPEC CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,
+                                CK_BYTE_PTR pSignature,
+                                CK_ULONG ulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pSignature) {
     g_proxy->VerifyCancel(*g_user_isolate, hSession);
@@ -1248,9 +1252,9 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.12 page 161.
-CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
-                          CK_MECHANISM_PTR pMechanism,
-                          CK_OBJECT_HANDLE hKey) {
+EXPORT_SPEC CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
+                                      CK_MECHANISM_PTR pMechanism,
+                                      CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   vector<uint8_t> parameter = chaps::ConvertByteBufferToVector(
@@ -1266,11 +1270,11 @@ CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.12 page 161.
-CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
-                      CK_BYTE_PTR pSignature,
-                      CK_ULONG ulSignatureLen,
-                      CK_BYTE_PTR pData,
-                      CK_ULONG_PTR pulDataLen) {
+EXPORT_SPEC CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
+                                  CK_BYTE_PTR pSignature,
+                                  CK_ULONG ulSignatureLen,
+                                  CK_BYTE_PTR pData,
+                                  CK_ULONG_PTR pulDataLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pSignature || !pulDataLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1291,11 +1295,11 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.13 page 163.
-CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
-                            CK_BYTE_PTR pPart,
-                            CK_ULONG ulPartLen,
-                            CK_BYTE_PTR pEncryptedPart,
-                            CK_ULONG_PTR pulEncryptedPartLen) {
+EXPORT_SPEC CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
+                                        CK_BYTE_PTR pPart,
+                                        CK_ULONG ulPartLen,
+                                        CK_BYTE_PTR pEncryptedPart,
+                                        CK_ULONG_PTR pulEncryptedPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
@@ -1316,11 +1320,11 @@ CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.13 page 165.
-CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
-                            CK_BYTE_PTR pEncryptedPart,
-                            CK_ULONG ulEncryptedPartLen,
-                            CK_BYTE_PTR pPart,
-                            CK_ULONG_PTR pulPartLen) {
+EXPORT_SPEC CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
+                                        CK_BYTE_PTR pEncryptedPart,
+                                        CK_ULONG ulEncryptedPartLen,
+                                        CK_BYTE_PTR pPart,
+                                        CK_ULONG_PTR pulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
@@ -1340,11 +1344,11 @@ CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.13 page 169.
-CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
-                          CK_BYTE_PTR pPart,
-                          CK_ULONG ulPartLen,
-                          CK_BYTE_PTR pEncryptedPart,
-                          CK_ULONG_PTR pulEncryptedPartLen) {
+EXPORT_SPEC CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
+                                      CK_BYTE_PTR pPart,
+                                      CK_ULONG ulPartLen,
+                                      CK_BYTE_PTR pEncryptedPart,
+                                      CK_ULONG_PTR pulEncryptedPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
@@ -1365,11 +1369,11 @@ CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.13 page 171.
-CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
-                            CK_BYTE_PTR pEncryptedPart,
-                            CK_ULONG ulEncryptedPartLen,
-                            CK_BYTE_PTR pPart,
-                            CK_ULONG_PTR pulPartLen) {
+EXPORT_SPEC CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
+                                        CK_BYTE_PTR pEncryptedPart,
+                                        CK_ULONG ulEncryptedPartLen,
+                                        CK_BYTE_PTR pPart,
+                                        CK_ULONG_PTR pulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
@@ -1389,11 +1393,11 @@ CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.14 page 175.
-CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
-                    CK_MECHANISM_PTR pMechanism,
-                    CK_ATTRIBUTE_PTR pTemplate,
-                    CK_ULONG ulCount,
-                    CK_OBJECT_HANDLE_PTR phKey) {
+EXPORT_SPEC CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
+                                CK_MECHANISM_PTR pMechanism,
+                                CK_ATTRIBUTE_PTR pTemplate,
+                                CK_ULONG ulCount,
+                                CK_OBJECT_HANDLE_PTR phKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pMechanism || (!pTemplate && ulCount > 0) || !phKey)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1415,14 +1419,14 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.14 page 176.
-CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
-                        CK_MECHANISM_PTR pMechanism,
-                        CK_ATTRIBUTE_PTR pPublicKeyTemplate,
-                        CK_ULONG ulPublicKeyAttributeCount,
-                        CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
-                        CK_ULONG ulPrivateKeyAttributeCount,
-                        CK_OBJECT_HANDLE_PTR phPublicKey,
-                        CK_OBJECT_HANDLE_PTR phPrivateKey) {
+EXPORT_SPEC CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
+                                    CK_MECHANISM_PTR pMechanism,
+                                    CK_ATTRIBUTE_PTR pPublicKeyTemplate,
+                                    CK_ULONG ulPublicKeyAttributeCount,
+                                    CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
+                                    CK_ULONG ulPrivateKeyAttributeCount,
+                                    CK_OBJECT_HANDLE_PTR phPublicKey,
+                                    CK_OBJECT_HANDLE_PTR phPrivateKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pMechanism || (!pPublicKeyTemplate && ulPublicKeyAttributeCount > 0) ||
       (!pPrivateKeyTemplate && ulPrivateKeyAttributeCount > 0) ||
@@ -1452,12 +1456,12 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.14 page 178.
-CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
-                CK_MECHANISM_PTR pMechanism,
-                CK_OBJECT_HANDLE hWrappingKey,
-                CK_OBJECT_HANDLE hKey,
-                CK_BYTE_PTR pWrappedKey,
-                CK_ULONG_PTR pulWrappedKeyLen) {
+EXPORT_SPEC CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
+                            CK_MECHANISM_PTR pMechanism,
+                            CK_OBJECT_HANDLE hWrappingKey,
+                            CK_OBJECT_HANDLE hKey,
+                            CK_BYTE_PTR pWrappedKey,
+                            CK_ULONG_PTR pulWrappedKeyLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pMechanism || !pulWrappedKeyLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1481,14 +1485,14 @@ CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.14 page 180.
-CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
-                  CK_MECHANISM_PTR pMechanism,
-                  CK_OBJECT_HANDLE hUnwrappingKey,
-                  CK_BYTE_PTR pWrappedKey,
-                  CK_ULONG ulWrappedKeyLen,
-                  CK_ATTRIBUTE_PTR pTemplate,
-                  CK_ULONG ulAttributeCount,
-                  CK_OBJECT_HANDLE_PTR phKey) {
+EXPORT_SPEC CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
+                              CK_MECHANISM_PTR pMechanism,
+                              CK_OBJECT_HANDLE hUnwrappingKey,
+                              CK_BYTE_PTR pWrappedKey,
+                              CK_ULONG ulWrappedKeyLen,
+                              CK_ATTRIBUTE_PTR pTemplate,
+                              CK_ULONG ulAttributeCount,
+                              CK_OBJECT_HANDLE_PTR phKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pMechanism || !pWrappedKey || !phKey)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1512,12 +1516,12 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.14 page 182.
-CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
-                  CK_MECHANISM_PTR pMechanism,
-                  CK_OBJECT_HANDLE hBaseKey,
-                  CK_ATTRIBUTE_PTR pTemplate,
-                  CK_ULONG ulAttributeCount,
-                  CK_OBJECT_HANDLE_PTR phKey) {
+EXPORT_SPEC CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
+                              CK_MECHANISM_PTR pMechanism,
+                              CK_OBJECT_HANDLE hBaseKey,
+                              CK_ATTRIBUTE_PTR pTemplate,
+                              CK_ULONG ulAttributeCount,
+                              CK_OBJECT_HANDLE_PTR phKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pMechanism || !phKey)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1539,9 +1543,9 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.15 page 184.
-CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
-                   CK_BYTE_PTR pSeed,
-                   CK_ULONG ulSeedLen) {
+EXPORT_SPEC CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
+                               CK_BYTE_PTR pSeed,
+                               CK_ULONG ulSeedLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pSeed || ulSeedLen == 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1556,9 +1560,9 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.15 page 184.
-CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
-                       CK_BYTE_PTR RandomData,
-                       CK_ULONG ulRandomLen) {
+EXPORT_SPEC CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
+                                   CK_BYTE_PTR RandomData,
+                                   CK_ULONG ulRandomLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!RandomData || ulRandomLen == 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -1575,11 +1579,11 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.16 page 185.
-CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession) {
+EXPORT_SPEC CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession) {
   return CKR_FUNCTION_NOT_PARALLEL;
 }
 
 // PKCS #11 v2.20 section 11.16 page 186.
-CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession) {
+EXPORT_SPEC CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession) {
   return CKR_FUNCTION_NOT_PARALLEL;
 }
