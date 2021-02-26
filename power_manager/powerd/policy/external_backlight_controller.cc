@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <iterator>
 #include <memory>
 #include <set>
 #include <string>
@@ -379,7 +380,12 @@ void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
 }
 
 void ExternalBacklightController::SetBrightnessPercentForAmbientLight(
-    const system::DisplayInfo& display_info, double brightness_percent) {}
+    const system::DisplayInfo& display_info, double brightness_percent) {
+  auto display_it = external_displays_.find(display_info);
+  if (display_it != external_displays_.end()) {
+    display_it->second->SetBrightness(brightness_percent);
+  }
+}
 
 std::vector<std::pair<base::FilePath, system::DisplayInfo>>
 ExternalBacklightController::

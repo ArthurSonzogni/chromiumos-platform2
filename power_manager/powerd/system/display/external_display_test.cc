@@ -534,5 +534,55 @@ TEST_F(ExternalDisplayTest, ZeroMax) {
   EXPECT_FALSE(test_api_.TriggerTimeout());
 }
 
+TEST_F(ExternalDisplayTest, AbsoluteBrightness) {
+  // Setting the brightness to 60% should result in a "get brightness" request
+  // being sent.
+  display_.SetBrightness(60.0);
+  EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                metrics::kExternalBrightnessRequestResultName,
+                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
+            PopMetric());
+
+  // After the timer fires, the reply should be read and a request to set the
+  // brightness to 60 should be sent.
+  delegate_->set_reply_message(GetBrightnessReply(50, 100));
+  EXPECT_EQ(ExternalDisplay::kDdcGetDelayMs,
+            test_api_.GetTimerDelay().InMilliseconds());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
+
+  // The successful read and write should both be reported.
+  EXPECT_EQ(2, metrics_sender_.num_metrics());
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                metrics::kExternalBrightnessReadResultName,
+                static_cast<int>(ExternalDisplay::ReceiveResult::SUCCESS),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
+            metrics_sender_.GetMetric(0));
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                metrics::kExternalBrightnessWriteResultName,
+                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
+            metrics_sender_.GetMetric(1));
+  metrics_sender_.clear_metrics();
+
+  // Asking for more changes shouldn't result in requests being sent at first,
+  // since no time has passed since the previous request. After the timer fires,
+  // a new request should be sent containing the last absolute request combined
+  // with the adjustment.
+  display_.SetBrightness(50.0);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  display_.AdjustBrightnessByPercent(35.0);
+  EXPECT_EQ("", delegate_->PopSentMessage());
+  EXPECT_EQ(ExternalDisplay::kDdcSetDelayMs,
+            test_api_.GetTimerDelay().InMilliseconds());
+  ASSERT_TRUE(test_api_.TriggerTimeout());
+  EXPECT_EQ(GetSetBrightnessMessage(85), delegate_->PopSentMessage());
+}
+
 }  // namespace system
 }  // namespace power_manager

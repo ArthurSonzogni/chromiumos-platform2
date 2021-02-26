@@ -147,12 +147,21 @@ ExternalDisplay::ExternalDisplay(std::unique_ptr<Delegate> delegate)
       state_(State::IDLE),
       current_brightness_percent_(0.0),
       max_brightness_level_(0),
-      pending_brightness_adjustment_percent_(0.0) {}
+      pending_brightness_adjustment_percent_(0.0),
+      pending_brightness_percent_(-1.0) {}
 
 ExternalDisplay::~ExternalDisplay() {}
 
 void ExternalDisplay::AdjustBrightnessByPercent(double percent_offset) {
   pending_brightness_adjustment_percent_ += percent_offset;
+  if (!timer_.IsRunning()) {
+    DCHECK_EQ(State::IDLE, state_);
+    UpdateState();
+  }
+}
+
+void ExternalDisplay::SetBrightness(double percent) {
+  pending_brightness_percent_ = percent;
   if (!timer_.IsRunning()) {
     DCHECK_EQ(State::IDLE, state_);
     UpdateState();
@@ -171,7 +180,8 @@ bool ExternalDisplay::HaveCachedBrightness() {
 
 bool ExternalDisplay::HavePendingBrightnessAdjustment() const {
   return pending_brightness_adjustment_percent_ < -kEpsilon ||
-         pending_brightness_adjustment_percent_ > kEpsilon;
+         pending_brightness_adjustment_percent_ > kEpsilon ||
+         pending_brightness_percent_ >= 0;
 }
 
 void ExternalDisplay::StartTimer(base::TimeDelta delay) {
@@ -264,7 +274,9 @@ bool ExternalDisplay::ReadBrightness() {
 
 bool ExternalDisplay::WriteBrightness() {
   const double new_percent = util::ClampPercent(
-      current_brightness_percent_ + pending_brightness_adjustment_percent_);
+      (pending_brightness_percent_ >= 0.0 ? pending_brightness_percent_
+                                          : current_brightness_percent_) +
+      pending_brightness_adjustment_percent_);
   const uint16_t new_level = BrightnessPercentToLevel(new_percent);
 
   // Don't send anything if the brightness isn't changing, but update the
@@ -312,6 +324,7 @@ void ExternalDisplay::UpdateState() {
         if (WriteBrightness())
           StartTimer(base::TimeDelta::FromMilliseconds(kDdcSetDelayMs));
         pending_brightness_adjustment_percent_ = 0.0;
+        pending_brightness_percent_ = -1.0;
         return;
       }
 
@@ -319,6 +332,7 @@ void ExternalDisplay::UpdateState() {
       // read the reply.
       if (!RequestBrightness()) {
         pending_brightness_adjustment_percent_ = 0.0;
+        pending_brightness_percent_ = -1.0;
         return;
       }
       state_ = State::WAITING_FOR_REPLY;
@@ -330,6 +344,7 @@ void ExternalDisplay::UpdateState() {
       // If reading the brightness failed, give up.
       if (!ReadBrightness()) {
         pending_brightness_adjustment_percent_ = 0.0;
+        pending_brightness_percent_ = -1.0;
         return;
       }
 
@@ -340,6 +355,7 @@ void ExternalDisplay::UpdateState() {
       if (HavePendingBrightnessAdjustment() && WriteBrightness())
         StartTimer(base::TimeDelta::FromMilliseconds(kDdcSetDelayMs));
       pending_brightness_adjustment_percent_ = 0.0;
+      pending_brightness_percent_ = -1.0;
       return;
   }
 }

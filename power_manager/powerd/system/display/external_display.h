@@ -175,7 +175,6 @@ class ExternalDisplay {
 
     // File path for the I2C bus.
     base::FilePath i2c_path_;
-
   };
 
   // Class used by tests to interact with ExternalDisplay's internals.
@@ -199,7 +198,6 @@ class ExternalDisplay {
 
    private:
     ExternalDisplay* display_;  // weak pointer
-
   };
 
   explicit ExternalDisplay(std::unique_ptr<Delegate> delegate);
@@ -212,6 +210,14 @@ class ExternalDisplay {
   // percent in the range [-100.0, 100.0]. Note that the adjustment will happen
   // asynchronously if the display's current brightness is initially unknown.
   void AdjustBrightnessByPercent(double offset_percent);
+
+  // Adjusts the display's brightness to |percent|, a linearly-calculated
+  // percent in the range [0, 100.0]. Note that this will happen asynchronously
+  // if the display's current brightness is initially unknown. This operation is
+  // racy if the user is simultaneously adjusting the brightness using physical
+  // buttons on the display. This should not be used with displays that have
+  // physical buttons for adjusting the brightness.
+  void SetBrightness(double percent);
 
  private:
   enum class State {
@@ -286,6 +292,10 @@ class ExternalDisplay {
   // Amount by which the brightness should be offset, as a percentage in the
   // range [-100.0, 100.0].
   double pending_brightness_adjustment_percent_;
+
+  // Absolute brightness to set, as a percentage in the range [0.0, 100.0]. This
+  // value will be less than zero if no change is pending.
+  double pending_brightness_percent_;
 
   // Invokes UpdateState(). Used to enforce the mandatory delays between
   // requesting the brightness and reading the reply, and after sending a "set"
