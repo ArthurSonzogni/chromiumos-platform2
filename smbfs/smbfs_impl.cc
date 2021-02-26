@@ -16,10 +16,10 @@
 namespace smbfs {
 
 SmbFsImpl::SmbFsImpl(base::WeakPtr<SmbFilesystem> fs,
-                     mojom::SmbFsRequest request,
+                     mojo::PendingReceiver<mojom::SmbFs> receiver,
                      const base::FilePath& password_file_path)
     : fs_(fs),
-      binding_(this, std::move(request)),
+      receiver_(this, std::move(receiver)),
       password_file_path_(password_file_path) {
   DCHECK(fs_);
 }

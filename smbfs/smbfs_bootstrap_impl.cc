@@ -19,6 +19,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/hmac.h>
 #include <libpasswordprovider/password.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "smbfs/smb_credential.h"
@@ -125,18 +126,18 @@ std::unique_ptr<password_provider::Password> ReadPasswordFromFile(
 }  // namespace
 
 SmbFsBootstrapImpl::SmbFsBootstrapImpl(
-    mojom::SmbFsBootstrapRequest request,
+    mojo::PendingReceiver<mojom::SmbFsBootstrap> receiver,
     SmbFilesystemFactory smb_filesystem_factory,
     Delegate* delegate,
     const base::FilePath& daemon_store_root)
-    : binding_(this, std::move(request)),
+    : receiver_(this, std::move(receiver)),
       smb_filesystem_factory_(smb_filesystem_factory),
       delegate_(delegate),
       daemon_store_root_(daemon_store_root) {
   DCHECK(smb_filesystem_factory_);
   DCHECK(delegate_);
   DCHECK(!daemon_store_root_.empty());
-  binding_.set_connection_error_handler(base::Bind(
+  receiver_.set_disconnect_handler(base::Bind(
       &SmbFsBootstrapImpl::OnMojoConnectionError, base::Unretained(this)));
 }
 
@@ -147,19 +148,22 @@ void SmbFsBootstrapImpl::Start(BootstrapCompleteCallback callback) {
   completion_callback_ = std::move(callback);
 }
 
-void SmbFsBootstrapImpl::MountShare(mojom::MountOptionsPtr options,
-                                    mojom::SmbFsDelegatePtr smbfs_delegate,
-                                    MountShareCallback callback) {
+void SmbFsBootstrapImpl::MountShare(
+    mojom::MountOptionsPtr options,
+    mojo::PendingRemote<mojom::SmbFsDelegate> smbfs_delegate,
+    MountShareCallback callback) {
   if (!completion_callback_) {
     LOG(ERROR) << "Mojo bootstrap not active";
-    std::move(callback).Run(mojom::MountError::kUnknown, nullptr);
+    std::move(callback).Run(mojom::MountError::kUnknown,
+                            mojo::PendingRemote<smbfs::mojom::SmbFs>());
     return;
   }
 
   if (options->share_path.find("smb://") != 0) {
     // TODO(amistry): More extensive URL validation.
     LOG(ERROR) << "Invalid share path: " << options->share_path;
-    std::move(callback).Run(mojom::MountError::kInvalidUrl, nullptr);
+    std::move(callback).Run(mojom::MountError::kInvalidUrl,
+                            mojo::PendingRemote<smbfs::mojom::SmbFs>());
     return;
   }
 
@@ -186,7 +190,7 @@ void SmbFsBootstrapImpl::MountShare(mojom::MountOptionsPtr options,
 
 void SmbFsBootstrapImpl::OnCredentialsSetup(
     mojom::MountOptionsPtr options,
-    mojom::SmbFsDelegatePtr smbfs_delegate,
+    mojo::PendingRemote<mojom::SmbFsDelegate> smbfs_delegate,
     MountShareCallback callback,
     std::unique_ptr<SmbCredential> credential,
     bool use_kerberos,
@@ -194,7 +198,8 @@ void SmbFsBootstrapImpl::OnCredentialsSetup(
   DCHECK(credential);
 
   if (!setup_success) {
-    std::move(callback).Run(mojom::MountError::kUnknown, nullptr);
+    std::move(callback).Run(mojom::MountError::kUnknown,
+                            mojo::PendingRemote<smbfs::mojom::SmbFs>());
     return;
   }
 
@@ -235,7 +240,8 @@ void SmbFsBootstrapImpl::OnCredentialsSetup(
     if (options->resolved_host->address_bytes.size() != 4) {
       LOG(ERROR) << "Invalid IP address size: "
                  << options->resolved_host->address_bytes.size();
-      std::move(callback).Run(mojom::MountError::kInvalidOptions, nullptr);
+      std::move(callback).Run(mojom::MountError::kInvalidOptions,
+                              mojo::PendingRemote<smbfs::mojom::SmbFs>());
       return;
     }
     fs->SetResolvedAddress(options->resolved_host->address_bytes);
@@ -245,7 +251,8 @@ void SmbFsBootstrapImpl::OnCredentialsSetup(
     if (error != SmbFilesystem::ConnectError::kOk) {
       LOG(ERROR) << "Unable to connect to SMB share " << options->share_path
                  << ": " << error;
-      std::move(callback).Run(ConnectErrorToMountError(error), nullptr);
+      std::move(callback).Run(ConnectErrorToMountError(error),
+                              mojo::PendingRemote<smbfs::mojom::SmbFs>());
       return;
     }
   }
@@ -256,17 +263,21 @@ void SmbFsBootstrapImpl::OnCredentialsSetup(
     CHECK(SavePasswordToFile(pass_file_path, obfuscated_password));
   }
 
-  mojom::SmbFsPtr smbfs_ptr;
+  mojo::PendingRemote<mojom::SmbFs> smbfs;
   std::move(completion_callback_)
-      .Run(std::move(fs), mojo::MakeRequest(&smbfs_ptr),
+      .Run(std::move(fs), smbfs.InitWithNewPipeAndPassReceiver(),
            std::move(smbfs_delegate));
 
-  std::move(callback).Run(mojom::MountError::kOk, std::move(smbfs_ptr));
+  std::move(callback).Run(mojom::MountError::kOk, std::move(smbfs));
 }
 
 void SmbFsBootstrapImpl::OnMojoConnectionError() {
   if (completion_callback_) {
-    std::move(completion_callback_).Run(nullptr, nullptr, nullptr);
+    std::move(completion_callback_)
+        .Run(nullptr,
+             mojo::PendingRemote<smbfs::mojom::SmbFs>()
+                 .InitWithNewPipeAndPassReceiver(),
+             mojo::PendingRemote<smbfs::mojom::SmbFsDelegate>());
   }
 }
 

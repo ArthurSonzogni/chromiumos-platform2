@@ -13,7 +13,9 @@
 #include <base/logging.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "smbfs/authpolicy_client.h"
 #include "smbfs/fuse_session.h"
@@ -34,13 +36,14 @@ constexpr char kDaemonStoreDirectory[] = "/run/daemon-store/smbfs";
 
 }  // namespace
 
-MojoSession::MojoSession(scoped_refptr<dbus::Bus> bus,
-                         const base::FilePath& temp_dir,
-                         fuse_chan* chan,
-                         mojom::SmbFsBootstrapRequest bootstrap_request,
-                         uid_t uid,
-                         gid_t gid,
-                         base::OnceClosure shutdown_callback)
+MojoSession::MojoSession(
+    scoped_refptr<dbus::Bus> bus,
+    const base::FilePath& temp_dir,
+    fuse_chan* chan,
+    mojo::PendingReceiver<mojom::SmbFsBootstrap> bootstrap_receiver,
+    uid_t uid,
+    gid_t gid,
+    base::OnceClosure shutdown_callback)
     : bus_(std::move(bus)),
       temp_dir_(temp_dir),
       chan_(chan),
@@ -48,7 +51,7 @@ MojoSession::MojoSession(scoped_refptr<dbus::Bus> bus,
       gid_(gid),
       shutdown_callback_(std::move(shutdown_callback)),
       bootstrap_impl_(std::make_unique<SmbFsBootstrapImpl>(
-          std::move(bootstrap_request),
+          std::move(bootstrap_receiver),
           base::BindRepeating(&MojoSession::CreateSmbFilesystem,
                               base::Unretained(this)),
           this,
@@ -118,9 +121,10 @@ std::unique_ptr<SmbFilesystem> MojoSession::CreateSmbFilesystem(
   return std::make_unique<SmbFilesystem>(this, std::move(options));
 }
 
-void MojoSession::OnBootstrapComplete(std::unique_ptr<SmbFilesystem> fs,
-                                      mojom::SmbFsRequest smbfs_request,
-                                      mojom::SmbFsDelegatePtr delegate_ptr) {
+void MojoSession::OnBootstrapComplete(
+    std::unique_ptr<SmbFilesystem> fs,
+    mojo::PendingReceiver<mojom::SmbFs> smbfs_receiver,
+    mojo::PendingRemote<mojom::SmbFsDelegate> delegate) {
   if (!fs) {
     LOG(ERROR) << "Connection error during Mojo bootstrap.";
     DoShutdown();
@@ -131,9 +135,10 @@ void MojoSession::OnBootstrapComplete(std::unique_ptr<SmbFilesystem> fs,
   DCHECK(chan_);
 
   smbfs_impl_ = std::make_unique<SmbFsImpl>(
-      fs->GetWeakPtr(), std::move(smbfs_request), password_file_path_);
-  smbfs_delegate_ = std::move(delegate_ptr);
-  smbfs_delegate_.set_connection_error_handler(
+      fs->GetWeakPtr(), std::move(smbfs_receiver), password_file_path_);
+  smbfs_delegate_ =
+      mojo::Remote<smbfs::mojom::SmbFsDelegate>(std::move(delegate));
+  smbfs_delegate_.set_disconnect_handler(
       base::BindOnce(&MojoSession::DoShutdown, base::Unretained(this)));
 
   fuse_session_ = std::make_unique<FuseSession>(std::move(fs), chan_);

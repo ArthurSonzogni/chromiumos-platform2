@@ -11,7 +11,9 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/callback.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "smbfs/mojom/smbfs.mojom.h"
 #include "smbfs/smb_filesystem.h"
@@ -44,12 +46,12 @@ class SmbFsBootstrapImpl : public mojom::SmbFsBootstrap {
       base::RepeatingCallback<std::unique_ptr<SmbFilesystem>(
           SmbFilesystem::Options)>;
 
-  using BootstrapCompleteCallback =
-      base::OnceCallback<void(std::unique_ptr<SmbFilesystem> fs,
-                              mojom::SmbFsRequest smbfs_request,
-                              mojom::SmbFsDelegatePtr delegate_ptr)>;
+  using BootstrapCompleteCallback = base::OnceCallback<void(
+      std::unique_ptr<SmbFilesystem> fs,
+      mojo::PendingReceiver<mojom::SmbFs> receiver,
+      mojo::PendingRemote<mojom::SmbFsDelegate> delegate)>;
 
-  SmbFsBootstrapImpl(mojom::SmbFsBootstrapRequest request,
+  SmbFsBootstrapImpl(mojo::PendingReceiver<mojom::SmbFsBootstrap> receiver,
                      SmbFilesystemFactory smb_filesystem_factory,
                      Delegate* delegate,
                      const base::FilePath& daemon_store_root);
@@ -67,17 +69,18 @@ class SmbFsBootstrapImpl : public mojom::SmbFsBootstrap {
  private:
   // mojom::SmbFsBootstrap overrides.
   void MountShare(mojom::MountOptionsPtr options,
-                  mojom::SmbFsDelegatePtr smbfs_delegate,
+                  mojo::PendingRemote<mojom::SmbFsDelegate> smbfs_delegate,
                   MountShareCallback callback) override;
 
   // Callback to continue MountShare after setting up credentials
   // (username/password, or kerberos).
-  void OnCredentialsSetup(mojom::MountOptionsPtr options,
-                          mojom::SmbFsDelegatePtr smbfs_delegate,
-                          MountShareCallback callback,
-                          std::unique_ptr<SmbCredential> credential,
-                          bool use_kerberos,
-                          bool setup_success);
+  void OnCredentialsSetup(
+      mojom::MountOptionsPtr options,
+      mojo::PendingRemote<mojom::SmbFsDelegate> smbfs_delegate,
+      MountShareCallback callback,
+      std::unique_ptr<SmbCredential> credential,
+      bool use_kerberos,
+      bool setup_success);
 
   // Mojo connection error handler.
   void OnMojoConnectionError();
@@ -86,7 +89,7 @@ class SmbFsBootstrapImpl : public mojom::SmbFsBootstrap {
   base::FilePath GetUserDaemonStoreDirectory(
       const std::string& username_hash) const;
 
-  mojo::Binding<mojom::SmbFsBootstrap> binding_;
+  mojo::Receiver<mojom::SmbFsBootstrap> receiver_;
   base::OnceClosure disconnect_callback_;
 
   const SmbFilesystemFactory smb_filesystem_factory_;

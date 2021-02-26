@@ -10,7 +10,8 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "smbfs/mojom/smbfs.mojom.h"
 
@@ -23,7 +24,7 @@ class SmbFilesystem;
 class SmbFsImpl : public mojom::SmbFs {
  public:
   explicit SmbFsImpl(base::WeakPtr<SmbFilesystem> fs,
-                     mojom::SmbFsRequest request,
+                     mojo::PendingReceiver<mojom::SmbFs> receiver,
                      const base::FilePath& password_file_path);
   ~SmbFsImpl() override;
 
@@ -34,7 +35,7 @@ class SmbFsImpl : public mojom::SmbFs {
                          DeleteRecursivelyCallback callback) override;
 
   base::WeakPtr<SmbFilesystem> fs_;
-  mojo::Binding<mojom::SmbFs> binding_;
+  mojo::Receiver<mojom::SmbFs> receiver_;
   const base::FilePath password_file_path_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(SmbFsImpl);

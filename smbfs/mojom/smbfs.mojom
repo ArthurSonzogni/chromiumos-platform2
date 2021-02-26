@@ -20,8 +20,8 @@ const string kBootstrapPipeName = "smbfs-bootstrap";
 // Implemented by SmbFs, used from Chrome.
 interface SmbFsBootstrap {
   // Connect to an SMB share. This method must only be called once.
-  MountShare(MountOptions options, SmbFsDelegate delegate) =>
-      (MountError error, SmbFs? smbfs);
+  MountShare(MountOptions options, pending_remote<SmbFsDelegate> delegate) =>
+      (MountError error, pending_remote<SmbFs>? smbfs);
 };
 
 // Implemented by SmbFs, used from Chrome.

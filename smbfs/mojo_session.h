@@ -15,6 +15,7 @@
 #include <base/macros.h>
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "smbfs/smb_filesystem.h"
 #include "smbfs/smbfs_bootstrap_impl.h"
@@ -37,7 +38,7 @@ class MojoSession : public SmbFsBootstrapImpl::Delegate,
   MojoSession(scoped_refptr<dbus::Bus> bus,
               const base::FilePath& temp_dir,
               fuse_chan* chan,
-              mojom::SmbFsBootstrapRequest bootstrap_request,
+              mojo::PendingReceiver<mojom::SmbFsBootstrap> bootstrap_receiver,
               uid_t uid,
               gid_t gid,
               base::OnceClosure shutdown_callback);
@@ -64,8 +65,8 @@ class MojoSession : public SmbFsBootstrapImpl::Delegate,
 
   // Callback for SmbFsBootstrapImpl::Start().
   void OnBootstrapComplete(std::unique_ptr<SmbFilesystem> fs,
-                           mojom::SmbFsRequest smbfs_request,
-                           mojom::SmbFsDelegatePtr delegate_ptr);
+                           mojo::PendingReceiver<mojom::SmbFs> smbfs_receiver,
+                           mojo::PendingRemote<mojom::SmbFsDelegate> delegate);
 
   // Factory function for creating an SmbFilesystem.
   std::unique_ptr<SmbFilesystem> CreateSmbFilesystem(
@@ -86,7 +87,7 @@ class MojoSession : public SmbFsBootstrapImpl::Delegate,
   std::unique_ptr<FuseSession> fuse_session_;
   std::unique_ptr<KerberosArtifactSynchronizer> kerberos_sync_;
   std::unique_ptr<SmbFsImpl> smbfs_impl_;
-  mojom::SmbFsDelegatePtr smbfs_delegate_;
+  mojo::Remote<mojom::SmbFsDelegate> smbfs_delegate_;
 };
 
 }  // namespace smbfs
