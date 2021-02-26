@@ -11,7 +11,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
-
+#include <dbus/mock_bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -25,6 +25,7 @@
 using testing::_;
 using testing::AnyNumber;
 using testing::Eq;
+using testing::Invoke;
 using testing::Pair;
 using testing::Pointee;
 using testing::Return;
@@ -64,6 +65,27 @@ class MockTrafficForwarder : public TrafficForwarder {
                     bool multicast));
 };
 
+class MockShillClient : public ShillClient {
+ public:
+  explicit MockShillClient(scoped_refptr<dbus::MockBus> bus)
+      : ShillClient(bus) {}
+  ~MockShillClient() = default;
+
+  MOCK_METHOD2(GetDeviceProperties,
+               bool(const std::string& ifname, ShillClient::Device* device));
+};
+
+void ExpectGetDeviceProperties(MockShillClient& shill_client,
+                               const std::string& iface,
+                               ShillClient::Device::Type type) {
+  EXPECT_CALL(shill_client, GetDeviceProperties(StrEq(iface), _))
+      .WillRepeatedly(
+          Invoke([type](const std::string& _, ShillClient::Device* device) {
+            device->type = type;
+            return true;
+          }));
+}
+
 }  // namespace
 
 class ArcServiceTest : public testing::Test {
@@ -75,7 +97,7 @@ class ArcServiceTest : public testing::Test {
     runner_ = std::make_unique<FakeProcessRunner>();
     runner_->Capture(false);
     datapath_ = std::make_unique<MockDatapath>(runner_.get(), &firewall_);
-    shill_client_ = shill_helper_.Client();
+    shill_client_ = std::make_unique<MockShillClient>(shill_helper_.mock_bus());
     addr_mgr_ = std::make_unique<AddressManager>();
     guest_devices_.clear();
   }
@@ -95,7 +117,7 @@ class ArcServiceTest : public testing::Test {
   }
 
   FakeShillClientHelper shill_helper_;
-  std::unique_ptr<ShillClient> shill_client_;
+  std::unique_ptr<MockShillClient> shill_client_;
   std::unique_ptr<AddressManager> addr_mgr_;
   MockTrafficForwarder forwarder_;
   std::unique_ptr<MockDatapath> datapath_;
@@ -105,6 +127,8 @@ class ArcServiceTest : public testing::Test {
 };
 
 TEST_F(ArcServiceTest, NotStarted_AddDevice) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), _, _)).Times(0);
   EXPECT_CALL(*datapath_,
               StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"), _, _, false))
@@ -117,6 +141,8 @@ TEST_F(ArcServiceTest, NotStarted_AddDevice) {
 }
 
 TEST_F(ArcServiceTest, NotStarted_AddRemoveDevice) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), _, _)).Times(0);
   EXPECT_CALL(*datapath_,
               StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"), _, _, false))
@@ -134,6 +160,16 @@ TEST_F(ArcServiceTest, NotStarted_AddRemoveDevice) {
 }
 
 TEST_F(ArcServiceTest, VerifyAddrConfigs) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "eth1",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "wlan0",
+                            ShillClient::Device::Type::kWifi);
+  ExpectGetDeviceProperties(*shill_client_, "wlan1",
+                            ShillClient::Device::Type::kWifi);
+  ExpectGetDeviceProperties(*shill_client_, "wwan0",
+                            ShillClient::Device::Type::kCellular);
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
@@ -159,6 +195,10 @@ TEST_F(ArcServiceTest, VerifyAddrConfigs) {
 }
 
 TEST_F(ArcServiceTest, VerifyAddrOrder) {
+  ExpectGetDeviceProperties(*shill_client_, "wlan0",
+                            ShillClient::Device::Type::kWifi);
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
@@ -251,6 +291,8 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToAddInterfaceToBridge) {
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   // Expectations for arc0 setup.
@@ -283,6 +325,10 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_ScanDevices) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "wlan0",
+                            ShillClient::Device::Type::kWifi);
   EXPECT_CALL(*datapath_, NetnsAttachName(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, ConnectVethPair(_, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(true));
@@ -306,6 +352,10 @@ TEST_F(ArcServiceTest, ContainerImpl_ScanDevices) {
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "wlan0",
+                            ShillClient::Device::Type::kWifi);
   EXPECT_CALL(*datapath_, NetnsAttachName(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, ConnectVethPair(_, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(true));
@@ -336,6 +386,8 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   // Expectations for arc0 setup.
@@ -394,6 +446,8 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   // Expectations for arc0 setup.
@@ -450,6 +504,8 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
 }
 
 TEST_F(ArcServiceTest, VmImpl_StartDevice) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -480,6 +536,12 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
 }
 
 TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "eth1",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "wlan0",
+                            ShillClient::Device::Type::kWifi);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -563,6 +625,8 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
 }
 
 TEST_F(ArcServiceTest, VmImpl_StopDevice) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -601,6 +665,12 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
 }
 
 TEST_F(ArcServiceTest, VmImpl_ScanDevices) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "eth1",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "wlan0",
+                            ShillClient::Device::Type::kWifi);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -629,6 +699,10 @@ TEST_F(ArcServiceTest, VmImpl_ScanDevices) {
 }
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
+  ExpectGetDeviceProperties(*shill_client_, "eth0",
+                            ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties(*shill_client_, "wlan0",
+                            ShillClient::Device::Type::kWifi);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))

@@ -436,4 +436,9 @@ std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {
                 << ", service: " << dev.service_path << "}";
 }
 
+std::ostream& operator<<(std::ostream& stream,
+                         const ShillClient::Device::Type type) {
+  return stream << DeviceTypeName(type);
+}
+
 }  // namespace patchpanel

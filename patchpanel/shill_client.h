@@ -168,6 +168,8 @@ class ShillClient {
 };
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev);
+std::ostream& operator<<(std::ostream& stream,
+                         const ShillClient::Device::Type type);
 
 }  // namespace patchpanel
 

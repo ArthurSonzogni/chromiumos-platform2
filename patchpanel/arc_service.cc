@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <sys/utsname.h>
 
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -17,8 +18,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
@@ -38,9 +37,25 @@ const int32_t kAndroidRootUid = 655360;
 constexpr uint32_t kInvalidId = 0;
 constexpr char kArcNetnsName[] = "arc_netns";
 constexpr char kArcIfname[] = "arc0";
-constexpr std::array<const char*, 2> kEthernetInterfacePrefixes{{"eth", "usb"}};
-constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
-constexpr std::array<const char*, 2> kCellInterfacePrefixes{{"wwan", "rmnet"}};
+
+bool IsAdbAllowed(ShillClient::Device::Type type) {
+  static const std::set<ShillClient::Device::Type> adb_allowed_types{
+      ShillClient::Device::Type::kEthernet,
+      ShillClient::Device::Type::kEthernetEap,
+      ShillClient::Device::Type::kWifi,
+  };
+  return adb_allowed_types.find(type) != adb_allowed_types.end();
+}
+
+bool IsIPv6NDProxyEnabled(ShillClient::Device::Type type) {
+  static const std::set<ShillClient::Device::Type> ndproxy_allowed_types{
+      ShillClient::Device::Type::kCellular,
+      ShillClient::Device::Type::kEthernet,
+      ShillClient::Device::Type::kEthernetEap,
+      ShillClient::Device::Type::kWifi,
+  };
+  return ndproxy_allowed_types.find(type) != ndproxy_allowed_types.end();
+}
 
 bool KernelVersion(int* major, int* minor) {
   struct utsname u;
@@ -128,28 +143,6 @@ void OneTimeContainerSetup(const Datapath& datapath, uint32_t pid) {
   SetSysfsOwnerToAndroidRoot(pid, "xt_idletimer");
 
   done = true;
-}
-
-ArcService::InterfaceType InterfaceTypeFor(const std::string& ifname) {
-  for (const auto& prefix : kEthernetInterfacePrefixes) {
-    if (base::StartsWith(ifname, prefix,
-                         base::CompareCase::INSENSITIVE_ASCII)) {
-      return ArcService::InterfaceType::ETHERNET;
-    }
-  }
-  for (const auto& prefix : kWifiInterfacePrefixes) {
-    if (base::StartsWith(ifname, prefix,
-                         base::CompareCase::INSENSITIVE_ASCII)) {
-      return ArcService::InterfaceType::WIFI;
-    }
-  }
-  for (const auto& prefix : kCellInterfacePrefixes) {
-    if (base::StartsWith(ifname, prefix,
-                         base::CompareCase::INSENSITIVE_ASCII)) {
-      return ArcService::InterfaceType::CELL;
-    }
-  }
-  return ArcService::InterfaceType::UNKNOWN;
 }
 
 bool IsMulticastInterface(const std::string& ifname) {
@@ -253,9 +246,11 @@ void ArcService::AllocateAddressConfigs() {
   // As a temporary workaround, for ARCVM, allocate fixed MAC addresses.
   uint8_t mac_addr_index = 2;
   // Allocate 2 subnets each for Ethernet and WiFi and 1 for LTE WAN interfaces.
-  for (const auto itype :
-       {InterfaceType::ETHERNET, InterfaceType::ETHERNET, InterfaceType::WIFI,
-        InterfaceType::WIFI, InterfaceType::CELL}) {
+  for (const auto type :
+       {ShillClient::Device::Type::kEthernet,
+        ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
+        ShillClient::Device::Type::kWifi,
+        ShillClient::Device::Type::kCellular}) {
     auto ipv4_subnet =
         addr_mgr_->AllocateIPv4Subnet(AddressManager::Guest::ARC_NET);
     if (!ipv4_subnet) {
@@ -277,47 +272,51 @@ void ArcService::AllocateAddressConfigs() {
     MacAddress mac_addr = (guest_ == GuestMessage::ARC_VM)
                               ? addr_mgr_->GenerateMacAddress(mac_addr_index++)
                               : addr_mgr_->GenerateMacAddress();
-    available_configs_[itype].emplace_back(std::make_unique<Device::Config>(
+    available_configs_[type].emplace_back(std::make_unique<Device::Config>(
         mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
         std::move(guest_ipv4_addr)));
   }
 
-  for (const auto& kv : available_configs_)
-    for (const auto& c : kv.second)
-      all_configs_.emplace_back(c.get());
-  // Append arc0 config so that the necessary tap device gets created.
-  all_configs_.insert(all_configs_.begin(), &arc_device_->config());
+  all_configs_.push_back(&arc_device_->config());
+  // Iterate over |available_configs_| with a fixed explicit order and do not
+  // rely on the implicit ordering derived from key values.
+  for (const auto type :
+       {ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
+        ShillClient::Device::Type::kCellular}) {
+    for (const auto& c : available_configs_[type]) {
+      all_configs_.push_back(c.get());
+    }
+  }
 }
 
 std::unique_ptr<Device::Config> ArcService::AcquireConfig(
-    const std::string& ifname) {
-  auto itype = InterfaceTypeFor(ifname);
-  if (itype == InterfaceType::UNKNOWN) {
-    LOG(ERROR) << "Unsupported interface: " << ifname;
+    ShillClient::Device::Type type) {
+  // Normalize shill Device types for different ethernet flavors.
+  if (type == ShillClient::Device::Type::kEthernetEap)
+    type = ShillClient::Device::Type::kEthernet;
+
+  auto it = available_configs_.find(type);
+  if (it == available_configs_.end()) {
+    LOG(ERROR) << "Unsupported shill Device type " << type;
     return nullptr;
   }
 
-  auto& configs = available_configs_[itype];
-  if (configs.empty()) {
-    LOG(ERROR) << "No more addresses available. Cannot make device for "
-               << ifname;
+  if (it->second.empty()) {
+    LOG(ERROR)
+        << "Cannot make virtual device: No more addresses available for type "
+        << type;
     return nullptr;
   }
+
   std::unique_ptr<Device::Config> config;
-  config = std::move(configs.front());
-  configs.pop_front();
+  config = std::move(it->second.front());
+  it->second.pop_front();
   return config;
 }
 
-void ArcService::ReleaseConfig(const std::string& ifname,
+void ArcService::ReleaseConfig(ShillClient::Device::Type type,
                                std::unique_ptr<Device::Config> config) {
-  auto itype = InterfaceTypeFor(ifname);
-  if (itype == InterfaceType::UNKNOWN) {
-    LOG(ERROR) << "Unsupported interface: " << ifname;
-    return;
-  }
-
-  available_configs_[itype].push_front(std::move(config));
+  available_configs_[type].push_front(std::move(config));
 }
 
 bool ArcService::Start(uint32_t id) {
@@ -385,8 +384,8 @@ bool ArcService::Start(uint32_t id) {
   LOG(INFO) << "Started ARC management device " << *arc_device_.get();
 
   // Start already known Shill <-> ARC mapped devices.
-  for (const auto& ifname : shill_devices_)
-    AddDevice(ifname);
+  for (const auto& [ifname, type] : shill_devices_)
+    AddDevice(ifname, type);
 
   return true;
 }
@@ -404,8 +403,8 @@ void ArcService::Stop(uint32_t id) {
   }
 
   // Stop Shill <-> ARC mapped devices.
-  for (const auto& ifname : shill_devices_)
-    RemoveDevice(ifname);
+  for (const auto& [ifname, type] : shill_devices_)
+    RemoveDevice(ifname, type);
 
   // Per crbug/1008686 this device cannot be deleted and then re-added.
   // So instead of removing the bridge, bring it down and mark it. This will
@@ -436,17 +435,23 @@ void ArcService::Stop(uint32_t id) {
 void ArcService::OnDevicesChanged(const std::set<std::string>& added,
                                   const std::set<std::string>& removed) {
   for (const std::string& ifname : removed) {
+    RemoveDevice(ifname, shill_devices_[ifname]);
     shill_devices_.erase(ifname);
-    RemoveDevice(ifname);
   }
 
   for (const std::string& ifname : added) {
-    shill_devices_.insert(ifname);
-    AddDevice(ifname);
+    ShillClient::Device shill_device;
+    if (!shill_client_->GetDeviceProperties(ifname, &shill_device)) {
+      LOG(ERROR) << "Could not read shill Device properties for " << ifname;
+      continue;
+    }
+    shill_devices_[ifname] = shill_device.type;
+    AddDevice(ifname, shill_device.type);
   }
 }
 
-void ArcService::AddDevice(const std::string& ifname) {
+void ArcService::AddDevice(const std::string& ifname,
+                           ShillClient::Device::Type type) {
   if (!IsStarted())
     return;
 
@@ -458,18 +463,13 @@ void ArcService::AddDevice(const std::string& ifname) {
     return;
   }
 
-  auto itype = InterfaceTypeFor(ifname);
   Device::Options opts{
       .fwd_multicast = IsMulticastInterface(ifname),
-      // TODO(crbug/726815) Also enable |ipv6_enabled| for cellular networks
-      // once IPv6 is enabled on cellular networks in Shill.
-      .ipv6_enabled =
-          (itype == InterfaceType::ETHERNET || itype == InterfaceType::WIFI),
-      .adb_allowed =
-          (itype == InterfaceType::ETHERNET || itype == InterfaceType::WIFI),
+      .ipv6_enabled = IsIPv6NDProxyEnabled(type),
+      .adb_allowed = IsAdbAllowed(type),
   };
 
-  auto config = AcquireConfig(ifname);
+  auto config = AcquireConfig(type);
   if (!config) {
     LOG(ERROR) << "Cannot acquire a Config for " << ifname;
     return;
@@ -530,7 +530,8 @@ void ArcService::AddDevice(const std::string& ifname) {
   devices_.emplace(ifname, std::move(device));
 }
 
-void ArcService::RemoveDevice(const std::string& ifname) {
+void ArcService::RemoveDevice(const std::string& ifname,
+                              ShillClient::Device::Type type) {
   if (!IsStarted())
     return;
 
@@ -560,7 +561,9 @@ void ArcService::RemoveDevice(const std::string& ifname) {
   if (device->options().adb_allowed)
     datapath_->DeleteAdbPortAccessRule(ifname);
 
-  ReleaseConfig(ifname, it->second->release_config());
+  // Once the physical Device is gone it may not be possible to retrieve
+  // the device type from Shill DBus interface by interface name.
+  ReleaseConfig(type, it->second->release_config());
   devices_.erase(it);
 }
 

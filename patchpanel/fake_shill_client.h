@@ -91,6 +91,7 @@ class FakeShillClientHelper {
   std::unique_ptr<FakeShillClient> FakeClient() { return std::move(client_); }
 
   dbus::MockObjectProxy* mock_proxy() { return mock_proxy_.get(); }
+  scoped_refptr<dbus::MockBus> mock_bus() { return mock_bus_; }
 
  private:
   scoped_refptr<dbus::MockBus> mock_bus_{

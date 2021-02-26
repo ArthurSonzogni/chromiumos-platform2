@@ -28,13 +28,6 @@ constexpr char kArcBridge[] = "arcbr0";
 
 class ArcService {
  public:
-  enum class InterfaceType {
-    UNKNOWN,
-    ETHERNET,
-    WIFI,
-    CELL,
-  };
-
   // All pointers are required and cannot be null, and are owned by the caller.
   ArcService(ShillClient* shill_client,
              Datapath* datapath,
@@ -71,21 +64,21 @@ class ArcService {
 
   // Build and configure the ARC datapath for the physical device |ifname|
   // provided by Shill.
-  void AddDevice(const std::string& ifname);
+  void AddDevice(const std::string& ifname, ShillClient::Device::Type type);
 
   // Teardown the ARC datapath associated with the physical device |ifname| and
   // stops forwarding services.
-  void RemoveDevice(const std::string& ifname);
+  void RemoveDevice(const std::string& ifname, ShillClient::Device::Type type);
 
   // Creates device configurations for all available IPv4 subnets which will be
   // assigned to devices as they are added.
   void AllocateAddressConfigs();
 
   // Reserve a configuration for an interface.
-  std::unique_ptr<Device::Config> AcquireConfig(const std::string& ifname);
+  std::unique_ptr<Device::Config> AcquireConfig(ShillClient::Device::Type type);
 
   // Returns a configuration to the pool.
-  void ReleaseConfig(const std::string& ifname,
+  void ReleaseConfig(ShillClient::Device::Type type,
                      std::unique_ptr<Device::Config> config);
 
   ShillClient* shill_client_;
@@ -97,7 +90,8 @@ class ArcService {
 
   // A set of preallocated device configurations keyed by technology type and
   // used for setting up ARCVM tap devices at VM booting time.
-  std::map<InterfaceType, std::deque<std::unique_ptr<Device::Config>>>
+  std::map<ShillClient::Device::Type,
+           std::deque<std::unique_ptr<Device::Config>>>
       available_configs_;
   // The list of all Device configurations. Also includes ARC management device
   // for ARCVM.
@@ -111,7 +105,7 @@ class ArcService {
   // The PID of the ARC container instance or the CID of ARCVM instance.
   uint32_t id_;
   // All devices currently managed by shill.
-  std::set<std::string> shill_devices_;
+  std::map<std::string, ShillClient::Device::Type> shill_devices_;
 
   FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
