@@ -1,0 +1,12 @@
+{
+   "blockdevices": [
+      {"kname":"/dev/nvme1n1", "name":"/dev/nvme1n1", "rm":false, "size":1000204886016, "type":"disk"},
+      {"kname":"/dev/nvme0n1", "name":"/dev/nvme0n1", "rm":false, "size":1024209543168, "type":"disk",
+         "children": [
+            {"kname":"/dev/nvme0n1p1", "name":"/dev/nvme0n1p1", "rm":false, "size":2000000000, "type":"part"},
+            {"kname":"/dev/nvme0n1p2", "name":"/dev/nvme0n1p2", "rm":false, "size":2000000000, "type":"part"},
+            {"kname":"/dev/nvme0n1p3", "name":"/dev/nvme0n1p3", "rm":false, "size":1020208477696, "type":"part"}
+         ]
+      }
+   ]
+}

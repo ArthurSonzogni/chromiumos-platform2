@@ -1,0 +1,26 @@
+{
+   "blockdevices": [
+      {"kname": "/dev/loop0", "name": "/dev/loop0", "rm": "0", "size": "1248124928", "type": "loop",
+         "children": [
+            {"kname": "/dev/dm-0", "name": "/dev/mapper/encstateful", "rm": "0", "size": "1248124928", "type": "dm"}
+         ]
+      },
+      {"kname": "/dev/loop1", "name": "/dev/loop1", "rm": "0", "size": "113876992", "type": "loop"},
+      {"kname": "/dev/sda", "name": "/dev/sda", "rm": "0", "size": "6807435776", "type": "disk",
+         "children": [
+            {"kname": "/dev/sda1", "name": "/dev/sda1", "rm": "0", "size": "4295023104", "type": "part"},
+            {"kname": "/dev/sda2", "name": "/dev/sda2", "rm": "0", "size": "67108864", "type": "part"},
+            {"kname": "/dev/sda3", "name": "/dev/sda3", "rm": "0", "size": "2147483648", "type": "part"},
+            {"kname": "/dev/sda4", "name": "/dev/sda4", "rm": "0", "size": "67108864", "type": "part"},
+            {"kname": "/dev/sda5", "name": "/dev/sda5", "rm": "0", "size": "2097152", "type": "part"},
+            {"kname": "/dev/sda6", "name": "/dev/sda6", "rm": "0", "size": "512", "type": "part"},
+            {"kname": "/dev/sda7", "name": "/dev/sda7", "rm": "0", "size": "512", "type": "part"},
+            {"kname": "/dev/sda8", "name": "/dev/sda8", "rm": "0", "size": "16777216", "type": "part"},
+            {"kname": "/dev/sda9", "name": "/dev/sda9", "rm": "0", "size": "512", "type": "part"},
+            {"kname": "/dev/sda10", "name": "/dev/sda10", "rm": "0", "size": "512", "type": "part"},
+            {"kname": "/dev/sda11", "name": "/dev/sda11", "rm": "0", "size": "8388608", "type": "part"},
+            {"kname": "/dev/sda12", "name": "/dev/sda12", "rm": "0", "size": "134217728", "type": "part"}
+         ]
+      }
+   ]
+}
