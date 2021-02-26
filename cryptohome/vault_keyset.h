@@ -41,6 +41,9 @@ class VaultKeyset {
   // them must outlive this object.
   virtual void Initialize(Platform* platform, Crypto* crypto);
 
+  // Populates the fields from a SerializedVaultKeyset.
+  void InitializeFromSerialized(const SerializedVaultKeyset& serialized);
+
   //  The following methods deal with importing another object type into this
   //  VaultKeyset container.
   virtual void FromKeys(const VaultKeysetKeys& keys);
@@ -204,9 +207,6 @@ class VaultKeyset {
   // Clears all the fields set from the SerializedVaultKeyset.
   void ResetVaultKeyset();
 
-  // Populates the fields from a SerializedVaultKeyset.
-  void InitializeFromSerialized(const SerializedVaultKeyset& serialized);
-
   // Sets the wrapped keys and IVs.
   void SetWrappedKeyMaterial(const WrappedKeyMaterial& key_material);
 
@@ -217,6 +217,7 @@ class VaultKeyset {
   bool GetPinWeaverState(AuthBlockState* auth_state) const;
   bool GetSignatureChallengeState(AuthBlockState* auth_state) const;
   bool GetLibScryptCompatState(AuthBlockState* auth_state) const;
+  bool GetDoubleWrappedCompatState(AuthBlockState* auth_state) const;
 
   // Reads an auth block state and update the VaultKeyset with what it
   // returns.
@@ -317,6 +318,11 @@ class VaultKeyset {
   brillo::SecureBlob reset_seed_;
   // Used by LECredentials only.
   brillo::SecureBlob reset_secret_;
+
+  // With the SerializedVaultKeyset properly abstracted by VaultKeyset, Crypto
+  // should really be folded into VaultKeyset class. But this amount of
+  // refactoring for legacy code is undesirable, so it is made a friend class.
+  friend class Crypto;
 
   FRIEND_TEST_ALL_PREFIXES(CryptoTest, TpmStepTest);
   FRIEND_TEST_ALL_PREFIXES(CryptoTest, Tpm1_2_StepTest);

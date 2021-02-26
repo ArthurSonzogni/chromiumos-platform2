@@ -22,22 +22,26 @@ base::Optional<AuthBlockState> ChallengeCredentialAuthBlock::Create(
     return base::nullopt;
   }
   AuthBlockState final_state;
-  final_state.mutable_challenge_credential_state();
+  *(final_state.mutable_challenge_credential_state()->mutable_scrypt_state()) =
+      auth_state->libscrypt_compat_state();
   return final_state;
 }
 
 bool ChallengeCredentialAuthBlock::Derive(const AuthInput& user_input,
-                                          const DeprecatedAuthBlockState& state,
+                                          const AuthBlockState& state,
                                           KeyBlobs* key_blobs,
                                           CryptoError* error) {
-  const SerializedVaultKeyset& serialized = state.vault_keyset.value();
-  if (!(serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED)) {
-    LOG(ERROR) << "Invalid flags for challenge-protected keyset";
+  if (!state.has_challenge_credential_state()) {
+    LOG(ERROR) << "Invalid state for challenge credential AuthBlock";
     *error = CryptoError::CE_OTHER_FATAL;
     return false;
   }
 
-  return LibScryptCompatAuthBlock::Derive(user_input, state, key_blobs, error);
+  AuthBlockState scrypt_state;
+  *(scrypt_state.mutable_libscrypt_compat_state()) =
+      state.challenge_credential_state().scrypt_state();
+  return LibScryptCompatAuthBlock::Derive(user_input, scrypt_state, key_blobs,
+                                          error);
 }
 
 }  // namespace cryptohome

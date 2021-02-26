@@ -16,10 +16,6 @@ namespace cryptohome {
 // Defined in cryptohome_metrics.h
 enum DerivationType : int;
 
-struct DeprecatedAuthBlockState {
-  base::Optional<SerializedVaultKeyset> vault_keyset;
-};
-
 // This is a pure virtual interface designed to be implemented by the different
 // authentication methods - U2F, PinWeaver, TPM backed passwords, etc. - so that
 // they take some arbitrary user input and give out a key.
@@ -38,7 +34,7 @@ class AuthBlock {
   // This is implemented by concrete auth methods to map the user secret
   // input into a key. This method should successfully authenticate the user.
   virtual bool Derive(const AuthInput& auth_input,
-                      const DeprecatedAuthBlockState& state,
+                      const AuthBlockState& state,
                       KeyBlobs* key_blobs,
                       CryptoError* error) = 0;
 

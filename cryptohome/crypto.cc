@@ -471,15 +471,21 @@ bool Crypto::NeedsPcrBinding(const uint64_t& label) const {
   return le_manager_->NeedsPcrBinding(label);
 }
 
-bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
+bool Crypto::DecryptVaultKeyset(VaultKeyset* vault_keyset,
                                 const SecureBlob& vault_key,
                                 bool locked_to_single_user,
                                 unsigned int* crypt_flags,
-                                CryptoError* error,
-                                VaultKeyset* vault_keyset) {
+                                CryptoError* error) {
+  const SerializedVaultKeyset& serialized = vault_keyset->ToSerialized();
   if (crypt_flags)
     *crypt_flags = serialized.flags();
   PopulateError(error, CryptoError::CE_NONE);
+
+  AuthBlockState auth_state;
+  if (!vault_keyset->GetAuthBlockState(&auth_state)) {
+    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
+    return false;
+  }
 
   unsigned int flags = serialized.flags();
   std::unique_ptr<AuthBlock> auth_block = DeriveAuthBlock(flags);
@@ -489,8 +495,8 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
   }
 
   AuthInput auth_input = {vault_key, locked_to_single_user};
-  DeprecatedAuthBlockState auth_state = {serialized};
   KeyBlobs vkk_data;
+
   if (!auth_block->Derive(auth_input, auth_state, &vkk_data, error)) {
     return false;
   }

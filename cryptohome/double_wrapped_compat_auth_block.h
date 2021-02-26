@@ -36,7 +36,7 @@ class DoubleWrappedCompatAuthBlock : public AuthBlock {
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
   bool Derive(const AuthInput& auth_input,
-              const DeprecatedAuthBlockState& state,
+              const AuthBlockState& state,
               KeyBlobs* key_blobs,
               CryptoError* error) override;
 

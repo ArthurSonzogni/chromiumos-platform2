@@ -231,11 +231,14 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   serialized.set_le_label(0);
   serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
 
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+
   CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
-  DeprecatedAuthBlockState auth_state = {
-      base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
 
   // Set expectations of the key blobs.
@@ -276,11 +279,14 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   serialized.set_le_label(0);
   serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
 
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+
   CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
-  DeprecatedAuthBlockState auth_state = {
-      base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
   EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
   EXPECT_EQ(CryptoError::CE_LE_INVALID_SECRET, error);
 }
@@ -309,12 +315,6 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
 }
 
 TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
-  // Set up a SerializedVaultKeyset. In this case, it is only used to check the
-  // flags and password_rounds.
-  SerializedVaultKeyset serialized;
-  serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
-                       SerializedVaultKeyset::SCRYPT_DERIVED);
-
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob tpm_key(20, 'B');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
@@ -329,10 +329,14 @@ TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _, _)).Times(Exactly(1));
 
+  AuthBlockState::TpmNotBoundToPcrAuthBlockState tpm_state;
+  tpm_state.set_scrypt_derived(true);
+  tpm_state.set_password_rounds(0x5000);
+
   CryptoError error = CryptoError::CE_NONE;
   TpmNotBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_key_loader);
   EXPECT_TRUE(tpm_auth_block.DecryptTpmNotBoundToPcr(
-      serialized, vault_key, tpm_key, salt, &error, &vkk_iv, &vkk_key));
+      tpm_state, vault_key, tpm_key, salt, &error, &vkk_iv, &vkk_key));
   EXPECT_EQ(CryptoError::CE_NONE, error);
 }
 
@@ -348,6 +352,7 @@ TEST(TpmAuthBlockTest, DeriveTest) {
 
   serialized.set_salt(salt);
   serialized.set_tpm_key(tpm_key.data(), tpm_key.size());
+  serialized.set_extended_tpm_key(tpm_key.data(), tpm_key.size());
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
   NiceMock<MockTpm> tpm;
@@ -361,8 +366,11 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   auth_input.user_input = key;
   auth_input.locked_to_single_user = false;
 
-  DeprecatedAuthBlockState auth_state = {
-      base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+
   CryptoError error;
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
 
@@ -441,6 +449,9 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   serialized.set_wrapped_reset_seed(wrapped_reset_seed.data(),
                                     wrapped_reset_seed.size());
 
+  brillo::SecureBlob tpm_key(20, 'C');
+  serialized.set_tpm_key(tpm_key.data(), tpm_key.size());
+
   brillo::SecureBlob key = {0x31, 0x35, 0x64, 0x64, 0x38, 0x38, 0x66, 0x36,
                             0x35, 0x31, 0x30, 0x65, 0x30, 0x64, 0x35, 0x64,
                             0x35, 0x35, 0x36, 0x35, 0x35, 0x35, 0x38, 0x36,
@@ -451,8 +462,10 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   auth_input.user_input = key;
   auth_input.locked_to_single_user = false;
 
-  DeprecatedAuthBlockState auth_state = {
-      base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
@@ -488,7 +501,7 @@ TEST(LibScryptCompatAuthBlockTest, CreateTest) {
 
 TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
   SerializedVaultKeyset serialized;
-  serialized.set_flags(SerializedVaultKeyset::SCRYPT_DERIVED);
+  serialized.set_flags(SerializedVaultKeyset::SCRYPT_WRAPPED);
 
   std::vector<uint8_t> wrapped_keyset = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
@@ -563,8 +576,11 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
   AuthInput auth_input;
   auth_input.user_input = key;
 
-  DeprecatedAuthBlockState auth_state = {
-      base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+
   CryptoError error;
   LibScryptCompatAuthBlock auth_block;
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));

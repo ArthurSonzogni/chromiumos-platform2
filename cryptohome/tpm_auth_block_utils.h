@@ -30,11 +30,14 @@ class TpmAuthBlockUtils {
 
   // Checks if the specified |hash| is the same as the hash for the |tpm_| used
   // by the class.
-  bool IsTPMPubkeyHash(const std::string& hash, CryptoError* error) const;
+  bool IsTPMPubkeyHash(const brillo::SecureBlob& hash,
+                       CryptoError* error) const;
 
   // This checks that the TPM is ready and that the vault keyset was encrypted
   // with this machine's TPM.
-  bool CheckTPMReadiness(const SerializedVaultKeyset& serialized,
+  bool CheckTPMReadiness(bool has_tpm_key,
+                         bool has_tpm_public_key_hash,
+                         const brillo::SecureBlob& tpm_public_key_hash,
                          CryptoError* error);
 
  private:

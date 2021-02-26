@@ -25,7 +25,7 @@ class PinWeaverAuthBlock : public AuthBlock {
                                         CryptoError* error) override;
 
   bool Derive(const AuthInput& auth_input,
-              const DeprecatedAuthBlockState& state,
+              const AuthBlockState& state,
               KeyBlobs* key_blobs,
               CryptoError* error) override;
 

@@ -14,27 +14,59 @@ message AuthBlockState {
   message TpmNotBoundToPcrAuthBlockState {
     // Marks if the password is run through scrypt before going to the TPM.
     optional bool scrypt_derived = 1;
+    // The salt used to bind to the TPM.
+    optional bytes salt = 2;
+    // The number of rounds key derivation is called.
+    optional uint32 password_rounds = 3;
     // The VKK wrapped with the user's password by the tpm.
-    optional bytes tpm_key = 2;
+    optional bytes tpm_key = 4;
     // A check if this is the same TPM that wrapped the credential.
-    optional bytes tpm_public_key_hash = 3;
+    optional bytes tpm_public_key_hash = 5;
+    // The wrapped reset seed to reset LE credentials.
+    optional bytes wrapped_reset_seed = 6;
   }
   message TpmBoundToPcrAuthBlockState {
     // Marks if the password is run through scrypt before going to the TPM.
     optional bool scrypt_derived = 1;
+    // The salt used to bind to the TPM.
+    optional bytes salt = 2;
     // The VKK encrypted with the user's password and TPM.
-    optional bytes tpm_key = 2;
+    optional bytes tpm_key = 3;
     // Same as tpm_key, but extends the PCR to only allow one user until reboot.
-    optional bytes extended_tpm_key = 3;
+    optional bytes extended_tpm_key = 4;
     // A check if this is the same TPM that wrapped the credential.
-    optional bytes tpm_public_key_hash = 4;
+    optional bytes tpm_public_key_hash = 5;
+    // The wrapped reset seed to reset LE credentials.
+    optional bytes wrapped_reset_seed = 6;
   }
   message PinWeaverAuthBlockState {
     // The label for the credential in the LE hash tree.
-    optional uint64 le_label = 5;
+    optional uint64 le_label = 1;
+    // The salt used to first scrypt the user input.
+    optional bytes salt = 2;
+    // The IV used to derive the chaps key.
+    optional bytes chaps_iv = 3;
+    // The IV used to derive the file encryption key.
+    optional bytes fek_iv = 4;
   }
-  message LibScryptCompatAuthBlockState {}
-  message ChallengeCredentialAuthBlockState {}
+  // This is a unique AuthBlockState for backwards compatibility. libscrypt puts
+  // the metadata, such as IV and salt, into the header of the encrypted
+  // buffer. Thus this is the only auth block state to pass wrapped secrets.
+  message LibScryptCompatAuthBlockState {
+    // The wrapped filesystem keys.
+    optional bytes wrapped_keyset = 1;
+    // The wrapped chaps keys.
+    optional bytes wrapped_chaps_key = 2;
+    // The wrapped reset seed keys.
+    optional bytes wrapped_reset_seed = 3;
+  }
+  message ChallengeCredentialAuthBlockState {
+    required LibScryptCompatAuthBlockState scrypt_state = 1;
+  }
+  message DoubleWrappedCompatAuthBlockState {
+    required LibScryptCompatAuthBlockState scrypt_state = 1;
+    required TpmNotBoundToPcrAuthBlockState tpm_state = 2;
+  }
 
   oneof auth_block_state {
     TpmNotBoundToPcrAuthBlockState tpm_not_bound_to_pcr_state = 1;
@@ -42,5 +74,6 @@ message AuthBlockState {
     PinWeaverAuthBlockState pin_weaver_state = 3;
     LibScryptCompatAuthBlockState libscrypt_compat_state = 4;
     ChallengeCredentialAuthBlockState challenge_credential_state = 5;
+    DoubleWrappedCompatAuthBlockState double_wrapped_compat_state = 6;
   }
 }

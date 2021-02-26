@@ -303,11 +303,33 @@ TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
 
   keyset.CreateRandom();
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
+  keyset.SetWrappedKeyset(brillo::SecureBlob("foo"));
+  keyset.SetWrappedChapsKey(brillo::SecureBlob("bar"));
+  keyset.SetWrappedResetSeed(brillo::SecureBlob("baz"));
 
   AuthBlockState auth_state;
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   EXPECT_TRUE(auth_state.has_libscrypt_compat_state());
+  EXPECT_TRUE(auth_state.libscrypt_compat_state().has_wrapped_keyset());
+  EXPECT_TRUE(auth_state.libscrypt_compat_state().has_wrapped_chaps_key());
+  EXPECT_TRUE(auth_state.libscrypt_compat_state().has_wrapped_reset_seed());
+}
+
+TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  VaultKeyset keyset;
+  keyset.Initialize(&platform, &crypto);
+
+  keyset.CreateRandom();
+  keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
+                  SerializedVaultKeyset::TPM_WRAPPED);
+
+  AuthBlockState auth_state;
+  keyset.GetAuthBlockState(&auth_state);
+
+  EXPECT_TRUE(auth_state.has_double_wrapped_compat_state());
 }
 
 }  // namespace cryptohome

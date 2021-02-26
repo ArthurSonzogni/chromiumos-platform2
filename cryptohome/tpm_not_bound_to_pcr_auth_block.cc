@@ -33,33 +33,51 @@ TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
 }
 
 bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
-                                       const DeprecatedAuthBlockState& state,
+                                       const AuthBlockState& state,
                                        KeyBlobs* key_out_data,
                                        CryptoError* error) {
-  const SerializedVaultKeyset& serialized = state.vault_keyset.value();
-  if (!utils_.CheckTPMReadiness(serialized, error))
+  if (!state.has_tpm_not_bound_to_pcr_state()) {
+    DLOG(FATAL) << "Called with an invalid auth block state";
     return false;
+  }
+
+  const AuthBlockState::TpmNotBoundToPcrAuthBlockState& tpm_state =
+      state.tpm_not_bound_to_pcr_state();
+  brillo::SecureBlob tpm_public_key_hash;
+  if (tpm_state.has_tpm_public_key_hash()) {
+    tpm_public_key_hash.assign(tpm_state.tpm_public_key_hash().begin(),
+                               tpm_state.tpm_public_key_hash().end());
+  }
+
+  if (!utils_.CheckTPMReadiness(tpm_state.has_tpm_key(),
+                                tpm_state.has_tpm_public_key_hash(),
+                                tpm_public_key_hash, error)) {
+    return false;
+  }
 
   key_out_data->vkk_iv = brillo::SecureBlob(kAesBlockSize);
   key_out_data->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
 
-  brillo::SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
-  brillo::SecureBlob tpm_key(serialized.tpm_key().begin(),
-                             serialized.tpm_key().end());
+  brillo::SecureBlob salt(tpm_state.salt().begin(), tpm_state.salt().end());
+  brillo::SecureBlob tpm_key(tpm_state.tpm_key().begin(),
+                             tpm_state.tpm_key().end());
 
   if (!DecryptTpmNotBoundToPcr(
-          serialized, auth_input.user_input.value(), tpm_key, salt, error,
+          tpm_state, auth_input.user_input.value(), tpm_key, salt, error,
           &key_out_data->vkk_iv.value(), &key_out_data->vkk_key.value())) {
     return false;
   }
 
   key_out_data->chaps_iv = key_out_data->vkk_iv;
-  key_out_data->wrapped_reset_seed = brillo::SecureBlob();
-  key_out_data->wrapped_reset_seed.value().assign(
-      serialized.wrapped_reset_seed().begin(),
-      serialized.wrapped_reset_seed().end());
 
-  if (!serialized.has_tpm_public_key_hash() && error) {
+  if (tpm_state.has_wrapped_reset_seed()) {
+    key_out_data->wrapped_reset_seed = brillo::SecureBlob();
+    key_out_data->wrapped_reset_seed.value().assign(
+        tpm_state.wrapped_reset_seed().begin(),
+        tpm_state.wrapped_reset_seed().end());
+  }
+
+  if (!tpm_state.has_tpm_public_key_hash() && error) {
     *error = CryptoError::CE_NO_PUBLIC_KEY_HASH;
   }
 
@@ -128,7 +146,7 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
 }
 
 bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
-    const SerializedVaultKeyset& serialized,
+    const AuthBlockState::TpmNotBoundToPcrAuthBlockState& tpm_state,
     const brillo::SecureBlob& vault_key,
     const brillo::SecureBlob& tpm_key,
     const brillo::SecureBlob& salt,
@@ -138,16 +156,11 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
   brillo::SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
-  unsigned int rounds;
-  if (serialized.has_password_rounds()) {
-    rounds = serialized.password_rounds();
-  } else {
-    rounds = kDefaultLegacyPasswordRounds;
-  }
+  unsigned int rounds = tpm_state.has_password_rounds()
+                            ? tpm_state.password_rounds()
+                            : kDefaultLegacyPasswordRounds;
 
-  bool scrypt_derived =
-      serialized.flags() & SerializedVaultKeyset::SCRYPT_DERIVED;
-  if (scrypt_derived) {
+  if (tpm_state.scrypt_derived()) {
     if (!CryptoLib::DeriveSecretsScrypt(vault_key, salt,
                                         {&aes_skey, &kdf_skey, vkk_iv})) {
       PopulateError(error, CryptoError::CE_OTHER_FATAL);
@@ -181,7 +194,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
     }
   }
 
-  if (scrypt_derived) {
+  if (tpm_state.scrypt_derived()) {
     *vkk_key = CryptoLib::HmacSha256(kdf_skey, local_vault_key);
   } else {
     if (!CryptoLib::PasskeyToAesKey(local_vault_key, salt, rounds, vkk_key,

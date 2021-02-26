@@ -51,7 +51,7 @@ bool TpmAuthBlockUtils::TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action) {
          retry_action == Tpm::kTpmRetryCommFailure;
 }
 
-bool TpmAuthBlockUtils::IsTPMPubkeyHash(const std::string& hash,
+bool TpmAuthBlockUtils::IsTPMPubkeyHash(const brillo::SecureBlob& hash,
                                         CryptoError* error) const {
   brillo::SecureBlob pub_key_hash;
   Tpm::TpmRetryAction retry_action = tpm_->GetPublicKeyHash(
@@ -82,8 +82,11 @@ bool TpmAuthBlockUtils::IsTPMPubkeyHash(const std::string& hash,
 }
 
 bool TpmAuthBlockUtils::CheckTPMReadiness(
-    const SerializedVaultKeyset& serialized, CryptoError* error) {
-  if (!serialized.has_tpm_key()) {
+    bool has_tpm_key,
+    bool has_tpm_public_key_hash,
+    const brillo::SecureBlob& tpm_public_key_hash,
+    CryptoError* error) {
+  if (!has_tpm_key) {
     LOG(ERROR) << "Decrypting with TPM, but no TPM key present.";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
     PopulateError(error, CryptoError::CE_TPM_FATAL);
@@ -116,8 +119,8 @@ bool TpmAuthBlockUtils::CheckTPMReadiness(
   }
 
   // This is a validity check that the keys still match.
-  if (serialized.has_tpm_public_key_hash()) {
-    if (!IsTPMPubkeyHash(serialized.tpm_public_key_hash(), error)) {
+  if (has_tpm_public_key_hash) {
+    if (!IsTPMPubkeyHash(tpm_public_key_hash, error)) {
       LOG(ERROR) << "TPM public key hash mismatch.";
       ReportCryptohomeError(kDecryptAttemptButTpmKeyMismatch);
       return false;

@@ -33,20 +33,21 @@ class TpmNotBoundToPcrAuthBlock : public AuthBlock {
                                         CryptoError* error) override;
 
   bool Derive(const AuthInput& auth_input,
-              const DeprecatedAuthBlockState& state,
+              const AuthBlockState& state,
               KeyBlobs* key_blobs,
               CryptoError* error) override;
 
  private:
   // Decrypt the |vault_key| that is not bound to PCR, returning the |vkk_iv|
   // and |vkk_key|.
-  bool DecryptTpmNotBoundToPcr(const SerializedVaultKeyset& serialized,
-                               const brillo::SecureBlob& vault_key,
-                               const brillo::SecureBlob& tpm_key,
-                               const brillo::SecureBlob& salt,
-                               CryptoError* error,
-                               brillo::SecureBlob* vkk_iv,
-                               brillo::SecureBlob* vkk_key) const;
+  bool DecryptTpmNotBoundToPcr(
+      const AuthBlockState::TpmNotBoundToPcrAuthBlockState& tpm_state,
+      const brillo::SecureBlob& vault_key,
+      const brillo::SecureBlob& tpm_key,
+      const brillo::SecureBlob& salt,
+      CryptoError* error,
+      brillo::SecureBlob* vkk_iv,
+      brillo::SecureBlob* vkk_key) const;
 
   Tpm* tpm_;
   CryptohomeKeyLoader* cryptohome_key_loader_;

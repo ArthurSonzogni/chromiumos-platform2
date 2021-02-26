@@ -233,18 +233,16 @@ TEST_F(CryptoTest, DecryptionTest) {
   vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform_, &crypto);
-  unsigned int crypt_flags = 0;
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(
-      vault_keyset.ToSerialized(), key, false /* locked_to_single_user */,
-      &crypt_flags, &crypto_error, &new_keyset));
-
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
+
+  CryptoError crypto_error = CryptoError::CE_NONE;
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
+                                        false /* locked_to_single_user */,
+                                        nullptr, &crypto_error));
+
   SecureBlob new_data;
-  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
@@ -356,22 +354,21 @@ TEST_F(CryptoTest, TpmStepTest) {
   vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(vkk_key), Return(Tpm::kTpmRetryNone)));
 
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(
-      vault_keyset.ToSerialized(), key, false /* locked_to_single_user */,
-      &crypt_flags, &crypto_error, &new_keyset));
-
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
+
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
+                                        false /* locked_to_single_user */,
+                                        &crypt_flags, &crypto_error));
+
   SecureBlob new_data;
-  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
@@ -435,22 +432,21 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(vkk_key), Return(Tpm::kTpmRetryNone)));
 
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(
-      vault_keyset.ToSerialized(), key, false /* locked_to_single_user */,
-      &crypt_flags, &crypto_error, &new_keyset));
-
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
+
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
+                                        false /* locked_to_single_user */,
+                                        &crypt_flags, &crypto_error));
+
   SecureBlob new_data;
-  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
@@ -508,8 +504,6 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
   CryptoError crypto_error = CryptoError::CE_NONE;
 
@@ -517,9 +511,9 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
       .WillOnce(Return(Tpm::kTpmRetryFatal));
 
-  ASSERT_FALSE(crypto.DecryptVaultKeyset(
-      vault_keyset.ToSerialized(), key, false /* locked_to_single_user */,
-      &crypt_flags, &crypto_error, &new_keyset));
+  ASSERT_FALSE(crypto.DecryptVaultKeyset(&vault_keyset, key,
+                                         false /* locked_to_single_user */,
+                                         &crypt_flags, &crypto_error));
   ASSERT_NE(CryptoError::CE_NONE, crypto_error);
 }
 
@@ -550,18 +544,17 @@ TEST_F(CryptoTest, ScryptStepTest) {
   vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform, &crypto);
-  unsigned int crypt_flags = 0;
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(
-      vault_keyset.ToSerialized(), key, false /* locked_to_single_user */,
-      &crypt_flags, &crypto_error, &new_keyset));
-
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
+
+  unsigned int crypt_flags = 0;
+  CryptoError crypto_error = CryptoError::CE_NONE;
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
+                                        false /* locked_to_single_user */,
+                                        &crypt_flags, &crypto_error));
+
   SecureBlob new_data;
-  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
@@ -836,11 +829,17 @@ TEST_F(LeCredentialsManagerTest, Decrypt) {
   serialized.set_wrapped_keyset(HexDecode(kHexWrappedKeyset));
   serialized.set_wrapped_chaps_key(HexDecode(kHexWrappedChapsKey));
   serialized.set_salt(HexDecode(kHexSalt));
+  serialized.set_le_label(0644);
+
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
 
   CryptoError crypto_error = CryptoError::CE_NONE;
   EXPECT_TRUE(crypto_.DecryptVaultKeyset(
-      serialized, brillo::SecureBlob(HexDecode(kHexVaultKey)), false, nullptr,
-      &crypto_error, &pin_vault_keyset_));
+      &vk, brillo::SecureBlob(HexDecode(kHexVaultKey)), false, nullptr,
+      &crypto_error));
   EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
 }
 

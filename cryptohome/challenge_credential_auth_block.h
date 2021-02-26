@@ -21,7 +21,7 @@ class ChallengeCredentialAuthBlock : public LibScryptCompatAuthBlock {
   // This derives a high entropy secret from the input secret provided by the
   // challenge credential.
   bool Derive(const AuthInput& user_input,
-              const DeprecatedAuthBlockState& state,
+              const AuthBlockState& state,
               KeyBlobs* key_blobs,
               CryptoError* error) override;
 };

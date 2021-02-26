@@ -54,19 +54,19 @@ class Crypto {
   // of EncryptVaultKeyset().
   //
   // Parameters
-  //   encrypted_keyset - The blob containing the encrypted keyset
+  //   vault_keyset - (OUT) - This is the vault keyset to decrypt. It is
+  //   populated with the unwrapped keys. For legacy reasons, it is also
+  //   accessed to retrieve the SerializedVaultKeyset.
   //   vault_key - The passkey used to decrypt the keyset
   //   crypt_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
   //   locked_to_single_user - Whether the device has transitioned into
   //   user-specific modality by extending PCR4 with a user-specific value.
   //   error (OUT) - The specific error code on failure
-  //   vault_keyset (OUT) - The decrypted vault keyset on success
-  virtual bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
+  virtual bool DecryptVaultKeyset(VaultKeyset* vault_keyset,
                                   const brillo::SecureBlob& vault_key,
                                   bool locked_to_single_user,
                                   unsigned int* crypt_flags,
-                                  CryptoError* error,
-                                  VaultKeyset* vault_keyset);
+                                  CryptoError* error);
 
   // Encrypts the vault keyset with the given passkey
   //

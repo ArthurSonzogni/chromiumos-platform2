@@ -110,21 +110,41 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
 }
 
 bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
-                                    const DeprecatedAuthBlockState& state,
+                                    const AuthBlockState& state,
                                     KeyBlobs* key_out_data,
                                     CryptoError* error) {
-  const SerializedVaultKeyset& serialized = state.vault_keyset.value();
-  if (!utils_.CheckTPMReadiness(serialized, error))
+  if (!state.has_tpm_bound_to_pcr_state()) {
+    DLOG(FATAL) << "Called with an invalid auth block state";
     return false;
+  }
+
+  const AuthBlockState::TpmBoundToPcrAuthBlockState& tpm_state =
+      state.tpm_bound_to_pcr_state();
+
+  if (!tpm_state.scrypt_derived()) {
+    LOG(ERROR) << "All TpmBoundtoPcr operations should be scrypt derived.";
+    return false;
+  }
+
+  brillo::SecureBlob tpm_public_key_hash;
+  if (tpm_state.has_tpm_public_key_hash()) {
+    tpm_public_key_hash.assign(tpm_state.tpm_public_key_hash().begin(),
+                               tpm_state.tpm_public_key_hash().end());
+  }
+
+  if (!utils_.CheckTPMReadiness(tpm_state.has_tpm_key(),
+                                tpm_state.has_tpm_public_key_hash(),
+                                tpm_public_key_hash, error)) {
+    return false;
+  }
 
   key_out_data->vkk_iv = brillo::SecureBlob(kAesBlockSize);
   key_out_data->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
 
   bool locked_to_single_user = auth_input.locked_to_single_user.value_or(false);
-  brillo::SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
-  std::string tpm_key_str = locked_to_single_user
-                                ? serialized.extended_tpm_key()
-                                : serialized.tpm_key();
+  brillo::SecureBlob salt(tpm_state.salt().begin(), tpm_state.salt().end());
+  std::string tpm_key_str = locked_to_single_user ? tpm_state.extended_tpm_key()
+                                                  : tpm_state.tpm_key();
   brillo::SecureBlob tpm_key(tpm_key_str.begin(), tpm_key_str.end());
 
   if (!DecryptTpmBoundToPcr(auth_input.user_input.value(), tpm_key, salt, error,
@@ -134,12 +154,15 @@ bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   key_out_data->chaps_iv = key_out_data->vkk_iv;
-  key_out_data->wrapped_reset_seed = brillo::SecureBlob();
-  key_out_data->wrapped_reset_seed.value().assign(
-      serialized.wrapped_reset_seed().begin(),
-      serialized.wrapped_reset_seed().end());
 
-  if (!serialized.has_tpm_public_key_hash() && error) {
+  if (tpm_state.has_wrapped_reset_seed()) {
+    key_out_data->wrapped_reset_seed = brillo::SecureBlob();
+    key_out_data->wrapped_reset_seed.value().assign(
+        tpm_state.wrapped_reset_seed().begin(),
+        tpm_state.wrapped_reset_seed().end());
+  }
+
+  if (!tpm_state.has_tpm_public_key_hash() && error) {
     *error = CryptoError::CE_NO_PUBLIC_KEY_HASH;
   }
 

@@ -207,18 +207,20 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 }
 
 bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
-                                const DeprecatedAuthBlockState& state,
+                                const AuthBlockState& state,
                                 KeyBlobs* key_blobs,
                                 CryptoError* error) {
-  DCHECK(key_blobs);
-  DCHECK(state.vault_keyset != base::nullopt);
-  const SerializedVaultKeyset& serialized = state.vault_keyset.value();
+  if (!state.has_pin_weaver_state()) {
+    DLOG(FATAL) << "Invalid AuthBlockState";
+    return false;
+  }
 
-  CHECK(serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  const AuthBlockState::PinWeaverAuthBlockState& auth_state =
+      state.pin_weaver_state();
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
-  brillo::SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
+  brillo::SecureBlob salt(auth_state.salt().begin(), auth_state.salt().end());
   if (!CryptoLib::DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                                       {&le_secret, &kdf_skey})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
@@ -226,22 +228,26 @@ bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   key_blobs->reset_secret = brillo::SecureBlob();
-  key_blobs->chaps_iv = brillo::SecureBlob(serialized.le_chaps_iv().begin(),
-                                           serialized.le_chaps_iv().end());
+  // Note: Yes it is odd to pass the IV from the auth state into the key blobs
+  // without performing any operation on the data. However, the fact that the
+  // IVs are pre-generated in the VaultKeyset for PinWeaver credentials is an
+  // implementation detail. The AuthBlocks are designed to hide those
+  // implementation details, so this goes here.
+  key_blobs->chaps_iv = brillo::SecureBlob(auth_state.chaps_iv().begin(),
+                                           auth_state.chaps_iv().end());
+  key_blobs->vkk_iv = brillo::SecureBlob(auth_state.fek_iv().begin(),
+                                         auth_state.fek_iv().end());
 
   // Try to obtain the HE Secret from the LECredentialManager.
   brillo::SecureBlob he_secret;
   int ret =
-      le_manager_->CheckCredential(serialized.le_label(), le_secret, &he_secret,
+      le_manager_->CheckCredential(auth_state.le_label(), le_secret, &he_secret,
                                    &key_blobs->reset_secret.value());
 
   if (ret != LE_CRED_SUCCESS) {
     PopulateError(error, ConvertLeError(ret));
     return false;
   }
-
-  key_blobs->vkk_iv = brillo::SecureBlob(serialized.le_fek_iv().begin(),
-                                         serialized.le_fek_iv().end());
 
   brillo::SecureBlob vkk_seed = CryptoLib::HmacSha256(
       he_secret, brillo::BlobFromString(kHESecretHmacData));
