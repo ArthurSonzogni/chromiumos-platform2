@@ -141,27 +141,6 @@ void TpmInit::RestoreTpmStateFromStorage() {
     tpm_persistent_state_.ClearStatus();
   }
 
-  SecureBlob local_owner_password;
-  LoadOwnerPassword(&local_owner_password);
-}
-
-bool TpmInit::LoadOwnerPassword(brillo::SecureBlob* owner_password) {
-  SecureBlob sealed_password;
-  if (!tpm_persistent_state_.GetSealedPassword(&sealed_password)) {
-    return false;
-  }
-  if (sealed_password.empty()) {
-    // Empty password means default password.
-    owner_password->resize(sizeof(kTpmWellKnownPassword));
-    memcpy(owner_password->data(), kTpmWellKnownPassword,
-           sizeof(kTpmWellKnownPassword));
-    return true;
-  }
-  if (!get_tpm()->Unseal(sealed_password, owner_password)) {
-    LOG(ERROR) << "Failed to unseal the owner password.";
-    return false;
-  }
-  return true;
 }
 
 void TpmInit::RemoveTpmOwnerDependency(

@@ -22,10 +22,6 @@ using ::testing::Return;
 
 namespace cryptohome {
 
-using TpmOwnerDependency = TpmPersistentState::TpmOwnerDependency;
-
-const base::FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
-
 class TpmPersistentStateTest : public ::testing::Test {
  public:
   // Default mock implementations for |platform_| methods.
@@ -98,113 +94,5 @@ class TpmPersistentStateTest : public ::testing::Test {
   // Declare tpm_init_ last, so it gets destroyed before all the mocks.
   TpmPersistentState tpm_persistent_state_{&platform_};
 };
-
-TEST_F(TpmPersistentStateTest, SetPassword) {
-  // Initially there's no password.
-  ASSERT_FALSE(FileExists(kTpmStatusFile));
-  SecureBlob result;
-  EXPECT_FALSE(tpm_persistent_state_.GetSealedPassword(&result));
-
-  // After setting the default password, we get back an empty password.
-  EXPECT_TRUE(tpm_persistent_state_.SetDefaultPassword());
-  EXPECT_TRUE(tpm_persistent_state_.GetSealedPassword(&result));
-  EXPECT_TRUE(result.empty());
-
-  // After setting some password, we get it back.
-  SecureBlob password("password");
-  EXPECT_TRUE(tpm_persistent_state_.SetSealedPassword(password));
-  EXPECT_TRUE(tpm_persistent_state_.GetSealedPassword(&result));
-  EXPECT_EQ(password, result);
-
-  // Clearing status clears the password.
-  EXPECT_TRUE(tpm_persistent_state_.ClearStatus());
-  EXPECT_FALSE(tpm_persistent_state_.GetSealedPassword(&result));
-}
-
-TEST_F(TpmPersistentStateTest, SetDependencies) {
-  // Initially, there's no password, no dependencies, so clearing suceeds.
-  ASSERT_FALSE(FileExists(kTpmStatusFile));
-  EXPECT_TRUE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-
-  // Setting the default password should also set both dependencies to on.
-  EXPECT_TRUE(tpm_persistent_state_.SetDefaultPassword());
-  EXPECT_FALSE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-
-  // Clearing the state after setting the password should allow clearing
-  // the password (which is already clear).
-  EXPECT_TRUE(tpm_persistent_state_.ClearStatus());
-  EXPECT_TRUE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-
-  // Setting any password should also set both dependencies to on.
-  SecureBlob password("password");
-  EXPECT_TRUE(tpm_persistent_state_.SetSealedPassword(password));
-  EXPECT_FALSE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-
-  // Clearing one dependency is not sufficient for clearing the password.
-  EXPECT_TRUE(
-      tpm_persistent_state_.ClearDependency(TpmOwnerDependency::kAttestation));
-  EXPECT_FALSE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-  SecureBlob result;
-  EXPECT_TRUE(tpm_persistent_state_.GetSealedPassword(&result));
-  EXPECT_EQ(password, result);
-
-  // Clearing both dependencies should allow clearing the password.
-  EXPECT_TRUE(tpm_persistent_state_.ClearDependency(
-      TpmOwnerDependency::kInstallAttributes));
-  EXPECT_TRUE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-  EXPECT_FALSE(tpm_persistent_state_.GetSealedPassword(&result));
-
-  // Clearing the state after setting the password should allow clearing
-  // the password (which is already clear).
-  EXPECT_TRUE(tpm_persistent_state_.ClearStatus());
-  EXPECT_TRUE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-}
-
-TEST_F(TpmPersistentStateTest, TpmStatusPreExisting) {
-  SecureBlob password("password");
-  TpmStatus status;
-  status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                   TpmStatus::USES_RANDOM_OWNER |
-                   TpmStatus::ATTESTATION_NEEDS_OWNER);
-  status.set_owner_password(password.to_string());
-  brillo::Blob status_blob = brillo::BlobFromString(status.SerializeAsString());
-  FileWrite(kTpmStatusFile, status_blob);
-
-  SecureBlob result;
-  EXPECT_TRUE(tpm_persistent_state_.GetSealedPassword(&result));
-  EXPECT_EQ(password, result);
-  EXPECT_FALSE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-  EXPECT_TRUE(
-      tpm_persistent_state_.ClearDependency(TpmOwnerDependency::kAttestation));
-  EXPECT_TRUE(tpm_persistent_state_.ClearStoredPasswordIfNotNeeded());
-}
-
-TEST_F(TpmPersistentStateTest, TpmStatusCached) {
-  // The TpmStatus file is read only once.
-  TpmStatus empty_status;
-  empty_status.set_flags(TpmStatus::NONE);
-  brillo::Blob empty_status_blob =
-      brillo::BlobFromString(empty_status.SerializeAsString());
-  FileWrite(kTpmStatusFile, empty_status_blob);
-  EXPECT_CALL(platform_, ReadFile(kTpmStatusFile, _)).Times(1);
-  SecureBlob password("password");
-  EXPECT_TRUE(tpm_persistent_state_.SetSealedPassword(password));
-  SecureBlob result;
-  EXPECT_TRUE(tpm_persistent_state_.GetSealedPassword(&result));
-  EXPECT_EQ(password, result);
-  EXPECT_TRUE(tpm_persistent_state_.GetSealedPassword(&result));
-  EXPECT_EQ(password, result);
-
-  // Each change to state leads to write.
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
-      .Times(2);
-  EXPECT_TRUE(tpm_persistent_state_.SetSealedPassword(password));
-  EXPECT_TRUE(tpm_persistent_state_.ClearDependency(
-      TpmOwnerDependency::kInstallAttributes));
-  // Clearing the status leads to deleting the file.
-  EXPECT_TRUE(tpm_persistent_state_.ClearStatus());
-  EXPECT_FALSE(FileExists(kTpmStatusFile));
-}
 
 }  // namespace cryptohome

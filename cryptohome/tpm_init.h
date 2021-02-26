@@ -83,9 +83,6 @@ class TpmInit {
   // Invoked by SetupTpm to restore TPM state from saved state in storage.
   void RestoreTpmStateFromStorage();
 
-  // Retrieves the TPM owner password.
-  bool LoadOwnerPassword(brillo::SecureBlob* owner_password);
-
   // Returns whether or not the TPM is enabled by checking a flag in the TPM's
   // entry in either /sys/class/misc or /sys/class/tpm.
   bool IsEnabledCheckViaSysfs(const base::FilePath& enabled_file);

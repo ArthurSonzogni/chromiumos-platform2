@@ -22,68 +22,6 @@ const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
 TpmPersistentState::TpmPersistentState(Platform* platform)
     : platform_(platform) {}
 
-bool TpmPersistentState::SetSealedPassword(const SecureBlob& sealed_password) {
-  base::AutoLock lock(tpm_status_lock_);
-
-  if (!LoadTpmStatus()) {
-    return false;
-  }
-
-  tpm_status_.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                        TpmStatus::USES_RANDOM_OWNER |
-                        TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                        TpmStatus::ATTESTATION_NEEDS_OWNER);
-  tpm_status_.set_owner_password(sealed_password.data(),
-                                 sealed_password.size());
-
-  if (!StoreTpmStatus()) {
-    tpm_status_.clear_owner_password();
-    return false;
-  }
-  return true;
-}
-
-bool TpmPersistentState::SetDefaultPassword() {
-  base::AutoLock lock(tpm_status_lock_);
-
-  if (!LoadTpmStatus()) {
-    return false;
-  }
-
-  tpm_status_.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                        TpmStatus::USES_WELL_KNOWN_OWNER |
-                        TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                        TpmStatus::ATTESTATION_NEEDS_OWNER);
-  tpm_status_.clear_owner_password();
-
-  return StoreTpmStatus();
-}
-
-bool TpmPersistentState::GetSealedPassword(SecureBlob* sealed_password) {
-  base::AutoLock lock(tpm_status_lock_);
-
-  if (!LoadTpmStatus()) {
-    return false;
-  }
-
-  if (!(tpm_status_.flags() & TpmStatus::OWNED_BY_THIS_INSTALL)) {
-    return false;
-  }
-  if ((tpm_status_.flags() & TpmStatus::USES_WELL_KNOWN_OWNER)) {
-    sealed_password->clear();
-    return true;
-  }
-  if (!(tpm_status_.flags() & TpmStatus::USES_RANDOM_OWNER) ||
-      !tpm_status_.has_owner_password()) {
-    return false;
-  }
-
-  sealed_password->resize(tpm_status_.owner_password().size());
-  tpm_status_.owner_password().copy(sealed_password->char_data(),
-                                    tpm_status_.owner_password().size(), 0);
-  return true;
-}
-
 bool TpmPersistentState::ClearDependency(TpmOwnerDependency dependency) {
   base::AutoLock lock(tpm_status_lock_);
 
@@ -106,27 +44,6 @@ bool TpmPersistentState::ClearDependency(TpmOwnerDependency dependency) {
     return true;
   }
   tpm_status_.set_flags(tpm_status_.flags() & ~flag_to_clear);
-  return StoreTpmStatus();
-}
-
-bool TpmPersistentState::ClearStoredPasswordIfNotNeeded() {
-  base::AutoLock lock(tpm_status_lock_);
-
-  if (!LoadTpmStatus()) {
-    return false;
-  }
-
-  int32_t dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                             TpmStatus::ATTESTATION_NEEDS_OWNER;
-  if (tpm_status_.flags() & dependency_flags) {
-    // The password is still needed, do not clear.
-    return false;
-  }
-
-  if (!tpm_status_.has_owner_password()) {
-    return true;
-  }
-  tpm_status_.clear_owner_password();
   return StoreTpmStatus();
 }
 

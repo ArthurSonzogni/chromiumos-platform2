@@ -34,32 +34,6 @@ class TpmPersistentState {
 
   explicit TpmPersistentState(Platform* platform);
 
-  // Indicates in the state that the tpm is owned with the default
-  // well-known password. Sets the dependencies to the initial set (all
-  // entities that depend on the owner password still need it kept in the
-  // persistent state).
-  // Saves the updated state in the persistent storage before returning.
-  // Returns true on success, false otherwise.
-  bool SetDefaultPassword();
-
-  // Indicates in the state that the tpm is owned with the provided
-  // password. The password is sealed to the current boot state and the
-  // resulting encrypted value is passed to this method. Sets the dependencies
-  // to the initial set (all entities that depend on the owner password still
-  // need it kept in the persistent state).
-  // Saves the updated state in the persistent storage before returning.
-  // Returns true on success, false otherwise.
-  bool SetSealedPassword(const brillo::SecureBlob& sealed_password);
-
-  // Gets the sealed password saved in the persistent state for the tpm
-  // owner. An empty value indicates default well-known password. If the
-  // value is not empty, the password must be unsealed after getting it
-  // from this method before using it for authorization.
-  // Returns false if the state indicates that it doesn't contain a default
-  // or a sealed password, true otherwise.
-  bool GetSealedPassword(brillo::SecureBlob* sealed_password);
-
-  // Resets the status to empty default, as before owning the tpm: the
   // owner password is not stored, no dependencies are set.
   // Saves the updated state in the persistent storage before returning.
   // Returns true on success, false otherwise.
@@ -70,13 +44,6 @@ class TpmPersistentState {
   // storage before returning.
   // Returns true on success, false otherwise.
   bool ClearDependency(TpmOwnerDependency dependency);
-
-  // Attempts to clear the owner password in the persistent state.
-  // If there were any changes, saves the updated state in the persistent
-  // storage before returning.
-  // Returns false if there are still pending dependencies or it failed to
-  // update the state, false otherwise.
-  bool ClearStoredPasswordIfNotNeeded();
 
  private:
   // Loads TpmStatus that includes the owner password and the dependencies
