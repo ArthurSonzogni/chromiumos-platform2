@@ -335,6 +335,9 @@ const std::vector<Log> kCommandLogs {
   // any user.
   {kCommand, "tpm_version", "/usr/sbin/tpm-manager get_version_info", kRoot,
     kRoot},
+  // typecd logs average around 56K. VID/PIDs are obfuscated from the printed
+  // PD identity information.
+  {kFile, "typecd", "/var/log/typecd.log"},
   {kCommand, "atmel_ts_refs",
     "/opt/google/touch/scripts/atmel_tools.sh ts r", kRoot, kRoot},
   {kCommand, "atmel_tp_refs",
