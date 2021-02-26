@@ -303,6 +303,89 @@ void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
   }
 }
 
+bool VaultKeyset::GetTpmBoundToPcrState(AuthBlockState* auth_state) const {
+  // The AuthBlock can function without the |tpm_public_key_hash_|, but not
+  // without the |tpm_key_| or | extended_tpm_key_|.
+  if (!tpm_key_.has_value() || !extended_tpm_key_.has_value()) {
+    return false;
+  }
+
+  AuthBlockState::TpmBoundToPcrAuthBlockState* state =
+      auth_state->mutable_tpm_bound_to_pcr_state();
+  state->set_scrypt_derived((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) !=
+                            0);
+  state->set_tpm_key(tpm_key_->data(), tpm_key_->size());
+  state->set_extended_tpm_key(extended_tpm_key_->data(),
+                              extended_tpm_key_->size());
+  if (tpm_public_key_hash_.has_value()) {
+    state->set_tpm_public_key_hash(tpm_public_key_hash_->data(),
+                                   tpm_public_key_hash_->size());
+  }
+  return true;
+}
+
+bool VaultKeyset::GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const {
+  // The AuthBlock can function without the |tpm_public_key_hash_|, but not
+  // without the |tpm_key_|.
+  if (!tpm_key_.has_value()) {
+    return false;
+  }
+
+  AuthBlockState::TpmNotBoundToPcrAuthBlockState* state =
+      auth_state->mutable_tpm_not_bound_to_pcr_state();
+  state->set_scrypt_derived((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) !=
+                            0);
+  state->set_tpm_key(tpm_key_->data(), tpm_key_->size());
+  if (tpm_public_key_hash_.has_value()) {
+    state->set_tpm_public_key_hash(tpm_public_key_hash_->data(),
+                                   tpm_public_key_hash_->size());
+  }
+
+  return true;
+}
+
+bool VaultKeyset::GetPinWeaverState(AuthBlockState* auth_state) const {
+  // If the LE Label is missing, the AuthBlock cannot function.
+  if (!le_label_.has_value()) {
+    return false;
+  }
+
+  AuthBlockState::PinWeaverAuthBlockState* state =
+      auth_state->mutable_pin_weaver_state();
+  state->set_le_label(le_label_.value());
+  return true;
+}
+
+bool VaultKeyset::GetSignatureChallengeState(AuthBlockState* auth_state) const {
+  // This populates the member in the union.
+  auth_state->mutable_challenge_credential_state();
+  return true;
+}
+
+bool VaultKeyset::GetLibScryptCompatState(AuthBlockState* auth_state) const {
+  // This populates the member in the union.
+  auth_state->mutable_libscrypt_compat_state();
+  return true;
+}
+
+bool VaultKeyset::GetAuthBlockState(AuthBlockState* auth_state) const {
+  if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
+      flags_ & SerializedVaultKeyset::PCR_BOUND) {
+    return GetTpmBoundToPcrState(auth_state);
+  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
+    return GetTpmNotBoundToPcrState(auth_state);
+  } else if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
+    return GetPinWeaverState(auth_state);
+  } else if (flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
+    return GetSignatureChallengeState(auth_state);
+  } else if (flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) {
+    return GetLibScryptCompatState(auth_state);
+  } else {
+    LOG(ERROR) << "Unknown auth block type for flags " << flags_;
+    return false;
+  }
+}
+
 void VaultKeyset::SetWrappedKeyMaterial(
     const WrappedKeyMaterial& key_material) {
   if (IsLECredential() && key_material.vkk_iv.has_value()) {
