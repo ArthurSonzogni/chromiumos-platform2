@@ -194,6 +194,9 @@ class VaultKeyset {
   virtual void SetResetSecret(const brillo::SecureBlob& reset_secret);
   virtual const brillo::SecureBlob& GetResetSecret() const;
 
+  // This populates an AuthBlockState proto allocated by the caller.
+  bool GetAuthBlockState(AuthBlockState* auth_state) const;
+
  private:
   // Converts the class to a protobuf for serialization to disk.
   SerializedVaultKeyset ToSerialized() const;
@@ -206,6 +209,14 @@ class VaultKeyset {
 
   // Sets the wrapped keys and IVs.
   void SetWrappedKeyMaterial(const WrappedKeyMaterial& key_material);
+
+  // This populates each sub type of AuthBlockState into the caller allocated
+  // object.
+  bool GetTpmBoundToPcrState(AuthBlockState* auth_state) const;
+  bool GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const;
+  bool GetPinWeaverState(AuthBlockState* auth_state) const;
+  bool GetSignatureChallengeState(AuthBlockState* auth_state) const;
+  bool GetLibScryptCompatState(AuthBlockState* auth_state) const;
 
   // Reads an auth block state and update the VaultKeyset with what it
   // returns.
