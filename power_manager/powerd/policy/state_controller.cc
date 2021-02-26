@@ -406,7 +406,8 @@ void StateController::Init(Delegate* delegate,
                              &StateController::HandleInitialStateTimeout);
 
   crash_boot_collector_watcher_.Watch(
-      base::FilePath(kCrashBootCollectorDoneFile), false,
+      base::FilePath(kCrashBootCollectorDoneFile),
+      base::FilePathWatcher::Type::kNonRecursive,
       base::Bind(&StateController::MaybeStopWaitForCrashBootCollectTimer,
                  weak_ptr_factory_.GetWeakPtr()));
 

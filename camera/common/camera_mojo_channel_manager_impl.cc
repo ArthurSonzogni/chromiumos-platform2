@@ -88,7 +88,7 @@ CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
 
   base::FilePath socket_path(constants::kCrosCameraSocketPathString);
   if (!watcher_.Watch(
-          socket_path, false,
+          socket_path, base::FilePathWatcher::Type::kNonRecursive,
           base::Bind(&CameraMojoChannelManagerImpl::OnSocketFileStatusChange,
                      base::Unretained(this)))) {
     LOGF(ERROR) << "Failed to watch socket path";

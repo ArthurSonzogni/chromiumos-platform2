@@ -40,7 +40,7 @@ bool FilePrefsStore::Watch(
   callback_ = callback;
   dir_watcher_.reset(new base::FilePathWatcher);
   return dir_watcher_->Watch(
-      pref_path_, false,
+      pref_path_, base::FilePathWatcher::Type::kNonRecursive,
       base::Bind(&FilePrefsStore::HandlePathChanged, base::Unretained(this)));
 }
 
@@ -84,7 +84,7 @@ void FilePrefsStore::UpdateFileWatchers() {
     const base::FilePath path = pref_path_.Append(name);
     std::unique_ptr<base::FilePathWatcher> watcher =
         std::make_unique<base::FilePathWatcher>();
-    if (watcher->Watch(path, false,
+    if (watcher->Watch(path, base::FilePathWatcher::Type::kNonRecursive,
                        base::Bind(&FilePrefsStore::HandlePathChanged,
                                   base::Unretained(this)))) {
       file_watchers_.insert(std::make_pair(name, std::move(watcher)));
