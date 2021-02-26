@@ -256,8 +256,7 @@ BiodStorage::ReadRecordResult BiodStorage::ReadRecordsForSingleUser(
       ret.invalid_records.emplace_back(cur_record);
       continue;
     }
-    const auto& str = data->GetString();
-    cur_record.data = brillo::SecureVector(str.cbegin(), str.cend());
+    cur_record.data = data->GetString();
 
     ret.valid_records.emplace_back(cur_record);
   }

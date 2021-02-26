@@ -708,11 +708,8 @@ void CrosFpBiometricsManager::OnTaskComplete() {
 }
 
 bool CrosFpBiometricsManager::LoadRecord(const BiodStorage::Record record) {
-  std::string tmpl_data_base64(record.data.cbegin(), record.data.cend());
-
-  base::StringPiece tmpl_data_base64_sp(tmpl_data_base64);
   std::string tmpl_data_str;
-  base::Base64Decode(tmpl_data_base64_sp, &tmpl_data_str);
+  base::Base64Decode(record.data, &tmpl_data_str);
 
   if (records_.size() >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space to upload template from "

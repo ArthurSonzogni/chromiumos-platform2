@@ -36,7 +36,8 @@ class BiodStorage {
 
   struct Record {
     RecordMetadata metadata;
-    brillo::SecureVector data;
+    // "data" is base64 encoded.
+    std::string data;
   };
 
   struct ReadRecordResult {
