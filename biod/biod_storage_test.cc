@@ -4,6 +4,8 @@
 
 #include "biod/biod_storage.h"
 
+#include <sys/resource.h>
+
 #include <algorithm>
 #include <memory>
 #include <unordered_set>
@@ -17,6 +19,7 @@
 #include <testing/gtest/include/gtest/gtest.h>
 #include <base/strings/string_util.h>
 #include <base/files/important_file_writer.h>
+#include <base/json/json_string_value_serializer.h>
 
 namespace biod {
 
@@ -50,6 +53,26 @@ constexpr int kPermissions600 =
 constexpr int kPermissions700 = base::FILE_PERMISSION_USER_MASK;
 
 const char kInvalidUTF8[] = "\xed\xa0\x80\xed\xbf\xbf";
+
+constexpr int kFpc1145TemplateSizeBytes = 47616;
+constexpr int kFpc1025TemplateSizeBytes = 5156;
+constexpr int kElan80TemplateSizeBytes = 41024;
+constexpr int kElan515TemplateSizeBytes = 67064;
+
+/**
+ * "Max locked memory" value from reading /proc/<PID>/limits on DUT
+ *
+ * This matches the default value in the kernel:
+ * https://chromium.googlesource.com/chromiumos/third_party/kernel/+/a5746cdefaed35de0a85ede48a47e9a340a6f7e6/include/uapi/linux/resource.h#72
+ *
+ * The default can be overridden in /etc/security/limits.conf:
+ * https://access.redhat.com/solutions/61334
+ *
+ * or in the upstart script http://upstart.ubuntu.com/cookbook/#limit:
+ *
+ * limit memlock <soft> <hard>
+ */
+constexpr int kRlimitMemlockBytes = 65536;
 
 // Flag to control whether to run tests with positive match secret support.
 // This can't be a member of the test fixture because it's accessed in the
@@ -101,6 +124,12 @@ class TestRecord : public BiometricsManager::Record {
   std::vector<uint8_t> validation_val_;
   std::string data_;
 };
+
+struct MemlockTestParams {
+  int rlimit_bytes;
+  int template_size_bytes;
+};
+
 }  // namespace
 
 class BiodStorageBaseTest : public ::testing::Test {
@@ -463,5 +492,95 @@ TEST_F(BiodStorageInvalidRecordTest, ValidationValueNotBase64) {
   EXPECT_EQ(read_result.valid_records.size(), 0);
   EXPECT_EQ(read_result.invalid_records.size(), 1);
 }
+
+/**
+ * Tests to make sure we do not crash due to hitting the RLIMIT_MEMLOCK limit.
+ * See http://b/181281782, http://b/175158241, and http://b/173655013.
+ */
+class BiodStorageMemlockTest
+    : public testing::TestWithParam<MemlockTestParams> {
+ public:
+  BiodStorageMemlockTest() : params_(GetParam()) {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    root_path_ =
+        temp_dir_.GetPath().AppendASCII("biod_storage_memlock_test_root");
+    biod_storage_ = std::make_unique<BiodStorage>(kBiometricsManagerName);
+    // Since there is no session manager, allow accesses by default.
+    biod_storage_->set_allow_access(true);
+    biod_storage_->SetRootPathForTesting(root_path_);
+
+    auto record =
+        TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1);
+    record_name_ = biod_storage_->GetRecordFilename(record);
+    EXPECT_FALSE(record_name_.empty());
+    EXPECT_TRUE(base::CreateDirectory(record_name_.DirName()));
+
+    struct rlimit limit;
+
+    EXPECT_EQ(getrlimit(RLIMIT_MEMLOCK, &limit), 0);
+    orig_limit_ = limit;
+
+    limit.rlim_cur = params_.rlimit_bytes;
+    EXPECT_LT(limit.rlim_cur, limit.rlim_max);
+    EXPECT_EQ(setrlimit(RLIMIT_MEMLOCK, &limit), 0);
+
+    EXPECT_EQ(getrlimit(RLIMIT_MEMLOCK, &limit), 0);
+    EXPECT_EQ(limit.rlim_cur, params_.rlimit_bytes);
+  }
+
+  ~BiodStorageMemlockTest() override {
+    // Restore original limits.
+    EXPECT_EQ(setrlimit(RLIMIT_MEMLOCK, &orig_limit_), 0);
+  }
+
+ protected:
+  const MemlockTestParams params_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath root_path_;
+  base::FilePath record_name_;
+  std::unique_ptr<BiodStorage> biod_storage_;
+  struct rlimit orig_limit_;
+};
+
+TEST_P(BiodStorageMemlockTest, ReadReadRecords) {
+  base::Value record_value(base::Value::Type::DICTIONARY);
+  record_value.SetStringKey("record_id", "1234");
+  record_value.SetStringKey("label", "some_label");
+  record_value.SetStringKey("match_validation_value", "4567");
+  record_value.SetIntKey("version", 2);
+  std::vector<uint8_t> data(params_.template_size_bytes, 'a');
+  record_value.SetStringKey("data", base::Base64Encode(data));
+
+  std::string record;
+  JSONStringValueSerializer json_serializer(&record);
+  EXPECT_TRUE(json_serializer.Serialize(record_value));
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 1);
+  EXPECT_EQ(read_result.invalid_records.size(), 0);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    BiodStorageMemlock,
+    BiodStorageMemlockTest,
+    testing::Values(
+        MemlockTestParams{
+            .rlimit_bytes = kRlimitMemlockBytes,
+            .template_size_bytes = kElan515TemplateSizeBytes,
+        },
+        MemlockTestParams{
+            .rlimit_bytes = kRlimitMemlockBytes,
+            .template_size_bytes = kElan80TemplateSizeBytes,
+        },
+        MemlockTestParams{
+            .rlimit_bytes = kRlimitMemlockBytes,
+            .template_size_bytes = kFpc1145TemplateSizeBytes,
+        },
+        MemlockTestParams{
+            .rlimit_bytes = kRlimitMemlockBytes,
+            .template_size_bytes = kFpc1025TemplateSizeBytes,
+        }));
 
 }  // namespace biod
