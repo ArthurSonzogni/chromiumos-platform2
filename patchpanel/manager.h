@@ -30,12 +30,11 @@
 #include "patchpanel/shill_client.h"
 #include "patchpanel/socket.h"
 #include "patchpanel/subnet.h"
-#include "patchpanel/traffic_forwarder.h"
 
 namespace patchpanel {
 
 // Main class that runs the mainloop and responds to LAN interface changes.
-class Manager final : public brillo::DBusDaemon, private TrafficForwarder {
+class Manager final : public brillo::DBusDaemon {
  public:
   Manager(std::unique_ptr<HelperProcess> adb_proxy,
           std::unique_ptr<HelperProcess> mcast_proxy,
@@ -45,17 +44,15 @@ class Manager final : public brillo::DBusDaemon, private TrafficForwarder {
 
   ~Manager() = default;
 
-  // TrafficForwarder methods.
-
   void StartForwarding(const std::string& ifname_physical,
                        const std::string& ifname_virtual,
                        bool ipv6,
-                       bool multicast) override;
+                       bool multicast);
 
   void StopForwarding(const std::string& ifname_physical,
                       const std::string& ifname_virtual,
                       bool ipv6,
-                      bool multicast) override;
+                      bool multicast);
 
   // This function is used to enable specific features only on selected
   // combination of Android version, Chrome version, and boards.

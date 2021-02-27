@@ -243,12 +243,10 @@ void Manager::InitialSetup() {
   nd_proxy_->RegisterNDProxyMessageHandler(
       base::Bind(&Manager::OnNDProxyMessage, weak_factory_.GetWeakPtr()));
 
-  auto* const forwarder = static_cast<TrafficForwarder*>(this);
-
   GuestMessage::GuestType arc_guest =
       USE_ARCVM ? GuestMessage::ARC_VM : GuestMessage::ARC;
   arc_svc_ = std::make_unique<ArcService>(
-      shill_client_.get(), datapath_.get(), &addr_mgr_, forwarder, arc_guest,
+      shill_client_.get(), datapath_.get(), &addr_mgr_, arc_guest,
       base::BindRepeating(&Manager::OnDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
@@ -427,6 +425,18 @@ void Manager::OnDeviceChanged(const Device& device,
           multicast_virtual_ifnames_.end();
       StopForwarding(default_device.ifname, device.host_ifname(),
                      IsIPv6NDProxyEnabled(default_device.type), was_multicast);
+    }
+  }
+
+  if (guest_type == GuestMessage::ARC || guest_type == GuestMessage::ARC_VM) {
+    if (event == Device::ChangeEvent::ADDED) {
+      StartForwarding(device.phys_ifname(), device.host_ifname(),
+                      device.options().ipv6_enabled,
+                      device.options().fwd_multicast);
+    } else if (event == Device::ChangeEvent::REMOVED) {
+      StopForwarding(device.phys_ifname(), device.host_ifname(),
+                     device.options().ipv6_enabled,
+                     device.options().fwd_multicast);
     }
   }
 

@@ -8,9 +8,7 @@
 #include <net/if.h>
 #include <sys/utsname.h>
 
-#include <set>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -22,7 +20,6 @@
 #include <chromeos/constants/vm_tools.h>
 
 #include "patchpanel/adb_proxy.h"
-#include "patchpanel/datapath.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/manager.h"
 #include "patchpanel/minijailed_process_runner.h"
@@ -187,13 +184,11 @@ std::unique_ptr<Device> MakeArcDevice(AddressManager* addr_mgr,
 ArcService::ArcService(ShillClient* shill_client,
                        Datapath* datapath,
                        AddressManager* addr_mgr,
-                       TrafficForwarder* forwarder,
                        GuestMessage::GuestType guest,
                        Device::ChangeEventHandler device_changed_handler)
     : shill_client_(shill_client),
       datapath_(datapath),
       addr_mgr_(addr_mgr),
-      forwarder_(forwarder),
       guest_(guest),
       device_changed_handler_(device_changed_handler),
       id_(kInvalidId) {
@@ -496,9 +491,6 @@ void ArcService::AddDevice(const std::string& ifname,
     LOG(ERROR) << "Failed to add ADB port access rule";
   }
 
-  forwarder_->StartForwarding(device->phys_ifname(), device->host_ifname(),
-                              device->options().ipv6_enabled,
-                              device->options().fwd_multicast);
   device_changed_handler_.Run(*device, Device::ChangeEvent::ADDED, guest_);
   devices_.emplace(ifname, std::move(device));
 }
@@ -518,10 +510,6 @@ void ArcService::RemoveDevice(const std::string& ifname,
   LOG(INFO) << "Removing device " << *device;
 
   device_changed_handler_.Run(*device, Device::ChangeEvent::REMOVED, guest_);
-
-  forwarder_->StopForwarding(device->phys_ifname(), device->host_ifname(),
-                             device->options().ipv6_enabled,
-                             device->options().fwd_multicast);
 
   // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
   if (guest_ == GuestMessage::ARC)

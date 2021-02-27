@@ -20,7 +20,6 @@
 #include "patchpanel/device.h"
 #include "patchpanel/ipc.pb.h"
 #include "patchpanel/shill_client.h"
-#include "patchpanel/traffic_forwarder.h"
 
 namespace patchpanel {
 
@@ -32,7 +31,6 @@ class ArcService {
   ArcService(ShillClient* shill_client,
              Datapath* datapath,
              AddressManager* addr_mgr,
-             TrafficForwarder* forwarder,
              GuestMessage::GuestType guest,
              Device::ChangeEventHandler device_changed_handler);
   ArcService(const ArcService&) = delete;
@@ -84,7 +82,6 @@ class ArcService {
   ShillClient* shill_client_;
   Datapath* datapath_;
   AddressManager* addr_mgr_;
-  TrafficForwarder* forwarder_;
   GuestMessage::GuestType guest_;
   Device::ChangeEventHandler device_changed_handler_;
 
