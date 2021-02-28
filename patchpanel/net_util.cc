@@ -6,6 +6,7 @@
 
 #include <net/if.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include <fstream>
 #include <iostream>
@@ -282,6 +283,34 @@ uint16_t Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6) {
   sum += NetChecksum(icmp6, ntohs(ip6->ip6_plen));
 
   return FoldChecksum(sum);
+}
+
+bool IsMulticastInterface(const std::string& ifname) {
+  if (ifname.empty()) {
+    return false;
+  }
+
+  int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0) {
+    // If IPv4 fails, try to open a socket using IPv6.
+    fd = socket(AF_INET6, SOCK_DGRAM, 0);
+    if (fd < 0) {
+      LOG(ERROR) << "Unable to create socket";
+      return false;
+    }
+  }
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+    PLOG(ERROR) << "SIOCGIFFLAGS failed for " << ifname;
+    close(fd);
+    return false;
+  }
+
+  close(fd);
+  return (ifr.ifr_flags & IFF_MULTICAST);
 }
 
 }  // namespace patchpanel

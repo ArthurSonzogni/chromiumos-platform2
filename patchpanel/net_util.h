@@ -136,6 +136,10 @@ BRILLO_EXPORT uint16_t Udpv4Checksum(const iphdr* ip, const udphdr* udp);
 BRILLO_EXPORT uint16_t Icmpv6Checksum(const ip6_hdr* ip6,
                                       const icmp6_hdr* icmp6);
 
+// Returns true if multicast forwarding should be enabled for this interface.
+// TODO(hugobenichi): Move to NetUtil, pending crosreview.com/2738499.
+BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);
+
 }  // namespace patchpanel
 
 #endif  // PATCHPANEL_NET_UTIL_H_

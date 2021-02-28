@@ -16,9 +16,9 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
 
 #include "patchpanel/adb_proxy.h"
-#include "patchpanel/device.h"
 
 namespace patchpanel {
 namespace {
@@ -46,29 +46,18 @@ bool ParseKey(const std::string& key, uint64_t* vm_id, bool* is_termina) {
   return true;
 }
 
-bool IsEthernetOrWifiDevice(const ShillClient::Device& device) {
-  return device.type == ShillClient::Device::Type::kEthernet ||
-         device.type == ShillClient::Device::Type::kWifi;
-}
-
 }  // namespace
 
 CrostiniService::CrostiniService(
-    ShillClient* shill_client,
     AddressManager* addr_mgr,
     Datapath* datapath,
-    TrafficForwarder* forwarder,
     Device::ChangeEventHandler device_changed_handler)
-    : shill_client_(shill_client),
-      addr_mgr_(addr_mgr),
+    : addr_mgr_(addr_mgr),
       datapath_(datapath),
-      forwarder_(forwarder),
       device_changed_handler_(device_changed_handler),
       adb_sideloading_enabled_(false) {
-  DCHECK(shill_client_);
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
-  DCHECK(forwarder_);
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -79,9 +68,6 @@ CrostiniService::CrostiniService(
   } else {
     CheckAdbSideloadingStatus();
   }
-
-  shill_client_->RegisterDefaultDeviceChangedHandler(base::Bind(
-      &CrostiniService::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
 }
 
 CrostiniService::~CrostiniService() {
@@ -108,7 +94,6 @@ bool CrostiniService::Start(uint64_t vm_id, bool is_termina, int subnet_index) {
   }
 
   LOG(INFO) << "Crostini network service started for {id: " << vm_id << "}";
-  StartForwarding(shill_client_->default_interface(), tap->host_ifname());
   auto source = is_termina ? TrafficSource::CROSVM : TrafficSource::PLUGINVM;
   datapath_->StartRoutingDevice("", tap->host_ifname(),
                                 tap->config().host_ipv4_addr(), source,
@@ -142,7 +127,6 @@ void CrostiniService::Stop(uint64_t vm_id, bool is_termina) {
   datapath_->StopRoutingDevice("", ifname,
                                it->second->config().host_ipv4_addr(), source,
                                true /*route_on_vpn*/);
-  StopForwarding(shill_client_->default_interface(), ifname);
   if (adb_sideloading_enabled_)
     StopAdbPortForwarding(ifname);
   datapath_->RemoveInterface(ifname);
@@ -169,6 +153,14 @@ void CrostiniService::ScanDevices(
     if (ParseKey(key, &vm_id, &is_termina))
       callback.Run(vm_id, is_termina, *dev.get());
   }
+}
+
+std::vector<const Device*> CrostiniService::GetDevices() const {
+  std::vector<const Device*> devices;
+  for (const auto& [_, dev] : taps_) {
+    devices.push_back(dev.get());
+  }
+  return devices;
 }
 
 std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
@@ -230,39 +222,6 @@ std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
   };
 
   return std::make_unique<Device>(tap, tap, "", std::move(config), opts);
-}
-
-void CrostiniService::OnDefaultDeviceChanged(
-    const ShillClient::Device& new_device,
-    const ShillClient::Device& prev_device) {
-  // Only take into account interface switches and ignore layer 3 property
-  // changes.
-  if (prev_device.ifname == new_device.ifname)
-    return;
-
-  if (IsEthernetOrWifiDevice(prev_device)) {
-    for (const auto& t : taps_)
-      StopForwarding(prev_device.ifname, t.second->host_ifname());
-  }
-
-  if (IsEthernetOrWifiDevice(new_device)) {
-    for (const auto& t : taps_)
-      StartForwarding(new_device.ifname, t.second->host_ifname());
-  }
-}
-
-void CrostiniService::StartForwarding(const std::string& phys_ifname,
-                                      const std::string& virt_ifname) {
-  if (!phys_ifname.empty())
-    forwarder_->StartForwarding(phys_ifname, virt_ifname, true /*ipv6*/,
-                                true /*multicast*/);
-}
-
-void CrostiniService::StopForwarding(const std::string& phys_ifname,
-                                     const std::string& virt_ifname) {
-  if (!phys_ifname.empty())
-    forwarder_->StopForwarding(phys_ifname, virt_ifname, true /*ipv6*/,
-                               true /*multicast*/);
 }
 
 void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {

@@ -70,6 +70,10 @@ const std::string& ShillClient::default_interface() const {
   return default_device_.ifname;
 }
 
+const ShillClient::Device& ShillClient::default_device() const {
+  return default_device_;
+}
+
 const std::set<std::string> ShillClient::get_devices() const {
   return devices_;
 }

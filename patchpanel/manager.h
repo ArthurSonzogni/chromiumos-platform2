@@ -207,6 +207,15 @@ class Manager final : public brillo::DBusDaemon, private TrafficForwarder {
   std::unique_ptr<MinijailedProcessRunner> runner_;
   std::unique_ptr<Datapath> datapath_;
 
+  // All downstream interfaces managed by shill for which multicast forwarding
+  // was enabled. This information cannot always be retrieved from the
+  // IFF_MULTICAST flag of the upstream interface managed by shill if it does
+  // not exist anymore.
+  // TODO(b/174538233) Introduce ForwardingGroup to properly track the state of
+  // traffic forwarding (ndproxy, multicast) between upstream devices managed by
+  // shill and downstream devices managed by patchpanel.
+  std::set<std::string> multicast_virtual_ifnames_;
+
   // All namespaces currently connected through patchpanel ConnectNamespace
   // API, keyed by file descriptors committed by clients when calling
   // ConnectNamespace.

@@ -106,6 +106,8 @@ class ShillClient {
 
   // Returns the cached interface name; does not initiate a property fetch.
   virtual const std::string& default_interface() const;
+  // Returns the cached default Device; does not initiate a property fetch.
+  virtual const Device& default_device() const;
   // Returns interface names of all known shill Devices.
   const std::set<std::string> get_devices() const;
   // Returns true if |ifname| is a known shill Device.

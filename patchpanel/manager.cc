@@ -55,6 +55,16 @@ void HandleSynchronousDBusMethodCall(
   std::move(response_sender).Run(std::move(response));
 }
 
+bool IsIPv6NDProxyEnabled(ShillClient::Device::Type type) {
+  static const std::set<ShillClient::Device::Type> ndproxy_allowed_types{
+      ShillClient::Device::Type::kCellular,
+      ShillClient::Device::Type::kEthernet,
+      ShillClient::Device::Type::kEthernetEap,
+      ShillClient::Device::Type::kWifi,
+  };
+  return ndproxy_allowed_types.find(type) != ndproxy_allowed_types.end();
+}
+
 }  // namespace
 
 Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
@@ -241,7 +251,7 @@ void Manager::InitialSetup() {
       base::BindRepeating(&Manager::OnDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
-      shill_client_.get(), &addr_mgr_, datapath_.get(), forwarder,
+      &addr_mgr_, datapath_.get(),
       base::BindRepeating(&Manager::OnDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   network_monitor_svc_ = std::make_unique<NetworkMonitorService>(
@@ -322,6 +332,20 @@ void Manager::OnDefaultDeviceChanged(const ShillClient::Device& new_device,
     datapath_->StartVpnRouting(new_device.ifname);
     counters_svc_->OnVpnDeviceAdded(new_device.ifname);
   }
+
+  // When the default logical network changes, Crostini's tap devices must leave
+  // their current forwarding group for multicast and IPv6 ndproxy and join the
+  // forwarding group of the new logical default network.
+  for (const auto* tap_device : cros_svc_->GetDevices()) {
+    bool was_multicast =
+        multicast_virtual_ifnames_.find(tap_device->host_ifname()) !=
+        multicast_virtual_ifnames_.end();
+    StopForwarding(prev_device.ifname, tap_device->host_ifname(),
+                   IsIPv6NDProxyEnabled(prev_device.type), was_multicast);
+    StartForwarding(new_device.ifname, tap_device->host_ifname(),
+                    IsIPv6NDProxyEnabled(new_device.type),
+                    IsMulticastInterface(new_device.ifname));
+  }
 }
 
 void Manager::OnDevicesChanged(const std::set<std::string>& added,
@@ -387,6 +411,22 @@ void Manager::OnDeviceChanged(const Device& device,
       break;
     default:
       LOG(ERROR) << "Unknown device type";
+  }
+
+  if (guest_type == GuestMessage::TERMINA_VM ||
+      guest_type == GuestMessage::PLUGIN_VM) {
+    const ShillClient::Device& default_device = shill_client_->default_device();
+    if (event == Device::ChangeEvent::ADDED) {
+      StartForwarding(default_device.ifname, device.host_ifname(),
+                      IsIPv6NDProxyEnabled(default_device.type),
+                      IsMulticastInterface(default_device.ifname));
+    } else if (event == Device::ChangeEvent::REMOVED) {
+      bool was_multicast =
+          multicast_virtual_ifnames_.find(device.host_ifname()) !=
+          multicast_virtual_ifnames_.end();
+      StopForwarding(default_device.ifname, device.host_ifname(),
+                     IsIPv6NDProxyEnabled(default_device.type), was_multicast);
+    }
   }
 
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
@@ -1192,6 +1232,7 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   }
 
   if (multicast) {
+    multicast_virtual_ifnames_.insert(ifname_virtual);
     LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
               << " to " << ifname_virtual;
     mcast_proxy_->SendMessage(ipm);
@@ -1225,6 +1266,7 @@ void Manager::StopForwarding(const std::string& ifname_physical,
   }
 
   if (multicast) {
+    multicast_virtual_ifnames_.erase(ifname_virtual);
     if (ifname_virtual.empty()) {
       LOG(INFO) << "Stopping multicast forwarding on " << ifname_physical;
     } else {
