@@ -511,4 +511,81 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
   EXPECT_FALSE(port->CanEnterUSB4());
 }
 
+// Check that USB4 mode checks work as expected for the following
+// working case:
+// - Intel Gatkex Creek USB4 dock.
+// - Apple Thunderbolt 3 Pro Cable.
+TEST_F(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+  // PD ID VDOs for the Gatkex creek USB4 dock..
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x4c800000);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0x0);
+  port->partner_->SetProductTypeVDO1(0xd00001b);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  port->partner_->SetNumAltModes(2);
+  // Set up fake sysfs paths for partner alt modes.
+
+  // Add the DP alt mode.
+  auto mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, kDPVDO_GatkexCreek,
+                                kDPVDOIndex_GatkexCreek));
+  port->AddRemovePartnerAltMode(mode_path, true);
+
+  // Add the TBT alt mode.
+  mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO_GatkexCreek,
+                                kTBTVDOIndex_GatkexCreek));
+  port->AddRemovePartnerAltMode(mode_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  port->cable_->SetPDRevision(PDRevision::k30);
+  port->cable_->SetIdHeaderVDO(0x240005ac);
+  port->cable_->SetCertStatVDO(0x0);
+  port->cable_->SetProductVDO(0x72043002);
+  port->cable_->SetProductTypeVDO1(0x434858da);
+  port->cable_->SetProductTypeVDO2(0x5a5f0001);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  port->cable_->SetNumAltModes(5);
+
+  // Set up fake sysfs paths for cable alt modes.
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, 0x00cb0001, 0));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, 0x000c0c0c, 0));
+  port->AddCableAltMode(mode_path);
+
+  // Apple alt modes.
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 2);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x05ac, 0x00000005, 0));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 3);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x05ac, 0x00000007, 1));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 4);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x05ac, 0x00000002, 2));
+  port->AddCableAltMode(mode_path);
+
+  EXPECT_TRUE(port->CanEnterUSB4());
+}
+
 }  // namespace typecd

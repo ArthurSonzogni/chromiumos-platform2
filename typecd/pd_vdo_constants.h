@@ -55,7 +55,7 @@ constexpr uint32_t kActiveCableVDO2USB4SupportedBitField = (1 << 8);
 // Bit Masks for TBT3 Cables
 // USB Type-C Cable & Connector spec release 2.0
 // Table F-11 TBT3 Cable Discover Mode VDO Responses
-constexpr uint8_t kTBT3CableDiscModeVDORoundedSupportOffset = 0x19;
+constexpr uint8_t kTBT3CableDiscModeVDORoundedSupportOffset = 19;
 constexpr uint8_t kTBT3CableDiscModeVDORoundedSupportMask = 0x3;
 constexpr uint8_t kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded = 0x1;
 
