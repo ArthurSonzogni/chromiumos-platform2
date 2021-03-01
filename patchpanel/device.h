@@ -91,12 +91,6 @@ class Device {
     std::string tap_;
   };
 
-  struct Options {
-    bool fwd_multicast;
-    bool ipv6_enabled;
-    bool adb_allowed;
-  };
-
   // |phys_ifname| corresponds either to the physical interface provided by
   // shill or a placeholder for a guest-specific control interface (e.g. arc0).
   // |host_ifname| identifies the name of the virtual (bridge) interface.
@@ -105,8 +99,7 @@ class Device {
   Device(const std::string& phys_ifname,
          const std::string& host_ifname,
          const std::string& guest_ifname,
-         std::unique_ptr<Config> config,
-         const Options& options);
+         std::unique_ptr<Config> config);
   Device(const Device&) = delete;
   Device& operator=(const Device&) = delete;
 
@@ -117,7 +110,6 @@ class Device {
   const std::string& guest_ifname() const { return guest_ifname_; }
   Config& config() const;
   std::unique_ptr<Config> release_config();
-  const Options& options() const;
 
   friend std::ostream& operator<<(std::ostream& stream, const Device& device);
 
@@ -126,7 +118,6 @@ class Device {
   std::string host_ifname_;
   std::string guest_ifname_;
   std::unique_ptr<Config> config_;
-  const Options options_;
 
   FRIEND_TEST(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages);
 

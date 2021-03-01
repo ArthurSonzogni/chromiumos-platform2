@@ -35,13 +35,11 @@ Device::Config::Config(const MacAddress& mac_addr,
 Device::Device(const std::string& phys_ifname,
                const std::string& host_ifname,
                const std::string& guest_ifname,
-               std::unique_ptr<Device::Config> config,
-               const Device::Options& options)
+               std::unique_ptr<Device::Config> config)
     : phys_ifname_(phys_ifname),
       host_ifname_(host_ifname),
       guest_ifname_(guest_ifname),
-      config_(std::move(config)),
-      options_(options) {
+      config_(std::move(config)) {
   DCHECK(config_);
 }
 
@@ -62,10 +60,6 @@ std::unique_ptr<Device::Config> Device::release_config() {
   return std::move(config_);
 }
 
-const Device::Options& Device::options() const {
-  return options_;
-}
-
 std::ostream& operator<<(std::ostream& stream, const Device& device) {
   stream << "{ ifname: " << device.phys_ifname_
          << ", bridge_ifname: " << device.host_ifname_ << ", bridge_ipv4_addr: "
@@ -74,8 +68,6 @@ std::ostream& operator<<(std::ostream& stream, const Device& device) {
          << device.config_->guest_ipv4_addr_->ToCidrString()
          << ", guest_mac_addr: "
          << MacAddressToString(device.config_->mac_addr())
-         << ", fwd_multicast: " << device.options_.fwd_multicast
-         << ", ipv6_enabled: " << device.options_.ipv6_enabled
          << ", tap_ifname: " << device.config_->tap_ifname() << '}';
   return stream;
 }

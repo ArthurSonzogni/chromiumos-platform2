@@ -336,14 +336,8 @@ void Manager::OnDefaultDeviceChanged(const ShillClient::Device& new_device,
   // their current forwarding group for multicast and IPv6 ndproxy and join the
   // forwarding group of the new logical default network.
   for (const auto* tap_device : cros_svc_->GetDevices()) {
-    bool was_multicast =
-        multicast_virtual_ifnames_.find(tap_device->host_ifname()) !=
-        multicast_virtual_ifnames_.end();
-    StopForwarding(prev_device.ifname, tap_device->host_ifname(),
-                   IsIPv6NDProxyEnabled(prev_device.type), was_multicast);
-    StartForwarding(new_device.ifname, tap_device->host_ifname(),
-                    IsIPv6NDProxyEnabled(new_device.type),
-                    IsMulticastInterface(new_device.ifname));
+    StopForwarding(prev_device.ifname, tap_device->host_ifname());
+    StartForwarding(new_device.ifname, tap_device->host_ifname());
   }
 }
 
@@ -409,34 +403,21 @@ void Manager::OnDeviceChanged(const Device& device,
       dev->set_guest_type(NetworkDevice::PLUGIN_VM);
       break;
     default:
+      dev->set_guest_type(NetworkDevice::UNKNOWN);
       LOG(ERROR) << "Unknown device type";
+      return;
   }
 
-  if (guest_type == GuestMessage::TERMINA_VM ||
-      guest_type == GuestMessage::PLUGIN_VM) {
-    const ShillClient::Device& default_device = shill_client_->default_device();
-    if (event == Device::ChangeEvent::ADDED) {
-      StartForwarding(default_device.ifname, device.host_ifname(),
-                      IsIPv6NDProxyEnabled(default_device.type),
-                      IsMulticastInterface(default_device.ifname));
-    } else if (event == Device::ChangeEvent::REMOVED) {
-      bool was_multicast =
-          multicast_virtual_ifnames_.find(device.host_ifname()) !=
-          multicast_virtual_ifnames_.end();
-      StopForwarding(default_device.ifname, device.host_ifname(),
-                     IsIPv6NDProxyEnabled(default_device.type), was_multicast);
-    }
-  }
+  if (dev->guest_type() != NetworkDevice::UNKNOWN) {
+    const std::string& upstream_device =
+        (guest_type == GuestMessage::ARC || guest_type == GuestMessage::ARC_VM)
+            ? device.phys_ifname()
+            : shill_client_->default_interface();
 
-  if (guest_type == GuestMessage::ARC || guest_type == GuestMessage::ARC_VM) {
     if (event == Device::ChangeEvent::ADDED) {
-      StartForwarding(device.phys_ifname(), device.host_ifname(),
-                      device.options().ipv6_enabled,
-                      device.options().fwd_multicast);
+      StartForwarding(upstream_device, device.host_ifname());
     } else if (event == Device::ChangeEvent::REMOVED) {
-      StopForwarding(device.phys_ifname(), device.host_ifname(),
-                     device.options().ipv6_enabled,
-                     device.options().fwd_multicast);
+      StopForwarding(upstream_device, device.host_ifname());
     }
   }
 
@@ -1212,9 +1193,7 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
 }
 
 void Manager::StartForwarding(const std::string& ifname_physical,
-                              const std::string& ifname_virtual,
-                              bool ipv6,
-                              bool multicast) {
+                              const std::string& ifname_virtual) {
   if (ifname_physical.empty() || ifname_virtual.empty())
     return;
 
@@ -1223,7 +1202,10 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   msg->set_dev_ifname(ifname_physical);
   msg->set_br_ifname(ifname_virtual);
 
-  if (ipv6) {
+  ShillClient::Device upstream_device;
+  shill_client_->GetDeviceProperties(ifname_physical, &upstream_device);
+  if (IsIPv6NDProxyEnabled(upstream_device.type)) {
+    ndproxy_virtual_ifnames_.insert(ifname_virtual);
     LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
               << ifname_virtual;
 
@@ -1242,7 +1224,7 @@ void Manager::StartForwarding(const std::string& ifname_physical,
     nd_proxy_->SendMessage(ipm);
   }
 
-  if (multicast) {
+  if (IsMulticastInterface(ifname_physical)) {
     multicast_virtual_ifnames_.insert(ifname_virtual);
     LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
               << " to " << ifname_virtual;
@@ -1251,9 +1233,7 @@ void Manager::StartForwarding(const std::string& ifname_physical,
 }
 
 void Manager::StopForwarding(const std::string& ifname_physical,
-                             const std::string& ifname_virtual,
-                             bool ipv6,
-                             bool multicast) {
+                             const std::string& ifname_virtual) {
   if (ifname_physical.empty())
     return;
 
@@ -1265,7 +1245,9 @@ void Manager::StopForwarding(const std::string& ifname_physical,
     msg->set_br_ifname(ifname_virtual);
   }
 
-  if (ipv6) {
+  if (ndproxy_virtual_ifnames_.find(ifname_virtual) !=
+      ndproxy_virtual_ifnames_.end()) {
+    ndproxy_virtual_ifnames_.erase(ifname_virtual);
     if (ifname_virtual.empty()) {
       LOG(INFO) << "Stopping IPv6 forwarding on " << ifname_physical;
     } else {
@@ -1276,7 +1258,8 @@ void Manager::StopForwarding(const std::string& ifname_physical,
     nd_proxy_->SendMessage(ipm);
   }
 
-  if (multicast) {
+  if (multicast_virtual_ifnames_.find(ifname_virtual) !=
+      multicast_virtual_ifnames_.end()) {
     multicast_virtual_ifnames_.erase(ifname_virtual);
     if (ifname_virtual.empty()) {
       LOG(INFO) << "Stopping multicast forwarding on " << ifname_physical;

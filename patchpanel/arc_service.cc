@@ -43,18 +43,6 @@ bool IsAdbAllowed(ShillClient::Device::Type type) {
   return adb_allowed_types.find(type) != adb_allowed_types.end();
 }
 
-// TODO(b/174538233): Remove once TrafficForwarder and Device::Option have been
-// removed.
-bool IsIPv6NDProxyEnabled(ShillClient::Device::Type type) {
-  static const std::set<ShillClient::Device::Type> ndproxy_allowed_types{
-      ShillClient::Device::Type::kCellular,
-      ShillClient::Device::Type::kEthernet,
-      ShillClient::Device::Type::kEthernetEap,
-      ShillClient::Device::Type::kWifi,
-  };
-  return ndproxy_allowed_types.find(type) != ndproxy_allowed_types.end();
-}
-
 bool KernelVersion(int* major, int* minor) {
   struct utsname u;
   if (uname(&u) != 0) {
@@ -170,14 +158,8 @@ std::unique_ptr<Device> MakeArcDevice(AddressManager* addr_mgr,
       addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet),
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
 
-  Device::Options opts{
-      .fwd_multicast = false,
-      .ipv6_enabled = false,
-      .adb_allowed = false,
-  };
-
   return std::make_unique<Device>(kArcIfname, kArcBridge, kArcIfname,
-                                  std::move(config), opts);
+                                  std::move(config));
 }
 }  // namespace
 
@@ -322,7 +304,7 @@ bool ArcService::Start(uint32_t id) {
                                     arc_device_->guest_ifname(),
                                     arc_device_->config().mac_addr(),
                                     arc_device_->config().guest_ipv4_addr(), 30,
-                                    arc_device_->options().fwd_multicast)) {
+                                    false /*remote_multicast_flag*/)) {
       LOG(ERROR) << "Cannot create virtual link for device "
                  << arc_device_->phys_ifname();
       return false;
@@ -431,12 +413,6 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
   }
 
-  Device::Options opts{
-      .fwd_multicast = IsMulticastInterface(ifname),
-      .ipv6_enabled = IsIPv6NDProxyEnabled(type),
-      .adb_allowed = IsAdbAllowed(type),
-  };
-
   auto config = AcquireConfig(type);
   if (!config) {
     LOG(ERROR) << "Cannot acquire a Config for " << ifname;
@@ -444,7 +420,7 @@ void ArcService::AddDevice(const std::string& ifname,
   }
 
   auto device = std::make_unique<Device>(ifname, ArcBridgeName(ifname), ifname,
-                                         std::move(config), opts);
+                                         std::move(config));
   LOG(INFO) << "Starting device " << *device;
 
   // Create the bridge.
@@ -470,7 +446,7 @@ void ArcService::AddDevice(const std::string& ifname,
     if (!datapath_->ConnectVethPair(
             id_, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
             device->config().mac_addr(), device->config().guest_ipv4_addr(), 30,
-            device->options().fwd_multicast)) {
+            IsMulticastInterface(device->phys_ifname()))) {
       LOG(ERROR) << "Cannot create veth link for device " << *device;
       return;
     }
@@ -486,8 +462,7 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
   }
 
-  if (device->options().adb_allowed &&
-      !datapath_->AddAdbPortAccessRule(ifname)) {
+  if (IsAdbAllowed(type) && !datapath_->AddAdbPortAccessRule(ifname)) {
     LOG(ERROR) << "Failed to add ADB port access rule";
   }
 
@@ -519,7 +494,7 @@ void ArcService::RemoveDevice(const std::string& ifname,
                                device->config().guest_ipv4_addr(),
                                TrafficSource::ARC, false /*route_on_vpn*/);
   datapath_->RemoveBridge(device->host_ifname());
-  if (device->options().adb_allowed)
+  if (IsAdbAllowed(type))
     datapath_->DeleteAdbPortAccessRule(ifname);
 
   // Once the physical Device is gone it may not be possible to retrieve

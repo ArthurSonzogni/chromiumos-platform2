@@ -217,12 +217,7 @@ std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr), std::move(lxd_subnet));
 
-  Device::Options opts{
-      .fwd_multicast = true,
-      .ipv6_enabled = true,
-  };
-
-  return std::make_unique<Device>(tap, tap, "", std::move(config), opts);
+  return std::make_unique<Device>(tap, tap, "", std::move(config));
 }
 
 void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
