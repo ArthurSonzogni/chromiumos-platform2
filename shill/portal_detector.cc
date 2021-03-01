@@ -77,20 +77,6 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-bool PortalDetector::StartAfterDelay(const PortalDetector::Properties& props,
-                                     int delay_seconds) {
-  SLOG(connection_.get(), 3) << "In " << __func__;
-
-  if (!StartTrial(props, delay_seconds * 1000)) {
-    return false;
-  }
-  // The attempt_start_time_ is calculated based on the current time and
-  // |delay_seconds|.  This is used to determine if a portal detection attempt
-  // is in progress.
-  UpdateAttemptTime(delay_seconds);
-  return true;
-}
-
 const string PortalDetector::PickHttpProbeUrl(const Properties& props) {
   if (attempt_count_ == 0 || props.fallback_http_url_strings.empty()) {
     return props.http_url_string;
@@ -99,8 +85,8 @@ const string PortalDetector::PickHttpProbeUrl(const Properties& props) {
       0, props.fallback_http_url_strings.size() - 1)];
 }
 
-bool PortalDetector::StartTrial(const Properties& props,
-                                int start_delay_milliseconds) {
+bool PortalDetector::StartAfterDelay(const PortalDetector::Properties& props,
+                                     int delay_seconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
   logging_tag_ = connection_->interface_name() + " " +
@@ -116,6 +102,7 @@ bool PortalDetector::StartTrial(const Properties& props,
                << props.http_url_string;
     return false;
   }
+
   if (!https_url.ParseFromString(https_url_string_)) {
     LOG(ERROR) << "Failed to parse HTTPS probe URL string: "
                << props.https_url_string;
@@ -139,17 +126,15 @@ bool PortalDetector::StartTrial(const Properties& props,
         dispatcher_, LoggingTag() + " HTTPS probe", iface, src_address,
         dns_list, allow_non_google_https);
   }
-  StartTrialAfterDelay(start_delay_milliseconds);
-  return true;
-}
-
-void PortalDetector::StartTrialAfterDelay(int start_delay_milliseconds) {
-  SLOG(connection_.get(), 4)
-      << "In " << __func__ << " delay = " << start_delay_milliseconds << "ms.";
   trial_.Reset(
       Bind(&PortalDetector::StartTrialTask, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(),
-                               start_delay_milliseconds);
+                               delay_seconds * 1000);
+  // The attempt_start_time_ is calculated based on the current time and
+  // |delay_seconds|.  This is used to determine if a portal detection attempt
+  // is in progress.
+  UpdateAttemptTime(delay_seconds);
+  return true;
 }
 
 void PortalDetector::StartTrialTask() {
@@ -167,7 +152,8 @@ void PortalDetector::StartTrialTask() {
   if (http_result != HttpRequest::kResultInProgress) {
     // If the http probe fails to start, complete the trial with a failure
     // Result for https.
-    LOG(ERROR) << LoggingTag() << ": HTTP probe failed to start";
+    LOG(ERROR) << LoggingTag()
+               << ": HTTP probe failed to start. Aborting trial.";
     CompleteTrial(PortalDetector::GetPortalResultForRequestResult(http_result),
                   Result(Phase::kContent, Status::kFailure));
     return;
@@ -187,6 +173,8 @@ void PortalDetector::StartTrialTask() {
     https_result_ =
         std::make_unique<Result>(GetPortalResultForRequestResult(https_result));
     LOG(ERROR) << LoggingTag() << ": HTTPS probe failed to start";
+    // To find the portal sign-in url, wait for the HTTP probe to complete
+    // before completing the trial and calling |portal_result_callback_|.
   }
   is_active_ = true;
 }
@@ -201,7 +189,10 @@ void PortalDetector::CompleteTrial(Result http_result, Result https_result) {
             << ", status=" << http_result.status
             << ". HTTPS probe: phase=" << https_result.phase
             << ", status=" << https_result.status;
-  CompleteAttempt(http_result, https_result);
+  http_result.num_attempts = attempt_count_;
+  metrics_->NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  CleanupTrial();
+  portal_result_callback_.Run(http_result, https_result);
 }
 
 void PortalDetector::CleanupTrial() {
@@ -225,14 +216,6 @@ void PortalDetector::Stop() {
   CleanupTrial();
   http_request_.reset();
   https_request_.reset();
-}
-
-void PortalDetector::CompleteRequest() {
-  if (https_result_ && http_result_) {
-    metrics_->NotifyPortalDetectionMultiProbeResult(*http_result_,
-                                                    *https_result_);
-    CompleteTrial(*http_result_.get(), *https_result_.get());
-  }
 }
 
 void PortalDetector::HttpRequestSuccessCallback(
@@ -265,8 +248,8 @@ void PortalDetector::HttpRequestSuccessCallback(
   LOG(INFO) << LoggingTag() << ": HTTP probe response code=" << status_code
             << " status=" << http_result_->status;
   http_result_->status_code = status_code;
-
-  CompleteRequest();
+  if (https_result_)
+    CompleteTrial(*http_result_, *https_result_);
 }
 
 void PortalDetector::HttpsRequestSuccessCallback(
@@ -280,7 +263,8 @@ void PortalDetector::HttpsRequestSuccessCallback(
   LOG(INFO) << LoggingTag() << ": HTTPS probe response code=" << status_code
             << " status=" << probe_status;
   https_result_ = std::make_unique<Result>(Phase::kContent, probe_status);
-  CompleteRequest();
+  if (http_result_)
+    CompleteTrial(*http_result_, *https_result_);
 }
 
 void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result result) {
@@ -289,7 +273,8 @@ void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result result) {
   LOG(INFO) << LoggingTag()
             << ": HTTP probe failed with phase=" << http_result_.get()->phase
             << " status=" << http_result_.get()->status;
-  CompleteRequest();
+  if (https_result_)
+    CompleteTrial(*http_result_, *https_result_);
 }
 
 void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Result result) {
@@ -298,17 +283,12 @@ void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Result result) {
   LOG(INFO) << LoggingTag()
             << ": HTTPS probe failed with phase=" << https_result_.get()->phase
             << " status=" << https_result_.get()->status;
-  CompleteRequest();
+  if (http_result_)
+    CompleteTrial(*http_result_, *https_result_);
 }
 
 bool PortalDetector::IsInProgress() {
   return is_active_;
-}
-
-void PortalDetector::CompleteAttempt(Result http_result, Result https_result) {
-  http_result.num_attempts = attempt_count_;
-  CleanupTrial();
-  portal_result_callback_.Run(http_result, https_result);
 }
 
 void PortalDetector::UpdateAttemptTime(int delay_seconds) {
