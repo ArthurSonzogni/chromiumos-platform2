@@ -479,10 +479,6 @@ void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   }
 }
 
-bool Cellular::IsUnderlyingDeviceEnabled() const {
-  return IsEnabledModemState(modem_state_);
-}
-
 void Cellular::StartModem(Error* error,
                           const EnabledStateChangedCallback& callback) {
   DCHECK(capability_);
@@ -574,6 +570,43 @@ void Cellular::CompleteActivation(Error* error) {
     capability_->CompleteActivation(error);
 }
 
+bool Cellular::IsUnderlyingDeviceEnabled() const {
+  return IsEnabledModemState(modem_state_);
+}
+
+void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
+  Device::LinkEvent(flags, change);
+  if (ppp_task_) {
+    LOG(INFO) << "Ignoring LinkEvent on device with PPP interface.";
+    return;
+  }
+  HandleLinkEvent(flags, change);
+}
+
+void Cellular::Scan(Error* error, const std::string& /*reason*/) {
+  SLOG(this, 2) << "Scanning started";
+  CHECK(error);
+  if (proposed_scan_in_progress_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
+                          "Already scanning");
+    return;
+  }
+
+  if (!capability_)
+    return;
+
+  ResultStringmapsCallback cb =
+      base::Bind(&Cellular::OnScanReply, weak_ptr_factory_.GetWeakPtr());
+  capability_->Scan(error, cb);
+  // An immediate failure in |cabapility_->Scan(...)| is indicated through the
+  // |error| argument.
+  if (error->IsFailure())
+    return;
+
+  proposed_scan_in_progress_ = true;
+  UpdateScanning();
+}
+
 void Cellular::RegisterOnNetwork(const std::string& network_id,
                                  Error* error,
                                  const ResultCallback& callback) {
@@ -619,39 +652,6 @@ void Cellular::ChangePin(const std::string& old_pin,
   if (!capability_)
     callback.Run(Error(Error::Type::kOperationFailed));
   capability_->ChangePin(old_pin, new_pin, error, callback);
-}
-
-bool Cellular::ResetQ6V5Modem() {
-  // TODO(b/177375637): Check for q6v5 driver before resetting the modem.
-  int fd = HANDLE_EINTR(
-      open(kModemResetSysfsName, O_WRONLY | O_NONBLOCK | O_CLOEXEC));
-  if (fd < 0) {
-    PLOG(ERROR) << "Failed to open sysfs file to reset modem.";
-    return false;
-  }
-
-  base::ScopedFD scoped_fd(fd);
-  if (!base::WriteFileDescriptor(scoped_fd.get(), "stop", sizeof("stop"))) {
-    PLOG(ERROR) << "Failed to stop modem";
-    return false;
-  }
-  usleep(kModemResetTimeoutMilliseconds * 1000);
-  if (!base::WriteFileDescriptor(scoped_fd.get(), "start", sizeof("start"))) {
-    PLOG(ERROR) << "Failed to start modem";
-    return false;
-  }
-  return true;
-}
-
-bool Cellular::IsQ6V5Modem() {
-  base::FilePath driver_path, driver_name;
-
-  // Check if manufacturer is equal to "QUALCOMM INCORPORATED" and
-  // if remoteproc0/device/driver in sysfs links to "qcom-q6v5-mss".
-  driver_path = base::FilePath(kModemDriverSysfsName);
-  return (manufacturer_ == kQ6V5ModemManufacturerName &&
-          base::ReadSymbolicLink(driver_path, &driver_name) &&
-          driver_name.BaseName() == base::FilePath(kQ6V5DriverName));
 }
 
 void Cellular::Reset(Error* error, const ResultCallback& callback) {
@@ -723,6 +723,29 @@ void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   }
 }
 
+void Cellular::OnConnected() {
+  if (StateIsConnected()) {
+    SLOG(this, 1) << __func__ << ": Already connected";
+    return;
+  }
+  SLOG(this, 1) << __func__;
+  SetState(kStateConnected);
+  if (!service_) {
+    LOG(INFO) << "Disconnecting due to no cellular service.";
+    Disconnect(nullptr, "no cellular service");
+  } else if (service_->IsRoamingRuleViolated()) {
+    // TODO(pholla): This logic is probably unreachable since we have two gate
+    // keepers that prevent this scenario.
+    // a) Cellular::Connect prevents connects if roaming rules are violated.
+    // b) CellularCapability3gpp::FillConnectPropertyMap will not allow MM to
+    //    connect to roaming networks.
+    LOG(INFO) << "Disconnecting due to roaming.";
+    Disconnect(nullptr, "roaming disallowed");
+  } else {
+    EstablishLink();
+  }
+}
+
 void Cellular::OnBeforeSuspend(const ResultCallback& callback) {
   LOG(INFO) << __func__;
   Error error;
@@ -775,6 +798,27 @@ void Cellular::OnAfterResume() {
   Device::OnAfterResume();
 }
 
+std::vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
+  const std::string& mcc = location_info_.mcc;
+  const std::string& mnc = location_info_.mnc;
+  const std::string& lac = location_info_.lac;
+  const std::string& cid = location_info_.ci;
+
+  GeolocationInfo geolocation_info;
+
+  if (!(mcc.empty() || mnc.empty() || lac.empty() || cid.empty())) {
+    geolocation_info[kGeoMobileCountryCodeProperty] = mcc;
+    geolocation_info[kGeoMobileNetworkCodeProperty] = mnc;
+    geolocation_info[kGeoLocationAreaCodeProperty] = lac;
+    geolocation_info[kGeoCellIdProperty] = cid;
+    // kGeoTimingAdvanceProperty currently unused in geolocation API
+  }
+  // Else we have either an incomplete location, no location yet,
+  // or some unsupported location type, so don't return something incorrect.
+
+  return {geolocation_info};
+}
+
 void Cellular::ReAttach() {
   SLOG(this, 1) << __func__;
   if (!enabled() && !enabled_pending()) {
@@ -807,30 +851,6 @@ void Cellular::ReAttachOnDetachComplete(const Error&) {
 
 void Cellular::CancelPendingConnect() {
   ConnectToPendingFailed(Service::kFailureDisconnect);
-}
-
-void Cellular::Scan(Error* error, const std::string& /*reason*/) {
-  SLOG(this, 2) << "Scanning started";
-  CHECK(error);
-  if (proposed_scan_in_progress_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
-                          "Already scanning");
-    return;
-  }
-
-  if (!capability_)
-    return;
-
-  ResultStringmapsCallback cb =
-      base::Bind(&Cellular::OnScanReply, weak_ptr_factory_.GetWeakPtr());
-  capability_->Scan(error, cb);
-  // An immediate failure in |cabapility_->Scan(...)| is indicated through the
-  // |error| argument.
-  if (error->IsFailure())
-    return;
-
-  proposed_scan_in_progress_ = true;
-  UpdateScanning();
 }
 
 void Cellular::OnScanReply(const Stringmaps& found_networks,
@@ -1211,29 +1231,6 @@ void Cellular::OnConnecting() {
     service_->SetState(Service::kStateAssociating);
 }
 
-void Cellular::OnConnected() {
-  if (StateIsConnected()) {
-    SLOG(this, 1) << __func__ << ": Already connected";
-    return;
-  }
-  SLOG(this, 1) << __func__;
-  SetState(kStateConnected);
-  if (!service_) {
-    LOG(INFO) << "Disconnecting due to no cellular service.";
-    Disconnect(nullptr, "no cellular service");
-  } else if (service_->IsRoamingRuleViolated()) {
-    // TODO(pholla): This logic is probably unreachable since we have two gate
-    // keepers that prevent this scenario.
-    // a) Cellular::Connect prevents connects if roaming rules are violated.
-    // b) CellularCapability3gpp::FillConnectPropertyMap will not allow MM to
-    //    connect to roaming networks.
-    LOG(INFO) << "Disconnecting due to roaming.";
-    Disconnect(nullptr, "roaming disallowed");
-  } else {
-    EstablishLink();
-  }
-}
-
 void Cellular::Disconnect(Error* error, const char* reason) {
   SLOG(this, 1) << __func__ << ": " << reason;
   if (!StateIsConnected()) {
@@ -1321,13 +1318,7 @@ void Cellular::EstablishLink() {
   OnConnecting();
 }
 
-void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
-  Device::LinkEvent(flags, change);
-  if (ppp_task_) {
-    LOG(INFO) << "Ignoring LinkEvent on device with PPP interface.";
-    return;
-  }
-
+void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
   if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
     LOG(INFO) << link_name() << " is up.";
     SetState(kStateLinked);
@@ -1655,6 +1646,39 @@ void Cellular::LogRestartModemResult(const Error& error) {
   } else {
     LOG(WARNING) << "Attempt to restart modem failed: " << error;
   }
+}
+
+bool Cellular::ResetQ6V5Modem() {
+  // TODO(b/177375637): Check for q6v5 driver before resetting the modem.
+  int fd = HANDLE_EINTR(
+      open(kModemResetSysfsName, O_WRONLY | O_NONBLOCK | O_CLOEXEC));
+  if (fd < 0) {
+    PLOG(ERROR) << "Failed to open sysfs file to reset modem.";
+    return false;
+  }
+
+  base::ScopedFD scoped_fd(fd);
+  if (!base::WriteFileDescriptor(scoped_fd.get(), "stop", sizeof("stop"))) {
+    PLOG(ERROR) << "Failed to stop modem";
+    return false;
+  }
+  usleep(kModemResetTimeoutMilliseconds * 1000);
+  if (!base::WriteFileDescriptor(scoped_fd.get(), "start", sizeof("start"))) {
+    PLOG(ERROR) << "Failed to start modem";
+    return false;
+  }
+  return true;
+}
+
+bool Cellular::IsQ6V5Modem() {
+  base::FilePath driver_path, driver_name;
+
+  // Check if manufacturer is equal to "QUALCOMM INCORPORATED" and
+  // if remoteproc0/device/driver in sysfs links to "qcom-q6v5-mss".
+  driver_path = base::FilePath(kModemDriverSysfsName);
+  return (manufacturer_ == kQ6V5ModemManufacturerName &&
+          base::ReadSymbolicLink(driver_path, &driver_name) &&
+          driver_name.BaseName() == base::FilePath(kQ6V5DriverName));
 }
 
 void Cellular::StartPPP(const std::string& serial_device) {
@@ -2477,27 +2501,6 @@ void Cellular::UpdateServingOperator(
   SLOG(this, 2) << __func__ << " Service: " << service()->log_name()
                 << " Name: " << service_name;
   service()->SetFriendlyName(service_name);
-}
-
-std::vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
-  const std::string& mcc = location_info_.mcc;
-  const std::string& mnc = location_info_.mnc;
-  const std::string& lac = location_info_.lac;
-  const std::string& cid = location_info_.ci;
-
-  GeolocationInfo geolocation_info;
-
-  if (!(mcc.empty() || mnc.empty() || lac.empty() || cid.empty())) {
-    geolocation_info[kGeoMobileCountryCodeProperty] = mcc;
-    geolocation_info[kGeoMobileNetworkCodeProperty] = mnc;
-    geolocation_info[kGeoLocationAreaCodeProperty] = lac;
-    geolocation_info[kGeoCellIdProperty] = cid;
-    // kGeoTimingAdvanceProperty currently unused in geolocation API
-  }
-  // Else we have either an incomplete location, no location yet,
-  // or some unsupported location type, so don't return something incorrect.
-
-  return {geolocation_info};
 }
 
 void Cellular::OnOperatorChanged() {

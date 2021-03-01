@@ -130,14 +130,6 @@ class Cellular : public Device,
   // entries from older profiles. TODO(b/181843251): Remove after M94.
   std::string GetLegacyEquipmentIdentifier() const;
 
-  std::string GetStorageIdentifier() const override;
-
-  // Load configuration for the device from |storage|.
-  bool Load(const StoreInterface* storage) override;
-
-  // Save configuration for the device to |storage|.
-  bool Save(StoreInterface* storage) override;
-
   // Returns the Capability type if |capability_| has been created.
   std::string GetTechnologyFamily(Error* error);
 
@@ -145,6 +137,9 @@ class Cellular : public Device,
   std::string GetDeviceId(Error* error);
 
   // Inherited from Device.
+  std::string GetStorageIdentifier() const override;
+  bool Load(const StoreInterface* storage) override;
+  bool Save(StoreInterface* storage) override;
   void Start(Error* error,
              const EnabledStateChangedCallback& callback) override;
   void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
@@ -174,6 +169,7 @@ class Cellular : public Device,
   void SetServiceState(Service::ConnectState state) override;
   void SetServiceFailure(Service::ConnectFailure failure_state) override;
   void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
+  void OnConnected() override;
   void OnBeforeSuspend(const ResultCallback& callback) override;
   void OnAfterResume() override;
   std::vector<GeolocationInfo> GetGeolocationObjects() const override;
@@ -480,13 +476,14 @@ class Cellular : public Device,
 
   void OnEnabled();
   void OnConnecting();
-  void OnConnected() override;
   void OnDisconnected();
   void OnDisconnectFailed();
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
+
+  void HandleLinkEvent(unsigned int flags, unsigned int change);
 
   void InitCapability(Type type);
 
