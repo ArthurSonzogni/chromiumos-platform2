@@ -202,6 +202,13 @@ Following steps are required to use a downloadable model:
     models, the component installer can help with that. Please see [this
     doc][version-control-doc] for more details (available to Googlers only).
 
+### Roll out the downloadable model
+
+Rollout a new feature that adds a new downloadable model or a new version of an
+existing downloadable model according to the instructions
+at [go/finch-best-practices], also read [this Doc][finch-rollout-practice] for
+a rollout practice.
+
 ### Unit test for downloadable models
 
 To make sure ml-service can load the downloadable models successfully and do
@@ -412,3 +419,4 @@ MachineLearningService.**MetricModelName**.LoadModelResult.TotalMemoryDeltaKb
 [example-load-flatbuffer-model]: https://source.chromium.org/chromium/chromium/src/+/HEAD:chrome/browser/chromeos/power/ml/smart_dim/download_worker.cc;l=93
 [version-control-doc]: http://doc/11erwhc0Ppul4SPXE7DtvW9wz-0CQmKK4b9dFTloByos#heading=h.urp1fskeo868
 [cs-component-installer-policy]: https://source.chromium.org/search?q=%22public%20ComponentInstallerPolicy%22
+[finch-rollout-practice]: http://doc/1rZnhsUqSdst6MzQyfJ1z8yyWF1U5D1e1_SUptTyj2o4
