@@ -148,6 +148,7 @@ class PortalDetector {
   //
   // As each attempt completes the callback handed to the constructor will
   // be called.
+  // TODO(hugobenichi): Change |delay_seconds| type to base::TimeDelay.
   virtual bool StartAfterDelay(const Properties& props, int delay_seconds);
 
   // End the current portal detection process if one exists, and do not call
@@ -185,28 +186,9 @@ class PortalDetector {
   // to keep attempts spaced by the right duration in the event of a retry.
   void UpdateAttemptTime(int delay_seconds);
 
-  // Called after each trial to return |http_result| and |https_result| after
-  // attempting to determine connectivity status.
-  void CompleteAttempt(Result http_result, Result https_result);
-
-  // Start a trial with the supplied delay in ms.
-  void StartTrialAfterDelay(int start_delay_milliseconds);
-
-  // Start a portal detection test.  Returns true if |props.http_url_string| and
-  // |props.https_url_string| correctly parse as URLs.  Returns false (and does
-  // not start) if they fail to parse.
-  //
-  // After a trial completes, the callback supplied in the constructor is
-  // called.
-  bool StartTrial(const Properties& props, int start_delay_milliseconds);
-
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.
   void StartTrialTask();
-
-  // Called after a request finishes. Will call CompleteTrial once all probes
-  // are done.
-  void CompleteRequest();
 
   // Callback used to return data read from the HTTP HttpRequest.
   void HttpRequestSuccessCallback(
@@ -222,7 +204,8 @@ class PortalDetector {
   // Callback used to return the error from the HTTPS HttpRequest.
   void HttpsRequestErrorCallback(HttpRequest::Result result);
 
-  // Internal method used to clean up state and call CompleteAttempt.
+  // Called after each trial to return |http_result| and |https_result| after
+  // attempting to determine connectivity status.
   void CompleteTrial(Result http_result, Result https_result);
 
   // Internal method used to cancel the timeout timer and stop an active
