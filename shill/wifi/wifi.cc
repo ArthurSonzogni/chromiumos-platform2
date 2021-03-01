@@ -3033,9 +3033,7 @@ void WiFi::SetScanState(ScanState new_state,
       break;
     case kScanConnecting:
       metrics()->NotifyDeviceScanFinished(interface_index());
-      // TODO(wdg): Provide |is_auto_connecting| to this interface.  For now,
-      // I'll lie (because I don't care about the auto-connect metrics).
-      metrics()->NotifyDeviceConnectStarted(interface_index(), false);
+      metrics()->NotifyDeviceConnectStarted(interface_index());
       break;
     case kScanConnected:
       metrics()->NotifyDeviceConnectFinished(interface_index());

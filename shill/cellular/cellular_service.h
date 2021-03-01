@@ -53,7 +53,6 @@ class CellularService : public Service {
   void SetDevice(Cellular* device);
 
   // Public Service overrides
-  void AutoConnect() override;
   void CompleteCellularActivation(Error* error) override;
   std::string GetStorageIdentifier() const override;
   std::string GetLoadableStorageIdentifier(
@@ -107,8 +106,6 @@ class CellularService : public Service {
   // Returns allow_roaming_ for the service. If allow_roaming_ is nullopt,
   // returns any persisted value prior to M92.
   bool GetAllowRoaming();
-
-  bool is_auto_connecting() const { return is_auto_connecting_; }
 
   const std::string& ppp_username() const { return ppp_username_; }
   const std::string& ppp_password() const { return ppp_password_; }
@@ -241,7 +238,7 @@ class CellularService : public Service {
   // a physical SIM card.
   const std::string eid_;
 
-  ActivationType activation_type_;
+  ActivationType activation_type_ = kActivationTypeUnknown;
   std::string activation_state_;
   Stringmap serving_operator_;
   std::string network_technology_;
@@ -253,7 +250,7 @@ class CellularService : public Service {
   std::string ppp_username_;
   std::string ppp_password_;
   base::Optional<bool> allow_roaming_;
-  bool provider_requires_roaming_;
+  bool provider_requires_roaming_ = false;
 
   // The storage identifier defaults to cellular_{iccid}.
   std::string storage_identifier_;
@@ -263,13 +260,8 @@ class CellularService : public Service {
   // |cellular_|.
   CellularRefPtr cellular_;
 
-  // Flag indicating that a connect request is an auto-connect request.
-  // Note: Since Connect() is asynchronous, this flag is only set during the
-  // call to Connect().  It does not remain set while the async request is
-  // in flight.
-  bool is_auto_connecting_;
   // Flag indicating if the user has run out of data credits.
-  bool out_of_credits_;
+  bool out_of_credits_ = false;
 };
 
 }  // namespace shill

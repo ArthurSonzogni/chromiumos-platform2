@@ -337,17 +337,6 @@ const char Metrics::kMetricWifiFTEAPSuffix[] = "FTEAP";
 // static
 const char Metrics::kMetricCellular3GPPRegistrationDelayedDrop[] =
     "Network.Shill.Cellular.3GPPRegistrationDelayedDrop";
-const char Metrics::kMetricCellularAutoConnectTries[] =
-    "Network.Shill.Cellular.AutoConnectTries";
-const int Metrics::kMetricCellularAutoConnectTriesMax = 20;
-const int Metrics::kMetricCellularAutoConnectTriesMin = 1;
-const int Metrics::kMetricCellularAutoConnectTriesNumBuckets = 20;
-const char Metrics::kMetricCellularAutoConnectTotalTime[] =
-    "Network.Shill.Cellular.AutoConnectTotalTime";
-const int Metrics::kMetricCellularAutoConnectTotalTimeMax =
-    60 * 1000;  // 60 seconds
-const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 1;
-const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 const char Metrics::kMetricCellularDrop[] = "Network.Shill.Cellular.Drop";
 const char Metrics::kMetricCellularConnectResult[] =
     "Network.Shill.Cellular.ConnectResult";
@@ -1328,11 +1317,6 @@ void Metrics::RegisterDevice(int interface_index, Technology technology) {
       kMetricTimeToScanMillisecondsMax + kMetricTimeToConnectMillisecondsMax,
       kMetricTimeToScanMillisecondsNumBuckets +
           kMetricTimeToConnectMillisecondsNumBuckets));
-  device_metrics->auto_connect_timer.reset(new chromeos_metrics::TimerReporter(
-      kMetricCellularAutoConnectTotalTime,
-      kMetricCellularAutoConnectTotalTimeMin,
-      kMetricCellularAutoConnectTotalTimeMax,
-      kMetricCellularAutoConnectTotalTimeNumBuckets));
   devices_metrics_[interface_index] = std::move(device_metrics);
 }
 
@@ -1429,20 +1413,11 @@ void Metrics::ResetScanTimer(int interface_index) {
   device_metrics->scan_timer->Reset();
 }
 
-void Metrics::NotifyDeviceConnectStarted(int interface_index,
-                                         bool is_auto_connecting) {
+void Metrics::NotifyDeviceConnectStarted(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   device_metrics->connect_timer->Start();
-
-  if (is_auto_connecting) {
-    device_metrics->auto_connect_tries++;
-    if (device_metrics->auto_connect_tries == 1)
-      device_metrics->auto_connect_timer->Start();
-  } else {
-    AutoConnectMetricsReset(device_metrics);
-  }
 }
 
 void Metrics::NotifyDeviceConnectFinished(int interface_index) {
@@ -1452,21 +1427,6 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
   if (!device_metrics->connect_timer->Stop())
     return;
   device_metrics->connect_timer->ReportMilliseconds();
-
-  if (device_metrics->auto_connect_tries > 0) {
-    if (!device_metrics->auto_connect_timer->Stop())
-      return;
-    base::TimeDelta elapsed_time;
-    device_metrics->auto_connect_timer->GetElapsedTime(&elapsed_time);
-    if (elapsed_time.InMilliseconds() > kMetricCellularAutoConnectTotalTimeMax)
-      return;
-    device_metrics->auto_connect_timer->ReportMilliseconds();
-    SendToUMA(
-        kMetricCellularAutoConnectTries, device_metrics->auto_connect_tries,
-        kMetricCellularAutoConnectTriesMin, kMetricCellularAutoConnectTriesMax,
-        kMetricCellularAutoConnectTriesNumBuckets);
-    AutoConnectMetricsReset(device_metrics);
-  }
 
   if (!device_metrics->scan_connect_timer->Stop())
     return;
@@ -2115,11 +2075,6 @@ bool Metrics::IsTechnologyPresent(Technology technology_id) const {
       return true;
   }
   return false;
-}
-
-void Metrics::AutoConnectMetricsReset(DeviceMetrics* device_metrics) {
-  device_metrics->auto_connect_tries = 0;
-  device_metrics->auto_connect_timer->Reset();
 }
 
 void Metrics::set_library(MetricsLibraryInterface* library) {

@@ -417,7 +417,7 @@ TEST_F(MetricsTest, TimeToConnect) {
                         Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
-  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex, false);
+  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex);
   metrics_.NotifyDeviceConnectFinished(kInterfaceIndex);
 }
 
@@ -493,7 +493,7 @@ TEST_F(MetricsTest, TimeToScanAndConnect) {
                     Metrics::kMetricTimeToConnectMillisecondsMax,
                 Metrics::kMetricTimeToScanMillisecondsNumBuckets +
                     Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
-  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex, false);
+  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex);
   metrics_.NotifyDeviceConnectFinished(kInterfaceIndex);
 }
 
@@ -580,30 +580,6 @@ TEST_F(MetricsTest, Cellular3GPPRegistrationDelayedDropPosted) {
                     Metrics::kCellular3GPPRegistrationDelayedDropCanceled,
                     Metrics::kCellular3GPPRegistrationDelayedDropMax));
   metrics_.Notify3GPPRegistrationDelayedDropCanceled();
-}
-
-TEST_F(MetricsTest, CellularAutoConnect) {
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.Cellular.TimeToConnect", Ge(0),
-                        Metrics::kMetricTimeToConnectMillisecondsMin,
-                        Metrics::kMetricTimeToConnectMillisecondsMax,
-                        Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
-  EXPECT_CALL(
-      library_,
-      SendToUMA(Metrics::kMetricCellularAutoConnectTotalTime, Ge(0),
-                Metrics::kMetricCellularAutoConnectTotalTimeMin,
-                Metrics::kMetricCellularAutoConnectTotalTimeMax,
-                Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets));
-  EXPECT_CALL(library_,
-              SendToUMA(Metrics::kMetricCellularAutoConnectTries, 2,
-                        Metrics::kMetricCellularAutoConnectTriesMin,
-                        Metrics::kMetricCellularAutoConnectTriesMax,
-                        Metrics::kMetricCellularAutoConnectTriesNumBuckets));
-  const int kInterfaceIndex = 1;
-  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
-  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex, true);
-  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex, true);
-  metrics_.NotifyDeviceConnectFinished(kInterfaceIndex);
 }
 
 TEST_F(MetricsTest, CellularDrop) {

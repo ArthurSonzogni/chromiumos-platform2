@@ -1369,7 +1369,7 @@ class WiFiMainTest : public WiFiObjectTest {
 
   void ExpectConnecting() {
     EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
-    EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_, _));
+    EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_));
   }
 
   void ExpectConnected() {
@@ -4081,7 +4081,7 @@ TEST_F(WiFiMainTest, ScanStateUma) {
   SetScanState(WiFi::kScanScanning, WiFi::kScanMethodFull, __func__);
 
   EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
-  EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_, _));
+  EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_));
   SetScanState(WiFi::kScanConnecting, WiFi::kScanMethodFull, __func__);
 
   ExpectScanIdle();  // After connected.
@@ -4092,7 +4092,7 @@ TEST_F(WiFiMainTest, ScanStateUma) {
 
 TEST_F(WiFiMainTest, ScanStateNotScanningNoUma) {
   EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_, _));
+  EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_));
   SetScanState(WiFi::kScanConnecting, WiFi::kScanMethodNone, __func__);
 
   ExpectScanIdle();  // After connected.

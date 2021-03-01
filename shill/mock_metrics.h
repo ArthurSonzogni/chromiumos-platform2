@@ -34,7 +34,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, NotifyDeviceScanStarted, (int), (override));
   MOCK_METHOD(void, NotifyDeviceScanFinished, (int), (override));
   MOCK_METHOD(void, ResetScanTimer, (int), (override));
-  MOCK_METHOD(void, NotifyDeviceConnectStarted, (int, bool), (override));
+  MOCK_METHOD(void, NotifyDeviceConnectStarted, (int), (override));
   MOCK_METHOD(void, NotifyDeviceConnectFinished, (int), (override));
   MOCK_METHOD(void, ResetConnectTimer, (int), (override));
   MOCK_METHOD(void,

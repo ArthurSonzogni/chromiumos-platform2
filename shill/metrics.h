@@ -763,14 +763,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Cellular specific statistics.
   static const char kMetricCellular3GPPRegistrationDelayedDrop[];
-  static const char kMetricCellularAutoConnectTries[];
-  static const int kMetricCellularAutoConnectTriesMax;
-  static const int kMetricCellularAutoConnectTriesMin;
-  static const int kMetricCellularAutoConnectTriesNumBuckets;
-  static const char kMetricCellularAutoConnectTotalTime[];
-  static const int kMetricCellularAutoConnectTotalTimeMax;
-  static const int kMetricCellularAutoConnectTotalTimeMin;
-  static const int kMetricCellularAutoConnectTotalTimeNumBuckets;
   static const char kMetricCellularDrop[];
   static const char kMetricCellularDropsPerHour[];
   static const int kMetricCellularDropsPerHourMax;
@@ -1101,8 +1093,7 @@ class Metrics : public DefaultServiceObserver {
   virtual void ResetScanTimer(int interface_index);
 
   // Notifies this object that a device has started the connect process.
-  virtual void NotifyDeviceConnectStarted(int interface_index,
-                                          bool is_auto_connecting);
+  virtual void NotifyDeviceConnectStarted(int interface_index);
 
   // Notifies this object that a device has completed the connect process.
   virtual void NotifyDeviceConnectFinished(int interface_index);
@@ -1299,7 +1290,7 @@ class Metrics : public DefaultServiceObserver {
       std::map<const Service*, std::unique_ptr<ServiceMetrics>>;
 
   struct DeviceMetrics {
-    DeviceMetrics() : auto_connect_tries(0) {}
+    DeviceMetrics() {}
     Technology technology;
     std::unique_ptr<chromeos_metrics::TimerReporter> initialization_timer;
     std::unique_ptr<chromeos_metrics::TimerReporter> enable_timer;
@@ -1307,8 +1298,6 @@ class Metrics : public DefaultServiceObserver {
     std::unique_ptr<chromeos_metrics::TimerReporter> scan_timer;
     std::unique_ptr<chromeos_metrics::TimerReporter> connect_timer;
     std::unique_ptr<chromeos_metrics::TimerReporter> scan_connect_timer;
-    std::unique_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
-    int auto_connect_tries;
   };
   using DeviceMetricsLookupMap =
       std::map<const int, std::unique_ptr<DeviceMetrics>>;
@@ -1334,7 +1323,6 @@ class Metrics : public DefaultServiceObserver {
   void SendServiceFailure(const Service& service);
 
   DeviceMetrics* GetDeviceMetrics(int interface_index) const;
-  void AutoConnectMetricsReset(DeviceMetrics* device_metrics);
 
   // Notifies this object about the removal/resetting of a device with given
   // technology type.

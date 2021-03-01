@@ -82,11 +82,7 @@ CellularService::CellularService(Manager* manager,
     : Service(manager, Technology::kCellular),
       imsi_(imsi),
       iccid_(iccid),
-      eid_(eid),
-      activation_type_(kActivationTypeUnknown),
-      provider_requires_roaming_(false),
-      is_auto_connecting_(false),
-      out_of_credits_(false) {
+      eid_(eid) {
   // Note: This will change once SetNetworkTechnology() is called, but the
   // serial number remains unchanged so correlating log lines will be easy.
   log_name_ = "cellular_" + base::NumberToString(serial_number());
@@ -154,12 +150,6 @@ void CellularService::SetDevice(Cellular* device) {
     SetState(kStateIdle);
     SetStrength(0);
   }
-}
-
-void CellularService::AutoConnect() {
-  is_auto_connecting_ = true;
-  Service::AutoConnect();
-  is_auto_connecting_ = false;
 }
 
 void CellularService::CompleteCellularActivation(Error* error) {

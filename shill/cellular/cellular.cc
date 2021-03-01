@@ -1190,8 +1190,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
                                   weak_ptr_factory_.GetWeakPtr(),
                                   service->iccid()));
 
-  bool is_auto_connecting = service->is_auto_connecting();
-  metrics()->NotifyDeviceConnectStarted(interface_index(), is_auto_connecting);
+  metrics()->NotifyDeviceConnectStarted(interface_index());
 }
 
 // Note that there's no ResultCallback argument to this since Connect() isn't
