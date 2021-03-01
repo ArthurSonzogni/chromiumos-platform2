@@ -171,6 +171,8 @@ message MountRequest {
   bool public_mount = 7;
   // If set to true, the mount will be for a guest session.
   bool guest_mount = 8;
+  // Auth Session id will let mount derive credentials from AuthSessions.
+  bytes auth_session_id = 9;
 }
 
 // Output parameters for Mount()
