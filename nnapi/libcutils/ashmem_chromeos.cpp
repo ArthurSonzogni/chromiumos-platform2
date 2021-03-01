@@ -23,26 +23,17 @@ int ashmem_valid(int fd) {
   return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
 }
 
-int ashmem_create_region(const char* /*name*/, size_t size) {
-  char _tmpname[L_tmpnam];
-  if (tmpnam_r(_tmpname) == nullptr) {
-    return -1;
+int ashmem_create_region(const char* name, size_t size) {
+  std::string memname = "nnapi-mem-";
+  if (name) {
+    memname.append(name);
   }
 
-  // tmpnam will produce a string containing with slashes, but shm_open
-  // won't like that.
-  std::string _name = std::string(_tmpname);
-  std::replace(_name.begin(), _name.end(), '/', '-');
+  int fd = memfd_create(memname.c_str(), MFD_CLOEXEC);
 
-  int fd =
-      shm_open(_name.c_str(), O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
   if (fd == -1) {
     return -1;
   }
-
-  // This will clean up the /dev/shm area but the fd will
-  // live until it is closed.
-  shm_unlink(_name.c_str());
 
   // Set the size of the buffer as requested
   if (ftruncate(fd, size) == -1) {
