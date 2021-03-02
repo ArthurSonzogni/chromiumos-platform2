@@ -204,7 +204,7 @@ fn main() -> Result<()> {
     let mut transport = transport_type.try_into_client(Some(bind_port)).unwrap();
 
     let transport = transport.connect().map_err(|e| {
-        error!("transport connect failed");
+        error!("transport connect failed: {}", e);
         Error::TransportConnection(e)
     })?;
     info!("Starting rpc");
