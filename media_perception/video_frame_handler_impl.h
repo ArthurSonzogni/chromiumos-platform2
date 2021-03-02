@@ -51,11 +51,9 @@ class VideoFrameHandlerImpl : public video_capture::mojom::VideoFrameHandler {
   void OnNewBuffer(int32_t buffer_id,
                    media::mojom::VideoBufferHandlePtr buffer_handle) override;
   void OnFrameReadyInBuffer(
-      int32_t buffer_id,
-      int32_t frame_feedback_id,
-      mojo::PendingRemote<video_capture::mojom::ScopedAccessPermission>
-          permission,
-      media::mojom::VideoFrameInfoPtr frame_info) override;
+      video_capture::mojom::ReadyFrameInBufferPtr buffer,
+      std::vector<video_capture::mojom::ReadyFrameInBufferPtr> scaled_buffers)
+      override;
   void OnFrameDropped(
       ::media::mojom::VideoCaptureFrameDropReason reason) override;
   void OnBufferRetired(int32_t buffer_id) override;

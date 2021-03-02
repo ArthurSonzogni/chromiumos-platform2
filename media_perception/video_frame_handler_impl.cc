@@ -101,16 +101,13 @@ void VideoFrameHandlerImpl::OnNewBuffer(
 }
 
 void VideoFrameHandlerImpl::OnFrameReadyInBuffer(
-    int32_t buffer_id,
-    int32_t frame_feedback_id,
-    mojo::PendingRemote<video_capture::mojom::ScopedAccessPermission>
-        permission,
-    media::mojom::VideoFrameInfoPtr frame_info) {
+    video_capture::mojom::ReadyFrameInBufferPtr buffer,
+    std::vector<video_capture::mojom::ReadyFrameInBufferPtr> scaled_buffers) {
   base::WritableSharedMemoryMapping* incoming_buffer =
-      &incoming_buffer_id_to_buffer_map_.at(buffer_id);
+      &incoming_buffer_id_to_buffer_map_.at(buffer->buffer_id);
   // Loop through all the registered frame handlers and push a frame out.
   for (auto& entry : frame_handler_map_) {
-    entry.second(frame_info->timestamp->microseconds,
+    entry.second(buffer->frame_info->timestamp->microseconds,
                  incoming_buffer->GetMemoryAs<const uint8_t>(),
                  incoming_buffer->size(), capture_format_.width_in_pixels(),
                  capture_format_.height_in_pixels());
