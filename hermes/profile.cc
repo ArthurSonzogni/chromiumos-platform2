@@ -91,6 +91,7 @@ std::unique_ptr<Profile> Profile::Create(
 
   LOG(INFO) << "Created Profile: " << profile->object_path_.value()
             << " on slot: " << profile->physical_slot_;
+  VLOG(2) << profile_info.DebugString();
   return profile;
 }
 
