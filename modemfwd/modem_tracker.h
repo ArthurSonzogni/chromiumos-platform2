@@ -51,7 +51,7 @@ class ModemTracker {
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> shill_proxy_;
   OnModemAppearedCallback on_modem_appeared_callback_;
 
-  // Store the SIM ICCID for each modem Device.
+  // Store the Carrier UUID for each modem Device.
   std::map<dbus::ObjectPath, std::string> modem_objects_;
 
   base::WeakPtrFactory<ModemTracker> weak_ptr_factory_;

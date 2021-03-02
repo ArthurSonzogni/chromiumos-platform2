@@ -71,25 +71,27 @@ void ModemTracker::OnManagerPropertyChanged(const std::string& property_name,
 void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
                                            const std::string& property_name,
                                            const brillo::Any& property_value) {
-  // Listen only for the ICCID change triggered by a SIM change
-  if (property_name != shill::kIccidProperty)
+  // Listen only for the HomeProvider change triggered by a SIM change
+  if (property_name != shill::kHomeProviderProperty)
     return;
 
-  auto current_iccid = modem_objects_.find(device_path);
-  if (current_iccid == modem_objects_.end())
+  auto current_carrier_id = modem_objects_.find(device_path);
+  if (current_carrier_id == modem_objects_.end())
     return;
 
-  std::string iccid(property_value.TryGet<std::string>());
-  if (iccid == current_iccid->second)
+  std::map<std::string, std::string> operator_info(
+      property_value.TryGet<std::map<std::string, std::string>>());
+  std::string carrier_id = operator_info[shill::kOperatorUuidKey];
+  if (carrier_id == current_carrier_id->second)
     return;
 
-  current_iccid->second = iccid;
+  current_carrier_id->second = carrier_id;
 
-  ELOG(INFO) << "SIM ICCID changed to [" << iccid.substr(0, 9)
-             << "...] for device " << device_path.value();
+  ELOG(INFO) << "Carrier UUID changed to [" << carrier_id << "] for device "
+             << device_path.value();
 
-  // SIM removed, wait for a real one to update
-  if (iccid.empty())
+  // No carrier info, wait for a real one to update
+  if (carrier_id.empty())
     return;
 
   // trigger the firmware update
@@ -126,17 +128,24 @@ void ModemTracker::OnDeviceListChanged(
       continue;
     }
 
-    // Record the modem device with its current ICCID
-    new_modems[device_path] =
-        properties[shill::kIccidProperty].TryGet<std::string>();
+    std::map<std::string, std::string> operator_info;
+    if (!properties[shill::kHomeProviderProperty].GetValue(&operator_info))
+      continue;
 
-    // Listen to the Device ICCID property in order to detect future SIM swaps.
+    // Record the modem device with its current carrier UUID
+    std::string carrier_id = operator_info[shill::kOperatorUuidKey];
+    new_modems[device_path] = carrier_id;
+
+    // Listen to the Device HomeProvider property in order to detect future SIM
+    // swaps.
     device->RegisterPropertyChangedSignalHandler(
         base::Bind(&ModemTracker::OnDevicePropertyChanged,
                    weak_ptr_factory_.GetWeakPtr(), device_path),
         base::Bind(&OnSignalConnected));
 
-    on_modem_appeared_callback_.Run(std::move(device));
+    // Try to update only if we already know the carrier
+    if (!carrier_id.empty())
+      on_modem_appeared_callback_.Run(std::move(device));
   }
   modem_objects_ = new_modems;
 }
