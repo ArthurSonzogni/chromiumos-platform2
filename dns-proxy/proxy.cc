@@ -270,7 +270,8 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
 
     CHECK(resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr)))
         << opts_ << " failed to start UDP relay loop";
-    CHECK(resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)))
+    LOG_IF(DFATAL,
+           !resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)))
         << opts_ << " failed to start TCP relay loop";
   }
 
