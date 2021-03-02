@@ -168,6 +168,7 @@ bool IsDeviceAllowedSerial(udev_device* device) {
   // uniq -i
   const uint32_t kArduinoVendorIds[] = {0x2341, 0x1b4f, 0x239a, 0x2a03, 0x10c4};
   const uint32_t kGoogleVendorId = 0x18d1;
+  const uint32_t kRaspberryPiVendorId = 0x2e8a;
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
       !GetUIntSysattr(device, "idProduct", &product_id))
@@ -195,6 +196,10 @@ bool IsDeviceAllowedSerial(udev_device* device) {
     if (vendor_id == arduino_vendor_id) {
       return true;
     }
+  }
+
+  if (vendor_id == kRaspberryPiVendorId) {
+    return true;
   }
   return false;
 }
