@@ -16,6 +16,7 @@ pub type Pid = libc::pid_t;
 pub type Uid = libc::uid_t;
 
 const POLL_RATE: Duration = Duration::from_millis(50);
+const DEFAULT_KILL_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub enum Signal {
     Abort = libc::SIGABRT as isize,
@@ -145,4 +146,53 @@ pub fn kill_tree(child: &mut Child, timeout: Duration) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Wraps a Child process, and calls kill_tree for its process group to clean
+/// it up when dropped.
+pub struct KillOnDrop {
+    process: Child,
+    timeout: Duration,
+}
+
+impl KillOnDrop {
+    /// Get the timeout. See timeout_mut() for more details.
+    pub fn timeout(&self) -> Duration {
+        self.timeout
+    }
+
+    /// Change the timeout for how long child processes are waited for before
+    /// the process group is forcibly killed.
+    pub fn timeout_mut(&mut self) -> &mut Duration {
+        &mut self.timeout
+    }
+}
+
+impl From<Child> for KillOnDrop {
+    fn from(process: Child) -> Self {
+        KillOnDrop {
+            process,
+            timeout: DEFAULT_KILL_TIMEOUT,
+        }
+    }
+}
+
+impl AsRef<Child> for KillOnDrop {
+    fn as_ref(&self) -> &Child {
+        &self.process
+    }
+}
+
+impl AsMut<Child> for KillOnDrop {
+    fn as_mut(&mut self) -> &mut Child {
+        &mut self.process
+    }
+}
+
+impl Drop for KillOnDrop {
+    fn drop(&mut self) {
+        if let Err(err) = kill_tree(&mut self.process, self.timeout) {
+            eprintln!("failed to kill child process group: {}", err);
+        }
+    }
 }
