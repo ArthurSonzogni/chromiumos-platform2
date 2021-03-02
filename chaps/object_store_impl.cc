@@ -428,7 +428,8 @@ bool ObjectStoreImpl::ParseBlobKey(const string& key,
     // This isn't a blob.
     return false;
   }
-  base::StringPiece key_piece(key.begin() + (index + 1), key.end());
+  base::StringPiece key_piece =
+      base::MakeStringPiece(key.begin() + (index + 1), key.end());
   if (!base::StringToInt(key_piece, blob_id)) {
     LOG(ERROR) << "Invalid blob key id: " << key;
     return false;
