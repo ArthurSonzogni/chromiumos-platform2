@@ -8,7 +8,7 @@
 #define CAMERA_COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
 
 #include <base/single_thread_task_runner.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "cros-camera/camera_algorithm.h"
 #include "mojo/algorithm/camera_algorithm.mojom.h"
@@ -38,11 +38,11 @@ class CameraAlgorithmCallbackOpsImpl
   // Create the local proxy of remote CameraAlgorithmCallbackOps interface
   // implementation. It is expected to be called on
   // |CameraAlgorithmBridgeImpl::ipc_thread_|.
-  mojom::CameraAlgorithmCallbackOpsPtr CreateInterfacePtr();
+  mojo::PendingRemote<mojom::CameraAlgorithmCallbackOps> CreatePendingRemote();
 
  private:
-  // Binding of CameraAlgorithmCallbackOps interface to message pipe
-  mojo::Binding<mojom::CameraAlgorithmCallbackOps> binding_;
+  // Receiver of CameraAlgorithmCallbackOps interface to message pipe
+  mojo::Receiver<mojom::CameraAlgorithmCallbackOps> receiver_;
 
   // Task runner of |CameraAlgorithmBridgeImpl::ipc_thread_|
   const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;

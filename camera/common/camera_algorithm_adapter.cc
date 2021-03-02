@@ -16,7 +16,7 @@
 #include <base/notreached.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "cros-camera/camera_algorithm.h"
@@ -79,7 +79,7 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(channel))));
-  mojom::CameraAlgorithmOpsRequest request(
+  mojo::PendingReceiver<mojom::CameraAlgorithmOps> pending_receiver(
       invitation.ExtractMessagePipe(pipe_name));
 
   VLOGF_ENTER();
@@ -101,8 +101,8 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
 
   base::Closure ipc_lost_handler = base::Bind(
       &CameraAlgorithmAdapter::DestroyOnIpcThread, base::Unretained(this));
-  algo_impl_->Bind(std::move(request), cam_algo, ipc_thread_.task_runner(),
-                   ipc_lost_handler);
+  algo_impl_->Bind(std::move(pending_receiver), cam_algo,
+                   ipc_thread_.task_runner(), ipc_lost_handler);
   VLOGF_EXIT();
 }
 

@@ -10,7 +10,9 @@
 #include <vector>
 
 #include <base/threading/thread.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_algorithm.h"
 #include "mojo/algorithm/camera_algorithm.mojom.h"
@@ -29,9 +31,9 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   // Get singleton instance
   static CameraAlgorithmOpsImpl* GetInstance();
 
-  // Completes a binding by removing the message pipe endpoint from |request|
-  // and binding it to the interface implementation.
-  bool Bind(mojom::CameraAlgorithmOpsRequest request,
+  // Completes a receiver by removing the message pipe endpoint from
+  // |pending_receiver| and binding it to the interface implementation.
+  bool Bind(mojo::PendingReceiver<mojom::CameraAlgorithmOps> pending_receiver,
             camera_algorithm_ops_t* cam_algo,
             scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
             const base::Closure& ipc_lost_handler);
@@ -40,8 +42,9 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   void Unbind();
 
   // Implementation of mojom::CameraAlgorithmOps::Initialize interface
-  void Initialize(mojom::CameraAlgorithmCallbackOpsPtr callbacks,
-                  InitializeCallback callback) override;
+  void Initialize(
+      mojo::PendingRemote<mojom::CameraAlgorithmCallbackOps> callbacks,
+      InitializeCallback callback) override;
 
   // Implementation of mojom::CameraAlgorithmOps::RegisterBuffer interface
   void RegisterBuffer(mojo::ScopedHandle buffer_fd,
@@ -70,8 +73,8 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
                                  uint32_t status,
                                  int32_t buffer_handle);
 
-  // Binding of CameraAlgorithmOps interface to message pipe
-  mojo::Binding<mojom::CameraAlgorithmOps> binding_;
+  // Receiver of CameraAlgorithmOps interface to message pipe
+  mojo::Receiver<mojom::CameraAlgorithmOps> receiver_;
 
   // Interface of camera algorithm library
   camera_algorithm_ops_t* cam_algo_;
@@ -84,7 +87,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
 
   // Pointer to local proxy of remote CameraAlgorithmCallback interface
   // implementation
-  mojom::CameraAlgorithmCallbackOpsPtr cb_ptr_;
+  mojo::Remote<mojom::CameraAlgorithmCallbackOps> callback_ops_;
 };
 
 }  // namespace cros

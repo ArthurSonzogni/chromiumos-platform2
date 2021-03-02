@@ -176,13 +176,13 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
                  base::Unretained(this)));
 }
 
-mojom::CameraAlgorithmOpsPtr
-CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr(
+mojo::Remote<mojom::CameraAlgorithmOps>
+CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsRemote(
     const std::string& socket_path, const std::string& pipe_name) {
   VLOGF_ENTER();
 
   mojo::ScopedMessagePipeHandle parent_pipe;
-  mojom::CameraAlgorithmOpsPtr algorithm_ops;
+  mojo::Remote<mojom::CameraAlgorithmOps> algorithm_ops;
 
   base::FilePath socket_file_path(socket_path);
   MojoResult result = cros::CreateMojoChannelToChildByUnixDomainSocket(
@@ -190,11 +190,11 @@ CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr(
   if (result != MOJO_RESULT_OK) {
     LOGF(WARNING) << "Failed to create Mojo Channel to "
                   << socket_file_path.value();
-    return nullptr;
+    return mojo::Remote<mojom::CameraAlgorithmOps>();
   }
 
-  algorithm_ops.Bind(
-      mojom::CameraAlgorithmOpsPtrInfo(std::move(parent_pipe), 0u));
+  algorithm_ops.Bind(mojo::PendingRemote<mojom::CameraAlgorithmOps>(
+      std::move(parent_pipe), 0u));
 
   LOGF(INFO) << "Connected to CameraAlgorithmOps";
 

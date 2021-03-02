@@ -16,7 +16,8 @@ interface CameraAlgorithmOps {
   //
   // Returns:
   //    0 on success; corresponding error code on failure.
-  Initialize(CameraAlgorithmCallbackOps callbacks) => (int32 result);
+  Initialize(pending_remote<CameraAlgorithmCallbackOps> callbacks)
+      => (int32 result);
 
   // This method registers a buffer to the camera algorithm library and gets
   // the handle associated with it.

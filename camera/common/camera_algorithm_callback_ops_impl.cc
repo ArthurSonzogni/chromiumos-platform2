@@ -15,7 +15,7 @@ namespace cros {
 CameraAlgorithmCallbackOpsImpl::CameraAlgorithmCallbackOpsImpl(
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
     const camera_algorithm_callback_ops_t* callback_ops)
-    : binding_(this),
+    : receiver_(this),
       ipc_task_runner_(std::move(ipc_task_runner)),
       callback_ops_(callback_ops) {}
 
@@ -30,12 +30,10 @@ void CameraAlgorithmCallbackOpsImpl::Return(uint32_t req_id,
   VLOGF_EXIT();
 }
 
-mojom::CameraAlgorithmCallbackOpsPtr
-CameraAlgorithmCallbackOpsImpl::CreateInterfacePtr() {
+mojo::PendingRemote<mojom::CameraAlgorithmCallbackOps>
+CameraAlgorithmCallbackOpsImpl::CreatePendingRemote() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  mojom::CameraAlgorithmCallbackOpsPtr interface_ptr;
-  binding_.Bind(mojo::MakeRequest(&interface_ptr));
-  return interface_ptr;
+  return receiver_.BindNewPipeAndPassRemote();
 }
 
 }  // namespace cros

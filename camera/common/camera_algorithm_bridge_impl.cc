@@ -177,7 +177,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::Initialize(
   constexpr char kGpuAlgoJobFilePath[] = "/etc/init/cros-camera-gpu-algo.conf";
   switch (algo_backend_) {
     case CameraAlgorithmBackend::kVendorCpu:
-      interface_ptr_ = mojo_manager_->CreateCameraAlgorithmOpsPtr(
+      remote_ = mojo_manager_->CreateCameraAlgorithmOpsRemote(
           cros::constants::kCrosCameraAlgoSocketPathString, "vendor_cpu");
       break;
     case CameraAlgorithmBackend::kVendorGpu:
@@ -185,7 +185,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::Initialize(
         cb.Run(-EINVAL);
         return;
       }
-      interface_ptr_ = mojo_manager_->CreateCameraAlgorithmOpsPtr(
+      remote_ = mojo_manager_->CreateCameraAlgorithmOpsRemote(
           cros::constants::kCrosCameraGPUAlgoSocketPathString, "vendor_gpu");
       break;
     case CameraAlgorithmBackend::kGoogleGpu:
@@ -193,24 +193,24 @@ void CameraAlgorithmBridgeImpl::IPCBridge::Initialize(
         cb.Run(-EINVAL);
         return;
       }
-      interface_ptr_ = mojo_manager_->CreateCameraAlgorithmOpsPtr(
+      remote_ = mojo_manager_->CreateCameraAlgorithmOpsRemote(
           cros::constants::kCrosCameraGPUAlgoSocketPathString, "google_gpu");
       break;
     case CameraAlgorithmBackend::kTest:
-      interface_ptr_ = mojo_manager_->CreateCameraAlgorithmOpsPtr(
+      remote_ = mojo_manager_->CreateCameraAlgorithmOpsRemote(
           cros::constants::kCrosCameraAlgoSocketPathString, "test");
       break;
   }
-  if (!interface_ptr_) {
+  if (!remote_) {
     LOGF(ERROR) << "Failed to connect to the server";
     cb.Run(-EAGAIN);
     return;
   }
-  interface_ptr_.set_connection_error_handler(base::Bind(
+  remote_.set_disconnect_handler(base::BindOnce(
       &CameraAlgorithmBridgeImpl::IPCBridge::OnConnectionError, GetWeakPtr()));
   cb_impl_.reset(
       new CameraAlgorithmCallbackOpsImpl(ipc_task_runner_, callback_ops));
-  interface_ptr_->Initialize(cb_impl_->CreateInterfacePtr(), cb);
+  remote_->Initialize(cb_impl_->CreatePendingRemote(), cb);
   callback_ops_ = callback_ops;
   VLOGF_EXIT();
 }
@@ -219,7 +219,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::RegisterBuffer(
     int buffer_fd, base::Callback<void(int32_t)> cb) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  if (!interface_ptr_.is_bound()) {
+  if (!remote_.is_bound()) {
     LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
     cb.Run(-ECONNRESET);
     return;
@@ -230,7 +230,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::RegisterBuffer(
     cb.Run(-errno);
     return;
   }
-  interface_ptr_->RegisterBuffer(
+  remote_->RegisterBuffer(
       mojo::WrapPlatformFile(base::ScopedPlatformFile(dup_fd)), cb);
 }
 
@@ -238,11 +238,11 @@ void CameraAlgorithmBridgeImpl::IPCBridge::Request(
     uint32_t req_id, std::vector<uint8_t> req_header, int32_t buffer_handle) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  if (!interface_ptr_.is_bound()) {
+  if (!remote_.is_bound()) {
     LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
     return;
   }
-  interface_ptr_->Request(req_id, std::move(req_header), buffer_handle);
+  remote_->Request(req_id, std::move(req_header), buffer_handle);
   VLOGF_EXIT();
 }
 
@@ -250,11 +250,11 @@ void CameraAlgorithmBridgeImpl::IPCBridge::DeregisterBuffers(
     std::vector<int32_t> buffer_handles) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  if (!interface_ptr_.is_bound()) {
+  if (!remote_.is_bound()) {
     LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
     return;
   }
-  interface_ptr_->DeregisterBuffers(std::move(buffer_handles));
+  remote_->DeregisterBuffers(std::move(buffer_handles));
 }
 
 void CameraAlgorithmBridgeImpl::IPCBridge::OnConnectionError() {
@@ -271,9 +271,9 @@ void CameraAlgorithmBridgeImpl::IPCBridge::OnConnectionError() {
 void CameraAlgorithmBridgeImpl::IPCBridge::Destroy() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  if (interface_ptr_.is_bound()) {
+  if (remote_.is_bound()) {
     cb_impl_.reset();
-    interface_ptr_.reset();
+    remote_.reset();
   }
   VLOGF_EXIT();
 }

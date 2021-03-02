@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "common/camera_algorithm_callback_ops_impl.h"
 #include "common/camera_algorithm_ops_impl.h"
@@ -90,9 +91,8 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
     // Return callback registered by HAL
     const camera_algorithm_callback_ops_t* callback_ops_;
 
-    // Pointer to local proxy of remote CameraAlgorithmOps interface
-    // implementation.
-    mojom::CameraAlgorithmOpsPtr interface_ptr_;
+    // Proxy to remote CameraAlgorithmOps interface implementation.
+    mojo::Remote<mojom::CameraAlgorithmOps> remote_;
 
     // Pointer to CameraAlgorithmCallbackOpss interface implementation.
     std::unique_ptr<CameraAlgorithmCallbackOpsImpl> cb_impl_;

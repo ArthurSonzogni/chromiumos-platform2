@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/callback_forward.h>
 #include <base/memory/ref_counted.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "mojo/algorithm/camera_algorithm.mojom.h"
@@ -77,9 +78,10 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
       Callback on_construct_callback,
       Callback on_error_callback) = 0;
 
-  // Create a new CameraAlgorithmOpsPtr.
-  virtual mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr(
-      const std::string& socket_path, const std::string& pipe_name) = 0;
+  // Create a new CameraAlgorithmOps remote.
+  virtual mojo::Remote<mojom::CameraAlgorithmOps>
+  CreateCameraAlgorithmOpsRemote(const std::string& socket_path,
+                                 const std::string& pipe_name) = 0;
 };
 
 }  // namespace cros

@@ -16,6 +16,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
@@ -52,7 +53,7 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
                                    Callback on_construct_callback,
                                    Callback on_error_callback);
 
-  mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr(
+  mojo::Remote<mojom::CameraAlgorithmOps> CreateCameraAlgorithmOpsRemote(
       const std::string& socket_path, const std::string& pipe_name);
 
  protected:

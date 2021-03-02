@@ -22,7 +22,7 @@ namespace cros {
 CameraAlgorithmOpsImpl* CameraAlgorithmOpsImpl::singleton_ = nullptr;
 
 CameraAlgorithmOpsImpl::CameraAlgorithmOpsImpl()
-    : binding_(this), cam_algo_(nullptr) {
+    : receiver_(this), cam_algo_(nullptr) {
   singleton_ = this;
 }
 
@@ -33,47 +33,47 @@ CameraAlgorithmOpsImpl* CameraAlgorithmOpsImpl::GetInstance() {
 }
 
 bool CameraAlgorithmOpsImpl::Bind(
-    mojom::CameraAlgorithmOpsRequest request,
+    mojo::PendingReceiver<mojom::CameraAlgorithmOps> pending_receiver,
     camera_algorithm_ops_t* cam_algo,
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
     const base::Closure& ipc_lost_handler) {
   DCHECK(ipc_task_runner->BelongsToCurrentThread());
-  if (binding_.is_bound()) {
+  if (receiver_.is_bound()) {
     LOGF(ERROR) << "Algorithm Ops is already bound";
     return false;
   }
   DCHECK(!cam_algo_);
   DCHECK(!ipc_task_runner_);
-  DCHECK(!cb_ptr_.is_bound());
-  binding_.Bind(std::move(request));
+  DCHECK(!callback_ops_.is_bound());
+  receiver_.Bind(std::move(pending_receiver));
   cam_algo_ = cam_algo;
   ipc_task_runner_ = std::move(ipc_task_runner);
-  binding_.set_connection_error_handler(ipc_lost_handler);
+  receiver_.set_disconnect_handler(ipc_lost_handler);
   return true;
 }
 
 void CameraAlgorithmOpsImpl::Unbind() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  DCHECK(binding_.is_bound());
+  DCHECK(receiver_.is_bound());
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_);
-  cb_ptr_.reset();
+  callback_ops_.reset();
   ipc_task_runner_ = nullptr;
   cam_algo_ = nullptr;
-  if (binding_.is_bound()) {
-    binding_.Unbind();
+  if (receiver_.is_bound()) {
+    receiver_.reset();
   }
 }
 
 void CameraAlgorithmOpsImpl::Initialize(
-    mojom::CameraAlgorithmCallbackOpsPtr callback_ops,
+    mojo::PendingRemote<mojom::CameraAlgorithmCallbackOps> callback_ops,
     InitializeCallback callback) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  DCHECK(callback_ops.is_bound());
+  DCHECK(callback_ops.is_valid());
   VLOGF_ENTER();
   int32_t result = 0;
-  if (cb_ptr_.is_bound()) {
+  if (callback_ops_.is_bound()) {
     LOGF(ERROR) << "Return callback is already registered";
     std::move(callback).Run(-EINVAL);
     return;
@@ -81,7 +81,7 @@ void CameraAlgorithmOpsImpl::Initialize(
   CameraAlgorithmOpsImpl::return_callback =
       CameraAlgorithmOpsImpl::ReturnCallbackForwarder;
   result = cam_algo_->initialize(this);
-  cb_ptr_ = std::move(callback_ops);
+  callback_ops_.Bind(std::move(callback_ops));
   std::move(callback).Run(result);
   VLOGF_EXIT();
 }
@@ -109,7 +109,7 @@ void CameraAlgorithmOpsImpl::Request(uint32_t req_id,
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  if (!cb_ptr_.is_bound()) {
+  if (!callback_ops_.is_bound()) {
     LOGF(ERROR) << "Return callback is not registered yet";
     return;
   }
@@ -154,10 +154,10 @@ void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(uint32_t req_id,
                                                        int32_t buffer_handle) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  if (!cb_ptr_.is_bound()) {
+  if (!callback_ops_.is_bound()) {
     LOGF(WARNING) << "Callback is not bound. IPC broken?";
   } else {
-    cb_ptr_->Return(req_id, status, buffer_handle);
+    callback_ops_->Return(req_id, status, buffer_handle);
   }
   VLOGF_EXIT();
 }
