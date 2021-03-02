@@ -94,7 +94,7 @@ TEST_F(PortTest, TestDPAltModeEntryCheckTrue) {
   std::string mode0_dirname =
       base::StringPrintf("port%d-partner.%d", 0, kDPAltModeIndex);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPSVID, kDPVDO_WD19TB,
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO_WD19TB,
                                 kDPVDOIndex_WD19TB));
   port->AddRemovePartnerAltMode(mode0_path, true);
 
@@ -117,14 +117,16 @@ TEST_F(PortTest, TestDPAltModeEntryCheckFalseWithDPSID) {
   std::string mode0_dirname =
       base::StringPrintf("port%d-partner.%d", 0, kDPAltModeIndex);
   auto mode0_path = temp_dir_.Append(mode0_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPSVID, kDPVDO, kDPVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO, kDPVDOIndex));
   port->AddRemovePartnerAltMode(mode0_path, true);
 
   // Add the TBT alt mode.
   std::string mode1_dirname =
       base::StringPrintf("port%d-partner.%d", 0, kTBTAltModeIndex);
   auto mode1_path = temp_dir_.Append(mode1_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kTBTSVID, kTBTVDO, kTBTVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode1_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
   port->AddRemovePartnerAltMode(mode1_path, true);
 
   EXPECT_FALSE(port->CanEnterDPAltMode());
@@ -146,7 +148,8 @@ TEST_F(PortTest, TestDPAltModeEntryCheckFalse) {
   // Add the TBT alt mode.
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO, kTBTVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   EXPECT_FALSE(port->CanEnterDPAltMode());
@@ -174,7 +177,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueStartech) {
   // Add the TBT alt mode.
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO, 0));
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, 0));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Set up fake sysfs paths and add a cable.
@@ -214,7 +217,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckFalseStartech) {
   // Add the TBT alt mode.
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO, 0));
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, 0));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Set up fake sysfs paths and add a cable.
@@ -253,13 +256,14 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueWD19TB) {
   // Add the TBT alt mode.
   std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO, kTBTVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Add the DP alt mode.
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, kDPVDO_WD19TB, 0));
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_WD19TB, 0));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Add the Dell alt mode 1.
@@ -314,14 +318,14 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveTBT3Cable) {
   // Add the DP alt mode.
   auto mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, kDPVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_GatkexCreek,
                                 kDPVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Add the TBT alt mode.
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO_GatkexCreek,
                                 kTBTVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
@@ -341,7 +345,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveTBT3Cable) {
   // Set up fake sysfs paths for cable alt modes.
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, 0x30001, 0));
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0));
   port->AddCableAltMode(mode_path);
 
   EXPECT_TRUE(port->CanEnterUSB4());
@@ -370,14 +374,14 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveNonTBT3Cable) {
   // Add the DP alt mode.
   auto mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, kDPVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_GatkexCreek,
                                 kDPVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Add the TBT alt mode.
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO_GatkexCreek,
                                 kTBTVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
@@ -420,14 +424,14 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexPassiveNonTBT3Cable) {
   // Add the DP alt mode.
   auto mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, kDPVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_GatkexCreek,
                                 kDPVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Add the TBT alt mode.
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO_GatkexCreek,
                                 kTBTVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
@@ -473,14 +477,14 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
   // Add the DP alt mode.
   auto mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, kDPVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_GatkexCreek,
                                 kDPVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Add the TBT alt mode.
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO_GatkexCreek,
                                 kTBTVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
@@ -500,7 +504,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
   // Set up fake sysfs paths for cable alt modes.
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, 0x430001, 0));
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x430001, 0));
   port->AddCableAltMode(mode_path);
 
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
@@ -534,14 +538,14 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable) {
   // Add the DP alt mode.
   auto mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
   auto mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, kDPVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, kDPVDO_GatkexCreek,
                                 kDPVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
   // Add the TBT alt mode.
   mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, kTBTVDO_GatkexCreek,
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO_GatkexCreek,
                                 kTBTVDOIndex_GatkexCreek));
   port->AddRemovePartnerAltMode(mode_path, true);
 
@@ -561,12 +565,12 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable) {
   // Set up fake sysfs paths for cable alt modes.
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTSVID, 0x00cb0001, 0));
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x00cb0001, 0));
   port->AddCableAltMode(mode_path);
 
   mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
   mode_path = temp_dir_.Append(mode_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPSVID, 0x000c0c0c, 0));
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, 0x000c0c0c, 0));
   port->AddCableAltMode(mode_path);
 
   // Apple alt modes.

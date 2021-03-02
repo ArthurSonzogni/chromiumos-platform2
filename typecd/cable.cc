@@ -104,6 +104,15 @@ bool Cable::IsAltModePresent(int index) {
   return false;
 }
 
+bool Cable::IsAltModeSVIDPresent(uint16_t altmode_sid) {
+  for (const auto& [index, mode] : alt_modes_) {
+    if (mode->GetSVID() == altmode_sid)
+      return true;
+  }
+
+  return false;
+}
+
 AltMode* Cable::GetAltMode(int index) {
   if (!IsAltModePresent(index))
     return nullptr;
@@ -119,8 +128,12 @@ bool Cable::TBT3PDIdentityCheck() {
   auto product_type = GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset &
                       kIDHeaderVDOProductTypeMask;
   if (product_type & kIDHeaderVDOProductTypeCableActive) {
-    LOG(INFO) << "Active cable detected, TBT3 supported.";
-    return true;
+    if (IsAltModeSVIDPresent(kTBTAltModeVID)) {
+      LOG(INFO) << "Active cable detected, TBT3 supported.";
+      return true;
+    }
+    LOG(INFO) << "Active cable detected, TBT3 not supported.";
+    return false;
   }
 
   if (!(product_type & kIDHeaderVDOProductTypeCablePassive)) {

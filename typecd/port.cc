@@ -14,8 +14,6 @@
 namespace {
 
 constexpr char kDataRoleDRPRegex[] = R"(\[(\w+)\])";
-constexpr uint16_t kDPAltModeSID = 0xff01;
-constexpr uint16_t kTBTAltModeVID = 0x8087;
 
 // DP altmode VDO capabilities.
 // NOTE: We only include the bit fields we are interested in.
@@ -296,16 +294,7 @@ bool Port::IsPartnerDiscoveryComplete() {
 }
 
 bool Port::IsCableAltModePresent(uint16_t altmode_sid) {
-  auto num_alt_modes = cable_->GetNumAltModes();
-  for (int i = 0; i < num_alt_modes; i++) {
-    AltMode* alt_mode = cable_->GetAltMode(i);
-    if (!alt_mode)
-      continue;
-    if (alt_mode->GetSVID() == altmode_sid)
-      return true;
-  }
-
-  return false;
+  return cable_->IsAltModeSVIDPresent(altmode_sid);
 }
 
 bool Port::IsCableDiscoveryComplete() {

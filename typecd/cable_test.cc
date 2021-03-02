@@ -21,7 +21,16 @@ class CableTest : public ::testing::Test {};
 // for various cable PDO values.
 // Since we don't have sysfs, we can just manually set the PD identity VDOs.
 TEST_F(CableTest, TestTBT3PDIdentityCheck) {
+  // Set up a temp dir.
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  base::FilePath temp_dir = scoped_temp_dir.GetPath();
+
   auto cable = std::make_unique<Cable>(base::FilePath(kFakePort0CableSysPath));
+
+  // Create sysfs path for SOP' plug.
+  auto sop_plug_path = temp_dir.Append(std::string("port0-plug0"));
+  ASSERT_TRUE(base::CreateDirectory(sop_plug_path));
 
   // Apple Active TBT3 Pro Cable PD 3.0
   cable->SetPDRevision(PDRevision::k30);
@@ -31,6 +40,18 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   cable->SetProductTypeVDO1(0x434858da);
   cable->SetProductTypeVDO2(0x5a5f0001);
   cable->SetProductTypeVDO3(0x0);
+  cable->SetNumAltModes(2);
+
+  std::string mode0_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  auto mode0_path = sop_plug_path.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x00cb0001, 0));
+  EXPECT_TRUE(cable->AddAltMode(mode0_path));
+
+  std::string mode1_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
+  auto mode1_path = sop_plug_path.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kDPAltModeSID, 0x000c0c0c, 0));
+  EXPECT_TRUE(cable->AddAltMode(mode1_path));
+
   EXPECT_TRUE(cable->TBT3PDIdentityCheck());
 
   // Apple Active TBT3 Pro Cable PD 2.0
@@ -41,7 +62,45 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   cable->SetProductTypeVDO1(0x43085fda);
   cable->SetProductTypeVDO2(0x0);
   cable->SetProductTypeVDO3(0x0);
+  // Alt Modes are the same for this cable PD 2.0 vs. PD 3.0
   EXPECT_TRUE(cable->TBT3PDIdentityCheck());
+  cable->RemoveAltMode(mode0_path);
+  cable->RemoveAltMode(mode1_path);
+
+  // Belkin Active TBT3 Cable F2CD085bt2M-BLK PD 2.0
+  cable->SetPDRevision(PDRevision::k20);
+  cable->SetIdHeaderVDO(0x240020c2);
+  cable->SetCertStatVDO(0x0);
+  cable->SetProductVDO(0x00040010);
+  cable->SetProductTypeVDO1(0x21085858);
+  cable->SetProductTypeVDO2(0x0);
+  cable->SetProductTypeVDO3(0x0);
+
+  mode0_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  mode0_path = sop_plug_path.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x00430001, 0));
+  EXPECT_TRUE(cable->AddAltMode(mode0_path));
+
+  EXPECT_TRUE(cable->TBT3PDIdentityCheck());
+  cable->RemoveAltMode(mode0_path);
+
+  // Cable Matters Active USB 3.2 + DP Alt Mode Cable PD 2.0
+  cable->SetPDRevision(PDRevision::k20);
+  cable->SetIdHeaderVDO(0x24000bda);
+  cable->SetCertStatVDO(0x0);
+  cable->SetProductVDO(0x00000209);
+  cable->SetProductTypeVDO1(0x120851b2);
+  cable->SetProductTypeVDO2(0x0);
+  cable->SetProductTypeVDO3(0x0);
+
+  mode0_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  mode0_path = sop_plug_path.Append(mode1_dirname);
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x001c0005, kDPVDOIndex));
+  EXPECT_TRUE(cable->AddAltMode(mode0_path));
+
+  EXPECT_FALSE(cable->TBT3PDIdentityCheck());
+  cable->RemoveAltMode(mode0_path);
 
   // StarTech Passive Cable 40 Gbps PD 2.0
   cable->SetPDRevision(PDRevision::k20);
@@ -51,7 +110,14 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   cable->SetProductTypeVDO1(0x11082052);
   cable->SetProductTypeVDO2(0x0);
   cable->SetProductTypeVDO3(0x0);
+
+  mode0_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  mode0_path = sop_plug_path.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x00030001, 0));
+  EXPECT_TRUE(cable->AddAltMode(mode0_path));
+
   EXPECT_TRUE(cable->TBT3PDIdentityCheck());
+  cable->RemoveAltMode(mode0_path);
 
   // Nekteck 100W USB 2.0 5A Cable PD 3.0
   cable->SetPDRevision(PDRevision::k20);
@@ -61,6 +127,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   cable->SetProductTypeVDO1(0xc1082040);
   cable->SetProductTypeVDO2(0x0);
   cable->SetProductTypeVDO3(0x0);
+  cable->SetNumAltModes(0);
   EXPECT_FALSE(cable->TBT3PDIdentityCheck());
 
   // Nekteck 100W USB 2.0 Cable PD 2.0
@@ -71,6 +138,7 @@ TEST_F(CableTest, TestTBT3PDIdentityCheck) {
   cable->SetProductTypeVDO1(0xc10827d0);
   cable->SetProductTypeVDO2(0x0);
   cable->SetProductTypeVDO3(0x0);
+  cable->SetNumAltModes(0);
   EXPECT_FALSE(cable->TBT3PDIdentityCheck());
 }
 
@@ -97,13 +165,15 @@ TEST_F(CableTest, TestAltModeManualAddition) {
   std::string mode0_dirname =
       base::StringPrintf("port%d-plug0.%d", 0, kDPAltModeIndex);
   auto mode0_path = sop_plug_path.Append(mode0_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPSVID, kDPVDO, kDPVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO, kDPVDOIndex));
   EXPECT_TRUE(cable.AddAltMode(mode0_path));
 
   std::string mode1_dirname =
       base::StringPrintf("port%d-plug0.%d", 0, kTBTAltModeIndex);
   auto mode1_path = sop_plug_path.Append(mode1_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kTBTSVID, kTBTVDO, kTBTVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode1_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
   EXPECT_TRUE(cable.AddAltMode(mode1_path));
 
   // Trying to add an existing alt mode again should also return true; an INFO

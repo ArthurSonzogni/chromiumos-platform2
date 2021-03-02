@@ -59,6 +59,10 @@ constexpr uint8_t kTBT3CableDiscModeVDORoundedSupportOffset = 19;
 constexpr uint8_t kTBT3CableDiscModeVDORoundedSupportMask = 0x3;
 constexpr uint8_t kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded = 0x1;
 
+// Standard and Vendor Indentifications commonly expected in cables and partners
+constexpr uint16_t kDPAltModeSID = 0xff01;
+constexpr uint16_t kTBTAltModeVID = 0x8087;
+
 }  // namespace typecd
 
 #endif  // TYPECD_PD_VDO_CONSTANTS_H_

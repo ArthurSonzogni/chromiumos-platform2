@@ -62,7 +62,8 @@ TEST_F(PartnerTest, TestAltModeManualAddition) {
   std::string mode0_dirname =
       base::StringPrintf("port%d-partner.%d", 0, kDPAltModeIndex);
   auto mode0_path = partner_path.Append(mode0_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPSVID, kDPVDO, kDPVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO, kDPVDOIndex));
   EXPECT_TRUE(p.AddAltMode(mode0_path));
 
   // We still have 1 more alt mode to register.
@@ -72,11 +73,12 @@ TEST_F(PartnerTest, TestAltModeManualAddition) {
   std::string mode1_dirname =
       base::StringPrintf("port%d-partner.%d", 0, kTBTAltModeIndex);
   auto mode1_path = partner_path.Append(mode1_dirname);
-  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kTBTSVID, kTBTVDO, kTBTVDOIndex));
+  ASSERT_TRUE(
+      CreateFakeAltMode(mode1_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
 
   // Add extra white spaces to ensure malformed strings can be parsed. We can do
   // this by overwriting whatever the pre-existing SVID syspath file is.
-  auto mode1_svid = base::StringPrintf("%x    ", kTBTSVID);
+  auto mode1_svid = base::StringPrintf("%x    ", kTBTAltModeVID);
   ASSERT_TRUE(base::WriteFile(mode1_path.Append("svid"), mode1_svid.c_str(),
                               mode1_svid.length()));
   EXPECT_TRUE(p.AddAltMode(mode1_path));

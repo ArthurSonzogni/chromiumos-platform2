@@ -59,6 +59,10 @@ class Cable : public Peripheral {
   // class framework) is registered.
   bool IsAltModePresent(int index);
 
+  // Check if a particular alt mode SVID (as specified by the Type C connector
+  // class framework) is registered.
+  bool IsAltModeSVIDPresent(uint16_t altmode_sid);
+
   // Return the alternate modes with index |index|, and nullptr if such an
   // alternate modes doesn't exist.
   AltMode* GetAltMode(int index);
