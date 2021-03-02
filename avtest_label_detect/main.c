@@ -44,6 +44,16 @@ struct detector detectors[] = {
     {"hw_video_acc_enc_h264_4k", detect_4k_device_enc_h264},
     {"hw_video_acc_enc_vp8_4k", detect_4k_device_enc_vp8},
     {"hw_video_acc_enc_vp9_4k", detect_4k_device_enc_vp9},
+    {"hw_video_prot_cencv1_h264_cbc", detect_video_prot_cencv1_h264_cbc},
+    {"hw_video_prot_cencv1_h264_ctr", detect_video_prot_cencv1_h264_ctr},
+    {"hw_video_prot_cencv3_av1_cbc", detect_video_prot_cencv3_av1_cbc},
+    {"hw_video_prot_cencv3_av1_ctr", detect_video_prot_cencv3_av1_ctr},
+    {"hw_video_prot_cencv3_h264_cbc", detect_video_prot_cencv3_h264_cbc},
+    {"hw_video_prot_cencv3_h264_ctr", detect_video_prot_cencv3_h264_ctr},
+    {"hw_video_prot_cencv3_hevc_cbc", detect_video_prot_cencv3_hevc_cbc},
+    {"hw_video_prot_cencv3_hevc_ctr", detect_video_prot_cencv3_hevc_ctr},
+    {"hw_video_prot_cencv3_vp9_cbc", detect_video_prot_cencv3_vp9_cbc},
+    {"hw_video_prot_cencv3_vp9_ctr", detect_video_prot_cencv3_vp9_ctr},
     {NULL, NULL}};
 
 int main(int argc, char* argv[]) {

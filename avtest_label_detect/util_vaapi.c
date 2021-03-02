@@ -11,6 +11,7 @@
 
 #include <va/va.h>
 #include <va/va_drm.h>
+#include <va/va_prot.h>
 
 #include "label_detect.h"
 
@@ -160,7 +161,7 @@ finish:
 static bool are_attribs_supported(VADisplay va_display,
                                   VAProfile va_profile,
                                   VAEntrypoint entrypoint,
-                                  VAConfigAttrib* required_attribs,
+                                  const VAConfigAttrib* required_attribs,
                                   int num_required_attribs) {
   bool result = false;
   VAConfigAttrib* attribs =
@@ -190,6 +191,35 @@ static bool are_attribs_supported(VADisplay va_display,
 finish:
   free(attribs);
   return result;
+}
+
+/* Returns true if |required_attribs| are supported. */
+bool are_vaapi_attribs_supported(int fd,
+                                 VAProfile va_profile,
+                                 VAEntrypoint entrypoint,
+                                 const VAConfigAttrib* required_attribs,
+                                 int num_required_attribs) {
+  VAStatus va_res;
+  VADisplay va_display;
+  int major_version, minor_version;
+
+  va_display = vaGetDisplayDRM(fd);
+  if (!vaDisplayIsValid(va_display)) {
+    TRACE("vaGetDisplay returns invalid display\n");
+    return false;
+  }
+
+  va_res = vaInitialize(va_display, &major_version, &minor_version);
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaInitialize failed\n");
+    return false;
+  }
+
+  bool res = are_attribs_supported(va_display, va_profile, entrypoint,
+                                   required_attribs, num_required_attribs);
+
+  vaTerminate(va_display);
+  return res;
 }
 
 /* Returns success or failure of getting resolution. The maximum resolution

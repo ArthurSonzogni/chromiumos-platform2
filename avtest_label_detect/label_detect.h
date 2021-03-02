@@ -58,6 +58,11 @@ bool get_vaapi_max_resolution(int fd,
                               unsigned int format,
                               int32_t* const resolution_width,
                               int32_t* const resolution_height);
+bool are_vaapi_attribs_supported(int fd,
+                                 VAProfile va_profile,
+                                 VAEntrypoint entrypoint,
+                                 const VAConfigAttrib* required_attribs,
+                                 int num_required_attribs);
 #endif  // defined(USE_VAAPI)
 
 /* detectors */
@@ -89,4 +94,14 @@ bool detect_4k_device_hevc_10bpp(void);
 bool detect_4k_device_enc_h264(void);
 bool detect_4k_device_enc_vp8(void);
 bool detect_4k_device_enc_vp9(void);
+bool detect_video_prot_cencv1_h264_cbc(void);
+bool detect_video_prot_cencv1_h264_ctr(void);
+bool detect_video_prot_cencv3_av1_cbc(void);
+bool detect_video_prot_cencv3_av1_ctr(void);
+bool detect_video_prot_cencv3_h264_cbc(void);
+bool detect_video_prot_cencv3_h264_ctr(void);
+bool detect_video_prot_cencv3_hevc_cbc(void);
+bool detect_video_prot_cencv3_hevc_ctr(void);
+bool detect_video_prot_cencv3_vp9_cbc(void);
+bool detect_video_prot_cencv3_vp9_ctr(void);
 #endif  // AVTEST_LABEL_DETECT_LABEL_DETECT_H_
