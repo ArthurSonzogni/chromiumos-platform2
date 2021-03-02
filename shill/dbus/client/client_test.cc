@@ -763,6 +763,8 @@ TEST_F(ClientTest, ManagerPropertyAccessor) {
               SetPropertyAsync(StrEq("foo"), bar, _, _, -1));
   EXPECT_CALL(*client_->manager(),
               SetPropertyAsync(StrEq("foo"), bar, _, _, 10));
+  EXPECT_CALL(*client_->manager(), DoRegisterPropertyChangedSignalHandler(_, _))
+      .Times(2);
 
   auto props = client_->ManagerProperties();
   props->Set("foo", "bar", nullptr);

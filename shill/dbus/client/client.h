@@ -120,7 +120,14 @@ class BRILLO_EXPORT Client {
    public:
     PropertyAccessor(Proxy* proxy,
                      const base::TimeDelta& timeout = kDefaultDBusTimeout)
-        : proxy_(proxy), timeout_(timeout.InMilliseconds()) {}
+        : proxy_(proxy), timeout_(timeout.InMilliseconds()) {
+      proxy_->RegisterPropertyChangedSignalHandler(
+          base::BindRepeating(&PropertyAccessor::OnPropertyChange,
+                              weak_factory_.GetWeakPtr()),
+          base::BindRepeating(&PropertyAccessor::OnPropertyChangeRegistration,
+                              weak_factory_.GetWeakPtr()));
+    }
+
     virtual ~PropertyAccessor() = default;
     PropertyAccessor(const PropertyAccessor&) = delete;
     PropertyAccessor& operator=(const PropertyAccessor&) = delete;
@@ -162,9 +169,37 @@ class BRILLO_EXPORT Client {
     // TODO(garrick): Async getters.
     // TODO(garrick): Clear.
 
+    // Register a handler for changes to a property.
+    void Watch(const std::string& name,
+               base::RepeatingCallback<void(const brillo::Any&)> handler) {
+      handlers_[name].push_back(std::move(handler));
+    }
+
    private:
+    void OnPropertyChangeRegistration(const std::string& interface,
+                                      const std::string& name,
+                                      bool success) {
+      if (!success) {
+        LOG(DFATAL) << "Failed to watch property [" << name << "] on ["
+                    << interface << "]";
+        return;
+      }
+    }
+
+    void OnPropertyChange(const std::string& name, const brillo::Any& value) {
+      const auto it = handlers_.find(name);
+      if (it != handlers_.end())
+        for (const auto& h : it->second)
+          h.Run(value);
+    }
+
     Proxy* proxy_;
     const int timeout_;
+    std::map<std::string,
+             std::vector<base::RepeatingCallback<void(const brillo::Any&)>>>
+        handlers_;
+
+    base::WeakPtrFactory<PropertyAccessor> weak_factory_{this};
   };
 
   using ManagerPropertyAccessor =
