@@ -196,13 +196,6 @@ int U2fDaemon::StartService() {
   int status = StartU2fHidService();
 
   U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
-
-  // Temporary workaround for M89, to avoid initializing platform authenticator
-  // when in U2F or G2F mode. Should be deleted on ToT after merged to M89.
-  if (u2f_mode == U2fMode::kU2f || u2f_mode == U2fMode::kU2fExtended) {
-    return status;
-  }
-
   LOG(INFO) << "Initializing WebAuthn handler.";
   InitializeWebAuthnHandler(u2f_mode);
 
