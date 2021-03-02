@@ -2013,7 +2013,10 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   set_home_provider(home_provider);
 
   ApnList apn_list;
-  apn_list.AddApns(capability_->GetProfiles());
+  // TODO(b:180004055): remove this when we have captive portal checks that
+  // mark APNs as bad and can skip the null APN for data connections
+  if (manufacturer_ != kQ6V5ModemManufacturerName)
+    apn_list.AddApns(capability_->GetProfiles());
   apn_list.AddApns(operator_info->apn_list());
   set_apn_list(apn_list.GetList());
 
