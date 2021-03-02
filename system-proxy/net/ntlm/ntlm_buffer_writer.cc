@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "system-proxy/net/ntlm/ntlm_buffer_writer.h"
+#include "net/ntlm/ntlm_buffer_writer.h"
 
 #include <string.h>
 
