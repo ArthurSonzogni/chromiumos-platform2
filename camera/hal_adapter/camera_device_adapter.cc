@@ -812,7 +812,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
 
   // If we attempt ZSL, we'll add ANDROID_CONTROL_ENABLE_ZSL to the capture
   // template which will then require us to add it to capture results as well.
-  if (attempt_zsl_ && r->partial_result == partial_result_count_) {
+  if (attempt_zsl_ && result->partial_result == partial_result_count_) {
     android::CameraMetadata zsl_metadata(clone_camera_metadata(result->result));
     uint8_t enable_zsl = transformed_input != nullptr;
     zsl_metadata.update(ANDROID_CONTROL_ENABLE_ZSL, &enable_zsl, 1);
