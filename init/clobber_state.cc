@@ -974,8 +974,8 @@ void ClobberState::CreateLogicalVolumeStack() {
   vg->Activate();
 
   base::DictionaryValue thinpool_config;
-  size_t thinpool_size = partition_size * kThinpoolSizePercent / 100;
-  size_t thinpool_metadata_size =
+  int64_t thinpool_size = partition_size * kThinpoolSizePercent / 100;
+  int64_t thinpool_metadata_size =
       thinpool_size * kThinpoolMetadataSizePercent / 100;
   thinpool_config.SetString("name", "thinpool");
   thinpool_config.SetString("size", base::NumberToString(thinpool_size));
