@@ -17,7 +17,7 @@ namespace cryptohome {
 class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  public:
   UserDataAuthDaemon()
-      : DBusServiceDaemon(kUserDataAuthServiceName),
+      : DBusServiceDaemon(::user_data_auth::kUserDataAuthServiceName),
         service_(new cryptohome::UserDataAuth()) {}
   UserDataAuthDaemon(const UserDataAuthDaemon&) = delete;
   UserDataAuthDaemon& operator=(const UserDataAuthDaemon&) = delete;
@@ -41,7 +41,8 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
 
     DCHECK(!dbus_object_);
     dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
-        nullptr, bus_, dbus::ObjectPath(kUserDataAuthServicePath));
+        nullptr, bus_,
+        dbus::ObjectPath(::user_data_auth::kUserDataAuthServicePath));
 
     userdataauth_adaptor_.reset(
         new UserDataAuthAdaptor(bus_, dbus_object_.get(), service_.get()));

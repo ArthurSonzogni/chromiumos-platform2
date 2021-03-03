@@ -5,14 +5,9 @@
 #ifndef SYSTEM_API_DBUS_CRYPTOHOME_DBUS_CONSTANTS_H_
 #define SYSTEM_API_DBUS_CRYPTOHOME_DBUS_CONSTANTS_H_
 
-namespace cryptohome {
+namespace user_data_auth {
 
 // Interface exposed by the cryptohome daemon.
-
-const char kCryptohomeInterface[] = "org.chromium.CryptohomeInterface";
-const char kCryptohomeServicePath[] = "/org/chromium/Cryptohome";
-const char kCryptohomeServiceName[] = "org.chromium.Cryptohome";
-
 const char kUserDataAuthServiceName[] = "org.chromium.UserDataAuth";
 const char kUserDataAuthServicePath[] = "/org/chromium/UserDataAuth";
 
@@ -22,6 +17,15 @@ const char kCryptohomePkcs11Interface[] =
 const char kInstallAttributesInterface[] =
     "org.chromium.InstallAttributesInterface";
 const char kCryptohomeMiscInterface[] = "org.chromium.CryptohomeMiscInterface";
+
+}  // namespace user_data_auth
+
+namespace cryptohome {
+
+// Interface exposed by the cryptohome daemon.
+const char kCryptohomeInterface[] = "org.chromium.CryptohomeInterface";
+const char kCryptohomeServicePath[] = "/org/chromium/Cryptohome";
+const char kCryptohomeServiceName[] = "org.chromium.Cryptohome";
 
 // Methods of the |kCryptohomeInterface| interface:
 const char kCryptohomeMigrateKey[] = "MigrateKey";

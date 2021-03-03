@@ -94,10 +94,11 @@ class ServiceBlocker {
         &ServiceBlocker::OnTpmManagerServiceChange, base::Unretained(this));
 
     // Setup the callbacks.
-    bus_->ListenForServiceOwnerChange(kUserDataAuthServiceName,
-                                      on_cryptohome_online_);
+    bus_->ListenForServiceOwnerChange(
+        ::user_data_auth::kUserDataAuthServiceName, on_cryptohome_online_);
 
-    bus_->GetServiceOwner(kUserDataAuthServiceName, on_cryptohome_online_);
+    bus_->GetServiceOwner(::user_data_auth::kUserDataAuthServiceName,
+                          on_cryptohome_online_);
 
     bus_->ListenForServiceOwnerChange(tpm_manager::kTpmManagerServiceName,
                                       on_tpm_manager_online_);
@@ -108,8 +109,8 @@ class ServiceBlocker {
   // This is called by dbus when cryptohome's owner changes.
   void OnCryptohomeServiceChange(const std::string& service_owner) {
     if (!service_owner.empty()) {
-      bus_->UnlistenForServiceOwnerChange(kUserDataAuthServiceName,
-                                          on_cryptohome_online_);
+      bus_->UnlistenForServiceOwnerChange(
+          ::user_data_auth::kUserDataAuthServiceName, on_cryptohome_online_);
       cryptohome_online.Signal();
     }
   }
