@@ -6,9 +6,12 @@
 #define DNS_PROXY_PROXY_H_
 
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <base/files/scoped_file.h>
@@ -58,6 +61,39 @@ class Proxy : public brillo::DBusDaemon {
  private:
   static const uint8_t kMaxShillPropertyRetries = 10;
 
+  // Helper for parsing and applying shill's DNSProxyDOHProviders property.
+  class DoHConfig {
+   public:
+    DoHConfig() = default;
+    DoHConfig(const DoHConfig&) = delete;
+    DoHConfig& operator=(const DoHConfig&) = delete;
+    ~DoHConfig() = default;
+
+    // Stores the resolver to configure whenever settings are updated.
+    void set_resolver(Resolver* resolver);
+
+    // |nameservers| is the list of name servers for the network the proxy is
+    // tracking.
+    void set_nameservers(const std::vector<std::string>& nameservers);
+
+    // |settings| is the DoH providers property we get from shill. It keys, as
+    // applicable, secure DNS provider endpoints to standard DNS name servers.
+    void set_providers(const std::map<std::string, std::string>& providers);
+
+    void clear();
+
+   private:
+    void update();
+
+    Resolver* resolver_{nullptr};
+    std::vector<std::string> nameservers_;
+    // If non-empty, the secure providers to use for always-on DoH.
+    std::set<std::string> secure_providers_;
+    // If non-empty, maps name servers to secure DNS providers, for automatic
+    // update.
+    std::map<std::string, std::string> auto_providers_;
+  };
+
   void Setup();
   void OnPatchpanelReady(bool success);
   void OnPatchpanelReset(bool reset);
@@ -70,6 +106,7 @@ class Proxy : public brillo::DBusDaemon {
   void OnDeviceChanged(const shill::Client::Device* const device);
 
   void UpdateNameServers(const shill::Client::IPConfig& ipconfig);
+  void OnDoHProvidersChanged(const brillo::Any& value);
 
   // Helper func for setting the dns-proxy address in shill.
   // Only valid for the system proxy.
@@ -78,6 +115,9 @@ class Proxy : public brillo::DBusDaemon {
   void SetShillProperty(const std::string& addr,
                         bool die_on_failure = false,
                         uint8_t num_retries = kMaxShillPropertyRetries);
+
+  // Return the property accessor, creating it if needed.
+  shill::Client::ManagerPropertyAccessor* shill_props();
 
   FRIEND_TEST(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill);
   FRIEND_TEST(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill);
@@ -103,14 +143,24 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, DefaultProxy_UsesVPN);
   FRIEND_TEST(ProxyTest, NameServersUpdatedOnDeviceChangeEvent);
   FRIEND_TEST(ProxyTest, DeviceChangeEventIgnored);
+  FRIEND_TEST(ProxyTest, BasicDoHDisable);
+  FRIEND_TEST(ProxyTest, BasicDoHAlwaysOn);
+  FRIEND_TEST(ProxyTest, BasicDoHAutomatic);
+  FRIEND_TEST(ProxyTest, NewResolverConfiguredWhenSet);
+  FRIEND_TEST(ProxyTest, DoHModeChangingFixedNameServers);
+  FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAlwaysOnMode);
+  FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAutomaticMode);
+  FRIEND_TEST(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
   std::unique_ptr<shill::Client> shill_;
+  std::unique_ptr<shill::Client::ManagerPropertyAccessor> shill_props_;
 
   base::ScopedFD ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_;
   std::unique_ptr<Resolver> resolver_;
+  DoHConfig doh_config_;
   std::unique_ptr<shill::Client::Device> device_;
 
   base::WeakPtrFactory<Proxy> weak_factory_{this};

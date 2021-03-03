@@ -31,6 +31,7 @@ constexpr int32_t kRequestMaxRetry = 1;
 using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ManagerProxyMock;
 using testing::_;
+using testing::IsEmpty;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrEq;
@@ -308,6 +309,9 @@ TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
   dev.state = shill::Client::Device::ConnectionState::kOnline;
   EXPECT_CALL(*mock_resolver, ListenUDP(_)).WillOnce(Return(true));
   EXPECT_CALL(*mock_resolver, ListenTCP(_)).WillOnce(Return(true));
+  brillo::VariantDictionary props;
+  EXPECT_CALL(mock_manager_, GetProperties(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
   proxy.OnDefaultDeviceChanged(&dev);
   EXPECT_TRUE(proxy.resolver_);
 }
@@ -336,6 +340,7 @@ TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
   dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
@@ -357,6 +362,7 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
   EXPECT_CALL(*mock_resolver, SetNameServers(_));
@@ -373,10 +379,14 @@ TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
   MockResolver* mock_resolver = resolver.get();
   ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
   ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(true));
+  brillo::VariantDictionary props;
+  EXPECT_CALL(mock_manager_, GetProperties(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
   EXPECT_CALL(mock_manager_,
               SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
       .WillOnce(Return(true));
   proxy.resolver = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.type = shill::Client::Device::Type::kWifi;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
@@ -398,10 +408,14 @@ TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
   MockResolver* mock_resolver = resolver.get();
   ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
   ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(true));
+  brillo::VariantDictionary props;
+  EXPECT_CALL(mock_manager_, GetProperties(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
   EXPECT_CALL(mock_manager_,
               SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
       .WillOnce(Return(true));
   proxy.resolver = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device vpn;
   vpn.type = shill::Client::Device::Type::kVPN;
   vpn.state = shill::Client::Device::ConnectionState::kOnline;
@@ -421,7 +435,11 @@ TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
   MockResolver* mock_resolver = resolver.get();
   ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
   ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(true));
+  brillo::VariantDictionary props;
+  EXPECT_CALL(mock_manager_, GetProperties(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
   proxy.resolver = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.type = shill::Client::Device::Type::kWifi;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
@@ -442,6 +460,7 @@ TEST_F(ProxyTest, NameServersUpdatedOnDeviceChangeEvent) {
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
   dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
@@ -472,6 +491,7 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.ifname = "eth0";
   dev.state = shill::Client::Device::ConnectionState::kOnline;
@@ -494,6 +514,257 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   // Different ifname, no call to SetNameServers
   dev.ifname = "wlan0";
   proxy.OnDeviceChanged(&dev);
+}
+
+TEST_F(ProxyTest, BasicDoHDisable) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
+  std::map<std::string, std::string> props;
+  proxy.OnDoHProvidersChanged(props);
+}
+
+TEST_F(ProxyTest, BasicDoHAlwaysOn) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), true));
+  std::map<std::string, std::string> props;
+  props["https://dns.google.com"] = "";
+  proxy.OnDoHProvidersChanged(props);
+}
+
+TEST_F(ProxyTest, BasicDoHAutomatic) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  shill::Client::IPConfig ipconfig;
+  ipconfig.ipv4_dns_addresses = {"8.8.4.4"};
+  proxy.UpdateNameServers(ipconfig);
+
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), false));
+  std::map<std::string, std::string> props;
+  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  proxy.OnDoHProvidersChanged(props);
+}
+
+TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  std::map<std::string, std::string> props;
+  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  props["https://chrome.cloudflare-dns.com/dns-query"] =
+      "1.1.1.1,2606:4700:4700::1111";
+  proxy.OnDoHProvidersChanged(props);
+  shill::Client::IPConfig ipconfig;
+  ipconfig.ipv4_dns_addresses = {"1.0.0.1", "1.1.1.1"};
+  proxy.UpdateNameServers(ipconfig);
+
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  EXPECT_CALL(*mock_resolver, SetNameServers(UnorderedElementsAre(
+                                  StrEq("1.1.1.1"), StrEq("1.0.0.1"))));
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(
+          ElementsAre(StrEq("https://chrome.cloudflare-dns.com/dns-query")),
+          false));
+  proxy.doh_config_.set_resolver(mock_resolver);
+}
+
+TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+
+  // Initially off.
+  EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
+  shill::Client::IPConfig ipconfig;
+  ipconfig.ipv4_dns_addresses = {"1.1.1.1", "9.9.9.9"};
+  proxy.UpdateNameServers(ipconfig);
+
+  // Automatic mode - matched cloudflare.
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(
+          ElementsAre(StrEq("https://chrome.cloudflare-dns.com/dns-query")),
+          false));
+  std::map<std::string, std::string> props;
+  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  props["https://chrome.cloudflare-dns.com/dns-query"] =
+      "1.1.1.1,2606:4700:4700::1111";
+  proxy.OnDoHProvidersChanged(props);
+
+  // Automatic mode - no match.
+  EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
+  ipconfig.ipv4_dns_addresses = {"10.10.10.1"};
+  proxy.UpdateNameServers(ipconfig);
+
+  // Automatic mode - matched google.
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), false));
+  ipconfig.ipv4_dns_addresses = {"8.8.4.4", "10.10.10.1", "8.8.8.8"};
+  proxy.UpdateNameServers(ipconfig);
+
+  // Explicitly turned off.
+  EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
+  props.clear();
+  proxy.OnDoHProvidersChanged(props);
+
+  // Still off - even switching ns back.
+  EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
+  ipconfig.ipv4_dns_addresses = {"8.8.4.4", "10.10.10.1", "8.8.8.8"};
+  proxy.UpdateNameServers(ipconfig);
+
+  // Always-on mode.
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(ElementsAre(StrEq("https://doh.opendns.com/dns-query")),
+                      true));
+  props.clear();
+  props["https://doh.opendns.com/dns-query"] = "";
+  proxy.OnDoHProvidersChanged(props);
+
+  // Back to automatic mode, though no matching ns.
+  EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
+  props.clear();
+  props["https://doh.opendns.com/dns-query"] =
+      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53";
+  proxy.OnDoHProvidersChanged(props);
+
+  // Automatic mode working on ns update.
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(ElementsAre(StrEq("https://doh.opendns.com/dns-query")),
+                      false));
+  ipconfig.ipv4_dns_addresses = {"8.8.8.8", "2620:119:35::35"};
+  proxy.UpdateNameServers(ipconfig);
+}
+
+TEST_F(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(UnorderedElementsAre(StrEq("https://dns.google.com"),
+                                           StrEq("https://doh.opendns.com")),
+                      true));
+  std::map<std::string, std::string> props;
+  props["https://dns.google.com"] = "";
+  props["https://doh.opendns.com"] = "";
+  proxy.OnDoHProvidersChanged(props);
+}
+
+TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  shill::Client::IPConfig ipconfig;
+  ipconfig.ipv4_dns_addresses = {"1.1.1.1", "10.10.10.10"};
+  proxy.UpdateNameServers(ipconfig);
+
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(
+          ElementsAre(StrEq("https://chrome.cloudflare-dns.com/dns-query")),
+          false));
+  std::map<std::string, std::string> props;
+  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  props["https://dns.quad9.net/dns-query"] = "9.9.9.9,2620:fe::9";
+  props["https://chrome.cloudflare-dns.com/dns-query"] =
+      "1.1.1.1,2606:4700:4700::1111";
+  props["https://doh.opendns.com/dns-query"] =
+      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53";
+  proxy.OnDoHProvidersChanged(props);
+
+  EXPECT_CALL(*mock_resolver,
+              SetDoHProviders(UnorderedElementsAre(
+                                  StrEq("https://dns.google.com"),
+                                  StrEq("https://doh.opendns.com/dns-query"),
+                                  StrEq("https://dns.quad9.net/dns-query")),
+                              false));
+  ipconfig.ipv4_dns_addresses = {"8.8.8.8", "10.10.10.10"};
+  ipconfig.ipv6_dns_addresses = {"2620:fe::9", "2620:119:53::53"};
+  proxy.UpdateNameServers(ipconfig);
+}
+
+TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  shill::Client::IPConfig ipconfig;
+  ipconfig.ipv4_dns_addresses = {"1.1.1.1", "10.10.10.10"};
+  proxy.UpdateNameServers(ipconfig);
+
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(
+          ElementsAre(StrEq("https://chrome.cloudflare-dns.com/dns-query")),
+          false));
+  std::map<std::string, std::string> props;
+  props["https://dns.opendns.com"] = "";
+  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  props["https://dns.quad9.net/dns-query"] = "9.9.9.9,2620:fe::9";
+  props["https://chrome.cloudflare-dns.com/dns-query"] =
+      "1.1.1.1,2606:4700:4700::1111";
+  props["https://doh.opendns.com/dns-query"] =
+      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53";
+  proxy.OnDoHProvidersChanged(props);
+
+  EXPECT_CALL(*mock_resolver,
+              SetDoHProviders(UnorderedElementsAre(
+                                  StrEq("https://dns.google.com"),
+                                  StrEq("https://doh.opendns.com/dns-query"),
+                                  StrEq("https://dns.quad9.net/dns-query")),
+                              false));
+  ipconfig.ipv4_dns_addresses = {"8.8.8.8", "10.10.10.10"};
+  ipconfig.ipv6_dns_addresses = {"2620:fe::9", "2620:119:53::53"};
+  proxy.UpdateNameServers(ipconfig);
 }
 
 }  // namespace dns_proxy

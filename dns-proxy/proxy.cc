@@ -8,9 +8,11 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <set>
 #include <utility>
 
 #include <base/bind.h>
+#include <base/strings/string_split.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/net_util.h>
@@ -209,6 +211,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     if (device_) {
       LOG(WARNING) << opts_
                    << " is stopping because there is no default service";
+      doh_config_.clear();
       resolver_.reset();
       device_.reset();
     }
@@ -242,6 +245,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     if (device_) {
       LOG(WARNING) << opts_ << " is stopping because the default device ["
                    << new_default_device.ifname << "] is offline";
+      doh_config_.clear();
       resolver_.reset();
       device_.reset();
     }
@@ -261,6 +265,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (!resolver_) {
     resolver_ =
         NewResolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry);
+    doh_config_.set_resolver(resolver_.get());
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
@@ -273,6 +278,16 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     LOG_IF(DFATAL,
            !resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)))
         << opts_ << " failed to start TCP relay loop";
+
+    // Fetch the DoH settings.
+    brillo::ErrorPtr error;
+    std::map<std::string, std::string> doh_providers;
+    if (shill_props()->Get(shill::kDNSProxyDOHProvidersProperty, &doh_providers,
+                           &error))
+      OnDoHProvidersChanged(brillo::Any(doh_providers));
+    else
+      LOG(ERROR) << opts_ << " failed to obtain DoH configuration from shill: "
+                 << error->GetMessage();
   }
 
   // Update the resolver with the latest DNS config.
@@ -284,6 +299,17 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (opts_.type == Type::kSystem)
     SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
                      true /* die_on_failure */);
+}
+
+shill::Client::ManagerPropertyAccessor* Proxy::shill_props() {
+  if (!shill_props_) {
+    shill_props_ = shill_->ManagerProperties();
+    shill_props_->Watch(shill::kDNSProxyDOHProvidersProperty,
+                        base::BindRepeating(&Proxy::OnDoHProvidersChanged,
+                                            weak_factory_.GetWeakPtr()));
+  }
+
+  return shill_props_.get();
 }
 
 void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
@@ -311,11 +337,14 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
       std::remove_if(name_servers.begin(), name_servers.end(),
                      [](const std::string& s) { return s == kIfAddrAny; }),
       name_servers.end());
-  name_servers.insert(name_servers.end(),
-                      device_->ipconfig.ipv6_dns_addresses.begin(),
-                      device_->ipconfig.ipv6_dns_addresses.end());
-  resolver_->SetNameServers(name_servers);
+  name_servers.insert(name_servers.end(), ipconfig.ipv6_dns_addresses.begin(),
+                      ipconfig.ipv6_dns_addresses.end());
+  doh_config_.set_nameservers(name_servers);
   LOG(INFO) << opts_ << " applied device DNS configuration";
+}
+
+void Proxy::OnDoHProvidersChanged(const brillo::Any& value) {
+  doh_config_.set_providers(value.Get<std::map<std::string, std::string>>());
 }
 
 void Proxy::SetShillProperty(const std::string& addr,
@@ -344,8 +373,7 @@ void Proxy::SetShillProperty(const std::string& addr,
   }
 
   brillo::ErrorPtr error;
-  if (shill_->ManagerProperties()->Set(shill::kDNSProxyIPv4AddressProperty,
-                                       addr, &error))
+  if (shill_props()->Set(shill::kDNSProxyIPv4AddressProperty, addr, &error))
     return;
 
   LOG(ERROR) << "Failed to set dns-proxy address property [" << addr
@@ -356,6 +384,87 @@ void Proxy::SetShillProperty(const std::string& addr,
       base::Bind(&Proxy::SetShillProperty, weak_factory_.GetWeakPtr(), addr,
                  die_on_failure, num_retries - 1),
       kShillPropertyAttemptDelay);
+}
+
+void Proxy::DoHConfig::set_resolver(Resolver* resolver) {
+  resolver_ = resolver;
+  update();
+}
+
+void Proxy::DoHConfig::set_nameservers(
+    const std::vector<std::string>& nameservers) {
+  nameservers_ = nameservers;
+  update();
+}
+
+void Proxy::DoHConfig::set_providers(
+    const std::map<std::string, std::string>& providers) {
+  secure_providers_.clear();
+  auto_providers_.clear();
+
+  if (providers.empty()) {
+    LOG(INFO) << "DoH: off";
+    update();
+    return;
+  }
+
+  for (const auto& [endpoint, nameservers] : providers) {
+    // We expect that in secure, always-on to find one (or more) endpoints with
+    // no nameservers.
+    if (nameservers.empty()) {
+      secure_providers_.insert(endpoint);
+      continue;
+    }
+
+    // Remap nameserver -> secure endpoint so we can quickly determine if DoH
+    // should be attempted when the name servers change.
+    for (const auto& ns :
+         base::SplitString(nameservers, ",", base::TRIM_WHITESPACE,
+                           base::SPLIT_WANT_NONEMPTY)) {
+      auto_providers_[ns] = endpoint;
+    }
+  }
+
+  // If for some reason, both collections are non-empty, prefer the automatic
+  // upgrade configuration.
+  if (!auto_providers_.empty()) {
+    secure_providers_.clear();
+    LOG(INFO) << "DoH: automatic";
+  }
+  if (!secure_providers_.empty()) {
+    LOG(INFO) << "DoH: always-on";
+  }
+  update();
+}
+
+void Proxy::DoHConfig::update() {
+  if (!resolver_)
+    return;
+
+  resolver_->SetNameServers(nameservers_);
+
+  std::set<std::string> doh_providers;
+  bool doh_always_on = false;
+  if (!secure_providers_.empty()) {
+    doh_providers = secure_providers_;
+    doh_always_on = true;
+  } else if (!auto_providers_.empty()) {
+    for (const auto& ns : nameservers_) {
+      const auto it = auto_providers_.find(ns);
+      if (it != auto_providers_.end()) {
+        doh_providers.emplace(it->second);
+      }
+    }
+  }
+
+  resolver_->SetDoHProviders(
+      std::vector(doh_providers.begin(), doh_providers.end()), doh_always_on);
+}
+
+void Proxy::DoHConfig::clear() {
+  resolver_ = nullptr;
+  secure_providers_.clear();
+  auto_providers_.clear();
 }
 
 }  // namespace dns_proxy
