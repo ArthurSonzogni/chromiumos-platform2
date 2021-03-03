@@ -103,6 +103,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/tpm2-simulator         u:object_r:cros_tpm2_simulator_exec:s0
 /usr/bin/typecd                 u:object_r:cros_typecd_exec:s0
 /usr/bin/u2fd                   u:object_r:cros_u2fd_exec:s0
+/usr/bin/virtual-file-provider  u:object_r:cros_virtual_file_provider_exec:s0
+/usr/bin/virtual-file-provider-jailed u:object_r:cros_virtual_file_provider_jailed_exec:s0
 /usr/bin/vm_cicerone            u:object_r:cros_vm_cicerone_exec:s0
 /usr/bin/vm_concierge           u:object_r:cros_vm_concierge_exec:s0
 /usr/bin/vmlog_forwarder        u:object_r:cros_vmlog_forwarder_exec:s0
