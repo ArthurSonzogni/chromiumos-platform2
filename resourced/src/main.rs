@@ -315,8 +315,8 @@ fn dbus_method_get_memory_margins_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResu
 }
 
 fn start_service() -> Result<()> {
-    let service_name = "org.chromium.MemoryPressure";
-    let path_name = "/org/chromium/MemoryPressure";
+    let service_name = "org.chromium.ResourceManager";
+    let path_name = "/org/chromium/ResourceManager";
     let interface_name = service_name;
     // Let's start by starting up a connection to the system bus and request a name.
     let c = LocalConnection::new_system()?;
