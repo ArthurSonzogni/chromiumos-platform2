@@ -95,6 +95,8 @@ bool ECCollector::Collect() {
   std::string dump_basename = FormatDumpBasename(kECExecName, time(nullptr), 0);
   FilePath ec_crash_path = root_crash_directory.Append(
       StringPrintf("%s.eccrash", dump_basename.c_str()));
+  FilePath log_path = root_crash_directory.Append(
+      StringPrintf("%s.log", dump_basename.c_str()));
 
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
@@ -109,8 +111,11 @@ bool ECCollector::Collect() {
   std::string signature = StringPrintf(
       "%s-%08X", kECExecName, util::HashString(StringPiece(data, len)));
 
-  /* TODO(drinkcat): Figure out a way to add EC version to metadata. */
   AddCrashMetaData("sig", signature);
+  // Add EC info and AP version into log file.
+  if (GetLogContents(log_config_path_, kECExecName, log_path)) {
+    AddCrashMetaUploadFile("log", log_path.BaseName().value());
+  }
   FinishCrash(root_crash_directory.Append(
                   StringPrintf("%s.meta", dump_basename.c_str())),
               kECExecName, ec_crash_path.BaseName().value());
