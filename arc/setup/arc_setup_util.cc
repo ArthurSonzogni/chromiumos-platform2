@@ -390,6 +390,12 @@ class ArcMounterImpl : public ArcMounter {
       }
     }
 
+    struct stat source_stat;
+    if (fstat(scoped_source_fd.get(), &source_stat) != 0) {
+      PLOG(ERROR) << "Failed to stat " << source;
+      return false;
+    }
+
     if (ioctl(scoped_loop_fd.get(), LOOP_SET_FD, scoped_source_fd.get()) < 0) {
       PLOG(ERROR) << "Failed to associate " << source << " with "
                   << device_path.value();
@@ -420,17 +426,33 @@ class ArcMounterImpl : public ArcMounter {
         &DisassociateLoopDevice, scoped_loop_fd.get(), source, device_path));
 
     if (Mount(device_path.value(), target, "squashfs", mount_flags, nullptr)) {
-      ignore_result(loop_device_cleanup.Release());
-      return true;
-    }
-
-    // For debugging, ext4 might be used.
-    if (Mount(device_path.value(), target, "ext4", mount_flags, nullptr)) {
+      // Expected case, all good.
+    } else if (Mount(device_path.value(), target, "ext4", mount_flags,
+                     nullptr)) {
+      // For development ext4 is allowed.
       LOG(INFO) << "Mounted " << source << " as ext4";
-      ignore_result(loop_device_cleanup.Release());
-      return true;
+    } else {
+      PLOG(ERROR) << "Failed to mount " << source;
+      return false;
     }
 
+    ignore_result(loop_device_cleanup.Release());
+
+    // Verify that the loop device did not get redirected.
+    if (ioctl(scoped_loop_fd.get(), LOOP_GET_STATUS64, &loop_info) == 0) {
+      if (loop_info.lo_device == source_stat.st_dev &&
+          loop_info.lo_inode == source_stat.st_ino) {
+        // We loop mounted the desired backing file.
+        return true;
+      }
+    } else {
+      PLOG(ERROR) << "Failed to get loop status for " << device_path.value();
+    }
+
+    // We mounted the wrong things, attempt to unmount and fail.
+    LOG(ERROR) << "Failed to confirm correct contents mounted on "
+               << target.value();
+    LoopUmount(target);
     return false;
   }
 };
