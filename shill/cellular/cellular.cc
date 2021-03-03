@@ -629,7 +629,7 @@ bool Cellular::ResetQ6V5Modem() {
     return false;
   }
   usleep(kModemResetTimeoutMilliseconds * 1000);
-  if (HANDLE_EINTR(write(fd, "start", sizeof("stop")))) {
+  if (HANDLE_EINTR(write(fd, "start", sizeof("start")))) {
     LOG(ERROR) << "Failed to start modem";
     return false;
   }
