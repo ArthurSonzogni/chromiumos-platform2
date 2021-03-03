@@ -250,7 +250,7 @@ void DestroyKeyPair(CK_SESSION_HANDLE session, const string& label) {
   vector<CK_OBJECT_HANDLE> private_objects;
   Find(session, private_attributes, base::size(private_attributes),
        &private_objects);
-  if (public_objects.size() != 0 || private_objects.size() != 0) {
+  if (public_objects.size() == 0 && private_objects.size() == 0) {
     LOG(INFO) << "No keypair.";
     exit(-1);
   }
@@ -1229,6 +1229,8 @@ int main(int argc, char** argv) {
     GenerateKeyPair(session, key_size_bits, label, generate_delete);
     PrintTicks(&start_ticks);
   } else if (inject) {
+    session = Login(slot, false, session);
+    PrintTicks(&start_ticks);
     InjectRSAKeyPair(session, key_size_bits, label);
     PrintTicks(&start_ticks);
   } else if (import) {
@@ -1270,24 +1272,24 @@ int main(int argc, char** argv) {
   }
   if (vpn || wifi) {
     printf("Replay 1 of 2\n");
-    // No need to login again if --generate flag is passed
+    // No need to login again if --generate or --inject flag is passed
     // as it's already logged in for this session
-    if (!generate) {
+    if (!generate && !inject) {
       session = Login(slot, vpn, session);
       GenerateKeyPair(session, key_size_bits, label, false);
     }
     Sign(session, label);
     PrintTicks(&start_ticks);
-    // Delete the temporary key pair to avoid piling up.
-    if (!generate) {
-      DestroyKeyPair(session, label);
-    }
     printf("Replay 2 of 2\n");
     CK_SESSION_HANDLE session2 = OpenSession(slot);
     session2 = Login(slot, vpn, session2);
     Sign(session2, label);
     PrintTicks(&start_ticks);
     C_CloseSession(session2);
+    // Delete the temporary key pair to avoid piling up.
+    if (!generate && !inject) {
+      DestroyKeyPair(session, label);
+    }
   }
   if (digest_test) {
     const int kNumThreads = 100;
