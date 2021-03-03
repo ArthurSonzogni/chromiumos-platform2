@@ -65,8 +65,6 @@ executable("sommelier") {
     "xcb-xfixes",
     "xkbcommon",
   ]
-  libs = [ "m" ]
-  deps = [ ":sommelier-protocol" ]
   sources = [
     "sommelier-compositor.cc",
     "sommelier-data-device-manager.cc",
@@ -85,9 +83,10 @@ executable("sommelier") {
     "sommelier-viewporter.cc",
     "sommelier-xdg-shell.cc",
     "sommelier.cc",
-    "virtualization/virtwl_channel.cc",
     "virtualization/virtgpu_channel.cc",
+    "virtualization/virtwl_channel.cc",
   ]
+  libs = [ "m" ]
   defines = [
     "_GNU_SOURCE",
     "WL_HIDE_DEPRECATED",
@@ -97,4 +96,5 @@ executable("sommelier") {
     "FRAME_COLOR=${frame_color}",
     "DARK_FRAME_COLOR=${dark_frame_color}",
   ]
+  deps = [ ":sommelier-protocol" ]
 }

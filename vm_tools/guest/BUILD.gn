@@ -185,22 +185,22 @@ if (!use.fuzzer) {
   }
 
   executable("wayland_demo") {
+    sources = [ "../demos/wayland_demo.cc" ]
+    libs = [ "wayland-client" ]
     pkg_deps = [
       "libbrillo",
       "libchrome",
       "wayland-client",
     ]
-    libs = [ "wayland-client" ]
-    sources = [ "../demos/wayland_demo.cc" ]
   }
 
   executable("x11_demo") {
+    sources = [ "../demos/x11_demo.cc" ]
+    libs = [ "X11" ]
     pkg_deps = [
       "libbrillo",
       "libchrome",
     ]
-    libs = [ "X11" ]
-    sources = [ "../demos/x11_demo.cc" ]
   }
 }
 
@@ -312,41 +312,29 @@ if (use.test) {
 if (use.fuzzer) {
   executable("garcon_desktop_file_fuzzer") {
     sources = [ "../garcon/desktop_file_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome-test" ]
-
     deps = [ "//vm_tools/guest:libgarcon" ]
   }
 
   executable("garcon_icon_index_file_fuzzer") {
     sources = [ "../garcon/icon_index_file_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome-test" ]
-
     deps = [ "//vm_tools/guest:libgarcon" ]
   }
 
   executable("garcon_ini_parse_util_fuzzer") {
     sources = [ "../garcon/ini_parse_util_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome-test" ]
-
     deps = [ "//vm_tools/guest:libgarcon" ]
   }
 
   executable("garcon_mime_types_parser_fuzzer") {
     sources = [ "../garcon/mime_types_parser_fuzzer.cc" ]
-
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-
     pkg_deps = [ "libchrome-test" ]
-
     deps = [ "//vm_tools/guest:libgarcon" ]
   }
 }

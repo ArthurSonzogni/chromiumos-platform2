@@ -70,14 +70,14 @@ proto_library("fuzzer-protos") {
   proto_in_dir = "./"
   proto_out_dir = "include/vm_protos/proto_bindings"
   gen_grpc = true
+  standalone = true
+  sources = [ "${proto_in_dir}/fuzzer.proto" ]
   deps = [
     ":common-protos",
     ":container-rpcs",
     ":tremplin-rpcs",
     ":vm-crash-rpcs",
   ]
-  sources = [ "${proto_in_dir}/fuzzer.proto" ]
-  standalone = true
 }
 
 proto_library("tremplin-rpcs") {
