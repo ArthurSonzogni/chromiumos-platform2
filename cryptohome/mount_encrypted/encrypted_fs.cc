@@ -211,7 +211,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     return nullptr;
   }
 
-  uint64_t fs_bytes_max = static_cast<uint64_t>(stateful_statbuf.f_blocks);
+  int64_t fs_bytes_max = static_cast<int64_t>(stateful_statbuf.f_blocks);
   fs_bytes_max *= kSizePercent;
   fs_bytes_max *= stateful_statbuf.f_frsize;
 

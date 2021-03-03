@@ -58,7 +58,7 @@ class LogicalVolumeBackingDevice : public BackingDevice {
   base::Optional<brillo::LogicalVolume> GetLogicalVolume();
 
   const std::string name_;
-  const uint64_t size_;
+  const int64_t size_;
   const base::FilePath physical_volume_;
   const std::string thinpool_name_;
 

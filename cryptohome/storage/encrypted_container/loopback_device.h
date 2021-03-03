@@ -64,7 +64,7 @@ class LoopbackDevice : public BackingDevice {
   friend class LoopbackDevicePeer;
 
   const std::string name_;
-  const size_t size_;
+  const int64_t size_;
   const base::FilePath backing_file_path_;
 
   Platform* platform_;

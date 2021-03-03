@@ -70,8 +70,9 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
               {.type = BackingDeviceType::kLogicalVolumeBackingDevice,
                .name = LogicalVolumePrefix(obfuscated_username) +
                        container_identifier,
-               .size = (stateful_size * kLogicalVolumeSizePercent) /
-                       (100 * 1024 * 1024),
+               .size = static_cast<int64_t>(
+                   (stateful_size * kLogicalVolumeSizePercent) /
+                   (100 * 1024 * 1024)),
                .logical_volume = {.thinpool_name = "thinpool",
                                   .physical_volume = stateful_device}},
           .dmcrypt_device_name =

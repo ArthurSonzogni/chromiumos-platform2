@@ -27,7 +27,7 @@ enum class BackingDeviceType {
 struct BackingDeviceConfig {
   BackingDeviceType type;
   std::string name;
-  uint64_t size;
+  int64_t size;
   struct {
     base::FilePath backing_file_path;
   } loopback;
