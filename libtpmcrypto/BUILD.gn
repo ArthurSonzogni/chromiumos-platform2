@@ -33,11 +33,11 @@ proto_library("tpm_encrypted_data_proto") {
 }
 
 shared_library("libtpmcrypto") {
-  configs += [ ":target_defaults" ]
   sources = [
     "tpm_crypto_impl.cc",
     "tpm_proto_utils.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":tpm_encrypted_data_proto" ]
   if (use.tpm2) {
     sources += [ "tpm2_impl.cc" ]
@@ -55,28 +55,27 @@ if (use.test) {
   }
 
   executable("tpmcrypto_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":test_config",
-    ]
     sources = [
       "tpm_crypto_impl_test.cc",
       "tpm_proto_utils.cc",
       "tpm_proto_utils_test.cc",
     ]
-    if (use.tpm2) {
-      sources += [ "tpm2_impl.cc" ]
-      libs = [ "trunks" ]
-    }
-    if (!use.tpm2) {
-      sources += [ "tpm1_impl.cc" ]
-      libs = [ "tspi" ]
-    }
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
     deps = [
       ":libtpmcrypto",
       ":tpm_encrypted_data_proto",
       "//common-mk/testrunner",
     ]
+    if (use.tpm2) {
+      sources += [ "tpm2_impl.cc" ]
+      libs = [ "trunks" ]
+    } else {
+      sources += [ "tpm1_impl.cc" ]
+      libs = [ "tspi" ]
+    }
   }
 }

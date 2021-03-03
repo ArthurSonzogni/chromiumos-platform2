@@ -53,10 +53,6 @@ pkg_config("u2fd_config") {
 }
 
 static_library("libu2fd") {
-  configs += [
-    ":target_defaults",
-    ":u2fd_config",
-  ]
   sources = [
     "allowlisting_util.cc",
     "tpm_vendor_cmd.cc",
@@ -70,6 +66,10 @@ static_library("libu2fd") {
     "webauthn_handler.cc",
     "webauthn_storage.cc",
   ]
+  configs += [
+    ":target_defaults",
+    ":u2fd_config",
+  ]
   libs = [
     "policy",
     "cbor",
@@ -81,8 +81,8 @@ static_library("libu2fd") {
 }
 
 executable("u2fd") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [ "policy" ]
   deps = [ ":libu2fd" ]
 }
@@ -94,8 +94,8 @@ proto_library("user_state_proto") {
 }
 
 executable("g2ftool") {
-  configs += [ ":target_defaults" ]
   sources = [ "g2f_tools/g2ftool.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libg2fclient" ]
 }
 
@@ -115,16 +115,16 @@ pkg_config("webauthntool_config") {
 }
 
 executable("webauthntool") {
+  sources = [ "g2f_tools/webauthntool.cc" ]
   configs += [
     ":target_defaults",
     ":webauthntool_config",
   ]
-  sources = [ "g2f_tools/webauthntool.cc" ]
 }
 
 static_library("libg2fclient") {
-  configs += [ ":target_defaults" ]
   sources = [ "g2f_tools/g2f_client.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [ "hidapi-hidraw" ]
 }
 
@@ -134,14 +134,14 @@ if (use.test) {
   }
 
   executable("g2f_client_test") {
+    sources = [
+      "g2f_tools/g2f_client.cc",
+      "g2f_tools/g2f_client_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
       ":g2f_client_test_config",
-    ]
-    sources = [
-      "g2f_tools/g2f_client.cc",
-      "g2f_tools/g2f_client_test.cc",
     ]
     deps = [ "//common-mk/testrunner" ]
   }
@@ -154,17 +154,17 @@ if (use.test) {
   }
 
   executable("u2fd_test_runner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":u2fd_config",
-      ":u2fd_test_config",
-    ]
     sources = [
       "allowlisting_util_test.cc",
       "u2f_msg_handler_test.cc",
       "webauthn_handler_test.cc",
       "webauthn_storage_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":u2fd_config",
+      ":u2fd_test_config",
     ]
     deps = [
       ":libu2fd",
@@ -175,6 +175,12 @@ if (use.test) {
 
 if (use.fuzzer) {
   executable("u2f_adpu_fuzzer") {
+    sources = [
+      "tpm_vendor_cmd.cc",
+      "u2f_adpu.cc",
+      "u2f_adpu_fuzzer.cc",
+      "util.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
@@ -182,12 +188,6 @@ if (use.fuzzer) {
     pkg_deps = [
       "libtrunks",
       "openssl",
-    ]
-    sources = [
-      "tpm_vendor_cmd.cc",
-      "u2f_adpu.cc",
-      "u2f_adpu_fuzzer.cc",
-      "util.cc",
     ]
   }
 }

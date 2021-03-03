@@ -46,14 +46,15 @@ pkg_config("target_defaults") {
 
 # A library for just the protobufs.
 proto_library("proto_library_proto") {
-  # Use -fPIC so this code can be linked into a shared library.
-  use_pic = true
   proto_in_dir = "common"
   proto_out_dir = "include/attestation/common"
   proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/attestation/" ]
-  configs = [ ":local_proto_include" ]
   sources = [ "${proto_in_dir}/database.proto" ]
   standalone = true
+
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
+  configs = [ ":local_proto_include" ]
 }
 
 source_set("proto_library") {

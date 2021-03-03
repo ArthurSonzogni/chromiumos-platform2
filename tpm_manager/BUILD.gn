@@ -51,6 +51,8 @@ proto_library("legacy_local_data_proto") {
 }
 
 static_library("proto_library") {
+  proto_in_dir = "common"
+  sources = [ "${proto_in_dir}/print_tpm_manager_proto.cc" ]
   configs -= [
     "//common-mk:use_thin_archive",
     "//common-mk:pie",
@@ -63,22 +65,20 @@ static_library("proto_library") {
     "//common-mk:visibility_default",
     "//common-mk:pic",
   ]
-  proto_in_dir = "common"
-  sources = [ "${proto_in_dir}/print_tpm_manager_proto.cc" ]
 }
 
 # A shared library for clients.
 shared_library("libtpm_manager") {
-  configs += [ ":target_defaults" ]
   sources = [ "client/tpm_manager_utility.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [ "system_api" ]
   deps = [ ":proto_library" ]
 }
 
 # A client command line utility.
 executable("tpm_manager_client") {
-  configs += [ ":target_defaults" ]
   sources = [ "client/main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libtpm_manager",
     ":proto_library",
@@ -107,7 +107,6 @@ config("server_library_tpm1_config") {
 }
 
 static_library("server_library") {
-  configs += [ ":target_defaults" ]
   sources = [
     "server/dbus_service.cc",
     "server/local_data_migration.cc",
@@ -116,6 +115,21 @@ static_library("server_library") {
     "server/tpm_manager_metrics.cc",
     "server/tpm_manager_service.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":legacy_local_data_proto",
+    ":proto_library",
+  ]
+
+  # NOSORT
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
+
   if (use.tpm2) {
     sources += [
       "server/tpm2_initializer_impl.cc",
@@ -132,19 +146,6 @@ static_library("server_library") {
     ]
     all_dependent_configs = [ ":server_library_tpm1_config" ]
   }
-  deps = [
-    ":legacy_local_data_proto",
-    ":proto_library",
-  ]
-
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
 }
 
 # The tpm_manager daemon.
@@ -156,11 +157,11 @@ pkg_config("tpm_managerd_config") {
 }
 
 executable("tpm_managerd") {
+  sources = [ "server/main.cc" ]
   configs += [
     ":target_defaults",
     ":tpm_managerd_config",
   ]
-  sources = [ "server/main.cc" ]
   deps = [
     ":proto_library",
     ":server_library",
@@ -182,25 +183,25 @@ config("local_data_migration_config") {
 
 # Local data migrator.
 executable("local_data_migration") {
+  sources = [ "server/local_data_migration_main.cc" ]
   configs += [
     ":local_data_migration_config",
     ":target_defaults",
   ]
-  sources = [ "server/local_data_migration_main.cc" ]
   deps = [ ":server_library" ]
 }
 
 # A library for externally useful tpm_manager_testtest code.
 static_library("tpm_manager_test") {
+  sources = [
+    "common/mock_tpm_nvram_interface.cc",
+    "common/mock_tpm_ownership_interface.cc",
+  ]
   configs += [
     ":target_defaults",
     "//common-mk:nouse_thin_archive",
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
-  sources = [
-    "common/mock_tpm_nvram_interface.cc",
-    "common/mock_tpm_ownership_interface.cc",
-  ]
   deps = [ ":proto_library" ]
 
   # NOSORT
@@ -225,11 +226,6 @@ if (use.test) {
   }
 
   executable("tpm_manager_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":tpm_manager_testrunner_config",
-    ]
     sources = [
       "client/tpm_manager_utility_test.cc",
 
@@ -244,20 +240,11 @@ if (use.test) {
       "server/tpm_manager_service_test.cc",
       "tpm_manager_testrunner.cc",
     ]
-    if (use.tpm2) {
-      sources += [
-        "server/tpm2_initializer_test.cc",
-        "server/tpm2_nvram_test.cc",
-        "server/tpm2_status_test.cc",
-      ]
-      libs = [ "trunks_test" ]
-    } else {
-      sources += [
-        "server/tpm_connection_test.cc",
-        "server/tpm_initializer_test.cc",
-      ]
-      libs = [ "hwsec_test" ]
-    }
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":tpm_manager_testrunner_config",
+    ]
     deps = [
       ":libtpm_manager",
       ":proto_library",
@@ -273,5 +260,20 @@ if (use.test) {
       "system_api",
       "protobuf",
     ]
+
+    if (use.tpm2) {
+      sources += [
+        "server/tpm2_initializer_test.cc",
+        "server/tpm2_nvram_test.cc",
+        "server/tpm2_status_test.cc",
+      ]
+      libs = [ "trunks_test" ]
+    } else {
+      sources += [
+        "server/tpm_connection_test.cc",
+        "server/tpm_initializer_test.cc",
+      ]
+      libs = [ "hwsec_test" ]
+    }
   }
 }
