@@ -266,7 +266,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencySuccess) {
   tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER |
                        TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
   SetTpmStatus(tpm_status);
-  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
+  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(true));
   EXPECT_CALL(platform_,
               WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
@@ -280,7 +280,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyAlreadyRemoved) {
   TpmStatus tpm_status;
   tpm_status.set_flags(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
   SetTpmStatus(tpm_status);
-  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
+  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(true));
   EXPECT_CALL(platform_,
               WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
@@ -294,7 +294,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyTpmFailure) {
   TpmStatus tpm_status;
   tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER);
   SetTpmStatus(tpm_status);
-  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
+  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(false));
   EXPECT_CALL(platform_,
               WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
@@ -305,7 +305,7 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyTpmFailure) {
 }
 
 TEST_F(TpmInitTest, RemoveTpmOwnerDependencyNoTpmStatus) {
-  auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
+  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(true));
   EXPECT_CALL(platform_,
               WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))

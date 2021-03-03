@@ -91,9 +91,8 @@ class InstallAttributesTest : public ::testing::Test {
   }
 
   void ExpectRemovingOwnerDependency() {
-    EXPECT_CALL(tpm_init_,
-                RemoveTpmOwnerDependency(
-                    TpmPersistentState::TpmOwnerDependency::kInstallAttributes))
+    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(
+                               Tpm::TpmOwnerDependency::kInstallAttributes))
         .Times(1);
   }
 

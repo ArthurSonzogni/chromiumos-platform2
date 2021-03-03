@@ -116,11 +116,11 @@ int CountSetBits(const uint8_t* array, size_t size) {
 }
 
 std::string OwnerDependencyEnumClassToString(
-    TpmPersistentState::TpmOwnerDependency dependency) {
+    Tpm::TpmOwnerDependency dependency) {
   switch (dependency) {
-    case TpmPersistentState::TpmOwnerDependency::kInstallAttributes:
+    case Tpm::TpmOwnerDependency::kInstallAttributes:
       return tpm_manager::kTpmOwnerDependency_Nvram;
-    case TpmPersistentState::TpmOwnerDependency::kAttestation:
+    case Tpm::TpmOwnerDependency::kAttestation:
       return tpm_manager::kTpmOwnerDependency_Attestation;
     default:
       NOTREACHED() << __func__ << ": Unexpected enum class value: "
@@ -1394,8 +1394,7 @@ bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {
   return true;
 }
 
-bool Tpm2Impl::RemoveOwnerDependency(
-    TpmPersistentState::TpmOwnerDependency dependency) {
+bool Tpm2Impl::RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) {
   if (!InitializeTpmManagerUtility()) {
     LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;

@@ -158,8 +158,7 @@ class Tpm2Impl : public Tpm {
       const brillo::Blob& /* delegate_blob */,
       const brillo::Blob& /* delegate_secret */) override;
   void DeclareTpmFirmwareStable() override;
-  bool RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency dependency) override;
+  bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) override;
   bool ClearStoredPassword() override;
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;

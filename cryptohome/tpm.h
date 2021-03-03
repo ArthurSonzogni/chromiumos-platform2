@@ -23,8 +23,6 @@
 #include <brillo/secure_blob.h>
 #include <openssl/rsa.h>
 
-#include "cryptohome/tpm_persistent_state.h"
-
 #if USE_TPM2
 #include "cryptohome/tpm2.h"
 #else
@@ -104,6 +102,15 @@ class Tpm {
 
     // NVRAM space is readable by firmware (PPREAD is set)
     kTpmNvramFirmwareReadable = (1 << 2),
+  };
+
+  // Dependencies on the tpm owner password. Each of the listed entities
+  // clears its dependency when it no longer needs the owner password for
+  // further initialization. The password is cleared by tpm_manager once
+  // all dependencies are cleared.
+  enum class TpmOwnerDependency {
+    kInstallAttributes,
+    kAttestation,
   };
 
   // Results of PCR quoting.
@@ -582,8 +589,7 @@ class Tpm {
   // the owner password can be cleared.
   // Returns true if the dependency has been successfully removed or was
   // already removed by the time this function is called.
-  virtual bool RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency dependency) = 0;
+  virtual bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) = 0;
 
   // Clears the stored owner password.
   // Returns true if the password is cleared by this method, or was already

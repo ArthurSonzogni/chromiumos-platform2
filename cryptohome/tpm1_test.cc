@@ -314,20 +314,19 @@ TEST_F(TpmImplTest, RemoveTpmOwnerDependency) {
               RemoveOwnerDependency(tpm_manager::kTpmOwnerDependency_Nvram))
       .WillOnce(Return(true));
   EXPECT_TRUE(GetTpm()->RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kInstallAttributes));
+      Tpm::TpmOwnerDependency::kInstallAttributes));
   EXPECT_CALL(
       mock_tpm_manager_utility_,
       RemoveOwnerDependency(tpm_manager::kTpmOwnerDependency_Attestation))
       .WillOnce(Return(false));
-  EXPECT_FALSE(GetTpm()->RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kAttestation));
+  EXPECT_FALSE(
+      GetTpm()->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kAttestation));
 }
 
 TEST_F(TpmImplTest, RemoveTpmOwnerDependencyInvalidEnum) {
-  EXPECT_DEBUG_DEATH(
-      GetTpm()->RemoveOwnerDependency(
-          static_cast<TpmPersistentState::TpmOwnerDependency>(999)),
-      ".*Unexpected enum class value: 999");
+  EXPECT_DEBUG_DEATH(GetTpm()->RemoveOwnerDependency(
+                         static_cast<Tpm::TpmOwnerDependency>(999)),
+                     ".*Unexpected enum class value: 999");
 }
 
 TEST_F(TpmImplTest, ClearStoredPassword) {

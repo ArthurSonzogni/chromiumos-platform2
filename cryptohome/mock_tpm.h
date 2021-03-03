@@ -159,7 +159,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD(void, DeclareTpmFirmwareStable, (), (override));
   MOCK_METHOD(bool,
               RemoveOwnerDependency,
-              (TpmPersistentState::TpmOwnerDependency),
+              (Tpm::TpmOwnerDependency),
               (override));
   MOCK_METHOD(bool, ClearStoredPassword, (), (override));
   MOCK_METHOD(bool, GetVersionInfo, (TpmVersionInfo*), (override));

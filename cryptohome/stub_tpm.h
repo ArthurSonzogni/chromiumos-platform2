@@ -163,8 +163,7 @@ class StubTpm : public Tpm {
     return false;
   }
   void DeclareTpmFirmwareStable() override {}
-  bool RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency dependency) override {
+  bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) override {
     return true;
   }
   bool ClearStoredPassword() override { return true; }

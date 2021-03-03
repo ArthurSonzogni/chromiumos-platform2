@@ -319,20 +319,19 @@ TEST_F(Tpm2Test, RemoveTpmOwnerDependency) {
   EXPECT_CALL(mock_tpm_manager_utility_,
               RemoveOwnerDependency(tpm_manager::kTpmOwnerDependency_Nvram))
       .WillOnce(Return(true));
-  EXPECT_TRUE(tpm_->RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kInstallAttributes));
+  EXPECT_TRUE(
+      tpm_->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kInstallAttributes));
   EXPECT_CALL(
       mock_tpm_manager_utility_,
       RemoveOwnerDependency(tpm_manager::kTpmOwnerDependency_Attestation))
       .WillOnce(Return(false));
-  EXPECT_FALSE(tpm_->RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kAttestation));
+  EXPECT_FALSE(
+      tpm_->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kAttestation));
 }
 
 TEST_F(Tpm2Test, RemoveTpmOwnerDependencyInvalidEnum) {
   EXPECT_DEBUG_DEATH(
-      tpm_->RemoveOwnerDependency(
-          static_cast<TpmPersistentState::TpmOwnerDependency>(999)),
+      tpm_->RemoveOwnerDependency(static_cast<Tpm::TpmOwnerDependency>(999)),
       ".*Unexpected enum class value: 999");
 }
 
@@ -1451,13 +1450,13 @@ TEST_F(Tpm2Test, RemoveOwnerDependencySuccess) {
   std::string dependency;
   EXPECT_CALL(mock_tpm_manager_utility_, RemoveOwnerDependency(_))
       .WillOnce(DoAll(SaveArg<0>(&dependency), Return(true)));
-  EXPECT_TRUE(tpm_->RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kInstallAttributes));
+  EXPECT_TRUE(
+      tpm_->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kInstallAttributes));
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Nvram, dependency);
   EXPECT_CALL(mock_tpm_manager_utility_, RemoveOwnerDependency(_))
       .WillOnce(DoAll(SaveArg<0>(&dependency), Return(true)));
-  EXPECT_TRUE(tpm_->RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kAttestation));
+  EXPECT_TRUE(
+      tpm_->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kAttestation));
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Attestation, dependency);
 }
 
@@ -1465,8 +1464,8 @@ TEST_F(Tpm2Test, RemoveOwnerDependencyFailure) {
   std::string dependency;
   EXPECT_CALL(mock_tpm_manager_utility_, RemoveOwnerDependency(_))
       .WillOnce(DoAll(SaveArg<0>(&dependency), Return(false)));
-  EXPECT_FALSE(tpm_->RemoveOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kInstallAttributes));
+  EXPECT_FALSE(
+      tpm_->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kInstallAttributes));
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Nvram, dependency);
 }
 

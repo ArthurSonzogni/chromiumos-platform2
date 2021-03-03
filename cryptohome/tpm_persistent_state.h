@@ -12,6 +12,7 @@
 #include <base/synchronization/lock.h>
 
 #include "cryptohome/tpm_status.pb.h"
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -23,15 +24,6 @@ class Platform;
 // Note: not thread-safe.
 class TpmPersistentState {
  public:
-  // Dependencies on the tpm owner password. Each of the listed entities
-  // clears its dependency when it no longer needs the owner password for
-  // further initialization. The password is cleared from persistent state
-  // once all dependencies are cleared.
-  enum class TpmOwnerDependency {
-    kInstallAttributes,
-    kAttestation,
-  };
-
   explicit TpmPersistentState(Platform* platform);
 
   // owner password is not stored, no dependencies are set.
@@ -43,7 +35,7 @@ class TpmPersistentState {
   // If there were any changes, saves the updated state in the persistent
   // storage before returning.
   // Returns true on success, false otherwise.
-  bool ClearDependency(TpmOwnerDependency dependency);
+  bool ClearDependency(Tpm::TpmOwnerDependency dependency);
 
  private:
   // Loads TpmStatus that includes the owner password and the dependencies

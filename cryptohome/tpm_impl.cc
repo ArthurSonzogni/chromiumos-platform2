@@ -160,11 +160,11 @@ bool ConvertPublicKeyToDER(const SecureBlob& public_key,
 }
 
 std::string OwnerDependencyEnumClassToString(
-    TpmPersistentState::TpmOwnerDependency dependency) {
+    Tpm::TpmOwnerDependency dependency) {
   switch (dependency) {
-    case TpmPersistentState::TpmOwnerDependency::kInstallAttributes:
+    case Tpm::TpmOwnerDependency::kInstallAttributes:
       return tpm_manager::kTpmOwnerDependency_Nvram;
-    case TpmPersistentState::TpmOwnerDependency::kAttestation:
+    case Tpm::TpmOwnerDependency::kAttestation:
       return tpm_manager::kTpmOwnerDependency_Attestation;
   }
   NOTREACHED() << __func__ << ": Unexpected enum class value: "
@@ -1992,8 +1992,7 @@ void TpmImpl::CloseHandle(TpmKeyHandle key_handle) {
   Tspi_Context_CloseObject(tpm_context_.value(), key_handle);
 }
 
-bool TpmImpl::RemoveOwnerDependency(
-    TpmPersistentState::TpmOwnerDependency dependency) {
+bool TpmImpl::RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) {
   if (!InitializeTpmManagerUtility()) {
     LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
     return false;

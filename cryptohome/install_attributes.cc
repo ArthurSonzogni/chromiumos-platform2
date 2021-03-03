@@ -86,7 +86,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
     // repeat removing owner dependency in case it didn't succeed during the
     // first boot.
     tpm_init->RemoveTpmOwnerDependency(
-        TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+        Tpm::TpmOwnerDependency::kInstallAttributes);
     LOG(INFO) << "Valid install attributes cache found.";
     return true;
   }
@@ -144,7 +144,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
         // Legacy install that didn't create space at OOBE.
         status_ = Status::kValid;
         tpm_init->RemoveTpmOwnerDependency(
-            TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+            Tpm::TpmOwnerDependency::kInstallAttributes);
         LOG(INFO) << "Found legacy install that didn't create install "
                      "attributes NVRAM space at OOBE.";
         return true;
@@ -172,7 +172,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
 
   status_ = Status::kFirstInstall;
   tpm_init->RemoveTpmOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+      Tpm::TpmOwnerDependency::kInstallAttributes);
   LOG(INFO) << "Install attributes reset back to first install.";
   return true;
 }

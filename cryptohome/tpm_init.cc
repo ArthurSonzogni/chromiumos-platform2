@@ -143,8 +143,7 @@ void TpmInit::RestoreTpmStateFromStorage() {
 
 }
 
-void TpmInit::RemoveTpmOwnerDependency(
-    TpmPersistentState::TpmOwnerDependency dependency) {
+void TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {
   if (!get_tpm()->RemoveOwnerDependency(dependency)) {
     return;
   }

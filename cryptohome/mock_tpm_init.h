@@ -19,7 +19,7 @@ class MockTpmInit : public TpmInit {
   MOCK_METHOD(bool, SetupTpm, (bool), (override));
   MOCK_METHOD(void,
               RemoveTpmOwnerDependency,
-              (TpmPersistentState::TpmOwnerDependency),
+              (Tpm::TpmOwnerDependency),
               (override));
   MOCK_METHOD(bool, HasCryptohomeKey, (), (override));
   MOCK_METHOD(bool, IsTpmReady, (), (override));

@@ -64,8 +64,7 @@ class TpmInit {
   //
   // Parameters
   //   dependency - The dependency (on TPM ownership) to be removed
-  virtual void RemoveTpmOwnerDependency(
-      TpmPersistentState::TpmOwnerDependency dependency);
+  virtual void RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency);
 
   virtual void set_tpm(Tpm* value);
 

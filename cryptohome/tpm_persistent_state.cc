@@ -22,15 +22,15 @@ const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
 TpmPersistentState::TpmPersistentState(Platform* platform)
     : platform_(platform) {}
 
-bool TpmPersistentState::ClearDependency(TpmOwnerDependency dependency) {
+bool TpmPersistentState::ClearDependency(Tpm::TpmOwnerDependency dependency) {
   base::AutoLock lock(tpm_status_lock_);
 
   int32_t flag_to_clear;
   switch (dependency) {
-    case TpmOwnerDependency::kInstallAttributes:
+    case Tpm::TpmOwnerDependency::kInstallAttributes:
       flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;
       break;
-    case TpmOwnerDependency::kAttestation:
+    case Tpm::TpmOwnerDependency::kAttestation:
       flag_to_clear = TpmStatus::ATTESTATION_NEEDS_OWNER;
       break;
     default:
