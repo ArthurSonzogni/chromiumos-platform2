@@ -183,8 +183,9 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
     const std::string& imsi,
     const std::string& eid,
     Cellular* device) {
+  DCHECK(device);
   // Find Cellular profile entries matching the sim card identifier.
-  CHECK(profile_);
+  DCHECK(profile_);
   StoreInterface* storage = profile_->GetStorage();
   DCHECK(storage);
   KeyValueStore args;
@@ -207,15 +208,15 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
     DCHECK_EQ(service_sim_card_id, sim_card_id);
     CellularServiceRefPtr service = FindService(service_iccid);
     if (!service) {
-      SLOG(this, 1) << "Loading Cellular service for ICCID: " << service_iccid;
+      SLOG(this, 1) << "Creating Cellular service for ICCID: " << service_iccid;
       service = new CellularService(manager_, service_imsi, service_iccid,
                                     sim_card_id);
       service->Load(storage);
-      SetDeviceForService(service, device, eid);
+      SetDeviceForService(service, device);
       AddService(service);
     } else {
       SLOG(this, 2) << "Cellular service exists for ICCID: " << service_iccid;
-      SetDeviceForService(service, device, eid);
+      SetDeviceForService(service, device);
     }
     if (service_iccid == iccid)
       active_service = service;
@@ -224,26 +225,44 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   if (!active_service) {
     SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
     active_service = new CellularService(manager_, imsi, iccid, sim_card_id);
-    SetDeviceForService(active_service, device, eid);
+    SetDeviceForService(active_service, device);
     AddService(active_service);
   }
   return active_service;
 }
 
 void CellularServiceProvider::LoadServicesForSecondarySim(
-    const std::string& eid, const std::string& iccid, const std::string& imsi) {
+    const std::string& eid,
+    const std::string& iccid,
+    const std::string& imsi,
+    Cellular* device) {
   DCHECK(!iccid.empty());
   // Use EID if available or ICCID if not to look up associated services.
   std::string sim_card_id = eid.empty() ? iccid : eid;
   SLOG(this, 1) << __func__ << ": " << sim_card_id;
-  LoadMatchingServicesFromProfile(sim_card_id, iccid, imsi, eid,
-                                  /*device=*/nullptr);
+  LoadMatchingServicesFromProfile(sim_card_id, iccid, imsi, eid, device);
+}
+
+void CellularServiceProvider::UpdateServices(Cellular* device) {
+  SLOG(this, 2) << __func__;
+  for (CellularServiceRefPtr& service : services_)
+    service->SetDevice(device);
 }
 
 void CellularServiceProvider::RemoveServices() {
   SLOG(this, 1) << __func__;
   while (!services_.empty())
     RemoveService(services_.back());
+}
+
+CellularServiceRefPtr CellularServiceProvider::FindService(
+    const std::string& iccid) {
+  const auto iter = std::find_if(
+      services_.begin(), services_.end(),
+      [iccid](const auto& service) { return service->iccid() == iccid; });
+  if (iter != services_.end())
+    return *iter;
+  return nullptr;
 }
 
 void CellularServiceProvider::AddService(CellularServiceRefPtr service) {
@@ -269,24 +288,9 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
 }
 
 void CellularServiceProvider::SetDeviceForService(CellularServiceRefPtr service,
-                                                  Cellular* device,
-                                                  const std::string& eid) {
-  if (device && service->iccid() == device->iccid()) {
-    service->SetDevice(device);
-  } else {
-    service->SetDevice(nullptr);
-    service->set_eid(eid);
-  }
-}
-
-CellularServiceRefPtr CellularServiceProvider::FindService(
-    const std::string& iccid) {
-  const auto iter = std::find_if(
-      services_.begin(), services_.end(),
-      [iccid](const auto& service) { return service->iccid() == iccid; });
-  if (iter != services_.end())
-    return *iter;
-  return nullptr;
+                                                  Cellular* device) {
+  DCHECK(device);
+  service->SetDevice(device);
 }
 
 }  // namespace shill

@@ -666,6 +666,7 @@ void Cellular::DropConnection() {
 }
 
 void Cellular::SetServiceState(Service::ConnectState state) {
+  connect_pending_iccid_.clear();
   if (ppp_device_) {
     ppp_device_->SetServiceState(state);
   } else if (selected_service()) {
@@ -678,6 +679,7 @@ void Cellular::SetServiceState(Service::ConnectState state) {
 }
 
 void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
+  connect_pending_iccid_.clear();
   if (ppp_device_) {
     ppp_device_->SetServiceFailure(failure_state);
   } else if (selected_service()) {
@@ -690,6 +692,7 @@ void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
 }
 
 void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
+  connect_pending_iccid_.clear();
   if (ppp_device_) {
     ppp_device_->SetServiceFailureSilent(failure_state);
   } else if (selected_service()) {
@@ -889,7 +892,7 @@ void Cellular::UpdateServices() {
   if (!service_) {
     CreateServices();
   } else {
-    service_->SetDevice(this);
+    manager()->cellular_service_provider()->UpdateServices(this);
   }
 
   if (state_ == kStateRegistered && modem_state_ == kModemStateConnected)
@@ -897,8 +900,10 @@ void Cellular::UpdateServices() {
 
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
-
   manager()->UpdateService(service_);
+
+  if (state_ == kStateRegistered)
+    ConnectToPending();
 }
 
 void Cellular::CreateServices() {
@@ -923,7 +928,7 @@ void Cellular::CreateServices() {
     if (sim_properties.iccid.empty() || sim_properties.iccid == iccid_)
       continue;
     manager()->cellular_service_provider()->LoadServicesForSecondarySim(
-        sim_properties.eid, sim_properties.iccid, sim_properties.imsi);
+        sim_properties.eid, sim_properties.iccid, sim_properties.imsi, this);
   }
 
   capability_->OnServiceCreated();
@@ -990,28 +995,66 @@ void Cellular::DestroyCapability() {
   UpdateScanning();
 }
 
-void Cellular::Connect(Error* error) {
+bool Cellular::GetConnectable(CellularService* service) const {
+  // Check |iccid_| in case sim_slot_properties_ have not been set.
+  if (service->iccid() == iccid_)
+    return true;
+  // If the Service ICCID matches the ICCID in any slot, that Service can be
+  // connected to (by changing the active slot if necessary).
+  for (const SimProperties& sim_properties : sim_slot_properties_) {
+    if (sim_properties.iccid == service->iccid())
+      return true;
+  }
+  return false;
+}
+
+void Cellular::Connect(CellularService* service, Error* error) {
   SLOG(this, 2) << __func__;
+  CHECK(service);
+
+  if (!capability_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Connect Failed: Modem not available.");
+    return;
+  }
+
+  if (capability_state_ != CapabilityState::kModemStarted) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Connect Failed: Modem not started.");
+    return;
+  }
+
+  if (service->iccid() != iccid_) {
+    // If the Service has a different ICCID than the current one, Disconnect
+    // from the current Service if connected, switch to the correct SIM slot,
+    // and set |connect_pending_iccid_|. The Connect will be retried after the
+    // slot change completes (which may take a while).
+    if (state_ == kStateConnected || state_ == kStateLinked)
+      Disconnect(nullptr, "switching service");
+    if (capability_->SetPrimarySimSlotForIccid(service->iccid())) {
+      connect_pending_iccid_ = service->iccid();
+    } else {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                            "Connect Failed: ICCID not available.");
+    }
+    return;
+  }
+
   if (state_ == kStateConnected || state_ == kStateLinked) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
     return;
   } else if (state_ != kStateRegistered) {
+    LOG(ERROR) << "Connect attempted while state = " << GetStateString(state_);
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
-                          "Modem not registered; connection request ignored.");
-    return;
-  }
-
-  if (!capability_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Modem not available.");
+                          "Connect Failed: Modem not registered.");
     return;
   }
 
   if (!IsRoamingAllowedOrRequired() &&
-      service_->roaming_state() == kRoamingStateRoaming) {
+      service->roaming_state() == kRoamingStateRoaming) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotOnHomeNetwork,
-                          "Roaming disallowed; connection request ignored.");
+                          "Connect Failed: Roaming disallowed.");
     return;
   }
 
@@ -1024,7 +1067,7 @@ void Cellular::Connect(Error* error) {
   if (!error->IsSuccess())
     return;
 
-  bool is_auto_connecting = service_.get() && service_->is_auto_connecting();
+  bool is_auto_connecting = service->is_auto_connecting();
   metrics()->NotifyDeviceConnectStarted(interface_index(), is_auto_connecting);
 }
 
@@ -1585,6 +1628,27 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
   }
   Error error;
   Disconnect(&error, __func__);
+}
+
+void Cellular::ConnectToPending() {
+  if (!connect_pending_iccid_.empty() || connect_pending_iccid_ != iccid_)
+    return;
+
+  LOG(INFO) << __func__ << ": " << connect_pending_iccid_;
+
+  // Clear pending connect request regardless of whether a service is found.
+  connect_pending_iccid_.clear();
+
+  CellularServiceRefPtr service =
+      manager()->cellular_service_provider()->FindService(iccid_);
+  if (!service) {
+    LOG(WARNING) << "No matching service for connect to: " << iccid_;
+    return;
+  }
+
+  Error error;
+  LOG(INFO) << "Pending connect to Cellular Service, ICCID=" << iccid_;
+  service->Connect(&error, "Pending connect");
 }
 
 void Cellular::UpdateScanning() {

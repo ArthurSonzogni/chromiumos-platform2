@@ -28,7 +28,7 @@ class MockCellular : public Cellular {
 
   ~MockCellular() override;
 
-  MOCK_METHOD(void, Connect, (Error*), (override));
+  MOCK_METHOD(void, Connect, (CellularService*, Error*), (override));
   MOCK_METHOD(void, Disconnect, (Error*, const char*), (override));
   MOCK_METHOD(void,
               OnPropertiesChanged,

@@ -1107,30 +1107,30 @@ TEST_P(CellularTest, Connect) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .Times(2)
       .WillRepeatedly(Return(true));
+  device_->capability_state_ = Cellular::CapabilityState::kModemStarted;
+  SetService();
   device_->state_ = Cellular::kStateConnected;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
   error.Populate(Error::kSuccess);
 
   device_->state_ = Cellular::kStateLinked;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
 
   device_->state_ = Cellular::kStateEnabled;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kNotRegistered, error.type());
 
   error.Reset();
   device_->state_ = Cellular::kStateDisabled;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kNotRegistered, error.type());
 
   device_->state_ = Cellular::kStateRegistered;
-  SetService();
-
   device_->allow_roaming_ = false;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
 
   error.Populate(Error::kSuccess);
@@ -1141,7 +1141,7 @@ TEST_P(CellularTest, Connect) {
   SetCapability3gppModemSimpleProxy();
   device_->service_->roaming_state_ = kRoamingStateHome;
   device_->state_ = Cellular::kStateRegistered;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
@@ -1149,7 +1149,7 @@ TEST_P(CellularTest, Connect) {
   device_->allow_roaming_ = true;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->state_ = Cellular::kStateRegistered;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
@@ -1195,6 +1195,7 @@ TEST_P(CellularTest, DisconnectFailure) {
 
 TEST_P(CellularTest, ConnectFailure) {
   device_->state_ = Cellular::kStateRegistered;
+  device_->capability_state_ = Cellular::CapabilityState::kModemStarted;
   SetService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
   EXPECT_CALL(*mm1_simple_proxy_,
@@ -1202,43 +1203,15 @@ TEST_P(CellularTest, ConnectFailure) {
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
   SetCapability3gppModemSimpleProxy();
   Error error;
-  device_->Connect(&error);
+  device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());
-}
-
-TEST_P(CellularTest, ConnectFailureNoService) {
-  // Make sure we don't crash if the connect failed and there is no
-  // CellularService object.  This can happen if the modem is enabled and
-  // then quick disabled.
-  device_->state_ = Cellular::kStateRegistered;
-  SetService();
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, _, CellularCapability::kTimeoutConnect))
-      .WillOnce(Invoke(this, &CellularTest::InvokeConnectFailNoService));
-  EXPECT_CALL(manager_, UpdateService(_));
-  SetCapability3gppModemSimpleProxy();
-  Error error;
-  device_->Connect(&error);
-}
-
-TEST_P(CellularTest, ConnectSuccessNoService) {
-  // Make sure we don't crash if the connect succeeds but the service was
-  // destroyed before the connect request completes.
-  device_->state_ = Cellular::kStateRegistered;
-  SetService();
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, _, CellularCapability::kTimeoutConnect))
-      .WillOnce(Invoke(this, &CellularTest::InvokeConnectSuccessNoService));
-  EXPECT_CALL(manager_, UpdateService(_));
-  SetCapability3gppModemSimpleProxy();
-  Error error;
-  device_->Connect(&error);
 }
 
 TEST_P(CellularTest, LinkEventWontDestroyService) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection but the service object should persist.
   device_->state_ = Cellular::kStateLinked;
+  device_->capability_state_ = Cellular::CapabilityState::kModemStarted;
   CellularService* service = SetService();
   device_->LinkEvent(0, 0);  // flags doesn't contain IFF_UP
   EXPECT_EQ(device_->state_, Cellular::kStateConnected);

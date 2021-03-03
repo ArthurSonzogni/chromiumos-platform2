@@ -159,7 +159,6 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   }
 
   ~CellularCapability3gppTest() override {
-    cellular_->SetServiceForTesting(nullptr);
     CHECK(cellular_->HasOneRef());
     cellular_ = nullptr;
     device_adaptor_ = nullptr;
@@ -193,6 +192,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   }
 
   void TearDown() override {
+    cellular_->SetServiceForTesting(nullptr);
     cellular_->DestroyCapability();
     capability_ = nullptr;
   }

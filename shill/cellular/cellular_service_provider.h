@@ -49,10 +49,17 @@ class CellularServiceProvider : public ProviderInterface {
   // Loads any existing services matching |eid| or |iccid|.
   void LoadServicesForSecondarySim(const std::string& eid,
                                    const std::string& iccid,
-                                   const std::string& imsi);
+                                   const std::string& imsi,
+                                   Cellular* device);
+
+  // Calls SetDevice for all services when important device properties change.
+  void UpdateServices(Cellular* device);
 
   // Removes all services.
   void RemoveServices();
+
+  // Returns a service matching |iccid_| if available.
+  CellularServiceRefPtr FindService(const std::string& imsi);
 
   void set_profile_for_testing(ProfileRefPtr profile) { profile_ = profile; }
 
@@ -67,10 +74,7 @@ class CellularServiceProvider : public ProviderInterface {
       Cellular* device);
   void AddService(CellularServiceRefPtr service);
   void RemoveService(CellularServiceRefPtr service);
-  void SetDeviceForService(CellularServiceRefPtr service,
-                           Cellular* device,
-                           const std::string& eid);
-  CellularServiceRefPtr FindService(const std::string& imsi);
+  void SetDeviceForService(CellularServiceRefPtr service, Cellular* device);
 
   Manager* manager_;
   // Use a single profile for Cellular services. Set to the first (device)

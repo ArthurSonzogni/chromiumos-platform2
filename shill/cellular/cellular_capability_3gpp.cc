@@ -84,6 +84,7 @@ const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
 
 namespace {
+
 const int kSignalQualityUpdateRateSeconds = 30;
 
 // Plugin strings via ModemManager.
@@ -191,6 +192,35 @@ bool IsRegisteredState(MMModem3gppRegistrationState state) {
           state == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
 }
 
+std::string RegistrationStateToString(MMModem3gppRegistrationState state) {
+  switch (state) {
+    case MM_MODEM_3GPP_REGISTRATION_STATE_IDLE:
+      return "Idle";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_HOME:
+      return "Home";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING:
+      return "Searching";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_DENIED:
+      return "Denied";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN:
+      return "Unknown";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING:
+      return "Roaming";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_HOME_SMS_ONLY:
+      return "HomeSmsOnly";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING_SMS_ONLY:
+      return "RoamingSmsOnly";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_EMERGENCY_ONLY:
+      return "EmergencyOnly";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_HOME_CSFB_NOT_PREFERRED:
+      return "HomeCsfbNotPreferred";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING_CSFB_NOT_PREFERRED:
+      return "RoamingCsfbNotPreferred";
+    case MM_MODEM_3GPP_REGISTRATION_STATE_ATTACHED_RLOS:
+      return "AttachedRlos";
+  }
+}
+
 }  // namespace
 
 CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
@@ -236,6 +266,19 @@ KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
   status.Set<int32_t>(kSIMLockRetriesLeftProperty,
                       sim_lock_status_.retries_left);
   return status;
+}
+
+bool CellularCapability3gpp::SetPrimarySimSlotForIccid(
+    const std::string& iccid) {
+  SLOG(this, 2) << __func__ << ": " << iccid;
+  for (const auto& iter : sim_properties_) {
+    const SimProperties* properties = &iter.second;
+    if (properties->iccid == iccid) {
+      SetPrimarySimSlot(properties->slot);
+      return true;
+    }
+  }
+  return false;
 }
 
 void CellularCapability3gpp::InitProxies() {
@@ -1357,10 +1400,7 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
       if (!properties->iccid.empty()) {
         // This will complete immediately, at which point the Modem object will
         // become invalid. TODO(b/169581681): Ensure this is handled gracefully.
-        size_t slot = properties->slot + 1;
-        LOG(INFO) << " SetPrimarySimSlot: " << slot;
-        modem_proxy_->SetPrimarySimSlot(slot, base::DoNothing(),
-                                        kTimeoutDefault);
+        SetPrimarySimSlot(properties->slot);
         return;
       }
     }
@@ -1396,6 +1436,16 @@ void CellularCapability3gpp::SetPrimarySimProperties(
   cellular()->home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
   spn_ = sim_properties.spn;
   cellular()->home_provider_info()->UpdateOperatorName(spn_);
+}
+
+void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
+  size_t slot_idx = slot + 1;
+  LOG(INFO) << "SetPrimarySimSlot: " << slot_idx;
+  modem_proxy_->SetPrimarySimSlot(
+      slot_idx, base::Bind([](const Error& error) {
+        LOG(ERROR) << "Error Setting Primary SIM slot: " << error;
+      }),
+      kTimeoutDefault);
 }
 
 void CellularCapability3gpp::OnModemCurrentCapabilitiesChanged(
@@ -1609,8 +1659,8 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
     MMModem3gppRegistrationState state,
     const string& operator_code,
     const string& operator_name) {
-  SLOG(this, 2) << __func__ << ": regstate=" << state
-                << ", opercode=" << operator_code
+  SLOG(this, 2) << __func__ << ": " << RegistrationStateToString(state);
+  SLOG(this, 3) << "opercode=" << operator_code
                 << ", opername=" << operator_name;
 
   // While the modem is connected, if the state changed from a registered state
@@ -1649,9 +1699,7 @@ void CellularCapability3gpp::Handle3gppRegistrationChange(
     MMModem3gppRegistrationState updated_state,
     const string& updated_operator_code,
     const string& updated_operator_name) {
-  SLOG(this, 3) << __func__ << ": regstate=" << updated_state
-                << ", opercode=" << updated_operator_code
-                << ", opername=" << updated_operator_name;
+  SLOG(this, 2) << __func__ << ": " << RegistrationStateToString(updated_state);
 
   registration_state_ = updated_state;
   serving_operator_[kOperatorCodeKey] = updated_operator_code;

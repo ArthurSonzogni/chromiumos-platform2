@@ -73,8 +73,8 @@ class CellularCapabilityCdmaTest : public testing::Test {
         mock_serving_operator_info_(nullptr) {}
 
   ~CellularCapabilityCdmaTest() override {
+    CHECK(cellular_->HasOneRef());
     cellular_->service_ = nullptr;
-    capability_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
@@ -87,7 +87,11 @@ class CellularCapabilityCdmaTest : public testing::Test {
     cellular_->service_ = service_;
   }
 
-  void TearDown() override { cellular_->DestroyCapability(); }
+  void TearDown() override {
+    cellular_->SetServiceForTesting(nullptr);
+    cellular_->DestroyCapability();
+    capability_ = nullptr;
+  }
 
   void SetService() {
     cellular_->service_ =

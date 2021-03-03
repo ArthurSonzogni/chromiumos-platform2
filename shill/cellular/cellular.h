@@ -133,11 +133,14 @@ class Cellular : public Device,
   // Save configuration for the device to |storage|.
   bool Save(StoreInterface* storage) override;
 
-  // Asynchronously connects the modem to the network. Populates |error| on
-  // failure, leaves it unchanged otherwise.
-  virtual void Connect(Error* error);
+  // Returns true if |service| is connectable.
+  bool GetConnectable(CellularService* service) const;
 
-  // Asynchronously disconnects the modem from the network and populates
+  // Asynchronously connects the modem to |service|. Changes the primary slot if
+  // required. Populates |error| on failure, leaves it unchanged otherwise.
+  virtual void Connect(CellularService* service, Error* error);
+
+  // Asynchronously disconnects the modem from the current network and populates
   // |error| on failure, leaves it unchanged otherwise.
   virtual void Disconnect(Error* error, const char* reason);
 
@@ -543,11 +546,10 @@ class Cellular : public Device,
   void OnPPPAuthenticating();
   void OnPPPConnected(const std::map<std::string, std::string>& params);
 
+  void ConnectToPending();
   void UpdateScanning();
-
   void GetLocationCallback(const std::string& gpp_lac_ci_string,
                            const Error& error);
-
   void PollLocationTask();
 
   State state_ = kStateDisabled;
@@ -664,6 +666,8 @@ class Cellular : public Device,
   // This callback sets it to |false| after a timeout period has passed.
   base::CancelableClosure scanning_timeout_callback_;
   int64_t scanning_timeout_milliseconds_;
+
+  std::string connect_pending_iccid_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 };

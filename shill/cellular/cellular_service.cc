@@ -36,6 +36,7 @@ const char CellularService::kAutoConnBadPPPCredentials[] =
     "bad PPP credentials";
 const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
 const char CellularService::kAutoConnOutOfCredits[] = "service out of credits";
+const char CellularService::kAutoConnSimUnselected[] = "SIM not selected";
 const char CellularService::kStorageIccid[] = "Cellular.Iccid";
 const char CellularService::kStorageImsi[] = "Cellular.Imsi";
 const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
@@ -124,8 +125,7 @@ void CellularService::SetDevice(Cellular* device) {
     return;
   }
 
-  SetConnectable(true);
-  DCHECK_EQ(sim_card_id_, cellular_->GetSimCardId());
+  SetConnectable(cellular_->GetConnectable(this));
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetActivationType(kActivationTypeUnknown);
 
@@ -422,7 +422,7 @@ void CellularService::OnConnect(Error* error) {
                            kTypeCellular, log_name().c_str()));
     return;
   }
-  cellular_->Connect(error);
+  cellular_->Connect(this, error);
 }
 
 void CellularService::OnDisconnect(Error* error, const char* reason) {
@@ -444,6 +444,10 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
   }
   if (cellular_->IsActivating()) {
     *reason = kAutoConnActivating;
+    return false;
+  }
+  if (cellular_->iccid() != iccid()) {
+    *reason = kAutoConnSimUnselected;
     return false;
   }
   if (failure() == kFailurePPPAuth) {

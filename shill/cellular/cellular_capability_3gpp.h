@@ -118,6 +118,7 @@ class CellularCapability3gpp : public CellularCapability {
                  Error* error,
                  const ResultCallback& callback) override;
   KeyValueStore SimLockStatusToProperty(Error* error) override;
+  bool SetPrimarySimSlotForIccid(const std::string& iccid) override;
 
   virtual void GetProperties();
 
@@ -336,6 +337,7 @@ class CellularCapability3gpp : public CellularCapability {
   void UpdateSims();
   void OnAllSimPropertiesReceived();
   void SetPrimarySimProperties(const SimProperties& sim_properties);
+  void SetPrimarySimSlot(size_t slot);
 
   // Post-payment activation handlers.
   void ResetAfterActivation();
