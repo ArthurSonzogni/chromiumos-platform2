@@ -17,7 +17,7 @@ namespace cros {
 class CameraDeviceAdapter;
 
 class Camera3CallbackOpsDelegate
-    : public internal::MojoChannel<mojom::Camera3CallbackOps> {
+    : public internal::MojoRemote<mojom::Camera3CallbackOps> {
  public:
   explicit Camera3CallbackOpsDelegate(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);

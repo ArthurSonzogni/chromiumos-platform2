@@ -22,7 +22,7 @@ namespace cros {
 Camera3DeviceOpsDelegate::Camera3DeviceOpsDelegate(
     CameraDeviceAdapter* camera_device_adapter,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : internal::MojoBinding<Camera3DeviceOps>(task_runner),
+    : internal::MojoReceiver<Camera3DeviceOps>(task_runner),
       camera_device_adapter_(camera_device_adapter) {}
 
 Camera3DeviceOpsDelegate::~Camera3DeviceOpsDelegate() {}

@@ -15,13 +15,14 @@
 #include <base/logging.h>
 #include <cros-camera/camera_thread.h>
 #include <hardware/camera3.h>
+#include <mojo/public/cpp/bindings/associated_binding.h>
+#include <mojo/public/cpp/bindings/binding.h>
 
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "common/vendor_tag_manager.h"
 #include "mojo/camera_common.mojom.h"
 #include "mojo/core/embedder/scoped_ipc_support.h"
 #include "mojo/cros_camera_service.mojom.h"
-#include "mojo/public/cpp/bindings/associated_binding.h"
 
 namespace camera3_test {
 

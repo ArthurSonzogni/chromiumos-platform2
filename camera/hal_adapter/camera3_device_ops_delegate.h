@@ -17,7 +17,7 @@ namespace cros {
 class CameraDeviceAdapter;
 
 class Camera3DeviceOpsDelegate final
-    : public internal::MojoBinding<mojom::Camera3DeviceOps> {
+    : public internal::MojoReceiver<mojom::Camera3DeviceOps> {
  public:
   Camera3DeviceOpsDelegate(
       CameraDeviceAdapter* camera_device_adapter,

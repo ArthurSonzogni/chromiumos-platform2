@@ -19,7 +19,11 @@
 #include <base/check.h>
 #include <base/single_thread_task_runner.h>
 #include <base/synchronization/lock.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/associated_remote.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "common/utils/common_types.h"
 #include "cros-camera/common.h"
@@ -57,40 +61,46 @@ ScopedCameraMetadata DeserializeCameraMetadata(
     const cros::mojom::CameraMetadataPtr& metadata);
 // Template classes for Mojo IPC delegates
 
-// A wrapper around a mojo::InterfacePtr<T>.  This template class represents a
-// Mojo communication channel to a remote Mojo binding implementation of T.
-template <typename InterfacePtrType>
-class MojoChannelBase
-    : public base::SupportsWeakPtr<MojoChannelBase<InterfacePtrType>> {
+// A wrapper around a mojo::Remote<T>.  This template class represents a
+// Mojo remote to a Mojo receiver implementation of T.
+template <typename RemoteType>
+class MojoRemoteBase
+    : public base::SupportsWeakPtr<MojoRemoteBase<RemoteType>> {
  public:
-  using Self = MojoChannelBase<InterfacePtrType>;
-  explicit MojoChannelBase(
+  using Self = MojoRemoteBase<RemoteType>;
+  explicit MojoRemoteBase(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner)
       : task_runner_(task_runner) {
     VLOGF_ENTER();
   }
 
-  void Bind(typename InterfacePtrType::PtrInfoType interface_ptr_info,
-            const base::Closure& connection_error_handler) {
+  // Move-only class.
+  MojoRemoteBase(MojoRemoteBase<RemoteType>&& other) = default;
+  MojoRemoteBase& operator=(MojoRemoteBase<RemoteType>&& other) = default;
+  MojoRemoteBase(const MojoRemoteBase<RemoteType>& other) = delete;
+  MojoRemoteBase& operator=(const MojoRemoteBase<RemoteType>& other) = delete;
+
+  void Bind(typename RemoteType::PendingType pending_remote,
+            const base::Closure& disconnect_handler) {
     VLOGF_ENTER();
     task_runner_->PostTask(
-        FROM_HERE, base::Bind(&Self::BindOnThread, base::AsWeakPtr(this),
-                              base::Passed(&interface_ptr_info),
-                              connection_error_handler));
+        FROM_HERE,
+        base::Bind(&Self::BindOnThread, base::AsWeakPtr(this),
+                   base::Passed(&pending_remote), disconnect_handler));
   }
 
-  ~MojoChannelBase() {
+  ~MojoRemoteBase() {
     VLOGF_ENTER();
-    // We need to wait for ResetInterfacePtrOnThread to finish before return
+    // We need to wait for ResetRemoteOnThread to finish before return
     // otherwise it would cause race condition in destruction of
-    // |interface_ptr_| and may CHECK.
+    // |remote_| and may CHECK.
     auto future = cros::Future<void>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
-      ResetInterfacePtrOnThread(cros::GetFutureCallback(future));
+      ResetRemoteOnThread(cros::GetFutureCallback(future));
     } else {
       task_runner_->PostTask(
           FROM_HERE,
-          base::Bind(&Self::ResetInterfacePtrOnThread, base::AsWeakPtr(this),
+          base::Bind(&Self::ResetRemoteOnThread, base::AsWeakPtr(this),
                      cros::GetFutureCallback(future)));
     }
     future->Wait();
@@ -100,99 +110,94 @@ class MojoChannelBase
   // All the Mojo communication happens on |task_runner_|.
   const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
-  InterfacePtrType interface_ptr_;
+  RemoteType remote_;
 
   // For the future objects in derived class.
   CancellationRelay relay_;
 
  private:
-  void BindOnThread(typename InterfacePtrType::PtrInfoType interface_ptr_info,
-                    const base::Closure& connection_error_handler) {
+  void BindOnThread(typename RemoteType::PendingType pending_remote,
+                    const base::Closure& disconnect_handler) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
-    interface_ptr_.Bind(std::move(interface_ptr_info));
-    if (!interface_ptr_.is_bound()) {
-      LOGF(ERROR) << "Failed to bind interface_ptr_";
+    remote_.Bind(std::move(pending_remote));
+    if (!remote_.is_bound()) {
+      LOGF(ERROR) << "Failed to bind pending remote";
       return;
     }
-    interface_ptr_.set_connection_error_handler(connection_error_handler);
-    interface_ptr_.QueryVersion(
-        base::Bind(&Self::OnQueryVersionOnThread, base::AsWeakPtr(this)));
+    remote_.set_disconnect_handler(disconnect_handler);
+    LOGF(INFO) << "Bridge ready";
   }
 
-  void OnQueryVersionOnThread(uint32_t version) {
+  void ResetRemoteOnThread(const base::Closure& callback) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
-    LOGF(INFO) << "Bridge ready (version=" << version << ")";
-  }
-
-  void ResetInterfacePtrOnThread(const base::Closure& callback) {
-    VLOGF_ENTER();
-    DCHECK(task_runner_->BelongsToCurrentThread());
-    interface_ptr_.reset();
+    remote_.reset();
     callback.Run();
   }
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(MojoChannelBase);
 };
 
 template <typename T>
-using MojoChannel = MojoChannelBase<mojo::InterfacePtr<T>>;
+using MojoRemote = MojoRemoteBase<mojo::Remote<T>>;
 
 template <typename T>
-using MojoAssociatedChannel = MojoChannelBase<mojo::AssociatedInterfacePtr<T>>;
+using MojoAssociatedRemote = MojoRemoteBase<mojo::AssociatedRemote<T>>;
 
-// A wrapper around a mojo::Binding<T>.  This template class represents an
-// implementation of Mojo interface T.
+// A wrapper around a mojo::Receiver<T>.  This template class represents a
+// receiver implementation of Mojo interface T.
 template <typename T>
-class MojoBinding : public T {
+class MojoReceiver : public T {
  public:
-  explicit MojoBinding(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-      : task_runner_(task_runner), binding_(this), weak_ptr_factory_(this) {
+  explicit MojoReceiver(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+      : task_runner_(task_runner), receiver_(this), weak_ptr_factory_(this) {
     VLOGF_ENTER();
   }
 
-  ~MojoBinding() {
+  // Move-only class.
+  MojoReceiver(MojoReceiver<T>&& other) = default;
+  MojoReceiver& operator=(MojoReceiver<T>&& other) = default;
+  MojoReceiver(const MojoReceiver<T>& other) = delete;
+  MojoReceiver& operator=(const MojoReceiver<T>& other) = delete;
+
+  ~MojoReceiver() {
     VLOGF_ENTER();
-    // We need to wait for CloseBindingOnThread to finish before return
-    // otherwise it would cause race condition in destruction of |binding_| and
+    // We need to wait for ResetReceiverOnThread to finish before return
+    // otherwise it would cause race condition in destruction of |receiver_| and
     // may CHECK.
     auto future = cros::Future<void>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
-      CloseBindingOnThread(cros::GetFutureCallback(future));
+      ResetReceiverOnThread(cros::GetFutureCallback(future));
     } else {
       task_runner_->PostTask(FROM_HERE,
-                             base::Bind(&MojoBinding<T>::CloseBindingOnThread,
+                             base::Bind(&MojoReceiver<T>::ResetReceiverOnThread,
                                         weak_ptr_factory_.GetWeakPtr(),
                                         cros::GetFutureCallback(future)));
     }
     future->Wait();
   }
 
-  mojo::InterfacePtr<T> CreateInterfacePtr(
-      const base::Closure& connection_error_handler) {
+  mojo::Remote<T> CreateRemote(const base::Closure& disconnect_handler) {
     VLOGF_ENTER();
-    auto future = cros::Future<mojo::InterfacePtr<T>>::Create(nullptr);
+    auto future = cros::Future<mojo::Remote<T>>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
-      CreateInterfacePtrOnThread(connection_error_handler,
-                                 cros::GetFutureCallback(future));
+      CreateRemoteOnThread(disconnect_handler, cros::GetFutureCallback(future));
     } else {
       task_runner_->PostTask(
           FROM_HERE,
-          base::Bind(&MojoBinding<T>::CreateInterfacePtrOnThread,
-                     weak_ptr_factory_.GetWeakPtr(), connection_error_handler,
+          base::Bind(&MojoReceiver<T>::CreateRemoteOnThread,
+                     weak_ptr_factory_.GetWeakPtr(), disconnect_handler,
                      cros::GetFutureCallback(future)));
     }
     return future->Get();
   }
 
   void Bind(mojo::ScopedMessagePipeHandle handle,
-            const base::Closure& connection_error_handler) {
+            const base::Closure& disconnect_handler) {
     VLOGF_ENTER();
     task_runner_->PostTask(
-        FROM_HERE, base::Bind(&MojoBinding<T>::BindOnThread,
+        FROM_HERE, base::Bind(&MojoReceiver<T>::BindOnThread,
                               weak_ptr_factory_.GetWeakPtr(),
-                              base::Passed(&handle), connection_error_handler));
+                              base::Passed(&handle), disconnect_handler));
   }
 
  protected:
@@ -200,39 +205,36 @@ class MojoBinding : public T {
   const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
  private:
-  void CloseBindingOnThread(const base::Closure& callback) {
+  void ResetReceiverOnThread(const base::Closure& callback) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
-    if (binding_.is_bound()) {
-      binding_.Close();
+    if (receiver_.is_bound()) {
+      receiver_.reset();
     }
     callback.Run();
   }
 
-  void CreateInterfacePtrOnThread(
-      const base::Closure& connection_error_handler,
-      const base::Callback<void(mojo::InterfacePtr<T>)>& cb) {
-    // Call CreateInterfacePtrAndBind() on thread_ to serve the RPC.
+  void CreateRemoteOnThread(const base::Closure& disconnect_handler,
+                            const base::Callback<void(mojo::Remote<T>)>& cb) {
+    // Call BindNewPipeAndPassRemote() on thread_ to serve the mojo IPC.
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
-    mojo::InterfacePtr<T> interfacePtr = binding_.CreateInterfacePtrAndBind();
-    binding_.set_connection_error_handler(connection_error_handler);
-    cb.Run(std::move(interfacePtr));
+    mojo::Remote<T> remote = receiver_.BindNewPipeAndPassRemote();
+    receiver_.set_disconnect_handler(disconnect_handler);
+    cb.Run(std::move(remote));
   }
 
   void BindOnThread(mojo::ScopedMessagePipeHandle handle,
-                    const base::Closure& connection_error_handler) {
+                    const base::Closure& disconnect_handler) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
-    binding_.Bind(mojo::InterfaceRequest<T>(std::move(handle)));
-    binding_.set_connection_error_handler(connection_error_handler);
+    receiver_.Bind(mojo::PendingReceiver<T>(std::move(handle)));
+    receiver_.set_disconnect_handler(disconnect_handler);
   }
 
-  mojo::Binding<T> binding_;
+  mojo::Receiver<T> receiver_;
 
-  base::WeakPtrFactory<MojoBinding<T>> weak_ptr_factory_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(MojoBinding);
+  base::WeakPtrFactory<MojoReceiver<T>> weak_ptr_factory_;
 };
 
 }  // namespace internal

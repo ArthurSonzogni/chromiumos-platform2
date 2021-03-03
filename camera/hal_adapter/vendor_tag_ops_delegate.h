@@ -15,7 +15,7 @@
 namespace cros {
 
 class VendorTagOpsDelegate final
-    : public internal::MojoBinding<mojom::VendorTagOps> {
+    : public internal::MojoReceiver<mojom::VendorTagOps> {
  public:
   VendorTagOpsDelegate(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                        vendor_tag_ops_t* ops);

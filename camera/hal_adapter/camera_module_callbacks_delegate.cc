@@ -19,7 +19,7 @@ namespace cros {
 
 CameraModuleCallbacksDelegate::CameraModuleCallbacksDelegate(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : internal::MojoChannel<mojom::CameraModuleCallbacks>(task_runner) {}
+    : internal::MojoRemote<mojom::CameraModuleCallbacks>(task_runner) {}
 
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(int camera_id,
                                                              int new_status) {
@@ -50,7 +50,7 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
     int camera_id, int new_status, base::Closure callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  interface_ptr_->CameraDeviceStatusChange(
+  remote_->CameraDeviceStatusChange(
       camera_id, static_cast<mojom::CameraDeviceStatus>(new_status));
   callback.Run();
 }
@@ -59,7 +59,7 @@ void CameraModuleCallbacksDelegate::TorchModeStatusChangeOnThread(
     int camera_id, int new_status, base::Closure callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  interface_ptr_->TorchModeStatusChange(
+  remote_->TorchModeStatusChange(
       camera_id, static_cast<mojom::TorchModeStatus>(new_status));
   callback.Run();
 }

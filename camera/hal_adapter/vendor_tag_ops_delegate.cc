@@ -20,7 +20,7 @@ namespace cros {
 VendorTagOpsDelegate::VendorTagOpsDelegate(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     vendor_tag_ops_t* ops)
-    : internal::MojoBinding<VendorTagOps>(task_runner), vendor_tag_ops_(ops) {}
+    : internal::MojoReceiver<VendorTagOps>(task_runner), vendor_tag_ops_(ops) {}
 
 void VendorTagOpsDelegate::GetTagCount(GetTagCountCallback callback) {
   VLOGF_ENTER();

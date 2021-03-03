@@ -23,7 +23,7 @@ namespace cros {
 
 Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : internal::MojoChannel<mojom::Camera3CallbackOps>(task_runner) {}
+    : internal::MojoRemote<mojom::Camera3CallbackOps>(task_runner) {}
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResult(
     mojom::Camera3CaptureResultPtr result) {
@@ -59,7 +59,7 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
                              result->frame_number);
     }
   }
-  interface_ptr_->ProcessCaptureResult(std::move(result));
+  remote_->ProcessCaptureResult(std::move(result));
 }
 
 void Camera3CallbackOpsDelegate::NotifyOnThread(
@@ -67,7 +67,7 @@ void Camera3CallbackOpsDelegate::NotifyOnThread(
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED();
-  interface_ptr_->Notify(std::move(msg));
+  remote_->Notify(std::move(msg));
 }
 
 }  // end of namespace cros

@@ -17,7 +17,7 @@ namespace cros {
 class CameraHalAdapter;
 
 class CameraModuleDelegate final
-    : public internal::MojoBinding<mojom::CameraModule> {
+    : public internal::MojoReceiver<mojom::CameraModule> {
  public:
   CameraModuleDelegate(CameraHalAdapter* camera_hal_adapter,
                        scoped_refptr<base::SingleThreadTaskRunner> task_runner,

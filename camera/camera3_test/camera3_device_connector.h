@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/threading/thread_checker.h>
 #include <gtest/gtest.h>
+#include <mojo/public/cpp/bindings/binding.h>
 
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_thread.h"
