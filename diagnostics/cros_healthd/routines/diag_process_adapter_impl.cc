@@ -29,8 +29,7 @@ base::TerminationStatus DiagProcessAdapterImpl::GetStatus(
 bool DiagProcessAdapterImpl::StartProcess(const std::vector<std::string>& args,
                                           base::ProcessHandle* handle) {
   exe_path_ = args[0];
-  base::Process process =
-      base::LaunchProcess(base::CommandLine(args), base::LaunchOptions());
+  base::Process process = base::LaunchProcess(args, base::LaunchOptions());
   if (process.IsValid()) {
     *handle = process.Handle();
     return true;
