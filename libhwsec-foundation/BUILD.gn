@@ -12,6 +12,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  defines = [ "USE_TPM2=${use.tpm2}" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -21,6 +22,7 @@ pkg_config("target_defaults") {
 shared_library("libhwsec-foundation") {
   sources = [
     "da_reset/da_resetter.cc",
+    "tpm_error/auth_failure_analysis.cc",
     "tpm_error/tpm_error_uma_reporter.cc",
   ]
   pkg_deps = [
@@ -45,6 +47,7 @@ if (use.test) {
   executable("hwsec-foundation_testrunner") {
     sources = [
       "da_reset/da_resetter_test.cc",
+      "tpm_error/auth_failure_analysis_test.cc",
       "tpm_error/tpm_error_uma_reporter_test.cc",
     ]
     deps = [
