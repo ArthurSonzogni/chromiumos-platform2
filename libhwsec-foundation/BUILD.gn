@@ -19,8 +19,15 @@ pkg_config("target_defaults") {
 }
 
 shared_library("libhwsec-foundation") {
-  sources = [ "tpm_error/tpm_error_uma_reporter.cc" ]
-  pkg_deps = [ "libmetrics" ]
+  sources = [
+    "da_reset/da_resetter.cc",
+    "tpm_error/tpm_error_uma_reporter.cc",
+  ]
+  pkg_deps = [
+    "libmetrics",
+    "libtpm_manager-client",
+    "system_api",
+  ]
   configs += [ ":target_defaults" ]
 }
 
@@ -29,11 +36,17 @@ if (use.test) {
     pkg_deps = [
       "libchrome-test",
       "libmetrics",
+      "libtpm_manager-client",
+      "libtpm_manager-client-test",
+      "system_api",
     ]
   }
 
   executable("hwsec-foundation_testrunner") {
-    sources = [ "tpm_error/tpm_error_uma_reporter_test.cc" ]
+    sources = [
+      "da_reset/da_resetter_test.cc",
+      "tpm_error/tpm_error_uma_reporter_test.cc",
+    ]
     deps = [
       ":libhwsec-foundation",
       "//common-mk/testrunner",
