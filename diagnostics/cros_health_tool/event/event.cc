@@ -86,19 +86,25 @@ int event_main(int argc, char** argv) {
 
   // Subscribe to the specified category.
   EventSubscriber event_subscriber;
+  bool success = false;
   switch (iterator->second) {
     case EventCategory::kLid:
-      event_subscriber.SubscribeToLidEvents();
+      success = event_subscriber.SubscribeToLidEvents();
       break;
     case EventCategory::kPower:
-      event_subscriber.SubscribeToPowerEvents();
+      success = event_subscriber.SubscribeToPowerEvents();
       break;
     case EventCategory::kBluetooth:
-      event_subscriber.SubscribeToBluetoothEvents();
+      success = event_subscriber.SubscribeToBluetoothEvents();
       break;
     case EventCategory::kNetwork:
-      event_subscriber.SubscribeToNetworkEvents();
+      success = event_subscriber.SubscribeToNetworkEvents();
       break;
+  }
+
+  if (!success) {
+    LOG(ERROR) << "Unable to subscribe to events";
+    return EXIT_FAILURE;
   }
 
   // Schedule an exit after |FLAGS_length_seconds|.

@@ -27,7 +27,8 @@ namespace {
 // which can be used to create a message pipe to cros_healthd.
 void DoDBusBootstrap(int raw_fd,
                      base::WaitableEvent* event,
-                     std::string* token_out) {
+                     std::string* token_out,
+                     bool* success) {
   dbus::Bus::Options bus_options;
   bus_options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(bus_options);
@@ -47,15 +48,20 @@ void DoDBusBootstrap(int raw_fd,
 
   if (!response) {
     LOG(ERROR) << "No response received.";
+    *success = false;
+    event->Signal();
     return;
   }
 
   dbus::MessageReader reader(response.get());
   if (!reader.PopString(token_out)) {
     LOG(ERROR) << "Failed to pop string.";
+    *success = false;
+    event->Signal();
     return;
   }
 
+  *success = true;
   event->Signal();
 }
 
@@ -88,13 +94,17 @@ CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   // since we need the resulting token to continue.
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool success = false;
   dbus_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(
           &DoDBusBootstrap,
           channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD().release(),
-          &event, &token));
+          &event, &token, &success));
   event.Wait();
+
+  if (!success)
+    return nullptr;
 
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());

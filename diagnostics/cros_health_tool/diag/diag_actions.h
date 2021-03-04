@@ -91,9 +91,10 @@ class DiagActions final {
   void ForceCancelAtPercent(uint32_t percent);
 
  private:
-  // Helper function to check the response initially returned when starting the
-  // routine. This ensures the routine started correctly and is supported.
-  bool CheckInitialResponse(
+  // Helper function that checks the response initially returned when starting
+  // the routine and then polls for the routine's result. Returns true if the
+  // routine was invoked without error, or false otherwise.
+  bool ProcessRoutineResponse(
       const chromeos::cros_healthd::mojom::RunRoutineResponsePtr& response);
   // Helper function to determine when a routine has finished. Also does any
   // necessary cleanup.

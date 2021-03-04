@@ -169,7 +169,8 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
       const base::Optional<std::string>& stun_server_hostname) override;
 
   // Returns which routines are available on the platform.
-  std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
+  base::Optional<
+      std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines() override;
 
   // Gets an update for the specified routine.
@@ -179,28 +180,28 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
       bool include_output) override;
 
   // Subscribes the client to Bluetooth events.
-  void AddBluetoothObserver(
+  bool AddBluetoothObserver(
       chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer)
       override;
 
   // Subscribes the client to lid events.
-  void AddLidObserver(chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr
+  bool AddLidObserver(chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr
                           observer) override;
 
   // Subscribes the client to power events.
-  void AddPowerObserver(
+  bool AddPowerObserver(
       chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer)
       override;
 
   // Subscribes the client to network events.
-  void AddNetworkObserver(
+  bool AddNetworkObserver(
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer)
       override;
 
  private:
   // Establishes a mojo connection with cros_healthd.
-  void Connect();
+  bool Connect();
 
   // Default delegate implementation.
   std::unique_ptr<CrosHealthdMojoAdapterDelegateImpl> delegate_impl_;
@@ -259,8 +260,8 @@ CrosHealthdMojoAdapterImpl::~CrosHealthdMojoAdapterImpl() = default;
 // Gets cros_healthd service status.
 chromeos::cros_healthd::mojom::ServiceStatusPtr
 CrosHealthdMojoAdapterImpl::GetServiceStatus() {
-  if (!cros_healthd_system_service_.is_bound())
-    Connect();
+  if (!cros_healthd_system_service_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::ServiceStatusPtr response;
   base::RunLoop run_loop;
@@ -276,8 +277,8 @@ chromeos::cros_healthd::mojom::TelemetryInfoPtr
 CrosHealthdMojoAdapterImpl::GetTelemetryInfo(
     const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&
         categories_to_probe) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::TelemetryInfoPtr response;
   base::RunLoop run_loop;
@@ -310,8 +311,8 @@ CrosHealthdMojoAdapterImpl::GetProcessInfo(pid_t pid) {
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunUrandomRoutine(
     const base::Optional<base::TimeDelta>& length_seconds) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -333,8 +334,8 @@ CrosHealthdMojoAdapterImpl::RunUrandomRoutine(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunBatteryCapacityRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -349,8 +350,8 @@ CrosHealthdMojoAdapterImpl::RunBatteryCapacityRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunBatteryHealthRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -365,8 +366,8 @@ CrosHealthdMojoAdapterImpl::RunBatteryHealthRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunSmartctlCheckRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -383,8 +384,8 @@ chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunAcPowerRoutine(
     chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
     const base::Optional<std::string>& expected_power_type) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -401,8 +402,8 @@ CrosHealthdMojoAdapterImpl::RunAcPowerRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunCpuCacheRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -425,8 +426,8 @@ CrosHealthdMojoAdapterImpl::RunCpuCacheRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunCpuStressRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -449,8 +450,8 @@ CrosHealthdMojoAdapterImpl::RunCpuStressRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunFloatingPointAccuracyRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -473,8 +474,8 @@ CrosHealthdMojoAdapterImpl::RunFloatingPointAccuracyRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -491,8 +492,8 @@ CrosHealthdMojoAdapterImpl::RunNvmeWearLevelRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunNvmeSelfTestRoutine(
     chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -511,8 +512,8 @@ CrosHealthdMojoAdapterImpl::RunDiskReadRoutine(
     chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
     base::TimeDelta exec_duration,
     uint32_t file_size_mb) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -529,8 +530,8 @@ CrosHealthdMojoAdapterImpl::RunDiskReadRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunPrimeSearchRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -553,8 +554,8 @@ CrosHealthdMojoAdapterImpl::RunPrimeSearchRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunBatteryDischargeRoutine(
     base::TimeDelta exec_duration, uint32_t maximum_discharge_percent_allowed) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -571,8 +572,8 @@ CrosHealthdMojoAdapterImpl::RunBatteryDischargeRoutine(
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunBatteryChargeRoutine(
     base::TimeDelta exec_duration, uint32_t minimum_charge_percent_required) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -588,8 +589,8 @@ CrosHealthdMojoAdapterImpl::RunBatteryChargeRoutine(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunLanConnectivityRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -604,8 +605,8 @@ CrosHealthdMojoAdapterImpl::RunLanConnectivityRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunSignalStrengthRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -620,8 +621,8 @@ CrosHealthdMojoAdapterImpl::RunSignalStrengthRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunMemoryRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -636,8 +637,8 @@ CrosHealthdMojoAdapterImpl::RunMemoryRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunGatewayCanBePingedRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -652,8 +653,8 @@ CrosHealthdMojoAdapterImpl::RunGatewayCanBePingedRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunHasSecureWiFiConnectionRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -668,8 +669,8 @@ CrosHealthdMojoAdapterImpl::RunHasSecureWiFiConnectionRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunDnsResolverPresentRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -684,8 +685,8 @@ CrosHealthdMojoAdapterImpl::RunDnsResolverPresentRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunDnsLatencyRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -700,8 +701,8 @@ CrosHealthdMojoAdapterImpl::RunDnsLatencyRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunDnsResolutionRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -716,8 +717,8 @@ CrosHealthdMojoAdapterImpl::RunDnsResolutionRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunCaptivePortalRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -732,8 +733,8 @@ CrosHealthdMojoAdapterImpl::RunCaptivePortalRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunHttpFirewallRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -748,8 +749,8 @@ CrosHealthdMojoAdapterImpl::RunHttpFirewallRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunHttpsFirewallRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -764,8 +765,8 @@ CrosHealthdMojoAdapterImpl::RunHttpsFirewallRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunHttpsLatencyRoutine() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -781,8 +782,8 @@ CrosHealthdMojoAdapterImpl::RunHttpsLatencyRoutine() {
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunVideoConferencingRoutine(
     const base::Optional<std::string>& stun_server_hostname) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
@@ -796,10 +797,11 @@ CrosHealthdMojoAdapterImpl::RunVideoConferencingRoutine(
   return response;
 }
 
-std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
+base::Optional<
+    std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
 CrosHealthdMojoAdapterImpl::GetAvailableRoutines() {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return base::nullopt;
 
   std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum> response;
   base::RunLoop run_loop;
@@ -822,8 +824,8 @@ CrosHealthdMojoAdapterImpl::GetRoutineUpdate(
     int32_t id,
     chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
     bool include_output) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
 
   chromeos::cros_healthd::mojom::RoutineUpdatePtr response;
   base::RunLoop run_loop;
@@ -837,41 +839,47 @@ CrosHealthdMojoAdapterImpl::GetRoutineUpdate(
   return response;
 }
 
-void CrosHealthdMojoAdapterImpl::AddBluetoothObserver(
+bool CrosHealthdMojoAdapterImpl::AddBluetoothObserver(
     chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
 
   cros_healthd_event_service_->AddBluetoothObserver(std::move(observer));
+  return true;
 }
 
-void CrosHealthdMojoAdapterImpl::AddLidObserver(
+bool CrosHealthdMojoAdapterImpl::AddLidObserver(
     chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr observer) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
 
   cros_healthd_event_service_->AddLidObserver(std::move(observer));
+  return true;
 }
 
-void CrosHealthdMojoAdapterImpl::AddPowerObserver(
+bool CrosHealthdMojoAdapterImpl::AddPowerObserver(
     chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
 
   cros_healthd_event_service_->AddPowerObserver(std::move(observer));
+  return true;
 }
 
-void CrosHealthdMojoAdapterImpl::AddNetworkObserver(
+bool CrosHealthdMojoAdapterImpl::AddNetworkObserver(
     mojo::PendingRemote<chromeos::network_health::mojom::NetworkEventsObserver>
         observer) {
-  if (!cros_healthd_service_factory_.is_bound())
-    Connect();
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
 
   cros_healthd_event_service_->AddNetworkObserver(std::move(observer));
+  return true;
 }
 
-void CrosHealthdMojoAdapterImpl::Connect() {
+bool CrosHealthdMojoAdapterImpl::Connect() {
   cros_healthd_service_factory_ = delegate_->GetCrosHealthdServiceFactory();
+  if (!cros_healthd_service_factory_)
+    return false;
 
   // Bind the probe, diagnostics and event services.
   cros_healthd_service_factory_->GetProbeService(
@@ -882,6 +890,8 @@ void CrosHealthdMojoAdapterImpl::Connect() {
       mojo::MakeRequest(&cros_healthd_event_service_));
   cros_healthd_service_factory_->GetSystemService(
       mojo::MakeRequest(&cros_healthd_system_service_));
+
+  return true;
 }
 
 }  // namespace

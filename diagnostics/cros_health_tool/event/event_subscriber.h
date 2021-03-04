@@ -24,17 +24,21 @@ class EventSubscriber final {
   EventSubscriber& operator=(const EventSubscriber&) = delete;
   ~EventSubscriber();
 
-  // Subscribes to cros_healthd's Bluetooth events.
-  void SubscribeToBluetoothEvents();
+  // Subscribes to cros_healthd's Bluetooth events. Returns true on success and
+  // false on failure.
+  bool SubscribeToBluetoothEvents();
 
-  // Subscribes to cros_healthd's lid events.
-  void SubscribeToLidEvents();
+  // Subscribes to cros_healthd's lid events. Returns true on success and false
+  // on failure.
+  bool SubscribeToLidEvents();
 
-  // Subscribes to cros_healthd's network events.
-  void SubscribeToNetworkEvents();
+  // Subscribes to cros_healthd's network events. Returns true on success and
+  // false on failure.
+  bool SubscribeToNetworkEvents();
 
-  // Subscribes to cros_healthd's power events.
-  void SubscribeToPowerEvents();
+  // Subscribes to cros_healthd's power events. Returns true on success and
+  // false on failure.
+  bool SubscribeToPowerEvents();
 
  private:
   // Allows mojo communication with cros_healthd.

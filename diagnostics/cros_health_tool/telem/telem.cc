@@ -637,7 +637,15 @@ int telem_main(int argc, char** argv) {
     }
 
     // Probe and display the category or categories.
-    DisplayTelemetryInfo(adapter->GetTelemetryInfo(categories_to_probe));
+    chromeos::cros_healthd::mojom::TelemetryInfoPtr result =
+        adapter->GetTelemetryInfo(categories_to_probe);
+
+    if (!result) {
+      LOG(ERROR) << "Unable to probe telemetry info";
+      return EXIT_FAILURE;
+    }
+
+    DisplayTelemetryInfo(result);
   }
 
   return EXIT_SUCCESS;

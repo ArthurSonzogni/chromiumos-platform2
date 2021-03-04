@@ -134,7 +134,13 @@ DiagActions::~DiagActions() = default;
 
 bool DiagActions::ActionGetRoutines() {
   auto reply = adapter_->GetAvailableRoutines();
-  for (auto routine : reply) {
+  if (!reply.has_value()) {
+    std::cout << "Unable to get available routines from cros_healthd"
+              << std::endl;
+    return false;
+  }
+
+  for (auto routine : reply.value()) {
     std::cout << "Available routine: " << GetSwitchFromRoutine(routine)
               << std::endl;
   }
@@ -147,88 +153,48 @@ bool DiagActions::ActionRunAcPowerRoutine(
     const base::Optional<std::string>& expected_power_type) {
   auto response =
       adapter_->RunAcPowerRoutine(expected_status, expected_power_type);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunBatteryCapacityRoutine() {
   auto response = adapter_->RunBatteryCapacityRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunBatteryChargeRoutine(
     base::TimeDelta exec_duration, uint32_t minimum_charge_percent_required) {
   auto response = adapter_->RunBatteryChargeRoutine(
       exec_duration, minimum_charge_percent_required);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunBatteryDischargeRoutine(
     base::TimeDelta exec_duration, uint32_t maximum_discharge_percent_allowed) {
   auto response = adapter_->RunBatteryDischargeRoutine(
       exec_duration, maximum_discharge_percent_allowed);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunBatteryHealthRoutine() {
   auto response = adapter_->RunBatteryHealthRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunCaptivePortalRoutine() {
   auto response = adapter_->RunCaptivePortalRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunCpuCacheRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunCpuCacheRoutine(exec_duration);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunCpuStressRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunCpuStressRoutine(exec_duration);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunDiskReadRoutine(
@@ -237,194 +203,102 @@ bool DiagActions::ActionRunDiskReadRoutine(
     uint32_t file_size_mb) {
   auto response =
       adapter_->RunDiskReadRoutine(type, exec_duration, file_size_mb);
-  id_ = response->id;
-  CHECK(response) << "No RunRoutineResponse received.";
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunDnsLatencyRoutine() {
   auto response = adapter_->RunDnsLatencyRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunDnsResolutionRoutine() {
   auto response = adapter_->RunDnsResolutionRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunDnsResolverPresentRoutine() {
   auto response = adapter_->RunDnsResolverPresentRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunFloatingPointAccuracyRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunFloatingPointAccuracyRoutine(exec_duration);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunGatewayCanBePingedRoutine() {
   auto response = adapter_->RunGatewayCanBePingedRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunHasSecureWiFiConnectionRoutine() {
   auto response = adapter_->RunHasSecureWiFiConnectionRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunHttpFirewallRoutine() {
   auto response = adapter_->RunHttpFirewallRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunHttpsFirewallRoutine() {
   auto response = adapter_->RunHttpsFirewallRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunHttpsLatencyRoutine() {
   auto response = adapter_->RunHttpsLatencyRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunLanConnectivityRoutine() {
   auto response = adapter_->RunLanConnectivityRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunMemoryRoutine() {
   auto response = adapter_->RunMemoryRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunNvmeSelfTestRoutine(
     mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type) {
   auto response = adapter_->RunNvmeSelfTestRoutine(nvme_self_test_type);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunNvmeWearLevelRoutine(uint32_t wear_level_threshold) {
   auto response = adapter_->RunNvmeWearLevelRoutine(wear_level_threshold);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunPrimeSearchRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunPrimeSearchRoutine(exec_duration);
-  id_ = response->id;
-  CHECK(response) << "No RunRoutineResponse received.";
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunSignalStrengthRoutine() {
   auto response = adapter_->RunSignalStrengthRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunSmartctlCheckRoutine() {
   auto response = adapter_->RunSmartctlCheckRoutine();
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunUrandomRoutine(
     const base::Optional<base::TimeDelta>& length_seconds) {
   auto response = adapter_->RunUrandomRoutine(length_seconds);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  if (!CheckInitialResponse(response))
-    return true;
-
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunVideoConferencingRoutine(
     const base::Optional<std::string>& stun_server_hostname) {
   auto response = adapter_->RunVideoConferencingRoutine(stun_server_hostname);
-  CHECK(response) << "No RunRoutineResponse received.";
-  id_ = response->id;
-  return PollRoutineAndProcessResult();
+  return ProcessRoutineResponse(response);
 }
 
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
@@ -433,8 +307,14 @@ void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   cancellation_percent_ = percent;
 }
 
-bool DiagActions::CheckInitialResponse(
+bool DiagActions::ProcessRoutineResponse(
     const mojo_ipc::RunRoutineResponsePtr& response) {
+  if (!response) {
+    std::cout << "Unable to run routine. Routine response empty" << std::endl;
+    return false;
+  }
+
+  id_ = response->id;
   if (id_ == mojo_ipc::kFailedToStartId) {
     PrintStatus(response->status);
     auto status_msg = "";
@@ -449,9 +329,10 @@ bool DiagActions::CheckInitialResponse(
         status_msg = "Failed to start routine";
     }
     std::cout << "Status Message: " << status_msg << std::endl;
-    return false;
+    return true;
   }
-  return true;
+
+  return PollRoutineAndProcessResult();
 }
 
 bool DiagActions::PollRoutineAndProcessResult() {

@@ -168,7 +168,8 @@ class CrosHealthdMojoAdapter {
       const base::Optional<std::string>& stun_server_hostname) = 0;
 
   // Returns which routines are available on the platform.
-  virtual std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
+  virtual base::Optional<
+      std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines() = 0;
 
   // Gets an update for the specified routine.
@@ -178,20 +179,20 @@ class CrosHealthdMojoAdapter {
       bool include_output) = 0;
 
   // Subscribes the client to Bluetooth events.
-  virtual void AddBluetoothObserver(
+  virtual bool AddBluetoothObserver(
       chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr
           observer) = 0;
 
   // Subscribes the client to lid events.
-  virtual void AddLidObserver(
+  virtual bool AddLidObserver(
       chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr observer) = 0;
 
   // Subscribes the client to power events.
-  virtual void AddPowerObserver(
+  virtual bool AddPowerObserver(
       chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) = 0;
 
   // Subscribes the client to network events.
-  virtual void AddNetworkObserver(
+  virtual bool AddNetworkObserver(
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer) = 0;
 };
