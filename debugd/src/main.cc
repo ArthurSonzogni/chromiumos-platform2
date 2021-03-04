@@ -21,8 +21,6 @@ namespace {
 
 // For TPM 1.2 only: Directory to mount for access to tcsd socket.
 constexpr char kTcsdDir[] = "/run/tcsd";
-// The directory of the daemonstore mount.
-constexpr char daemonstore[] = "/run/daemon-store/debugd";
 
 // @brief Enter a VFS namespace.
 //
@@ -54,18 +52,17 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), kVpdPath, kVpdPath, 1))
     LOG(FATAL) << "minijail_bind(\"" << kVpdPath << "\") failed";
 
-  minijail_remount_mode(j.get(), MS_PRIVATE);
+  minijail_remount_mode(j.get(), MS_SLAVE);
 
   if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
                                MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr)) {
     LOG(FATAL) << "minijail_mount_with_data(\"/run\") failed";
   }
 
-  minijail_add_remount(j.get(), daemonstore, MS_SLAVE);
-
-  if (minijail_mount(j.get(), daemonstore, daemonstore, "none",
+  if (minijail_mount(j.get(), "/run/daemon-store/debugd",
+                     "/run/daemon-store/debugd", "none",
                      MS_BIND | MS_REC) != 0) {
-    LOG(FATAL) << "minijail_mount(\"" << daemonstore << "\") failed";
+    LOG(FATAL) << "minijail_mount(\"/run/daemon-store/debugd\") failed";
   }
 
   // Mount /run/dbus to be able to communicate with D-Bus.
