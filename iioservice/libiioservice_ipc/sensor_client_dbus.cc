@@ -34,9 +34,7 @@ void SensorClientDbus::OnInvitationReceived(
 
   // Bind primordial message pipe to a SensorHalClient implementation.
   OnClientReceived(mojo::PendingReceiver<cros::mojom::SensorHalClient>(
-      invitation.ExtractMessagePipe(
-          ::mojo_connection_service::
-              kBootstrapMojoConnectionForSensorClientsChannelToken)));
+      invitation.ExtractMessagePipe(0)));
 }
 
 }  // namespace iioservice

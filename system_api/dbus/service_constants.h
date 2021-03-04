@@ -542,17 +542,8 @@ constexpr char kMojoConnectionServiceInterface[] =
 // Methods
 constexpr char kBootstrapMojoConnectionForIioServiceMethod[] =
     "BootstrapMojoConnectionForIioService";
-// Token identifying the primordial Mojo pipe passed to
-// BootstrapMojoConnectionForIioService.
-constexpr char kBootstrapMojoConnectionForIioServiceChannelToken[] =
-    "sensors-iioservice-bootstrap";
-
 constexpr char kBootstrapMojoConnectionForSensorClientsMethod[] =
     "BootstrapMojoConnectionForSensorClients";
-// Token identifying the primordial Mojo pipe passed to
-// BootstrapMojoConnectionForSensorClients.
-constexpr char kBootstrapMojoConnectionForSensorClientsChannelToken[] =
-    "sensors-clients-bootstrap";
 }  // namespace mojo_connection_service
 
 namespace virtual_file_provider {
