@@ -103,7 +103,7 @@ class CellularServiceProviderTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   NiceMock<MockControl> control_;
   NiceMock<MockMetrics> metrics_;
-  MockManager manager_;
+  NiceMock<MockManager> manager_;
   MockModemInfo modem_info_;
   NiceMock<MockDeviceInfo> device_info_;
   FakeStore storage_;
@@ -123,15 +123,19 @@ TEST_F(CellularServiceProviderTest, LoadService) {
   EXPECT_TRUE(service->IsVisible());
   EXPECT_TRUE(service->connectable());
 
-  // RemoveServicesForDevice does not destroy the services, but they should no
-  // longer be marked as connectable.
-  provider()->RemoveServicesForDevice(device.get());
-  EXPECT_EQ(1u, GetProviderServices().size());
-  EXPECT_TRUE(service->IsVisible());
-  EXPECT_FALSE(service->connectable());
-
   // Stopping should remove all services.
   provider()->Stop();
+  EXPECT_EQ(0u, GetProviderServices().size());
+}
+
+TEST_F(CellularServiceProviderTest, RemoveServices) {
+  CellularRefPtr device = CreateDevice("imsi1", "iccid1");
+  CellularServiceRefPtr service =
+      provider()->LoadServicesForDevice(device.get());
+  ASSERT_TRUE(service);
+  EXPECT_EQ(1u, GetProviderServices().size());
+
+  provider()->RemoveServices();
   EXPECT_EQ(0u, GetProviderServices().size());
 }
 
@@ -192,13 +196,6 @@ TEST_F(CellularServiceProviderTest, SwitchDeviceIccid) {
   EXPECT_EQ("imsi1", service->imsi());
   EXPECT_EQ(1u, GetProviderServices().size());
   unsigned int serial_number1 = service->serial_number();
-
-  // Removing services for the device does not destroy the services, but they
-  // should no longer be marked as connectable.
-  provider()->RemoveServicesForDevice(device.get());
-  EXPECT_EQ(1u, GetProviderServices().size());
-  EXPECT_TRUE(service->IsVisible());
-  EXPECT_FALSE(service->connectable());
 
   // Adding a device with a new ICCID should create a new service with a
   // different serial number.

@@ -51,8 +51,8 @@ class CellularServiceProvider : public ProviderInterface {
                                    const std::string& iccid,
                                    const std::string& imsi);
 
-  // Removes any services associated with |device|.
-  void RemoveServicesForDevice(Cellular* device);
+  // Removes all services.
+  void RemoveServices();
 
   void set_profile_for_testing(ProfileRefPtr profile) { profile_ = profile; }
 
@@ -67,6 +67,9 @@ class CellularServiceProvider : public ProviderInterface {
       Cellular* device);
   void AddService(CellularServiceRefPtr service);
   void RemoveService(CellularServiceRefPtr service);
+  void SetDeviceForService(CellularServiceRefPtr service,
+                           Cellular* device,
+                           const std::string& eid);
   CellularServiceRefPtr FindService(const std::string& imsi);
 
   Manager* manager_;

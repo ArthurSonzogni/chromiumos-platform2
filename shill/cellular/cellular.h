@@ -475,17 +475,17 @@ class Cellular : public Device,
 
   void InitCapability(Type type);
 
-  // Called when |state_| becomes enabled or SetSimProperties are set.
-  // Creates or destroys |service_| as required.
-  void UpdateService();
+  // Creates or destroys services as required.
+  void UpdateServices();
 
-  // Creates and registers the default CellularService for the Device.
-  void CreateService();
+  // Creates and registers services for the available SIMs and sets
+  // |service_| to the primary (active) service.
+  void CreateServices();
 
-  // Deregisters and destructs the current service and destroys the connection,
-  // if any. This also eliminates the circular references between this device
-  // and the associated service, allowing eventual device destruction.
-  void DestroyService();
+  // Destroys all services and the connection, if any. This also eliminates any
+  // circular references between this device and the associated service,
+  // allowing eventual device destruction.
+  void DestroyServices();
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
@@ -611,6 +611,8 @@ class Cellular : public Device,
   std::string imsi_;
   bool sim_present_;
 
+  // vector of SimProperties, ordered by slot.
+  std::vector<SimProperties> sim_slot_properties_;
   // vector of KeyValueStore dictionaries, emitted as Device.SIMSlotInfo.
   KeyValueStores sim_slot_info_;
 

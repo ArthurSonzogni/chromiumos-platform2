@@ -151,6 +151,8 @@ void CellularServiceProvider::Stop() {
 
 CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
     Cellular* device) {
+  SLOG(this, 2) << __func__ << ": " << device->iccid();
+
   CellularServiceRefPtr active_service =
       LoadMatchingServicesFromProfile(device->GetSimCardId(), device->iccid(),
                                       device->imsi(), device->eid(), device);
@@ -166,17 +168,11 @@ CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
   // LoadServicesForSecondarySim, after this is called.
   std::vector<CellularServiceRefPtr> services_to_remove;
   for (CellularServiceRefPtr& service : services_) {
-    if (service->cellular() != device)
+    if (service->sim_card_id() != device->GetSimCardId())
       services_to_remove.push_back(service);
   }
   for (CellularServiceRefPtr& service : services_to_remove)
     RemoveService(service);
-
-  // Set Device=null for services not matching |iccid|.
-  for (CellularServiceRefPtr& service : services_) {
-    if (service->iccid() != device->iccid())
-      service->SetDevice(nullptr);
-  }
 
   return active_service;
 }
@@ -215,13 +211,11 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
       service = new CellularService(manager_, service_imsi, service_iccid,
                                     sim_card_id);
       service->Load(storage);
-      service->SetDevice(device);
-      if (!device)
-        service->set_eid(eid);
+      SetDeviceForService(service, device, eid);
       AddService(service);
     } else {
       SLOG(this, 2) << "Cellular service exists for ICCID: " << service_iccid;
-      service->SetDevice(device);
+      SetDeviceForService(service, device, eid);
     }
     if (service_iccid == iccid)
       active_service = service;
@@ -230,7 +224,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   if (!active_service) {
     SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
     active_service = new CellularService(manager_, imsi, iccid, sim_card_id);
-    active_service->SetDevice(device);
+    SetDeviceForService(active_service, device, eid);
     AddService(active_service);
   }
   return active_service;
@@ -246,18 +240,10 @@ void CellularServiceProvider::LoadServicesForSecondarySim(
                                   /*device=*/nullptr);
 }
 
-void CellularServiceProvider::RemoveServicesForDevice(Cellular* device) {
-  std::string sim_card_id = device->GetSimCardId();
-  LOG(INFO) << __func__ << ": " << sim_card_id;
-  // Set |device| to null for services associated with |device|. When a new
-  // Cellular device is created (e.g. after a modem resets after a sim swap),
-  // services not matching the new device will be removed in
-  // LoadServicesForDevice(). This allows services to continue to exist during a
-  // modem reset when Modem and Cellular may get temporarily destroyed.
-  for (CellularServiceRefPtr& service : services_) {
-    if (service->cellular() == device)
-      service->SetDevice(nullptr);
-  }
+void CellularServiceProvider::RemoveServices() {
+  SLOG(this, 1) << __func__;
+  while (!services_.empty())
+    RemoveService(services_.back());
 }
 
 void CellularServiceProvider::AddService(CellularServiceRefPtr service) {
@@ -280,6 +266,17 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
     return;
   }
   services_.erase(iter);
+}
+
+void CellularServiceProvider::SetDeviceForService(CellularServiceRefPtr service,
+                                                  Cellular* device,
+                                                  const std::string& eid) {
+  if (device && service->iccid() == device->iccid()) {
+    service->SetDevice(device);
+  } else {
+    service->SetDevice(nullptr);
+    service->set_eid(eid);
+  }
 }
 
 CellularServiceRefPtr CellularServiceProvider::FindService(

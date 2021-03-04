@@ -550,10 +550,9 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
                                  const Error& error) {
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
   SetCapabilityState(CapabilityState::kCellularStopped);
-  // Destroy the cellular service regardless of any errors that occur during
-  // the stop process since we do not know the state of the modem at this
-  // point.
-  DestroyService();
+  // Destroy any cellular services regardless of any errors that occur during
+  // the stop process since we do not know the state of the modem at this point.
+  DestroyServices();
   if (state_ != kStateDisabled)
     SetState(kStateDisabled);
   callback.Run(error);
@@ -867,38 +866,41 @@ void Cellular::HandleNewRegistrationState() {
     // registered means we've successfully connected
     StartLocationPolling();
   }
-  UpdateService();
+  UpdateServices();
 }
 
-void Cellular::UpdateService() {
+void Cellular::UpdateServices() {
+  SLOG(this, 2) << __func__;
   // If Cellular is disabled or does not have an associated SIM+ICCID, ensure
   // that it does not have an associated Service.
   if (state_ == kStateDisabled || iccid_.empty()) {
     if (service_)
-      DestroyService();
+      DestroyServices();
     return;
   }
 
   // If the associated Service does not have a matching ICCID, destroy it.
   if (service_ && service_->iccid() != iccid_)
-    DestroyService();
+    DestroyServices();
 
-  // Ensure that a Service matching the Device SIM Profile exists.
-  if (!service_)
-    CreateService();
+  // Ensure that a Service matching the Device SIM Profile exists and has its
+  // |connectable_| property set correctly.
+  if (!service_) {
+    CreateServices();
+  } else {
+    service_->SetDevice(this);
+  }
 
   if (state_ == kStateRegistered && modem_state_ == kModemStateConnected)
     OnConnected();
 
-  if (!service_->cellular())
-    service_->SetDevice(this);
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
 
   manager()->UpdateService(service_);
 }
 
-void Cellular::CreateService() {
+void Cellular::CreateServices() {
   if (service_for_testing_)
     return;
 
@@ -910,8 +912,19 @@ void Cellular::CreateService() {
 
   CHECK(capability_);
   DCHECK(manager()->cellular_service_provider());
+
+  // Create or update Cellular Services for the primary SIM.
   service_ =
       manager()->cellular_service_provider()->LoadServicesForDevice(this);
+
+  // Create or update Cellular Services for secondary SIMs.
+  for (const SimProperties& sim_properties : sim_slot_properties_) {
+    if (sim_properties.iccid.empty() || sim_properties.iccid == iccid_)
+      continue;
+    manager()->cellular_service_provider()->LoadServicesForSecondarySim(
+        sim_properties.eid, sim_properties.iccid, sim_properties.imsi);
+  }
+
   capability_->OnServiceCreated();
 
   // We might have missed a property update because the service wasn't created
@@ -920,17 +933,18 @@ void Cellular::CreateService() {
   OnOperatorChanged();
 }
 
-void Cellular::DestroyService() {
+void Cellular::DestroyServices() {
   if (service_for_testing_)
     return;
 
   SLOG(this, 2) << __func__;
   DropConnection();
-  if (service_) {
-    DCHECK(manager()->cellular_service_provider());
-    manager()->cellular_service_provider()->RemoveServicesForDevice(this);
-    service_ = nullptr;
-  }
+  if (!service_)
+    return;
+
+  DCHECK(manager()->cellular_service_provider());
+  manager()->cellular_service_provider()->RemoveServices();
+  service_ = nullptr;
 }
 
 void Cellular::CreateCapability(ModemInfo* modem_info) {
@@ -1348,10 +1362,10 @@ bool Cellular::SetUseAttachApn(const bool& value, Error* error) {
   use_attach_apn_ = value;
 
   if (capability_) {
-    // Re-creating the service will set again the attach APN
-    // and eventually re-attach if needed.
-    DestroyService();
-    CreateService();
+    // Re-creating services will set the attach APN again and eventually
+    // re-attach if needed.
+    DestroyServices();
+    CreateServices();
   }
 
   adaptor()->EmitBoolChanged(kUseAttachAPNProperty, value);
@@ -1789,12 +1803,13 @@ void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
   serving_operator_info()->UpdateIMSI(imsi_);
 
   // Ensure Service creation once SIM properties are set.
-  UpdateService();
+  UpdateServices();
 }
 
 void Cellular::SetSimSlotProperties(
     const std::vector<SimProperties>& slot_properties) {
   SLOG(this, 1) << __func__;
+  sim_slot_properties_ = slot_properties;
   // Set |sim_slot_info_| and emit SIMSlotInfo
   sim_slot_info_.clear();
   for (const SimProperties& sim_properties : slot_properties) {
@@ -1806,22 +1821,6 @@ void Cellular::SetSimSlotProperties(
     sim_slot_info_.push_back(properties);
   }
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
-
-  // Update Cellular Services for secondary SIMs.
-  for (const SimProperties& sim_properties : slot_properties) {
-    if (sim_properties.iccid.empty()) {
-      LOG(WARNING) << "SIM slot with no profile, eID: " << sim_properties.eid;
-      continue;
-    }
-    // Skip the primary SIM
-    if (sim_properties.iccid == iccid_)
-      continue;
-
-    // TODO(b:169581681): Remove logging once stable.
-    LOG(INFO) << "Secondary SIM: " << sim_properties.iccid;
-    manager()->cellular_service_provider()->LoadServicesForSecondarySim(
-        sim_properties.eid, sim_properties.iccid, sim_properties.imsi);
-  }
 }
 
 void Cellular::set_mdn(const string& mdn) {
