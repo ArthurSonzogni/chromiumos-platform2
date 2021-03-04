@@ -31,12 +31,6 @@ class TpmPersistentState {
   // Returns true on success, false otherwise.
   bool ClearStatus();
 
-  // Clears the specified dependency on the owner password in the state.
-  // If there were any changes, saves the updated state in the persistent
-  // storage before returning.
-  // Returns true on success, false otherwise.
-  bool ClearDependency(Tpm::TpmOwnerDependency dependency);
-
  private:
   // Loads TpmStatus that includes the owner password and the dependencies
   // from persistent storage, if not done yet. Caches TpmStatus in memory

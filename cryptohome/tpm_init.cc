@@ -143,11 +143,8 @@ void TpmInit::RestoreTpmStateFromStorage() {
 
 }
 
-void TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {
-  if (!get_tpm()->RemoveOwnerDependency(dependency)) {
-    return;
-  }
-  tpm_persistent_state_.ClearDependency(dependency);
+bool TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {
+  return get_tpm()->RemoveOwnerDependency(dependency);
 }
 
 bool TpmInit::CheckSysfsForOne(const FilePath& file_name) const {

@@ -261,58 +261,6 @@ ACTION_P(LoadWrappedKeyToHandle, handle) {
   return Tpm::kTpmRetryNone;
 }
 
-TEST_F(TpmInitTest, RemoveTpmOwnerDependencySuccess) {
-  TpmStatus tpm_status;
-  tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER |
-                       TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
-  SetTpmStatus(tpm_status);
-  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
-  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
-      .Times(1);
-  tpm_init_.RemoveTpmOwnerDependency(dependency);
-  GetTpmStatus(&tpm_status);
-  EXPECT_EQ(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER, tpm_status.flags());
-}
-
-TEST_F(TpmInitTest, RemoveTpmOwnerDependencyAlreadyRemoved) {
-  TpmStatus tpm_status;
-  tpm_status.set_flags(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
-  SetTpmStatus(tpm_status);
-  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
-  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
-      .Times(0);
-  tpm_init_.RemoveTpmOwnerDependency(dependency);
-  GetTpmStatus(&tpm_status);
-  EXPECT_EQ(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER, tpm_status.flags());
-}
-
-TEST_F(TpmInitTest, RemoveTpmOwnerDependencyTpmFailure) {
-  TpmStatus tpm_status;
-  tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER);
-  SetTpmStatus(tpm_status);
-  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
-  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(false));
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
-      .Times(0);
-  tpm_init_.RemoveTpmOwnerDependency(dependency);
-  GetTpmStatus(&tpm_status);
-  EXPECT_EQ(TpmStatus::ATTESTATION_NEEDS_OWNER, tpm_status.flags());
-}
-
-TEST_F(TpmInitTest, RemoveTpmOwnerDependencyNoTpmStatus) {
-  auto dependency = Tpm::TpmOwnerDependency::kAttestation;
-  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency)).WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
-      .Times(0);
-  tpm_init_.RemoveTpmOwnerDependency(dependency);
-}
-
 TEST_F(TpmInitTest, LoadCryptohomeKeySuccess) {
   SetIsTpmInitialized(true);
   FileTouch(kDefaultCryptohomeKeyFile);

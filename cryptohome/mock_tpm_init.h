@@ -17,7 +17,7 @@ class MockTpmInit : public TpmInit {
   ~MockTpmInit();
 
   MOCK_METHOD(bool, SetupTpm, (bool), (override));
-  MOCK_METHOD(void,
+  MOCK_METHOD(bool,
               RemoveTpmOwnerDependency,
               (Tpm::TpmOwnerDependency),
               (override));
