@@ -2469,6 +2469,7 @@ mno {
       name : "Swisscom"
     }
     mccmnc : "22801"
+    mccmnc : "29501"
     mobile_apn {
       apn : "gprs.swisscom.ch"
       localized_name {
