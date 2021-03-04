@@ -52,9 +52,7 @@ class TpmInitTask : public PlatformThread::Delegate {
 };
 
 TpmInit::TpmInit(Tpm* tpm, Platform* platform)
-    : tpm_init_task_(new TpmInitTask()),
-      platform_(platform),
-      tpm_persistent_state_(platform) {
+    : tpm_init_task_(new TpmInitTask()), platform_(platform) {
   set_tpm(tpm);
 }
 
@@ -103,7 +101,6 @@ bool TpmInit::SetupTpm(bool load_key) {
   const bool was_initialized = get_tpm()->IsInitialized();
   if (!was_initialized) {
     get_tpm()->SetIsInitialized(true);
-    RestoreTpmStateFromStorage();
   }
 
   if (load_key) {
@@ -113,57 +110,8 @@ bool TpmInit::SetupTpm(bool load_key) {
   return !was_initialized;
 }
 
-void TpmInit::RestoreTpmStateFromStorage() {
-  // Checking disabled and owned either via sysfs or via TSS calls will block if
-  // ownership is being taken by another thread or process.  So for this to work
-  // well, SetupTpm() needs to be called before TakeOwnership() is called.  At
-  // that point, the public API for Tpm only checks these booleans, so other
-  // threads can check without being blocked.  TakeOwnership() will reset the
-  // TPM's is_owned_ bit on success.
-  bool is_enabled = false;
-  bool is_owned = false;
-  bool successful_check = false;
-  if (platform_->FileExists(kTpmTpmCheckEnabledFile)) {
-    is_enabled = IsEnabledCheckViaSysfs(kTpmTpmCheckEnabledFile);
-    is_owned = IsOwnedCheckViaSysfs(kTpmTpmCheckOwnedFile);
-    successful_check = true;
-  } else if (platform_->FileExists(kMiscTpmCheckEnabledFile)) {
-    is_enabled = IsEnabledCheckViaSysfs(kMiscTpmCheckEnabledFile);
-    is_owned = IsOwnedCheckViaSysfs(kMiscTpmCheckOwnedFile);
-    successful_check = true;
-  } else {
-    if (get_tpm()->PerformEnabledOwnedCheck(&is_enabled, &is_owned)) {
-      successful_check = true;
-    }
-  }
-
-  if (successful_check && !is_owned) {
-    tpm_persistent_state_.ClearStatus();
-  }
-
-}
-
 bool TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {
   return get_tpm()->RemoveOwnerDependency(dependency);
-}
-
-bool TpmInit::CheckSysfsForOne(const FilePath& file_name) const {
-  std::string contents;
-  if (!platform_->ReadFileToString(file_name, &contents)) {
-    return false;
-  }
-  if (contents.size() < 1) {
-    return false;
-  }
-  return (contents[0] == '1');
-}
-
-bool TpmInit::IsEnabledCheckViaSysfs(const FilePath& enabled_file) {
-  return CheckSysfsForOne(enabled_file);
-}
-
-bool TpmInit::IsOwnedCheckViaSysfs(const FilePath& owned_file) {
-  return CheckSysfsForOne(owned_file);
 }
 
 bool TpmInit::CreateCryptohomeKey() {

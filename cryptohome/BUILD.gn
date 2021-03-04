@@ -479,7 +479,6 @@ if (use.test) {
       "storage/mount_unittest.cc",
       "storage/out_of_process_mount_helper_test.cc",
       "tpm_init_unittest.cc",
-      "tpm_persistent_state_unittest.cc",
       "user_session_unittest.cc",
       "userdataauth_unittest.cc",
       "vault_keyset_unittest.cc",

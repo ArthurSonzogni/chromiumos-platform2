@@ -14,6 +14,7 @@
 
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
+#include "cryptohome/tpm_status.pb.h"
 
 using ::testing::_;
 using ::testing::Invoke;

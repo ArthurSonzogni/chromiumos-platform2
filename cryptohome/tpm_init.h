@@ -15,7 +15,6 @@
 #include <gtest/gtest_prod.h>
 
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_persistent_state.h"
 
 namespace cryptohome {
 
@@ -79,17 +78,6 @@ class TpmInit {
  private:
   FRIEND_TEST(TpmInitTest, ContinueInterruptedInitializeSrk);
 
-  // Invoked by SetupTpm to restore TPM state from saved state in storage.
-  void RestoreTpmStateFromStorage();
-
-  // Returns whether or not the TPM is enabled by checking a flag in the TPM's
-  // entry in either /sys/class/misc or /sys/class/tpm.
-  bool IsEnabledCheckViaSysfs(const base::FilePath& enabled_file);
-
-  // Returns whether or not the TPM is owned by checking a flag in the TPM's
-  // entry in either /sys/class/misc or /sys/class/tpm.
-  bool IsOwnedCheckViaSysfs(const base::FilePath& owned_file);
-
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
   Tpm::TpmRetryAction LoadCryptohomeKey(ScopedKeyHandle* key_handle);
@@ -97,9 +85,6 @@ class TpmInit {
   bool CreateCryptohomeKey();
 
   bool LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle);
-
-  // Returns true if the first byte of the file |file_name| is "1".
-  bool CheckSysfsForOne(const base::FilePath& file_name) const;
 
   // The background task for initializing the TPM, implemented as a
   // PlatformThread::Delegate.
@@ -112,7 +97,6 @@ class TpmInit {
   bool took_ownership_ = false;
   int64_t initialization_time_ = 0;
   Platform* platform_ = nullptr;
-  TpmPersistentState tpm_persistent_state_;
   ScopedKeyHandle cryptohome_key_;
 };
 

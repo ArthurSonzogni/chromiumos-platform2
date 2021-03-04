@@ -203,7 +203,6 @@ static_library("libcrostpm") {
     "../tpm_bound_to_pcr_auth_block.cc",
     "../tpm_init.cc",
     "../tpm_not_bound_to_pcr_auth_block.cc",
-    "../tpm_persistent_state.cc",
     "../vault_keyset.cc",
   ]
   configs += [ ":target_defaults" ]
