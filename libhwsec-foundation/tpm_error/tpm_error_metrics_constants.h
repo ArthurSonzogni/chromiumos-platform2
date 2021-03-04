@@ -10,7 +10,7 @@ namespace libhwsec_foundation {
 // Used to report the command that causes auth failure.
 constexpr char kTpm1AuthFailName[] = "Platform.TPM.AuthFailCommand.AuthFail";
 // Used to report the command that causes 2nd auth failure.
-constexpr char kTpm1Auth2FailName[] = "Platform.TPM.Auth2FailCommand.Auth2Fail";
+constexpr char kTpm1Auth2FailName[] = "Platform.TPM.AuthFailCommand.Auth2Fail";
 
 }  // namespace libhwsec_foundation
 
