@@ -107,8 +107,7 @@ message UpgradeArcContainerRequest {
   // managed.
   optional bool is_managed_adb_sideloading_allowed = 16;
 
-  // See description in StartArcMiniContainerRequest.
-  optional bool disable_ureadahead = 15 [default = false];
+  reserved 15;
 
   // Option to disable ACTION_BOOT_COMPLETED broadcast for 3rd party apps.
   optional bool skip_boot_completed_broadcast = 2 [default = false];
