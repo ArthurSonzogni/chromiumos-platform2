@@ -77,6 +77,7 @@ mkdir: 1
 _newselect: 1
 wait4: 1
 nanosleep: 1
+clock_nanosleep: 1
 chmod: 1
 accept: 1
 uname: 1

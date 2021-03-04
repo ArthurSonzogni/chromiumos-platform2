@@ -11,6 +11,7 @@ arch_prctl: 1
 brk: 1
 clock_getres: 1
 clock_gettime: 1
+clock_nanosleep: 1
 close: 1
 connect: 1
 exit_group: 1

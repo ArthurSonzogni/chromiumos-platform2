@@ -83,6 +83,7 @@ set_tid_address: 1
 uname: 1
 getrlimit: 1
 nanosleep: 1
+clock_nanosleep: 1
 sched_yield: 1
 sysinfo: 1
 getrandom: 1

@@ -61,6 +61,7 @@ set_robust_list: 1
 setsid: 1
 wait4: 1
 nanosleep: 1
+clock_nanosleep: 1
 setresuid: 1
 mkdirat: 1
 clock_gettime: 1

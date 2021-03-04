@@ -51,6 +51,7 @@ statfs64: 1
 mkdir: 1
 ftruncate64: 1
 nanosleep: 1
+clock_nanosleep: 1
 chmod: 1
 lstat64: 1
 unlink: 1

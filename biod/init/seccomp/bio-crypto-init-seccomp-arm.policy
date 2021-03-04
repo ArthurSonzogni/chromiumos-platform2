@@ -7,6 +7,7 @@
 
 wait4: 1
 nanosleep: 1
+clock_nanosleep: 1
 # mmap2: Don't allow execute and write at the same time.
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

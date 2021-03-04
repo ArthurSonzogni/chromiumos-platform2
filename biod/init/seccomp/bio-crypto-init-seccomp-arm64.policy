@@ -14,6 +14,7 @@ gettid: 1
 wait4: 1
 getpid: 1
 nanosleep: 1
+clock_nanosleep: 1
 write: 1
 # ioctl:
 # CROS_EC_DEV_IOCXCMD_V2: 0xc014ec00

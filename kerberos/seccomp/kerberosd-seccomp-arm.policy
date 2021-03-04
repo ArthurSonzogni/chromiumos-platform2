@@ -63,6 +63,7 @@ set_robust_list: 1
 setsid: 1
 wait4: 1
 nanosleep: 1
+clock_nanosleep: 1
 setresuid32: 1
 creat: 1
 lstat: 1

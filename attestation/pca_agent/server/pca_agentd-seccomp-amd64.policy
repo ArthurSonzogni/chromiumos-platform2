@@ -85,6 +85,7 @@ chmod: 1
 tgkill: 1
 uname: 1
 nanosleep: 1
+clock_nanosleep: 1
 sched_yield: 1
 sysinfo: 1
 getrandom: 1

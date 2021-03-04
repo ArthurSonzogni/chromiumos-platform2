@@ -58,4 +58,5 @@ gettimeofday: 1
 clock_gettime: 1
 clock_gettime64: 1
 nanosleep: 1
+clock_nanosleep: 1
 flock: 1

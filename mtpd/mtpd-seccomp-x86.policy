@@ -68,6 +68,7 @@ prctl: arg0 == 0xf
 setpriority: 1
 getrandom: 1
 nanosleep: 1
+clock_nanosleep: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1

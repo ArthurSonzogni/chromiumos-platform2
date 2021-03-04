@@ -79,6 +79,7 @@ clock_gettime: 1
 gettimeofday: 1
 wait4: 1
 nanosleep: 1
+clock_nanosleep: 1
 chmod: 1
 accept: 1
 getpid: 1

@@ -76,3 +76,4 @@ connect: 1
 
 # For base::PlatformThread::Sleep()
 nanosleep: 1
+clock_nanosleep: 1

@@ -92,6 +92,7 @@ ARM_set_tls: 1
 uname: 1
 ugetrlimit: 1
 nanosleep: 1
+clock_nanosleep: 1
 sched_yield: 1
 sysinfo: 1
 getrandom: 1
