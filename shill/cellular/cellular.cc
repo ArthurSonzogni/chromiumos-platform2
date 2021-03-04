@@ -620,6 +620,7 @@ bool Cellular::ResetQ6V5Modem() {
   // TODO(b/177375637): Check for q6v5 driver before resetting the modem.
   int fd = HANDLE_EINTR(open(kModemResetSysfsName, O_RDWR | O_CLOEXEC));
   if (fd < 0) {
+    PLOG(ERROR) << "Failed to open sysfs file to reset modem.";
     return false;
   }
 
