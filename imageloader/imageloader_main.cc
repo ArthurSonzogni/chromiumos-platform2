@@ -150,15 +150,15 @@ int main(int argc, char** argv) {
   imageloader::GlobalContext g_ctx;
   g_ctx.SetAsCurrent();
 
-  // Executes the setup process.
-  if (FLAGS_init_only) {
-    return Init(FLAGS_loaded_mounts_base) ? 0 : 1;
-  }
-
   // Create folder for component copies. This ensures that
   // imageloader's storage exists and is owned by `imageloaderd` user.
   if (!CreateComponentsPath()) {
     return 1;
+  }
+
+  // Executes the setup process.
+  if (FLAGS_init_only) {
+    return Init(FLAGS_loaded_mounts_base) ? 0 : 1;
   }
 
   // Executing this as the helper process if specified.
