@@ -2,5 +2,47 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/pkg_config.gni")
+
 group("all") {
+  deps = [ ":libhwsec-foundation" ]
+  if (use.test) {
+    deps += [ ":hwsec-foundation_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+shared_library("libhwsec-foundation") {
+  sources = [ "tpm_error/tpm_error_uma_reporter.cc" ]
+  pkg_deps = [ "libmetrics" ]
+  configs += [ ":target_defaults" ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [
+      "libchrome-test",
+      "libmetrics",
+    ]
+  }
+
+  executable("hwsec-foundation_testrunner") {
+    sources = [ "tpm_error/tpm_error_uma_reporter_test.cc" ]
+    deps = [
+      ":libhwsec-foundation",
+      "//common-mk/testrunner",
+    ]
+    sources += [ "tpm_error/tpm_error_uma_reporter.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+  }
 }
