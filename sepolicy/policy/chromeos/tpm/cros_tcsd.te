@@ -21,6 +21,8 @@ allow cros_tcsd self:capability { chown setuid setgid };
 
 filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_tpm, dir, "tpm")
 
+cros_dbus_client(cros_tcsd)
+
 ### clients
 allow cros_tcsd_client_domain cros_run:dir { getattr search read };
 allow cros_tcsd_client_domain cros_run_tcsd:dir { getattr search read };
