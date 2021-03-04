@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -509,6 +510,15 @@ void TpmManagerService::GetDictionaryAttackInfoTask(
 void TpmManagerService::ResetDictionaryAttackLock(
     const ResetDictionaryAttackLockRequest& request,
     const ResetDictionaryAttackLockCallback& callback) {
+  if (request.is_async()) {
+    ResetDictionaryAttackLockReply reply;
+    reply.set_status(STATUS_SUCCESS);
+    callback.Run(reply);
+    PostTaskToWorkerThread<ResetDictionaryAttackLockReply>(
+        request, base::DoNothing(),
+        &TpmManagerService::ResetDictionaryAttackLockTask);
+    return;
+  }
   PostTaskToWorkerThread<ResetDictionaryAttackLockReply>(
       request, callback, &TpmManagerService::ResetDictionaryAttackLockTask);
 }
