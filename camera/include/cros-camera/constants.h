@@ -41,6 +41,9 @@ const char kCrosUsbMaxStreamWidth[] = "usb_max_stream_width";
 const char kCrosUsbMaxStreamHeight[] = "usb_max_stream_height";
 const char kCrosUsbAndroidMaxStreamWidth[] = "usb_android_max_stream_width";
 const char kCrosUsbAndroidMaxStreamHeight[] = "usb_android_max_stream_height";
+// Use JDA for resolution <= (kCrosUsbJDAMaxWidth, kCrosUsbJDAMaxHeight)
+const char kCrosUsbJDACapWidth[] = "usb_jda_cap_width";
+const char kCrosUsbJDACapHeight[] = "usb_jda_cap_height";
 // Filtered out resolutions. The format is a list string of resolutions. e.g.
 // ["w1xh1", "w2xh2"]
 const char kCrosUsbFilteredOutResolutions[] = "usb_filtered_out_resolutions";

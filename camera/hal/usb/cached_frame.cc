@@ -7,6 +7,7 @@
 
 #include <errno.h>
 
+#include <limits>
 #include <string>
 
 #include <base/check_op.h>
@@ -82,6 +83,8 @@ CachedFrame::CachedFrame()
     : image_processor_(new ImageProcessor()),
       camera_metrics_(CameraMetrics::New()),
       jda_available_(false),
+      jda_resolution_cap_(std::numeric_limits<int>::max(),
+                          std::numeric_limits<int>::max()),
       force_jpeg_hw_encode_(false),
       force_jpeg_hw_decode_(false) {
   auto* mojo_manager_token = CameraHal::GetInstance().GetMojoManagerToken();
@@ -90,6 +93,19 @@ CachedFrame::CachedFrame()
   jda_available_ = jda_->Start();
   if (!jda_available_) {
     LOGF(INFO) << "No JDA available";
+  } else {
+    std::unique_ptr<CameraConfig> camera_config =
+        CameraConfig::Create(constants::kCrosCameraConfigPathString);
+    jda_resolution_cap_ =
+        Size(camera_config->GetInteger(constants::kCrosUsbJDACapWidth,
+                                       std::numeric_limits<int>::max()),
+             camera_config->GetInteger(constants::kCrosUsbJDACapHeight,
+                                       std::numeric_limits<int>::max()));
+    if (jda_resolution_cap_.width != std::numeric_limits<int>::max() ||
+        jda_resolution_cap_.height != std::numeric_limits<int>::max()) {
+      LOGF(INFO) << "Cap JDA resolution:" << jda_resolution_cap_.width << "x"
+                 << jda_resolution_cap_.height;
+    }
   }
 
   jpeg_compressor_ = JpegCompressor::GetInstance(mojo_manager_token);
@@ -359,6 +375,13 @@ int CachedFrame::DecodeByJDA(const FrameBuffer& in_frame,
   if (!jda_available_)
     return -EINVAL;
 
+  // For test case, don't need to cap the resolution.
+  if (!force_jpeg_hw_decode_) {
+    if (in_frame.GetWidth() > jda_resolution_cap_.width ||
+        in_frame.GetHeight() > jda_resolution_cap_.height) {
+      return -EINVAL;
+    }
+  }
   // The output frame needs to be mapped after HW JDA processing otherwise the
   // mapped addresses won't sync the content correctly. If the frame is already
   // mapped, unmap it first.

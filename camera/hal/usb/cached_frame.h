@@ -12,6 +12,7 @@
 #include <camera/camera_metadata.h>
 
 #include "cros-camera/camera_metrics.h"
+#include "cros-camera/common_types.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/jpeg_decode_accelerator.h"
 #include "hal/usb/image_processor.h"
@@ -85,6 +86,9 @@ class CachedFrame {
 
   // Indicate if JDA started successfully
   bool jda_available_;
+
+  // max resolution used for JDA
+  Size jda_resolution_cap_;
 
   // Flags to disable SW encode/decode fallback when HW encode/decode failed
   bool force_jpeg_hw_encode_;
