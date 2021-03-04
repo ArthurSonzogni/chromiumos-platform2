@@ -8,7 +8,10 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/capability.h>
+#include <sys/types.h>
 
+#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <chromeos/libminijail.h>
@@ -17,9 +20,30 @@
 #define RECEIVE_PACKET_SIZE 2048
 #define PACKET_TIMEOUT_MS 1000
 
+namespace {
+// Path of the seccomp filter to apply.
+constexpr char kSeccompFilterPath[] =
+    "/usr/share/policy/capture-packets.policy";
+
 int perform_capture(base::StringPiece device,
                     base::StringPiece output_file,
                     base::StringPiece max_size) {
+  // Limit the capabilities of the process to required ones.
+  const cap_value_t requiredCaps[] = {CAP_SYS_ADMIN, CAP_SETUID, CAP_SETGID,
+                                      CAP_NET_RAW};
+  cap_t caps = cap_get_proc();
+  cap_clear(caps);
+  if (cap_set_flag(caps, CAP_EFFECTIVE, base::size(requiredCaps), requiredCaps,
+                   CAP_SET) ||
+      cap_set_flag(caps, CAP_PERMITTED, base::size(requiredCaps), requiredCaps,
+                   CAP_SET) ||
+      cap_set_flag(caps, CAP_INHERITABLE, base::size(requiredCaps),
+                   requiredCaps, CAP_SET)) {
+    fprintf(stderr, "Can't set flags for required capabilities.\n");
+    return 1;
+  }
+  cap_set_proc(caps);
+
   char buf[RECEIVE_PACKET_SIZE];
   const int promiscuous = 0;
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -50,8 +74,13 @@ int perform_capture(base::StringPiece device,
 
   // Now that we have all our handles open, drop privileges.
   struct minijail* j = minijail_new();
+  minijail_namespace_vfs(j);
+  // Use seccomp filter.
+  minijail_use_seccomp_filter(j);
+  minijail_parse_seccomp_filters(j, kSeccompFilterPath);
   minijail_change_user(j, "debugd");
   minijail_change_group(j, "debugd");
+  minijail_no_new_privs(j);
   minijail_enter(j);
 
   int packet_count = 0;
@@ -87,6 +116,7 @@ int perform_capture(base::StringPiece device,
 
   return 0;
 }
+}  // namespace
 
 int main(int argc, char** argv) {
   if (argc < 4) {

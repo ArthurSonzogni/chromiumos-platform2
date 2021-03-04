@@ -149,9 +149,16 @@ executable("debugd") {
   deps = [ ":libdebugd" ]
 }
 
+pkg_config("capture_packets_config") {
+  pkg_deps = [ "libcap" ]
+}
+
 executable("capture_packets") {
   sources = [ "src/helpers/capture_packets.cc" ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":capture_packets_config",
+    ":target_defaults",
+  ]
   libs = [ "pcap" ]
 }
 
