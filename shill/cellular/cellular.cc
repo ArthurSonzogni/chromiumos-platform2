@@ -617,20 +617,21 @@ void Cellular::ChangePin(const string& old_pin,
 
 bool Cellular::ResetQ6V5Modem() {
   // TODO(b/177375637): Check for q6v5 driver before resetting the modem.
-  int fd = HANDLE_EINTR(open(kModemResetSysfsName, O_RDWR | O_CLOEXEC));
+  int fd = HANDLE_EINTR(
+      open(kModemResetSysfsName, O_WRONLY | O_NONBLOCK | O_CLOEXEC));
   if (fd < 0) {
     PLOG(ERROR) << "Failed to open sysfs file to reset modem.";
     return false;
   }
 
   base::ScopedFD scoped_fd(fd);
-  if (HANDLE_EINTR(write(fd, "stop", sizeof("stop")))) {
-    LOG(ERROR) << "Failed to stop modem";
+  if (!base::WriteFileDescriptor(scoped_fd.get(), "stop", sizeof("stop"))) {
+    PLOG(ERROR) << "Failed to stop modem";
     return false;
   }
   usleep(kModemResetTimeoutMilliseconds * 1000);
-  if (HANDLE_EINTR(write(fd, "start", sizeof("start")))) {
-    LOG(ERROR) << "Failed to start modem";
+  if (!base::WriteFileDescriptor(scoped_fd.get(), "start", sizeof("start"))) {
+    PLOG(ERROR) << "Failed to start modem";
     return false;
   }
   return true;
