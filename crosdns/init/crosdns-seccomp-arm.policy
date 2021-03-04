@@ -39,6 +39,7 @@ epoll_create1: 1
 getresuid32: 1
 getsockname: 1
 clock_getres: 1
+clock_getres_time64: 1
 exit_group: 1
 getresgid32: 1
 ugetrlimit: 1
@@ -46,5 +47,6 @@ ioctl: arg1 == TCGETS
 gettimeofday: 1
 send: 1
 clock_gettime: 1
+clock_gettime64: 1
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0

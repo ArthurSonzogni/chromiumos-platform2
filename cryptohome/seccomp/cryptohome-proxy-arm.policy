@@ -18,6 +18,7 @@ poll: 1
 stat64: 1
 send: 1
 futex: 1
+futex_time64: 1
 geteuid32: 1
 rt_sigprocmask: 1
 getuid32: 1
@@ -59,4 +60,5 @@ clock_gettime: 1
 clock_gettime64: 1
 nanosleep: 1
 clock_nanosleep: 1
+clock_nanosleep_time64: 1
 flock: 1

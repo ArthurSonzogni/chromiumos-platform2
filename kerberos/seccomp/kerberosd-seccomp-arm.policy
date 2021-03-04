@@ -20,6 +20,7 @@ ioctl: arg1 == FIONBIO || arg1 == FIONREAD || arg1 == TCGETS || arg1 == TCSETS
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 recvmsg: 1
 futex: 1
+futex_time64: 1
 getpid: 1
 write: 1
 munmap: 1
@@ -53,6 +54,7 @@ gettid: 1
 rt_sigprocmask: 1
 signalfd4: 1
 clock_getres: 1
+clock_getres_time64: 1
 getresuid32: 1
 getresgid32: 1
 sendmsg: 1
@@ -64,6 +66,7 @@ setsid: 1
 wait4: 1
 nanosleep: 1
 clock_nanosleep: 1
+clock_nanosleep_time64: 1
 setresuid32: 1
 creat: 1
 lstat: 1
@@ -72,6 +75,7 @@ chmod: 1
 mkdir: 1
 rmdir: 1
 clock_gettime: 1
+clock_gettime64: 1
 request_key: 1
 keyctl: 1
 mlock: 1
@@ -80,3 +84,4 @@ munlock: 1
 uname: 1
 flock: 1
 utimensat: 1
+utimensat_time64: 1

@@ -12,7 +12,9 @@ getresuid32: 1
 getresgid32: 1
 
 clock_getres: 1
+clock_getres_time64: 1
 clock_gettime: 1
+clock_gettime64: 1
 gettimeofday: 1
 
 epoll_create1: 1
@@ -44,6 +46,7 @@ sendmsg: 1
 recvmsg: 1
 
 futex: 1
+futex_time64: 1
 
 restart_syscall: 1
 exit: 1
@@ -76,6 +79,7 @@ setpriority: 1
 chdir: 1
 nanosleep: 1
 clock_nanosleep: 1
+clock_nanosleep_time64: 1
 
 # These are attempted but apparently not necessary; return EPERM.
 ioctl: return 1

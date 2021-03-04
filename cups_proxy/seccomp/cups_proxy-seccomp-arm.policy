@@ -11,7 +11,9 @@ bind: 1
 brk: 1
 chmod: 1
 clock_getres: 1
+clock_getres_time64: 1
 clock_gettime: 1
+clock_gettime64: 1
 clone: 1
 close: 1
 connect: 1
@@ -23,6 +25,7 @@ exit_group: 1
 fcntl64: 1
 fstat64: 1
 futex: 1
+futex_time64: 1
 getegid32: 1
 geteuid32: 1
 getgid32: 1

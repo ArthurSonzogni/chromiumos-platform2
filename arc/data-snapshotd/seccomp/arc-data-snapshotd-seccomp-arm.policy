@@ -16,6 +16,7 @@ wait4: 1
 epoll_wait: 1
 nanosleep: 1
 clock_nanosleep: 1
+clock_nanosleep_time64: 1
 write: 1
 stat64: 1
 rt_sigprocmask: 1
@@ -35,6 +36,7 @@ socket: arg0 == AF_UNIX
 connect: 1
 epoll_ctl: 1
 futex: 1
+futex_time64: 1
 _llseek: 1
 pipe2: 1
 getsockname: 1
@@ -48,6 +50,7 @@ ioctl: arg1 == SIOCGIFFLAGS || arg1 == TIOCLINUX || arg1 == TIOCGWINSZ || \
        arg1 == SIOCSIFFLAGS
 epoll_create1: 1
 clock_getres: 1
+clock_getres_time64: 1
 getresuid: 1
 getresgid: 1
 clone: 1
@@ -78,6 +81,7 @@ readlink: 1
 symlink: 1
 lchown: 1
 utimensat: 1
+utimensat_time64: 1
 llistxattr: 1
 fadvise64: 1
 flistxattr: 1

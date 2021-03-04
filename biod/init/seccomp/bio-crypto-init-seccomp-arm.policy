@@ -8,6 +8,7 @@
 wait4: 1
 nanosleep: 1
 clock_nanosleep: 1
+clock_nanosleep_time64: 1
 # mmap2: Don't allow execute and write at the same time.
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
@@ -41,6 +42,7 @@ symlink: 1
 # clone: bio_crypto_init forks a child process.
 clone: 1
 futex: 1
+futex_time64: 1
 # kill: Used to kill hanging child process (Process.Terminate).
 kill: 1
 exit_group: 1
@@ -53,3 +55,4 @@ rt_sigreturn: 1
 gettimeofday: 1
 # See https://crbug.com/1068277 and https://crrev.com/c/2141246.
 clock_gettime: 1
+clock_gettime64: 1

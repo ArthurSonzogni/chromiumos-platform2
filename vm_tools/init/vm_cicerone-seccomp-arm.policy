@@ -4,6 +4,7 @@
 epoll_pwait: 1
 gettid: 1
 futex: 1
+futex_time64: 1
 # Disallow mprotect with PROT_EXEC set.
 mprotect: arg2 in 0xfffffffb
 recvmsg: 1
@@ -50,6 +51,7 @@ getresuid32: 1
 exit: 1
 prctl: arg0 == PR_SET_NAME
 clock_getres: 1
+clock_getres_time64: 1
 getresgid32: 1
 setpriority: 1
 ugetrlimit: 1
@@ -61,6 +63,7 @@ shutdown: 1
 gettimeofday: 1
 send: 1
 clock_gettime: 1
+clock_gettime64: 1
 tgkill: 1
 kill: 1
 sigreturn: 1
@@ -78,6 +81,7 @@ _newselect: 1
 wait4: 1
 nanosleep: 1
 clock_nanosleep: 1
+clock_nanosleep_time64: 1
 chmod: 1
 accept: 1
 uname: 1

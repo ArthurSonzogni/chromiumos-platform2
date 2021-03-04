@@ -5,12 +5,14 @@ read: 1
 ioctl: 1
 write: 1
 timerfd_settime: 1
+timerfd_settime64: 1
 mmap2: 1
 mremap: 1
 close: 1
 open: 1
 poll: 1
 clock_gettime: 1
+clock_gettime64: 1
 munmap: 1
 mprotect: 1
 lseek: 1
@@ -19,6 +21,7 @@ fcntl64: 1
 sendmsg: 1
 recvmsg: 1
 futex: 1
+futex_time64: 1
 timerfd_create: 1
 brk: 1
 rt_sigaction: 1
@@ -29,6 +32,7 @@ gettimeofday: 1
 sched_get_priority_max: 1
 getsockname: 1
 clock_getres: 1
+clock_getres_time64: 1
 sched_get_priority_min: 1
 connect: 1
 sched_getparam: 1
@@ -75,6 +79,7 @@ setpriority: 1
 getrandom: 1
 nanosleep: 1
 clock_nanosleep: 1
+clock_nanosleep_time64: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1

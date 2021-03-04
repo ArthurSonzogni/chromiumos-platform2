@@ -22,6 +22,7 @@ rt_sigaction: 1
 sigaltstack: 1
 munmap: 1
 utimensat: 1
+utimensat_time64: 1
 brk: 1
 uname: 1
 accept4: 1
@@ -56,6 +57,7 @@ linkat: 1
 unlinkat: 1
 fsync: 1
 futex: 1
+futex_time64: 1
 bind: 1
 rmdir: 1
 # Calling fchown with -1 as the uid/gid will change the ctime but do nothing else.

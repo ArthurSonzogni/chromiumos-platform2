@@ -19,6 +19,7 @@ sendto: 1
 # socket: arg0 == PF_FILE || arg0 == PF_INET || arg0 == PF_NETLINK
 socket: arg0 == 1 || arg0 == 2 || arg0 == 16
 futex: 1
+futex_time64: 1
 brk: 1
 access: 1
 rt_sigaction: 1

@@ -6,6 +6,7 @@
 
 # The following are allowed syscalls for runtime_probe skeleton + DBus
 clock_gettime: 1
+clock_gettime64: 1
 pipe: 1
 rt_sigaction: 1
 epoll_create1: 1
@@ -18,6 +19,7 @@ close: 1
 poll: 1
 stat64: 1
 clock_getres: 1
+clock_getres_time64: 1
 write: 1
 getegid32: 1
 rt_sigprocmask: 1
