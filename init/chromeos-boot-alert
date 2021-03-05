@@ -245,6 +245,11 @@ mode_update_fwupd_firmware() {
   show_assets_message "update_fwupd_firmware"
 }
 
+# Show a message indicating that ARC data snapshot update is in process.
+mode_update_arc_data_snapshot() {
+  show_assets_message "update_arc_data_snapshot"
+}
+
 # Main initialization and dispatcher
 main() {
   # process args
