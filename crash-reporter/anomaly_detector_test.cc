@@ -315,6 +315,11 @@ TEST(AnomalyDetectorTest, KernelWarningWifi) {
   ParserTest<KernelParser>("TEST_WARNING", {wifi_warning});
 }
 
+TEST(AnomalyDetectorTest, KernelWarningWifiMac80211) {
+  ParserRun wifi_warning = {.expected_flags = {{"--kernel_wifi_warning"}}};
+  ParserTest<KernelParser>("TEST_WIFI_WARNING", {wifi_warning});
+}
+
 TEST(AnomalyDetectorTest, KernelWarningSuspend) {
   ParserRun suspend_warning = {
       .find_this = "gpu/drm/ttm",

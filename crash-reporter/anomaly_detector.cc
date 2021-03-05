@@ -171,7 +171,12 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
 }
 
 std::string DetermineFlag(const std::string& info) {
-  if (info.find("drivers/net/wireless") != std::string::npos)
+  // Paths like:
+  //   drivers/net/wireless/...
+  //   net/wireless/...
+  //   net/mac80211/...
+  if (info.find("net/wireless") != std::string::npos ||
+      info.find("net/mac80211") != std::string::npos)
     return "--kernel_wifi_warning";
   if (info.find("drivers/idle") != std::string::npos)
     return "--kernel_suspend_warning";
