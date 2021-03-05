@@ -1550,6 +1550,21 @@ message FileWatchTriggeredSignal {
   string path = 4;
 }
 
+// Sent by garcon to notify that a container is running low on disk space.
+message LowDiskSpaceTriggeredSignal {
+  // Name of the VM the container is in.
+  string vm_name = 1;
+
+  // Name of the container within the VM.
+  string container_name = 2;
+
+  // The owner of the VM and container.
+  string owner_id = 3;
+
+  // How much free space is left in bytes.
+  uint64 free_bytes = 4;
+}
+
 // Sent by vsh to register session information such as the container shell pid,
 // keyed from the host vsh pid. Crostini terminal will look up this info for
 // features such as starting new terminals in the same cwd.

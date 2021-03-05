@@ -447,6 +447,34 @@ grpc::Status ContainerListenerImpl::FileWatchTriggered(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::LowDiskSpaceTriggered(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::LowDiskSpaceTriggeredInfo* request,
+    vm_tools::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+  LowDiskSpaceTriggeredSignal triggered_signal;
+  triggered_signal.set_free_bytes(request->free_bytes());
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::LowDiskSpaceTriggered, service_,
+                 request->token(), cid, &triggered_signal, &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR)
+        << "Failure notifying LowDiskSpaceTriggered from ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in LowDiskSpaceTriggered");
+  }
+  return grpc::Status::OK;
+}
+
 uint32_t ContainerListenerImpl::ExtractCidFromPeerAddress(
     grpc::ServerContext* ctx) {
   uint32_t cid = 0;

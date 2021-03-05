@@ -3137,6 +3137,16 @@ void Service::FileWatchTriggered(const std::string& container_token,
   event->Signal();
 }
 
+void Service::LowDiskSpaceTriggered(const std::string& container_token,
+                                    const uint32_t cid,
+                                    LowDiskSpaceTriggeredSignal* changed_signal,
+                                    bool* result,
+                                    base::WaitableEvent* event) {
+  *result = SendSignal(kLowDiskSpaceTriggeredSignal, container_token, cid,
+                       changed_signal);
+  event->Signal();
+}
+
 std::unique_ptr<dbus::Response> Service::RegisterVshSession(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());

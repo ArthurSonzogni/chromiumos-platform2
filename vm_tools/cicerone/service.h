@@ -328,6 +328,17 @@ class Service final {
                           bool* result,
                           base::WaitableEvent* event);
 
+  // Sends a D-Bus signal to inform that a container is running low on disk
+  // space. It will use |cid| to resolve the request to a VM and then
+  // |container_token| to resolve it to a container. |triggered_signal| should
+  // have all related fields from the container request set in it. |result| is
+  // set to true on success, false otherwise. Signals |event| when done.
+  void LowDiskSpaceTriggered(const std::string& container_token,
+                             const uint32_t cid,
+                             LowDiskSpaceTriggeredSignal* triggered_signal,
+                             bool* result,
+                             base::WaitableEvent* event);
+
   // Gets the VirtualMachine that corresponds to a container at |cid|
   // or the |vm_token| for the VM itself and sets |vm_out| to the
   // VirtualMachine, |owner_id_out| to the owner id of the VM, and |name_out| to

@@ -346,6 +346,12 @@ DEFINE_PROTO_FUZZER(
             &context, &action.file_watch_triggered_info(), &response);
         break;
 
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kLowDiskSpaceTriggeredInfo:
+        container_listener->LowDiskSpaceTriggered(
+            &context, &action.low_disk_space_triggered_info(), &response);
+        break;
+
       default:
         NOTREACHED();
     }

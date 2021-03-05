@@ -18,7 +18,7 @@ import "vm_crash.proto";
 // This is used for fuzz testing; we get some fuzzed examples of this message
 // and then call the correct rpc handler based on which of the oneof is set.
 message ContainerListenerFuzzerSingleAction {
-  // Next id: 49
+  // Next id: 50
   // Skip [100-109]
   oneof input {
     // Calls to the ContainerListener service.
@@ -33,6 +33,7 @@ message ContainerListenerFuzzerSingleAction {
     PendingAppListUpdateCount pending_app_list_update_count = 27;
     ApplyAnsiblePlaybookProgressInfo apply_ansible_playbook_progress_info = 28;
     FileWatchTriggeredInfo file_watch_triggered_info = 45;
+    LowDiskSpaceTriggeredInfo low_disk_space_triggered_info = 49;
 
     // Calls to the CrashListener service.
     EmptyMessage metrics_consent_request = 33;

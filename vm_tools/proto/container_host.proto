@@ -223,6 +223,15 @@ message FileWatchTriggeredInfo {
   string path = 2;
 }
 
+// For notifying of low disk space.
+message LowDiskSpaceTriggeredInfo {
+  // The security token the container was given.
+  string token = 1;
+
+  // The size of the remaining free space in bytes.
+  uint64 free_bytes = 2;
+}
+
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
@@ -271,6 +280,9 @@ service ContainerListener {
   // Called by a container when there is a change in a watched directory. Used
   // for FilesApp.
   rpc FileWatchTriggered(FileWatchTriggeredInfo) returns (EmptyMessage);
+
+  // Called by a container when free disk space inside the container is low.
+  rpc LowDiskSpaceTriggered(LowDiskSpaceTriggeredInfo) returns (EmptyMessage);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.
