@@ -22,6 +22,8 @@ pub enum Status {
     Failure = 1,
     /// The operation failed because the ID hasn't been written to yet.
     IdNotFound = 2,
+    /// A crypto operation failed when trying to complete the operation.
+    CryptoFailure = 3,
 }
 
 /// Should the data be globally available or only available within the users' sessions.

@@ -12,31 +12,46 @@ use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::fmt::Debug;
 use std::mem::swap;
+use std::ops::{Deref, DerefMut};
 use std::os::unix::io::RawFd;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::result::Result as StdResult;
 
 use getopts::Options;
-use libsirenia::build_info::BUILD_TIMESTAMP;
-use libsirenia::cli::trichechus::initialize_common_arguments;
-use libsirenia::cli::TransportTypeOption;
-use libsirenia::communication::persistence::{Cronista, CronistaClient, Status};
-use libsirenia::communication::trichechus::{AppInfo, Trichechus, TrichechusServer};
-use libsirenia::communication::{StorageRpc, StorageRpcServer};
-use libsirenia::linux::events::{AddEventSourceMutator, EventMultiplexer, Mutator};
-use libsirenia::linux::syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH};
-use libsirenia::rpc::{ConnectionHandler, RpcDispatcher, TransportServer};
-use libsirenia::sandbox::{self, Sandbox};
-use libsirenia::to_sys_util;
-use libsirenia::transport::{
-    self, create_transport_from_pipes, Transport, TransportType, CROS_CID, CROS_CONNECTION_ERR_FD,
-    CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
-    DEFAULT_CONNECTION_W_FD, DEFAULT_CRONISTA_PORT, DEFAULT_SERVER_PORT,
+use libchromeos::secure_blob::SecureBlob;
+use libsirenia::{
+    build_info::BUILD_TIMESTAMP,
+    cli::{trichechus::initialize_common_arguments, TransportTypeOption},
+    communication::{
+        persistence::{Cronista, CronistaClient, Status},
+        trichechus::{AppInfo, Trichechus, TrichechusServer},
+        StorageRpc, StorageRpcServer,
+    },
+    linux::{
+        events::{AddEventSourceMutator, EventMultiplexer, Mutator},
+        syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
+    },
+    rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
+    sandbox::{self, Sandbox},
+    to_sys_util,
+    transport::{
+        self, create_transport_from_pipes, Transport, TransportType, CROS_CID,
+        CROS_CONNECTION_ERR_FD, CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT,
+        DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD, DEFAULT_CRONISTA_PORT,
+        DEFAULT_SERVER_PORT,
+    },
 };
-use sirenia::app_info::{self, AppManifest, AppManifestEntry, SandboxType};
-use sys_util::vsock::SocketAddr as VSocketAddr;
-use sys_util::{self, error, getpid, getsid, info, setsid, syslog};
+use sirenia::{
+    app_info::{self, AppManifest, AppManifestEntry, SandboxType, StorageParameters},
+    secrets::{
+        self, storage_encryption::StorageEncryption, GscSecret, PlatformSecret, SecretManager,
+        VersionedSecret,
+    },
+};
+use sys_util::{
+    self, error, getpid, getsid, info, setsid, syslog, vsock::SocketAddr as VSocketAddr,
+};
 use thiserror::Error as ThisError;
 
 const CRONISTA_URI_SHORT_NAME: &str = "C";
@@ -80,46 +95,18 @@ struct TeeAppHandler {
     tee_app: Rc<RefCell<TeeApp>>,
 }
 
-impl StorageRpc for TeeAppHandler {
-    type Error = ();
-
-    fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
-        let app_info = &self.tee_app.borrow().app_info;
-        let params = app_info.storage_parameters.as_ref().ok_or_else(|| {
-            error!(
-                "App id '{}' made an unconfigured call to the read_data storage API.",
-                &app_info.app_name
-            );
-        })?;
-        let mut state = self.state.borrow_mut();
-
-        // If already connected try once, to see if the connection dropped.
-        if let Some(persistence) = &state.persistence {
-            let ret =
-                persistence.retrieve(params.scope.clone(), params.domain.to_string(), id.clone());
-            match ret {
-                Err(err) => {
-                    // If the client is no longer valid, drop it so it will be recreated on the next call.
-                    state.persistence = None;
-                    error!("failed to retrieve data: {}", err);
-                }
-                Ok(a) => return Ok(a),
-            }
-        }
-
-        let persistence = state.check_persistence().map_err(|err| {
-            error!("failed to retrieve data: {}", err);
-        })?;
-
-        let ret = persistence.retrieve(params.scope.clone(), params.domain.to_string(), id);
-        ret.map_err(|err| {
-            // If the client is no longer valid, drop it so it will be recreated on the next call.
-            state.persistence = None;
-            error!("failed to retrieve data: {}", err);
-        })
-    }
-
-    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
+impl TeeAppHandler {
+    fn conditionally_use_storage_encryption<
+        T: Sized,
+        F: FnOnce(
+                &StorageParameters,
+                &dyn Cronista<Error = rpc::Error>,
+            ) -> StdResult<T, rpc::Error>
+            + Copy,
+    >(
+        &self,
+        cb: F,
+    ) -> StdResult<T, ()> {
         let app_info = &self.tee_app.borrow().app_info;
         let params = app_info.storage_parameters.as_ref().ok_or_else(|| {
             error!(
@@ -127,37 +114,66 @@ impl StorageRpc for TeeAppHandler {
                 &app_info.app_name
             );
         })?;
-        let mut state = self.state.borrow_mut();
+        let state = self.state.borrow_mut();
+        // Holds the RefMut until secret_manager is dropped.
+        let wrapper = &mut state.secret_manager.borrow_mut();
+        let secret_manager = wrapper.deref_mut();
 
-        // If already connected try once, to see if the connection dropped.
-        if let Some(persistence) = &state.persistence {
-            let ret = persistence.persist(
+        // If the operation fails with an rpc::Error, try again.
+        for x in 0..=1 {
+            // If already connected try once, to see if the connection dropped.
+            if let Some(persistence) = (*state.persistence.borrow().deref()).as_ref() {
+                let encryption: StorageEncryption;
+                let ret = cb(
+                    &params,
+                    match params.encryption_key_version {
+                        Some(_) => {
+                            // TODO Move this to TrichechusState.
+                            encryption =
+                                StorageEncryption::new(app_info, secret_manager, persistence);
+                            &encryption as &dyn Cronista<Error = rpc::Error>
+                        }
+                        None => persistence as &dyn Cronista<Error = rpc::Error>,
+                    },
+                );
+                match ret {
+                    Err(err) => {
+                        // If the client is no longer valid, drop it so it will be recreated on the next call.
+                        state.drop_persistence();
+                        error!("failed to persist data: {}", err);
+                        if x == 1 {
+                            break;
+                        }
+                    }
+                    Ok(a) => return Ok(a),
+                }
+            }
+
+            state.check_persistence().map_err(|err| {
+                error!("failed to persist data: {}", err);
+            })?;
+        }
+        Err(())
+    }
+}
+
+impl StorageRpc for TeeAppHandler {
+    type Error = ();
+
+    fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
+        self.conditionally_use_storage_encryption(|params, cronista| {
+            cronista.retrieve(params.scope.clone(), params.domain.to_string(), id.clone())
+        })
+    }
+
+    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
+        self.conditionally_use_storage_encryption(|params, cronista| {
+            cronista.persist(
                 params.scope.clone(),
                 params.domain.to_string(),
                 id.clone(),
                 data.clone(),
-            );
-
-            match ret {
-                Err(err) => {
-                    // If the client is no longer valid, drop it so it will be recreated on the next call.
-                    state.persistence = None;
-                    error!("failed to persist data: {}", err);
-                }
-                Ok(a) => return Ok(a),
-            }
-        }
-
-        let persistence = state.check_persistence().map_err(|err| {
-            error!("failed to persist data: {}", err);
-        })?;
-
-        let ret = persistence.persist(params.scope.clone(), params.domain.to_string(), id, data);
-
-        ret.map_err(|err| {
-            // If the client is no longer valid, drop it so it will be recreated on the next call.
-            state.persistence = None;
-            error!("failed to persist data: {}", err);
+            )
         })
     }
 }
@@ -168,12 +184,18 @@ struct TrichechusState {
     running_apps: HashMap<TransportType, Rc<RefCell<TeeApp>>>,
     log_queue: VecDeque<Vec<u8>>,
     persistence_uri: TransportType,
-    persistence: Option<CronistaClient>,
+    persistence: RefCell<Option<CronistaClient>>,
+    secret_manager: RefCell<SecretManager>,
     app_manifest: AppManifest,
 }
 
 impl TrichechusState {
-    fn new() -> Self {
+    fn new(platform_secret: PlatformSecret, gsc_secret: GscSecret) -> Self {
+        let app_manifest = AppManifest::new();
+        // There isn't any way to recover if the secret derivation process fails.
+        let secret_manager =
+            SecretManager::new(platform_secret, gsc_secret, &app_manifest).unwrap();
+
         TrichechusState {
             expected_port: DEFAULT_CLIENT_PORT,
             pending_apps: HashMap::new(),
@@ -183,22 +205,28 @@ impl TrichechusState {
                 cid: CROS_CID,
                 port: DEFAULT_CRONISTA_PORT,
             }),
-            persistence: None,
-            app_manifest: AppManifest::new(),
+            persistence: RefCell::new(None),
+            app_manifest,
+            secret_manager: RefCell::new(secret_manager),
         }
     }
 
-    fn check_persistence(&mut self) -> Result<&mut CronistaClient> {
-        let uri = self.persistence_uri.clone();
-        if self.persistence.is_none() {
-            self.persistence = Some(CronistaClient::new(
-                uri.try_into_client(None)
-                    .unwrap()
-                    .connect()
-                    .map_err(Error::NewTransport)?,
-            ));
+    fn check_persistence(&self) -> Result<()> {
+        if self.persistence.borrow().is_some() {
+            return Ok(());
         }
-        Ok(self.persistence.as_mut().unwrap())
+        let uri = self.persistence_uri.clone();
+        *self.persistence.borrow_mut().deref_mut() = Some(CronistaClient::new(
+            uri.try_into_client(None)
+                .unwrap()
+                .connect()
+                .map_err(Error::NewTransport)?,
+        ));
+        Ok(())
+    }
+
+    fn drop_persistence(&self) {
+        *self.persistence.borrow_mut().deref_mut() = None;
     }
 }
 
@@ -380,7 +408,26 @@ fn main() -> Result<()> {
         &mut opts,
     );
     let (config, matches) = initialize_common_arguments(opts, &args[1..]).unwrap();
-    let state = Rc::new(RefCell::new(TrichechusState::new()));
+    // TODO derive main secret from the platform and GSC.
+    let main_secret_version = 0usize;
+    let platform_secret = PlatformSecret::new(
+        SecretManager::default_hash_function(),
+        SecureBlob::from(vec![77u8; 64]),
+        secrets::MAX_VERSION,
+    )
+    .derive_other_version(main_secret_version)
+    .unwrap();
+    let gsc_secret = GscSecret::new(
+        SecretManager::default_hash_function(),
+        SecureBlob::from(vec![77u8; 64]),
+        secrets::MAX_VERSION,
+    )
+    .derive_other_version(main_secret_version)
+    .unwrap();
+    let state = Rc::new(RefCell::new(TrichechusState::new(
+        platform_secret,
+        gsc_secret,
+    )));
 
     // Create /dev/log if it doesn't already exist since trichechus is the first thing to run after
     // the kernel on the hypervisor.
@@ -429,7 +476,7 @@ fn main() -> Result<()> {
     if let Some(uri) = cronista_uri_option.from_matches(&matches).unwrap() {
         let mut state_mut = state.borrow_mut();
         state_mut.persistence_uri = uri.clone();
-        state_mut.persistence = Some(CronistaClient::new(
+        *state_mut.persistence.borrow_mut().deref_mut() = Some(CronistaClient::new(
             uri.try_into_client(None).unwrap().connect().unwrap(),
         ));
     }

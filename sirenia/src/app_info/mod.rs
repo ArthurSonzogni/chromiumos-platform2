@@ -90,7 +90,7 @@ impl AppManifest {
             storage_parameters: Some(StorageParameters {
                 scope: Scope::Test,
                 domain: "test".to_string(),
-                encryption_key_version: Some(0),
+                encryption_key_version: Some(1),
             }),
         });
         manifest
@@ -106,6 +106,10 @@ impl AppManifest {
             Some(entry) => Ok(entry),
             None => Err(Error::InvalidAppId(id.to_string())),
         }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &AppManifestEntry> {
+        self.entries.iter().map(|kv| kv.1)
     }
 }
 

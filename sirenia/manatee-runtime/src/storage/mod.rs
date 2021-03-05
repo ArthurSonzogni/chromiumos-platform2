@@ -66,7 +66,7 @@ impl Storage for TrichechusStorage {
         match self.rpc.lock().read_data(id.to_string()) {
             Ok((Status::Success, res)) => Ok(res),
             Ok((Status::IdNotFound, _)) => Err(Error::IdNotFound(id.to_string())),
-            Ok((Status::Failure, _)) => Err(Error::ReadData(None)),
+            Ok((Status::Failure, _)) | Ok((Status::CryptoFailure, _)) => Err(Error::ReadData(None)),
             Err(err) => Err(to_read_data_error(err)),
         }
     }

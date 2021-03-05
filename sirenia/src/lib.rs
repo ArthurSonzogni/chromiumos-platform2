@@ -6,5 +6,6 @@
 //! both Trichechus and Dugong.
 
 pub mod app_info;
+pub mod secrets;
 
 include!("bindings/include_modules.rs");

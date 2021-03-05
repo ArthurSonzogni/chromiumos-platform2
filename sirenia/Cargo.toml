@@ -32,10 +32,13 @@ overflow-checks = true
 chromeos-dbus-bindings = { path = "../chromeos-dbus-bindings"} # provided by ebuild
 
 [dependencies]
+base64 = "0.13.0"
 dbus = "0.8"
+flexbuffers = "0.1.1"
 getopts = "0.2"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 libsirenia = { path = "libsirenia" } # provided by ebuild
+openssl = "0.10.25"
 serde = { version = "1.0.114", features = ["derive"] }
 sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
 thiserror = "1.0.20"
