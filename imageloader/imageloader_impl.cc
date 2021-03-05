@@ -339,12 +339,12 @@ bool ImageLoaderImpl::GetComponentMetadata(
 
 base::FilePath ImageLoaderImpl::GetLatestVersionFilePath(
     const std::string& component_name) {
-  return config_.storage_dir.Append(component_name).Append(kLatestVersionFile);
+  return GetComponentRoot(component_name).Append(kLatestVersionFile);
 }
 
 base::FilePath ImageLoaderImpl::GetVersionPath(
     const std::string& component_name, const std::string& version) {
-  return config_.storage_dir.Append(component_name).Append(version);
+  return GetComponentRoot(component_name).Append(version);
 }
 
 base::FilePath ImageLoaderImpl::GetComponentRoot(
