@@ -39,9 +39,8 @@ class Profile : public base::RefCounted<Profile> {
   // Set of Profile properties to be get/set via PropertyStore calls, provided
   // with helpers to read and save them to persistent storage.
   struct Properties {
-    Properties()
-        : always_on_vpn_mode(kAlwaysOnVpnModeOff),
-          always_on_vpn_service(kDefaultAlwaysOnVpnService) {}
+    Properties(std::string mode, std::string service)
+        : always_on_vpn_mode(mode), always_on_vpn_service(service) {}
     // Describes how the always-on VPN will be handled.
     std::string always_on_vpn_mode;
     // Identifier of the service automatically started when always-on VPN is
@@ -57,12 +56,6 @@ class Profile : public base::RefCounted<Profile> {
   // Path to the cached list of inserted user profiles to be loaded at
   // startup.
   static const char kUserProfileListPathname[];
-  // Always-on VPN is disabled.
-  static constexpr char kAlwaysOnVpnModeOff[] = "off";
-  // Always-on VPN is enabled and can fallback on default network (no lockdown).
-  static constexpr char kAlwaysOnVpnModeBestEffort[] = "best-effort";
-  // Always-on VPN is enabled and no fallback is allowed (lockdown enabled).
-  static constexpr char kAlwaysOnVpnModeStrict[] = "strict";
 
   Profile(Manager* manager,
           const Identifier& name,

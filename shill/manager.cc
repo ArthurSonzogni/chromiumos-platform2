@@ -27,6 +27,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -225,7 +226,7 @@ Manager::Manager(ControlInterface* control_interface,
       running_(false),
       last_default_physical_service_(nullptr),
       last_default_physical_service_online_(false),
-      always_on_vpn_mode_(Profile::kAlwaysOnVpnModeOff),
+      always_on_vpn_mode_(kAlwaysOnVpnModeOff),
       always_on_vpn_service_(nullptr),
       always_on_vpn_connect_attempts_(0u),
       ephemeral_profile_(new EphemeralProfile(this)),
@@ -1078,7 +1079,7 @@ bool Manager::IsTechnologyAutoConnectDisabled(Technology technology) const {
     }
   }
   if (technology == Technology::kVPN &&
-      always_on_vpn_mode_ != Profile::kAlwaysOnVpnModeOff) {
+      always_on_vpn_mode_ != kAlwaysOnVpnModeOff) {
     // Auto connect is disabled on VPNs when the always-on VPN is enabled.
     return true;
   }
@@ -1943,8 +1944,7 @@ void Manager::ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service) {
                         ? always_on_vpn_service_->GetRpcIdentifier().value()
                         : "");
 
-  if (always_on_vpn_mode_ == Profile::kAlwaysOnVpnModeOff ||
-      !always_on_vpn_service_) {
+  if (always_on_vpn_mode_ == kAlwaysOnVpnModeOff || !always_on_vpn_service_) {
     // No VPN service to automatically wake-up.
     return;
   }

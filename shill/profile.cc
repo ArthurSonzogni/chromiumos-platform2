@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
@@ -40,6 +41,7 @@ Profile::Profile(Manager* manager,
                  const base::FilePath& storage_directory,
                  bool connect_to_rpc)
     : manager_(manager),
+      properties_(kAlwaysOnVpnModeOff, kDefaultAlwaysOnVpnService),
       store_(base::Bind(&Profile::OnPropertyChanged, base::Unretained(this))),
       name_(name) {
   if (connect_to_rpc)

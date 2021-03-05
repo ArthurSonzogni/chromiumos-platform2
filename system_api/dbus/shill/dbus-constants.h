@@ -795,6 +795,11 @@ const char kReconnectParameterThirdPartyVpn[] = "reconnect";
 const char kObjectPathBase[] = "/thirdpartyvpn/";
 const char kNonIPDelimiter = ':';
 const char kIPDelimiter = ' ';
+
+// Always-on VPN modes for the kAlwaysOnVpnModeProperty Profile property.
+const char kAlwaysOnVpnModeOff[] = "off";
+const char kAlwaysOnVpnModeBestEffort[] = "best-effort";
+const char kAlwaysOnVpnModeStrict[] = "strict";
 }  // namespace shill
 
 #endif  // SYSTEM_API_DBUS_SHILL_DBUS_CONSTANTS_H_
