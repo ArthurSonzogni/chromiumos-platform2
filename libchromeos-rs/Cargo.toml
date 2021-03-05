@@ -18,6 +18,7 @@ intrusive-collections = "0.9"
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
 system_api = { path = "../system_api", optional = true } # provided by ebuild
 thiserror = "1.0.20"
+zeroize = { version = "1.2.0", features = ["zeroize_derive"] }
 
 [features]
 default = []
