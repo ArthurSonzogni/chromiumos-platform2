@@ -54,4 +54,5 @@ executable("kmsvnc") {
     "uinput.cc",
   ]
   deps = [ ":libscreen-capture" ]
+  pkg_deps = [ "libmetrics" ]
 }

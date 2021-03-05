@@ -13,6 +13,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <metrics/metrics_library.h>
 
 #include <rfb/rfb.h>
 
@@ -126,10 +127,14 @@ void ConvertBuffer(const DisplayBuffer::Result& from, char* to) {
   }
 }
 
-enum class CaptureMethod {
-  AUTODETECT,
+constexpr char kKmsvncMethod[] = "Platform.KmsVncMethod";
+
+// This needs to match tools/metrics/histograms/enums.xml
+enum class CaptureMethod : int {
+  AUTODETECT = 0,
   EGL,
   BO,
+  MAX  // Highest number, for UMA.
 };
 
 int VncMain() {
@@ -206,6 +211,10 @@ int VncMain() {
     else
       method = CaptureMethod::BO;
   }
+
+  MetricsLibrary metrics;
+  metrics.SendEnumToUMA(kKmsvncMethod, static_cast<int>(method),
+                        static_cast<int>(CaptureMethod::MAX));
 
   const rfbScreenInfoPtr server =
       rfbGetScreen(0 /*argc*/, nullptr /*argv*/, crtc_width, crtc_height,
