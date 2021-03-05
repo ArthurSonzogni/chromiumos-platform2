@@ -35,6 +35,13 @@ Chrome](https://chrome.google.com/webstore/detail/vnc%C2%AE-viewer-for-google-ch
 to localhost:5900. It will ask you if you want to connect unauthenticated, here
 we are relying on ssh forwarding to restrict who can connect.
 
+### Reporting bugs
+
+TODO(uekawa): set up component for crbug.
+
+For Googlers please use http://go/kmsvnc-bug to file a bug.
+Current known issues are available at http://b/hotlistid:2869886
+
 ## Development notes
 
 ### Building and testing
