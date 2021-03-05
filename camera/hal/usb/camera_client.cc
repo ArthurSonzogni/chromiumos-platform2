@@ -70,12 +70,15 @@ CameraClient::CameraClient(int id,
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraConfigPathString);
   if (client_type == ClientType::kAndroid) {
-    max_stream_width_ =
-        camera_config->GetInteger(constants::kCrosUsbAndroidMaxStreamWidth,
-                                  std::numeric_limits<int>::max());
-    max_stream_height_ =
-        camera_config->GetInteger(constants::kCrosUsbAndroidMaxStreamHeight,
-                                  std::numeric_limits<int>::max());
+    max_stream_width_ = camera_config->GetInteger(
+        constants::kCrosUsbAndroidMaxStreamWidth,
+        camera_config->GetInteger(constants::kCrosUsbMaxStreamWidth,
+                                  std::numeric_limits<int>::max()));
+
+    max_stream_height_ = camera_config->GetInteger(
+        constants::kCrosUsbAndroidMaxStreamHeight,
+        camera_config->GetInteger(constants::kCrosUsbMaxStreamHeight,
+                                  std::numeric_limits<int>::max()));
   } else {
     max_stream_width_ = camera_config->GetInteger(
         constants::kCrosUsbMaxStreamWidth, std::numeric_limits<int>::max());
