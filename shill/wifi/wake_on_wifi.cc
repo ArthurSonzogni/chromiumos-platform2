@@ -1243,6 +1243,12 @@ void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
   }
 }
 
+bool WakeOnWiFi::WakeOnWiFiDisabled() {
+  return wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
+         wake_on_wifi_features_enabled_ ==
+             kWakeOnWiFiFeaturesEnabledNotSupported;
+}
+
 bool WakeOnWiFi::WakeOnWiFiPacketEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
       wake_on_wifi_features_enabled_ ==
@@ -1459,6 +1465,11 @@ void WakeOnWiFi::OnBeforeSuspend(
     bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
   connected_before_suspend_ = is_connected;
+  if (WakeOnWiFiDisabled()) {
+    // Wake on WiFi not supported or not enabled, so immediately report success.
+    done_callback.Run(Error(Error::kSuccess));
+    return;
+  }
   LOG(INFO) << __func__ << ": Wake on WiFi features enabled: "
             << wake_on_wifi_features_enabled_;
   suspend_actions_done_callback_ = done_callback;
@@ -1502,6 +1513,12 @@ void WakeOnWiFi::OnDarkResume(
     const Closure& renew_dhcp_lease_callback,
     const InitiateScanCallback& initiate_scan_callback,
     const Closure& remove_supplicant_networks_callback) {
+  if (WakeOnWiFiDisabled()) {
+    // Wake on WiFi not supported or not enabled, so immediately report success.
+    done_callback.Run(Error(Error::kSuccess));
+    return;
+  }
+
   LOG(INFO) << __func__ << ": "
             << "Wake reason " << last_wake_reason_;
   metrics_->NotifyWakeOnWiFiOnDarkResume(last_wake_reason_);
@@ -1757,15 +1774,15 @@ void WakeOnWiFi::InitiateScanInDarkResume(
 void WakeOnWiFi::OnConnectedAndReachable(bool start_lease_renewal_timer,
                                          uint32_t time_to_next_lease_renewal) {
   SLOG(this, 3) << __func__;
-  if (in_dark_resume_) {
-    // If we obtain a DHCP lease, we are connected, so the callback to have
-    // supplicant remove networks will not be invoked in
-    // WakeOnWiFi::BeforeSuspendActions.
-    BeforeSuspendActions(true, start_lease_renewal_timer,
-                         time_to_next_lease_renewal, base::Closure());
-  } else {
-    SLOG(this, 3) << "Not in dark resume, so do nothing";
+  if (WakeOnWiFiDisabled()) {
+    SLOG(this, 3) << "Wake on WiFi not enabled";
   }
+  if (!in_dark_resume_) {
+    SLOG(this, 3) << "Not in dark resume";
+    return;
+  }
+  BeforeSuspendActions(true, start_lease_renewal_timer,
+                       time_to_next_lease_renewal, base::Closure());
 }
 
 void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
@@ -1800,6 +1817,10 @@ void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     const InitiateScanCallback& initiate_scan_callback) {
   SLOG(this, 3) << __func__ << ": "
                 << (in_dark_resume_ ? "In dark resume" : "Not in dark resume");
+  if (WakeOnWiFiDisabled()) {
+    // The scan is not triggered by us, ignore.
+    return;
+  }
   if (!in_dark_resume_) {
     return;
   }

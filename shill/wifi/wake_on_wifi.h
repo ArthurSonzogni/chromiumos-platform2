@@ -511,6 +511,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // a retry. If |kMaxSetWakeOnPacketRetries| retries have already been
   // performed, resets counter and returns.
   void RetrySetWakeOnPacketConnections();
+  // Utility function to check if wake on WiFi is not supported or disabled.
+  bool WakeOnWiFiDisabled();
   // Utility functions to check which wake on WiFi features are currently
   // enabled based on the descriptor |wake_on_wifi_features_enabled_| and
   // are supported by the NIC.

@@ -45,7 +45,9 @@ using std::string;
 using std::vector;
 using testing::_;
 using ::testing::AnyNumber;
+using ::testing::AtLeast;
 using ::testing::HasSubstr;
+using ::testing::Mock;
 using ::testing::Return;
 
 namespace shill {
@@ -2510,6 +2512,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketOfType) {
 TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsWakeOnAllowedSSIDs) {
   vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetWakeOnAllowedSSIDs()->empty());
   OnBeforeSuspend(true, allowed, true, 0);
   EXPECT_FALSE(GetWakeOnAllowedSSIDs()->empty());
@@ -2518,6 +2521,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsWakeOnAllowedSSIDs) {
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsDoneCallback) {
   vector<ByteString> allowed;
+  EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
   OnBeforeSuspend(true, allowed, true, 0);
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
@@ -2528,6 +2532,21 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   bool have_dhcp_lease;
   vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+
+  // Disable all features.
+  DisableWakeOnWiFiFeatures();
+
+  // When no feature enabled, we'll not renew DHCP.
+  is_connected = true;
+  have_dhcp_lease = true;
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
+  OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
+                  kTimeToNextLeaseRenewalShort);
+  Mock::VerifyAndClearExpectations(this);
+
+  // Enable a feature for the following tests.
+  EnableWakeOnWiFiFeaturesDarkConnect();
+
   // If we are connected the time to next lease renewal is short enough, we will
   // initiate DHCP lease renewal immediately.
   is_connected = true;
@@ -2567,6 +2586,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_ResetsDarkResumeScanRetries) {
   const bool is_connected = true;
   vector<ByteString> allowed;
+  EnableWakeOnWiFiFeaturesDarkConnect();
   SetDarkResumeScanRetriesLeft(3);
   EXPECT_EQ(3, GetDarkResumeScanRetriesLeft());
   OnDarkResume(is_connected, allowed);
@@ -2577,6 +2597,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_SetsWakeOnAllowedSSIDs) {
   const bool is_connected = true;
   vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetWakeOnAllowedSSIDs()->empty());
   OnDarkResume(is_connected, allowed);
   EXPECT_FALSE(GetWakeOnAllowedSSIDs()->empty());
@@ -2954,6 +2975,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_DoNotRecordEvent) {
   const bool is_connected = true;
   vector<ByteString> allowed;
+  EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
   OnDarkResume(is_connected, allowed);
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
@@ -2962,6 +2984,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_DoNotRecordEvent) {
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_RecordEvent) {
   const bool is_connected = false;
   vector<ByteString> allowed;
+  EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
   OnDarkResume(is_connected, allowed);
   EXPECT_EQ(1, GetDarkResumeHistory()->Size());
@@ -2976,6 +2999,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
                WakeOnWiFi::kMaxDarkResumesPerPeriodShort),
            base::size(kTimeSeconds));
   vector<ByteString> allowed;
+  EnableWakeOnWiFiFeaturesDarkConnect();
 
   // This test assumes that throttling takes place when 3 dark resumes have
   // been triggered in the last 1 minute.
@@ -3030,6 +3054,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
       static_cast<const unsigned int>(WakeOnWiFi::kMaxDarkResumesPerPeriodLong),
       base::size(kTimeSeconds));
   vector<ByteString> allowed;
+  EnableWakeOnWiFiFeaturesDarkConnect();
 
   // This test assumes that throttling takes place when 3 dark resumes have been
   // triggered in the last 1 minute, or when 10 dark resumes have been triggered
@@ -3083,15 +3108,17 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnConnectedAndReachable) {
   ScopedMockLog log;
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EnableWakeOnWiFiFeaturesDarkConnect();
   SetInDarkResume(true);
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
-  EXPECT_CALL(log, Log(_, _, HasSubstr("BeforeSuspendActions")));
+  EXPECT_CALL(log, Log(_, _, HasSubstr("BeforeSuspendActions")))
+      .Times(AtLeast(1));
   OnConnectedAndReachable(start_lease_renewal_timer,
                           kTimeToNextLeaseRenewalLong);
 
   SetInDarkResume(false);
-  EXPECT_CALL(log, Log(_, _, HasSubstr("Not in dark resume, so do nothing")));
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Not in dark resume")));
   OnConnectedAndReachable(start_lease_renewal_timer,
                           kTimeToNextLeaseRenewalLong);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
