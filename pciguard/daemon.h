@@ -6,12 +6,15 @@
 #define PCIGUARD_DAEMON_H_
 
 #include "pciguard/session_monitor.h"
-#include "pciguard/tbt_udev_monitor.h"
+#include "pciguard/udev_monitor.h"
 
 #include <brillo/daemons/dbus_daemon.h>
 #include <memory>
+#include <string>
 
 namespace pciguard {
+
+using brillo::dbus_utils::DBusSignal;
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
@@ -30,8 +33,10 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<SysfsUtils> utils_;
   std::unique_ptr<EventHandler> event_handler_;
   std::unique_ptr<SessionMonitor> session_monitor_;
-  std::unique_ptr<TbtUdevMonitor> tbt_udev_monitor_;
+  std::unique_ptr<UdevMonitor> udev_monitor_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::weak_ptr<DBusSignal<std::string>> dev_blocked_signal_;
+  void HandlePCIDeviceBlocked(const std::string& drvr);
 };
 
 }  // namespace pciguard

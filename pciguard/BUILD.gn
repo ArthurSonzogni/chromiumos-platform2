@@ -36,7 +36,7 @@ static_library("pciguard_common") {
     "event_handler.cc",
     "session_monitor.cc",
     "sysfs_utils.cc",
-    "tbt_udev_monitor.cc",
+    "udev_monitor.cc",
   ]
   libs = [ "pthread" ]
 }

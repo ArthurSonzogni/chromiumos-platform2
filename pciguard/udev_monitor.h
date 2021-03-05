@@ -1,9 +1,9 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PCIGUARD_TBT_UDEV_MONITOR_H_
-#define PCIGUARD_TBT_UDEV_MONITOR_H_
+#ifndef PCIGUARD_UDEV_MONITOR_H_
+#define PCIGUARD_UDEV_MONITOR_H_
 
 #include <libudev.h>
 
@@ -22,25 +22,28 @@
 
 namespace pciguard {
 
-// Class to monitor thunderbolt udev events
-class TbtUdevMonitor {
+// Class to monitor thunderbolt/PCI udev events
+class UdevMonitor {
  public:
-  explicit TbtUdevMonitor(EventHandler* ev_handler);
-  TbtUdevMonitor(const TbtUdevMonitor&) = delete;
-  TbtUdevMonitor& operator=(const TbtUdevMonitor&) = delete;
-  ~TbtUdevMonitor() = default;
+  using PcidevBlockedFn = std::function<void(const std::string& drvr)>;
+
+  explicit UdevMonitor(EventHandler* ev_handler, PcidevBlockedFn callback);
+  UdevMonitor(const UdevMonitor&) = delete;
+  UdevMonitor& operator=(const UdevMonitor&) = delete;
+  ~UdevMonitor() = default;
 
  private:
   // Handle Udev events emanating from |udev_monitor_watcher_|.
-  void OnThunderboltUdevEvent();
+  void OnUdevEvent();
 
   std::unique_ptr<brillo::Udev> udev_;
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
   std::unique_ptr<EventHandler> event_handler_;
+  PcidevBlockedFn pcidev_blocked_callback_;
 };
 
 }  // namespace pciguard
 
-#endif  // PCIGUARD_TBT_UDEV_MONITOR_H_
+#endif  // PCIGUARD_UDEV_MONITOR_H_

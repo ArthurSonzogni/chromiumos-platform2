@@ -31,7 +31,10 @@ int Daemon::OnInit() {
   session_monitor_ =
       std::make_unique<SessionMonitor>(bus_, event_handler_.get());
   // Begin monitoring the thunderbolt udev events
-  tbt_udev_monitor_ = std::make_unique<TbtUdevMonitor>(event_handler_.get());
+  UdevMonitor::PcidevBlockedFn cb = [this](const std::string& drvr) {
+    HandlePCIDeviceBlocked(drvr);
+  };
+  udev_monitor_ = std::make_unique<UdevMonitor>(event_handler_.get(), cb);
 
   LOG(INFO) << "pciguard daemon started";
 
@@ -51,6 +54,8 @@ void Daemon::RegisterDBusObjectsAsync(
   dbus_interface->AddSimpleMethodHandler(kSetExternalPciDevicesPermissionMethod,
                                          base::Unretained(this),
                                          &Daemon::HandleUserPermissionChanged);
+  dev_blocked_signal_ =
+      dbus_interface->RegisterSignal<std::string>(kPCIDeviceBlockedSignal);
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object", true /* failure_is_fatal */));
 }
@@ -59,4 +64,11 @@ void Daemon::HandleUserPermissionChanged(bool ext_pci_allowed) {
   DCHECK(event_handler_);
   event_handler_->OnUserPermissionChanged(ext_pci_allowed);
 }
+
+void Daemon::HandlePCIDeviceBlocked(const std::string& drvr) {
+  auto signal = dev_blocked_signal_.lock();
+  if (signal)
+    signal->Send(drvr);
+}
+
 }  // namespace pciguard

@@ -95,7 +95,6 @@ void EventHandler::OnScreenUnlocked() {
 void EventHandler::OnNewThunderboltDev(base::FilePath path) {
   std::lock_guard<std::mutex> lock(lock_);
   LogEvent("New-Thunderbolt-Dev");
-  LOG(INFO) << "path = " << path;
 
   if (authorizer_)
     authorizer_->SubmitJob(Authorizer::AUTHORIZE_1_DEVICE, path);
