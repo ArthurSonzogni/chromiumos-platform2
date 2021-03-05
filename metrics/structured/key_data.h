@@ -10,19 +10,13 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_refptr.h>
-#include <base/memory/weak_ptr.h>
 #include <base/optional.h>
-#include <base/sequence_checker.h>
-#include <base/sequenced_task_runner.h>
 
 #include "metrics/structured/persistent_proto.h"
 #include "metrics/structured/proto/storage.pb.h"
 
 namespace metrics {
 namespace structured {
-
-class KeyDataTest;
 
 // KeyData is the central class for managing keys and generating hashes for
 // structured metrics.
@@ -45,11 +39,12 @@ class KeyDataTest;
 //
 // Key storage is backed by a PersistentProto, stored at the path given to the
 // constructor.
+//
+// // TODO(crbug.com/1148168): Consider splitting this across multiple
+// PersistentProtos if we have multiple cros clients.
 class KeyData {
  public:
-  KeyData(const base::FilePath& path,
-          const base::TimeDelta& save_delay,
-          base::OnceCallback<void()> on_initialized);
+  explicit KeyData(const std::string& path);
   ~KeyData();
 
   KeyData(const KeyData&) = delete;
@@ -89,19 +84,7 @@ class KeyData {
   // StructuredMetricsProvider for more details.
   uint64_t Id(uint64_t project_name_hash);
 
-  // Returns whether this KeyData instance has finished reading from disk and is
-  // ready to be used. If false, both Id and HmacMetric will return 0u.
-  bool is_initialized() { return is_initialized_; }
-
  private:
-  friend class KeyDataTest;
-
-  void WriteNowForTest();
-
-  void OnRead(ReadStatus status);
-
-  void OnWrite(WriteStatus status);
-
   // Ensure that a valid key exists for |project|, and return it. Either returns
   // a string of size |kKeySize| or base::nullopt, which indicates an error.
   base::Optional<std::string> ValidateAndGetKey(uint64_t project_name_hash);
@@ -112,16 +95,6 @@ class KeyData {
 
   // Storage for keys.
   std::unique_ptr<PersistentProto<KeyDataProto>> proto_;
-
-  // Whether this instance has finished reading from disk.
-  bool is_initialized_ = false;
-
-  base::OnceCallback<void()> on_initialized_;
-
-  SEQUENCE_CHECKER(sequence_checker_);
-
-  scoped_refptr<base::SequencedTaskRunner> task_runner_;
-  base::WeakPtrFactory<KeyData> weak_factory_{this};
 };
 
 }  // namespace structured

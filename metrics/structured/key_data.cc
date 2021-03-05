@@ -44,29 +44,10 @@ std::string HashToHex(const uint64_t hash) {
 
 }  // namespace
 
-KeyData::KeyData(const base::FilePath& path,
-                 const base::TimeDelta& save_delay,
-                 base::OnceCallback<void()> on_initialized)
-    : on_initialized_(std::move(on_initialized)) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  proto_ = std::make_unique<PersistentProto<KeyDataProto>>(
-      path, save_delay,
-      base::BindOnce(&KeyData::OnRead, weak_factory_.GetWeakPtr()),
-      base::BindRepeating(&KeyData::OnWrite, weak_factory_.GetWeakPtr()));
-}
+KeyData::KeyData(const std::string& path)
+    : proto_(std::make_unique<PersistentProto<KeyDataProto>>(path)) {}
 
 KeyData::~KeyData() = default;
-
-void KeyData::OnRead(const ReadStatus status) {
-  is_initialized_ = true;
-  std::move(on_initialized_).Run();
-}
-
-void KeyData::OnWrite(const WriteStatus status) {}
-
-void KeyData::WriteNowForTest() {
-  proto_.get()->StartWrite();
-}
 
 //---------------
 // Key management
@@ -74,11 +55,6 @@ void KeyData::WriteNowForTest() {
 
 base::Optional<std::string> KeyData::ValidateAndGetKey(
     const uint64_t project_name_hash) {
-  if (!is_initialized_) {
-    NOTREACHED();
-    return base::nullopt;
-  }
-
   const int now = (base::Time::Now() - base::Time::UnixEpoch()).InDays();
   KeyProto& key = (*(proto_.get()->get()->mutable_keys()))[project_name_hash];
 
@@ -111,7 +87,7 @@ void KeyData::UpdateKey(KeyProto* key,
   key->set_key(GenerateKey());
   key->set_last_rotation(last_rotation);
   key->set_rotation_period(rotation_period);
-  proto_->QueueWrite();
+  proto_->Write();
 }
 
 //----------------
@@ -119,8 +95,6 @@ void KeyData::UpdateKey(KeyProto* key,
 //----------------
 
 uint64_t KeyData::Id(const uint64_t project_name_hash) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   // Retrieve the key for |project_name_hash|.
   const base::Optional<std::string> key = ValidateAndGetKey(project_name_hash);
   if (!key) {
@@ -137,8 +111,6 @@ uint64_t KeyData::Id(const uint64_t project_name_hash) {
 uint64_t KeyData::HmacMetric(const uint64_t project_name_hash,
                              const uint64_t metric_name_hash,
                              const std::string& value) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   // Retrieve the key for |project_name_hash|.
   const base::Optional<std::string> key = ValidateAndGetKey(project_name_hash);
   if (!key) {

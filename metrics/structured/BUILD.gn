@@ -8,21 +8,6 @@ import("//common-mk/proto_library.gni")
 _event_output_dir = "${root_gen_dir}/include/metrics/structured"
 _xml_file = "structured.xml"
 
-shared_library("libstructuredmetrics") {
-  pkg_deps = [ "libchrome" ]
-  sources = [
-    "c_structured_metrics.cc",
-    "event_base.cc",
-    "event_base.h",
-    "key_data.cc",
-    "key_data.h",
-    "persistent_proto.cc",
-    "persistent_proto.h",
-  ]
-  public_deps = [ ":structured_events" ]
-  deps = [ ":storage" ]
-}
-
 proto_library("storage") {
   proto_in_dir = "./proto"
   proto_out_dir = "include/metrics/structured/proto"
@@ -58,10 +43,29 @@ action("gen_structured_events") {
   ]
 }
 
-static_library("structured_events") {
-  sources = get_target_outputs(":gen_structured_events")
+shared_library("libstructuredmetrics") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
 
-  include_dirs = [ _event_output_dir ]
+  sources = [
+    "c_structured_metrics.cc",
+    "event_base.cc",
+    "event_base.h",
+    "key_data.cc",
+    "key_data.h",
+    "persistent_proto.cc",
+    "persistent_proto.h",
+    "recorder.cc",
+    "recorder.h",
+  ]
 
-  deps = [ ":gen_structured_events" ]
+  # Also include the generated event files.
+  sources += get_target_outputs(":gen_structured_events")
+
+  deps = [
+    ":gen_structured_events",
+    ":storage",
+  ]
 }

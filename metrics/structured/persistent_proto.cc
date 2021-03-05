@@ -4,158 +4,90 @@
 
 #include "metrics/structured/persistent_proto.h"
 
+#include <sys/file.h>
 #include <utility>
 
-#include <base/files/file_util.h>
-#include <base/files/important_file_writer.h>
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_file.h"
 #include <base/logging.h>
 #include <base/rand_util.h>
-#include <base/task/post_task.h>
-#include <base/task/task_traits.h>
-#include <base/task/thread_pool.h>
-#include <base/task_runner_util.h>
-#include <base/threading/scoped_blocking_call.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "metrics/structured/proto/storage.pb.h"
+
+#define READ_WRITE_ALL_FILE_FLAGS \
+  (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
 namespace metrics {
 namespace structured {
 namespace {
 
 template <class T>
-std::pair<ReadStatus, std::unique_ptr<T>> Read(const base::FilePath& filepath) {
-  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
-                                                base::BlockingType::MAY_BLOCK);
+std::unique_ptr<T> ReadFile(const base::FilePath& filepath) {
   if (!base::PathExists(filepath))
-    return {ReadStatus::kMissing, nullptr};
+    return nullptr;
 
   std::string proto_str;
   if (!base::ReadFileToString(filepath, &proto_str))
-    return {ReadStatus::kReadError, nullptr};
+    return nullptr;
 
   auto proto = std::make_unique<T>();
   if (!proto->ParseFromString(proto_str))
-    return {ReadStatus::kParseError, nullptr};
+    return nullptr;
 
-  return {ReadStatus::kOk, std::move(proto)};
+  return std::move(proto);
 }
 
 template <class T>
-WriteStatus Write(const base::FilePath& filepath, const T* proto) {
-  const auto directory = filepath.DirName();
-  if (!base::DirectoryExists(directory))
-    base::CreateDirectory(directory);
-
+bool WriteFile(const std::string& filepath, const T* proto) {
   std::string proto_str;
   if (!proto->SerializeToString(&proto_str))
-    return WriteStatus::kSerializationError;
+    return false;
 
-  bool write_result;
-  {
-    base::ScopedBlockingCall scoped_blocking_call(
-        FROM_HERE, base::BlockingType::MAY_BLOCK);
-    write_result = base::ImportantFileWriter::WriteFileAtomically(
-        filepath, proto_str, "StructuredMetricsPersistentProto");
+  base::ScopedFD file_descriptor(open(filepath.c_str(),
+                                      O_WRONLY | O_APPEND | O_CREAT,
+                                      READ_WRITE_ALL_FILE_FLAGS));
+  if (file_descriptor.get() < 0) {
+    PLOG(ERROR) << filepath << " cannot open";
+    return false;
   }
 
-  if (!write_result)
-    return WriteStatus::kWriteError;
-  return WriteStatus::kOk;
+  // Grab a lock to avoid chrome deleting the file while we're writing. Keep the
+  // file locked as briefly as possible. Freeing file_descriptor will close the
+  // file and remove the lock.
+  if (HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) < 0) {
+    PLOG(ERROR) << filepath << " cannot lock";
+    return false;
+  }
+
+  if (!base::WriteFileDescriptor(file_descriptor.get(), proto_str.c_str(),
+                                 proto_str.size())) {
+    PLOG(ERROR) << filepath << " write error";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace
 
 template <class T>
-PersistentProto<T>::PersistentProto(
-    const base::FilePath& path,
-    const base::TimeDelta write_delay,
-    typename PersistentProto<T>::ReadCallback on_read,
-    typename PersistentProto<T>::WriteCallback on_write)
-    : path_(path),
-      write_delay_(write_delay),
-      on_read_(std::move(on_read)),
-      on_write_(std::move(on_write)) {
-  task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
-      {base::TaskPriority::BEST_EFFORT, base::MayBlock(),
-       base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN});
-
-  task_runner_->PostTaskAndReplyWithResult(
-      FROM_HERE, base::BindOnce(&Read<T>, path_),
-      base::BindOnce(&PersistentProto<T>::OnReadComplete,
-                     weak_factory_.GetWeakPtr()));
+PersistentProto<T>::PersistentProto(const std::string& path) : path_(path) {
+  auto file = ReadFile<T>(base::FilePath(path));
+  if (file != nullptr) {
+    proto_ = std::move(file);
+  } else {
+    proto_ = std::make_unique<T>();
+    Write();
+  }
 }
 
 template <class T>
 PersistentProto<T>::~PersistentProto() = default;
 
 template <class T>
-void PersistentProto<T>::OnReadComplete(
-    std::pair<ReadStatus, std::unique_ptr<T>> result) {
-  if (result.first == ReadStatus::kOk) {
-    proto_ = std::move(result.second);
-  } else {
-    proto_ = std::make_unique<T>();
-    QueueWrite();
-  }
-
-  if (wipe_after_reading_) {
-    proto_.reset();
-    proto_ = std::make_unique<T>();
-    QueueWrite();
-    wipe_after_reading_ = false;
-  }
-
-  std::move(on_read_).Run(result.first);
-}
-
-template <class T>
-void PersistentProto<T>::QueueWrite() {
-  // If a save is already queued, do nothing.
-  if (write_is_queued_)
-    return;
-  write_is_queued_ = true;
-
-  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&PersistentProto<T>::OnQueueWrite,
-                     weak_factory_.GetWeakPtr()),
-      write_delay_);
-}
-
-template <class T>
-void PersistentProto<T>::OnQueueWrite() {
-  // Reset the queued flag before posting the task. Last-moment updates to
-  // |proto_| will post another task to write the proto, avoiding race
-  // conditions.
-  write_is_queued_ = false;
-  StartWrite();
-}
-
-template <class T>
-void PersistentProto<T>::StartWrite() {
-  // The SequentialTaskRunner ensures the writes won't trip over each other, so
-  // we can schedule without checking whether another write is currently active.
-  task_runner_->PostTaskAndReplyWithResult(
-      FROM_HERE, base::BindOnce(&Write<T>, path_, proto_.get()),
-      base::BindOnce(&PersistentProto<T>::OnWriteComplete,
-                     weak_factory_.GetWeakPtr()));
-}
-
-template <class T>
-void PersistentProto<T>::OnWriteComplete(const WriteStatus status) {
-  on_write_.Run(status);
-}
-
-template <class T>
-void PersistentProto<T>::Wipe() {
-  if (proto_) {
-    proto_.reset();
-    proto_ = std::make_unique<T>();
-    QueueWrite();
-  } else {
-    wipe_after_reading_ = true;
-  }
+void PersistentProto<T>::Write() {
+  WriteFile<T>(path_, proto_.get());
 }
 
 // A list of all types that the PersistentProto can be used with.

@@ -9,12 +9,14 @@
 #include <utility>
 #include <vector>
 
+#include <brillo/brillo_export.h>
+
 namespace metrics {
 namespace structured {
 
 // A base class for generated structured metrics event objects. This class
 // should not be used directly.
-class EventBase {
+class BRILLO_EXPORT EventBase {
  public:
   EventBase(const EventBase& other);
   virtual ~EventBase();
@@ -55,8 +57,9 @@ class EventBase {
   };
 
   // Finalizes the event and sends it for recording. After this call, the event
-  // is left in an invalid state and should not be used further.
-  void Record();
+  // is left in an invalid state and should not be used further. Returns false
+  // if the event has failed to be recorded, eg. due to content.
+  bool Record();
 
   std::vector<Metric> metrics() const { return metrics_; }
 

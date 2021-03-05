@@ -4,6 +4,8 @@
 
 #include "metrics/structured/event_base.h"
 
+#include "metrics/structured/recorder.h"
+
 namespace metrics {
 namespace structured {
 
@@ -13,8 +15,8 @@ EventBase::EventBase(uint64_t event_name_hash, uint64_t project_name_hash)
 EventBase::EventBase(const EventBase& other) = default;
 EventBase::~EventBase() = default;
 
-void EventBase::Record() {
-  // TODO(crbug.com/1148168): Implement recording.
+bool EventBase::Record() {
+  return Recorder::GetInstance()->Record(*this);
 }
 
 void EventBase::AddStringMetric(uint64_t name_hash, const std::string& value) {

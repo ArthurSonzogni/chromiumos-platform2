@@ -16,6 +16,8 @@ HEADER_FILE_TEMPLATE = """\
 #include <cstdint>
 #include <string>
 
+#include <brillo/brillo_export.h>
+
 #include "metrics/structured/event_base.h"
 
 namespace metrics {{
@@ -44,7 +46,7 @@ namespace {project.namespace} {{
 
 
 HEADER_EVENT_TEMPLATE = """\
-class {event.name} final : public ::metrics::structured::EventBase {{
+class BRILLO_EXPORT {event.name} final : public ::metrics::structured::EventBase {{
  public:
   {event.name}();
   ~{event.name}() override;
