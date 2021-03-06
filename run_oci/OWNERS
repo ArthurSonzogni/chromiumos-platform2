@@ -1,1 +1,3 @@
-include chromium/src:/components/arc/session/OWNERS
+# TODO(crbug.com/1184906): Include directly from chromium/src once branch
+# names match.
+include /arc/OWNERS.chromium.src.components.arc.session

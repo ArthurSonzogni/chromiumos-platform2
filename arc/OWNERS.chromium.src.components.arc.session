@@ -1,0 +1,15 @@
+# TODO(crbug.com/1184906): This file should be deleted and the OWNERS
+# includes changed to refer directly to the chromium/src version once the
+# the branch names between chromium/src and chromiumos/platform2 match
+# again.
+#
+# For now, this is a copy of chromium/src/components/arc/session/OWNERS
+# and must be kept in sync.
+#
+ereth@chromium.org
+lgcheng@google.com
+# backup reviewers
+hashimoto@chromium.org
+hidehiko@chromium.org
+jhorwich@chromium.org
+yusukes@chromium.org
