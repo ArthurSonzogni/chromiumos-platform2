@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.  Use
+// Copyright 2021 The Chromium OS Authors. All rights reserved.  Use
 // of this source code is governed by a BSD-style license that can
 // be found in the LICENSE file.
 
@@ -16,16 +16,19 @@ import "status.proto";
 // EnqueueRecordRequest enqueues records for encryption,
 // storage, and upload.
 message EnqueueRecordRequest {
-  // record_fd holds the file descriptor for serialized Record protos. File
+  // record_fd holds the file descriptor for a serialized Record proto. File
   // descriptor must point to a block of memory, because the record cannot
   // be stored to disk prior to encryption.
   // //chrome/cros/reporting/api/proto/record.proto
-  repeated Record record_fd = 1;
+  optional int32 record_fd = 1;
+
+  // pid holds the pid of the sending process.
+  optional int32 pid = 2;
 
   // Priority from
   // //chrome/cros/reporting/api/proto/record_constants.proto
   // indicates what priority queue the record should be included in.
-  optional Priority priority = 2;
+  optional Priority priority = 3;
 }
 
 // EnqueueRecordResponse indicates the enqueue success or

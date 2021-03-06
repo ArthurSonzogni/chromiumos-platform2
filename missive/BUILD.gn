@@ -58,6 +58,7 @@ static_library("libmessaging_layer") {
     ":missive_dbus_proxies",
     "//missive/proto:interface_proto",
     "//missive/scheduler",
+    "//missive/scheduler:enqueue_job",
   ]
 }
 
@@ -72,6 +73,7 @@ if (use.test) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "openssl",
     ]
   }
 
@@ -81,16 +83,22 @@ if (use.test) {
       ":target_test",
       "//common-mk:test",
     ]
+
     deps = [
       ":libmessaging_layer",
       "//common-mk/testrunner",
       "//missive/scheduler",
+      "//missive/scheduler:enqueue_job",
+      "//missive/storage/resources:resource_interface",
       "//missive/util:shared_queue",
       "//missive/util:status",
     ]
+
     sources = [
       "missive_daemon_test.cc",
+      "scheduler/enqueue_job_test.cc",
       "scheduler/scheduler_test.cc",
+      "storage/resources/resource_interface_test.cc",
       "util/shared_queue_test.cc",
       "util/status_macros_test.cc",
       "util/status_test.cc",

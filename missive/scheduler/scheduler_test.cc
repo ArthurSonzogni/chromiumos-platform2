@@ -37,10 +37,31 @@ class TestCallbackWaiter {
 
 class FakeJob : public Scheduler::Job {
  public:
-  FakeJob(ReportCompletionCallback report_completion_callback,
-          CancelCallback cancel_callback)
-      : Job(std::move(report_completion_callback), std::move(cancel_callback)) {
-  }
+  using ReportCompletionCallback = base::OnceCallback<Status()>;
+  using CancelCallback = base::OnceCallback<Status(Status)>;
+
+  class FakeJobDelegate : public Scheduler::Job::JobResponseDelegate {
+   public:
+    FakeJobDelegate(ReportCompletionCallback report_completion_callback,
+                    CancelCallback cancel_callback)
+        : report_completion_callback_(std::move(report_completion_callback)),
+          cancel_callback_(std::move(cancel_callback)) {}
+
+   private:
+    Status Complete() override {
+      return std::move(report_completion_callback_).Run();
+    }
+
+    Status Cancel(Status status) override {
+      return std::move(cancel_callback_).Run(status);
+    }
+
+    ReportCompletionCallback report_completion_callback_;
+    CancelCallback cancel_callback_;
+  };
+
+  explicit FakeJob(std::unique_ptr<FakeJobDelegate> fake_job_delegate)
+      : Job(std::move(fake_job_delegate)) {}
 
   void SetFinishStatus(Status status) { finish_status_ = status; }
 
@@ -86,7 +107,9 @@ class JobTest : public ::testing::Test {
 };
 
 TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
-  FakeJob job(report_completion_callback_, cancel_callback_);
+  auto delegate = std::make_unique<FakeJob::FakeJobDelegate>(
+      report_completion_callback_, cancel_callback_);
+  FakeJob job(std::move(delegate));
 
   TestCallbackWaiter waiter;
   job.Start(base::BindOnce(
@@ -128,7 +151,8 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
 }
 
 TEST_F(JobTest, CancelsWhenJobFails) {
-  FakeJob job(report_completion_callback_, cancel_callback_);
+  FakeJob job(std::make_unique<FakeJob::FakeJobDelegate>(
+      report_completion_callback_, cancel_callback_));
   job.SetFinishStatus(Status(error::INTERNAL, "Failing for tests"));
 
   TestCallbackWaiter waiter;
@@ -148,7 +172,8 @@ TEST_F(JobTest, CancelsWhenJobFails) {
 }
 
 TEST_F(JobTest, WillNotStartWithNonOKStatusAndCancels) {
-  FakeJob job(report_completion_callback_, cancel_callback_);
+  FakeJob job(std::make_unique<FakeJob::FakeJobDelegate>(
+      report_completion_callback_, cancel_callback_));
 
   EXPECT_TRUE(job.Cancel(Status(error::INTERNAL, "Failing For Tests")).ok());
 
@@ -261,7 +286,8 @@ TEST_F(SchedulerTest, SchedulesAndRunsJobs) {
 
   for (size_t i = 0; i < kNumJobs; i++) {
     std::unique_ptr<FakeJob> job =
-        std::make_unique<FakeJob>(report_completion_callback, cancel_callback);
+        std::make_unique<FakeJob>(std::make_unique<FakeJob::FakeJobDelegate>(
+            report_completion_callback, cancel_callback));
     if (i % 2u == 0) {
       job->SetFinishStatus(Status(error::INTERNAL, "Failing for tests"));
     }

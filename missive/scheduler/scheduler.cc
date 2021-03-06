@@ -33,10 +33,8 @@ using CompleteJobResponse = Status;
 using CompleteJobCallback = base::OnceCallback<void(CompleteJobResponse)>;
 using Notification = Scheduler::SchedulerObserver::Notification;
 
-Scheduler::Job::Job(ReportCompletionCallback report_completion_callback,
-                    CancelCallback cancel_callback)
-    : report_completion_callback_(std::move(report_completion_callback)),
-      cancel_callback_(std::move(cancel_callback)) {}
+Scheduler::Job::Job(std::unique_ptr<JobResponseDelegate> job_response_delegate)
+    : job_response_delegate_(std::move(job_response_delegate)) {}
 
 void Scheduler::Job::Start(base::OnceCallback<void(Status)> complete_cb) {
   DCHECK(complete_cb);
@@ -71,7 +69,7 @@ Status Scheduler::Job::Cancel(Status status) {
                   "Job cannot be cancelled after it has started.");
   }
 
-  return std::move(cancel_callback_).Run(status);
+  return job_response_delegate_->Cancel(status);
 }
 
 Scheduler::Job::JobState Scheduler::Job::GetJobState() const {
@@ -79,14 +77,13 @@ Scheduler::Job::JobState Scheduler::Job::GetJobState() const {
 }
 
 void Scheduler::Job::Finish(Status status) {
-  LOG(INFO) << status;
   if (!status.ok()) {
     job_state_ = JobState::CANCELLED;
-    std::move(complete_cb_).Run(std::move(cancel_callback_).Run(status));
+    std::move(complete_cb_).Run(job_response_delegate_->Cancel(status));
     return;
   }
   job_state_ = JobState::COMPLETED;
-  std::move(complete_cb_).Run(std::move(report_completion_callback_).Run());
+  std::move(complete_cb_).Run(job_response_delegate_->Complete());
 }
 
 class Scheduler::JobContext : public TaskRunnerContext<CompleteJobResponse> {

@@ -39,16 +39,24 @@ class Scheduler {
     // CANCELLED is an unsuccessful terminal state for the job.
     enum class JobState { NOT_RUNNING, RUNNING, COMPLETED, CANCELLED };
 
-    // ReportCompletionCallback should notify any listeners of successful
-    // completion and return a Status indicating listeners recieved the message.
-    using ReportCompletionCallback = base::OnceCallback<Status()>;
+    // JobResponseDelegate is responsible for sending responses to any
+    // listeners.
+    class JobResponseDelegate {
+     public:
+      JobResponseDelegate() = default;
+      virtual ~JobResponseDelegate() = default;
 
-    // CancelCallback should report the Status to any listeners and return a
-    // Status indicating listeners recieved the message.
-    using CancelCallback = base::OnceCallback<Status(Status)>;
+     private:
+      // Job should be the only class calling Complete or Cancel;
+      friend Job;
 
-    Job(ReportCompletionCallback report_completion_callback,
-        CancelCallback cancel_callback);
+      // Comple and Cancel will be called by Job::Finish and should notify
+      // listeners of the Jobs completion.
+      virtual Status Complete() = 0;
+      virtual Status Cancel(Status status) = 0;
+    };
+
+    explicit Job(std::unique_ptr<JobResponseDelegate> job_response_delegate);
     virtual ~Job() = default;
 
     Job(const Job&) = delete;
@@ -77,14 +85,13 @@ class Scheduler {
     // appropriately.
     void Finish(Status status);
 
+    std::unique_ptr<JobResponseDelegate> job_response_delegate_;
+
    private:
     std::atomic<JobState> job_state_{JobState::NOT_RUNNING};
 
     // |complete_cb_| is set by |Start| and called by |Finish|.
     base::OnceCallback<void(Status)> complete_cb_;
-
-    ReportCompletionCallback report_completion_callback_;
-    CancelCallback cancel_callback_;
   };
 
   // SchedulerObserver allows introspection into the goings on of the Scheudler.

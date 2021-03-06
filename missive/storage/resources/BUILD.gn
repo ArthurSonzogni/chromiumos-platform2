@@ -1,0 +1,32 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD - style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+static_library("resource_interface") {
+  sources = [
+    "disk_resource_impl.cc",
+    "disk_resource_impl.h",
+    "memory_resource_impl.cc",
+    "memory_resource_impl.h",
+    "resource_interface.cc",
+    "resource_interface.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+}

@@ -1,0 +1,50 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD - style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+static_library("storage_uploader_interface") {
+  sources = [
+    "storage_uploader_interface.cc",
+    "storage_uploader_interface.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+
+  deps = [
+    "//missive/proto:record_constants",
+    "//missive/proto:record_proto",
+    "//missive/proto:status_proto",
+    "//missive/util:status",
+  ]
+}
+
+static_library("storage_module_interface") {
+  sources = [
+    "storage_module_interface.cc",
+    "storage_module_interface.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+
+  deps = [
+    "//missive/proto:record_constants",
+    "//missive/proto:record_proto",
+    "//missive/util:status",
+  ]
+}

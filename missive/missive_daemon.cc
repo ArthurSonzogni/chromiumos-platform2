@@ -17,7 +17,9 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "missive/proto/interface.pb.h"
+#include "missive/scheduler/enqueue_job.h"
 #include "missive/scheduler/scheduler.h"
+#include "missive/storage/storage_module_interface.h"
 
 namespace reporting {
 
