@@ -18,7 +18,7 @@
 
 #include "cryptohome/install_attributes.pb.h"
 #include "cryptohome/lockbox.h"
-#include "cryptohome/tpm_init.h"
+#include "cryptohome/tpm.h"
 
 using base::FilePath;
 
@@ -64,7 +64,7 @@ void InstallAttributes::SetTpm(Tpm* tpm) {
   lockbox_->set_tpm(tpm);
 }
 
-bool InstallAttributes::Init(TpmInit* tpm_init) {
+bool InstallAttributes::Init(Tpm* tpm) {
   // Ensure that if Init() was called and it failed, we can retry cleanly.
   attributes_->Clear();
   status_ = Status::kUnknown;
@@ -85,9 +85,9 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
     // Install attributes are valid, no need to hold owner dependency. So,
     // repeat removing owner dependency in case it didn't succeed during the
     // first boot.
-    if (tpm_init->RemoveTpmOwnerDependency(
+    if (tpm->RemoveOwnerDependency(
             Tpm::TpmOwnerDependency::kInstallAttributes)) {
-      LOG(WARNING) << "Failed to RemoveTpmOwnerDependency().";
+      LOG(WARNING) << "Failed to RemoveOwnerDependency().";
     }
     LOG(INFO) << "Valid install attributes cache found.";
     return true;
@@ -102,7 +102,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
 
   // TPM not ready yet, i.e. setup after ownership not completed. Init() is
   // supposed to get invoked again once the TPM is owned and configured.
-  if (!tpm_init->IsTpmReady()) {
+  if (!tpm->IsEnabled() || !tpm->IsOwned()) {
     // To ensure that we get a fresh start after taking ownership, remove the
     // data file when we boot up after a TPM clear. If we didn't do so, the
     // previous data file might validate against a left-around NVRAM space,
@@ -118,7 +118,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
     // far-reaching consequences (enterprise enrollment would be lost for
     // example). Thus, be careful and only clear data if the TPM looks
     // positively unowned.
-    if (tpm_init->IsTpmEnabled() && !tpm_init->IsTpmOwned()) {
+    if (tpm->IsEnabled() && !tpm->IsOwned()) {
       ClearData();
       // Don't flag invalid here - Chrome verifies that install attributes
       // aren't invalid before locking them as part of enterprise enrollment.
@@ -145,9 +145,9 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       case LockboxError::kNvramSpaceAbsent:
         // Legacy install that didn't create space at OOBE.
         status_ = Status::kValid;
-        if (tpm_init->RemoveTpmOwnerDependency(
+        if (tpm->RemoveOwnerDependency(
                 Tpm::TpmOwnerDependency::kInstallAttributes)) {
-          LOG(WARNING) << "Failed to RemoveTpmOwnerDependency().";
+          LOG(WARNING) << "Failed to RemoveOwnerDependency().";
         }
         LOG(INFO) << "Found legacy install that didn't create install "
                      "attributes NVRAM space at OOBE.";
@@ -175,9 +175,8 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   }
 
   status_ = Status::kFirstInstall;
-  if (tpm_init->RemoveTpmOwnerDependency(
-          Tpm::TpmOwnerDependency::kInstallAttributes)) {
-    LOG(WARNING) << "Failed to RemoveTpmOwnerDependency().";
+  if (tpm->RemoveOwnerDependency(Tpm::TpmOwnerDependency::kInstallAttributes)) {
+    LOG(WARNING) << "Failed to RemoveOwnerDependency().";
   }
   LOG(INFO) << "Install attributes reset back to first install.";
   return true;

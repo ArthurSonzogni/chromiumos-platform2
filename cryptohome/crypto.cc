@@ -338,10 +338,10 @@ Crypto::Crypto(Platform* platform)
 
 Crypto::~Crypto() {}
 
-bool Crypto::Init(TpmInit* tpm_init) {
+bool Crypto::Init(Tpm* tpm, TpmInit* tpm_init) {
   CHECK(tpm_init) << "Crypto wanted to use TPM but was not provided a TPM";
   if (tpm_ == NULL) {
-    tpm_ = tpm_init->get_tpm();
+    tpm_ = tpm;
   }
   tpm_init_ = tpm_init;
   tpm_init_->SetupTpm(true);

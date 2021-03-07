@@ -53,9 +53,8 @@ class InstallAttributesTest : public ::testing::Test {
   ~InstallAttributesTest() override = default;
 
   void SetUp() override {
-    ON_CALL(tpm_init_, IsTpmReady()).WillByDefault(Return(true));
-    ON_CALL(tpm_init_, IsTpmEnabled()).WillByDefault(Return(true));
-    ON_CALL(tpm_init_, IsTpmOwned()).WillByDefault(Return(true));
+    ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
+    ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
 
     install_attrs_.set_lockbox(&lockbox_);
     install_attrs_.set_platform(&platform_);
@@ -91,13 +90,13 @@ class InstallAttributesTest : public ::testing::Test {
   }
 
   void ExpectRemovingOwnerDependency() {
-    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(
-                               Tpm::TpmOwnerDependency::kInstallAttributes))
+    EXPECT_CALL(tpm_, RemoveOwnerDependency(
+                          Tpm::TpmOwnerDependency::kInstallAttributes))
         .Times(1);
   }
 
   void ExpectNotRemovingOwnerDependency() {
-    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(_)).Times(0);
+    EXPECT_CALL(tpm_, RemoveOwnerDependency(_)).Times(0);
   }
 
   NiceMock<MockLockbox> lockbox_;
@@ -105,7 +104,6 @@ class InstallAttributesTest : public ::testing::Test {
   InstallAttributes install_attrs_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<MockTpmInit> tpm_init_;
 };
 
 TEST_F(InstallAttributesTest, OobeWithTpm) {
@@ -116,10 +114,9 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_init_, IsTpmOwned()).WillRepeatedly(Return(false));
-  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
-  Mock::VerifyAndClearExpectations(&tpm_init_);
+  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(false));
+  EXPECT_FALSE(install_attrs_.Init(&tpm_));
+  Mock::VerifyAndClearExpectations(&tpm_);
   Mock::VerifyAndClearExpectations(&platform_);
   EXPECT_EQ(InstallAttributes::Status::kTpmNotOwned, install_attrs_.status());
 
@@ -129,7 +126,7 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
   Mock::VerifyAndClearExpectations(&lockbox_);
   Mock::VerifyAndClearExpectations(&platform_);
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
@@ -174,7 +171,7 @@ TEST_F(InstallAttributesTest, OobeWithoutTpm) {
       .WillOnce(Return(false));
   ExpectNotRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
 }
@@ -188,7 +185,7 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
   Mock::VerifyAndClearExpectations(&lockbox_);
 
   brillo::Blob data;
@@ -214,7 +211,7 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
       .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
   ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
 
@@ -235,7 +232,7 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
       .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
   ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
 
@@ -258,7 +255,7 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -273,7 +270,7 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -293,7 +290,7 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_CALL(platform_, DeleteFile(_)).Times(0);
   EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(0);
 
-  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
+  EXPECT_FALSE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -311,7 +308,7 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
                       Return(false)));
   ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_TRUE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -330,7 +327,7 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
       .WillOnce(
           DoAll(SetArgPointee<0>(LockboxError::kTpmError), Return(false)));
 
-  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
+  EXPECT_FALSE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -343,8 +340,7 @@ TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
   EXPECT_TRUE(install_attrs_.is_secure());
 
-  EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_init_, IsTpmOwned()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(false));
 
   // The cache file isn't present because lockbox-cache won't receive a dump of
   // the lockbox space if the TPM isn't owned.
@@ -358,7 +354,7 @@ TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
               DeleteFile(FilePath(InstallAttributes::kDefaultDataFile)))
       .WillOnce(Return(true));
 
-  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
+  EXPECT_FALSE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kTpmNotOwned, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
@@ -371,9 +367,8 @@ TEST_F(InstallAttributesTest, KeepDataFileOnTpmFailure) {
   EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
   EXPECT_TRUE(install_attrs_.is_secure());
 
-  EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_init_, IsTpmEnabled()).WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_init_, IsTpmOwned()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(false));
 
   // The cache file isn't present because lockbox-cache won't receive a dump of
   // the lockbox space if the TPM isn't owned.
@@ -390,7 +385,7 @@ TEST_F(InstallAttributesTest, KeepDataFileOnTpmFailure) {
                              FilePath(InstallAttributes::kDefaultDataFile)))
       .Times(0);
 
-  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
+  EXPECT_FALSE(install_attrs_.Init(&tpm_));
 
   EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());

@@ -75,8 +75,6 @@ class KeysetManagementTest : public ::testing::Test {
   KeysetManagementTest& operator=(KeysetManagementTest&&) = delete;
 
   void SetUp() override {
-    crypto_.set_tpm(&tpm_);
-
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, system_salt_,
@@ -1031,7 +1029,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto_.Init(&mock_tpm_init);
+  crypto_.Init(&tpm_, &mock_tpm_init);
 
   // TEST
 
@@ -1084,7 +1082,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
 
-  crypto_.Init(&mock_tpm_init);
+  crypto_.Init(&tpm_, &mock_tpm_init);
 
   // TEST
 

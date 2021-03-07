@@ -240,7 +240,7 @@ bool UserDataAuth::Initialize() {
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
-  if (!crypto_->Init(tpm_init_)) {
+  if (!crypto_->Init(tpm_, tpm_init_)) {
     return false;
   }
 
@@ -1083,7 +1083,7 @@ void UserDataAuth::InitializeInstallAttributes() {
   // The TPM owning instance may have changed since initialization.
   // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
   install_attrs_->SetTpm(tpm_);
-  install_attrs_->Init(tpm_init_);
+  install_attrs_->Init(tpm_);
 
   // Check if the machine is enterprise owned and report to mount_ then.
   DetectEnterpriseOwnership();
@@ -1421,7 +1421,7 @@ bool UserDataAuth::InitForChallengeResponseAuth(
     return false;
   }
 
-  if (!tpm_init_->IsTpmReady()) {
+  if (!tpm_->IsEnabled() || !tpm_->IsOwned()) {
     LOG(ERROR) << "TPM must be initialized in order to do challenge-response "
                   "authentication";
     *error_code = user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;

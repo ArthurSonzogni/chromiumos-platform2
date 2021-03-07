@@ -153,8 +153,6 @@ class MountTest
     helper_.SetUpSystemSalt();
     helper_.InjectSystemSalt(&platform_);
 
-    crypto_.set_tpm(&tpm_);
-
     mock_device_policy_ = new policy::MockDevicePolicy();
 
     InitializeFilesystemLayout(&platform_, &crypto_, nullptr);

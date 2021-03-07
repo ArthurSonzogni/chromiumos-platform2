@@ -23,7 +23,7 @@ class MockInstallAttributes : public InstallAttributes {
   virtual ~MockInstallAttributes();
 
   MOCK_METHOD(void, SetTpm, (Tpm*), (override));
-  MOCK_METHOD(bool, Init, (TpmInit*), (override));
+  MOCK_METHOD(bool, Init, (Tpm*), (override));
   MOCK_METHOD(bool,
               Get,
               (const std::string&, brillo::Blob*),

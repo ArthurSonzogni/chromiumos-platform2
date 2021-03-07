@@ -22,7 +22,6 @@
 #include "cryptohome/lockbox.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_init.h"
 
 namespace cryptohome {
 
@@ -70,9 +69,9 @@ class InstallAttributes {
   virtual void SetTpm(Tpm* tpm);
 
   // Prepares the class for use including instantiating a new environment
-  // if needed. If initialization completes, |tpm_init| will be used to remove
+  // if needed. If initialization completes, |tpm| will be used to remove
   // this instance's dependency on the TPM ownership.
-  virtual bool Init(TpmInit* tpm_init);
+  virtual bool Init(Tpm* tpm);
 
   // Populates |value| based on the content referenced by |name|.
   //

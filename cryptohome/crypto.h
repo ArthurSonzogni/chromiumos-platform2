@@ -46,7 +46,7 @@ class Crypto {
   virtual ~Crypto();
 
   // Initializes Crypto
-  virtual bool Init(TpmInit* tpm_init);
+  virtual bool Init(Tpm* tpm, TpmInit* tpm_init);
 
   // Decrypts an encrypted vault keyset.  The vault keyset should be the output
   // of EncryptVaultKeyset().
@@ -176,9 +176,6 @@ class Crypto {
 
   // Returns the number of wrong authentication attempts for the LE keyset.
   int GetWrongAuthAttempts(uint64_t le_label) const;
-
-  // Sets the TPM implementation
-  void set_tpm(Tpm* value) { tpm_ = value; }
 
   // Gets whether the TPM is set
   bool has_tpm() const { return (tpm_ != NULL); }

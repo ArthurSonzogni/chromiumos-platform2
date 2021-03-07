@@ -285,8 +285,6 @@ TEST_F(CryptoTest, TpmStepTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockTpmInit> tpm_init;
 
-  crypto.set_tpm(&tpm);
-
   SecureBlob vkk_key;
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_2_0));
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
@@ -304,7 +302,7 @@ TEST_F(CryptoTest, TpmStepTest) {
           DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto.Init(&tpm_init);
+  crypto.Init(&tpm, &tpm_init);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -363,8 +361,6 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockTpmInit> tpm_init;
 
-  crypto.set_tpm(&tpm);
-
   SecureBlob vkk_key;
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_1_2));
   EXPECT_CALL(tpm, EncryptBlob(_, _, _, _))
@@ -382,7 +378,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
           DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto.Init(&tpm_init);
+  crypto.Init(&tpm, &tpm_init);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -440,8 +436,6 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockTpmInit> tpm_init;
 
-  crypto.set_tpm(&tpm);
-
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _)).Times(2);
   EXPECT_CALL(tpm_init, HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -454,7 +448,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
-  crypto.Init(&tpm_init);
+  crypto.Init(&tpm, &tpm_init);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -590,8 +584,7 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockTpmInit> tpm_init;
-  crypto.set_tpm(&tpm);
-  crypto.Init(&tpm_init);
+  crypto.Init(&tpm, &tpm_init);
 
   std::string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data);
@@ -632,8 +625,7 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockTpmInit> tpm_init;
-  crypto.set_tpm(&tpm);
-  crypto.Init(&tpm_init);
+  crypto.Init(&tpm, &tpm_init);
 
   std::string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data);
@@ -704,8 +696,6 @@ std::string HexDecode(const std::string& hex) {
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
   LeCredentialsManagerTest() : crypto_(&platform_) {
-    crypto_.set_tpm(&tpm_);
-
     EXPECT_CALL(tpm_init_, SetupTpm(true))
         .WillOnce(
             Return(true));  // because HasCryptohomeKey returned false once.
@@ -724,7 +714,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
 
-    crypto_.Init(&tpm_init_);
+    crypto_.Init(&tpm_, &tpm_init_);
 
     pin_vault_keyset_.Initialize(&platform_, &crypto_);
   }
