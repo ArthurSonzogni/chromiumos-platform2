@@ -4,6 +4,9 @@
 
 #include "bootstat/bootstat.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 
 #include <memory>
@@ -21,6 +24,9 @@
 namespace bootstat {
 
 using ::testing::_;
+using ::testing::AnyNumber;
+using ::testing::ByMove;
+using ::testing::InSequence;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -64,6 +70,11 @@ class MockBootStatSystem : public BootStatSystem {
   }
 
   MOCK_METHOD(std::optional<struct timespec>, GetUpTime, (), (const, override));
+  MOCK_METHOD(base::ScopedFD, OpenRtc, (), (const, override));
+  MOCK_METHOD(std::optional<struct rtc_time>,
+              GetRtcTime,
+              (base::ScopedFD*),
+              (const, override));
 
  private:
   base::FilePath disk_statistics_file_path_;
@@ -326,6 +337,93 @@ TEST_F(BootstatTest, SymlinkFollowNoTarget) {
   // ... and the targets must not exist
   EXPECT_FALSE(base::PathExists(stats_output_dir_.Append(uptime_link_path)));
   EXPECT_FALSE(base::PathExists(stats_output_dir_.Append(diskstats_link_path)));
+}
+
+// Nanoseconds in a millisecond.
+constexpr int kmSec = 1000 * 1000;
+
+// Tests that rtc sync can be generated successfully
+TEST_F(BootstatTest, RtcGeneration) {
+  // Test a worst case where it takes ~1s to get a tick.
+  constexpr struct timespec kUptimeTestData[5] = {
+      // tv_sec, tv_nsec
+      {30, 0 * kmSec},   {30, 333 * kmSec}, {30, 666 * kmSec},
+      {30, 999 * kmSec}, {31, 1 * kmSec},
+  };
+  // struct rtc_time: tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year
+  constexpr struct rtc_time kRtcTestData[2] = {
+      {33, 1, 12, 3, 8, 121},
+      {34, 1, 12, 3, 8, 121},
+  };
+  constexpr char kExpectedRtcSyncData[] =
+      "30.999000000 31.001000000 2021-09-03 12:01:34\n";
+
+  constexpr char kEventName[] = "test_event";
+  base::FilePath sync_rtc_file_path =
+      stats_output_dir_.Append(std::string("sync-rtc-") + kEventName);
+
+  int rtc_fd = HANDLE_EINTR(open("/dev/null", O_RDONLY | O_CLOEXEC));
+
+  {
+    InSequence seq;  // All these calls must be in sequence.
+
+    EXPECT_CALL(*boot_stat_system_, OpenRtc())
+        .WillOnce(Return(ByMove(base::ScopedFD(rtc_fd))));
+
+    for (int i = 0; i < 3; i++) {
+      EXPECT_CALL(*boot_stat_system_, GetUpTime())
+          .WillRepeatedly(Return(std::make_optional(kUptimeTestData[i])));
+      EXPECT_CALL(*boot_stat_system_, GetRtcTime(_))
+          .Times(1)
+          .WillOnce(Return(std::make_optional(kRtcTestData[0])));
+    }
+
+    EXPECT_CALL(*boot_stat_system_, GetUpTime())
+        .WillRepeatedly(Return(std::make_optional(kUptimeTestData[3])));
+    EXPECT_CALL(*boot_stat_system_, GetRtcTime(_))
+        .Times(1)
+        .WillOnce(Return(std::make_optional(kRtcTestData[1])));
+    EXPECT_CALL(*boot_stat_system_, GetUpTime())
+        .WillRepeatedly(Return(std::make_optional(kUptimeTestData[4])));
+
+    boot_stat_->LogRtcSync(kEventName);
+
+    ValidateEventFileContents(sync_rtc_file_path, kExpectedRtcSyncData);
+  }
+
+  RemoveFile(sync_rtc_file_path);
+}
+
+// Tests that rtc sync times out if it does not tick.
+TEST_F(BootstatTest, RtcGenerationTimeout) {
+  // The code times out after 1.5s, but we let it run for 2.0s at most.
+  constexpr struct timespec kUptimeTestData[] = {
+      // tv_sec, tv_nsec
+      {30, 0 * kmSec},   {30, 300 * kmSec}, {31, 400 * kmSec},
+      {31, 600 * kmSec}, {32, 0 * kmSec},
+  };
+  // struct rtc_time: tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year
+  constexpr struct rtc_time kRtcTestData = {33, 1, 12, 3, 9, 121};
+
+  constexpr char kEventName[] = "test_event";
+  base::FilePath sync_rtc_file_path =
+      stats_output_dir_.Append(std::string("sync-rtc-") + kEventName);
+
+  int rtc_fd = HANDLE_EINTR(open("/dev/null", O_RDONLY));
+
+  EXPECT_CALL(*boot_stat_system_, GetUpTime())
+      .Times(AnyNumber())
+      .WillOnce(Return(std::make_optional(kUptimeTestData[0])))
+      .WillOnce(Return(std::make_optional(kUptimeTestData[1])))
+      .WillOnce(Return(std::make_optional(kUptimeTestData[2])))
+      .WillOnce(Return(std::make_optional(kUptimeTestData[3])))
+      .WillOnce(Return(std::make_optional(kUptimeTestData[4])));
+  EXPECT_CALL(*boot_stat_system_, OpenRtc())
+      .WillOnce(Return(ByMove(base::ScopedFD(rtc_fd))));
+  EXPECT_CALL(*boot_stat_system_, GetRtcTime(_))
+      .WillRepeatedly(Return(std::make_optional(kRtcTestData)));
+
+  boot_stat_->LogRtcSync(kEventName);
 }
 
 }  // namespace bootstat

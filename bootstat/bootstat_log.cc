@@ -7,7 +7,9 @@
 
 #include <fcntl.h>
 #include <limits.h>
+#include <linux/rtc.h>
 #include <stdint.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -16,6 +18,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <rootdev/rootdev.h>
 
@@ -64,6 +67,25 @@ std::optional<struct timespec> BootStatSystem::GetUpTime() const {
   return {uptime};
 }
 
+base::ScopedFD BootStatSystem::OpenRtc() const {
+  int rtc_fd = HANDLE_EINTR(open("/dev/rtc", O_RDONLY | O_CLOEXEC));
+  if (rtc_fd < 0)
+    PLOG(ERROR) << "Cannot open RTC";
+
+  return base::ScopedFD(rtc_fd);
+}
+
+std::optional<struct rtc_time> BootStatSystem::GetRtcTime(
+    base::ScopedFD* rtc_fd) const {
+  struct rtc_time rtc_time;
+  if (ioctl(rtc_fd->get(), RTC_RD_TIME, &rtc_time) < 0) {
+    PLOG(ERROR) << "RTC ioctl error";
+    return std::nullopt;
+  }
+
+  return {rtc_time};
+}
+
 BootStat::BootStat()
     : BootStat(base::FilePath(kDefaultOutputDirectoryName),
                std::make_unique<BootStatSystem>()) {}
@@ -74,6 +96,52 @@ BootStat::BootStat(const base::FilePath& output_directory_path,
       boot_stat_system_(std::move(boot_stat_system)) {}
 
 BootStat::~BootStat() = default;
+
+std::optional<struct BootStat::RtcTick> BootStat::GetRtcTick() const {
+  base::ScopedFD rtc_fd = boot_stat_system_->OpenRtc();
+  if (!rtc_fd.is_valid())
+    return std::nullopt;
+
+  // Record start time so that we can timeout if needed.
+  std::optional<struct timespec> tps_start = boot_stat_system_->GetUpTime();
+  if (!tps_start)
+    return std::nullopt;
+
+  std::optional<struct rtc_time> rtc_time[2];
+
+  for (int i = 0;; i++) {
+    int old = (i + 1) % 2;
+    int cur = i % 2;
+
+    std::optional<struct timespec> tps_cur = boot_stat_system_->GetUpTime();
+    if (!tps_cur)
+      return std::nullopt;
+
+    rtc_time[cur] = boot_stat_system_->GetRtcTime(&rtc_fd);
+    if (!rtc_time[cur])
+      return std::nullopt;
+
+    if (i > 0 && rtc_time[cur]->tm_sec != rtc_time[old]->tm_sec) {
+      // RTC ticked, record "after" time.
+      std::optional<struct timespec> tps_after = boot_stat_system_->GetUpTime();
+      if (!tps_after)
+        return std::nullopt;
+      return {{*rtc_time[cur], *tps_cur, *tps_after}};
+    }
+
+    // Timeout after 1.5 seconds.
+    if (difftime(tps_cur->tv_sec, tps_start->tv_sec) +
+            (tps_cur->tv_nsec - tps_start->tv_nsec) * 1e-9 >
+        1.5) {
+      LOG(ERROR) << "Timeout waiting for RTC tick.";
+      return std::nullopt;
+    }
+
+    // Don't hog the CPU too much, we don't care about sub-ms resolution
+    // anyway.
+    usleep(1000);
+  }
+}
 
 base::ScopedFD BootStat::OpenEventFile(const std::string& output_name_prefix,
                                        const std::string& event_name) const {
@@ -140,6 +208,26 @@ bool BootStat::LogEvent(const std::string& event_name) const {
   ret &= LogUptimeEvent(event_name);
 
   return ret;
+}
+
+bool BootStat::LogRtcSync(const char* event_name) {
+  std::optional<struct RtcTick> tick = GetRtcTick();
+  if (!tick)
+    return false;
+
+  base::ScopedFD output_fd = OpenEventFile("sync-rtc", event_name);
+  if (!output_fd.is_valid())
+    return false;
+
+  std::string data = base::StringPrintf(
+      "%jd.%09ld %jd.%09ld %04d-%02d-%02d %02d:%02d:%02d\n",
+      (intmax_t)tick->boottime_before.tv_sec, tick->boottime_before.tv_nsec,
+      (intmax_t)tick->boottime_after.tv_sec, tick->boottime_after.tv_nsec,
+      tick->rtc_time.tm_year + 1900, tick->rtc_time.tm_mon + 1,
+      tick->rtc_time.tm_mday, tick->rtc_time.tm_hour, tick->rtc_time.tm_min,
+      tick->rtc_time.tm_sec);
+
+  return base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
 }
 
 };  // namespace bootstat

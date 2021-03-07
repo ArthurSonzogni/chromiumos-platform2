@@ -8,20 +8,39 @@
 
 #include <libgen.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
+#include <string>
+
+#include "base/command_line.h"
 
 #include "bootstat/bootstat.h"
 
-static void usage(char* cmd) {
-  fprintf(stderr, "usage: %s <event-name>\n", basename(cmd));
+namespace {
+
+void usage(char* cmd) {
+  fprintf(stderr, "usage: %s [--sync=rtc] <event-name>\n", basename(cmd));
   exit(EXIT_FAILURE);
 }
 
+}  // namespace
+
 int main(int argc, char* argv[]) {
-  if (argc != 2)
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  base::CommandLine::StringVector args = cl->GetArgs();
+
+  // Event name must always be provided (and only that).
+  if (args.size() != 1)
     usage(argv[0]);
 
-  bootstat::BootStat().LogEvent(argv[1]);
+  if (cl->HasSwitch("sync")) {
+    std::string sync = cl->GetSwitchValueASCII("sync");
+    if (sync == "rtc")
+      bootstat::BootStat().LogRtcSync(args[0].c_str());
+    else
+      usage(argv[0]);
+  } else {
+    bootstat::BootStat().LogEvent(args[0].c_str());
+  }
   return EXIT_SUCCESS;
 }

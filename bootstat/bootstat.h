@@ -10,6 +10,7 @@
 #ifndef BOOTSTAT_BOOTSTAT_H_
 #define BOOTSTAT_BOOTSTAT_H_
 
+#include <linux/rtc.h>
 #include <time.h>
 
 #include <memory>
@@ -37,6 +38,12 @@ class BootStatSystem {
   // Returns the current uptime (clock_gettime's CLOCK_BOOTTIME),
   // std::nullopt on error.
   virtual std::optional<struct timespec> GetUpTime() const;
+
+  // Returns a scoped FD to the RTC device (used by GetRtcTime below).
+  virtual base::ScopedFD OpenRtc() const;
+  // Reads and return RTC's time, std::nullopt on error.
+  virtual std::optional<struct rtc_time> GetRtcTime(
+      base::ScopedFD* rtc_fd) const;
 };
 
 // Basic class for bootstat API interface.
@@ -60,6 +67,10 @@ class BRILLO_EXPORT BootStat {
   // conventions to prevent name collisions.
   bool LogEvent(const std::string& event_name) const;
 
+  // Logs an RTC sync event, used to synchronize RTC and boottime clocks.
+  // RTC timezone is normally UTC (as reported by the device).
+  bool LogRtcSync(const char* event_name);
+
  private:
   base::FilePath output_directory_path_;
 
@@ -73,6 +84,18 @@ class BRILLO_EXPORT BootStat {
   bool LogDiskEvent(const std::string& event_name) const;
   // Logs a uptime event indicating time since boot.
   bool LogUptimeEvent(const std::string& event_name) const;
+
+  // Return data for GetRtcTick
+  struct RtcTick {
+    struct rtc_time rtc_time;
+    struct timespec boottime_before;
+    struct timespec boottime_after;
+  };
+
+  // Waits for a RTC tick (every second), put that in RtcTick.rtc_time, and
+  // record CLOCK_BOOTTIME before and after the tick in
+  // RtcTick.boottime_before/after. Return std::nullopt on error.
+  std::optional<struct RtcTick> GetRtcTick() const;
 };
 }  // namespace bootstat
 

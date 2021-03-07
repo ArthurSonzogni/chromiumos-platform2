@@ -23,5 +23,5 @@ date '+%s.%N' >"${ARCHIVE}/timestamp"
 bootstat archive
 # -fPp: overwrite pre-existing files; don't follow symlinks;
 #   preserve mode, owner and file times.
-cp -fPp /tmp/uptime-* /tmp/disk-* "${ARCHIVE}"
+cp -fPp /tmp/uptime-* /tmp/disk-* /tmp/sync-rtc-* "${ARCHIVE}"
 date '+%s.%N' >>"${ARCHIVE}/timestamp"
