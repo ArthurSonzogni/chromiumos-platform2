@@ -49,7 +49,7 @@ Uptime data are stored in a file named `/tmp/uptime-<event-name>`;
 disk statistics are stored in a file named `/tmp/disk-<event-name>`.
 This convention is a concession to pre-existing code that depends on
 these files existing with these specific names, including the
-[platform_BootPerf] test in autotest, the boot-complete upstart job,
+[platform.BootPerf] test, the boot-complete upstart job,
 and the Chrome code to report boot time on the login screen.
 
 New code should treat the file names as an implementation detail,
@@ -71,4 +71,4 @@ In areas where the code is C specific, use your best judgment (note
 that Google also has Objective-C coding conventions that may be
 useful).
 
-[platform_BootPerf]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/HEAD/client/site_tests/platform_BootPerf
+[platform.BootPerf]: https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/HEAD/src/chromiumos/tast/remote/bundles/cros/platform/boot_perf.go
