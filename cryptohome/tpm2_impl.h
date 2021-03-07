@@ -96,10 +96,6 @@ class Tpm2Impl : public Tpm {
   bool IsOwnerPasswordPresent() override;
   bool HasResetLockPermissions() override;
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
-  bool IsInitialized() override;
-  void SetIsInitialized(bool done) override;
-  bool IsBeingOwned() override;
-  void SetIsBeingOwned(bool value) override;
   bool GetRandomDataBlob(size_t length, brillo::Blob* data) override;
   bool GetRandomDataSecureBlob(size_t length,
                                brillo::SecureBlob* data) override;
@@ -235,9 +231,6 @@ class Tpm2Impl : public Tpm {
 
   // True, if the tpm firmware has been already successfully declared stable.
   bool fw_declared_stable_ = false;
-
-  // Indicates if the TPM is being owned
-  bool is_being_owned_ = false;
 
   // Indicates if the TPM is already enabled.
   bool is_enabled_ = false;

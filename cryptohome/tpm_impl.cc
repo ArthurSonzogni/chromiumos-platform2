@@ -190,10 +190,8 @@ const size_t kPCRExtensionSize = 20;  // SHA-1 digest size.
 const TSS_RESULT kKeyNotFoundError = (TSS_E_PS_KEY_NOTFOUND | TSS_LAYER_TCS);
 
 TpmImpl::TpmImpl()
-    : initialized_(false),
-      srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
-      owner_password_(),
-      is_being_owned_(false) {
+    : srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
+      owner_password_() {
   TSS_HCONTEXT context_handle = ConnectContext();
   if (context_handle) {
     tpm_context_.reset(0, context_handle);
@@ -225,8 +223,8 @@ bool TpmImpl::ConnectContextAsOwner(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
     return false;
   }
 
-  if (!IsOwned() || IsBeingOwned()) {
-    LOG(ERROR) << "ConnectContextAsOwner: TPM is unowned or still being owned";
+  if (!IsOwned()) {
+    LOG(ERROR) << "ConnectContextAsOwner: TPM is unowned";
     return false;
   }
 
@@ -268,7 +266,7 @@ bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
                                        TSS_HTPM* tpm_handle) {
   *context = 0;
   *tpm_handle = 0;
-  if (!IsOwned() || IsBeingOwned()) {
+  if (!IsOwned()) {
     LOG(ERROR) << "ConnectContextAsDelegate: TPM is unowned.";
     return false;
   }

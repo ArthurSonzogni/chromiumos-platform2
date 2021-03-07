@@ -325,11 +325,6 @@
                   value="async"/>
       <arg type="b" name="owned" direction="out" />
     </method>
-    <method name="TpmIsBeingOwned">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg type="b" name="owning" direction="out" />
-    </method>
     <method name="TpmCanAttemptOwnership">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

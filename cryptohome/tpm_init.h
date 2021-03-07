@@ -55,9 +55,6 @@ class TpmInit {
   // Returns true if the TPM is owned.
   virtual bool IsTpmOwned();
 
-  // Marks the TPM as being or not being been owned.
-  virtual void SetTpmBeingOwned(bool being_owned);
-
   // Removes the given owner dependency. When all dependencies have been removed
   // the owner password can be cleared.
   //

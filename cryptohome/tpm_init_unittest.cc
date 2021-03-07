@@ -33,8 +33,6 @@ class TpmInitTest : public ::testing::Test {
  public:
   TpmInitTest()
       : is_tpm_owned_(false),
-        is_tpm_being_owned_(false),
-        is_tpm_initialized_(false),
         tpm_init_(&tpm_, &platform_) {}
   TpmInitTest(const TpmInitTest&) = delete;
   TpmInitTest& operator=(const TpmInitTest&) = delete;
@@ -45,14 +43,6 @@ class TpmInitTest : public ::testing::Test {
   // For TPM-related flags: enabled is always true, other flags are settable.
   bool IsTpmOwned() const { return is_tpm_owned_; }
   void SetIsTpmOwned(bool is_tpm_owned) { is_tpm_owned_ = is_tpm_owned; }
-  bool IsTpmBeingOwned() const { return is_tpm_being_owned_; }
-  void SetIsTpmBeingOwned(bool is_tpm_being_owned) {
-    is_tpm_being_owned_ = is_tpm_being_owned;
-  }
-  bool IsTpmInitialized() { return is_tpm_initialized_; }
-  void SetIsTpmInitialized(bool is_tpm_initialized) {
-    is_tpm_initialized_ = is_tpm_initialized;
-  }
   bool PerformTpmEnabledOwnedCheck(bool* is_enabled, bool* is_owned) {
     *is_enabled = true;
     *is_owned = is_tpm_owned_;
@@ -155,7 +145,6 @@ class TpmInitTest : public ::testing::Test {
 
   void SetTpmReady() {
     SetIsTpmOwned(true);
-    SetIsTpmBeingOwned(false);
     ASSERT_TRUE(tpm_init_.IsTpmReady());
   }
 
@@ -163,14 +152,6 @@ class TpmInitTest : public ::testing::Test {
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned())
         .WillByDefault(Invoke(this, &TpmInitTest::IsTpmOwned));
-    ON_CALL(tpm_, IsBeingOwned())
-        .WillByDefault(Invoke(this, &TpmInitTest::IsTpmBeingOwned));
-    ON_CALL(tpm_, SetIsBeingOwned(_))
-        .WillByDefault(Invoke(this, &TpmInitTest::SetIsTpmBeingOwned));
-    ON_CALL(tpm_, IsInitialized())
-        .WillByDefault(Invoke(this, &TpmInitTest::IsTpmInitialized));
-    ON_CALL(tpm_, SetIsInitialized(_))
-        .WillByDefault(Invoke(this, &TpmInitTest::SetIsTpmInitialized));
     ON_CALL(tpm_, PerformEnabledOwnedCheck(_, _))
         .WillByDefault(Invoke(this, &TpmInitTest::PerformTpmEnabledOwnedCheck));
 
@@ -210,8 +191,6 @@ class TpmInitTest : public ::testing::Test {
 
  protected:
   bool is_tpm_owned_;
-  bool is_tpm_being_owned_;
-  bool is_tpm_initialized_;
   std::map<base::FilePath, brillo::Blob> files_;
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
@@ -263,7 +242,6 @@ ACTION_P(LoadWrappedKeyToHandle, handle) {
 }
 
 TEST_F(TpmInitTest, LoadCryptohomeKeySuccess) {
-  SetIsTpmInitialized(true);
   FileTouch(kDefaultCryptohomeKeyFile);
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
@@ -275,7 +253,6 @@ TEST_F(TpmInitTest, LoadCryptohomeKeyTransientFailure) {
   // Transient failure on the first attempt leads to key not being loaded.
   // But the key is not re-created. Success on the second attempt loads the
   // old key.
-  SetIsTpmInitialized(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(Return(Tpm::kTpmRetryCommFailure))
@@ -292,7 +269,6 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyAfterLoadFailure) {
   // Permanent failure while loading the key leads to re-creating, storing
   // and loading the new key.
   SetTpmReady();
-  SetIsTpmInitialized(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
@@ -308,7 +284,6 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyCreation) {
   // Permanent failure while loading the key leads to an attempt to re-create
   // the key. Which fails. So, nothing new is stored or loaded.
   SetTpmReady();
-  SetIsTpmInitialized(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(Return(Tpm::kTpmRetryFailNoRetry));
@@ -323,7 +298,6 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
   // It is stored. But then loading fails.
   // Still, on the next attempt, the key is loaded, and not re-created again.
   SetTpmReady();
-  SetIsTpmInitialized(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
@@ -341,20 +315,14 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
 
 TEST_F(TpmInitTest, IsTpmReadyWithOwnedFile) {
   SetIsTpmOwned(true);
-  SetIsTpmBeingOwned(false);
   EXPECT_TRUE(tpm_init_.IsTpmReady());
 
   SetIsTpmOwned(false);
-  EXPECT_FALSE(tpm_init_.IsTpmReady());
-
-  SetIsTpmOwned(true);
-  SetIsTpmBeingOwned(true);
   EXPECT_FALSE(tpm_init_.IsTpmReady());
 }
 
 TEST_F(TpmInitTest, IsTpmReadyNoOwnedFile) {
   SetIsTpmOwned(true);
-  SetIsTpmBeingOwned(false);
 
   EXPECT_TRUE(tpm_init_.IsTpmReady());
 }

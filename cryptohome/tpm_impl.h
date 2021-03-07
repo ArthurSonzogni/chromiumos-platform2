@@ -69,10 +69,6 @@ class TpmImpl : public Tpm {
   bool IsOwnerPasswordPresent() override;
   bool HasResetLockPermissions() override;
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
-  bool IsInitialized() override { return initialized_; }
-  void SetIsInitialized(bool done) override { initialized_ = done; }
-  bool IsBeingOwned() override { return is_being_owned_; }
-  void SetIsBeingOwned(bool value) override { is_being_owned_ = value; }
   bool GetRandomDataBlob(size_t length, brillo::Blob* data) override;
   bool GetRandomDataSecureBlob(size_t length,
                                brillo::SecureBlob* data) override;
@@ -280,7 +276,6 @@ class TpmImpl : public Tpm {
   bool SetDelegateDataFromTpmManager();
 
   // Member variables
-  bool initialized_;
   brillo::SecureBlob srk_auth_;
 
   // If TPM ownership is taken, owner_password_ contains the password used
@@ -291,9 +286,6 @@ class TpmImpl : public Tpm {
 
   // Indicates if the TPM is owned
   bool is_owned_{false};
-
-  // Indicates if the TPM is being owned
-  bool is_being_owned_;
 
   // Indicates if the delegate is bound to PCR.
   base::Optional<bool> is_delegate_bound_to_pcr_;

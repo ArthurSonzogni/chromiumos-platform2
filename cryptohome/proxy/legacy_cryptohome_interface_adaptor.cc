@@ -678,14 +678,6 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsOwnedOnSuccess(
   response->Return(reply.owned());
 }
 
-void LegacyCryptohomeInterfaceAdaptor::TpmIsBeingOwned(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Note that TpmIsBeingOwned is no longer available. External owners can no
-  // longer query whether TPM Ownership is currently being taken.
-  LOG(WARNING) << "Obsolete TpmIsBeingOwned is called.";
-  response->Return(false);
-}
-
 void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnership(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
   tpm_manager::TakeOwnershipRequest request;

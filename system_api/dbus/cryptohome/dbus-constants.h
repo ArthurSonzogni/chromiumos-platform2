@@ -106,7 +106,6 @@ const char kCryptohomeUnmountEx[] = "UnmountEx";
 const char kCryptohomeTpmIsReady[] = "TpmIsReady";
 const char kCryptohomeTpmIsEnabled[] = "TpmIsEnabled";
 const char kCryptohomeTpmIsOwned[] = "TpmIsOwned";
-const char kCryptohomeTpmIsBeingOwned[] = "TpmIsBeingOwned";
 const char kCryptohomeTpmGetPassword[] = "TpmGetPassword";
 const char kCryptohomeTpmCanAttemptOwnership[] = "TpmCanAttemptOwnership";
 const char kCryptohomeTpmClearStoredPassword[] = "TpmClearStoredPassword";

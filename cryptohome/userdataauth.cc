@@ -1029,9 +1029,6 @@ void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
   ownership_callback_has_run_ = true;
 
   if (took_ownership) {
-    // Since ownership is already taken, we are not currently taking ownership.
-    tpm_init_->SetTpmBeingOwned(false);
-
     // Reset the TPM context of all mounts, that is, force a reload of
     // cryptohome keys, and make sure it is loaded and ready for every mount.
     ResetAllTPMContext();
@@ -2979,7 +2976,6 @@ std::string UserDataAuth::GetStatusString() {
 
   tpm.SetBoolKey("enabled", tpm_->IsEnabled());
   tpm.SetBoolKey("owned", tpm_->IsOwned());
-  tpm.SetBoolKey("being_owned", tpm_->IsBeingOwned());
 
   base::Value dv(base::Value::Type::DICTIONARY);
   dv.SetKey("mounts", std::move(mounts));

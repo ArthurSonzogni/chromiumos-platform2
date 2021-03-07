@@ -77,12 +77,9 @@ Tpm* TpmInit::get_tpm() {
 }
 
 bool TpmInit::IsTpmReady() {
-  // The TPM is "ready" if it is enabled, owned, and not being owned.
+  // The TPM is "ready" if it is enabled and owned.
   Tpm* tpm = tpm_init_task_->get_tpm();
-  if (!tpm->IsEnabled() || !tpm->IsOwned() || tpm->IsBeingOwned()) {
-    return false;
-  }
-  return true;
+  return tpm->IsEnabled() && tpm->IsOwned();
 }
 
 bool TpmInit::IsTpmEnabled() {
@@ -93,21 +90,12 @@ bool TpmInit::IsTpmOwned() {
   return tpm_init_task_->get_tpm()->IsOwned();
 }
 
-void TpmInit::SetTpmBeingOwned(bool being_owned) {
-  tpm_init_task_->get_tpm()->SetIsBeingOwned(being_owned);
-}
-
 bool TpmInit::SetupTpm(bool load_key) {
-  const bool was_initialized = get_tpm()->IsInitialized();
-  if (!was_initialized) {
-    get_tpm()->SetIsInitialized(true);
-  }
-
   if (load_key) {
     // load cryptohome key
     LoadOrCreateCryptohomeKey(&cryptohome_key_);
   }
-  return !was_initialized;
+  return true;
 }
 
 bool TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {

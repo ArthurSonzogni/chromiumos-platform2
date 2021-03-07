@@ -340,23 +340,6 @@ bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
   return true;
 }
 
-bool Tpm2Impl::IsInitialized() {
-  // For 2.0, TPM is always initialized.
-  return true;
-}
-
-void Tpm2Impl::SetIsInitialized(bool done) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-}
-
-bool Tpm2Impl::IsBeingOwned() {
-  return is_being_owned_;
-}
-
-void Tpm2Impl::SetIsBeingOwned(bool value) {
-  is_being_owned_ = value;
-}
-
 bool Tpm2Impl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
   brillo::SecureBlob blob(length);
   if (!this->GetRandomDataSecureBlob(length, &blob)) {

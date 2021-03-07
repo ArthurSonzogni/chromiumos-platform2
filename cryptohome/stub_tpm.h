@@ -71,10 +71,6 @@ class StubTpm : public Tpm {
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override {
     return false;
   }
-  bool IsInitialized() override { return false; }
-  void SetIsInitialized(bool done) override {}
-  bool IsBeingOwned() override { return false; }
-  void SetIsBeingOwned(bool value) override {}
   bool GetRandomDataBlob(size_t length, brillo::Blob* data) override {
     return false;
   }

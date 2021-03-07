@@ -311,15 +311,6 @@ class Tpm {
   // Returns true if the check was successfully carried out.
   virtual bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) = 0;
 
-  // Returns whether or not this instance has been setup'd by an external
-  // entity (such as cryptohome::TpmInit).
-  virtual bool IsInitialized() = 0;
-  virtual void SetIsInitialized(bool done) = 0;
-
-  // Returns whether or not the TPM is being owned
-  virtual bool IsBeingOwned() = 0;
-  virtual void SetIsBeingOwned(bool value) = 0;
-
   // Gets random bytes from the TPM.
   //
   // Parameters

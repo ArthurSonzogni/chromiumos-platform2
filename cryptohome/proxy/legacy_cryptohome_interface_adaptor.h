@@ -197,9 +197,6 @@ class LegacyCryptohomeInterfaceAdaptor
           response) override;
   void TpmIsOwned(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>
                       response) override;
-  void TpmIsBeingOwned(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
-      override;
   void TpmCanAttemptOwnership(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
       override;

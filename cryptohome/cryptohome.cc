@@ -1692,12 +1692,6 @@ int main(int argc, char** argv) {
     } else {
       printf("TPM Owned: %s\n", (result ? "true" : "false"));
     }
-    if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmIsBeingOwned call failed: %s.\n", error->message);
-    } else {
-      printf("TPM Being Owned: %s\n", (result ? "true" : "false"));
-    }
     if (!org_chromium_CryptohomeInterface_tpm_is_ready(
             proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsReady call failed: %s.\n", error->message);
