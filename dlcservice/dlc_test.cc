@@ -503,6 +503,26 @@ TEST_F(DlcBaseTest, VerifyDlcImageOnUEFailureToCompleteInstall) {
   EXPECT_TRUE(dlc.IsInstalled());
 }
 
+TEST_F(DlcBaseTest, NoImageFoundOnUEFailureToDownloadDlc) {
+  DlcBase dlc(kSecondDlc);
+  dlc.Initialize();
+
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedNoImageFound));
+
+  EXPECT_TRUE(dlc.Install(&err_));
+  EXPECT_TRUE(dlc.IsInstalling());
+
+  // Make sure the `last_attempt_error` in update_engine is set to `kNoUpdate`.
+  update_engine::StatusResult ue_status;
+  ue_status.set_last_attempt_error(
+      static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate));
+  SystemState::Get()->set_update_engine_status(ue_status);
+
+  EXPECT_FALSE(dlc.FinishInstall(/*installed_by_ue=*/true, &err_));
+}
+
 TEST_F(DlcBaseTest, DefaultState) {
   DlcBase dlc(kFirstDlc);
   dlc.Initialize();

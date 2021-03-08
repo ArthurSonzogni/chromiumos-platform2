@@ -27,9 +27,10 @@ Metrics::InstallResultMap Metrics::install_result_ = {
     {error::kFailedToCreateDirectory, InstallResult::kFailedToCreateDirectory},
     {error::kFailedInstallInUpdateEngine,
      InstallResult::kFailedInstallInUpdateEngine},
-    {kErrorInvalidDlc, InstallResult::kFailedInvalidDlc},  // dbus error
-    {kErrorNeedReboot, InstallResult::kFailedNeedReboot},  // dbus error
-    {kErrorBusy, InstallResult::kFailedUpdateEngineBusy},  // dbus error
+    {kErrorInvalidDlc, InstallResult::kFailedInvalidDlc},      // dbus error
+    {kErrorNeedReboot, InstallResult::kFailedNeedReboot},      // dbus error
+    {kErrorBusy, InstallResult::kFailedUpdateEngineBusy},      // dbus error
+    {kErrorNoImageFound, InstallResult::kFailedNoImageFound},  // dbus error
     {error::kFailedToVerifyImage, InstallResult::kFailedToVerifyImage},
     {error::kFailedToMountImage, InstallResult::kFailedToMountImage},
 };

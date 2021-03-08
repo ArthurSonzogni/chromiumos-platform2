@@ -125,8 +125,16 @@ TEST_F(MetricsTest, SendInstallResult_Failures) {
   metrics_->SendInstallResultFailure(&err);
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricInstallResult,
+                            10 /*kFailedNoImageFound*/, num_consts));
+  err = brillo::Error::Create(FROM_HERE, kDlcErrorDomain, kErrorNoImageFound,
+                              "msg");
+  metrics_->SendInstallResultFailure(&err);
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
   // Check that all values were tested.
-  EXPECT_EQ(10, static_cast<int>(InstallResult::kNumConstants));
+  EXPECT_EQ(11, static_cast<int>(InstallResult::kNumConstants));
 }
 
 TEST_F(MetricsTest, SendUninstallResult_Success) {

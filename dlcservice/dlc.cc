@@ -414,10 +414,24 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
                    << id_;
         return false;
       } else {
-        // The error is empty since verification was not successful.
-        *err = Error::CreateInternal(
-            FROM_HERE, error::kFailedToVerifyImage,
-            base::StringPrintf("Cannot verify image for DLC=%s", id_.c_str()));
+        // Check if the failure was because update_engine finished the
+        // installation with "noupdate".
+        if (installed_by_ue &&
+            SystemState::Get()->update_engine_status().last_attempt_error() ==
+                static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate)) {
+          *err = Error::CreateInternal(
+              FROM_HERE, kErrorNoImageFound,
+              base::StringPrintf(
+                  "Update engine could not install DLC=%s, since "
+                  "Omaha could not provide the image.",
+                  id_.c_str()));
+        } else {
+          // The error is empty since verification was not successful.
+          *err = Error::CreateInternal(
+              FROM_HERE, error::kFailedToVerifyImage,
+              base::StringPrintf("Cannot verify image for DLC=%s",
+                                 id_.c_str()));
+        }
 
         SystemState::Get()->metrics()->SendInstallResultFailure(err);
         ErrorPtr tmp_err;

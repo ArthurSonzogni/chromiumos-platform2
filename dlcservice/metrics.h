@@ -39,6 +39,7 @@ enum class InstallResult {
   kFailedUpdateEngineBusy = 7,
   kFailedToVerifyImage = 8,
   kFailedToMountImage = 9,
+  kFailedNoImageFound = 10,
   kNumConstants
 };
 
