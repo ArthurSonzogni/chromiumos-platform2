@@ -2424,6 +2424,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
           credentials,
           SecureBlob(request.authorization_request().key().secret()),
           &key_index)) {
+    ResetDictionaryAttackMitigation();
     return user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED;
   }
   scoped_refptr<UserSession> session = GetUserSession(account_id);
