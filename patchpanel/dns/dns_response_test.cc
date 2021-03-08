@@ -20,6 +20,8 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
+#include <base/check.h>
+
 namespace patchpanel {
 
 namespace {

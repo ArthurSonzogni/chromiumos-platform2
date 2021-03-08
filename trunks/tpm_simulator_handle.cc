@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include <base/check_op.h>
+
 #if defined(USE_SIMULATOR)
 extern "C" {
 #include <tpm2/_TPM_Init_fp.h>

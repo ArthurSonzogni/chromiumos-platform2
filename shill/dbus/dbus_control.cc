@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/check.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 

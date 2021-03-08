@@ -13,6 +13,8 @@
 #include "base/strings/string_split.h"
 #include "base/strings/stringprintf.h"
 
+#include <base/check_op.h>
+
 namespace metrics {
 
 MetricSample::MetricSample(MetricSample::SampleType sample_type,

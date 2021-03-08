@@ -8,6 +8,7 @@
 #include <glib.h>
 #include <unistd.h>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 namespace p2p {

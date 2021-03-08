@@ -11,6 +11,7 @@
 
 #include <libudev.h>
 
+#include <base/check.h>
 #include <base/notreached.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_task_runner_handle.h>

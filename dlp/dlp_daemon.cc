@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/dlp/dbus-constants.h>

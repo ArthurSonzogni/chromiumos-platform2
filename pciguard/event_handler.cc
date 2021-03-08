@@ -5,6 +5,8 @@
 #include "pciguard/event_handler.h"
 #include "pciguard/pciguard_utils.h"
 
+#include <base/check.h>
+
 namespace pciguard {
 
 // TODO(b/176184431): Don't assume NO_USER_LOGGED_IN on init.

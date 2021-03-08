@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <fcntl.h>
 
+#include <base/check.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>

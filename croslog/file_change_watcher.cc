@@ -21,6 +21,9 @@
 #include "base/threading/thread_task_runner_handle.h"
 #include "base/trace_event/trace_event.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace croslog {
 
 namespace {

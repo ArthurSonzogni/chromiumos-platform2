@@ -9,6 +9,7 @@
 #include <limits>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>
 #include <base/stl_util.h>

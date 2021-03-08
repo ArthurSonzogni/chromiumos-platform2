@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/files/scoped_file.h>

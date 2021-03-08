@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/check.h>
 
 #include "mist/config_loader.h"
 #include "mist/context.h"

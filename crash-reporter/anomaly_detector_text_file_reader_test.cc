@@ -13,6 +13,8 @@
 
 #include "crash-reporter/test_util.h"
 
+#include <base/check.h>
+
 namespace anomaly {
 
 using FileReaderRun = std::vector<std::string>;

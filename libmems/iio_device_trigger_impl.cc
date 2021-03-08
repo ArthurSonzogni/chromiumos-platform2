@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>

@@ -235,6 +235,8 @@ using TracingServiceState = ::perfetto::protos::gen::TracingServiceState;
 #define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_NACL() 0
 // Include TARGET_OS_IPHONE when on __APPLE__ systems.
 #include <TargetConditionals.h>
+#include <base/check.h>
+
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 #define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_IOS() 1
 #else

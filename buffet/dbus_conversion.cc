@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <brillo/type_name_undecorate.h>
 
 namespace buffet {

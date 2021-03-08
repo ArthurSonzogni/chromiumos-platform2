@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/check.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>

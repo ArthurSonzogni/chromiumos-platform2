@@ -26,6 +26,8 @@
 #include "bootid-logger/constants.h"
 #include "bootid-logger/timestamp_util.h"
 
+#include <base/check_op.h>
+
 namespace {
 
 constexpr char kBootIdProcPath[] = "/proc/sys/kernel/random/boot_id";

@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <string>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/files/file_util.h>
 #include <google/protobuf/text_format.h>

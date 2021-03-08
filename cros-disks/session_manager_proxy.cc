@@ -5,6 +5,7 @@
 #include "cros-disks/session_manager_proxy.h"
 
 #include <base/bind.h>
+#include <base/check.h>
 
 namespace cros_disks {
 

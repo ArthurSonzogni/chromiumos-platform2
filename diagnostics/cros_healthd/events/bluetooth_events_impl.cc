@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/check.h>
+
 namespace diagnostics {
 
 BluetoothEventsImpl::BluetoothEventsImpl(Context* context) : context_(context) {

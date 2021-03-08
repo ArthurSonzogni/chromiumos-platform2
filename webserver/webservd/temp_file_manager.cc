@@ -4,6 +4,7 @@
 
 #include "webservd/temp_file_manager.h"
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/format_macros.h>
 #include <base/strings/stringprintf.h>

@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/strings/string_piece.h>

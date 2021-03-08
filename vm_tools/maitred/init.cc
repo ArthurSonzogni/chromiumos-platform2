@@ -21,6 +21,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 // These usually need to come after the sys/ includes.
 #include <linux/dm-ioctl.h>
 #include <linux/loop.h>

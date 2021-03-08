@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>

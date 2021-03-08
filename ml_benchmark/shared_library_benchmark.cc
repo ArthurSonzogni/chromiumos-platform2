@@ -4,6 +4,7 @@
 
 #include "ml_benchmark/shared_library_benchmark.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include <memory>

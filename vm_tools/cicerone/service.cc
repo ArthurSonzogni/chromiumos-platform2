@@ -19,6 +19,8 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>

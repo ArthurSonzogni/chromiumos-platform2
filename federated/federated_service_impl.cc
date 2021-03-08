@@ -9,6 +9,8 @@
 #include "federated/mojom/example.mojom.h"
 #include "federated/utils.h"
 
+#include <base/check.h>
+
 namespace federated {
 
 FederatedServiceImpl::FederatedServiceImpl(mojo::ScopedMessagePipeHandle pipe,

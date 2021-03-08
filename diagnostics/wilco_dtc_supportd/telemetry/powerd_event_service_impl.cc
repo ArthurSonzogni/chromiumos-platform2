@@ -4,6 +4,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service_impl.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 using PowerEventType =

@@ -7,6 +7,7 @@
 #include <set>
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/notreached.h>
 #include <brillo/errors/error.h>

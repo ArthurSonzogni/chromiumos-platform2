@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 

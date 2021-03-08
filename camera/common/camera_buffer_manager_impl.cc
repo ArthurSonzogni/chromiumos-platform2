@@ -11,6 +11,8 @@
 #include <linux/videodev2.h>
 #include <sys/mman.h>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/no_destructor.h>
 #include <drm_fourcc.h>
 #include <hardware/gralloc.h>

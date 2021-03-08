@@ -6,6 +6,7 @@
 
 #include <cstdio>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 namespace diagnostics {

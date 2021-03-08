@@ -15,6 +15,8 @@
 
 #include "dbus_adaptors/org.chromium.BootLockboxInterface.h"
 
+#include <base/check.h>
+
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;

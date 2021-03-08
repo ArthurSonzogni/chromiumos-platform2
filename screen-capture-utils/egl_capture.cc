@@ -12,6 +12,8 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <xf86drm.h>

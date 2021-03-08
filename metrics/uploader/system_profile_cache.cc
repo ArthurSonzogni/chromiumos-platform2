@@ -18,6 +18,8 @@
 #include "metrics/uploader/proto/chrome_user_metrics_extension.pb.h"
 #include "vboot/crossystem.h"
 
+#include <base/check.h>
+
 namespace {
 
 const char kPersistentGUIDFile[] = "/var/lib/metrics/Sysinfo.GUID";

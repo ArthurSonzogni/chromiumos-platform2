@@ -13,6 +13,8 @@
 
 #include "shill/logging.h"
 
+#include <base/check.h>
+
 namespace shill {
 
 const size_t ArpPacket::kMinPayloadSize = ETH_ZLEN - ETH_HLEN;

@@ -4,6 +4,7 @@
 
 #include "modemfwd/firmware_file.h"
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 

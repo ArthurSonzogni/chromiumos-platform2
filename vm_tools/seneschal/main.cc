@@ -6,6 +6,7 @@
 #include <sys/mount.h>
 
 #include <base/at_exit.h>
+#include <base/check.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>

@@ -5,6 +5,7 @@
 #ifndef HERMES_EUICC_SLOT_INFO_H_
 #define HERMES_EUICC_SLOT_INFO_H_
 
+#include <base/check.h>
 #include <base/optional.h>
 #include <string>
 #include <utility>

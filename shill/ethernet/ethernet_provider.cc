@@ -12,6 +12,9 @@
 #include "shill/manager.h"
 #include "shill/store_interface.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 using std::string;
 
 namespace shill {

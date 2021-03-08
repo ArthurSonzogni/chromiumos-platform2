@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>

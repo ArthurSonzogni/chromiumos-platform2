@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/memory/ptr_util.h>
 
 #include "shill/dbus/fake_properties_proxy.h"

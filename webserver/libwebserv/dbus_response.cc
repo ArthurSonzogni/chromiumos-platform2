@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>

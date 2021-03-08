@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>

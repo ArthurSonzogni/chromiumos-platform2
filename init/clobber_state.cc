@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/check.h>
+
 // Keep after <sys/mount.h> to avoid build errors.
 #include <linux/fs.h>
 

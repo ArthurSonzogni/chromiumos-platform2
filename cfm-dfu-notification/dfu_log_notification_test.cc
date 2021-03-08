@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <gmock/gmock.h>

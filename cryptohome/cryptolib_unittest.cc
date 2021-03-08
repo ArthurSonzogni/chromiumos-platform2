@@ -7,6 +7,7 @@
 #include <openssl/rsa.h>
 
 #include <base/base64.h>
+#include <base/check.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>

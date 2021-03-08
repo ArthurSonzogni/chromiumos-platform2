@@ -14,6 +14,7 @@
 #include <linux/videodev2.h>
 #include <time.h>
 
+#include <base/check.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/timer/elapsed_timer.h>

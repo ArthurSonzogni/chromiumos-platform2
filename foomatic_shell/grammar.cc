@@ -4,6 +4,7 @@
 
 #include "foomatic_shell/grammar.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 

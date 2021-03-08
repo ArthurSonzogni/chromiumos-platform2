@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/vm_base_impl.h"
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>

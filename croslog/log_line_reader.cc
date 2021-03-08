@@ -20,6 +20,9 @@
 
 #include "croslog/file_map_reader.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace croslog {
 
 namespace {

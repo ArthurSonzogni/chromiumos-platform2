@@ -4,6 +4,7 @@
 
 #include "cros-disks/device_event_queue.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "cros-disks/device_event.h"

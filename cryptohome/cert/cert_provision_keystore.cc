@@ -4,6 +4,7 @@
 //
 // KeyStore interface classes for cert_provision library.
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 

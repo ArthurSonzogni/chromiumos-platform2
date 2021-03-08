@@ -11,6 +11,8 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/files/file_descriptor_watcher_posix.h>

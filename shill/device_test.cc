@@ -16,6 +16,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>

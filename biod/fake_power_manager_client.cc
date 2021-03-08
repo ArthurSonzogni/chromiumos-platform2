@@ -4,6 +4,8 @@
 
 #include "biod/fake_power_manager_client.h"
 
+#include <base/check.h>
+
 namespace biod {
 
 void FakePowerManagerClient::AddObserver(PowerEventObserver* observer) {

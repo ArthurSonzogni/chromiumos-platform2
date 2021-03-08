@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/containers/flat_map.h>
 #include <libmems/iio_device.h>
 #include <libmems/iio_channel.h>

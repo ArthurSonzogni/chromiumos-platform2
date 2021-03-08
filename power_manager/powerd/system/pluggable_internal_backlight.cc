@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/strings/pattern.h>
 
 #include "power_manager/powerd/system/backlight_observer.h"

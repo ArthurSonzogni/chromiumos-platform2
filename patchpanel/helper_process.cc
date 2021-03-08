@@ -11,6 +11,8 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <brillo/syslog_logging.h>

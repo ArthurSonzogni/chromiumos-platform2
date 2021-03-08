@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/macros.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>

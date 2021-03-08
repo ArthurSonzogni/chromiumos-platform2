@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/check.h>
 #include <base/cpu.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>

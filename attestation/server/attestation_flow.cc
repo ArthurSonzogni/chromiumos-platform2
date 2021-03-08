@@ -4,6 +4,9 @@
 
 #include "attestation/server/attestation_flow.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace attestation {
 
 AttestationFlowData::AttestationFlowData(const EnrollRequest& request,

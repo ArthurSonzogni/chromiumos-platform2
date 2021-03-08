@@ -7,6 +7,7 @@
 #include <libyuv.h>
 #include <linux/videodev2.h>
 #include <memory>
+#include <base/check.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <utility>

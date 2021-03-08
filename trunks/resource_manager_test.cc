@@ -8,6 +8,8 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

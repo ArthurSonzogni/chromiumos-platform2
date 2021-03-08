@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>

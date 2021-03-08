@@ -4,6 +4,7 @@
 
 #include "shill/net/io_handler_factory_container.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 namespace shill {

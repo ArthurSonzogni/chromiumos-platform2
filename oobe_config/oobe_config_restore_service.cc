@@ -11,6 +11,8 @@
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/proto_bindings/oobe_config.pb.h"
 
+#include <base/check.h>
+
 using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace oobe_config {

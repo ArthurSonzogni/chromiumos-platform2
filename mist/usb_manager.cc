@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/stringprintf.h>

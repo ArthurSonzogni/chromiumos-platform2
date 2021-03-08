@@ -25,6 +25,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>

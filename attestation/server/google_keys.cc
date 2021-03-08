@@ -4,6 +4,8 @@
 
 #include "attestation/server/google_keys.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 
 namespace attestation {

@@ -9,6 +9,8 @@
 
 #include <sys/types.h>
 
+#include <base/check.h>
+
 extern "C" {
 #include <pppd/fsm.h>
 #include <pppd/ipcp.h>

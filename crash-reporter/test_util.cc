@@ -4,6 +4,7 @@
 
 #include "crash-reporter/test_util.h"
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>

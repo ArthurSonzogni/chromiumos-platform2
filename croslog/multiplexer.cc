@@ -11,6 +11,8 @@
 
 #include "croslog/log_parser_syslog.h"
 
+#include <base/check.h>
+
 namespace croslog {
 
 Multiplexer::LogSource::LogSource(base::FilePath log_file,

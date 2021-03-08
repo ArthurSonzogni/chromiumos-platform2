@@ -19,6 +19,8 @@
 #include "shill/mock_metrics.h"
 #include "shill/test_event_dispatcher.h"
 
+#include <base/check.h>
+
 using testing::_;
 using testing::SaveArg;
 using testing::Test;

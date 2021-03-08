@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>

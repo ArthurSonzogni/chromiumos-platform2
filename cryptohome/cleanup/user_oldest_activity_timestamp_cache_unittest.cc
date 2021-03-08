@@ -6,6 +6,7 @@
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
 

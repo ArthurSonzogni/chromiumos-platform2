@@ -4,6 +4,8 @@
 
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>

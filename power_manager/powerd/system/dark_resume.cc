@@ -10,6 +10,8 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

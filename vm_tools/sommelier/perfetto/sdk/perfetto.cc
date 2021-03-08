@@ -25,6 +25,8 @@
 #define GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
 #endif
 #include "perfetto.h"
+#include <base/check.h>
+
 // gen_amalgamated begin source: src/base/file_utils.cc
 // gen_amalgamated begin header: include/perfetto/base/build_config.h
 // gen_amalgamated begin header: gen/build_config/perfetto_build_flags.h

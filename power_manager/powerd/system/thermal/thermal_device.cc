@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/environment.h>
 #include <base/format_macros.h>
 #include <base/files/scoped_temp_dir.h>

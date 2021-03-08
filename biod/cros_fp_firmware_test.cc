@@ -13,6 +13,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

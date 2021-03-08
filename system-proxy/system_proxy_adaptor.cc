@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/location.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>

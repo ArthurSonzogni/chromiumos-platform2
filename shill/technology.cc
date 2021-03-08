@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>

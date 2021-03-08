@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/location.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>

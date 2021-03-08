@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <utility>
 
+#include <base/check.h>
+
 namespace diagnostics {
 
 BluetoothEventServiceImpl::BluetoothEventServiceImpl(

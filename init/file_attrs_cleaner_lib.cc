@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>

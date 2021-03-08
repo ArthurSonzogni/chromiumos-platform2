@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "chaps/object_impl.h"

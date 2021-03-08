@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <base/callback.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/platform_thread.h>

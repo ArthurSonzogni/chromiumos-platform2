@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 

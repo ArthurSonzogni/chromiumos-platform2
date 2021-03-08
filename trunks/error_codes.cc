@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 

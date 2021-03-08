@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+
 using chrome::ml_benchmark::BenchmarkResults;
 using chrome::ml_benchmark::Metric;
 

@@ -5,6 +5,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "cryptohome/cryptolib.h"

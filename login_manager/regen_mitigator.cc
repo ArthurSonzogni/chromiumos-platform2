@@ -6,6 +6,8 @@
 
 #include "login_manager/session_manager_service.h"
 
+#include <base/check.h>
+
 namespace login_manager {
 
 RegenMitigator::RegenMitigator(KeyGenerator* generator)

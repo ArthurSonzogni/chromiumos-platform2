@@ -6,6 +6,7 @@
 
 #include <set>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
 

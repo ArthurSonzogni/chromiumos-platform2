@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <chromeos/dbus/service_constants.h>
+#include <base/check.h>
 #include <dbus/message.h>
 #include <gtest/gtest.h>
 

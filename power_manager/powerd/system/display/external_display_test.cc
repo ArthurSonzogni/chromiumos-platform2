@@ -11,6 +11,8 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/compiler_specific.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>

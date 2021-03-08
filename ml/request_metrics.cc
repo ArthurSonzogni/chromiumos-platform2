@@ -4,6 +4,7 @@
 
 #include "ml/request_metrics.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "ml/mojom/machine_learning_service.mojom.h"

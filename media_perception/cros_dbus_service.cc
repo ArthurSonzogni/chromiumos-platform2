@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include <base/check.h>
+
 namespace mri {
 
 namespace {

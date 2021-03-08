@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "cros-disks/quote.h"

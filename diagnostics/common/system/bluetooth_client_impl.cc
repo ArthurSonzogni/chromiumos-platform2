@@ -5,6 +5,7 @@
 #include "diagnostics/common/system/bluetooth_client_impl.h"
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <dbus/bluetooth/dbus-constants.h>

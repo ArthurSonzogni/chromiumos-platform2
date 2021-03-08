@@ -6,6 +6,8 @@
 #include <tuple>
 #include <vector>
 
+#include <base/check.h>
+
 // This group goes first so the next group can see the needed definitions.
 #include <attestation/proto_bindings/interface.pb.h>
 

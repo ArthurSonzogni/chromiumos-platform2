@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 

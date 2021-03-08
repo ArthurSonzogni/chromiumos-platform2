@@ -11,6 +11,8 @@
 
 #include <google/protobuf/message_lite.h>
 
+#include <base/check.h>
+
 template <typename Proto>
 class Serialized {
  public:

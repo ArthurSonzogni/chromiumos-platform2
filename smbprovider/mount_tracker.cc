@@ -4,6 +4,8 @@
 
 #include "smbprovider/mount_tracker.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/strings/string_util.h>
 
 namespace smbprovider {

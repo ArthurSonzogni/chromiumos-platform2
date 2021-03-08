@@ -7,6 +7,7 @@
 #include <map>
 #include <utility>
 
+#include <base/check.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 

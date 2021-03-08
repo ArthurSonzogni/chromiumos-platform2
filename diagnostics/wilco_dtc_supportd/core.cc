@@ -10,6 +10,7 @@
 
 #include <base/barrier_closure.h>
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/strings/string_util.h>

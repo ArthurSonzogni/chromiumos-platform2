@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/guid.h>
 #include <base/optional.h>
 #include <base/time/time.h>

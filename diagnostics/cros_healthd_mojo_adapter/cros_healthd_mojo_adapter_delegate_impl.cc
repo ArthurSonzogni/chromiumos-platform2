@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <brillo/dbus/dbus_method_invoker.h>

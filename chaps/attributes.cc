@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "chaps/chaps_utility.h"

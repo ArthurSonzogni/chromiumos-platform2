@@ -4,6 +4,7 @@
 
 #include "chaps/chaps_service.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "chaps/attributes.h"

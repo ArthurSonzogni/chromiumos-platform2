@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/environment.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>

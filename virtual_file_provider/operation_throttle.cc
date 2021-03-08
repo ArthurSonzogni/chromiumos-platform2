@@ -5,6 +5,7 @@
 #include "virtual_file_provider/operation_throttle.h"
 
 #include <base/bind.h>
+#include <base/check_op.h>
 
 namespace virtual_file_provider {
 

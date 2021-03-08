@@ -10,6 +10,8 @@
 
 #include "cros-camera/common.h"
 
+#include <base/check.h>
+
 namespace cros {
 
 CameraAlgorithmCallbackOpsImpl::CameraAlgorithmCallbackOpsImpl(

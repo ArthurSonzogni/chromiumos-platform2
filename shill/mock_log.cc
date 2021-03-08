@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 
+#include <base/check.h>
+
 using std::string;
 using testing::_;
 using testing::AnyNumber;

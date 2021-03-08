@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/run_loop.h>
 #include <gtest/gtest.h>
 

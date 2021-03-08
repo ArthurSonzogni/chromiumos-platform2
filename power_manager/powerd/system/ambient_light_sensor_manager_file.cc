@@ -11,6 +11,8 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

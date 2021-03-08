@@ -87,6 +87,7 @@ _HEADER_FILE_INCLUDES = """
 #include <string>
 
 #include <base/callback_forward.h>
+#include <base/check.h>
 #include <base/macros.h>
 #include <base/stl_util.h>
 

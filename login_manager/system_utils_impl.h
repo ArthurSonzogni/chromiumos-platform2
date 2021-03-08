@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>

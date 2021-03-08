@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <gmock/gmock.h>

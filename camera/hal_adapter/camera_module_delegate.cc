@@ -11,6 +11,8 @@
 #include "cros-camera/common.h"
 #include "hal_adapter/camera_hal_adapter.h"
 
+#include <base/check.h>
+
 namespace cros {
 
 CameraModuleDelegate::CameraModuleDelegate(

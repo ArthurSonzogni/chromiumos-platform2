@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/check.h>
 #include <base/task/current_thread.h>
 #include <base/task/single_thread_task_executor.h>
 

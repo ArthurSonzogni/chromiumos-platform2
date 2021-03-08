@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/check_op.h>
 #include <base/timer/elapsed_timer.h>
 #include <hardware/camera3.h>
 

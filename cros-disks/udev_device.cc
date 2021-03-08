@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>

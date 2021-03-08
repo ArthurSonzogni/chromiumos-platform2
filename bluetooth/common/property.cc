@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/stl_util.h>
 
 namespace bluetooth {

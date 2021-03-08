@@ -13,6 +13,8 @@
 
 #include "tpm_manager/server/tpm_status.h"
 
+#include <base/check.h>
+
 namespace tpm_manager {
 
 // Enable salting for global session.

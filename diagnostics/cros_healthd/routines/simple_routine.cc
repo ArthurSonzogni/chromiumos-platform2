@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_piece.h>

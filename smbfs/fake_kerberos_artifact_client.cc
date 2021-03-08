@@ -4,6 +4,7 @@
 
 #include "smbfs/fake_kerberos_artifact_client.h"
 
+#include <base/check.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
 namespace smbfs {

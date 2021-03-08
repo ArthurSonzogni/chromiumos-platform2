@@ -13,6 +13,7 @@
 #include <set>
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/optional.h>

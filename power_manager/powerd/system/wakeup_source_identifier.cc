@@ -11,6 +11,9 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/wakeup_device.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace power_manager {
 namespace system {
 

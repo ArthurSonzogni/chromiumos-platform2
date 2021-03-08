@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind_helpers.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <brillo/map_utils.h>
 #include <brillo/streams/file_stream.h>

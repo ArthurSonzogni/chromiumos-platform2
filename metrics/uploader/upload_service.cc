@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/metrics/histogram.h>

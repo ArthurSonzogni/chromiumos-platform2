@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/check.h>
 #include <tensorflow/lite/context.h>
 #include <tensorflow/lite/delegates/nnapi/nnapi_delegate.h>
 #include <tensorflow/lite/interpreter.h>

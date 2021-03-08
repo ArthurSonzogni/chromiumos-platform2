@@ -4,6 +4,7 @@
 
 #include <cstring>
 
+#include <base/check.h>
 #include <base/json/json_reader.h>
 #include <base/values.h>
 #include <base/files/file_util.h>

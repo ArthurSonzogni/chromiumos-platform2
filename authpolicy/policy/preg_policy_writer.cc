@@ -6,6 +6,7 @@
 
 #include <limits>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string16.h>

@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/dbus/mock_dbus_method_response.h>

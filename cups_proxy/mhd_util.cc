@@ -8,6 +8,8 @@
 
 #include "cups_proxy/mhd_http_request.h"
 
+#include <base/check.h>
+
 namespace cups_proxy {
 
 namespace {

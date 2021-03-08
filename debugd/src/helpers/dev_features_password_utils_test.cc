@@ -4,6 +4,7 @@
 
 #include "debugd/src/helpers/dev_features_password_utils.h"
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>

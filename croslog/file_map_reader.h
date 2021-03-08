@@ -20,6 +20,9 @@
 #include "croslog/log_entry.h"
 #include "croslog/log_parser.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace croslog {
 
 class FileMapReaderDelegate;

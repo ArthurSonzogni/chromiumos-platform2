@@ -5,6 +5,7 @@
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
 
 #include <base/barrier_closure.h>
+#include <base/check.h>
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 

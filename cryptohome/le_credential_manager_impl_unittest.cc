@@ -6,6 +6,7 @@
 #include <iterator>  // For std::begin()/std::end().
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>

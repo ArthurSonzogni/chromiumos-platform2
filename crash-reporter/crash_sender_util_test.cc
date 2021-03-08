@@ -18,6 +18,7 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>

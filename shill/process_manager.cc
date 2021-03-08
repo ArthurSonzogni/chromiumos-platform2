@@ -11,6 +11,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/notreached.h>
 
 #include "shill/event_dispatcher.h"

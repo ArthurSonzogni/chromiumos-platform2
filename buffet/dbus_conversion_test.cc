@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/guid.h>
 #include <base/notreached.h>
 #include <base/rand_util.h>

@@ -14,6 +14,9 @@
 
 #include "cros-camera/common.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 #define MAJOR(dev) (((uint32_t)(dev)) >> 8)
 #define MINOR(dev) (((uint32_t)(dev)) & 0xff)
 #define V4L2_VIDEO_CAPTURE_MAJOR 81

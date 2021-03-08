@@ -12,6 +12,8 @@
 #include <map>
 #include <memory>
 
+#include <base/check_op.h>
+
 #if USE_DIRENCRYPTION
 #include <keyutils.h>
 #endif  // USE_DIRENCRYPTION

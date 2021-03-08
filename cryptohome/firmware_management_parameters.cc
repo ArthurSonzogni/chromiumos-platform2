@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <brillo/secure_blob.h>

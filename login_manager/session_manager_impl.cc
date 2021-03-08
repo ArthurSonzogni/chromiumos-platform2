@@ -19,6 +19,7 @@
 #include <base/base64.h>
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>
 #include <base/rand_util.h>

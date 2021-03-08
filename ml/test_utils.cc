@@ -4,6 +4,8 @@
 
 #include "ml/test_utils.h"
 
+#include <base/check_op.h>
+
 namespace ml {
 
 std::string GetTestModelDir() {

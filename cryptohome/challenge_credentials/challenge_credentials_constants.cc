@@ -7,6 +7,7 @@
 #include <iterator>
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/no_destructor.h>

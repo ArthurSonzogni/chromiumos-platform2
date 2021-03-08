@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "smbprovider/recursive_copy_progress.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 

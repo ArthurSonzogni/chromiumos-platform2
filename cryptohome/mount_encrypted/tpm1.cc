@@ -11,6 +11,8 @@
 #include <memory>
 #include <type_traits>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>

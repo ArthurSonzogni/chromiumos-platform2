@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/run_loop.h>

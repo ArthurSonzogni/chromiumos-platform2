@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>

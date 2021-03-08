@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file.h>
 #include <base/strings/string_split.h>
 #include <brillo/proto_file_io.h>

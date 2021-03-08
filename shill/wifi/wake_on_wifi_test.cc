@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 
+#include <base/check_op.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>

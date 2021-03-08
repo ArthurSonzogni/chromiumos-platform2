@@ -6,6 +6,7 @@
 
 #include <optional>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <vboot/crossystem.h>
 

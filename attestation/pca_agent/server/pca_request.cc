@@ -4,6 +4,7 @@
 
 #include "attestation/pca_agent/server/pca_request.h"
 
+#include <base/check.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/mime_utils.h>
 

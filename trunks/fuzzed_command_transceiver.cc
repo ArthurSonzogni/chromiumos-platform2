@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include <base/callback.h>
+#include <base/check.h>
 
 #include "trunks/fuzzed_command_transceiver.h"
 #include "trunks/tpm_generated.h"

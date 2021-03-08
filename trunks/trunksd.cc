@@ -7,6 +7,8 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/command_line.h>
 #include <base/threading/thread.h>
 #include <brillo/syslog_logging.h>

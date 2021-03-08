@@ -11,6 +11,8 @@
 
 #include <string>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>

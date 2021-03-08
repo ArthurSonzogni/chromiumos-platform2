@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_VARIANT_UTILS_H_
 
 #include <string>
+#include <base/check.h>
 #include <brillo/errors/error.h>
 #include <brillo/process/process.h>
 #include <brillo/type_name_undecorate.h>

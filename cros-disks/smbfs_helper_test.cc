@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/strings/string_split.h>
 #include <brillo/process/process_reaper.h>

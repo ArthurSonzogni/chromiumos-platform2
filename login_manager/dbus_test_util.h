@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/cryptohome.h>
 

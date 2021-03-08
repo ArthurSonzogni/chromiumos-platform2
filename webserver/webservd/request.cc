@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file.h>
 #include <base/guid.h>
 #include <brillo/http/http_request.h>

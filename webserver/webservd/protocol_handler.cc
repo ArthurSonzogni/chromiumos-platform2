@@ -15,6 +15,8 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/guid.h>
 #include <base/logging.h>

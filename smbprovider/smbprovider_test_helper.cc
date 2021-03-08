@@ -14,6 +14,9 @@
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/temp_file_manager.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace smbprovider {
 namespace {
 

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/values.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>

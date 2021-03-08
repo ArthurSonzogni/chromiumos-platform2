@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/backlight_stub.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

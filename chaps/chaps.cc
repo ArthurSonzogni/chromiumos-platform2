@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/stl_util.h>

@@ -7,6 +7,7 @@
 #ifndef CAMERA_COMMON_LIBCAMERA_CONNECTOR_CAMERA_METADATA_UTILS_H_
 #define CAMERA_COMMON_LIBCAMERA_CONNECTOR_CAMERA_METADATA_UTILS_H_
 
+#include <base/check_op.h>
 #include <base/containers/span.h>
 
 #include "cros-camera/export.h"

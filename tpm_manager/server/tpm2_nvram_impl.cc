@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <trunks/authorization_delegate.h>

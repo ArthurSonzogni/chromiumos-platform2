@@ -14,6 +14,8 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/callback_helpers.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/stl_util.h>

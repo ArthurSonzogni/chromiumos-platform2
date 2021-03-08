@@ -11,6 +11,9 @@
 #include "base/logging.h"
 #include "permission_broker/rule.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace permission_broker {
 
 RuleEngine::RuleEngine() : udev_(udev_new()) {}

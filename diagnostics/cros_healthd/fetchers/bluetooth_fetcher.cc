@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <dbus/object_path.h>
 
 #include "diagnostics/common/system/bluetooth_client.h"

@@ -4,6 +4,8 @@
 
 #include "hermes/context.h"
 
+#include <base/check.h>
+
 namespace hermes {
 
 // static

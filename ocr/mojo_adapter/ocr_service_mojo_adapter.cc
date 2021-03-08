@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/run_loop.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/handle.h>

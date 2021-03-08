@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/big_endian.h>
+#include <base/check_op.h>
 #include <base/compiler_specific.h>  // FALLTHROUGH
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

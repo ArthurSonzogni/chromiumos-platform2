@@ -4,6 +4,7 @@
 
 #include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
 
+#include <base/check_op.h>
 #include <base/time/time.h>
 
 namespace mount_encrypted {

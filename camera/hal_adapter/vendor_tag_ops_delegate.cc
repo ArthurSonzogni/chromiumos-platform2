@@ -12,6 +12,9 @@
 
 #include "cros-camera/common.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace cros {
 
 VendorTagOpsDelegate::VendorTagOpsDelegate(

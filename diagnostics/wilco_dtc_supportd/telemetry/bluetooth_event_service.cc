@@ -4,6 +4,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 namespace diagnostics {

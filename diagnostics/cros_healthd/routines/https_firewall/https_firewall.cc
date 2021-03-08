@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"

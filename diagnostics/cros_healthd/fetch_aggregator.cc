@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"

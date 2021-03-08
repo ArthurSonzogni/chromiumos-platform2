@@ -4,6 +4,9 @@
 
 #include "cros-disks/fuse_mounter.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 // Has to come before linux/fs.h due to conflicting definitions of MS_*
 // constants.
 #include <sys/mount.h>

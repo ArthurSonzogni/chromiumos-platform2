@@ -9,6 +9,9 @@
 
 #include "croslog/log_line_reader.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace croslog {
 
 namespace {

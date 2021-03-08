@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>

@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>

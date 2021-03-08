@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/strings/string_piece.h>
 #include <dbus/message.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>

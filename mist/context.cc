@@ -4,6 +4,7 @@
 
 #include "mist/context.h"
 
+#include <base/check.h>
 #include <brillo/udev/udev.h>
 
 #include "mist/config_loader.h"

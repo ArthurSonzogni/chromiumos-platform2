@@ -4,6 +4,7 @@
 
 #include "minios/daemon.h"
 
+#include <base/check.h>
 #include <brillo/message_loops/message_loop.h>
 #include <dbus/minios/dbus-constants.h>
 #include <sysexits.h>

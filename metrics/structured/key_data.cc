@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>

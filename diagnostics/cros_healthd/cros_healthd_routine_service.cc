@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 

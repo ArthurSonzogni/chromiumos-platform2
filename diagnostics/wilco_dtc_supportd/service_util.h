@@ -8,6 +8,7 @@
 #include <initializer_list>
 
 #include <base/barrier_closure.h>
+#include <base/check.h>
 #include <base/run_loop.h>
 
 namespace diagnostics {

@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/system_proxy/dbus-constants.h>
 

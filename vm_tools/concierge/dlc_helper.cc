@@ -14,6 +14,8 @@
 #include "dlcservice/proto_bindings/dlcservice.pb.h"
 #include "dlcservice/dbus-proxies.h"  // NOLINT (build/include_alpha)
 
+#include <base/check.h>
+
 namespace vm_tools {
 namespace concierge {
 

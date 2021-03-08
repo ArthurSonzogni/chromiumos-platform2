@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/base64.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/process/launch.h>
 #include <base/strings/string_piece.h>

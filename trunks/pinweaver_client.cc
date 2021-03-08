@@ -4,6 +4,7 @@
 // pinweaver_client is a command line tool for executing PinWeaver vendor
 // specific commands to Cr50.
 
+#include <base/check.h>
 #include <base/command_line.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>

@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/numerics/safe_conversions.h>

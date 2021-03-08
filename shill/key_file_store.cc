@@ -9,6 +9,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/optional.h>

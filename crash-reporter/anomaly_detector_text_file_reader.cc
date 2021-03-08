@@ -12,6 +12,8 @@
 
 #include <sys/stat.h>
 
+#include <base/check_op.h>
+
 namespace anomaly {
 
 TextFileReader::TextFileReader(const base::FilePath& path)

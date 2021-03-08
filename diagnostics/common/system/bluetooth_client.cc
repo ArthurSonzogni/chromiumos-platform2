@@ -4,6 +4,7 @@
 
 #include "diagnostics/common/system/bluetooth_client.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <dbus/bluetooth/dbus-constants.h>
 

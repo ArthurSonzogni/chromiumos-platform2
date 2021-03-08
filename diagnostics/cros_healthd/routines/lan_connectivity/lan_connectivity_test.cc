@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/run_loop.h>
 #include <base/optional.h>
 #include <base/test/task_environment.h>

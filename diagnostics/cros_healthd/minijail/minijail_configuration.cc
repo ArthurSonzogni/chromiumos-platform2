@@ -8,6 +8,7 @@
 
 #include <string>
 
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <libminijail.h>

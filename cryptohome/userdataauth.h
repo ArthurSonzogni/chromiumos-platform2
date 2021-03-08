@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/location.h>
 #include <base/threading/thread.h>

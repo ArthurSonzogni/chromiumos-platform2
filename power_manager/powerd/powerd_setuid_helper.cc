@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>

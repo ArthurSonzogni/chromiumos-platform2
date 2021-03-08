@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
+#include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>

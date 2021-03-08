@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <dbus/mock_bus.h>

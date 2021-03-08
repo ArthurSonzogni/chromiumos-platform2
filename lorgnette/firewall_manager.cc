@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <brillo/errors/error.h>
 
 using std::string;

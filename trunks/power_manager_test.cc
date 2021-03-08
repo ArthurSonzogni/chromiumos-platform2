@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/message_lite.h>

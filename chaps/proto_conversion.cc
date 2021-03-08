@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <google/protobuf/message_lite.h>
 

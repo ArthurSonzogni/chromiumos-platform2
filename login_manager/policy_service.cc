@@ -12,6 +12,8 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_enumerator.h>
 #include <base/location.h>
 #include <base/logging.h>

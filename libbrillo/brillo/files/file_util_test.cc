@@ -4,6 +4,8 @@
 
 #include "brillo/files/file_util_test.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/rand_util.h>
 #include <base/stl_util.h>

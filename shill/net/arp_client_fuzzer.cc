@@ -5,6 +5,7 @@
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
 

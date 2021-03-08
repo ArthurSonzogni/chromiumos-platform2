@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <brillo/type_list.h>
 #include <brillo/type_name_undecorate.h>
 #include <brillo/variant_dictionary.h>

@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>

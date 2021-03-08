@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/wake_on_dp_configurator.h"
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
 

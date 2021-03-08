@@ -8,6 +8,8 @@
 
 #include "cros-disks/quote.h"
 
+#include <base/check.h>
+
 namespace cros_disks {
 namespace {
 

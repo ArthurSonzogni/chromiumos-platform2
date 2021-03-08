@@ -10,6 +10,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <base/check_op.h>
+
 extern "C" {
 #include <ext2fs/ext2_fs.h>
 #include <keyutils.h>

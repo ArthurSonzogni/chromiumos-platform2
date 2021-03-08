@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include <base/check.h>
 #include <base/macros.h>
 #include <metrics/metrics_library.h>
 

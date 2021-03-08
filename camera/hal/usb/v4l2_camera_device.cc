@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <limits>
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>

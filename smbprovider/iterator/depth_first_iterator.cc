@@ -8,6 +8,8 @@
 
 #include "smbprovider/smbprovider_helper.h"
 
+#include <base/check.h>
+
 namespace smbprovider {
 
 DepthFirstIterator::DepthFirstIterator(const std::string& dir_path,

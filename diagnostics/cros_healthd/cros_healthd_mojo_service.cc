@@ -8,6 +8,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"

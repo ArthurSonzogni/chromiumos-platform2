@@ -10,6 +10,8 @@
 #include <limits>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>

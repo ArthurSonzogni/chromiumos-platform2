@@ -7,6 +7,7 @@
 #include <glib.h>
 #include <inttypes.h>
 
+#include <base/check.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>

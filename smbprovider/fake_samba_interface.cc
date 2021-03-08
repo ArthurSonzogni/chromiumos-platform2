@@ -10,6 +10,8 @@
 #include <iomanip>
 
 #include <base/bits.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/macros.h>
 #include <base/files/file_path.h>
 #include <base/notreached.h>

@@ -10,6 +10,8 @@
 
 #include "base/values.h"
 
+#include <base/check.h>
+
 namespace runtime_probe {
 
 // To know how to define an argument parser and use it in your probe function,

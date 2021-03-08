@@ -12,6 +12,8 @@
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_factory.h"
 
+#include <base/check.h>
+
 namespace trunks {
 
 // This class is used to perform integration tests on the TPM. Each public

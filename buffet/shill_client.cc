@@ -8,6 +8,7 @@
 #include <set>
 #include <utility>
 
+#include <base/check.h>
 #include <base/stl_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/any.h>

@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/numerics/safe_conversions.h>
 #include <sync/sync.h>
 

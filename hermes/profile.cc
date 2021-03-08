@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
 

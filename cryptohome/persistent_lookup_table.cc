@@ -4,6 +4,7 @@
 
 #include "cryptohome/persistent_lookup_table.h"
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>

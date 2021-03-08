@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/check.h>
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "cryptohome/service_userdataauth.h"

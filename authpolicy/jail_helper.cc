@@ -10,6 +10,8 @@
 #include "authpolicy/process_executor.h"
 #include "bindings/authpolicy_containers.pb.h"
 
+#include <base/check.h>
+
 namespace authpolicy {
 
 class AuthPolicyFlags;

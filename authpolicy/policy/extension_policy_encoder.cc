@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>

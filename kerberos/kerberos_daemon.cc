@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/kerberos/dbus-constants.h>

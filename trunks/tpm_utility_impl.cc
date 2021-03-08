@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <memory>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/notreached.h>

@@ -8,6 +8,8 @@
 
 #include "shill/logging.h"
 
+#include <base/check.h>
+
 namespace shill {
 
 TestConfig::TestConfig() {

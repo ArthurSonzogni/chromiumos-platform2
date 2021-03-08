@@ -4,6 +4,7 @@
 
 #include "dlcservice/error.h"
 
+#include <base/check.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/errors/error_codes.h>
 #include <dbus/dlcservice/dbus-constants.h>

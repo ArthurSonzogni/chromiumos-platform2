@@ -10,6 +10,8 @@
 #include "ml/handwriting_proto_mojom_conversion.h"
 #include "ml/request_metrics.h"
 
+#include <base/check.h>
+
 namespace ml {
 namespace {
 

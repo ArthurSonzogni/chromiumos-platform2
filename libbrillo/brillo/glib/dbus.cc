@@ -4,6 +4,7 @@
 
 #include "brillo/glib/dbus.h"
 
+#include <base/check.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus-glib-lowlevel.h>

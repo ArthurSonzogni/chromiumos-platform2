@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/check.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"

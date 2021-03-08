@@ -14,6 +14,8 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>

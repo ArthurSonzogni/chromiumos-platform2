@@ -4,6 +4,7 @@
 
 #include "trunks/openssl_utility.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <libhwsec/crypto_utility.h>
 #include <openssl/bn.h>

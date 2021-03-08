@@ -4,6 +4,7 @@
 
 #include "power_manager/common/test_main_loop_runner.h"
 
+#include <base/check.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/run_loop.h>

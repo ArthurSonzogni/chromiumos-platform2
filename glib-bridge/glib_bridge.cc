@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
 namespace glib_bridge {

@@ -15,6 +15,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/posix/file_descriptor_shuffle.h>
 #include <base/process/launch.h>

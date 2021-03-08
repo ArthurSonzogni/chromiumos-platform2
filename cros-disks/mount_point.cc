@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "cros-disks/error_logger.h"

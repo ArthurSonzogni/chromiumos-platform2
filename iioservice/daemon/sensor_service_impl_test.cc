@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/test/task_environment.h>
 #include <libmems/test_fakes.h>
 

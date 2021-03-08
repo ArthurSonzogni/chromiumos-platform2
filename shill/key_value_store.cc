@@ -4,6 +4,7 @@
 
 #include "shill/key_value_store.h"
 
+#include <base/check.h>
 #include <base/stl_util.h>
 
 #include "shill/logging.h"

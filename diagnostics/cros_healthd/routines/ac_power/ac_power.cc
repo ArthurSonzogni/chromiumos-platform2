@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
 
+#include <base/check_op.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

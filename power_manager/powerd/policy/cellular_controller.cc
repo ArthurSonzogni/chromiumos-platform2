@@ -8,6 +8,9 @@
 
 #include "power_manager/common/prefs.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace power_manager {
 namespace policy {
 

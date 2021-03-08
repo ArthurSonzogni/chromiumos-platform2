@@ -22,6 +22,8 @@
 #include "metrics/uploader/system_profile_cache.h"
 #include "metrics/uploader/upload_service.h"
 
+#include <base/check.h>
+
 namespace {
 const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
 const char kMetricsFilePath[] = "/run/metrics/uma-events";

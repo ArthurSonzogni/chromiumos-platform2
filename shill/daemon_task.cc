@@ -7,6 +7,7 @@
 #include <linux/rtnetlink.h>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <brillo/message_loops/message_loop.h>
 
 #include "shill/control_interface.h"

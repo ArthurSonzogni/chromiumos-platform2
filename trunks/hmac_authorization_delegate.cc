@@ -4,6 +4,8 @@
 
 #include "trunks/hmac_authorization_delegate.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <crypto/secure_util.h>

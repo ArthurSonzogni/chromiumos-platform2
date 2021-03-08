@@ -8,6 +8,7 @@
 
 #include <base/barrier_closure.h>
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/run_loop.h>

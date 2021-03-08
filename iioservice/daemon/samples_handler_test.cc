@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>

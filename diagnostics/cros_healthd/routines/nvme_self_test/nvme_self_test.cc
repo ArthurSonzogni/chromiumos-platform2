@@ -10,6 +10,7 @@
 
 #include <base/base64.h>
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>

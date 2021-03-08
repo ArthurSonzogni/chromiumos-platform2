@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>

@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 

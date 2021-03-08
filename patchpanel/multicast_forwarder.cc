@@ -15,6 +15,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "patchpanel/dns/dns_protocol.h"

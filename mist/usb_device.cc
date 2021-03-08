@@ -6,6 +6,7 @@
 
 #include <libusb.h>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "mist/usb_config_descriptor.h"

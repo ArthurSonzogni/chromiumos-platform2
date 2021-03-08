@@ -6,6 +6,8 @@
 
 #include "power_manager/common/prefs_observer.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 
 FakePrefs::FakePrefs() {}

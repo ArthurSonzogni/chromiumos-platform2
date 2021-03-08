@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"

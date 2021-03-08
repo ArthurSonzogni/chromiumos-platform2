@@ -5,6 +5,7 @@
 #include "easy-unlock/dbus_adaptor.h"
 
 #include <chromeos/dbus/service_constants.h>
+#include <base/check.h>
 #include <dbus/message.h>
 
 #include "easy-unlock/easy_unlock_service.h"

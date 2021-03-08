@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/macros.h>
 #include <base/optional.h>
 #include <base/synchronization/lock.h>

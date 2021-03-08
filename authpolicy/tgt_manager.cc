@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/notreached.h>

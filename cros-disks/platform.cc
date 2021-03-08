@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>

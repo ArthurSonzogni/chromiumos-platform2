@@ -5,6 +5,7 @@
 #include "iioservice/libiioservice_ipc/sensor_client_dbus.h"
 
 #include <chromeos/dbus/service_constants.h>
+#include <base/check.h>
 #include <dbus/object_proxy.h>
 
 namespace iioservice {

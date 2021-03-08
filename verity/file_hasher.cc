@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <base/bits.h>
+#include <base/check.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>

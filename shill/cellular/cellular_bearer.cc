@@ -7,6 +7,7 @@
 #include <ModemManager/ModemManager.h>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"

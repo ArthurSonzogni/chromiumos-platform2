@@ -4,6 +4,7 @@
 
 #include "ml_benchmark/shared_library_benchmark_functions.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 namespace {

@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/check.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "debugd/src/error_utils.h"

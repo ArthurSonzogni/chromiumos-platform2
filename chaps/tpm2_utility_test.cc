@@ -4,6 +4,8 @@
 
 #include "chaps/tpm2_utility_impl.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>

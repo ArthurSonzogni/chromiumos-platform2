@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/threading/thread.h>

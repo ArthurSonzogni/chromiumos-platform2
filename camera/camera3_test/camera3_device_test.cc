@@ -6,6 +6,8 @@
 
 #include "camera3_test/camera3_device_impl.h"
 
+#include <base/check.h>
+
 namespace camera3_test {
 
 Camera3Device::Camera3Device(int cam_id)

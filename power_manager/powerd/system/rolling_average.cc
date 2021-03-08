@@ -6,6 +6,7 @@
 
 #include <cmath>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 
 namespace power_manager {

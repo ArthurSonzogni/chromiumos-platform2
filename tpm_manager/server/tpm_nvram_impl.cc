@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <libhwsec/overalls/overalls_api.h>

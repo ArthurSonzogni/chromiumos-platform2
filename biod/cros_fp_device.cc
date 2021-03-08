@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>

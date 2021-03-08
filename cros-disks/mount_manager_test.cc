@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <brillo/process/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

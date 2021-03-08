@@ -8,6 +8,7 @@
 #include <libqrtr.h>
 #include <utility>
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "power_manager/common/prefs.h"

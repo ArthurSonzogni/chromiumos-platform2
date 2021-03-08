@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>

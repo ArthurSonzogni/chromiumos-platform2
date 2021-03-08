@@ -22,6 +22,8 @@
 #include "hwsec-test-utils/fake_pca_agent/tpm2_struct_utils.h"
 #include "hwsec-test-utils/well_known_key_pairs/well_known_key_pairs.h"
 
+#include <base/check_op.h>
+
 namespace hwsec_test_utils {
 namespace fake_pca_agent {
 

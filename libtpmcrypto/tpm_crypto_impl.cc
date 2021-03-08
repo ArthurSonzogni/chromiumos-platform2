@@ -4,6 +4,8 @@
 
 #include "libtpmcrypto/tpm_crypto_impl.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>

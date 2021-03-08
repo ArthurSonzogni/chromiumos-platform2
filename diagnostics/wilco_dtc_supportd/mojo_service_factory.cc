@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <mojo/public/cpp/bindings/interface_request.h>

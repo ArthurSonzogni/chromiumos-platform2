@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/check_op.h>
+
 namespace attestation {
 
 EnrollmentQueue::EnrollmentQueue(size_t size_limit) : size_limit_(size_limit) {}

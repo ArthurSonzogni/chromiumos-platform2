@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <lang_id/lang-id-wrapper.h>
 #include <utils/utf8/unicodetext.h>

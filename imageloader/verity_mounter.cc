@@ -19,6 +19,7 @@
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
 
+#include <base/check.h>
 #include <base/command_line.h>
 #include <base/containers/adapters.h>
 #include <base/files/file_path.h>

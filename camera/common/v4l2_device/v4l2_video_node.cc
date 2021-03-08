@@ -28,6 +28,9 @@
 
 #include "cros-camera/common.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 static inline bool IsValidV4L2BufferType(uint32_t type) {
   return (type == V4L2_BUF_TYPE_VIDEO_CAPTURE) ||
          (type == V4L2_BUF_TYPE_VIDEO_OUTPUT) ||

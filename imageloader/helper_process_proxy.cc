@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
 

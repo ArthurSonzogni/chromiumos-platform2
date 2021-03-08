@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>

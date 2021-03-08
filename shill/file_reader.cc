@@ -4,6 +4,7 @@
 
 #include "shill/file_reader.h"
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 
 namespace shill {

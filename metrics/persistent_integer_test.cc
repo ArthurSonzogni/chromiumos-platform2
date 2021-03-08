@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <base/check.h>
 #include <base/compiler_specific.h>
 #include <base/files/scoped_temp_dir.h>
 

@@ -14,6 +14,8 @@
 
 #include <anomaly_detector/proto_bindings/anomaly_detector.pb.h>
 #include <base/bind_helpers.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/scoped_file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <pcrecpp.h>

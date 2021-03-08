@@ -13,6 +13,9 @@
 #include "metrics/uploader/proto/system_profile.pb.h"
 #include "metrics/uploader/proto/user_action_event.pb.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 using base::Histogram;
 using base::HistogramBase;
 using base::HistogramSamples;

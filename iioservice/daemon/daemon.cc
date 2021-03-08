@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <chromeos/dbus/service_constants.h>

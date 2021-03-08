@@ -19,6 +19,7 @@
 
 #include <deque>
 
+#include <base/check.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>

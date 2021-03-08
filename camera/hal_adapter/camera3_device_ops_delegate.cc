@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/strings/stringprintf.h>
 
 #include "cros-camera/common.h"

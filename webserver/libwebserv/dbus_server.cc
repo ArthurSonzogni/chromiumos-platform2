@@ -14,6 +14,8 @@
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "webservd/dbus-proxies.h"
 
+#include <base/check.h>
+
 namespace libwebserv {
 
 class DBusServer::RequestHandler final

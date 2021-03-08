@@ -7,6 +7,8 @@
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

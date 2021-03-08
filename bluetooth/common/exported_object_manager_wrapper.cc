@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/stl_util.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/object_manager.h>

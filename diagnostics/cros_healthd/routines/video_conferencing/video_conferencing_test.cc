@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/json/json_writer.h>
 #include <base/run_loop.h>
 #include <base/optional.h>

@@ -18,6 +18,8 @@
 #include "libmems/test_fakes.h"
 #include "mems_setup/delegate.h"
 
+#include <base/check.h>
+
 namespace mems_setup {
 namespace fakes {
 

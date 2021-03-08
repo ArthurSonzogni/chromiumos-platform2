@@ -14,6 +14,7 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
+#include <base/check_op.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

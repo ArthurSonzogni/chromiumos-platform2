@@ -11,6 +11,9 @@
 #include "base/logging.h"
 #include "libpasswordprovider/password.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace password_provider {
 
 namespace {

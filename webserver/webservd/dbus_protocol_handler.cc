@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
 

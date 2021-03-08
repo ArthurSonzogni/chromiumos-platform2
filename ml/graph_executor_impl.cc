@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/stl_util.h>
 
 #include "ml/mojom/tensor.mojom.h"

@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <arpa/inet.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/hash/sha1.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>

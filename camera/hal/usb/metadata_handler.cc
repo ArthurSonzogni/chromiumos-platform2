@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/no_destructor.h>
 
 #include <chromeos-config/libcros_config/cros_config.h>

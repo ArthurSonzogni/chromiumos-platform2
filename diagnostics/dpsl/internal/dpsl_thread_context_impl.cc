@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/lazy_instance.h>
 #include <base/location.h>
 #include <base/logging.h>

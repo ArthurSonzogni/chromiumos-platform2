@@ -11,6 +11,8 @@
 #include <fcntl.h>
 #include <poll.h>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/kill.h>

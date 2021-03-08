@@ -5,6 +5,7 @@
 #ifndef HERMES_CONTEXT_H_
 #define HERMES_CONTEXT_H_
 
+#include <base/check.h>
 #include <dbus/bus.h>
 #include <google-lpa/lpa/core/lpa.h>
 

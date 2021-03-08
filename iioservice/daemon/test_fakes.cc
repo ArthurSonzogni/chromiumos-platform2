@@ -10,6 +10,9 @@
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace iioservice {
 
 namespace fakes {

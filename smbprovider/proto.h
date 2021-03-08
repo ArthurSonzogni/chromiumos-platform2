@@ -11,6 +11,8 @@
 #include "smbprovider/mount_config.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 
+#include <base/check.h>
+
 namespace smbprovider {
 
 // Used as buffer for serialized protobufs.

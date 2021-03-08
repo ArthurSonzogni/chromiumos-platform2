@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file.h>
 #include <base/macros.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>

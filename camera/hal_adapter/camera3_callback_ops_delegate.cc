@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/check.h>
 #include <base/strings/stringprintf.h>
 
 #include "cros-camera/common.h"

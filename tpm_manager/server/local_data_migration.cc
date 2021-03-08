@@ -5,6 +5,7 @@
 #include "tpm_manager/server/local_data_migration.h"
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>

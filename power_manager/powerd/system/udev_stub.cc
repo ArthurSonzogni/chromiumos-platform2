@@ -8,6 +8,8 @@
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

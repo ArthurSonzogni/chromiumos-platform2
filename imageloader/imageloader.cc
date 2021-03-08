@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>

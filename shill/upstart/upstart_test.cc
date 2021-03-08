@@ -13,6 +13,8 @@
 #include "shill/upstart/mock_upstart_proxy.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
+#include <base/check.h>
+
 using testing::_;
 using testing::Test;
 

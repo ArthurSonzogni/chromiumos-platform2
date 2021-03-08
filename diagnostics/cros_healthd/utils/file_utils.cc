@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 

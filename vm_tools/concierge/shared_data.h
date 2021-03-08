@@ -8,6 +8,7 @@
 #include <string>
 #include <tuple>
 
+#include <base/check.h>
 #include <base/optional.h>
 #include <base/system/sys_info.h>
 

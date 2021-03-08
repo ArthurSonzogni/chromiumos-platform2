@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/strings/stringprintf.h>
 
 namespace diagnostics {

@@ -14,6 +14,9 @@
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 #include "mojo/nullable_primitives.mojom.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 

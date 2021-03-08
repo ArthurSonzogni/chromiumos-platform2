@@ -12,6 +12,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/scoped_file.h>
 
 namespace screenshot {

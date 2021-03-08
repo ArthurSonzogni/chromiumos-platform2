@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>

@@ -4,6 +4,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/json_utils.h"
 
+#include <base/check.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/values.h>

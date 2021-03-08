@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/strings/string_piece.h>

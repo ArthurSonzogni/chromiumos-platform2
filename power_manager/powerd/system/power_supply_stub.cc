@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/power_supply_stub.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

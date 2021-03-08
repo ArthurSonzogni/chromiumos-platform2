@@ -7,6 +7,8 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
+#include <base/check.h>
+
 namespace shill {
 
 ResultAggregator::ResultAggregator(const ResultCallback& callback)

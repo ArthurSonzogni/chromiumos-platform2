@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>

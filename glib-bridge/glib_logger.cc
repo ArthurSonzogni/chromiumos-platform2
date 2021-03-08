@@ -6,6 +6,7 @@
 
 #include <glib.h>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>

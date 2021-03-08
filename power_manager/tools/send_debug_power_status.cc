@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>

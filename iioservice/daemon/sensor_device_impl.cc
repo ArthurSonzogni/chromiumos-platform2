@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/strings/string_util.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>

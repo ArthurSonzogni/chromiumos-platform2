@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>

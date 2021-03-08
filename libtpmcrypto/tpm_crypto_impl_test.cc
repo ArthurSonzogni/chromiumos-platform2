@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>

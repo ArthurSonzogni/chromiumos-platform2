@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <arpa/inet.h>
+#include <base/check_op.h>
 #include <base/hash/sha1.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>

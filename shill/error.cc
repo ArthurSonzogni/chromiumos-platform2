@@ -4,6 +4,7 @@
 
 #include "shill/error.h"
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>

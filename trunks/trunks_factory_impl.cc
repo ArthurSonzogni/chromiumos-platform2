@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "trunks/blob_parser.h"

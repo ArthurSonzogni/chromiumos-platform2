@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>

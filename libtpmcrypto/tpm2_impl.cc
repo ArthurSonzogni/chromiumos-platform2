@@ -4,6 +4,7 @@
 
 #include "libtpmcrypto/tpm2_impl.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <brillo/secure_blob.h>

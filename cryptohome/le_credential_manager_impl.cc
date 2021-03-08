@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 
 #include "cryptohome/cryptohome_metrics.h"

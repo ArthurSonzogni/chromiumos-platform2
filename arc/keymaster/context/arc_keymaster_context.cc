@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/base64.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/stl_util.h>

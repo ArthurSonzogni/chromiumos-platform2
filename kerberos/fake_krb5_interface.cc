@@ -4,6 +4,7 @@
 
 #include "kerberos/fake_krb5_interface.h"
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <krb5.h>

@@ -10,6 +10,7 @@
 #include <set>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>

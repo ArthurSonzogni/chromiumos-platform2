@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 

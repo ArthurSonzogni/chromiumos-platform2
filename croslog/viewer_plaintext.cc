@@ -19,6 +19,9 @@
 #include "croslog/severity.h"
 #include "croslog/standard_log_paths.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace croslog {
 
 namespace {

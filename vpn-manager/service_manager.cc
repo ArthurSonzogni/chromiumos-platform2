@@ -10,6 +10,7 @@
 #include <arpa/inet.h>  // for inet_ntop and inet_pton
 #include <netdb.h>      // for getaddrinfo
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>

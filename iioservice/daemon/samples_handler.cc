@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <libmems/test_fakes.h>

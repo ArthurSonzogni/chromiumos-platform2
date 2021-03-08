@@ -7,6 +7,8 @@
 #include <map>
 #include <utility>
 
+#include <base/check.h>
+
 namespace {
 
 template <typename Map, typename K, typename V>

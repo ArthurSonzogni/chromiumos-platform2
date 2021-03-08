@@ -10,6 +10,8 @@
 
 #include "metrics/metrics_library.h"
 
+#include <base/check.h>
+
 namespace {
 
 constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateStatus";

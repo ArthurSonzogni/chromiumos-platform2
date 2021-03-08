@@ -17,6 +17,8 @@
 #include "patchpanel/dns/dns_util.h"
 #include "patchpanel/dns/io_buffer.h"
 
+#include <base/check.h>
+
 namespace patchpanel {
 
 namespace {

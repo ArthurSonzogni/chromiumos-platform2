@@ -8,6 +8,7 @@
 #include <openssl/evp.h>
 
 #include <base/bits.h>
+#include <base/check_op.h>
 #include <base/sys_byteorder.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>

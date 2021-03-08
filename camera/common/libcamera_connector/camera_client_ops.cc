@@ -10,6 +10,8 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/posix/safe_strerror.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <drm_fourcc.h>

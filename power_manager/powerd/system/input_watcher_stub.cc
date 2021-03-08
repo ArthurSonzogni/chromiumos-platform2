@@ -6,6 +6,8 @@
 
 #include "power_manager/powerd/system/input_observer.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <brillo/process/process_mock.h>

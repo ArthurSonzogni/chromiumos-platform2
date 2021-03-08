@@ -4,6 +4,7 @@
 
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"

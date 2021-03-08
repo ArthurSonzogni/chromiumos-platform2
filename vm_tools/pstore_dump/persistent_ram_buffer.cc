@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/memory_mapped_file.h>

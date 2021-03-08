@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 

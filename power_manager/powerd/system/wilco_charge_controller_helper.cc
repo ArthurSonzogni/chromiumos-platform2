@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>

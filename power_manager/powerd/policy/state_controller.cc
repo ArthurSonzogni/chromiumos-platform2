@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>

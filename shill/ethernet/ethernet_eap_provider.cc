@@ -9,6 +9,9 @@
 #include "shill/ethernet/ethernet_eap_service.h"
 #include "shill/manager.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
+
 namespace shill {
 
 EthernetEapProvider::EthernetEapProvider(Manager* manager)

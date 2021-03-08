@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>

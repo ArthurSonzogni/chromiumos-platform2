@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <components/policy/core/common/registry_dict.h>
 

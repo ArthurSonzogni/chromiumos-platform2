@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bits.h>
+#include <base/check.h>
 #include <base/compiler_specific.h>
 #include <base/files/file.h>
 #include <base/logging.h>

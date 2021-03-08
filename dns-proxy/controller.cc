@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/notreached.h>
 #include <base/process/launch.h>
 #include <base/threading/thread_task_runner_handle.h>

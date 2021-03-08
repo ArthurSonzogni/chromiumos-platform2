@@ -6,6 +6,8 @@
 
 #include "login_manager/fake_child_process.h"
 
+#include <base/check.h>
+
 namespace login_manager {
 
 FakeBrowserJob::FakeBrowserJob(const std::string& name)

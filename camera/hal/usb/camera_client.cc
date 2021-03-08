@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/posix/safe_strerror.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>

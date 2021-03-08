@@ -4,6 +4,7 @@
 
 #include "cros-disks/device_event_moderator.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "cros-disks/device_event_dispatcher_interface.h"

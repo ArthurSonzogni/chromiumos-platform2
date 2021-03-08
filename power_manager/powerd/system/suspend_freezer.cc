@@ -8,6 +8,7 @@
 #include "power_manager/powerd/system/suspend_freezer.h"
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>

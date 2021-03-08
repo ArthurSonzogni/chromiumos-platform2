@@ -13,6 +13,8 @@
 #include "cryptohome/tpm_init.h"
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 
+#include <base/check.h>
+
 namespace cryptohome {
 
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(Tpm* tpm,

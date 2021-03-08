@@ -8,6 +8,7 @@
 // IMPORTANT: Do not use this in new code. Instead, use libchrome's D-Bus
 // bindings. See https://goo.gl/EH3MmR for more details.
 
+#include <base/check.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 

@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

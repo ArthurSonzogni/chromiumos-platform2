@@ -4,6 +4,7 @@
 
 #include "shill/rpc_task.h"
 
+#include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "shill/adaptor_interfaces.h"

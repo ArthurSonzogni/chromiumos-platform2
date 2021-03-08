@@ -8,6 +8,8 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

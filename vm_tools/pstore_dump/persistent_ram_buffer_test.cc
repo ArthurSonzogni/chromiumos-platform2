@@ -10,6 +10,8 @@
 
 #include "vm_tools/pstore_dump/persistent_ram_buffer.h"
 
+#include <base/check.h>
+
 namespace vm_tools {
 namespace pstore_dump {
 

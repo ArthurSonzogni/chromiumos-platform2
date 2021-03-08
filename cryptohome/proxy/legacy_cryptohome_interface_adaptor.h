@@ -13,6 +13,7 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/atomic_sequence_num.h>
+#include <base/check.h>
 #include <base/location.h>
 #include <base/optional.h>
 #include <brillo/dbus/dbus_object.h>

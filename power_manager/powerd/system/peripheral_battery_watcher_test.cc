@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>

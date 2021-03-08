@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/check.h>
 #include <brillo/udev/mock_udev.h>
 
 #include "mist/event_dispatcher.h"

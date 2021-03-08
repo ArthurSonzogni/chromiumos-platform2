@@ -4,6 +4,7 @@
 
 #include "metrics/uploader/metrics_hashes.h"
 
+#include <base/check_op.h>
 #include <base/hash/md5.h>
 #include <base/logging.h>
 #include <base/stl_util.h>

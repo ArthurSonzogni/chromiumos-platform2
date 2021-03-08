@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <cstdio>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 
 #include "power_manager/common/util.h"

@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 

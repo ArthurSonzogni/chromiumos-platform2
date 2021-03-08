@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/guid.h>
 

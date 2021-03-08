@@ -4,6 +4,7 @@
 
 #include "smbprovider/proto.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <dbus/smbprovider/dbus-constants.h>
 

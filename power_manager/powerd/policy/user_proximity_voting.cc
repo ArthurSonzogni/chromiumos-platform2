@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/policy/user_proximity_voting.h"
 
+#include <base/check_op.h>
 #include <base/logging.h>
 
 namespace power_manager {

@@ -14,6 +14,8 @@
 #include "base/strings/string_number_conversions.h"
 #include "permission_broker/udev_scopers.h"
 
+#include <base/check.h>
+
 using policy::DevicePolicy;
 
 namespace {

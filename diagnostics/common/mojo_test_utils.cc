@@ -13,6 +13,7 @@
 #include <cstring>
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <diagnostics/common/mojo_utils.h>

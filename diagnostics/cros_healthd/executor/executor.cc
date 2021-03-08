@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <mojo/public/cpp/system/invitation.h>

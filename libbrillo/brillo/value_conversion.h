@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/values.h>
 #include <brillo/brillo_export.h>
 

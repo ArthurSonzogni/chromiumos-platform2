@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 
 namespace power_manager {

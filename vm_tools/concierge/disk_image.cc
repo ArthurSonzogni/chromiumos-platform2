@@ -11,6 +11,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/guid.h>

@@ -19,6 +19,8 @@
 #include "base/strings/string_util.h"
 #include "metrics/serialization/metric_sample.h"
 
+#include <base/check.h>
+
 #define READ_WRITE_ALL_FILE_FLAGS \
   (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 

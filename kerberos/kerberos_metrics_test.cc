@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/simple_test_clock.h>
 #include <gtest/gtest.h>

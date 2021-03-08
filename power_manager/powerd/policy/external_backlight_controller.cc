@@ -19,6 +19,8 @@
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/display/external_display.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace policy {
 

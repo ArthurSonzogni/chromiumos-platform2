@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/audio_client_stub.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

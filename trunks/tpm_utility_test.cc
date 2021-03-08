@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/check_op.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/sha2.h>

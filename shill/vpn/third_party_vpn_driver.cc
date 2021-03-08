@@ -9,6 +9,8 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/stl_util.h>

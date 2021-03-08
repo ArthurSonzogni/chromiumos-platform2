@@ -4,6 +4,8 @@
 
 #include "login_manager/session_manager_service.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
 
 #include <fcntl.h>

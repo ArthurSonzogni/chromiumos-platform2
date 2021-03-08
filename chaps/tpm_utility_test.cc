@@ -11,6 +11,7 @@
 
 #include <memory>
 
+#include <base/check.h>
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <gmock/gmock.h>

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
+#include <base/check.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 

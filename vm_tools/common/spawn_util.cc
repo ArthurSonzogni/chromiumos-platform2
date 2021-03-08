@@ -18,6 +18,8 @@
 #include <limits>
 #include <memory>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 
 namespace vm_tools {

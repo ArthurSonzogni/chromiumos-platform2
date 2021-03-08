@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/stl_util.h>

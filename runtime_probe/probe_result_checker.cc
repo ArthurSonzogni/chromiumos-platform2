@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 

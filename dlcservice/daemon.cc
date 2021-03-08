@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/time/default_clock.h>
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/dlcservice/dbus-constants.h>

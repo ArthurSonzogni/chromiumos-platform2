@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <utility>
 
+#include <base/check.h>
 #include <base/no_destructor.h>
 #include <base/sequence_checker.h>
 #include <mojo/core/embedder/embedder.h>

@@ -5,6 +5,7 @@
 #ifndef BIOD_EC_COMMAND_ASYNC_H_
 #define BIOD_EC_COMMAND_ASYNC_H_
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>

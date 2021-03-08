@@ -6,6 +6,7 @@
 #include <cstdlib>
 
 #include <base/at_exit.h>
+#include <base/check.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>

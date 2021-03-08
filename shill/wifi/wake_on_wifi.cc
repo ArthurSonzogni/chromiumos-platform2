@@ -16,6 +16,8 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/strings/string_number_conversions.h>
 
 #include <chromeos/dbus/service_constants.h>

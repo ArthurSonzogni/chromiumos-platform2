@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 
+#include <base/check.h>
 #include <base/containers/adapters.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>

@@ -5,6 +5,8 @@
 #include "power_manager/powerd/system/user_proximity_observer.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
 
+#include <base/check.h>
+
 namespace power_manager {
 namespace system {
 

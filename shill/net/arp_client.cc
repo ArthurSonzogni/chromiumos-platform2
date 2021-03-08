@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <string.h>
 
+#include <base/check.h>
 #include <base/stl_util.h>
 
 #include "shill/logging.h"

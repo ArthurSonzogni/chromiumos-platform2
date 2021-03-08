@@ -4,6 +4,8 @@
 
 #include "mtpd/file_entry.h"
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 

@@ -4,6 +4,7 @@
 
 #include "login_manager/blob_util.h"
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>

@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bio.h>

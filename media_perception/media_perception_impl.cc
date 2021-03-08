@@ -14,6 +14,8 @@
 #include "media_perception/proto_mojom_conversion.h"
 #include "media_perception/serialized_proto.h"
 
+#include <base/check.h>
+
 namespace mri {
 
 MediaPerceptionImpl::MediaPerceptionImpl(
