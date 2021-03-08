@@ -16,10 +16,12 @@ allow cros_cryptohomed cros_cryptohomed:fifo_file w_file_perms;
 allow cros_cryptohomed cros_home_chronos:dir                { create_dir_perms mounton };
 allow cros_cryptohomed cros_home_root:dir                   { create_dir_perms mounton };
 allow cros_cryptohomed cros_home_shadow_uid_root:dir        { create_dir_perms relabelfrom };
-r_dir_file(cros_cryptohomed, cros_home_shadow);
+create_dir_file(cros_cryptohomed, cros_home_shadow);
 create_mounton_dir_file(cros_cryptohomed, cros_home_user);
 create_mounton_dir_file(cros_cryptohomed, cros_home_shadow_uid_user);
 create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
+allow cros_cryptohomed cros_stateful_partition:dir          r_dir_perms;
+
 
 # TODO(betuls): Add access for daemon-stores of the daemons 'cdm-oemcrypto',
 # 'crash', 'crosvm', 'debugd', 'kerberosd', 'pvm', 'pvm-dispatcher', 'smbfs',
@@ -39,12 +41,13 @@ allow cros_cryptohomed chromeos_startup_tmp_file:file        mounton;
 allow cros_cryptohomed cros_init_scripts:fd                  use;
 allow cros_cryptohomed cros_init:key                         { link write };
 allow cros_cryptohomed kernel:key                            { link search write };
+allow cros_cryptohomed kernel:system                         module_request;
 allow cros_cryptohomed cros_passwd_file:file                 r_file_perms;
 
 allow cros_cryptohomed cros_init:unix_stream_socket          connectto;
 allow cros_cryptohomed cros_dbus_daemon:unix_stream_socket   connectto;
 
-allow cros_cryptohomed cros_run:file                         r_file_perms;
+allow cros_cryptohomed cros_run:file                         create_file_perms;
 allow cros_cryptohomed cros_run_cryptohome:file              create_file_perms;
 allow cros_cryptohomed cros_run_dbus:dir                     create_dir_perms;
 allow cros_cryptohomed cros_system_bus_socket:sock_file      write;
@@ -58,14 +61,14 @@ allow cros_cryptohomed media_rw_data_file:dir                create_dir_perms;
 allow cros_cryptohomed self:capability               { chown ipc_lock sys_admin };
 allow cros_cryptohomed self:key                      { setattr write };
 
+allow cros_cryptohomed tmpfs:file                            create_file_perms;
 allow cros_cryptohomed sysfs:dir                             r_dir_perms;
 allow cros_cryptohomed sysfs:file                            r_file_perms;
 allow cros_cryptohomed sysfs_dm:dir                          r_dir_perms;
 allow cros_cryptohomed sysfs_zram:dir                        r_dir_perms;
+allow cros_cryptohomed rootfs:dir                            r_dir_perms;
 
-# TODO(b/178237710) Label the directories and files with specific contexts.
-allow cros_cryptohomed unlabeled:file                        { r_file_perms mounton };
-allow cros_cryptohomed unlabeled:dir                         { ioctl open read search};
+allow cros_cryptohomed cros_run_namespaces:dir                search;
 allow cros_cryptohomed labeledfs:filesystem                  { quotaget unmount };
 
 # TODO(b/178237004) Label the processes with specific contexts.
