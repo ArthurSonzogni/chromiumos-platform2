@@ -350,7 +350,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_Succeeds) {
   const base::FilePath kExpectedPath =
       base::FilePath("/home/user/cafef00d/Downloads/test.png");
 
-  EXPECT_CALL(homedirs_, CryptohomeExists(kObfuscatedUsername))
+  EXPECT_CALL(homedirs_, CryptohomeExists(kObfuscatedUsername, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetQuotaProjectId(kProjectId, kExpectedPath))
       .WillOnce(Return(true));
@@ -364,7 +364,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_IdOutOfAllowedRange) {
   const auto kParentPath = SetProjectIdAllowedPathType::PATH_DOWNLOADS;
   const auto kChildPath = base::FilePath("test.png");
 
-  EXPECT_CALL(homedirs_, CryptohomeExists(_)).Times(0);
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).Times(0);
   EXPECT_CALL(platform_, SetQuotaProjectId(kProjectId, _)).Times(0);
 
   EXPECT_FALSE(arc_disk_quota_.SetProjectId(kProjectId, kParentPath, kChildPath,
@@ -377,7 +377,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_ChildPathReferencesParent) {
   // Child path contains ".."
   const auto kChildPath = base::FilePath("../test.png");
 
-  EXPECT_CALL(homedirs_, CryptohomeExists(_)).Times(0);
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).Times(0);
   EXPECT_CALL(platform_, SetQuotaProjectId(kProjectId, _)).Times(0);
 
   EXPECT_FALSE(arc_disk_quota_.SetProjectId(kProjectId, kParentPath, kChildPath,
@@ -390,7 +390,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_ChildPathIsAbsolutePath) {
   // Child path is an absolute path.
   const auto kChildPath = base::FilePath("/test.png");
 
-  EXPECT_CALL(homedirs_, CryptohomeExists(_)).Times(0);
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).Times(0);
   EXPECT_CALL(platform_, SetQuotaProjectId(kProjectId, _)).Times(0);
 
   EXPECT_FALSE(arc_disk_quota_.SetProjectId(kProjectId, kParentPath, kChildPath,
@@ -402,7 +402,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_InvalidParentPathType) {
   const auto kInvalidParentPath = static_cast<SetProjectIdAllowedPathType>(3);
   const auto kChildPath = base::FilePath("test.png");
 
-  EXPECT_CALL(homedirs_, CryptohomeExists(kObfuscatedUsername))
+  EXPECT_CALL(homedirs_, CryptohomeExists(kObfuscatedUsername, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetQuotaProjectId(kProjectId, _)).Times(0);
 
@@ -416,7 +416,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_CryptohomeNotExist) {
   const auto kChildPath = base::FilePath("test.png");
   const auto kInvalidObfuscatedUsername = "deadbeef";
 
-  EXPECT_CALL(homedirs_, CryptohomeExists(kInvalidObfuscatedUsername))
+  EXPECT_CALL(homedirs_, CryptohomeExists(kInvalidObfuscatedUsername, _))
       .WillOnce(Return(false));
   EXPECT_CALL(platform_, SetQuotaProjectId(kProjectId, _)).Times(0);
 
@@ -429,7 +429,7 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_IoctlFails) {
   const auto kParentPath = SetProjectIdAllowedPathType::PATH_DOWNLOADS;
   const auto kChildPath = base::FilePath("test.png");
 
-  EXPECT_CALL(homedirs_, CryptohomeExists(kObfuscatedUsername))
+  EXPECT_CALL(homedirs_, CryptohomeExists(kObfuscatedUsername, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetQuotaProjectId(kProjectId, _))
       .WillOnce(Return(false));

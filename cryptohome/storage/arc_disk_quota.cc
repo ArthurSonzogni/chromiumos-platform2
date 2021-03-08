@@ -126,9 +126,15 @@ bool ArcDiskQuota::SetProjectId(int project_id,
     return false;
   }
 
-  if (!homedirs_->CryptohomeExists(obfuscated_username)) {
-    LOG(ERROR) << "A cryptohome vault doesn't exist for : "
-               << obfuscated_username;
+  MountError mount_error;
+  if (!homedirs_->CryptohomeExists(obfuscated_username, &mount_error)) {
+    if (mount_error != MOUNT_ERROR_NONE) {
+      LOG(ERROR) << "Failed to check cryptohome existence for : "
+                 << obfuscated_username << " error = " << mount_error;
+    } else {
+      LOG(ERROR) << "A cryptohome vault doesn't exist for : "
+                 << obfuscated_username;
+    }
     return false;
   }
 

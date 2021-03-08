@@ -1848,7 +1848,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   EXPECT_CALL(lockbox_, FinalizeBoot());
   EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
-  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
@@ -1951,7 +1951,7 @@ TEST_F(UserDataAuthTest,
 
   EXPECT_CALL(lockbox_, FinalizeBoot());
   EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
-  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
@@ -2480,7 +2480,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
   mount_req_->set_public_mount(true);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(testing::InvokeWithoutArgs([&]() {
     SetupMount(kUser);
-    EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(Return(true));
+    EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
         .WillOnce(Return(ByMove(std::move(vk))));

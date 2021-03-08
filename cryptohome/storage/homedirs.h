@@ -116,7 +116,8 @@ class HomeDirs {
   virtual bool Exists(const std::string& obfuscated_username) const;
 
   // Checks if a cryptohome vault exists for the given obfuscated username.
-  virtual bool CryptohomeExists(const std::string& obfuscated_username) const;
+  virtual bool CryptohomeExists(const std::string& obfuscated_username,
+                                MountError* error) const;
 
   // Checks if a eCryptfs cryptohome vault exists for the given obfuscated
   // username.
@@ -125,8 +126,8 @@ class HomeDirs {
 
   // Checks if a dircrypto cryptohome vault exists for the given obfuscated
   // username.
-  virtual bool DircryptoCryptohomeExists(
-      const std::string& obfuscated_username) const;
+  virtual bool DircryptoCryptohomeExists(const std::string& obfuscated_username,
+                                         MountError* error) const;
 
   // Check if a dm-crypt container exists for the given obfuscated username.
   virtual bool DmcryptContainerExists(

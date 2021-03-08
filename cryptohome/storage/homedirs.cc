@@ -116,9 +116,11 @@ bool HomeDirs::Exists(const std::string& obfuscated_username) const {
   return platform_->DirectoryExists(user_dir);
 }
 
-bool HomeDirs::CryptohomeExists(const std::string& obfuscated_username) const {
+bool HomeDirs::CryptohomeExists(const std::string& obfuscated_username,
+                                MountError* error) const {
+  *error = MOUNT_ERROR_NONE;
   return EcryptfsCryptohomeExists(obfuscated_username) ||
-         DircryptoCryptohomeExists(obfuscated_username) ||
+         DircryptoCryptohomeExists(obfuscated_username, error) ||
          DmcryptCryptohomeExists(obfuscated_username);
 }
 
@@ -129,13 +131,28 @@ bool HomeDirs::EcryptfsCryptohomeExists(
       GetEcryptfsUserVaultPath(obfuscated_username));
 }
 
-bool HomeDirs::DircryptoCryptohomeExists(
-    const std::string& obfuscated_username) const {
+bool HomeDirs::DircryptoCryptohomeExists(const std::string& obfuscated_username,
+                                         MountError* error) const {
   // Check for the presence of an encrypted mount directory for dircrypto.
   FilePath mount_path = GetUserMountDirectory(obfuscated_username);
-  return platform_->DirectoryExists(mount_path) &&
-         platform_->GetDirCryptoKeyState(mount_path) ==
-             dircrypto::KeyState::ENCRYPTED;
+
+  if (!platform_->DirectoryExists(mount_path)) {
+    return false;
+  }
+
+  switch (platform_->GetDirCryptoKeyState(mount_path)) {
+    case dircrypto::KeyState::NO_KEY:
+    case dircrypto::KeyState::NOT_SUPPORTED:
+      return false;
+    case dircrypto::KeyState::ENCRYPTED:
+      return true;
+    case dircrypto::KeyState::UNKNOWN:
+      *error = MOUNT_ERROR_FATAL;
+      PLOG(ERROR) << "Directory has inconsistent Fscrypt state:"
+                  << mount_path.value();
+      return false;
+  }
+  return false;
 }
 
 bool HomeDirs::DmcryptContainerExists(
@@ -454,7 +471,11 @@ std::unique_ptr<CryptohomeVault> HomeDirs::CreateNonMigratingVault(
     MountError* mount_error) {
   EncryptedContainerType container_type = EncryptedContainerType::kUnknown;
   if (EcryptfsCryptohomeExists(obfuscated_username)) {
-    if (DircryptoCryptohomeExists(obfuscated_username)) {
+    if (DircryptoCryptohomeExists(obfuscated_username, mount_error)) {
+      if (*mount_error != MOUNT_ERROR_NONE) {
+        // Preserve dircrypto encryption check error
+        return nullptr;
+      }
       // If both types of home directory existed, it implies that the
       // migration attempt was aborted in the middle before doing clean up.
       LOG(ERROR) << "Mount failed because both eCryptfs and dircrypto home"
@@ -471,7 +492,11 @@ std::unique_ptr<CryptohomeVault> HomeDirs::CreateNonMigratingVault(
     }
 
     container_type = EncryptedContainerType::kEcryptfs;
-  } else if (DircryptoCryptohomeExists(obfuscated_username)) {
+  } else if (DircryptoCryptohomeExists(obfuscated_username, mount_error)) {
+    if (*mount_error != MOUNT_ERROR_NONE) {
+      // Preserve dircrypto encryption check error
+      return nullptr;
+    }
     container_type = EncryptedContainerType::kFscrypt;
   } else if (DmcryptCryptohomeExists(obfuscated_username)) {
     container_type = EncryptedContainerType::kDmcrypt;
