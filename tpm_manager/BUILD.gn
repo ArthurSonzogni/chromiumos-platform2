@@ -228,8 +228,7 @@ if (use.test) {
   executable("tpm_manager_testrunner") {
     sources = [
       "client/tpm_manager_utility_test.cc",
-
-      # "server/dbus_service_test.cc",
+      "server/dbus_service_test.cc",
       "server/local_data_migration_test.cc",
       "server/mock_local_data_store.cc",
       "server/mock_openssl_crypto_util.cc",

@@ -23,6 +23,7 @@ using testing::_;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::WithArgs;
 
@@ -461,6 +462,10 @@ TEST_F(DBusServiceTest, GetSpaceInfo) {
 }
 
 TEST_F(DBusServiceTest, SendOwnershipTakenSignalAfterNotification) {
+  LocalData local_data;
+  EXPECT_CALL(mock_data_store_, Read(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
   RegisterDBusObjectsAsync();
 
   EXPECT_FALSE(dbus_service_->MaybeSendOwnershipTakenSignal());
@@ -468,7 +473,7 @@ TEST_F(DBusServiceTest, SendOwnershipTakenSignalAfterNotification) {
   EXPECT_TRUE(dbus_service_->MaybeSendOwnershipTakenSignal());
 }
 
-TEST_F(DBusServiceTest, SendOwnershipTakenSignalError) {
+TEST_F(DBusServiceTest, DISABLED_SendOwnershipTakenSignalError) {
   ON_CALL(*mock_bus_, GetExportedObject(_)).WillByDefault(Return(nullptr));
 
   RegisterDBusObjectsAsync();
@@ -478,6 +483,10 @@ TEST_F(DBusServiceTest, SendOwnershipTakenSignalError) {
 }
 
 TEST_F(DBusServiceTest, SendOwnershipTakenSignalAfterRegistration) {
+  LocalData local_data;
+  EXPECT_CALL(mock_data_store_, Read(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
   dbus_service_->NotifyOwnershipIsTaken();
   EXPECT_FALSE(dbus_service_->MaybeSendOwnershipTakenSignal());
 

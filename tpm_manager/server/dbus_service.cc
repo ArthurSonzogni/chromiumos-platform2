@@ -182,7 +182,7 @@ void DBusService::NotifyOwnershipIsTaken() {
 
 bool DBusService::MaybeSendOwnershipTakenSignal() {
   if (already_sent_ownership_taken_signal_) {
-    return false;
+    return true;
   }
 
   if (!ownership_already_taken_) {
