@@ -84,24 +84,23 @@ void InitIcuIfNeeded() {
 }  // namespace
 
 MachineLearningServiceImpl::MachineLearningServiceImpl(
-    mojo::ScopedMessagePipeHandle pipe,
+    mojo::PendingReceiver<
+        chromeos::machine_learning::mojom::MachineLearningService> receiver,
     base::Closure disconnect_handler,
     const std::string& model_dir)
     : builtin_model_metadata_(GetBuiltinModelMetadata()),
       model_dir_(model_dir),
-      receiver_(this,
-                mojo::InterfaceRequest<
-                    chromeos::machine_learning::mojom::MachineLearningService>(
-                    std::move(pipe))) {
+      receiver_(this, std::move(receiver)) {
   receiver_.set_disconnect_handler(std::move(disconnect_handler));
 }
 
 MachineLearningServiceImpl::MachineLearningServiceImpl(
-    mojo::ScopedMessagePipeHandle pipe,
+    mojo::PendingReceiver<
+        chromeos::machine_learning::mojom::MachineLearningService> receiver,
     base::Closure disconnect_handler,
     dbus::Bus* bus)
     : MachineLearningServiceImpl(
-          std::move(pipe), std::move(disconnect_handler), kSystemModelDir) {
+          std::move(receiver), std::move(disconnect_handler), kSystemModelDir) {
   if (bus) {
     dlcservice_client_ = std::make_unique<DlcserviceClient>(bus);
   }

@@ -18,8 +18,9 @@
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "ml/mojom/graph_executor.mojom.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
@@ -38,11 +39,10 @@ using ::chromeos::machine_learning::mojom::BuiltinModelSpec;
 using ::chromeos::machine_learning::mojom::BuiltinModelSpecPtr;
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
-using ::chromeos::machine_learning::mojom::GraphExecutorPtr;
+using ::chromeos::machine_learning::mojom::GraphExecutor;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
-using ::chromeos::machine_learning::mojom::MachineLearningServicePtr;
-using ::chromeos::machine_learning::mojom::ModelPtr;
-using ::chromeos::machine_learning::mojom::ModelRequest;
+using ::chromeos::machine_learning::mojom::MachineLearningService;
+using ::chromeos::machine_learning::mojom::Model;
 using ::chromeos::machine_learning::mojom::TensorPtr;
 
 const int kSmartDim20190521InputSize = 592;
@@ -55,10 +55,10 @@ class MachineLearningServiceImplForTesting : public MachineLearningServiceImpl {
  public:
   // Pass an empty callback and use the testing model directory.
   explicit MachineLearningServiceImplForTesting(
-      mojo::ScopedMessagePipeHandle pipe)
-      : MachineLearningServiceImpl(
-            std::move(pipe), base::Closure(), std::string(kModelDirForFuzzer)) {
-  }
+      mojo::PendingReceiver<MachineLearningService> receiver)
+      : MachineLearningServiceImpl(std::move(receiver),
+                                   base::Closure(),
+                                   std::string(kModelDirForFuzzer)) {}
 };
 
 class MLServiceFuzzer {
@@ -75,7 +75,7 @@ class MLServiceFuzzer {
         mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
     ml_service_impl_ = std::make_unique<MachineLearningServiceImplForTesting>(
-        mojo::MakeRequest(&ml_service_).PassMessagePipe());
+        ml_service_.BindNewPipeAndPassReceiver());
 
     // Set up model spec.
     BuiltinModelSpecPtr spec = BuiltinModelSpec::New();
@@ -84,7 +84,7 @@ class MLServiceFuzzer {
     // Load model.
     bool model_callback_done = false;
     ml_service_->LoadBuiltinModel(
-        std::move(spec), mojo::MakeRequest(&model_),
+        std::move(spec), model_.BindNewPipeAndPassReceiver(),
         base::Bind(
             [](bool* model_callback_done, const LoadModelResult result) {
               CHECK_EQ(result, LoadModelResult::OK);
@@ -98,7 +98,7 @@ class MLServiceFuzzer {
     // Get graph executor.
     bool ge_callback_done = false;
     model_->CreateGraphExecutor(
-        mojo::MakeRequest(&graph_executor_),
+        graph_executor_.BindNewPipeAndPassReceiver(),
         base::Bind(
             [](bool* ge_callback_done, const CreateGraphExecutorResult result) {
               CHECK_EQ(result, CreateGraphExecutorResult::OK);
@@ -149,10 +149,10 @@ class MLServiceFuzzer {
 
  private:
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  MachineLearningServicePtr ml_service_;
+  mojo::Remote<MachineLearningService> ml_service_;
   std::unique_ptr<MachineLearningServiceImplForTesting> ml_service_impl_;
-  ModelPtr model_;
-  GraphExecutorPtr graph_executor_;
+  mojo::Remote<Model> model_;
+  mojo::Remote<GraphExecutor> graph_executor_;
 };
 
 }  // namespace ml

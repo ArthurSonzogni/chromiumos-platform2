@@ -28,16 +28,20 @@ class MachineLearningServiceImpl
   // Creates an instance bound to `pipe`. The specified `disconnect_handler`
   // will be invoked if the binding encounters a connection error or is closed.
   // The `bus` is used to construct `dlcservice_client_` if it is not nullptr.
-  MachineLearningServiceImpl(mojo::ScopedMessagePipeHandle pipe,
-                             base::Closure disconnect_handler,
-                             dbus::Bus* bus = nullptr);
+  MachineLearningServiceImpl(
+      mojo::PendingReceiver<
+          chromeos::machine_learning::mojom::MachineLearningService> receiver,
+      base::Closure disconnect_handler,
+      dbus::Bus* bus = nullptr);
 
  protected:
   // Testing constructor that allows overriding of the model dir. Should not be
   // used outside of tests.
-  MachineLearningServiceImpl(mojo::ScopedMessagePipeHandle pipe,
-                             base::Closure disconnect_handler,
-                             const std::string& model_dir);
+  MachineLearningServiceImpl(
+      mojo::PendingReceiver<
+          chromeos::machine_learning::mojom::MachineLearningService> receiver,
+      base::Closure disconnect_handler,
+      const std::string& model_dir);
   MachineLearningServiceImpl(const MachineLearningServiceImpl&) = delete;
   MachineLearningServiceImpl& operator=(const MachineLearningServiceImpl&) =
       delete;

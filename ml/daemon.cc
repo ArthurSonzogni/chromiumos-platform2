@@ -109,7 +109,9 @@ void Daemon::BootstrapMojoConnection(
 
   // Bind primordial message pipe to a MachineLearningService implementation.
   machine_learning_service_ = std::make_unique<MachineLearningServiceImpl>(
-      invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken),
+      mojo::PendingReceiver<
+          chromeos::machine_learning::mojom::MachineLearningService>(
+          invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken)),
       base::Bind(&Daemon::OnMojoDisconnection, base::Unretained(this)),
       bus_.get());
 

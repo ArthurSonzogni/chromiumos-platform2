@@ -14,8 +14,7 @@
 #include <base/run_loop.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "ml/mojom/graph_executor.mojom.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
@@ -30,8 +29,8 @@ namespace {
 using ::chromeos::machine_learning::mojom::FlatBufferModelSpec;
 using ::chromeos::machine_learning::mojom::FlatBufferModelSpecPtr;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
-using ::chromeos::machine_learning::mojom::MachineLearningServicePtr;
-using ::chromeos::machine_learning::mojom::ModelPtr;
+using ::chromeos::machine_learning::mojom::MachineLearningService;
+using ::chromeos::machine_learning::mojom::Model;
 
 class Environment {
  public:
@@ -55,7 +54,7 @@ class MLServiceFuzzer {
         base::ThreadTaskRunnerHandle::Get(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
     ml_service_impl_ = std::make_unique<MachineLearningServiceImpl>(
-        mojo::MakeRequest(&ml_service_).PassMessagePipe(), base::Closure());
+        ml_service_.BindNewPipeAndPassReceiver(), base::Closure());
   }
   void PerformInference(const uint8_t* data, size_t size) {
     FlatBufferModelSpecPtr spec = FlatBufferModelSpec::New();
@@ -67,7 +66,7 @@ class MLServiceFuzzer {
     // Load model.
     bool load_model_done = false;
     ml_service_->LoadFlatBufferModel(
-        std::move(spec), mojo::MakeRequest(&model_),
+        std::move(spec), model_.BindNewPipeAndPassReceiver(),
         base::Bind(
             [](bool* load_model_done, const LoadModelResult result) {
               *load_model_done = true;
@@ -79,9 +78,9 @@ class MLServiceFuzzer {
 
  private:
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  MachineLearningServicePtr ml_service_;
+  mojo::Remote<MachineLearningService> ml_service_;
   std::unique_ptr<MachineLearningServiceImpl> ml_service_impl_;
-  ModelPtr model_;
+  mojo::Remote<Model> model_;
 };
 
 }  // namespace ml
