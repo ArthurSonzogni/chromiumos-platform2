@@ -49,13 +49,15 @@ std::unique_ptr<AmbientLightSensorDelegateMojo>
 AmbientLightSensorDelegateMojo::Create(
     int iio_device_id,
     mojo::Remote<cros::mojom::SensorDevice> remote,
-    bool enable_color_support) {
+    bool enable_color_support,
+    base::OnceClosure init_closure) {
   if (!remote.is_bound())
     return nullptr;
 
   std::unique_ptr<AmbientLightSensorDelegateMojo> sensor_mojo(
       new AmbientLightSensorDelegateMojo(iio_device_id, std::move(remote),
-                                         enable_color_support));
+                                         enable_color_support,
+                                         std::move(init_closure)));
 
   return sensor_mojo;
 }
@@ -174,11 +176,12 @@ void AmbientLightSensorDelegateMojo::OnErrorOccurred(
 AmbientLightSensorDelegateMojo::AmbientLightSensorDelegateMojo(
     int iio_device_id,
     mojo::Remote<cros::mojom::SensorDevice> remote,
-    bool enable_color_support)
+    bool enable_color_support,
+    base::OnceClosure init_closure)
     : iio_device_id_(iio_device_id),
       sensor_device_remote_(std::move(remote)),
       enable_color_support_(enable_color_support),
-      receiver_(this) {
+      init_closure_(std::move(init_closure)) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(sensor_device_remote_.is_bound());
 
@@ -209,6 +212,8 @@ void AmbientLightSensorDelegateMojo::Reset() {
 
   num_failed_reads_ = 0;
   num_recovery_reads_ = 0;
+
+  FinishInitialization();
 }
 
 void AmbientLightSensorDelegateMojo::GetAllChannelIds() {
@@ -367,6 +372,8 @@ void AmbientLightSensorDelegateMojo::SetChannelsEnabledCallback(
 
   if (enable_color_support_ && failed_indices.empty())
     color_channels_enabled_ = true;
+
+  FinishInitialization();
 }
 
 void AmbientLightSensorDelegateMojo::ReadError() {
@@ -380,6 +387,13 @@ void AmbientLightSensorDelegateMojo::ReadError() {
 
   LOG(ERROR) << "Too many failed reads";
   Reset();
+}
+
+void AmbientLightSensorDelegateMojo::FinishInitialization() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (init_closure_)
+    std::move(init_closure_).Run();
 }
 
 }  // namespace system

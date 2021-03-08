@@ -80,16 +80,18 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
     sensor_device_ = std::make_unique<FakeSensorDevice>(
         fake_color_sensor, /*name=*/base::nullopt, /*location=*/base::nullopt);
 
+    base::RunLoop loop;
+
     mojo::Remote<cros::mojom::SensorDevice> remote;
     sensor_device_->AddReceiver(remote.BindNewPipeAndPassReceiver());
     auto light = AmbientLightSensorDelegateMojo::Create(
-        kFakeSensorId, std::move(remote), color_delegate);
+        kFakeSensorId, std::move(remote), color_delegate, loop.QuitClosure());
     light_ = light.get();
     CHECK(light);
     sensor_->SetDelegate(std::move(light));
 
     // Wait until all initialization steps are done.
-    base::RunLoop().RunUntilIdle();
+    loop.Run();
   }
 
   void WriteLux(int64_t lux) {

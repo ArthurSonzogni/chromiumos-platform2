@@ -38,7 +38,8 @@ class AmbientLightSensorDelegateMojo
   static std::unique_ptr<AmbientLightSensorDelegateMojo> Create(
       int iio_device_id,
       mojo::Remote<cros::mojom::SensorDevice> remote,
-      bool enable_color_support = false);
+      bool enable_color_support = false,
+      base::OnceClosure init_closure = base::OnceClosure());
 
   AmbientLightSensorDelegateMojo(const AmbientLightSensorDelegateMojo&) =
       delete;
@@ -66,7 +67,8 @@ class AmbientLightSensorDelegateMojo
 
   AmbientLightSensorDelegateMojo(int iio_device_id,
                                  mojo::Remote<cros::mojom::SensorDevice> remote,
-                                 bool enable_color_support);
+                                 bool enable_color_support,
+                                 base::OnceClosure init_closure);
 
   void Reset();
 
@@ -92,6 +94,8 @@ class AmbientLightSensorDelegateMojo
   void SetChannelsEnabledCallback(const std::vector<int32_t>& failed_indices);
 
   void ReadError();
+
+  void FinishInitialization();
 
   int iio_device_id_;
   mojo::Remote<cros::mojom::SensorDevice> sensor_device_remote_;
@@ -126,7 +130,11 @@ class AmbientLightSensorDelegateMojo
   // decremented by 1.
   uint32_t num_recovery_reads_ = 0;
 
-  mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_;
+  // Only used in tests.
+  // Should be called when the initialization is finished.
+  base::OnceClosure init_closure_;
+
+  mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_{this};
 
   base::WeakPtrFactory<AmbientLightSensorDelegateMojo> weak_factory_{this};
 
