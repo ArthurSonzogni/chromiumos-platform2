@@ -271,6 +271,7 @@ if (use.test) {
       sources += [
         "server/tpm_connection_test.cc",
         "server/tpm_initializer_test.cc",
+        "server/tpm_nvram_test.cc",
       ]
       libs = [ "hwsec_test" ]
     }
