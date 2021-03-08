@@ -5,18 +5,34 @@ permissive cros_cryptohome_namespace_mounter;
 domain_auto_trans(cros_cryptohomed, cros_cryptohome_namespace_mounter_exec, cros_cryptohome_namespace_mounter);
 domain_auto_trans(cros_cryptohome_namespace_mounter, cros_unconfined_exec, chromeos);
 
-allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd                  use;
+allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd use;
 
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
 # TODO(betuls): Define a cryptohome domain and add these rules to there.
-allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file           rw_file_perms;
-allow cros_cryptohome_namespace_mounter cros_home_chronos:dir                { create_dir_perms mounton };
-allow cros_cryptohome_namespace_mounter cros_home_root:dir                   { create_dir_perms mounton };
-allow cros_cryptohome_namespace_mounter cros_home_shadow_uid_root:dir        { create_dir_perms relabelfrom };
+allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file rw_file_perms;
+allow cros_cryptohome_namespace_mounter {
+  cros_home_chronos
+  cros_home_root
+  cros_home_shadow_uid_root
+  cros_run
+  cros_run_daemon_store
+}:dir create_dir_perms;
 r_dir_file(cros_cryptohome_namespace_mounter, cros_home_shadow);
-create_mounton_dir_file(cros_cryptohome_namespace_mounter, cros_home_user);
-create_mounton_dir_file(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_user);
-create_relabelto_dir_file(cros_cryptohome_namespace_mounter, cros_home_shadow_uid);
+create_dir_file(cros_cryptohome_namespace_mounter, {
+  cros_home_user
+  cros_home_shadow_uid_user
+  cros_home_shadow_uid
+});
+allow cros_cryptohome_namespace_mounter {
+  cros_home_user
+  cros_home_chronos
+  cros_home_root
+  cros_home_shadow_uid
+  cros_home_shadow_uid_user
+  cros_run
+  cros_run_daemon_store }:dir mounton;
+allow cros_cryptohome_namespace_mounter cros_home_shadow_uid:dir relabelto;
+allow cros_cryptohome_namespace_mounter cros_home_shadow_uid_root:dir relabelfrom;
 
 # TODO(betuls): Add access for daemon-stores of the daemons 'cdm-oemcrypto',
 # 'crash', 'crosvm', 'debugd', 'kerberosd', 'pvm', 'pvm-dispatcher', 'smbfs',
@@ -33,61 +49,99 @@ cros_daemon_store_create(cros_cryptohome_namespace_mounter, usb_bouncer);
 cros_daemon_store_perms(cros_cryptohome_namespace_mounter, usb_bouncer, relabelto);
 
 # Kernel and key related pemrissions.
-allow cros_cryptohome_namespace_mounter cros_init:key                        link;
-allow cros_cryptohome_namespace_mounter kernel:key                           { link search };
-allow cros_cryptohome_namespace_mounter kernel:system                        module_request;
-
-# Permissions to create and bind-mount daemon-store directories.
-allow cros_cryptohome_namespace_mounter cros_run:dir                         { create_dir_perms mounton };
+allow cros_cryptohome_namespace_mounter cros_init:key link;
+allow cros_cryptohome_namespace_mounter kernel:key {
+  link
+  search
+};
+allow cros_cryptohome_namespace_mounter kernel:system module_request;
 
 # Permissions to create and bind-mount ephemeral cryptohome directory.
 create_mounton_dir_file(cros_cryptohome_namespace_mounter, cros_run_cryptohome);
 
-allow cros_cryptohome_namespace_mounter device:blk_file                      rw_file_perms;
-allowxperm cros_cryptohome_namespace_mounter device:blk_file                 ioctl { LOOP_SET_FD LOOP_CLR_FD };
-allow cros_cryptohome_namespace_mounter tpm_device:chr_file                  r_file_perms;
+allow cros_cryptohome_namespace_mounter device:blk_file      rw_file_perms;
+allowxperm cros_cryptohome_namespace_mounter device:blk_file ioctl {
+  LOOP_SET_FD
+  LOOP_CLR_FD
+};
+allow cros_cryptohome_namespace_mounter tpm_device:chr_file  r_file_perms;
 
 has_arc(`
-allow cros_cryptohome_namespace_mounter media_rw_data_file:dir               { create_dir_perms mounton };
+allow cros_cryptohome_namespace_mounter media_rw_data_file:dir {
+  create_dir_perms
+  mounton
+};
 ')
-allow cros_cryptohome_namespace_mounter proc_swaps:file                      r_file_perms;
-allow cros_cryptohome_namespace_mounter rootfs:dir                           r_dir_perms;
 
-# cryptohome_namespace_mounter capabilities
-allow cros_cryptohome_namespace_mounter self:capability   { chown fowner fsetid sys_admin sys_chroot };
-allow cros_cryptohome_namespace_mounter self:key          { search write };
+allow cros_cryptohome_namespace_mounter proc_swaps:file r_file_perms;
+allow cros_cryptohome_namespace_mounter rootfs:dir      r_dir_perms;
 
 r_dir_file(cros_cryptohome_namespace_mounter, sysfs_fs_ext4_features);
 
 # TODO(b/178237710) Label the directories and files with specific contexts.
 r_dir_file(cros_cryptohome_namespace_mounter, unlabeled);
-allow cros_cryptohome_namespace_mounter unlabeled:dir                        relabelfrom;
+allow cros_cryptohome_namespace_mounter unlabeled:dir {
+  mounton
+  relabelfrom
+};
 
 # TODO(b/178237004) Label the processes with specific contexts.
-allow cros_cryptohome_namespace_mounter cros_unconfined_exec:file            x_file_perms;
+allow cros_cryptohome_namespace_mounter cros_unconfined_exec:file x_file_perms;
 
 # Cryptohome_namespace_mounter needs to enter user session mount namespace at /run/namespaces/mnt_chrome
-allow cros_cryptohome_namespace_mounter cros_run_namespaces:dir               search;
-allow cros_cryptohome_namespace_mounter cros_run_namespaces_mnt_chrome:file   { r_file_perms mounton };
+allow cros_cryptohome_namespace_mounter cros_run_namespaces:dir search;
+allow cros_cryptohome_namespace_mounter cros_run_namespaces_mnt_chrome:file {
+  r_file_perms
+  mounton
+};
+
+# cryptohome_namespace_mounter capabilities
+allow cros_cryptohome_namespace_mounter self:capability {
+  chown
+  fowner
+  fsetid
+  sys_admin
+  sys_chroot
+};
+allow cros_cryptohome_namespace_mounter self:key {
+  search
+  write
+};
 
 # Chrome OS with ARCVM doesn't undergo CTS tests. Thus remove the
 # arc_cts_fails_release macro for ARCVM devices so that
 # cros_cryptohome_namespace_mounter is not converted into a permissive domain
 # after being flipped to enforcing.
 is_arc_vm(`
-allow cros_cryptohome_namespace_mounter self:capability                      { dac_override dac_read_search };
-allow cros_cryptohome_namespace_mounter labeledfs:filesystem                 { mount remount unmount };
-allow cros_cryptohome_namespace_mounter device:chr_file                      r_file_perms;
+  allow cros_cryptohome_namespace_mounter self:capability {
+    dac_override
+    dac_read_search
+  };
+  allow cros_cryptohome_namespace_mounter labeledfs:filesystem {
+    mount
+    remount
+    unmount
+  };
+  allow cros_cryptohome_namespace_mounter device:chr_file r_file_perms;
+  allow cros_cryptohome_namespace_mounter unlabeled:file create;
 ',`
-arc_cts_fails_release(`
-allow cros_cryptohome_namespace_mounter self:capability                      { dac_override dac_read_search };
-allow cros_cryptohome_namespace_mounter labeledfs:filesystem                 { mount remount unmount };
-allow cros_cryptohome_namespace_mounter device:chr_file                      r_file_perms;
-', (cros_cryptohome_namespace_mounter));
+  arc_cts_fails_release(`
+    allow cros_cryptohome_namespace_mounter self:capability {
+      dac_override
+      dac_read_search
+    };
+    allow cros_cryptohome_namespace_mounter labeledfs:filesystem {
+      mount
+      remount
+      unmount
+    };
+    allow cros_cryptohome_namespace_mounter device:chr_file r_file_perms;
+  ', (cros_cryptohome_namespace_mounter));
 ')
-allow kernel cros_cryptohome_namespace_mounter:fd                            use;
 
-allow cros_cryptohomed cros_var_lib:file                                     { getattr open read };
+allow kernel cros_cryptohome_namespace_mounter:fd use;
+
+allow cros_cryptohomed cros_var_lib:file r_file_perms;
 
 log_writer(cros_cryptohome_namespace_mounter);
 uma_writer(cros_cryptohome_namespace_mounter);
