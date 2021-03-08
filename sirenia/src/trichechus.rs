@@ -86,15 +86,18 @@ impl StorageRPC for TEEAppHandler {
 
     fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
         let app_info = &self.tee_app.borrow().app_info;
+        let params = app_info.storage_parameters.as_ref().ok_or_else(|| {
+            error!(
+                "App id '{}' made an unconfigured call to the read_data storage API.",
+                &app_info.app_name
+            );
+        })?;
         let mut state = self.state.borrow_mut();
 
         // If already connected try once, to see if the connection dropped.
         if let Some(persistence) = &state.persistence {
-            let ret = persistence.retrieve(
-                app_info.scope.clone(),
-                app_info.domain.to_string(),
-                id.clone(),
-            );
+            let ret =
+                persistence.retrieve(params.scope.clone(), params.domain.to_string(), id.clone());
             match ret {
                 Err(err) => {
                     // If the client is no longer valid, drop it so it will be recreated on the next call.
@@ -109,7 +112,7 @@ impl StorageRPC for TEEAppHandler {
             error!("failed to retrieve data: {}", err);
         })?;
 
-        let ret = persistence.retrieve(app_info.scope.clone(), app_info.domain.to_string(), id);
+        let ret = persistence.retrieve(params.scope.clone(), params.domain.to_string(), id);
         ret.map_err(|err| {
             // If the client is no longer valid, drop it so it will be recreated on the next call.
             state.persistence = None;
@@ -119,13 +122,19 @@ impl StorageRPC for TEEAppHandler {
 
     fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
         let app_info = &self.tee_app.borrow().app_info;
+        let params = app_info.storage_parameters.as_ref().ok_or_else(|| {
+            error!(
+                "App id '{}' made an unconfigured call to the write_data storage API.",
+                &app_info.app_name
+            );
+        })?;
         let mut state = self.state.borrow_mut();
 
         // If already connected try once, to see if the connection dropped.
         if let Some(persistence) = &state.persistence {
             let ret = persistence.persist(
-                app_info.scope.clone(),
-                app_info.domain.to_string(),
+                params.scope.clone(),
+                params.domain.to_string(),
                 id.clone(),
                 data.clone(),
             );
@@ -144,12 +153,7 @@ impl StorageRPC for TEEAppHandler {
             error!("failed to persist data: {}", err);
         })?;
 
-        let ret = persistence.persist(
-            app_info.scope.clone(),
-            app_info.domain.to_string(),
-            id,
-            data,
-        );
+        let ret = persistence.persist(params.scope.clone(), params.domain.to_string(), id, data);
 
         ret.map_err(|err| {
             // If the client is no longer valid, drop it so it will be recreated on the next call.
@@ -286,7 +290,7 @@ impl DugongConnectionHandler {
 
 impl ConnectionHandler for DugongConnectionHandler {
     fn handle_incoming_connection(&mut self, connection: Transport) -> Option<Box<dyn Mutator>> {
-        info!("incomming connection '{:?}'", &connection.id);
+        info!("incoming connection '{:?}'", &connection.id);
         let expected_port = self.state.borrow().expected_port;
         // Check if the incoming connection is expected and associated with a TEE
         // application.

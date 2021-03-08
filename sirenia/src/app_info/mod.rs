@@ -33,15 +33,30 @@ pub enum SandboxType {
     VirtualMachine,
 }
 
+/// Defines parameters for use with the storage API.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StorageParameters {
+    pub scope: Scope,
+    pub domain: String,
+    /// Enables transparent storage encryption.
+    pub encryption_key_version: Option<usize>,
+}
+
+/// Defines parameters for use with the secrets API.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SecretsParameters {
+    pub encryption_key_version: usize,
+}
+
 /// The TEE developer will define all of these fields for their app and the
 /// manifest will be used when starting up the TEE app.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AppManifestEntry {
     pub app_name: String,
-    pub scope: Scope,
     pub path: String,
-    pub domain: String,
     pub sandbox_type: SandboxType,
+    pub secrets_parameters: Option<SecretsParameters>,
+    pub storage_parameters: Option<StorageParameters>,
 }
 
 /// Provides a lookup for registered AppManifestEntries that represent which
@@ -55,24 +70,28 @@ impl AppManifest {
         // best way to store manifests.
         manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "shell".to_string(),
-            scope: Scope::Test,
             path: "/bin/sh".to_string(),
-            domain: "test".to_string(),
             sandbox_type: SandboxType::DeveloperEnvironment,
+            secrets_parameters: None,
+            storage_parameters: None,
         });
         manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "sandboxed-shell".to_string(),
-            scope: Scope::Test,
             path: "/bin/sh".to_string(),
-            domain: "test".to_string(),
             sandbox_type: SandboxType::Container,
+            secrets_parameters: None,
+            storage_parameters: None,
         });
         manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "demo_app".to_string(),
-            scope: Scope::Test,
             path: "/usr/bin/demo_app".to_string(),
-            domain: "test".to_string(),
             sandbox_type: SandboxType::DeveloperEnvironment,
+            secrets_parameters: None,
+            storage_parameters: Some(StorageParameters {
+                scope: Scope::Test,
+                domain: "test".to_string(),
+                encryption_key_version: Some(0),
+            }),
         });
         manifest
     }
