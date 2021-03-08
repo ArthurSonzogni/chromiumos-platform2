@@ -66,4 +66,9 @@ message StatusResult {
   // If true, the system will powerwash once the update is applied and the
   // system is rebooted. This value is reliable on |UPDATE_NEED_REBOOT|.
   bool will_powerwash_after_reboot = 9;
+
+  // The last update/install attempt error.
+  // Reference update_engine/dbus-constants.h for the errors that update_engine
+  // will propagate into this field.
+  int32 last_attempt_error = 10;
 }
