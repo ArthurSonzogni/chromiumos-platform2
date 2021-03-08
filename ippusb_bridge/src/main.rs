@@ -12,7 +12,7 @@ mod util;
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::net::TcpListener;
-use std::os::unix::io::IntoRawFd;
+use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::Arc;
@@ -96,11 +96,11 @@ fn add_sigint_handler(shutdown_fd: EventFd) -> sys_util::Result<()> {
     unsafe { register_signal_handler(SIGINT, sigint_handler) }
 }
 
-struct Daemon<A: Accept> {
+struct Daemon {
     verbose_log: bool,
 
     shutdown: EventFd,
-    listener: A,
+    listener: Box<dyn Accept>,
     usb: UsbConnector,
     keep_alive_socket: Option<ScopedUnixListener>,
 
@@ -118,11 +118,21 @@ struct Daemon<A: Accept> {
     last_activity_time: Instant,
 }
 
-impl<A: Accept> Daemon<A> {
+// Trivially allows a `RawFd` to be passed as a `&AsRawFd`.  Needed because
+// `Daemon` contains an `Accept` but needs to pass it to `PollContext` as a
+// `&AsRawFd`.
+struct WrapFd(RawFd);
+impl AsRawFd for WrapFd {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0
+    }
+}
+
+impl Daemon {
     fn new(
         verbose_log: bool,
         shutdown: EventFd,
-        listener: A,
+        listener: Box<dyn Accept>,
         usb: UsbConnector,
         keep_alive_socket: Option<ScopedUnixListener>,
     ) -> Result<Self> {
@@ -150,9 +160,10 @@ impl<A: Accept> Daemon<A> {
             IdleStateChanged,
         }
 
+        let listener_fd = WrapFd(self.listener.as_raw_fd());
         let poll_ctx: PollContext<Token> = PollContext::build_with(&[
             (&self.shutdown, Token::Shutdown),
-            (&self.listener, Token::ClientConnection),
+            (&listener_fd, Token::ClientConnection),
         ])
         .map_err(Error::SysUtil)?;
 
@@ -313,6 +324,17 @@ fn run() -> Result<()> {
         })
         .transpose()?;
 
+    let listener: Box<dyn Accept> = if let Some(unix_socket_path) = args.unix_socket {
+        info!("Listening on {}", unix_socket_path.display());
+        Box::new(ScopedUnixListener(
+            UnixListener::bind(unix_socket_path).map_err(Error::CreateSocket)?,
+        ))
+    } else {
+        let host = "127.0.0.1:60000";
+        info!("Listening on {}", host);
+        Box::new(TcpListener::bind(host).map_err(Error::CreateSocket)?)
+    };
+
     let usb =
         UsbConnector::new(args.verbose_log, args.bus_device).map_err(Error::CreateUsbConnector)?;
     let unplug_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
@@ -323,31 +345,14 @@ fn run() -> Result<()> {
         args.upstart_mode,
     );
 
-    if let Some(unix_socket_path) = args.unix_socket {
-        info!("Listening on {}", unix_socket_path.display());
-        let unix_listener =
-            ScopedUnixListener(UnixListener::bind(unix_socket_path).map_err(Error::CreateSocket)?);
-        let mut daemon = Daemon::new(
-            args.verbose_log,
-            shutdown_fd,
-            unix_listener,
-            usb,
-            keep_alive_socket,
-        )?;
-        daemon.run()?;
-    } else {
-        let host = "127.0.0.1:60000";
-        info!("Listening on {}", host);
-        let tcp_listener = TcpListener::bind(host).map_err(Error::CreateSocket)?;
-        let mut daemon = Daemon::new(
-            args.verbose_log,
-            shutdown_fd,
-            tcp_listener,
-            usb,
-            keep_alive_socket,
-        )?;
-        daemon.run()?;
-    }
+    let mut daemon = Daemon::new(
+        args.verbose_log,
+        shutdown_fd,
+        listener,
+        usb,
+        keep_alive_socket,
+    )?;
+    daemon.run()?;
 
     info!("Shutting down.");
     Ok(())
