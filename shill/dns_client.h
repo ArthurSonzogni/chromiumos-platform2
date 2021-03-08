@@ -85,6 +85,8 @@ class DnsClient {
                                 int timeouts,
                                 struct hostent* hostent);
   bool RefreshHandles();
+  void StopReadHandlers();
+  void StopWriteHandlers();
 
   Error error_;
   IPAddress address_;

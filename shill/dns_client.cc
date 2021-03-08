@@ -172,6 +172,9 @@ void DnsClient::Stop() {
   }
 
   running_ = false;
+  // Eplicitly stop all IO handlers to help isolate b/162714491.
+  StopReadHandlers();
+  StopWriteHandlers();
   weak_ptr_factory_.InvalidateWeakPtrs();
   error_.Reset();
   address_.SetAddressToDefault();
@@ -372,6 +375,18 @@ bool DnsClient::RefreshHandles() {
   }
 
   return true;
+}
+
+void DnsClient::StopReadHandlers() {
+  for (auto& iter : resolver_state_->read_handlers)
+    iter.second->Stop();
+  resolver_state_->read_handlers.clear();
+}
+
+void DnsClient::StopWriteHandlers() {
+  for (auto& iter : resolver_state_->write_handlers)
+    iter.second->Stop();
+  resolver_state_->write_handlers.clear();
 }
 
 }  // namespace shill
