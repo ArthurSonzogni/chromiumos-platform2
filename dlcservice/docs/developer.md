@@ -106,9 +106,39 @@ Within the build file, the implementation should include at least the
 `src_install` function. Within `src_install`, all the DLC content should be
 installed using the special path prefix set by `$(dlc_add_path )`. This means,
 that before installing any DLC files, you have to add the dlc prefix path to
-`into, insinto` and `exeinto` using `$(dlc_add_path your_path)`.
+`into, insinto` and `exeinto` using `$(dlc_add_path your_path)`. Finally call
+`dlc_src_install` at the end of your `src_install` function.
 
 See an example of a DLC ebuild: [sample-dlc]
+
+### Multi-ebuild DLC
+
+Some applications may require to have artifacts of multiple ebuilds in one
+DLC. This basically means one DLC that is built by multiple ebuilds. This is
+possible following these instructions:
+*   Choose one of the ebuilds as the main ebuild (e.g. `X-main-app`) and the
+    other ones be secondary. Normally you want this ebuild be the root of the
+    dependency tree to all secondary ebuilds in this DLC. (This is not a strict
+    requirements, but makes it easier to follow.)
+*   Define a unique ID and assign it to `DLC_ID` in all ebuilds (main and
+    secondaries) that are part of this DLC. (Don't use the default `DLC_ID`,
+    which is basically the ebuild name.)
+*   Do the same for `DLC_PACKAGE` if and only if you are setting your own
+    value for this flag. (It is recommended not to change the default value of
+    `DLC_PACKAGE`.)
+*   Define any other `DLC_*` flag in the main ebuild if you have to and omit
+    them from secondary ebuilds.
+*   Use `$(dlc_add_path)` as normal in all these ebuilds.
+*   Only call `dlc_src_install` in the main ebuild (`X-main-app`) and omit it
+    from secondary ebuilds.
+
+This basically puts the files of all these ebuilds under umbrella of one DLC.
+
+If you have DLC packages that gets pulled into different boards with no
+intersection, then they potentially can have the same DLC ID. For example, if
+you have multiple ebuilds for an application, one per architecture, all those
+ebuilds can have the same DLC ID. This means your app only deal with one DLC ID
+irrespective of the system architecture.
 
 ## Write platform code to request DLC
 
