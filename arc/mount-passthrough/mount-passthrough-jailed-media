@@ -49,7 +49,8 @@ TARGET_DIR="${ANDROID_DATA_DATA_DIR}/${ANDROID_MEDIA_PROVIDER_PACKAGE_ID}"
 # the timeout value to 2 minutes to allow unexpectedly slow devices and/or busy
 # states.
 timeout_millisecs=120000
-while [ ! -d "${TARGET_DIR}" ]; do
+while ! nsenter --mount=/run/namespaces/mnt_concierge --no-fork -- \
+        test -d "${TARGET_DIR}"; do
   if [ "${timeout_millisecs}" -le 0 ]; then
     # The MediaProvider package directory does not appear before timeout.
     # Mount-passthrough mount cannot be performed, which makes external storage
@@ -63,7 +64,8 @@ while [ ! -d "${TARGET_DIR}" ]; do
 done
 
 # Obtain the MediaProvider UID by stat.
-android_media_provider_uid="$(stat -c '%u' ${TARGET_DIR})"
+android_media_provider_uid="$(nsenter --mount=/run/namespaces/mnt_concierge \
+                              --no-fork -- stat -c '%u' ${TARGET_DIR})"
 
 # Unshift the UID value by 655360.
 android_media_provider_uid="$((android_media_provider_uid-AID_SHIFT_WIDTH))"
@@ -75,11 +77,28 @@ if ! [[ "${android_media_provider_uid}" -ge "${ANDROID_APP_UID_START}" &&
   exit 1
 fi
 
-# Run mount-passthrough with minijail0 as chronos, inherit supplementary groups,
-# and do not grant CAP_DAC_OVERRIDE, nor force group access permission.
+# Set UID and GID in FUSE to Android's MediaProvider and external_storage, resp.
+set -- "$@" "${android_media_provider_uid}" "${ANDROID_EXTERNAL_STORAGE_GID}"
+
+# Set Android app access type to full.
+set -- "$@" "full"
+
+# Run mount-passthrough as chronos.
+set -- "$@" chronos chronos
+
+# Inherit supplementary groups.
+set -- "$@" "true" # inherit_supplementary_groups
+
+# Do not grant CAP_DAC_OVERRIDE.
+set -- "$@" "false" # grant_cap_dac_override
+
+# Do not force group access permission.
 # TODO(b/123669632): Remove the argument |force_group_permission| and related
 # logic once we start to run the daemon as MediaProvider UID and GID from
 # mount-passthrough-jailed-play.
-run_mount_passthrough_with_minijail0 "$@" \
-  "${android_media_provider_uid}" "${ANDROID_EXTERNAL_STORAGE_GID}" "full" \
-  chronos chronos "true" "false" "false"
+set -- "$@" "false" # force_group_permission
+
+# Enter the concierge namespace.
+set -- "$@" "true" # enter_concierge_namespace
+
+run_mount_passthrough_with_minijail0 "$@"

@@ -5,18 +5,15 @@
 
 # Defines a wrapper function to run mount-passthrough with minijail0.
 
-SOURCE_IN_CONTAINER=/mnt/source
-DEST_IN_CONTAINER=/mnt/dest
-
 # TODO(b/123669632): Remove the argument |force_group_permission| and related
 # logic once we start to run the daemon as MediaProvider UID and GID from
 # mount-passthrough-jailed-play.
 run_mount_passthrough_with_minijail0() {
-  if [ $# -ne 11 ]; then
+  if [ $# -ne 12 ]; then
     echo "Usage: $0 source dest fuse_umask fuse_uid fuse_gid"\
       "android_app_access_type daemon_uid daemon_gid"\
       "inherit_supplementary_groups grant_cap_dac_override"\
-      "force_group_permission"
+      "force_group_permission" "enter_concierge_namespace"
     exit 1
   fi
 
@@ -31,6 +28,7 @@ run_mount_passthrough_with_minijail0() {
   local inherit_supplementary_groups="${9}"
   local grant_cap_dac_override="${10}"
   local force_group_permission="${11}"
+  local enter_concierge_namespace="${12}"
 
   # Set large enough open file limit since this process handles many open files.
   ulimit -n 8192
@@ -38,8 +36,13 @@ run_mount_passthrough_with_minijail0() {
   # Start constructing minijail0 args...
   set --
 
-  # Use minimalistic-mountns profile.
-  set -- "$@" --profile=minimalistic-mountns
+  if [ "${enter_concierge_namespace}" = "true" ]; then
+    # Enter the concierge namespace.
+    set -- "$@" -V /run/namespaces/mnt_concierge
+  else
+    # Use minimalistic-mountns profile.
+    set -- "$@" --profile=minimalistic-mountns
+  fi
 
   # Enter a new UTS namespace.
   set -- "$@" --uts
@@ -76,33 +79,42 @@ run_mount_passthrough_with_minijail0() {
   # share those mounts explicitly.
   set -- "$@" -K
 
-  # Mount tmpfs on /mnt.
-  set -- "$@" -k "tmpfs,/mnt,tmpfs,MS_NOSUID|MS_NODEV|MS_NOEXEC"
+  local source_in_minijail="${source}"
+  local dest_in_minijail="${dest}"
 
-  # Bind /dev/fuse to mount FUSE file systems.
-  set -- "$@" -b /dev/fuse
+  if [ "${enter_concierge_namespace}" != "true" ]; then
+    # Set up the source and destination under /mnt inside the new namespace.
+    source_in_minijail=/mnt/source
+    dest_in_minijail=/mnt/dest
 
-  # Mark PRIVATE recursively under (pivot) root, in order not to expose shared
-  # mount points accidentally.
-  set -- "$@" -k "none,/,none,0x44000"  # private,rec
+    # Mount tmpfs on /mnt.
+    set -- "$@" -k "tmpfs,/mnt,tmpfs,MS_NOSUID|MS_NODEV|MS_NOEXEC"
 
-  # Mount source/dest directories.
-  # Note that those directories might be shared mountpoints and we allow them.
-  # 0x5000 = bind,rec
-  set -- "$@" -k "${source},${SOURCE_IN_CONTAINER},none,0x5000"
-  # 0x84000 = slave,rec
-  set -- "$@" -k "${source},${SOURCE_IN_CONTAINER},none,0x84000"
-  # 0x102e = bind,remount,noexec,nodev,nosuid
-  set -- "$@" -k "${source},${SOURCE_IN_CONTAINER},none,0x102e"
+    # Bind /dev/fuse to mount FUSE file systems.
+    set -- "$@" -b /dev/fuse
 
-  # 0x1000 = bind
-  set -- "$@" -k "${dest},${DEST_IN_CONTAINER},none,0x1000"
-  # 0x102e = bind,remount,noexec,nodev,nosuid
-  set -- "$@" -k "${dest},${DEST_IN_CONTAINER},none,0x102e"
+    # Mark PRIVATE recursively under (pivot) root, in order not to expose shared
+    # mount points accidentally.
+    set -- "$@" -k "none,/,none,0x44000"  # private,rec
+
+    # Mount source/dest directories.
+    # Note that those directories might be shared mountpoints and we allow them.
+    # 0x5000 = bind,rec
+    set -- "$@" -k "${source},${source_in_minijail},none,0x5000"
+    # 0x84000 = slave,rec
+    set -- "$@" -k "${source},${source_in_minijail},none,0x84000"
+    # 0x102e = bind,remount,noexec,nodev,nosuid
+    set -- "$@" -k "${source},${source_in_minijail},none,0x102e"
+
+    # 0x1000 = bind
+    set -- "$@" -k "${dest},${dest_in_minijail},none,0x1000"
+    # 0x102e = bind,remount,noexec,nodev,nosuid
+    set -- "$@" -k "${dest},${dest_in_minijail},none,0x102e"
+  fi
 
   # Finally, specify command line arguments.
   set -- "$@" -- /usr/bin/mount-passthrough
-  set -- "$@" "--source=${SOURCE_IN_CONTAINER}" "--dest=${DEST_IN_CONTAINER}" \
+  set -- "$@" "--source=${source_in_minijail}" "--dest=${dest_in_minijail}" \
       "--fuse_umask=${fuse_umask}" \
       "--fuse_uid=${fuse_uid}" "--fuse_gid=${fuse_gid}" \
       "--android_app_access_type=${android_app_access_type}"

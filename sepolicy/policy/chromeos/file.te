@@ -104,6 +104,8 @@ type cros_modemfwd_exec, exec_type, file_type, cros_file_type, cros_system_file_
 type cros_modprobe_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mount_passthrough_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mount_passthrough_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_mount_passthrough_jailed_media_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_mount_passthrough_jailed_play_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mtpd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_newblued_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_oobe_config_restore_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

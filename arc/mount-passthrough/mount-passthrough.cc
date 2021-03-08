@@ -44,7 +44,7 @@
 namespace {
 
 constexpr uid_t kAndroidAppUidStart = 10000 + USER_NS_SHIFT;
-constexpr gid_t kAndroidAppUidEnd = 19999 + USER_NS_SHIFT;
+constexpr uid_t kAndroidAppUidEnd = 19999 + USER_NS_SHIFT;
 
 struct FusePrivateData {
   std::string android_app_access_type;

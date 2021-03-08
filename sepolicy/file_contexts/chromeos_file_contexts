@@ -86,7 +86,9 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/mmdata_mgr             u:object_r:cros_mmdata_mgr_exec:s0
 /usr/bin/modemfwd               u:object_r:cros_modemfwd_exec:s0
 /usr/bin/mount-passthrough      u:object_r:cros_mount_passthrough_exec:s0
-/usr/bin/mount-passthrough-jailed u:object_r:cros_mount_passthrough_jailed_exec:s0
+/usr/bin/mount-passthrough-jailed       u:object_r:cros_mount_passthrough_jailed_exec:s0
+/usr/bin/mount-passthrough-jailed-media u:object_r:cros_mount_passthrough_jailed_media_exec:s0
+/usr/bin/mount-passthrough-jailed-play  u:object_r:cros_mount_passthrough_jailed_play_exec:s0
 /usr/bin/newblued               u:object_r:cros_newblued_exec:s0
 /usr/bin/patchpaneld            u:object_r:cros_patchpaneld_exec:s0
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0

@@ -11,10 +11,6 @@
 
 set -e
 
-# Android's media_rw UID and GID shifted by 655360.
-AID_MEDIA_RW_UID=656383
-AID_MEDIA_RW_GID=656383
-
 if [ $# -ne 5 ]; then
   echo "Usage: $0 source dest fuse_umask fuse_uid fuse_gid"
   exit 1
@@ -22,11 +18,28 @@ fi
 
 . /usr/share/arc/mount-passthrough-jailed-utils.sh
 
-# Run mount-passthrough with minijail0 as Android's media_rw without interiting
-# supplementary groups, and additionally grant CAP_DAC_OVERRIDE. Forcefully
-# grant full group access permission so that Android's MediaProvide can access
-# new directories created by the Files app.
+# Android's media_rw UID and GID shifted by 655360.
+AID_MEDIA_RW_UID=656383
+AID_MEDIA_RW_GID=656383
+
+# Set Android app access type to full.
+set -- "$@" "full"
+
+# Run mount-passthrough as Android's media_rw.
+set -- "$@" "${AID_MEDIA_RW_UID}" "${AID_MEDIA_RW_GID}"
+
+# Do not inherit supplementary groups.
+set -- "$@" "false" # interit_supplementary_groups
+
+# Grant CAP_DAC_OVERRIDE.
+set -- "$@" "true" # grant_cap_dac_override
+
+# Forcefully grant full group access permission.
 # TODO(b/123669632): Remove the argument |force_group_permission| and related
 # logic once we start to run the daemon as MediaProvider UID and GID.
-run_mount_passthrough_with_minijail0 "$@" "full" \
-  "${AID_MEDIA_RW_UID}" "${AID_MEDIA_RW_GID}" "false" "true" "true"
+set -- "$@" "true" # force_group_permission
+
+# Do not enter the concierge namespace.
+set -- "$@" "false" # enter_concierge_namespace
+
+run_mount_passthrough_with_minijail0 "$@"
