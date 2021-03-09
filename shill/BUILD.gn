@@ -629,7 +629,6 @@ if (use.test) {
       "mock_dns_client_factory.cc",
       "mock_event_dispatcher.cc",
       "mock_external_task.cc",
-      "mock_http_request.cc",
       "mock_icmp.cc",
       "mock_icmp_session.cc",
       "mock_icmp_session_factory.cc",

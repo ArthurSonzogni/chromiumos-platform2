@@ -19,7 +19,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_http_request.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_time.h"
@@ -41,6 +40,7 @@ namespace shill {
 
 namespace {
 const char kBadURL[] = "badurl";
+const char kLoggingTag[] = "int0 IPv4 attempt=1 HTTP probe";
 const char kInterfaceName[] = "int0";
 const char kHttpUrl[] = "http://www.chromium.org";
 const char kHttpsUrl[] = "https://www.google.com";
@@ -52,6 +52,31 @@ const IPAddress kIpAddress = IPAddress("1.2.3.4");
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
+
+class MockHttpRequest : public HttpRequest {
+ public:
+  MockHttpRequest()
+      : HttpRequest(nullptr,
+                    kLoggingTag,
+                    kInterfaceName,
+                    IPAddress(IPAddress::kFamilyIPv4),
+                    {},
+                    true){};
+  MockHttpRequest(const MockHttpRequest&) = delete;
+  MockHttpRequest& operator=(const MockHttpRequest&) = delete;
+  ~MockHttpRequest() = default;
+
+  MOCK_METHOD(
+      HttpRequest::Result,
+      Start,
+      (const std::string&,
+       const brillo::http::HeaderList&,
+       const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&,
+       const base::Callback<void(Result)>&),
+      (override));
+  MOCK_METHOD(void, Stop, (), (override));
+};
+
 }  // namespace
 
 MATCHER_P(IsResult, result, "") {
