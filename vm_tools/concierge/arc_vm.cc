@@ -258,9 +258,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendWaylandSocket("/run/arcvm/mojo/mojo-proxy.sock,name=mojo")
       .SetSyslogTag(base::StringPrintf("ARCVM(%u)", vsock_cid_))
       .EnableGpu(true /* enable */)
-      .AppendAudioDevice("backend=cras,capture=true")
-      // Second AC97 for the audio path.
-      .AppendAudioDevice("backend=cras,capture=true")
+      .AppendAudioDevice("backend=cras,capture=true,client_type=arcvm")
+      // Second AC97 for the aaudio path.
+      .AppendAudioDevice("backend=cras,capture=true,client_type=arcvm")
       .AppendSharedDir(oem_etc_shared_dir)
       .AppendSharedDir(shared_media)
       .AppendSharedDir(shared_testharness)
