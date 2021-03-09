@@ -31,7 +31,7 @@ namespace {
 
 // Snapshot paths:
 constexpr char kCommonSnapshotPath[] =
-    "/mnt/stateful_partition/unencrypted/arc-data-snapshot/";
+    "/mnt/stateful_partition/encrypted/var/cache/arc-data-snapshot";
 constexpr char kLastSnapshotPath[] = "last";
 constexpr char kPreviousSnapshotPath[] = "previous";
 constexpr char kHomeRootDirectory[] = "/home/root";
