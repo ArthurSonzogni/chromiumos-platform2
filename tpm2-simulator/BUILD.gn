@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":tpm2-simulator",
     ":tpm2-simulator-init",
+    ":tpm2-simulator-stop",
   ]
 }
 
@@ -33,5 +34,11 @@ executable("tpm2-simulator") {
 executable("tpm2-simulator-init") {
   configs += [ ":target_defaults" ]
   sources = [ "simulator-init.cc" ]
+  pkg_deps = [ "vboot_host" ]
+}
+
+executable("tpm2-simulator-stop") {
+  configs += [ ":target_defaults" ]
+  sources = [ "simulator-stop.cc" ]
   pkg_deps = [ "vboot_host" ]
 }
