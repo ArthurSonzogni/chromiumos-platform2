@@ -25,7 +25,7 @@ namespace shill {
 namespace {
 
 const char kDaemonPath[] = "/usr/sbin/pppd";
-const char kPPPoEPluginPath[] = "rp-pppoe.so";
+const char kPPPoEPluginPath[] = "pppoe.so";
 const uint32_t kUnspecifiedValue = UINT32_MAX;
 
 }  // namespace
