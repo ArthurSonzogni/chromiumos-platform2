@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
-#include <brillo/cryptohome.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -26,8 +25,8 @@ namespace {
 constexpr int EXIT_NO_PSTORE_FILE = 2;
 static_assert(EXIT_NO_PSTORE_FILE != EXIT_FAILURE);
 
-bool GetPrimaryUsername(std::string* out_username) {
-  DCHECK(out_username);
+bool RetrieveSanitizedPrimaryUsername(std::string* out_sanitized_username) {
+  DCHECK(out_sanitized_username);
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -50,8 +49,14 @@ bool GetPrimaryUsername(std::string* out_username) {
   }
 
   dbus::MessageReader response_reader(response.get());
-  if (!response_reader.PopString(out_username)) {
+  std::string username;
+  if (!response_reader.PopString(&username)) {
     LOG(ERROR) << "Primary session username bad format.";
+    bus->ShutdownAndBlock();
+    return false;
+  }
+  if (!response_reader.PopString(out_sanitized_username)) {
+    LOG(ERROR) << "Primary session sanitized username bad format.";
     bus->ShutdownAndBlock();
     return false;
   }
@@ -73,19 +78,15 @@ bool FindARCVMPstorePath(base::FilePath* out_path) {
   // /run/arcvm/arcvm.pstore is moved to /home/root/<hash>/crosvm/*.pstore by
   // arcvm-forward-pstore service after users logged in and mini-ARCVM is
   // upgraded.
-  std::string primary_username;
-  if (!GetPrimaryUsername(&primary_username)) {
+  std::string sanitized_primary_username;
+  if (!RetrieveSanitizedPrimaryUsername(&sanitized_primary_username)) {
     LOG(ERROR) << "Failed to get primary username";
     return false;
   }
-  base::FilePath root_path =
-      brillo::cryptohome::home::GetRootPath(primary_username);
-  if (root_path.empty()) {
-    LOG(ERROR) << "Failed to get the cryptohome root path of user of ARCVM";
-    return false;
-  }
-  base::FilePath cryptohome_pstore_path = root_path.Append("crosvm").Append(
-      vm_tools::GetEncodedName("arcvm") + ".pstore");
+  base::FilePath cryptohome_pstore_path =
+      base::FilePath("/run/daemon-store/crosvm")
+          .Append(sanitized_primary_username)
+          .Append(vm_tools::GetEncodedName("arcvm") + ".pstore");
   if (base::PathExists(cryptohome_pstore_path)) {
     *out_path = cryptohome_pstore_path;
     return true;
