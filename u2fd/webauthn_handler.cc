@@ -967,8 +967,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   response.set_status(sign_status);
   if (sign_status == GetAssertionResponse::SUCCESS) {
     auto* assertion = response.add_assertion();
-    assertion->set_credential_id(
-        session.request.allowed_credential_id().Get(0));
+    assertion->set_credential_id(session.credential_id);
     AppendToString(authenticator_data, assertion->mutable_authenticator_data());
     AppendToString(signature, assertion->mutable_signature());
   }

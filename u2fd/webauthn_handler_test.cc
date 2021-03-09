@@ -1425,6 +1425,90 @@ TEST_F(WebAuthnHandlerTestU2fMode,
   ASSERT_TRUE(called);
 }
 
+TEST_F(WebAuthnHandlerTestU2fMode,
+       GetAssertionWithTwoTypesOfAllowedCredentials) {
+  // Needed for "InsertAuthTimeSecretHash" workaround.
+  SetUpAuthTimeSecretHash();
+
+  GetAssertionRequest request;
+  request.set_rp_id(kRpId);
+  request.set_client_data_hash(std::string(SHA256_DIGEST_LENGTH, 0xcd));
+
+  // Add a U2F credential to the allow list first.
+  const std::string u2f_credential_id(sizeof(struct u2f_key_handle), 0xab);
+  request.add_allowed_credential_id(u2f_credential_id);
+  // Add a platform credential (second type).
+  std::vector<uint8_t> platform_credential_id_vec(
+      sizeof(struct u2f_versioned_key_handle), 0xab);
+  InsertAuthTimeSecretHashToCredentialId(&platform_credential_id_vec);
+  const std::string platform_credential_id(platform_credential_id_vec.begin(),
+                                           platform_credential_id_vec.end());
+  request.add_allowed_credential_id(platform_credential_id);
+
+  request.set_verification_type(
+      VerificationType::VERIFICATION_USER_VERIFICATION);
+
+  ExpectUVFlowSuccess();
+
+  EXPECT_CALL(*mock_webauthn_storage_,
+              GetSecretByCredentialId(platform_credential_id))
+      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+  EXPECT_CALL(*mock_webauthn_storage_,
+              GetSecretByCredentialId(u2f_credential_id))
+      .WillRepeatedly(Return(base::nullopt));
+  ExpectGetUserSecret();
+  // Both credentials should pass DoU2fSignCheckOnly, but only the platform
+  // credential should go through DoU2fSign.
+  EXPECT_CALL(mock_tpm_proxy_,
+              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
+                              ExpectedU2fSignCheckOnlyRequestRegex())),
+                          _))
+      .WillOnce(Return(kCr50StatusSuccess));
+  EXPECT_CALL(
+      mock_tpm_proxy_,
+      SendU2fSign(Matcher<const u2f_sign_versioned_req&>(StructMatchesRegex(
+                      ExpectedUVU2fSignCheckOnlyRequestRegex())),
+                  _))
+      .WillRepeatedly(Return(kCr50StatusSuccess));
+  EXPECT_CALL(
+      mock_tpm_proxy_,
+      SendU2fSign(Matcher<const u2f_sign_versioned_req&>(
+                      StructMatchesRegex(ExpectedUVU2fSignRequestRegex())),
+                  _))
+      .WillOnce(DoAll(SetArgPointee<1>(kU2fSignResponse),
+                      Return(kCr50StatusSuccess)));
+
+  auto mock_method_response =
+      std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
+  bool called = false;
+  mock_method_response->set_return_callback(base::Bind(
+      [](bool* called_ptr, const std::string& expected_credential_id,
+         const GetAssertionResponse& resp) {
+        EXPECT_EQ(resp.status(), GetAssertionResponse::SUCCESS);
+        ASSERT_EQ(resp.assertion_size(), 1);
+        auto assertion = resp.assertion(0);
+        EXPECT_EQ(assertion.credential_id(), expected_credential_id);
+        EXPECT_THAT(
+            base::HexEncode(assertion.authenticator_data().data(),
+                            assertion.authenticator_data().size()),
+            MatchesRegex(base::HexEncode(kRpIdHash.data(),
+                                         kRpIdHash.size()) +  // RP ID hash
+                         std::string("05"  // Flag: user present, user verified
+                                     "(..){4}")));  // Signature counter
+        EXPECT_EQ(util::ToVector(assertion.signature()),
+                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
+                                            kU2fSignResponse.sig_s));
+        *called_ptr = true;
+      },
+      // The platform credential should appear in the assertion even though it
+      // comes second in the allowed credential list.
+      &called, platform_credential_id));
+
+  handler_->GetAssertion(std::move(mock_method_response), request);
+  presence_requested_expected_ = 0;
+  ASSERT_TRUE(called);
+}
+
 }  // namespace
 
 // This test fixture tests the behavior when g2f is enabled on the device.
