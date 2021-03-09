@@ -690,6 +690,16 @@ users of shill should use this property now
 
 			The device type (for example "ethernet", "wifi" etc.)
 
+		boolean WakeOnWiFiAllowed [readwrite]
+
+			(Defined in WiFi)
+
+			Whether wake on WiFi feature is allowed. When false,
+			WakeOnWiFiFeaturesEnabled cannot be modified and is
+			pinned to "none". The value is controlled by a feature
+			flag in Chrome. Should only be modified by Chrome
+			feature flag or tests.
+
 		string WakeOnWiFiFeaturesEnabled [readwrite]
 
 			(Defined in WiFi)

@@ -622,7 +622,11 @@ class WakeOnWiFiTest : public ::testing::Test {
   ~WakeOnWiFiTest() override = default;
 
   void SetUp() override {
+    Error unused_error;
+
     Nl80211Message::SetMessageType(kNl80211FamilyId);
+    // Try to set the feature allowed by default in tests.
+    wake_on_wifi_->SetWakeOnWiFiAllowed(true, &unused_error);
     // Assume our NIC has reported its wiphy index, and that it supports wake
     // all wake triggers.
     wake_on_wifi_->wiphy_index_received_ = true;
@@ -919,8 +923,19 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->ParseWakeOnWiFiCapabilities(nl80211_message);
   }
 
+  bool SetWakeOnWiFiAllowed(bool allowed, Error* error) {
+    return wake_on_wifi_->SetWakeOnWiFiAllowed(allowed, error);
+  }
+
   bool SetWakeOnWiFiFeaturesEnabled(const std::string& enabled, Error* error) {
     return wake_on_wifi_->SetWakeOnWiFiFeaturesEnabled(enabled, error);
+  }
+
+  bool GetWakeOnWiFiAllowed() {
+    Error error;
+    bool allowed = wake_on_wifi_->GetWakeOnWiFiAllowed(&error);
+    EXPECT_TRUE(error.IsSuccess());
+    return allowed;
   }
 
   const string& GetWakeOnWiFiFeaturesEnabled() {
@@ -3162,6 +3177,37 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
       .Times(0);
   EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiAllowed) {
+  Error e;
+  DisableWakeOnWiFiFeatures();
+
+  // Turn off allowed property.
+  EXPECT_TRUE(SetWakeOnWiFiAllowed(false, &e));
+  EXPECT_FALSE(GetWakeOnWiFiAllowed());
+  // When not allowed, SetWakeOnWiFiFeaturesEnabled should fail.
+  e.Reset();
+  EXPECT_FALSE(
+      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledDarkConnect, &e));
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledNone);
+
+  // Turn on allowed property.
+  EXPECT_TRUE(SetWakeOnWiFiAllowed(true, &e));
+  EXPECT_TRUE(GetWakeOnWiFiAllowed());
+  // When allowed, SetWakeOnWiFiFeaturesEnabled should work.
+  EXPECT_TRUE(
+      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledDarkConnect, &e));
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledDarkConnect);
+
+  // Turn off allowed again. This should also flush enabled features.
+  EXPECT_TRUE(SetWakeOnWiFiAllowed(false, &e));
+  EXPECT_FALSE(GetWakeOnWiFiAllowed());
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledNone);
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiFeaturesEnabled) {

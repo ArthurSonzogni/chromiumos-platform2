@@ -55,6 +55,7 @@ const char WakeOnWiFi::kWakeOnPatternsNotSupported[] =
     "Wake on patterns not supported by this WiFi device";
 const char WakeOnWiFi::kMaxWakeOnPatternsReached[] =
     "Max number of patterns already registered";
+const char WakeOnWiFi::kWakeOnWiFiNotAllowed[] = "Wake on WiFi not allowed";
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
 const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
@@ -96,6 +97,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager* netlink_manager,
       wake_on_wifi_max_ssids_(0),
       wiphy_index_(0),
       wiphy_index_received_(false),
+      wake_on_wifi_allowed_(false),
       // Wake on WiFi features disabled by default at run-time for boards that
       // support wake on WiFi. Rely on Chrome to enable appropriate features via
       // DBus.
@@ -123,6 +125,10 @@ WakeOnWiFi::~WakeOnWiFi() {
 }
 
 void WakeOnWiFi::InitPropertyStore(PropertyStore* store) {
+  store->RegisterDerivedBool(kWakeOnWiFiAllowedProperty,
+                             BoolAccessor(new CustomAccessor<WakeOnWiFi, bool>(
+                                 this, &WakeOnWiFi::GetWakeOnWiFiAllowed,
+                                 &WakeOnWiFi::SetWakeOnWiFiAllowed)));
   store->RegisterDerivedString(
       kWakeOnWiFiFeaturesEnabledProperty,
       StringAccessor(new CustomAccessor<WakeOnWiFi, string>(
@@ -141,12 +147,33 @@ void WakeOnWiFi::StartMetricsTimer() {
                                kMetricsReportingFrequencySeconds * 1000);
 }
 
+bool WakeOnWiFi::GetWakeOnWiFiAllowed(Error* /*error*/) {
+  return wake_on_wifi_allowed_;
+}
+
+bool WakeOnWiFi::SetWakeOnWiFiAllowed(const bool& allowed, Error* error) {
+  if (wake_on_wifi_allowed_ == allowed) {
+    return false;
+  }
+  // Disable all WiFi features first.
+  if (!allowed) {
+    SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledNone, error);
+  }
+  wake_on_wifi_allowed_ = allowed;
+  return true;
+}
+
 string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error* error) {
   return wake_on_wifi_features_enabled_;
 }
 
 bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string& enabled,
                                               Error* error) {
+  if (!wake_on_wifi_allowed_) {
+    error->Populate(Error::kNotSupported, kWakeOnWiFiNotAllowed);
+    SLOG(this, 7) << __func__ << ": " << kWakeOnWiFiNotAllowed;
+    return false;
+  }
   if (wake_on_wifi_features_enabled_ == enabled) {
     return false;
   }

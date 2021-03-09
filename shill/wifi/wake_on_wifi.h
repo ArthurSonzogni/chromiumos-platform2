@@ -322,6 +322,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   static const char kWakeOnIPAddressPatternsNotSupported[];
   static const char kWakeOnPatternsNotSupported[];
   static const char kMaxWakeOnPatternsReached[];
+  static const char kWakeOnWiFiNotAllowed[];
   static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
   static const int kMaxSetWakeOnPacketRetries;
   static const int kMetricsReportingFrequencySeconds;
@@ -351,6 +352,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
     uint32_t length;
     uint32_t offset;
   };
+  bool GetWakeOnWiFiAllowed(Error* error);
+  bool SetWakeOnWiFiAllowed(const bool& enabled, Error* error);
   std::string GetWakeOnWiFiFeaturesEnabled(Error* error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string& enabled, Error* error);
   // Helper function to run and reset |suspend_actions_done_callback_|.
@@ -607,6 +610,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   std::set<uint8_t> wake_on_packet_types_;
   uint32_t wiphy_index_;
   bool wiphy_index_received_;
+  // Describes if wake on WiFi is allowed to be enabled.
+  bool wake_on_wifi_allowed_;
   // Describes the wake on WiFi features that are currently enabled.
   std::string wake_on_wifi_features_enabled_;
   // Timer that wakes the system to renew DHCP leases.
