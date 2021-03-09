@@ -34,7 +34,9 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/notreached.h>
+#include <base/posix/unix_domain_socket.h>
 #include <base/task/single_thread_task_executor.h>
+#include "base/test/bind_test_util.h"
 #include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
@@ -132,6 +134,29 @@ namespace em = enterprise_management;
 namespace login_manager {
 
 namespace {
+
+// Some arbitrary D-Bus message serial number. Required for mocking D-Bus calls.
+constexpr int kDBusSerial = 123;
+
+const char* const kUserlessArgv[] = {
+    "program",
+    "--switch1",
+    "--switch2=switch2_value",
+    "--switch3=escaped_\"_quote",
+    "--switch4=white space",
+    "arg1",
+    "arg 2",
+};
+
+const char* const kGuestArgv[] = {
+    "program",
+    "--bwsi",
+    "--switch1=switch1_value",
+    "--switch2=escaped_\"_quote",
+    "--switch3=white space",
+    "arg1",
+    "arg 2",
+};
 
 // Test Bus instance to inject MockExportedObject.
 class FakeBus : public dbus::Bus {
@@ -452,6 +477,40 @@ class SessionManagerImplTest : public ::testing::Test,
     SetSystemSalt(nullptr);
     EXPECT_EQ(actual_locks_, expected_locks_);
     EXPECT_EQ(actual_restarts_, expected_restarts_);
+  }
+
+  bool RestartJob(
+      brillo::ErrorPtr* error,
+      const base::ScopedFD& in_cred_fd,
+      const std::vector<std::string>& in_argv,
+      const base::Optional<SessionManagerImpl::RestartJobMode>& mode) {
+    dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
+                                 login_manager::kSessionManagerRestartJob);
+    method_call.SetSerial(kDBusSerial);
+    dbus::MessageWriter writer(&method_call);
+    if (!in_cred_fd.is_valid()) {
+      writer.AppendFileDescriptor(0);
+    } else {
+      writer.AppendFileDescriptor(in_cred_fd.get());
+    }
+
+    writer.AppendArrayOfStrings(in_argv);
+    if (mode.has_value()) {
+      writer.AppendUint32(static_cast<uint32_t>(mode.value()));
+    }
+
+    impl_->RestartJob(
+        &method_call,
+        base::BindLambdaForTesting(
+            [&error](std::unique_ptr<dbus::Response> response) {
+              if (dbus::Message::MESSAGE_ERROR != response->GetMessageType())
+                return;
+
+              *error = brillo::Error::Create(FROM_HERE,
+                                             brillo::errors::dbus::kDomain,
+                                             response->GetErrorName(), "");
+            }));
+    return error->get() == nullptr;
   }
 
   // SessionManagerImpl::Delegate:
@@ -1945,48 +2004,102 @@ TEST_F(SessionManagerImplTest, IsGuestSessionActive) {
 
 TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->RestartJob(&error, base::ScopedFD(), {}));
+  EXPECT_FALSE(
+      RestartJob(&error, base::ScopedFD(), {}, base::nullopt /* mode */));
   ASSERT_TRUE(error.get());
-  EXPECT_EQ("GetPeerCredsFailed", error->GetCode());
+  EXPECT_EQ(dbus_error::kGetPeerCredsFailed, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, RestartJobBadPid) {
-  int sockets[2] = {-1, -1};
-  ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
-  base::ScopedFD fd0_closer(sockets[0]);
-  base::ScopedFD fd1(sockets[1]);
+  base::ScopedFD fd0_closer, fd1;
+  EXPECT_TRUE(CreateSocketPair(&fd0_closer, &fd1));
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(false));
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->RestartJob(&error, fd1, {}));
+  EXPECT_FALSE(RestartJob(&error, fd1, {}, base::nullopt /* mode */));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kUnknownPid, error->GetCode());
 }
 
-TEST_F(SessionManagerImplTest, RestartJobSuccess) {
-  int sockets[2] = {-1, -1};
-  ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
-  base::ScopedFD fd0_closer(sockets[0]);
-  base::ScopedFD fd1(sockets[1]);
+TEST_F(SessionManagerImplTest, RestartJobGuestFailure) {
+  const std::vector<std::string> argv(std::begin(kUserlessArgv),
+                                      std::end(kUserlessArgv));
 
-  const std::vector<std::string> kArgv = {
-      "program",
-      "--switch1",
-      "--switch2=switch2_value",
-      "--switch3=escaped_\"_quote",
-      "--switch4=white space",
-      "arg1",
-      "arg 2",
-  };
+  base::ScopedFD fd0_closer, fd1;
+  EXPECT_TRUE(CreateSocketPair(&fd0_closer, &fd1));
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
-  EXPECT_CALL(manager_, SetBrowserArgs(ElementsAreArray(kArgv))).Times(1);
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(RestartJob(&error, fd1, argv, base::nullopt /* mode */));
+  EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
+}
+
+TEST_F(SessionManagerImplTest, RestartJobModeMismatch) {
+  const std::vector<std::string> argv(std::begin(kGuestArgv),
+                                      std::end(kGuestArgv));
+
+  base::ScopedFD fd0_closer, fd1;
+  EXPECT_TRUE(CreateSocketPair(&fd0_closer, &fd1));
+
+  EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
+  brillo::ErrorPtr error;
+  auto mode = SessionManagerImpl::RestartJobMode::kUserless;
+  EXPECT_FALSE(RestartJob(&error, fd1, argv, mode));
+  EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
+}
+
+TEST_F(SessionManagerImplTest, RestartJobSuccess) {
+  const std::vector<std::string> argv(std::begin(kGuestArgv),
+                                      std::end(kGuestArgv));
+
+  base::ScopedFD fd0_closer, fd1;
+  EXPECT_TRUE(CreateSocketPair(&fd0_closer, &fd1));
+
+  EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
+  EXPECT_CALL(manager_, SetBrowserArgs(ElementsAreArray(argv))).Times(1);
   EXPECT_CALL(manager_, RestartBrowser()).Times(1);
   ExpectGuestSession();
 
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RestartJob(&error, fd1, kArgv));
+  EXPECT_TRUE(RestartJob(&error, fd1, argv, base::nullopt /* mode */));
   EXPECT_FALSE(error.get());
+}
+
+TEST_F(SessionManagerImplTest, RestartJobUserlessSuccess) {
+  const std::vector<std::string> argv(std::begin(kUserlessArgv),
+                                      std::end(kUserlessArgv));
+
+  base::ScopedFD fd0_closer, fd1;
+  EXPECT_TRUE(CreateSocketPair(&fd0_closer, &fd1));
+
+  EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
+  EXPECT_CALL(manager_, SetBrowserArgs(ElementsAreArray(argv))).Times(1);
+  EXPECT_CALL(manager_, RestartBrowser()).Times(1);
+
+  brillo::ErrorPtr error;
+  auto mode = SessionManagerImpl::RestartJobMode::kUserless;
+  EXPECT_TRUE(RestartJob(&error, fd1, argv, mode));
+  EXPECT_FALSE(error.get());
+}
+
+TEST_F(SessionManagerImplTest, RestartJobForNonGuestUserFailure) {
+  const std::vector<std::string> argv(std::begin(kUserlessArgv),
+                                      std::end(kUserlessArgv));
+
+  // Start session.
+  ExpectStartSession(kSaneEmail);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
+
+  base::ScopedFD fd0_closer, fd1;
+  EXPECT_TRUE(CreateSocketPair(&fd0_closer, &fd1));
+
+  EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
+
+  auto mode = SessionManagerImpl::RestartJobMode::kUserless;
+  EXPECT_FALSE(RestartJob(&error, fd1, argv, mode));
+  EXPECT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, SupervisedUserCreation) {

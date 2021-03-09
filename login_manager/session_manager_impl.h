@@ -74,6 +74,11 @@ class SessionManagerImpl
       public PolicyService::Delegate,
       public org::chromium::SessionManagerInterfaceInterface {
  public:
+  enum class RestartJobMode : uint32_t {
+    kGuest = 0,
+    kUserless,
+  };
+
   // Payloads for SessionStateChanged DBus signal.
   static const char kStarted[];
   static const char kStopping[];
@@ -259,9 +264,8 @@ class SessionManagerImpl
   void HandleLockScreenDismissed() override;
   bool IsScreenLocked() override;
 
-  bool RestartJob(brillo::ErrorPtr* error,
-                  const base::ScopedFD& in_cred_fd,
-                  const std::vector<std::string>& in_argv) override;
+  void RestartJob(dbus::MethodCall* method_call,
+                  brillo::dbus_utils::ResponseSender sender) override;
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
   bool StartRemoteDeviceWipe(
@@ -407,6 +411,15 @@ class SessionManagerImpl
   void BackupArcBugReport(const std::string& account_id);
   void DeleteArcBugReportBackup(const std::string& account_id);
 
+  // Returns true if at least one session is started.
+  bool IsSessionStarted();
+
+  // TODO(pbond): Keep a corresponding to RestartJob "simple" method and use it
+  // once the change is landed in chromium.
+  bool RestartJobInternal(brillo::ErrorPtr* error,
+                          const base::ScopedFD& in_cred_fd,
+                          const std::vector<std::string>& in_argv,
+                          uint32_t mode);
 #if USE_CHEETS
   // Starts the Android container for ARC. If an error occurs, brillo::Error
   // instance is set to |error_out|.  After this succeeds, in case of ARC stop,

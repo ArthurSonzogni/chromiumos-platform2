@@ -48,6 +48,7 @@
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/browser_job.h"
 #include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_manager.h"
@@ -273,6 +274,15 @@ void DisconnectLogFile(const base::FilePath& symlink_path) {
     PLOG(WARNING) << "Failed to rename " << temp_path.value() << " to "
                   << log_path.value();
   }
+}
+
+bool IsGuestMode(uint32_t mode) {
+  return static_cast<SessionManagerImpl::RestartJobMode>(mode) ==
+         SessionManagerImpl::RestartJobMode::kGuest;
+}
+
+bool IsGuestSession(const std::vector<std::string>& argv) {
+  return base::Contains(argv, BrowserJobInterface::kGuestSessionFlag);
 }
 
 }  // namespace
@@ -957,33 +967,33 @@ bool SessionManagerImpl::IsScreenLocked() {
   return screen_locked_;
 }
 
-bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
-                                    const base::ScopedFD& in_cred_fd,
-                                    const std::vector<std::string>& in_argv) {
-  struct ucred ucred = {0};
-  socklen_t len = sizeof(struct ucred);
-  if (!in_cred_fd.is_valid() || getsockopt(in_cred_fd.get(), SOL_SOCKET,
-                                           SO_PEERCRED, &ucred, &len) == -1) {
-    PLOG(ERROR) << "Can't get peer creds";
-    *error = CreateError("GetPeerCredsFailed", strerror(errno));
-    return false;
+void SessionManagerImpl::RestartJob(dbus::MethodCall* method_call,
+                                    brillo::dbus_utils::ResponseSender sender) {
+  dbus::MessageReader reader(method_call);
+
+  base::ScopedFD in_cred_fd;
+  std::vector<std::string> in_argv;
+  if (!reader.PopFileDescriptor(&in_cred_fd) ||
+      !reader.PopArrayOfStrings(&in_argv)) {
+    auto response = dbus::ErrorResponse::FromMethodCall(
+        method_call, dbus_error::kInvalidParameter,
+        "in_cred_fd or in_argv are invalid.");
+    std::move(sender).Run(std::move(response));
+    return;
+  }
+  uint32_t mode;
+  if (!reader.PopUint32(&mode)) {
+    mode = static_cast<uint32_t>(RestartJobMode::kGuest);
   }
 
-  if (!manager_->IsBrowser(ucred.pid)) {
-    *error = CREATE_ERROR_AND_LOG(dbus_error::kUnknownPid,
-                                  "Provided pid is unknown.");
-    return false;
+  brillo::ErrorPtr error;
+  if (!RestartJobInternal(&error, in_cred_fd, in_argv, mode)) {
+    auto response = brillo::dbus_utils::GetDBusError(method_call, error.get());
+    std::move(sender).Run(std::move(response));
+    return;
   }
-
-  // To set "logged-in" state for BWSI mode.
-  if (!StartSession(error, kGuestUserName, "")) {
-    DCHECK(*error);
-    return false;
-  }
-
-  manager_->SetBrowserArgs(in_argv);
-  manager_->RestartBrowser();
-  return true;
+  // Send success response.
+  std::move(sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 
 bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
@@ -1813,6 +1823,55 @@ void SessionManagerImpl::DeleteArcBugReportBackup(
   if (!response) {
     LOG(ERROR) << "Error contacting debugd to delete ARC bug report backup.";
   }
+}
+
+bool SessionManagerImpl::IsSessionStarted() {
+  return !user_sessions_.empty();
+}
+
+bool SessionManagerImpl::RestartJobInternal(
+    brillo::ErrorPtr* error,
+    const base::ScopedFD& in_cred_fd,
+    const std::vector<std::string>& in_argv,
+    uint32_t mode) {
+  struct ucred ucred = {0};
+  socklen_t len = sizeof(struct ucred);
+  if (!in_cred_fd.is_valid() || getsockopt(in_cred_fd.get(), SOL_SOCKET,
+                                           SO_PEERCRED, &ucred, &len) == -1) {
+    PLOG(ERROR) << "Can't get peer creds";
+    *error = CreateError(dbus_error::kGetPeerCredsFailed, strerror(errno));
+    return false;
+  }
+
+  if (!manager_->IsBrowser(ucred.pid)) {
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kUnknownPid,
+                                  "Provided pid is unknown.");
+    return false;
+  }
+
+  if (IsGuestMode(mode) != IsGuestSession(in_argv)) {
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kInvalidParameter,
+                             "in_argv doesn't match mode for guest session.");
+    return false;
+  }
+
+  // To set "logged-in" state for BWSI mode.
+  if (IsGuestMode(mode) && !StartSession(error, kGuestUserName, "")) {
+    DCHECK(*error);
+    return false;
+  }
+
+  if (!IsGuestMode(mode) && IsSessionStarted()) {
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kInvalidParameter,
+                             "Requested to restart non-guest user session.");
+    return false;
+  }
+
+  manager_->SetBrowserArgs(in_argv);
+  manager_->RestartBrowser();
+  return true;
 }
 
 #if USE_CHEETS
