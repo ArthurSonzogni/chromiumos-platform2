@@ -185,13 +185,16 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
   // Creates image A and B.
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     FilePath image_path = GetImagePath(slot);
-    if (!CreateFile(image_path, manifest_.preallocated_size())) {
+    if (!CreateFile(image_path, manifest_.size())) {
       state_.set_last_error_code(kErrorAllocation);
       *err = Error::Create(
           FROM_HERE, state_.last_error_code(),
           base::StringPrintf("Failed to create image file %s for DLC=%s",
                              image_path.value().c_str(), id_.c_str()));
       return false;
+    } else if (!ResizeFile(image_path, manifest_.preallocated_size())) {
+      LOG(WARNING) << "Unable to allocate up to preallocated size: "
+                   << manifest_.preallocated_size() << " for DLC=" << id_;
     }
   }
 
@@ -214,12 +217,17 @@ bool DlcBase::MakeReadyForUpdate() const {
 
   const FilePath& inactive_image_path =
       GetImagePath(SystemState::Get()->inactive_boot_slot());
-  if (!CreateFile(inactive_image_path, manifest_.preallocated_size())) {
+  if (!CreateFile(inactive_image_path, manifest_.size())) {
     LOG(ERROR) << "Failed to create inactive image "
                << inactive_image_path.value() << " when making DLC=" << id_
                << " ready for update.";
     return false;
+  } else if (!ResizeFile(inactive_image_path, manifest_.preallocated_size())) {
+    LOG(WARNING) << "Unable to allocate up to preallocated size: "
+                 << manifest_.preallocated_size() << " when making DLC=" << id_
+                 << " ready for update.";
   }
+
   return true;
 }
 
