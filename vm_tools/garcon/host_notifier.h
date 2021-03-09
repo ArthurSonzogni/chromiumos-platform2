@@ -15,9 +15,11 @@
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <base/timer/timer.h>
 #include <base/synchronization/waitable_event.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
+#include <base/memory/weak_ptr.h>
 
 #include "vm_tools/garcon/ansible_playbook_application.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
@@ -148,6 +150,10 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // Called when signal_fd_ becomes readable.
   void OnSignalReadable();
 
+  // Checks the amount of free disk space and sends a notification if free
+  // space is low.
+  void CheckDiskSpace();
+
   // gRPC stub for communicating with cicerone on the host.
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub_;
 
@@ -197,6 +203,10 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   std::unique_ptr<AnsiblePlaybookApplication> ansible_playbook_application_;
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+
+  base::RepeatingTimer free_disk_space_timer_;
+
+  base::WeakPtrFactory<HostNotifier> weak_ptr_factory_{this};
 };
 
 }  // namespace garcon

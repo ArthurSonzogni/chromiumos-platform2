@@ -27,6 +27,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/system/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/constants/vm_tools.h>
@@ -52,6 +53,10 @@ constexpr base::TimeDelta kFilesystemChangeCoalesceTime =
     base::TimeDelta::FromSeconds(3);
 // Delimiter for the end of a URL scheme.
 constexpr char kUrlSchemeDelimiter[] = "://";
+// Periodic interval for checking free disk space.
+constexpr base::TimeDelta kDiskSpaceCheckInterval =
+    base::TimeDelta::FromMinutes(2);
+constexpr int64_t kDiskSpaceCheckThreshold = 1 * 1024 * 1024 * 1024;  // 1GiB
 
 std::string GetHostIp() {
   char host_addr[INET_ADDRSTRLEN + 1];
@@ -403,7 +408,31 @@ bool HostNotifier::Init(uint32_t vsock_port,
   SendAppListToHost();
   SendMimeTypesToHost();
 
+  // Start the disk space watcher.
+  free_disk_space_timer_.Start(
+      FROM_HERE, kDiskSpaceCheckInterval,
+      base::BindRepeating(&HostNotifier::CheckDiskSpace,
+                          weak_ptr_factory_.GetWeakPtr()));
+
   return true;
+}
+
+void HostNotifier::CheckDiskSpace() {
+  grpc::ClientContext ctx;
+  vm_tools::container::LowDiskSpaceTriggeredInfo info;
+  auto free_bytes = base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/"));
+  if (free_bytes >= kDiskSpaceCheckThreshold) {
+    // Plenty of free space, nothing more to do.
+    return;
+  }
+  info.set_token(token_);
+  info.set_free_bytes(free_bytes);
+  vm_tools::EmptyMessage empty;
+  grpc::Status status = stub_->LowDiskSpaceTriggered(&ctx, info, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to notify host system that disk space is low: "
+                 << status.error_message();
+  }
 }
 
 bool HostNotifier::NotifyHostGarconIsReady(uint32_t vsock_port) {
