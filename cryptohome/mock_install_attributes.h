@@ -13,7 +13,6 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_init.h"
 
 namespace cryptohome {
 

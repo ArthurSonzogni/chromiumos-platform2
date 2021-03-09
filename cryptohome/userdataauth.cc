@@ -147,8 +147,8 @@ UserDataAuth::UserDataAuth()
       mount_thread_(nullptr),
       system_salt_(),
       tpm_(nullptr),
-      default_tpm_init_(nullptr),
-      tpm_init_(nullptr),
+      default_cryptohome_key_loader_(nullptr),
+      cryptohome_key_loader_(nullptr),
       tpm_manager_util_(nullptr),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
@@ -220,12 +220,13 @@ bool UserDataAuth::Initialize() {
     tpm_ = Tpm::GetSingleton();
   }
 
-  // Note that we check to see if |tpm_init_| is available here because it may
-  // have been set to an overridden value during unit testing before
-  // Initialize() is called.
-  if (!tpm_init_) {
-    default_tpm_init_.reset(new TpmInit(tpm_, platform_));
-    tpm_init_ = default_tpm_init_.get();
+  // Note that we check to see if |cryptohome_key_loader_| is available here
+  // because it may have been set to an overridden value during unit testing
+  // before Initialize() is called.
+  if (!cryptohome_key_loader_) {
+    default_cryptohome_key_loader_.reset(
+        new CryptohomeKeyLoader(tpm_, platform_));
+    cryptohome_key_loader_ = default_cryptohome_key_loader_.get();
   }
 
   if (!boot_lockbox_) {
@@ -240,7 +241,7 @@ bool UserDataAuth::Initialize() {
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
-  if (!crypto_->Init(tpm_, tpm_init_)) {
+  if (!crypto_->Init(tpm_, cryptohome_key_loader_)) {
     return false;
   }
 
@@ -308,8 +309,9 @@ bool UserDataAuth::Initialize() {
     platform_->TouchFileDurable(base::FilePath(kNotFirstBootFilePath));
   }
 
-  // We expect |tpm_| and |tpm_init_| to be available by this point.
-  DCHECK(tpm_ && tpm_init_);
+  // We expect |tpm_| and |cryptohome_key_loader_| to be available by this
+  // point.
+  DCHECK(tpm_ && cryptohome_key_loader_);
 
   // Seed /dev/urandom
   SeedUrandom();
@@ -508,7 +510,6 @@ void UserDataAuth::CreateFingerprintManager() {
 }
 
 void UserDataAuth::OnOwnershipTakenSignal() {
-  // Use the same code path as when ownership is taken through tpm_init_.
   PostTaskToMountThread(FROM_HERE,
                         base::BindOnce(&UserDataAuth::OwnershipCallback,
                                        base::Unretained(this), true, true));
@@ -2958,7 +2959,7 @@ std::string UserDataAuth::GetStatusString() {
   auto attrs = install_attrs_->GetStatus();
 
   Tpm::TpmStatusInfo tpm_status_info;
-  tpm_->GetStatus(tpm_init_->GetCryptohomeKey(), &tpm_status_info);
+  tpm_->GetStatus(cryptohome_key_loader_->GetCryptohomeKey(), &tpm_status_info);
 
   base::Value tpm(base::Value::Type::DICTIONARY);
   tpm.SetBoolKey("can_connect", tpm_status_info.can_connect);

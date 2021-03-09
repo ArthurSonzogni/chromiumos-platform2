@@ -15,7 +15,6 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_init.h"
 
 namespace cryptohome {
 

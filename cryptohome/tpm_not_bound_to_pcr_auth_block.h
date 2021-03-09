@@ -13,16 +13,17 @@
 #include <base/macros.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_auth_block_utils.h"
-#include "cryptohome/tpm_init.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
 class TpmNotBoundToPcrAuthBlock : public AuthBlock {
  public:
-  TpmNotBoundToPcrAuthBlock(Tpm* tpm, TpmInit* tpm_init);
+  TpmNotBoundToPcrAuthBlock(Tpm* tpm,
+                            CryptohomeKeyLoader* cryptohome_key_loader);
   TpmNotBoundToPcrAuthBlock(const TpmNotBoundToPcrAuthBlock&) = delete;
   TpmNotBoundToPcrAuthBlock& operator=(const TpmNotBoundToPcrAuthBlock&) =
       delete;
@@ -48,7 +49,7 @@ class TpmNotBoundToPcrAuthBlock : public AuthBlock {
                                brillo::SecureBlob* vkk_key) const;
 
   Tpm* tpm_;
-  TpmInit* tpm_init_;
+  CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;
 
   FRIEND_TEST_ALL_PREFIXES(TPMAuthBlockTest, DecryptNotBoundToPcrTest);

@@ -21,10 +21,10 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/signed_secret.pb.h"
@@ -1022,14 +1022,15 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
       users_[0].credentials, /* error */ nullptr);
   ASSERT_NE(vk0.get(), nullptr);
 
-  NiceMock<MockTpmInit> mock_tpm_init;
-  EXPECT_CALL(mock_tpm_init, HasCryptohomeKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_init, SetupTpm(true)).WillRepeatedly(Return(true));
+  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
+  EXPECT_CALL(mock_cryptohome_key_loader, HasCryptohomeKey())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_cryptohome_key_loader, Init()).WillRepeatedly(Return());
 
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto_.Init(&tpm_, &mock_tpm_init);
+  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
 
   // TEST
 
@@ -1071,9 +1072,10 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   ASSERT_NE(vk0.get(), nullptr);
   vk0->SetLELabel(1234);
 
-  NiceMock<MockTpmInit> mock_tpm_init;
-  EXPECT_CALL(mock_tpm_init, HasCryptohomeKey()).WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_init, SetupTpm(true)).WillRepeatedly(Return(true));
+  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
+  EXPECT_CALL(mock_cryptohome_key_loader, HasCryptohomeKey())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_cryptohome_key_loader, Init()).WillRepeatedly(Return());
 
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
@@ -1082,7 +1084,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
 
-  crypto_.Init(&tpm_, &mock_tpm_init);
+  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
 
   // TEST
 

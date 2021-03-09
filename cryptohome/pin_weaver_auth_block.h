@@ -16,7 +16,7 @@ namespace cryptohome {
 class PinWeaverAuthBlock : public AuthBlock {
  public:
   explicit PinWeaverAuthBlock(LECredentialManager* le_manager,
-                              TpmInit* tpm_init);
+                              CryptohomeKeyLoader* cryptohome_key_loader);
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
 
@@ -33,7 +33,7 @@ class PinWeaverAuthBlock : public AuthBlock {
   // Handler for Low Entropy credentials.
   LECredentialManager* le_manager_;
 
-  TpmInit* tpm_init_;
+  CryptohomeKeyLoader* cryptohome_key_loader_;
 };
 
 }  // namespace cryptohome

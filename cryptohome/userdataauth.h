@@ -502,8 +502,10 @@ class UserDataAuth {
   // Override |tpm_| for testing purpose
   void set_tpm(Tpm* tpm) { tpm_ = tpm; }
 
-  // Override |tpm_init_| for testing purpose
-  void set_tpm_init(TpmInit* tpm_init) { tpm_init_ = tpm_init; }
+  // Override |cryptohome_key_loader_| for testing purpose
+  void set_cryptohome_key_loader(CryptohomeKeyLoader* cryptohome_key_loader) {
+    cryptohome_key_loader_ = cryptohome_key_loader;
+  }
 
   // Override |tpm_manager_util_| for testing purpose
   void set_tpm_manager_util_(tpm_manager::TpmManagerUtility* tpm_manager_util) {
@@ -930,13 +932,11 @@ class UserDataAuth {
   // is a singleton - we don't want it getting destroyed when we are.
   Tpm* tpm_;
 
-  // The default TPM init object.
-  std::unique_ptr<TpmInit> default_tpm_init_;
+  // The default cryptohome key loader object
+  std::unique_ptr<CryptohomeKeyLoader> default_cryptohome_key_loader_;
 
-  // The TPM init object. Note that |tpm_init_| and |default_tpm_init_| will be
-  // removed at the end of the refactoring that's happening in cryptohome
-  // (b/123679223).
-  TpmInit* tpm_init_;
+  // The cryptohome key loader object
+  CryptohomeKeyLoader* cryptohome_key_loader_;
 
   tpm_manager::TpmManagerUtility* tpm_manager_util_;
 

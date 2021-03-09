@@ -10,15 +10,15 @@
 #include <string>
 
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_init.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
 class TpmAuthBlockUtils {
  public:
-  TpmAuthBlockUtils(Tpm* tpm, TpmInit* tpm_init);
+  TpmAuthBlockUtils(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader);
   TpmAuthBlockUtils(const TpmAuthBlockUtils&) = delete;
   TpmAuthBlockUtils& operator=(const TpmAuthBlockUtils&) = delete;
 
@@ -39,7 +39,7 @@ class TpmAuthBlockUtils {
 
  private:
   Tpm* tpm_;
-  TpmInit* tpm_init_;
+  CryptohomeKeyLoader* cryptohome_key_loader_;
 };
 
 }  // namespace cryptohome

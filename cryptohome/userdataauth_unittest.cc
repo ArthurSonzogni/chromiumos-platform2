@@ -31,6 +31,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -41,7 +42,6 @@
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/protobuf_test_utils.h"
 #include "cryptohome/storage/homedirs.h"
@@ -103,7 +103,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   ~UserDataAuthTestBase() override = default;
 
   void SetUp() override {
-    tpm_init_.set_tpm(&tpm_);
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
@@ -122,7 +121,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_install_attrs(&attrs_);
     userdataauth_->set_tpm(&tpm_);
-    userdataauth_->set_tpm_init(&tpm_init_);
+    userdataauth_->set_cryptohome_key_loader(&cryptohome_key_loader_);
     userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
     userdataauth_->set_platform(&platform_);
     userdataauth_->set_chaps_client(&chaps_client_);
@@ -210,8 +209,9 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock TPM object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockTpm> tpm_;
 
-  // Mock TPM Init object, will be passed to UserDataAuth for its internal use.
-  NiceMock<MockTpmInit> tpm_init_;
+  // Mock Cryptohome Key Loader object, will be passed to UserDataAuth for its
+  // internal use.
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader_;
 
   // Mock TPM Manager utility object, will be passed to UserDataAuth for its
   // internal use.

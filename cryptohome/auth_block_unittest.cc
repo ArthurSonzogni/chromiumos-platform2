@@ -17,10 +17,10 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/double_wrapped_compat_auth_block.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
+#include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_le_credential_backend.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/pin_weaver_auth_block.h"
 #include "cryptohome/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
@@ -46,7 +46,7 @@ TEST(TpmBoundToPcrTest, CreateTest) {
       CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key}));
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, scrypt_derived_key, _, _))
       .Times(Exactly(2));
   ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
@@ -59,7 +59,7 @@ TEST(TpmBoundToPcrTest, CreateTest) {
   KeyBlobs vkk_data;
   CryptoError error;
 
-  TpmBoundToPcrAuthBlock auth_block(&tpm, &tpm_init);
+  TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_key_loader);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
   EXPECT_NE(auth_state, base::nullopt);
 
@@ -77,7 +77,7 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
 
   // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
       .WillByDefault(Return(Tpm::kTpmRetryFatal));
 
@@ -87,7 +87,7 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
   CryptoError error;
-  TpmBoundToPcrAuthBlock auth_block(&tpm, &tpm_init);
+  TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_key_loader);
   EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
 }
 
@@ -100,7 +100,7 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
 
   // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   EXPECT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&aes_skey}));
   ON_CALL(tpm, EncryptBlob(_, _, aes_skey, _))
@@ -113,7 +113,7 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
   CryptoError error;
-  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &tpm_init);
+  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_key_loader);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
@@ -130,7 +130,7 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
 
   // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   ON_CALL(tpm, EncryptBlob(_, _, _, _))
       .WillByDefault(Return(Tpm::kTpmRetryFatal));
 
@@ -140,7 +140,7 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
   CryptoError error;
-  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &tpm_init);
+  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_key_loader);
   EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
 }
 
@@ -157,7 +157,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   EXPECT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt,
                                              {&le_secret, &unused, &unused}));
 
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   NiceMock<MockLECredentialManager> le_cred_manager;
   ON_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
       .WillByDefault(Return(LE_CRED_SUCCESS));
@@ -171,7 +171,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   KeyBlobs vkk_data;
   CryptoError error;
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &tpm_init);
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_key_loader);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
   EXPECT_NE(base::nullopt, auth_state);
 
@@ -189,12 +189,13 @@ TEST(PinWeaverAuthBlockTest, CreateFailTest) {
   brillo::SecureBlob reset_secret(32, 'S');
 
   // Now test that the method fails if the le_cred_manager fails.
-  NiceMock<MockTpmInit> tpm_init_fail;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader_fail;
   NiceMock<MockLECredentialManager> le_cred_manager_fail;
   ON_CALL(le_cred_manager_fail, InsertCredential(_, _, _, _, _, _))
       .WillByDefault(Return(LE_CRED_ERROR_HASH_TREE));
 
-  PinWeaverAuthBlock auth_block_fail(&le_cred_manager_fail, &tpm_init_fail);
+  PinWeaverAuthBlock auth_block_fail(&le_cred_manager_fail,
+                                     &cryptohome_key_loader_fail);
   // Call the Create() method.
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/base::nullopt, salt,
@@ -223,8 +224,8 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
       .Times(Exactly(1));
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &tpm_init);
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_key_loader);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -268,8 +269,8 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
       .Times(Exactly(1));
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &tpm_init);
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_key_loader);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -300,12 +301,12 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
   ASSERT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&pass_blob}));
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, pass_blob, _, _))
       .Times(Exactly(1));
 
   CryptoError error = CryptoError::CE_NONE;
-  TpmBoundToPcrAuthBlock tpm_auth_block(&tpm, &tpm_init);
+  TpmBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_key_loader);
   EXPECT_TRUE(tpm_auth_block.DecryptTpmBoundToPcr(vault_key, tpm_key, salt,
                                                   &error, &vkk_iv, &vkk_key));
   EXPECT_EQ(CryptoError::CE_NONE, error);
@@ -329,11 +330,11 @@ TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
   ASSERT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&aes_key}));
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _, _)).Times(Exactly(1));
 
   CryptoError error = CryptoError::CE_NONE;
-  TpmNotBoundToPcrAuthBlock tpm_auth_block(&tpm, &tpm_init);
+  TpmNotBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_key_loader);
   EXPECT_TRUE(tpm_auth_block.DecryptTpmNotBoundToPcr(
       serialized, vault_key, tpm_key, salt, &error, &vkk_iv, &vkk_key));
   EXPECT_EQ(CryptoError::CE_NONE, error);
@@ -354,10 +355,10 @@ TEST(TpmAuthBlockTest, DeriveTest) {
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _)).Times(Exactly(1));
 
-  TpmBoundToPcrAuthBlock auth_block(&tpm, &tpm_init);
+  TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_key_loader);
 
   KeyBlobs key_out_data;
   AuthInput auth_input;
@@ -458,8 +459,8 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
       base::make_optional<SerializedVaultKeyset>(std::move(serialized))};
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
-  DoubleWrappedCompatAuthBlock auth_block(&tpm, &tpm_init);
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
+  DoubleWrappedCompatAuthBlock auth_block(&tpm, &cryptohome_key_loader);
 
   CryptoError error;
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));

@@ -186,6 +186,7 @@ static_library("libcrostpm") {
     "../crc8.c",
     "../crypto.cc",
     "../crypto_error.cc",
+    "../cryptohome_key_loader.cc",
     "../double_wrapped_compat_auth_block.cc",
     "../firmware_management_parameters.cc",
     "../install_attributes.cc",
@@ -201,7 +202,6 @@ static_library("libcrostpm") {
     "../tpm.cc",
     "../tpm_auth_block_utils.cc",
     "../tpm_bound_to_pcr_auth_block.cc",
-    "../tpm_init.cc",
     "../tpm_not_bound_to_pcr_auth_block.cc",
     "../vault_keyset.cc",
   ]

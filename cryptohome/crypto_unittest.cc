@@ -23,10 +23,10 @@
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
@@ -283,17 +283,17 @@ TEST_F(CryptoTest, TpmStepTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
 
   SecureBlob vkk_key;
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_2_0));
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
       .Times(2)  // Once for each valid PCR state.
       .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
-  EXPECT_CALL(tpm_init, HasCryptohomeKey())
+  EXPECT_CALL(cryptohome_key_loader, HasCryptohomeKey())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_init, SetupTpm(true))
+  EXPECT_CALL(cryptohome_key_loader, Init())
       .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
@@ -302,7 +302,7 @@ TEST_F(CryptoTest, TpmStepTest) {
           DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto.Init(&tpm, &tpm_init);
+  crypto.Init(&tpm, &cryptohome_key_loader);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -359,17 +359,17 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
 
   SecureBlob vkk_key;
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_1_2));
   EXPECT_CALL(tpm, EncryptBlob(_, _, _, _))
       .Times(1)
       .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
-  EXPECT_CALL(tpm_init, HasCryptohomeKey())
+  EXPECT_CALL(cryptohome_key_loader, HasCryptohomeKey())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_init, SetupTpm(true))
+  EXPECT_CALL(cryptohome_key_loader, Init())
       .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
@@ -378,7 +378,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
           DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto.Init(&tpm, &tpm_init);
+  crypto.Init(&tpm, &cryptohome_key_loader);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -434,13 +434,13 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
 
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _)).Times(2);
-  EXPECT_CALL(tpm_init, HasCryptohomeKey())
+  EXPECT_CALL(cryptohome_key_loader, HasCryptohomeKey())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_init, SetupTpm(true))
+  EXPECT_CALL(cryptohome_key_loader, Init())
       .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
@@ -448,7 +448,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
-  crypto.Init(&tpm, &tpm_init);
+  crypto.Init(&tpm, &cryptohome_key_loader);
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
@@ -583,8 +583,8 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   Crypto crypto(&platform);
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
-  crypto.Init(&tpm, &tpm_init);
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
+  crypto.Init(&tpm, &cryptohome_key_loader);
 
   std::string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data);
@@ -624,8 +624,8 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   Crypto crypto(&platform);
 
   NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
-  crypto.Init(&tpm, &tpm_init);
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
+  crypto.Init(&tpm, &cryptohome_key_loader);
 
   std::string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data);
@@ -696,9 +696,8 @@ std::string HexDecode(const std::string& hex) {
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
   LeCredentialsManagerTest() : crypto_(&platform_) {
-    EXPECT_CALL(tpm_init_, SetupTpm(true))
-        .WillOnce(
-            Return(true));  // because HasCryptohomeKey returned false once.
+    EXPECT_CALL(cryptohome_key_loader_, Init())
+        .WillOnce(Return());  // because HasCryptohomeKey returned false once.
 
     EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
     EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
@@ -714,7 +713,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
 
-    crypto_.Init(&tpm_, &tpm_init_);
+    crypto_.Init(&tpm_, &cryptohome_key_loader_);
 
     pin_vault_keyset_.Initialize(&platform_, &crypto_);
   }
@@ -731,7 +730,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
   MockPlatform platform_;
   Crypto crypto_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<MockTpmInit> tpm_init_;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader_;
   MockLECredentialManager* le_cred_manager_;
 
   VaultKeyset pin_vault_keyset_;

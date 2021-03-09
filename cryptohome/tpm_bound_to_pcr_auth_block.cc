@@ -13,22 +13,23 @@
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_auth_block_utils.h"
-#include "cryptohome/tpm_init.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
-TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(Tpm* tpm, TpmInit* tpm_init)
+TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
+    Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader)
     : AuthBlock(kTpmBackedPcrBound),
       tpm_(tpm),
-      tpm_init_(tpm_init),
-      utils_(tpm, tpm_init) {
+      cryptohome_key_loader_(cryptohome_key_loader),
+      utils_(tpm, cryptohome_key_loader) {
   CHECK(tpm != nullptr);
-  CHECK(tpm_init != nullptr);
+  CHECK(cryptohome_key_loader != nullptr);
 }
 
 base::Optional<DeprecatedAuthBlockState> TpmBoundToPcrAuthBlock::Create(
@@ -39,11 +40,11 @@ base::Optional<DeprecatedAuthBlockState> TpmBoundToPcrAuthBlock::Create(
       user_input.obfuscated_username.value();
 
   // If the cryptohome key isn't loaded, try to load it.
-  if (!tpm_init_->HasCryptohomeKey())
-    tpm_init_->SetupTpm(/*load_key=*/true);
+  if (!cryptohome_key_loader_->HasCryptohomeKey())
+    cryptohome_key_loader_->Init();
 
   // If the key still isn't loaded, fail the operation.
-  if (!tpm_init_->HasCryptohomeKey())
+  if (!cryptohome_key_loader_->HasCryptohomeKey())
     return base::nullopt;
 
   const auto vkk_key = CryptoLib::CreateSecureRandomBlob(kDefaultAesKeySize);
@@ -61,17 +62,17 @@ base::Optional<DeprecatedAuthBlockState> TpmBoundToPcrAuthBlock::Create(
   // encrypted blobs, sealed to PCR in |tpm_key| and |extended_tpm_key|,
   // which are stored in the serialized vault keyset.
   brillo::SecureBlob tpm_key;
-  if (tpm_->SealToPcrWithAuthorization(tpm_init_->GetCryptohomeKey(), vkk_key,
-                                       pass_blob, default_pcr_map,
-                                       &tpm_key) != Tpm::kTpmRetryNone) {
+  if (tpm_->SealToPcrWithAuthorization(
+          cryptohome_key_loader_->GetCryptohomeKey(), vkk_key, pass_blob,
+          default_pcr_map, &tpm_key) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to wrap vkk with creds.";
     return base::nullopt;
   }
 
   brillo::SecureBlob extended_tpm_key;
   if (tpm_->SealToPcrWithAuthorization(
-          tpm_init_->GetCryptohomeKey(), vkk_key, pass_blob, extended_pcr_map,
-          &extended_tpm_key) != Tpm::kTpmRetryNone) {
+          cryptohome_key_loader_->GetCryptohomeKey(), vkk_key, pass_blob,
+          extended_pcr_map, &extended_tpm_key) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to wrap vkk with creds for extended PCR.";
     return base::nullopt;
   }
@@ -81,8 +82,8 @@ base::Optional<DeprecatedAuthBlockState> TpmBoundToPcrAuthBlock::Create(
   // successful login, the vault keyset will be re-saved anyway.
   SerializedVaultKeyset serialized;
   brillo::SecureBlob pub_key_hash;
-  if (tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeKey(), &pub_key_hash) ==
-      Tpm::kTpmRetryNone) {
+  if (tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
+                             &pub_key_hash) == Tpm::kTpmRetryNone) {
     serialized.set_tpm_public_key_hash(pub_key_hash.data(),
                                        pub_key_hash.size());
   }
@@ -155,7 +156,8 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
     std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
     retry_action = tpm_->UnsealWithAuthorization(
-        tpm_init_->GetCryptohomeKey(), tpm_key, pass_blob, pcr_map, vkk_key);
+        cryptohome_key_loader_->GetCryptohomeKey(), tpm_key, pass_blob, pcr_map,
+        vkk_key);
 
     if (retry_action == Tpm::kTpmRetryNone)
       return true;
@@ -164,7 +166,7 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
       break;
 
     // If the error is retriable, reload the key first.
-    if (!tpm_init_->ReloadCryptohomeKey()) {
+    if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload Cryptohome key.";
       break;
     }

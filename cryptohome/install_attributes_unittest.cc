@@ -21,7 +21,6 @@
 #include "cryptohome/mock_lockbox.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/mock_tpm_init.h"
 
 using base::FilePath;
 using ::testing::_;

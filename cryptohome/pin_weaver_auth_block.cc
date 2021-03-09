@@ -126,13 +126,13 @@ const struct {
 
 }  // namespace
 
-PinWeaverAuthBlock::PinWeaverAuthBlock(LECredentialManager* le_manager,
-                                       TpmInit* tpm_init)
+PinWeaverAuthBlock::PinWeaverAuthBlock(
+    LECredentialManager* le_manager, CryptohomeKeyLoader* cryptohome_key_loader)
     : AuthBlock(kLowEntropyCredential),
       le_manager_(le_manager),
-      tpm_init_(tpm_init) {
+      cryptohome_key_loader_(cryptohome_key_loader) {
   CHECK_NE(le_manager, nullptr);
-  CHECK_NE(tpm_init, nullptr);
+  CHECK_NE(cryptohome_key_loader, nullptr);
 }
 
 base::Optional<DeprecatedAuthBlockState> PinWeaverAuthBlock::Create(
@@ -141,8 +141,8 @@ base::Optional<DeprecatedAuthBlockState> PinWeaverAuthBlock::Create(
 
   // TODO(kerrnel): This may not be needed, but is currently retained to
   // maintain the original logic.
-  if (!tpm_init_->HasCryptohomeKey())
-    tpm_init_->SetupTpm(/*load_key=*/true);
+  if (!cryptohome_key_loader_->HasCryptohomeKey())
+    cryptohome_key_loader_->Init();
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);

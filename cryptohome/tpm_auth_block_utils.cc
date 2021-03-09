@@ -9,15 +9,16 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_init.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
-TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm, TpmInit* tpm_init)
-    : tpm_(tpm), tpm_init_(tpm_init) {}
+TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm,
+                                     CryptohomeKeyLoader* cryptohome_key_loader)
+    : tpm_(tpm), cryptohome_key_loader_(cryptohome_key_loader) {}
 
 // static
 CryptoError TpmAuthBlockUtils::TpmErrorToCrypto(
@@ -53,16 +54,16 @@ bool TpmAuthBlockUtils::TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action) {
 bool TpmAuthBlockUtils::IsTPMPubkeyHash(const std::string& hash,
                                         CryptoError* error) const {
   brillo::SecureBlob pub_key_hash;
-  Tpm::TpmRetryAction retry_action =
-      tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeKey(), &pub_key_hash);
+  Tpm::TpmRetryAction retry_action = tpm_->GetPublicKeyHash(
+      cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash);
   if (retry_action == Tpm::kTpmRetryLoadFail ||
       retry_action == Tpm::kTpmRetryInvalidHandle) {
-    if (!tpm_init_->ReloadCryptohomeKey()) {
+    if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload key.";
       retry_action = Tpm::kTpmRetryFailNoRetry;
     } else {
-      retry_action =
-          tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeKey(), &pub_key_hash);
+      retry_action = tpm_->GetPublicKeyHash(
+          cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash);
     }
   }
   if (retry_action != Tpm::kTpmRetryNone) {
@@ -102,11 +103,11 @@ bool TpmAuthBlockUtils::CheckTPMReadiness(
     return false;
   }
 
-  if (!tpm_init_->HasCryptohomeKey()) {
-    tpm_init_->SetupTpm(/*load_key=*/true);
+  if (!cryptohome_key_loader_->HasCryptohomeKey()) {
+    cryptohome_key_loader_->Init();
   }
 
-  if (!tpm_init_->HasCryptohomeKey()) {
+  if (!cryptohome_key_loader_->HasCryptohomeKey()) {
     LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                << "unavailable.";
     ReportCryptohomeError(kDecryptAttemptButTpmNotAvailable);

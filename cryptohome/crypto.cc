@@ -28,6 +28,7 @@
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/challenge_credential_auth_block.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/double_wrapped_compat_auth_block.h"
@@ -38,7 +39,6 @@
 #include "cryptohome/pin_weaver_auth_block.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm_bound_to_pcr_auth_block.h"
-#include "cryptohome/tpm_init.h"
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -333,18 +333,20 @@ bool WrapScryptVaultKeyset(const VaultKeyset& vault_keyset,
 Crypto::Crypto(Platform* platform)
     : tpm_(NULL),
       platform_(platform),
-      tpm_init_(NULL),
+      cryptohome_key_loader_(NULL),
       disable_logging_for_tests_(false) {}
 
 Crypto::~Crypto() {}
 
-bool Crypto::Init(Tpm* tpm, TpmInit* tpm_init) {
-  CHECK(tpm_init) << "Crypto wanted to use TPM but was not provided a TPM";
+bool Crypto::Init(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader) {
+  CHECK(cryptohome_key_loader)
+      << "Crypto wanted to use CryptohomeKeyLoader but was not provided";
+  CHECK(tpm) << "Crypto wanted to use Tpm but was not provided";
   if (tpm_ == NULL) {
     tpm_ = tpm;
   }
-  tpm_init_ = tpm_init;
-  tpm_init_->SetupTpm(true);
+  cryptohome_key_loader_ = cryptohome_key_loader;
+  cryptohome_key_loader_->Init();
   if (tpm_->GetLECredentialBackend() &&
       tpm_->GetLECredentialBackend()->IsSupported()) {
     le_manager_ = std::make_unique<LECredentialManagerImpl>(
@@ -355,9 +357,9 @@ bool Crypto::Init(Tpm* tpm, TpmInit* tpm_init) {
 
 CryptoError Crypto::EnsureTpm(bool reload_key) const {
   CryptoError result = CryptoError::CE_NONE;
-  if (tpm_ && tpm_init_) {
-    if (reload_key || !tpm_init_->HasCryptohomeKey()) {
-      tpm_init_->SetupTpm(true);
+  if (tpm_ && cryptohome_key_loader_) {
+    if (reload_key || !cryptohome_key_loader_->HasCryptohomeKey()) {
+      cryptohome_key_loader_->Init();
     }
   }
   return result;
@@ -812,10 +814,10 @@ bool Crypto::RemoveLECredential(uint64_t label) const {
 }
 
 bool Crypto::is_cryptohome_key_loaded() const {
-  if (tpm_ == NULL || tpm_init_ == NULL) {
+  if (tpm_ == NULL || cryptohome_key_loader_ == NULL) {
     return false;
   }
-  return tpm_init_->HasCryptohomeKey();
+  return cryptohome_key_loader_->HasCryptohomeKey();
 }
 
 bool Crypto::CanUnsealWithUserAuth() const {
@@ -839,7 +841,8 @@ bool Crypto::CanUnsealWithUserAuth() const {
 std::unique_ptr<AuthBlock> Crypto::CreateAuthBlock(
     const VaultKeyset& vk) const {
   if (vk.IsLECredential()) {
-    return std::make_unique<PinWeaverAuthBlock>(le_manager_.get(), tpm_init_);
+    return std::make_unique<PinWeaverAuthBlock>(le_manager_.get(),
+                                                cryptohome_key_loader_);
   }
 
   if (vk.IsSignatureChallengeProtected()) {
@@ -849,11 +852,13 @@ std::unique_ptr<AuthBlock> Crypto::CreateAuthBlock(
   bool use_tpm = tpm_ && tpm_->IsOwned();
   bool with_user_auth = CanUnsealWithUserAuth();
   if (use_tpm && with_user_auth) {
-    return std::make_unique<TpmBoundToPcrAuthBlock>(tpm_, tpm_init_);
+    return std::make_unique<TpmBoundToPcrAuthBlock>(tpm_,
+                                                    cryptohome_key_loader_);
   }
 
   if (use_tpm && !with_user_auth) {
-    return std::make_unique<TpmNotBoundToPcrAuthBlock>(tpm_, tpm_init_);
+    return std::make_unique<TpmNotBoundToPcrAuthBlock>(tpm_,
+                                                       cryptohome_key_loader_);
   }
 
   return std::make_unique<LibScryptCompatAuthBlock>();
@@ -861,18 +866,22 @@ std::unique_ptr<AuthBlock> Crypto::CreateAuthBlock(
 
 std::unique_ptr<AuthBlock> Crypto::DeriveAuthBlock(int serialized_key_flags) {
   if (serialized_key_flags & SerializedVaultKeyset::LE_CREDENTIAL) {
-    return std::make_unique<PinWeaverAuthBlock>(le_manager_.get(), tpm_init_);
+    return std::make_unique<PinWeaverAuthBlock>(le_manager_.get(),
+                                                cryptohome_key_loader_);
   } else if (serialized_key_flags &
              SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
     return std::make_unique<ChallengeCredentialAuthBlock>();
   } else if (serialized_key_flags & SerializedVaultKeyset::SCRYPT_WRAPPED &&
              serialized_key_flags & SerializedVaultKeyset::TPM_WRAPPED) {
-    return std::make_unique<DoubleWrappedCompatAuthBlock>(tpm_, tpm_init_);
+    return std::make_unique<DoubleWrappedCompatAuthBlock>(
+        tpm_, cryptohome_key_loader_);
   } else if (serialized_key_flags & SerializedVaultKeyset::TPM_WRAPPED) {
     if (serialized_key_flags & SerializedVaultKeyset::PCR_BOUND) {
-      return std::make_unique<TpmBoundToPcrAuthBlock>(tpm_, tpm_init_);
+      return std::make_unique<TpmBoundToPcrAuthBlock>(tpm_,
+                                                      cryptohome_key_loader_);
     } else {
-      return std::make_unique<TpmNotBoundToPcrAuthBlock>(tpm_, tpm_init_);
+      return std::make_unique<TpmNotBoundToPcrAuthBlock>(
+          tpm_, cryptohome_key_loader_);
     }
   } else if (serialized_key_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) {
     return std::make_unique<LibScryptCompatAuthBlock>();

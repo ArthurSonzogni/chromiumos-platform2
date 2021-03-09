@@ -46,7 +46,6 @@
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
@@ -489,7 +488,6 @@ class MountTest
   MakeTests helper_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<MockTpmInit> tpm_init_;
   Crypto crypto_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<KeysetManagement> keyset_management_;

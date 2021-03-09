@@ -24,10 +24,10 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_init.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -46,7 +46,7 @@ class Crypto {
   virtual ~Crypto();
 
   // Initializes Crypto
-  virtual bool Init(Tpm* tpm, TpmInit* tpm_init);
+  virtual bool Init(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader);
 
   // Decrypts an encrypted vault keyset.  The vault keyset should be the output
   // of EncryptVaultKeyset().
@@ -262,8 +262,8 @@ class Crypto {
   // Platform abstraction
   Platform* platform_;
 
-  // The TpmInit object used to reload Cryptohome key
-  TpmInit* tpm_init_;
+  // The CryptohomeKeyLoader object used to reload Cryptohome key
+  CryptohomeKeyLoader* cryptohome_key_loader_;
 
   // Handler for Low Entropy credentials.
   std::unique_ptr<LECredentialManager> le_manager_;
