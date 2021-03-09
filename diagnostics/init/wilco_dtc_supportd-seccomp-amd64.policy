@@ -35,6 +35,7 @@ getdents64: 1
 getegid: 1
 geteuid: 1
 getgid: 1
+getrandom: 1
 getresgid: 1
 getresuid: 1
 getrlimit: 1
