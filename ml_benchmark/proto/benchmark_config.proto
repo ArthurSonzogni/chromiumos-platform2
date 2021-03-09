@@ -1,3 +1,5 @@
+// go/cros-ml-benchmark-suite-docs
+
 syntax = "proto3";
 
 package chrome.ml_benchmark;
@@ -7,9 +9,6 @@ enum AccelerationMode {
   NNAPI = 1;
 }
 
-// For details on what each of the fields do
-// Refer to the CrOS ML Benchmarking Suite Design Document
-// at go/cros-ml-benchmark-suite
 message CrOSBenchmarkConfig {
   reserved 2, 3;
 
