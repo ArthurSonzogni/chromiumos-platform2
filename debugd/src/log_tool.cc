@@ -251,7 +251,6 @@ const std::vector<Log> kCommandLogs {
     Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
     true /* access_root_mount_ns */},
   {kCommand, "lsmod", "lsmod"},
-  {kCommand, "lspci", "/usr/sbin/lspci"},
   {kCommand, "lsusb", "lsusb && lsusb -t"},
   {kFile, "mali_memory", "/sys/kernel/debug/mali0/gpu_memory",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
@@ -400,6 +399,14 @@ const std::vector<Log> kCommandLogs {
   // {kCommand, "xrandr", "/usr/bin/xrandr --verbose}
 };
 // clang-format on
+
+const std::vector<Log> kCommandLogsVerbose{
+    {kCommand, "lspci_verbose", "/usr/sbin/lspci -vvvnn"},
+};
+
+const std::vector<Log> kCommandLogsShort{
+    {kCommand, "lspci", "/usr/sbin/lspci"},
+};
 
 // Extra logs are logs such as netstat and logcat which should appear in
 // chrome://system but not in feedback reports.  Open sockets may have privacy
@@ -819,6 +826,7 @@ void LogTool::CreateConnectivityReport(bool wait_for_results) {
 string LogTool::GetLog(const string& name) {
   string result;
   GetNamedLogFrom(name, kCommandLogs, &result) ||
+      GetNamedLogFrom(name, kCommandLogsShort, &result) ||
       GetNamedLogFrom(name, kExtraLogs, &result) ||
       GetNamedLogFrom(name, kFeedbackLogs, &result);
   return result;
@@ -827,6 +835,7 @@ string LogTool::GetLog(const string& name) {
 LogTool::LogMap LogTool::GetAllLogs() {
   CreateConnectivityReport(false);
   LogMap result;
+  GetLogsFrom(kCommandLogsShort, &result);
   GetLogsFrom(kCommandLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
   GetLsbReleaseInfo(&result);
@@ -837,6 +846,7 @@ LogTool::LogMap LogTool::GetAllLogs() {
 LogTool::LogMap LogTool::GetAllDebugLogs() {
   CreateConnectivityReport(true);
   LogMap result;
+  GetLogsFrom(kCommandLogsShort, &result);
   GetLogsFrom(kCommandLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
   result[arc_bug_report_log_->GetName()] = GetArcBugReport("", nullptr);
@@ -851,6 +861,7 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
   LogMap map;
   GetPerfData(&map);
   base::Value dictionary(base::Value::Type::DICTIONARY);
+  GetLogsInDictionary(kCommandLogsVerbose, &dictionary);
   GetLogsInDictionary(kCommandLogs, &dictionary);
   GetLogsInDictionary(kFeedbackLogs, &dictionary);
   bool is_backup;
