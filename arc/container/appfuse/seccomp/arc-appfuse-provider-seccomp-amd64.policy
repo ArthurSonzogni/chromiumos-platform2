@@ -60,3 +60,4 @@ ioctl: arg1 == TCGETS
 exit_group: 1
 brk: 1
 getpid: 1
+access: 1

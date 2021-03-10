@@ -60,3 +60,4 @@ lstat64: 1
 madvise: 1
 rmdir: 1
 getpid: 1
+access: 1
