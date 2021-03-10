@@ -1317,7 +1317,7 @@ void UserDataAuth::DoMount(
   const std::string& account_id = GetAccountId(request.account());
 
   // Check for empty account ID
-  if (account_id.empty()) {
+  if (account_id.empty() && request.auth_session_id().empty()) {
     LOG(ERROR) << "No email supplied";
     reply.set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -1349,7 +1349,8 @@ void UserDataAuth::DoMount(
   // We do not allow empty password, except for challenge response type login.
   if (request.authorization().key().secret().empty() &&
       request.authorization().key().data().type() !=
-          KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+          KeyData::KEY_TYPE_CHALLENGE_RESPONSE &&
+      request.auth_session_id().empty()) {
     LOG(ERROR) << "No key secret supplied";
     reply.set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -1357,7 +1358,7 @@ void UserDataAuth::DoMount(
     return;
   }
 
-  if (request.has_create()) {
+  if (request.has_create() && request.auth_session_id().empty()) {
     // copy_authorization_key in CreateRequest means that we'll copy the
     // authorization request's key and use it as if it's the key specified in
     // CreateRequest.
@@ -1659,14 +1660,31 @@ void UserDataAuth::ContinueMountWithCredentials(
   // If the home directory for our user doesn't exist and we aren't instructed
   // to create the home directory, and reply with the error.
   if (!request.has_create() &&
-      !homedirs_->Exists(credentials->GetObfuscatedUsername(system_salt_))) {
+      !homedirs_->Exists(credentials->GetObfuscatedUsername(system_salt_)) &&
+      request.auth_session_id().empty()) {
     LOG(ERROR) << "Account not found when mounting with credentials.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     std::move(on_done).Run(reply);
     return;
   }
 
-  std::string account_id = GetAccountId(request.account());
+  base::Optional<base::UnguessableToken> token;
+  if (!request.auth_session_id().empty()) {
+    token =
+        AuthSession::GetTokenFromSerializedString(request.auth_session_id());
+    if (!token.has_value() ||
+        auth_sessions_.find(token.value()) == auth_sessions_.end()) {
+      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+      LOG(ERROR) << "Invalid AuthSession token provided.";
+      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+      std::move(on_done).Run(reply);
+      return;
+    }
+  }
+
+  std::string account_id = request.auth_session_id().empty()
+                               ? GetAccountId(request.account())
+                               : auth_sessions_[token.value()]->username();
   // Provide an authoritative filesystem-sanitized username.
   reply.set_sanitized_username(
       brillo::cryptohome::home::SanitizeUserName(account_id));
@@ -1782,20 +1800,6 @@ void UserDataAuth::ContinueMountWithCredentials(
     homedirs_->RemoveNonOwnerCryptohomes();
 
   MountError code;
-  base::Optional<base::UnguessableToken> token;
-  if (!request.auth_session_id().empty()) {
-    token =
-        AuthSession::GetTokenFromSerializedString(request.auth_session_id());
-    if (!token.has_value() ||
-        auth_sessions_.find(token.value()) == auth_sessions_.end()) {
-      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-      LOG(ERROR) << "Invalid AuthSession token provided.";
-      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-      std::move(on_done).Run(reply);
-      return;
-    }
-  }
-
   if (token.has_value()) {
     code = AttemptUserMount(auth_sessions_[token.value()].get(), mount_args,
                             user_session);
