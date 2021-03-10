@@ -136,6 +136,9 @@ class ApnList {
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const char Cellular::kUseAttachApn[] = "UseAttachAPN";
 const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
+const char Cellular::kQ6V5DriverName[] = "qcom-q6v5-mss";
+const char Cellular::kModemDriverSysfsName[] =
+    "/sys/class/remoteproc/remoteproc0/device/driver";
 const char Cellular::kModemResetSysfsName[] =
     "/sys/class/remoteproc/remoteproc0/state";
 const int64_t Cellular::kModemResetTimeoutMilliseconds = 1000;
@@ -639,11 +642,23 @@ bool Cellular::ResetQ6V5Modem() {
   return true;
 }
 
+bool Cellular::IsQ6V5Modem() {
+  base::FilePath driver_path, driver_name;
+
+  // Check if manufacturer is equal to "QUALCOMM INCORPORATED" and
+  // if remoteproc0/device/driver in sysfs links to "qcom-q6v5-mss".
+  driver_path = base::FilePath(kModemDriverSysfsName);
+  return (manufacturer_ == kQ6V5ModemManufacturerName &&
+          base::ReadSymbolicLink(driver_path, &driver_name) &&
+          driver_name.BaseName() == base::FilePath(kQ6V5DriverName));
+}
+
 void Cellular::Reset(Error* error, const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
+
   // Qualcomm q6v5 modems on trogdor do not support reset using qmi messages.
   // As per QC the only way to reset the modem is to use the sysfs interface.
-  if (manufacturer_ == kQ6V5ModemManufacturerName) {
+  if (IsQ6V5Modem()) {
     if (!ResetQ6V5Modem()) {
       callback.Run(Error(Error::Type::kOperationFailed));
     } else {

@@ -439,6 +439,12 @@ class Cellular : public Device,
   // Modem Manufacturer Name
   static const char kQ6V5ModemManufacturerName[];
 
+  // Modem driver sysfs path
+  static const char kModemDriverSysfsName[];
+
+  // Modem driver name
+  static const char kQ6V5DriverName[];
+
   // Time between stop and start of modem device
   static const int64_t kModemResetTimeoutMilliseconds;
 
@@ -544,6 +550,9 @@ class Cellular : public Device,
 
   // Handler to reset qcom-q6v5-mss based modems
   bool ResetQ6V5Modem();
+
+  // Handler to check if modem is based on qcom-q6v5-mss
+  bool IsQ6V5Modem();
 
   // Terminate the pppd process associated with this Device, and remove the
   // association between the PPPDevice and our CellularService. If this
