@@ -9,6 +9,8 @@
 
 #include <metrics/metrics_library.h>
 
+#include "trunks/tpm_generated.h"
+
 namespace trunks {
 
 // This class provides wrapping functions for callers to report UMAs of
@@ -28,7 +30,10 @@ class TrunksMetrics {
   // This function reports the command code and the time of the first writing
   // or reading timeout. So it should only be called once.
   bool ReportTpmHandleTimeoutCommandAndTime(int error_result,
-                                            const std::string& command);
+                                            TPM_CC command_code);
+
+  // This function reports the TPM command error code.
+  void ReportTpmErrorCode(TPM_RC error_code);
 
  private:
   MetricsLibrary metrics_library_;

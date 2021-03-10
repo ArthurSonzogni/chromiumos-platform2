@@ -11,7 +11,6 @@
 #include <base/time/time.h>
 
 #include "trunks/error_codes.h"
-#include "trunks/tpm_generated.h"
 
 extern "C" {
 #include <sys/sysinfo.h>
@@ -31,25 +30,12 @@ constexpr char kFirstTimeoutReadingCommand[] =
 constexpr char kFirstTimeoutReadingTime[] =
     "Platform.Trunks.FirstTimeoutReadingTime";
 
-TPM_CC GetCommandCode(const std::string& command) {
-  std::string buffer = command;
-  TPM_ST tag;
-  UINT32 command_size;
-  TPM_CC command_code = 0;
-  // Parse the header to get the command code
-  TPM_RC rc = Parse_TPM_ST(&buffer, &tag, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  rc = Parse_UINT32(&buffer, &command_size, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  rc = Parse_TPM_CC(&buffer, &command_code, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  return command_code;
-}
+constexpr char kTpmErrorCode[] = "Platform.Trunks.TpmErrorCode";
 
 }  // namespace
 
-bool TrunksMetrics::ReportTpmHandleTimeoutCommandAndTime(
-    int error_result, const std::string& command) {
+bool TrunksMetrics::ReportTpmHandleTimeoutCommandAndTime(int error_result,
+                                                         TPM_CC command_code) {
   std::string command_metrics, time_metrics;
   switch (error_result) {
     case TRUNKS_RC_WRITE_ERROR:
@@ -65,7 +51,6 @@ bool TrunksMetrics::ReportTpmHandleTimeoutCommandAndTime(
       return false;
   }
 
-  TPM_CC command_code = GetCommandCode(command);
   metrics_library_.SendSparseToUMA(command_metrics,
                                    static_cast<int>(command_code));
   struct sysinfo info;
@@ -80,6 +65,10 @@ bool TrunksMetrics::ReportTpmHandleTimeoutCommandAndTime(
     PLOG(WARNING) << "Error getting system uptime";
   }
   return true;
+}
+
+void TrunksMetrics::ReportTpmErrorCode(TPM_RC error_code) {
+  metrics_library_.SendSparseToUMA(kTpmErrorCode, static_cast<int>(error_code));
 }
 
 }  // namespace trunks

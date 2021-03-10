@@ -14,7 +14,10 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "trunks/tpm_generated.h"
 #include "trunks/trunks_metrics.h"
+
+namespace trunks {
 
 namespace {
 
@@ -34,9 +37,37 @@ constexpr int kMaxRetry = 5;
 // Note that if this period is not enough, upstart will still respawn trunksd
 // after it all fall through.
 
-}  // namespace
+TPM_CC GetCommandCode(const std::string& command) {
+  std::string buffer = command;
+  TPM_ST tag;
+  UINT32 command_size;
+  TPM_CC command_code = 0;
+  // Parse the header to get the command code
+  TPM_RC rc = Parse_TPM_ST(&buffer, &tag, nullptr);
+  DCHECK_EQ(rc, TPM_RC_SUCCESS);
+  rc = Parse_UINT32(&buffer, &command_size, nullptr);
+  DCHECK_EQ(rc, TPM_RC_SUCCESS);
+  rc = Parse_TPM_CC(&buffer, &command_code, nullptr);
+  DCHECK_EQ(rc, TPM_RC_SUCCESS);
+  return command_code;
+}
 
-namespace trunks {
+TPM_RC GetResponseCode(const std::string& response) {
+  std::string buffer = response;
+  TPM_ST tag;
+  UINT32 response_size;
+  TPM_RC response_code = 0;
+  // Parse the header to get the command code
+  TPM_RC rc = Parse_TPM_ST(&buffer, &tag, nullptr);
+  DCHECK_EQ(rc, TPM_RC_SUCCESS);
+  rc = Parse_UINT32(&buffer, &response_size, nullptr);
+  DCHECK_EQ(rc, TPM_RC_SUCCESS);
+  rc = Parse_TPM_RC(&buffer, &response_code, nullptr);
+  DCHECK_EQ(rc, TPM_RC_SUCCESS);
+  return response_code;
+}
+
+}  // namespace
 
 TpmHandle::TpmHandle() : fd_(kInvalidFileDescriptor) {}
 
@@ -88,10 +119,16 @@ std::string TpmHandle::SendCommandAndWait(const std::string& command) {
       static bool has_reported = false;
       if (!has_reported) {
         TrunksMetrics metrics;
-        if (metrics.ReportTpmHandleTimeoutCommandAndTime(result, command))
+        TPM_CC command_code = GetCommandCode(command);
+        if (metrics.ReportTpmHandleTimeoutCommandAndTime(result, command_code))
           has_reported = true;
       }
     }
+  }
+  TPM_RC response_code = GetResponseCode(response);
+  if (response_code != TPM_RC_SUCCESS) {
+    TrunksMetrics metrics;
+    metrics.ReportTpmErrorCode(response_code);
   }
   return response;
 }
