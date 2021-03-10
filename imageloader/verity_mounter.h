@@ -16,7 +16,7 @@
 namespace imageloader {
 
 // Timeout for dmsetup.
-constexpr int kDMSetupTimeoutSeconds = 6;
+constexpr int kDMSetupTimeoutSeconds = 30;
 
 class VerityMounter {
  public:

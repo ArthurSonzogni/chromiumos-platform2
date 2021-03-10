@@ -24,7 +24,9 @@
 namespace imageloader {
 
 namespace {
-constexpr int kPollingTimeoutSeconds = 10;
+// Use a timeout for polling that's greater than the DBus timeout in case the
+// component/DLC to mount is very large.
+constexpr int kPollingTimeoutSeconds = 60;
 }  // namespace
 
 void HelperProcessProxy::Start(int argc,
