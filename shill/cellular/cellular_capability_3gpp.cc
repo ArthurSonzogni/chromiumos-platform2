@@ -87,7 +87,7 @@ const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
 
 namespace {
 
-const int kSignalQualityUpdateRateSeconds = 30;
+const int kSignalQualityUpdateRateSeconds = 5;
 
 // Plugin strings via ModemManager.
 const char kTelitMMPlugin[] = "Telit";
