@@ -3,6 +3,10 @@
 // found in the LICENSE file.
 
 /// Provides safe implementations of common low level functions that assume a Linux environment.
+
+#[macro_use]
+pub mod handle_eintr;
+
 use std::io::{Error, ErrorKind, Result};
 use std::os::raw::c_int;
 use std::process::Child;
