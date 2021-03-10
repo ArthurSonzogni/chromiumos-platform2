@@ -825,9 +825,6 @@ bool SessionManagerImpl::RetrievePolicyEx(
     brillo::ErrorPtr* error,
     const std::vector<uint8_t>& in_descriptor_blob,
     std::vector<uint8_t>* out_policy_blob) {
-  // TODO(igorcov): crbug.com/836388 Remove the info logs when we get enough
-  // information from reports.
-  LOG(INFO) << "RetrievePolicyEx DBus call received.";
   PolicyDescriptor descriptor;
   if (!ParseAndValidatePolicyDescriptor(in_descriptor_blob,
                                         PolicyDescriptorUsage::kRetrieve,
@@ -854,7 +851,6 @@ bool SessionManagerImpl::RetrievePolicyEx(
     *error = CreateError(dbus_error::kSigEncodeFail, kSigEncodeFailMessage);
     return false;
   }
-  LOG(INFO) << "RetrievePolicyEx success.";
   return true;
 }
 
