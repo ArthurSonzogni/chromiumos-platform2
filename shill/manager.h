@@ -107,7 +107,7 @@ class Manager {
     // Maps DNS-over-HTTPS service providers to a list of standard DNS name
     // servers. This member stores the value set via the DBus
     // |DNSProxyDOHProviders| property.
-    std::map<std::string, std::string> dns_proxy_doh_providers;
+    KeyValueStore dns_proxy_doh_providers;
 
 #if !defined(DISABLE_WIFI)
     base::Optional<bool> ft_enabled;
@@ -663,8 +663,8 @@ class Manager {
   bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
   void UseDNSProxy(const std::string& proxy_addr);
 
-  Stringmap GetDNSProxyDOHProviders(Error* error);
-  bool SetDNSProxyDOHProviders(const Stringmap& providers, Error* error);
+  KeyValueStore GetDNSProxyDOHProviders(Error* error);
+  bool SetDNSProxyDOHProviders(const KeyValueStore& providers, Error* error);
 
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.
@@ -692,10 +692,10 @@ class Manager {
                                                       Error*));
   void HelpRegisterConstDerivedStrings(const std::string& name,
                                        Strings (Manager::*get)(Error*));
-  void HelpRegisterDerivedStringmap(const std::string& name,
-                                    Stringmap (Manager::*get)(Error* error),
-                                    bool (Manager::*set)(const Stringmap& value,
-                                                         Error* error));
+  void HelpRegisterDerivedKeyValueStore(
+      const std::string& name,
+      KeyValueStore (Manager::*get)(Error* error),
+      bool (Manager::*set)(const KeyValueStore& value, Error* error));
   void HelpRegisterDerivedBool(const std::string& name,
                                bool (Manager::*get)(Error* error),
                                bool (Manager::*set)(const bool& value,

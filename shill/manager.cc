@@ -307,9 +307,9 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kDNSProxyIPv4AddressProperty,
                             &Manager::GetDNSProxyIPv4Address,
                             &Manager::SetDNSProxyIPv4Address);
-  HelpRegisterDerivedStringmap(kDNSProxyDOHProvidersProperty,
-                               &Manager::GetDNSProxyDOHProviders,
-                               &Manager::SetDNSProxyDOHProviders);
+  HelpRegisterDerivedKeyValueStore(kDNSProxyDOHProvidersProperty,
+                                   &Manager::GetDNSProxyDOHProviders,
+                                   &Manager::SetDNSProxyDOHProviders);
 
   UpdateProviderMapping();
 
@@ -1818,13 +1818,13 @@ void Manager::HelpRegisterConstDerivedStrings(const string& name,
                 new CustomAccessor<Manager, Strings>(this, get, nullptr)));
 }
 
-void Manager::HelpRegisterDerivedStringmap(
+void Manager::HelpRegisterDerivedKeyValueStore(
     const string& name,
-    Stringmap (Manager::*get)(Error* error),
-    bool (Manager::*set)(const Stringmap& value, Error* error)) {
-  store_.RegisterDerivedStringmap(
-      name, StringmapAccessor(
-                new CustomAccessor<Manager, Stringmap>(this, get, set)));
+    KeyValueStore (Manager::*get)(Error* error),
+    bool (Manager::*set)(const KeyValueStore& store, Error* error)) {
+  store_.RegisterDerivedKeyValueStore(
+      name, KeyValueStoreAccessor(
+                new CustomAccessor<Manager, KeyValueStore>(this, get, set)));
 }
 
 void Manager::HelpRegisterDerivedBool(const string& name,
@@ -3035,11 +3035,11 @@ void Manager::UseDNSProxy(const string& proxy_addr) {
   resolver_->SetDNSProxy(proxy_addr);
 }
 
-Stringmap Manager::GetDNSProxyDOHProviders(Error* /* error */) {
+KeyValueStore Manager::GetDNSProxyDOHProviders(Error* /* error */) {
   return props_.dns_proxy_doh_providers;
 }
 
-bool Manager::SetDNSProxyDOHProviders(const Stringmap& providers,
+bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
                                       Error* error) {
   if (error)
     error->Reset();
@@ -3047,14 +3047,15 @@ bool Manager::SetDNSProxyDOHProviders(const Stringmap& providers,
   if (providers == props_.dns_proxy_doh_providers)
     return false;
 
-  for (const auto& [url, nameservers] : providers) {
+  for (const auto& [url, nameservers] : providers.properties()) {
     if (!HttpUrl().ParseFromString(url)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Invalid URL: " + url);
       return false;
     }
-    for (const auto& ns : base::SplitString(
-             nameservers, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
+    for (const auto& ns :
+         base::SplitString(nameservers.TryGet<std::string>(""), ",",
+                           base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
       if (!IPAddress(ns).IsValid()) {
         Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                               "Invalid address: " + ns);

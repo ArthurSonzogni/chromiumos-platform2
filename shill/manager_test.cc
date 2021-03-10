@@ -310,7 +310,7 @@ class ManagerTest : public PropertyStoreTest {
     return count;
   }
 
-  bool SetDNSProxyDOHProviders(const Stringmap& providers, Error* error) {
+  bool SetDNSProxyDOHProviders(const KeyValueStore& providers, Error* error) {
     return manager()->SetDNSProxyDOHProviders(providers, error);
   }
 
@@ -4531,96 +4531,102 @@ TEST_F(ManagerTest, SetDNSProxyIPv4Address) {
 
 TEST_F(ManagerTest, SetDNSProxyDOHProviders) {
   Error err;
-  std::map<std::string, std::string> providers;
+  KeyValueStore providers;
   // Bad URL
-  providers["htps://bad.com"] = "10.10.10.10";
+  providers.Set("htps://bad.com", std::string("10.10.10.10"));
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_TRUE(err.IsFailure());
   // Bad IPv4 addr
-  providers.clear();
-  providers["https://good.com"] = "1000.10.10.10";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("1000.10.10.10"));
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_TRUE(err.IsFailure());
-  providers.clear();
-  providers["https://good.com"] = "9.9.9.9, 1.1.1.1, 1000.10.10.10";
+  providers.Clear();
+  providers.Set("https://good.com",
+                std::string("9.9.9.9, 1.1.1.1, 1000.10.10.10"));
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_TRUE(err.IsFailure());
-  providers.clear();
-  providers["https://good.com"] = "9.9.9.9, 1.1.1.1";
-  providers["https://good2.com"] = "8.8.8.8";
-  providers["https://notsogood.com"] = "8.8.8/8";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("9.9.9.9, 1.1.1.1"));
+  providers.Set("https://good2.com", std::string("8.8.8.8"));
+  providers.Set("https://notsogood.com", std::string("8.8.8/8"));
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_TRUE(err.IsFailure());
   // Bad IPv6 addr
-  providers.clear();
-  providers["https://good.com"] = "::ffff:204.152.189.116z";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("::ffff:204.152.189.116z"));
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_TRUE(err.IsFailure());
-  providers.clear();
-  providers["https://good.com"] =
-      "fe80::4408:99ff:fed1:74ac,::ffff:204.152.189.116z";
+  providers.Clear();
+  providers.Set(
+      "https://good.com",
+      std::string("fe80::4408:99ff:fed1:74ac,::ffff:204.152.189.116z"));
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_TRUE(err.IsFailure());
   // NS not IP addr.
-  providers.clear();
-  providers["https://good.com"] = "https://good.com";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("https://good.com"));
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_TRUE(err.IsFailure());
 
   // Good URL, no value.
-  providers.clear();
-  providers["https://good.com"] = "";
+  providers.Clear();
+  providers.Set("https://good.com", std::string(""));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
   // URL w/ optional QP
-  providers.clear();
-  providers["https://dns64.dns.google/dns-query{?dns}"] =
-      "2001:4860:4860::64, 2001:4860:4860::6464";
+  providers.Clear();
+  providers.Set("https://dns64.dns.google/dns-query{?dns}",
+                std::string("2001:4860:4860::64, 2001:4860:4860::6464"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
   // Good IPv4.
-  providers.clear();
-  providers["https://good.com"] = "1.1.1.1";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("1.1.1.1"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
-  providers.clear();
-  providers["https://good.com"] = "1.1.1.1,9.9.9.9";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("1.1.1.1,9.9.9.9"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
-  providers.clear();
-  providers["https://good.com"] = "1.1.1.1,9.9.9.9";
-  providers["https://good1.com"] = "9.99.9.9";
-  providers["https://good2.com"] = "10.10.10.1   ,    192.168.1.1";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("1.1.1.1,9.9.9.9"));
+  providers.Set("https://good1.com", std::string("9.99.9.9"));
+  providers.Set("https://good2.com",
+                std::string("10.10.10.1   ,    192.168.1.1"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
   // Good IPv6.
-  providers.clear();
-  providers["https://good.com"] = "fe80::4408:99ff:fed1:74ac";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("fe80::4408:99ff:fed1:74ac"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
-  providers.clear();
-  providers["https://good.com"] =
-      "fe80::4408:99ff:fed1:74ac, ::ffff:204.152.189.116";
+  providers.Clear();
+  providers.Set(
+      "https://good.com",
+      std::string("fe80::4408:99ff:fed1:74ac, ::ffff:204.152.189.116"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
-  providers.clear();
-  providers["https://good.com"] = "fe80::4408:99ff:fed1:74ac";
-  providers["https://good1.com"] = "::ffff:204.152.189.116";
+  providers.Clear();
+  providers.Set("https://good.com", std::string("fe80::4408:99ff:fed1:74ac"));
+  providers.Set("https://good1.com", std::string("::ffff:204.152.189.116"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
   // Both
-  providers.clear();
-  providers["https://dns.google.com"] =
-      "8.8.8.8,8.8.4.4,2001:4860:4860::8888,2001:4860:4860::8844";
-  providers["https://chrome.cloudflare-dns.com"] =
-      "1.1.1.1,1.0.0.1,2606:4700:4700::1111,2606:4700:4700::1001";
+  providers.Clear();
+  providers.Set(
+      "https://dns.google.com",
+      std::string("8.8.8.8,8.8.4.4,2001:4860:4860::8888,2001:4860:4860::8844"));
+  providers.Set(
+      "https://chrome.cloudflare-dns.com",
+      std::string("1.1.1.1,1.0.0.1,2606:4700:4700::1111,2606:4700:4700::1001"));
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
   // Unchanged.
   EXPECT_FALSE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
   // Empty.
-  providers.clear();
+  providers.Clear();
   EXPECT_TRUE(SetDNSProxyDOHProviders(providers, &err));
   EXPECT_FALSE(err.IsFailure());
   // Unchanged.
