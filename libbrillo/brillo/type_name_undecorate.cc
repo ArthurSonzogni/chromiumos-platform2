@@ -33,8 +33,7 @@ std::string UndecorateTypeName(const char* type_name) {
 }
 
 std::string GetUndecoratedTypeNameForTag(const char* type_tag) {
-#if defined(USE_RTTI_FOR_TYPE_TAGS) && \
-    (defined(__cpp_rtti) || defined(__GXX_RTTI))
+#if USE_RTTI_FOR_TYPE_TAGS && (defined(__cpp_rtti) || defined(__GXX_RTTI))
   return UndecorateTypeName(type_tag);
 #else
   // The signature of type tag for, say, 'int' would be the following:

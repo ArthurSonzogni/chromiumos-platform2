@@ -10,7 +10,7 @@
 
 #include <brillo/brillo_export.h>
 
-#if !defined(USE_RTTI_FOR_TYPE_TAGS) && !defined(__clang__)
+#if !USE_RTTI_FOR_TYPE_TAGS && !defined(__clang__)
 // When type information is used with RTTI disabled, we rely on
 // __PRETTY_FUNCTION__ macro for type tags. Unfortunately gcc and clang produce
 // different signatures for types that have optional template parameters, such
@@ -25,8 +25,7 @@ namespace brillo {
 
 template <typename T>
 const char* GetTypeTag() {
-#if defined(USE_RTTI_FOR_TYPE_TAGS) && \
-    (defined(__cpp_rtti) || defined(__GXX_RTTI))
+#if USE_RTTI_FOR_TYPE_TAGS && (defined(__cpp_rtti) || defined(__GXX_RTTI))
   return typeid(T).name();
 #else
   // __PRETTY_FUNCTION__ would include the type T signature and therefore each
