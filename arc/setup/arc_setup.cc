@@ -503,6 +503,14 @@ std::string GetDisableMediaStoreMaintenance(
   return "androidboot.disable_media_store_maintenance=1 ";
 }
 
+// Converts disable download provider bool to androidboot property if
+// applicable.
+std::string GetDisableDownloadProvider(bool disable_download_provider) {
+  if (!disable_download_provider)
+    return std::string();
+  return "androidboot.disable_download_provider=1 ";
+}
+
 // Converts Generate PAI bool to androidboot property if applicable.
 std::string GetGeneratePaiParam(bool arc_generate_pai) {
   return arc_generate_pai ? "androidboot.arc_generate_pai=1 " : std::string();
@@ -1101,14 +1109,65 @@ bool ArcSetup::InstallLinksToHostSideCode() {
   return result;
 }
 
-void ArcSetup::CreateAndroidCmdlineFile(
-    bool is_dev_mode,
-    bool is_inside_vm,
-    bool is_debuggable,
-    PlayStoreAutoUpdate play_store_auto_update,
-    const std::string& dalvik_memory_profile,
-    bool disable_system_default_app,
-    bool disable_media_store_maintenance) {
+void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
+  const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
+  const bool is_debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
+  const bool disable_system_default_app =
+      config_.GetBoolOrDie("DISABLE_SYSTEM_DEFAULT_APP");
+
+  const bool disable_media_store_maintenance =
+      config_.GetBoolOrDie("DISABLE_MEDIA_STORE_MAINTENANCE");
+  const bool disable_download_provider =
+      config_.GetBoolOrDie("DISABLE_DOWNLOAD_PROVIDER");
+
+  // The host-side dalvik-cache directory is mounted into the container
+  // via the json file. Create it regardless of whether the code integrity
+  // feature is enabled.
+  EXIT_IF(
+      !CreateArtContainerDataDirectory(arc_paths_->art_dalvik_cache_directory));
+
+  // Mount host-compiled and host-verified .art and .oat files. The container
+  // will see these files, but other than that, the /data and /cache
+  // directories are empty and read-only which is the best for security.
+
+  // Unconditionally generate host-side code here.
+  {
+    base::ElapsedTimer timer;
+    EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
+    EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
+    // Remove the file zygote may have created.
+    IGNORE_ERRORS(base::DeleteFile(
+        arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile)));
+
+    // For now, integrity checking time is the time needed to relocate
+    // boot*.art files because of b/67912719. Once TPM is enabled, this will
+    // report the total time spend on code verification + [relocation + sign]
+    arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
+  }
+
+  // Make sure directories for all ISA are there just to make config.json happy.
+  for (const auto* isa : {"arm", "arm64", "x86", "x86_64"}) {
+    EXIT_IF(!brillo::MkdirRecursively(
+                 arc_paths_->art_dalvik_cache_directory.Append(isa), 0755)
+                 .is_valid());
+  }
+
+  PlayStoreAutoUpdate play_store_auto_update;
+  std::string dalvik_memory_profile;
+
+  bool play_store_auto_update_on;
+  // PLAY_AUTO_UPDATE forces Play Store auto-update feature to on or off. If not
+  // set, its state is left unchanged.
+  if (config_.GetBool("PLAY_STORE_AUTO_UPDATE", &play_store_auto_update_on)) {
+    play_store_auto_update = play_store_auto_update_on
+                                 ? PlayStoreAutoUpdate::kOn
+                                 : PlayStoreAutoUpdate::kOff;
+  } else {
+    play_store_auto_update = PlayStoreAutoUpdate::kDefault;
+  }
+
+  config_.GetString("DALVIK_MEMORY_PROFILE", &dalvik_memory_profile);
+
   const base::FilePath lsb_release_file_path("/etc/lsb-release");
   LOG(INFO) << "Developer mode is " << is_dev_mode;
   LOG(INFO) << "Inside VM is " << is_inside_vm;
@@ -1182,6 +1241,7 @@ void ArcSetup::CreateAndroidCmdlineFile(
       "%s" /* Play Store auto-update mode */
       "%s" /* Dalvik memory profile */
       "%s" /* Disable MediaStore maintenance */
+      "%s" /* Disable download provider */
       "androidboot.disable_system_default_app=%d "
       "%s" /* PAI Generation */
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
@@ -1191,6 +1251,7 @@ void ArcSetup::CreateAndroidCmdlineFile(
       GetPlayStoreAutoUpdateParam(play_store_auto_update).c_str(),
       GetDalvikMemoryProfileParam(dalvik_memory_profile).c_str(),
       GetDisableMediaStoreMaintenance(disable_media_store_maintenance).c_str(),
+      GetDisableDownloadProvider(disable_download_provider).c_str(),
       disable_system_default_app, GetGeneratePaiParam(arc_generate_pai).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
@@ -2026,74 +2087,13 @@ void ArcSetup::DeleteAndroidMediaProviderDataOnUpgrade(
 
 void ArcSetup::OnSetup() {
   const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
-  const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
-  const bool is_debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
-  const bool disable_system_default_app =
-      config_.GetBoolOrDie("DISABLE_SYSTEM_DEFAULT_APP");
-
-  bool disable_media_store_maintenance;
-  if (!config_.GetBool("DISABLE_MEDIA_STORE_MAINTENANCE",
-                       &disable_media_store_maintenance)) {
-    disable_media_store_maintenance = false;
-  }
-
-  // The host-side dalvik-cache directory is mounted into the container
-  // via the json file. Create it regardless of whether the code integrity
-  // feature is enabled.
-  EXIT_IF(
-      !CreateArtContainerDataDirectory(arc_paths_->art_dalvik_cache_directory));
-
-  // Mount host-compiled and host-verified .art and .oat files. The container
-  // will see these files, but other than that, the /data and /cache
-  // directories are empty and read-only which is the best for security.
-
-  // Unconditionally generate host-side code here.
-  {
-    base::ElapsedTimer timer;
-    EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
-    EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
-    // Remove the file zygote may have created.
-    IGNORE_ERRORS(base::DeleteFile(
-        arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile)));
-
-    // For now, integrity checking time is the time needed to relocate
-    // boot*.art files because of b/67912719. Once TPM is enabled, this will
-    // report the total time spend on code verification + [relocation + sign]
-    arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
-  }
-
-  // Make sure directories for all ISA are there just to make config.json happy.
-  for (const auto* isa : {"arm", "arm64", "x86", "x86_64"}) {
-    EXIT_IF(!brillo::MkdirRecursively(
-                 arc_paths_->art_dalvik_cache_directory.Append(isa), 0755)
-                 .is_valid());
-  }
-
-  PlayStoreAutoUpdate play_store_auto_update;
-  std::string dalvik_memory_profile;
-
-  bool play_store_auto_update_on;
-  // PLAY_AUTO_UPDATE forces Play Store auto-update feature to on or off. If not
-  // set, its state is left unchanged.
-  if (config_.GetBool("PLAY_STORE_AUTO_UPDATE", &play_store_auto_update_on)) {
-    play_store_auto_update = play_store_auto_update_on
-                                 ? PlayStoreAutoUpdate::kOn
-                                 : PlayStoreAutoUpdate::kOff;
-  } else {
-    play_store_auto_update = PlayStoreAutoUpdate::kDefault;
-  }
-
-  config_.GetString("DALVIK_MEMORY_PROFILE", &dalvik_memory_profile);
 
   SetUpSharedMountPoints();
   CreateContainerFilesAndDirectories();
   ApplyPerBoardConfigurations();
   SetUpSharedTmpfsForExternalStorage();
   SetUpFilesystemForObbMounter();
-  CreateAndroidCmdlineFile(is_dev_mode, is_inside_vm, is_debuggable,
-                           play_store_auto_update, dalvik_memory_profile,
-                           disable_system_default_app,
-                           disable_media_store_maintenance);
+  CreateAndroidCmdlineFile(is_dev_mode);
   CreateFakeProcfsFiles();
   SetUpMountPointForDebugFilesystem(is_dev_mode);
   SetUpMountPointsForMedia();

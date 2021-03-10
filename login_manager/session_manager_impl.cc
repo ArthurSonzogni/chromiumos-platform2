@@ -1242,6 +1242,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
                          "StartArcMiniContainerRequest parsing failed.");
     return false;
   }
+
   std::vector<std::string> env_vars = {
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
@@ -1252,10 +1253,11 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("ARC_CUSTOM_TABS_EXPERIMENT=%d",
                          request.arc_custom_tabs_experiment()),
       base::StringPrintf("DISABLE_SYSTEM_DEFAULT_APP=%d",
-                         request.disable_system_default_app())};
-
-  if (request.disable_media_store_maintenance())
-    env_vars.push_back("DISABLE_MEDIA_STORE_MAINTENANCE=1");
+                         request.disable_system_default_app()),
+      base::StringPrintf("DISABLE_MEDIA_STORE_MAINTENANCE=%d",
+                         request.disable_media_store_maintenance()),
+      base::StringPrintf("DISABLE_DOWNLOAD_PROVIDER=%d",
+                         request.disable_download_provider())};
 
   if (request.arc_generate_pai())
     env_vars.push_back("ARC_GENERATE_PAI=1");
