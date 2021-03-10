@@ -71,7 +71,6 @@ static_library("libarc_setup") {
     "art_container.cc",
     "boot_lockbox_client.cc",
     "config.cc",
-    "priv_code_verifier.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "bootstat" ]
