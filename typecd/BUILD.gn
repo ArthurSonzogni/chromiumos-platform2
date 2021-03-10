@@ -25,12 +25,12 @@ pkg_config("target_defaults") {
 }
 
 executable("typecd") {
-  configs += [ ":target_defaults" ]
-  deps = [ ":typecd_common" ]
   sources = [
     "daemon.cc",
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":typecd_common" ]
 }
 
 generate_dbus_adaptors("typecd-adaptors") {
@@ -39,7 +39,6 @@ generate_dbus_adaptors("typecd-adaptors") {
 }
 
 static_library("typecd_common") {
-  all_dependent_configs = [ ":target_defaults" ]
   sources = [
     "alt_mode.cc",
     "cable.cc",
@@ -55,6 +54,7 @@ static_library("typecd_common") {
     "udev_monitor.cc",
     "utils.cc",
   ]
+  all_dependent_configs = [ ":target_defaults" ]
   deps = [ ":typecd-adaptors" ]
 }
 
@@ -69,14 +69,6 @@ if (use.test) {
   }
 
   executable("typecd_testrunner") {
-    configs += [
-      ":test_defaults",
-      "//common-mk:test",
-    ]
-    deps = [
-      ":typecd_common",
-      "//common-mk/testrunner:testrunner",
-    ]
     sources = [
       "cable_test.cc",
       "cros_ec_util_test.cc",
@@ -87,6 +79,14 @@ if (use.test) {
       "port_test.cc",
       "test_utils.cc",
       "udev_monitor_test.cc",
+    ]
+    configs += [
+      ":test_defaults",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":typecd_common",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 }

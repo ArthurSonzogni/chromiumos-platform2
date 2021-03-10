@@ -21,16 +21,15 @@ pkg_config("target_defaults") {
 }
 
 executable("pciguard") {
-  configs += [ ":target_defaults" ]
-  deps = [ ":pciguard_common" ]
   sources = [
     "daemon.cc",
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":pciguard_common" ]
 }
 
 static_library("pciguard_common") {
-  all_dependent_configs = [ ":target_defaults" ]
   sources = [
     "authorizer.cc",
     "event_handler.cc",
@@ -38,6 +37,7 @@ static_library("pciguard_common") {
     "sysfs_utils.cc",
     "udev_monitor.cc",
   ]
+  all_dependent_configs = [ ":target_defaults" ]
   libs = [ "pthread" ]
 }
 
@@ -51,6 +51,10 @@ if (use.test) {
   }
 
   executable("pciguard_testrunner") {
+    sources = [
+      "event_handler_test.cc",
+      "sysfs_utils_test.cc",
+    ]
     configs += [
       ":test_defaults",
       "//common-mk:test",
@@ -58,10 +62,6 @@ if (use.test) {
     deps = [
       ":pciguard_common",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "event_handler_test.cc",
-      "sysfs_utils_test.cc",
     ]
   }
 }
