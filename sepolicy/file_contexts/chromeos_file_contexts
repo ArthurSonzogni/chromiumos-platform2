@@ -294,6 +294,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/perfetto                   u:object_r:cros_run_perfetto:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
 /run/shill                      u:object_r:cros_run_shill:s0
+/run/wireguard                  u:object_r:cros_run_wireguard:s0
 /run/namespaces                 u:object_r:cros_run_namespaces:s0
 /run/namespaces/mnt_chrome      u:object_r:cros_run_namespaces_mnt_chrome:s0
 
