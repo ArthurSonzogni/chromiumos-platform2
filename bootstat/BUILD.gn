@@ -15,12 +15,12 @@ group("all") {
 }
 
 shared_library("libbootstat") {
-  sources = [ "bootstat_log.c" ]
+  sources = [ "bootstat_log.cc" ]
   libs = [ "rootdev" ]
 }
 
 executable("bootstat") {
-  sources = [ "bootstat.c" ]
+  sources = [ "bootstat.cc" ]
   deps = [ ":libbootstat" ]
 }
 

@@ -2,17 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Public API for the C and C++ bindings to the Chromium OS
+// Public API for the C++ bindings to the Chromium OS
 // 'bootstat' facility.  The facility is a simple timestamp
 // mechanism to associate a named event with the time that it
 // occurred and with other relevant statistics.
 
 #ifndef BOOTSTAT_BOOTSTAT_H_
 #define BOOTSTAT_BOOTSTAT_H_
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 //
 // Length of the longest valid string naming an event, including the
@@ -36,7 +32,4 @@ extern "C" {
 // conventions to prevent name collisions.
 extern void bootstat_log(const char* event_name);
 
-#if defined(__cplusplus)
-}
-#endif
 #endif  // BOOTSTAT_BOOTSTAT_H_
