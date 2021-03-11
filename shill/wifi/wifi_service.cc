@@ -1157,7 +1157,6 @@ void WiFiService::SetWiFi(const WiFiRefPtr& new_wifi) {
   if (wifi_ == new_wifi) {
     return;
   }
-  ClearCachedCredentials();
   if (wifi_) {
     wifi_->DisassociateFromService(this);
   }
