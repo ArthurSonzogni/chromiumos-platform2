@@ -12,16 +12,18 @@ log_message() {
 # Output xx:yyC where xx is temp sensor id and yy is the actual temperature.
 get_sensor_temp() {
   local zone="$1"
+  local namepath=""
+  local name=""
   local tempc=0
-  local index=""
   local tempstr=""
 
   if [ ! -r "${zone}" ]; then
     return
   fi
+  namepath="$(dirname "${zone}")/type"
+  name="$(tr ' ' '_' < "${namepath}")"
   tempc=$(($(cat "${zone}") / 1000))
-  index=$(echo "${zone}" | grep -o -E '[0-9]+')
-  tempstr=$(printf "%02d:%dC" "${index}" "${tempc}")
+  tempstr=$(printf "%s:%dC" "${name}" "${tempc}")
   echo "${tempstr}"
 }
 
