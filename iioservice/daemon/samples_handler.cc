@@ -36,7 +36,7 @@ constexpr cros::mojom::DeviceType kOnChangeDeviceTypes[] = {
     cros::mojom::DeviceType::LIGHT};
 
 bool IsOnChangeDevice(ClientData* client_data) {
-  if (client_data->iio_device->GetTrigger())
+  if (!client_data->iio_device->HasFifo())
     return false;
 
   for (auto type : kOnChangeDeviceTypes) {
@@ -450,11 +450,14 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
 
   if (!iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
                                          frequency)) {
-    LOGF(ERROR) << "Failed to set frequency";
-    // If the device has trigger, setting device's sampling_frequency isn't
-    // necessary.
-    if (!iio_device_->GetTrigger())
+    /*
+     * The frequency attributes may not exist on some sensors (acpi-als).
+     * Ignore the error when the sensor does not have FIFO.
+     */
+    if (iio_device_->HasFifo()) {
+      LOGF(ERROR) << "Failed to set frequency";
       return false;
+    }
   }
 
   // |sampling_frequency| returns by the EC is the current sensors ODR. It may
@@ -463,12 +466,11 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
   // base for downsampling.
   dev_frequency_ = frequency;
 
-  if (!iio_device_->GetTrigger()) {
+  if (iio_device_->HasFifo()) {
     if (dev_frequency_ < libmems::kFrequencyEpsilon)
       return true;
 
-    if (iio_device_->HasFifo() &&
-        !iio_device_->WriteDoubleAttribute(libmems::kHWFifoTimeoutAttr,
+    if (!iio_device_->WriteDoubleAttribute(libmems::kHWFifoTimeoutAttr,
                                            1.0 / dev_frequency_)) {
       LOGF(ERROR) << "Failed to set fifo timeout";
       return false;
@@ -477,7 +479,14 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
     return true;
   }
 
-  // |iio_device_| has a trigger.
+  // |iio_device_| does not have a trigger, like activity sensors.
+  // We should not set frequency to begin with.
+  if (!iio_device_->GetTrigger()) {
+    LOGF(ERROR) << "No trigger associated to sensor.";
+    return false;
+  }
+
+  // |iio_device_| has a trigger that needs to be setup.
   if (!iio_device_->GetTrigger()->WriteDoubleAttribute(
           libmems::kSamplingFrequencyAttr, frequency)) {
     LOGF(ERROR) << "Failed to set trigger's frequency";
