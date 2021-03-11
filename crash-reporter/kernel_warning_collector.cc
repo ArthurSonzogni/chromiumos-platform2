@@ -18,6 +18,7 @@ const char kWifiWarningExecName[] = "kernel-wifi-warning";
 const char kSMMUFaultExecName[] = "kernel-smmu-fault";
 const char kSuspendWarningExecName[] = "kernel-suspend-warning";
 const char kKernelIwlwifiErrorExecName[] = "kernel-iwlwifi-error";
+const char kKernelAth10kErrorExecName[] = "kernel-ath10k-error";
 const char kKernelWarningSignatureKey[] = "sig";
 const pid_t kKernelPid = 0;
 }  // namespace
@@ -48,6 +49,12 @@ bool KernelWarningCollector::LoadKernelWarning(std::string* content,
     }
   } else if (type == kSMMUFault) {
     if (!ExtractSMMUFaultSignature(*content, signature, func_name)) {
+      return false;
+    } else if (signature->length() > 0) {
+      return true;
+    }
+  } else if (type == kAth10k) {
+    if (!ExtractAth10kSignature(*content, signature, func_name)) {
       return false;
     } else if (signature->length() > 0) {
       return true;
@@ -242,6 +249,29 @@ bool KernelWarningCollector::ExtractSMMUFaultSignature(
   return false;
 }
 
+constexpr LazyRE2 ath10k_sig_re = {R"((ath10k_.*firmware crashed))"};
+
+bool KernelWarningCollector::ExtractAth10kSignature(const std::string& content,
+                                                    std::string* signature,
+                                                    std::string* func_name) {
+  std::string line;
+  std::string::size_type end_position = content.find('\n');
+  if (end_position == std::string::npos) {
+    LOG(ERROR) << "unexpected ath10k crash format";
+    return false;
+  }
+
+  line = content.substr(0, end_position);
+  if (RE2::PartialMatch(line, *ath10k_sig_re, signature)) {
+    *func_name = "firmware crashed";
+    return true;
+  }
+  LOG(INFO) << line << " does not match regex";
+  signature->clear();
+  func_name->clear();
+  return false;
+}
+
 bool KernelWarningCollector::Collect(WarningType type) {
   LOG(INFO) << "Processing kernel warning";
 
@@ -268,6 +298,8 @@ bool KernelWarningCollector::Collect(WarningType type) {
     exec_name = kSuspendWarningExecName;
   else if (type == kGeneric)
     exec_name = kGenericWarningExecName;
+  else if (type == kAth10k)
+    exec_name = kKernelAth10kErrorExecName;
   else
     exec_name = kKernelIwlwifiErrorExecName;
 

@@ -27,6 +27,9 @@ class KernelWarningCollector : public CrashCollector {
     // Iwlwifi is the name of Intel WiFi driver that we want to collect its
     // error dumps.
     kIwlwifi,
+    // Ath10k is the name of Qualcomm WiFi driver that we want to collect its
+    // error dumps.
+    kAth10k,
   };
 
   KernelWarningCollector();
@@ -59,6 +62,9 @@ class KernelWarningCollector : public CrashCollector {
   bool ExtractSMMUFaultSignature(const std::string& content,
                                  std::string* signature,
                                  std::string* func_name);
+  bool ExtractAth10kSignature(const std::string& content,
+                              std::string* signature,
+                              std::string* func_name);
 };
 
 #endif  // CRASH_REPORTER_KERNEL_WARNING_COLLECTOR_H_

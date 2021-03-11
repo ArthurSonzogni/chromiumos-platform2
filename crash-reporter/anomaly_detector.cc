@@ -184,6 +184,10 @@ std::string DetermineFlag(const std::string& info) {
   return "--kernel_warning";
 }
 
+constexpr LazyRE2 start_ath10k_dump = {R"(ath10k_.*firmware crashed!)"};
+constexpr LazyRE2 end_ath10k_dump = {R"(ath10k_.*htt-ver)"};
+constexpr LazyRE2 tag_ath10k_dump = {R"(ath10k_)"};
+
 // Older wifi chips have lmac dump only and newer wifi chips have lmac followed
 // by umac dumps. The KernelParser should parse the dumps accordingly.
 // The following regexp identify the beginning of the iwlwifi dump.
@@ -249,6 +253,29 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       return CrashReport(std::move(text_tmp), {std::move(flag_)});
     }
     text_ += line + "\n";
+  }
+
+  if (ath10k_last_line_ == Ath10kLineType::None) {
+    if (RE2::PartialMatch(line, *start_ath10k_dump)) {
+      ath10k_last_line_ = Ath10kLineType::Start;
+      ath10k_text_ += line + "\n";
+    }
+  } else if (ath10k_last_line_ == Ath10kLineType::Start) {
+    // Return if the end_ath10k_dump is reached or the log tag doesn't match
+    // tag_ath10k_dump.
+    if (RE2::PartialMatch(line, *end_ath10k_dump) ||
+        !RE2::PartialMatch(line, *tag_ath10k_dump)) {
+      ath10k_last_line_ = Ath10kLineType::None;
+      if (RE2::PartialMatch(line, *end_ath10k_dump)) {
+        ath10k_text_ += line + "\n";
+      }
+      std::string ath10k_text_tmp;
+      ath10k_text_tmp.swap(ath10k_text_);
+      return CrashReport(std::move(ath10k_text_tmp),
+                         {std::move("--kernel_ath10k_error")});
+    }
+
+    ath10k_text_ += line + "\n";
   }
 
   if (iwlwifi_last_line_ == IwlwifiLineType::None) {

@@ -104,9 +104,18 @@ class KernelParser : public Parser {
     Start,
     Lmac,
   };
+  enum class Ath10kLineType {
+    // The following enum values are used to parse the Ath10k error. The None
+    // value means that there is no error detected in the log. The Start value
+    // means that the first line of the dump was found.
+    None,
+    Start,
+  };
   LineType last_line_ = LineType::None;
   IwlwifiLineType iwlwifi_last_line_ = IwlwifiLineType::None;
   std::string iwlwifi_text_;
+  Ath10kLineType ath10k_last_line_ = Ath10kLineType::None;
+  std::string ath10k_text_;
   std::string text_;
   std::string flag_;
 

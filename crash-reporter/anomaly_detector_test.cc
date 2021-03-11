@@ -36,6 +36,89 @@ const ParserRun empty{.expected_size = 0};
 
 }  // namespace
 
+TEST(AnomalyDetectorTest, KernelAth10kSNOCError) {
+  ParserRun wifi_error = {
+      .expected_text =
+          "[393652.069986] ath10k_snoc 18800000.wifi: "
+          "firmware crashed! (guid 7c8da1e6-f8fe-4665-8257-5a476a7bc786)\n"
+          "[393652.070050] ath10k_snoc 18800000.wifi: "
+          "wcn3990 hw1.0 target 0x00000008 chip_id 0x00000000 sub 0000:0000\n"
+          "[393652.070086] ath10k_snoc 18800000.wifi: "
+          "kconfig debug 1 debugfs 1 tracing 0 dfs 0 testmode 1\n"
+          "[393652.070124] ath10k_snoc 18800000.wifi: "
+          "firmware ver 1.0.0.922 api 5 features "
+          "wowlan,mfp,mgmt-tx-by-reference"
+          ",non-bmi,single-chan-info-per-channel crc32 3f19f7c1\n"
+          "[393652.070158] ath10k_snoc 18800000.wifi: "
+          "board_file api 2 bmi_id N/A crc32 00000000\n"
+          "[393652.070195] ath10k_snoc 18800000.wifi: "
+          "htt-ver 3.86 wmi-op 4 htt-op 3 cal file max-sta 32 raw 0 hwcrypto "
+          "1\n",
+      .expected_flags = {{"--kernel_ath10k_error"}}};
+  ParserTest<KernelParser>("TEST_ATH10K_SNOC", {wifi_error});
+}
+
+TEST(AnomalyDetectorTest, KernelAth10kSDIOError) {
+  ParserRun wifi_error = {
+      .expected_text =
+          "[10108611.994407] ath10k_sdio mmc1:0001:1: "
+          "firmware crashed! (guid bfc44e6c-4cef-425b-b9ca-5530c650d0a3)\n"
+          "[10108611.994442] ath10k_sdio mmc1:0001:1: "
+          "qca6174 hw3.2 sdio target 0x05030000 chip_id 0x00000000 sub "
+          "0000:0000\n"
+          "[10108611.994457] ath10k_sdio mmc1:0001:1: "
+          "kconfig debug 1 debugfs 1 tracing 1 dfs 0 testmode 1\n"
+          "[10108611.996680] ath10k_sdio mmc1:0001:1: "
+          "firmware ver WLAN.RMH.4.4.1-00077 api 6 features wowlan,ignore-otp "
+          "crc32 a48b7c2f\n"
+          "[10108611.999858] ath10k_sdio mmc1:0001:1: "
+          "board_file api 2 bmi_id 0:4 crc32 fe1026b8\n"
+          "[10108611.999887] ath10k_sdio mmc1:0001:1: "
+          "htt-ver 3.86 wmi-op 4 htt-op 3 cal otp max-sta 32 raw 0 hwcrypto "
+          "1\n",
+      .expected_flags = {{"--kernel_ath10k_error"}}};
+  ParserTest<KernelParser>("TEST_ATH10K_SDIO", {wifi_error});
+}
+
+TEST(AnomalyDetectorTest, KernelAth10kPCIError) {
+  ParserRun wifi_error = {
+      .expected_text =
+          "[ 1582.994118] ath10k_pci 0000:01:00.0: "
+          "firmware crashed! (guid cad1f078-23d2-4cfe-a58a-1e9d353acb7e)\n"
+          "[ 1582.994133] ath10k_pci 0000:01:00.0: "
+          "qca6174 hw3.2 target 0x05030000 chip_id 0x00340aff sub 17aa:0827\n"
+          "[ 1582.994141] ath10k_pci 0000:01:00.0: "
+          "kconfig debug 1 debugfs 1 tracing 1 dfs 0 testmode 1\n"
+          "[ 1582.995552] ath10k_pci 0000:01:00.0: "
+          "firmware ver WLAN.RM.4.4.1-00157-QCARMSWPZ-1 api 6 features "
+          "wowlan,ignore-otp,mfp crc32 90eebefb\n"
+          "[ 1582.996924] ath10k_pci 0000:01:00.0: "
+          "board_file api 2 bmi_id N/A crc32 bebf3597\n"
+          "[ 1582.996936] ath10k_pci 0000:01:00.0: "
+          "htt-ver 3.60 wmi-op 4 htt-op 3 cal otp max-sta 32 raw 0 hwcrypto "
+          "1\n",
+      .expected_flags = {{"--kernel_ath10k_error"}}};
+  ParserTest<KernelParser>("TEST_ATH10K_PCI", {wifi_error});
+}
+
+TEST(AnomalyDetectorTest, KernelAth10kErrorNoEnd) {
+  ParserRun wifi_error = {
+      .expected_text =
+          "[393652.069986] ath10k_snoc 18800000.wifi: firmware crashed! "
+          "(guid 7c8da1e6-f8fe-4665-8257-5a476a7bc786)\n"
+          "[393652.070050] ath10k_snoc 18800000.wifi: wcn3990 hw1.0 target "
+          "0x00000008 chip_id 0x00000000 sub 0000:0000\n"
+          "[393652.070086] ath10k_snoc 18800000.wifi: kconfig debug 1 debugfs "
+          "1 tracing 0 dfs 0 testmode 1\n"
+          "[393652.070124] ath10k_snoc 18800000.wifi: firmware ver 1.0.0.922 "
+          "api 5 features wowlan,mfp,mgmt-tx-by-reference,non-bmi,single-chan"
+          "-info-per-channel crc32 3f19f7c1\n"
+          "[393652.070158] ath10k_snoc 18800000.wifi: board_file api 2 bmi_id"
+          " N/A crc32 00000000\n",
+      .expected_flags = {{"--kernel_ath10k_error"}}};
+  ParserTest<KernelParser>("TEST_ATH10K_NO_END", {wifi_error});
+}
+
 TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmacUmac) {
   ParserRun wifi_error = {
       .expected_text =

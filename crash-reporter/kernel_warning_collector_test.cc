@@ -161,6 +161,30 @@ TEST_F(KernelWarningCollectorTest, CollectWifiWarningOK) {
       test_crash_directory_, "kernel_wifi_warning_iwl_mvm_rm_sta.*.meta"));
 }
 
+TEST_F(KernelWarningCollectorTest, CollectAth10k) {
+  // Collector produces a crash report.
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "[393652.069986] ath10k_snoc 18800000.wifi: "
+      "firmware crashed! (guid 7c8da1e6-f8fe-4665-8257-5a476a7bc786)\n"
+      "[393652.070050] ath10k_snoc 18800000.wifi: "
+      "wcn3990 hw1.0 target 0x00000008 chip_id 0x00000000 sub 0000:0000\n"
+      "[393652.070086] ath10k_snoc 18800000.wifi: "
+      "kconfig debug 1 debugfs 1 tracing 0 dfs 0 testmode 1\n"
+      "[393652.070124] ath10k_snoc 18800000.wifi: "
+      "firmware ver 1.0.0.922 api 5 features wowlan,mfp,mgmt-tx-"
+      "by-reference,non-bmi,single-chan-info-per-channel crc32 3f19f7c1\n"
+      "[393652.070158] ath10k_snoc 18800000.wifi: "
+      "board_file api 2 bmi_id N/A crc32 00000000\n"
+      "[393652.070195] ath10k_snoc 18800000.wifi: "
+      "htt-ver 3.86 wmi-op 4 htt-op 3 cal file max-sta 32 raw 0 hwcrypto 1\n"
+      "<remaining log contents>"));
+  EXPECT_TRUE(collector_.Collect(KernelWarningCollector::WarningType::kAth10k));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_ath10k_error_firmware_crashed.*.meta",
+      "sig=ath10k_snoc 18800000.wifi: firmware crashed"));
+}
+
 TEST_F(KernelWarningCollectorTest, CollectUMACOK) {
   // Collector produces a crash report.
   ASSERT_TRUE(test_util::CreateFile(

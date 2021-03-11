@@ -263,6 +263,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
   DEFINE_bool(kernel_iwlwifi_error, false,
               "Report collected kernel iwlwifi error");
+  DEFINE_bool(kernel_ath10k_error, false,
+              "Report collected kernel ath10k error");
   DEFINE_bool(kernel_wifi_warning, false,
               "Report collected kernel wifi warning");
   DEFINE_bool(kernel_smmu_fault, false, "Report collected kernel smmu faults");
@@ -656,6 +658,12 @@ int main(int argc, char* argv[]) {
                        .cb = base::BindRepeating(
                            kernel_warn_cb,
                            KernelWarningCollector::WarningType::kIwlwifi),
+                   },
+                   {
+                       .should_handle = FLAGS_kernel_ath10k_error,
+                       .cb = base::BindRepeating(
+                           kernel_warn_cb,
+                           KernelWarningCollector::WarningType::kAth10k),
                    }},
   });
 
