@@ -3065,6 +3065,8 @@ bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
   }
 
   props_.dns_proxy_doh_providers = providers;
+  adaptor_->EmitKeyValueStoreChanged(kDNSProxyDOHProvidersProperty,
+                                     props_.dns_proxy_doh_providers);
   return true;
 }
 
