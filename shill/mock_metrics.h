@@ -125,7 +125,7 @@ class MockMetrics : public Metrics {
               (override));
   MOCK_METHOD(void,
               NotifyPortalDetectionMultiProbeResult,
-              (const PortalDetector::Result&, const PortalDetector::Result&),
+              (const PortalDetector::Result&),
               (override));
 };
 

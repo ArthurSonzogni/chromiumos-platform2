@@ -681,8 +681,7 @@ class Device : public base::RefCounted<Device> {
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.
-  void PortalDetectorCallback(const PortalDetector::Result& http_result,
-                              const PortalDetector::Result& https_result);
+  void PortalDetectorCallback(const PortalDetector::Result& result);
 
   // Initiate portal detection, if enabled for this device type.
   bool StartPortalDetection();
@@ -693,8 +692,7 @@ class Device : public base::RefCounted<Device> {
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
   mockable bool StartConnectionDiagnosticsAfterPortalDetection(
-      const PortalDetector::Result& http_result,
-      const PortalDetector::Result& https_result);
+      const PortalDetector::Result& result);
 
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();
@@ -708,8 +706,7 @@ class Device : public base::RefCounted<Device> {
       const std::vector<ConnectionDiagnostics::Event>& diagnostic_events);
 
   // Called by the ConnectionTester whenever a connectivity test completes.
-  void ConnectionTesterCallback(const PortalDetector::Result& http_result,
-                                const PortalDetector::Result& https_result);
+  void ConnectionTesterCallback(const PortalDetector::Result& result);
 
   // Returns true if traffic monitor is enabled on this device. The default
   // implementation will return false, which can be overridden by a derived

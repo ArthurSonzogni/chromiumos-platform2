@@ -632,10 +632,12 @@ class ConnectionDiagnosticsTest : public Test {
       // Either of these cases warrant further diagnostic actions.
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
     }
-    connection_diagnostics_.StartAfterPortalDetectionInternal(
-        PortalDetector::Result(trial_phase, trial_status),
-        PortalDetector::Result(PortalDetector::Phase::kContent,
-                               PortalDetector::Status::kSuccess));
+    PortalDetector::Result result;
+    result.http_phase = trial_phase;
+    result.http_status = trial_status;
+    result.https_phase = PortalDetector::Phase::kContent;
+    result.https_status = PortalDetector::Status::kSuccess;
+    connection_diagnostics_.StartAfterPortalDetectionInternal(result);
   }
 
   // |expected_issue| only used if |is_success| is false.

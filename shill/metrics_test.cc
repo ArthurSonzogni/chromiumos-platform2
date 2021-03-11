@@ -358,54 +358,55 @@ TEST_F(MetricsTest, Disconnect) {
 }
 
 TEST_F(MetricsTest, PortalDetectionResultToEnum) {
-  PortalDetector::Result result(PortalDetector::Phase::kDNS,
-                                PortalDetector::Status::kFailure, 0);
+  PortalDetector::Result result;
 
+  result.http_phase = PortalDetector::Phase::kDNS;
+  result.http_status = PortalDetector::Status::kFailure;
   EXPECT_EQ(Metrics::kPortalResultDNSFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kDNS;
-  result.status = PortalDetector::Status::kTimeout;
+  result.http_phase = PortalDetector::Phase::kDNS;
+  result.http_status = PortalDetector::Status::kTimeout;
   EXPECT_EQ(Metrics::kPortalResultDNSTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kConnection;
-  result.status = PortalDetector::Status::kFailure;
+  result.http_phase = PortalDetector::Phase::kConnection;
+  result.http_status = PortalDetector::Status::kFailure;
   EXPECT_EQ(Metrics::kPortalResultConnectionFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kConnection;
-  result.status = PortalDetector::Status::kTimeout;
+  result.http_phase = PortalDetector::Phase::kConnection;
+  result.http_status = PortalDetector::Status::kTimeout;
   EXPECT_EQ(Metrics::kPortalResultConnectionTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kHTTP;
-  result.status = PortalDetector::Status::kFailure;
+  result.http_phase = PortalDetector::Phase::kHTTP;
+  result.http_status = PortalDetector::Status::kFailure;
   EXPECT_EQ(Metrics::kPortalResultHTTPFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kHTTP;
-  result.status = PortalDetector::Status::kTimeout;
+  result.http_phase = PortalDetector::Phase::kHTTP;
+  result.http_status = PortalDetector::Status::kTimeout;
   EXPECT_EQ(Metrics::kPortalResultHTTPTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kContent;
-  result.status = PortalDetector::Status::kSuccess;
+  result.http_phase = PortalDetector::Phase::kContent;
+  result.http_status = PortalDetector::Status::kSuccess;
   EXPECT_EQ(Metrics::kPortalResultSuccess,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kContent;
-  result.status = PortalDetector::Status::kFailure;
+  result.http_phase = PortalDetector::Phase::kContent;
+  result.http_status = PortalDetector::Status::kFailure;
   EXPECT_EQ(Metrics::kPortalResultContentFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kContent;
-  result.status = PortalDetector::Status::kTimeout;
+  result.http_phase = PortalDetector::Phase::kContent;
+  result.http_status = PortalDetector::Status::kTimeout;
   EXPECT_EQ(Metrics::kPortalResultContentTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::Phase::kUnknown;
-  result.status = PortalDetector::Status::kFailure;
+  result.http_phase = PortalDetector::Phase::kUnknown;
+  result.http_status = PortalDetector::Status::kFailure;
   EXPECT_EQ(Metrics::kPortalResultUnknown,
             Metrics::PortalDetectionResultToEnum(result));
 }
@@ -1031,75 +1032,76 @@ TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
 }
 
 TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
-  PortalDetector::Result http_result(PortalDetector::Phase::kContent,
-                                     PortalDetector::Status::kSuccess);
-  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
-                                      PortalDetector::Status::kSuccess);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kSuccess;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kSuccess;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
           Metrics::kMetricPortalDetectionMultiProbeResult,
           Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
-  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  metrics_.NotifyPortalDetectionMultiProbeResult(result);
 
-  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
-                                       PortalDetector::Status::kRedirect);
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
           Metrics::kMetricPortalDetectionMultiProbeResult,
           Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPRedirected,
           Metrics::kPortalDetectionMultiProbeResultMax));
-  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  metrics_.NotifyPortalDetectionMultiProbeResult(result);
 
-  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
-                                       PortalDetector::Status::kFailure);
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kFailure;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
           Metrics::kMetricPortalDetectionMultiProbeResult,
           Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
-  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  metrics_.NotifyPortalDetectionMultiProbeResult(result);
 
-  https_result = PortalDetector::Result(PortalDetector::Phase::kContent,
-                                        PortalDetector::Status::kFailure);
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kFailure;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
           Metrics::kMetricPortalDetectionMultiProbeResult,
           Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
-  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  metrics_.NotifyPortalDetectionMultiProbeResult(result);
 
-  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
-                                       PortalDetector::Status::kRedirect);
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
           Metrics::kMetricPortalDetectionMultiProbeResult,
           Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPRedirected,
           Metrics::kPortalDetectionMultiProbeResultMax));
-  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  metrics_.NotifyPortalDetectionMultiProbeResult(result);
 
-  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
-                                       PortalDetector::Status::kSuccess);
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kSuccess;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
           Metrics::kMetricPortalDetectionMultiProbeResult,
           Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPUnblocked,
           Metrics::kPortalDetectionMultiProbeResultMax));
-  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  metrics_.NotifyPortalDetectionMultiProbeResult(result);
 
-  https_result = PortalDetector::Result(PortalDetector::Phase::kContent,
-                                        PortalDetector::Status::kRedirect);
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kRedirect;
   EXPECT_CALL(library_,
               SendEnumToUMA(Metrics::kMetricPortalDetectionMultiProbeResult,
                             Metrics::kPortalDetectionMultiProbeResultUndefined,
                             Metrics::kPortalDetectionMultiProbeResultMax));
-  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+  metrics_.NotifyPortalDetectionMultiProbeResult(result);
 }
 
 TEST_F(MetricsTest, NotifyAp80211kSupport) {
@@ -1332,22 +1334,25 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
 using MetricsDeathTest = MetricsTest;
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumDNSSuccess) {
-  PortalDetector::Result result(PortalDetector::Phase::kDNS,
-                                PortalDetector::Status::kSuccess, 0);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kDNS;
+  result.http_status = PortalDetector::Status::kSuccess;
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the DNS phase");
 }
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumConnectionSuccess) {
-  PortalDetector::Result result(PortalDetector::Phase::kConnection,
-                                PortalDetector::Status::kSuccess, 0);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kConnection;
+  result.http_status = PortalDetector::Status::kSuccess;
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the Connection phase");
 }
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumHTTPSuccess) {
-  PortalDetector::Result result(PortalDetector::Phase::kHTTP,
-                                PortalDetector::Status::kSuccess, 0);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kHTTP;
+  result.http_status = PortalDetector::Status::kSuccess;
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the HTTP phase");
 }

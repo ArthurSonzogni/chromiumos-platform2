@@ -184,9 +184,7 @@ bool ConnectionDiagnostics::Start(const PortalDetector::Properties& props) {
 }
 
 bool ConnectionDiagnostics::StartAfterPortalDetection(
-    const string& url_string,
-    const PortalDetector::Result& http_result,
-    const PortalDetector::Result& https_result) {
+    const string& url_string, const PortalDetector::Result& result) {
   SLOG(this, 3) << __func__ << "(" << url_string << ")";
 
   if (running()) {
@@ -203,9 +201,8 @@ bool ConnectionDiagnostics::StartAfterPortalDetection(
 
   running_ = true;
   dispatcher_->PostTask(
-      FROM_HERE,
-      Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
-           weak_ptr_factory_.GetWeakPtr(), http_result, https_result));
+      FROM_HERE, Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
+                      weak_ptr_factory_.GetWeakPtr(), result));
   return true;
 }
 
@@ -268,20 +265,19 @@ void ConnectionDiagnostics::ReportResultAndStop(const string& issue) {
 }
 
 void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
-    const PortalDetector::Result& http_result,
-    const PortalDetector::Result& https_result) {
+    const PortalDetector::Result& result) {
   SLOG(this, 3) << __func__;
 
   Result result_type;
-  if (http_result.status == PortalDetector::Status::kSuccess) {
+  if (result.http_status == PortalDetector::Status::kSuccess) {
     result_type = kResultSuccess;
-  } else if (http_result.status == PortalDetector::Status::kTimeout) {
+  } else if (result.http_status == PortalDetector::Status::kTimeout) {
     result_type = kResultTimeout;
   } else {
     result_type = kResultFailure;
   }
 
-  switch (http_result.phase) {
+  switch (result.http_phase) {
     case PortalDetector::Phase::kContent: {
       AddEvent(kTypePortalDetection, kPhasePortalDetectionEndContent,
                result_type);
@@ -292,12 +288,12 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
     }
     case PortalDetector::Phase::kDNS: {
       AddEvent(kTypePortalDetection, kPhasePortalDetectionEndDNS, result_type);
-      if (http_result.status == PortalDetector::Status::kSuccess) {
+      if (result.http_status == PortalDetector::Status::kSuccess) {
         LOG(ERROR) << __func__
                    << ": portal detection should not end with "
                       "success status in DNS phase";
         ReportResultAndStop(kIssueInternalError);
-      } else if (http_result.status == PortalDetector::Status::kTimeout) {
+      } else if (result.http_status == PortalDetector::Status::kTimeout) {
         // DNS timeout occurred in portal detection. Ping DNS servers to make
         // sure they are reachable.
         dispatcher_->PostTask(FROM_HERE,
@@ -314,7 +310,7 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
     default: {
       AddEvent(kTypePortalDetection, kPhasePortalDetectionEndOther,
                result_type);
-      if (http_result.status == PortalDetector::Status::kSuccess) {
+      if (result.http_status == PortalDetector::Status::kSuccess) {
         LOG(ERROR) << __func__
                    << ": portal detection should not end with success status in"
                       " Connection/HTTP/Unknown phase";

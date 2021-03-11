@@ -667,52 +667,52 @@ Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
   // The only time we should end a successful portal detection is when we're
   // in the Content phase.  If we end with kStatusSuccess in any other phase,
   // then this indicates that something bad has happened.
-  switch (portal_result.phase) {
+  switch (portal_result.http_phase) {
     case PortalDetector::Phase::kDNS:
-      if (portal_result.status == PortalDetector::Status::kFailure)
+      if (portal_result.http_status == PortalDetector::Status::kFailure)
         retval = kPortalResultDNSFailure;
-      else if (portal_result.status == PortalDetector::Status::kTimeout)
+      else if (portal_result.http_status == PortalDetector::Status::kTimeout)
         retval = kPortalResultDNSTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status "
-                    << static_cast<int>(portal_result.status)
+                    << static_cast<int>(portal_result.http_status)
                     << " is not allowed in the DNS phase";
       break;
 
     case PortalDetector::Phase::kConnection:
-      if (portal_result.status == PortalDetector::Status::kFailure)
+      if (portal_result.http_status == PortalDetector::Status::kFailure)
         retval = kPortalResultConnectionFailure;
-      else if (portal_result.status == PortalDetector::Status::kTimeout)
+      else if (portal_result.http_status == PortalDetector::Status::kTimeout)
         retval = kPortalResultConnectionTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status "
-                    << static_cast<int>(portal_result.status)
+                    << static_cast<int>(portal_result.http_status)
                     << " is not allowed in the Connection phase";
       break;
 
     case PortalDetector::Phase::kHTTP:
-      if (portal_result.status == PortalDetector::Status::kFailure)
+      if (portal_result.http_status == PortalDetector::Status::kFailure)
         retval = kPortalResultHTTPFailure;
-      else if (portal_result.status == PortalDetector::Status::kTimeout)
+      else if (portal_result.http_status == PortalDetector::Status::kTimeout)
         retval = kPortalResultHTTPTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status "
-                    << static_cast<int>(portal_result.status)
+                    << static_cast<int>(portal_result.http_status)
                     << " is not allowed in the HTTP phase";
       break;
 
     case PortalDetector::Phase::kContent:
-      if (portal_result.status == PortalDetector::Status::kSuccess)
+      if (portal_result.http_status == PortalDetector::Status::kSuccess)
         retval = kPortalResultSuccess;
-      else if (portal_result.status == PortalDetector::Status::kFailure)
+      else if (portal_result.http_status == PortalDetector::Status::kFailure)
         retval = kPortalResultContentFailure;
-      else if (portal_result.status == PortalDetector::Status::kRedirect)
+      else if (portal_result.http_status == PortalDetector::Status::kRedirect)
         retval = kPortalResultContentRedirect;
-      else if (portal_result.status == PortalDetector::Status::kTimeout)
+      else if (portal_result.http_status == PortalDetector::Status::kTimeout)
         retval = kPortalResultContentTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status "
-                    << static_cast<int>(portal_result.status)
+                    << static_cast<int>(portal_result.http_status)
                     << " is not allowed in the Content phase";
       break;
 
@@ -722,7 +722,7 @@ Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
 
     default:
       LOG(DFATAL) << __func__ << ": Invalid phase "
-                  << static_cast<int>(portal_result.phase);
+                  << static_cast<int>(portal_result.http_phase);
       break;
   }
 
@@ -1923,26 +1923,25 @@ void Metrics::NotifyConnectionDiagnosticsIssue(const string& issue) {
 }
 
 void Metrics::NotifyPortalDetectionMultiProbeResult(
-    const PortalDetector::Result& http_result,
-    const PortalDetector::Result& https_result) {
+    const PortalDetector::Result& result) {
   // kTimeout is implicitly treated as a failure
   // kRedirect on HTTPS is unexpected and ignored
   PortalDetectionMultiProbeResult result_enum;
-  if (https_result.status == PortalDetector::Status::kRedirect) {
+  if (result.https_status == PortalDetector::Status::kRedirect) {
     result_enum = kPortalDetectionMultiProbeResultUndefined;
-  } else if (https_result.status != PortalDetector::Status::kSuccess &&
-             http_result.status == PortalDetector::Status::kSuccess) {
+  } else if (result.https_status != PortalDetector::Status::kSuccess &&
+             result.http_status == PortalDetector::Status::kSuccess) {
     result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPUnblocked;
-  } else if (https_result.status != PortalDetector::Status::kSuccess &&
-             http_result.status == PortalDetector::Status::kRedirect) {
+  } else if (result.https_status != PortalDetector::Status::kSuccess &&
+             result.http_status == PortalDetector::Status::kRedirect) {
     result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPRedirected;
-  } else if (https_result.status != PortalDetector::Status::kSuccess) {
+  } else if (result.https_status != PortalDetector::Status::kSuccess) {
     result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked;
-  } else if (https_result.status == PortalDetector::Status::kSuccess &&
-             http_result.status == PortalDetector::Status::kSuccess) {
+  } else if (result.https_status == PortalDetector::Status::kSuccess &&
+             result.http_status == PortalDetector::Status::kSuccess) {
     result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked;
-  } else if (https_result.status == PortalDetector::Status::kSuccess &&
-             http_result.status == PortalDetector::Status::kRedirect) {
+  } else if (result.https_status == PortalDetector::Status::kSuccess &&
+             result.http_status == PortalDetector::Status::kRedirect) {
     result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPRedirected;
   } else {
     result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked;

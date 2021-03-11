@@ -83,27 +83,34 @@ class PortalDetector {
     std::vector<std::string> fallback_http_url_strings;
   };
 
+  // Represents the result of a complete portal detection attempt (DNS
+  // resolution, HTTP probe, HTTPS probe).
   struct Result {
-    Result() {}
-    Result(Phase phase, Status status) : phase(phase), status(status) {}
-    Result(Phase phase, Status status, int num_attempts)
-        : phase(phase), status(status), num_attempts(num_attempts) {}
-
-    Phase phase = Phase::kUnknown;
-    Status status = Status::kFailure;
-
-    // Total number of connectivity trials attempted.
-    // This includes failure, timeout and successful attempts.
-    int num_attempts = 0;
-
+    // Final Phase of the HTTP probe when the trial finished.
+    Phase http_phase = Phase::kUnknown;
+    // Final Status of the HTTP probe when the trial finished.
+    Status http_status = Status::kFailure;
+    // Final Phase of the HTTPS probe when the trial finished.
+    Phase https_phase = Phase::kUnknown;
+    // Final Status of the HTTPS probe when the trial finished.
+    Status https_status = Status::kFailure;
+    // The HTTP response status code from the http probe.
+    int http_status_code = 0;
+    // The HTTP response status code from the http probe.
+    int https_status_code = 0;
+    // The total number of trial attempts so far.
+    int num_attempts;
     // Non-empty redirect URL if status is kRedirect.
     std::string redirect_url_string;
-
     // Probe URL used to reach redirect URL if status is kRedirect.
     std::string probe_url_string;
 
-    // The HTTP response status code from the http probe.
-    int status_code = 0;
+    // Boolean used for tracking the completion state of both http and https
+    // probes.
+    bool http_probe_completed = false;
+    bool https_probe_completed = false;
+
+    bool IsComplete() const;
   };
 
   static const char kDefaultHttpUrl[];
@@ -113,13 +120,10 @@ class PortalDetector {
   static const int kMaxPortalCheckIntervalSeconds;
   static const char kDefaultCheckPortalList[];
 
-  PortalDetector(
-      ConnectionRefPtr connection,
-      EventDispatcher* dispatcher,
-      Metrics* metrics,
-      const base::Callback<void(const PortalDetector::Result& http_result,
-                                const PortalDetector::Result& https_result)>&
-          callback);
+  PortalDetector(ConnectionRefPtr connection,
+                 EventDispatcher* dispatcher,
+                 Metrics* metrics,
+                 base::Callback<void(const Result&)> callback);
   PortalDetector(const PortalDetector&) = delete;
   PortalDetector& operator=(const PortalDetector&) = delete;
 
@@ -134,13 +138,15 @@ class PortalDetector {
   // status string. This method supports success, timeout and failure.
   static const std::string StatusToString(Status status);
 
-  // Static method mapping from HttpRequest responses to ConntectivityTrial
-  // phases for portal detection. For example, if the HttpRequest result is
-  // HttpRequest::kResultDNSFailure, this method returns a
-  // PortalDetector::Result with the phase set to
-  // Phase::kDNS and the status set to
-  // Status::kFailure.
-  static Result GetPortalResultForRequestResult(HttpRequest::Result result);
+  // Static method mapping from HttpRequest responses to PortalDetection
+  // Phases. For example, if the HttpRequest result is kResultDNSFailure,
+  // this method returns Phase::kDNS.
+  static Phase GetPortalPhaseForRequestResult(HttpRequest::Result result);
+
+  // Static method mapping from HttpRequest responses to PortalDetection
+  // Status. For example, if the HttpRequest result is kResultDNSFailure,
+  // this method returns Status::kFailure.
+  static Status GetPortalStatusForRequestResult(HttpRequest::Result result);
 
   // Start a portal detection test.  Returns true if |props.http_url_string| and
   // |props.https_url_string| correctly parse as URLs.  Returns false (and does
@@ -204,9 +210,9 @@ class PortalDetector {
   // Callback used to return the error from the HTTPS HttpRequest.
   void HttpsRequestErrorCallback(HttpRequest::Result result);
 
-  // Called after each trial to return |http_result| and |https_result| after
-  // attempting to determine connectivity status.
-  void CompleteTrial(Result http_result, Result https_result);
+  // Called after each trial to return |result| after attempting to determine
+  // connectivity status.
+  void CompleteTrial(Result result);
 
   // Internal method used to cancel the timeout timer and stop an active
   // HttpRequest.
@@ -225,12 +231,11 @@ class PortalDetector {
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
-  base::Callback<void(const Result&, const Result&)> portal_result_callback_;
+  base::Callback<void(const Result&)> portal_result_callback_;
   Time* time_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
-  std::unique_ptr<Result> http_result_;
-  std::unique_ptr<Result> https_result_;
+  std::unique_ptr<Result> result_;
 
   std::string http_url_string_;
   std::string https_url_string_;

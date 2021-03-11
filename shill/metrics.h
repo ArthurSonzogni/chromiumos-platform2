@@ -1300,8 +1300,7 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object that a portal detection trial has finished with probe
   // results from both the HTTP probe and the HTTPS probe.
   virtual void NotifyPortalDetectionMultiProbeResult(
-      const PortalDetector::Result& http_result,
-      const PortalDetector::Result& https_result);
+      const PortalDetector::Result& result);
 
   // Notifies this object that of the HS20 support of an access that has
   // been connected to.
