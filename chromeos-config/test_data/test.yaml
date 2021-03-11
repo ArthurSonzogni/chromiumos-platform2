@@ -82,6 +82,8 @@ some_base_config: &some_base_config
     suspend-to-idle: "0"
     touchpad-wakeup: "1"
   ui: &ui_common
+    apps:
+      extra-web-apps-dir: "{{$name}}"
     power-button:
       edge: "left"
       position: "0.3"

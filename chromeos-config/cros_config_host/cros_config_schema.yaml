@@ -817,6 +817,16 @@ properties:
                   description: Identifier passed to the Showoff app to identify
                     any device-specific help content to be displayed.
                   type: string
+                apps:
+                  type: object
+                  properties:
+                    extra-web-apps-dir:
+                      type: string
+                      build-only-element: true
+                      description: Subdirectory of external web apps directory
+                        (/usr/share/google-chrome/extensions/web_apps) containing
+                        additional apps which should be installed on the device.
+                      additionalProperties: false
               additionalProperties: false
             auto-night-light:
               description: Whether the auto-night-light feature is enabled on the device, which

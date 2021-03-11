@@ -759,10 +759,16 @@ In the tables below,
 ### ui
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| apps | [apps](#apps) |  | False |  | False |  |
 | extra-ash-flags | array - string |  | False |  | True | Flags passed to the Ash window manager and system UI. Each entry should be a string of the form --<key>=<value>, or --<key> for boolean flags. If this property is not set, flags will be determined by other cros_config properties. Serialized to a null byte separated string when written to configfs.img |
 | help-content-id | string |  | False |  | False | Identifier passed to the Showoff app to identify any device-specific help content to be displayed. |
 | power-button | [power-button](#power_button) |  | False |  | False |  |
 | side-volume-button | [side-volume-button](#side_volume_button) |  | False |  | False | Defines the position of the side volume button. `region` indicates whether the button is at the side of the "screen" or "keyboard" of the device. `side` indicates which edge the button is anchored to while the device in landscape primary screen orientation. It can be "left", "right", "top", "bottom". |
+
+### apps
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| extra-web-apps-dir | string |  | False |  | True | Subdirectory of external web apps directory (/usr/share/google-chrome/extensions/web_apps) containing additional apps which should be installed on the device. |
 
 ### power-button
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

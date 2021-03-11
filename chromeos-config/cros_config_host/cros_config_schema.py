@@ -386,12 +386,17 @@ def _GenerateInferredAshFlags(device_config):
   Returns:
     Config for a single device with /ui:serialized-ash-flags added.
   """
+  ui_config = device_config.get('ui', {})
   ash_flags = set()
-  ash_flags |= set(device_config.get('ui', {}).get('extra-ash-flags', []))
+  ash_flags |= set(ui_config.get('extra-ash-flags', []))
 
-  help_content_id = device_config.get('ui', {}).get('help-content-id')
+  help_content_id = ui_config.get('help-content-id')
   if help_content_id:
     ash_flags.add('--device-help-content-id=%s' % help_content_id)
+
+  extra_web_apps_dir = ui_config.get('apps', {}).get('extra-web-apps-dir')
+  if extra_web_apps_dir:
+    ash_flags.add('--extra-web-apps-dir=%s' % extra_web_apps_dir)
 
   if not ash_flags:
     return device_config
