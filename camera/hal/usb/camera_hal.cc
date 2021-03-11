@@ -34,6 +34,9 @@ namespace cros {
 
 namespace {
 
+// https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics#SENSOR_INFO_EXPOSURE_TIME_RANGE
+constexpr int64_t kMaxMinExposureTime = 100000;  // 100us
+
 bool FillMetadata(const DeviceInfo& device_info,
                   android::CameraMetadata* static_metadata,
                   android::CameraMetadata* request_metadata) {
@@ -70,6 +73,40 @@ bool FillMetadata(const DeviceInfo& device_info,
   return true;
 }
 
+void AdjustMetadataForAE(android::CameraMetadata* data) {
+  camera_metadata_entry_t entry =
+      data->find(ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE);
+  if (entry.count == 0) {
+    return;
+  }
+
+  if (entry.data.i64[0] <= kMaxMinExposureTime)
+    return;
+
+  LOGF(INFO) << "Remove AE related metadata";
+
+  if (data->erase(ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE) != 0)
+    LOGF(WARNING) << "Fail to delete ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE";
+
+  data->update(ANDROID_CONTROL_AE_AVAILABLE_MODES,
+               std::vector<uint8_t>{ANDROID_CONTROL_AE_MODE_ON});
+
+  // Remove ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE in
+  // ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS
+  entry = data->find(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS);
+  if (entry.count != 0) {
+    std::vector<int32_t> available_characteristics_keys;
+    for (size_t i = 0; i < entry.count; i++) {
+      if (entry.data.i32[i] == ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE) {
+        continue;
+      }
+      available_characteristics_keys.push_back(entry.data.i32[i]);
+    }
+    data->update(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
+                 available_characteristics_keys);
+  }
+}
+
 ScopedCameraMetadata StaticMetadataForAndroid(
     const android::CameraMetadata& static_metadata) {
   android::CameraMetadata data(static_metadata);
@@ -103,6 +140,29 @@ ScopedCameraMetadata StaticMetadataForAndroid(
   }
   data.update(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
               stream_configurations);
+
+  AdjustMetadataForAE(&data);
+
+  return ScopedCameraMetadata(data.release());
+}
+
+ScopedCameraMetadata RequestTemplateForAndroid(
+    const camera_metadata_t* static_metadata,
+    const android::CameraMetadata& request_template) {
+  android::CameraMetadata data(request_template);
+
+  camera_metadata_ro_entry ae_available_modes_entry;
+  int ret = find_camera_metadata_ro_entry(static_metadata,
+                                          ANDROID_CONTROL_AE_AVAILABLE_MODES,
+                                          &ae_available_modes_entry);
+  if (ret == 0) {
+    // Only support ANDROID_CONTROL_AE_MODE_ON
+    if (ae_available_modes_entry.count == 1) {
+      camera_metadata_entry entry = data.find(ANDROID_SENSOR_EXPOSURE_TIME);
+      if (entry.count == 1 && data.erase(ANDROID_SENSOR_EXPOSURE_TIME) != 0)
+        LOGF(WARNING) << "Failed to delete ANDROID_SENSOR_EXPOSURE_TIME";
+    }
+  }
 
   return ScopedCameraMetadata(data.release());
 }
@@ -209,14 +269,17 @@ int CameraHal::OpenDevice(int id,
   }
 
   camera_metadata_t* static_metadata;
+  camera_metadata_t* request_template;
   if (client_type == ClientType::kAndroid) {
     static_metadata = static_metadata_android_[id].get();
+    request_template = request_template_android_[id].get();
   } else {
     static_metadata = static_metadata_[id].get();
+    request_template = request_template_[id].get();
   }
-  cameras_[id].reset(new CameraClient(
-      id, device_infos_[id], *static_metadata, *request_template_[id].get(),
-      module, hw_device, &privacy_switch_monitor_, client_type));
+  cameras_[id].reset(new CameraClient(id, device_infos_[id], *static_metadata,
+                                      *request_template, module, hw_device,
+                                      &privacy_switch_monitor_, client_type));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -335,6 +398,12 @@ int CameraHal::Init() {
     DCHECK_EQ(request_template_.begin()->first, 1);
     request_template_.emplace(0, std::move(request_template_[1]));
     request_template_.erase(1);
+
+    DCHECK_EQ(request_template_android_.size(), 1);
+    DCHECK_EQ(request_template_android_.begin()->first, 1);
+    request_template_android_.emplace(0,
+                                      std::move(request_template_android_[1]));
+    request_template_android_.erase(1);
 
     num_builtin_cameras_ = 1;
   }
@@ -550,6 +619,8 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   device_infos_[info.camera_id] = info;
   static_metadata_android_[info.camera_id] =
       StaticMetadataForAndroid(static_metadata);
+  request_template_android_[info.camera_id] = RequestTemplateForAndroid(
+      static_metadata_android_[info.camera_id].get(), request_template);
   static_metadata_[info.camera_id] =
       ScopedCameraMetadata(static_metadata.release());
   request_template_[info.camera_id] =
@@ -603,6 +674,7 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
   static_metadata_.erase(id);
   static_metadata_android_.erase(id);
   request_template_.erase(id);
+  request_template_android_.erase(id);
 
   if (callbacks_) {
     callbacks_->camera_device_status_change(callbacks_, id,

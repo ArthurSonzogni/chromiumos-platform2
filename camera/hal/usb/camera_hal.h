@@ -97,6 +97,7 @@ class CameraHal : public UdevWatcher::Observer {
   // Android may need more restriction metadata for CTS.
   std::map<int, ScopedCameraMetadata> static_metadata_android_;
   std::map<int, ScopedCameraMetadata> request_template_;
+  std::map<int, ScopedCameraMetadata> request_template_android_;
 
   // Used to post CloseDevice to run on the same thread.
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
