@@ -609,6 +609,17 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void SetSupplicantInterfaceProxy(
       std::unique_ptr<SupplicantInterfaceProxyInterface> proxy);
 
+  // Bringing the interface down before disabling the device means that
+  // wpa_supplicant can receive a deauth event from the kernel before
+  // shill asks for a disconnection. wpa_supplicant reads this as an
+  // unexpected disconnect event and incorrectly blocklists the AP. The
+  // blocklist ends up getting cleared immediately afterward when we
+  // deinitialize the interface so there's no functional reason for
+  // this, but it makes the logs easier to read.
+  bool ShouldBringNetworkInterfaceDownAfterDisabled() const override {
+    return true;
+  }
+
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;
 
