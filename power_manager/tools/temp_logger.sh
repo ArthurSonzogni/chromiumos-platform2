@@ -58,6 +58,11 @@ main() {
     exit 1
   fi
 
+  if [ ! -d "/sys/class/thermal/thermal_zone0" ]; then
+    log_message "Exiting temp_logger, system does not have any temp sensor."
+    exit 0
+  fi
+
   while true; do
     log_message "$(get_all_sensor_temps)" "$(get_pl1)"
     sleep 60
