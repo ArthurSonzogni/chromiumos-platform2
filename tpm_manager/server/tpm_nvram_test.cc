@@ -5,6 +5,7 @@
 #include "tpm_manager/server/tpm_nvram_impl.h"
 
 #include <libhwsec/test_utils/tpm1/test_fixture.h>
+#include <cstdint>
 
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/mock_local_data_store.h"
@@ -18,12 +19,47 @@ namespace {
 using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
+using testing::Pointee;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::SetArrayArgument;
 
 constexpr TSS_HCONTEXT kFakeContext = 99999;
 constexpr TSS_HTPM kFakeTpm = 66666;
+
+// Sadly, trousers doesn't have Trspi_LoadBlob_NV_DATA_PUBLIC, so we need this
+// function.
+std::vector<uint8_t> Serialize_TPM_NV_DATA_PUBLIC(TPM_NV_DATA_PUBLIC* data) {
+  uint64_t offset = 0;
+  Trspi_LoadBlob_UINT16(&offset, data->tag, nullptr);
+  // trousers doesn't have Trspi_LoadBlob_NV_INDEX
+  Trspi_LoadBlob_UINT32(&offset, data->nvIndex, nullptr);
+  Trspi_LoadBlob_PCR_INFO_SHORT(&offset, nullptr, &data->pcrInfoRead);
+  Trspi_LoadBlob_PCR_INFO_SHORT(&offset, nullptr, &data->pcrInfoWrite);
+  // trousers doesn't have Trspi_LoadBlob_NV_ATTRIBUTES
+  Trspi_LoadBlob_UINT16(&offset, data->permission.tag, nullptr);
+  Trspi_LoadBlob_UINT32(&offset, data->permission.attributes, nullptr);
+  Trspi_LoadBlob_BYTE(&offset, data->bReadSTClear, nullptr);
+  Trspi_LoadBlob_BYTE(&offset, data->bWriteSTClear, nullptr);
+  Trspi_LoadBlob_BYTE(&offset, data->bWriteDefine, nullptr);
+  Trspi_LoadBlob_UINT32(&offset, data->dataSize, nullptr);
+  std::vector<uint8_t> result(offset);
+  uint8_t* buffer = result.data();
+  offset = 0;
+  Trspi_LoadBlob_UINT16(&offset, data->tag, buffer);
+  // trousers doesn't have Trspi_LoadBlob_NV_INDEX
+  Trspi_LoadBlob_UINT32(&offset, data->nvIndex, buffer);
+  Trspi_LoadBlob_PCR_INFO_SHORT(&offset, buffer, &data->pcrInfoRead);
+  Trspi_LoadBlob_PCR_INFO_SHORT(&offset, buffer, &data->pcrInfoWrite);
+  // trousers doesn't have Trspi_LoadBlob_NV_ATTRIBUTES
+  Trspi_LoadBlob_UINT16(&offset, data->permission.tag, buffer);
+  Trspi_LoadBlob_UINT32(&offset, data->permission.attributes, buffer);
+  Trspi_LoadBlob_BYTE(&offset, data->bReadSTClear, buffer);
+  Trspi_LoadBlob_BYTE(&offset, data->bWriteSTClear, buffer);
+  Trspi_LoadBlob_BYTE(&offset, data->bWriteDefine, buffer);
+  Trspi_LoadBlob_UINT32(&offset, data->dataSize, buffer);
+  return result;
+}
 
 MATCHER_P(UstrEq, str, "") {
   std::string arg_str(reinterpret_cast<char*>(arg), str.length());
@@ -260,6 +296,188 @@ TEST_F(TpmNvramTest, DefineSpaceAuthAttributes) {
   EXPECT_EQ(tpm_nvram_.DefineSpace(kIndex, kSize, attributes,
                                    authorization_value, policy),
             NVRAM_RESULT_SUCCESS);
+}
+
+TEST_F(TpmNvramTest, GetSpaceInfoAllNull) {
+  constexpr uint32_t kIndex = 0x8012334;
+  TPM_NV_DATA_PUBLIC info{
+      .nvIndex = kIndex,
+  };
+  std::vector<uint8_t> serialize_info = Serialize_TPM_NV_DATA_PUBLIC(&info);
+
+  // ScopedTssMemory should free this nv_data_info.
+  uint8_t* nv_data_info = new uint8_t[serialize_info.size()];
+  memcpy(nv_data_info, serialize_info.data(), serialize_info.size());
+
+  EXPECT_CALL_OVERALLS(Ospi_TPM_GetCapability(kFakeTpm, TSS_TPMCAP_NV_INDEX,
+                                              sizeof(kIndex), Pointee(kIndex),
+                                              _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(serialize_info.size()),
+                      SetArgPointee<5>(nv_data_info), Return(TSS_SUCCESS)));
+
+  EXPECT_EQ(tpm_nvram_.GetSpaceInfo(kIndex, nullptr, nullptr, nullptr, nullptr,
+                                    nullptr),
+            NVRAM_RESULT_SUCCESS);
+}
+
+TEST_F(TpmNvramTest, GetSpaceInfoData) {
+  constexpr uint32_t kIndex = 0x8013450;
+  constexpr uint32_t kSize = 0x123;
+  constexpr bool kIsReadLocked = false;
+  constexpr bool kIsWriteLocked = true;
+  const std::vector<NvramSpaceAttribute> kAttributes = {
+      NVRAM_READ_AUTHORIZATION, NVRAM_PLATFORM_WRITE, NVRAM_OWNER_READ};
+  constexpr NvramSpacePolicy kPolicy = NVRAM_POLICY_PCR0;
+
+  std::vector<uint8_t> pcrSelect = {1};
+
+  TPM_NV_DATA_PUBLIC info{
+      .nvIndex = kIndex,
+      .pcrInfoWrite =
+          TPM_PCR_INFO_SHORT{
+              .pcrSelection =
+                  TPM_PCR_SELECTION{
+                      .sizeOfSelect = 1,
+                      .pcrSelect = pcrSelect.data(),
+                  },
+          },
+      .permission =
+          TPM_NV_ATTRIBUTES{
+              .attributes = TPM_NV_PER_AUTHREAD | TPM_NV_PER_PPWRITE |
+                            TPM_NV_PER_OWNERREAD,
+          },
+      .bReadSTClear = kIsReadLocked,
+      .bWriteSTClear = kIsWriteLocked,
+      .bWriteDefine = false,
+      .dataSize = kSize,
+  };
+  std::vector<uint8_t> serialize_info = Serialize_TPM_NV_DATA_PUBLIC(&info);
+
+  // ScopedTssMemory should free this nv_data_info.
+  uint8_t* nv_data_info = new uint8_t[serialize_info.size()];
+  memcpy(nv_data_info, serialize_info.data(), serialize_info.size());
+
+  EXPECT_CALL_OVERALLS(Ospi_TPM_GetCapability(kFakeTpm, TSS_TPMCAP_NV_INDEX,
+                                              sizeof(kIndex), Pointee(kIndex),
+                                              _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(serialize_info.size()),
+                      SetArgPointee<5>(nv_data_info), Return(TSS_SUCCESS)));
+
+  uint32_t size;
+  bool is_read_locked;
+  bool is_write_locked;
+  std::vector<NvramSpaceAttribute> attributes;
+  NvramSpacePolicy policy;
+  EXPECT_EQ(tpm_nvram_.GetSpaceInfo(kIndex, &size, &is_read_locked,
+                                    &is_write_locked, &attributes, &policy),
+            NVRAM_RESULT_SUCCESS);
+  EXPECT_EQ(size, kSize);
+  EXPECT_EQ(is_read_locked, kIsReadLocked);
+  EXPECT_EQ(is_write_locked, kIsWriteLocked);
+  EXPECT_EQ(attributes, kAttributes);
+  EXPECT_EQ(policy, kPolicy);
+}
+
+TEST_F(TpmNvramTest, GetSpaceInfoFail) {
+  constexpr uint32_t kIndex = 0x80178924;
+  EXPECT_CALL_OVERALLS(Ospi_TPM_GetCapability(kFakeTpm, TSS_TPMCAP_NV_INDEX,
+                                              sizeof(kIndex), Pointee(kIndex),
+                                              _, _))
+      .WillOnce(DoAll(Return(TPM_E_AREA_LOCKED)));
+
+  EXPECT_EQ(tpm_nvram_.GetSpaceInfo(kIndex, nullptr, nullptr, nullptr, nullptr,
+                                    nullptr),
+            NVRAM_RESULT_OPERATION_DISABLED);
+}
+
+TEST_F(TpmNvramTest, DestroySpaceSuccess) {
+  std::string owner_password = "owner";
+  fake_local_data_.set_owner_password(owner_password);
+  constexpr uint32_t kIndex = 0x56;
+
+  TPM_NV_DATA_PUBLIC info{
+      .nvIndex = kIndex,
+  };
+  std::vector<uint8_t> serialize_info = Serialize_TPM_NV_DATA_PUBLIC(&info);
+
+  // ScopedTssMemory should free this nv_data_info.
+  uint8_t* nv_data_info = new uint8_t[serialize_info.size()];
+  memcpy(nv_data_info, serialize_info.data(), serialize_info.size());
+
+  EXPECT_CALL_OVERALLS(Ospi_TPM_GetCapability(kFakeTpm, TSS_TPMCAP_NV_INDEX,
+                                              sizeof(kIndex), Pointee(kIndex),
+                                              _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(serialize_info.size()),
+                      SetArgPointee<5>(nv_data_info), Return(TSS_SUCCESS)));
+
+  constexpr TSS_HNVSTORE kNvKandle = 23413;
+  EXPECT_CALL_OVERALLS(
+      Ospi_Context_CreateObject(kFakeContext, TSS_OBJECT_TYPE_NV, 0, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kNvKandle), Return(TSS_SUCCESS)));
+  EXPECT_CALL_OVERALLS(
+      Ospi_SetAttribUint32(kNvKandle, TSS_TSPATTRIB_NV_INDEX, 0, kIndex))
+      .WillOnce(Return(TSS_SUCCESS));
+  EXPECT_CALL_OVERALLS(Ospi_NV_ReleaseSpace(kNvKandle))
+      .WillOnce(Return(TSS_SUCCESS));
+  EXPECT_EQ(tpm_nvram_.DestroySpace(kIndex), NVRAM_RESULT_SUCCESS);
+}
+
+TEST_F(TpmNvramTest, DestroySpaceNotExist) {
+  std::string owner_password = "owner";
+  fake_local_data_.set_owner_password(owner_password);
+  constexpr uint32_t kIndex = 0x56;
+
+  EXPECT_CALL_OVERALLS(Ospi_TPM_GetCapability(kFakeTpm, TSS_TPMCAP_NV_INDEX,
+                                              sizeof(kIndex), Pointee(kIndex),
+                                              _, _))
+      .WillOnce(DoAll(Return(TPM_E_BADINDEX)));
+
+  EXPECT_CALL_OVERALLS(
+      Ospi_Context_CreateObject(kFakeContext, TSS_OBJECT_TYPE_NV, 0, _))
+      .Times(0);
+  EXPECT_CALL_OVERALLS(
+      Ospi_SetAttribUint32(_, TSS_TSPATTRIB_NV_INDEX, 0, kIndex))
+      .Times(0);
+  EXPECT_CALL_OVERALLS(Ospi_NV_ReleaseSpace(_)).Times(0);
+  EXPECT_EQ(tpm_nvram_.DestroySpace(kIndex), NVRAM_RESULT_SUCCESS);
+}
+
+TEST_F(TpmNvramTest, DestroySpaceFail) {
+  std::string owner_password = "owner";
+  fake_local_data_.set_owner_password(owner_password);
+  constexpr uint32_t kIndex = 0x1247123;
+
+  TPM_NV_DATA_PUBLIC info{
+      .nvIndex = kIndex,
+  };
+  std::vector<uint8_t> serialize_info = Serialize_TPM_NV_DATA_PUBLIC(&info);
+
+  // ScopedTssMemory should free this nv_data_info.
+  uint8_t* nv_data_info = new uint8_t[serialize_info.size()];
+  memcpy(nv_data_info, serialize_info.data(), serialize_info.size());
+
+  EXPECT_CALL_OVERALLS(Ospi_TPM_GetCapability(kFakeTpm, TSS_TPMCAP_NV_INDEX,
+                                              sizeof(kIndex), Pointee(kIndex),
+                                              _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(serialize_info.size()),
+                      SetArgPointee<5>(nv_data_info), Return(TSS_SUCCESS)));
+
+  constexpr TSS_HNVSTORE kNvKandle = 342;
+  EXPECT_CALL_OVERALLS(
+      Ospi_Context_CreateObject(kFakeContext, TSS_OBJECT_TYPE_NV, 0, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kNvKandle), Return(TSS_SUCCESS)));
+  EXPECT_CALL_OVERALLS(
+      Ospi_SetAttribUint32(kNvKandle, TSS_TSPATTRIB_NV_INDEX, 0, kIndex))
+      .WillOnce(Return(TSS_SUCCESS));
+  EXPECT_CALL_OVERALLS(Ospi_NV_ReleaseSpace(kNvKandle))
+      .WillOnce(Return(TSS_E_NV_AREA_NOT_EXIST));
+  EXPECT_EQ(tpm_nvram_.DestroySpace(kIndex), NVRAM_RESULT_DEVICE_ERROR);
+}
+
+TEST_F(TpmNvramTest, DestroySpaceNoOwnerPassword) {
+  constexpr uint32_t kIndex = 0x5222;
+
+  EXPECT_EQ(tpm_nvram_.DestroySpace(kIndex), NVRAM_RESULT_OPERATION_DISABLED);
 }
 
 }  // namespace tpm_manager
