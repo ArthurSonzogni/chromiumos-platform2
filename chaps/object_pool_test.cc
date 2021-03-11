@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -373,4 +374,20 @@ TEST_F(TestObjectPool, InsertRespectsSlotPolicy) {
   EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
 }
+
+TEST_F(TestObjectPool, NullSlotPolicyMeansAcceptEverything) {
+  std::unique_ptr<ObjectPool> pool_without_slot_policy =
+      std::make_unique<ObjectPoolImpl>(&factory_, &handle_generator_, nullptr,
+                                       nullptr, nullptr);
+  EXPECT_TRUE(pool2_->Init());
+  EXPECT_TRUE(pool2_->IsPrivateLoaded());
+
+  EXPECT_EQ(Result::Success, pool2_->Insert(CreateObjectMock()));
+
+  std::unique_ptr<Object> find_all(CreateObjectMock());
+  vector<const Object*> v;
+  EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
+  ASSERT_EQ(1, v.size());
+}
+
 }  // namespace chaps

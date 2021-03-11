@@ -126,9 +126,10 @@ Result ObjectPoolImpl::Import(Object* object) {
 Result ObjectPoolImpl::AddObject(Object* object, bool from_external_source) {
   const CK_OBJECT_CLASS object_class = object->GetObjectClass();
   const bool allowed =
-      from_external_source
-          ? slot_policy_->IsObjectClassAllowedForImportedObject(object_class)
-          : slot_policy_->IsObjectClassAllowedForNewObject(object_class);
+      !slot_policy_ ||
+      (from_external_source
+           ? slot_policy_->IsObjectClassAllowedForImportedObject(object_class)
+           : slot_policy_->IsObjectClassAllowedForNewObject(object_class));
   if (!allowed) {
     return Result::Failure;
   }
