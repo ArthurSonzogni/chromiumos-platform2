@@ -84,6 +84,14 @@ void ManagerDBusAdaptor::EmitStringsChanged(const string& name,
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
+void ManagerDBusAdaptor::EmitKeyValueStoreChanged(const string& name,
+                                                  const KeyValueStore& value) {
+  SLOG(this, 2) << __func__ << ": " << name;
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(value);
+  SendPropertyChangedSignal(name, brillo::Any(dict));
+}
+
 void ManagerDBusAdaptor::EmitRpcIdentifierChanged(const string& name,
                                                   const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;

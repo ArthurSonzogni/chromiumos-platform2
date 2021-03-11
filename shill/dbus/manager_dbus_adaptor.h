@@ -53,6 +53,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
                          const std::string& value) override;
   void EmitStringsChanged(const std::string& name,
                           const std::vector<std::string>& value) override;
+  void EmitKeyValueStoreChanged(const std::string& name,
+                                const KeyValueStore& value) override;
   void EmitRpcIdentifierChanged(const std::string& name,
                                 const RpcIdentifier& value) override;
   void EmitRpcIdentifierArrayChanged(const std::string& name,

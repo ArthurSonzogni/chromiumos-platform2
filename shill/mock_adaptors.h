@@ -130,6 +130,10 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
               (const std::string&, const std::vector<std::string>&),
               (override));
   MOCK_METHOD(void,
+              EmitKeyValueStoreChanged,
+              (const std::string&, const KeyValueStore&),
+              (override));
+  MOCK_METHOD(void,
               EmitRpcIdentifierChanged,
               (const std::string&, const RpcIdentifier&),
               (override));
