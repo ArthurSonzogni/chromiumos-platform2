@@ -10,17 +10,38 @@
 #ifndef BOOTSTAT_BOOTSTAT_H_
 #define BOOTSTAT_BOOTSTAT_H_
 
+#include <memory>
 #include <string>
 
 namespace bootstat {
 
+// Abstracts system operations in order to inject on testing.
+class BootStatSystem {
+ public:
+  BootStatSystem() = default;
+  BootStatSystem(const BootStatSystem&) = delete;
+  BootStatSystem& operator=(const BootStatSystem&) = delete;
+  virtual ~BootStatSystem() = default;
+
+  // Returns the path representing the stats file for the root disk.
+  // Returns an empty string on failure.
+  // TODO(drinkcat): Rename to GetDiskStatisticsFilePath
+  virtual std::string GetDiskStatisticsFileName() const;
+};
+
 // Basic class for bootstat API interface.
 class BootStat {
  public:
-  BootStat() = default;
+  BootStat();
+  // Constructor for testing purpose: changes the default output directory and
+  // allows replacing BootStatSystem implementation with a fake one.
+  BootStat(const std::string& output_directory_path,
+           // TODO(drinkcat): Move this to BootStatSystem
+           const std::string& uptime_statistics_file_path,
+           std::unique_ptr<BootStatSystem> boot_stat_system);
   BootStat(const BootStat&) = delete;
   BootStat& operator=(const BootStat&) = delete;
-  ~BootStat() = default;
+  ~BootStat();
 
   // Logs an event.  Event names should be composed of characters drawn from
   // this subset of 7-bit ASCII:  Letters (upper- or lower-case), digits, dot
@@ -32,9 +53,11 @@ class BootStat {
   bool LogEvent(const std::string& event_name) const;
 
  private:
-  // Returns the path representing the stats file for the root disk.
-  // Returns an empty string on failure.
-  std::string GetDiskStatisticsFileName() const;
+  std::string output_directory_path_;
+  // TODO(drinkcat): Move this to BootStatSystem
+  std::string uptime_statistics_file_path_;
+
+  std::unique_ptr<BootStatSystem> boot_stat_system_;
 
   // Figures out the event output file name, and open it.
   // Returns an fd (negative on error).

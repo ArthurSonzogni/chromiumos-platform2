@@ -26,11 +26,14 @@ executable("bootstat") {
 
 if (use.test) {
   executable("libbootstat_unittests") {
-    sources = [ "bootstat_test.cc" ]
-    configs += [ "//common-mk:test" ]
-    deps = [
-      ":libbootstat",
-      "//common-mk/testrunner",
+    # Do not use libbootstat shared library for test, as we'd have to export a
+    # good number of symbols that normal API users do not require.
+    sources = [
+      "bootstat_log.cc",
+      "bootstat_test.cc",
     ]
+    libs = [ "rootdev" ]
+    configs += [ "//common-mk:test" ]
+    deps = [ "//common-mk/testrunner" ]
   }
 }

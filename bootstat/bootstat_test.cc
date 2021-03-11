@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "bootstat/bootstat.h"
-#include "bootstat/bootstat_test.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -12,13 +11,29 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 
 #include <gtest/gtest.h>
 
-namespace {
+namespace bootstat {
 
+// TODO(drinkcat): Remove std::string
 using std::string;
+
+// Mock class to interact with the system.
+class MockBootStatSystem : public BootStatSystem {
+ public:
+  explicit MockBootStatSystem(const string& disk_statistics_file_name)
+      : disk_statistics_file_name_(disk_statistics_file_name) {}
+
+  string GetDiskStatisticsFileName() const override {
+    return disk_statistics_file_name_;
+  }
+
+ private:
+  string disk_statistics_file_name_;
+};
 
 static void RemoveFile(const string& file_path) {
   EXPECT_EQ(0, unlink(file_path.c_str()))
@@ -35,8 +50,12 @@ class EventTracker {
   EventTracker(const string& name,
                const string& uptime_prefix,
                const string& disk_prefix);
-  void TestLogEvent(const string& uptime, const string& diskstats);
-  void TestLogSymlink(const string& dirname, bool create_target);
+  void TestLogEvent(const BootStat& bootstat,
+                    const string& uptime,
+                    const string& diskstats);
+  void TestLogSymlink(const BootStat& bootstat,
+                      const string& dirname,
+                      bool create_target);
   void Reset();
 
  private:
@@ -90,8 +109,10 @@ static void ValidateEventFileContents(const string& file_name,
 // Call bootstat_log() once, and update the expected content for
 // this event.  Test that the new content of the event's files
 // matches the updated expected content.
-void EventTracker::TestLogEvent(const string& uptime, const string& diskstats) {
-  bootstat_log(event_name_.c_str());
+void EventTracker::TestLogEvent(const BootStat& bootstat,
+                                const string& uptime,
+                                const string& diskstats) {
+  bootstat.LogEvent(event_name_.c_str());
   uptime_content_ += uptime;
   diskstats_content_ += diskstats;
   ValidateEventFileContents(uptime_file_name_, uptime_content_);
@@ -135,7 +156,9 @@ static void TestSymlinkTarget(const string& filename, bool expect_exists) {
 //
 // The test creates the necessary symlinks for the events, and
 // optionally creates targets for the files.
-void EventTracker::TestLogSymlink(const string& dirname, bool create_target) {
+void EventTracker::TestLogSymlink(const BootStat& bootstat,
+                                  const string& dirname,
+                                  bool create_target) {
   string uptime_linkname("uptime.symlink");
   string diskstats_linkname("disk.symlink");
 
@@ -146,7 +169,7 @@ void EventTracker::TestLogSymlink(const string& dirname, bool create_target) {
     CreateSymlinkTarget(diskstats_file_name_);
   }
 
-  bootstat_log(event_name_.c_str());
+  bootstat.LogEvent(event_name_.c_str());
 
   TestSymlinkTarget(uptime_file_name_, create_target);
   TestSymlinkTarget(diskstats_file_name_, create_target);
@@ -186,10 +209,14 @@ class BootstatTest : public ::testing::Test {
   void SetMockStats(const char* uptime_content, const char* disk_content);
   void ClearMockStats();
   void TestLogEvent(EventTracker* event);
-
-  string stats_output_dir_;
+  void TestLogSymlink(EventTracker* event, bool create_target);
 
  private:
+  string stats_output_dir_;
+  std::unique_ptr<BootStat> boot_stat_;
+  // Raw pointer, owned by boot_stat_.
+  MockBootStatSystem* boot_stat_system_;
+
   string uptime_event_prefix_;
   string disk_event_prefix_;
 
@@ -206,11 +233,13 @@ void BootstatTest::SetUp() {
   disk_event_prefix_ = stats_output_dir_ + "/disk-";
   mock_uptime_file_name_ = stats_output_dir_ + "/proc_uptime";
   mock_disk_file_name_ = stats_output_dir_ + "/block_stats";
-  bootstat_set_output_directory_for_test(stats_output_dir_.c_str());
+  boot_stat_system_ = new MockBootStatSystem(mock_disk_file_name_);
+  boot_stat_ = std::make_unique<BootStat>(
+      stats_output_dir_, mock_uptime_file_name_,
+      std::unique_ptr<BootStatSystem>(boot_stat_system_));
 }
 
 void BootstatTest::TearDown() {
-  bootstat_set_output_directory_for_test(nullptr);
   EXPECT_EQ(0, rmdir(stats_output_dir_.c_str()))
       << "BootstatTest::Teardown rmdir(): " << stats_output_dir_ << ": "
       << strerror(errno) << ".";
@@ -237,20 +266,20 @@ void BootstatTest::SetMockStats(const char* uptime_data,
   WriteMockStats(mock_uptime_content_, mock_uptime_file_name_);
   mock_disk_content_ = string(disk_data);
   WriteMockStats(mock_disk_content_, mock_disk_file_name_);
-  bootstat_set_uptime_file_name_for_test(mock_uptime_file_name_.c_str());
-  bootstat_set_disk_file_name_for_test(mock_disk_file_name_.c_str());
 }
 
 // Clean up the effects from SetMockStats().
 void BootstatTest::ClearMockStats() {
-  bootstat_set_uptime_file_name_for_test(nullptr);
-  bootstat_set_disk_file_name_for_test(nullptr);
   RemoveFile(mock_uptime_file_name_);
   RemoveFile(mock_disk_file_name_);
 }
 
 void BootstatTest::TestLogEvent(EventTracker* event) {
-  event->TestLogEvent(mock_uptime_content_, mock_disk_content_);
+  event->TestLogEvent(*boot_stat_, mock_uptime_content_, mock_disk_content_);
+}
+
+void BootstatTest::TestLogSymlink(EventTracker* event, bool create_target) {
+  event->TestLogSymlink(*boot_stat_, stats_output_dir_, create_target);
 }
 
 // Test data to be used as input to SetMockStats().
@@ -322,10 +351,10 @@ TEST_F(BootstatTest, EventNameTruncation) {
 // Test that event logging does not follow symbolic links.
 TEST_F(BootstatTest, SymlinkFollow) {
   EventTracker ev = MakeEvent("symlink-no-follow");
-  ev.TestLogSymlink(stats_output_dir_, true);
+  TestLogSymlink(&ev, true);
   ev.Reset();
-  ev.TestLogSymlink(stats_output_dir_, false);
+  TestLogSymlink(&ev, false);
   ev.Reset();
 }
 
-}  // namespace
+}  // namespace bootstat

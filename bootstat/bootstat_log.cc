@@ -24,7 +24,6 @@
 #include <rootdev/rootdev.h>
 
 #include "bootstat/bootstat.h"
-#include "bootstat/bootstat_test.h"
 
 namespace bootstat {
 //
@@ -37,23 +36,9 @@ static const char kDefaultOutputDirectoryName[] = "/tmp";
 // be logged.
 //
 static const char kDefaultUptimeStatisticsFileName[] = "/proc/uptime";
-}  // namespace bootstat
 
-// TODO(drinkcat): Get rid of all those static variables and properly integrate
-// with tests.
-static const char* output_directory_name =
-    bootstat::kDefaultOutputDirectoryName;
-static const char* uptime_statistics_file_name =
-    bootstat::kDefaultUptimeStatisticsFileName;
-
-static const char* disk_statistics_file_name_for_test = NULL;
-
-namespace bootstat {
-
-std::string BootStat::GetDiskStatisticsFileName() const {
-  if (disk_statistics_file_name_for_test)
-    return disk_statistics_file_name_for_test;
-
+// TODO(drinkcat): Cache function output (we only need to evaluate it once)
+std::string BootStatSystem::GetDiskStatisticsFileName() const {
   char boot_path[PATH_MAX];
   int ret = rootdev(boot_path, sizeof(boot_path),
                     true,    // Do full resolution.
@@ -80,6 +65,20 @@ std::string BootStat::GetDiskStatisticsFileName() const {
   return stats_path;
 }
 
+BootStat::BootStat()
+    : BootStat(kDefaultOutputDirectoryName,
+               kDefaultUptimeStatisticsFileName,
+               std::make_unique<BootStatSystem>()) {}
+
+BootStat::BootStat(const std::string& output_directory_path,
+                   const std::string& uptime_statistics_file_path,
+                   std::unique_ptr<BootStatSystem> boot_stat_system)
+    : output_directory_path_(output_directory_path),
+      uptime_statistics_file_path_(uptime_statistics_file_path),
+      boot_stat_system_(std::move(boot_stat_system)) {}
+
+BootStat::~BootStat() = default;
+
 int BootStat::OpenEventFile(const std::string& output_name_prefix,
                             const std::string& event_name) const {
   const mode_t kFileCreationMode =
@@ -93,7 +92,7 @@ int BootStat::OpenEventFile(const std::string& output_name_prefix,
   char output_path[PATH_MAX];
   int output_path_len =
       snprintf(output_path, sizeof(output_path), "%s/%s-%.*s",
-               output_directory_name, output_name_prefix.c_str(),
+               output_directory_path_.c_str(), output_name_prefix.c_str(),
                BOOTSTAT_MAX_EVENT_LEN - 1, event_name.c_str());
   if (output_path_len >= sizeof(output_path))
     return -1;
@@ -126,7 +125,8 @@ static bool CopyFromFile(const std::string& input_file_name, int output_fd) {
 }
 
 bool BootStat::LogDiskEvent(const std::string& event_name) const {
-  std::string disk_statistics_file_name = GetDiskStatisticsFileName();
+  std::string disk_statistics_file_name =
+      boot_stat_system_->GetDiskStatisticsFileName();
 
   if (disk_statistics_file_name.empty())
     return false;
@@ -146,7 +146,7 @@ bool BootStat::LogUptimeEvent(const std::string& event_name) const {
   if (output_fd < 0)
     return false;
 
-  bool ret = CopyFromFile(uptime_statistics_file_name, output_fd);
+  bool ret = CopyFromFile(uptime_statistics_file_path_, output_fd);
 
   close(output_fd);
   return ret;
@@ -167,26 +167,4 @@ bool BootStat::LogEvent(const std::string& event_name) const {
 BRILLO_EXPORT
 void bootstat_log(const char* event_name) {
   bootstat::BootStat().LogEvent(event_name);
-}
-
-// TODO(drinkcat): Replace these functions by constructor parameters.
-BRILLO_EXPORT
-void bootstat_set_output_directory_for_test(const char* dirname) {
-  if (dirname != NULL)
-    output_directory_name = dirname;
-  else
-    output_directory_name = bootstat::kDefaultOutputDirectoryName;
-}
-
-BRILLO_EXPORT
-void bootstat_set_uptime_file_name_for_test(const char* filename) {
-  if (filename != NULL)
-    uptime_statistics_file_name = filename;
-  else
-    uptime_statistics_file_name = bootstat::kDefaultUptimeStatisticsFileName;
-}
-
-BRILLO_EXPORT
-void bootstat_set_disk_file_name_for_test(const char* filename) {
-  disk_statistics_file_name_for_test = filename;
 }
