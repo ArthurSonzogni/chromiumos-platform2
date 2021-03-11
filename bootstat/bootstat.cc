@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bootstat.h"
+#include "bootstat/bootstat.h"
 
 static void usage(char* cmd) {
   fprintf(stderr, "usage: %s <event-name>\n", basename(cmd));
