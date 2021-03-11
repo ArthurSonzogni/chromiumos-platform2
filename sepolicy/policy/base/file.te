@@ -68,7 +68,7 @@ type usbfs, fs_type;
 type usermodehelper, fs_type, proc_type;
 type vfat, fs_type;
 
-
 type sysfs_devices_system_cpu, fs_type, sysfs_type;
+type sysfs_loop, fs_type, sysfs_type;
 type sysfs_zram, fs_type, sysfs_type;
 type sysfs_zram_uevent, fs_type, sysfs_type;
