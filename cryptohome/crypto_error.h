@@ -24,6 +24,7 @@ enum class CryptoError {
   CE_LE_NOT_SUPPORTED,
   // The LE secret provided during decryption is invalid.
   CE_LE_INVALID_SECRET,
+  CE_LE_FLAGS_AND_POLICY_MISMATCH,
 };
 
 // Enum classes are not implicitly converted for log statements.

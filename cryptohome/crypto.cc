@@ -678,7 +678,12 @@ bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
     return false;
   }
 
-  CHECK(vk_reset.GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  if (!vk_reset.IsLECredential()) {
+    LOG(ERROR) << "vk_reset is not an LE credential.";
+    PopulateError(error, CryptoError::CE_LE_FLAGS_AND_POLICY_MISMATCH);
+    return false;
+  }
+
   SecureBlob local_reset_seed(vk.GetResetSeed().begin(),
                               vk.GetResetSeed().end());
   SecureBlob reset_salt(vk_reset.GetResetSalt().begin(),
