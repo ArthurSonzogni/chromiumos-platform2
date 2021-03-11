@@ -160,11 +160,15 @@ impl Condvar {
         // Acquire the spin lock.
         let mut oldstate = self.state.load(Ordering::Relaxed);
         while (oldstate & SPINLOCK) != 0
-            || self.state.compare_and_swap(
-                oldstate,
-                oldstate | SPINLOCK | HAS_WAITERS,
-                Ordering::Acquire,
-            ) != oldstate
+            || self
+                .state
+                .compare_exchange(
+                    oldstate,
+                    oldstate | SPINLOCK | HAS_WAITERS,
+                    Ordering::Acquire,
+                    Ordering::Acquire,
+                )
+                .is_err()
         {
             spin_loop_hint();
             oldstate = self.state.load(Ordering::Relaxed);
@@ -210,8 +214,13 @@ impl Condvar {
         while (oldstate & SPINLOCK) != 0
             || self
                 .state
-                .compare_and_swap(oldstate, oldstate | SPINLOCK, Ordering::Acquire)
-                != oldstate
+                .compare_exchange(
+                    oldstate,
+                    oldstate | SPINLOCK,
+                    Ordering::Acquire,
+                    Ordering::Acquire,
+                )
+                .is_err()
         {
             spin_loop_hint();
             oldstate = self.state.load(Ordering::Relaxed);
@@ -273,8 +282,13 @@ impl Condvar {
         while (oldstate & SPINLOCK) != 0
             || self
                 .state
-                .compare_and_swap(oldstate, oldstate | SPINLOCK, Ordering::Acquire)
-                != oldstate
+                .compare_exchange(
+                    oldstate,
+                    oldstate | SPINLOCK,
+                    Ordering::Acquire,
+                    Ordering::Acquire,
+                )
+                .is_err()
         {
             spin_loop_hint();
             oldstate = self.state.load(Ordering::Relaxed);
