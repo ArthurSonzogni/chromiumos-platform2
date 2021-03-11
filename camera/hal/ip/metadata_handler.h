@@ -8,8 +8,11 @@
 
 #include <base/macros.h>
 #include <string>
+#include <vector>
 
 #include <camera/camera_metadata.h>
+
+#include "mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
 
@@ -22,12 +25,12 @@ class MetadataHandler {
   ~MetadataHandler();
 
   // The caller is responsible for freeing the memory returned
-  static android::CameraMetadata CreateStaticMetadata(const std::string& ip,
-                                                      const std::string& name,
-                                                      int format,
-                                                      int width,
-                                                      int height,
-                                                      double fps);
+  static android::CameraMetadata CreateStaticMetadata(
+      const std::string& ip,
+      const std::string& name,
+      int format,
+      double fps,
+      const std::vector<mojom::IpCameraStreamPtr>& streams);
 
   static camera_metadata_t* GetDefaultRequestSettings();
 };

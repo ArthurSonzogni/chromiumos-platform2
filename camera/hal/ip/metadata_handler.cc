@@ -18,9 +18,8 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(
     const std::string& ip,
     const std::string& name,
     int format,
-    int width,
-    int height,
-    double fps) {
+    double fps,
+    const std::vector<mojom::IpCameraStreamPtr>& streams) {
   android::CameraMetadata metadata;
 
   std::vector<int32_t> characteristic_keys = {
@@ -47,25 +46,37 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(
                   available_fps_ranges);
 
   std::vector<int64_t> min_frame_durations;
-  min_frame_durations.push_back(format);
-  min_frame_durations.push_back(width);
-  min_frame_durations.push_back(height);
-  min_frame_durations.push_back(static_cast<int64_t>(1e9 / fps));
+  std::vector<int32_t> stream_configurations;
+  int32_t max_width = 0;
+  int32_t max_height = 0;
+
+  for (const auto& stream : streams) {
+    int32_t width = stream->width;
+    int32_t height = stream->height;
+
+    if (width > max_width) {
+      max_width = width;
+      max_height = height;
+    }
+
+    min_frame_durations.push_back(format);
+    min_frame_durations.push_back(width);
+    min_frame_durations.push_back(height);
+    min_frame_durations.push_back(static_cast<int64_t>(1e9 / fps));
+
+    stream_configurations.push_back(format);
+    stream_configurations.push_back(width);
+    stream_configurations.push_back(height);
+    stream_configurations.push_back(
+        ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT);
+  }
 
   metadata.update(ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
                   min_frame_durations);
-
-  std::vector<int32_t> stream_configurations;
-  stream_configurations.push_back(format);
-  stream_configurations.push_back(width);
-  stream_configurations.push_back(height);
-  stream_configurations.push_back(
-      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT);
-
   metadata.update(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
                   stream_configurations);
 
-  std::vector<int32_t> active_array_size = {0, 0, width, height};
+  std::vector<int32_t> active_array_size = {0, 0, max_width, max_height};
   metadata.update(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, active_array_size);
 
   int32_t sensor_orientation = 0;

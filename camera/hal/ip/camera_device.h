@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/memory/read_only_shared_memory_region.h>
 #include <base/threading/thread.h>
@@ -38,10 +39,7 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   int Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
            const std::string& ip,
            const std::string& name,
-           mojom::PixelFormat format,
-           int32_t width,
-           int32_t height,
-           double fps);
+           std::vector<mojom::IpCameraStreamPtr> streams);
   void Open(const hw_module_t* module, hw_device_t** hw_device);
   void Close();
   bool IsOpen();
@@ -55,7 +53,8 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   int Flush();
 
  private:
-  void StartStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
+  void StartStreamingOnIpcThread(mojom::IpCameraStreamPtr stream,
+                                 scoped_refptr<Future<void>> return_val);
   void StopStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
   bool ValidateStream(camera3_stream_t* stream);
   void OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
@@ -75,10 +74,9 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   mojo::Remote<mojom::IpCameraDevice> ip_device_;
   camera3_device_t camera3_device_;
   const camera3_callback_ops_t* callback_ops_;
-  // Android HAL pixel format
-  int format_;
   int width_;
   int height_;
+  std::vector<mojom::IpCameraStreamPtr> streams_;
   RequestQueue request_queue_;
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
   mojo::Receiver<IpCameraFrameListener> receiver_;

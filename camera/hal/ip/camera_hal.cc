@@ -186,16 +186,14 @@ void CameraHal::OnDeviceConnected(
     const std::string& ip,
     const std::string& name,
     mojo::PendingRemote<mojom::IpCameraDevice> device_remote,
-    mojom::IpCameraStreamPtr default_stream) {
+    std::vector<mojom::IpCameraStreamPtr> streams) {
   int id = -1;
   {
     base::AutoLock l(camera_map_lock_);
     id = next_camera_id_;
 
     auto device = std::make_unique<CameraDevice>(id);
-    if (device->Init(std::move(device_remote), ip, name, default_stream->format,
-                     default_stream->width, default_stream->height,
-                     default_stream->fps)) {
+    if (device->Init(std::move(device_remote), ip, name, std::move(streams))) {
       LOGF(ERROR) << "Error creating camera device";
       return;
     }

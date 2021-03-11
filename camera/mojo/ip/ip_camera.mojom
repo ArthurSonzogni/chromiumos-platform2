@@ -25,7 +25,7 @@ interface IpCameraDevice {
   // existing listener.
   RegisterFrameListener(pending_remote<IpCameraFrameListener> listener);
 
-  StartStreaming();
+  StartStreaming(IpCameraStream stream);
   StopStreaming();
 
   ReturnBuffer(int32 id);
@@ -34,7 +34,7 @@ interface IpCameraDevice {
 interface IpCameraConnectionListener {
   OnDeviceConnected(string ip, string name,
                     pending_remote<IpCameraDevice> device,
-                    IpCameraStream default_stream);
+                    array<IpCameraStream> streams);
   OnDeviceDisconnected(string ip);
 };
 
@@ -47,6 +47,6 @@ interface IpCameraDetector {
 
 interface IpCameraProxy {
   Init(pending_receiver<IpCameraDevice> device_receiver)
-      => (bool success, IpCameraStream stream);
+      => (bool success, array<IpCameraStream> streams);
   Destroy();
 };

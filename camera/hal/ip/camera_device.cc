@@ -105,7 +105,6 @@ CameraDevice::CameraDevice(int id)
       id_(id),
       camera3_device_(),
       callback_ops_(nullptr),
-      format_(0),
       width_(0),
       height_(0),
       receiver_(this),
@@ -126,23 +125,36 @@ CameraDevice::CameraDevice(int id)
 int CameraDevice::Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
                        const std::string& ip,
                        const std::string& name,
-                       mojom::PixelFormat format,
-                       int32_t width,
-                       int32_t height,
-                       double fps) {
+                       std::vector<mojom::IpCameraStreamPtr> streams) {
   ipc_task_runner_ = mojo::core::GetIOTaskRunner();
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   ip_device_.Bind(std::move(ip_device));
-  width_ = width;
-  height_ = height;
+  streams_ = std::move(streams);
+
+  if (streams_.empty()) {
+    LOGF(ERROR) << "No stream data provided.";
+    return -EINVAL;
+  }
+
+  mojom::PixelFormat format = streams_[0]->format;
+  double fps = streams_[0]->fps;
+  for (int i = 1; i < streams_.size(); i++) {
+    if (format != streams_[i]->format) {
+      LOGF(ERROR) << "Streams of different formats not supported.";
+      return -EINVAL;
+    }
+    if (fps != streams_[i]->fps) {
+      LOGF(ERROR) << "Streams of different framerates not supported.";
+      return -EINVAL;
+    }
+  }
 
   switch (format) {
     case mojom::PixelFormat::JPEG:
       jpeg_ = true;
       FALLTHROUGH;
     case mojom::PixelFormat::YUV_420:
-      format_ = HAL_PIXEL_FORMAT_YCbCr_420_888;
       break;
     default:
       LOGF(ERROR) << "Unrecognized pixel format: " << format;
@@ -150,7 +162,7 @@ int CameraDevice::Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
   }
 
   static_metadata_ = MetadataHandler::CreateStaticMetadata(
-      ip, name, format_, width_, height_, fps);
+      ip, name, HAL_PIXEL_FORMAT_YCbCr_420_888, fps, streams_);
 
   if (jpeg_) {
     if (!jpeg_thread_.StartWithOptions(
@@ -245,23 +257,13 @@ bool CameraDevice::ValidateStream(camera3_stream_t* stream) {
     return false;
   }
 
-  if (stream->width != width_) {
-    LOGFID(ERROR, id_) << "Unsupported stream width: " << stream->width;
-    return false;
-  }
-
-  if (stream->height != height_) {
-    LOGFID(ERROR, id_) << "Unsupported stream height: " << stream->height;
-    return false;
-  }
-
-  if (stream->format != format_) {
-    LOGFID(ERROR, id_) << "Unsupported stream format: " << stream->format;
-    return false;
-  }
-
   if (stream->rotation != CAMERA3_STREAM_ROTATION_0) {
     LOGFID(ERROR, id_) << "Unsupported stream rotation: " << stream->rotation;
+    return false;
+  }
+
+  if (stream->format != HAL_PIXEL_FORMAT_YCbCr_420_888) {
+    LOGFID(ERROR, id_) << "Unsupported stream format: " << stream->format;
     return false;
   }
 
@@ -298,6 +300,24 @@ int CameraDevice::ConfigureStreams(
     return -EINVAL;
   }
 
+  mojom::IpCameraStreamPtr stream;
+  for (const auto& s : streams_) {
+    if (stream_list->streams[0]->width == s->width &&
+        stream_list->streams[0]->height == s->height) {
+      width_ = stream_list->streams[0]->width;
+      height_ = stream_list->streams[0]->height;
+      stream = s->Clone();
+      break;
+    }
+  }
+
+  if (!stream) {
+    LOGFID(ERROR, id_) << "Unsupported resolution: "
+                       << stream_list->streams[0]->width << " x "
+                       << stream_list->streams[0]->height;
+    return -EINVAL;
+  }
+
   // TODO(pceballos): revisit these two values, the number of buffers may need
   // to be adjusted by each different device
   stream_list->streams[0]->usage |= GRALLOC_USAGE_SW_WRITE_OFTEN;
@@ -305,17 +325,18 @@ int CameraDevice::ConfigureStreams(
 
   auto return_val = Future<void>::Create(nullptr);
   ipc_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&CameraDevice::StartStreamingOnIpcThread,
-                                base::Unretained(this), return_val));
+      FROM_HERE,
+      base::BindOnce(&CameraDevice::StartStreamingOnIpcThread,
+                     base::Unretained(this), std::move(stream), return_val));
 
   return_val->Wait(-1);
   return 0;
 }
 
 void CameraDevice::StartStreamingOnIpcThread(
-    scoped_refptr<Future<void>> return_val) {
+    mojom::IpCameraStreamPtr stream, scoped_refptr<Future<void>> return_val) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  ip_device_->StartStreaming();
+  ip_device_->StartStreaming(std::move(stream));
   return_val->Set();
 }
 
@@ -348,6 +369,16 @@ int CameraDevice::ProcessCaptureRequest(camera3_capture_request_t* request) {
   const camera3_stream_buffer_t* buffer = request->output_buffers;
 
   if (!ValidateStream(buffer->stream)) {
+    return -EINVAL;
+  }
+
+  if (buffer->stream->width != width_) {
+    LOGFID(ERROR, id_) << "Invalid buffer width: " << buffer->stream->width;
+    return -EINVAL;
+  }
+
+  if (buffer->stream->height != height_) {
+    LOGFID(ERROR, id_) << "Invalid buffer height: " << buffer->stream->height;
     return -EINVAL;
   }
 

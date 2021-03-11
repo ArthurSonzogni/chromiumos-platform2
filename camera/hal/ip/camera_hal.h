@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <sys/types.h>
+#include <vector>
 
 #include "camera/camera_metadata.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
@@ -57,7 +58,7 @@ class CameraHal : public mojom::IpCameraConnectionListener {
       const std::string& ip,
       const std::string& name,
       mojo::PendingRemote<mojom::IpCameraDevice> device_remote,
-      mojom::IpCameraStreamPtr default_stream) override;
+      std::vector<mojom::IpCameraStreamPtr> streams) override;
   void OnDeviceDisconnected(const std::string& ip) override;
 
   void InitOnIpcThread(scoped_refptr<Future<int>> return_val);
