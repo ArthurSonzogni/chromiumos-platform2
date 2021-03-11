@@ -78,7 +78,7 @@ class Proxy : public brillo::DBusDaemon {
 
     // |settings| is the DoH providers property we get from shill. It keys, as
     // applicable, secure DNS provider endpoints to standard DNS name servers.
-    void set_providers(const std::map<std::string, std::string>& providers);
+    void set_providers(const brillo::VariantDictionary& providers);
 
     void clear();
 

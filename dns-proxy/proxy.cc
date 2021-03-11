@@ -282,7 +282,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
 
     // Fetch the DoH settings.
     brillo::ErrorPtr error;
-    std::map<std::string, std::string> doh_providers;
+    brillo::VariantDictionary doh_providers;
     if (shill_props()->Get(shill::kDNSProxyDOHProvidersProperty, &doh_providers,
                            &error))
       OnDoHProvidersChanged(brillo::Any(doh_providers));
@@ -345,7 +345,7 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
 }
 
 void Proxy::OnDoHProvidersChanged(const brillo::Any& value) {
-  doh_config_.set_providers(value.Get<std::map<std::string, std::string>>());
+  doh_config_.set_providers(value.Get<brillo::VariantDictionary>());
 }
 
 void Proxy::SetShillProperty(const std::string& addr,
@@ -399,7 +399,7 @@ void Proxy::DoHConfig::set_nameservers(
 }
 
 void Proxy::DoHConfig::set_providers(
-    const std::map<std::string, std::string>& providers) {
+    const brillo::VariantDictionary& providers) {
   secure_providers_.clear();
   auto_providers_.clear();
 
@@ -409,9 +409,10 @@ void Proxy::DoHConfig::set_providers(
     return;
   }
 
-  for (const auto& [endpoint, nameservers] : providers) {
+  for (const auto& [endpoint, value] : providers) {
     // We expect that in secure, always-on to find one (or more) endpoints with
     // no nameservers.
+    const auto nameservers = value.TryGet<std::string>("");
     if (nameservers.empty()) {
       secure_providers_.insert(endpoint);
       continue;

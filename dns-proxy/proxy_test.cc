@@ -526,7 +526,7 @@ TEST_F(ProxyTest, BasicDoHDisable) {
   proxy.resolver_ = std::move(resolver);
   proxy.doh_config_.set_resolver(mock_resolver);
   EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
-  std::map<std::string, std::string> props;
+  brillo::VariantDictionary props;
   proxy.OnDoHProvidersChanged(props);
 }
 
@@ -542,8 +542,8 @@ TEST_F(ProxyTest, BasicDoHAlwaysOn) {
   EXPECT_CALL(
       *mock_resolver,
       SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), true));
-  std::map<std::string, std::string> props;
-  props["https://dns.google.com"] = "";
+  brillo::VariantDictionary props;
+  props["https://dns.google.com"] = std::string("");
   proxy.OnDoHProvidersChanged(props);
 }
 
@@ -563,8 +563,8 @@ TEST_F(ProxyTest, BasicDoHAutomatic) {
   EXPECT_CALL(
       *mock_resolver,
       SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), false));
-  std::map<std::string, std::string> props;
-  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  brillo::VariantDictionary props;
+  props["https://dns.google.com"] = std::string("8.8.8.8, 8.8.4.4");
   proxy.OnDoHProvidersChanged(props);
 }
 
@@ -573,10 +573,10 @@ TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
               ShillClient());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
-  std::map<std::string, std::string> props;
-  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  brillo::VariantDictionary props;
+  props["https://dns.google.com"] = std::string("8.8.8.8, 8.8.4.4");
   props["https://chrome.cloudflare-dns.com/dns-query"] =
-      "1.1.1.1,2606:4700:4700::1111";
+      std::string("1.1.1.1,2606:4700:4700::1111");
   proxy.OnDoHProvidersChanged(props);
   shill::Client::IPConfig ipconfig;
   ipconfig.ipv4_dns_addresses = {"1.0.0.1", "1.1.1.1"};
@@ -617,10 +617,10 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
       SetDoHProviders(
           ElementsAre(StrEq("https://chrome.cloudflare-dns.com/dns-query")),
           false));
-  std::map<std::string, std::string> props;
-  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
+  brillo::VariantDictionary props;
+  props["https://dns.google.com"] = std::string("8.8.8.8, 8.8.4.4");
   props["https://chrome.cloudflare-dns.com/dns-query"] =
-      "1.1.1.1,2606:4700:4700::1111";
+      std::string("1.1.1.1,2606:4700:4700::1111");
   proxy.OnDoHProvidersChanged(props);
 
   // Automatic mode - no match.
@@ -651,14 +651,14 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
       SetDoHProviders(ElementsAre(StrEq("https://doh.opendns.com/dns-query")),
                       true));
   props.clear();
-  props["https://doh.opendns.com/dns-query"] = "";
+  props["https://doh.opendns.com/dns-query"] = std::string("");
   proxy.OnDoHProvidersChanged(props);
 
   // Back to automatic mode, though no matching ns.
   EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
   props.clear();
-  props["https://doh.opendns.com/dns-query"] =
-      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53";
+  props["https://doh.opendns.com/dns-query"] = std::string(
+      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53");
   proxy.OnDoHProvidersChanged(props);
 
   // Automatic mode working on ns update.
@@ -684,9 +684,9 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
       SetDoHProviders(UnorderedElementsAre(StrEq("https://dns.google.com"),
                                            StrEq("https://doh.opendns.com")),
                       true));
-  std::map<std::string, std::string> props;
-  props["https://dns.google.com"] = "";
-  props["https://doh.opendns.com"] = "";
+  brillo::VariantDictionary props;
+  props["https://dns.google.com"] = std::string("");
+  props["https://doh.opendns.com"] = std::string("");
   proxy.OnDoHProvidersChanged(props);
 }
 
@@ -708,13 +708,13 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
       SetDoHProviders(
           ElementsAre(StrEq("https://chrome.cloudflare-dns.com/dns-query")),
           false));
-  std::map<std::string, std::string> props;
-  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
-  props["https://dns.quad9.net/dns-query"] = "9.9.9.9,2620:fe::9";
+  brillo::VariantDictionary props;
+  props["https://dns.google.com"] = std::string("8.8.8.8, 8.8.4.4");
+  props["https://dns.quad9.net/dns-query"] = std::string("9.9.9.9,2620:fe::9");
   props["https://chrome.cloudflare-dns.com/dns-query"] =
-      "1.1.1.1,2606:4700:4700::1111";
-  props["https://doh.opendns.com/dns-query"] =
-      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53";
+      std::string("1.1.1.1,2606:4700:4700::1111");
+  props["https://doh.opendns.com/dns-query"] = std::string(
+      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53");
   proxy.OnDoHProvidersChanged(props);
 
   EXPECT_CALL(*mock_resolver,
@@ -746,14 +746,14 @@ TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
       SetDoHProviders(
           ElementsAre(StrEq("https://chrome.cloudflare-dns.com/dns-query")),
           false));
-  std::map<std::string, std::string> props;
-  props["https://dns.opendns.com"] = "";
-  props["https://dns.google.com"] = "8.8.8.8, 8.8.4.4";
-  props["https://dns.quad9.net/dns-query"] = "9.9.9.9,2620:fe::9";
+  brillo::VariantDictionary props;
+  props["https://dns.opendns.com"] = std::string("");
+  props["https://dns.google.com"] = std::string("8.8.8.8, 8.8.4.4");
+  props["https://dns.quad9.net/dns-query"] = std::string("9.9.9.9,2620:fe::9");
   props["https://chrome.cloudflare-dns.com/dns-query"] =
-      "1.1.1.1,2606:4700:4700::1111";
-  props["https://doh.opendns.com/dns-query"] =
-      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53";
+      std::string("1.1.1.1,2606:4700:4700::1111");
+  props["https://doh.opendns.com/dns-query"] = std::string(
+      "208.67.222.222,208.67.220.220,2620:119:35::35, 2620:119:53::53");
   proxy.OnDoHProvidersChanged(props);
 
   EXPECT_CALL(*mock_resolver,
