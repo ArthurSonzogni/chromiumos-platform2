@@ -49,8 +49,8 @@ bool PreExecSettings(const std::map<std::string, std::string>& vars) {
     }
   }
 
-  // Set soft/hard limit for CPU usage (60 sec / 66 sec).
-  const rlimit cpu_limit = {60, 66};
+  // Set soft/hard limit for CPU usage (300 sec / 330 sec).
+  const rlimit cpu_limit = {300, 330};
   if (setrlimit(RLIMIT_CPU, &cpu_limit)) {
     perror("setrlimit(RLIMIT_CPU,...) failed");
     return false;
