@@ -72,6 +72,9 @@ const char kFeatureRepeatedUpdates[] = "feature-repeated-updates";
 enum class ErrorCode : int {
   kSuccess = 0,
   kError = 1,
+  kDownloadTransferError = 9,
+  kOmahaUpdateIgnoredPerPolicy = 35,
+  kOmahaErrorInHTTPResponse = 37,
   kNoUpdate = 53,
 };
 
