@@ -181,10 +181,13 @@ base::flat_map<std::string, TensorPtr> TensorMapFromExample(
 // Converts the `accumulative_result` into BenchmarkResults.
 BenchmarkResults ToBenchmarkResults(AccumulativeResult* accumulative_result) {
   BenchmarkResults benchmark_result;
+  if (accumulative_result->times_in_us.empty()) {
+    benchmark_result.set_status(BenchmarkReturnStatus::RUNTIME_ERROR);
+    benchmark_result.set_results_message("times_in_us is empty");
+    return benchmark_result;
+  }
+
   benchmark_result.set_status(BenchmarkReturnStatus::OK);
-  // Sets average accuracy.
-  benchmark_result.set_total_accuracy(accumulative_result->total_error /
-                                      accumulative_result->times_in_us.size());
 
   // Sorts all times_in_us for all the successful runs.
   std::sort(accumulative_result->times_in_us.begin(),
@@ -198,6 +201,14 @@ BenchmarkResults ToBenchmarkResults(AccumulativeResult* accumulative_result) {
     (*benchmark_result.mutable_percentile_latencies_in_us())[i] =
         accumulative_result->times_in_us[pos];
   }
+
+  auto& error_metric = *benchmark_result.add_metrics();
+  error_metric.set_name("average_error");
+  error_metric.set_units(chrome::ml_benchmark::Metric::UNITLESS);
+  error_metric.set_direction(chrome::ml_benchmark::Metric::SMALLER_IS_BETTER);
+  error_metric.set_cardinality(chrome::ml_benchmark::Metric::SINGLE);
+  error_metric.add_values(accumulative_result->total_error /
+                          accumulative_result->times_in_us.size());
 
   return benchmark_result;
 }

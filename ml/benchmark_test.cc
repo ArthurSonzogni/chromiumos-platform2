@@ -148,7 +148,14 @@ TEST_F(MlBenchmarkTest, TfliteModelMatchedValueTest) {
   CHECK(results.ParseFromArray(results_data, results_size));
   free_benchmark_results(results_data);
   EXPECT_EQ(results.status(), BenchmarkReturnStatus::OK);
-  EXPECT_LT(results.total_accuracy(), 1e-5);
+
+  auto metrics = results.metrics();
+  EXPECT_EQ(metrics[0].name(), "average_error");
+  EXPECT_EQ(metrics[0].units(), chrome::ml_benchmark::Metric::UNITLESS);
+  EXPECT_EQ(metrics[0].direction(),
+            chrome::ml_benchmark::Metric::SMALLER_IS_BETTER);
+  EXPECT_EQ(metrics[0].cardinality(), chrome::ml_benchmark::Metric::SINGLE);
+  EXPECT_NEAR(metrics[0].values()[0], 0.0f, 1e-5);
 }
 
 TEST_F(MlBenchmarkTest, TfliteModelUnmachedValueTest) {
@@ -166,7 +173,13 @@ TEST_F(MlBenchmarkTest, TfliteModelUnmachedValueTest) {
   CHECK(results.ParseFromArray(results_data, results_size));
   free_benchmark_results(results_data);
   EXPECT_EQ(results.status(), BenchmarkReturnStatus::OK);
-  EXPECT_LT(results.total_accuracy() - 0.01f, 1e-5);
+  auto metrics = results.metrics();
+  EXPECT_EQ(metrics[0].name(), "average_error");
+  EXPECT_EQ(metrics[0].units(), chrome::ml_benchmark::Metric::UNITLESS);
+  EXPECT_EQ(metrics[0].direction(),
+            chrome::ml_benchmark::Metric::SMALLER_IS_BETTER);
+  EXPECT_EQ(metrics[0].cardinality(), chrome::ml_benchmark::Metric::SINGLE);
+  EXPECT_NEAR(metrics[0].values()[0], 0.01f, 1e-5);
 }
 
 }  // namespace ml
