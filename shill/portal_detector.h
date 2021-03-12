@@ -23,6 +23,7 @@
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
+#include "shill/service.h"
 
 namespace shill {
 
@@ -110,7 +111,13 @@ class PortalDetector {
     bool http_probe_completed = false;
     bool https_probe_completed = false;
 
+    // Returns true if both http and https probes have completed, successfully
+    // or not.
     bool IsComplete() const;
+
+    // Returns the Service ConnectionState value inferred from this captive
+    // portal detection result.
+    Service::ConnectState GetConnectionState() const;
   };
 
   static const char kDefaultHttpUrl[];

@@ -97,26 +97,6 @@ constexpr size_t kHardwareAddressLength = 6;
 // (network) as unreliable.
 constexpr int kLinkUnreliableThresholdSeconds = 60 * 60;
 
-Service::ConnectState CalculatePortalStateFromProbeResults(
-    const PortalDetector::Result& result) {
-  if (result.http_phase != PortalDetector::Phase::kContent) {
-    return Service::kStateNoConnectivity;
-  }
-  if (result.http_status == PortalDetector::Status::kSuccess &&
-      result.https_status == PortalDetector::Status::kSuccess) {
-    return Service::kStateOnline;
-  }
-  if (result.http_status == PortalDetector::Status::kRedirect) {
-    return result.redirect_url_string.empty() ? Service::kStatePortalSuspected
-                                              : Service::kStateRedirectFound;
-  }
-  if (result.http_status == PortalDetector::Status::kTimeout &&
-      result.https_status != PortalDetector::Status::kSuccess) {
-    return Service::kStateNoConnectivity;
-  }
-  return Service::kStatePortalSuspected;
-}
-
 }  // namespace
 
 const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
@@ -1642,7 +1622,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
                                    technology()),
       portal_status, Metrics::kPortalResultMax);
 
-  Service::ConnectState state = CalculatePortalStateFromProbeResults(result);
+  Service::ConnectState state = result.GetConnectionState();
   if (selected_service_) {
     // Set the probe URL. It should be empty if there is no redirect.
     selected_service_->SetProbeUrl(result.probe_url_string);

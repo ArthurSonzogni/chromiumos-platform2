@@ -406,6 +406,25 @@ PortalDetector::Status PortalDetector::GetPortalStatusForRequestResult(
   }
 }
 
+Service::ConnectState PortalDetector::Result::GetConnectionState() const {
+  if (http_phase != PortalDetector::Phase::kContent) {
+    return Service::kStateNoConnectivity;
+  }
+  if (http_status == PortalDetector::Status::kSuccess &&
+      https_status == PortalDetector::Status::kSuccess) {
+    return Service::kStateOnline;
+  }
+  if (http_status == PortalDetector::Status::kRedirect) {
+    return redirect_url_string.empty() ? Service::kStatePortalSuspected
+                                       : Service::kStateRedirectFound;
+  }
+  if (http_status == PortalDetector::Status::kTimeout &&
+      https_status != PortalDetector::Status::kSuccess) {
+    return Service::kStateNoConnectivity;
+  }
+  return Service::kStatePortalSuspected;
+}
+
 std::string PortalDetector::LoggingTag() const {
   return logging_tag_ + " attempt=" + std::to_string(attempt_count_);
 }
