@@ -34,7 +34,6 @@ TEST(BenchmarkResultsToJson, Basics) {
   BenchmarkResults results;
   results.set_status(chrome::ml_benchmark::RUNTIME_ERROR);
   results.set_results_message("Test error");
-  results.set_total_accuracy(42);
 
   const base::Optional<base::Value> json =
       ml_benchmark::BenchmarkResultsToJson(results);

@@ -83,9 +83,6 @@ base::Optional<base::Value> BenchmarkResultsToJson(
     return doc;
   }
 
-  doc.SetKey("total_accuracy",
-             base::Value(static_cast<double>(results.total_accuracy())));
-
   base::Value percentiles(base::Value::Type::DICTIONARY);
   for (const auto& latencies : results.percentile_latencies_in_us()) {
     std::string percentile = std::to_string(latencies.first);

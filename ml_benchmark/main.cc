@@ -41,8 +41,6 @@ void AddMemoryMetric(const std::string& metric_name,
 }
 
 void PrintMetrics(const BenchmarkResults& results) {
-  LOG(INFO) << "Accuracy: " << results.total_accuracy();
-
   for (const auto& latencies : results.percentile_latencies_in_us()) {
     std::string percentile = std::to_string(latencies.first);
     LOG(INFO) << percentile
