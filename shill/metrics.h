@@ -409,12 +409,6 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionResultMax
   };
 
-  enum DNSTestResult {
-    kFallbackDNSTestResultSuccess = 0,
-    kFallbackDNSTestResultFailure,
-    kFallbackDNSTestResultMax
-  };
-
   // Network problem detected by traffic monitor.
   enum NetworkProblem {
     kNetworkProblemCongestedTCPTxQueue = 0,
@@ -1232,10 +1226,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object about user-initiated event.
   virtual void NotifyUserInitiatedEvent(int event);
-
-  // Notifies this object about the result of the fallback DNS test.
-  virtual void NotifyFallbackDNSTestResult(Technology technology_id,
-                                           int result);
 
   // Notifies this object about a network problem detected on the currently
   // connected network.

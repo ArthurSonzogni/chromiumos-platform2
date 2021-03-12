@@ -27,7 +27,6 @@
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
-#include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
 #include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
@@ -87,8 +86,6 @@ class TestDevice : public Device {
     ON_CALL(*this, IsTrafficMonitorEnabled())
         .WillByDefault(
             Invoke(this, &TestDevice::DeviceIsTrafficMonitorEnabled));
-    ON_CALL(*this, StartDNSTest(_, _, _))
-        .WillByDefault(Invoke(this, &TestDevice::DeviceStartDNSTest));
     ON_CALL(*this, ShouldBringNetworkInterfaceDownAfterDisabled())
         .WillByDefault(Invoke(
             this,
@@ -117,12 +114,6 @@ class TestDevice : public Device {
               (IPAddress::Family, const std::string&, const std::string&),
               (override));
   MOCK_METHOD(bool,
-              StartDNSTest,
-              (const std::vector<std::string>&,
-               const bool,
-               const base::Callback<void(const DnsServerTester::Status)>&),
-              (override));
-  MOCK_METHOD(bool,
               StartConnectionDiagnosticsAfterPortalDetection,
               (const PortalDetector::Result&, const PortalDetector::Result&),
               (override));
@@ -135,13 +126,6 @@ class TestDevice : public Device {
                                const std::string& flag,
                                const std::string& value) {
     return Device::SetIPFlag(family, flag, value);
-  }
-
-  virtual bool DeviceStartDNSTest(
-      const std::vector<std::string>& dns_servers,
-      const bool retry_until_success,
-      const base::Callback<void(const DnsServerTester::Status)>& callback) {
-    return Device::StartDNSTest(dns_servers, retry_until_success, callback);
   }
 
   virtual bool DeviceShouldBringNetworkInterfaceDownAfterDisabled() const {
@@ -1942,9 +1926,6 @@ class DevicePortalDetectionTest : public DeviceTest {
   void ExpectPortalDetectorIsMock() {
     EXPECT_EQ(portal_detector_, device_->portal_detector_.get());
   }
-  void InvokeFallbackDNSResultCallback(DnsServerTester::Status status) {
-    device_->FallbackDNSResultCallback(status);
-  }
   void DestroyConnection() { device_->DestroyConnection(); }
   scoped_refptr<MockConnection> connection_;
   scoped_refptr<MockService> service_;
@@ -2287,8 +2268,6 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   const IPAddress ip_addr = IPAddress("1.2.3.4");
-  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
-  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
@@ -2313,7 +2292,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_dns_failure),
                             IsPortalDetectorResult(https_result)));
-  EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
   PortalDetectorCallback(result_dns_failure, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
 
@@ -2333,7 +2311,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_dns_timeout),
                             IsPortalDetectorResult(https_result)));
-  EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
   PortalDetectorCallback(result_dns_timeout, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
 
@@ -2354,14 +2331,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_connection_failure),
                             IsPortalDetectorResult(https_result)));
-  EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
   PortalDetectorCallback(result_connection_failure, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
-  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
-  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
@@ -2380,7 +2354,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
                                         kRedirectStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_redirect),
                             IsPortalDetectorResult(https_result)));
@@ -2389,8 +2362,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
-  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
-  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
@@ -2408,7 +2379,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
                                         kRedirectStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_redirect),
                             IsPortalDetectorResult(https_result)));
@@ -2417,8 +2387,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
-  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
-  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
@@ -2436,7 +2404,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(http_result),
                             IsPortalDetectorResult(https_result)));
@@ -2445,8 +2412,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
-  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
-  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
@@ -2464,41 +2429,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(http_result),
                             IsPortalDetectorResult(https_result)));
   PortalDetectorCallback(http_result, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
-}
-
-TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
-  scoped_refptr<MockIPConfig> ipconfig =
-      new MockIPConfig(control_interface(), kDeviceName);
-  device_->set_ipconfig(ipconfig);
-
-  // Fallback DNS test failed.
-  EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(0);
-  EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
-  EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyFallbackDNSTestResult(
-                              _, Metrics::kFallbackDNSTestResultFailure))
-      .Times(1);
-  InvokeFallbackDNSResultCallback(DnsServerTester::kStatusFailure);
-  Mock::VerifyAndClearExpectations(connection_.get());
-  Mock::VerifyAndClearExpectations(ipconfig.get());
-  Mock::VerifyAndClearExpectations(metrics());
-
-  // Fallback DNS test succeed with auto fallback disabled.
-  EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyFallbackDNSTestResult(
-                              _, Metrics::kFallbackDNSTestResultSuccess))
-      .Times(1);
-  InvokeFallbackDNSResultCallback(DnsServerTester::kStatusSuccess);
-  Mock::VerifyAndClearExpectations(service_.get());
-  Mock::VerifyAndClearExpectations(connection_.get());
-  Mock::VerifyAndClearExpectations(ipconfig.get());
-  Mock::VerifyAndClearExpectations(metrics());
 }
 
 TEST_F(DevicePortalDetectionTest, DestroyConnection) {

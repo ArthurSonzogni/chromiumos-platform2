@@ -92,7 +92,6 @@ constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
 constexpr char kIPFlagArpIgnore[] = "arp_ignore";
 constexpr char kIPFlagArpIgnoreDefault[] = "0";
 constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
-const char* const kFallbackDnsServers[] = {"8.8.8.8", "8.8.4.4"};
 constexpr size_t kHardwareAddressLength = 6;
 
 // Maximum seconds between two link monitor failures to declare this link
@@ -696,7 +695,6 @@ void Device::StopAllActivities() {
   StopConnectivityTest();
   StopConnectionDiagnostics();
   StopLinkMonitor();
-  StopDNSTest();
   StopIPv6DNSServerTimer();
 }
 
@@ -1728,49 +1726,6 @@ void Device::LinkMonitorComparisonSendResult() {
                                                  time_diff_milliseconds);
 }
 
-bool Device::StartDNSTest(
-    const vector<string>& dns_servers,
-    bool retry_until_success,
-    const Callback<void(const DnsServerTester::Status)>& callback) {
-  if (dns_server_tester_) {
-    LOG(ERROR) << link_name() << ": "
-               << "Failed to start DNS Test: current test still running";
-    return false;
-  }
-
-  dns_server_tester_.reset(new DnsServerTester(
-      connection_, dispatcher(), dns_servers, retry_until_success, callback));
-  dns_server_tester_->Start();
-  return true;
-}
-
-void Device::StopDNSTest() {
-  dns_server_tester_.reset();
-}
-
-void Device::FallbackDNSResultCallback(const DnsServerTester::Status status) {
-  StopDNSTest();
-  int result = Metrics::kFallbackDNSTestResultFailure;
-  if (status == DnsServerTester::kStatusSuccess) {
-    result = Metrics::kFallbackDNSTestResultSuccess;
-  }
-  metrics()->NotifyFallbackDNSTestResult(technology_, result);
-}
-
-void Device::SwitchDNSServers(const vector<string>& dns_servers) {
-  CHECK(ipconfig_);
-  CHECK(connection_);
-  // Push new DNS servers setting to the IP config object.
-  ipconfig_->UpdateDNSServers(dns_servers);
-  // Push new DNS servers setting to the current connection, so the resolver
-  // will be updated to use the new DNS servers.
-  connection_->UpdateDNSServers(dns_servers);
-  // Allow the service to notify Chrome of ipconfig changes.
-  selected_service_->NotifyIPConfigChanges();
-  // Restart the portal detection with the new DNS setting.
-  RestartPortalDetection();
-}
-
 void Device::set_traffic_monitor_for_test(
     std::unique_ptr<TrafficMonitor> traffic_monitor) {
   traffic_monitor_ = std::move(traffic_monitor);
@@ -1943,24 +1898,7 @@ void Device::PortalDetectorCallback(
           http_result.status_code);
     }
     SetServiceConnectedState(state);
-
     StartConnectionDiagnosticsAfterPortalDetection(http_result, https_result);
-
-    // TODO(zqiu): Only support fallback DNS server for IPv4 for now.
-    if (connection_->IsIPv6()) {
-      return;
-    }
-
-    // Perform fallback DNS test if the portal failure is DNS related.
-    // The test will send a  DNS request to Google's DNS server to determine
-    // if the DNS failure is due to bad DNS server settings.
-    if ((portal_status == Metrics::kPortalResultDNSFailure) ||
-        (portal_status == Metrics::kPortalResultDNSTimeout)) {
-      StartDNSTest(vector<string>(std::begin(kFallbackDnsServers),
-                                  std::end(kFallbackDnsServers)),
-                   false,
-                   Bind(&Device::FallbackDNSResultCallback, AsWeakPtr()));
-    }
   }
 }
 

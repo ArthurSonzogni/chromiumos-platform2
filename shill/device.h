@@ -22,7 +22,6 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
 #include "shill/connection_diagnostics.h"
-#include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
@@ -655,12 +654,6 @@ class Device : public base::RefCounted<Device> {
   // Emit a property change signal for the "IPConfigs" property of this device.
   void UpdateIPConfigsProperty();
 
-  // Called by DNS server tester when the fallback DNS servers test completes.
-  void FallbackDNSResultCallback(const DnsServerTester::Status status);
-
-  // Update DNS setting with the given DNS servers for the current connection.
-  void SwitchDNSServers(const std::vector<std::string>& dns_servers);
-
   // Timer function for monitoring IPv6 DNS server's lifetime.
   void StartIPv6DNSServerTimer(uint32_t lifetime_seconds);
   void StopIPv6DNSServerTimer();
@@ -786,18 +779,6 @@ class Device : public base::RefCounted<Device> {
   // Stops traffic monitoring on the device if traffic monitor is enabled.
   void StopTrafficMonitor();
 
-  // Start DNS test for the given servers. When retry_until_success is set,
-  // callback will only be invoke when the test succeed or the test failed to
-  // start (internal error). This function will return false if there is a test
-  // that's already running, and true otherwise.
-  mockable bool StartDNSTest(
-      const std::vector<std::string>& dns_servers,
-      const bool retry_until_success,
-      const base::Callback<void(const DnsServerTester::Status)>& callback);
-
-  // Stop DNS test if one is running.
-  void StopDNSTest();
-
   // Stop all monitoring/testing activities on this device. Called when tearing
   // down or changing network connection on the device.
   void StopAllActivities();
@@ -913,8 +894,6 @@ class Device : public base::RefCounted<Device> {
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
   std::unique_ptr<LinkMonitor> link_monitor_;
-  // Used for verifying whether DNS server is functional.
-  std::unique_ptr<DnsServerTester> dns_server_tester_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableClosure ipv6_dns_server_expired_callback_;
   std::unique_ptr<TrafficMonitor> traffic_monitor_;

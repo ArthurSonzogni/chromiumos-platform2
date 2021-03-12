@@ -79,7 +79,6 @@ class MockMetrics : public Metrics {
               NotifyNetworkProblemDetected,
               (Technology, int),
               (override));
-  MOCK_METHOD(void, NotifyFallbackDNSTestResult, (Technology, int), (override));
   MOCK_METHOD(void,
               NotifyDeviceConnectionStatus,
               (Metrics::ConnectionStatus),

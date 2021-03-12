@@ -476,10 +476,6 @@ const int Metrics::kMetricWifiSupplicantAttemptsMin = 1;
 const int Metrics::kMetricWifiSupplicantAttemptsNumBuckets = 11;
 
 // static
-const char Metrics::kMetricFallbackDNSTestResultSuffix[] =
-    "FallbackDNSTestResult";
-
-// static
 const char Metrics::kMetricNetworkProblemDetectedSuffix[] =
     "NetworkProblemDetected";
 
@@ -1766,13 +1762,6 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
       break;
   }
   SendEnumToUMA(name, reason, kUserInitiatedConnectionFailureReasonMax);
-}
-
-void Metrics::NotifyFallbackDNSTestResult(Technology technology_id,
-                                          int result) {
-  string histogram =
-      GetFullMetricName(kMetricFallbackDNSTestResultSuffix, technology_id);
-  SendEnumToUMA(histogram, result, kFallbackDNSTestResultMax);
 }
 
 void Metrics::NotifyNetworkProblemDetected(Technology technology_id,
