@@ -701,8 +701,7 @@ bool Service::Load(const StoreInterface* storage) {
            patchpanel::TrafficCounter::Source_MIN;
        source <= patchpanel::TrafficCounter::Source_MAX;
        source = patchpanel::TrafficCounter::Source(source + 1)) {
-    std::valarray<uint64_t> counter_array(kTrafficCounterArraySize),
-        prev_counter_array(kTrafficCounterArraySize);
+    std::valarray<uint64_t> counter_array(kTrafficCounterArraySize);
     for (size_t i = 0; i < kTrafficCounterArraySize; i++) {
       storage->GetUint64(id,
                          GetCurrentTrafficCounterKey(
