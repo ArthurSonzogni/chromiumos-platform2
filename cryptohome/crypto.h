@@ -23,7 +23,6 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/le_credential_manager.h"
@@ -34,7 +33,6 @@
 namespace cryptohome {
 
 struct KeyBlobs;
-struct WrappedKeyMaterial;
 class VaultKeyset;
 class AuthBlock;
 
@@ -78,15 +76,12 @@ class Crypto {
   //   obfuscated_username - The value of username obfuscated. It's the same
   //                         value used as the folder name where the user data
   //                         is stored.
-  //   auth_block_state - On success, the plaintext state needed to initialize
-  //                      the auth block.
-  //   wrapped_key_material - On success, the encrypted vault keys.
+  //   encrypted_keyset - On success, the encrypted vault keyset
   virtual bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                                   const brillo::SecureBlob& vault_key,
                                   const brillo::SecureBlob& vault_key_salt,
                                   const std::string& obfuscated_username,
-                                  AuthBlockState* auth_block_state,
-                                  WrappedKeyMaterial* wrapped) const;
+                                  SerializedVaultKeyset* serialized) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -210,6 +205,12 @@ class Crypto {
   }
 
  private:
+  // This generates keys and wraps them with the wrapping key in |key_blobs|.
+  bool GenerateAndWrapKeys(const VaultKeyset& vault_keyset,
+                           const KeyBlobs& blobs,
+                           bool store_reset_seed,
+                           SerializedVaultKeyset* serialized) const;
+
   bool EncryptScrypt(const VaultKeyset& vault_keyset,
                      const brillo::SecureBlob& key,
                      SerializedVaultKeyset* serialized) const;

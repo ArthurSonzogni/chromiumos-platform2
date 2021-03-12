@@ -8,16 +8,13 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/gtest_prod_util.h>
 #include <base/macros.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/key_objects.h"
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -194,9 +191,6 @@ class VaultKeyset {
   virtual void SetResetSecret(const brillo::SecureBlob& reset_secret);
   virtual const brillo::SecureBlob& GetResetSecret() const;
 
-  // This populates an AuthBlockState proto allocated by the caller.
-  bool GetAuthBlockState(AuthBlockState* auth_state) const;
-
  private:
   // Converts the class to a protobuf for serialization to disk.
   SerializedVaultKeyset ToSerialized() const;
@@ -206,33 +200,6 @@ class VaultKeyset {
 
   // Populates the fields from a SerializedVaultKeyset.
   void InitializeFromSerialized(const SerializedVaultKeyset& serialized);
-
-  // Sets the wrapped keys and IVs.
-  void SetWrappedKeyMaterial(const WrappedKeyMaterial& key_material);
-
-  // This populates each sub type of AuthBlockState into the caller allocated
-  // object.
-  bool GetTpmBoundToPcrState(AuthBlockState* auth_state) const;
-  bool GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const;
-  bool GetPinWeaverState(AuthBlockState* auth_state) const;
-  bool GetSignatureChallengeState(AuthBlockState* auth_state) const;
-  bool GetLibScryptCompatState(AuthBlockState* auth_state) const;
-
-  // Reads an auth block state and update the VaultKeyset with what it
-  // returns.
-  void SetAuthBlockState(const AuthBlockState& auth_state);
-
-  // Set each type of AuthBlockState's sub messages.
-  void SetTpmNotBoundToPcrState(
-      const AuthBlockState::TpmNotBoundToPcrAuthBlockState& auth_state);
-  void SetTpmBoundToPcrState(
-      const AuthBlockState::TpmBoundToPcrAuthBlockState& auth_state);
-  void SetPinWeaverState(
-      const AuthBlockState::PinWeaverAuthBlockState& auth_state);
-  void SetLibScryptCompatState(
-      const AuthBlockState::LibScryptCompatAuthBlockState& auth_state);
-  void SetChallengeCredentialState(
-      const AuthBlockState::ChallengeCredentialAuthBlockState& auth_state);
 
   // These store run time state for the class.
   Platform* platform_;
@@ -317,14 +284,6 @@ class VaultKeyset {
   brillo::SecureBlob reset_seed_;
   // Used by LECredentials only.
   brillo::SecureBlob reset_secret_;
-
-  FRIEND_TEST_ALL_PREFIXES(CryptoTest, TpmStepTest);
-  FRIEND_TEST_ALL_PREFIXES(CryptoTest, Tpm1_2_StepTest);
-  FRIEND_TEST_ALL_PREFIXES(CryptoTest, TpmDecryptFailureTest);
-  FRIEND_TEST_ALL_PREFIXES(CryptoTest, DecryptionTest);
-  FRIEND_TEST_ALL_PREFIXES(CryptoTest, ScryptStepTest);
-  FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, Encrypt);
-  FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptFail);
 };
 
 }  // namespace cryptohome

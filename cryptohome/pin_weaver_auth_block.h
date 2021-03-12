@@ -20,9 +20,9 @@ class PinWeaverAuthBlock : public AuthBlock {
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
 
-  base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                        KeyBlobs* key_blobs,
-                                        CryptoError* error) override;
+  base::Optional<DeprecatedAuthBlockState> Create(const AuthInput& user_input,
+                                                  KeyBlobs* key_blobs,
+                                                  CryptoError* error) override;
 
   bool Derive(const AuthInput& auth_input,
               const DeprecatedAuthBlockState& state,

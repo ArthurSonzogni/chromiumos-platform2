@@ -23,7 +23,7 @@ DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(Tpm* tpm,
       tpm_auth_block_(tpm, tpm_init),
       lib_scrypt_compat_auth_block_() {}
 
-base::Optional<AuthBlockState> DoubleWrappedCompatAuthBlock::Create(
+base::Optional<DeprecatedAuthBlockState> DoubleWrappedCompatAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
   return base::nullopt;

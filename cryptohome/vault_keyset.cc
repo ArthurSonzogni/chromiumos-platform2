@@ -12,10 +12,8 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
-#include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 
 using base::FilePath;
@@ -224,217 +222,71 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
   return ok;
 }
 
-void VaultKeyset::SetTpmNotBoundToPcrState(
-    const AuthBlockState::TpmNotBoundToPcrAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::TPM_WRAPPED;
-  if (auth_state.scrypt_derived()) {
-    flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
-  }
-
-  tpm_key_ = brillo::SecureBlob(auth_state.tpm_key().begin(),
-                                auth_state.tpm_key().end());
-  tpm_public_key_hash_ =
-      brillo::SecureBlob(auth_state.tpm_public_key_hash().begin(),
-                         auth_state.tpm_public_key_hash().end());
-}
-
-void VaultKeyset::SetTpmBoundToPcrState(
-    const AuthBlockState::TpmBoundToPcrAuthBlockState& auth_state) {
-  flags_ =
-      SerializedVaultKeyset::TPM_WRAPPED | SerializedVaultKeyset::PCR_BOUND;
-  if (auth_state.scrypt_derived()) {
-    flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
-  }
-  tpm_key_ = brillo::SecureBlob(auth_state.tpm_key().begin(),
-                                auth_state.tpm_key().end());
-  extended_tpm_key_ = brillo::SecureBlob(auth_state.extended_tpm_key().begin(),
-                                         auth_state.extended_tpm_key().end());
-  tpm_public_key_hash_ =
-      brillo::SecureBlob(auth_state.tpm_public_key_hash().begin(),
-                         auth_state.tpm_public_key_hash().end());
-}
-
-void VaultKeyset::SetPinWeaverState(
-    const AuthBlockState::PinWeaverAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::LE_CREDENTIAL;
-  le_label_ = auth_state.le_label();
-}
-
-void VaultKeyset::SetLibScryptCompatState(
-    const AuthBlockState::LibScryptCompatAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED;
-}
-
-void VaultKeyset::SetChallengeCredentialState(
-    const AuthBlockState::ChallengeCredentialAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED |
-           SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
-}
-
-void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
-  switch (auth_state.auth_block_state_case()) {
-    case AuthBlockState::kTpmNotBoundToPcrState:
-      SetTpmNotBoundToPcrState(auth_state.tpm_not_bound_to_pcr_state());
-      return;
-    case AuthBlockState::kTpmBoundToPcrState:
-      SetTpmBoundToPcrState(auth_state.tpm_bound_to_pcr_state());
-      return;
-    case AuthBlockState::kPinWeaverState:
-      SetPinWeaverState(auth_state.pin_weaver_state());
-      return;
-    case AuthBlockState::kLibscryptCompatState:
-      SetLibScryptCompatState(auth_state.libscrypt_compat_state());
-      return;
-    case AuthBlockState::kChallengeCredentialState:
-      SetChallengeCredentialState(auth_state.challenge_credential_state());
-      return;
-    default:
-      LOG(ERROR) << "Invalid auth block state type";
-      return;
-  }
-}
-
-bool VaultKeyset::GetTpmBoundToPcrState(AuthBlockState* auth_state) const {
-  // The AuthBlock can function without the |tpm_public_key_hash_|, but not
-  // without the |tpm_key_| or | extended_tpm_key_|.
-  if (!tpm_key_.has_value() || !extended_tpm_key_.has_value()) {
-    return false;
-  }
-
-  AuthBlockState::TpmBoundToPcrAuthBlockState* state =
-      auth_state->mutable_tpm_bound_to_pcr_state();
-  state->set_scrypt_derived((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) !=
-                            0);
-  state->set_tpm_key(tpm_key_->data(), tpm_key_->size());
-  state->set_extended_tpm_key(extended_tpm_key_->data(),
-                              extended_tpm_key_->size());
-  if (tpm_public_key_hash_.has_value()) {
-    state->set_tpm_public_key_hash(tpm_public_key_hash_->data(),
-                                   tpm_public_key_hash_->size());
-  }
-  return true;
-}
-
-bool VaultKeyset::GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const {
-  // The AuthBlock can function without the |tpm_public_key_hash_|, but not
-  // without the |tpm_key_|.
-  if (!tpm_key_.has_value()) {
-    return false;
-  }
-
-  AuthBlockState::TpmNotBoundToPcrAuthBlockState* state =
-      auth_state->mutable_tpm_not_bound_to_pcr_state();
-  state->set_scrypt_derived((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) !=
-                            0);
-  state->set_tpm_key(tpm_key_->data(), tpm_key_->size());
-  if (tpm_public_key_hash_.has_value()) {
-    state->set_tpm_public_key_hash(tpm_public_key_hash_->data(),
-                                   tpm_public_key_hash_->size());
-  }
-
-  return true;
-}
-
-bool VaultKeyset::GetPinWeaverState(AuthBlockState* auth_state) const {
-  // If the LE Label is missing, the AuthBlock cannot function.
-  if (!le_label_.has_value()) {
-    return false;
-  }
-
-  AuthBlockState::PinWeaverAuthBlockState* state =
-      auth_state->mutable_pin_weaver_state();
-  state->set_le_label(le_label_.value());
-  return true;
-}
-
-bool VaultKeyset::GetSignatureChallengeState(AuthBlockState* auth_state) const {
-  // This populates the member in the union.
-  auth_state->mutable_challenge_credential_state();
-  return true;
-}
-
-bool VaultKeyset::GetLibScryptCompatState(AuthBlockState* auth_state) const {
-  // This populates the member in the union.
-  auth_state->mutable_libscrypt_compat_state();
-  return true;
-}
-
-bool VaultKeyset::GetAuthBlockState(AuthBlockState* auth_state) const {
-  if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
-      flags_ & SerializedVaultKeyset::PCR_BOUND) {
-    return GetTpmBoundToPcrState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
-    return GetTpmNotBoundToPcrState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
-    return GetPinWeaverState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
-    return GetSignatureChallengeState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) {
-    return GetLibScryptCompatState(auth_state);
-  } else {
-    LOG(ERROR) << "Unknown auth block type for flags " << flags_;
-    return false;
-  }
-}
-
-void VaultKeyset::SetWrappedKeyMaterial(
-    const WrappedKeyMaterial& key_material) {
-  if (IsLECredential() && key_material.vkk_iv.has_value()) {
-    le_fek_iv_ = key_material.vkk_iv;
-  }
-  if (key_material.wrapped_keyset.has_value()) {
-    wrapped_keyset_ = key_material.wrapped_keyset.value();
-  }
-  if (IsLECredential() && key_material.chaps_iv.has_value()) {
-    le_chaps_iv_ = key_material.chaps_iv;
-  }
-  if (key_material.wrapped_chaps_key.has_value()) {
-    wrapped_chaps_key_ = key_material.wrapped_chaps_key;
-  }
-  if (key_material.reset_iv.has_value()) {
-    reset_iv_ = key_material.reset_iv;
-  }
-  if (key_material.wrapped_reset_seed.has_value()) {
-    wrapped_reset_seed_ = key_material.wrapped_reset_seed;
-  }
-}
-
 bool VaultKeyset::Encrypt(const SecureBlob& key,
                           const std::string& obfuscated_username) {
   CHECK(crypto_);
-  salt_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  const auto salt =
+      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
-  // This generates the reset secret for PinWeaver credentials. Doing it per
-  // secret is confusing and difficult to maintain. It's necessary so that
-  // different credentials can all maintain  the same reset secret (i.e. the
-  // password resets the PIN), without storing said secret in the clear. In the
-  // USS key hierarchy, only one reset secret will exist.
+  // TODO(kerrnel): Do not pass a SerializedVaultKeyset as an out param to
+  // EncryptVaultKeyset. This is a hack and bad layering but necessary to limit
+  // the scope of this current CL.
+  SerializedVaultKeyset serialized;
+  encrypted_ = crypto_->EncryptVaultKeyset(*this, key, salt,
+                                           obfuscated_username, &serialized);
+
+  // TODO(kerrnel): These fields are copied based on explicit knowledge of how
+  // EncryptVaultKeyset is implemented. This must be fixed in a follow up CL.
+  flags_ = serialized.flags();
+  salt_ =
+      brillo::SecureBlob(serialized.salt().begin(), serialized.salt().end());
   if (IsLECredential()) {
-    // For new users, a reset seed is stored in the VaultKeyset, which is
-    // derived into the reset secret.
-    if (reset_seed_.empty()) {
-      LOG(ERROR) << "The VaultKeyset doesn't have a reset seed, so we can't"
-                    " set up an LE credential.";
-      return false;
-    }
-
-    reset_salt_ = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
-    reset_secret_ = CryptoLib::HmacSha256(reset_salt_.value(), reset_seed_);
-
-    if (!key_data_.has_value()) {
-      key_data_ = KeyData();
-    }
-    key_data_->mutable_policy()->set_auth_locked(false);
+    reset_salt_ = brillo::SecureBlob(serialized.reset_salt().begin(),
+                                     serialized.reset_salt().end());
+    key_data_->mutable_policy()->set_auth_locked(true);
   }
-
-  AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped;
-  encrypted_ = crypto_->EncryptVaultKeyset(
-      *this, key, salt_, obfuscated_username, &auth_block_state, &wrapped);
-
-  if (encrypted_) {
-    SetAuthBlockState(auth_block_state);
-    SetWrappedKeyMaterial(wrapped);
+  if (serialized.has_le_fek_iv()) {
+    le_fek_iv_ = brillo::SecureBlob(serialized.le_fek_iv().begin(),
+                                    serialized.le_fek_iv().end());
+  }
+  if (serialized.has_le_chaps_iv()) {
+    le_chaps_iv_ = brillo::SecureBlob(serialized.le_chaps_iv().begin(),
+                                      serialized.le_chaps_iv().end());
+  }
+  if (serialized.has_le_label()) {
+    le_label_ = serialized.le_label();
+  }
+  if (serialized.has_tpm_key()) {
+    tpm_key_ = brillo::SecureBlob(serialized.tpm_key().begin(),
+                                  serialized.tpm_key().end());
+  }
+  if (serialized.has_tpm_public_key_hash()) {
+    tpm_public_key_hash_ =
+        brillo::SecureBlob(serialized.tpm_public_key_hash().begin(),
+                           serialized.tpm_public_key_hash().end());
+  }
+  if (serialized.has_extended_tpm_key()) {
+    extended_tpm_key_ =
+        brillo::SecureBlob(serialized.extended_tpm_key().begin(),
+                           serialized.extended_tpm_key().end());
+  }
+  if (serialized.has_wrapped_keyset()) {
+    wrapped_keyset_ = brillo::SecureBlob(serialized.wrapped_keyset().begin(),
+                                         serialized.wrapped_keyset().end());
+  }
+  if (serialized.has_wrapped_chaps_key()) {
+    wrapped_chaps_key_ =
+        brillo::SecureBlob(serialized.wrapped_chaps_key().begin(),
+                           serialized.wrapped_chaps_key().end());
+  }
+  if (serialized.has_wrapped_reset_seed()) {
+    wrapped_reset_seed_ =
+        brillo::SecureBlob(serialized.wrapped_reset_seed().begin(),
+                           serialized.wrapped_reset_seed().end());
+  }
+  if (serialized.has_reset_iv()) {
+    reset_iv_ = brillo::SecureBlob(serialized.reset_iv().begin(),
+                                   serialized.reset_iv().end());
   }
 
   return encrypted_;
