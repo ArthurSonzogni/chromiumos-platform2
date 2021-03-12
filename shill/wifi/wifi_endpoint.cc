@@ -481,14 +481,21 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
   vector<uint8_t> ies =
       properties.Get<vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs);
 
-  // Format of an information element:
+  // Format of an information element not of type 255:
   //    1       1          1 - 252
   // +------+--------+----------------+
   // | Type | Length | Data           |
   // +------+--------+----------------+
+  //
+  // Format of an information element of type 255:
+  //    1       1          1         variable
+  // +------+--------+----------+----------------+
+  // | Type | Length | Ext Type | Data           |
+  // +------+--------+----------+----------------+
   *phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
   bool found_ht = false;
   bool found_vht = false;
+  bool found_he = false;
   bool found_erp = false;
   bool found_country = false;
   bool found_power_constraint = false;
@@ -559,6 +566,24 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
       case IEEE_80211::kElemIdVHTOperation:
         found_vht = true;
         break;
+      case IEEE_80211::kElemIdExt:
+        if (std::distance(it, ies.end()) > 2) {
+          switch (*(it + 2)) {
+            case IEEE_80211::kElemIdExtHECap:
+            case IEEE_80211::kElemIdExtHEOperation:
+              found_he = true;
+              break;
+            default:
+              SLOG(nullptr, 5) << __func__ << ": Element ID Extension "
+                               << *(it + 2) << " not supported.";
+              break;
+          }
+        }
+
+        break;
+      default:
+        SLOG(nullptr, 5) << __func__ << ": parsing of " << *it
+                         << " type IE not supported.";
     }
   }
   if (krv_support) {
@@ -568,7 +593,9 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
     krv_support->otds_ft_supported =
         krv_support->otds_ft_supported && krv_support->ota_ft_supported;
   }
-  if (found_vht) {
+  if (found_he) {
+    *phy_mode = Metrics::kWiFiNetworkPhyMode11ax;
+  } else if (found_vht) {
     *phy_mode = Metrics::kWiFiNetworkPhyMode11ac;
   } else if (found_ht) {
     *phy_mode = Metrics::kWiFiNetworkPhyMode11n;

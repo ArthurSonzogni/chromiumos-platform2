@@ -106,6 +106,7 @@ class Metrics : public DefaultServiceObserver {
     kWiFiNetworkPhyModeHalf = 5,     // PSB Half-width
     kWiFiNetworkPhyModeQuarter = 6,  // PSB Quarter-width
     kWiFiNetworkPhyMode11ac = 7,     // 802.11ac
+    kWiFiNetworkPhyMode11ax = 8,     // 802.11ax
 
     kWiFiNetworkPhyModeMax
   };

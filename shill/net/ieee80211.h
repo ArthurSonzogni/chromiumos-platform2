@@ -14,7 +14,7 @@
 namespace shill {
 
 namespace IEEE_80211 {
-// Information Element Ids from IEEE 802.11-2012 Section 8.4.2
+// Information Element Ids from IEEE 802.11-2016 Table 9-77.
 const uint8_t kElemIdBSSMaxIdlePeriod = 0x5a;
 const uint8_t kElemIdChannels = 0x24;
 const uint8_t kElemIdChallengeText = 0x10;
@@ -38,6 +38,11 @@ const uint8_t kElemIdVendor = 0xdd;
 const uint8_t kElemIdVHTCap = 0xbf;
 const uint8_t kElemIdVHTOperation = 0xc0;
 const uint8_t kElemIdMeshId = 0x72;
+const uint8_t kElemIdExt = 0xff;
+
+// Element Id Extensions from P802.11ax/D4.0 Section 9.4.2.1.
+const uint8_t kElemIdExtHECap = 0x23;
+const uint8_t kElemIdExtHEOperation = 0x24;
 
 const unsigned int kMaxSSIDLen = 32;
 
