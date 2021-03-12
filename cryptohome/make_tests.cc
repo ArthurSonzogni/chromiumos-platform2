@@ -181,6 +181,7 @@ void TestUser::FromInfo(const struct TestUserInfo* info) {
       brillo::cryptohome::home::GetRootPath(username).StripTrailingSeparators();
   root_mount_prefix =
       brillo::cryptohome::home::GetRootPathPrefix().StripTrailingSeparators();
+  new_user_path = MountHelper::GetNewUserPath(username);
 }
 
 void TestUser::GenerateCredentials(bool force_ecryptfs) {
@@ -340,7 +341,6 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   EXPECT_CALL(*platform, DirectoryExists(Property(
                              &FilePath::value, StartsWith(vault_path.value()))))
       .WillRepeatedly(Return(is_ecryptfs));
-  FilePath new_user_path = MountHelper::GetNewUserPath(username);
   EXPECT_CALL(*platform, DirectoryExists(Property(
                              &FilePath::value,
                              AnyOf(StartsWith(legacy_user_mount_path.value()),
@@ -350,6 +350,25 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
                                    StartsWith(new_user_path.value()),
                                    StartsWith(keyset_path.value())))))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*platform,
+              IsDirectoryMounted(Property(
+                  &FilePath::value, AnyOf(StartsWith(user_mount_path.value()),
+                                          StartsWith(root_mount_path.value()),
+                                          StartsWith(new_user_path.value())))))
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(*platform,
+              SafeCreateDirAndSetOwnershipAndPermissions(
+                  user_mount_path, 0750, chronos_uid, chronos_access_gid))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*platform,
+              SafeCreateDirAndSetOwnershipAndPermissions(
+                  new_user_path, 0750, chronos_uid, chronos_access_gid))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*platform, SafeCreateDirAndSetOwnershipAndPermissions(
+                             root_mount_path, 0700, 0, 0))
+      .WillRepeatedly(Return(true));
+
   EXPECT_CALL(*platform,
               SetGroupAccessible(
                   Property(&FilePath::value,

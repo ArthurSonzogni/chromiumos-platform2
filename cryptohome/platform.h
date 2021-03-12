@@ -906,6 +906,9 @@ class Platform {
   // string in case of error.
   virtual std::string GetRandomSuffix();
 
+  // Safely change a directory's mode.
+  virtual bool SafeDirChmod(const base::FilePath& path, mode_t mode);
+
   virtual bool SafeCreateDirAndSetOwnershipAndPermissions(
       const base::FilePath& path, mode_t mode, uid_t user_id, gid_t gid);
 

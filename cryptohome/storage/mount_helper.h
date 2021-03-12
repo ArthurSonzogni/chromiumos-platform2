@@ -262,32 +262,18 @@ class MountHelper : public MountHelperInterface {
   // Copies the skeleton directory to the user's cryptohome.
   void CopySkeleton(const FilePath& destination) const;
 
-  // Ensures that a specified directory exists, with all path components but the
-  // last one owned by kMountOwnerUid:kMountOwnerGid and the last component
-  // owned by desired_uid:desired_gid.
+  // Ensures that a specified directory exists, with all path components owned
+  // by kMountOwnerUid:kMountOwnerGid.
   //
   // Parameters
   //   dir - Directory to check
-  //   desired_uid - uid that must own the directory
-  //   desired_gid - gid that muts own the directory
-  bool EnsureDirHasOwner(const base::FilePath& dir,
-                         uid_t desired_uid,
-                         gid_t desired_gid) const;
+  bool EnsureMountPointPath(const base::FilePath& dir) const;
 
   // Ensures that the |num|th component of |path| is owned by |uid|:|gid| and is
   // a directory.
   bool EnsurePathComponent(const FilePath& path,
-                           size_t num,
                            uid_t uid,
                            gid_t gid) const;
-
-  // Ensures that the permissions on every parent of /home/chronos/u-$hash are
-  // correct and that they are all directories. Since we're going to bind-mount
-  // over the directory, we don't care what the permissions on it are, just that
-  // it exists.
-  // /home needs to be root:root.
-  // /home/chronos needs to be default_uid_:default_gid_.
-  bool EnsureNewUserDirExists(const std::string& username) const;
 
   // Attempts to unmount a mountpoint. If the unmount fails, logs processes with
   // open handles to it and performs a lazy unmount.

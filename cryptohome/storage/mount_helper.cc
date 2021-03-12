@@ -80,6 +80,11 @@ bool SetUpSELinuxContextForEphemeralCryptohome(cryptohome::Platform* platform,
 }
 
 constexpr mode_t kSkeletonSubDirMode = S_IRWXU | S_IRGRP | S_IXGRP;
+constexpr mode_t kUserMountPointMode = S_IRWXU | S_IRGRP | S_IXGRP;
+constexpr mode_t kRootMountPointMode = S_IRWXU;
+constexpr mode_t kAccessMode = S_IRWXU | S_IRGRP | S_IXGRP;
+constexpr mode_t kRootDirMode = S_IRWXU | S_IRWXG | S_ISVTX;
+
 constexpr mode_t kTrackedDirMode = S_IRWXU;
 constexpr mode_t kPathComponentDirMode = S_IRWXU;
 constexpr mode_t kGroupExecAccess = S_IXGRP;
@@ -94,20 +99,20 @@ const char kDefaultHomeDir[] = "/home/chronos/user";
 std::vector<DirectoryACL> MountHelper::GetCommonSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
   return std::vector<DirectoryACL>{
-      {FilePath(kUserHomeSuffix).Append(kDownloadsDir),
-       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
-      {FilePath(kUserHomeSuffix).Append(kMyFilesDir),
-       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
+      {FilePath(kUserHomeSuffix).Append(kDownloadsDir), kAccessMode, uid,
+       access_gid},
+      {FilePath(kUserHomeSuffix).Append(kMyFilesDir), kAccessMode, uid,
+       access_gid},
       {FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
-       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
+       kAccessMode, uid, access_gid},
   };
 }
 
 std::vector<DirectoryACL> MountHelper::GetCacheSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
   return std::vector<DirectoryACL>{
-      {FilePath(kUserHomeSuffix).Append(kGCacheDir),
-       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
+      {FilePath(kUserHomeSuffix).Append(kGCacheDir), kAccessMode, uid,
+       access_gid},
       {FilePath(kUserHomeSuffix).Append(kCacheDir), kTrackedDirMode, uid, gid},
   };
 }
@@ -118,11 +123,11 @@ std::vector<DirectoryACL> MountHelper::GetGCacheSubdirectories(uid_t uid,
                                                                bool v1_dirs) {
   DirectoryACL gcache_v2_subdir = {
       FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
-      kTrackedDirMode | kGroupExecAccess | kGroupWriteAccess, uid, access_gid};
+      kAccessMode | kGroupWriteAccess, uid, access_gid};
 
   std::vector<DirectoryACL> gcache_v1_subdirs = {
       {FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
-       kTrackedDirMode | kGroupExecAccess, uid, access_gid},
+       kAccessMode, uid, access_gid},
       {FilePath(kUserHomeSuffix)
            .Append(kGCacheDir)
            .Append(kGCacheVersion1Dir)
@@ -146,7 +151,8 @@ std::vector<DirectoryACL> MountHelper::GetGCacheSubdirectories(uid_t uid,
 std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
   std::vector<DirectoryACL> durable_only_subdirs{
-      {FilePath(kRootHomeSuffix), kTrackedDirMode, uid, gid},
+      {FilePath(kRootHomeSuffix), kRootDirMode, kMountOwnerUid,
+       kDaemonStoreGid},
       {FilePath(kUserHomeSuffix), kTrackedDirMode | kGroupExecAccess, uid,
        access_gid},
   };
@@ -194,16 +200,9 @@ FilePath MountHelper::GetMountedRootHomePath(
   return GetUserMountDirectory(obfuscated_username).Append(kRootHomeSuffix);
 }
 
-bool MountHelper::EnsurePathComponent(const FilePath& path,
-                                      size_t num,
+bool MountHelper::EnsurePathComponent(const FilePath& check_path,
                                       uid_t uid,
                                       gid_t gid) const {
-  std::vector<std::string> path_parts;
-  path.GetComponents(&path_parts);
-  FilePath check_path(path_parts[0]);
-  for (size_t i = 1; i < num; i++)
-    check_path = check_path.Append(path_parts[i]);
-
   base::stat_wrapper_t st;
   if (!platform_->Stat(check_path, &st)) {
     // Dirent not there, so create and set ownership.
@@ -231,46 +230,6 @@ bool MountHelper::EnsurePathComponent(const FilePath& path,
     if (st.st_mode & S_IWOTH) {
       LOG(ERROR) << "Permissions too lenient: " << check_path.value() << " has "
                  << std::oct << st.st_mode;
-      return false;
-    }
-  }
-  return true;
-}
-
-bool MountHelper::EnsureDirHasOwner(const FilePath& dir,
-                                    uid_t desired_uid,
-                                    gid_t desired_gid) const {
-  std::vector<std::string> path_parts;
-  dir.GetComponents(&path_parts);
-  // The path given should be absolute to that its first part is /. This is not
-  // actually checked so that relative paths can be used during testing.
-  for (size_t i = 2; i <= path_parts.size(); i++) {
-    bool last = (i == path_parts.size());
-    uid_t uid = last ? desired_uid : kMountOwnerUid;
-    gid_t gid = last ? desired_gid : kMountOwnerGid;
-    if (!EnsurePathComponent(dir, i, uid, gid))
-      return false;
-  }
-  return true;
-}
-
-bool MountHelper::EnsureNewUserDirExists(const std::string& username) const {
-  FilePath dir(GetNewUserPath(username));
-  if (!EnsureDirHasOwner(dir.DirName(), default_uid_, default_gid_)) {
-    LOG(ERROR) << "EnsureDirHasOwner() failed: " << dir.value();
-    return false;
-  }
-  if (!platform_->CreateDirectory(dir)) {
-    // chronos can modify the contents of /home/chronos.
-    // Try deleting the file or link at /home/chronos/u-$hash to be robust
-    // against malicious code running as chronos.
-    if (!platform_->DeleteFile(dir)) {
-      LOG(ERROR) << "DeleteFile() failed: " << dir.value();
-      return false;
-    }
-    // Try again.
-    if (!platform_->CreateDirectory(dir)) {
-      LOG(ERROR) << "CreateDirectory() failed: " << dir.value();
       return false;
     }
   }
@@ -311,8 +270,7 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
 
   // Create root_path at the end as a sentinel for migration.
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          root_path, S_IRWXU | S_IRWXG | S_ISVTX, kMountOwnerUid,
-          kDaemonStoreGid)) {
+          root_path, kRootDirMode, kMountOwnerUid, kDaemonStoreGid)) {
     PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
                 << root_path.value();
     return;
@@ -320,21 +278,78 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
   LOG(INFO) << "Created user directory: " << vault_path.value();
 }
 
+bool MountHelper::EnsureMountPointPath(const FilePath& dir) const {
+  std::vector<std::string> path_parts;
+  dir.GetComponents(&path_parts);
+  FilePath check_path(path_parts[0]);
+  if (path_parts[0] != "/") {
+    return false;
+  }
+  for (size_t i = 1; i < path_parts.size(); i++) {
+    check_path = check_path.Append(path_parts[i]);
+    if (!EnsurePathComponent(check_path, kMountOwnerUid, kMountOwnerGid)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool MountHelper::EnsureUserMountPoints(const std::string& username) const {
-  FilePath root_path = GetRootPath(username);
-  FilePath user_path = GetUserPath(username);
-  if (!EnsureDirHasOwner(root_path, kMountOwnerUid, kMountOwnerGid)) {
-    LOG(ERROR) << "Couldn't ensure root path: " << root_path.value();
+  FilePath multi_home_user = GetUserPath(username);
+  FilePath multi_home_root = GetRootPath(username);
+  FilePath new_user_path = GetNewUserPath(username);
+
+  if (platform_->DirectoryExists(multi_home_user) &&
+      (platform_->IsDirectoryMounted(multi_home_user) ||
+       !platform_->DeleteFile(multi_home_user))) {
+    LOG(ERROR) << "Failed to remove mount point: " << multi_home_user.value();
     return false;
   }
-  if (!EnsureDirHasOwner(user_path, default_uid_, default_access_gid_)) {
-    LOG(ERROR) << "Couldn't ensure user path: " << user_path.value();
+
+  if (platform_->DirectoryExists(multi_home_root) &&
+      (platform_->IsDirectoryMounted(multi_home_root) ||
+       !platform_->DeleteFile(multi_home_root))) {
+    LOG(ERROR) << "Failed to remove mount point: " << multi_home_root.value();
     return false;
   }
-  if (!EnsureNewUserDirExists(username)) {
-    LOG(ERROR) << "Couldn't ensure temp path.";
+
+  if (platform_->DirectoryExists(new_user_path) &&
+      (platform_->IsDirectoryMounted(new_user_path) ||
+       !platform_->DeleteFile(new_user_path))) {
+    LOG(ERROR) << "Failed to remove mount point: " << new_user_path.value();
     return false;
   }
+
+  if (!EnsureMountPointPath(multi_home_user.DirName()) ||
+      !EnsureMountPointPath(multi_home_root.DirName()) ||
+      !EnsureMountPointPath(new_user_path.DirName().DirName()) ||
+      !EnsurePathComponent(new_user_path.DirName(), default_uid_,
+                           default_gid_)) {
+    LOG(ERROR) << "The paths to mountpoints are inconsistent";
+    return false;
+  }
+
+  if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
+          multi_home_user, kUserMountPointMode, default_uid_,
+          default_access_gid_)) {
+    PLOG(ERROR) << "Can't create: " << multi_home_user;
+    return false;
+  }
+
+  if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
+          new_user_path, kUserMountPointMode, default_uid_,
+          default_access_gid_)) {
+    PLOG(ERROR) << "Can't create: " << new_user_path;
+    return false;
+  }
+
+  if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
+          multi_home_root, kRootMountPointMode, kMountOwnerUid,
+          kMountOwnerGid)) {
+    PLOG(ERROR) << "Can't create: " << multi_home_root;
+    return false;
+  }
+
   return true;
 }
 
@@ -663,6 +678,15 @@ bool MountHelper::CreateTrackedSubdirectories(
         platform_->DeletePathRecursively(tracked_dir_path);
         result = false;
         continue;
+      }
+    } else {
+      // We make the mode for chronos-access accessible directories more
+      // permissive, thus we need to change mode. it is unfortunate we need
+      // to do it explicitly, unlike with mountpoints which we could just
+      // recreate, but we must preservce user data while doing so.
+      if (!platform_->SafeDirChmod(tracked_dir_path, tracked_dir.mode)) {
+        PLOG(ERROR) << "Couldn't change directory's mode: "
+                    << tracked_dir_path.value();
       }
     }
     if (mount_type == MountType::DIR_CRYPTO) {

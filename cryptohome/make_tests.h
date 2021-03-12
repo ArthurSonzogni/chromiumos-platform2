@@ -102,6 +102,7 @@ class TestUser {
   base::FilePath root_mount_path;
   base::FilePath user_mount_prefix;
   base::FilePath root_mount_prefix;
+  base::FilePath new_user_path;
   brillo::Blob credentials;
   brillo::SecureBlob passkey;
   bool use_key_data;

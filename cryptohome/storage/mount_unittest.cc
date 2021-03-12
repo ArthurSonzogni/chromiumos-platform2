@@ -339,7 +339,8 @@ class MountTest
     auto downloads_path = user_dir.Append("Downloads");
     auto downloads_in_myfiles = user_dir.Append("MyFiles").Append("Downloads");
 
-    EXPECT_CALL(platform_, DirectoryExists(user_dir)).WillOnce(Return(true));
+    EXPECT_CALL(platform_, DirectoryExists(user_dir))
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, DirectoryExists(downloads_path))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, DirectoryExists(downloads_in_myfiles))
@@ -974,6 +975,19 @@ TEST_P(MountTest, MountPristineCryptohome) {
       .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
       .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
 
+  EXPECT_CALL(platform_, DirectoryExists(Property(
+                             &FilePath::value,
+                             AnyOf(StartsWith(user->user_mount_path.value()),
+                                   StartsWith(user->root_mount_path.value()),
+                                   StartsWith(user->new_user_path.value())))))
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(Property(
+                             &FilePath::value,
+                             AnyOf(StartsWith(user->user_mount_path.value()),
+                                   StartsWith(user->root_mount_path.value()),
+                                   StartsWith(user->new_user_path.value())))))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
       .WillRepeatedly(Return(true));
@@ -1095,6 +1109,19 @@ TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
   InsertTestUsers(&kDefaultUsers[10], 1);
   TestUser* user = &helper_.users[0];
 
+  EXPECT_CALL(platform_, DirectoryExists(Property(
+                             &FilePath::value,
+                             AnyOf(StartsWith(user->user_mount_path.value()),
+                                   StartsWith(user->root_mount_path.value()),
+                                   StartsWith(user->new_user_path.value())))))
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(Property(
+                             &FilePath::value,
+                             AnyOf(StartsWith(user->user_mount_path.value()),
+                                   StartsWith(user->root_mount_path.value()),
+                                   StartsWith(user->new_user_path.value())))))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
       .WillRepeatedly(Return(true));
@@ -1371,7 +1398,7 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             downloads_path, 0710, fake_platform::kChronosUID,
+                             downloads_path, 0750, fake_platform::kChronosUID,
                              fake_platform::kSharedGID))
       .WillRepeatedly(Return(true));
   // Expecting MyFiles to not exist and then be created.
@@ -1379,7 +1406,7 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             myfiles_path, 0710, fake_platform::kChronosUID,
+                             myfiles_path, 0750, fake_platform::kChronosUID,
                              fake_platform::kSharedGID))
       .WillRepeatedly(Return(true));
   // Expecting MyFiles/Downloads to not exist and then be created, with right
@@ -1389,7 +1416,7 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
               SafeCreateDirAndSetOwnershipAndPermissions(
-                  myfiles_downloads_path, 0710, fake_platform::kChronosUID,
+                  myfiles_downloads_path, 0750, fake_platform::kChronosUID,
                   fake_platform::kSharedGID))
       .WillRepeatedly(Return(true));
 
@@ -1407,14 +1434,14 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             gcache_path, 0710, fake_platform::kChronosUID,
+                             gcache_path, 0750, fake_platform::kChronosUID,
                              fake_platform::kSharedGID))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(gcache_v2_path))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             gcache_v2_path, 0730, fake_platform::kChronosUID,
+                             gcache_v2_path, 0770, fake_platform::kChronosUID,
                              fake_platform::kSharedGID))
       .WillRepeatedly(Return(true));
 
@@ -1471,6 +1498,20 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
       .WillRepeatedly(Return(false));
   ExpectCryptohomeKeySetup(*user);
+
+  EXPECT_CALL(platform_, DirectoryExists(Property(
+                             &FilePath::value,
+                             AnyOf(StartsWith(user->user_mount_path.value()),
+                                   StartsWith(user->root_mount_path.value()),
+                                   StartsWith(user->new_user_path.value())))))
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(Property(
+                             &FilePath::value,
+                             AnyOf(StartsWith(user->user_mount_path.value()),
+                                   StartsWith(user->root_mount_path.value()),
+                                   StartsWith(user->new_user_path.value())))))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
       .WillRepeatedly(Return(true));
@@ -1997,9 +2038,10 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeleteFile(MountHelper::GetEphemeralSparseFile(
                              user->obfuscated_username)))
-      .WillRepeatedly(Return(true));
+      .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
       .WillOnce(Return(false));
@@ -2098,6 +2140,7 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeleteFile(MountHelper::GetEphemeralSparseFile(
                              user->obfuscated_username)))
       .WillRepeatedly(Return(true));
@@ -2357,14 +2400,8 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
       .WillRepeatedly(DoAll(SetArgPointee<1>(fake_root_st), Return(true)));
   EXPECT_CALL(platform_, Stat(FilePath("/home/root"), _))
       .WillOnce(DoAll(SetArgPointee<1>(fake_root_st), Return(true)));
-  EXPECT_CALL(platform_,
-              Stat(Property(&FilePath::value, StartsWith("/home/root/")), _))
-      .WillOnce(Return(false));
   EXPECT_CALL(platform_, Stat(FilePath("/home/user"), _))
       .WillOnce(DoAll(SetArgPointee<1>(fake_root_st), Return(true)));
-  EXPECT_CALL(platform_,
-              Stat(Property(&FilePath::value, StartsWith("/home/user/")), _))
-      .WillOnce(Return(false));
   base::stat_wrapper_t fake_user_st;
   fake_user_st.st_uid = fake_platform::kChronosUID;
   fake_user_st.st_gid = fake_platform::kChronosGID;
@@ -2376,7 +2413,7 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(_, _, _, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(true));
 

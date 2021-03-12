@@ -727,6 +727,29 @@ bool Platform::CreateDirectory(const FilePath& path) {
   return base::CreateDirectory(path);
 }
 
+bool Platform::SafeDirChmod(const base::FilePath& path, mode_t mode) {
+  // Reset mask since we are setting the mode explicitly.
+  brillo::ScopedUmask scoped_umask(0);
+
+  auto root_fd_result = brillo::SafeFD::Root();
+  if (root_fd_result.second != brillo::SafeFD::Error::kNoError) {
+    return false;
+  }
+
+  auto path_result = root_fd_result.first.OpenExistingDir(path);
+  if (path_result.second != brillo::SafeFD::Error::kNoError) {
+    return false;
+  }
+
+  if (HANDLE_EINTR(fchmod(path_result.first.get(), mode)) != 0) {
+    PLOG(ERROR) << "Failed to set permissions in SafeDirChmod() for \""
+                << path.value() << '"';
+    return false;
+  }
+
+  return true;
+}
+
 bool Platform::SafeCreateDirAndSetOwnershipAndPermissions(
     const base::FilePath& path, mode_t mode, uid_t user_id, gid_t group_id) {
   // Reset mask since we are setting the mode explicitly.
