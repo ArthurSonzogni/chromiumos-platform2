@@ -49,7 +49,6 @@ class MockDevice : public Device {
   MOCK_METHOD(bool, Load, (const StoreInterface*), (override));
   MOCK_METHOD(bool, Save, (StoreInterface*), (override));
   MOCK_METHOD(void, EnableIPv6Privacy, (), (override));
-  MOCK_METHOD(void, SetLooseRouting, (bool), (override));
   MOCK_METHOD(void, SetIsMultiHomed, (bool), (override));
   MOCK_METHOD(bool, RestartPortalDetection, (), (override));
   MOCK_METHOD(bool, RequestPortalDetection, (), (override));

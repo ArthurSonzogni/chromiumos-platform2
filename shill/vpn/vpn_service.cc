@@ -154,7 +154,6 @@ void VPNService::ConfigureDevice() {
   device_->SetEnabled(true);
   device_->SelectService(this);
   device_->UpdateIPConfig(driver_->GetIPProperties());
-  device_->SetLooseRouting(true);
 }
 
 string VPNService::GetStorageIdentifier() const {

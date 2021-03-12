@@ -188,11 +188,6 @@ class Device : public base::RefCounted<Device> {
   // Geolocation.
   virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
 
-  // Enable or disable this interface to receive packets even if it is not
-  // the default connection.  This is useful in limited situations such as
-  // during portal detection.
-  mockable void SetLooseRouting(bool is_loose_routing);
-
   // Enable or disable same-net multi-home support for this interface.  When
   // enabled, ARP filtering is enabled in order to avoid the "ARP Flux"
   // effect where peers may end up with inaccurate IP address mappings due to
@@ -515,11 +510,6 @@ class Device : public base::RefCounted<Device> {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  // Schedule a single portal detection trial, and set loose routing.
-  bool StartPortalDetectionTrial(PortalDetector* portal_detector,
-                                 const PortalDetector::Properties& props,
-                                 int delay_seconds);
-
   // Respond to a LinkMonitor failure in a Device-specific manner.
   virtual void OnLinkMonitorFailure();
 
@@ -597,14 +587,6 @@ class Device : public base::RefCounted<Device> {
   mockable bool SetIPFlag(IPAddress::Family family,
                           const std::string& flag,
                           const std::string& value);
-
-  // Request the removal of reverse-path filtering for this interface.
-  // This will allow packets destined for this interface to be accepted,
-  // even if this is not the default route for such a packet to arrive.
-  void DisableReversePathFilter();
-
-  // Request reverse-path filtering for this interface.
-  void EnableReversePathFilter();
 
   // Disable ARP filtering on the device.  The interface will exhibit the
   // default Linux behavior -- incoming ARP requests are responded to by all
@@ -875,10 +857,6 @@ class Device : public base::RefCounted<Device> {
   std::unique_ptr<PortalDetector> connection_tester_;
 
   bool ipv6_disabled_;
-
-  // Track whether packets from non-optimal routes will be accepted by this
-  // device.  This is referred to as "loose mode" (see RFC3704).
-  bool is_loose_routing_;
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_;

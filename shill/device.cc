@@ -85,9 +85,6 @@ constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
 constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
 constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
 constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";
-constexpr char kIPFlagReversePathFilter[] = "rp_filter";
-constexpr char kIPFlagReversePathFilterEnabled[] = "1";
-constexpr char kIPFlagReversePathFilterLooseMode[] = "2";
 constexpr char kIPFlagArpAnnounce[] = "arp_announce";
 constexpr char kIPFlagArpAnnounceDefault[] = "0";
 constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
@@ -155,7 +152,6 @@ Device::Device(Manager* manager,
       time_(Time::GetInstance()),
       last_link_monitor_failed_time_(0),
       ipv6_disabled_(false),
-      is_loose_routing_(false),
       is_multi_homed_(false),
       fixed_ip_params_(false),
       traffic_counter_callback_id_(0),
@@ -223,7 +219,6 @@ Device::~Device() {
 void Device::Initialize() {
   SLOG(this, 2) << "Initialized";
   DisableArpFiltering();
-  EnableReversePathFilter();
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
@@ -345,37 +340,6 @@ void Device::EnableIPv6Privacy() {
             kIPFlagUseTempAddrUsedAndDefault);
 }
 
-void Device::SetLooseRouting(bool is_loose_routing) {
-  if (is_loose_routing == is_loose_routing_) {
-    return;
-  }
-  is_loose_routing_ = is_loose_routing;
-  if (is_multi_homed_) {
-    // Nothing to do: loose routing is already enabled, and should remain so.
-    return;
-  }
-  if (is_loose_routing) {
-    DisableReversePathFilter();
-  } else {
-    EnableReversePathFilter();
-  }
-}
-
-void Device::DisableReversePathFilter() {
-  // TODO(pstew): Current kernel doesn't offer reverse-path filtering flag
-  // for IPv6.  crbug.com/207193
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagReversePathFilter,
-            kIPFlagReversePathFilterLooseMode);
-}
-
-void Device::EnableReversePathFilter() {
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagReversePathFilter,
-            kIPFlagReversePathFilterEnabled);
-  // Clear any cached routes that might have accumulated while reverse-path
-  // filtering was disabled.
-  routing_table_->FlushCache();
-}
-
 void Device::SetIsMultiHomed(bool is_multi_homed) {
   if (is_multi_homed == is_multi_homed_) {
     return;
@@ -385,14 +349,8 @@ void Device::SetIsMultiHomed(bool is_multi_homed) {
   is_multi_homed_ = is_multi_homed;
   if (is_multi_homed) {
     EnableArpFiltering();
-    if (!is_loose_routing_) {
-      DisableReversePathFilter();
-    }
   } else {
     DisableArpFiltering();
-    if (!is_loose_routing_) {
-      EnableReversePathFilter();
-    }
   }
 }
 
@@ -955,7 +913,6 @@ void Device::ConnectionTesterCallback(
       << http_result.phase << ", status=" << http_result.status
       << " and HTTPS probe phase=" << https_result.phase
       << ", status=" << https_result.status;
-  SetLooseRouting(false);
 }
 
 void Device::ConfigureStaticIPTask() {
@@ -1482,7 +1439,7 @@ bool Device::StartPortalDetection() {
       new PortalDetector(connection_, dispatcher(), metrics(),
                          Bind(&Device::PortalDetectorCallback, AsWeakPtr())));
   PortalDetector::Properties props = manager_->GetPortalCheckProperties();
-  if (!StartPortalDetectionTrial(portal_detector_.get(), props, 0)) {
+  if (!portal_detector_->StartAfterDelay(props, 0)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
                << props.http_url_string << " or " << props.https_url_string;
@@ -1535,8 +1492,7 @@ bool Device::StartConnectivityTest() {
   connection_tester_.reset(
       new PortalDetector(connection_, dispatcher(), metrics(),
                          Bind(&Device::ConnectionTesterCallback, AsWeakPtr())));
-  StartPortalDetectionTrial(connection_tester_.get(),
-                            PortalDetector::Properties(), 0);
+  connection_tester_->StartAfterDelay(PortalDetector::Properties(), 0);
   return true;
 }
 
@@ -1717,7 +1673,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     PortalDetector::Properties props = manager_->GetPortalCheckProperties();
     int start_delay =
         portal_detector_->AdjustStartDelay(portal_check_interval_seconds_);
-    if (!StartPortalDetectionTrial(portal_detector_.get(), props,
+    if (!portal_detector_->StartAfterDelay(props,
                                    start_delay)) {
       LOG(ERROR) << "Device " << link_name()
                  << ": Portal detection failed to restart: likely bad URL: "
@@ -1739,25 +1695,12 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   SetServiceState(state);
 }
 
-bool Device::StartPortalDetectionTrial(PortalDetector* portal_detector,
-                                       const PortalDetector::Properties& props,
-                                       int delay_seconds) {
-  if (portal_detector->StartAfterDelay(props, delay_seconds)) {
-    // Accept traffic routed to this connection even if it is not the default.
-    SetLooseRouting(true);
-    return true;
-  }
-  return false;
-}
-
 void Device::PortalDetectorCallback(
     const PortalDetector::Result& http_result,
     const PortalDetector::Result& https_result) {
   SLOG(this, 2) << __func__ << " Device: " << link_name() << " Service: "
                 << GetSelectedServiceRpcIdentifier(nullptr).value()
                 << " Received status: " << http_result.status;
-
-  SetLooseRouting(false);
 
   int portal_status = Metrics::PortalDetectionResultToEnum(http_result);
   metrics()->SendEnumToUMA(
