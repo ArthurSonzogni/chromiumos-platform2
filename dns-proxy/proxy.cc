@@ -14,9 +14,11 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/net_util.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/dbus-constants.h>
 
 namespace dns_proxy {
@@ -192,6 +194,59 @@ void Proxy::OnPatchpanelReady(bool success) {
   if (opts_.type == Type::kSystem)
     shill_->RegisterProcessChangedHandler(
         base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
+
+  // Track single-networked guests' start up and shut down for redirecting
+  // traffic to the proxy.
+  if (opts_.type == Type::kDefault)
+    patchpanel_->RegisterNetworkDeviceChangedSignalHandler(base::BindRepeating(
+        &Proxy::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));
+}
+
+void Proxy::StartDnsRedirection(
+    const std::string& ifname,
+    const std::vector<std::string>& ipv4_nameservers) {
+  // When disabled, block any attempt to set DNS redirection rule.
+  if (!feature_enabled_)
+    return;
+
+  if (opts_.type == Type::kSystem) {
+    LOG(DFATAL) << "Must not be called from system proxy";
+    return;
+  }
+
+  // Reset last created rules.
+  lifeline_fds_.erase(ifname);
+
+  patchpanel::SetDnsRedirectionRuleRequest::RuleType type;
+  switch (opts_.type) {
+    case Type::kDefault:
+      type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
+      break;
+    case Type::kARC:
+      type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
+      break;
+    default:
+      LOG(DFATAL) << "Unexpected proxy type " << opts_.type;
+      return;
+  }
+  // If |ifname| is empty, request SetDnsRedirectionRule rule for USER.
+  if (ifname.empty()) {
+    type = patchpanel::SetDnsRedirectionRuleRequest::USER;
+  }
+
+  auto fd = patchpanel_->RedirectDns(
+      type, ifname, patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+      ipv4_nameservers);
+  // Restart the proxy if DNS redirection rules are failed to be set up. This
+  // is necessary because when DNS proxy is running, /etc/resolv.conf is
+  // replaced by the IP address of system proxy. This causes non-system traffic
+  // to be routed incorrectly without the redirection rules.
+  CHECK(fd.is_valid()) << "Failed to start DNS redirection for " << opts_.type;
+  lifeline_fds_.emplace(ifname, std::move(fd));
+}
+
+void Proxy::StopDnsRedirection(const std::string& ifname) {
+  lifeline_fds_.erase(ifname);
 }
 
 void Proxy::OnPatchpanelReset(bool reset) {
@@ -260,17 +315,29 @@ void Proxy::Enable() {
   if (!ns_fd_.is_valid())
     return;
 
-  if (opts_.type == Type::kSystem)
+  if (opts_.type == Type::kSystem) {
     SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
+    return;
+  }
 
-  // TODO(garrick, jasongustaman): Setup routing redirection.
+  if (opts_.type == Type::kDefault && device_) {
+    // Start DNS redirection rule for user traffic (cups, chronos, update
+    // engine, etc).
+    StartDnsRedirection("" /* ifname */, doh_config_.ipv4_nameservers());
+  }
+
+  // Process the current set of patchpanel devices and add necessary
+  // redirection rules.
+  for (const auto& d : patchpanel_->GetDevices())
+    VirtualDeviceAdded(d);
 }
 
 void Proxy::Disable() {
   if (feature_enabled_ && opts_.type == Type::kSystem && ns_fd_.is_valid()) {
     SetShillProperty("");
   }
-  // TODO(garrick, jasongustaman): Teardown routing redirection.
+  // Teardown DNS redirection rules.
+  lifeline_fds_.clear();
   feature_enabled_ = false;
 }
 
@@ -343,6 +410,14 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   *device_.get() = new_default_device;
   MaybeCreateResolver();
   UpdateNameServers(device_->ipconfig);
+
+  // For the default proxy, we have to update DNS redirection rule. This allows
+  // DNS traffic to be redirected to the proxy.
+  if (opts_.type == Type::kDefault) {
+    // Start DNS redirection rule for user traffic (cups, chronos, update
+    // engine, etc).
+    StartDnsRedirection("" /* ifname */, doh_config_.ipv4_nameservers());
+  }
 
   // For the system proxy, we have to tell shill about it. We should start
   // receiving DNS traffic on success. But if this fails, we don't have much
@@ -443,15 +518,13 @@ void Proxy::MaybeCreateResolver() {
 }
 
 void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
-  auto name_servers = ipconfig.ipv4_dns_addresses;
+  auto ipv4_nameservers = ipconfig.ipv4_dns_addresses;
   // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
-  name_servers.erase(
-      std::remove_if(name_servers.begin(), name_servers.end(),
+  ipv4_nameservers.erase(
+      std::remove_if(ipv4_nameservers.begin(), ipv4_nameservers.end(),
                      [](const std::string& s) { return s == kIfAddrAny; }),
-      name_servers.end());
-  name_servers.insert(name_servers.end(), ipconfig.ipv6_dns_addresses.begin(),
-                      ipconfig.ipv6_dns_addresses.end());
-  doh_config_.set_nameservers(name_servers);
+      ipv4_nameservers.end());
+  doh_config_.set_nameservers(ipv4_nameservers, ipconfig.ipv6_dns_addresses);
   LOG(INFO) << opts_ << " applied device DNS configuration";
 }
 
@@ -503,14 +576,24 @@ void Proxy::SetShillProperty(const std::string& addr,
       kShillPropertyAttemptDelay);
 }
 
+std::vector<std::string> Proxy::DoHConfig::ipv4_nameservers() {
+  return ipv4_nameservers_;
+}
+
+std::vector<std::string> Proxy::DoHConfig::ipv6_nameservers() {
+  return ipv6_nameservers_;
+}
+
 void Proxy::DoHConfig::set_resolver(Resolver* resolver) {
   resolver_ = resolver;
   update();
 }
 
 void Proxy::DoHConfig::set_nameservers(
-    const std::vector<std::string>& nameservers) {
-  nameservers_ = nameservers;
+    const std::vector<std::string>& ipv4_nameservers,
+    const std::vector<std::string>& ipv6_nameservers) {
+  ipv4_nameservers_ = ipv4_nameservers;
+  ipv6_nameservers_ = ipv6_nameservers;
   update();
 }
 
@@ -559,7 +642,10 @@ void Proxy::DoHConfig::update() {
   if (!resolver_)
     return;
 
-  resolver_->SetNameServers(nameservers_);
+  std::vector<std::string> nameservers = ipv4_nameservers_;
+  nameservers.insert(nameservers.end(), ipv6_nameservers_.begin(),
+                     ipv6_nameservers_.end());
+  resolver_->SetNameServers(nameservers);
 
   std::set<std::string> doh_providers;
   bool doh_always_on = false;
@@ -567,7 +653,7 @@ void Proxy::DoHConfig::update() {
     doh_providers = secure_providers_;
     doh_always_on = true;
   } else if (!auto_providers_.empty()) {
-    for (const auto& ns : nameservers_) {
+    for (const auto& ns : nameservers) {
       const auto it = auto_providers_.find(ns);
       if (it != auto_providers_.end()) {
         doh_providers.emplace(it->second);
@@ -583,6 +669,54 @@ void Proxy::DoHConfig::clear() {
   resolver_ = nullptr;
   secure_providers_.clear();
   auto_providers_.clear();
+}
+
+void Proxy::OnVirtualDeviceChanged(
+    const patchpanel::NetworkDeviceChangedSignal& signal) {
+  switch (signal.event()) {
+    case patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED:
+      VirtualDeviceAdded(signal.device());
+      break;
+    case patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED:
+      VirtualDeviceRemoved(signal.device());
+      break;
+    default:
+      NOTREACHED();
+  }
+}
+
+void Proxy::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
+  switch (device.guest_type()) {
+    case patchpanel::NetworkDevice::TERMINA_VM:
+    case patchpanel::NetworkDevice::PLUGIN_VM:
+      if (opts_.type == Type::kDefault) {
+        StartDnsRedirection(device.ifname());
+      }
+      return;
+    case patchpanel::NetworkDevice::ARC:
+    case patchpanel::NetworkDevice::ARCVM:
+      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname()) {
+        StartDnsRedirection(device.ifname());
+      }
+      return;
+    default:
+      return;
+  }
+}
+
+void Proxy::VirtualDeviceRemoved(const patchpanel::NetworkDevice& device) {
+  switch (device.guest_type()) {
+    case patchpanel::NetworkDevice::TERMINA_VM:
+    case patchpanel::NetworkDevice::PLUGIN_VM:
+      if (opts_.type == Type::kDefault) {
+        StopDnsRedirection(device.ifname());
+      }
+      return;
+    default:
+      // For ARC, upon removal of the virtual device, the corresponding proxy
+      // will also be removed. This will undo the created firewall rules.
+      return;
+  }
 }
 
 }  // namespace dns_proxy

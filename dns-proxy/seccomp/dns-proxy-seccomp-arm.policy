@@ -103,3 +103,4 @@ lstat64: 1
 shutdown: 1
 waitid: 1
 sysinfo: 1
+dup: 1
