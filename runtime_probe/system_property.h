@@ -7,6 +7,8 @@
 
 #include <string>
 
+namespace runtime_probe {
+
 // Light-weight interface to system property with std::string semantics.
 class SystemProperty {
  public:
@@ -34,5 +36,7 @@ class SystemProperty {
   // Returns true on success.
   virtual bool SetString(const std::string& key, const std::string& value) = 0;
 };
+
+}  // namespace runtime_probe
 
 #endif  // RUNTIME_PROBE_SYSTEM_PROPERTY_H_

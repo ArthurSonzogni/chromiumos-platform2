@@ -9,6 +9,8 @@
 
 #include "runtime_probe/system_property.h"
 
+namespace runtime_probe {
+
 // System property operation implemented with vboot crossystem.
 class SystemPropertyImpl : public SystemProperty {
  public:
@@ -17,5 +19,7 @@ class SystemPropertyImpl : public SystemProperty {
   bool GetString(const std::string& key, std::string* value_out);
   bool SetString(const std::string& key, const std::string& value);
 };
+
+}  // namespace runtime_probe
 
 #endif  // RUNTIME_PROBE_SYSTEM_PROPERTY_IMPL_H_

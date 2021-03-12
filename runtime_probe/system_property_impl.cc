@@ -8,6 +8,8 @@
 
 #include <vboot/crossystem.h>
 
+namespace runtime_probe {
+
 bool SystemPropertyImpl::GetInt(const std::string& key, int* value_out) {
   int value = ::VbGetSystemPropertyInt(key.c_str());
   if (value == -1)
@@ -33,3 +35,5 @@ bool SystemPropertyImpl::SetString(const std::string& key,
                                    const std::string& value) {
   return 0 == ::VbSetSystemPropertyString(key.c_str(), value.c_str());
 }
+
+}  // namespace runtime_probe
