@@ -53,6 +53,18 @@ constexpr char kCompleteKrb5Conf[] = R"(
 
 [capaths]
     here = AS.WELL)";
+
+std::string GenerateNestedGroups(int count) {
+  std::string result;
+  for (int i = 0; i < count; i++) {
+    result += "A={\n";
+  }
+  for (int i = 0; i < count; i++) {
+    result += "}\n";
+  }
+  return result;
+}
+
 }  // namespace
 
 std::ostream& operator<<(std::ostream& os, ConfigErrorCode code) {
@@ -75,6 +87,8 @@ std::ostream& operator<<(std::ostream& os, ConfigErrorCode code) {
       return os << "Section not supported";
     case CONFIG_ERROR_KRB5_FAILED_TO_PARSE:
       return os << "KRB5 failed to parse";
+    case CONFIG_ERROR_TOO_MANY_NESTED_GROUPS:
+      return os << "Too many nested groups";
     case CONFIG_ERROR_COUNT:
       NOTREACHED();
   }
@@ -90,7 +104,7 @@ std::ostream& operator<<(std::ostream& os, const ConfigErrorInfo& error_info) {
 
 class ConfigParserTest : public ::testing::Test {
  protected:
-  void ExpectNoError(const char* krb5conf) {
+  void ExpectNoError(const std::string& krb5conf) {
     ConfigErrorInfo error_info = config_parser_.Validate(krb5conf);
 
     EXPECT_TRUE(error_info.has_code()) << error_info;
@@ -294,6 +308,12 @@ TEST_F(ConfigParserTest, FuzzerRegressionTests) {
 
   // Double == is always a relation, cannot be the start of a group.
   ExpectError("[capaths]\nkey==\n{", CONFIG_ERROR_RELATION_SYNTAX, 2);
+
+  // Too many nested groups should lead to an error preventing stack overflow
+  // in krb5 parser.
+  ExpectNoError(GenerateNestedGroups(1000));
+  ExpectError(GenerateNestedGroups(1001), CONFIG_ERROR_TOO_MANY_NESTED_GROUPS,
+              1000);
 }
 
 // |GetEncryptionTypes| with a complete config to be parsed.

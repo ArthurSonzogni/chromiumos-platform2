@@ -12,6 +12,9 @@
 namespace kerberos {
 namespace {
 
+// Maximum depth of nested '{' in the config.
+constexpr int kMaxGroupLevelDepth = 1000;
+
 // See
 // https://web.mit.edu/kerberos/krb5-1.12/doc/admin/conf_files/krb5_conf.html
 // for a description of the krb5.conf format.
@@ -170,6 +173,9 @@ ConfigErrorInfo ConfigParser::ParseConfig(
                              line_index);
       }
       group_level++;
+      // If too nested config, exit here to prevent krb5 stack overflow.
+      if (group_level > kMaxGroupLevelDepth)
+        return MakeErrorInfo(CONFIG_ERROR_TOO_MANY_NESTED_GROUPS, line_index);
       expect_opening_curly_brace = false;
       continue;
     }
@@ -257,6 +263,9 @@ ConfigErrorInfo ConfigParser::ParseConfig(
       }
       if (value == "{") {
         group_level++;
+        // If too nested config, exit here to prevent krb5 stack overflow.
+        if (group_level > kMaxGroupLevelDepth)
+          return MakeErrorInfo(CONFIG_ERROR_TOO_MANY_NESTED_GROUPS, line_index);
         continue;
       }
     }
