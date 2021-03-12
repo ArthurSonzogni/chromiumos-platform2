@@ -19,6 +19,7 @@ use std::result::Result as StdResult;
 
 use getopts::Options;
 use libchromeos::linux::{getpid, getsid, setsid};
+use libchromeos::vsock::SocketAddr as VSocketAddr;
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::communication::persistence::{Cronista, CronistaClient, Status};
 use libsirenia::communication::{StorageRPC, StorageRPCServer};
@@ -28,9 +29,9 @@ use libsirenia::rpc::{ConnectionHandler, RpcDispatcher, TransportServer};
 use libsirenia::sandbox::{self, Sandbox};
 use libsirenia::to_sys_util;
 use libsirenia::transport::{
-    self, create_transport_from_pipes, Transport, TransportType, CROS_CONNECTION_ERR_FD,
+    self, create_transport_from_pipes, Transport, TransportType, CROS_CID, CROS_CONNECTION_ERR_FD,
     CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
-    DEFAULT_CONNECTION_W_FD, DEFAULT_SERVER_PORT,
+    DEFAULT_CONNECTION_W_FD, DEFAULT_CRONISTA_PORT, DEFAULT_SERVER_PORT,
 };
 use sirenia::app_info::{self, AppManifest, AppManifestEntry, SandboxType};
 use sirenia::build_info::BUILD_TIMESTAMP;
@@ -45,28 +46,20 @@ const SYSLOG_PATH_SHORT_NAME: &str = "L";
 
 #[derive(ThisError, Debug)]
 pub enum Error {
-    /// Error initializing the syslog.
     #[error("failed to initialize the syslog: {0}")]
     InitSyslog(sys_util::syslog::Error),
-    /// Error opening a pipe.
     #[error("failed to open pipe: {0}")]
     OpenPipe(sys_util::Error),
-    /// Error creating the transport.
     #[error("failed create transport: {0}")]
     NewTransport(transport::Error),
-    /// Got an unexpected connection type
     #[error("got unexpected transport type: {0:?}")]
     UnexpectedConnectionType(TransportType),
-    /// Error Creating a new sandbox.
     #[error("failed to create new sandbox: {0}")]
     NewSandbox(sandbox::Error),
-    /// Error starting up a sandbox.
     #[error("failed to start up sandbox: {0}")]
     RunSandbox(sandbox::Error),
-    /// Got a request type that wasn't expected by the handler.
     #[error("received unexpected request type")]
     UnexpectedRequest,
-    /// Error retrieving form app manifest.
     #[error("Error retrieving from  app_manifest: {0}")]
     AppManifest(app_info::Error),
     #[error("Sandbox type not implemented for: {0:?}")]
@@ -93,33 +86,76 @@ impl StorageRPC for TEEAppHandler {
 
     fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
         let app_info = &self.tee_app.borrow().app_info;
-        self.state
-            .borrow()
-            .persistence
-            .as_ref()
-            .unwrap()
-            .retrieve(app_info.scope.clone(), app_info.domain.to_string(), id)
-            .map_err(|err| {
-                error!("failed to retrieve data: {}", err);
-            })
+        let mut state = self.state.borrow_mut();
+
+        // If already connected try once, to see if the connection dropped.
+        if let Some(persistence) = &state.persistence {
+            let ret = persistence.retrieve(
+                app_info.scope.clone(),
+                app_info.domain.to_string(),
+                id.clone(),
+            );
+            match ret {
+                Err(err) => {
+                    // If the client is no longer valid, drop it so it will be recreated on the next call.
+                    state.persistence = None;
+                    error!("failed to retrieve data: {}", err);
+                }
+                Ok(a) => return Ok(a),
+            }
+        }
+
+        let persistence = state.check_persistence().map_err(|err| {
+            error!("failed to retrieve data: {}", err);
+        })?;
+
+        let ret = persistence.retrieve(app_info.scope.clone(), app_info.domain.to_string(), id);
+        ret.map_err(|err| {
+            // If the client is no longer valid, drop it so it will be recreated on the next call.
+            state.persistence = None;
+            error!("failed to retrieve data: {}", err);
+        })
     }
 
     fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
         let app_info = &self.tee_app.borrow().app_info;
-        self.state
-            .borrow()
-            .persistence
-            .as_ref()
-            .unwrap()
-            .persist(
+        let mut state = self.state.borrow_mut();
+
+        // If already connected try once, to see if the connection dropped.
+        if let Some(persistence) = &state.persistence {
+            let ret = persistence.persist(
                 app_info.scope.clone(),
                 app_info.domain.to_string(),
-                id,
-                data,
-            )
-            .map_err(|err| {
-                error!("failed to persist data: {}", err);
-            })
+                id.clone(),
+                data.clone(),
+            );
+
+            match ret {
+                Err(err) => {
+                    // If the client is no longer valid, drop it so it will be recreated on the next call.
+                    state.persistence = None;
+                    error!("failed to persist data: {}", err);
+                }
+                Ok(a) => return Ok(a),
+            }
+        }
+
+        let persistence = state.check_persistence().map_err(|err| {
+            error!("failed to persist data: {}", err);
+        })?;
+
+        let ret = persistence.persist(
+            app_info.scope.clone(),
+            app_info.domain.to_string(),
+            id,
+            data,
+        );
+
+        ret.map_err(|err| {
+            // If the client is no longer valid, drop it so it will be recreated on the next call.
+            state.persistence = None;
+            error!("failed to persist data: {}", err);
+        })
     }
 }
 
@@ -128,6 +164,7 @@ struct TrichechusState {
     pending_apps: HashMap<TransportType, String>,
     running_apps: HashMap<TransportType, Rc<RefCell<TEEApp>>>,
     log_queue: VecDeque<Vec<u8>>,
+    persistence_uri: TransportType,
     persistence: Option<CronistaClient>,
     app_manifest: AppManifest,
 }
@@ -139,9 +176,26 @@ impl TrichechusState {
             pending_apps: HashMap::new(),
             running_apps: HashMap::new(),
             log_queue: VecDeque::new(),
+            persistence_uri: TransportType::VsockConnection(VSocketAddr {
+                cid: CROS_CID,
+                port: DEFAULT_CRONISTA_PORT,
+            }),
             persistence: None,
             app_manifest: AppManifest::new(),
         }
+    }
+
+    fn check_persistence(&mut self) -> Result<&mut CronistaClient> {
+        let uri = self.persistence_uri.clone();
+        if self.persistence.is_none() {
+            self.persistence = Some(CronistaClient::new(
+                uri.try_into_client(None)
+                    .unwrap()
+                    .connect()
+                    .map_err(Error::NewTransport)?,
+            ));
+        }
+        Ok(self.persistence.as_mut().unwrap())
     }
 }
 
@@ -371,7 +425,9 @@ fn main() -> Result<()> {
     to_sys_util::unblock_all_signals();
 
     if let Some(uri) = cronista_uri_option.from_matches(&matches).unwrap() {
-        state.borrow_mut().persistence = Some(CronistaClient::new(
+        let mut state_mut = state.borrow_mut();
+        state_mut.persistence_uri = uri.clone();
+        state_mut.persistence = Some(CronistaClient::new(
             uri.try_into_client(None).unwrap().connect().unwrap(),
         ));
     }

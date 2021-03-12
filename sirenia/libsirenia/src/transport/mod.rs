@@ -32,8 +32,11 @@ use libchromeos::vsock::{
 };
 use sys_util::{handle_eintr, pipe};
 
+pub const CROS_CID: VsockCid = VsockCid::Cid(3);
+
 pub const DEFAULT_SERVER_PORT: u32 = 5552;
 pub const DEFAULT_CLIENT_PORT: u32 = 5553;
+pub const DEFAULT_CRONISTA_PORT: u32 = 5554;
 pub const DEFAULT_CONNECTION_R_FD: i32 = 555;
 pub const DEFAULT_CONNECTION_W_FD: i32 = 556;
 pub const CROS_CONNECTION_R_FD: i32 = 0;
