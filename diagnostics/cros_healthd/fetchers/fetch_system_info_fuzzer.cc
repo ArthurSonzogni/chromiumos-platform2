@@ -51,9 +51,6 @@ void SetUpSystemFiles(const base::FilePath& root_dir,
   CHECK(WriteFileAndCreateParentDirs(
       relative_dmi_info_path.Append(kChassisTypeFileName),
       provider->ConsumeRandomLengthString()));
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_dmi_info_path.Append(kProductNameFileName),
-      provider->ConsumeRandomLengthString()));
   // Populate the fake lsb-release file.
   base::SysInfo::SetChromeOSVersionInfoForTest(
       provider->ConsumeRandomLengthString(), base::Time::Now());
@@ -88,6 +85,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   mock_context.Initialize();
   mock_context.fake_system_config()->SetHasSkuNumber(true);
   mock_context.fake_system_config()->SetMarketingName("fake_marketing_name");
+  mock_context.fake_system_config()->SetProductName("fake_product_name");
   SystemFetcher system_fetcher{&mock_context};
   auto system_info =
       system_fetcher.FetchSystemInfo(base::FilePath(temp_dir.GetPath()));

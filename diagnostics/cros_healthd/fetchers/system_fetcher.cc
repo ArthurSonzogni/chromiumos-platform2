@@ -33,7 +33,6 @@ constexpr char kBiosVersionFileName[] = "bios_version";
 constexpr char kBoardNameFileName[] = "board_name";
 constexpr char kBoardVersionFileName[] = "board_version";
 constexpr char kChassisTypeFileName[] = "chassis_type";
-constexpr char kProductNameFileName[] = "product_name";
 constexpr char kProductModelNameFileName[] = "model_name";
 
 namespace {
@@ -79,12 +78,6 @@ base::Optional<mojo_ipc::ProbeErrorPtr> FetchDmiInfo(
           base::StringPrintf("Failed to convert chassis_type: %s",
                              chassis_type_str.c_str()));
     }
-  }
-
-  std::string product_name;
-  if (ReadAndTrimString(relative_dmi_info_path, kProductNameFileName,
-                        &product_name)) {
-    output_info->product_name = product_name;
   }
 
   return base::nullopt;
@@ -143,6 +136,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchCachedVpdInfo(
 
 void SystemFetcher::FetchMasterConfigInfo(mojo_ipc::SystemInfo* output_info) {
   output_info->marketing_name = context_->system_config()->GetMarketingName();
+  output_info->product_name = context_->system_config()->GetProductName();
 }
 
 base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchOsVersion(

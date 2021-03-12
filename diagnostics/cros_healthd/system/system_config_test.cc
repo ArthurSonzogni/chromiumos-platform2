@@ -24,6 +24,8 @@ namespace {
 
 // Fake marketing name used for testing cros config.
 constexpr char kFakeMarketingName[] = "chromebook X 1234";
+// Fake product name used for testing cros config.
+constexpr char kFakeProductName[] = "product name";
 
 }  // namespace
 
@@ -182,6 +184,16 @@ TEST_F(SystemConfigTest, CorrectMarketingName) {
 
 TEST_F(SystemConfigTest, MarketingNameUnset) {
   EXPECT_EQ(system_config()->GetMarketingName(), "");
+}
+
+TEST_F(SystemConfigTest, CorrectProductName) {
+  fake_cros_config()->SetString(kRootPath, kProductNameProperty,
+                                kFakeProductName);
+  EXPECT_EQ(system_config()->GetProductName(), kFakeProductName);
+}
+
+TEST_F(SystemConfigTest, ProductNameUnset) {
+  EXPECT_EQ(system_config()->GetProductName(), "");
 }
 
 }  // namespace diagnostics

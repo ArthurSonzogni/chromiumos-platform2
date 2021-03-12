@@ -41,6 +41,10 @@ extern const char kFioToolPath[];
 extern const char kArcBuildPropertiesPath[];
 // The master configuration property that specifies a device's marketing name.
 extern const char kMarketingNameProperty[];
+// The root path of master configuration.
+extern const char kRootPath[];
+// The master configuration property that specifies a device's product name.
+extern const char kProductNameProperty[];
 
 // Returns a list of wilco board names.
 const std::list<std::string> GetWilcoBoardNames();

@@ -21,7 +21,6 @@ extern const char kBiosVersionFileName[];
 extern const char kBoardNameFileName[];
 extern const char kBoardVersionFileName[];
 extern const char kChassisTypeFileName[];
-extern const char kProductNameFileName[];
 
 // Relative paths to cached VPD information.
 extern const char kRelativeVpdRoPath[];

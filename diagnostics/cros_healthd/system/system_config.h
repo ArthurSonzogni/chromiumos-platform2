@@ -38,6 +38,7 @@ class SystemConfig final : public SystemConfigInterface {
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
   std::string GetMarketingName() override;
+  std::string GetProductName() override;
 
  private:
   // Unowned pointer. The CrosConfigInterface should outlive this instance.

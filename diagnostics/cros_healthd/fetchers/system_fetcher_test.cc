@@ -31,15 +31,15 @@ const char kFakeManufactureDate[] = "2019-01-01";
 const char kFakeSkuNumber[] = "ABCD&^A";
 const char kFakeProductSerialNumber[] = "8607G03EDF";
 const char kFakeProductModelName[] = "XX ModelName 007 XY";
-// Fake CrosConfig value used for testing.
+// Fake CrosConfig values used for testing.
 constexpr char kFakeMarketingName[] = "Latitude 1234 Chromebook Enterprise";
+constexpr char kFakeProductName[] = "ProductName";
 // Fake DMI values used for testing.
 constexpr char kFakeBiosVersion[] = "Google_BoardName.12200.68.0";
 constexpr char kFakeBoardName[] = "BoardName";
 constexpr char kFakeBoardVersion[] = "rev1234";
 constexpr char kFakeChassisType[] = "9";
 constexpr uint64_t kFakeChassisTypeOutput = 9;
-constexpr char kFakeProductName[] = "ProductName";
 
 }  // namespace
 
@@ -84,12 +84,10 @@ class SystemUtilsTest : public ::testing::Test {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         relative_dmi_info_path_.Append(kChassisTypeFileName),
         kFakeChassisType));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_dmi_info_path_.Append(kProductNameFileName),
-        kFakeProductName));
 
     SetHasSkuNumber(true);
     SetMarketingName(kFakeMarketingName);
+    SetProductName(kFakeProductName);
     PopulateLsbRelease();
   }
 
@@ -109,6 +107,10 @@ class SystemUtilsTest : public ::testing::Test {
 
   void SetMarketingName(const std::string& val) {
     mock_context_.fake_system_config()->SetMarketingName(val);
+  }
+
+  void SetProductName(const std::string& val) {
+    mock_context_.fake_system_config()->SetProductName(val);
   }
 
   void PopulateLsbRelease() {
@@ -140,6 +142,7 @@ class SystemUtilsTest : public ::testing::Test {
   void ValidateCrosConfigInfo(
       const chromeos::cros_healthd::mojom::SystemInfoPtr& system_info) {
     EXPECT_EQ(system_info->marketing_name, kFakeMarketingName);
+    EXPECT_EQ(system_info->product_name, kFakeProductName);
   }
 
   void ValidateDmiInfo(
@@ -152,8 +155,6 @@ class SystemUtilsTest : public ::testing::Test {
     EXPECT_EQ(system_info->board_version, kFakeBoardVersion);
     ASSERT_TRUE(system_info->chassis_type);
     EXPECT_EQ(system_info->chassis_type->value, kFakeChassisTypeOutput);
-    ASSERT_TRUE(system_info->product_name.has_value());
-    EXPECT_EQ(system_info->product_name, kFakeProductName);
   }
 
   void ValidateOsVersion(
@@ -362,7 +363,6 @@ TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
   EXPECT_FALSE(system_info->board_name.has_value());
   EXPECT_FALSE(system_info->board_version.has_value());
   EXPECT_FALSE(system_info->chassis_type);
-  EXPECT_FALSE(system_info->product_name.has_value());
 }
 
 // Test that there is no bios_version when |kBiosVersionFileName| is missing.
@@ -387,8 +387,6 @@ TEST_F(SystemUtilsTest, TestNoBiosVersion) {
   EXPECT_EQ(system_info->board_version.value(), kFakeBoardVersion);
   ASSERT_TRUE(system_info->chassis_type);
   EXPECT_EQ(system_info->chassis_type->value, kFakeChassisTypeOutput);
-  ASSERT_TRUE(system_info->product_name.has_value());
-  EXPECT_EQ(system_info->product_name.value(), kFakeProductName);
 }
 
 // Test that there is no board_name when |kBoardNameFileName| is missing.
@@ -413,8 +411,6 @@ TEST_F(SystemUtilsTest, TestNoBoardName) {
   EXPECT_EQ(system_info->board_version.value(), kFakeBoardVersion);
   ASSERT_TRUE(system_info->chassis_type);
   EXPECT_EQ(system_info->chassis_type->value, kFakeChassisTypeOutput);
-  ASSERT_TRUE(system_info->product_name.has_value());
-  EXPECT_EQ(system_info->product_name.value(), kFakeProductName);
 }
 
 // Test that there is no board_version when |kBoardVersionFileName| is missing.
@@ -439,8 +435,6 @@ TEST_F(SystemUtilsTest, TestNoBoardVersion) {
   EXPECT_FALSE(system_info->board_version.has_value());
   ASSERT_TRUE(system_info->chassis_type);
   EXPECT_EQ(system_info->chassis_type->value, kFakeChassisTypeOutput);
-  ASSERT_TRUE(system_info->product_name.has_value());
-  EXPECT_EQ(system_info->product_name.value(), kFakeProductName);
 }
 
 // Test that there is no chassis_type when |kChassisTypeFileName| is missing.
@@ -465,8 +459,6 @@ TEST_F(SystemUtilsTest, TestNoChassisType) {
   ASSERT_TRUE(system_info->board_version.has_value());
   EXPECT_EQ(system_info->board_version.value(), kFakeBoardVersion);
   EXPECT_FALSE(system_info->chassis_type);
-  ASSERT_TRUE(system_info->product_name.has_value());
-  EXPECT_EQ(system_info->product_name.value(), kFakeProductName);
 }
 
 // Test that reading a chassis_type that cannot be converted to an unsigned
@@ -483,32 +475,6 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
   ASSERT_TRUE(system_result->is_error());
   EXPECT_EQ(system_result->get_error()->type,
             chromeos::cros_healthd::mojom::ErrorType::kParseError);
-}
-
-// Test that there is no product_name when |kProductNameFileName| is missing.
-TEST_F(SystemUtilsTest, TestNoProductName) {
-  // Delete the file containing product name.
-  ASSERT_TRUE(
-      base::DeleteFile(relative_dmi_info_path().Append(kProductNameFileName)));
-
-  auto system_result = FetchSystemInfo(GetTempDirPath());
-  ASSERT_TRUE(system_result->is_system_info());
-  const auto& system_info = system_result->get_system_info();
-
-  ValidateCachedVpdInfo(system_info);
-  ValidateCrosConfigInfo(system_info);
-  ValidateOsVersion(system_info);
-
-  // Confirm that the product_name was not populated.
-  ASSERT_TRUE(system_info->bios_version.has_value());
-  EXPECT_EQ(system_info->bios_version.value(), kFakeBiosVersion);
-  ASSERT_TRUE(system_info->board_name.has_value());
-  EXPECT_EQ(system_info->board_name.value(), kFakeBoardName);
-  ASSERT_TRUE(system_info->board_version.has_value());
-  EXPECT_EQ(system_info->board_version.value(), kFakeBoardVersion);
-  ASSERT_TRUE(system_info->chassis_type);
-  EXPECT_EQ(system_info->chassis_type->value, kFakeChassisTypeOutput);
-  EXPECT_FALSE(system_info->product_name.has_value());
 }
 
 // Tests that an error is returned if there is no OS version information

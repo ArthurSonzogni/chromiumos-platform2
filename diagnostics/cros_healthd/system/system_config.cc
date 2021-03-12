@@ -157,4 +157,13 @@ std::string SystemConfig::GetMarketingName() {
   return marketing_name;
 }
 
+std::string SystemConfig::GetProductName() {
+  std::string product_name;
+  if (!cros_config_->GetString(kRootPath, kProductNameProperty,
+                               &product_name)) {
+    return "";
+  }
+  return product_name;
+}
+
 }  // namespace diagnostics

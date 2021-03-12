@@ -43,6 +43,9 @@ class SystemConfigInterface {
 
   // Returns the marketing name associated with this device.
   virtual std::string GetMarketingName() = 0;
+
+  // Returns the product name associated with this device.
+  virtual std::string GetProductName() = 0;
 };
 
 }  // namespace diagnostics
