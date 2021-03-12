@@ -4,7 +4,6 @@
 
 //! Encapsulates the logic used to setup sandboxes for TEE applications.
 
-use std::fs::create_dir_all;
 use std::os::unix::io::RawFd;
 use std::path::Path;
 
@@ -17,6 +16,8 @@ pub enum Error {
     Jail(minijail::Error),
     #[error("failed to fork jail process: {0}")]
     ForkingJail(minijail::Error),
+    #[error("failed to bind '{0}' to '{1}': {2}")]
+    Bind(String, String, minijail::Error),
     #[error("failed to pivot root: {0}")]
     PivotRoot(minijail::Error),
     #[error("failed to parse seccomp policy: {0}")]
@@ -30,7 +31,7 @@ pub enum Error {
 /// The result of an operation in this crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
-const PIVOT_ROOT: &str = "/mnt/empty";
+const NEW_ROOT: &str = "/mnt/empty";
 
 /// An abstraction for the TEE application sandbox.
 pub struct Sandbox(minijail::Minijail);
@@ -62,8 +63,11 @@ impl Sandbox {
             j.use_seccomp_filter();
         }
 
-        // TODO(b/179815569) Fix the pivot root.
-        // j.enter_pivot_root(pivot_root).map_err(Error::PivotRoot)?;
+        let new_root = Path::new(NEW_ROOT);
+        // The initramfs cannot be unmounted so bind mount /mnt/empty as read only and chroot.
+        j.mount_bind(new_root, Path::new("/"), false)
+            .map_err(|err| Error::Bind(NEW_ROOT.to_string(), NEW_ROOT.to_string(), err))?;
+        j.enter_chroot(new_root).map_err(Error::PivotRoot)?;
 
         let limit = 1024u64;
         j.set_rlimit(libc::RLIMIT_NOFILE as i32, limit, limit)
