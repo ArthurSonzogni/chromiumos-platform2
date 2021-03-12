@@ -71,7 +71,6 @@ proto_library("pinweaver_proto") {
 }
 
 shared_library("trunks") {
-  configs += [ ":target_defaults" ]
   sources = [
     "background_command_transceiver.cc",
     "blob_parser.cc",
@@ -92,10 +91,7 @@ shared_library("trunks") {
     "trunks_dbus_proxy.cc",
     "trunks_factory_impl.cc",
   ]
-  deps = [
-    ":interface_proto",
-    ":pinweaver_proto",
-  ]
+  configs += [ ":target_defaults" ]
   libs = [ "hwsec" ]
   if (use.ftdi_tpm) {
     sources += [
@@ -106,26 +102,30 @@ shared_library("trunks") {
     libs += [ "ftdi1" ]
     defines = [ "SPI_OVER_FTDI=1" ]
   }
+  deps = [
+    ":interface_proto",
+    ":pinweaver_proto",
+  ]
 }
 
 executable("pinweaver_client") {
-  configs += [ ":target_defaults" ]
   sources = [ "pinweaver_client.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":trunks" ]
 }
 
 executable("trunks_client") {
-  configs += [ ":target_defaults" ]
   sources = [
     "trunks_client.cc",
     "trunks_client_test.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":trunks" ]
 }
 
 executable("trunks_send") {
-  configs += [ ":target_defaults" ]
   sources = [ "trunks_send.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":trunks" ]
 }
 
@@ -142,6 +142,14 @@ pkg_config("trunksd_lib_all_dependent_pkg_deps") {
 }
 
 static_library("trunksd_lib") {
+  sources = [
+    "power_manager.cc",
+    "resource_manager.cc",
+    "tpm_handle.cc",
+    "tpm_simulator_handle.cc",
+    "trunks_dbus_service.cc",
+    "trunks_metrics.cc",
+  ]
   all_dependent_configs = [
     ":trunksd_lib_all_dependent_configs",
     ":trunksd_lib_all_dependent_pkg_deps",
@@ -151,14 +159,6 @@ static_library("trunksd_lib") {
     ":trunksd_lib_all_dependent_pkg_deps",
     ":trunksd_lib_config",
   ]
-  sources = [
-    "power_manager.cc",
-    "resource_manager.cc",
-    "tpm_handle.cc",
-    "tpm_simulator_handle.cc",
-    "trunks_dbus_service.cc",
-    "trunks_metrics.cc",
-  ]
   deps = [ ":trunks" ]
 }
 
@@ -167,11 +167,11 @@ pkg_config("trunksd_pkg_deps") {
 }
 
 executable("trunksd") {
+  sources = [ "trunksd.cc" ]
   configs += [
     ":target_defaults",
     ":trunksd_pkg_deps",
   ]
-  sources = [ "trunksd.cc" ]
   deps = [
     ":trunks",
     ":trunksd_lib",
@@ -185,11 +185,6 @@ executable("trunksd") {
 }
 
 static_library("trunks_test") {
-  configs -= [ "//common-mk:use_thin_archive" ]
-  configs += [
-    "//common-mk:nouse_thin_archive",
-    ":target_defaults",
-  ]
   sources = [
     "mock_authorization_delegate.cc",
     "mock_blob_parser.cc",
@@ -203,6 +198,11 @@ static_library("trunks_test") {
     "mock_tpm_utility.cc",
     "trunks_factory_for_test.cc",
   ]
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [
+    "//common-mk:nouse_thin_archive",
+    ":target_defaults",
+  ]
 }
 
 if (use.test) {
@@ -213,11 +213,6 @@ if (use.test) {
     ]
   }
   executable("trunks_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":trunks_testrunner_pkg_deps",
-    ]
     sources = [
       "background_command_transceiver_test.cc",
       "hmac_authorization_delegate_test.cc",
@@ -238,6 +233,11 @@ if (use.test) {
       "trunks_factory_test.cc",
       "trunks_testrunner.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":trunks_testrunner_pkg_deps",
+    ]
     deps = [
       ":trunks",
       ":trunks_test",
@@ -248,29 +248,29 @@ if (use.test) {
 
 if (use.fuzzer) {
   executable("trunks_key_blob_fuzzer") {
+    sources = [ "key_blob_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "key_blob_fuzzer.cc" ]
     deps = [ ":trunks" ]
   }
 
   executable("trunks_creation_blob_fuzzer") {
+    sources = [ "creation_blob_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "creation_blob_fuzzer.cc" ]
     deps = [ ":trunks" ]
   }
 
   executable("trunks_hmac_authorization_delegate_fuzzer") {
+    sources = [ "hmac_authorization_delegate_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "hmac_authorization_delegate_fuzzer.cc" ]
     deps = [ ":trunks" ]
   }
 
@@ -279,15 +279,15 @@ if (use.fuzzer) {
   }
 
   executable("trunks_resource_manager_fuzzer") {
+    sources = [
+      "fuzzed_command_transceiver.cc",
+      "resource_manager_fuzzer.cc",
+    ]
     configs += [
       "//common-mk:test",
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
       ":trunks_resource_manager_fuzzer_pkg_deps",
-    ]
-    sources = [
-      "fuzzed_command_transceiver.cc",
-      "resource_manager_fuzzer.cc",
     ]
     deps = [
       ":trunks",
@@ -297,20 +297,20 @@ if (use.fuzzer) {
   }
 
   executable("trunks_password_authorization_delegate_fuzzer") {
+    sources = [ "password_authorization_delegate_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "password_authorization_delegate_fuzzer.cc" ]
     deps = [ ":trunks" ]
   }
 
   executable("trunks_tpm_pinweaver_fuzzer") {
+    sources = [ "tpm_pinweaver_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "tpm_pinweaver_fuzzer.cc" ]
     deps = [ ":trunks" ]
   }
 }
