@@ -14,12 +14,18 @@ group("all") {
   }
 }
 
+pkg_config("target_defaults") {
+  pkg_deps = [ "libchrome" ]
+}
+
 shared_library("libbootstat") {
+  configs += [ ":target_defaults" ]
   sources = [ "bootstat_log.cc" ]
   libs = [ "rootdev" ]
 }
 
 executable("bootstat") {
+  configs += [ ":target_defaults" ]
   sources = [ "bootstat.cc" ]
   deps = [ ":libbootstat" ]
 }
@@ -33,7 +39,10 @@ if (use.test) {
       "bootstat_test.cc",
     ]
     libs = [ "rootdev" ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      ":target_defaults",
+      "//common-mk:test",
+    ]
     deps = [ "//common-mk/testrunner" ]
   }
 }

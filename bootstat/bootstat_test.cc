@@ -14,6 +14,8 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+
 #include <gtest/gtest.h>
 
 namespace bootstat {
@@ -24,15 +26,15 @@ using std::string;
 // Mock class to interact with the system.
 class MockBootStatSystem : public BootStatSystem {
  public:
-  explicit MockBootStatSystem(const string& disk_statistics_file_name)
-      : disk_statistics_file_name_(disk_statistics_file_name) {}
+  explicit MockBootStatSystem(const base::FilePath& disk_statistics_file_path)
+      : disk_statistics_file_path_(disk_statistics_file_path) {}
 
-  string GetDiskStatisticsFileName() const override {
-    return disk_statistics_file_name_;
+  base::FilePath GetDiskStatisticsFilePath() const override {
+    return disk_statistics_file_path_;
   }
 
  private:
-  string disk_statistics_file_name_;
+  base::FilePath disk_statistics_file_path_;
 };
 
 static void RemoveFile(const string& file_path) {
@@ -233,9 +235,10 @@ void BootstatTest::SetUp() {
   disk_event_prefix_ = stats_output_dir_ + "/disk-";
   mock_uptime_file_name_ = stats_output_dir_ + "/proc_uptime";
   mock_disk_file_name_ = stats_output_dir_ + "/block_stats";
-  boot_stat_system_ = new MockBootStatSystem(mock_disk_file_name_);
+  boot_stat_system_ =
+      new MockBootStatSystem(base::FilePath(mock_disk_file_name_));
   boot_stat_ = std::make_unique<BootStat>(
-      stats_output_dir_, mock_uptime_file_name_,
+      base::FilePath(stats_output_dir_), mock_uptime_file_name_,
       std::unique_ptr<BootStatSystem>(boot_stat_system_));
 }
 

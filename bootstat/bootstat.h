@@ -13,6 +13,9 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
+
 namespace bootstat {
 
 // Abstracts system operations in order to inject on testing.
@@ -24,9 +27,8 @@ class BootStatSystem {
   virtual ~BootStatSystem() = default;
 
   // Returns the path representing the stats file for the root disk.
-  // Returns an empty string on failure.
-  // TODO(drinkcat): Rename to GetDiskStatisticsFilePath
-  virtual std::string GetDiskStatisticsFileName() const;
+  // Returns an empty path on failure.
+  virtual base::FilePath GetDiskStatisticsFilePath() const;
 };
 
 // Basic class for bootstat API interface.
@@ -35,7 +37,7 @@ class BootStat {
   BootStat();
   // Constructor for testing purpose: changes the default output directory and
   // allows replacing BootStatSystem implementation with a fake one.
-  BootStat(const std::string& output_directory_path,
+  BootStat(const base::FilePath& output_directory_path,
            // TODO(drinkcat): Move this to BootStatSystem
            const std::string& uptime_statistics_file_path,
            std::unique_ptr<BootStatSystem> boot_stat_system);
@@ -53,16 +55,16 @@ class BootStat {
   bool LogEvent(const std::string& event_name) const;
 
  private:
-  std::string output_directory_path_;
+  base::FilePath output_directory_path_;
   // TODO(drinkcat): Move this to BootStatSystem
   std::string uptime_statistics_file_path_;
 
   std::unique_ptr<BootStatSystem> boot_stat_system_;
 
   // Figures out the event output file name, and open it.
-  // Returns an fd (negative on error).
-  int OpenEventFile(const std::string& output_name_prefix,
-                    const std::string& event_name) const;
+  // Returns a scoped fd (negative on error).
+  base::ScopedFD OpenEventFile(const std::string& output_name_prefix,
+                               const std::string& event_name) const;
   // Logs a disk event containing root disk statistics.
   bool LogDiskEvent(const std::string& event_name) const;
   // Logs a uptime event indicating time since boot.

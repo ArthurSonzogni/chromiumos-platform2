@@ -5,21 +5,16 @@
 // Implementation of bootstat_log(), part of the Chromium OS 'bootstat'
 // facility.
 
-#include <assert.h>
-#include <libgen.h>
+#include <fcntl.h>
 #include <limits.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/fcntl.h>
-#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <string>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/brillo_export.h>
 #include <rootdev/rootdev.h>
 
@@ -38,13 +33,13 @@ static const char kDefaultOutputDirectoryName[] = "/tmp";
 static const char kDefaultUptimeStatisticsFileName[] = "/proc/uptime";
 
 // TODO(drinkcat): Cache function output (we only need to evaluate it once)
-std::string BootStatSystem::GetDiskStatisticsFileName() const {
+base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   char boot_path[PATH_MAX];
   int ret = rootdev(boot_path, sizeof(boot_path),
                     true,    // Do full resolution.
                     false);  // Do not remove partition number.
   if (ret < 0)
-    return std::string();
+    return base::FilePath();
 
   // The general idea is to use the the root device's sysfs entry to
   // get the path to the root disk's sysfs entry.
@@ -53,24 +48,25 @@ std::string BootStatSystem::GetDiskStatisticsFileName() const {
   // - Use /sys/class/block/sda3/../ to get to root disk (sda) sysfs entry.
   //   This is because /sys/class/block/sda3 is a symlink that maps to:
   //     /sys/devices/pci.../.../ata./host./target.../.../block/sda/sda3
-  const char* root_device_name = basename(boot_path);
-  if (!root_device_name)
-    return std::string();
+  base::FilePath root_device_name = base::FilePath(boot_path).BaseName();
 
-  char stats_path[PATH_MAX];
-  ret = snprintf(stats_path, sizeof(stats_path), "/sys/class/block/%s/../stat",
-                 root_device_name);
-  if (ret >= sizeof(stats_path) || ret < 0)
-    return std::string();
-  return stats_path;
+  base::FilePath stat_path = base::FilePath("/sys/class/block")
+                                 .Append(root_device_name)
+                                 .Append("../stat");
+
+  // Normalize the path as some functions refuse to follow symlink/`..`.
+  base::FilePath norm;
+  if (!base::NormalizeFilePath(stat_path, &norm))
+    return base::FilePath();
+  return norm;
 }
 
 BootStat::BootStat()
-    : BootStat(kDefaultOutputDirectoryName,
+    : BootStat(base::FilePath(kDefaultOutputDirectoryName),
                kDefaultUptimeStatisticsFileName,
                std::make_unique<BootStatSystem>()) {}
 
-BootStat::BootStat(const std::string& output_directory_path,
+BootStat::BootStat(const base::FilePath& output_directory_path,
                    const std::string& uptime_statistics_file_path,
                    std::unique_ptr<BootStatSystem> boot_stat_system)
     : output_directory_path_(output_directory_path),
@@ -79,8 +75,8 @@ BootStat::BootStat(const std::string& output_directory_path,
 
 BootStat::~BootStat() = default;
 
-int BootStat::OpenEventFile(const std::string& output_name_prefix,
-                            const std::string& event_name) const {
+base::ScopedFD BootStat::OpenEventFile(const std::string& output_name_prefix,
+                                       const std::string& event_name) const {
   const mode_t kFileCreationMode =
       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 
@@ -89,67 +85,50 @@ int BootStat::OpenEventFile(const std::string& output_name_prefix,
   // formats:  the "%.*s" format is used to truncate the event name
   // to the proper number of characters..
   //
-  char output_path[PATH_MAX];
-  int output_path_len =
-      snprintf(output_path, sizeof(output_path), "%s/%s-%.*s",
-               output_directory_path_.c_str(), output_name_prefix.c_str(),
-               BOOTSTAT_MAX_EVENT_LEN - 1, event_name.c_str());
-  if (output_path_len >= sizeof(output_path))
-    return -1;
+  std::string output_file =
+      base::StringPrintf("%s-%.*s", output_name_prefix.c_str(),
+                         BOOTSTAT_MAX_EVENT_LEN - 1, event_name.c_str());
 
-  // TODO(drinkcat): Handle EINTR or use libchrome's HANDLE_EINTR.
-  int output_fd = open(output_path, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW,
-                       kFileCreationMode);
+  base::FilePath output_path = output_directory_path_.Append(output_file);
 
-  // TODO(drinkcat): Replace with base::ScopedFD
-  return output_fd;
-}
+  int output_fd = HANDLE_EINTR(open(output_path.value().c_str(),
+                                    O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW,
+                                    kFileCreationMode));
 
-static bool CopyFromFile(const std::string& input_file_name, int output_fd) {
-  int ifd = open(input_file_name.c_str(), O_RDONLY);
-  if (ifd < 0)
-    return false;
-
-  char buffer[256];
-  ssize_t num_read;
-  // TODO(drinkcat): Handle EINTR or use libchrome's HANDLE_EINTR.
-  while ((num_read = read(ifd, buffer, sizeof(buffer))) > 0) {
-    ssize_t num_written = write(output_fd, buffer, num_read);
-    // TODO(drinkcat): Partial write should be retried.
-    if (num_written != num_read)
-      break;
-  }
-  (void)close(ifd);
-
-  return true;
+  return base::ScopedFD(output_fd);
 }
 
 bool BootStat::LogDiskEvent(const std::string& event_name) const {
-  std::string disk_statistics_file_name =
-      boot_stat_system_->GetDiskStatisticsFileName();
+  base::FilePath disk_statistics_file_path =
+      boot_stat_system_->GetDiskStatisticsFilePath();
 
-  if (disk_statistics_file_name.empty())
+  if (disk_statistics_file_path.empty())
     return false;
 
-  int output_fd = OpenEventFile("disk", event_name);
-  if (output_fd < 0)
+  std::string data;
+  if (!base::ReadFileToString(disk_statistics_file_path, &data))
     return false;
 
-  bool ret = CopyFromFile(disk_statistics_file_name, output_fd);
+  base::ScopedFD output_fd = OpenEventFile("disk", event_name);
+  if (!output_fd.is_valid())
+    return false;
 
-  close(output_fd);
-  return ret;
+  return base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
 }
 
+// TODO(drinkcat): Either merge the common parts of this function with
+// LogDiskEvent, or use clock_gettime.
 bool BootStat::LogUptimeEvent(const std::string& event_name) const {
-  int output_fd = OpenEventFile("uptime", event_name);
-  if (output_fd < 0)
+  std::string data;
+  if (!base::ReadFileToString(base::FilePath(uptime_statistics_file_path_),
+                              &data))
     return false;
 
-  bool ret = CopyFromFile(uptime_statistics_file_path_, output_fd);
+  base::ScopedFD output_fd = OpenEventFile("uptime", event_name);
+  if (!output_fd.is_valid())
+    return false;
 
-  close(output_fd);
-  return ret;
+  return base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
 }
 
 // API functions.
