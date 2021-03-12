@@ -116,7 +116,6 @@ const int Service::kPriorityNone = 0;
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
-const char Service::kStorageDNSAutoFallback[] = "DNSAutoFallback";
 const char Service::kStorageError[] = "Error";
 const char Service::kStorageGUID[] = "GUID";
 const char Service::kStorageHasEverConnected[] = "HasEverConnected";
@@ -193,7 +192,6 @@ Service::Service(Manager* manager, Technology technology)
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
       connection_id_(0),
-      is_dns_auto_fallback_allowed_(false),
       link_monitor_disabled_(false),
       managed_credentials_(false),
       unreliable_(false),
@@ -270,7 +268,6 @@ Service::Service(Manager* manager, Technology technology)
   HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
   store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
-  store_.RegisterBool(kDnsAutoFallbackProperty, &is_dns_auto_fallback_allowed_);
   store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
   store_.RegisterBool(kManagedCredentialsProperty, &managed_credentials_);
   HelpRegisterDerivedBool(kMeteredProperty, &Service::GetMeteredProperty,
@@ -710,7 +707,6 @@ bool Service::Load(const StoreInterface* storage) {
   SLOG(this, 2) << " Service source = " << static_cast<size_t>(source_);
 
   storage->GetInt(id, kStorageConnectionId, &connection_id_);
-  storage->GetBool(id, kStorageDNSAutoFallback, &is_dns_auto_fallback_allowed_);
   storage->GetBool(id, kStorageLinkMonitorDisabled, &link_monitor_disabled_);
   if (!storage->GetBool(id, kStorageManagedCredentials,
                         &managed_credentials_)) {
@@ -792,7 +788,6 @@ bool Service::Unload() {
   save_credentials_ = true;
   ui_data_ = "";
   connection_id_ = 0;
-  is_dns_auto_fallback_allowed_ = false;
   link_monitor_disabled_ = false;
   managed_credentials_ = false;
   source_ = ONCSource::kONCSourceUnknown;
@@ -848,7 +843,6 @@ bool Service::Save(StoreInterface* storage) {
   SaveStringOrClear(storage, id, kStorageUIData, ui_data_);
   storage->SetInt(id, kStorageONCSource, static_cast<int>(source_));
   storage->SetInt(id, kStorageConnectionId, connection_id_);
-  storage->SetBool(id, kStorageDNSAutoFallback, is_dns_auto_fallback_allowed_);
   storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
   storage->SetBool(id, kStorageManagedCredentials, managed_credentials_);
 

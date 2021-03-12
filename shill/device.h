@@ -658,9 +658,6 @@ class Device : public base::RefCounted<Device> {
   // Called by DNS server tester when the fallback DNS servers test completes.
   void FallbackDNSResultCallback(const DnsServerTester::Status status);
 
-  // Called by DNS server tester when the configured DNS servers test completes.
-  void ConfigDNSResultCallback(const DnsServerTester::Status status);
-
   // Update DNS setting with the given DNS servers for the current connection.
   void SwitchDNSServers(const std::vector<std::string>& dns_servers);
 

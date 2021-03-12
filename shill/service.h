@@ -274,12 +274,6 @@ class Service : public base::RefCounted<Service> {
   mockable bool IsInFailState() const;
   mockable bool IsOnline() const;
 
-  // Return true if service is allowed to automatically switch to fallback
-  // DNS server.
-  mockable bool is_dns_auto_fallback_allowed() const {
-    return is_dns_auto_fallback_allowed_;
-  }
-
   mockable bool link_monitor_disabled() const { return link_monitor_disabled_; }
 
   mockable ConnectFailure failure() const { return failure_; }
@@ -1006,10 +1000,6 @@ class Service : public base::RefCounted<Service> {
   // Network identifier indicating the network (gateway) the service is
   // connected to.
   int connection_id_;
-  // When set to true, this service will automatically fallback to Google's DNS
-  // servers if the portal detection failed due to DNS failure and Google's DNS
-  // servers are working.
-  bool is_dns_auto_fallback_allowed_;
   // When set to true, will not start link monitor when the connection to this
   // service is established.
   bool link_monitor_disabled_;

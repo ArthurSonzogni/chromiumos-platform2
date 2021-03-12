@@ -85,7 +85,6 @@ class MockService : public Service {
   MOCK_METHOD(Technology, technology, (), (const, override));
   MOCK_METHOD(void, OnPropertyChanged, (const std::string&), (override));
   MOCK_METHOD(void, ClearExplicitlyDisconnected, (), (override));
-  MOCK_METHOD(bool, is_dns_auto_fallback_allowed, (), (const, override));
   MOCK_METHOD(void, NotifyIPConfigChanges, (), (override));
   MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
   MOCK_METHOD(void, EnableAndRetainAutoConnect, (), (override));

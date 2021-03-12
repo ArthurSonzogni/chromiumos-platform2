@@ -1753,36 +1753,8 @@ void Device::FallbackDNSResultCallback(const DnsServerTester::Status status) {
   int result = Metrics::kFallbackDNSTestResultFailure;
   if (status == DnsServerTester::kStatusSuccess) {
     result = Metrics::kFallbackDNSTestResultSuccess;
-
-    // Switch to fallback DNS server if service is configured to allow DNS
-    // fallback.
-    CHECK(selected_service_);
-    if (selected_service_->is_dns_auto_fallback_allowed()) {
-      LOG(INFO) << "Device " << link_name()
-                << ": Switching to fallback DNS servers.";
-      // Save the DNS servers from ipconfig.
-      config_dns_servers_ = ipconfig_->properties().dns_servers;
-      SwitchDNSServers(vector<string>(std::begin(kFallbackDnsServers),
-                                      std::end(kFallbackDnsServers)));
-      // Start DNS test for configured DNS servers.
-      StartDNSTest(config_dns_servers_, true,
-                   Bind(&Device::ConfigDNSResultCallback, AsWeakPtr()));
-    }
   }
   metrics()->NotifyFallbackDNSTestResult(technology_, result);
-}
-
-void Device::ConfigDNSResultCallback(const DnsServerTester::Status status) {
-  StopDNSTest();
-  // DNS test failed to start due to internal error.
-  if (status == DnsServerTester::kStatusFailure) {
-    return;
-  }
-
-  // Switch back to the configured DNS servers.
-  LOG(INFO) << "Device " << link_name()
-            << ": Switching back to configured DNS servers.";
-  SwitchDNSServers(config_dns_servers_);
 }
 
 void Device::SwitchDNSServers(const vector<string>& dns_servers) {
