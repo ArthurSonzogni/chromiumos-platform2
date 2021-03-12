@@ -114,6 +114,10 @@ void BenchmarkAndReportResults(
   } else {
     LOG(ERROR) << driver_name << " Encountered an error";
     LOG(ERROR) << "Reason: " << results.results_message();
+
+    if (output_path) {
+      ml_benchmark::WriteResultsToPath(results, *output_path);
+    }
   }
 }
 

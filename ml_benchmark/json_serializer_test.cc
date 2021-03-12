@@ -41,7 +41,6 @@ TEST(BenchmarkResultsToJson, Basics) {
   ASSERT_TRUE(json);
   EXPECT_EQ(json->FindIntKey("status"), chrome::ml_benchmark::RUNTIME_ERROR);
   EXPECT_EQ(GetStringKey(*json, "results_message"), "Test error");
-  EXPECT_EQ(json->FindDoubleKey("total_accuracy"), 42);
 }
 
 TEST(BenchmarkResultsToJson, Percentiles) {

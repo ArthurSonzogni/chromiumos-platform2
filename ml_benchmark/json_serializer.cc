@@ -79,6 +79,10 @@ base::Optional<base::Value> BenchmarkResultsToJson(
   base::Value doc(base::Value::Type::DICTIONARY);
   doc.SetKey("status", base::Value(results.status()));
   doc.SetKey("results_message", base::Value(results.results_message()));
+  if (results.status() != chrome::ml_benchmark::OK) {
+    return doc;
+  }
+
   doc.SetKey("total_accuracy",
              base::Value(static_cast<double>(results.total_accuracy())));
 

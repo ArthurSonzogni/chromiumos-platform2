@@ -51,8 +51,9 @@ bool SharedLibraryBenchmark::ExecuteBenchmark(
     return false;
   }
 
-  if (ret != chrome::ml_benchmark::OK) {
-    LOG(ERROR) << "Benchmark did not successfully execute";
+  if (ret != results->status()) {
+    LOG(ERROR) << "Status mismatch: return code " << ret << " vs proto status "
+               << results->status();
     return false;
   }
 
