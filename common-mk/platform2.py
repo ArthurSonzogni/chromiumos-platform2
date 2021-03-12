@@ -64,6 +64,7 @@ _IUSE = [
     'dlc',
     'double_extend_pcr_issue',
     'enable_slow_boot_notify',
+    'factory_runtime_probe',
     'fake_drivefs_launcher',
     'feedback',
     'fp_on_power_button',

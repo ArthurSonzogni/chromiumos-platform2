@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <inttypes.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -165,7 +167,7 @@ std::string IntegerFieldConverter::ToString() const {
 }
 
 std::string HexFieldConverter::ToString() const {
-  return base::StringPrintf("HexFieldConverter(%s, 0x%lx)",
+  return base::StringPrintf("HexFieldConverter(%s, 0x%" PRIx64 ")",
                             ::ToString(operator_), operand_);
 }
 

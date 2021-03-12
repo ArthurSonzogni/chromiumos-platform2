@@ -16,6 +16,7 @@
 #include "runtime_probe/probe_config.h"
 #include "runtime_probe/probe_config_loader_impl.h"
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/system_property_impl.h"
 
 namespace {
 enum ExitStatus {
@@ -68,6 +69,12 @@ int RunAsHelper() {
 }
 
 int RunAsDaemon() {
+  if constexpr (USE_FACTORY_RUNTIME_PROBE) {
+    LOG(FATAL) << "Unexpected error.  Daemon mode should never be reachable "
+                  "in factory_runtime_probe.";
+    return ExitStatus::kUnknownError;
+  }
+
   LOG(INFO) << "Starting Runtime Probe. Running in daemon mode";
   runtime_probe::Daemon daemon;
   return daemon.Run();
@@ -117,12 +124,29 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  if constexpr (USE_FACTORY_RUNTIME_PROBE) {
+    int cros_debug;
+    if (!runtime_probe::SystemPropertyImpl().GetInt("cros_debug",
+                                                    &cros_debug) ||
+        cros_debug != 1) {
+      LOG(FATAL) << "factory_runtime_probe should never run in normal mode.";
+      return ExitStatus::kUnknownError;
+    }
+  }
+
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   // Flags are subject to change
   DEFINE_string(config_file_path, "",
                 "File path to probe config, empty to use default one");
+
+#if !USE_FACTORY_RUNTIME_PROBE
   DEFINE_bool(dbus, false, "Run in the mode to respond D-Bus call");
+#else
+  constexpr bool FLAGS_dbus = false;  // DBus daemon mode is not available in
+                                      // factory_runtime_probe.
+#endif
+
   DEFINE_bool(helper, false, "Run in the mode to execute probe function");
   DEFINE_bool(to_stdout, false, "Output probe result to stdout");
   DEFINE_uint32(verbosity_level, 0,

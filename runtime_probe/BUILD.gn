@@ -5,10 +5,7 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [
-    ":libruntime_probe",
-    ":runtime_probe",
-  ]
+  deps = [ ":runtime_probe" ]
   if (use.test) {
     deps += [ ":unittest_runner" ]
   }
@@ -36,12 +33,12 @@ pkg_config("target_defaults") {
     "protobuf",
     "vboot_host",
   ]
+  defines = [ "USE_FACTORY_RUNTIME_PROBE=${use.factory_runtime_probe}" ]
 }
 
 static_library("libruntime_probe") {
   sources = [
     "component_category.cc",
-    "daemon.cc",
     "function_templates/network.cc",
     "function_templates/storage.cc",
     "functions/all_functions.cc",
@@ -71,9 +68,18 @@ static_library("libruntime_probe") {
     "system_property_impl.cc",
     "utils/edid.cc",
     "utils/file_utils.cc",
+    "utils/pipe_utils.cc",
     "utils/type_utils.cc",
     "utils/value_utils.cc",
   ]
+  if (use.factory_runtime_probe) {
+    sources += [ "helper_invoker_direct_impl.cc" ]
+  } else {
+    sources += [
+      "daemon.cc",
+      "helper_invoker_debugd_impl.cc",
+    ]
+  }
   configs += [ ":target_defaults" ]
 }
 
@@ -81,6 +87,9 @@ executable("runtime_probe") {
   sources = [ "runtime_probe.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libruntime_probe" ]
+  if (use.factory_runtime_probe) {
+    output_name = "factory_runtime_probe"
+  }
 }
 
 if (use.test) {
