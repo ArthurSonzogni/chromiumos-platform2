@@ -148,31 +148,6 @@ void SystemProxyAdaptor::SetAuthenticationDetails(
   }
 }
 
-// TODO(acostinas, crbug.com/1109144): Deprecated in favor of |ShutDownProcess|.
-std::vector<uint8_t> SystemProxyAdaptor::ShutDown() {
-  LOG(INFO) << "Received shutdown request.";
-
-  std::string error_message;
-  if (!ResetWorker(/* user_traffic=*/false)) {
-    error_message =
-        "Failure to terminate worker process for system services traffic.";
-  }
-
-  if (!ResetWorker(/* user_traffic=*/true)) {
-    error_message += "Failure to terminate worker process for arc traffic.";
-  }
-
-  ShutDownResponse response;
-  if (!error_message.empty())
-    response.set_error_message(error_message);
-
-  brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&SystemProxyAdaptor::ShutDownTask,
-                            weak_ptr_factory_.GetWeakPtr()));
-
-  return SerializeProto(response);
-}
-
 std::vector<uint8_t> SystemProxyAdaptor::ClearUserCredentials(
     const std::vector<uint8_t>& request_blob) {
   LOG(INFO) << "Received request to clear user credentials.";

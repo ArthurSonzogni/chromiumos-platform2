@@ -331,7 +331,7 @@ TEST_F(SystemProxyAdaptorTest, KerberosEnabled) {
   EXPECT_EQ(adaptor_->kerberos_client_->principal_name_, kPrincipalName);
 }
 
-TEST_F(SystemProxyAdaptorTest, ShutDown) {
+TEST_F(SystemProxyAdaptorTest, ShutDownProcess) {
   EXPECT_CALL(*bus_, GetObjectProxy(patchpanel::kPatchPanelServiceName, _))
       .Times(2)
       .WillRepeatedly(Return(mock_patchpanel_proxy_.get()));

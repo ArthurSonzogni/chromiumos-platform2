@@ -48,7 +48,6 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
   // org::chromium::SystemProxyInterface: (see org.chromium.SystemProxy.xml).
   std::vector<uint8_t> SetAuthenticationDetails(
       const std::vector<uint8_t>& request_blob) override;
-  std::vector<uint8_t> ShutDown() override;
   std::vector<uint8_t> ClearUserCredentials(
       const std::vector<uint8_t>& request_blob) override;
   std::vector<uint8_t> ShutDownProcess(
@@ -83,7 +82,7 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
   FRIEND_TEST(SystemProxyAdaptorTest,
               SetAuthenticationDetailsOnlySystemTraffic);
   FRIEND_TEST(SystemProxyAdaptorTest, KerberosEnabled);
-  FRIEND_TEST(SystemProxyAdaptorTest, ShutDown);
+  FRIEND_TEST(SystemProxyAdaptorTest, ShutDownProcess);
   FRIEND_TEST(SystemProxyAdaptorTest, ShutDownArc);
   FRIEND_TEST(SystemProxyAdaptorTest, ConnectNamespace);
   FRIEND_TEST(SystemProxyAdaptorTest, ProxyResolutionFilter);

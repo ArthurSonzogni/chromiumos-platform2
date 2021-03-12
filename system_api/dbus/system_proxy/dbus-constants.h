@@ -21,8 +21,6 @@ const char kSetAuthenticationDetailsMethod[] = "SetAuthenticationDetails";
 // TODO(acostinas, crbug.com/1076377) Remove deprecated
 // SetSystemTrafficCredentials call. Please use SetAuthenticationDetails.
 const char kSetSystemTrafficCredentialsMethod[] = "SetSystemTrafficCredentials";
-// Shuts down the System-proxy service.
-const char kShutDownMethod[] = "ShutDown";
 // Shuts down the System-proxy service or just one of the worker processes,
 // depending on the argument.
 const char kShutDownProcessMethod[] = "ShutDownProcess";
