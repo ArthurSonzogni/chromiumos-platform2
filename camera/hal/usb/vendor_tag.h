@@ -28,21 +28,29 @@ enum VendorTags : uint32_t {
   // These tags are for controls.
   // ControlFoo is for the request value, and ControlFooRange is the static
   // metadata for the available range as a tuple of [min, max, step].
+  // ControlFooDefault is the static metadata for the default value.
   kVendorTagControlBrightness,
   kVendorTagControlBrightnessRange,
+  kVendorTagControlBrightnessDefault,
   kVendorTagControlContrast,
   kVendorTagControlContrastRange,
+  kVendorTagControlContrastDefault,
   kVendorTagControlPan,
   kVendorTagControlPanRange,
+  kVendorTagControlPanDefault,
   kVendorTagControlSaturation,
   kVendorTagControlSaturationRange,
+  kVendorTagControlSaturationDefault,
   kVendorTagControlSharpness,
   kVendorTagControlSharpnessRange,
+  kVendorTagControlSharpnessDefault,
   kVendorTagControlTilt,
   kVendorTagControlTiltRange,
+  kVendorTagControlTiltDefault,
   kVendorTagControlZoom,
   kVendorTagControlZoomRange,
-  kVendorTagEnd = kVendorTagControlZoomRange,
+  kVendorTagControlZoomDefault,
+  kVendorTagEnd = kVendorTagControlZoomDefault,
 };
 
 static_assert(kVendorTagEnd < kUsbHalVendorTagEnd,

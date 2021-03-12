@@ -907,6 +907,8 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(kVendorTagControlBrightnessRange,
                   std::vector<int32_t>{info.range.minimum, info.range.maximum,
                                        info.range.step});
+    update_static(kVendorTagControlBrightnessDefault,
+                  std::vector<int32_t>{info.range.default_value});
   }
 
   if (V4L2CameraDevice::QueryControl(device_info.device_path, kControlContrast,
@@ -914,6 +916,8 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(kVendorTagControlContrastRange,
                   std::vector<int32_t>{info.range.minimum, info.range.maximum,
                                        info.range.step});
+    update_static(kVendorTagControlContrastDefault,
+                  std::vector<int32_t>{info.range.default_value});
   }
 
   if (V4L2CameraDevice::QueryControl(device_info.device_path, kControlPan,
@@ -921,6 +925,8 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(kVendorTagControlPanRange,
                   std::vector<int32_t>{info.range.minimum, info.range.maximum,
                                        info.range.step});
+    update_static(kVendorTagControlPanDefault,
+                  std::vector<int32_t>{info.range.default_value});
   }
 
   if (V4L2CameraDevice::QueryControl(device_info.device_path,
@@ -928,6 +934,8 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(kVendorTagControlSaturationRange,
                   std::vector<int32_t>{info.range.minimum, info.range.maximum,
                                        info.range.step});
+    update_static(kVendorTagControlSaturationDefault,
+                  std::vector<int32_t>{info.range.default_value});
   }
 
   if (V4L2CameraDevice::QueryControl(device_info.device_path, kControlSharpness,
@@ -935,6 +943,8 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(kVendorTagControlSharpnessRange,
                   std::vector<int32_t>{info.range.minimum, info.range.maximum,
                                        info.range.step});
+    update_static(kVendorTagControlSharpnessDefault,
+                  std::vector<int32_t>{info.range.default_value});
   }
 
   if (V4L2CameraDevice::QueryControl(device_info.device_path, kControlTilt,
@@ -942,6 +952,8 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(kVendorTagControlTiltRange,
                   std::vector<int32_t>{info.range.minimum, info.range.maximum,
                                        info.range.step});
+    update_static(kVendorTagControlTiltDefault,
+                  std::vector<int32_t>{info.range.default_value});
   }
 
   if (V4L2CameraDevice::QueryControl(device_info.device_path, kControlZoom,
@@ -949,6 +961,8 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(kVendorTagControlZoomRange,
                   std::vector<int32_t>{info.range.minimum, info.range.maximum,
                                        info.range.step});
+    update_static(kVendorTagControlZoomDefault,
+                  std::vector<int32_t>{info.range.default_value});
   }
 
   std::vector<uint8_t> available_awb_modes;

@@ -22,27 +22,41 @@ const VendorTagManager& VendorTagOps::GetVendorTagManager() {
           TYPE_INT32);
     m.Add(kVendorTagControlBrightnessRange, kVendorControlSectionName,
           "brightnessRange", TYPE_INT32);
+    m.Add(kVendorTagControlBrightnessDefault, kVendorControlSectionName,
+          "brightnessDefault", TYPE_INT32);
     m.Add(kVendorTagControlContrast, kVendorControlSectionName, "contrast",
           TYPE_INT32);
     m.Add(kVendorTagControlContrastRange, kVendorControlSectionName,
           "contrastRange", TYPE_INT32);
+    m.Add(kVendorTagControlContrastDefault, kVendorControlSectionName,
+          "contrastDefault", TYPE_INT32);
     m.Add(kVendorTagControlPan, kVendorControlSectionName, "pan", TYPE_INT32);
     m.Add(kVendorTagControlPanRange, kVendorControlSectionName, "panRange",
+          TYPE_INT32);
+    m.Add(kVendorTagControlPanDefault, kVendorControlSectionName, "panDefault",
           TYPE_INT32);
     m.Add(kVendorTagControlSaturation, kVendorControlSectionName, "saturation",
           TYPE_INT32);
     m.Add(kVendorTagControlSaturationRange, kVendorControlSectionName,
           "saturationRange", TYPE_INT32);
+    m.Add(kVendorTagControlSaturationDefault, kVendorControlSectionName,
+          "saturationDefault", TYPE_INT32);
     m.Add(kVendorTagControlSharpness, kVendorControlSectionName, "sharpness",
           TYPE_INT32);
     m.Add(kVendorTagControlSharpnessRange, kVendorControlSectionName,
           "sharpnessRange", TYPE_INT32);
+    m.Add(kVendorTagControlSharpnessDefault, kVendorControlSectionName,
+          "sharpnessDefault", TYPE_INT32);
     m.Add(kVendorTagControlTilt, kVendorControlSectionName, "tilt", TYPE_INT32);
     m.Add(kVendorTagControlTiltRange, kVendorControlSectionName, "tiltRange",
           TYPE_INT32);
+    m.Add(kVendorTagControlTiltDefault, kVendorControlSectionName,
+          "tiltDefault", TYPE_INT32);
     m.Add(kVendorTagControlZoom, kVendorControlSectionName, "zoom", TYPE_INT32);
     m.Add(kVendorTagControlZoomRange, kVendorControlSectionName, "zoomRange",
           TYPE_INT32);
+    m.Add(kVendorTagControlZoomDefault, kVendorControlSectionName,
+          "zoomDefault", TYPE_INT32);
     return m;
   }();
   return manager;
