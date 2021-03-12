@@ -146,10 +146,9 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
-  brillo::SecureBlob le_iv(kAesBlockSize);
   if (!CryptoLib::DeriveSecretsScrypt(auth_input.user_input.value(),
                                       auth_input.salt.value(),
-                                      {&le_secret, &kdf_skey, &le_iv})) {
+                                      {&le_secret, &kdf_skey})) {
     return base::nullopt;
   }
 
@@ -172,7 +171,6 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 
   key_blobs->vkk_key = vkk_key;
   key_blobs->vkk_iv = fek_iv;
-  key_blobs->auth_iv = le_iv;
   key_blobs->chaps_iv = chaps_iv;
 
   // Once we are able to correctly set up the VaultKeyset encryption,
@@ -220,10 +218,9 @@ bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
-  brillo::SecureBlob le_iv(kAesBlockSize);
   brillo::SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
   if (!CryptoLib::DeriveSecretsScrypt(auth_input.user_input.value(), salt,
-                                      {&le_secret, &kdf_skey, &le_iv})) {
+                                      {&le_secret, &kdf_skey})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return false;
   }

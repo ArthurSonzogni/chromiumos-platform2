@@ -102,7 +102,6 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   // block, not used to initialize the auth block.
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
-  key_blobs->auth_iv = vkk_iv;
 
   return auth_block_state;
 }

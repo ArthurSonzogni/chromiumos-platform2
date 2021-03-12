@@ -66,7 +66,6 @@ TEST(TpmBoundToPcrTest, CreateTest) {
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
-  EXPECT_NE(vkk_data.auth_iv, base::nullopt);
 }
 
 TEST(TpmBoundToPcrTest, CreateFailTest) {
@@ -121,7 +120,6 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
-  EXPECT_NE(vkk_data.auth_iv, base::nullopt);
 }
 
 TEST(TpmNotBoundToPcrTest, CreateFailTest) {
