@@ -551,9 +551,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("video_capture_use_gpu_memory_buffer"))
     AddArg("--video-capture-use-gpu-memory-buffer");
 
-  if (UseFlagIsSet("disable_yuv420_biplanar"))
-    AddArg("--disable-yuv420-biplanar");
-
   if (UseFlagIsSet("disable_spectre_variant2_mitigation"))
     AddFeatureDisableOverride("SpectreVariant2Mitigation");
 
