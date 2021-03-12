@@ -12,7 +12,6 @@
 
 #include "shill/device_info.h"
 #include "shill/dns_client.h"
-#include "shill/dns_client_factory.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/http_url.h"
@@ -131,8 +130,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     Metrics* metrics,
     const DeviceInfo* device_info,
     const ResultCallback& result_callback)
-    : weak_ptr_factory_(this),
-      dispatcher_(dispatcher),
+    : dispatcher_(dispatcher),
       metrics_(metrics),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -142,19 +140,24 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       ip_address_(ip_address),
       gateway_(gateway),
       dns_list_(dns_list),
-      dns_client_factory_(DnsClientFactory::GetInstance()),
-      portal_detector_(new PortalDetector(
-          dispatcher_,
-          metrics_,
-          base::Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
-                     weak_ptr_factory_.GetWeakPtr()))),
       arp_client_(new ArpClient(iface_index_)),
       icmp_session_(new IcmpSession(dispatcher_)),
       icmp_session_factory_(IcmpSessionFactory::GetInstance()),
       num_dns_attempts_(0),
       running_(false),
       result_callback_(result_callback),
-      io_handler_factory_(IOHandlerFactory::GetInstance()) {}
+      io_handler_factory_(IOHandlerFactory::GetInstance()),
+      weak_ptr_factory_(this) {
+  dns_client_.reset(
+      new DnsClient(ip_address.family(), iface_name,
+                    DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
+                    Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
+                         weak_ptr_factory_.GetWeakPtr())));
+  portal_detector_.reset(new PortalDetector(
+      dispatcher_, metrics_,
+      base::Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
+                 weak_ptr_factory_.GetWeakPtr())));
+}
 
 ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
@@ -330,16 +333,11 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
 }
 
 void ConnectionDiagnostics::ResolveTargetServerIPAddress(
-    const std::vector<std::string>& dns_servers) {
+    const std::vector<std::string>& dns_list) {
   SLOG(this, 3) << __func__;
 
   Error e;
-  dns_client_ = dns_client_factory_->CreateDnsClient(
-      ip_address_.family(), iface_name_, dns_servers,
-      DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
-      base::Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
-                 weak_ptr_factory_.GetWeakPtr()));
-  if (!dns_client_->Start(target_url_->host(), &e)) {
+  if (!dns_client_->Start(dns_list, target_url_->host(), &e)) {
     LOG(ERROR) << __func__ << ": could not start DNS -- " << e.message();
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,
                         e.message());

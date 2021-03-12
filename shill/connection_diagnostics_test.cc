@@ -19,7 +19,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
-#include "shill/mock_dns_client_factory.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_icmp_session.h"
 #include "shill/mock_icmp_session_factory.h"
@@ -175,9 +174,11 @@ class ConnectionDiagnosticsTest : public Test {
     ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6ServerAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6GatewayAddress.family());
 
+    dns_client_ = new NiceMock<MockDnsClient>();
     arp_client_ = new NiceMock<MockArpClient>();
     client_test_helper_.reset(new ArpClientTestHelper(arp_client_));
     icmp_session_ = new NiceMock<MockIcmpSession>(&dispatcher_);
+    connection_diagnostics_.dns_client_.reset(dns_client_);  // Passes ownership
     connection_diagnostics_.arp_client_.reset(arp_client_);  // Passes ownership
     connection_diagnostics_.icmp_session_.reset(
         icmp_session_);  // Passes ownership
@@ -185,8 +186,6 @@ class ConnectionDiagnosticsTest : public Test {
         portal_detector_);  // Passes ownership
     connection_diagnostics_.routing_table_ = &routing_table_;
     connection_diagnostics_.rtnl_handler_ = &rtnl_handler_;
-    connection_diagnostics_.dns_client_factory_ =
-        MockDnsClientFactory::GetInstance();
     connection_diagnostics_.icmp_session_factory_ =
         MockIcmpSessionFactory::GetInstance();
   }
@@ -371,16 +370,10 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
     ASSERT_FALSE(family == IPAddress::kFamilyUnknown);
-
-    auto dns_client = std::make_unique<NiceMock<MockDnsClient>>();
-    EXPECT_CALL(*dns_client,
-                Start(connection_diagnostics_.target_url_->host(), _))
-        .WillOnce(Return(true));
     EXPECT_CALL(
-        *MockDnsClientFactory::GetInstance(),
-        CreateDnsClient(family, kInterfaceName, dns_list_,
-                        DnsClient::kDnsTimeoutMilliseconds, &dispatcher_, _))
-        .WillOnce(Return(ByMove(std::move(dns_client))));
+        *dns_client_,
+        Start(dns_list_, connection_diagnostics_.target_url_->host(), _))
+        .WillOnce(Return(true));
     connection_diagnostics_.ResolveTargetServerIPAddress(dns_list_);
   }
 
@@ -838,6 +831,7 @@ class ConnectionDiagnosticsTest : public Test {
 
   // Used only for EXPECT_CALL(). Objects are owned by
   // |connection_diagnostics_|.
+  NiceMock<MockDnsClient>* dns_client_;
   NiceMock<MockArpClient>* arp_client_;
   NiceMock<MockIcmpSession>* icmp_session_;
   NiceMock<MockPortalDetector>* portal_detector_;

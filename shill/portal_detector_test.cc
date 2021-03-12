@@ -51,7 +51,7 @@ class MockHttpRequest : public HttpRequest {
                     kLoggingTag,
                     kInterfaceName,
                     IPAddress(IPAddress::kFamilyIPv4),
-                    {},
+                    {kDNSServer0, kDNSServer1},
                     true){};
   MockHttpRequest(const MockHttpRequest&) = delete;
   MockHttpRequest& operator=(const MockHttpRequest&) = delete;

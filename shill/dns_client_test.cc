@@ -99,10 +99,9 @@ class DnsClientTest : public Test {
 
   void CallCompletion() { dns_client_->HandleCompletion(); }
 
-  void CreateClient(const std::vector<std::string>& dns_servers,
-                    int timeout_ms) {
+  void CreateClient(int timeout_ms) {
     dns_client_.reset(new DnsClient(IPAddress::kFamilyIPv4, kNetworkInterface,
-                                    dns_servers, timeout_ms, &dispatcher_,
+                                    timeout_ms, &dispatcher_,
                                     callback_target_.callback()));
     dns_client_->ares_ = &ares_;
     dns_client_->time_ = &time_;
@@ -122,30 +121,26 @@ class DnsClientTest : public Test {
     EXPECT_CALL(ares_, Timeout(_, _, _)).WillRepeatedly(ReturnArg<1>());
   }
 
-  void SetupRequest(const std::string& name, const std::string& server) {
-    std::vector<std::string> dns_servers = {server};
-    CreateClient(dns_servers, kAresTimeoutMS);
-    // These expectations are fulfilled when dns_client_->Start() is called.
-    EXPECT_CALL(ares_, InitOptions(_, _, _))
-        .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
-    EXPECT_CALL(ares_, SetServersCsv(_, StrEq(server)))
-        .WillOnce(Return(ARES_SUCCESS));
-    EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
-        .Times(1);
-    EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(name), _, _, _));
-  }
-
   void StartValidRequest() {
-    SetupRequest(kGoodName, kGoodServer);
+    CreateClient(kAresTimeoutMS);
+
     EXPECT_CALL(io_handler_factory_,
                 CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
         .WillOnce(ReturnNew<IOHandler>());
     SetActive();
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
-    Error error;
-    ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_CALL(ares_, InitOptions(_, _, _))
+        .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
+    EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
+        .Times(1);
+    EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
+        .WillOnce(Return(ARES_SUCCESS));
+    EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
     EXPECT_CALL(ares_, Destroy(kAresChannel));
+
+    Error error;
+    ASSERT_TRUE(dns_client_->Start({kGoodServer}, kGoodName, &error));
+    EXPECT_TRUE(error.IsSuccess());
   }
 
   void TestValidCompletion() {
@@ -223,15 +218,13 @@ class SentinelIOHandler : public IOHandler {
 };
 
 TEST_F(DnsClientTest, Constructor) {
-  std::vector<std::string> dns_servers = {kGoodServer};
-  CreateClient({kGoodServer}, kAresTimeoutMS);
+  CreateClient(kAresTimeoutMS);
   ExpectReset();
 }
 
 // Correctly handles empty server addresses.
 TEST_F(DnsClientTest, ServerJoin) {
-  std::vector<std::string> dns_servers = {"", kGoodServer, "", ""};
-  CreateClient(dns_servers, kAresTimeoutMS);
+  CreateClient(kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _))
       .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
   EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
@@ -246,46 +239,45 @@ TEST_F(DnsClientTest, ServerJoin) {
   SetActive();
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   Error error;
-  ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
+  ASSERT_TRUE(dns_client_->Start({"", kGoodServer, "", ""}, kGoodName, &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_CALL(ares_, Destroy(kAresChannel));
 }
 
 // Receive error because no DNS servers were specified.
 TEST_F(DnsClientTest, NoServers) {
-  CreateClient(std::vector<std::string>(), kAresTimeoutMS);
+  CreateClient(kAresTimeoutMS);
   Error error;
-  EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_FALSE(dns_client_->Start({}, kGoodName, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 // Setup error because SetServersCsv failed due to invalid DNS servers.
 TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
-  std::vector<std::string> dns_servers = {kBadServer};
-  CreateClient(dns_servers, kAresTimeoutMS);
+  CreateClient(kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _)).WillOnce(Return(ARES_SUCCESS));
   EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kBadServer)))
       .WillOnce(Return(ARES_EBADSTR));
   Error error;
-  EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_FALSE(dns_client_->Start({kBadServer}, kGoodName, &error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 
 // Setup error because InitOptions failed.
 TEST_F(DnsClientTest, InitOptionsFailure) {
-  std::vector<std::string> dns_servers = {kGoodServer};
-  CreateClient(dns_servers, kAresTimeoutMS);
+  CreateClient(kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _)).WillOnce(Return(ARES_EBADFLAGS));
   Error error;
-  EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_FALSE(dns_client_->Start({kGoodServer}, kGoodName, &error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 
 // Fail a second request because one is already in progress.
 TEST_F(DnsClientTest, MultipleRequest) {
   StartValidRequest();
+  EXPECT_TRUE(dns_client_->IsActive());
   Error error;
-  ASSERT_FALSE(dns_client_->Start(kGoodName, &error));
+  ASSERT_FALSE(dns_client_->Start({kGoodServer}, kGoodName, &error));
   EXPECT_EQ(Error::kInProgress, error.type());
 }
 
@@ -329,7 +321,14 @@ TEST_F(DnsClientTest, GoodRequestWithDnsWrite) {
 
 // Failure due to the timeout occurring during first call to RefreshHandles.
 TEST_F(DnsClientTest, TimeoutFirstRefresh) {
-  SetupRequest(kGoodName, kGoodServer);
+  CreateClient(kAresTimeoutMS);
+  EXPECT_CALL(ares_, InitOptions(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
+  EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
+      .Times(1);
+  EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
+      .WillOnce(Return(ARES_SUCCESS));
+  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
   struct timeval init_time_val = time_val_;
   AdvanceTime(kAresTimeoutMS);
   EXPECT_CALL(time_, GetTimeMonotonic(_))
@@ -342,7 +341,8 @@ TEST_F(DnsClientTest, TimeoutFirstRefresh) {
   // never run since the Stop() gets called before returning.  We confirm
   // that the task indeed gets canceled below in ExpectReset().
   ExpectPostCompletionTask();
-  ASSERT_FALSE(dns_client_->Start(kGoodName, &error));
+  ASSERT_FALSE(dns_client_->Start({kGoodServer}, kGoodName, &error));
+
   EXPECT_EQ(Error::kOperationTimeout, error.type());
   EXPECT_EQ(std::string(DnsClient::kErrorTimedOut), error.message());
   ExpectReset();
@@ -393,7 +393,14 @@ TEST_F(DnsClientTest, HostNotFound) {
 
 // Make sure IOHandles are deallocated when GetSock() reports them gone.
 TEST_F(DnsClientTest, IOHandleDeallocGetSock) {
-  SetupRequest(kGoodName, kGoodServer);
+  CreateClient(kAresTimeoutMS);
+  EXPECT_CALL(ares_, InitOptions(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
+  EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
+      .Times(1);
+  EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
+      .WillOnce(Return(ARES_SUCCESS));
+  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
   // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
   SentinelIOHandler* io_handler = new SentinelIOHandler();
   EXPECT_CALL(io_handler_factory_,
@@ -402,7 +409,7 @@ TEST_F(DnsClientTest, IOHandleDeallocGetSock) {
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   SetActive();
   Error error;
-  ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
+  ASSERT_TRUE(dns_client_->Start({kGoodServer}, kGoodName, &error));
   AdvanceTime(kAresWaitMS);
   SetInActive();
   EXPECT_CALL(*io_handler, Die());
@@ -414,7 +421,14 @@ TEST_F(DnsClientTest, IOHandleDeallocGetSock) {
 
 // Make sure IOHandles are deallocated when Stop() is called.
 TEST_F(DnsClientTest, IOHandleDeallocStop) {
-  SetupRequest(kGoodName, kGoodServer);
+  CreateClient(kAresTimeoutMS);
+  EXPECT_CALL(ares_, InitOptions(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
+  EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
+      .Times(1);
+  EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
+      .WillOnce(Return(ARES_SUCCESS));
+  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
   // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
   SentinelIOHandler* io_handler = new SentinelIOHandler();
   EXPECT_CALL(io_handler_factory_,
@@ -423,7 +437,7 @@ TEST_F(DnsClientTest, IOHandleDeallocStop) {
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   SetActive();
   Error error;
-  ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
+  ASSERT_TRUE(dns_client_->Start({kGoodServer}, kGoodName, &error));
   EXPECT_CALL(*io_handler, Die());
   EXPECT_CALL(ares_, Destroy(kAresChannel));
   dns_client_->Stop();

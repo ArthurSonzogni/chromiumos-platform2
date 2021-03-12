@@ -118,8 +118,8 @@ class HttpRequestTest : public Test {
 
   void SetUp() override {
     request_.reset(new HttpRequest(&dispatcher_, kLoggingTag, interface_name_,
-                                   IPAddress(IPAddress::kFamilyIPv4), dns_list_,
-                                   true));
+                                   IPAddress(IPAddress::kFamilyIPv4),
+                                   {kDNSServer0, kDNSServer1}, true));
     // Passes ownership.
     request_->dns_client_.reset(dns_client_);
     request_->transport_ = transport_;
@@ -150,7 +150,7 @@ class HttpRequestTest : public Test {
   }
   void ExpectStop() { EXPECT_CALL(*dns_client_, Stop()).Times(AtLeast(1)); }
   void ExpectDNSRequest(const std::string& host, bool return_value) {
-    EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
+    EXPECT_CALL(*dns_client_, Start(_, StrEq(host), _))
         .WillOnce(Return(return_value));
   }
   void ExpectRequestErrorCallback(HttpRequest::Result result) {

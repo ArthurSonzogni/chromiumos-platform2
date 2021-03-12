@@ -94,6 +94,7 @@ class HttpRequest {
   std::string logging_tag_;
   std::string interface_name_;
   IPAddress::Family ip_family_;
+  std::vector<std::string> dns_list_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
   base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;

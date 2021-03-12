@@ -23,7 +23,6 @@ class ArpClient;
 class ByteString;
 class DeviceInfo;
 class DnsClient;
-class DnsClientFactory;
 class Error;
 class EventDispatcher;
 class HttpUrl;
@@ -241,9 +240,8 @@ class ConnectionDiagnostics {
 
   void StartAfterPortalDetectionInternal(const PortalDetector::Result& result);
 
-  // Attempts to resolve the IP address of |target_url_| using |dns_servers|.
-  void ResolveTargetServerIPAddress(
-      const std::vector<std::string>& dns_servers);
+  // Attempts to resolve the IP address of |target_url_| using |dns_list|.
+  void ResolveTargetServerIPAddress(const std::vector<std::string>& dns_list);
 
   // Pings all the DNS servers of |dns_list_|.
   void PingDNSServers();
@@ -326,7 +324,6 @@ class ConnectionDiagnostics {
                               Result result,
                               size_t num_events_ago);
 
-  base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   RoutingTable* routing_table_;
@@ -346,7 +343,6 @@ class ConnectionDiagnostics {
   // The MAC address of network interface associated with the connection.
   ByteString mac_address_;
 
-  DnsClientFactory* dns_client_factory_;
   std::unique_ptr<DnsClient> dns_client_;
   std::unique_ptr<PortalDetector> portal_detector_;
   std::unique_ptr<ArpClient> arp_client_;
@@ -383,6 +379,8 @@ class ConnectionDiagnostics {
   // Record of all diagnostic events that occurred, sorted in order of
   // occurrence.
   std::vector<Event> diagnostic_events_;
+
+  base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
 };
 
 }  // namespace shill

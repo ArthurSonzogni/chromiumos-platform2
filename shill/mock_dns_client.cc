@@ -4,20 +4,12 @@
 
 #include "shill/mock_dns_client.h"
 
-#include <string>
-#include <vector>
-
 #include "shill/net/ip_address.h"
 
 namespace shill {
 
 MockDnsClient::MockDnsClient()
-    : DnsClient(IPAddress::kFamilyIPv4,
-                "",
-                std::vector<std::string>(),
-                0,
-                nullptr,
-                ClientCallback()) {}
+    : DnsClient(IPAddress::kFamilyIPv4, "", 0, nullptr, ClientCallback()) {}
 
 MockDnsClient::~MockDnsClient() = default;
 

@@ -43,9 +43,9 @@ namespace {
 using IOHandlerMap = std::map<ares_socket_t, std::unique_ptr<IOHandler>>;
 
 std::vector<std::string> FilterEmptyIPs(
-    const std::vector<std::string>& dns_servers) {
+    const std::vector<std::string>& dns_list) {
   std::vector<std::string> results;
-  for (const auto& ip : dns_servers) {
+  for (const auto& ip : dns_list) {
     if (!ip.empty()) {
       results.push_back(ip);
     }
@@ -78,13 +78,11 @@ struct DnsClientState {
 
 DnsClient::DnsClient(IPAddress::Family family,
                      const std::string& interface_name,
-                     const std::vector<std::string>& dns_servers,
                      int timeout_ms,
                      EventDispatcher* dispatcher,
                      const ClientCallback& callback)
     : address_(IPAddress(family)),
       interface_name_(interface_name),
-      dns_servers_(FilterEmptyIPs(dns_servers)),
       dispatcher_(dispatcher),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
       callback_(callback),
@@ -98,24 +96,28 @@ DnsClient::~DnsClient() {
   Stop();
 }
 
-bool DnsClient::Start(const std::string& hostname, Error* error) {
+bool DnsClient::Start(const std::vector<std::string>& dns_list,
+                      const std::string& hostname,
+                      Error* error) {
   if (running_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           "Only one DNS request is allowed at a time");
     return false;
   }
 
+  std::vector<std::string> filtered_dns_list = FilterEmptyIPs(dns_list);
+
   if (!resolver_state_) {
     struct ares_options options;
     memset(&options, 0, sizeof(options));
 
-    if (dns_servers_.empty()) {
+    if (filtered_dns_list.empty()) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "No valid DNS server addresses");
       return false;
     }
 
-    options.timeout = timeout_ms_ / dns_servers_.size();
+    options.timeout = timeout_ms_ / filtered_dns_list.size();
 
     resolver_state_ = std::make_unique<DnsClientState>();
     int status = ares_->InitOptions(&resolver_state_->channel, &options,
@@ -133,7 +135,7 @@ bool DnsClient::Start(const std::string& hostname, Error* error) {
     //
     // Alternatively, we can use ares_set_servers instead, where we would
     // explicitly construct a link list of ares_addr_node.
-    const auto server_addresses = base::JoinString(dns_servers_, ",");
+    const auto server_addresses = base::JoinString(filtered_dns_list, ",");
     status = ares_->SetServersCsv(resolver_state_->channel,
                                   server_addresses.c_str());
     if (status != ARES_SUCCESS) {

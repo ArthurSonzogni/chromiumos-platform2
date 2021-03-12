@@ -6,6 +6,7 @@
 #define SHILL_MOCK_DNS_CLIENT_H_
 
 #include <string>
+#include <vector>
 
 #include "shill/dns_client.h"
 
@@ -22,7 +23,10 @@ class MockDnsClient : public DnsClient {
 
   ~MockDnsClient() override;
 
-  MOCK_METHOD(bool, Start, (const std::string&, Error*), (override));
+  MOCK_METHOD(bool,
+              Start,
+              (const std::vector<std::string>&, const std::string&, Error*),
+              (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsActive, (), (const, override));
 };

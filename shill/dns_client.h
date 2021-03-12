@@ -48,7 +48,6 @@ class DnsClient {
 
   DnsClient(IPAddress::Family family,
             const std::string& interface_name,
-            const std::vector<std::string>& dns_servers,
             int timeout_ms,
             EventDispatcher* dispatcher,
             const ClientCallback& callback);
@@ -62,7 +61,9 @@ class DnsClient {
   // request.  If Start() fails and returns false, the callback will not
   // be called, but the error that caused the failure will be returned in
   // |error|.
-  virtual bool Start(const std::string& hostname, Error* error);
+  virtual bool Start(const std::vector<std::string>& dns_list,
+                     const std::string& hostname,
+                     Error* error);
 
   // Aborts any running DNS client transaction.  This will cancel any callback
   // invocation.
@@ -91,7 +92,6 @@ class DnsClient {
   Error error_;
   IPAddress address_;
   std::string interface_name_;
-  const std::vector<std::string> dns_servers_;
   EventDispatcher* dispatcher_;
   IOHandlerFactory* io_handler_factory_;
   ClientCallback callback_;

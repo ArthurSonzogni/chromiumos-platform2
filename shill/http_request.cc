@@ -49,6 +49,7 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
     : logging_tag_(logging_tag),
       interface_name_(interface_name),
       ip_family_(src_address.family()),
+      dns_list_(dns_list),
       weak_ptr_factory_(this),
       dns_client_callback_(base::Bind(&HttpRequest::GetDNSResult,
                                       weak_ptr_factory_.GetWeakPtr())),
@@ -58,7 +59,6 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                                  weak_ptr_factory_.GetWeakPtr())),
       dns_client_(new DnsClient(ip_family_,
                                 interface_name_,
-                                dns_list,
                                 DnsClient::kDnsTimeoutMilliseconds,
                                 dispatcher,
                                 dns_client_callback_)),
@@ -115,7 +115,7 @@ HttpRequest::Result HttpRequest::Start(
   } else {
     SLOG(this, 3) << "Looking up host: " << server_hostname_;
     Error error;
-    if (!dns_client_->Start(server_hostname_, &error)) {
+    if (!dns_client_->Start(dns_list_, server_hostname_, &error)) {
       LOG(ERROR) << logging_tag_
                  << ": Failed to start DNS client: " << error.message();
       Stop();
