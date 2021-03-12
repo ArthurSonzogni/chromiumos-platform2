@@ -16,6 +16,6 @@ pkg_config("target_defaults") {
 }
 
 executable("override-max-pressure") {
-  configs += [ ":target_defaults" ]
   sources = [ "override_max_pressure.cc" ]
+  configs += [ ":target_defaults" ]
 }

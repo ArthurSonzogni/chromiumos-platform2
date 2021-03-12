@@ -71,8 +71,6 @@ pkg_config("libdebugd_dependent_config") {
 }
 
 static_library("libdebugd") {
-  configs += [ ":target_defaults" ]
-  all_dependent_configs = [ ":libdebugd_dependent_config" ]
   sources = [
     "src/battery_tool.cc",
     "src/constants.cc",
@@ -121,6 +119,8 @@ static_library("libdebugd") {
     "src/wifi_fw_dump_tool.cc",
     "src/wifi_power_tool.cc",
   ]
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libdebugd_dependent_config" ]
   deps = [
     ":debugd-adaptors",
     ":external-proto",
@@ -128,11 +128,11 @@ static_library("libdebugd") {
 }
 
 static_library("debugd_dbus_utils") {
-  configs += [ ":target_defaults" ]
   sources = [
     "src/helpers/shill_proxy.cc",
     "src/helpers/system_service_proxy.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 pkg_config("debugd_config") {
@@ -140,53 +140,53 @@ pkg_config("debugd_config") {
 }
 
 executable("debugd") {
+  sources = [ "src/main.cc" ]
   configs += [
     ":debugd_config",
     ":target_defaults",
   ]
-  sources = [ "src/main.cc" ]
   deps = [ ":libdebugd" ]
 }
 
 executable("capture_packets") {
-  configs += [ ":target_defaults" ]
   sources = [ "src/helpers/capture_packets.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [ "pcap" ]
 }
 
 executable("cups_uri_helper") {
-  configs += [ ":target_defaults" ]
   sources = [
     "src/helpers/cups_uri_helper.cc",
     "src/helpers/cups_uri_helper_utils.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("dev_features_chrome_remote_debugging") {
-  configs += [ ":target_defaults" ]
   sources = [ "src/helpers/dev_features_chrome_remote_debugging.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libdebugd" ]
 }
 
 executable("dev_features_password") {
-  configs += [ ":target_defaults" ]
   sources = [
     "src/helpers/dev_features_password.cc",
     "src/helpers/dev_features_password_utils.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libdebugd" ]
 }
 
 executable("dev_features_rootfs_verification") {
-  configs += [ ":target_defaults" ]
   sources = [ "src/helpers/dev_features_rootfs_verification.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [ "rootdev" ]
   deps = [ ":libdebugd" ]
 }
 
 executable("dev_features_ssh") {
-  configs += [ ":target_defaults" ]
   sources = [ "src/helpers/dev_features_ssh.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libdebugd" ]
 }
 
@@ -195,42 +195,42 @@ pkg_config("dev_features_usb_boot_config") {
 }
 
 executable("dev_features_usb_boot") {
+  sources = [ "src/helpers/dev_features_usb_boot.cc" ]
   configs += [
     ":dev_features_usb_boot_config",
     ":target_defaults",
   ]
-  sources = [ "src/helpers/dev_features_usb_boot.cc" ]
   deps = [ ":libdebugd" ]
 }
 
 executable("generate_logs") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/generate_logs.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("icmp") {
-  configs += [ ":target_defaults" ]
   sources = [ "src/helpers/icmp.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("netif") {
-  configs += [ ":target_defaults" ]
   sources = [ "src/helpers/netif.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":debugd_dbus_utils" ]
 }
 
 executable("network_status") {
-  configs += [ ":target_defaults" ]
   sources = [ "src/helpers/network_status.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":debugd_dbus_utils" ]
 }
 
 executable("scheduler_configuration_helper") {
-  configs += [ ":target_defaults" ]
   sources = [
     "src/helpers/scheduler_configuration_helper.cc",
     "src/helpers/scheduler_configuration_utils.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 pkg_config("usb4_devinfo_helper_config") {
@@ -238,11 +238,11 @@ pkg_config("usb4_devinfo_helper_config") {
 }
 
 executable("usb4_devinfo_helper") {
+  sources = [ "src/helpers/usb4_devinfo_helper.cc" ]
   configs += [
     ":target_defaults",
     ":usb4_devinfo_helper_config",
   ]
-  sources = [ "src/helpers/usb4_devinfo_helper.cc" ]
 }
 
 if (use.test) {
@@ -254,11 +254,6 @@ if (use.test) {
   }
 
   executable("debugd_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":debugd_testrunner_config",
-      ":target_defaults",
-    ]
     sources = [
       "src/crash_sender_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
@@ -273,6 +268,11 @@ if (use.test) {
       "src/process_with_id_test.cc",
       "src/storage_tool_test.cc",
       "src/subprocess_tool_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":debugd_testrunner_config",
+      ":target_defaults",
     ]
     libs = [ "m" ]
     deps = [
