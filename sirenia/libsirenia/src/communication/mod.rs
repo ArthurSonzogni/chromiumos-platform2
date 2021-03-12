@@ -28,8 +28,6 @@ pub enum Error {
     EmptyRead,
     /// Error writing the message.
     Write(io::Error),
-    /// Error getting the root of a flexbuffer buf.
-    GetRoot(flexbuffers::ReaderError),
     /// Error deserializing the given root.
     Deserialize(flexbuffers::DeserializationError),
     /// Error serializing a value.
@@ -44,7 +42,6 @@ impl Display for Error {
             Read(e) => write!(f, "failed to read: {}", e),
             EmptyRead => write!(f, "no data to read from socket"),
             Write(e) => write!(f, "failed to write: {}", e),
-            GetRoot(e) => write!(f, "Problem getting the root of flexbuffer buf: {}", e),
             Deserialize(e) => write!(f, "Error deserializing: {}", e),
             Serialize(e) => write!(f, "Error serializing: {}", e),
         }
@@ -80,9 +77,8 @@ pub fn read_message<R: Read, D: DeserializeOwned>(r: &mut R) -> Result<D> {
     // Read the actual serialized message
     let mut ser_message = vec![0; message_size as usize];
     r.read_exact(&mut ser_message).map_err(Error::Read)?;
-    let ser_reader = flexbuffers::Reader::get_root(&ser_message).map_err(Error::GetRoot)?;
 
-    Ok(D::deserialize(ser_reader).map_err(Error::Deserialize)?)
+    Ok(flexbuffers::from_slice(&ser_message).map_err(Error::Deserialize)?)
 }
 
 // Writes the given message to the given Write. First writes the length of the
