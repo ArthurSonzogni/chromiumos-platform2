@@ -113,6 +113,10 @@ MountError UserSession::MountVault(AuthSession* auth_session,
   // Set credentials for verification using AuthSession.
   SetCredentials(auth_session);
   UpdateActivityTimestamp(0);
+
+  PrepareWebAuthnSecret(obfuscated_username_, fs_keyset.Key().fek,
+                        fs_keyset.Key().fnek);
+
   return code;
 }
 
