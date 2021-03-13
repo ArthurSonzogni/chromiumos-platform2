@@ -59,3 +59,5 @@ setpriority: 1
 mlock: 1
 munlock: 1
 madvise: 1
+sched_getattr: 1
+sched_setattr: 1
