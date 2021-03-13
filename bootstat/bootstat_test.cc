@@ -9,6 +9,7 @@
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <memory>
@@ -17,12 +18,16 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace bootstat {
 
 // TODO(drinkcat): Remove std::string
 using std::string;
+using ::testing::_;
+using ::testing::Return;
+using ::testing::SetArgPointee;
 
 // Mock class to interact with the system.
 class MockBootStatSystem : public BootStatSystem {
@@ -33,6 +38,8 @@ class MockBootStatSystem : public BootStatSystem {
   base::FilePath GetDiskStatisticsFilePath() const override {
     return disk_statistics_file_path_;
   }
+
+  MOCK_METHOD(std::optional<struct timespec>, GetUpTime, (), (const, override));
 
  private:
   base::FilePath disk_statistics_file_path_;
@@ -185,7 +192,9 @@ class BootstatTest : public ::testing::Test {
     return EventTracker(event_name, uptime_event_prefix_, disk_event_prefix_);
   }
 
-  void SetMockStats(const char* uptime_content, const char* disk_content);
+  void SetMockStats(const struct timespec* boottime_timespec,
+                    const char* expected_uptime_content_,
+                    const char* disk_data);
   void ClearMockStats();
   void TestLogEvent(EventTracker* event);
   void TestLogSymlink(EventTracker* event, bool create_target);
@@ -199,9 +208,8 @@ class BootstatTest : public ::testing::Test {
   base::FilePath uptime_event_prefix_;
   base::FilePath disk_event_prefix_;
 
-  // TODO(drinkcat): Replace mock_uptime_* with mock functions.
-  string mock_uptime_file_name_;
-  string mock_uptime_content_;
+  struct timespec mock_boottime_timespec_;
+  string expected_uptime_content_;
   base::FilePath mock_disk_file_path_;
   string mock_disk_content_;
 };
@@ -213,12 +221,10 @@ void BootstatTest::SetUp() {
       << "Cannot create temporary directory for tests.";
   uptime_event_prefix_ = stats_output_dir_.Append("uptime-");
   disk_event_prefix_ = stats_output_dir_.Append("disk-");
-  mock_uptime_file_name_ = stats_output_dir_.Append("proc_uptime").value();
   mock_disk_file_path_ = stats_output_dir_.Append("block_stats");
   boot_stat_system_ = new MockBootStatSystem(mock_disk_file_path_);
   boot_stat_ = std::make_unique<BootStat>(
-      stats_output_dir_, mock_uptime_file_name_,
-      std::unique_ptr<BootStatSystem>(boot_stat_system_));
+      stats_output_dir_, std::unique_ptr<BootStatSystem>(boot_stat_system_));
 }
 
 void BootstatTest::TearDown() {
@@ -236,61 +242,50 @@ static void WriteMockStats(const string& content,
 // statistics pseudo-files.  The strings provided here will be the
 // ones recorded for subsequent calls to bootstat_log() for all
 // events.
-void BootstatTest::SetMockStats(const char* uptime_data,
+void BootstatTest::SetMockStats(const struct timespec* boottime_timespec,
+                                const char* expected_uptime_content,
                                 const char* disk_data) {
-  mock_uptime_content_ = string(uptime_data);
-  WriteMockStats(mock_uptime_content_, base::FilePath(mock_uptime_file_name_));
+  mock_boottime_timespec_ = *boottime_timespec;
+  expected_uptime_content_ = expected_uptime_content;
   mock_disk_content_ = string(disk_data);
   WriteMockStats(mock_disk_content_, mock_disk_file_path_);
 }
 
 // Clean up the effects from SetMockStats().
 void BootstatTest::ClearMockStats() {
-  RemoveFile(base::FilePath(mock_uptime_file_name_));
   RemoveFile(mock_disk_file_path_);
 }
 
 void BootstatTest::TestLogEvent(EventTracker* event) {
-  event->TestLogEvent(*boot_stat_, mock_uptime_content_, mock_disk_content_);
+  EXPECT_CALL(*boot_stat_system_, GetUpTime())
+      .WillOnce(Return(std::make_optional(mock_boottime_timespec_)));
+  event->TestLogEvent(*boot_stat_, expected_uptime_content_,
+                      mock_disk_content_);
+  // TODO(drinkcat): we should make sure call expectations are met here.
 }
 
 void BootstatTest::TestLogSymlink(EventTracker* event, bool create_target) {
-  event->TestLogSymlink(*boot_stat_, base::FilePath(stats_output_dir_),
-                        create_target);
+  EXPECT_CALL(*boot_stat_system_, GetUpTime())
+      .WillOnce(Return(std::make_optional(mock_boottime_timespec_)));
+  event->TestLogSymlink(*boot_stat_, stats_output_dir_, create_target);
+  // TODO(drinkcat): we should make sure call expectations are met here.
 }
-
-// Test data to be used as input to SetMockStats().
-//
-// The structure of this array is pairs of strings, terminated by a
-// single NULL.  The first string in the pair is content for
-// /proc/uptime, the second for /sys/block/<device>/stat.
-//
-// This data is taken directly from a development system, and is
-// representative of valid stats content, though not typical of what
-// would be seen immediately after boot.
-static const char* bootstat_data[] = {
-    /*  0  */
-    /* uptime */ "691448.42 11020440.26\n",
-    /*  disk  */
-    " 1417116    14896 55561564 10935990  4267850 78379879"
-    " 661568738 1635920520      158 17856450 1649520570\n",
-    /*  1  */
-    /* uptime */ "691623.71 11021372.99\n",
-    /*  disk  */
-    " 1420714    14918 55689988 11006390  4287385 78594261"
-    " 663441564 1651579200      152 17974280 1665255160\n",
-    /* EOT */ nullptr};
 
 // Tests that event file content matches expectations when an
 // event is logged multiple times.
 TEST_F(BootstatTest, ContentGeneration) {
   EventTracker ev = MakeEvent(string("test_event"));
-  int i = 0;
-  while (bootstat_data[i] != nullptr) {
-    SetMockStats(bootstat_data[i], bootstat_data[i + 1]);
-    TestLogEvent(&ev);
-    i += 2;
-  }
+  struct timespec uptime1 = {691448, 123456789};
+  SetMockStats(&uptime1, "691448.123456789\n",
+               " 1417116    14896 55561564 10935990  4267850 78379879"
+               " 661568738 1635920520      158 17856450 1649520570\n");
+  TestLogEvent(&ev);
+  struct timespec uptime2 = {691623, 12};
+  SetMockStats(&uptime2,
+               "691623.000000012\n",  // Tests zero-padding.
+               " 1420714    14918 55689988 11006390  4287385 78594261"
+               " 663441564 1651579200      152 17974280 1665255160\n");
+  TestLogEvent(&ev);
   ClearMockStats();
   ev.Reset();
 }
@@ -307,7 +302,10 @@ TEST_F(BootstatTest, EventNameTruncation) {
   // clang-format on
 
   string very_long(kMostVoluminousEventName);
-  SetMockStats(bootstat_data[0], bootstat_data[1]);
+  struct timespec uptime = {691448, 123456789};
+  SetMockStats(&uptime, "691448.123456789\n",
+               " 1417116    14896 55561564 10935990  4267850 78379879"
+               " 661568738 1635920520      158 17856450 1649520570\n");
 
   EventTracker ev = MakeEvent(very_long);
   TestLogEvent(&ev);

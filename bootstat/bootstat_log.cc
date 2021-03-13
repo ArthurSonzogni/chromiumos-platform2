@@ -7,8 +7,10 @@
 
 #include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 
 #include <string>
 
@@ -25,12 +27,6 @@ namespace bootstat {
 // Default path to directory where output statistics will be stored.
 //
 static const char kDefaultOutputDirectoryName[] = "/tmp";
-
-//
-// Paths to the statistics files we snapshot as part of the data to
-// be logged.
-//
-static const char kDefaultUptimeStatisticsFileName[] = "/proc/uptime";
 
 // TODO(drinkcat): Cache function output (we only need to evaluate it once)
 base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
@@ -61,16 +57,21 @@ base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   return norm;
 }
 
+std::optional<struct timespec> BootStatSystem::GetUpTime() const {
+  struct timespec uptime;
+  int ret = clock_gettime(CLOCK_BOOTTIME, &uptime);
+  if (ret != 0)
+    return std::nullopt;
+  return {uptime};
+}
+
 BootStat::BootStat()
     : BootStat(base::FilePath(kDefaultOutputDirectoryName),
-               kDefaultUptimeStatisticsFileName,
                std::make_unique<BootStatSystem>()) {}
 
 BootStat::BootStat(const base::FilePath& output_directory_path,
-                   const std::string& uptime_statistics_file_path,
                    std::unique_ptr<BootStatSystem> boot_stat_system)
     : output_directory_path_(output_directory_path),
-      uptime_statistics_file_path_(uptime_statistics_file_path),
       boot_stat_system_(std::move(boot_stat_system)) {}
 
 BootStat::~BootStat() = default;
@@ -117,13 +118,13 @@ bool BootStat::LogDiskEvent(const std::string& event_name) const {
   return base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
 }
 
-// TODO(drinkcat): Either merge the common parts of this function with
-// LogDiskEvent, or use clock_gettime.
 bool BootStat::LogUptimeEvent(const std::string& event_name) const {
-  std::string data;
-  if (!base::ReadFileToString(base::FilePath(uptime_statistics_file_path_),
-                              &data))
+  std::optional<struct timespec> uptime = boot_stat_system_->GetUpTime();
+  if (!uptime)
     return false;
+
+  std::string data = base::StringPrintf("%jd.%09ld\n", (intmax_t)uptime->tv_sec,
+                                        uptime->tv_nsec);
 
   base::ScopedFD output_fd = OpenEventFile("uptime", event_name);
   if (!output_fd.is_valid())

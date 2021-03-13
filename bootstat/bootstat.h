@@ -10,7 +10,10 @@
 #ifndef BOOTSTAT_BOOTSTAT_H_
 #define BOOTSTAT_BOOTSTAT_H_
 
+#include <time.h>
+
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -30,6 +33,10 @@ class BootStatSystem {
   // Returns the path representing the stats file for the root disk.
   // Returns an empty path on failure.
   virtual base::FilePath GetDiskStatisticsFilePath() const;
+
+  // Returns the current uptime (clock_gettime's CLOCK_BOOTTIME),
+  // std::nullopt on error.
+  virtual std::optional<struct timespec> GetUpTime() const;
 };
 
 // Basic class for bootstat API interface.
@@ -39,8 +46,6 @@ class BRILLO_EXPORT BootStat {
   // Constructor for testing purpose: changes the default output directory and
   // allows replacing BootStatSystem implementation with a fake one.
   BootStat(const base::FilePath& output_directory_path,
-           // TODO(drinkcat): Move this to BootStatSystem
-           const std::string& uptime_statistics_file_path,
            std::unique_ptr<BootStatSystem> boot_stat_system);
   BootStat(const BootStat&) = delete;
   BootStat& operator=(const BootStat&) = delete;
@@ -57,8 +62,6 @@ class BRILLO_EXPORT BootStat {
 
  private:
   base::FilePath output_directory_path_;
-  // TODO(drinkcat): Move this to BootStatSystem
-  std::string uptime_statistics_file_path_;
 
   std::unique_ptr<BootStatSystem> boot_stat_system_;
 
