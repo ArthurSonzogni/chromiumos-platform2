@@ -15,6 +15,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 
 #include <gtest/gtest.h>
 
@@ -37,9 +38,13 @@ class MockBootStatSystem : public BootStatSystem {
   base::FilePath disk_statistics_file_path_;
 };
 
-static void RemoveFile(const string& file_path) {
-  EXPECT_EQ(0, unlink(file_path.c_str()))
-      << "RemoveFile unlink() " << file_path << ": " << strerror(errno);
+// TODO(drinkcat): Use anonymous namespace instead of static functions.
+static void RemoveFile(const base::FilePath& file_path) {
+  // Either this is a link, or the path exists (PathExists would resolve
+  // symlink).
+  EXPECT_TRUE(base::IsLink(file_path) || base::PathExists(file_path))
+      << "Path does not exist " << file_path;
+  EXPECT_TRUE(base::DeleteFile(file_path)) << "Cannot delete " << file_path;
 }
 
 // Class to track and test the data associated with a single event.
@@ -50,62 +55,49 @@ static void RemoveFile(const string& file_path) {
 class EventTracker {
  public:
   EventTracker(const string& name,
-               const string& uptime_prefix,
-               const string& disk_prefix);
+               const base::FilePath& uptime_prefix,
+               const base::FilePath& disk_prefix);
   void TestLogEvent(const BootStat& bootstat,
                     const string& uptime,
                     const string& diskstats);
   void TestLogSymlink(const BootStat& bootstat,
-                      const string& dirname,
+                      const base::FilePath& dir_path,
                       bool create_target);
   void Reset();
 
  private:
   string event_name_;
-  string uptime_file_name_;
+  base::FilePath uptime_file_path_;
   string uptime_content_;
-  string diskstats_file_name_;
+  base::FilePath diskstats_file_path_;
   string diskstats_content_;
 };
 
 EventTracker::EventTracker(const string& name,
-                           const string& uptime_prefix,
-                           const string& diskstats_prefix)
-    : event_name_(name), uptime_content_(""), diskstats_content_("") {
+                           const base::FilePath& uptime_prefix,
+                           const base::FilePath& diskstats_prefix)
+    : event_name_(name), uptime_content_(), diskstats_content_() {
   string truncated_name = event_name_.substr(0, BOOTSTAT_MAX_EVENT_LEN - 1);
-  uptime_file_name_ = uptime_prefix + truncated_name;
-  diskstats_file_name_ = diskstats_prefix + truncated_name;
+  uptime_file_path_ = uptime_prefix.InsertBeforeExtension(truncated_name);
+  diskstats_file_path_ = diskstats_prefix.InsertBeforeExtension(truncated_name);
 }
 
 // Basic helper function to test whether the contents of the
 // specified file exactly match the given contents string.
-static void ValidateEventFileContents(const string& file_name,
-                                      const string& file_contents) {
-  int rv = access(file_name.c_str(), W_OK);
-  EXPECT_EQ(0, rv) << "ValidateEventFileContents access(): " << file_name
-                   << " is not writable: " << strerror(errno) << ".";
+static void ValidateEventFileContents(const base::FilePath& file_path,
+                                      const string& expected_content) {
+  EXPECT_TRUE(base::PathIsWritable(file_path))
+      << "ValidateEventFileContents access(): " << file_path
+      << " is not writable: " << strerror(errno) << ".";
+  ASSERT_TRUE(base::PathIsReadable(file_path))
+      << "ValidateEventFileContents access(): " << file_path
+      << " is not readable: " << strerror(errno) << ".";
 
-  rv = access(file_name.c_str(), R_OK);
-  ASSERT_EQ(0, rv) << "ValidateEventFileContents access(): " << file_name
-                   << " is not readable: " << strerror(errno) << ".";
-
-  char* buffer = new char[file_contents.length() + 1];
-  int fd = open(file_name.c_str(), O_RDONLY);
-  rv = read(fd, buffer, file_contents.length());
-  EXPECT_EQ(file_contents.length(), rv)
-      << "ValidateEventFileContents read() failed.";
-
-  buffer[file_contents.length()] = '\0';
-  string actual_contents(buffer);
-  EXPECT_EQ(file_contents, actual_contents)
+  std::string actual_contents;
+  ASSERT_TRUE(base::ReadFileToString(file_path, &actual_contents))
+      << "ValidateEventFileContents cannot read " << file_path;
+  EXPECT_EQ(expected_content, actual_contents)
       << "ValidateEventFileContents content mismatch.";
-
-  rv = read(fd, buffer, 1);
-  EXPECT_EQ(0, rv) << "ValidateEventFileContents found data "
-                      "in event file past expected EOF";
-
-  (void)close(fd);
-  delete[] buffer;
 }
 
 // Call bootstat_log() once, and update the expected content for
@@ -117,38 +109,22 @@ void EventTracker::TestLogEvent(const BootStat& bootstat,
   bootstat.LogEvent(event_name_.c_str());
   uptime_content_ += uptime;
   diskstats_content_ += diskstats;
-  ValidateEventFileContents(uptime_file_name_, uptime_content_);
-  ValidateEventFileContents(diskstats_file_name_, diskstats_content_);
+  ValidateEventFileContents(uptime_file_path_, uptime_content_);
+  ValidateEventFileContents(diskstats_file_path_, diskstats_content_);
 }
 
-static void MakeSymlink(const string& linkname, const string& filename) {
-  int rv = symlink(linkname.c_str(), filename.c_str());
-  ASSERT_EQ(0, rv) << "MakeSymlink symlink() failed to make " << linkname
-                   << " point to  " << filename << ": " << strerror(errno)
-                   << ".";
-}
-
-static void CreateSymlinkTarget(const string& filename) {
-  const mode_t kFileCreationMode =
-      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
-  int fd = creat(filename.c_str(), kFileCreationMode);
-  ASSERT_GE(fd, 0) << "CreateSymlinkTarget creat(): " << filename << ": "
-                   << strerror(errno) << ".";
-  (void)close(fd);
-}
-
-static void TestSymlinkTarget(const string& filename, bool expect_exists) {
-  int fd = open(filename.c_str(), O_RDONLY);
+static void TestSymlinkTarget(const base::FilePath& file_path,
+                              bool expect_exists) {
+  string data;
+  bool ret = base::ReadFileToString(file_path, &data);
   if (expect_exists) {
-    EXPECT_GE(fd, 0) << "TestSymlinkTarget open(): " << filename << ": "
-                     << strerror(errno) << ".";
-    char buff[8];
-    ssize_t nbytes = read(fd, buff, sizeof(buff));
-    EXPECT_EQ(0, nbytes) << "TestSymlinkTarget read(): nbytes = " << nbytes
-                         << ".";
+    EXPECT_TRUE(ret) << "TestSymlinkTarget ReadFileToString(): " << file_path
+                     << ": " << strerror(errno) << ".";
+    EXPECT_TRUE(data.empty())
+        << "TestSymlinkTarget read(): nbytes = " << data.size() << ".";
   } else {
-    EXPECT_LT(fd, 0) << "TestSymlinkTarget open(): " << filename
-                     << ": success was not expected";
+    EXPECT_FALSE(ret) << "TestSymlinkTarget ReadFileToString(): " << file_path
+                      << ": success was not expected";
   }
 }
 
@@ -159,26 +135,27 @@ static void TestSymlinkTarget(const string& filename, bool expect_exists) {
 // The test creates the necessary symlinks for the events, and
 // optionally creates targets for the files.
 void EventTracker::TestLogSymlink(const BootStat& bootstat,
-                                  const string& dirname,
+                                  const base::FilePath& dir_path,
                                   bool create_target) {
-  string uptime_linkname("uptime.symlink");
-  string diskstats_linkname("disk.symlink");
+  base::FilePath uptime_link_path("uptime.symlink");
+  base::FilePath diskstats_link_path("disk.symlink");
 
-  MakeSymlink(uptime_linkname, uptime_file_name_);
-  MakeSymlink(diskstats_linkname, diskstats_file_name_);
+  ASSERT_TRUE(base::CreateSymbolicLink(uptime_link_path, uptime_file_path_));
+  ASSERT_TRUE(
+      base::CreateSymbolicLink(diskstats_link_path, diskstats_file_path_));
   if (create_target) {
-    CreateSymlinkTarget(uptime_file_name_);
-    CreateSymlinkTarget(diskstats_file_name_);
+    ASSERT_TRUE(base::WriteFile(uptime_file_path_, ""));
+    ASSERT_TRUE(base::WriteFile(diskstats_file_path_, ""));
   }
 
   bootstat.LogEvent(event_name_.c_str());
 
-  TestSymlinkTarget(uptime_file_name_, create_target);
-  TestSymlinkTarget(diskstats_file_name_, create_target);
+  TestSymlinkTarget(uptime_file_path_, create_target);
+  TestSymlinkTarget(diskstats_file_path_, create_target);
 
   if (create_target) {
-    RemoveFile(dirname + "/" + uptime_linkname);
-    RemoveFile(dirname + "/" + diskstats_linkname);
+    RemoveFile(dir_path.Append(uptime_link_path));
+    RemoveFile(dir_path.Append(diskstats_link_path));
   }
 }
 
@@ -187,8 +164,8 @@ void EventTracker::TestLogSymlink(const BootStat& bootstat,
 void EventTracker::Reset() {
   uptime_content_.clear();
   diskstats_content_.clear();
-  RemoveFile(diskstats_file_name_);
-  RemoveFile(uptime_file_name_);
+  RemoveFile(diskstats_file_path_);
+  RemoveFile(uptime_file_path_);
 }
 
 // Bootstat test class.  We use this class to override the
@@ -214,49 +191,45 @@ class BootstatTest : public ::testing::Test {
   void TestLogSymlink(EventTracker* event, bool create_target);
 
  private:
-  string stats_output_dir_;
+  base::FilePath stats_output_dir_;
   std::unique_ptr<BootStat> boot_stat_;
   // Raw pointer, owned by boot_stat_.
   MockBootStatSystem* boot_stat_system_;
 
-  string uptime_event_prefix_;
-  string disk_event_prefix_;
+  base::FilePath uptime_event_prefix_;
+  base::FilePath disk_event_prefix_;
 
+  // TODO(drinkcat): Replace mock_uptime_* with mock functions.
   string mock_uptime_file_name_;
   string mock_uptime_content_;
-  string mock_disk_file_name_;
+  base::FilePath mock_disk_file_path_;
   string mock_disk_content_;
 };
 
 void BootstatTest::SetUp() {
-  char dir_template[] = "bootstat_test_XXXXXX";
-  stats_output_dir_ = string(mkdtemp(dir_template));
-  uptime_event_prefix_ = stats_output_dir_ + "/uptime-";
-  disk_event_prefix_ = stats_output_dir_ + "/disk-";
-  mock_uptime_file_name_ = stats_output_dir_ + "/proc_uptime";
-  mock_disk_file_name_ = stats_output_dir_ + "/block_stats";
-  boot_stat_system_ =
-      new MockBootStatSystem(base::FilePath(mock_disk_file_name_));
+  // TODO(drinkcat): Use base::ScopedTempDir.
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(
+      base::FilePath(""), "bootstat_test_", &stats_output_dir_))
+      << "Cannot create temporary directory for tests.";
+  uptime_event_prefix_ = stats_output_dir_.Append("uptime-");
+  disk_event_prefix_ = stats_output_dir_.Append("disk-");
+  mock_uptime_file_name_ = stats_output_dir_.Append("proc_uptime").value();
+  mock_disk_file_path_ = stats_output_dir_.Append("block_stats");
+  boot_stat_system_ = new MockBootStatSystem(mock_disk_file_path_);
   boot_stat_ = std::make_unique<BootStat>(
-      base::FilePath(stats_output_dir_), mock_uptime_file_name_,
+      stats_output_dir_, mock_uptime_file_name_,
       std::unique_ptr<BootStatSystem>(boot_stat_system_));
 }
 
 void BootstatTest::TearDown() {
-  EXPECT_EQ(0, rmdir(stats_output_dir_.c_str()))
-      << "BootstatTest::Teardown rmdir(): " << stats_output_dir_ << ": "
-      << strerror(errno) << ".";
+  EXPECT_TRUE(base::DeleteFile(stats_output_dir_))
+      << "BootstatTest::Teardown DeleteFile(): " << stats_output_dir_;
 }
 
-static void WriteMockStats(const string& content, const string& file_path) {
-  const int kFileOpenFlags = O_WRONLY | O_TRUNC | O_CREAT;
-  const mode_t kFileCreationMode =
-      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
-  int fd = open(file_path.c_str(), kFileOpenFlags, kFileCreationMode);
-  int nwrite = write(fd, content.c_str(), content.length());
-  EXPECT_EQ(content.length(), nwrite) << "WriteMockStats write(): " << file_path
-                                      << ": " << strerror(errno) << ".";
-  (void)close(fd);
+static void WriteMockStats(const string& content,
+                           const base::FilePath& file_path) {
+  ASSERT_TRUE(base::WriteFile(file_path, content))
+      << "WriteMockStats WriteFile(): " << file_path;
 }
 
 // Set the content of the files mocking the contents of the kernel's
@@ -266,15 +239,15 @@ static void WriteMockStats(const string& content, const string& file_path) {
 void BootstatTest::SetMockStats(const char* uptime_data,
                                 const char* disk_data) {
   mock_uptime_content_ = string(uptime_data);
-  WriteMockStats(mock_uptime_content_, mock_uptime_file_name_);
+  WriteMockStats(mock_uptime_content_, base::FilePath(mock_uptime_file_name_));
   mock_disk_content_ = string(disk_data);
-  WriteMockStats(mock_disk_content_, mock_disk_file_name_);
+  WriteMockStats(mock_disk_content_, mock_disk_file_path_);
 }
 
 // Clean up the effects from SetMockStats().
 void BootstatTest::ClearMockStats() {
-  RemoveFile(mock_uptime_file_name_);
-  RemoveFile(mock_disk_file_name_);
+  RemoveFile(base::FilePath(mock_uptime_file_name_));
+  RemoveFile(mock_disk_file_path_);
 }
 
 void BootstatTest::TestLogEvent(EventTracker* event) {
@@ -282,7 +255,8 @@ void BootstatTest::TestLogEvent(EventTracker* event) {
 }
 
 void BootstatTest::TestLogSymlink(EventTracker* event, bool create_target) {
-  event->TestLogSymlink(*boot_stat_, stats_output_dir_, create_target);
+  event->TestLogSymlink(*boot_stat_, base::FilePath(stats_output_dir_),
+                        create_target);
 }
 
 // Test data to be used as input to SetMockStats().
