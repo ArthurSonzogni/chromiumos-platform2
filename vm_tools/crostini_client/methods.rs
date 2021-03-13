@@ -40,6 +40,8 @@ const MNT_SHARED_ROOT: &str = "/mnt/shared";
 const DEFAULT_TIMEOUT_MS: i32 = 80 * 1000;
 const EXPORT_DISK_TIMEOUT_MS: i32 = 15 * 60 * 1000;
 
+const DLCSERVICE_NO_IMAGE_FOUND_ERROR: &str = "org.chromium.DlcServiceInterface.NO_IMAGE_FOUND";
+
 enum ChromeOSError {
     BadChromeFeatureStatus,
     BadDiskImageStatus(DiskImageStatus, String),
@@ -441,7 +443,7 @@ impl Methods {
             .wait(timeout_millis)
     }
 
-    fn get_dlc_state(&mut self, name: &str) -> Result<DlcState_State, Box<dyn Error>> {
+    fn get_dlc_state(&mut self, name: &str) -> Result<DlcState, Box<dyn Error>> {
         let method = Message::new_method_call(
             DLC_SERVICE_SERVICE_NAME,
             DLC_SERVICE_SERVICE_PATH,
@@ -458,7 +460,7 @@ impl Methods {
         let response: DlcState = dbus_message_to_proto(&message)
             .map_err(|e| FailedDlcInstall(name.to_owned(), e.to_string()))?;
 
-        Ok(response.get_state())
+        Ok(response)
     }
 
     fn init_dlc_install(&mut self, name: &str) -> Result<(), Box<dyn Error>> {
@@ -482,10 +484,19 @@ impl Methods {
         // and, if package is already installed, OnInstallStatus signal might be issued before
         // replying to "Install" method call, which does not carry any indication whether the
         // operation in progress or not. So polling it is...
-        while self.get_dlc_state(name)? == DlcState_State::INSTALLING {
+        while self.get_dlc_state(name)?.get_state() == DlcState_State::INSTALLING {
             sleep(Duration::from_secs(5));
         }
-        if self.get_dlc_state(name)? != DlcState_State::INSTALLED {
+        let dlc_state = self.get_dlc_state(name)?;
+        if dlc_state.get_state() != DlcState_State::INSTALLED {
+            if dlc_state.get_last_error_code() == DLCSERVICE_NO_IMAGE_FOUND_ERROR {
+                return Err(FailedDlcInstall(
+                    name.to_owned(),
+                    "Parallels DLC not found for this build. Please try again after updating Chrome OS."
+                        .to_string(),
+                )
+                .into());
+            }
             return Err(FailedDlcInstall(
                 name.to_owned(),
                 "Failed to install Parallels DLC".to_string(),
@@ -496,7 +507,7 @@ impl Methods {
     }
 
     fn install_dlc(&mut self, name: &str) -> Result<(), Box<dyn Error>> {
-        if self.get_dlc_state(name)? != DlcState_State::INSTALLED {
+        if self.get_dlc_state(name)?.get_state() != DlcState_State::INSTALLED {
             self.init_dlc_install(name)?;
             self.poll_dlc_install(name)?;
         }
