@@ -177,7 +177,7 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
           FROM_HERE, error::kFailedToCreateDirectory,
           base::StringPrintf("Failed to create directory %s for DLC=%s",
                              path.value().c_str(), id_.c_str()));
-      state_.set_last_error_code(Error::GetDbusErrorCode(*err));
+      state_.set_last_error_code(Error::GetErrorCode(*err));
       return false;
     }
   }
@@ -414,7 +414,7 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
         if (Mount(err))
           break;
         // Do not |CancelInstall| on mount failure.
-        state_.set_last_error_code(Error::GetDbusErrorCode(*err));
+        state_.set_last_error_code(Error::GetErrorCode(*err));
         ChangeState(DlcState::NOT_INSTALLED);
         MarkUnverified();
         SystemState::Get()->metrics()->SendInstallResultFailure(err);
@@ -466,7 +466,7 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
 }
 
 bool DlcBase::CancelInstall(const ErrorPtr& err_in, ErrorPtr* err) {
-  state_.set_last_error_code(Error::GetDbusErrorCode(err_in));
+  state_.set_last_error_code(Error::GetErrorCode(err_in));
   ChangeState(DlcState::NOT_INSTALLED);
 
   // Consider as not installed even if delete fails below, correct errors
@@ -489,13 +489,13 @@ bool DlcBase::Mount(ErrorPtr* err) {
     *err =
         Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
                               "Imageloader is unavailable for LoadDlcImage().");
-    state_.set_last_error_code(Error::GetDbusErrorCode(*err));
+    state_.set_last_error_code(Error::GetErrorCode(*err));
     return false;
   }
   if (mount_point.empty()) {
     *err = Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
                                  "Imageloader LoadDlcImage() call failed.");
-    state_.set_last_error_code(Error::GetDbusErrorCode(*err));
+    state_.set_last_error_code(Error::GetErrorCode(*err));
     return false;
   }
   mount_point_ = FilePath(mount_point);

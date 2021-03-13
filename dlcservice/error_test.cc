@@ -56,12 +56,20 @@ TEST(Error, GetRootErrorCode) {
   EXPECT_STREQ("root-code", Error::GetRootErrorCode(err).c_str());
 }
 
-TEST(Error, GetDbusErrorCode) {
+TEST(Error, GetErrorCodeInternalBase) {
   brillo::ErrorPtr err = Error::CreateInternal(FROM_HERE, "root-code", "msg");
-  Error::AddTo(&err, FROM_HERE, "linked-code", "dbus-msg-linked");
+  Error::AddTo(&err, FROM_HERE, kErrorBusy, "dbus-msg-linked");
   Error::AddInternalTo(&err, FROM_HERE, "linked-code2", "msg-linked");
   Error::AddTo(&err, FROM_HERE, "linked-code2", "dbus-msg-linked");
-  EXPECT_STREQ("linked-code2", Error::GetDbusErrorCode(err).c_str());
+  EXPECT_STREQ(kErrorBusy, Error::GetErrorCode(err).c_str());
+}
+
+TEST(Error, GetErrorCodeDbusBase) {
+  brillo::ErrorPtr err = Error::Create(FROM_HERE, "root-code", "msg");
+  Error::AddTo(&err, FROM_HERE, kErrorBusy, "dbus-msg-linked");
+  Error::AddInternalTo(&err, FROM_HERE, "linked-code2", "msg-linked");
+  Error::AddTo(&err, FROM_HERE, "linked-code2", "dbus-msg-linked");
+  EXPECT_STREQ(kErrorBusy, Error::GetErrorCode(err).c_str());
 }
 
 TEST(Error, ConvertToDbusError_internal_dbus) {

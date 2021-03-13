@@ -54,9 +54,9 @@ class Error {
   // Returns the first error code of a chain of errors.
   static std::string GetRootErrorCode(const brillo::ErrorPtr& error);
 
-  // Returns the first error code of a chain of errors with domain DBus. If no
-  // error is found on the DBus domain, it returns |kErrorInternal|.
-  static std::string GetDbusErrorCode(const brillo::ErrorPtr& error);
+  // Returns the first error code of a chain of errors with a dlcservice error
+  // code. If no dlcservice error code is found, it returns |kErrorInternal|.
+  static std::string GetErrorCode(const brillo::ErrorPtr& error);
 
   // Convert a chain of errors into a single error in the DBus domain. The first
   // error in the chain which is in the DBus domain, will be returned. If no

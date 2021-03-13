@@ -4,6 +4,8 @@
 
 #include "dlcservice/error.h"
 
+#include <unordered_set>
+
 #include <base/check.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/errors/error_codes.h>
@@ -66,13 +68,30 @@ std::string Error::GetRootErrorCode(const brillo::ErrorPtr& error) {
   return error->GetFirstError()->GetCode();
 }
 
-std::string Error::GetDbusErrorCode(const brillo::ErrorPtr& error) {
-  const brillo::Error* dbus_err = brillo::Error::FindErrorOfDomain(
-      error.get(), brillo::errors::dbus::kDomain);
-  if (dbus_err)
-    return dbus_err->GetCode();
-  else
-    return kErrorInternal;
+std::string Error::GetErrorCode(const brillo::ErrorPtr& error) {
+  const std::unordered_set<std::string> kDlcErrorCodes = {
+      kErrorNone,       kErrorInternal,   kErrorBusy,         kErrorNeedReboot,
+      kErrorInvalidDlc, kErrorAllocation, kErrorNoImageFound,
+  };
+  // Iterate over the DBus domain.
+  const brillo::Error* err_ptr = error.get();
+  while ((err_ptr = brillo::Error::FindErrorOfDomain(
+              err_ptr, brillo::errors::dbus::kDomain))) {
+    auto code = err_ptr->GetCode();
+    if (kDlcErrorCodes.find(code) != kDlcErrorCodes.end())
+      return code;
+    err_ptr = err_ptr->GetInnerError();
+  }
+  // Iterate over the dlcservice domain.
+  err_ptr = error.get();
+  while (
+      (err_ptr = brillo::Error::FindErrorOfDomain(err_ptr, kDlcErrorDomain))) {
+    auto code = err_ptr->GetCode();
+    if (kDlcErrorCodes.find(code) != kDlcErrorCodes.end())
+      return code;
+    err_ptr = err_ptr->GetInnerError();
+  }
+  return kErrorInternal;
 }
 
 void Error::ConvertToDbusError(brillo::ErrorPtr* error) {
