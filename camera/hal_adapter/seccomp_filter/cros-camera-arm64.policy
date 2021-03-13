@@ -1,6 +1,7 @@
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+access: 1
 bind: 1
 brk: 1
 clock_gettime: 1
@@ -55,8 +56,10 @@ readlinkat: 1
 recvmsg: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
+sched_getattr: 1
 sched_getparam: 1
 sched_getscheduler: 1
+sched_setattr: 1
 sched_setscheduler: 1
 sched_yield: 1
 sendto: 1
