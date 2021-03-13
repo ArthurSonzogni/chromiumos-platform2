@@ -10,7 +10,6 @@ pub mod net;
 mod read_dir;
 pub mod scoped_path;
 pub mod secure_blob;
-pub mod sync;
 pub mod syslog;
 pub mod vsock;
 
