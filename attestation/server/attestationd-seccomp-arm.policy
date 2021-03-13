@@ -111,3 +111,6 @@ shmdt: 1
 ioctl: return 1
 prctl: return 1
 prlimit64: arg2 == 0 && arg3 != 0
+
+sched_getattr: 1
+sched_setattr: 1

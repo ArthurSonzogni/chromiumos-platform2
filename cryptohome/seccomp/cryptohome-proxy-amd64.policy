@@ -33,6 +33,8 @@ socket: arg0 == AF_UNIX
 connect: 1
 set_robust_list: 1
 rt_sigaction: 1
+sched_getattr: 1
+sched_setattr: 1
 statfs: 1
 epoll_create1: 1
 getsockname: 1
