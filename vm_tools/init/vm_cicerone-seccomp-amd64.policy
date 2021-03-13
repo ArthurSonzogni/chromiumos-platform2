@@ -95,3 +95,5 @@ inotify_rm_watch: 1
 dup2: 1
 flock: 1
 getrandom: 1
+sched_setattr: 1
+sched_getattr: 1

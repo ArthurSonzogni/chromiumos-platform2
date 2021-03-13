@@ -39,6 +39,7 @@ statfs: 1
 newfstatat: 1
 getsockname: 1
 accept4: 1
+access: 1
 bind: 1
 pipe2: 1
 restart_syscall: 1
@@ -89,3 +90,5 @@ dup3: 1
 pselect6: 1
 flock: 1
 getrandom: 1
+sched_setattr: 1
+sched_getattr: 1
