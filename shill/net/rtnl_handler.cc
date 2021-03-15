@@ -65,7 +65,7 @@ base::LazyInstance<RTNLHandler>::DestructorAtExit g_rtnl_handler =
     LAZY_INSTANCE_INITIALIZER;
 
 // Increasing buffer size to avoid overflows on IPV6 routing events.
-constexpr int kReceiveBufferBytes = 1024 * 1024;
+constexpr int kReceiveBufferBytes = 3 * 1024 * 1024;
 }  // namespace
 
 RTNLHandler::RTNLHandler()
