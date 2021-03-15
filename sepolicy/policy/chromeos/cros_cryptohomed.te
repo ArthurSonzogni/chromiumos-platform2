@@ -40,6 +40,17 @@ allow cros_cryptohomed {
   cros_run_daemon_store
 }:dir r_dir_perms;
 
+# ioctl is restricted for Chrome OS domains, see chrome_os.te. Give required
+# permissions to cros_cryptohomed.
+is_arc_vm(`
+  allowxperm cros_cryptohomed {
+    cros_home_shadow
+    cros_home_shadow_uid
+    cros_home_shadow_uid_user
+    cros_stateful_partition
+  }:dir ioctl cryptohome_fscrypt_ioctls;
+')
+
 # TODO(betuls): Add access for daemon-stores of the daemons 'cdm-oemcrypto',
 # 'crash', 'crosvm', 'debugd', 'kerberosd', 'pvm', 'pvm-dispatcher', 'smbfs',
 # 'smbproviderd' after adding context for these daemon-stores.
