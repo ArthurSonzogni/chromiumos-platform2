@@ -18,18 +18,12 @@ CameraModuleCallbacks::CameraModuleCallbacks(
     : camera_module_callbacks_(this),
       device_status_callback_(std::move(device_status_callback)) {}
 
-mojom::CameraModuleCallbacksAssociatedPtrInfo
+mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks>
 CameraModuleCallbacks::GetModuleCallbacks() {
-  mojom::CameraModuleCallbacksAssociatedPtrInfo
-      camera_module_callbacks_ptr_info;
-  mojom::CameraModuleCallbacksAssociatedRequest
-      camera_module_callbacks_request =
-          mojo::MakeRequest(&camera_module_callbacks_ptr_info);
   if (camera_module_callbacks_.is_bound()) {
-    camera_module_callbacks_.Close();
+    camera_module_callbacks_.reset();
   }
-  camera_module_callbacks_.Bind(std::move(camera_module_callbacks_request));
-  return camera_module_callbacks_ptr_info;
+  return camera_module_callbacks_.BindNewEndpointAndPassRemote();
 }
 
 void CameraModuleCallbacks::CameraDeviceStatusChange(

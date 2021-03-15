@@ -119,7 +119,7 @@ int CameraClient::Exit() {
   int ret = StopCapture(context_.info.camera_id);
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&CameraClient::CloseOnIpcThread, base::Unretained(this)));
+      base::BindOnce(&CameraClient::ResetOnIpcThread, base::Unretained(this)));
   ipc_thread_.Stop();
   info_thread_.Stop();
   // The stop might fail due to the camera already being closed. Ignore the
@@ -171,13 +171,14 @@ int CameraClient::StopCapture(int id) {
   return future->Get();
 }
 
-void CameraClient::SetUpChannel(mojom::CameraModulePtr camera_module) {
+void CameraClient::SetUpChannel(
+    mojo::PendingRemote<mojom::CameraModule> camera_module) {
   VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   LOGF(INFO) << "Received camera module from camera HAL dispatcher";
-  camera_module_ = std::move(camera_module);
-  camera_module_.set_connection_error_handler(
+  camera_module_.Bind(std::move(camera_module));
+  camera_module_.set_disconnect_handler(
       base::Bind(&CameraClient::ResetClientState, base::Unretained(this)));
 
   GetAllCameraInfo();
@@ -188,10 +189,8 @@ void CameraClient::RegisterClient(
   VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
-  mojom::CameraHalClientPtr client_ptr;
-  camera_hal_client_.Bind(mojo::MakeRequest(&client_ptr));
   std::move(register_client_callback)
-      .Run(std::move(client_ptr),
+      .Run(camera_hal_client_.BindNewPipeAndPassRemote(),
            base::BindOnce(&CameraClient::OnRegisteredClient,
                           base::Unretained(this)));
 }
@@ -205,11 +204,11 @@ void CameraClient::OnRegisteredClient(int32_t result) {
   LOGF(INFO) << "Successfully registered client";
 }
 
-void CameraClient::CloseOnIpcThread() {
+void CameraClient::ResetOnIpcThread() {
   VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
-  camera_hal_client_.Close();
+  camera_hal_client_.reset();
 }
 
 void CameraClient::ResetClientState() {
@@ -218,6 +217,7 @@ void CameraClient::ResetClientState() {
   base::AutoLock l(camera_info_lock_);
 
   LOGF(WARNING) << "Mojo connection to HAL server disconnected";
+  camera_module_.reset();
   // Notify the user that cameras are down.
   SendCameraInfoAsync(camera_id_set_, /*is_removed=*/1);
   camera_id_set_.clear();
@@ -552,10 +552,10 @@ int CameraClient::StartCaptureOnIpcThread(SessionRequest* request) {
   context_.state = SessionState::kStarting;
   context_.info = std::move(request->info);
   context_.result_callback = std::move(request->result_callback);
-  auto device_ops_request = context_.client_ops.Init(
+  auto device_ops_receiver = context_.client_ops.Init(
       base::Bind(&CameraClient::SendCaptureResult, base::Unretained(this)));
   camera_module_->OpenDevice(
-      context_.info.camera_id, std::move(device_ops_request),
+      context_.info.camera_id, std::move(device_ops_receiver),
       base::Bind(&CameraClient::OnOpenedDevice, base::Unretained(this)));
   return 0;
 }

@@ -18,7 +18,9 @@
 #include <base/synchronization/lock.h>
 #include <base/thread_annotations.h>
 #include <base/threading/thread.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "common/libcamera_connector/camera_client_ops.h"
 #include "common/libcamera_connector/camera_module_callbacks.h"
@@ -36,11 +38,12 @@ namespace cros {
 //
 // Expected usage of this class:
 //   1. During initialization, the user of this class is expected to call Init()
-//      with a callback to receive mojom::CameraHalClientPtr and register it
-//      with CameraHalDispatcher. Init() is expected to be called exactly once.
+//      with a callback to receive mojo::PendingRemote<CameraHalClient> and
+//      register it with CameraHalDispatcher. Init() is expected to be called
+//      exactly once.
 //   2. CameraHalDispatcher should call SetUpChannel() to provide
-//      mojom::CameraModulePtr and CameraClient would query and store the static
-//      metadata of cameras.
+//      mojo::PendingRemote<mojom::CameraModule> and CameraClient would query
+//      and store the static metadata of cameras.
 //   3. The user can register a callback with SetCameraInfoCallback() to receive
 //      updates about cameras, including the addition or removal of a camera
 //      and/or its static metadata.
@@ -52,8 +55,8 @@ namespace cros {
 //      cameras are closed before the return of the call.
 class CameraClient final : public mojom::CameraHalClient {
  public:
-  using RegisterClientCallback =
-      base::OnceCallback<void(mojom::CameraHalClientPtr, IntOnceCallback)>;
+  using RegisterClientCallback = base::OnceCallback<void(
+      mojo::PendingRemote<mojom::CameraHalClient>, IntOnceCallback)>;
 
   CameraClient();
 
@@ -85,7 +88,8 @@ class CameraClient final : public mojom::CameraHalClient {
 
   // Implementation of cros::mojom::CameraHalClient. Called by camera HAL
   // dispatcher to provide the camera module interface.
-  void SetUpChannel(mojom::CameraModulePtr camera_module) override;
+  void SetUpChannel(
+      mojo::PendingRemote<mojom::CameraModule> camera_module) override;
 
  private:
   struct CameraInfo {
@@ -153,7 +157,7 @@ class CameraClient final : public mojom::CameraHalClient {
   void OnRegisteredClient(int32_t result);
 
   // Closes the message pipe associated with this client.
-  void CloseOnIpcThread();
+  void ResetOnIpcThread();
 
   void ResetClientState();
 
@@ -222,8 +226,8 @@ class CameraClient final : public mojom::CameraHalClient {
 
   base::Thread ipc_thread_;
   base::Thread info_thread_;
-  mojom::CameraModulePtr camera_module_;
-  mojo::Binding<mojom::CameraHalClient> camera_hal_client_;
+  mojo::Remote<mojom::CameraModule> camera_module_;
+  mojo::Receiver<mojom::CameraHalClient> camera_hal_client_;
   CameraModuleCallbacks camera_module_callbacks_;
 
   IntOnceCallback init_callback_;

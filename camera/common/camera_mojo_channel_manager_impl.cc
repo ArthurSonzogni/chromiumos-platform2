@@ -124,7 +124,7 @@ CameraMojoChannelManagerImpl::GetIpcTaskRunner() {
 }
 
 void CameraMojoChannelManagerImpl::RegisterServer(
-    mojom::CameraHalServerPtr hal_ptr,
+    mojo::PendingRemote<mojom::CameraHalServer> server,
     mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
         on_construct_callback,
     Callback on_error_callback) {
@@ -132,7 +132,7 @@ void CameraMojoChannelManagerImpl::RegisterServer(
   VLOGF_ENTER();
 
   camera_hal_server_request_ = {
-      .requestOrPtr = std::move(hal_ptr),
+      .requestOrPtr = std::move(server),
       .on_construct_callback = std::move(on_construct_callback),
       .on_error_callback = std::move(on_error_callback)};
   ipc_thread_.task_runner()->PostTask(
@@ -265,10 +265,10 @@ void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
     return;
   }
 
-  dispatcher_ = mojo::MakeProxy(
-      mojom::CameraHalDispatcherPtrInfo(std::move(child_pipe), 0u),
-      ipc_thread_.task_runner());
-  dispatcher_.set_connection_error_handler(
+  dispatcher_ = mojo::Remote<cros::mojom::CameraHalDispatcher>(
+      mojo::PendingRemote<cros::mojom::CameraHalDispatcher>(
+          std::move(child_pipe), 0u));
+  dispatcher_.set_disconnect_handler(
       base::Bind(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
                  base::Unretained(this)));
   bound_socket_inode_num_ = socket_inode_num;
@@ -285,7 +285,7 @@ void CameraMojoChannelManagerImpl::TryConsumePendingMojoRequests() {
     if (server_token.is_empty()) {
       LOGF(ERROR) << "Failed to read server token";
       std::move(camera_hal_server_request_.on_construct_callback)
-          .Run(-EPERM, nullptr);
+          .Run(-EPERM, mojo::NullRemote());
     } else {
       auto token = mojo_base::mojom::UnguessableToken::New();
       token->high = server_token.GetHighForSerialization();

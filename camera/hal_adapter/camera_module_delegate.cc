@@ -27,13 +27,12 @@ CameraModuleDelegate::~CameraModuleDelegate() {}
 
 void CameraModuleDelegate::OpenDevice(
     int32_t camera_id,
-    mojom::Camera3DeviceOpsRequest device_ops_request,
+    mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
     OpenDeviceCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  mojom::Camera3DeviceOpsPtr device_ops;
   std::move(callback).Run(camera_hal_adapter_->OpenDevice(
-      camera_id, std::move(device_ops_request), camera_client_type_));
+      camera_id, std::move(device_ops_receiver), camera_client_type_));
 }
 
 void CameraModuleDelegate::GetNumberOfCameras(
@@ -54,7 +53,8 @@ void CameraModuleDelegate::GetCameraInfo(int32_t camera_id,
 }
 
 void CameraModuleDelegate::SetCallbacks(
-    mojom::CameraModuleCallbacksPtr callbacks, SetCallbacksCallback callback) {
+    mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks,
+    SetCallbacksCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   std::move(callback).Run(
@@ -77,21 +77,21 @@ void CameraModuleDelegate::Init(InitCallback callback) {
 }
 
 void CameraModuleDelegate::GetVendorTagOps(
-    mojom::VendorTagOpsRequest vendor_tag_ops_request,
+    mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_receiver,
     GetVendorTagOpsCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  camera_hal_adapter_->GetVendorTagOps(std::move(vendor_tag_ops_request));
+  camera_hal_adapter_->GetVendorTagOps(std::move(vendor_tag_ops_receiver));
   std::move(callback).Run();
 }
 
 void CameraModuleDelegate::SetCallbacksAssociated(
-    mojom::CameraModuleCallbacksAssociatedPtrInfo callbacks_info,
+    mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks,
     SetCallbacksAssociatedCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   std::move(callback).Run(
-      camera_hal_adapter_->SetCallbacksAssociated(std::move(callbacks_info)));
+      camera_hal_adapter_->SetCallbacksAssociated(std::move(callbacks)));
 }
 
 }  // namespace cros

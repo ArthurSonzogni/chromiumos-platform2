@@ -26,15 +26,16 @@ class CameraModuleDelegate final
   ~CameraModuleDelegate();
 
  private:
-  void OpenDevice(int32_t camera_id,
-                  mojom::Camera3DeviceOpsRequest device_ops_request,
-                  OpenDeviceCallback callback) final;
+  void OpenDevice(
+      int32_t camera_id,
+      mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
+      OpenDeviceCallback callback) final;
 
   void GetNumberOfCameras(GetNumberOfCamerasCallback callback) final;
 
   void GetCameraInfo(int32_t camera_id, GetCameraInfoCallback callback) final;
 
-  void SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks,
+  void SetCallbacks(mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks,
                     SetCallbacksCallback callback) final;
 
   void SetTorchMode(int32_t camera_id,
@@ -43,11 +44,12 @@ class CameraModuleDelegate final
 
   void Init(InitCallback callback) final;
 
-  void GetVendorTagOps(mojom::VendorTagOpsRequest vendor_tag_ops_request,
-                       GetVendorTagOpsCallback callback) final;
+  void GetVendorTagOps(
+      mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_receiver,
+      GetVendorTagOpsCallback callback) final;
 
   void SetCallbacksAssociated(
-      mojom::CameraModuleCallbacksAssociatedPtrInfo callbacks_info,
+      mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks,
       SetCallbacksAssociatedCallback callback) final;
 
   CameraHalAdapter* camera_hal_adapter_;

@@ -8,7 +8,8 @@
 #define CAMERA_COMMON_LIBCAMERA_CONNECTOR_CAMERA_MODULE_CALLBACKS_H_
 
 #include <base/callback.h>
-#include <mojo/public/cpp/bindings/associated_binding.h>
+#include <mojo/public/cpp/bindings/associated_receiver.h>
+#include <mojo/public/cpp/bindings/pending_associated_remote.h>
 
 #include "mojo/camera_common.mojom.h"
 
@@ -23,7 +24,8 @@ class CameraModuleCallbacks final : public mojom::CameraModuleCallbacks {
   // Resets the current associated binding |camera_module_callbacks_|, creates a
   // new associated CameraModuleCallbacks pointer info, binds the request and
   // returns the associated pointer info.
-  mojom::CameraModuleCallbacksAssociatedPtrInfo GetModuleCallbacks();
+  mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks>
+  GetModuleCallbacks();
 
   void CameraDeviceStatusChange(int32_t camera_id,
                                 mojom::CameraDeviceStatus new_status) override;
@@ -32,7 +34,7 @@ class CameraModuleCallbacks final : public mojom::CameraModuleCallbacks {
                              mojom::TorchModeStatus new_status) override;
 
  private:
-  mojo::AssociatedBinding<mojom::CameraModuleCallbacks>
+  mojo::AssociatedReceiver<mojom::CameraModuleCallbacks>
       camera_module_callbacks_;
   DeviceStatusCallback device_status_callback_;
 };

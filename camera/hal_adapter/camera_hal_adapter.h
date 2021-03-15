@@ -20,6 +20,10 @@
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
+#include <mojo/public/cpp/bindings/pending_associated_remote.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "common/utils/common_types.h"
 #include "common/vendor_tag_manager.h"
@@ -66,16 +70,18 @@ class CameraHalAdapter {
   // any other methods.
   bool Start();
 
-  // Creates the CameraModule Mojo connection from |camera_module_request|.
-  void OpenCameraHal(mojom::CameraModuleRequest camera_module_request,
-                     mojom::CameraClientType camera_client_type);
+  // Creates the CameraModule Mojo connection from |camera_module_receiver|.
+  void OpenCameraHal(
+      mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
+      mojom::CameraClientType camera_client_type);
 
   // Callback interface for CameraModuleDelegate.
   // These methods are callbacks for |module_delegate_| and are executed on
   // the mojo IPC handler thread in |module_delegate_|.
-  virtual int32_t OpenDevice(int32_t camera_id,
-                             mojom::Camera3DeviceOpsRequest device_ops_request,
-                             mojom::CameraClientType camera_client_type);
+  virtual int32_t OpenDevice(
+      int32_t camera_id,
+      mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
+      mojom::CameraClientType camera_client_type);
 
   virtual int32_t GetNumberOfCameras();
 
@@ -85,13 +91,15 @@ class CameraHalAdapter {
 
   // TODO(b/169324225): Remove when all camera clients transition to
   // SetCallbacksAssociated.
-  int32_t SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks);
+  int32_t SetCallbacks(
+      mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks);
 
   virtual int32_t SetTorchMode(int32_t camera_id, bool enabled);
 
   int32_t Init();
 
-  void GetVendorTagOps(mojom::VendorTagOpsRequest vendor_tag_ops_request);
+  void GetVendorTagOps(
+      mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_request);
 
   // A callback for the camera devices opened in OpenDevice().  Used to run
   // CloseDevice() on the same thread that OpenDevice() runs on.
@@ -104,7 +112,7 @@ class CameraHalAdapter {
   // CameraModuleCallbacks runs with the same message pipe as CameraModule which
   // guarantees FIFO order. See b/169324225 for context.
   int32_t SetCallbacksAssociated(
-      mojom::CameraModuleCallbacksAssociatedPtrInfo callbacks_info);
+      mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks);
 
  protected:
   // Convert the unified external |camera_id| into the corresponding camera

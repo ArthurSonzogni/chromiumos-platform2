@@ -152,7 +152,7 @@ int ClientModuleConnector::GetNumberOfCameras() {
 
 std::unique_ptr<DeviceConnector> ClientModuleConnector::OpenDevice(int cam_id) {
   auto dev_connector = std::make_unique<ClientDeviceConnector>();
-  cam_client_->OpenDevice(cam_id, dev_connector->GetDeviceOpsRequest());
+  cam_client_->OpenDevice(cam_id, dev_connector->GetDeviceOpsReceiver());
   return dev_connector;
 }
 
@@ -232,9 +232,9 @@ void CameraHalClient::ConnectToDispatcher(base::Callback<void(int)> callback) {
     return;
   }
 
-  dispatcher_ = mojo::MakeProxy(
-      cros::mojom::CameraHalDispatcherPtrInfo(std::move(child_pipe), 0u),
-      ipc_thread_.task_runner());
+  dispatcher_ = mojo::Remote<cros::mojom::CameraHalDispatcher>(
+      mojo::PendingRemote<cros::mojom::CameraHalDispatcher>(
+          std::move(child_pipe), 0u));
   if (!dispatcher_.is_bound()) {
     LOGF(ERROR) << "Failed to bind mojo dispatcher";
     callback.Run(-EIO);
@@ -250,28 +250,22 @@ void CameraHalClient::ConnectToDispatcher(base::Callback<void(int)> callback) {
   auto mojo_token = mojo_base::mojom::UnguessableToken::New();
   mojo_token->high = token.GetHighForSerialization();
   mojo_token->low = token.GetLowForSerialization();
-  cros::mojom::CameraHalClientPtr client_ptr;
-  camera_hal_client_.Bind(mojo::MakeRequest(&client_ptr));
   dispatcher_->RegisterClientWithToken(
-      std::move(client_ptr), cros::mojom::CameraClientType::TESTING,
-      std::move(mojo_token), std::move(callback));
+      camera_hal_client_.BindNewPipeAndPassRemote(),
+      cros::mojom::CameraClientType::TESTING, std::move(mojo_token),
+      std::move(callback));
 }
 
-void CameraHalClient::SetUpChannel(cros::mojom::CameraModulePtr camera_module) {
+void CameraHalClient::SetUpChannel(
+    mojo::PendingRemote<cros::mojom::CameraModule> camera_module) {
   VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  camera_module_ = std::move(camera_module);
-  camera_module_.set_connection_error_handler(base::Bind(
+  camera_module_.Bind(std::move(camera_module));
+  camera_module_.set_disconnect_handler(base::Bind(
       &CameraHalClient::onIpcConnectionLost, base::Unretained(this)));
 
-  cros::mojom::CameraModuleCallbacksAssociatedPtrInfo
-      camera_module_callbacks_ptr_info;
-  cros::mojom::CameraModuleCallbacksAssociatedRequest
-      camera_module_callbacks_request =
-          mojo::MakeRequest(&camera_module_callbacks_ptr_info);
-  mojo_module_callbacks_.Bind(std::move(camera_module_callbacks_request));
   camera_module_->SetCallbacksAssociated(
-      std::move(camera_module_callbacks_ptr_info),
+      mojo_module_callbacks_.BindNewEndpointAndPassRemote(),
       base::Bind(&CameraHalClient::OnSetCallbacks, base::Unretained(this)));
 }
 
@@ -283,10 +277,8 @@ void CameraHalClient::OnSetCallbacks(int32_t result) {
     exit(EXIT_FAILURE);
   }
 
-  cros::mojom::VendorTagOpsRequest ops_req =
-      mojo::MakeRequest(&vendor_tag_ops_);
   camera_module_->GetVendorTagOps(
-      std::move(ops_req),
+      vendor_tag_ops_.BindNewPipeAndPassReceiver(),
       base::Bind(&CameraHalClient::OnGotVendorTagOps, base::Unretained(this)));
 }
 
@@ -499,6 +491,7 @@ void CameraHalClient::TorchModeStatusChange(
 
 void CameraHalClient::onIpcConnectionLost() {
   VLOGF_ENTER();
+  camera_module_.reset();
   ipc_initialized_.Reset();
   static_characteristics_map_.clear();
   vendor_tag_map_.clear();

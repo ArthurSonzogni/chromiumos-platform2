@@ -15,7 +15,10 @@
 #include <base/synchronization/lock.h>
 #include <base/thread_annotations.h>
 #include <base/threading/thread_checker.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/cros_camera_hal.h"
 #include "hal_adapter/camera_hal_adapter.h"
@@ -61,8 +64,9 @@ class CameraHalServerImpl final {
 
     // CameraHalServer Mojo interface implementation.
 
-    void CreateChannel(mojom::CameraModuleRequest camera_module_request,
-                       mojom::CameraClientType camera_client_type) final;
+    void CreateChannel(
+        mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
+        mojom::CameraClientType camera_client_type) final;
 
     void SetTracingEnabled(bool enabled) final;
 
@@ -79,7 +83,7 @@ class CameraHalServerImpl final {
     void OnServerRegistered(
         SetPrivacySwitchCallback set_privacy_switch_callback,
         int32_t result,
-        mojom::CameraHalServerCallbacksPtr callbacks);
+        mojo::PendingRemote<mojom::CameraHalServerCallbacks> callbacks);
 
     // Connection error handler for the Mojo connection to CameraHalDispatcher.
     void OnServiceMojoChannelError();
@@ -98,11 +102,11 @@ class CameraHalServerImpl final {
 
     CameraHalAdapter* camera_hal_adapter_;
 
-    // The CameraHalServer implementation binding.  All the function calls to
-    // |binding_| runs on |ipc_task_runner_|.
-    mojo::Binding<mojom::CameraHalServer> binding_;
+    // The CameraHalServer implementation receiver.  All the function calls to
+    // |receiver_| runs on |ipc_task_runner_|.
+    mojo::Receiver<mojom::CameraHalServer> receiver_;
 
-    mojom::CameraHalServerCallbacksPtr callbacks_;
+    mojo::Remote<mojom::CameraHalServerCallbacks> callbacks_;
 
     base::WeakPtrFactory<IPCBridge> weak_ptr_factory_{this};
   };

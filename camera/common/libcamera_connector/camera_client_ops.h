@@ -13,7 +13,9 @@
 #include <base/containers/flat_map.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "common/libcamera_connector/stream_buffer_manager.h"
 #include "common/libcamera_connector/types.h"
@@ -57,7 +59,8 @@ class CameraClientOps : public mojom::Camera3CallbackOps {
   // Initializes the class and returns mojom::Camera3DeviceOpsRequest to be
   // bound. Subsequent calls to other member functions are expected to be run on
   // the same sequence the Init() call ran on.
-  mojom::Camera3DeviceOpsRequest Init(CaptureResultCallback result_callback);
+  mojo::PendingReceiver<mojom::Camera3DeviceOps> Init(
+      CaptureResultCallback result_callback);
 
   // Starts the capture session.  StartCapture() initializes the device,
   // configures streams, and starts sending capture requests in a loop. Note
@@ -122,8 +125,8 @@ class CameraClientOps : public mojom::Camera3CallbackOps {
   // to prevent us from sending additional mojo IPC calls after calling
   // Camera3DeviceOps::Close(). See b/166725158 for context.
   bool capturing_;
-  mojom::Camera3DeviceOpsPtr device_ops_;
-  mojo::Binding<mojom::Camera3CallbackOps> camera3_callback_ops_;
+  mojo::Remote<mojom::Camera3DeviceOps> device_ops_;
+  mojo::Receiver<mojom::Camera3CallbackOps> camera3_callback_ops_;
 
   CaptureResultCallback result_callback_;
 

@@ -26,7 +26,7 @@ class Camera3DeviceOpsDelegate final
   ~Camera3DeviceOpsDelegate();
 
  private:
-  void Initialize(mojom::Camera3CallbackOpsPtr callback_ops,
+  void Initialize(mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops,
                   InitializeCallback callback) final;
 
   void ConfigureStreams(mojom::Camera3StreamConfigurationPtr config,

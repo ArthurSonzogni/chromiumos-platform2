@@ -16,6 +16,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -39,7 +40,7 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner();
 
   void RegisterServer(
-      mojom::CameraHalServerPtr hal_ptr,
+      mojo::PendingRemote<mojom::CameraHalServer> server,
       mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
           on_construct_callback,
       Callback on_error_callback);
@@ -71,7 +72,7 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   };
 
   using ServerPendingMojoRequest = PendingMojoRequest<
-      mojom::CameraHalServerPtr,
+      mojo::PendingRemote<mojom::CameraHalServer>,
       mojom::CameraHalDispatcher::RegisterServerWithTokenCallback>;
 
   template <typename T>
@@ -95,7 +96,7 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
 
   // The Mojo channel to CameraHalDispatcher in Chrome. All the Mojo
   // communication to |dispatcher_| happens on |ipc_thread_|.
-  mojom::CameraHalDispatcherPtr dispatcher_;
+  mojo::Remote<mojom::CameraHalDispatcher> dispatcher_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // Watches for change events on the unix domain socket file created by Chrome.

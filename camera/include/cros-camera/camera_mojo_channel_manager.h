@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/callback_forward.h>
 #include <base/memory/ref_counted.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_mojo_channel_manager_token.h"
@@ -55,7 +56,7 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
   // |on_construct_callback| and |on_error_callback| will be run on the IPC
   // thread as well.
   virtual void RegisterServer(
-      mojom::CameraHalServerPtr hal_ptr,
+      mojo::PendingRemote<mojom::CameraHalServer> server,
       mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
           on_construct_callback,
       Callback on_error_callback) = 0;

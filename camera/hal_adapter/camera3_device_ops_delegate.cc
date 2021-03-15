@@ -28,7 +28,8 @@ Camera3DeviceOpsDelegate::Camera3DeviceOpsDelegate(
 Camera3DeviceOpsDelegate::~Camera3DeviceOpsDelegate() {}
 
 void Camera3DeviceOpsDelegate::Initialize(
-    mojom::Camera3CallbackOpsPtr callback_ops, InitializeCallback callback) {
+    mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops,
+    InitializeCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED();

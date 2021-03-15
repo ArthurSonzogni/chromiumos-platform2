@@ -24,7 +24,8 @@
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
 #include <camera/camera_metadata.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <system/camera_metadata.h>
 
 #include "common/utils/common_types.h"
@@ -114,13 +115,14 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // Bind() is called by CameraHalAdapter in OpenDevice() on the mojo IPC
   // handler thread in |module_delegate_|.
-  void Bind(mojom::Camera3DeviceOpsRequest device_ops_request);
+  void Bind(mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver);
 
   // Callback interface for Camera3DeviceOpsDelegate.
   // These methods are callbacks for |device_ops_delegate_| and are executed on
   // the mojo IPC handler thread in |device_ops_delegate_|.
 
-  int32_t Initialize(mojom::Camera3CallbackOpsPtr callback_ops);
+  int32_t Initialize(
+      mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops);
 
   int32_t ConfigureStreams(
       mojom::Camera3StreamConfigurationPtr config,

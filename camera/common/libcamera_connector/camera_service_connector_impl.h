@@ -15,7 +15,9 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "common/libcamera_connector/camera_client.h"
 #include "cros-camera/camera_service_connector.h"
@@ -55,11 +57,13 @@ class CameraServiceConnector {
   using ConnectDispatcherCallback = base::OnceCallback<void()>;
 
   // Registers the camera HAL client to camera HAL dispatcher.
-  void RegisterClient(mojom::CameraHalClientPtr camera_hal_client,
-                      IntOnceCallback on_registered_callback);
+  void RegisterClient(
+      mojo::PendingRemote<mojom::CameraHalClient> camera_hal_client,
+      IntOnceCallback on_registered_callback);
 
-  void RegisterClientOnThread(mojom::CameraHalClientPtr camera_hal_client,
-                              IntOnceCallback on_registered_callback);
+  void RegisterClientOnThread(
+      mojo::PendingRemote<mojom::CameraHalClient> camera_hal_client,
+      IntOnceCallback on_registered_callback);
 
   void OnRegisteredClient(IntOnceCallback on_registered_callback,
                           int32_t result);
@@ -70,7 +74,7 @@ class CameraServiceConnector {
 
   base::Thread ipc_thread_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  mojom::CameraHalDispatcherPtr dispatcher_;
+  mojo::Remote<mojom::CameraHalDispatcher> dispatcher_;
   std::unique_ptr<CameraClient> camera_client_;
   base::UnguessableToken token_;
 

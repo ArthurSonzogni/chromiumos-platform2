@@ -14,7 +14,9 @@
 #include <base/logging.h>
 #include <base/threading/thread_checker.h>
 #include <gtest/gtest.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_thread.h"
@@ -90,7 +92,7 @@ class ClientDeviceConnector final : public DeviceConnector,
 
   ~ClientDeviceConnector();
 
-  cros::mojom::Camera3DeviceOpsRequest GetDeviceOpsRequest();
+  mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> GetDeviceOpsReceiver();
 
   // DeviceConnector implementation.
   int Initialize(const camera3_callback_ops_t* callback_ops) override;
@@ -101,8 +103,8 @@ class ClientDeviceConnector final : public DeviceConnector,
   int Flush() override;
 
  private:
-  void MakeDeviceOpsRequestOnThread(
-      cros::mojom::Camera3DeviceOpsRequest* dev_ops_req);
+  void MakeDeviceOpsReceiverOnThread(
+      mojo::PendingReceiver<cros::mojom::Camera3DeviceOps>* dev_ops_rec);
 
   void CloseOnThread(base::OnceCallback<void(int32_t)> cb);
   void OnClosedOnThread(base::OnceCallback<void(int32_t)> cb, int32_t result);
@@ -131,8 +133,8 @@ class ClientDeviceConnector final : public DeviceConnector,
       const cros::mojom::Camera3StreamBufferPtr& buffer_ptr,
       camera3_stream_buffer_t* buffer);
 
-  cros::mojom::Camera3DeviceOpsPtr dev_ops_;
-  mojo::Binding<cros::mojom::Camera3CallbackOps> mojo_callback_ops_;
+  mojo::Remote<cros::mojom::Camera3DeviceOps> dev_ops_;
+  mojo::Receiver<cros::mojom::Camera3CallbackOps> mojo_callback_ops_;
   const camera3_callback_ops_t* user_callback_ops_;
   cros::CameraThread dev_thread_;
   std::set<camera3_stream_t*> camera3_streams_;

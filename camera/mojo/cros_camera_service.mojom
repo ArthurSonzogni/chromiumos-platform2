@@ -53,20 +53,20 @@ interface CameraHalDispatcher {
   // [Deprecated in version 4]
   // A CameraHalServer calls RegisterServer to register itself with the
   // dispatcher.
-  RegisterServer@0(CameraHalServer server);
+  RegisterServer@0(pending_remote<CameraHalServer> server);
 
   // [Deprecated in version 4]
   // A CameraHalClient calls RegisterClient to register itself with the
   // dispatcher.
-  RegisterClient@1(CameraHalClient client);
+  RegisterClient@1(pending_remote<CameraHalClient> client);
 
   // Get MjpegDecodeAccelerator from dispatcher.
   [MinVersion = 1] GetMjpegDecodeAccelerator@2
-      (MjpegDecodeAccelerator& accerlator_request);
+      (pending_receiver<MjpegDecodeAccelerator> accelerator_receiver);
 
   // Get JpegEncodeAccelerator from dispatcher.
   [MinVersion = 2] GetJpegEncodeAccelerator@3
-      (JpegEncodeAccelerator& accerlator_request);
+      (pending_receiver<JpegEncodeAccelerator> accelerator_receiver);
 
   // A CameraHalServer calls RegisterServerWithToken to register itself with the
   // dispatcher. CameraHalDispatcher would authenticate the server with the
@@ -74,15 +74,15 @@ interface CameraHalDispatcher {
   // CameraHalDispatcher about CameraHalClient updates, for example when a
   // CameraHalClient opens or closes a camera device.
   [MinVersion=4] RegisterServerWithToken@4(
-      CameraHalServer server,
+      pending_remote<CameraHalServer> server,
       mojo_base.mojom.UnguessableToken auth_token) =>
-      (int32 result, CameraHalServerCallbacks callbacks);
+      (int32 result, pending_remote<CameraHalServerCallbacks> callbacks);
 
   // A CameraHalClient calls RegisterClient to register itself with the
   // dispatcher. CameraHalDispatcher would authenticate the client with the
   // given |type| and |auth_token|.
   [MinVersion=4] RegisterClientWithToken@5(
-      CameraHalClient client,
+      pending_remote<CameraHalClient> client,
       CameraClientType type,
       mojo_base.mojom.UnguessableToken auth_token) => (int32 result);
 };
@@ -95,7 +95,7 @@ interface CameraHalServer {
   // HAL v3 adapter.  Upon successfully binding of |camera_module_request|, the
   // caller will have a established Mojo channel to the camera HAL v3 adapter
   // process.
-  CreateChannel@0(CameraModule& camera_module_request,
+  CreateChannel@0(pending_receiver<CameraModule> camera_module_receiver,
                   [MinVersion=4] CameraClientType type);
 
   // Enable or disable tracing.
@@ -134,5 +134,5 @@ interface CameraHalClient {
   // CameraHalServer which holds the original Mojo channel crashes,
   // CameraHalDispatcher will call SetUpChannel again once a new CameraHalServer
   // reconnects.
-  SetUpChannel@0(CameraModule camera_module_ptr);
+  SetUpChannel@0(pending_remote<CameraModule> camera_module);
 };

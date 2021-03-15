@@ -15,8 +15,10 @@
 #include <base/logging.h>
 #include <cros-camera/camera_thread.h>
 #include <hardware/camera3.h>
-#include <mojo/public/cpp/bindings/associated_binding.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/associated_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "common/vendor_tag_manager.h"
@@ -135,7 +137,8 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
   void ConnectToDispatcher(base::Callback<void(int)> callback);
 
   // Implementation of cros::mojom::CameraHalClient.
-  void SetUpChannel(cros::mojom::CameraModulePtr camera_module) override;
+  void SetUpChannel(
+      mojo::PendingRemote<cros::mojom::CameraModule> camera_module) override;
 
   // Callback for SetCallbacks Mojo IPC function.
   void OnSetCallbacks(int32_t result);
@@ -169,11 +172,11 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
 
   base::Thread ipc_thread_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  mojo::Binding<cros::mojom::CameraHalClient> camera_hal_client_;
-  mojo::AssociatedBinding<cros::mojom::CameraModuleCallbacks>
+  mojo::Receiver<cros::mojom::CameraHalClient> camera_hal_client_;
+  mojo::AssociatedReceiver<cros::mojom::CameraModuleCallbacks>
       mojo_module_callbacks_;
   camera_module_callbacks_t* camera_module_callbacks_;
-  cros::mojom::CameraHalDispatcherPtr dispatcher_;
+  mojo::Remote<cros::mojom::CameraHalDispatcher> dispatcher_;
 
   // Signifies when IPC is connected and vendor tags acquired.
   base::WaitableEvent ipc_initialized_;
@@ -194,8 +197,8 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
   std::map<int, std::vector<std::vector<char>>> conflicting_devices_char_map_;
   std::map<int, std::vector<char*>> conflicting_devices_map_;
 
-  cros::mojom::VendorTagOpsPtr vendor_tag_ops_;
-  cros::mojom::CameraModulePtr camera_module_;
+  mojo::Remote<cros::mojom::VendorTagOps> vendor_tag_ops_;
+  mojo::Remote<cros::mojom::CameraModule> camera_module_;
 
   CameraHalClient(const CameraHalClient&) = delete;
   CameraHalClient& operator=(const CameraHalClient&) = delete;

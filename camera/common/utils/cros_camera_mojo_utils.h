@@ -191,13 +191,14 @@ class MojoReceiver : public T {
     return future->Get();
   }
 
-  void Bind(mojo::ScopedMessagePipeHandle handle,
+  void Bind(mojo::PendingReceiver<T> pending_receiver,
             const base::Closure& disconnect_handler) {
     VLOGF_ENTER();
     task_runner_->PostTask(
-        FROM_HERE, base::Bind(&MojoReceiver<T>::BindOnThread,
-                              weak_ptr_factory_.GetWeakPtr(),
-                              base::Passed(&handle), disconnect_handler));
+        FROM_HERE,
+        base::Bind(&MojoReceiver<T>::BindOnThread,
+                   weak_ptr_factory_.GetWeakPtr(),
+                   base::Passed(&pending_receiver), disconnect_handler));
   }
 
  protected:
@@ -224,11 +225,11 @@ class MojoReceiver : public T {
     cb.Run(std::move(remote));
   }
 
-  void BindOnThread(mojo::ScopedMessagePipeHandle handle,
+  void BindOnThread(mojo::PendingReceiver<T> pending_receiver,
                     const base::Closure& disconnect_handler) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
-    receiver_.Bind(mojo::PendingReceiver<T>(std::move(handle)));
+    receiver_.Bind(std::move(pending_receiver));
     receiver_.set_disconnect_handler(disconnect_handler);
   }
 

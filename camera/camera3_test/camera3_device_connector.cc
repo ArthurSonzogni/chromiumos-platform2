@@ -159,20 +159,20 @@ ClientDeviceConnector::~ClientDeviceConnector() {
   dev_thread_.Stop();
 }
 
-cros::mojom::Camera3DeviceOpsRequest
-ClientDeviceConnector::GetDeviceOpsRequest() {
-  cros::mojom::Camera3DeviceOpsRequest dev_ops_req;
+mojo::PendingReceiver<cros::mojom::Camera3DeviceOps>
+ClientDeviceConnector::GetDeviceOpsReceiver() {
+  mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops_rec;
   dev_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&ClientDeviceConnector::MakeDeviceOpsRequestOnThread,
-                 base::Unretained(this), &dev_ops_req));
-  return dev_ops_req;
+      base::Bind(&ClientDeviceConnector::MakeDeviceOpsReceiverOnThread,
+                 base::Unretained(this), &dev_ops_rec));
+  return dev_ops_rec;
 }
 
-void ClientDeviceConnector::MakeDeviceOpsRequestOnThread(
-    cros::mojom::Camera3DeviceOpsRequest* dev_ops_req) {
+void ClientDeviceConnector::MakeDeviceOpsReceiverOnThread(
+    mojo::PendingReceiver<cros::mojom::Camera3DeviceOps>* dev_ops_rec) {
   dev_ops_.reset();
-  *dev_ops_req = mojo::MakeRequest(&dev_ops_);
+  *dev_ops_rec = dev_ops_.BindNewPipeAndPassReceiver();
 }
 
 void ClientDeviceConnector::CloseOnThread(
@@ -184,7 +184,7 @@ void ClientDeviceConnector::CloseOnThread(
 void ClientDeviceConnector::OnClosedOnThread(
     base::OnceCallback<void(int32_t)> cb, int32_t result) {
   dev_ops_.reset();
-  mojo_callback_ops_.Close();
+  mojo_callback_ops_.reset();
   std::move(cb).Run(result);
 }
 
@@ -210,11 +210,8 @@ void ClientDeviceConnector::InitializeOnThread(
     const camera3_callback_ops_t* callback_ops,
     base::OnceCallback<void(int32_t)> cb) {
   VLOGF_ENTER();
-  cros::mojom::Camera3CallbackOpsPtr callback_ops_ptr;
-  cros::mojom::Camera3CallbackOpsRequest callback_ops_request =
-      mojo::MakeRequest(&callback_ops_ptr);
-  mojo_callback_ops_.Bind(std::move(callback_ops_request));
-  dev_ops_->Initialize(std::move(callback_ops_ptr), std::move(cb));
+  dev_ops_->Initialize(mojo_callback_ops_.BindNewPipeAndPassRemote(),
+                       std::move(cb));
 }
 
 int ClientDeviceConnector::ConfigureStreams(

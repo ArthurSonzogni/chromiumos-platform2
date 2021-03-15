@@ -92,12 +92,10 @@ CameraHalServerImpl::IPCBridge::IPCBridge(
       mojo_manager_(mojo_manager),
       ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()),
       main_task_runner_(base::ThreadTaskRunnerHandle::Get()),
-      binding_(this) {}
+      receiver_(this) {}
 
 CameraHalServerImpl::IPCBridge::~IPCBridge() {
-  if (binding_.is_bound()) {
-    binding_.Unbind();
-  }
+  receiver_.reset();
   callbacks_.reset();
 }
 
@@ -107,19 +105,19 @@ void CameraHalServerImpl::IPCBridge::Start(
   VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  if (binding_.is_bound()) {
+  if (receiver_.is_bound()) {
     return;
   }
 
   camera_hal_adapter_ = camera_hal_adapter;
 
-  mojom::CameraHalServerPtr server_ptr;
-  binding_.Bind(mojo::MakeRequest(&server_ptr));
-  binding_.set_connection_error_handler(
+  mojo::PendingRemote<mojom::CameraHalServer> server =
+      receiver_.BindNewPipeAndPassRemote();
+  receiver_.set_disconnect_handler(
       base::Bind(&CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError,
                  GetWeakPtr()));
   mojo_manager_->RegisterServer(
-      std::move(server_ptr),
+      std::move(server),
       base::BindOnce(&CameraHalServerImpl::IPCBridge::OnServerRegistered,
                      GetWeakPtr(), std::move(set_privacy_switch_callback)),
       base::BindOnce(&CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError,
@@ -127,12 +125,12 @@ void CameraHalServerImpl::IPCBridge::Start(
 }
 
 void CameraHalServerImpl::IPCBridge::CreateChannel(
-    mojom::CameraModuleRequest camera_module_request,
+    mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  camera_hal_adapter_->OpenCameraHal(std::move(camera_module_request),
+  camera_hal_adapter_->OpenCameraHal(std::move(camera_module_receiver),
                                      camera_client_type);
 }
 
@@ -160,7 +158,7 @@ CameraHalServerImpl::IPCBridge::GetWeakPtr() {
 void CameraHalServerImpl::IPCBridge::OnServerRegistered(
     SetPrivacySwitchCallback set_privacy_switch_callback,
     int32_t result,
-    mojom::CameraHalServerCallbacksPtr callbacks) {
+    mojo::PendingRemote<mojom::CameraHalServerCallbacks> callbacks) {
   VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
@@ -169,7 +167,7 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
                 << base::safe_strerror(-result);
     return;
   }
-  callbacks_.Bind(callbacks.PassInterface());
+  callbacks_.Bind(std::move(callbacks));
 
   std::move(set_privacy_switch_callback)
       .Run(base::BindRepeating(
@@ -186,6 +184,7 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
   // The CameraHalDispatcher Mojo parent is probably dead. We need to restart
   // another process in order to connect to the new Mojo parent.
   LOGF(INFO) << "Mojo connection to CameraHalDispatcher is broken";
+  receiver_.reset();
   main_task_runner_->PostTask(
       FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                             base::Unretained(camera_hal_server_), ECONNRESET));

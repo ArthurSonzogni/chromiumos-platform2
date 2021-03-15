@@ -29,7 +29,7 @@ namespace cros {
 
 CameraClientOps::CameraClientOps() : camera3_callback_ops_(this) {}
 
-mojom::Camera3DeviceOpsRequest CameraClientOps::Init(
+mojo::PendingReceiver<mojom::Camera3DeviceOps> CameraClientOps::Init(
     CaptureResultCallback result_callback) {
   VLOGF_ENTER();
 
@@ -37,7 +37,7 @@ mojom::Camera3DeviceOpsRequest CameraClientOps::Init(
   capturing_ = false;
   result_callback_ = std::move(result_callback);
   frame_number_ = 0;
-  return mojo::MakeRequest(&device_ops_);
+  return device_ops_.BindNewPipeAndPassReceiver();
 }
 
 void CameraClientOps::StartCapture(int32_t camera_id,
@@ -70,7 +70,7 @@ void CameraClientOps::Reset() {
 
   capturing_ = false;
   device_ops_.reset();
-  camera3_callback_ops_.Close();
+  camera3_callback_ops_.reset();
 }
 
 void CameraClientOps::ProcessCaptureResult(
@@ -195,11 +195,7 @@ void CameraClientOps::InitializeDevice() {
   VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
-  mojom::Camera3CallbackOpsPtr camera3_callback_ops_ptr;
-  mojom::Camera3CallbackOpsRequest camera3_callback_ops_request =
-      mojo::MakeRequest(&camera3_callback_ops_ptr);
-  camera3_callback_ops_.Bind(std::move(camera3_callback_ops_request));
-  device_ops_->Initialize(std::move(camera3_callback_ops_ptr),
+  device_ops_->Initialize(camera3_callback_ops_.BindNewPipeAndPassRemote(),
                           base::Bind(&CameraClientOps::OnInitializedDevice,
                                      base::Unretained(this)));
 }
@@ -373,7 +369,7 @@ void CameraClientOps::OnClosedDevice(IntOnceCallback close_callback,
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   device_ops_.reset();
-  camera3_callback_ops_.Close();
+  camera3_callback_ops_.reset();
   std::move(close_callback).Run(result);
 }
 

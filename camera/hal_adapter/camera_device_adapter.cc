@@ -186,16 +186,16 @@ bool CameraDeviceAdapter::Start(
 }
 
 void CameraDeviceAdapter::Bind(
-    mojom::Camera3DeviceOpsRequest device_ops_request) {
+    mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver) {
   device_ops_delegate_->Bind(
-      device_ops_request.PassMessagePipe(),
+      std::move(device_ops_receiver),
       // Close the device when the Mojo channel breaks.
       base::Bind(base::IgnoreResult(&CameraDeviceAdapter::Close),
                  base::Unretained(this)));
 }
 
 int32_t CameraDeviceAdapter::Initialize(
-    mojom::Camera3CallbackOpsPtr callback_ops) {
+    mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops) {
   VLOGF_ENTER();
   if (!fence_sync_thread_.Start()) {
     LOGF(ERROR) << "Fence sync thread failed to start";
@@ -218,7 +218,7 @@ int32_t CameraDeviceAdapter::Initialize(
   callback_ops_delegate_.reset(new Camera3CallbackOpsDelegate(
       camera_callback_ops_thread_.task_runner()));
   callback_ops_delegate_->Bind(
-      callback_ops.PassInterface(),
+      std::move(callback_ops),
       base::Bind(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
                  base::Unretained(this)));
   return camera_device_->ops->initialize(camera_device_, this);

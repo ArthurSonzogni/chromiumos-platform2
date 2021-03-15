@@ -14,7 +14,6 @@
 #include <base/sequence_checker.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#include <mojo/public/cpp/bindings/binding.h>
 
 #include "common/libcamera_connector/types.h"
 #include "cros-camera/common.h"
@@ -125,7 +124,7 @@ int CameraServiceConnector::StopCapture(int id) {
 }
 
 void CameraServiceConnector::RegisterClient(
-    mojom::CameraHalClientPtr camera_hal_client,
+    mojo::PendingRemote<mojom::CameraHalClient> camera_hal_client,
     IntOnceCallback on_registered_callback) {
   VLOGF_ENTER();
   // This may be called from a different thread than the main thread,
@@ -140,26 +139,21 @@ void CameraServiceConnector::RegisterClient(
 }
 
 void CameraServiceConnector::RegisterClientOnThread(
-    mojom::CameraHalClientPtr camera_hal_client,
+    mojo::PendingRemote<mojom::CameraHalClient> camera_hal_client,
     IntOnceCallback on_registered_callback) {
   VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(!token_.is_empty());
 
-  if (token_.is_empty()) {
-    // TODO(b/170075468): Remove when this method is deprecated.
-    dispatcher_->RegisterClient(std::move(camera_hal_client));
-    std::move(on_registered_callback).Run(0);
-  } else {
-    auto mojo_token = mojo_base::mojom::UnguessableToken::New();
-    mojo_token->high = token_.GetHighForSerialization();
-    mojo_token->low = token_.GetLowForSerialization();
-    dispatcher_->RegisterClientWithToken(
-        std::move(camera_hal_client), cros::mojom::CameraClientType::UNKNOWN,
-        std::move(mojo_token),
-        base::BindOnce(&CameraServiceConnector::OnRegisteredClient,
-                       base::Unretained(this),
-                       std::move(on_registered_callback)));
-  }
+  auto mojo_token = mojo_base::mojom::UnguessableToken::New();
+  mojo_token->high = token_.GetHighForSerialization();
+  mojo_token->low = token_.GetLowForSerialization();
+  dispatcher_->RegisterClientWithToken(
+      std::move(camera_hal_client), cros::mojom::CameraClientType::UNKNOWN,
+      std::move(mojo_token),
+      base::BindOnce(&CameraServiceConnector::OnRegisteredClient,
+                     base::Unretained(this),
+                     std::move(on_registered_callback)));
 }
 
 void CameraServiceConnector::OnRegisteredClient(
@@ -187,16 +181,16 @@ void CameraServiceConnector::InitOnThread(IntOnceCallback init_callback) {
     return;
   }
 
-  dispatcher_ = mojo::MakeProxy(
-      mojom::CameraHalDispatcherPtrInfo(std::move(child_pipe), 0u),
-      ipc_thread_.task_runner());
+  dispatcher_ = mojo::Remote<mojom::CameraHalDispatcher>(
+      mojo::PendingRemote<mojom::CameraHalDispatcher>(std::move(child_pipe),
+                                                      0u));
   bool connected = dispatcher_.is_bound();
   if (!connected) {
     LOGF(ERROR) << "Failed to make a proxy to dispatcher";
     std::move(init_callback).Run(-ENODEV);
     return;
   }
-  dispatcher_.set_connection_error_handler(base::BindOnce(
+  dispatcher_.set_disconnect_handler(base::BindOnce(
       &CameraServiceConnector::OnDispatcherError, base::Unretained(this)));
   LOGF(INFO) << "Dispatcher connected";
 
@@ -210,6 +204,7 @@ void CameraServiceConnector::OnDispatcherError() {
   VLOGF_ENTER();
   // TODO(b/151047930): Attempt to reconnect on dispatcher error.
   LOGF(FATAL) << "Connection to camera dispatcher lost";
+  dispatcher_.reset();
 }
 
 }  // namespace cros

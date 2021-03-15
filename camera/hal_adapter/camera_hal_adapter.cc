@@ -105,7 +105,7 @@ bool CameraHalAdapter::Start() {
 }
 
 void CameraHalAdapter::OpenCameraHal(
-    mojom::CameraModuleRequest camera_module_request,
+    mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   TRACE_CAMERA_SCOPED();
@@ -113,7 +113,7 @@ void CameraHalAdapter::OpenCameraHal(
       this, camera_module_thread_.task_runner(), camera_client_type);
   uint32_t module_id = module_id_++;
   module_delegate->Bind(
-      camera_module_request.PassMessagePipe(),
+      std::move(camera_module_receiver),
       base::Bind(&CameraHalAdapter::ResetModuleDelegateOnThread,
                  base::Unretained(this), module_id));
   base::AutoLock l(module_delegates_lock_);
@@ -125,7 +125,7 @@ void CameraHalAdapter::OpenCameraHal(
 
 int32_t CameraHalAdapter::OpenDevice(
     int32_t camera_id,
-    mojom::Camera3DeviceOpsRequest device_ops_request,
+    mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
@@ -214,7 +214,7 @@ int32_t CameraHalAdapter::OpenDevice(
     device_adapters_.erase(camera_id);
     return -ENODEV;
   }
-  device_adapters_.at(camera_id)->Bind(std::move(device_ops_request));
+  device_adapters_.at(camera_id)->Bind(std::move(device_ops_receiver));
   camera_metrics_->SendCameraFacing(info.facing);
   camera_metrics_->SendOpenDeviceClientType(
       static_cast<int>(camera_client_type));
@@ -302,7 +302,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
 }
 
 int32_t CameraHalAdapter::SetCallbacks(
-    mojom::CameraModuleCallbacksPtr callbacks) {
+    mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED();
@@ -311,7 +311,7 @@ int32_t CameraHalAdapter::SetCallbacks(
       camera_module_callbacks_thread_.task_runner());
   uint32_t callbacks_id = callbacks_id_++;
   callbacks_delegate->Bind(
-      callbacks.PassInterface(),
+      std::move(callbacks),
       base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
                  base::Unretained(this), callbacks_id));
 
@@ -366,7 +366,7 @@ int32_t CameraHalAdapter::Init() {
 }
 
 void CameraHalAdapter::GetVendorTagOps(
-    mojom::VendorTagOpsRequest vendor_tag_ops_request) {
+    mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_receiver) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
 
@@ -374,7 +374,7 @@ void CameraHalAdapter::GetVendorTagOps(
       camera_module_thread_.task_runner(), &vendor_tag_manager_);
   uint32_t vendor_tag_ops_id = vendor_tag_ops_id_++;
   vendor_tag_ops_delegate->Bind(
-      vendor_tag_ops_request.PassMessagePipe(),
+      std::move(vendor_tag_ops_receiver),
       base::Bind(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
                  base::Unretained(this), vendor_tag_ops_id));
   vendor_tag_ops_delegates_[vendor_tag_ops_id] =
@@ -776,7 +776,7 @@ void CameraHalAdapter::ResetVendorTagOpsDelegateOnThread(
 }
 
 int32_t CameraHalAdapter::SetCallbacksAssociated(
-    mojom::CameraModuleCallbacksAssociatedPtrInfo callbacks_info) {
+    mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED();
@@ -786,7 +786,7 @@ int32_t CameraHalAdapter::SetCallbacksAssociated(
           camera_module_callbacks_thread_.task_runner());
   uint32_t callbacks_id = callbacks_id_++;
   callbacks_delegate->Bind(
-      std::move(callbacks_info),
+      std::move(callbacks),
       base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
                  base::Unretained(this), callbacks_id));
 
