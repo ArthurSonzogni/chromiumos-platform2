@@ -40,7 +40,8 @@ TEST_F(AuthSessionTest, TimeoutTest) {
   auto on_timeout = base::BindOnce(
       [](bool* called, const base::UnguessableToken&) { *called = true; },
       base::Unretained(&called));
-  AuthSession auth_session(fake_username, std::move(on_timeout),
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  AuthSession auth_session(fake_username, flags, std::move(on_timeout),
                            &keyset_management_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);

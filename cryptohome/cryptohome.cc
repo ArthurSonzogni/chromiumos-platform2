@@ -3165,6 +3165,11 @@ int main(int argc, char** argv) {
       return 1;
 
     cryptohome::StartAuthSessionRequest req;
+    unsigned int flags = 0;
+    flags |= cl->HasSwitch(switches::kPublicMount)
+                 ? cryptohome::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER
+                 : 0;
+    req.set_flags(flags);
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
@@ -3208,8 +3213,10 @@ int main(int argc, char** argv) {
     cryptohome::AddCredentialsRequest req;
     req.set_auth_session_id(auth_session_id);
 
-    if (!BuildAuthorization(cl, proxy, true /* need_password */,
-                            req.mutable_authorization()))
+    if (!BuildAuthorization(
+            cl, proxy,
+            !cl->HasSwitch(switches::kPublicMount) /* need_password */,
+            req.mutable_authorization()))
       return 1;
 
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
@@ -3242,8 +3249,10 @@ int main(int argc, char** argv) {
     cryptohome::AuthenticateAuthSessionRequest req;
     req.set_auth_session_id(auth_session_id);
 
-    if (!BuildAuthorization(cl, proxy, true /* need_password */,
-                            req.mutable_authorization()))
+    if (!BuildAuthorization(
+            cl, proxy,
+            !cl->HasSwitch(switches::kPublicMount) /* need_password */,
+            req.mutable_authorization()))
       return 1;
 
     brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));

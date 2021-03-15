@@ -3090,6 +3090,7 @@ void LegacyCryptohomeInterfaceAdaptor::StartAuthSession(
 
   user_data_auth::StartAuthSessionRequest request;
   request.mutable_account_id()->CopyFrom(in_account_id);
+  request.set_flags(in_request.flags());
   userdataauth_proxy_->StartAuthSessionAsync(
       request,
       base::Bind(&LegacyCryptohomeInterfaceAdaptor::StartAuthSessionOnStarted,

@@ -1700,6 +1700,9 @@ void UserDataAuth::ContinueMountWithCredentials(
   if (request.public_mount() && other_sessions_active &&
       !only_self_unmounted_attempt) {
     LOG(ERROR) << "Public mount requested with other sessions active.";
+    if (!request.auth_session_id().empty() && !homedirs_->Remove(account_id)) {
+      LOG(ERROR) << "Failed to remove vault for kiosk user.";
+    }
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
     std::move(on_done).Run(reply);
     return;
@@ -3041,9 +3044,9 @@ bool UserDataAuth::StartAuthSession(
   auto on_timeout = base::BindOnce(&UserDataAuth::RemoveAuthSessionWithToken,
                                    base::Unretained(this));
   // Assumption here is that keyset_management_ will outlive this AuthSession.
-  std::unique_ptr<AuthSession> auth_session =
-      std::make_unique<AuthSession>(request.account_id().account_id(),
-                                    std::move(on_timeout), keyset_management_);
+  std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
+      request.account_id().account_id(), request.flags(), std::move(on_timeout),
+      keyset_management_);
   user_data_auth::StartAuthSessionReply reply;
   base::Optional<std::string> serialized_string =
       AuthSession::GetSerializedStringFromToken(auth_session->token());

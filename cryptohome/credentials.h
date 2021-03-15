@@ -54,6 +54,8 @@ class Credentials final {
     return challenge_credentials_keyset_info_;
   }
 
+  void set_passkey(const brillo::SecureBlob& passkey) { passkey_ = passkey; }
+
  private:
   std::string username_;
   KeyData key_data_;

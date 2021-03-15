@@ -46,6 +46,7 @@ class AuthSession final {
   // of AuthSession.
   AuthSession(
       std::string username,
+      unsigned int flags,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
       KeysetManagement* keyset_management);
   ~AuthSession();
@@ -111,7 +112,17 @@ class AuthSession final {
   // this |AuthSession| reference from |UserDataAuth|.
   void AuthSessionTimedOut();
 
+  // Process the parameters received when constructing an |AuthSession|.
+  void ProcessFlags(unsigned int flags);
+
+  // This function returns credentials based on the state of the current
+  // |AuthSession|.
+  std::unique_ptr<Credentials> GetCredentials(
+      const cryptohome::AuthorizationRequest& authorization_request,
+      MountError* error);
+
   std::string username_;
+  bool is_kiosk_user_;
   base::UnguessableToken token_;
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;

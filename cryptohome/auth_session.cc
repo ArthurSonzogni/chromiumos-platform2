@@ -32,12 +32,14 @@ constexpr base::TimeDelta kAuthSessionTimeoutInMinutes =
 
 AuthSession::AuthSession(
     std::string username,
+    unsigned int flags,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     KeysetManagement* keyset_management)
     : username_(username),
       on_timeout_(std::move(on_timeout)),
       keyset_management_(keyset_management) {
   token_ = base::UnguessableToken::Create();
+  ProcessFlags(flags);
   timer_.Start(
       FROM_HERE, kAuthSessionTimeoutInMinutes,
       base::Bind(&AuthSession::AuthSessionTimedOut, base::Unretained(this)));
@@ -45,6 +47,11 @@ AuthSession::AuthSession(
 }
 
 AuthSession::~AuthSession() = default;
+
+void AuthSession::ProcessFlags(unsigned int flags) {
+  is_kiosk_user_ =
+      flags & user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER;
+}
 
 void AuthSession::AuthSessionTimedOut() {
   status_ = AuthStatus::kAuthStatusTimedOut;
@@ -57,9 +64,11 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
   if (user_exists_) {
     return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
   }
-  auto credentials = std::make_unique<Credentials>(
-      username_, brillo::SecureBlob(authorization_request.key().secret()));
-  credentials->set_key_data(authorization_request.key().data());
+  MountError code;
+  auto credentials = GetCredentials(authorization_request, &code);
+  if (!credentials) {
+    return MountErrorToCryptohomeError(code);
+  }
 
   user_data_auth::CryptohomeErrorCode errorCode =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -72,11 +81,12 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
 
 user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     const cryptohome::AuthorizationRequest& authorization_request) {
-  auto credentials = std::make_unique<Credentials>(
-      username_, brillo::SecureBlob(authorization_request.key().secret()));
-  credentials->set_key_data(authorization_request.key().data());
-
   MountError code;
+  auto credentials = GetCredentials(authorization_request, &code);
+  if (!credentials) {
+    return MountErrorToCryptohomeError(code);
+  }
+
   std::unique_ptr<VaultKeyset> vault_keyset =
       keyset_management_->LoadUnwrappedKeyset(*credentials, &code);
   if (vault_keyset && code == MOUNT_ERROR_NONE) {
@@ -123,6 +133,27 @@ AuthSession::GetTokenFromSerializedString(const std::string& serialized_token) {
   memcpy(&high, &serialized_token[kHighTokenOffset], sizeof(high));
   memcpy(&low, &serialized_token[kLowTokenOffset], sizeof(low));
   return base::UnguessableToken::Deserialize(high, low);
+}
+
+std::unique_ptr<Credentials> AuthSession::GetCredentials(
+    const cryptohome::AuthorizationRequest& authorization_request,
+    MountError* error) {
+  auto credentials = std::make_unique<Credentials>(
+      username_, brillo::SecureBlob(authorization_request.key().secret()));
+  credentials->set_key_data(authorization_request.key().data());
+
+  if (is_kiosk_user_) {
+    brillo::SecureBlob public_mount_passkey =
+        keyset_management_->GetPublicMountPassKey(username_);
+    if (public_mount_passkey.empty()) {
+      LOG(ERROR) << "Could not get public mount passkey.";
+      *error = MountError::MOUNT_ERROR_KEY_FAILURE;
+      return nullptr;
+    }
+    credentials->set_passkey(public_mount_passkey);
+  }
+
+  return credentials;
 }
 
 }  // namespace cryptohome

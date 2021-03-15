@@ -559,8 +559,20 @@ message StartFingerprintAuthSessionRequest {}
 // Ends fingerprint auth session by calling Biometrics Daemon.
 message EndFingerprintAuthSessionRequest {}
 
+// These flags will define any requests from the caller for how to run an
+// AuthSession.
+enum AuthSessionFlags {
+  // Default Value
+  AUTH_SESSION_FLAGS_NONE = 0;
+  // Is the user a kiosk user?
+  AUTH_SESSION_FLAGS_KIOSK_USER = 1;
+}
+
 // Starts AuthSession.
-message StartAuthSessionRequest {}
+message StartAuthSessionRequest {
+  // AuthSessionFlags to define AuthSession behaviour.
+  optional uint32 flags = 1;
+}
 
 // Reads the WebAuthn secret if it's available.
 message GetWebAuthnSecretRequest {}
