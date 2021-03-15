@@ -324,6 +324,9 @@ properties:
                       description: Optional UCM suffix used to determine model specific
                         config.
                       type: string
+                    sound-card-init-conf:
+                      description: Optional model specific config filename for sound_card_init.
+                      type: string
                     files:
                       type: array
                       build-only-element: true

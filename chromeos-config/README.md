@@ -397,6 +397,7 @@ In the tables below,
 | cras-config-dir | string |  | True |  | False | Subdirectory for model-specific configuration. |
 | disable-profile | string |  | False |  | False | Optional --disable_profile parameter for CRAS deamon. |
 | files | array - [files](#files) |  | False |  | True |  |
+| sound-card-init-conf | string |  | False |  | False | Optional model specific config filename for sound_card_init. |
 | ucm-suffix | string |  | False |  | False | Optional UCM suffix used to determine model specific config. |
 
 ### files
