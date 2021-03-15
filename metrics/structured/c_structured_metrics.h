@@ -29,6 +29,7 @@ BRILLO_EXPORT void BluetoothPairingStateChanged(int64_t system_time,
 BRILLO_EXPORT void BluetoothAclConnectionStateChanged(int64_t system_time,
                                                       const char* device_id,
                                                       int device_type,
+                                                      int connection_direction,
                                                       int state_change_type,
                                                       int state);
 

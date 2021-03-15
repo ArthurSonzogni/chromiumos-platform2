@@ -70,6 +70,11 @@
         The bluetooth device type such as LE, BREDR.
       </summary>
     </metric>
+    <metric name="ConnectionDirection" type="int">
+      <summary>
+        Whether it is an incoming or outgoing connection.
+      </summary>
+    </metric>
     <metric name="StateChangeType" type="int">
       <summary>
         Whether it is a connection or disconnection state change.
