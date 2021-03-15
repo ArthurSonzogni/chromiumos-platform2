@@ -118,6 +118,7 @@ type cros_powerd_exec, exec_type, file_type, cros_file_type, cros_system_file_ty
 type cros_qrtr_ns_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_recover_duts_script, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_restorecon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_resourced_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rmtfs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rsyslogd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_run_oci_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

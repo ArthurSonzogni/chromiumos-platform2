@@ -93,6 +93,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/permission_broker      u:object_r:cros_permission_broker_exec:s0
 /usr/bin/powerd                 u:object_r:cros_powerd_exec:s0
 /usr/bin/qrtr-ns                u:object_r:cros_qrtr_ns_exec:s0
+/usr/bin/resourced              u:object_r:cros_resourced_exec:s0
 /usr/bin/rmtfs                  u:object_r:cros_rmtfs_exec:s0
 /usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/seneschal              u:object_r:cros_seneschal_exec:s0
