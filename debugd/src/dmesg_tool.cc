@@ -24,7 +24,8 @@ bool DmesgTool::CallDmesg(const brillo::VariantDictionary& options,
                           std::string* output) {
   ProcessWithOutput process;
 
-  process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
+  // WARNING: CAP_TO_MASK() produces bad results when used with values >=32.
+  process.SetCapabilities(1ULL << CAP_SYSLOG);
   if (!process.Init()) {
     *output = "<process init failed>";
     return false;
