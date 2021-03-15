@@ -30,6 +30,8 @@ openat: 1
 gettid: 1
 gettimeofday: 1
 sched_get_priority_max: 1
+sched_getattr: 1
+sched_setattr: 1
 getsockname: 1
 clock_getres: 1
 clock_getres_time64: 1

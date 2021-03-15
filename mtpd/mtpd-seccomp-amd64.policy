@@ -34,6 +34,8 @@ set_robust_list: 1
 # Allow socket(domain==PF_LOCAL) or socket(domain==PF_NETLINK)
 socket: arg0 == 0x1 || arg0 == 0x10
 sched_get_priority_max: 1
+sched_getattr: 1
+sched_setattr: 1
 connect: 1
 getsockname: 1
 clock_getres: 1
