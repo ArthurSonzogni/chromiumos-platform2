@@ -7,11 +7,15 @@
 
 #include "rmad/rmad_interface.h"
 
+#include "rmad/utils/json_store.h"
+
 namespace rmad {
 
 class RmadInterfaceImpl final : public RmadInterface {
  public:
-  RmadInterfaceImpl() = default;
+  RmadInterfaceImpl();
+  // Used to inject a specified file.
+  explicit RmadInterfaceImpl(const base::FilePath& json_store_file_path);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
   RmadInterfaceImpl& operator=(const RmadInterfaceImpl&) = delete;
 
@@ -19,6 +23,9 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   void GetCurrentState(const GetCurrentStateRequest& request,
                        const GetCurrentStateCallback& callback) override;
+
+ private:
+  JsonStore json_store_;
 };
 
 }  // namespace rmad

@@ -54,6 +54,7 @@ static_library("libdbus_service") {
 static_library("librmad_interface") {
   configs += [ ":target_defaults" ]
   sources = [ "rmad_interface_impl.cc" ]
+  deps = [ ":libjson_store" ]
 }
 
 executable("rmad") {
@@ -73,12 +74,14 @@ if (use.test) {
     ]
     sources = [
       "dbus_service_test.cc",
+      "rmad_interface_test.cc",
       "state_handler/state_handler_manager_test.cc",
       "utils/json_store_test.cc",
     ]
     deps = [
       ":libdbus_service",
       ":libjson_store",
+      ":librmad_interface",
       ":libstate_handler",
       "//common-mk/testrunner",
     ]
