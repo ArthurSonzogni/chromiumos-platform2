@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,11 +10,12 @@
 
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 #include <inttypes.h>
 
 #include <string>
+
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 
 namespace tpm_manager {
 
@@ -736,6 +737,11 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusRequest& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
+  if (value.has_ignore_cache()) {
+    output += indent + "  ignore_cache: ";
+    base::StringAppendF(&output, "%s", value.ignore_cache() ? "true" : "false");
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -789,6 +795,11 @@ std::string GetProtoDebugStringWithIndent(
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
+  if (value.has_ignore_cache()) {
+    output += indent + "  ignore_cache: ";
+    base::StringAppendF(&output, "%s", value.ignore_cache() ? "true" : "false");
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }

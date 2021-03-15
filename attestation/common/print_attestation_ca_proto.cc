@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -51,6 +51,9 @@ std::string GetProtoDebugStringWithIndent(CertificateProfile value,
   if (value == XTS_CERTIFICATE) {
     return "XTS_CERTIFICATE";
   }
+  if (value == ENTERPRISE_VTPM_EK_CERTIFICATE) {
+    return "ENTERPRISE_VTPM_EK_CERTIFICATE";
+  }
   return "<unknown>";
 }
 
@@ -79,6 +82,12 @@ std::string GetProtoDebugStringWithIndent(NVRAMQuoteType value,
   }
   if (value == SN_BITS) {
     return "SN_BITS";
+  }
+  if (value == RSA_PUB_EK_CERT) {
+    return "RSA_PUB_EK_CERT";
+  }
+  if (value == RSU_DEVICE_ID) {
+    return "RSU_DEVICE_ID";
   }
   return "<unknown>";
 }
@@ -752,6 +761,11 @@ std::string GetProtoDebugStringWithIndent(const KeyInfo& value,
         base::HexEncode(value.signed_public_key_and_challenge().data(),
                         value.signed_public_key_and_challenge().size())
             .c_str());
+    output += "\n";
+  }
+  if (value.has_customer_id()) {
+    output += indent + "  customer_id: ";
+    base::StringAppendF(&output, "%s", value.customer_id().c_str());
     output += "\n";
   }
   output += indent + "}\n";

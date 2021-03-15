@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -84,6 +84,24 @@ std::string GetProtoDebugStringWithIndent(VAType value, int indent_size) {
   }
   if (value == TEST_VA) {
     return "TEST_VA";
+  }
+  return "<unknown>";
+}
+
+std::string GetProtoDebugString(DeleteKeysRequest_MatchBehavior value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(DeleteKeysRequest_MatchBehavior value,
+                                          int indent_size) {
+  if (value == DeleteKeysRequest_MatchBehavior_MATCH_BEHAVIOR_UNSPECIFIED) {
+    return "DeleteKeysRequest_MatchBehavior_MATCH_BEHAVIOR_UNSPECIFIED";
+  }
+  if (value == DeleteKeysRequest_MatchBehavior_MATCH_BEHAVIOR_PREFIX) {
+    return "DeleteKeysRequest_MatchBehavior_MATCH_BEHAVIOR_PREFIX";
+  }
+  if (value == DeleteKeysRequest_MatchBehavior_MATCH_BEHAVIOR_EXACT) {
+    return "DeleteKeysRequest_MatchBehavior_MATCH_BEHAVIOR_EXACT";
   }
   return "<unknown>";
 }
@@ -1471,16 +1489,6 @@ std::string GetProtoDebugStringWithIndent(const DeleteKeysRequest& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
-  if (value.has_key_label_match()) {
-    output += indent + "  key_label_match: ";
-    base::StringAppendF(&output, "%s", value.key_label_match().c_str());
-    output += "\n";
-  }
-  if (value.has_username()) {
-    output += indent + "  username: ";
-    base::StringAppendF(&output, "%s", value.username().c_str());
-    output += "\n";
-  }
   output += indent + "}\n";
   return output;
 }

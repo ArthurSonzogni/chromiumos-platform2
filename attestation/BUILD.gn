@@ -61,9 +61,6 @@ source_set("proto_library") {
   configs += [
     "//common-mk:nouse_thin_archive",
     "//common-mk:pic",
-
-    # TODO: Use brillo/brillo_export.h instead to export symbols.
-    "//common-mk:visibility_default",
     ":target_defaults",
   ]
   sources = [
@@ -125,9 +122,6 @@ shared_library("libattestation") {
   configs += [
     "//common-mk:nouse_thin_archive",
     ":local_proto_include",
-
-    # TODO: Use brillo/brillo_export.h instead to export symbols.
-    "//common-mk:visibility_default",
     ":target_defaults",
   ]
   libs = [ "system_api" ]

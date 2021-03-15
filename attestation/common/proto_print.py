@@ -149,13 +149,19 @@ def ParseProto(input_file):
     # Look for an enum definition.
     match = enum_re.search(line)
     if match:
-      current_enum = Enum(match.group(1))
+      prefix = ''
+      if current_message_stack:
+        prefix = '_'.join([m.name for m in current_message_stack]) + '_'
+      current_enum = Enum(prefix + match.group(1))
       continue
     # Look for an enum value.
     if current_enum:
       match = enum_value_re.search(line)
       if match:
-        current_enum.AddValue(match.group(1))
+        prefix = ''
+        if current_message_stack:
+          prefix = current_enum.name + '_'
+        current_enum.AddValue(prefix + match.group(1))
         continue
     # Look for a package statement.
     match = package_re.search(line)
@@ -212,6 +218,8 @@ def GenerateFileHeaders(proto_name, package, imports, subdir,
 #define %(guard_name)s
 
 #include <string>
+
+#include <brillo/brillo_export.h>
 
 #include "%(proto_include_dir)s/%(proto)s.pb.h"
 
@@ -294,7 +302,8 @@ def GenerateEnumPrinter(enum, header_file, impl_file):
   """
   declare = """
 std::string GetProtoDebugStringWithIndent(%(name)s value, int indent_size);
-std::string GetProtoDebugString(%(name)s value);""" % {'name': enum.name}
+BRILLO_EXPORT std::string GetProtoDebugString(%(name)s value);""" % \
+    {'name': enum.name}
   define_begin = """
 std::string GetProtoDebugString(%(name)s value) {
   return GetProtoDebugStringWithIndent(value, 0);
@@ -329,8 +338,8 @@ def GenerateMessagePrinter(message, header_file, impl_file):
   declare = """
 std::string GetProtoDebugStringWithIndent(const %(name)s& value,
                                           int indent_size);
-std::string GetProtoDebugString(const %(name)s& value);""" % {'name':
-                                                              message.name}
+BRILLO_EXPORT std::string GetProtoDebugString(const %(name)s& value);""" % \
+    {'name': message.name}
   define_begin = """
 std::string GetProtoDebugString(const %(name)s& value) {
   return GetProtoDebugStringWithIndent(value, 0);
