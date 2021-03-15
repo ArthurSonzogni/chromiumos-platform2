@@ -87,6 +87,7 @@ has_arc(`
 
 allow cros_cryptohomed {
   sysfs_dm
+  sysfs_loop
   sysfs_zram
   rootfs
 }:dir r_dir_perms;
