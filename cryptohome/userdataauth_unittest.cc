@@ -148,6 +148,11 @@ class UserDataAuthTestBase : public ::testing::Test {
     // Setup fake salt by default.
     ON_CALL(crypto_, GetOrCreateSalt(_, _, _, _))
         .WillByDefault(WithArgs<1, 3>(Invoke(AssignSalt)));
+    // It doesnt matter what key it returns for the purposes of the UserDataAuth
+    // test.
+    ON_CALL(keyset_management_, GetPublicMountPassKey(_))
+        .WillByDefault(Return(
+            CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH)));
     // ARC Disk Quota initialization will do nothing.
     ON_CALL(arc_disk_quota_, Initialize()).WillByDefault(Return());
     // Low Disk space handler initialization will do nothing.

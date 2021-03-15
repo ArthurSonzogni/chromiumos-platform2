@@ -126,6 +126,10 @@ class KeysetManagement {
   // Removes all LE credentials for a user with |obfuscated_username|.
   virtual void RemoveLECredentials(const std::string& obfuscated_username);
 
+  // Returns the public mount pass key derived from username.
+  virtual brillo::SecureBlob GetPublicMountPassKey(
+      const std::string& account_id);
+
  private:
   // Check if the vault keyset needs re-encryption.
   bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;

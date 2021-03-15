@@ -24,6 +24,8 @@
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
+using base::FilePath;
+
 namespace cryptohome {
 
 KeysetManagement::KeysetManagement(
@@ -776,6 +778,22 @@ void KeysetManagement::RemoveLECredentials(
 bool KeysetManagement::UserExists(const std::string& obfuscated_username) {
   base::FilePath user_dir = ShadowRoot().Append(obfuscated_username);
   return platform_->DirectoryExists(user_dir);
+}
+
+brillo::SecureBlob KeysetManagement::GetPublicMountPassKey(
+    const std::string& account_id) {
+  brillo::SecureBlob public_mount_salt;
+  FilePath saltfile(kPublicMountSaltFilePath);
+  if (!crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH, false,
+                                &public_mount_salt)) {
+    LOG(ERROR) << "Could not get or create public salt from file";
+    // Ensure that it is empty so that caller can confirm there was an error.
+    public_mount_salt.clear();
+    return public_mount_salt;
+  }
+  brillo::SecureBlob passkey;
+  Crypto::PasswordToPasskey(account_id.c_str(), public_mount_salt, &passkey);
+  return passkey;
 }
 
 }  // namespace cryptohome

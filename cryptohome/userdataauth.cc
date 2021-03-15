@@ -1107,29 +1107,6 @@ void UserDataAuth::FinalizeInstallAttributesIfMounted() {
   }
 }
 
-bool UserDataAuth::CreatePublicMountSaltIfNeeded() {
-  AssertOnMountThread();
-
-  if (!public_mount_salt_.empty())
-    return true;
-  FilePath saltfile(kPublicMountSaltFilePath);
-  return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
-                                  false, &public_mount_salt_);
-}
-
-bool UserDataAuth::GetPublicMountPassKey(const std::string& public_mount_id,
-                                         std::string* public_mount_passkey) {
-  AssertOnMountThread();
-
-  if (!CreatePublicMountSaltIfNeeded())
-    return false;
-  SecureBlob passkey;
-  Crypto::PasswordToPasskey(public_mount_id.c_str(), public_mount_salt_,
-                            &passkey);
-  *public_mount_passkey = passkey.to_string();
-  return true;
-}
-
 bool UserDataAuth::GetShouldMountAsEphemeral(
     const std::string& account_id,
     bool is_ephemeral_mount_requested,
@@ -1323,8 +1300,9 @@ void UserDataAuth::DoMount(
   if (request.public_mount()) {
     // Public mount have a set of passkey/password that is generated directly
     // from the username (and a local system salt.)
-    std::string public_mount_passkey;
-    if (!GetPublicMountPassKey(account_id, &public_mount_passkey)) {
+    brillo::SecureBlob public_mount_passkey =
+        keyset_management_->GetPublicMountPassKey(account_id);
+    if (public_mount_passkey.empty()) {
       LOG(ERROR) << "Could not get public mount passkey.";
       reply.set_error(user_data_auth::CryptohomeErrorCode::
                           CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
@@ -1334,10 +1312,10 @@ void UserDataAuth::DoMount(
 
     // Set the secret as the key for cryptohome authorization/creation.
     request.mutable_authorization()->mutable_key()->set_secret(
-        public_mount_passkey);
+        public_mount_passkey.to_string());
     if (request.has_create()) {
       request.mutable_create()->mutable_keys(0)->set_secret(
-          public_mount_passkey);
+          public_mount_passkey.to_string());
     }
   }
 
