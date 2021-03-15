@@ -6,9 +6,12 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -17,6 +20,20 @@
 
 namespace arc {
 namespace obb_mounter {
+
+namespace {
+
+bool IsValidObbMountPath(const base::FilePath& path) {
+  // OBB mount path should look like /var/run/arc/obb/obb:1.
+  std::vector<std::string> components;
+  path.GetComponents(&components);
+  return components.size() == 6 && components[0] == "/" &&
+         components[1] == "var" && components[2] == "run" &&
+         components[3] == "arc" && components[4] == "obb" &&
+         base::StartsWith(components[5], "obb:");
+}
+
+}  // namespace
 
 Service::Service() : weak_ptr_factory_(this) {}
 
@@ -58,7 +75,13 @@ void Service::MountObb(dbus::MethodCall* method_call,
   std::string obb_file, mount_path;
   int32_t owner_gid = 0;
   if (!reader.PopString(&obb_file) || !reader.PopString(&mount_path) ||
-      !reader.PopInt32(&owner_gid)) {
+      !reader.PopInt32(&owner_gid) || reader.HasMoreData()) {
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(
+            method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
+    return;
+  }
+  if (!IsValidObbMountPath(base::FilePath(mount_path))) {
     std::move(response_sender)
         .Run(dbus::ErrorResponse::FromMethodCall(
             method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
@@ -77,7 +100,13 @@ void Service::UnmountObb(dbus::MethodCall* method_call,
                          dbus::ExportedObject::ResponseSender response_sender) {
   dbus::MessageReader reader(method_call);
   std::string mount_path;
-  if (!reader.PopString(&mount_path)) {
+  if (!reader.PopString(&mount_path) || reader.HasMoreData()) {
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(
+            method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
+    return;
+  }
+  if (!IsValidObbMountPath(base::FilePath(mount_path))) {
     std::move(response_sender)
         .Run(dbus::ErrorResponse::FromMethodCall(
             method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
