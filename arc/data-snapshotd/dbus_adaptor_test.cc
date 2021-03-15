@@ -126,6 +126,10 @@ class DBusAdaptorTest : public testing::Test {
     process_launcher_->ExpectUiScreenShown(shown);
   }
 
+  void ExpectProgressUpdated(int percent, bool result = true) {
+    process_launcher_->ExpectProgressUpdated(percent, result);
+  }
+
   MockBootLockboxClient* boot_lockbox_client() { return boot_lockbox_client_; }
 
  private:
@@ -676,6 +680,49 @@ TEST_F(DBusAdaptorTest, LoadSnapshotPreviousSuccess) {
 
   dbus_adaptor()->set_inode_verification_enabled_for_testing(
       true /* enabled */);
+}
+
+// Test failure flow when UI screen is not shown.
+TEST_F(DBusAdaptorTest, UpdateNoUIScreen) {
+  ExpectUiScreenShown(false /* result */);
+  EXPECT_FALSE(dbus_adaptor()->Update(0 /* percent */));
+}
+
+// Test failure flow with invalid percent number.
+TEST_F(DBusAdaptorTest, UpdateInvalidPercent) {
+  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
+      .WillOnce(Return(true));
+  ExpectUiScreenShown();
+  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+
+  EXPECT_FALSE(dbus_adaptor()->Update(-1 /* percent */));
+  EXPECT_FALSE(dbus_adaptor()->Update(101 /* percent */));
+}
+
+// Test failure flow with the progress update command failure.
+TEST_F(DBusAdaptorTest, UpdateFailure) {
+  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
+      .WillOnce(Return(true));
+  ExpectUiScreenShown();
+  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+
+  ExpectProgressUpdated(0 /* percent */, false /* result */);
+  EXPECT_FALSE(dbus_adaptor()->Update(0 /* percent */));
+}
+
+// Test success basic UI update flow.
+TEST_F(DBusAdaptorTest, UpdateSuccess) {
+  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
+      .WillOnce(Return(true));
+  ExpectUiScreenShown();
+  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+
+  ExpectProgressUpdated(0 /* percent */);
+  EXPECT_TRUE(dbus_adaptor()->Update(0 /* percent */));
+  ExpectProgressUpdated(10 /* percent */);
+  EXPECT_TRUE(dbus_adaptor()->Update(10 /* percent */));
+  ExpectProgressUpdated(100 /* percent */);
+  EXPECT_TRUE(dbus_adaptor()->Update(100 /* percent */));
 }
 
 }  // namespace data_snapshotd

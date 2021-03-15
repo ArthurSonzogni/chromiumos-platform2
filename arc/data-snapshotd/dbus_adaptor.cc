@@ -239,6 +239,19 @@ void DBusAdaptor::LoadSnapshot(const std::string& account_id,
   *success = false;
 }
 
+bool DBusAdaptor::Update(int percent) {
+  if (!block_ui_controller_) {
+    LOG(ERROR)
+        << "Failed to update a progress bar on the UI screen, not shown.";
+    return false;
+  }
+  if (percent < 0 || percent > 100) {
+    LOG(ERROR) << "Percentage must be in [0..100], but passed " << percent;
+    return false;
+  }
+  return block_ui_controller_->UpdateProgress(percent);
+}
+
 bool DBusAdaptor::TryToLoadSnapshot(const std::string& userhash,
                                     const base::FilePath& snapshot_dir,
                                     const base::FilePath& android_data_dir,

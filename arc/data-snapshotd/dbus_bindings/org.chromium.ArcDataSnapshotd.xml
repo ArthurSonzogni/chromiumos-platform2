@@ -11,6 +11,7 @@
         Generates key pair.
         Public key is stored in BootlockBox.
         The method should be called before the start of user session.
+        Shows an update ARC data snapshot system UI screen.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
       <arg type="b" name="success" direction="out">
@@ -73,6 +74,23 @@
         <tp:docstring>
           Specifies the loaded snapshot in case of success.
           If true, the last snapshot directory has been loaded.
+        </tp:docstring>
+      </arg>
+      <arg type="b" name="success" direction="out">
+        <tp:docstring>
+          Result of the operation.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="Update">
+      <tp:docstring>
+        Updates a progress bar on an update ARC data snapshot system UI screen.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <arg type="i" name="percent" direction="in">
+        <tp:docstring>
+          A percentage of installed required ARC apps [0..100] to be used to
+          update a progress bar.
         </tp:docstring>
       </arg>
       <arg type="b" name="success" direction="out">

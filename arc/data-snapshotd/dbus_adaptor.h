@@ -70,6 +70,7 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   void LoadSnapshot(const std::string& account_id,
                     bool* last,
                     bool* success) override;
+  bool Update(int percent) override;
 
   const base::FilePath& get_last_snapshot_directory() const {
     return last_snapshot_directory_;
