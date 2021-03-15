@@ -27,6 +27,7 @@ fstat: 1
 #   0x81 == FUTEX_WAKE_PRIVATE
 futex: arg1 == 0x0 || arg1 == 0x1 || arg1 == 0x80 || arg1 == 0x81
 getdents: 1
+getdents64: 1
 getegid: 1
 geteuid: 1
 getgid: 1

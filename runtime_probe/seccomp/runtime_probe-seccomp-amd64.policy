@@ -30,6 +30,7 @@ clone: 1
 set_robust_list: 1
 # base::FileEnumerator::Next()
 getdents: 1
+getdents64: 1
 wait4: 1
 munmap: 1
 sendto: 1

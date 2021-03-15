@@ -13,6 +13,7 @@ close: 1
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 getdents: 1
+getdents64: 1
 read: 1
 unlink: 1
 write: 1

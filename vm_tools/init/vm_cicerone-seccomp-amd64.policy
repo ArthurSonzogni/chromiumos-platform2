@@ -65,6 +65,7 @@ access: 1
 arch_prctl: 1
 set_tid_address: 1
 getdents: 1
+getdents64: 1
 setresuid: 1
 setresgid: 1
 uname: 1

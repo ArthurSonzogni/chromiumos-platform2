@@ -14,6 +14,7 @@ munmap: 1
 mprotect: 1
 lseek: 1
 getdents: 1
+getdents64: 1
 openat: 1
 futex: 1
 brk: 1

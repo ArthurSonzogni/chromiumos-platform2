@@ -26,6 +26,7 @@ pipe2: 1
 # Prevent PROT_WRITE | PROT_EXEC
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 getdents: 1
+getdents64: 1
 munmap: 1
 fstat: 1
 epoll_create1: 1

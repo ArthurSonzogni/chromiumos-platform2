@@ -47,6 +47,7 @@ recvmsg: 1
 epoll_wait: 1
 getpid: 1
 getdents: 1
+getdents64: 1
 statfs: 1
 mkdir: 1
 futex: 1
