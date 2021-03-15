@@ -29,6 +29,7 @@ const char kRpcIdentifierKey[] = "RpcIdentifierKey";
 const char kRpcIdentifiersKey[] = "RpcIdentifiersKey";
 const char kStringKey[] = "StringKey";
 const char kStringmapKey[] = "StringmapKey";
+const char kStringmapsKey[] = "StringmapsKey";
 const char kStringsKey[] = "StringsKey";
 const char kUintKey[] = "UintKey";
 const char kUint16Key[] = "Uint16Key";
@@ -54,6 +55,8 @@ const vector<RpcIdentifier> kRpcIdentifiersValue{
     RpcIdentifier("/org/chromium/test2")};
 const char kStringValue[] = "StringValue";
 const map<string, string> kStringmapValue = {{"key", "value"}};
+const vector<map<string, string>> kStringmapsValue = {{{"key1", "value1"}},
+                                                      {{"key2", "value2"}}};
 const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
 const uint32_t kUintValue = 654;
 const uint16_t kUint16Value = 123;
@@ -84,6 +87,7 @@ class KeyValueStoreTest : public Test {
     store->Set<RpcIdentifiers>(kRpcIdentifiersKey, kRpcIdentifiersValue);
     store->Set<string>(kStringKey, kStringValue);
     store->Set<Stringmap>(kStringmapKey, kStringmapValue);
+    store->Set<Stringmaps>(kStringmapsKey, kStringmapsValue);
     store->Set<Strings>(kStringsKey, kStringsValue);
     store->Set<uint32_t>(kUintKey, kUintValue);
     store->Set<uint16_t>(kUint16Key, kUint16Value);
@@ -251,6 +255,15 @@ TEST_F(KeyValueStoreTest, Stringmap) {
   EXPECT_FALSE(store_.Contains<Stringmap>(kStringmapKey));
 }
 
+TEST_F(KeyValueStoreTest, Stringmaps) {
+  EXPECT_FALSE(store_.Contains<Stringmaps>(kStringmapsKey));
+  store_.Set<Stringmaps>(kStringmapsKey, kStringmapsValue);
+  EXPECT_TRUE(store_.Contains<Stringmaps>(kStringmapsKey));
+  EXPECT_EQ(kStringmapsValue, store_.Get<Stringmaps>(kStringmapsKey));
+  store_.Remove(kStringmapsKey);
+  EXPECT_FALSE(store_.Contains<Stringmaps>(kStringmapsKey));
+}
+
 TEST_F(KeyValueStoreTest, Strings) {
   EXPECT_FALSE(store_.Contains<Strings>(kStringsKey));
   store_.Set<Strings>(kStringsKey, kStringsValue);
@@ -329,6 +342,7 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_TRUE(store_.Contains<RpcIdentifier>(kRpcIdentifierKey));
   EXPECT_TRUE(store_.Contains<string>(kStringKey));
   EXPECT_TRUE(store_.Contains<Stringmap>(kStringmapKey));
+  EXPECT_TRUE(store_.Contains<Stringmaps>(kStringmapsKey));
   EXPECT_TRUE(store_.Contains<Strings>(kStringsKey));
   EXPECT_TRUE(store_.Contains<uint32_t>(kUintKey));
   EXPECT_TRUE(store_.Contains<uint16_t>(kUint16Key));
@@ -351,6 +365,7 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_FALSE(store_.Contains<RpcIdentifier>(kRpcIdentifierKey));
   EXPECT_FALSE(store_.Contains<string>(kStringKey));
   EXPECT_FALSE(store_.Contains<Stringmap>(kStringmapKey));
+  EXPECT_FALSE(store_.Contains<Stringmaps>(kStringmapsKey));
   EXPECT_FALSE(store_.Contains<Strings>(kStringsKey));
   EXPECT_FALSE(store_.Contains<uint32_t>(kUintKey));
   EXPECT_FALSE(store_.Contains<uint16_t>(kUint16Key));
@@ -569,6 +584,28 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.Set<Stringmap>("stringmapKey", kStringmap3);
   EXPECT_NE(first, second);
 
+  const vector<map<string, string>> kStringmaps1{kStringmap1, kStringmap2};
+  const vector<map<string, string>> kStringmaps2{kStringmap2, kStringmap1};
+  const vector<map<string, string>> kStringmaps3{kStringmap1};
+
+  first.Clear();
+  second.Clear();
+  first.Set<Stringmaps>("stringmapsKey", kStringmaps1);
+  second.Set<Stringmaps>("stringmapsOtherKey", kStringmaps1);
+  EXPECT_NE(first, second);
+
+  first.Clear();
+  second.Clear();
+  first.Set<Stringmaps>("stringmapsKey", kStringmaps1);
+  second.Set<Stringmaps>("stringmapsKey", kStringmaps2);
+  EXPECT_NE(first, second);
+
+  first.Clear();
+  second.Clear();
+  first.Set<Stringmaps>("stringmapsKey", kStringmaps1);
+  second.Set<Stringmaps>("stringmapsKey", kStringmaps3);
+  EXPECT_NE(first, second);
+
   const vector<string> kStrings1{"value"};
   const vector<string> kStrings2{"otherValue"};
 
@@ -653,6 +690,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   first.Set<RpcIdentifier>("rpcIdentifierKey", RpcIdentifier("rpcid"));
   first.Set<string>("stringKey", "value");
   first.Set<Stringmap>("stringmapKey", kStringmap1);
+  first.Set<Stringmaps>("stringmapsKey", kStringmaps1);
   first.Set<Strings>("stringsKey", kStrings1);
   first.Set<uint32_t>("uintKey", 1);
   first.Set<uint16_t>("uint16Key", 1);
@@ -671,6 +709,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.Set<RpcIdentifier>("rpcIdentifierKey", RpcIdentifier("rpcid"));
   second.Set<string>("stringKey", "value");
   second.Set<Stringmap>("stringmapKey", kStringmap1);
+  second.Set<Stringmaps>("stringmapsKey", kStringmaps1);
   second.Set<Strings>("stringsKey", kStrings1);
   second.Set<uint32_t>("uintKey", 1);
   second.Set<uint16_t>("uint16Key", 1);
@@ -699,11 +738,14 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
 
   brillo::VariantDictionary dict =
       KeyValueStore::ConvertToVariantDictionary(store);
-  EXPECT_EQ(21, dict.size());
+  EXPECT_EQ(22, dict.size());
   EXPECT_EQ(kStringValue, dict[kStringKey].Get<string>());
   map<string, string> stringmap_value =
       dict[kStringmapKey].Get<map<string, string>>();
   EXPECT_EQ(kStringmapValue, stringmap_value);
+  vector<map<string, string>> stringmaps_value =
+      dict[kStringmapsKey].Get<vector<map<string, string>>>();
+  EXPECT_EQ(kStringmapsValue, stringmaps_value);
   EXPECT_EQ(kStringsValue, dict[kStringsKey].Get<vector<string>>());
   EXPECT_EQ(kBoolValue, dict[kBoolKey].Get<bool>());
   EXPECT_EQ(kBoolsValue, dict[kBoolsKey].Get<vector<bool>>());
@@ -734,6 +776,7 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   brillo::VariantDictionary dict;
   dict[kStringKey] = brillo::Any(string(kStringValue));
   dict[kStringmapKey] = brillo::Any(kStringmapValue);
+  dict[kStringmapsKey] = brillo::Any(kStringmapsValue);
   dict[kStringsKey] = brillo::Any(kStringsValue);
   dict[kBoolKey] = brillo::Any(kBoolValue);
   dict[kBoolsKey] = brillo::Any(kBoolsValue);
@@ -759,6 +802,8 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   EXPECT_EQ(kStringValue, store.Get<string>(kStringKey));
   EXPECT_TRUE(store.Contains<Stringmap>(kStringmapKey));
   EXPECT_EQ(kStringmapValue, store.Get<Stringmap>(kStringmapKey));
+  EXPECT_TRUE(store.Contains<Stringmaps>(kStringmapsKey));
+  EXPECT_EQ(kStringmapsValue, store.Get<Stringmaps>(kStringmapsKey));
   EXPECT_TRUE(store.Contains<Strings>(kStringsKey));
   EXPECT_EQ(kStringsValue, store.Get<Strings>(kStringsKey));
   EXPECT_TRUE(store.Contains<bool>(kBoolKey));

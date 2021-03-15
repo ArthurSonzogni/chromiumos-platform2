@@ -40,6 +40,7 @@ using KeyValueTypes = brillo::TypeList<bool,
                                        KeyValueStore,
                                        std::string,
                                        Stringmap,
+                                       Stringmaps,
                                        Strings,
                                        RpcIdentifier,
                                        RpcIdentifiers>;
