@@ -1015,6 +1015,15 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
   EXPECT_FALSE(userdataauth_->IsEnterpriseOwned());
 }
 
+TEST_F(UserDataAuthTestNotInitialized, LowDiskSpaceHandlerInit) {
+  // Both callbacks need to be set before Init.
+  EXPECT_CALL(low_disk_space_handler_,
+              SetUpdateUserActivityTimestampCallback(_));
+  EXPECT_CALL(low_disk_space_handler_, SetLowDiskSpaceCallback(_));
+
+  InitializeUserDataAuth();
+}
+
 constexpr char kInstallAttributeName[] = "SomeAttribute";
 constexpr uint8_t kInstallAttributeData[] = {0x01, 0x02, 0x00,
                                              0x03, 0xFF, 0xAB};
@@ -2179,6 +2188,14 @@ TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
   EXPECT_EQ(kHomedirSize, userdataauth_->GetAccountDiskUsage(account));
 }
 
+TEST_F(UserDataAuthTest, LowDiskSpaceNotificationCallback) {
+  EXPECT_CALL(low_disk_space_handler_, SetLowDiskSpaceCallback(_));
+  userdataauth_->SetLowDiskSpaceCallback(base::Bind([](uint64_t) {}));
+}
+
+TEST_F(UserDataAuthTest, LowDiskSpaceHandlerStopped) {
+  EXPECT_CALL(low_disk_space_handler_, Stop());
+}
 
 // A test fixture with some utility functions for testing mount and keys related
 // functionalities.

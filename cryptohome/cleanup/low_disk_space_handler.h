@@ -40,7 +40,7 @@ class LowDiskSpaceHandler {
 
   // Stop clears the post_delayed_task_ callback, ensuring the callback passed
   // to Init is no longer called.
-  void Stop();
+  virtual void Stop();
 
   // Set the callback that will be invoked when the device is low on disk space.
   // Normally this is used to notify Chrome using DBUS.

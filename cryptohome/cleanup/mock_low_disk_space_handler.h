@@ -35,6 +35,7 @@ class MockLowDiskSpaceHandler : public LowDiskSpaceHandler {
               SetUpdateUserActivityTimestampCallback,
               (const base::Callback<void()>&),
               (override));
+  MOCK_METHOD(void, Stop, (), (override));
 };
 
 }  // namespace cryptohome
