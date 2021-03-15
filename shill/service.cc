@@ -950,6 +950,18 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
+    } else if (it.second.IsTypeCompatible<Stringmaps>()) {
+      if (base::Contains(parameters_ignored_for_configure_, it.first)) {
+        SLOG(this, 5) << "Ignoring stringmaps property: " << it.first;
+        continue;
+      }
+      SLOG(this, 5) << "Configuring stringmaps property: " << it.first;
+      Error set_error;
+      store_.SetStringmapsProperty(it.first, it.second.Get<Stringmaps>(),
+                                   &set_error);
+      if (error->IsSuccess() && set_error.IsFailure()) {
+        error->CopyFrom(set_error);
+      }
     }
   }
 }

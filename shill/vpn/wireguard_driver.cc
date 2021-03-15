@@ -10,6 +10,8 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/stl_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
@@ -20,6 +22,8 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/process_manager.h"
+#include "shill/property_accessor.h"
+#include "shill/store_interface.h"
 
 namespace shill {
 
@@ -49,18 +53,24 @@ const char kVpnUser[] = "vpn";
 const char kVpnGroup[] = "vpn";
 constexpr gid_t kVpnGid = 20174;
 
-}  // namespace
+// Properties of a peer.
+struct PeerProperty {
+  // A name will be used in 1) D-Bus API, 2) profile storage, and 3) config file
+  // passed to wireguard-tools.
+  const char* const name;
+  // Checked only before connecting. We allow a partially configured service
+  // from crosh.
+  const bool is_required;
+};
+constexpr PeerProperty kPeerProperties[] = {
+    {kWireguardPeerPublicKey, true},
+    {kWireguardPeerPresharedKey, false},
+    {kWireguardPeerEndPoint, true},
+    {kWireguardPeerAllowedIPs, true},
+    {kWireguardPeerPersistentKeepalive, false},
+};
 
-// TODO(b/177876632): These should be moved to dbus-constants once we have
-// confirmed the fields we need.
-const char kWireguardPrivateKey[] = "Wireguard.PrivateKey";
-const char kWireguardAddress[] = "Wireguard.Address";
-const char kWireguardPeerPublicKey[] = "Wireguard.Peer.PublicKey";
-const char kWireguardPeerPresharedKey[] = "Wireguard.Peer.PresharedKey";
-const char kWireguardPeerEndPoint[] = "Wireguard.Peer.EndPoint";
-const char kWireguardPeerAllowedIPs[] = "Wireguard.Peer.AllowedIPs";
-const char kWireguardPeerPersistentKeepalive[] =
-    "Wireguard.Peer.PersistentKeepalive";
+}  // namespace
 
 // static
 const VPNDriver::Property WireguardDriver::kProperties[] = {
@@ -69,29 +79,21 @@ const VPNDriver::Property WireguardDriver::kProperties[] = {
 
     // Properties for the interface. ListenPort is not here since we current
     // only support the "client mode".
-    {kWireguardPrivateKey, 0},
-    // Address for the wireguard interface. Note that this is not required for
-    // configuring the interface by wireguard-tools, but is required for
-    // populating routing entries in IPProperties, so we put it here instead of
-    // in the StaticIPParameters. See PopulateIPProperties() for details.
+    // TODO(b/177876632): Consider making this kCredential. Peer.PresharedKey
+    // may need some similar handling.
+    {kWireguardPrivateKey, Property::kWriteOnly},
+    // Address for the wireguard interface.
+    // TODO(b/177876632): Support IPv6 (multiple addresses).
     // TODO(b/177876632): Verify that putting other properties for the interface
     // (i.e., DNS and MTU) are in the StaticIPParameters works.
     {kWireguardAddress, 0},
-
-    // Properties for a peer. Currently we only support one peer.
-    {kWireguardPeerPublicKey, 0},
-    {kWireguardPeerPresharedKey, 0},
-    {kWireguardPeerEndPoint, 0},
-    // Note that AllowedIPs is a list of CIDR addresses. We treat it as a
-    // comma-separated string instead of an array here for simplicity now.
-    {kWireguardPeerAllowedIPs, 0},
-    {kWireguardPeerPersistentKeepalive, 0},
 };
 
 WireguardDriver::WireguardDriver(Manager* manager,
                                  ProcessManager* process_manager)
-    : VPNDriver(
-          manager, process_manager, kProperties, base::size(kProperties)) {}
+    : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
+      config_directory_(kWireguardConfigDir),
+      vpn_gid_(kVpnGid) {}
 
 WireguardDriver::~WireguardDriver() {
   Cleanup();
@@ -122,6 +124,94 @@ std::string WireguardDriver::GetProviderType() const {
 
 void WireguardDriver::OnConnectTimeout() {
   FailService(Service::kFailureConnect, "Connect timeout");
+}
+
+void WireguardDriver::InitPropertyStore(PropertyStore* store) {
+  VPNDriver::InitPropertyStore(store);
+  store->RegisterDerivedStringmaps(
+      kWireguardPeers,
+      StringmapsAccessor(
+          new CustomWriteOnlyAccessor<WireguardDriver, Stringmaps>(
+              this, &WireguardDriver::UpdatePeers, &WireguardDriver::ClearPeers,
+              nullptr)));
+}
+
+KeyValueStore WireguardDriver::GetProvider(Error* error) {
+  KeyValueStore props = VPNDriver::GetProvider(error);
+  Stringmaps copied_peers = peers_;
+  for (auto& peer : copied_peers) {
+    peer.erase(kWireguardPeerPresharedKey);
+  }
+  props.Set<Stringmaps>(kWireguardPeers, copied_peers);
+  return props;
+}
+
+bool WireguardDriver::Load(const StoreInterface* storage,
+                           const std::string& storage_id) {
+  if (!VPNDriver::Load(storage, storage_id)) {
+    return false;
+  }
+
+  peers_.clear();
+
+  std::vector<std::string> encoded_peers;
+  if (!storage->GetStringList(storage_id, kWireguardPeers, &encoded_peers)) {
+    LOG(WARNING) << "Profile does not contain the " << kWireguardPeers
+                 << " property";
+    return true;
+  }
+
+  for (const auto& peer_json : encoded_peers) {
+    base::Optional<base::Value> val = base::JSONReader::Read(peer_json);
+    if (!val || !val->is_dict()) {
+      LOG(ERROR) << "Failed to parse a peer. Skipped it.";
+      continue;
+    }
+    Stringmap peer;
+    for (const auto& property : kPeerProperties) {
+      const std::string key = property.name;
+      const auto* value = val->FindStringKey(key);
+      if (value != nullptr) {
+        peer[key] = *value;
+      } else {
+        peer[key] = "";
+      }
+    }
+    peers_.push_back(peer);
+  }
+
+  return true;
+}
+
+bool WireguardDriver::Save(StoreInterface* storage,
+                           const std::string& storage_id,
+                           bool save_credentials) {
+  if (!VPNDriver::Save(storage, storage_id, save_credentials)) {
+    return false;
+  }
+
+  std::vector<std::string> encoded_peers;
+  for (auto& peer : peers_) {
+    base::Value root(base::Value::Type::DICTIONARY);
+    for (const auto& property : kPeerProperties) {
+      const auto& key = property.name;
+      root.SetStringKey(key, peer[key]);
+    }
+    std::string peer_json;
+    if (!base::JSONWriter::Write(root, &peer_json)) {
+      LOG(ERROR) << "Failed to write a peer into json";
+      return false;
+    }
+    encoded_peers.push_back(peer_json);
+  }
+
+  if (!storage->SetStringList(storage_id, kWireguardPeers, encoded_peers)) {
+    LOG(ERROR) << "Failed to write " << kWireguardPeers
+               << " property into profile";
+    return false;
+  }
+
+  return true;
 }
 
 void WireguardDriver::ConnectInternal() {
@@ -170,55 +260,45 @@ void WireguardDriver::WireguardProcessExited(int exit_code) {
                          exit_code));
 }
 
-bool WireguardDriver::AppendConfig(const std::string& key_in_config,
-                                   const std::string& key_in_args,
-                                   bool is_required,
-                                   std::vector<std::string>* lines) {
-  std::string value = args()->Lookup<std::string>(key_in_args, "");
-  if (value.empty()) {
-    if (is_required) {
-      LOG(ERROR) << key_in_args << " is required but is empty or not set.";
-      return false;
-    }
-    return true;
-  }
-  lines->push_back(base::StrCat({key_in_config, "=", value}));
-  return true;
-}
-
 bool WireguardDriver::GenerateConfigFile() {
   std::vector<std::string> lines;
 
   // [Interface] section
   lines.push_back("[Interface]");
-  if (!AppendConfig("PrivateKey", kWireguardPrivateKey, true, &lines)) {
+  const std::string private_key =
+      args()->Lookup<std::string>(kWireguardPrivateKey, "");
+  if (private_key.empty()) {
+    LOG(ERROR) << "PrivateKey is required but is empty or not set.";
     return false;
   }
+  lines.push_back(base::StrCat({"PrivateKey", "=", private_key}));
   // TODO(b/177876632): FwMark can be set here.
 
   lines.push_back("");
 
-  // [Peer] section
-  lines.push_back("[Peer]");
-  if (!AppendConfig("PublicKey", kWireguardPeerPublicKey, true, &lines) ||
-      !AppendConfig("PresharedKey", kWireguardPeerPresharedKey, false,
-                    &lines) ||
-      !AppendConfig("AllowedIPs", kWireguardPeerAllowedIPs, true, &lines) ||
-      !AppendConfig("EndPoint", kWireguardPeerEndPoint, true, &lines) ||
-      !AppendConfig("PersistentKeepalive", kWireguardPeerPersistentKeepalive,
-                    false, &lines)) {
-    return false;
+  // [Peer] sections
+  for (auto& peer : peers_) {
+    lines.push_back("[Peer]");
+    for (const auto& property : kPeerProperties) {
+      const std::string val = peer[property.name];
+      if (!val.empty()) {
+        lines.push_back(base::StrCat({property.name, "=", val}));
+      } else if (property.is_required) {
+        LOG(ERROR) << property.name
+                   << " in a peer is required but is empty or not set.";
+        return false;
+      }
+    }
+    lines.push_back("");
   }
 
   // Writes |lines| into the file.
-  const base::FilePath config_dir = base::FilePath(kWireguardConfigDir);
-  if (!base::CreateTemporaryFileInDir(config_dir, &config_file_)) {
+  if (!base::CreateTemporaryFileInDir(config_directory_, &config_file_)) {
     LOG(ERROR) << "Failed to create wireguard config file.";
     return false;
   }
 
   std::string contents = base::JoinString(lines, "\n");
-  contents.append("\n");
   if (!base::WriteFile(config_file_, contents)) {
     LOG(ERROR) << "Failed to write wireguard config file";
     return false;
@@ -227,12 +307,13 @@ bool WireguardDriver::GenerateConfigFile() {
   // Makes the config file group-readable and change its group to "vpn". Note
   // that the owner of a file may change the group of the file to any group of
   // which that owner is a member, so we can change the group to "vpn" here
-  // since "shill" is a member of "vpn".
-  if (chmod(config_file_.value().c_str(), S_IRGRP) != 0) {
+  // since "shill" is a member of "vpn". Keeps the file as user-readable to make
+  // it readable in unit tests.
+  if (chmod(config_file_.value().c_str(), S_IRUSR | S_IRGRP) != 0) {
     PLOG(ERROR) << "Failed to make config file group-readable";
     return false;
   }
-  if (chown(config_file_.value().c_str(), -1, kVpnGid) != 0) {
+  if (chown(config_file_.value().c_str(), -1, vpn_gid_) != 0) {
     PLOG(ERROR) << "Failed to change gid of config file";
     return false;
   }
@@ -303,24 +384,25 @@ bool WireguardDriver::PopulateIPProperties() {
   // When we arrive here, the value of AllowedIPs has already been validated
   // by wireguard-tools. AllowedIPs is comma-separated list of CIDR-notation
   // addresses (e.g., "10.8.0.1/16,192.168.1.1/24").
-  std::string allowed_ips_str =
-      args()->Lookup<std::string>(kWireguardPeerAllowedIPs, "");
-  std::vector<std::string> allowed_ip_list = base::SplitString(
-      allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& allowed_ip_str : allowed_ip_list) {
-    IPAddress allowed_ip;
-    // Currently only supports IPv4 addresses.
-    allowed_ip.set_family(IPAddress::kFamilyIPv4);
-    if (!allowed_ip.SetAddressAndPrefixFromString(allowed_ip_str)) {
-      LOG(DFATAL) << "Invalid allowed ip: " << allowed_ip_str;
-      return false;
+  for (auto& peer : peers_) {
+    std::string allowed_ips_str = peer[kWireguardPeerAllowedIPs];
+    std::vector<std::string> allowed_ip_list = base::SplitString(
+        allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    for (const auto& allowed_ip_str : allowed_ip_list) {
+      IPAddress allowed_ip;
+      // Currently only supports IPv4 addresses.
+      allowed_ip.set_family(IPAddress::kFamilyIPv4);
+      if (!allowed_ip.SetAddressAndPrefixFromString(allowed_ip_str)) {
+        LOG(DFATAL) << "Invalid allowed ip: " << allowed_ip_str;
+        return false;
+      }
+      // We don't need a gateway here, so use the "default" address as the
+      // gateways, and then RoutingTable will skip RTA_GATEWAY when installing
+      // this entry.
+      ip_properties_.routes.push_back({allowed_ip.GetNetworkPart().ToString(),
+                                       static_cast<int>(allowed_ip.prefix()),
+                                       /*gateway=*/"0.0.0.0"});
     }
-    // We don't need a gateway here, so use the "default" address as the
-    // gateways, and then RoutingTable will skip RTA_GATEWAY when installing
-    // this entry.
-    ip_properties_.routes.push_back({allowed_ip.GetNetworkPart().ToString(),
-                                     static_cast<int>(allowed_ip.prefix()),
-                                     /*gateway=*/"0.0.0.0"});
   }
   return true;
 }
@@ -348,6 +430,33 @@ void WireguardDriver::Cleanup() {
     }
     config_file_.clear();
   }
+}
+
+bool WireguardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {
+  // If the preshared key of a peer in the new peers is unspecified (the caller
+  // doesn't set that key), try to reset it to the old value.
+  Stringmap pubkey_to_psk;
+  for (auto& peer : peers_) {
+    pubkey_to_psk[peer[kWireguardPeerPublicKey]] =
+        peer[kWireguardPeerPresharedKey];
+  }
+
+  peers_ = new_peers;
+  for (const auto& [pubkey, psk] : pubkey_to_psk) {
+    for (auto& peer : peers_) {
+      if (peer[kWireguardPeerPublicKey] != pubkey ||
+          peer.find(kWireguardPeerPresharedKey) != peer.end()) {
+        continue;
+      }
+      peer[kWireguardPeerPresharedKey] = psk;
+    }
+  }
+
+  return true;
+}
+
+void WireguardDriver::ClearPeers(Error* error) {
+  peers_.clear();
 }
 
 }  // namespace shill

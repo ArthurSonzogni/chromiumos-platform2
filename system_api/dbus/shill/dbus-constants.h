@@ -297,6 +297,17 @@ const char kConfigurationNameProperty[] = "ConfigurationName";
 const char kExtensionNameProperty[] = "ExtensionName";
 const char kObjectPathSuffixProperty[] = "ObjectPathSuffix";
 
+// WireGuard Service property names.
+const char kWireguardPrivateKey[] = "Wireguard.PrivateKey";
+const char kWireguardAddress[] = "Wireguard.Address";
+const char kWireguardPeers[] = "Wireguard.Peers";
+// Property names of a peer in "Wireguard.Peers"
+const char kWireguardPeerPublicKey[] = "PublicKey";
+const char kWireguardPeerPresharedKey[] = "PresharedKey";
+const char kWireguardPeerEndPoint[] = "EndPoint";
+const char kWireguardPeerAllowedIPs[] = "AllowedIPs";
+const char kWireguardPeerPersistentKeepalive[] = "PersistentKeepalive";
+
 // IPConfig property names.
 const char kAcceptedHostnameProperty[] = "AcceptedHostname";
 // kAddressProperty: Defined below for Device.
