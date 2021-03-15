@@ -6,8 +6,10 @@
 
 #include <string>
 
+#include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 
 #include "crash-reporter/util.h"
@@ -70,16 +72,24 @@ bool ECCollector::Collect() {
   ProcessImpl panicinfo_parser;
   panicinfo_parser.AddArg(kECPanicInfoParser);
   panicinfo_parser.RedirectInput(panicinfo_path.value());
+  // Combine stdout and stderr.
+  panicinfo_parser.RedirectOutputToMemory(true);
 
   std::string output;
-  int err =
-      util::RunAndCaptureOutput(&panicinfo_parser, STDOUT_FILENO, &output);
-  if (err < 0) {
-    PLOG(ERROR) << "Failed to run ec_parse_panicinfo. Error=" << err;
-    return true;
-  }
-  if (err > 0) {
-    output.assign(data, len);
+  const int result = panicinfo_parser.Run();
+  output = panicinfo_parser.GetOutputString(STDOUT_FILENO);
+  if (result != 0) {
+    PLOG(ERROR) << "Failed to run ec_parse_panicinfo. Error=" << result;
+    // Append error code and raw crash on error.
+    output = base::StrCat(
+        {output,
+         base::StringPrintf(
+             "\nERROR: ec_parse_panicinfo: Non-zero return value (%d).\n",
+             result),
+         "Raw data: ",
+         base::Base64Encode(
+             base::make_span(reinterpret_cast<uint8_t*>(data), len)),
+         "\n"});
   }
 
   std::string dump_basename = FormatDumpBasename(kECExecName, time(nullptr), 0);
