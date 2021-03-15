@@ -338,6 +338,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Used when enabling MAC randomization to request that the OUI remain
   // constant and the last three octets are randomized.
   static const std::vector<unsigned char> kRandomMacMask;
+  // Used when wake_on_wifi_ is not available but related method is called.
+  static const char kWakeOnWiFiNotSupported[];
 
   void GetPhyInfo();
   std::string AppendBgscan(WiFiService* service,

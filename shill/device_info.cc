@@ -1423,10 +1423,15 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
   LOG(INFO) << "Creating WiFi device for station mode interface " << info->name
             << " at interface index " << interface_index;
   string address = info->mac_address.HexEncode();
+
+#if !defined(DISABLE_WAKE_ON_WIFI)
   auto wake_on_wifi = std::make_unique<WakeOnWiFi>(
       netlink_manager_, dispatcher_, metrics_, address,
       base::Bind(&DeviceInfo::RecordDarkResumeWakeReason,
                  weak_factory_.GetWeakPtr()));
+#else
+  auto wake_on_wifi = std::unique_ptr<WakeOnWiFi>(nullptr);
+#endif  // DISABLE_WAKE_ON_WIFI
   DeviceRefPtr device = new WiFi(manager_, info->name, address, interface_index,
                                  std::move(wake_on_wifi));
   device->EnableIPv6Privacy();

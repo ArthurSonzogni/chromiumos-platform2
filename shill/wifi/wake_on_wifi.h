@@ -290,15 +290,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests
   friend class WiFiObjectTest;  // netlink_manager_
-  // kWakeOnWiFiNotSupported.
-  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
-              WakeOnWiFiDisabled_SetWakeOnWiFiFeaturesEnabled);
-  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
-              WakeOnWiFiDisabled_AddWakeOnPacketConnection_ReturnsError);
-  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
-              WakeOnWiFiDisabled_RemoveWakeOnPacketConnection_ReturnsError);
-  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
-              WakeOnWiFiDisabled_RemoveAllWakeOnPacketConnections_ReturnsError);
   // kMaxSetWakeOnPacketRetries.
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnPacketConnections_LessThanMaxRetries);
@@ -331,7 +322,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   static const char kWakeOnIPAddressPatternsNotSupported[];
   static const char kWakeOnPatternsNotSupported[];
   static const char kMaxWakeOnPatternsReached[];
-  static const char kWakeOnWiFiNotSupported[];
   static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
   static const int kMaxSetWakeOnPacketRetries;
   static const int kMetricsReportingFrequencySeconds;

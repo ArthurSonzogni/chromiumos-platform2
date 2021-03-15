@@ -179,12 +179,10 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
       return std::make_unique<Nl80211AttributeWiphyRetryShort>();
     case NL80211_ATTR_WIPHY_RTS_THRESHOLD:
       return std::make_unique<Nl80211AttributeWiphyRtsThreshold>();
-#if !defined(DISABLE_WAKE_ON_WIFI)
     case NL80211_ATTR_WOWLAN_TRIGGERS:
       return std::make_unique<Nl80211AttributeWowlanTriggers>(context);
     case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
       return std::make_unique<Nl80211AttributeWowlanTriggersSupported>();
-#endif  // DISABLE_WAKE_ON_WIFI
     case NL80211_ATTR_SURVEY_INFO:
       return std::make_unique<Nl80211AttributeSurveyInfo>();
     case NL80211_ATTR_SUPPORTED_COMMANDS:

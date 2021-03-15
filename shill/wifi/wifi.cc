@@ -107,6 +107,8 @@ const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
 // three octets will be different.
 const std::vector<unsigned char> WiFi::kRandomMacMask{255, 255, 255, 0, 0, 0};
 
+const char WiFi::kWakeOnWiFiNotSupported[] = "Wake on WiFi not supported";
+
 namespace {
 const uint16_t kDefaultBgscanShortIntervalSeconds = 64;
 const uint16_t kSingleEndpointBgscanShortIntervalSeconds = 360;
@@ -201,7 +203,9 @@ WiFi::WiFi(Manager* manager,
                                   &WiFi::GetAllScanFrequencies);
   HelpRegisterDerivedUint16(store, kScanIntervalProperty,
                             &WiFi::GetScanInterval, &WiFi::SetScanInterval);
-  wake_on_wifi_->InitPropertyStore(store);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->InitPropertyStore(store);
+  }
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
@@ -241,7 +245,9 @@ void WiFi::Start(Error* error,
   // it when it appears.
   supplicant_connect_attempts_ = 0;
   ConnectToSupplicant();
-  wake_on_wifi_->StartMetricsTimer();
+  if (wake_on_wifi_) {
+    wake_on_wifi_->StartMetricsTimer();
+  }
 }
 
 void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
@@ -1410,7 +1416,9 @@ void WiFi::OnScanStarted(const Nl80211Message& scan_trigger_msg) {
     // launched. Otherwise, a passive scan was launched.
     is_active_scan = !ssid_iter.AtEnd();
   }
-  wake_on_wifi_->OnScanStarted(is_active_scan);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->OnScanStarted(is_active_scan);
+  }
 }
 
 void WiFi::OnGetReg(const Nl80211Message& nl80211_message) {
@@ -1742,7 +1750,7 @@ void WiFi::ScanDoneTask() {
   // Unsets this flag if it was set in InitiateScanInDarkResume since that scan
   // has completed.
   manager()->set_suppress_autoconnect(false);
-  if (wake_on_wifi_->InDarkResume()) {
+  if (wake_on_wifi_ && wake_on_wifi_->InDarkResume()) {
     metrics()->NotifyDarkResumeScanResultsReceived();
   }
   // Post |UpdateScanStateAfterScanDone| so it runs after any pending scan
@@ -1751,7 +1759,8 @@ void WiFi::ScanDoneTask() {
   dispatcher()->PostTask(FROM_HERE,
                          Bind(&WiFi::UpdateScanStateAfterScanDone,
                               weak_ptr_factory_while_started_.GetWeakPtr()));
-  if ((provider_->NumAutoConnectableServices() < 1) && IsIdle()) {
+  if (wake_on_wifi_ && (provider_->NumAutoConnectableServices() < 1) &&
+      IsIdle()) {
     // Ensure we are also idle in case we are in the midst of connecting to
     // the only service that was available for auto-connect on the previous
     // scan (which will cause it to show up as unavailable for auto-connect
@@ -2173,6 +2182,10 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
   StopScanTimer();
   supplicant_process_proxy()->ExpectDisconnect();
+  if (!wake_on_wifi_) {
+    callback.Run(Error(Error::kSuccess));
+    return;
+  }
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
@@ -2194,6 +2207,10 @@ void WiFi::OnDarkResume(const ResultCallback& callback) {
   LOG(INFO) << __func__ << ": "
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
   StopScanTimer();
+  if (!wake_on_wifi_) {
+    callback.Run(Error(Error::kSuccess));
+    return;
+  }
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
@@ -2220,7 +2237,9 @@ void WiFi::OnAfterResume() {
       Bind(&WiFi::ReportConnectedToServiceAfterWake,
            weak_ptr_factory_while_started_.GetWeakPtr()),
       kPostWakeConnectivityReportDelayMilliseconds);
-  wake_on_wifi_->OnAfterResume();
+  if (wake_on_wifi_) {
+    wake_on_wifi_->OnAfterResume();
+  }
 
   // We want to flush the BSS cache, but we don't want to conflict
   // with an active connection attempt. So record the need to flush,
@@ -2362,26 +2381,51 @@ void WiFi::OnIPConfigFailure() {
 }
 
 void WiFi::AddWakeOnPacketConnection(const string& ip_endpoint, Error* error) {
-  wake_on_wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kWakeOnWiFiNotSupported);
+  }
 }
 
 void WiFi::AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
                                   Error* error) {
-  wake_on_wifi_->AddWakeOnPacketOfTypes(packet_types, error);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->AddWakeOnPacketOfTypes(packet_types, error);
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kWakeOnWiFiNotSupported);
+  }
 }
 
 void WiFi::RemoveWakeOnPacketConnection(const string& ip_endpoint,
                                         Error* error) {
-  wake_on_wifi_->RemoveWakeOnPacketConnection(ip_endpoint, error);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->RemoveWakeOnPacketConnection(ip_endpoint, error);
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kWakeOnWiFiNotSupported);
+  }
 }
 
 void WiFi::RemoveWakeOnPacketOfTypes(
     const std::vector<std::string>& packet_types, Error* error) {
-  wake_on_wifi_->RemoveWakeOnPacketOfTypes(packet_types, error);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->RemoveWakeOnPacketOfTypes(packet_types, error);
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kWakeOnWiFiNotSupported);
+  }
 }
 
 void WiFi::RemoveAllWakeOnPacketConnections(Error* error) {
-  wake_on_wifi_->RemoveAllWakeOnPacketConnections(error);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->RemoveAllWakeOnPacketConnections(error);
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kWakeOnWiFiNotSupported);
+  }
 }
 
 void WiFi::RestartFastScanAttempts() {
@@ -2766,8 +2810,12 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  wake_on_wifi_->ParseWakeOnWiFiCapabilities(nl80211_message);
-  if (ParseWiphyIndex(nl80211_message)) {
+  if (wake_on_wifi_) {
+    wake_on_wifi_->ParseWakeOnWiFiCapabilities(nl80211_message);
+  }
+  // Parse and set wiphy_index_.
+  bool wiphy_index_parsed = ParseWiphyIndex(nl80211_message);
+  if (wiphy_index_parsed && wake_on_wifi_) {
     wake_on_wifi_->OnWiphyIndexReceived(wiphy_index_);
   }
 
@@ -3257,6 +3305,9 @@ void WiFi::RemoveSupplicantNetworks() {
 void WiFi::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
                              bool new_lease_acquired) {
   Device::OnIPConfigUpdated(ipconfig, new_lease_acquired);
+  if (!wake_on_wifi_) {
+    return;
+  }
   if (new_lease_acquired) {
     SLOG(this, 3) << __func__ << ": "
                   << "IPv4 DHCP lease obtained";
@@ -3279,6 +3330,9 @@ void WiFi::OnIPv6ConfigUpdated() {
   if (!IsConnectedToCurrentService()) {
     return;
   }
+  if (!wake_on_wifi_) {
+    return;
+  }
   SLOG(this, 3) << __func__ << ": "
                 << "IPv6 configuration obtained";
   uint32_t time_to_next_lease_renewal;
@@ -3294,8 +3348,10 @@ bool WiFi::IsConnectedToCurrentService() {
 
 void WiFi::ReportConnectedToServiceAfterWake() {
   int seconds_in_suspend = (manager()->GetSuspendDurationUsecs() / 1000000);
-  wake_on_wifi_->ReportConnectedToServiceAfterWake(
-      IsConnectedToCurrentService(), seconds_in_suspend);
+  if (wake_on_wifi_) {
+    wake_on_wifi_->ReportConnectedToServiceAfterWake(
+        IsConnectedToCurrentService(), seconds_in_suspend);
+  }
 }
 
 bool WiFi::RequestRoam(const std::string& addr, Error* error) {

@@ -661,7 +661,6 @@ class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
       delete;
 };
 
-#if !defined(DISABLE_WAKE_ON_WIFI)
 class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
  public:
   static const int kName;
@@ -684,7 +683,6 @@ class Nl80211AttributeWowlanTriggersSupported : public NetlinkNestedAttribute {
   Nl80211AttributeWowlanTriggersSupported& operator=(
       const Nl80211AttributeWowlanTriggersSupported&) = delete;
 };
-#endif  // DISABLE_WAKE_ON_WIFI
 
 // Raw.
 
