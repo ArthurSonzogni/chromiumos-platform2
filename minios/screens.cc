@@ -4,11 +4,14 @@
 
 #include "minios/screens.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+
+#include "minios/minios.h"
 
 namespace screens {
 
@@ -34,6 +37,9 @@ namespace {
 // Buttons Spacing
 constexpr int kTitleY = (-1080 / 2) + 238;
 constexpr int kBtnYStep = 40;
+
+// Dropdown size.
+constexpr int kNetworksPerPage = 10;
 }  // namespace
 
 bool Screens::Init() {
@@ -244,10 +250,16 @@ void Screens::ShowMiniOsDropdownScreen() {
 }
 
 void Screens::ExpandItemDropdown() {
-  SetItems();
+  ShowInstructions("title_MiniOS_dropdown");
+  ShowStepper({"1-done", "2", "3"});
   ShowLanguageMenu(false);
   ShowCollapsedItemMenu(true);
+
   ShowItemDropdown();
+  int items_on_page =
+      std::min(kNetworksPerPage, static_cast<int>(network_list_.size()));
+  ShowButton("btn_back", -frecon_canvas_size_ / 2 + 450 + (items_on_page * 40),
+             (index_ == network_list_.size()), default_button_width_, false);
 }
 
 void Screens::ShowMiniOsGetPasswordScreen() {
@@ -292,8 +304,8 @@ void Screens::GetPassword() {
   // TODO(vyshu) : Logging password for development purposes only. Remove.
   LOG(INFO) << "User password is: " << plain_text_password;
 
-  // Set update engine callbacks.
-  display_update_engine_state_ = true;
+  // Connect to network.
+  network_manager_->Connect(chosen_network_, plain_text_password);
 }
 
 void Screens::ShowMiniOsDownloadingScreen() {
@@ -317,6 +329,14 @@ void Screens::ShowMiniOsCompleteScreen() {
 void Screens::ShowMiniOsErrorScreen() {
   MessageBaseScreen();
   ShowInstructionsWithTitle("MiniOS_general_error");
+  ShowStepper({"done", "done", "stepper_error"});
+  ShowLanguageMenu(index_ == 0);
+  ShowButton("btn_try_again", -100, index_ == 1, default_button_width_, false);
+}
+
+void Screens::ShowMiniOsConnectionErrorScreen() {
+  MessageBaseScreen();
+  ShowInstructionsWithTitle("MiniOS_error");
   ShowStepper({"done", "done", "stepper_error"});
   ShowLanguageMenu(index_ == 0);
   ShowButton("btn_try_again", -100, index_ == 1, default_button_width_, false);
@@ -437,38 +457,40 @@ void Screens::ShowCollapsedItemMenu(bool is_selected) {
 }
 
 void Screens::ShowItemDropdown() {
-  constexpr int kItemPerPage = 10;
-  // Pick begin index such that the selected index is centered on the screen.
-  int begin_index =
-      std::clamp(index_ - kItemPerPage / 2, 0,
-                 static_cast<int>(supported_locales_.size()) - kItemPerPage);
-
   int offset_y = -frecon_canvas_size_ / 2 + 350 + 40;
   const int kBackgroundX = -frecon_canvas_size_ / 2 + 360;
   const int kOffsetX = -frecon_canvas_size_ / 2 + 60;
   constexpr int kItemHeight = 40;
+
+  if (network_list_.empty()) {
+    // Okay to return here as there will be a callback to refresh the dropdown
+    // once the networks are found.
+    ShowBox(kBackgroundX, offset_y, 718, 38, kMenuDropdownBackgroundBlack);
+    ShowText("Please wait while we find available networks.", kOffsetX,
+             offset_y, "grey");
+    return;
+  }
+
+  // Pick begin index such that the selected index is centered on the screen.
+  // If there are not enough items for a full page then start at 0.
+  int begin_index = 0;
+  int page_difference = network_list_.size() - kNetworksPerPage;
+  if (page_difference >= 0) {
+    begin_index = std::clamp(index_ - kNetworksPerPage / 2, 0, page_difference);
+  }
+
   for (int i = begin_index;
-       i < (begin_index + kItemPerPage) && i < item_list_.size(); i++) {
+       i < (begin_index + kNetworksPerPage) && i < network_list_.size(); i++) {
     if (index_ == i) {
       ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
-      ShowText(item_list_[i], kOffsetX, offset_y, "black");
+      ShowText(network_list_[i], kOffsetX, offset_y, "black");
     } else {
       ShowBox(kBackgroundX, offset_y, 720, 40, kMenuDropdownFrameNavy);
       ShowBox(kBackgroundX, offset_y, 718, 38, kMenuDropdownBackgroundBlack);
-      ShowText(item_list_[i], kOffsetX, offset_y, "grey");
+      ShowText(network_list_[i], kOffsetX, offset_y, "grey");
     }
     offset_y += kItemHeight;
   }
-}
-
-void Screens::SetItems() {
-  // TODO(vyshu): temporary item names, replace with shill information.
-  item_list_ = {" item 1", "item2_public", "testing ! 1 2 ",
-                "32_char_is_the_longest_item_name"};
-  // Change the menu count for the Expanded dropdown menu based on number of
-  // items.
-  menu_count_[static_cast<int>(ScreenType::kExpandedDropDownScreen)] =
-      item_list_.size();
 }
 
 void Screens::CheckRightToLeft() {
@@ -588,16 +610,19 @@ void Screens::OnKeyPress(int fd_index, int key_changed, bool key_released) {
 }
 
 void Screens::SwitchScreen(bool enter) {
+  // Changing locale. Remember the current screen to return back to it.
   if (enter && index_ == 0 &&
       current_screen_ != ScreenType::kLanguageDropDownScreen &&
       current_screen_ != ScreenType::kExpandedDropDownScreen &&
-      current_screen_ != ScreenType::kDoneWithFlow) {
+      current_screen_ != ScreenType::kStartDownload) {
     previous_screen_ = current_screen_;
     current_screen_ = ScreenType::kLanguageDropDownScreen;
     LanguageMenuOnSelect();
     return;
   }
 
+  // Not switching to a different screen. Just update `current_screen_` with the
+  // new index.
   if (!enter) {
     ShowNewScreen();
     return;
@@ -607,6 +632,9 @@ void Screens::SwitchScreen(bool enter) {
     case ScreenType::kWelcomeScreen:
       if (index_ == 1) {
         current_screen_ = ScreenType::kDropDownScreen;
+        // Update available networks every time the dropdown screen is picked.
+        // TODO(vyshu): Change this to only update networks when necessary.
+        UpdateNetworkList();
       }
       index_ = 1;
       break;
@@ -614,22 +642,34 @@ void Screens::SwitchScreen(bool enter) {
       if (index_ == 1) {
         index_ = 0;
         current_screen_ = ScreenType::kExpandedDropDownScreen;
+        MessageBaseScreen();
       } else {
         index_ = 1;
         current_screen_ = ScreenType::kWelcomeScreen;
       }
       break;
     case ScreenType::kExpandedDropDownScreen:
-      index_ = 1;
-      current_screen_ = ScreenType::kPasswordScreen;
+      if (index_ == menu_count_[static_cast<int>(current_screen_)] - 1) {
+        index_ = 1;
+        current_screen_ = ScreenType::kWelcomeScreen;
+      } else if (network_list_.size() > index_ && index_ >= 0) {
+        chosen_network_ = network_list_[index_];
+        index_ = 1;
+        current_screen_ = ScreenType::kPasswordScreen;
+      } else {
+        LOG(WARNING) << "Selected network index: " << index_
+                     << " not valid. Retry";
+        index_ = 0;
+      }
       break;
     case ScreenType::kPasswordScreen:
       if (index_ == 1) {
         GetPassword();
-        current_screen_ = ScreenType::kDoneWithFlow;
+        current_screen_ = ScreenType::kStartDownload;
       } else {
         index_ = 1;
         current_screen_ = ScreenType::kDropDownScreen;
+        UpdateNetworkList();
       }
       break;
     case ScreenType::kLanguageDropDownScreen:
@@ -640,12 +680,18 @@ void Screens::SwitchScreen(bool enter) {
         return;
       }
       break;
-    case ScreenType::kDoneWithFlow:
+    case ScreenType::kStartDownload:
       return;
     case ScreenType::kDownloadError:
       if (index_ == 1) {
         // Back to beginning.
         current_screen_ = ScreenType::kWelcomeScreen;
+      }
+      break;
+    case ScreenType::kNetworkError:
+      if (index_ == 1) {
+        // Back to dropdown screen,
+        current_screen_ = ScreenType::kDropDownScreen;
       }
       break;
   }
@@ -670,11 +716,14 @@ void Screens::ShowNewScreen() {
     case ScreenType::kLanguageDropDownScreen:
       ShowLanguageDropdown();
       break;
-    case ScreenType::kDoneWithFlow:
+    case ScreenType::kStartDownload:
       ShowMiniOsDownloadingScreen();
       break;
     case ScreenType::kDownloadError:
       ShowMiniOsErrorScreen();
+      break;
+    case ScreenType::kNetworkError:
+      ShowMiniOsConnectionErrorScreen();
       break;
   }
 }
@@ -726,11 +775,67 @@ void Screens::OnProgressChanged(const update_engine::StatusResult& status) {
   previous_update_state_ = operation;
 }
 
+void Screens::OnConnect(const std::string& ssid, brillo::Error* error) {
+  if (error) {
+    LOG(ERROR) << "Could not connect to " << ssid
+               << ". ErrorCode=" << error->GetCode()
+               << " ErrorMessage=" << error->GetMessage();
+    ChangeToNetworkErrorScreen();
+    return;
+  }
+  LOG(INFO) << "Successfully connected to " << ssid;
+  // TODO(b/181248366): MiniOs: Stop update engine from scheduling periodic
+  // update checks in recovery mode and then call update check manually.
+  display_update_engine_state_ = true;
+}
+
+void Screens::OnGetNetworks(const std::vector<std::string>& networks,
+                            brillo::Error* error) {
+  if (error) {
+    LOG(ERROR) << "Could not get networks. ErrorCode=" << error->GetCode()
+               << " ErrorMessage=" << error->GetMessage();
+    network_list_.clear();
+    ChangeToNetworkErrorScreen();
+    menu_count_[static_cast<int>(ScreenType::kExpandedDropDownScreen)] = 0;
+    return;
+  }
+  network_list_ = networks;
+  LOG(INFO) << "Trying to update network list.";
+
+  // Change the menu count for the Expanded dropdown menu based on number of
+  // items. Add one extra slot for the back button.
+  menu_count_[static_cast<int>(ScreenType::kExpandedDropDownScreen)] =
+      network_list_.size() + 1;
+
+  if (network_list_.empty()) {
+    LOG(ERROR) << "No available networks.";
+    // TODO(vyshu) : Create a more specific error for this as it is not a
+    // network error.
+    ChangeToNetworkErrorScreen();
+    return;
+  }
+  // If already waiting on the dropdown screen, refresh.
+  if (current_screen_ == ScreenType::kExpandedDropDownScreen) {
+    index_ = 0;
+    ShowNewScreen();
+  }
+}
+
+void Screens::UpdateNetworkList() {
+  network_manager_->GetNetworks();
+  chosen_network_.clear();
+}
 void Screens::ChangeToDownloadErrorScreen() {
   current_screen_ = ScreenType::kDownloadError;
   display_update_engine_state_ = false;
   index_ = 1;
   ShowNewScreen();
+}
+void Screens::ChangeToNetworkErrorScreen() {
+  current_screen_ = ScreenType::kNetworkError;
+  index_ = 1;
+  ShowNewScreen();
+  chosen_network_.clear();
 }
 
 }  // namespace screens

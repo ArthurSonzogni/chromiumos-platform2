@@ -41,13 +41,18 @@ void Daemon::RegisterDBusObjectsAsync(
   bus_for_proxies_ = dbus_connection_for_proxies_.Connect();
   CHECK(bus_for_proxies_);
 
-  mini_os_ = std::make_shared<MiniOs>(std::make_unique<UpdateEngineProxy>(
-      std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
-          bus_for_proxies_)));
+  std::shared_ptr<NetworkManagerInterface> network_manager =
+      std::make_shared<NetworkManager>(
+          std::make_unique<ShillProxy>(bus_for_proxies_));
 
-  dbus_adaptor_ = std::make_unique<DBusAdaptor>(std::make_unique<DBusService>(
-      mini_os_, std::make_shared<NetworkManager>(
-                    std::make_unique<ShillProxy>(bus_for_proxies_))));
+  mini_os_ = std::make_shared<MiniOs>(
+      std::make_unique<UpdateEngineProxy>(
+          std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
+              bus_for_proxies_)),
+      network_manager);
+
+  dbus_adaptor_ = std::make_unique<DBusAdaptor>(
+      std::make_unique<DBusService>(mini_os_, network_manager));
 
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

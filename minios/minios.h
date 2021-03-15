@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "minios/minios_interface.h"
+#include "minios/network_manager_interface.h"
 #include "minios/screens.h"
 #include "minios/update_engine_proxy.h"
 
@@ -18,7 +19,8 @@ extern const char kLogFile[];
 
 class MiniOs : public MiniOsInterface {
  public:
-  explicit MiniOs(std::unique_ptr<UpdateEngineProxy> update_engine_proxy);
+  explicit MiniOs(std::unique_ptr<UpdateEngineProxy> update_engine_proxy,
+                  std::shared_ptr<NetworkManagerInterface> network_manager);
   virtual ~MiniOs() = default;
 
   // Runs the miniOS flow.
@@ -35,9 +37,10 @@ class MiniOs : public MiniOsInterface {
   State state_;
 
   std::unique_ptr<UpdateEngineProxy> update_engine_proxy_;
+  std::shared_ptr<NetworkManagerInterface> network_manager_;
 
   ProcessManager process_manager_;
-  screens::Screens screens_{&process_manager_};
+  screens::Screens screens_;
 };
 
 }  // namespace minios

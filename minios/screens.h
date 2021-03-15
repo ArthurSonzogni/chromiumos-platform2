@@ -7,11 +7,13 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest_prod.h>
 
 #include "minios/key_reader.h"
+#include "minios/network_manager_interface.h"
 #include "minios/process_manager.h"
 #include "minios/screen_base.h"
 #include "minios/update_engine_proxy.h"
@@ -42,11 +44,15 @@ extern const int kKeyMax;
 
 class Screens : public ScreenBase,
                 public key_reader::KeyReader::Delegate,
-                public UpdateEngineProxy::UpdaterDelegate {
+                public UpdateEngineProxy::UpdaterDelegate,
+                public minios::NetworkManagerInterface::Observer {
  public:
-  explicit Screens(ProcessManagerInterface* process_manager)
-      : key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {
-    process_manager_ = process_manager;
+  explicit Screens(
+      ProcessManagerInterface* process_manager,
+      std::shared_ptr<minios::NetworkManagerInterface> network_manager)
+      : process_manager_(process_manager),
+        network_manager_(network_manager),
+        key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {
     key_reader_.SetDelegate(this);
   }
   virtual ~Screens() = default;
@@ -115,6 +121,11 @@ class Screens : public ScreenBase,
   }
   int GetScreenForTest() { return static_cast<int>(current_screen_); }
 
+  // Sets network list for test.
+  void SetNetworkListForTest_(const std::vector<std::string>& networks) {
+    network_list_ = networks;
+  }
+
  private:
   FRIEND_TEST(ScreensTest, ReadDimension);
   FRIEND_TEST(ScreensTest, GetDimension);
@@ -140,11 +151,10 @@ class Screens : public ScreenBase,
   FRIEND_TEST(ScreensTestMocks, UpdateEngineError);
   FRIEND_TEST(ScreensTestMocks, UpdateEngineProgressComplete);
   FRIEND_TEST(ScreensTestMocks, IdleError);
-
-  ProcessManagerInterface* process_manager_;
-
-  key_reader::KeyReader key_reader_ =
-      key_reader::KeyReader(/*include_usb=*/true);
+  FRIEND_TEST(ScreensTestMocks, GetNetworks);
+  FRIEND_TEST(ScreensTestMocks, OnConnectError);
+  FRIEND_TEST(ScreensTestMocks, NoNetworksGiven);
+  FRIEND_TEST(ScreensTestMocks, GetNetworksRefresh);
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items.
@@ -163,6 +173,16 @@ class Screens : public ScreenBase,
   // update the flow once key is recorded as being pressed and released.
   void OnKeyPress(int fd_index, int key_changed, bool key_released) override;
 
+  // `NetworkManagerInterface::Observer` overrides.
+  // Updates the list of networks stored by the UI to show in the drop down.
+  void OnGetNetworks(const std::vector<std::string>& networks,
+                     brillo::Error* error) override;
+  // Attempts to connect, shows error screen on failure.
+  void OnConnect(const std::string& ssid, brillo::Error* error) override;
+
+  // Calls `GetNetworks` to update the the list of networks.
+  virtual void UpdateNetworkList();
+
   // Does all the reloading needed when the locale is changed, including
   // repainting the screen. Called after `LanguageDropdown` is done.
   virtual void OnLocaleChange();
@@ -178,10 +198,7 @@ class Screens : public ScreenBase,
   void ShowMiniOsDownloadingScreen();
   virtual void ShowMiniOsCompleteScreen();
   void ShowMiniOsErrorScreen();
-
-  // Sets list of available items to `item_list_` to show in drop down. Called
-  // every time the menu is clicked.
-  void SetItems();
+  void ShowMiniOsConnectionErrorScreen();
 
   // Checks whether the current language is read from right to left. Must be
   // updated every time the language changes.
@@ -206,6 +223,17 @@ class Screens : public ScreenBase,
   // Changes screen to download error.
   void ChangeToDownloadErrorScreen();
 
+  // Changes screen to network error. Resets `index_` and
+  // `display_engine_state_`.
+  void ChangeToNetworkErrorScreen();
+
+  ProcessManagerInterface* process_manager_;
+
+  key_reader::KeyReader key_reader_ =
+      key_reader::KeyReader(/*include_usb=*/true);
+
+  std::shared_ptr<minios::NetworkManagerInterface> network_manager_;
+
   // Whether the device has a detachable keyboard.
   bool is_detachable_{false};
 
@@ -216,10 +244,10 @@ class Screens : public ScreenBase,
   std::vector<std::string> supported_locales_;
 
   // List of currently available items.
-  std::vector<std::string> item_list_;
+  std::vector<std::string> network_list_;
 
   // The item the user has picked from the dropdown menu.
-  std::string chosen_item_;
+  std::string chosen_network_;
 
   // Hardware Id read from crossystem.
   std::string hwid_;
@@ -236,7 +264,7 @@ class Screens : public ScreenBase,
   // The number of menu buttons on each screen corresponding to the enum
   // numbers, used to keep the index in bounds. The dropdown menu counts are
   // updated based on the number of items in the dropdown.
-  std::vector<int> menu_count_{3, 3, 0, 3, 0, 0, 2};
+  std::vector<int> menu_count_{3, 3, 0, 3, 0, 0, 2, 2};
 
   // All the different screens in the MiniOs Flow.
   enum class ScreenType {
@@ -245,8 +273,9 @@ class Screens : public ScreenBase,
     kExpandedDropDownScreen = 2,
     kPasswordScreen = 3,
     kLanguageDropDownScreen = 4,
-    kDoneWithFlow = 5,
+    kStartDownload = 5,
     kDownloadError = 6,
+    kNetworkError = 7,
   };
 
   ScreenType current_screen_{ScreenType::kWelcomeScreen};

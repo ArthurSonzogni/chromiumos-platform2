@@ -75,7 +75,7 @@ class ScreensTest : public ::testing::Test {
   // Path to /etc/screens in test directory.
   base::FilePath screens_path_;
   MockProcessManager mock_process_manager_;
-  Screens screens_{&mock_process_manager_};
+  Screens screens_{&mock_process_manager_, nullptr};
   std::string test_root_;
 };
 
@@ -486,7 +486,7 @@ TEST_F(ScreensTest, MapRegionToKeyboard) {
 
 class MockScreens : public Screens {
  public:
-  MockScreens() : Screens(nullptr) {}
+  MockScreens() : Screens(nullptr, nullptr) {}
   MOCK_METHOD(bool,
               ShowBox,
               (int offset_x,
@@ -511,6 +511,7 @@ class MockScreens : public Screens {
   MOCK_METHOD(void, GetPassword, ());
   MOCK_METHOD(void, OnLocaleChange, ());
   MOCK_METHOD(void, ShowMiniOsCompleteScreen, ());
+  MOCK_METHOD(void, UpdateNetworkList, ());
 };
 
 class ScreensTestMocks : public ::testing::Test {
@@ -752,7 +753,7 @@ TEST_F(ScreensTestMocks, ScreenFlowLanguage) {
   EXPECT_EQ(0, mock_screens_.GetScreenForTest());
 }
 
-TEST_F(ScreensTestMocks, ScreenFlowForward) {
+TEST_F(ScreensTestMocks, ScreenFlowForwardWithNetwork) {
   // Test the screen flow forward starting from the welcome screen.
   mock_screens_.SetIndexForTest(1);
   mock_screens_.SetScreenForTest(0);
@@ -773,8 +774,9 @@ TEST_F(ScreensTestMocks, ScreenFlowForward) {
   EXPECT_EQ(2, mock_screens_.GetScreenForTest());
 
   // Enter goes to kPasswordScreen.
+  mock_screens_.SetIndexForTest(1);
+  mock_screens_.SetNetworkListForTest_({"test1", "test2"});
   EXPECT_CALL(mock_screens_, ShowNewScreen());
-  EXPECT_CALL(mock_screens_, GetPassword());
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(3, mock_screens_.GetScreenForTest());
 
@@ -841,6 +843,90 @@ TEST_F(ScreensTestMocks, IdleError) {
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.OnProgressChanged(status);
   EXPECT_FALSE(mock_screens_.display_update_engine_state_);
+}
+
+TEST_F(ScreensTestMocks, InvalidNetwork) {
+  mock_screens_.SetScreenForTest(2);
+
+  // Set list of available networks to empty.
+  mock_screens_.SetNetworkListForTest_({});
+  mock_screens_.SetIndexForTest(1);
+
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  // Goes back to the dropdown screen because the network chosen was invalid.
+  EXPECT_EQ(2, mock_screens_.GetScreenForTest());
+
+  mock_screens_.SetNetworkListForTest_({"test1"});
+  mock_screens_.SetIndexForTest(5);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  // Goes back to the dropdown screen because the network chosen was invalid.
+  EXPECT_EQ(2, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, RestartFromDownloadError) {
+  // Starting from Download error screen.
+  mock_screens_.SetScreenForTest(6);
+  mock_screens_.SetIndexForTest(1);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  // Back to start screen.
+  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, RestartFromNetworkError) {
+  // Starting from network error screen.
+  mock_screens_.SetScreenForTest(7);
+  mock_screens_.SetIndexForTest(1);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  // Back to dropdown.
+  EXPECT_EQ(1, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, GetNetworks) {
+  mock_screens_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
+  // Menu count is updated.
+  EXPECT_EQ(4, mock_screens_.menu_count_[2]);
+
+  // Network error.
+  brillo::ErrorPtr error_ptr =
+      brillo::Error::Create(FROM_HERE, "HTTP", "404", "Not found", nullptr);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  // Reset and show error screen.
+  mock_screens_.OnGetNetworks({}, error_ptr.get());
+  EXPECT_EQ(0, mock_screens_.menu_count_[2]);
+  EXPECT_EQ(0, mock_screens_.network_list_.size());
+  EXPECT_EQ(7, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, GetNetworksRefresh) {
+  mock_screens_.SetScreenForTest(2);
+  EXPECT_TRUE(mock_screens_.network_list_.empty());
+  // Menu count is updated amd drop down screen is refreshed.
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
+  EXPECT_EQ(4, mock_screens_.menu_count_[2]);
+}
+
+TEST_F(ScreensTestMocks, NoNetworksGiven) {
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnGetNetworks({}, nullptr);
+  // Network error screen.
+  EXPECT_EQ(7, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, OnConnectError) {
+  mock_screens_.chosen_network_ = "test-ssid";
+  // Network error, show corresponding screen.
+  brillo::ErrorPtr error_ptr =
+      brillo::Error::Create(FROM_HERE, "HTTP", "404", "Not found", nullptr);
+
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnConnect(mock_screens_.chosen_network_, error_ptr.get());
+  EXPECT_EQ(7, mock_screens_.GetScreenForTest());
+  EXPECT_TRUE(mock_screens_.chosen_network_.empty());
 }
 
 }  // namespace screens
