@@ -310,7 +310,6 @@ if (use.test) {
       libs = [
         "hwsec_test",
         "policy",
-        "tpm_manager_test",
         "trunks_test",
       ]
     } else {

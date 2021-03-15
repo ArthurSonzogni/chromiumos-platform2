@@ -191,8 +191,8 @@ executable("local_data_migration") {
 # A library for externally useful tpm_manager_testtest code.
 static_library("tpm_manager_test") {
   sources = [
-    "common/mock_tpm_nvram_interface.cc",
-    "common/mock_tpm_ownership_interface.cc",
+    "server/mock_tpm_nvram_interface.cc",
+    "server/mock_tpm_ownership_interface.cc",
   ]
   configs += [
     ":target_defaults",

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tpm_manager/common/mock_tpm_ownership_interface.h"
+#include "tpm_manager/server/mock_tpm_ownership_interface.h"
 
 using testing::_;
 using testing::Invoke;

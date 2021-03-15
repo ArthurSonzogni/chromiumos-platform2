@@ -92,10 +92,7 @@ if (use.test) {
       ":target_defaults",
       ":test_defaults",
     ]
-    libs = [
-      "tpm_manager_test",
-      "trunks_test",
-    ]
+    libs = [ "trunks_test" ]
     deps = [
       ":sealed_storage",
       "//common-mk/testrunner",

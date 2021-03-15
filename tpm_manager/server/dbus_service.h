@@ -14,11 +14,11 @@
 #include <brillo/dbus/dbus_signal.h>
 #include <dbus/bus.h>
 
-#include "tpm_manager/common/tpm_nvram_interface.h"
-#include "tpm_manager/common/tpm_ownership_interface.h"
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_manager_service.h"
+#include "tpm_manager/server/tpm_nvram_interface.h"
+#include "tpm_manager/server/tpm_ownership_interface.h"
 
 namespace tpm_manager {
 

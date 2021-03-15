@@ -11,15 +11,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
+#include <tpm_manager/client/mock_tpm_manager_utility.h>
+#include <trunks/mock_blob_parser.h>
+#include <trunks/mock_tpm.h>
+#include <trunks/mock_tpm_utility.h>
+#include <trunks/trunks_factory_for_test.h>
 
 #include "attestation/common/tpm_utility_v2.h"
-#include <tpm_manager/client/mock_tpm_manager_utility.h>
-#include "tpm_manager/common/mock_tpm_nvram_interface.h"
-#include "tpm_manager/common/mock_tpm_ownership_interface.h"
-#include "trunks/mock_blob_parser.h"
-#include "trunks/mock_tpm.h"
-#include "trunks/mock_tpm_utility.h"
-#include "trunks/trunks_factory_for_test.h"
 
 namespace {
 

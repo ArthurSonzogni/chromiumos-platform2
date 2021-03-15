@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TPM_MANAGER_COMMON_TPM_NVRAM_INTERFACE_H_
-#define TPM_MANAGER_COMMON_TPM_NVRAM_INTERFACE_H_
+#ifndef TPM_MANAGER_SERVER_TPM_NVRAM_INTERFACE_H_
+#define TPM_MANAGER_SERVER_TPM_NVRAM_INTERFACE_H_
 
 #include <base/callback.h>
 
@@ -58,4 +58,4 @@ class TPM_MANAGER_EXPORT TpmNvramInterface {
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_COMMON_TPM_NVRAM_INTERFACE_H_
+#endif  // TPM_MANAGER_SERVER_TPM_NVRAM_INTERFACE_H_

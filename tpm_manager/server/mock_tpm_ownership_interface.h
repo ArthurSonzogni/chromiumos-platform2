@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TPM_MANAGER_COMMON_MOCK_TPM_OWNERSHIP_INTERFACE_H_
-#define TPM_MANAGER_COMMON_MOCK_TPM_OWNERSHIP_INTERFACE_H_
+#ifndef TPM_MANAGER_SERVER_MOCK_TPM_OWNERSHIP_INTERFACE_H_
+#define TPM_MANAGER_SERVER_MOCK_TPM_OWNERSHIP_INTERFACE_H_
 
 #include <gmock/gmock.h>
 
-#include "tpm_manager/common/tpm_ownership_interface.h"
+#include "tpm_manager/server/tpm_ownership_interface.h"
 
 namespace tpm_manager {
 
@@ -57,4 +57,4 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_COMMON_MOCK_TPM_OWNERSHIP_INTERFACE_H_
+#endif  // TPM_MANAGER_SERVER_MOCK_TPM_OWNERSHIP_INTERFACE_H_

@@ -19,14 +19,14 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/threading/thread.h>
 
-#include "tpm_manager/common/tpm_nvram_interface.h"
-#include "tpm_manager/common/tpm_ownership_interface.h"
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/passive_timer.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_manager_metrics.h"
 #include "tpm_manager/server/tpm_nvram.h"
+#include "tpm_manager/server/tpm_nvram_interface.h"
+#include "tpm_manager/server/tpm_ownership_interface.h"
 #include "tpm_manager/server/tpm_status.h"
 #if USE_TPM2
 #include "tpm_manager/server/tpm2_initializer_impl.h"

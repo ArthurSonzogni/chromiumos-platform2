@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TPM_MANAGER_COMMON_TPM_OWNERSHIP_INTERFACE_H_
-#define TPM_MANAGER_COMMON_TPM_OWNERSHIP_INTERFACE_H_
+#ifndef TPM_MANAGER_SERVER_TPM_OWNERSHIP_INTERFACE_H_
+#define TPM_MANAGER_SERVER_TPM_OWNERSHIP_INTERFACE_H_
 
 #include <base/callback.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -81,4 +81,4 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_COMMON_TPM_OWNERSHIP_INTERFACE_H_
+#endif  // TPM_MANAGER_SERVER_TPM_OWNERSHIP_INTERFACE_H_

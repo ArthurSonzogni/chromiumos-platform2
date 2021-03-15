@@ -40,8 +40,6 @@
 #include "attestation/server/google_keys.h"
 #include "attestation/server/key_store.h"
 #include "attestation/server/pkcs11_key_store.h"
-#include "tpm_manager/common/tpm_nvram_interface.h"
-#include "tpm_manager/common/tpm_ownership_interface.h"
 
 namespace attestation {
 

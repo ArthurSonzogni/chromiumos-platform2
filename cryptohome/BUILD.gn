@@ -545,16 +545,13 @@ if (use.test) {
         "pinweaver_le_credential_backend_unittest.cc",
         "tpm2_test.cc",
       ]
-      libs += [
-        "trunks_test",
-        "tpm_manager_test",
-      ]
+      libs += [ "trunks_test" ]
     } else {
-      libs += [ "hwsec_test" ]
       sources += [
         "tpm1_static_utils_unittest.cc",
         "tpm1_test.cc",
       ]
+      libs += [ "hwsec_test" ]
     }
 
     if (use.cert_provision) {
@@ -639,7 +636,6 @@ if (use.test) {
       defines = [ "TPM2_MODE=1" ]
       libs = [
         "tpm_manager",
-        "tpm_manager_test",
         "trunks",
         "trunks_test",
       ]

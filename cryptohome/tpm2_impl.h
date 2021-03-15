@@ -16,8 +16,6 @@
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
-#include <tpm_manager/common/tpm_nvram_interface.h>
-#include <tpm_manager/common/tpm_ownership_interface.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/hmac_session.h>
 #include <trunks/tpm_generated.h>

@@ -13,11 +13,11 @@
 #include <gtest/gtest.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include "tpm_manager/common/mock_tpm_nvram_interface.h"
-#include "tpm_manager/common/mock_tpm_ownership_interface.h"
-#include "tpm_manager/common/tpm_nvram_dbus_interface.h"
 #include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/mock_local_data_store.h"
+#include "tpm_manager/server/mock_tpm_nvram_interface.h"
+#include "tpm_manager/server/mock_tpm_ownership_interface.h"
+#include "tpm_manager/server/tpm_nvram_dbus_interface.h"
 
 using testing::_;
 using testing::DoAll;
