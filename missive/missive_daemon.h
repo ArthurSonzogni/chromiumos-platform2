@@ -12,7 +12,7 @@
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 
-#include "proto/interface.pb.h"
+#include "missive/proto/interface.pb.h"
 
 #include "dbus_adaptors/org.chromium.Missived.h"
 
