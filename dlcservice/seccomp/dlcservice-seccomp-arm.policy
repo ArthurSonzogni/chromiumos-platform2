@@ -52,6 +52,8 @@ getdents64: 1
 statfs64: 1
 mkdir: 1
 ftruncate64: 1
+futex: 1
+futex_time64: 1
 nanosleep: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
