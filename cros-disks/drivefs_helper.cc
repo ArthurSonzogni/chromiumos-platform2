@@ -265,6 +265,11 @@ MountErrorType DrivefsHelper::ConfigureSandbox(
     }
   }
 
+  // Sandboxed processes have their own tmpfs mount, but this mount is too small
+  // for certain sqlite operations that DriveFS does. Tell DriveFS to use the
+  // datadir for sqlite temporary file storage instead.
+  sandbox->AddEnvironmentVariable("SQLITE_TMPDIR", data_dir.value());
+
   std::vector<std::string> args;
   SetParamValue(&args, "uid", base::NumberToString(kChronosUID));
   SetParamValue(&args, "gid", base::NumberToString(kChronosAccessGID));
