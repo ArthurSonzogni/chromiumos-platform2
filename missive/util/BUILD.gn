@@ -54,3 +54,12 @@ source_set("task_runner_context") {
 
   configs += [ ":target_defaults" ]
 }
+
+source_set("test_callbacks_support") {
+  sources = [
+    "test_support_callbacks.cc",
+    "test_support_callbacks.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
