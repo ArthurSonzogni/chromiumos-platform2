@@ -131,8 +131,8 @@ void CameraMojoChannelManagerImpl::RegisterServer(
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
 
-  camera_hal_server_request_ = {
-      .requestOrPtr = std::move(server),
+  camera_hal_server_task_ = {
+      .pendingReceiverOrRemote = std::move(server),
       .on_construct_callback = std::move(on_construct_callback),
       .on_error_callback = std::move(on_error_callback)};
   ipc_thread_.task_runner()->PostTask(
@@ -142,17 +142,17 @@ void CameraMojoChannelManagerImpl::RegisterServer(
 }
 
 void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
-    mojom::MjpegDecodeAcceleratorRequest request,
+    mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
     Callback on_construct_callback,
     Callback on_error_callback) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
 
-  JpegPendingMojoRequest<mojom::MjpegDecodeAcceleratorRequest> pending_request =
-      {.requestOrPtr = std::move(request),
-       .on_construct_callback = std::move(on_construct_callback),
-       .on_error_callback = std::move(on_error_callback)};
-  jda_requests_.push_back(std::move(pending_request));
+  JpegPendingMojoTask<mojo::PendingReceiver<mojom::MjpegDecodeAccelerator>>
+      pending_task = {.pendingReceiverOrRemote = std::move(receiver),
+                      .on_construct_callback = std::move(on_construct_callback),
+                      .on_error_callback = std::move(on_error_callback)};
+  jda_tasks_.push_back(std::move(pending_task));
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
@@ -160,17 +160,17 @@ void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
 }
 
 void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
-    mojom::JpegEncodeAcceleratorRequest request,
+    mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
     Callback on_construct_callback,
     Callback on_error_callback) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
 
-  JpegPendingMojoRequest<mojom::JpegEncodeAcceleratorRequest> pending_request =
-      {.requestOrPtr = std::move(request),
-       .on_construct_callback = std::move(on_construct_callback),
-       .on_error_callback = std::move(on_error_callback)};
-  jea_requests_.push_back(std::move(pending_request));
+  JpegPendingMojoTask<mojo::PendingReceiver<mojom::JpegEncodeAccelerator>>
+      pending_task = {.pendingReceiverOrRemote = std::move(receiver),
+                      .on_construct_callback = std::move(on_construct_callback),
+                      .on_error_callback = std::move(on_error_callback)};
+  jea_tasks_.push_back(std::move(pending_task));
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
@@ -247,7 +247,7 @@ void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
   VLOGF_ENTER();
 
   if (dispatcher_.is_bound()) {
-    TryConsumePendingMojoRequests();
+    TryConsumePendingMojoTasks();
     return;
   }
 
@@ -273,40 +273,43 @@ void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
                  base::Unretained(this)));
   bound_socket_inode_num_ = socket_inode_num;
 
-  TryConsumePendingMojoRequests();
+  TryConsumePendingMojoTasks();
 }
 
-void CameraMojoChannelManagerImpl::TryConsumePendingMojoRequests() {
+void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
 
-  if (camera_hal_server_request_.requestOrPtr) {
+  if (camera_hal_server_task_.pendingReceiverOrRemote) {
     auto server_token = ReadServerToken();
     if (server_token.is_empty()) {
       LOGF(ERROR) << "Failed to read server token";
-      std::move(camera_hal_server_request_.on_construct_callback)
+      std::move(camera_hal_server_task_.on_construct_callback)
           .Run(-EPERM, mojo::NullRemote());
     } else {
       auto token = mojo_base::mojom::UnguessableToken::New();
       token->high = server_token.GetHighForSerialization();
       token->low = server_token.GetLowForSerialization();
       dispatcher_->RegisterServerWithToken(
-          std::move(camera_hal_server_request_.requestOrPtr), std::move(token),
-          std::move(camera_hal_server_request_.on_construct_callback));
+          std::move(camera_hal_server_task_.pendingReceiverOrRemote),
+          std::move(token),
+          std::move(camera_hal_server_task_.on_construct_callback));
     }
   }
 
-  for (auto& request : jda_requests_) {
-    if (request.requestOrPtr) {
-      dispatcher_->GetMjpegDecodeAccelerator(std::move(request.requestOrPtr));
-      std::move(request.on_construct_callback).Run();
+  for (auto& task : jda_tasks_) {
+    if (task.pendingReceiverOrRemote) {
+      dispatcher_->GetMjpegDecodeAccelerator(
+          std::move(task.pendingReceiverOrRemote));
+      std::move(task.on_construct_callback).Run();
     }
   }
 
-  for (auto& request : jea_requests_) {
-    if (request.requestOrPtr) {
-      dispatcher_->GetJpegEncodeAccelerator(std::move(request.requestOrPtr));
-      std::move(request.on_construct_callback).Run();
+  for (auto& task : jea_tasks_) {
+    if (task.pendingReceiverOrRemote) {
+      dispatcher_->GetJpegEncodeAccelerator(
+          std::move(task.pendingReceiverOrRemote));
+      std::move(task.on_construct_callback).Run();
     }
   }
 }
@@ -323,24 +326,24 @@ void CameraMojoChannelManagerImpl::ResetDispatcherPtr() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
 
-  if (camera_hal_server_request_.on_error_callback) {
-    std::move(camera_hal_server_request_.on_error_callback).Run();
-    camera_hal_server_request_ = {};
+  if (camera_hal_server_task_.on_error_callback) {
+    std::move(camera_hal_server_task_.on_error_callback).Run();
+    camera_hal_server_task_ = {};
   }
 
-  for (auto& request : jda_requests_) {
-    if (request.on_error_callback) {
-      std::move(request.on_error_callback).Run();
+  for (auto& task : jda_tasks_) {
+    if (task.on_error_callback) {
+      std::move(task.on_error_callback).Run();
     }
   }
-  jda_requests_.clear();
+  jda_tasks_.clear();
 
-  for (auto& request : jea_requests_) {
-    if (request.on_error_callback) {
-      std::move(request.on_error_callback).Run();
+  for (auto& task : jea_tasks_) {
+    if (task.on_error_callback) {
+      std::move(task.on_error_callback).Run();
     }
   }
-  jea_requests_.clear();
+  jea_tasks_.clear();
 
   dispatcher_.reset();
   bound_socket_inode_num_ = kInvalidInodeNum;

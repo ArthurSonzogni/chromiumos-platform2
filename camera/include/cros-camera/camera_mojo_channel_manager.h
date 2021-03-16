@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/callback_forward.h>
 #include <base/memory/ref_counted.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -61,21 +62,21 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
           on_construct_callback,
       Callback on_error_callback) = 0;
 
-  // Creates a new MjpegDecodeAccelerator connection by |request|.
+  // Creates a new MjpegDecodeAccelerator connection by |receiver|.
   // This method is expected to be called on the IPC thread and the
   // |on_construct_callback| and |on_error_callback| will be run on the IPC
   // thread as well.
   virtual void CreateMjpegDecodeAccelerator(
-      mojom::MjpegDecodeAcceleratorRequest request,
+      mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
       Callback on_construct_callback,
       Callback on_error_callback) = 0;
 
-  // Creates a new JpegEncodeAccelerator connection by |request|.
+  // Creates a new JpegEncodeAccelerator connection by |receiver|.
   // This method is expected to be called on the IPC thread and the
   // |on_construct_callback| and |on_error_callback| will be run on the IPC
   // thread as well.
   virtual void CreateJpegEncodeAccelerator(
-      mojom::JpegEncodeAcceleratorRequest request,
+      mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
       Callback on_construct_callback,
       Callback on_error_callback) = 0;
 

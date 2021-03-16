@@ -14,6 +14,7 @@
 
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/threading/thread.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -100,7 +101,7 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
     // Error handler for JDA mojo channel.
     void OnJpegDecodeAcceleratorError();
 
-    // Callback function for |jda_ptr_|->DecodeWithDmaBuf().
+    // Callback function for |jda_|->DecodeWithDmaBuf().
     void OnDecodeAck(DecodeCallback callback,
                      int32_t buffer_id,
                      cros::mojom::DecodeError error);
@@ -117,8 +118,8 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
 
     // Pointer to local proxy of remote JpegDecodeAccelerator interface
     // implementation.
-    // All the Mojo communication to |jda_ptr_| happens on |ipc_task_runner_|.
-    mojom::MjpegDecodeAcceleratorPtr jda_ptr_;
+    // All the Mojo communication to |jda_| happens on |ipc_task_runner_|.
+    mojo::Remote<mojom::MjpegDecodeAccelerator> jda_;
 
     // Tracking the buffer ids sent to decoder.
     std::set<int32_t> inflight_buffer_ids_;

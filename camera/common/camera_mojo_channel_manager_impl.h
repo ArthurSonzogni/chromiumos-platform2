@@ -16,6 +16,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -46,13 +47,14 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
       Callback on_error_callback);
 
   void CreateMjpegDecodeAccelerator(
-      mojom::MjpegDecodeAcceleratorRequest request,
+      mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
       Callback on_construct_callback,
       Callback on_error_callback);
 
-  void CreateJpegEncodeAccelerator(mojom::JpegEncodeAcceleratorRequest request,
-                                   Callback on_construct_callback,
-                                   Callback on_error_callback);
+  void CreateJpegEncodeAccelerator(
+      mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
+      Callback on_construct_callback,
+      Callback on_error_callback);
 
   mojo::Remote<mojom::CameraAlgorithmOps> CreateCameraAlgorithmOpsRemote(
       const std::string& socket_path, const std::string& pipe_name);
@@ -65,18 +67,18 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
 
  private:
   template <typename T, typename ConstructCallbackType>
-  struct PendingMojoRequest {
-    T requestOrPtr;
+  struct PendingMojoTask {
+    T pendingReceiverOrRemote;
     ConstructCallbackType on_construct_callback;
     Callback on_error_callback;
   };
 
-  using ServerPendingMojoRequest = PendingMojoRequest<
+  using ServerPendingMojoTask = PendingMojoTask<
       mojo::PendingRemote<mojom::CameraHalServer>,
       mojom::CameraHalDispatcher::RegisterServerWithTokenCallback>;
 
   template <typename T>
-  using JpegPendingMojoRequest = PendingMojoRequest<T, Callback>;
+  using JpegPendingMojoTask = PendingMojoTask<T, Callback>;
 
   void OnSocketFileStatusChange(const base::FilePath& socket_path, bool error);
 
@@ -87,7 +89,7 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
 
   void TryConnectToDispatcher();
 
-  void TryConsumePendingMojoRequests();
+  void TryConsumePendingMojoTasks();
 
   void TearDownMojoEnvOnIpcThread();
 
@@ -107,13 +109,15 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   // Inode number of current bound socket file.
   ino_t bound_socket_inode_num_;
 
-  // Pending Mojo requests information which should be consumed when the
+  // Pending Mojo tasks information which should be consumed when the
   // |dispatcher_| is connected.
-  ServerPendingMojoRequest camera_hal_server_request_;
-  std::vector<JpegPendingMojoRequest<mojom::JpegEncodeAcceleratorRequest>>
-      jea_requests_;
-  std::vector<JpegPendingMojoRequest<mojom::MjpegDecodeAcceleratorRequest>>
-      jda_requests_;
+  ServerPendingMojoTask camera_hal_server_task_;
+  std::vector<
+      JpegPendingMojoTask<mojo::PendingReceiver<mojom::JpegEncodeAccelerator>>>
+      jea_tasks_;
+  std::vector<
+      JpegPendingMojoTask<mojo::PendingReceiver<mojom::MjpegDecodeAccelerator>>>
+      jda_tasks_;
 
   // TODO(b/151270948): Remove this static variable once we implemnet CrOS
   // specific interface on all camera HALs.

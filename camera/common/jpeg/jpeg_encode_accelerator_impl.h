@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/threading/thread.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
@@ -125,13 +126,13 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
     // Error handler for JEA mojo channel.
     void OnJpegEncodeAcceleratorError();
 
-    // Callback function for |jea_ptr_|->EncodeWithFD().
+    // Callback function for |jea_|->EncodeWithFD().
     void OnEncodeAck(EncodeWithFDCallback callback,
                      int32_t task_id,
                      uint32_t output_size,
                      cros::mojom::EncodeStatus status);
 
-    // Callback function for |jea_ptr_|->EncodeWithDmaBuf().
+    // Callback function for |jea_|->EncodeWithDmaBuf().
     void OnEncodeDmaBufAck(EncodeWithDmaBufCallback callback,
                            uint32_t output_size,
                            cros::mojom::EncodeStatus status);
@@ -148,8 +149,8 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
 
     // Pointer to local proxy of remote JpegEncodeAccelerator interface
     // implementation.
-    // All the Mojo communication to |jea_ptr_| happens on |ipc_task_runner_|.
-    mojom::JpegEncodeAcceleratorPtr jea_ptr_;
+    // All the Mojo communication to |jea_| happens on |ipc_task_runner_|.
+    mojo::Remote<mojom::JpegEncodeAccelerator> jea_;
 
     // A map from buffer id to input and exif shared memory.
     // |input_shm_map_| and |exif_shm_map_| should only be accessed on

@@ -184,17 +184,18 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
 
-  if (jea_ptr_.is_bound()) {
+  if (jea_.is_bound()) {
     std::move(callback).Run(true);
     return;
   }
 
-  auto request = mojo::MakeRequest(&jea_ptr_);
-  jea_ptr_.set_connection_error_handler(base::Bind(
+  mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver =
+      jea_.BindNewPipeAndPassReceiver();
+  jea_.set_disconnect_handler(base::Bind(
       &JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError,
       GetWeakPtr()));
   mojo_manager_->CreateJpegEncodeAccelerator(
-      std::move(request),
+      std::move(receiver),
       base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::Initialize,
                  GetWeakPtr(), std::move(callback)),
       base::Bind(
@@ -206,7 +207,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
 void JpegEncodeAcceleratorImpl::IPCBridge::Destroy() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  jea_ptr_.reset();
+  jea_.reset();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
@@ -223,7 +224,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
     EncodeWithFDCallback callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  if (!jea_ptr_.is_bound()) {
+  if (!jea_.is_bound()) {
     callback.Run(0, TRY_START_AGAIN);
   }
 
@@ -291,7 +292,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
   mojo::ScopedHandle output_handle =
       mojo::WrapPlatformFile(base::ScopedPlatformFile(dup_output_fd));
 
-  jea_ptr_->EncodeWithFD(
+  jea_->EncodeWithFD(
       task_id, std::move(input_handle), input_buffer_size, coded_size_width,
       coded_size_height, std::move(exif_handle), exif_buffer_size,
       std::move(output_handle), output_buffer_size,
@@ -311,7 +312,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
     EncodeWithDmaBufCallback callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  if (!jea_ptr_.is_bound()) {
+  if (!jea_.is_bound()) {
     callback.Run(0, TRY_START_AGAIN);
     return;
   }
@@ -363,7 +364,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
   std::vector<cros::mojom::DmaBufPlanePtr> mojo_output_planes =
       WrapToMojoPlanes(output_planes);
 
-  jea_ptr_->EncodeWithDmaBuf(
+  jea_->EncodeWithDmaBuf(
       task_id, input_format, std::move(mojo_input_planes),
       std::move(mojo_output_planes), std::move(exif_handle), exif_buffer_size,
       coded_size_width, coded_size_height,
@@ -388,7 +389,7 @@ JpegEncodeAcceleratorImpl::IPCBridge::GetWeakPtr() {
 }
 
 bool JpegEncodeAcceleratorImpl::IPCBridge::IsReady() {
-  return jea_ptr_.is_bound();
+  return jea_.is_bound();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::Initialize(
@@ -396,13 +397,14 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Initialize(
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
 
-  jea_ptr_->Initialize(std::move(callback));
+  jea_->Initialize(std::move(callback));
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
   LOGF(ERROR) << "There is a mojo error for JpegEncodeAccelerator";
+  jea_.reset();
   cancellation_relay_->CancelAllFutures();
   Destroy();
   VLOGF_EXIT();
