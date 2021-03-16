@@ -161,19 +161,22 @@ class MetricsCollector {
       int64_t entry_count;
 
       croslog::Multiplexer multiplexer;
-      for (size_t i = 0; i < base::size(croslog::kLogSources); i++) {
-        base::FilePath path(croslog::kLogSources[i]);
+      for (const auto& log_path_str : croslog::kLogSources) {
+        base::FilePath path(log_path_str.data());
         if (!base::PathExists(path))
           continue;
         multiplexer.AddSource(
             path, std::make_unique<croslog::LogParserSyslog>(), false);
       }
 
-      if (base::PathExists(base::FilePath(croslog::kAuditLogSources))) {
-        multiplexer.AddSource(base::FilePath(croslog::kAuditLogSources),
-                              std::make_unique<croslog::LogParserAudit>(),
+      for (const auto& log_path_str : croslog::kAuditLogSources) {
+        base::FilePath path(log_path_str.data());
+        if (!base::PathExists(path))
+          continue;
+        multiplexer.AddSource(path, std::make_unique<croslog::LogParserAudit>(),
                               false);
       }
+
       base::Time count_after = base::Time::Now() - base::TimeDelta::FromDays(1);
       croslog::CalculateMultipleLogMetrics(&multiplexer, count_after,
                                            &entry_count, &max_throughput);

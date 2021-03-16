@@ -10,21 +10,25 @@
 
 namespace croslog {
 
-static const char* const kLogSources[] = {
+static constexpr std::array kLogSources{
     // Log files from rsyslog:
     // clang-format off
-    "/var/log/arc.log",
-    "/var/log/boot.log",
-    "/var/log/hammerd.log",
-    "/var/log/messages",
-    "/var/log/net.log",
-    "/var/log/secure",
-    "/var/log/upstart.log",
+    std::string_view("/var/log/arc.log"),
+    std::string_view("/var/log/boot.log"),
+    std::string_view("/var/log/hammerd.log"),
+    std::string_view("/var/log/messages"),
+    std::string_view("/var/log/net.log"),
+    std::string_view("/var/log/secure"),
+    std::string_view("/var/log/upstart.log"),
     // clang-format on
 };
 
-static const char kAuditLogSources[] = "/var/log/audit/audit.log";
-
+static constexpr std::array kAuditLogSources{
+    // Log files from auditd:
+    // clang-format off
+    std::string_view("/var/log/audit/audit.log"),
+    // clang-format on
+};
 static constexpr std::array kLogsToRotate{
     // clang-format off
     std::string_view("/var/log/messages"),

@@ -75,17 +75,19 @@ void ViewerPlaintext::Initialize() {
 
 bool ViewerPlaintext::Run() {
   bool install_change_watcher = config_.follow;
-  for (size_t i = 0; i < base::size(kLogSources); i++) {
-    base::FilePath path(kLogSources[i]);
+  for (const auto& log_path_str : croslog::kLogSources) {
+    base::FilePath path(log_path_str.data());
     if (!base::PathExists(path))
       continue;
     multiplexer_.AddSource(path, std::make_unique<LogParserSyslog>(),
                            install_change_watcher);
   }
 
-  if (base::PathExists(base::FilePath(kAuditLogSources))) {
-    multiplexer_.AddSource(base::FilePath(kAuditLogSources),
-                           std::make_unique<LogParserAudit>(),
+  for (const auto& log_path_str : croslog::kAuditLogSources) {
+    base::FilePath path(log_path_str.data());
+    if (!base::PathExists(path))
+      continue;
+    multiplexer_.AddSource(path, std::make_unique<LogParserAudit>(),
                            install_change_watcher);
   }
 
