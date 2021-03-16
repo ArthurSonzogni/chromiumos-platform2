@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":bt_usb_disconnect_helper",
     ":capture_packets",
     ":cups_uri_helper",
     ":debugd",
@@ -242,6 +243,18 @@ executable("usb4_devinfo_helper") {
   configs += [
     ":target_defaults",
     ":usb4_devinfo_helper_config",
+  ]
+}
+
+pkg_config("bt_usb_disconnect_helper_config") {
+  pkg_deps = [ "re2" ]
+}
+
+executable("bt_usb_disconnect_helper") {
+  sources = [ "src/helpers/bt_usb_disconnect_helper.cc" ]
+  configs += [
+    ":target_defaults",
+    ":bt_usb_disconnect_helper_config",
   ]
 }
 

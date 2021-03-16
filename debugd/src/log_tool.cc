@@ -247,6 +247,9 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm)},
   {kCommand, "iwlwifi_module_params", CMD_KERNEL_MODULE_PARAMS(iwlwifi)},
 #endif  // USE_IWLWIFI_DUMP
+  {kCommand, "bt_usb_disconnects",
+    "/usr/libexec/debugd/helpers/bt_usb_disconnect_helper",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kGlob, "kernel-crashes", "/var/spool/crash/kernel.*.kcrash",
     SandboxedProcess::kDefaultUser, "crash-access"},
   {kCommand, "lsblk", "timeout -s KILL 5s lsblk -a", kRoot, kRoot,
