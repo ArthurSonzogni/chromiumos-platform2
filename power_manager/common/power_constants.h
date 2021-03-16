@@ -286,6 +286,10 @@ extern const char kHibernatePowerUaPref[];
 // log in with the system lid closed.
 extern const char kDeferExternalDisplayTimeoutPref[];
 
+// If true, enables detecting external ambient light sensors and using them to
+// adjust the brightness of external displays.
+extern const char kExternalAmbientLightSensorPref[];
+
 // Miscellaneous constants.
 
 // Name of the cros_fp fingerprint sensor input device.

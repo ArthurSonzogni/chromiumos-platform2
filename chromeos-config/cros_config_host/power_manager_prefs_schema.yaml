@@ -167,3 +167,6 @@ powerd_prefs: &powerd_prefs
   defer-external-display-timeout:
     <<: *powerd_prefs_default
     default: "0"
+  external-ambient-light-sensor:
+    <<: *powerd_prefs_default
+    default: "0"
