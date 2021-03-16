@@ -23,10 +23,6 @@
 
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 
-#if USE_TPM2
-#include "trunks/tpm_generated.h"
-#endif
-
 namespace {
 constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
 }  // namespace
@@ -152,11 +148,7 @@ uint32_t StringToUint32(const std::string& s) {
 }
 
 uint32_t StringToNvramIndex(const std::string& s) {
-#if USE_TPM2
-  return trunks::HR_HANDLE_MASK & StringToUint32(s);
-#else
   return StringToUint32(s);
-#endif
 }
 
 std::string GetAuthValueFromPassword(const std::string& password) {
