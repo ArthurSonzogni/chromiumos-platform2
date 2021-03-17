@@ -1,6 +1,8 @@
 type cros_cryptohome_namespace_mounter, chromeos_domain, domain, mlstrustedsubject;
 
-permissive cros_cryptohome_namespace_mounter;
+# cros_cryptohome_namespace_mounter domain is enforcing for ARCVM devices, but
+# permissive for other devices due to the 'arc_cts_fails_release' used in this
+# file for non ARCVM devices.
 
 domain_auto_trans(cros_cryptohomed, cros_cryptohome_namespace_mounter_exec, cros_cryptohome_namespace_mounter);
 domain_auto_trans(cros_cryptohome_namespace_mounter, cros_unconfined_exec, chromeos);
