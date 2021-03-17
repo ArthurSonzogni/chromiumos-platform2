@@ -11,6 +11,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <leveldb/db.h>
 
+#include "dlp/fanotify_watcher.h"
 #include "dlp/org.chromium.Dlp.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
@@ -23,7 +24,8 @@ class DBusObject;
 namespace dlp {
 
 class DlpAdaptor : public org::chromium::DlpAdaptor,
-                   public org::chromium::DlpInterface {
+                   public org::chromium::DlpInterface,
+                   public FanotifyWatcher::Delegate {
  public:
   explicit DlpAdaptor(
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object);
@@ -46,10 +48,17 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Opens the database |db_| to store files sources.
   void InitDatabase();
 
+  // Initializes |fanotify_watcher_| if not yet started.
+  void EnsureFanotifyWatcherStarted();
+
+  bool ProcessFileOpenRequest(ino_t inode, int pid) override;
+
   // Can be nullptr if failed to initialize.
   std::unique_ptr<leveldb::DB> db_;
 
   std::vector<DlpFilesRule> policy_rules_;
+
+  std::unique_ptr<FanotifyWatcher> fanotify_watcher_;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 };

@@ -83,6 +83,13 @@ FileEntry ConvertToFileEntryProto(AddFileRequest request) {
   return result;
 }
 
+base::FilePath GetUserDownloadsPath(const std::string& username) {
+  // TODO(crbug.com/1200575): Refactor to not hardcode it.
+  return base::FilePath("/home/chronos/")
+      .Append("u-" + username)
+      .Append("MyFiles/Downloads");
+}
+
 }  // namespace
 
 DlpAdaptor::DlpAdaptor(
@@ -115,6 +122,12 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
 
   policy_rules_ =
       std::vector<DlpFilesRule>(request.rules().begin(), request.rules().end());
+
+  if (!policy_rules_.empty()) {
+    EnsureFanotifyWatcherStarted();
+  } else {
+    fanotify_watcher_.reset();
+  }
 
   return SerializeProto(response);
 }
@@ -193,6 +206,24 @@ void DlpAdaptor::InitDatabase() {
   }
 
   db_.reset(db);
+}
+
+void DlpAdaptor::EnsureFanotifyWatcherStarted() {
+  if (fanotify_watcher_)
+    return;
+
+  LOG(INFO) << "Starting fanotify watcher";
+
+  fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this);
+  const std::string sanitized_username =
+      GetSanitizedUsername(dbus_object_.get());
+  fanotify_watcher_->AddWatch(GetUserDownloadsPath(sanitized_username));
+}
+
+bool DlpAdaptor::ProcessFileOpenRequest(ino_t inode, int pid) {
+  // TODO(poromov): Process request according to DLP rules.
+
+  return true;
 }
 
 }  // namespace dlp

@@ -41,14 +41,21 @@ pkg_config("target_defaults") {
   libs = [ "leveldb" ]
 }
 
-executable("dlp") {
+static_library("libdlp_static") {
   sources = [
-    "dlp.cc",
     "dlp_adaptor.cc",
     "dlp_daemon.cc",
+    "fanotify_reader_thread.cc",
+    "fanotify_watcher.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":dlp_proto" ]
+}
+
+executable("dlp") {
+  sources = [ "dlp.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libdlp_static" ]
 }
 
 proto_library("dlp_proto") {
@@ -66,13 +73,16 @@ if (use.test) {
     ]
   }
   executable("dlp_test") {
-    sources = []
+    sources = [ "fanotify_watcher_test.cc" ]
     configs += [
       "//common-mk:test",
       ":dlp_test_config",
       ":target_defaults",
     ]
     defines = [ "UNIT_TEST" ]
-    deps = [ "//common-mk/testrunner:testrunner" ]
+    deps = [
+      ":libdlp_static",
+      "//common-mk/testrunner:testrunner",
+    ]
   }
 }
