@@ -29,10 +29,12 @@ void OnSignalConnected(const std::string& interface_name,
 
 ModemTracker::ModemTracker(
     scoped_refptr<dbus::Bus> bus,
-    const OnModemAppearedCallback& on_modem_appeared_callback)
+    const OnModemCarrierIdReadyCallback& on_modem_carrier_id_ready_callback,
+    const OnModemDeviceSeenCallback& on_modem_device_seen_callback)
     : bus_(bus),
       shill_proxy_(new org::chromium::flimflam::ManagerProxy(bus)),
-      on_modem_appeared_callback_(on_modem_appeared_callback),
+      on_modem_carrier_id_ready_callback_(on_modem_carrier_id_ready_callback),
+      on_modem_device_seen_callback_(on_modem_device_seen_callback),
       weak_ptr_factory_(this) {
   shill_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::Bind(
       &ModemTracker::OnServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
@@ -97,7 +99,7 @@ void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
   // trigger the firmware update
   auto device =
       std::make_unique<org::chromium::flimflam::DeviceProxy>(bus_, device_path);
-  on_modem_appeared_callback_.Run(std::move(device));
+  on_modem_carrier_id_ready_callback_.Run(std::move(device));
 }
 
 void ModemTracker::OnDeviceListChanged(
@@ -128,6 +130,16 @@ void ModemTracker::OnDeviceListChanged(
       continue;
     }
 
+    std::string device_id;
+    std::string equipment_id;
+    if (!properties[shill::kDeviceIdProperty].GetValue(&device_id) ||
+        !properties[shill::kEquipmentIdProperty].GetValue(&equipment_id)) {
+      LOG(ERROR) << "Modem " << device_path.value()
+                 << " has no device ID or no equipment ID, ignoring";
+      continue;
+    }
+    on_modem_device_seen_callback_.Run(device_id, equipment_id);
+
     std::map<std::string, std::string> operator_info;
     if (!properties[shill::kHomeProviderProperty].GetValue(&operator_info))
       continue;
@@ -145,7 +157,7 @@ void ModemTracker::OnDeviceListChanged(
 
     // Try to update only if we already know the carrier
     if (!carrier_id.empty())
-      on_modem_appeared_callback_.Run(std::move(device));
+      on_modem_carrier_id_ready_callback_.Run(std::move(device));
   }
   modem_objects_ = new_modems;
 }

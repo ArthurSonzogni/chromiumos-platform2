@@ -155,7 +155,9 @@ int Daemon::CompleteInitialization() {
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,
-      base::Bind(&Daemon::OnModemAppeared, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&Daemon::OnModemCarrierIdReady,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Daemon::OnModemDeviceSeen, weak_ptr_factory_.GetWeakPtr()));
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
@@ -170,7 +172,20 @@ int Daemon::OnEventLoopStarted() {
   return EX_OK;
 }
 
-void Daemon::OnModemAppeared(
+void Daemon::OnModemDeviceSeen(std::string device_id,
+                               std::string equipment_id) {
+  ELOG(INFO) << "Modem seen with equipment ID \"" << equipment_id << "\""
+             << " and device ID [" << device_id << "]";
+  // Record that we've seen this modem so we don't reboot/auto-force-flash it.
+  device_ids_seen_.insert(device_id);
+
+  if (modem_reappear_callbacks_.count(equipment_id) > 0) {
+    modem_reappear_callbacks_[equipment_id].Run();
+    modem_reappear_callbacks_.erase(equipment_id);
+  }
+}
+
+void Daemon::OnModemCarrierIdReady(
     std::unique_ptr<org::chromium::flimflam::DeviceProxy> device) {
   auto modem = CreateModem(bus_, std::move(device), helper_directory_.get());
   if (!modem)
@@ -178,15 +193,8 @@ void Daemon::OnModemAppeared(
 
   std::string equipment_id = modem->GetEquipmentId();
   std::string device_id = modem->GetDeviceId();
-  ELOG(INFO) << "Modem appeared with equipment ID \"" << equipment_id << "\""
-             << " and device ID [" << device_id << "]";
-  // Record that we've seen this modem so we don't auto-force-flash it.
-  device_ids_seen_.insert(device_id);
-
-  if (modem_reappear_callbacks_.count(equipment_id) > 0) {
-    modem_reappear_callbacks_[equipment_id].Run();
-    modem_reappear_callbacks_.erase(equipment_id);
-  }
+  ELOG(INFO) << "Modem with equipment ID \"" << equipment_id << "\""
+             << " and device ID [" << device_id << "] ready to flash";
 
   base::Closure cb = modem_flasher_->TryFlash(modem.get());
   if (!cb.is_null())

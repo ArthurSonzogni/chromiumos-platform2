@@ -19,13 +19,18 @@
 
 namespace modemfwd {
 
-using OnModemAppearedCallback =
+using OnModemCarrierIdReadyCallback =
     base::Callback<void(std::unique_ptr<org::chromium::flimflam::DeviceProxy>)>;
+
+using OnModemDeviceSeenCallback =
+    base::Callback<void(std::string, std::string)>;
 
 class ModemTracker {
  public:
-  ModemTracker(scoped_refptr<dbus::Bus> bus,
-               const OnModemAppearedCallback& on_modem_appeared_callback);
+  ModemTracker(
+      scoped_refptr<dbus::Bus> bus,
+      const OnModemCarrierIdReadyCallback& on_modem_carrier_id_ready_callback,
+      const OnModemDeviceSeenCallback& on_modem_device_seen_callback);
   ModemTracker(const ModemTracker&) = delete;
   ModemTracker& operator=(const ModemTracker&) = delete;
 
@@ -49,7 +54,8 @@ class ModemTracker {
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> shill_proxy_;
-  OnModemAppearedCallback on_modem_appeared_callback_;
+  OnModemCarrierIdReadyCallback on_modem_carrier_id_ready_callback_;
+  OnModemDeviceSeenCallback on_modem_device_seen_callback_;
 
   // Store the Carrier UUID for each modem Device.
   std::map<dbus::ObjectPath, std::string> modem_objects_;

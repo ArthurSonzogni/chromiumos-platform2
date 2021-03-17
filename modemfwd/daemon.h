@@ -75,11 +75,15 @@ class Daemon : public brillo::DBusServiceDaemon {
   // journal and flasher.
   int CompleteInitialization();
 
-  // Called when a modem appears. Generally this means on startup but can
-  // also be called in response to e.g. rebooting the modem or SIM hot
-  // swapping.
-  void OnModemAppeared(
+  // Called when a modem gets its home operator carrier ID and might
+  // need a new main firmware or carrier customization.
+  // Generally this means on startup but can also be called in response
+  // to e.g. rebooting the modem or SIM hot swapping.
+  void OnModemCarrierIdReady(
       std::unique_ptr<org::chromium::flimflam::DeviceProxy> modem);
+  // Called when a modem device is seen (detected by ModemManager)
+  // Possibly called multiple times.
+  void OnModemDeviceSeen(std::string device_id, std::string equipment_id);
 
   // Check for wedged modems and force-flash them if necessary.
   void CheckForWedgedModems();
