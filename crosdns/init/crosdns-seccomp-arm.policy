@@ -18,6 +18,8 @@ sendto: 1
 geteuid32: 1
 sendmsg: 1
 brk: 1
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+munmap: 1
 getgid32: 1
 fstat64: 1
 getegid32: 1
