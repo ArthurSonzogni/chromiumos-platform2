@@ -69,11 +69,11 @@ bool GetNonEmptyField(const Stringmap& stringmap,
 CellularService::CellularService(Manager* manager,
                                  const std::string& imsi,
                                  const std::string& iccid,
-                                 const std::string& sim_card_id)
+                                 const std::string& eid)
     : Service(manager, Technology::kCellular),
       imsi_(imsi),
       iccid_(iccid),
-      sim_card_id_(sim_card_id),
+      eid_(eid),
       activation_type_(kActivationTypeUnknown),
       is_auto_connecting_(false),
       out_of_credits_(false) {
@@ -130,14 +130,6 @@ void CellularService::SetDevice(Cellular* device) {
   SetConnectable(cellular_->GetConnectable(this));
   set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetActivationType(kActivationTypeUnknown);
-
-  // The IMSI and EID may not be available on construction, so set them here if
-  // the ICCID matches. |sim_card_id_| may also depend on EID.
-  if (iccid_ == cellular_->iccid()) {
-    imsi_ = cellular_->imsi();
-    eid_ = cellular_->eid();
-    sim_card_id_ = cellular_->GetSimCardId();
-  }
 }
 
 void CellularService::AutoConnect() {
@@ -225,9 +217,7 @@ bool CellularService::Load(const StoreInterface* storage) {
   }
 
   // |iccid_| will always match the storage entry.
-  // |sim_card_id_| will already be set. If the saved value is empty or differs
-  //     (e.g. once eId is used), we want to use the current value, not the
-  //     saved one.
+  // |eid_| is set on construction from the SIM properties.
 
   storage->GetString(id, kStorageImsi, &imsi_);
   const Stringmaps& apn_list =
@@ -270,7 +260,7 @@ bool CellularService::Save(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   SaveStringOrClear(storage, id, kStorageIccid, iccid_);
   SaveStringOrClear(storage, id, kStorageImsi, imsi_);
-  SaveStringOrClear(storage, id, kStorageSimCardId, sim_card_id_);
+  SaveStringOrClear(storage, id, kStorageSimCardId, GetSimCardId());
 
   SaveApn(storage, id, GetUserSpecifiedApn(), kStorageAPN);
   SaveApn(storage, id, GetLastGoodApn(), kStorageLastGoodAPN);
@@ -285,6 +275,12 @@ bool CellularService::Save(StoreInterface* storage) {
 
 bool CellularService::IsVisible() const {
   return true;
+}
+
+const std::string& CellularService::GetSimCardId() const {
+  if (!eid_.empty())
+    return eid_;
+  return iccid_;
 }
 
 void CellularService::SetActivationType(ActivationType type) {

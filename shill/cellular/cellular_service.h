@@ -36,24 +36,21 @@ class CellularService : public Service {
   };
 
   // A CellularService is associated with a single SIM Profile, uniquely
-  // identified by |iccid|.
-  // * imsi is also unique to the profile, but may not be set on construction.
-  // * sim_card_id uniquely identifies the SIM card associated with this
-  //   service, and is used to group available services on a SIM card.
+  // identified by |iccid|. For pSIM profiles this also identifies the SIM card.
+  // For eSIM profiles, |eid| is non-empty and identifies the eSIM card.
   // A CellularService may not be the active service for the associated
-  // device, so its ICCID and IMSI properties may not match the device
+  // device, so its eID, ICCID and IMSI properties may not match the device
   // properties.
   CellularService(Manager* manager,
                   const std::string& imsi,
                   const std::string& iccid,
-                  const std::string& sim_card_id);
+                  const std::string& eid);
   CellularService(const CellularService&) = delete;
   CellularService& operator=(const CellularService&) = delete;
 
   ~CellularService() override;
 
   void SetDevice(Cellular* device);
-  void set_eid(const std::string& eid) { eid_ = eid; }
 
   // Public Service overrides
   void AutoConnect() override;
@@ -67,9 +64,12 @@ class CellularService : public Service {
   bool Save(StoreInterface* storage) override;
   bool IsVisible() const override;
 
+  // See matching method in cellular.h for details.
+  const std::string& GetSimCardId() const;
+
   const std::string& imsi() const { return imsi_; }
   const std::string& iccid() const { return iccid_; }
-  const std::string& sim_card_id() const { return sim_card_id_; }
+  const std::string& eid() const { return eid_; }
   const CellularRefPtr& cellular() const { return cellular_; }
 
   void SetActivationType(ActivationType type);
@@ -205,22 +205,18 @@ class CellularService : public Service {
                                       Stringmap* apn_info);
   bool IsOutOfCredits(Error* /*error*/);
 
-  // IMSI was previously used as a unique identifuer for CellularService,
-  // however it may not be available when a CellularService is created, so
-  // we use ICCID instead, which is consistent with Hermes. We still store
-  // IMSI for convenience and for debugging.
+  // The IMSI for the SIM. This is saved in the Profile and emitted as a
+  // property so that it is available for non primary SIM Profiles.
+  // This is set on construction when available, or may be loaded from a saved
+  // Profile entry.
   std::string imsi_;
 
   // ICCID uniquely identifies a SIM profile.
-  std::string iccid_;
+  const std::string iccid_;
 
   // EID of the associated eSIM card, or empty for a SIM profile associated with
   // a physical SIM card.
-  std::string eid_;
-
-  // Uniquely identifies a SIM Card (physical or eSIM). This value is used to
-  // identify services that may be available on the active SIM Card.
-  std::string sim_card_id_;
+  const std::string eid_;
 
   ActivationType activation_type_;
   std::string activation_state_;

@@ -29,6 +29,9 @@ const char kTestDeviceAddress[] = "000102030405";
 const int kTestInterfaceIndex = 1;
 const char kDBusService[] = "org.freedesktop.ModemManager1";
 const RpcIdentifier kDBusPath("/org/freedesktop/ModemManager1/Modem/0");
+// EID must be 32 chars
+const char kEid1[] = "eid1_678901234567890123456789012";
+const char kEid2[] = "eid2_678901234567890123456789012";
 }  // namespace
 
 class CellularServiceProviderTest : public testing::Test {
@@ -119,7 +122,7 @@ TEST_F(CellularServiceProviderTest, LoadService) {
   EXPECT_EQ(1u, GetProviderServices().size());
   EXPECT_EQ("imsi1", service->imsi());
   EXPECT_EQ("iccid1", service->iccid());
-  EXPECT_EQ("iccid1", service->sim_card_id());
+  EXPECT_EQ("", service->eid());
   EXPECT_TRUE(service->IsVisible());
   EXPECT_TRUE(service->connectable());
 
@@ -159,12 +162,12 @@ TEST_F(CellularServiceProviderTest, LoadServiceFromProfile) {
 
 TEST_F(CellularServiceProviderTest, LoadMultipleServicesFromProfile) {
   // Set up two cellular services with the same SIM Card Id.
-  SetupCellularStore("cellular_1a", "imsi1a", "iccid1a", "eid1");
-  SetupCellularStore("cellular_1b", "imsi1b", "iccid1b", "eid1");
+  SetupCellularStore("cellular_1a", "imsi1a", "iccid1a", kEid1);
+  SetupCellularStore("cellular_1b", "imsi1b", "iccid1b", kEid1);
   // Set up a third cellular service with a different SIM Card Id.
-  SetupCellularStore("cellular_2", "imsi2", "iccid2", "eid2");
+  SetupCellularStore("cellular_2", "imsi2", "iccid2", kEid2);
 
-  CellularRefPtr device = CreateDeviceWithEid("imsi1a", "iccid1a", "eid1");
+  CellularRefPtr device = CreateDeviceWithEid("imsi1a", "iccid1a", kEid1);
 
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
@@ -201,6 +204,7 @@ TEST_F(CellularServiceProviderTest, SwitchDeviceIccid) {
   // different serial number.
   device = CreateDevice("imsi2", "iccid2");
   service = provider()->LoadServicesForDevice(device.get());
+  provider()->RemoveSecondaryServices(device.get());
   ASSERT_TRUE(service);
   EXPECT_EQ("imsi2", service->imsi());
   EXPECT_EQ(1u, GetProviderServices().size());
@@ -227,6 +231,7 @@ TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {
   // Ensure that the service with a non empty imsi loaded from storage.
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
+  provider()->RemoveSecondaryServices(device.get());
   ASSERT_TRUE(service);
   EXPECT_EQ("imsi1", service->imsi());
   EXPECT_EQ("iccid1", service->iccid());

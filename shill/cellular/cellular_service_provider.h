@@ -46,6 +46,11 @@ class CellularServiceProvider : public ProviderInterface {
   // current device IMSI, creating one if necessary.
   CellularServiceRefPtr LoadServicesForDevice(Cellular* device);
 
+  // Removes secondary services (i.e. services not associated with the primary
+  // SIM for |device|). Should be called before LoadServicesForSecondarySim
+  // any time the SIM slots may have changed.
+  void RemoveSecondaryServices(Cellular* device);
+
   // Loads any existing services matching |eid| or |iccid|.
   void LoadServicesForSecondarySim(const std::string& eid,
                                    const std::string& iccid,
@@ -67,14 +72,12 @@ class CellularServiceProvider : public ProviderInterface {
   friend class CellularServiceProviderTest;
 
   CellularServiceRefPtr LoadMatchingServicesFromProfile(
-      const std::string& sim_card_id,
+      const std::string& eid,
       const std::string& iccid,
       const std::string& imsi,
-      const std::string& eid,
       Cellular* device);
   void AddService(CellularServiceRefPtr service);
   void RemoveService(CellularServiceRefPtr service);
-  void SetDeviceForService(CellularServiceRefPtr service, Cellular* device);
 
   Manager* manager_;
   // Use a single profile for Cellular services. Set to the first (device)

@@ -926,12 +926,7 @@ void Cellular::CreateServices() {
       manager()->cellular_service_provider()->LoadServicesForDevice(this);
 
   // Create or update Cellular Services for secondary SIMs.
-  for (const SimProperties& sim_properties : sim_slot_properties_) {
-    if (sim_properties.iccid.empty() || sim_properties.iccid == iccid_)
-      continue;
-    manager()->cellular_service_provider()->LoadServicesForSecondarySim(
-        sim_properties.eid, sim_properties.iccid, sim_properties.imsi, this);
-  }
+  CreateSecondaryServices();
 
   capability_->OnServiceCreated();
 
@@ -953,6 +948,16 @@ void Cellular::DestroyServices() {
   DCHECK(manager()->cellular_service_provider());
   manager()->cellular_service_provider()->RemoveServices();
   service_ = nullptr;
+}
+
+void Cellular::CreateSecondaryServices() {
+  manager()->cellular_service_provider()->RemoveSecondaryServices(this);
+  for (const SimProperties& sim_properties : sim_slot_properties_) {
+    if (sim_properties.iccid.empty() || sim_properties.iccid == iccid_)
+      continue;
+    manager()->cellular_service_provider()->LoadServicesForSecondarySim(
+        sim_properties.eid, sim_properties.iccid, sim_properties.imsi, this);
+  }
 }
 
 void Cellular::CreateCapability(ModemInfo* modem_info) {
@@ -1875,11 +1880,17 @@ void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
 
 void Cellular::SetSimSlotProperties(
     const std::vector<SimProperties>& slot_properties) {
-  SLOG(this, 1) << __func__;
+  if (sim_slot_properties_ == slot_properties)
+    return;
+
+  SLOG(this, 1) << __func__ << " Slots: " << slot_properties.size();
   sim_slot_properties_ = slot_properties;
   // Set |sim_slot_info_| and emit SIMSlotInfo
   sim_slot_info_.clear();
   for (const SimProperties& sim_properties : slot_properties) {
+    SLOG(this, 2) << __func__ << " Slot: " << sim_properties.slot
+                  << " EID: " << sim_properties.eid
+                  << " ICCID: " << sim_properties.iccid;
     KeyValueStore properties;
     properties.Set(kSIMSlotInfoEID, sim_properties.eid);
     properties.Set(kSIMSlotInfoICCID, sim_properties.iccid);
@@ -1888,6 +1899,14 @@ void Cellular::SetSimSlotProperties(
     sim_slot_info_.push_back(properties);
   }
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
+
+  // If the primary SIM changed, all Services will be updated from
+  // SetPrimarySimProperties.
+  if (!service_ || service_->iccid() != iccid_)
+    return;
+
+  // Otherwise update the secondary services here.
+  CreateSecondaryServices();
 }
 
 void Cellular::set_mdn(const string& mdn) {

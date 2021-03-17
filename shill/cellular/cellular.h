@@ -99,6 +99,11 @@ class Cellular : public Device,
     std::string operator_id;
     std::string spn;
     std::string imsi;
+    bool operator==(const SimProperties& other) const {
+      return slot == other.slot && iccid == other.iccid && eid == other.eid &&
+             operator_id == other.operator_id && spn == other.spn &&
+             imsi == other.imsi;
+    }
   };
 
   // |path| is the ModemManager.Modem DBus object path (e.g.,
@@ -489,6 +494,9 @@ class Cellular : public Device,
   // circular references between this device and the associated service,
   // allowing eventual device destruction.
   void DestroyServices();
+
+  // Creates or updates services for secondary SIMs.
+  void CreateSecondaryServices();
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //

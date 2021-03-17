@@ -27,10 +27,16 @@ static std::string ObjectID(const CellularServiceProvider* e) {
 
 namespace {
 
+bool IsValidEid(const std::string& sim_card_id) {
+  // eID must be 32 characters in length. Since ICCID is limited to 20
+  // characters, this is a strong indicator of a valid eID.
+  return sim_card_id.size() == 32;
+}
+
 bool GetServiceParametersFromArgs(const KeyValueStore& args,
                                   std::string* imsi,
                                   std::string* iccid,
-                                  std::string* sim_card_id,
+                                  std::string* eid,
                                   Error* error) {
   *iccid =
       args.Lookup<std::string>(CellularService::kStorageIccid, std::string());
@@ -39,11 +45,19 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
                           "Missing ICCID");
     return false;
   }
-  *sim_card_id = args.Lookup<std::string>(CellularService::kStorageSimCardId,
-                                          std::string());
-  if (sim_card_id->empty()) {
-    // If SIM Card Id is unset, fall back to ICCID.
-    *sim_card_id = *iccid;
+
+  // If SimCardId != ICCID, it matches the eID. TODO(b/182943364): Store eID.
+  std::string sim_card_id = args.Lookup<std::string>(
+      CellularService::kStorageSimCardId, std::string());
+  if (sim_card_id != *iccid) {
+    if (IsValidEid(sim_card_id)) {
+      *eid = sim_card_id;
+    } else {
+      LOG(ERROR) << "Unexpected SIM Card Id: " << sim_card_id;
+      *eid = "";
+    }
+  } else {
+    *eid = "";
   }
 
   // IMSI may be empty.
@@ -57,7 +71,7 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
                                      const std::string& entry_name,
                                      std::string* imsi,
                                      std::string* iccid,
-                                     std::string* sim_card_id,
+                                     std::string* eid,
                                      Error* error) {
   if (!storage->GetString(entry_name, CellularService::kStorageIccid, iccid) ||
       iccid->empty()) {
@@ -65,11 +79,20 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
                           "Missing or empty ICCID");
     return false;
   }
-  if (!storage->GetString(entry_name, CellularService::kStorageSimCardId,
-                          sim_card_id) ||
-      sim_card_id->empty()) {
-    // If SIM Card Id is unset or empty, fall back to ICCID.
-    *sim_card_id = *iccid;
+
+  // If SimCardId != ICCID, it matches the eID. TODO(b/182943364): Store eID.
+  std::string sim_card_id;
+  if (storage->GetString(entry_name, CellularService::kStorageSimCardId,
+                         &sim_card_id) &&
+      sim_card_id != *iccid) {
+    if (IsValidEid(sim_card_id)) {
+      *eid = sim_card_id;
+    } else {
+      LOG(ERROR) << "Unexpected SIM Card Id: " << sim_card_id;
+      *eid = "";
+    }
+  } else {
+    *eid = "";
   }
 
   // IMSI may be empty.
@@ -125,19 +148,20 @@ ServiceRefPtr CellularServiceProvider::GetService(const KeyValueStore& args,
 ServiceRefPtr CellularServiceProvider::CreateTemporaryService(
     const KeyValueStore& args, Error* error) {
   SLOG(this, 2) << __func__;
-  std::string imsi, iccid, sim_card_id;
-  if (GetServiceParametersFromArgs(args, &imsi, &iccid, &sim_card_id, error))
-    return new CellularService(manager_, imsi, iccid, sim_card_id);
+  std::string imsi, iccid, eid;
+  if (GetServiceParametersFromArgs(args, &imsi, &iccid, &eid, error)) {
+    return new CellularService(manager_, imsi, iccid, eid);
+  }
   return nullptr;
 }
 
 ServiceRefPtr CellularServiceProvider::CreateTemporaryServiceFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
   SLOG(this, 2) << __func__ << ": " << profile->GetFriendlyName();
-  std::string imsi, iccid, sim_card_id;
+  std::string imsi, iccid, eid;
   if (GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
-                                      &imsi, &iccid, &sim_card_id, error)) {
-    return new CellularService(manager_, imsi, iccid, sim_card_id);
+                                      &imsi, &iccid, &eid, error)) {
+    return new CellularService(manager_, imsi, iccid, eid);
   }
   return nullptr;
 }
@@ -156,9 +180,8 @@ CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
     Cellular* device) {
   SLOG(this, 2) << __func__ << ": " << device->iccid();
 
-  CellularServiceRefPtr active_service =
-      LoadMatchingServicesFromProfile(device->GetSimCardId(), device->iccid(),
-                                      device->imsi(), device->eid(), device);
+  CellularServiceRefPtr active_service = LoadMatchingServicesFromProfile(
+      device->eid(), device->iccid(), device->imsi(), device);
 
   // When the Cellular SIM changes or Cellular is enabled, assume that the
   // intent is to auto connect to the CellularService (if connectable and
@@ -166,25 +189,23 @@ CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
   // disconnected.
   active_service->ClearExplicitlyDisconnected();
 
-  // Remove any remaining services not associated with |device|.
-  // Note: Secondary (non selected) SIM services will be added through
-  // LoadServicesForSecondarySim, after this is called.
+  return active_service;
+}
+
+void CellularServiceProvider::RemoveSecondaryServices(Cellular* device) {
   std::vector<CellularServiceRefPtr> services_to_remove;
   for (CellularServiceRefPtr& service : services_) {
-    if (service->sim_card_id() != device->GetSimCardId())
+    if (service->GetSimCardId() != device->GetSimCardId())
       services_to_remove.push_back(service);
   }
   for (CellularServiceRefPtr& service : services_to_remove)
     RemoveService(service);
-
-  return active_service;
 }
 
 CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
-    const std::string& sim_card_id,
+    const std::string& eid,
     const std::string& iccid,
     const std::string& imsi,
-    const std::string& eid,
     Cellular* device) {
   DCHECK(device);
   // Find Cellular profile entries matching the sim card identifier.
@@ -193,33 +214,34 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   DCHECK(storage);
   KeyValueStore args;
   args.Set<std::string>(kTypeProperty, kTypeCellular);
+  std::string sim_card_id = eid.empty() ? iccid : eid;
   args.Set<std::string>(CellularService::kStorageSimCardId, sim_card_id);
   std::set<std::string> groups = storage->GetGroupsWithProperties(args);
 
   LOG(INFO) << __func__ << ": " << sim_card_id << ": Groups: " << groups.size();
   CellularServiceRefPtr active_service = nullptr;
   for (const std::string& group : groups) {
-    std::string service_imsi, service_iccid, service_sim_card_id;
+    std::string service_imsi, service_iccid, service_eid;
     if (!GetServiceParametersFromStorage(storage, group, &service_imsi,
-                                         &service_iccid, &service_sim_card_id,
+                                         &service_iccid, &service_eid,
                                          /*error=*/nullptr)) {
       LOG(ERROR) << "Unable to load service properties for: " << sim_card_id
                  << ", removing old or invalid profile entry.";
       storage->DeleteGroup(group);
       continue;
     }
-    DCHECK_EQ(service_sim_card_id, sim_card_id);
+    DCHECK_EQ(service_eid, eid);
     CellularServiceRefPtr service = FindService(service_iccid);
     if (!service) {
       SLOG(this, 1) << "Creating Cellular service for ICCID: " << service_iccid;
       service = new CellularService(manager_, service_imsi, service_iccid,
-                                    sim_card_id);
+                                    service_eid);
       service->Load(storage);
-      SetDeviceForService(service, device);
+      service->SetDevice(device);
       AddService(service);
     } else {
       SLOG(this, 2) << "Cellular service exists for ICCID: " << service_iccid;
-      SetDeviceForService(service, device);
+      service->SetDevice(device);
     }
     if (service_iccid == iccid)
       active_service = service;
@@ -227,8 +249,8 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   // Ensure that a Service exists for the ICCID.
   if (!active_service) {
     SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
-    active_service = new CellularService(manager_, imsi, iccid, sim_card_id);
-    SetDeviceForService(active_service, device);
+    active_service = new CellularService(manager_, imsi, iccid, eid);
+    active_service->SetDevice(device);
     AddService(active_service);
   }
   return active_service;
@@ -240,10 +262,8 @@ void CellularServiceProvider::LoadServicesForSecondarySim(
     const std::string& imsi,
     Cellular* device) {
   DCHECK(!iccid.empty());
-  // Use EID if available or ICCID if not to look up associated services.
-  std::string sim_card_id = eid.empty() ? iccid : eid;
-  SLOG(this, 1) << __func__ << ": " << sim_card_id;
-  LoadMatchingServicesFromProfile(sim_card_id, iccid, imsi, eid, device);
+  SLOG(this, 1) << __func__ << " eid: " << eid << " iccid: " << iccid;
+  LoadMatchingServicesFromProfile(eid, iccid, imsi, device);
 }
 
 void CellularServiceProvider::UpdateServices(Cellular* device) {
@@ -273,7 +293,7 @@ void CellularServiceProvider::AddService(CellularServiceRefPtr service) {
 
   // See comment in header for |profile_|.
   service->SetProfile(profile_);
-  // Save any changes to device properties (iccid, sim_card_id).
+  // Save any changes to device properties (iccid, eid).
   profile_->UpdateService(service);
   manager_->RegisterService(service);
   services_.push_back(service);
@@ -288,12 +308,6 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
     return;
   }
   services_.erase(iter);
-}
-
-void CellularServiceProvider::SetDeviceForService(CellularServiceRefPtr service,
-                                                  Cellular* device) {
-  DCHECK(device);
-  service->SetDevice(device);
 }
 
 }  // namespace shill
