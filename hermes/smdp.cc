@@ -4,6 +4,7 @@
 
 #include "hermes/smdp.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -13,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
 
 namespace {
@@ -72,7 +74,9 @@ Smdp::Smdp(std::string server_addr,
     server_transport_->UseCustomCertificate(
         brillo::http::Transport::Certificate::kHermesProd);
   }
-  smdp_addr_ = std::move(server_addr);
+  // QR codes from certain vendors have SMDP address in uppercase but reject
+  // initiateAuthenticate if the domain name isn't lowercase. b/183032912
+  smdp_addr_ = base::ToLowerASCII(server_addr);
   // Ensure |smdp_addr_| does not begin with a scheme (e.g. "https://"), as this
   // variable will be used for the smdpAddress field in SM-DP+ communications.
   size_t found = smdp_addr_.find("://");
