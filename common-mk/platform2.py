@@ -98,6 +98,7 @@ _IUSE = [
     'pppoe',
     'profiling',
     'selinux',
+    'slow_mount',
     'systemd',
     'tcmalloc',
     'test',

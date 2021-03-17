@@ -36,19 +36,31 @@ using base::StringPrintf;
 
 namespace {
 
+// How long to wait for the out-of-process helper to perform a mount.
+//
 // Wait up to three seconds for the ephemeral mount to be performed.
+//
 // Normally, setting up a full ephemeral mount takes about 300 ms, so
 // give ourselves a healthy 10x margin.
+//
+// Certain boards can be very slow on mount operations. Extend the timeout in
+// this case to 120s.
 constexpr base::TimeDelta kOutOfProcessHelperMountTimeout =
-    base::TimeDelta::FromSeconds(3);
+    base::TimeDelta::FromSeconds(USE_SLOW_MOUNT ? 120 : 3);
 
+// How long to wait for the out-of-process helper to exit and be reaped.
+//
 // Wait one second for the helper to exit and be reaped.
+//
 // The brillo::Process::Kill() function that takes this timeout does not allow
 // for sub-second granularity, and waiting more than one second for the helper
 // to exit makes little sense: the helper is designed to clean up and exit
 // quickly: it takes about 100 ms to clean up ephemeral mounts.
+//
+// Certain boards can be very slow on mount operations. Extend the timeout in
+// this case to 120s.
 constexpr base::TimeDelta kOutOfProcessHelperReapTimeout =
-    base::TimeDelta::FromSeconds(1);
+    base::TimeDelta::FromSeconds(USE_SLOW_MOUNT ? 120 : 1);
 
 bool WaitForHelper(int read_from_helper, const base::TimeDelta& timeout) {
   struct pollfd poll_fd = {};
