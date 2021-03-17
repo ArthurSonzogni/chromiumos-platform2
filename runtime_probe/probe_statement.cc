@@ -36,7 +36,7 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
   // Parse required field "eval"
   const auto* eval_value = dv.FindDictKey("eval");
   if (!eval_value) {
-    LOG(ERROR) << "\"eval\" should be a dictionary: " << *eval_value;
+    LOG(ERROR) << "\"eval\" should be a dictionary.";
     return nullptr;
   }
   auto function = ProbeFunction::FromValue(*eval_value);
