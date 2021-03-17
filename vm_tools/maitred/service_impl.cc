@@ -797,14 +797,6 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
 
   std::vector<std::string> tremplin_argv{"tremplin", "-lxd_subnet",
                                          request->lxd_ipv4_subnet()};
-  for (const auto feature : request->feature()) {
-    if (feature == StartTerminaRequest::START_LXD ||
-        feature == StartTerminaRequest::RESET_LXD_ON_LAUNCH) {
-      tremplin_argv.emplace_back("-feature");
-      tremplin_argv.emplace_back(request->Feature_Name(feature));
-    }
-  }
-
   if (!init_->Spawn(tremplin_argv, lxd_env_, true /*respawn*/,
                     true /*use_console*/, false /*wait_for_exit*/,
                     &launch_info)) {

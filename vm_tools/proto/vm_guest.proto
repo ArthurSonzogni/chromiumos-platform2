@@ -143,8 +143,8 @@ message StartTerminaRequest {
   enum Feature {
     UNKNOWN = 0;
     USED_BY_TESTS = 1;
-    START_LXD = 2;
-    RESET_LXD_ON_LAUNCH = 3;
+    START_LXD = 2 [deprecated = true];
+    RESET_LXD_ON_LAUNCH = 3 [deprecated = true];
     LXD_4_LTS = 4;
   }
   // The address for tremplin to connect to.
