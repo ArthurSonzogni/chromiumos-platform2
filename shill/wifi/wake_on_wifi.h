@@ -283,7 +283,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // scan is a passive scan.
   void OnScanStarted(bool is_active_scan) override;
 
-  bool InDarkResume() override { return in_dark_resume_; }
+  // Called by WiFi when a scan is completed.
+  void OnScanCompleted() override;
 
   void OnWiphyIndexReceived(uint32_t index) override;
 

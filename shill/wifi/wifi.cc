@@ -1750,8 +1750,8 @@ void WiFi::ScanDoneTask() {
   // Unsets this flag if it was set in InitiateScanInDarkResume since that scan
   // has completed.
   manager()->set_suppress_autoconnect(false);
-  if (wake_on_wifi_ && wake_on_wifi_->InDarkResume()) {
-    metrics()->NotifyDarkResumeScanResultsReceived();
+  if (wake_on_wifi_) {
+    wake_on_wifi_->OnScanCompleted();
   }
   // Post |UpdateScanStateAfterScanDone| so it runs after any pending scan
   // results have been processed.  This allows connections on new BSSes to be

@@ -77,7 +77,7 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
                const InitiateScanCallback&),
               (override));
   MOCK_METHOD(void, OnScanStarted, (bool), (override));
-  MOCK_METHOD(bool, InDarkResume, (), (override));
+  MOCK_METHOD(void, OnScanCompleted, (), (override));
   MOCK_METHOD(void, OnWiphyIndexReceived, (uint32_t), (override));
 };
 

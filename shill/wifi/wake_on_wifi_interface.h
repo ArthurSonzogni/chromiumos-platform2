@@ -79,7 +79,7 @@ class WakeOnWiFiInterface {
       const base::Closure& remove_supplicant_networks_callback,
       const InitiateScanCallback& initiate_scan_callback) = 0;
   virtual void OnScanStarted(bool is_active_scan) = 0;
-  virtual bool InDarkResume() = 0;
+  virtual void OnScanCompleted() = 0;
   virtual void OnWiphyIndexReceived(uint32_t index) = 0;
 };
 

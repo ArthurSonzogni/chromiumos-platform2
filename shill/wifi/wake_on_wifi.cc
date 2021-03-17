@@ -1892,4 +1892,10 @@ void WakeOnWiFi::OnScanStarted(bool is_active_scan) {
   }
 }
 
+void WakeOnWiFi::OnScanCompleted() {
+  if (in_dark_resume_) {
+    metrics_->NotifyDarkResumeScanResultsReceived();
+  }
+}
+
 }  // namespace shill
