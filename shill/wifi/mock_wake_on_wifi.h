@@ -26,7 +26,7 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
   ~MockWakeOnWiFi() override;
 
   MOCK_METHOD(void, InitPropertyStore, (PropertyStore * store), (override));
-  MOCK_METHOD(void, StartMetricsTimer, (), (override));
+  MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void,
               AddWakeOnPacketConnection,
               (const std::string&, Error*),

@@ -42,7 +42,7 @@ class WakeOnWiFiInterface {
   virtual ~WakeOnWiFiInterface() = default;
 
   virtual void InitPropertyStore(PropertyStore* store) = 0;
-  virtual void StartMetricsTimer() = 0;
+  virtual void Start() = 0;
   virtual void AddWakeOnPacketConnection(const std::string& ip_endpoint,
                                          Error* error) = 0;
   virtual void AddWakeOnPacketOfTypes(

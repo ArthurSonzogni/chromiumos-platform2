@@ -246,7 +246,7 @@ void WiFi::Start(Error* error,
   supplicant_connect_attempts_ = 0;
   ConnectToSupplicant();
   if (wake_on_wifi_) {
-    wake_on_wifi_->StartMetricsTimer();
+    wake_on_wifi_->Start();
   }
 }
 

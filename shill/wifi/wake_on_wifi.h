@@ -176,7 +176,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
 
   // Starts |metrics_timer_| so that wake on WiFi related metrics are
   // periodically collected.
-  void StartMetricsTimer() override;
+  void Start() override;
 
   // Enables the NIC to wake on packets received from |ip_endpoint|.
   // Note: The actual programming of the NIC only happens before the system
@@ -352,6 +352,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
     uint32_t length;
     uint32_t offset;
   };
+  void StartMetricsTimer();
   bool GetWakeOnWiFiAllowed(Error* error);
   bool SetWakeOnWiFiAllowed(const bool& enabled, Error* error);
   std::string GetWakeOnWiFiFeaturesEnabled(Error* error);

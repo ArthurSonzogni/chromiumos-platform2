@@ -147,6 +147,10 @@ void WakeOnWiFi::StartMetricsTimer() {
                                kMetricsReportingFrequencySeconds * 1000);
 }
 
+void WakeOnWiFi::Start() {
+  StartMetricsTimer();
+}
+
 bool WakeOnWiFi::GetWakeOnWiFiAllowed(Error* /*error*/) {
   return wake_on_wifi_allowed_;
 }
