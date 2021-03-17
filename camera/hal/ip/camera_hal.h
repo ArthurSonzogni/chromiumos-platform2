@@ -10,6 +10,9 @@
 #include <base/synchronization/atomic_flag.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/isolated_connection.h>
 
 #include <map>
@@ -50,10 +53,11 @@ class CameraHal : public mojom::IpCameraConnectionListener {
 
  private:
   // IpCameraConnectionListener interface
-  void OnDeviceConnected(const std::string& ip,
-                         const std::string& name,
-                         mojom::IpCameraDevicePtr device_ptr,
-                         mojom::IpCameraStreamPtr default_stream) override;
+  void OnDeviceConnected(
+      const std::string& ip,
+      const std::string& name,
+      mojo::PendingRemote<mojom::IpCameraDevice> device_remote,
+      mojom::IpCameraStreamPtr default_stream) override;
   void OnDeviceDisconnected(const std::string& ip) override;
 
   void InitOnIpcThread(scoped_refptr<Future<int>> return_val);
@@ -62,8 +66,8 @@ class CameraHal : public mojom::IpCameraConnectionListener {
 
   base::AtomicFlag initialized_;
   std::unique_ptr<mojo::IsolatedConnection> isolated_connection_;
-  mojom::IpCameraDetectorPtr detector_;
-  mojo::Binding<IpCameraConnectionListener> binding_;
+  mojo::Remote<mojom::IpCameraDetector> detector_;
+  mojo::Receiver<IpCameraConnectionListener> receiver_;
 
   // The maps, as well as |next_camera_id_| are protected by this lock
   base::Lock camera_map_lock_;

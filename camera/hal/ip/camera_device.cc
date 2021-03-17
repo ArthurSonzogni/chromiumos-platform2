@@ -108,7 +108,7 @@ CameraDevice::CameraDevice(int id)
       format_(0),
       width_(0),
       height_(0),
-      binding_(this),
+      receiver_(this),
       buffer_manager_(nullptr),
       jpeg_(false),
       jpeg_thread_("JPEG Processing") {
@@ -123,7 +123,7 @@ CameraDevice::CameraDevice(int id)
   buffer_manager_ = CameraBufferManager::GetInstance();
 }
 
-int CameraDevice::Init(mojom::IpCameraDevicePtr ip_device,
+int CameraDevice::Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
                        const std::string& ip,
                        const std::string& name,
                        mojom::PixelFormat format,
@@ -133,7 +133,7 @@ int CameraDevice::Init(mojom::IpCameraDevicePtr ip_device,
   ipc_task_runner_ = mojo::core::GetIOTaskRunner();
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  ip_device_ = std::move(ip_device);
+  ip_device_.Bind(std::move(ip_device));
   width_ = width;
   height_ = height;
 
@@ -163,15 +163,15 @@ int CameraDevice::Init(mojom::IpCameraDevicePtr ip_device,
                                   base::Unretained(this)));
   }
 
-  mojom::IpCameraFrameListenerPtr listener;
-  binding_.Bind(mojo::MakeRequest(&listener));
+  mojo::PendingRemote<IpCameraFrameListener> remote =
+      receiver_.BindNewPipeAndPassRemote();
 
-  binding_.set_connection_error_handler(
+  receiver_.set_disconnect_handler(
       base::Bind(&CameraDevice::OnConnectionError, base::Unretained(this)));
-  ip_device_.set_connection_error_handler(
+  ip_device_.set_disconnect_handler(
       base::Bind(&CameraDevice::OnConnectionError, base::Unretained(this)));
 
-  ip_device_->RegisterFrameListener(std::move(listener));
+  ip_device_->RegisterFrameListener(std::move(remote));
 
   return 0;
 }
@@ -191,7 +191,7 @@ CameraDevice::~CameraDevice() {
   jda_.reset();
 
   ip_device_.reset();
-  binding_.Close();
+  receiver_.reset();
 }
 
 bool CameraDevice::IsOpen() {
@@ -498,7 +498,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
 void CameraDevice::OnConnectionError() {
   LOGF(ERROR) << "Lost connection to IP Camera";
   ip_device_.reset();
-  binding_.Close();
+  receiver_.reset();
 }
 
 void CameraDevice::StartJpegProcessor() {

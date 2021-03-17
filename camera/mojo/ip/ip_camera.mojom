@@ -23,7 +23,7 @@ interface IpCameraFrameListener {
 interface IpCameraDevice {
   // Only a single listener is supported. Registering a new one will replace any
   // existing listener.
-  RegisterFrameListener(IpCameraFrameListener listener);
+  RegisterFrameListener(pending_remote<IpCameraFrameListener> listener);
 
   StartStreaming();
   StopStreaming();
@@ -32,7 +32,8 @@ interface IpCameraDevice {
 };
 
 interface IpCameraConnectionListener {
-  OnDeviceConnected(string ip, string name, IpCameraDevice device,
+  OnDeviceConnected(string ip, string name,
+                    pending_remote<IpCameraDevice> device,
                     IpCameraStream default_stream);
   OnDeviceDisconnected(string ip);
 };
@@ -40,10 +41,12 @@ interface IpCameraConnectionListener {
 interface IpCameraDetector {
   // Only a single listener is supported. Registering a new one will replace any
   // existing listener.
-  RegisterConnectionListener(IpCameraConnectionListener listener);
+  RegisterConnectionListener(
+      pending_remote<IpCameraConnectionListener> listener);
 };
 
 interface IpCameraProxy {
-  Init(IpCameraDevice& device_request) => (bool success, IpCameraStream stream);
+  Init(pending_receiver<IpCameraDevice> device_receiver)
+      => (bool success, IpCameraStream stream);
   Destroy();
 };

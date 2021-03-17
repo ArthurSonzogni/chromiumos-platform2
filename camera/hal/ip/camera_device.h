@@ -15,7 +15,9 @@
 #include <hardware/camera3.h>
 #include <hardware/camera_common.h>
 #include <hardware/hardware.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/future.h"
@@ -33,7 +35,7 @@ class CameraDevice : public mojom::IpCameraFrameListener {
 
   ~CameraDevice();
 
-  int Init(mojom::IpCameraDevicePtr ip_device,
+  int Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
            const std::string& ip,
            const std::string& name,
            mojom::PixelFormat format,
@@ -70,7 +72,7 @@ class CameraDevice : public mojom::IpCameraFrameListener {
 
   std::atomic<bool> open_;
   const int id_;
-  mojom::IpCameraDevicePtr ip_device_;
+  mojo::Remote<mojom::IpCameraDevice> ip_device_;
   camera3_device_t camera3_device_;
   const camera3_callback_ops_t* callback_ops_;
   // Android HAL pixel format
@@ -79,7 +81,7 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   int height_;
   RequestQueue request_queue_;
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
-  mojo::Binding<IpCameraFrameListener> binding_;
+  mojo::Receiver<IpCameraFrameListener> receiver_;
   CameraBufferManager* buffer_manager_;
   android::CameraMetadata static_metadata_;
 

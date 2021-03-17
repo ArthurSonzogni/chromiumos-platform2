@@ -22,7 +22,7 @@
 namespace cros {
 
 CameraHal::CameraHal()
-    : binding_(this),
+    : receiver_(this),
       next_camera_id_(0),
       callbacks_set_(base::WaitableEvent::ResetPolicy::MANUAL,
                      base::WaitableEvent::InitialState::NOT_SIGNALED),
@@ -136,13 +136,14 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
   mojo::ScopedMessagePipeHandle pipe =
       isolated_connection_->Connect(channel.TakeLocalEndpoint());
 
-  detector_.Bind(mojom::IpCameraDetectorPtrInfo(std::move(pipe), 0u));
-  detector_.set_connection_error_handler(
+  detector_.Bind(
+      mojo::PendingRemote<mojom::IpCameraDetector>(std::move(pipe), 0u));
+  detector_.set_disconnect_handler(
       base::Bind(&CameraHal::OnConnectionError, base::Unretained(this)));
 
-  mojom::IpCameraConnectionListenerPtr listener;
-  binding_.Bind(mojo::MakeRequest(&listener));
-  binding_.set_connection_error_handler(
+  mojo::PendingRemote<IpCameraConnectionListener> listener =
+      receiver_.BindNewPipeAndPassRemote();
+  receiver_.set_disconnect_handler(
       base::Bind(&CameraHal::OnConnectionError, base::Unretained(this)));
 
   detector_->RegisterConnectionListener(std::move(listener));
@@ -150,7 +151,7 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
 }
 
 void CameraHal::DestroyOnIpcThread(scoped_refptr<Future<void>> return_val) {
-  binding_.Close();
+  receiver_.reset();
   detector_.reset();
 
   {
@@ -163,7 +164,7 @@ void CameraHal::DestroyOnIpcThread(scoped_refptr<Future<void>> return_val) {
 }
 
 void CameraHal::OnConnectionError() {
-  binding_.Close();
+  receiver_.reset();
   detector_.reset();
 
   {
@@ -181,17 +182,18 @@ void CameraHal::OnConnectionError() {
   LOGF(FATAL) << "Lost connection to IP peripheral server";
 }
 
-void CameraHal::OnDeviceConnected(const std::string& ip,
-                                  const std::string& name,
-                                  mojom::IpCameraDevicePtr device_ptr,
-                                  mojom::IpCameraStreamPtr default_stream) {
+void CameraHal::OnDeviceConnected(
+    const std::string& ip,
+    const std::string& name,
+    mojo::PendingRemote<mojom::IpCameraDevice> device_remote,
+    mojom::IpCameraStreamPtr default_stream) {
   int id = -1;
   {
     base::AutoLock l(camera_map_lock_);
     id = next_camera_id_;
 
     auto device = std::make_unique<CameraDevice>(id);
-    if (device->Init(std::move(device_ptr), ip, name, default_stream->format,
+    if (device->Init(std::move(device_remote), ip, name, default_stream->format,
                      default_stream->width, default_stream->height,
                      default_stream->fps)) {
       LOGF(ERROR) << "Error creating camera device";
