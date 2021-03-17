@@ -62,6 +62,8 @@ rt_sigprocmask: 1
 semctl: 1
 semget: 1
 semop: 1
+semtimedop: 1
+semtimedop_time64: 1
 send: 1
 sendmsg: 1
 sendto: 1
