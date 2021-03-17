@@ -1,6 +1,8 @@
 type cros_cryptohomed, chromeos_domain, domain, mlstrustedsubject;
 
-permissive cros_cryptohomed;
+# cros_cryptohomed domain is enforcing for ARCVM devices, but permissive for
+# other devices due to the 'arc_cts_fails_release' used in this file for non
+# ARCVM devices.
 
 domain_auto_trans(cros_init_scripts, cros_cryptohomed_exec, cros_cryptohomed);
 domain_auto_trans(cros_cryptohomed, cros_unconfined_exec, chromeos);
