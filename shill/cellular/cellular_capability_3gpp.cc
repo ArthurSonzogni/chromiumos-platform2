@@ -774,12 +774,14 @@ void CellularCapability3gpp::UpdateServiceOLP() {
 
   // OLP is based off of the Home Provider.
   if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
+    SLOG(this, 3) << "Mobile Network Operator Unknown";
     return;
   }
 
   const vector<MobileOperatorInfo::OnlinePortal>& olp_list =
       cellular()->home_provider_info()->olp_list();
   if (olp_list.empty()) {
+    SLOG(this, 3) << "Empty OLP list";
     return;
   }
 
@@ -1430,14 +1432,17 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
 
 void CellularCapability3gpp::SetPrimarySimProperties(
     const SimProperties& sim_properties) {
-  cellular()->SetPrimarySimProperties(sim_properties);
-
-  UpdateServiceActivationState();
-  UpdatePendingActivationState();
+  SLOG(this, 1) << __func__ << " EID= " << sim_properties.eid
+                << " ICCID= " << sim_properties.iccid;
 
   cellular()->home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
   spn_ = sim_properties.spn;
   cellular()->home_provider_info()->UpdateOperatorName(spn_);
+
+  cellular()->SetPrimarySimProperties(sim_properties);
+
+  UpdateServiceActivationState();
+  UpdatePendingActivationState();
 }
 
 void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
