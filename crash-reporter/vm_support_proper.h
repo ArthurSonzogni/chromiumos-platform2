@@ -28,7 +28,14 @@ class VmSupportProper : public VmSupport {
 
   bool ShouldDump(pid_t pid, std::string* out_reason) override;
 
+  static const char kFilterConfigPath[];
+
  private:
+  friend class VmSupportProperTest;
+
+  bool InRootProcessNamespace(pid_t pid, std::string* out_reason);
+  bool PassesFilterConfig(pid_t pid, std::string* out_reason);
+
   void ProcessFileData(const base::FilePath& crash_meta_path,
                        const brillo::KeyValueStore& metadata,
                        const std::string& key,

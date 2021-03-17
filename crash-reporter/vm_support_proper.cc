@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
@@ -16,9 +17,11 @@
 #include <sys/socket.h>
 #include <utility>
 
+#include <google/protobuf/text_format.h>
 #include <linux/vm_sockets.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_reporter.pb.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/user_collector.h"
 #include "crash-reporter/util.h"
@@ -32,6 +35,9 @@ constexpr char kContainerOsReleasePath[] =
     "os-release";
 
 }  // namespace
+
+const char VmSupportProper::kFilterConfigPath[] =
+    "/etc/vm_crash_filter.textproto";
 
 class ScopedFileDeleter {
  public:
@@ -141,6 +147,12 @@ bool VmSupportProper::GetMetricsConsent() {
 }
 
 bool VmSupportProper::ShouldDump(pid_t pid, std::string* out_reason) {
+  return InRootProcessNamespace(pid, out_reason) &&
+         PassesFilterConfig(pid, out_reason);
+}
+
+bool VmSupportProper::InRootProcessNamespace(pid_t pid,
+                                             std::string* out_reason) {
   // Namespaces are accessed via the /proc/*/ns/* set of paths. The kernel
   // guarantees that if two processes share a namespace, their corresponding
   // namespace files will have the same inode number, as reported by stat.
@@ -168,6 +180,46 @@ bool VmSupportProper::ShouldDump(pid_t pid, std::string* out_reason) {
   if (inode != self_inode) {
     *out_reason = "ignoring - process not in root namespace";
     return false;
+  }
+  return true;
+}
+
+bool VmSupportProper::PassesFilterConfig(pid_t pid, std::string* out_reason) {
+  // Read and apply the filter configuration.
+  // If the config is missing or invalid, fail open (report all crashes) so
+  // we're alerted about the issue.
+  std::string config;
+  if (!base::ReadFileToString(paths::Get(kFilterConfigPath), &config)) {
+    *out_reason = base::StringPrintf("failed to read %s", kFilterConfigPath);
+    return true;
+  }
+  crash::VmCrashFilters filters;
+  if (!google::protobuf::TextFormat::ParseFromString(config, &filters)) {
+    *out_reason = base::StringPrintf("failed to parse %s", kFilterConfigPath);
+    return true;
+  }
+
+  if (filters.filters_size() > 0) {
+    base::FilePath exe_symlink =
+        paths::Get(base::StringPrintf("/proc/%d/exe", pid));
+    base::FilePath process_path;
+    if (!ReadSymbolicLink(exe_symlink, &process_path)) {
+      *out_reason = base::StringPrintf("failed to read symbolic link %s",
+                                       exe_symlink.value().c_str());
+      return true;  // fail open
+    }
+    for (auto f : filters.filters()) {
+      if (!f.blocked_path().empty()) {
+        auto blocked_path = base::FilePath(f.blocked_path());
+        if (blocked_path.IsParent(process_path) ||
+            blocked_path == process_path) {
+          *out_reason =
+              base::StringPrintf("ignoring - processes in %s are blocked",
+                                 f.blocked_path().c_str());
+          return false;
+        }
+      }
+    }
   }
 
   return true;

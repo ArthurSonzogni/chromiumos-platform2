@@ -373,6 +373,13 @@ However, now we can make [crash-boot-collect.conf] wait for [metrics_daemon],
 we should be able to switch to its more standard existing IPC methods.
 ***
 
+### VM-specific configuration
+
+VMs may ship `/etc/vm_crash_filter.textproto` within the VM filesystem. If
+present, it contains a protobuf message of type
+[VmCrashFilters](./proto/crash_reporter.proto). It's used by UserCollector's
+VmSupport to control which processes may have crash reports generated.
+
 ### Test-related paths
 *   `/var/lib/crash_sender_paused`: Used by integration tests to pause
     [crash_sender].

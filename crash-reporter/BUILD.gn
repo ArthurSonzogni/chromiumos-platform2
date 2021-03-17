@@ -122,6 +122,12 @@ pkg_config("crash_reporter_config") {
   }
 }
 
+proto_library("crash_reporter_proto") {
+  proto_in_dir = "./proto"
+  proto_out_dir = "include/crash-reporter"
+  sources = [ "${proto_in_dir}/crash_reporter.proto" ]
+}
+
 executable("crash_reporter") {
   sources = [ "crash_reporter.cc" ]
   configs += [ ":crash_reporter_config" ]
@@ -130,6 +136,7 @@ executable("crash_reporter") {
     "USE_KVM_GUEST=${use.kvm_guest}",
   ]
   deps = [
+    ":crash_reporter_proto",
     ":libcrash",
     ":libcrash_reporter",
   ]
@@ -373,6 +380,7 @@ if (use.test) {
       "USE_CHROMELESS_TTY=${use.chromeless_tty}",
     ]
     deps = [
+      ":crash_reporter_proto",
       ":crash_serializer_proto",
       ":hold_lock_file",
       ":libcrash",
@@ -390,6 +398,10 @@ if (use.test) {
         "arcvm_kernel_collector_test.cc",
         "arcvm_native_collector_test.cc",
       ]
+    }
+
+    if (use.kvm_guest) {
+      sources += [ "vm_support_proper_test.cc" ]
     }
   }
 
