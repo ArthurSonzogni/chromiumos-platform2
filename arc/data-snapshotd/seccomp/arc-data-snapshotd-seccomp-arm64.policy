@@ -84,9 +84,12 @@ chmod: 1
 lsetxattr: 1
 creat: 1
 # Frecon
+getpgid: 1
 getppid: 1
 faccessat: 1
 unlinkat: 1
 newfstatat: 1
 pipe: 1
 fstatfs: 1
+renameat: 1
+renameat2: 1

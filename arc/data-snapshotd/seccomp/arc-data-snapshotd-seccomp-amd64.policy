@@ -86,8 +86,11 @@ lsetxattr: 1
 creat: 1
 # Frecon
 getppid: 1
+getpgrp: 1
 faccessat: 1
 unlinkat: 1
 newfstatat: 1
 pipe: 1
 fstatfs: 1
+renameat: 1
+renameat2: 1
