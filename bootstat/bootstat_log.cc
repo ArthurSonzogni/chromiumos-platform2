@@ -17,7 +17,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/brillo_export.h>
 #include <rootdev/rootdev.h>
 
 #include "bootstat/bootstat.h"
@@ -144,8 +143,3 @@ bool BootStat::LogEvent(const std::string& event_name) const {
 }
 
 };  // namespace bootstat
-
-BRILLO_EXPORT
-void bootstat_log(const char* event_name) {
-  bootstat::BootStat().LogEvent(event_name);
-}

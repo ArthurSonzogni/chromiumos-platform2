@@ -89,8 +89,4 @@ class BRILLO_EXPORT BootStat {
 // TODO(drinkcat): Rename this to a kConstant in the namespace
 #define BOOTSTAT_MAX_EVENT_LEN 64
 
-// TODO(drinkcat): All the callers are C++ so we should modify them to use the
-// class directly and drop this.
-extern void bootstat_log(const char* event_name);
-
 #endif  // BOOTSTAT_BOOTSTAT_H_
