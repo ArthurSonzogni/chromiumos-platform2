@@ -670,11 +670,6 @@ class WakeOnWiFiTest : public ::testing::Test {
         kWakeOnWiFiFeaturesEnabledPacketDarkConnect;
   }
 
-  void SetWakeOnWiFiFeaturesNotSupported() {
-    wake_on_wifi_->wake_on_wifi_features_enabled_ =
-        kWakeOnWiFiFeaturesEnabledNotSupported;
-  }
-
   void DisableWakeOnWiFiFeatures() {
     wake_on_wifi_->wake_on_wifi_features_enabled_ =
         kWakeOnWiFiFeaturesEnabledNone;

@@ -203,6 +203,8 @@ WiFi::WiFi(Manager* manager,
                                   &WiFi::GetAllScanFrequencies);
   HelpRegisterDerivedUint16(store, kScanIntervalProperty,
                             &WiFi::GetScanInterval, &WiFi::SetScanInterval);
+  HelpRegisterConstDerivedBool(store, kWakeOnWiFiSupportedProperty,
+                               &WiFi::GetWakeOnWiFiSupported);
   if (wake_on_wifi_) {
     wake_on_wifi_->InitPropertyStore(store);
   }
@@ -2906,6 +2908,10 @@ Uint16s WiFi::GetAllScanFrequencies(Error* /* error */) {
 
 bool WiFi::GetScanPending(Error* /* error */) {
   return scan_state_ == kScanScanning || scan_state_ == kScanBackgroundScanning;
+}
+
+bool WiFi::GetWakeOnWiFiSupported(Error* /* error */) {
+  return wake_on_wifi_ != nullptr;
 }
 
 void WiFi::SetScanState(ScanState new_state,

@@ -1275,15 +1275,11 @@ void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
 }
 
 bool WakeOnWiFi::WakeOnWiFiDisabled() {
-  return wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
-         wake_on_wifi_features_enabled_ ==
-             kWakeOnWiFiFeaturesEnabledNotSupported;
+  return wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone;
 }
 
 bool WakeOnWiFi::WakeOnWiFiPacketEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
-      wake_on_wifi_features_enabled_ ==
-          kWakeOnWiFiFeaturesEnabledNotSupported ||
       wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledDarkConnect) {
     return false;
   }
@@ -1295,8 +1291,6 @@ bool WakeOnWiFi::WakeOnWiFiPacketEnabledAndSupported() {
 
 bool WakeOnWiFi::WakeOnWiFiDarkConnectEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
-      wake_on_wifi_features_enabled_ ==
-          kWakeOnWiFiFeaturesEnabledNotSupported ||
       wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket) {
     return false;
   }

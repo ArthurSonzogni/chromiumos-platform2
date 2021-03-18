@@ -690,6 +690,12 @@ users of shill should use this property now
 
 			The device type (for example "ethernet", "wifi" etc.)
 
+		boolean WakeOnWiFiSupported [readonly]
+
+			(Defined in WiFi)
+
+			Whether wake on WiFi feature is supported in shill.
+
 		boolean WakeOnWiFiAllowed [readwrite]
 
 			(Defined in WiFi)

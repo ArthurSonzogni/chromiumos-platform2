@@ -388,6 +388,7 @@ const char kMacAddressRandomizationEnabledProperty[] =
 const char kMacAddressRandomizationSupportedProperty[] =
     "MACAddressRandomizationSupported";
 const char kNetDetectScanPeriodSecondsProperty[] = "NetDetectScanPeriodSeconds";
+const char kWakeOnWiFiSupportedProperty[] = "WakeOnWiFiSupported";
 const char kWakeOnWiFiAllowedProperty[] = "WakeOnWiFiAllowed";
 const char kWakeOnWiFiFeaturesEnabledProperty[] = "WakeOnWiFiFeaturesEnabled";
 const char kWakeToScanPeriodSecondsProperty[] = "WakeToScanPeriodSeconds";
@@ -727,7 +728,6 @@ const char kWakeOnWiFiFeaturesEnabledDarkConnect[] = "darkconnect";
 const char kWakeOnWiFiFeaturesEnabledPacketDarkConnect[] =
     "packet_and_darkconnect";
 const char kWakeOnWiFiFeaturesEnabledNone[] = "none";
-const char kWakeOnWiFiFeaturesEnabledNotSupported[] = "not_supported";
 
 // kEapKeyMgmtProperty values.
 const char kKeyManagementIEEE8021X[] = "IEEE8021X";

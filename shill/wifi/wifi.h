@@ -367,6 +367,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   Uint16s GetAllScanFrequencies(Error* /* error */);
 
   bool GetScanPending(Error* /* error */);
+  bool GetWakeOnWiFiSupported(Error* /* error */);
   bool SetBgscanMethod(const std::string& method, Error* error);
   bool SetBgscanShortInterval(const uint16_t& seconds, Error* error);
   bool SetBgscanSignalThreshold(const int32_t& dbm, Error* error);
