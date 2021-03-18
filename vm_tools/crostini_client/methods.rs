@@ -75,6 +75,7 @@ enum ChromeOSError {
     InvalidExportPath,
     InvalidImportPath,
     InvalidSourcePath,
+    NoSuchVm,
     NoVmTechnologyEnabled,
     NotAvailableForPluginVm,
     NotPluginVm,
@@ -165,6 +166,7 @@ impl fmt::Display for ChromeOSError {
             InvalidExportPath => write!(f, "disk export path is invalid"),
             InvalidImportPath => write!(f, "disk import path is invalid"),
             InvalidSourcePath => write!(f, "source media path is invalid"),
+            NoSuchVm => write!(f, "VM with such name does not exist"),
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
             NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
             NotPluginVm => write!(f, "this VM is not a Parallels VM"),
@@ -1781,7 +1783,11 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
 
         if let Some(name) = vm_name {
-            if !self.is_plugin_vm(name.as_str(), user_id_hash)? {
+            let (images, _) = self.list_disk_images(user_id_hash, None, Some(&name))?;
+            if images.len() == 0 {
+                return Err(NoSuchVm.into());
+            }
+            if images[0].image_type != DiskImageType::DISK_IMAGE_PLUGINVM {
                 return Err(NotPluginVm.into());
             }
             request.vm_name_uuid = name;
