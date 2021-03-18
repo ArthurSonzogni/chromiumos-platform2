@@ -358,6 +358,17 @@ get_fixed_dst_drive() {
   echo "${dev}"
 }
 
+# Check if rootfs is mounted on a removable device.
+rootdev_removable() {
+  local dst_drive="$(get_fixed_dst_drive)"
+  local root_drive="$(rootdev -s -d)"
+
+  if [ "${dst_drive}" != "${root_drive}" ]; then
+    return 0
+  fi
+  return 1
+}
+
 edit_mbr() {
   locate_gpt
   # TODO(icoolidge): Get this from disk_layout somehow.
