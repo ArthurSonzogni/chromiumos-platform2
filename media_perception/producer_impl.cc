@@ -120,6 +120,8 @@ void ProducerImpl::OnFrameBufferReceived(
   rect->height = height;
   info->visible_rect = std::move(rect);
   info->metadata = media::mojom::VideoFrameMetadata::New();
+  info->metadata->reference_time = mojo_base::mojom::TimeTicks::New();
+  info->metadata->reference_time->internal_value = timestamp.InMicroseconds();
 
   base::WritableSharedMemoryMapping* outgoing_buffer =
       &outgoing_buffer_id_to_buffer_map_.at(buffer_id);
