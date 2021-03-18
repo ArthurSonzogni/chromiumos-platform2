@@ -188,6 +188,8 @@ bool IsDeviceAllowedSerial(udev_device* device) {
       {0x2a03, 0},  // doghunter.org
       {0x10c4, 0},  // Silicon Labs
 
+      {0x2c99, 0},  // Prusa Research
+
       {0x2e8a, 0},  // Raspberry Pi
 
       {0x18d1, 0x5002},  // Google Servo V2
