@@ -112,7 +112,7 @@ void LoginMetrics::SendStateKeyGenerationStatus(
 }
 
 void LoginMetrics::RecordStats(const char* tag) {
-  bootstat_log(tag);
+  bootstat::BootStat().LogEvent(tag);
 }
 
 bool LoginMetrics::HasRecordedChromeExec() {
