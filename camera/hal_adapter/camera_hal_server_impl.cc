@@ -58,7 +58,6 @@ CameraHalServerImpl::~CameraHalServerImpl() {
 
 void CameraHalServerImpl::Start() {
   VLOGF_ENTER();
-  base::AutoLock l(ipc_bridge_lock_);
 
   int result = LoadCameraHal();
   if (result != 0) {
@@ -68,6 +67,7 @@ void CameraHalServerImpl::Start() {
   // We assume that |camera_hal_adapter_| will only be set once. If the
   // assumption changed, we should consider another way to provide
   // CameraHalAdapter.
+  base::AutoLock l(ipc_bridge_lock_);
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
       base::Bind(&CameraHalServerImpl::IPCBridge::Start,
@@ -272,12 +272,12 @@ int CameraHalServerImpl::LoadCameraHal() {
 void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
   VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  base::AutoLock l(ipc_bridge_lock_);
 
   for (auto* cros_camera_hal : cros_camera_hals_) {
     cros_camera_hal->tear_down();
   }
 
+  base::AutoLock l(ipc_bridge_lock_);
   auto future = Future<void>::Create(nullptr);
   auto delete_ipc_bridge = base::BindOnce(
       [](std::unique_ptr<IPCBridge> ipc_bridge,
