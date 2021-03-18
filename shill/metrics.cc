@@ -966,10 +966,11 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
     SendServiceFailure(service);
 
   if (collect_bootstats_) {
-    bootstat_log(base::StringPrintf("network-%s-%s",
-                                    service.technology().GetName().c_str(),
-                                    service.GetStateString().c_str())
-                     .c_str());
+    bootstat::BootStat().LogEvent(
+        base::StringPrintf("network-%s-%s",
+                           service.technology().GetName().c_str(),
+                           service.GetStateString().c_str())
+            .c_str());
   }
 
   if (new_state != Service::kStateConnected)
@@ -1413,9 +1414,10 @@ void Metrics::RegisterDevice(int interface_index, Technology technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
 
   if (collect_bootstats_ && technology.IsPrimaryConnectivityTechnology()) {
-    bootstat_log(base::StringPrintf("network-%s-registered",
-                                    technology.GetName().c_str())
-                     .c_str());
+    bootstat::BootStat().LogEvent(
+        base::StringPrintf("network-%s-registered",
+                           technology.GetName().c_str())
+            .c_str());
   }
 
   auto device_metrics = std::make_unique<DeviceMetrics>();
