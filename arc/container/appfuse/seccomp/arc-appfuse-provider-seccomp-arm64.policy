@@ -57,4 +57,4 @@ getdents64: 1
 madvise: 1
 unlinkat: 1
 getpid: 1
-access: 1
+faccessat: 1
