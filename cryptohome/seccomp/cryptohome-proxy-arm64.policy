@@ -57,6 +57,5 @@ nanosleep: 1
 clock_nanosleep: 1
 flock: 1
 
-access: 1
 sched_getattr: 1
 sched_setattr: 1
