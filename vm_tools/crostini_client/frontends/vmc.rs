@@ -798,6 +798,7 @@ const USAGE: &str = r#"
      usb-attach <vm name> <bus>:<device> |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
+     pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
      --help | -h ]
 "#;
 
