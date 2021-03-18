@@ -8,6 +8,7 @@ mod test;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
@@ -218,6 +219,38 @@ fn calculate_available_memory_kb(
         .saturating_add(swap_component)
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum GameMode {
+    // Game mode is off.
+    Off = 0,
+    // Game mode is on, borealis is the foreground subsystem.
+    Borealis = 1,
+}
+
+// lazy_static + Mutex is safer than static mutable variable.
+lazy_static! {
+    static ref GAME_MODE: Mutex<GameMode> = Mutex::new(GameMode::Off);
+}
+
+const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
+
+fn set_game_mode(mode: GameMode) -> Result<()> {
+    match GAME_MODE.lock() {
+        Ok(mut data) => {
+            *data = mode;
+            Ok(())
+        }
+        Err(_) => bail!("Failed to set game mode"),
+    }
+}
+
+fn get_game_mode() -> Result<GameMode> {
+    match GAME_MODE.lock() {
+        Ok(data) => Ok(*data),
+        Err(_) => bail!("Failed to get game mode"),
+    }
+}
+
 fn get_available_memory_kb() -> Result<u64> {
     let meminfo = get_meminfo()?;
     let p = get_memory_parameters();
@@ -227,6 +260,23 @@ fn get_available_memory_kb() -> Result<u64> {
         p.min_filelist,
         p.ram_swap_weight,
     ))
+}
+
+fn get_foreground_available_memory_kb() -> Result<u64> {
+    get_available_memory_kb()
+}
+
+fn get_background_available_memory_kb() -> Result<u64> {
+    let available = get_available_memory_kb()?;
+    if get_game_mode()? != GameMode::Off {
+        if available > GAME_MODE_OFFSET_KB {
+            Ok(available - GAME_MODE_OFFSET_KB)
+        } else {
+            Ok(0)
+        }
+    } else {
+        Ok(available)
+    }
 }
 
 fn parse_margins<R: BufRead>(reader: R) -> Result<Vec<u64>> {
@@ -302,16 +352,45 @@ fn get_memory_parameters() -> MemoryParameters {
 }
 
 fn dbus_method_get_available_memory_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
-    match get_available_memory_kb() {
+    match get_background_available_memory_kb() {
         // One message will be returned - the method return (and should always be there).
         Ok(available) => Ok(vec![m.msg.method_return().append1(available)]),
         Err(_) => Err(MethodErr::failed("Couldn't get available memory")),
     }
 }
 
+fn dbus_method_get_foreground_available_memory_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
+    match get_foreground_available_memory_kb() {
+        Ok(available) => Ok(vec![m.msg.method_return().append1(available)]),
+        Err(_) => Err(MethodErr::failed(
+            "Couldn't get foreground available memory",
+        )),
+    }
+}
+
 fn dbus_method_get_memory_margins_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     let margins = get_memory_margins_kb();
     Ok(vec![m.msg.method_return().append2(margins.0, margins.1)])
+}
+
+fn dbus_method_get_game_mode(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
+    match get_game_mode() {
+        Ok(GameMode::Off) => Ok(vec![m.msg.method_return().append1(0u8)]),
+        Ok(GameMode::Borealis) => Ok(vec![m.msg.method_return().append1(1u8)]),
+        Err(_) => Err(MethodErr::failed("Failed to get game mode")),
+    }
+}
+
+fn dbus_method_set_game_mode(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
+    let mode = match m.msg.read1::<u8>()? {
+        0 => GameMode::Off,
+        1 => GameMode::Borealis,
+        _ => return Err(MethodErr::failed("Unsupported game mode value")),
+    };
+    match set_game_mode(mode) {
+        Ok(()) => Ok(vec![m.msg.method_return()]),
+        Err(_) => Err(MethodErr::failed("Failed to set game mode")),
+    }
 }
 
 fn start_service() -> Result<()> {
@@ -338,8 +417,24 @@ fn start_service() -> Result<()> {
                     .outarg::<u64, _>("available"),
                 )
                 .add_m(
+                    f.method(
+                        "GetForegroundAvailableMemoryKB",
+                        (),
+                        dbus_method_get_foreground_available_memory_kb,
+                    )
+                    .outarg::<u64, _>("available"),
+                )
+                .add_m(
                     f.method("GetMemoryMarginsKB", (), dbus_method_get_memory_margins_kb)
                         .outarg::<u64, _>("reply"),
+                )
+                .add_m(
+                    f.method("GetGameMode", (), dbus_method_get_game_mode)
+                        .outarg::<u8, _>("game_mode"),
+                )
+                .add_m(
+                    f.method("SetGameMode", (), dbus_method_set_game_mode)
+                        .inarg::<u8, _>("game_mode"),
                 ),
         ),
     );
