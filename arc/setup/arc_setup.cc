@@ -2395,19 +2395,23 @@ std::string ArcSetup::GetSystemBuildPropertyOrDie(const std::string& name) {
 
 void ArcSetup::Run() {
   switch (mode_) {
-    case Mode::SETUP:
-      bootstat_log("mini-android-start");
+    case Mode::SETUP: {
+      bootstat::BootStat bootstat;
+      bootstat.LogEvent("mini-android-start");
       OnSetup();
-      bootstat_log("arc-setup-for-mini-android-end");
+      bootstat.LogEvent("arc-setup-for-mini-android-end");
       break;
+    }
     case Mode::STOP:
       OnStop();
       break;
-    case Mode::BOOT_CONTINUE:
-      bootstat_log("android-start");
+    case Mode::BOOT_CONTINUE: {
+      bootstat::BootStat bootstat;
+      bootstat.LogEvent("android-start");
       OnBootContinue();
-      bootstat_log("arc-setup-end");
+      bootstat.LogEvent("arc-setup-end");
       break;
+    }
     case Mode::ONETIME_SETUP:
       OnOnetimeSetup();
       break;
