@@ -15,6 +15,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <brillo/brillo_export.h>
 
 namespace bootstat {
 
@@ -32,7 +33,7 @@ class BootStatSystem {
 };
 
 // Basic class for bootstat API interface.
-class BootStat {
+class BRILLO_EXPORT BootStat {
  public:
   BootStat();
   // Constructor for testing purpose: changes the default output directory and

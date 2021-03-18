@@ -22,6 +22,6 @@ int main(int argc, char* argv[]) {
   if (argc != 2)
     usage(argv[0]);
 
-  bootstat_log(argv[1]);
+  bootstat::BootStat().LogEvent(argv[1]);
   return EXIT_SUCCESS;
 }
