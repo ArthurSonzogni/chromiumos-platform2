@@ -11,7 +11,7 @@ void RmadInterfaceImpl::GetCurrentState(
     const GetCurrentStateCallback& callback) {
   GetCurrentStateReply reply;
   // This is fake for now.
-  reply.set_state(STATE_RMA_NOT_REQUIRED);
+  reply.set_state(RMAD_STATE_RMA_NOT_REQUIRED);
   callback.Run(reply);
 }
 

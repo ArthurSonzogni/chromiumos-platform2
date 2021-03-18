@@ -10,7 +10,7 @@ package rmad;
 option optimize_for = LITE_RUNTIME;
 
 // Defined error code.
-enum ErrorCode {
+enum RmadErrorCode {
   // 0 is the default value. It should never be used.
   RMAD_ERROR_NOT_SET = 0;
 
@@ -20,9 +20,25 @@ enum ErrorCode {
 
 // Defined Rmad states.
 enum RmadState {
-  STATE_UNKNOWN = 0;
-  STATE_RMA_NOT_REQUIRED = 1;
-  STATE_WELCOME_SCREEN = 2;
+  RMAD_STATE_UNKNOWN = 0;
+  RMAD_STATE_RMA_NOT_REQUIRED = 1;
+  RMAD_STATE_WELCOME_SCREEN = 2;
+  RMAD_STATE_COMPONENT_SELECTION = 3;
+  RMAD_STATE_DESTINATION_SELECTION = 4;
+  RMAD_STATE_DISABLE_HWWP_SELECTION = 5;
+  RMAD_STATE_DISABLE_HWWP_RSU = 6;
+  RMAD_STATE_DISABLE_HWWP_PHYSICAL = 7;
+  RMAD_STATE_DISABLE_HWWP_COMPLETE = 8;
+  RMAD_STATE_UPDATE_RO_FIRMWARE = 9;
+  RMAD_STATE_RESET_DEVICE_INFO = 10;
+  RMAD_STATE_RESTOCK = 11;
+  RMAD_STATE_CONFIRM_DEVICE_INFO = 12;
+  RMAD_STATE_ACCELEROMETER_CALIBRATION = 13;
+  RMAD_STATE_PROVISION = 14;
+  RMAD_STATE_POWERWASH = 15;
+  RMAD_STATE_FINALIZE = 16;
+  RMAD_STATE_VIEW_LOGS = 17;
+  RMAD_STATE_REPAIR_COMPLETE = 18;
 }
 
 // Request from client to get current state.
@@ -30,6 +46,6 @@ message GetCurrentStateRequest {}
 
 // Reply from daemon.
 message GetCurrentStateReply {
-  ErrorCode error = 1;
+  RmadErrorCode error = 1;
   RmadState state = 2;
 }

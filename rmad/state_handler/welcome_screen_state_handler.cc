@@ -11,7 +11,7 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(JsonStore* json_store)
 
 RmadState WelcomeScreenStateHandler::GetNextState() const {
   // This is currently fake.
-  return STATE_UNKNOWN;
+  return RMAD_STATE_UNKNOWN;
 }
 
 }  // namespace rmad

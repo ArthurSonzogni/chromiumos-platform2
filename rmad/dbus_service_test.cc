@@ -80,14 +80,14 @@ TEST_F(DBusServiceTest, GetCurrentState) {
           Invoke([](const GetCurrentStateRequest& request,
                     const RmadInterface::GetCurrentStateCallback& callback) {
             GetCurrentStateReply reply;
-            reply.set_state(STATE_RMA_NOT_REQUIRED);
+            reply.set_state(RMAD_STATE_RMA_NOT_REQUIRED);
             callback.Run(reply);
           }));
 
   GetCurrentStateRequest request;
   GetCurrentStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, request, &reply);
-  EXPECT_EQ(STATE_RMA_NOT_REQUIRED, reply.state());
+  EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
 }
 
 }  // namespace rmad

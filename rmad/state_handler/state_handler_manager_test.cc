@@ -38,26 +38,29 @@ class StateHandlerManagerTest : public testing::Test {
 };
 
 TEST_F(StateHandlerManagerTest, GetStateHandler) {
-  auto handler1 = CreateMockStateHandler(STATE_RMA_NOT_REQUIRED, STATE_UNKNOWN);
-  auto handler2 = CreateMockStateHandler(STATE_WELCOME_SCREEN, STATE_UNKNOWN);
+  auto handler1 =
+      CreateMockStateHandler(RMAD_STATE_RMA_NOT_REQUIRED, RMAD_STATE_UNKNOWN);
+  auto handler2 =
+      CreateMockStateHandler(RMAD_STATE_WELCOME_SCREEN, RMAD_STATE_UNKNOWN);
   state_handler_manager_.RegisterStateHandler(handler1);
   state_handler_manager_.RegisterStateHandler(handler2);
 
   scoped_refptr<BaseStateHandler> nonexistent_handler =
-      state_handler_manager_.GetStateHandler(STATE_UNKNOWN);
+      state_handler_manager_.GetStateHandler(RMAD_STATE_UNKNOWN);
   EXPECT_FALSE(nonexistent_handler.get());
 
   scoped_refptr<BaseStateHandler> retrieve_handler =
-      state_handler_manager_.GetStateHandler(STATE_WELCOME_SCREEN);
+      state_handler_manager_.GetStateHandler(RMAD_STATE_WELCOME_SCREEN);
   EXPECT_TRUE(retrieve_handler.get());
-  EXPECT_EQ(STATE_WELCOME_SCREEN, retrieve_handler->GetState());
-  EXPECT_EQ(STATE_UNKNOWN, retrieve_handler->GetNextState());
+  EXPECT_EQ(RMAD_STATE_WELCOME_SCREEN, retrieve_handler->GetState());
+  EXPECT_EQ(RMAD_STATE_UNKNOWN, retrieve_handler->GetNextState());
 }
 
 TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {
-  auto handler1 = CreateMockStateHandler(STATE_RMA_NOT_REQUIRED, STATE_UNKNOWN);
-  auto handler2 =
-      CreateMockStateHandler(STATE_RMA_NOT_REQUIRED, STATE_WELCOME_SCREEN);
+  auto handler1 =
+      CreateMockStateHandler(RMAD_STATE_RMA_NOT_REQUIRED, RMAD_STATE_UNKNOWN);
+  auto handler2 = CreateMockStateHandler(RMAD_STATE_RMA_NOT_REQUIRED,
+                                         RMAD_STATE_WELCOME_SCREEN);
   state_handler_manager_.RegisterStateHandler(handler1);
   EXPECT_DEATH(state_handler_manager_.RegisterStateHandler(handler2),
                "Registered handlers should have unique RmadStates.");

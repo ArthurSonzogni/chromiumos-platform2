@@ -18,15 +18,15 @@ namespace rmad {
 const char kTestFileName[] = "test.json";
 
 // Valid JSON dictionary.
-const char kValidJson[] =
-    "{\n"
-    "  \"trigger\": true,\n"
-    "  \"state\": \"STATE_RMA_NOT_REQUIRED\",\n"
-    "  \"replaced_components\": [\n"
-    "    \"screen\",\n"
-    "    \"keyboard\"\n"
-    "  ]\n"
-    "}";
+const char kValidJson[] = R"(
+  {
+    "trigger": true,
+    "state": "RMAD_STATE_RMA_NOT_REQUIRED",
+    "replaced_components": [
+      "screen",
+      "keyboard"
+    ]
+  })";
 // Invalid JSON string, missing '}'.
 const char kInvalidFormatJson[] = "{ \"trigger\": true";
 // Invalid JSON dictionary.

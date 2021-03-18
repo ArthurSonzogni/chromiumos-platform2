@@ -14,7 +14,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   explicit WelcomeScreenStateHandler(JsonStore* json_store);
   ~WelcomeScreenStateHandler() override = default;
 
-  ASSIGN_STATE(STATE_WELCOME_SCREEN);
+  ASSIGN_STATE(RMAD_STATE_WELCOME_SCREEN);
 
   RmadState GetNextState() const override;
 };
