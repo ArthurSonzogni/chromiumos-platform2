@@ -264,8 +264,10 @@ class SessionManagerImpl
   void HandleLockScreenDismissed() override;
   bool IsScreenLocked() override;
 
-  void RestartJob(dbus::MethodCall* method_call,
-                  brillo::dbus_utils::ResponseSender sender) override;
+  bool RestartJob(brillo::ErrorPtr* error,
+                  const base::ScopedFD& in_cred_fd,
+                  const std::vector<std::string>& in_argv,
+                  uint32_t mode) override;
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
   bool StartRemoteDeviceWipe(
@@ -414,12 +416,6 @@ class SessionManagerImpl
   // Returns true if at least one session is started.
   bool IsSessionStarted();
 
-  // TODO(pbond): Keep a corresponding to RestartJob "simple" method and use it
-  // once the change is landed in chromium.
-  bool RestartJobInternal(brillo::ErrorPtr* error,
-                          const base::ScopedFD& in_cred_fd,
-                          const std::vector<std::string>& in_argv,
-                          uint32_t mode);
 #if USE_CHEETS
   // Starts the Android container for ARC. If an error occurs, brillo::Error
   // instance is set to |error_out|.  After this succeeds, in case of ARC stop,

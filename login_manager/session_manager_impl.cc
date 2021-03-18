@@ -967,33 +967,48 @@ bool SessionManagerImpl::IsScreenLocked() {
   return screen_locked_;
 }
 
-void SessionManagerImpl::RestartJob(dbus::MethodCall* method_call,
-                                    brillo::dbus_utils::ResponseSender sender) {
-  dbus::MessageReader reader(method_call);
-
-  base::ScopedFD in_cred_fd;
-  std::vector<std::string> in_argv;
-  if (!reader.PopFileDescriptor(&in_cred_fd) ||
-      !reader.PopArrayOfStrings(&in_argv)) {
-    auto response = dbus::ErrorResponse::FromMethodCall(
-        method_call, dbus_error::kInvalidParameter,
-        "in_cred_fd or in_argv are invalid.");
-    std::move(sender).Run(std::move(response));
-    return;
-  }
-  uint32_t mode;
-  if (!reader.PopUint32(&mode)) {
-    mode = static_cast<uint32_t>(RestartJobMode::kGuest);
+bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
+                                    const base::ScopedFD& in_cred_fd,
+                                    const std::vector<std::string>& in_argv,
+                                    uint32_t mode) {
+  struct ucred ucred = {0};
+  socklen_t len = sizeof(struct ucred);
+  if (!in_cred_fd.is_valid() || getsockopt(in_cred_fd.get(), SOL_SOCKET,
+                                           SO_PEERCRED, &ucred, &len) == -1) {
+    PLOG(ERROR) << "Can't get peer creds";
+    *error = CreateError(dbus_error::kGetPeerCredsFailed, strerror(errno));
+    return false;
   }
 
-  brillo::ErrorPtr error;
-  if (!RestartJobInternal(&error, in_cred_fd, in_argv, mode)) {
-    auto response = brillo::dbus_utils::GetDBusError(method_call, error.get());
-    std::move(sender).Run(std::move(response));
-    return;
+  if (!manager_->IsBrowser(ucred.pid)) {
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kUnknownPid,
+                                  "Provided pid is unknown.");
+    return false;
   }
-  // Send success response.
-  std::move(sender).Run(dbus::Response::FromMethodCall(method_call));
+
+  if (IsGuestMode(mode) != IsGuestSession(in_argv)) {
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kInvalidParameter,
+                             "in_argv doesn't match mode for guest session.");
+    return false;
+  }
+
+  // To set "logged-in" state for BWSI mode.
+  if (IsGuestMode(mode) && !StartSession(error, kGuestUserName, "")) {
+    DCHECK(*error);
+    return false;
+  }
+
+  if (!IsGuestMode(mode) && IsSessionStarted()) {
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kInvalidParameter,
+                             "Requested to restart non-guest user session.");
+    return false;
+  }
+
+  manager_->SetBrowserArgs(in_argv);
+  manager_->RestartBrowser();
+  return true;
 }
 
 bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
@@ -1827,51 +1842,6 @@ void SessionManagerImpl::DeleteArcBugReportBackup(
 
 bool SessionManagerImpl::IsSessionStarted() {
   return !user_sessions_.empty();
-}
-
-bool SessionManagerImpl::RestartJobInternal(
-    brillo::ErrorPtr* error,
-    const base::ScopedFD& in_cred_fd,
-    const std::vector<std::string>& in_argv,
-    uint32_t mode) {
-  struct ucred ucred = {0};
-  socklen_t len = sizeof(struct ucred);
-  if (!in_cred_fd.is_valid() || getsockopt(in_cred_fd.get(), SOL_SOCKET,
-                                           SO_PEERCRED, &ucred, &len) == -1) {
-    PLOG(ERROR) << "Can't get peer creds";
-    *error = CreateError(dbus_error::kGetPeerCredsFailed, strerror(errno));
-    return false;
-  }
-
-  if (!manager_->IsBrowser(ucred.pid)) {
-    *error = CREATE_ERROR_AND_LOG(dbus_error::kUnknownPid,
-                                  "Provided pid is unknown.");
-    return false;
-  }
-
-  if (IsGuestMode(mode) != IsGuestSession(in_argv)) {
-    *error =
-        CREATE_ERROR_AND_LOG(dbus_error::kInvalidParameter,
-                             "in_argv doesn't match mode for guest session.");
-    return false;
-  }
-
-  // To set "logged-in" state for BWSI mode.
-  if (IsGuestMode(mode) && !StartSession(error, kGuestUserName, "")) {
-    DCHECK(*error);
-    return false;
-  }
-
-  if (!IsGuestMode(mode) && IsSessionStarted()) {
-    *error =
-        CREATE_ERROR_AND_LOG(dbus_error::kInvalidParameter,
-                             "Requested to restart non-guest user session.");
-    return false;
-  }
-
-  manager_->SetBrowserArgs(in_argv);
-  manager_->RestartBrowser();
-  return true;
 }
 
 #if USE_CHEETS

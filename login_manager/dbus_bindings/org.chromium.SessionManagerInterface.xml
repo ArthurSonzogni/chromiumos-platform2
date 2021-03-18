@@ -444,11 +444,8 @@
       Restarts job with pid returned when querying @cred_fd using
         SO_PEERCRED, replacing its command line arguments with those provided.
         Only works for the browser process managed by the SessionManager.
-      TODO(pbond): once chromium is updated according to a new signature,
-                   mark this method simple instead of raw.
     -->
     <method name="RestartJob">
-      <annotation name="org.chromium.DBus.Method.Kind" value="raw"/>
       <arg type="h" name="cred_fd" direction="in" />
       <arg type="as" name="argv" direction="in" />
       <arg type="u" name="mode" direction="in" />

@@ -135,9 +135,6 @@ namespace login_manager {
 
 namespace {
 
-// Some arbitrary D-Bus message serial number. Required for mocking D-Bus calls.
-constexpr int kDBusSerial = 123;
-
 const char* const kUserlessArgv[] = {
     "program",
     "--switch1",
@@ -477,40 +474,6 @@ class SessionManagerImplTest : public ::testing::Test,
     SetSystemSalt(nullptr);
     EXPECT_EQ(actual_locks_, expected_locks_);
     EXPECT_EQ(actual_restarts_, expected_restarts_);
-  }
-
-  bool RestartJob(
-      brillo::ErrorPtr* error,
-      const base::ScopedFD& in_cred_fd,
-      const std::vector<std::string>& in_argv,
-      const base::Optional<SessionManagerImpl::RestartJobMode>& mode) {
-    dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
-                                 login_manager::kSessionManagerRestartJob);
-    method_call.SetSerial(kDBusSerial);
-    dbus::MessageWriter writer(&method_call);
-    if (!in_cred_fd.is_valid()) {
-      writer.AppendFileDescriptor(0);
-    } else {
-      writer.AppendFileDescriptor(in_cred_fd.get());
-    }
-
-    writer.AppendArrayOfStrings(in_argv);
-    if (mode.has_value()) {
-      writer.AppendUint32(static_cast<uint32_t>(mode.value()));
-    }
-
-    impl_->RestartJob(
-        &method_call,
-        base::BindLambdaForTesting(
-            [&error](std::unique_ptr<dbus::Response> response) {
-              if (dbus::Message::MESSAGE_ERROR != response->GetMessageType())
-                return;
-
-              *error = brillo::Error::Create(FROM_HERE,
-                                             brillo::errors::dbus::kDomain,
-                                             response->GetErrorName(), "");
-            }));
-    return error->get() == nullptr;
   }
 
   // SessionManagerImpl::Delegate:
@@ -2004,8 +1967,8 @@ TEST_F(SessionManagerImplTest, IsGuestSessionActive) {
 
 TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
   brillo::ErrorPtr error;
-  EXPECT_FALSE(
-      RestartJob(&error, base::ScopedFD(), {}, base::nullopt /* mode */));
+  auto mode = static_cast<uint32_t>(SessionManagerImpl::RestartJobMode::kGuest);
+  EXPECT_FALSE(impl_->RestartJob(&error, base::ScopedFD(), {}, mode));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kGetPeerCredsFailed, error->GetCode());
 }
@@ -2016,7 +1979,8 @@ TEST_F(SessionManagerImplTest, RestartJobBadPid) {
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(false));
   brillo::ErrorPtr error;
-  EXPECT_FALSE(RestartJob(&error, fd1, {}, base::nullopt /* mode */));
+  auto mode = static_cast<uint32_t>(SessionManagerImpl::RestartJobMode::kGuest);
+  EXPECT_FALSE(impl_->RestartJob(&error, fd1, {}, mode));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kUnknownPid, error->GetCode());
 }
@@ -2030,7 +1994,8 @@ TEST_F(SessionManagerImplTest, RestartJobGuestFailure) {
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
   brillo::ErrorPtr error;
-  EXPECT_FALSE(RestartJob(&error, fd1, argv, base::nullopt /* mode */));
+  auto mode = static_cast<uint32_t>(SessionManagerImpl::RestartJobMode::kGuest);
+  EXPECT_FALSE(impl_->RestartJob(&error, fd1, argv, mode));
   EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
 }
 
@@ -2043,8 +2008,9 @@ TEST_F(SessionManagerImplTest, RestartJobModeMismatch) {
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
   brillo::ErrorPtr error;
-  auto mode = SessionManagerImpl::RestartJobMode::kUserless;
-  EXPECT_FALSE(RestartJob(&error, fd1, argv, mode));
+  auto mode =
+      static_cast<uint32_t>(SessionManagerImpl::RestartJobMode::kUserless);
+  EXPECT_FALSE(impl_->RestartJob(&error, fd1, argv, mode));
   EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
 }
 
@@ -2061,7 +2027,8 @@ TEST_F(SessionManagerImplTest, RestartJobSuccess) {
   ExpectGuestSession();
 
   brillo::ErrorPtr error;
-  EXPECT_TRUE(RestartJob(&error, fd1, argv, base::nullopt /* mode */));
+  auto mode = static_cast<uint32_t>(SessionManagerImpl::RestartJobMode::kGuest);
+  EXPECT_TRUE(impl_->RestartJob(&error, fd1, argv, mode));
   EXPECT_FALSE(error.get());
 }
 
@@ -2077,8 +2044,9 @@ TEST_F(SessionManagerImplTest, RestartJobUserlessSuccess) {
   EXPECT_CALL(manager_, RestartBrowser()).Times(1);
 
   brillo::ErrorPtr error;
-  auto mode = SessionManagerImpl::RestartJobMode::kUserless;
-  EXPECT_TRUE(RestartJob(&error, fd1, argv, mode));
+  auto mode =
+      static_cast<uint32_t>(SessionManagerImpl::RestartJobMode::kUserless);
+  EXPECT_TRUE(impl_->RestartJob(&error, fd1, argv, mode));
   EXPECT_FALSE(error.get());
 }
 
@@ -2096,8 +2064,9 @@ TEST_F(SessionManagerImplTest, RestartJobForNonGuestUserFailure) {
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
 
-  auto mode = SessionManagerImpl::RestartJobMode::kUserless;
-  EXPECT_FALSE(RestartJob(&error, fd1, argv, mode));
+  auto mode =
+      static_cast<uint32_t>(SessionManagerImpl::RestartJobMode::kUserless);
+  EXPECT_FALSE(impl_->RestartJob(&error, fd1, argv, mode));
   EXPECT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
 }
