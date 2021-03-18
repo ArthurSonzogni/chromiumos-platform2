@@ -202,7 +202,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
   bool WriteDoubleAttribute(const std::string& name, double value) override;
 
-  bool HasFifo() const override { return true; }
+  bool HasFifo() const override { return !trigger_; }
 
   bool SetTrigger(IioDevice* trigger) override;
   IioDevice* GetTrigger() override { return trigger_; }
