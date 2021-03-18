@@ -6,10 +6,12 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":libcrossystem_utils",
     ":libdbus_service",
     ":libjson_store",
     ":librmad_interface",
     ":libstate_handler",
+    ":libvpd_utils",
     ":rmad",
   ]
   if (use.test) {
@@ -22,6 +24,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "vboot_host",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
@@ -34,6 +37,19 @@ pkg_config("target_defaults") {
 static_library("libjson_store") {
   sources = [ "utils/json_store.cc" ]
   configs += [ ":target_defaults" ]
+}
+
+static_library("libcrossystem_utils") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "utils/crossystem_utils.cc",
+    "utils/crossystem_utils_impl.cc",
+  ]
+}
+
+static_library("libvpd_utils") {
+  configs += [ ":target_defaults" ]
+  sources = [ "utils/vpd_utils_impl.cc" ]
 }
 
 static_library("libstate_handler") {
@@ -75,6 +91,8 @@ if (use.test) {
       "dbus_service_test.cc",
       "rmad_interface_test.cc",
       "state_handler/state_handler_manager_test.cc",
+      "utils/fake_crossystem_utils.cc",
+      "utils/fake_vpd_utils.cc",
       "utils/json_store_test.cc",
     ]
     configs += [
