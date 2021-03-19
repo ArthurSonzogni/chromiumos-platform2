@@ -18,7 +18,7 @@ use std::time::Duration;
 use dbus::blocking::Connection;
 use getopts::Options;
 use manatee_client::client::OrgChromiumManaTEEInterface;
-use sys_util::KillOnDrop;
+use sys_util::{wait_for_interrupt, KillOnDrop};
 use thiserror::Error as ThisError;
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
@@ -212,9 +212,8 @@ fn run_test_environment() -> Result<()> {
             .map_err(|err| Error::StartCmd(DUGONG_NAME.to_string(), err))?,
     );
 
-    println!("*** Press enter to continue. ***");
-    let mut _line = String::new();
-    stdin().read_line(&mut _line).ok();
+    println!("*** Press Ctrl-C to continue. ***");
+    wait_for_interrupt().ok();
 
     drop(dugong);
     drop(trichechus);
