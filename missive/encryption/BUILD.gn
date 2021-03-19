@@ -1,0 +1,155 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD - style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "openssl",
+  ]
+
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+static_library("encryption_module_interface") {
+  sources = [
+    "encryption_module_interface.cc",
+    "encryption_module_interface.h",
+  ]
+  deps = [
+    "//missive/proto:record_proto",
+    "//missive/util:status",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
+
+static_library("primitives") {
+  sources = [
+    "primitives.cc",
+    "primitives.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
+
+static_library("testing_primitives") {
+  sources = [
+    "testing_primitives.cc",
+    "testing_primitives.h",
+  ]
+  deps = [ ":primitives" ]
+
+  configs += [ ":target_defaults" ]
+}
+
+static_library("encryption_module") {
+  sources = [
+    "encryption_module.cc",
+    "encryption_module.h",
+  ]
+  deps = [
+    ":encryption",
+    ":encryption_module_interface",
+    "//missive/proto:record_proto",
+    "//missive/util:status",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
+
+static_library("encryption") {
+  sources = [
+    "encryption.cc",
+    "encryption.h",
+  ]
+  deps = [
+    ":primitives",
+    "//missive/proto:record_proto",
+    "//missive/util:status",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
+
+static_library("decryption") {
+  sources = [
+    "decryption.cc",
+    "decryption.h",
+  ]
+  deps = [
+    ":encryption",
+    ":primitives",
+    ":testing_primitives",
+    "//missive/proto:record_proto",
+    "//missive/util:status",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
+
+static_library("verification") {
+  sources = [
+    "verification.cc",
+    "verification.h",
+  ]
+  deps = [
+    ":primitives",
+    "//missive/util:status",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
+
+static_library("test_support") {
+  sources = [
+    "test_encryption_module.cc",
+    "test_encryption_module.h",
+  ]
+  deps = [
+    ":decryption",
+    ":encryption",
+    ":encryption_module",
+    ":encryption_module_interface",
+    ":primitives",
+    ":testing_primitives",
+    ":verification",
+    "//missive/proto:record_proto",
+    "//missive/util:status",
+    "//missive/util:status_macros",
+  ]
+
+  configs += [ ":target_defaults" ]
+}
+
+source_set("unit_tests") {
+  sources = [
+    "encryption_module_test.cc",
+    "encryption_test.cc",
+    "verification_test.cc",
+  ]
+  deps = [
+    ":decryption",
+    ":encryption",
+    ":encryption_module",
+    ":encryption_module_interface",
+    ":primitives",
+    ":test_support",
+    ":testing_primitives",
+    ":verification",
+    "//missive/proto:record_proto",
+    "//missive/util:status",
+    "//missive/util:status_macros",
+    "//missive/util:test_callbacks_support",
+  ]
+
+  configs += [ ":target_defaults" ]
+}

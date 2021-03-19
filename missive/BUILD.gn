@@ -56,6 +56,7 @@ static_library("libmessaging_layer") {
   deps = [
     ":missive_dbus_adaptors",
     ":missive_dbus_proxies",
+    "//missive/encryption",
     "//missive/proto:interface_proto",
     "//missive/scheduler",
     "//missive/scheduler:enqueue_job",
@@ -87,6 +88,8 @@ if (use.test) {
     deps = [
       ":libmessaging_layer",
       "//common-mk/testrunner",
+      "//missive/encryption:test_support",
+      "//missive/encryption:unit_tests",
       "//missive/scheduler",
       "//missive/scheduler:enqueue_job",
       "//missive/storage/resources:resource_interface",
