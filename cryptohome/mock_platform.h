@@ -215,10 +215,11 @@ class MockPlatform : public Platform {
                uint32_t,
                const std::string&),
               (override));
-  MOCK_METHOD(bool,
-              Bind,
-              (const base::FilePath&, const base::FilePath&, bool, bool),
-              (override));
+  MOCK_METHOD(
+      bool,
+      Bind,
+      (const base::FilePath&, const base::FilePath&, RemountOption, bool),
+      (override));
   MOCK_METHOD(bool, Unmount, (const base::FilePath&, bool, bool*), (override));
   MOCK_METHOD(ExpireMountResult,
               ExpireMount,

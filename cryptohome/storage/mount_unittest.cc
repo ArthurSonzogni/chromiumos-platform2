@@ -302,22 +302,26 @@ class MountTest
     EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
         .WillOnce(Return(false));
 
-    EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
-                                user.user_vault_mount_path, true, true))
+    EXPECT_CALL(platform_,
+                Bind(user.user_vault_mount_path, user.user_vault_mount_path,
+                     RemountOption::kShared, true))
         .WillOnce(Return(true));
 
     EXPECT_CALL(platform_,
-                Bind(user.user_vault_mount_path, user.user_mount_path, _, true))
+                Bind(user.user_vault_mount_path, user.user_mount_path,
+                     RemountOption::kMountsFlowIn, true))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_,
+                Bind(user.user_vault_mount_path, user.legacy_user_mount_path,
+                     RemountOption::kMountsFlowIn, true))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
-                                user.legacy_user_mount_path, _, true))
+                                MountHelper::GetNewUserPath(user.username),
+                                RemountOption::kMountsFlowIn, true))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_,
-                Bind(user.user_vault_mount_path,
-                     MountHelper::GetNewUserPath(user.username), _, true))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_,
-                Bind(user.root_vault_mount_path, user.root_mount_path, _, true))
+                Bind(user.root_vault_mount_path, user.root_mount_path,
+                     RemountOption::kMountsFlowIn, true))
         .WillOnce(Return(true));
     ExpectDownloadsBindMounts(user, false /* ephemeral_mount */);
     EXPECT_CALL(platform_,
@@ -723,22 +727,26 @@ TEST_P(MountTest, MountDmcrypt) {
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
                              user->root_vault_mount_path, _, _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Bind(user->user_vault_mount_path,
-                              user->user_vault_mount_path, true, true))
+  EXPECT_CALL(platform_,
+              Bind(user->user_vault_mount_path, user->user_vault_mount_path,
+                   RemountOption::kShared, true))
       .WillOnce(Return(true));
 
   EXPECT_CALL(platform_,
-              Bind(user->user_vault_mount_path, user->user_mount_path, _, true))
+              Bind(user->user_vault_mount_path, user->user_mount_path,
+                   RemountOption::kMountsFlowIn, true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              Bind(user->user_vault_mount_path, user->legacy_user_mount_path,
+                   RemountOption::kMountsFlowIn, true))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(user->user_vault_mount_path,
-                              user->legacy_user_mount_path, _, true))
+                              MountHelper::GetNewUserPath(user->username),
+                              RemountOption::kMountsFlowIn, true))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_,
-              Bind(user->user_vault_mount_path,
-                   MountHelper::GetNewUserPath(user->username), _, true))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              Bind(user->root_vault_mount_path, user->root_mount_path, _, true))
+              Bind(user->root_vault_mount_path, user->root_mount_path,
+                   RemountOption::kMountsFlowIn, true))
       .WillOnce(Return(true));
 
   // Expect existing dm-crypt subdirectories.
@@ -963,7 +971,7 @@ TEST_P(MountTest, RememberMountOrderingTest) {
     EXPECT_CALL(platform_, Unmount(dest0, _, _)).WillOnce(Return(true));
 
     EXPECT_TRUE(mnt_helper.MountAndPush(src, dest0, "", ""));
-    EXPECT_TRUE(mnt_helper.BindAndPush(src, dest1, true /*is_shared*/));
+    EXPECT_TRUE(mnt_helper.BindAndPush(src, dest1, RemountOption::kShared));
     EXPECT_TRUE(mnt_helper.MountAndPush(src, dest2, "", ""));
     mnt_helper.UnmountAll();
   }

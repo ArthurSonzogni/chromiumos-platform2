@@ -77,6 +77,15 @@ enum class ExpireMountResult {
   kError,
 };
 
+// List of remount options.
+enum class RemountOption {
+  kNoRemount,
+  kPrivate,
+  kShared,
+  kMountsFlowIn,  // Equivalent to MS_SLAVE
+  kUnbindable,
+};
+
 // A class for enumerating the files in a provided path. The order of the
 // results is not guaranteed.
 //
@@ -173,11 +182,15 @@ class Platform {
   // Parameters
   //   from - Where to mount from
   //   to - Where to mount to
-  //   is_shared - Whether the bind mount should be remounted with MS_SHARED.
+  //   remount - Which mount mode the bind mount should use. Some remount modes
+  //   may have no effect as the transition depends on the original mode of the
+  //   option. See
+  //   https://www.kernel.org/doc/Documentation/filesystems/sharedsubtree.txt
+  //   for more details.
   //   nosymfollow - Whether to apply nosymfollow on the mount.
   virtual bool Bind(const base::FilePath& from,
                     const base::FilePath& to,
-                    bool is_shared = false,
+                    RemountOption remount = RemountOption::kNoRemount,
                     bool nosymfollow = false);
 
   // Calls the platform unmount

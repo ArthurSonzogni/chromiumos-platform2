@@ -432,7 +432,8 @@ bool MountHelper::MountLegacyHome(const FilePath& from) {
     return true;
   }
 
-  if (!BindAndPush(from, FilePath(kDefaultHomeDir), true /*is_shared*/))
+  if (!BindAndPush(from, FilePath(kDefaultHomeDir),
+                   RemountOption::kMountsFlowIn))
     return false;
 
   return true;
@@ -448,7 +449,7 @@ bool MountHelper::BindMyFilesDownloads(const base::FilePath& user_home) {
   // Move the files back to Download unless a file already exists.
   MigrateDirectory(downloads, downloads_in_myfiles);
 
-  if (!BindAndPush(downloads, downloads_in_myfiles, true /*is_shared*/))
+  if (!BindAndPush(downloads, downloads_in_myfiles))
     return false;
 
   return true;
@@ -469,11 +470,13 @@ bool MountHelper::MountAndPush(const base::FilePath& src,
 
 bool MountHelper::BindAndPush(const FilePath& src,
                               const FilePath& dest,
-                              bool is_shared) {
-  if (!platform_->Bind(src, dest, is_shared, /*nosymfollow=*/true)) {
+                              RemountOption remount) {
+  if (!platform_->Bind(src, dest, remount, /*nosymfollow=*/true)) {
+    std::string remount_strs[] = {"kNoRemount", "kPrivate", "kShared",
+                                  "kMountsFlowIn", "kUnbindable"};
     PLOG(ERROR) << "Bind mount failed: " << src.value() << " -> "
-                << dest.value() << " is_shared: " << std::boolalpha
-                << is_shared;
+                << dest.value()
+                << " remount: " << remount_strs[static_cast<int>(remount)];
     return false;
   }
 
@@ -575,9 +578,9 @@ bool MountHelper::MountHomesAndDaemonStores(
     const FilePath& user_home,
     const FilePath& root_home) {
   // Bind mount user directory as a shared bind mount.
-  // This allows us to set up user mounts as shared mounts without needing to
+  // This allows us to set up user mounts as slave mounts without needing to
   // replicate that across multiple mount points.
-  if (!BindAndPush(user_home, user_home, true /*is_shared*/))
+  if (!BindAndPush(user_home, user_home, RemountOption::kShared))
     return false;
 
   // Mount /home/chronos/user.
@@ -586,17 +589,17 @@ bool MountHelper::MountHomesAndDaemonStores(
 
   // Mount /home/chronos/u-<user_hash>
   const FilePath new_user_path = GetNewUserPath(username);
-  if (!BindAndPush(user_home, new_user_path))
+  if (!BindAndPush(user_home, new_user_path, RemountOption::kMountsFlowIn))
     return false;
 
   // Mount /home/user/<user_hash>.
   const FilePath user_multi_home = GetUserPath(username);
-  if (!BindAndPush(user_home, user_multi_home))
+  if (!BindAndPush(user_home, user_multi_home, RemountOption::kMountsFlowIn))
     return false;
 
   // Mount /home/root/<user_hash>.
   const FilePath root_multi_home = GetRootPath(username);
-  if (!BindAndPush(root_home, root_multi_home))
+  if (!BindAndPush(root_home, root_multi_home, RemountOption::kMountsFlowIn))
     return false;
 
   if (bind_mount_downloads_) {
@@ -766,7 +769,7 @@ bool MountHelper::MountCacheSubdirectories(
     FilePath src_dir = cache_directory.Append(tracked_dir);
     FilePath dst_dir = data_directory.Append(tracked_dir);
 
-    if (!BindAndPush(src_dir, dst_dir, true)) {
+    if (!BindAndPush(src_dir, dst_dir, RemountOption::kMountsFlowIn)) {
       LOG(ERROR) << "Failed to bind mount " << src_dir;
       return false;
     }

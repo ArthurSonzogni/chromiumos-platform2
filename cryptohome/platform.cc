@@ -285,7 +285,7 @@ bool Platform::Mount(const FilePath& from,
 
 bool Platform::Bind(const FilePath& from,
                     const FilePath& to,
-                    bool is_shared,
+                    RemountOption remount,
                     bool nosymfollow) {
   // To apply options specific to a bind mount, we have to call mount(2) twice.
   if (mount(from.value().c_str(), to.value().c_str(), nullptr, MS_BIND,
@@ -303,9 +303,27 @@ bool Platform::Bind(const FilePath& from,
   if (mount(nullptr, to.value().c_str(), nullptr, mount_flags, options.c_str()))
     return false;
 
-  if (is_shared &&
-      mount(nullptr, to.value().c_str(), nullptr, MS_SHARED, nullptr))
-    return false;
+  if (remount != RemountOption::kNoRemount) {
+    uint32_t remount_mode;
+    switch (remount) {
+      case RemountOption::kPrivate:
+        remount_mode = MS_PRIVATE;
+        break;
+      case RemountOption::kShared:
+        remount_mode = MS_SHARED;
+        break;
+      case RemountOption::kMountsFlowIn:
+        remount_mode = MS_SLAVE;
+        break;
+      case RemountOption::kUnbindable:
+        remount_mode = MS_UNBINDABLE;
+        break;
+      default:
+        return false;
+    }
+    if (mount(nullptr, to.value().c_str(), nullptr, remount_mode, nullptr))
+      return false;
+  }
 
   return true;
 }

@@ -253,7 +253,7 @@ class MountHelper : public MountHelperInterface {
   //   is_shared - bind mount as MS_SHARED
   bool BindAndPush(const FilePath& src,
                    const FilePath& dest,
-                   bool is_shared = false);
+                   RemountOption remount = RemountOption::kNoRemount);
 
   // Bind mounts |user_home|/Downloads to |user_home|/MyFiles/Downloads so Files
   // app can manage MyFiles as user volume instead of just Downloads.
