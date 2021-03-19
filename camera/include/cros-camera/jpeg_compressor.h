@@ -19,15 +19,6 @@ namespace cros {
 // Interface for YU12 to JPEG compressor.
 class CROS_CAMERA_EXPORT JpegCompressor {
  public:
-  enum class Mode {
-    // Do HW encode first; falls back to SW encode after failing.
-    kDefault = 0,
-    // Don't do HW encode; use SW encode directly.
-    kSwOnly,
-    // HW encode only; does not fall back to SW encode.
-    kHwOnly
-  };
-
   struct DmaBufPlane {
     int fd;
     int32_t stride;
@@ -52,7 +43,9 @@ class CROS_CAMERA_EXPORT JpegCompressor {
   // |out_buffer_size|. Encoded result will be written into |output_buffer|.
   // The actually encoded size will be written into |out_data_size| if image
   // encoded successfully. Returns false if errors occur during compression.
-  // |mode| controls the HW/SW encode selection strategy.
+  // |enable_hw_encode| controls the HW/SW encode selection strategy.
+  // true - Do HW encode first; falls back to SW encode after failing.
+  // false - Don't do HW encode; use SW encode directly.
   virtual bool CompressImage(const void* image,
                              int width,
                              int height,
@@ -62,7 +55,7 @@ class CROS_CAMERA_EXPORT JpegCompressor {
                              uint32_t out_buffer_size,
                              void* out_buffer,
                              uint32_t* out_data_size,
-                             Mode mode = Mode::kDefault) = 0;
+                             bool enable_hw_encode = true) = 0;
 
   // Compresses YUV image to JPEG format via buffer handles.
   // |quality| is the resulted jpeg image quality. It ranges from 1
@@ -73,18 +66,19 @@ class CROS_CAMERA_EXPORT JpegCompressor {
   // it fallbacks to software encoding, it maps the |input_handle| and
   // |output_handle| to user space. The actually encoded size will be written
   // into |out_data_size| if image encoded successfully. Returns false if errors
-  // occur during compression. |mode| controls the HW/SW encode selection
-  // strategy.
-  virtual bool CompressImageFromHandle(
-      buffer_handle_t input,
-      buffer_handle_t output,
-      int width,
-      int height,
-      int quality,
-      const void* app1_ptr,
-      uint32_t app1_size,
-      uint32_t* out_data_size,
-      JpegCompressor::Mode mode = JpegCompressor::Mode::kDefault) = 0;
+  // occur during compression. |enable_hw_encode| controls the HW/SW encode
+  // selection strategy.
+  // true - Do HW encode first; falls back to SW encode after failing.
+  // false - Don't do HW encode; use SW encode directly.
+  virtual bool CompressImageFromHandle(buffer_handle_t input,
+                                       buffer_handle_t output,
+                                       int width,
+                                       int height,
+                                       int quality,
+                                       const void* app1_ptr,
+                                       uint32_t app1_size,
+                                       uint32_t* out_data_size,
+                                       bool enable_hw_encode = true) = 0;
 
   // Compresses YUV image to JPEG format via pointers to buffer memory.
   // |quality| is the resulted jpeg image quality. It ranges from 1

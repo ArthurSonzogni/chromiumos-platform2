@@ -258,8 +258,7 @@ bool JpegEncodeAcceleratorTest::GetSoftwareEncodeResult(Frame* frame) {
                                  frame->height, kJpegDefaultQuality, nullptr, 0,
                                  frame->sw_out_shm_mapping.mapped_size(),
                                  frame->sw_out_shm_mapping.memory(),
-                                 &frame->sw_out_size,
-                                 JpegCompressor::Mode::kSwOnly)) {
+                                 &frame->sw_out_size, true)) {
     LOG(ERROR) << "Software encode failed.";
     return false;
   }

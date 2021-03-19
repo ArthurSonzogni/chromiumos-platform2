@@ -35,28 +35,26 @@ class JpegCompressorImpl : public JpegCompressor {
   ~JpegCompressorImpl() override;
 
   // To be deprecated.
-  bool CompressImage(
-      const void* image,
-      int width,
-      int height,
-      int quality,
-      const void* app1_buffer,
-      uint32_t app1_size,
-      uint32_t out_buffer_size,
-      void* out_buffer,
-      uint32_t* out_data_size,
-      JpegCompressor::Mode mode = JpegCompressor::Mode::kDefault) override;
+  bool CompressImage(const void* image,
+                     int width,
+                     int height,
+                     int quality,
+                     const void* app1_buffer,
+                     uint32_t app1_size,
+                     uint32_t out_buffer_size,
+                     void* out_buffer,
+                     uint32_t* out_data_size,
+                     bool enable_hw_encode = true) override;
 
-  bool CompressImageFromHandle(
-      buffer_handle_t input,
-      buffer_handle_t output,
-      int width,
-      int height,
-      int quality,
-      const void* app1_ptr,
-      uint32_t app1_size,
-      uint32_t* out_data_size,
-      JpegCompressor::Mode mode = JpegCompressor::Mode::kDefault) override;
+  bool CompressImageFromHandle(buffer_handle_t input,
+                               buffer_handle_t output,
+                               int width,
+                               int height,
+                               int quality,
+                               const void* app1_ptr,
+                               uint32_t app1_size,
+                               uint32_t* out_data_size,
+                               bool enable_hw_encode = true) override;
 
   bool CompressImageFromMemory(void* input,
                                uint32_t input_format,
@@ -159,6 +157,9 @@ class JpegCompressorImpl : public JpegCompressor {
   // Since output buffer is passed from caller, use a variable to indicate
   // buffer is enough to encode or not.
   bool is_encode_success_;
+
+  // Flag to disable SW encode fallback when HW encode failed
+  bool force_jpeg_hw_encode_for_testing_;
 
   // Mojo manager token which is used for Mojo communication.
   CameraMojoChannelManagerToken* mojo_manager_token_;

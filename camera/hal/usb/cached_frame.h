@@ -90,8 +90,7 @@ class CachedFrame {
   // max resolution used for JDA
   Size jda_resolution_cap_;
 
-  // Flags to disable SW encode/decode fallback when HW encode/decode failed
-  bool force_jpeg_hw_encode_;
+  // Flag to disable SW decode fallback when HW decode failed
   bool force_jpeg_hw_decode_;
 };
 

@@ -22,6 +22,7 @@
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/jpeg_encode_accelerator.h"
+#include "cros-camera/utils/camera_config.h"
 
 namespace cros {
 
@@ -56,7 +57,17 @@ JpegCompressorImpl::JpegCompressorImpl(CameraMojoChannelManagerToken* token)
       out_buffer_size_(0),
       out_data_size_(0),
       is_encode_success_(false),
-      mojo_manager_token_(token) {}
+      force_jpeg_hw_encode_for_testing_(false),
+      mojo_manager_token_(token) {
+  // Read force_jpeg_hw_enc configs
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
+  force_jpeg_hw_encode_for_testing_ = camera_config->GetBoolean(
+      constants::kCrosForceJpegHardwareEncodeOption, false);
+  if (force_jpeg_hw_encode_for_testing_) {
+    LOGF(INFO) << "Force JPEG hardware encode for testing";
+  }
+}
 
 JpegCompressorImpl::~JpegCompressorImpl() {}
 
@@ -69,7 +80,7 @@ bool JpegCompressorImpl::CompressImage(const void* image,
                                        uint32_t out_buffer_size,
                                        void* out_buffer,
                                        uint32_t* out_data_size,
-                                       JpegCompressor::Mode mode) {
+                                       bool enable_hw_encode) {
   if (width % 8 != 0 || height % 2 != 0) {
     LOGF(ERROR) << "Image size can not be handled: " << width << "x" << height;
     return false;
@@ -86,7 +97,7 @@ bool JpegCompressorImpl::CompressImage(const void* image,
   }
 
   auto method_used = [&]() -> const char* {
-    if (mode != JpegCompressor::Mode::kSwOnly) {
+    if (enable_hw_encode) {
       // Try HW encode.
       uint32_t input_data_size = static_cast<uint32_t>(width * height * 3 / 2);
       if (EncodeHwLegacy(static_cast<const uint8_t*>(image), input_data_size,
@@ -95,26 +106,24 @@ bool JpegCompressorImpl::CompressImage(const void* image,
                          out_buffer_size, out_buffer, out_data_size)) {
         return "hardware";
       }
-      if (mode != JpegCompressor::Mode::kHwOnly) {
-        LOGF(WARNING) << "Tried HW encode but failed. Fall back to SW encode";
+      if (force_jpeg_hw_encode_for_testing_) {
+        return nullptr;
       }
+      LOGF(WARNING) << "Tried HW encode but failed. Fall back to SW encode";
     }
 
-    if (mode != JpegCompressor::Mode::kHwOnly) {
-      // Try SW encode.
-      if (EncodeLegacy(image, width, height, quality, app1_buffer, app1_size,
-                       out_buffer_size, out_buffer, out_data_size)) {
-        return "software";
-      }
+    // Try SW encode.
+    if (EncodeLegacy(image, width, height, quality, app1_buffer, app1_size,
+                     out_buffer_size, out_buffer, out_data_size)) {
+      return "software";
     }
 
     return nullptr;
   }();
 
   if (method_used == nullptr) {
-    // TODO(shik): Map mode from enum to string for better readability.
-    LOGF(ERROR) << "Failed to compress image with mode = "
-                << static_cast<int>(mode);
+    LOGF(ERROR) << "Failed to compress image with enable_hw_encode = "
+                << enable_hw_encode;
     return false;
   }
 
@@ -132,7 +141,7 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
                                                  const void* app1_ptr,
                                                  uint32_t app1_size,
                                                  uint32_t* out_data_size,
-                                                 JpegCompressor::Mode mode) {
+                                                 bool enable_hw_encode) {
   if (width % 8 != 0 || height % 2 != 0) {
     LOGF(ERROR) << "Input image size can not be handled: " << width << "x"
                 << height;
@@ -152,49 +161,46 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
   cros::CameraBufferManager* buffer_manager =
       cros::CameraBufferManager::GetInstance();
   auto method_used = [&]() -> const char* {
-    if (mode != JpegCompressor::Mode::kSwOnly) {
+    if (enable_hw_encode) {
       // Try HW encode.
       if (EncodeHw(input, output, width, height, app1_ptr, app1_size,
                    out_data_size)) {
         return "hardware";
       }
-      if (mode != JpegCompressor::Mode::kHwOnly) {
-        LOGF(WARNING) << "Tried HW encode but failed. Fall back to SW encode";
+      if (force_jpeg_hw_encode_for_testing_) {
+        return nullptr;
       }
+      LOGF(WARNING) << "Tried HW encode but failed. Fall back to SW encode";
     }
 
-    if (mode != JpegCompressor::Mode::kHwOnly) {
-      struct android_ycbcr mapped_input;
-      void* output_ptr;
-      auto status =
-          buffer_manager->LockYCbCr(input, 0, 0, 0, 0, 0, &mapped_input);
-      if (status != 0) {
-        LOGF(INFO) << "Failed to lock input buffer handle for sw encode.";
-        return nullptr;
-      }
-      status = buffer_manager->Lock(output, 0, 0, 0, 0, 0, &output_ptr);
-      if (status != 0) {
-        LOGF(INFO) << "Failed to lock output buffer handle for sw encode.";
-        return nullptr;
-      }
+    struct android_ycbcr mapped_input;
+    void* output_ptr;
+    auto status =
+        buffer_manager->LockYCbCr(input, 0, 0, 0, 0, 0, &mapped_input);
+    if (status != 0) {
+      LOGF(INFO) << "Failed to lock input buffer handle for sw encode.";
+      return nullptr;
+    }
+    status = buffer_manager->Lock(output, 0, 0, 0, 0, 0, &output_ptr);
+    if (status != 0) {
+      LOGF(INFO) << "Failed to lock output buffer handle for sw encode.";
+      return nullptr;
+    }
 
-      auto input_format = buffer_manager->GetV4L2PixelFormat(input);
-      auto output_buffer_size = buffer_manager->GetPlaneSize(output, 0);
-      // Try SW encode.
-      if (EncodeSw(mapped_input, input_format, output_ptr, output_buffer_size,
-                   width, height, quality, app1_ptr, app1_size,
-                   out_data_size)) {
-        return "software";
-      }
+    auto input_format = buffer_manager->GetV4L2PixelFormat(input);
+    auto output_buffer_size = buffer_manager->GetPlaneSize(output, 0);
+    // Try SW encode.
+    if (EncodeSw(mapped_input, input_format, output_ptr, output_buffer_size,
+                 width, height, quality, app1_ptr, app1_size, out_data_size)) {
+      return "software";
     }
 
     return nullptr;
   }();
 
   if (method_used == nullptr) {
-    // TODO(shik): Map mode from enum to string for better readability.
-    LOGF(ERROR) << "Failed to compress image with mode = "
-                << static_cast<int>(mode);
+    LOGF(ERROR) << "Failed to compress image with enable_hw_encode = "
+                << enable_hw_encode;
     return false;
   }
 
@@ -303,7 +309,7 @@ bool JpegCompressorImpl::GenerateThumbnail(const void* image,
   // better than HW.
   return CompressImage(scaled_buffer.data(), thumbnail_width, thumbnail_height,
                        quality, nullptr, 0, out_buffer_size, out_buffer,
-                       out_data_size, JpegCompressor::Mode::kSwOnly);
+                       out_data_size, true);
 }
 
 void JpegCompressorImpl::InitDestination(j_compress_ptr cinfo) {

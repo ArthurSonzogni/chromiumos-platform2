@@ -85,7 +85,6 @@ CachedFrame::CachedFrame()
       jda_available_(false),
       jda_resolution_cap_(std::numeric_limits<int>::max(),
                           std::numeric_limits<int>::max()),
-      force_jpeg_hw_encode_(false),
       force_jpeg_hw_decode_(false) {
   auto* mojo_manager_token = CameraHal::GetInstance().GetMojoManagerToken();
 
@@ -110,16 +109,11 @@ CachedFrame::CachedFrame()
 
   jpeg_compressor_ = JpegCompressor::GetInstance(mojo_manager_token);
 
-  // Read force_jpeg_hw_(enc|dec) configs
+  // Read force_jpeg_hw_dec configs
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
-  force_jpeg_hw_encode_ = camera_config->GetBoolean(
-      constants::kCrosForceJpegHardwareEncodeOption, false);
   force_jpeg_hw_decode_ = camera_config->GetBoolean(
       constants::kCrosForceJpegHardwareDecodeOption, false);
-  if (force_jpeg_hw_encode_) {
-    LOGF(INFO) << "Force JPEG hardware encode";
-  }
   if (force_jpeg_hw_decode_) {
     LOGF(INFO) << "Force JPEG hardware decode";
   }
@@ -567,9 +561,7 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
   if (!jpeg_compressor_->CompressImageFromHandle(
           in_frame.GetBufferHandle(), out_frame->GetBufferHandle(),
           in_frame.GetWidth(), in_frame.GetHeight(), jpeg_quality,
-          utils.GetApp1Buffer(), utils.GetApp1Length(), &jpeg_data_size,
-          force_jpeg_hw_encode_ ? JpegCompressor::Mode::kHwOnly
-                                : JpegCompressor::Mode::kDefault)) {
+          utils.GetApp1Buffer(), utils.GetApp1Length(), &jpeg_data_size)) {
     LOGF(ERROR) << "JPEG image compression failed";
     return -EINVAL;
   }
