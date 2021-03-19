@@ -435,7 +435,6 @@ class Service : public base::RefCounted<Service> {
   bool retain_auto_connect() const { return retain_auto_connect_; }
   // Setter is deliberately omitted; use EnableAndRetainAutoConnect.
 
-  void set_friendly_name(const std::string& n) { friendly_name_ = n; }
   const std::string& friendly_name() const { return friendly_name_; }
   // Sets the kNameProperty and broadcasts the change.
   void SetFriendlyName(const std::string& friendly_name);
@@ -710,6 +709,7 @@ class Service : public base::RefCounted<Service> {
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
 
+  void set_friendly_name(const std::string& n) { friendly_name_ = n; }
   void set_log_name(const std::string& log_name) { log_name_ = log_name; }
 
   // Save the service's auto_connect value, without affecting its auto_connect

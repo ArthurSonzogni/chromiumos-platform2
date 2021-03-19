@@ -248,7 +248,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
   service->set_storage_id(storage_id);
   service->InitDriverPropertyStore();
   if (!name.empty()) {
-    service->set_friendly_name(name);
+    service->SetFriendlyName(name);
   }
   return service;
 

@@ -174,9 +174,6 @@ class Cellular : public Device,
   static std::string GetModemStateString(ModemState modem_state);
   std::string GetCapabilityStateString(CapabilityState capability_state);
 
-  std::string CreateDefaultFriendlyServiceName();
-  bool IsDefaultFriendlyServiceName(const std::string& service_name) const;
-
   // Update the home provider from the information in |operator_info|. This
   // information may be from the SIM / received OTA.
   void UpdateHomeProvider(const MobileOperatorInfo* operator_info);
@@ -458,11 +455,6 @@ class Cellular : public Device,
 
   // Time between asynchronous calls to ModemManager1's GetLocation()
   static const int64_t kPollLocationIntervalMilliseconds;
-
-  // Generic service name prefix, shown when the correct carrier name is
-  // unknown.
-  static const char kGenericServiceNamePrefix[];
-  static unsigned int friendly_service_name_id_;
 
   // TODO(b/173635024): Fix order of cellular.h and .cc methods.
   void StartModem(Error* error, const EnabledStateChangedCallback& callback);

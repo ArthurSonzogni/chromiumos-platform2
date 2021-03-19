@@ -12,6 +12,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -47,6 +48,8 @@ const char CellularService::kStorageSimCardId[] = "Cellular.SimCardId";
 
 namespace {
 
+const char kGenericServiceNamePrefix[] = "MobileNetwork";
+
 const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
@@ -80,6 +83,11 @@ CellularService::CellularService(Manager* manager,
   // Note: This will change once SetNetworkTechnology() is called, but the
   // serial number remains unchanged so correlating log lines will be easy.
   set_log_name("cellular_" + base::NumberToString(serial_number()));
+
+  // This will get overwritten in Load and in Cellular::UpdateServingOperator
+  // when the service is the primary service for the device.
+  set_friendly_name(kGenericServiceNamePrefix +
+                    base::NumberToString(serial_number()));
 
   PropertyStore* store = mutable_store();
   HelpRegisterDerivedString(kActivationTypeProperty,
@@ -128,7 +136,6 @@ void CellularService::SetDevice(Cellular* device) {
   }
 
   SetConnectable(cellular_->GetConnectable(this));
-  set_friendly_name(cellular_->CreateDefaultFriendlyServiceName());
   SetActivationType(kActivationTypeUnknown);
 }
 
@@ -218,8 +225,17 @@ bool CellularService::Load(const StoreInterface* storage) {
 
   // |iccid_| will always match the storage entry.
   // |eid_| is set on construction from the SIM properties.
-
   storage->GetString(id, kStorageImsi, &imsi_);
+
+  // kStorageName is saved in Service but not loaded. Load the name here, but
+  // only set |friendly_name_| if it is not a default name to ensure uniqueness.
+  std::string friendly_name;
+  if (storage->GetString(id, kStorageName, &friendly_name) &&
+      !friendly_name.empty() &&
+      !base::StartsWith(friendly_name, kGenericServiceNamePrefix)) {
+    set_friendly_name(friendly_name);
+  }
+
   const Stringmaps& apn_list =
       cellular() ? cellular()->apn_list() : Stringmaps();
   LoadApn(storage, id, kStorageAPN, apn_list, &apn_info_);

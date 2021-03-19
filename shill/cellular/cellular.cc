@@ -22,7 +22,6 @@
 #include <base/memory/ptr_util.h>
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -144,8 +143,6 @@ const char Cellular::kModemResetSysfsName[] =
 const int64_t Cellular::kModemResetTimeoutMilliseconds = 1000;
 const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
 const int64_t Cellular::kPollLocationIntervalMilliseconds = 300000;  // 5 mins
-const char Cellular::kGenericServiceNamePrefix[] = "MobileNetwork";
-unsigned int Cellular::friendly_service_name_id_ = 1;
 
 Cellular::Cellular(ModemInfo* modem_info,
                    const string& link_name,
@@ -1285,17 +1282,6 @@ void Cellular::OnPropertiesChanged(const string& interface,
   capability_->OnPropertiesChanged(interface, changed_properties);
 }
 
-string Cellular::CreateDefaultFriendlyServiceName() {
-  SLOG(this, 2) << __func__;
-  return base::StringPrintf("%s_%u", kGenericServiceNamePrefix,
-                            friendly_service_name_id_++);
-}
-
-bool Cellular::IsDefaultFriendlyServiceName(const string& service_name) const {
-  return base::StartsWith(service_name, kGenericServiceNamePrefix,
-                          base::CompareCase::SENSITIVE);
-}
-
 void Cellular::OnModemStateChanged(ModemState new_state) {
   ModemState old_modem_state = modem_state_;
   if (old_modem_state == new_state) {
@@ -2195,14 +2181,11 @@ void Cellular::UpdateServingOperator(
   } else if (!operator_info->mccmnc().empty()) {
     // We could not get a name for the operator, just use the code.
     service_name = "cellular_" + operator_info->mccmnc();
-  } else {
-    // We do not have any information, so must fallback to default service name.
-    // Only assign a new default name if the service doesn't already have one,
-    // because we we generate a new name each time.
-    service_name = service()->friendly_name();
-    if (!IsDefaultFriendlyServiceName(service_name)) {
-      service_name = CreateDefaultFriendlyServiceName();
-    }
+  }
+  if (service_name.empty()) {
+    LOG(WARNING) << "No properties for setting friendly name for: "
+                 << service()->log_name();
+    return;
   }
   service()->SetFriendlyName(service_name);
 }
