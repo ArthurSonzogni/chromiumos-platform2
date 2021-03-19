@@ -109,7 +109,7 @@ constexpr char kToolsFsType[] = "ext4";
 // While this timeout might be high, it's meant to be a final failure point, not
 // the lower bound of how long it takes.  On a loaded system (like extracting
 // large compressed files), it could take 10 seconds to boot.
-constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(60);
 
 // crosvm log directory name.
 constexpr char kCrosvmLogDir[] = "log";
@@ -1049,10 +1049,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_vm_type(request.start_termina() ? VmInfo::TERMINA
                                                : VmInfo::UNKNOWN);
 
-  base::Optional<base::ScopedFD> kernel_fd;
-  base::Optional<base::ScopedFD> rootfs_fd;
-  base::Optional<base::ScopedFD> initrd_fd;
-  base::Optional<base::ScopedFD> storage_fd;
+  base::Optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
+      bios_fd;
   for (const auto& fdType : request.fds()) {
     base::ScopedFD fd;
     if (!reader.PopFileDescriptor(&fd)) {
@@ -1075,6 +1073,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
         break;
       case StartVmRequest_FdType_STORAGE:
         storage_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_BIOS:
+        bios_fd = std::move(fd);
         break;
       default:
         LOG(WARNING) << "received request with unknown FD type " << fdType
@@ -1100,7 +1101,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   string failure_reason;
   VMImageSpec image_spec =
-      GetImageSpec(request.vm(), kernel_fd, rootfs_fd, initrd_fd,
+      GetImageSpec(request.vm(), kernel_fd, rootfs_fd, initrd_fd, bios_fd,
                    request.start_termina(), &failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
@@ -1109,9 +1110,23 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  if (!base::PathExists(image_spec.kernel)) {
+  if (!image_spec.kernel.empty() && !base::PathExists(image_spec.kernel)) {
     LOG(ERROR) << "Missing VM kernel path: " << image_spec.kernel.value();
     response.set_failure_reason("Kernel path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!image_spec.bios.empty() && !base::PathExists(image_spec.bios)) {
+    LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
+    response.set_failure_reason("BIOS path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (image_spec.kernel.empty() && image_spec.bios.empty()) {
+    LOG(ERROR) << "neither a kernel nor a BIOS were provided";
+    response.set_failure_reason("neither a kernel nor a BIOS were provided");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -1123,7 +1138,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  if (!base::PathExists(image_spec.rootfs)) {
+  if (!image_spec.rootfs.empty() && !base::PathExists(image_spec.rootfs)) {
     LOG(ERROR) << "Missing VM rootfs path: " << image_spec.rootfs.value();
     response.set_failure_reason("Rootfs path does not exist");
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1353,13 +1368,16 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   VmBuilder vm_builder;
   vm_builder.SetKernel(std::move(image_spec.kernel))
+      .SetBios(std::move(image_spec.bios))
       .SetInitrd(std::move(image_spec.initrd))
-      .SetRootfs({.device = std::move(rootfs_device),
-                  .path = std::move(image_spec.rootfs),
-                  .writable = request.writable_rootfs()})
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
       .EnableSmt(false /* enable */);
+  if (!image_spec.rootfs.empty()) {
+    vm_builder.SetRootfs({.device = std::move(rootfs_device),
+                          .path = std::move(image_spec.rootfs),
+                          .writable = request.writable_rootfs()});
+  }
   auto vm = TerminaVm::Create(
       vsock_cid, std::move(network_client), std::move(server_proxy),
       std::move(runtime_dir), std::move(log_path), std::move(gpu_cache_path),
@@ -3449,6 +3467,7 @@ Service::VMImageSpec Service::GetImageSpec(
     const base::Optional<base::ScopedFD>& kernel_fd,
     const base::Optional<base::ScopedFD>& rootfs_fd,
     const base::Optional<base::ScopedFD>& initrd_fd,
+    const base::Optional<base::ScopedFD>& bios_fd,
     bool is_termina,
     string* failure_reason) {
   DCHECK(failure_reason);
@@ -3461,9 +3480,7 @@ Service::VMImageSpec Service::GetImageSpec(
   // specifying kernel and rootfs image.
   bool is_trusted_image = is_termina;
 
-  base::FilePath kernel;
-  base::FilePath rootfs;
-  base::FilePath initrd;
+  base::FilePath kernel, rootfs, initrd, bios;
   if (kernel_fd.has_value()) {
     // User-chosen kernel is untrusted.
     is_trusted_image = false;
@@ -3506,12 +3523,25 @@ Service::VMImageSpec Service::GetImageSpec(
     initrd = base::FilePath(vm.initrd());
   }
 
+  if (bios_fd.has_value()) {
+    // User-chosen bios is untrusted.
+    is_trusted_image = false;
+
+    int raw_fd = bios_fd.value().get();
+    *failure_reason = RemoveCloseOnExec(raw_fd);
+    if (!failure_reason->empty())
+      return {};
+    bios = base::FilePath(kProcFileDescriptorsPath)
+               .Append(base::NumberToString(raw_fd));
+  }
+
   if (!is_termina && vm.dlc_id().empty()) {
     // User-chosen VMs (i.e. with arbitrary paths) can not be trusted.
     return VMImageSpec{
         .kernel = std::move(kernel),
         .initrd = std::move(initrd),
         .rootfs = std::move(rootfs),
+        .bios = std::move(bios),
         .tools_disk = {},
         .is_trusted_image = false,
     };
@@ -3535,6 +3565,7 @@ Service::VMImageSpec Service::GetImageSpec(
       .kernel = std::move(kernel),
       .initrd = std::move(initrd),
       .rootfs = std::move(rootfs),
+      .bios = std::move(bios),
       .tools_disk = std::move(tools_disk),
       .is_trusted_image = is_trusted_image,
   };

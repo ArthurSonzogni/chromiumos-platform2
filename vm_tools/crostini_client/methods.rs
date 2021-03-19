@@ -366,6 +366,7 @@ pub struct UserDisks {
     pub writable_rootfs: bool,
     pub initrd: Option<String>,
     pub extra_disk: Option<String>,
+    pub bios: Option<String>,
 }
 
 #[derive(Clone)]
@@ -1250,6 +1251,17 @@ impl Methods {
         // User-specified initrd
         if let Some(path) = user_disks.initrd {
             request.fds.push(StartVmRequest_FdType::INITRD);
+            disk_files.push(
+                OpenOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_NOFOLLOW)
+                    .open(&path)?,
+            );
+        }
+
+        // User-specified bios.
+        if let Some(path) = user_disks.bios {
+            request.fds.push(StartVmRequest_FdType::BIOS);
             disk_files.push(
                 OpenOptions::new()
                     .read(true)

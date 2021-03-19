@@ -31,6 +31,11 @@ VmBuilder& VmBuilder::SetInitrd(base::FilePath initrd) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetBios(base::FilePath bios) {
+  bios_ = std::move(bios);
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetRootfs(const struct Rootfs& rootfs) {
   rootfs_ = rootfs;
   return *this;
@@ -243,6 +248,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
   if (!initrd_.empty())
     args.emplace_back("-i", initrd_.value());
+
+  if (!bios_.empty())
+    args.emplace_back("--bios", bios_.value());
 
   // Kernel should be at the end.
   if (!kernel_.empty())

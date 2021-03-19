@@ -237,6 +237,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "Additional kernel cmdline parameter for the host. Only valid on untrusted VMs.",
             "PARAM",
         );
+        opts.optopt(
+            "",
+            "bios",
+            "path to a custom bios image. Only valid on untrusted VMs.",
+            "PATH",
+        );
 
         let matches = opts.parse(self.args)?;
 
@@ -261,6 +267,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             writable_rootfs: matches.opt_present("writable-rootfs"),
             extra_disk: matches.opt_str("extra-disk"),
             initrd: matches.opt_str("initrd"),
+            bios: matches.opt_str("bios"),
         };
 
         self.metrics_send_sample("Vm.VmcStart");
@@ -781,7 +788,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] <name> |
+   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] <name> |
      stop <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
@@ -993,6 +1000,8 @@ mod tests {
                 "quiet slub_debug",
             ],
             &["vmc", "start", "--kernel-param", "quiet", "termina"],
+            &["vmc", "start", "--bios", "mybios", "termina"],
+            &["vmc", "start", "--bios=mybios", "termina"],
             &["vmc", "stop", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
@@ -1093,6 +1102,7 @@ mod tests {
             &["vmc", "start", "termina", "--rootfs"],
             &["vmc", "start", "termina", "--writable-rootfs", "myrootfs"],
             &["vmc", "start", "termina", "--kernel-param"],
+            &["vmc", "start", "termina", "--bios"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "create"],
