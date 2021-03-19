@@ -10,7 +10,7 @@ Chrome.
 
 Currently, our debugging and diagnostic tools (specifically those
 implemented in `crosh` and in `chrome://system`) work by shelling out
-to run native code. This exposes a lot of surface area via crosh (and
+to run binary code. This exposes a lot of surface area via crosh (and
 Chrome, to a lesser extent) and forces us to allow those contexts to
 execute programs and read files, which they otherwise have no need to
 do. Another concern is that some of these diagnostics (for example,
@@ -87,7 +87,7 @@ choices for moving the complex data structure across DBus:
     * C: Need a C/C++ helper for crosh to print these
     * C: Chrome needs to turn these into its internal Value type
 3.  Transport them as JSON.
-    * P: Chrome can serialize/deserialize natively.
+    * P: Chrome can serialize/deserialize directly.
     * P: Human-readable; can be shown directly to user by crosh
     * P: Parseable from Javascript; can manipulate it from an
          extension.
@@ -155,7 +155,7 @@ traceroute), and functions that return already-generated information
 Functions that generate new information are often sensitive to the
 surrounding hardware/network environment - for example, pinging an
 outside host relies on working networking and such. We can sometimes
-test these functions by relying only on things we know exist in any sane
+test these functions by relying only on things we know exist in any reasonable
 test environment (like pinging 127.0.0.1 and making sure we get
 properly-formatted output), but some of them (3g status, for example)
 rely on hardware state, and for these we need a human to ensure the

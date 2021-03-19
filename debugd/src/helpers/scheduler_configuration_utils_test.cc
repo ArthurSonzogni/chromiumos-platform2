@@ -171,8 +171,8 @@ class SchedulerConfigurationHelperTest : public testing::Test {
 
 TEST_F(SchedulerConfigurationHelperTest, ParseCPUs) {
   // Note the usual security principle in this test: the kernel shouldn't return
-  // any of these crazy invalid sequences ("0-?", etc.), but it's important to
-  // handle unexpected input gracefully.
+  // any of these invalid sequences ("0-?", etc.), but it's important to handle
+  // unexpected input gracefully.
   debugd::SchedulerConfigurationUtils utils{base::FilePath("/sys")};
 
   std::vector<std::string> raw_num;

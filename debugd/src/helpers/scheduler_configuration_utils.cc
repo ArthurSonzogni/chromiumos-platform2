@@ -338,7 +338,7 @@ bool SchedulerConfigurationUtils::UpdateAllCPUSets() {
   std::string online_cpus_str(online_cpus, bytes_read);
   std::vector<std::string> unused_nums;
   if (!ParseCPUNumbers(online_cpus_str, &unused_nums)) {
-    LOG(ERROR) << "Failed to parse CPU range, failed sanity check: "
+    LOG(ERROR) << "Failed to parse CPU range, failed coherence check: "
                << online_cpus_str;
     return false;
   }
