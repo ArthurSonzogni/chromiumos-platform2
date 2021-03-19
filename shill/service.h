@@ -729,6 +729,15 @@ class Service : public base::RefCounted<Service> {
   // imply it is metered.
   virtual bool IsMeteredByServiceProperties() const;
 
+  static const char kAutoConnConnected[];
+  static const char kAutoConnConnecting[];
+  static const char kAutoConnDisconnecting[];
+  static const char kAutoConnExplicitDisconnect[];
+  static const char kAutoConnNotConnectable[];
+  static const char kAutoConnOffline[];
+  static const char kAutoConnTechnologyNotAutoConnectable[];
+  static const char kAutoConnThrottled[];
+
  private:
   friend class EthernetEapServiceTest;
   friend class EthernetServiceTest;
@@ -790,15 +799,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
   FRIEND_TEST(EthernetEapServiceTest, OnEapCredentialsChanged);
-
-  static const char kAutoConnConnected[];
-  static const char kAutoConnConnecting[];
-  static const char kAutoConnDisconnecting[];
-  static const char kAutoConnExplicitDisconnect[];
-  static const char kAutoConnNotConnectable[];
-  static const char kAutoConnOffline[];
-  static const char kAutoConnTechnologyNotAutoConnectable[];
-  static const char kAutoConnThrottled[];
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   static const size_t kEAPMaxCertificationElements;

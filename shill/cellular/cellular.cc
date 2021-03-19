@@ -668,7 +668,6 @@ void Cellular::DropConnection() {
 }
 
 void Cellular::SetServiceState(Service::ConnectState state) {
-  connect_pending_iccid_.clear();
   if (ppp_device_) {
     ppp_device_->SetServiceState(state);
   } else if (selected_service()) {
@@ -903,9 +902,7 @@ void Cellular::UpdateServices() {
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
   manager()->UpdateService(service_);
-
-  if (state_ == kStateRegistered)
-    ConnectToPending();
+  ConnectToPending();
 }
 
 void Cellular::CreateServices() {
@@ -1039,6 +1036,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     if (state_ == kStateConnected || state_ == kStateLinked)
       Disconnect(nullptr, "switching service");
     if (capability_->SetPrimarySimSlotForIccid(service->iccid())) {
+      SLOG(this, 2) << "Set Pending connect: " << service->log_name();
       connect_pending_iccid_ = service->iccid();
     } else {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -1638,8 +1636,26 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 }
 
 void Cellular::ConnectToPending() {
-  if (!connect_pending_iccid_.empty() || connect_pending_iccid_ != iccid_)
+  if (connect_pending_iccid_.empty())
     return;
+  if (state_ != kStateRegistered) {
+    SLOG(this, 2) << __func__ << ": Modem not registered";
+    return;
+  }
+  if (capability_state_ != CapabilityState::kModemStarted) {
+    SLOG(this, 2) << __func__ << ": Modem not started";
+    return;
+  }
+  if (connect_pending_iccid_ != iccid_) {
+    LOG(ERROR) << __func__ << " Pending ICCID: " << connect_pending_iccid_
+               << " != ICCID: " << iccid_;
+    return;
+  }
+  if (service_ && service_->iccid() != iccid_) {
+    LOG(ERROR) << __func__ << " Pending ICCID: " << connect_pending_iccid_
+               << " != Service ICCID: " << service_->iccid();
+    return;
+  }
 
   LOG(INFO) << __func__ << ": " << connect_pending_iccid_;
 
@@ -1654,7 +1670,7 @@ void Cellular::ConnectToPending() {
   }
 
   Error error;
-  LOG(INFO) << "Pending connect to Cellular Service, ICCID=" << iccid_;
+  LOG(INFO) << "Pending connect to Cellular Service: " << service->log_name();
   service->Connect(&error, "Pending connect");
 }
 
@@ -1846,8 +1862,8 @@ void Cellular::SetImei(const string& imei) {
 }
 
 void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
-  if (eid_ == sim_properties.eid && iccid_ == sim_properties.iccid &&
-      imsi_ == sim_properties.imsi) {
+  if (eid_ == sim_properties.eid && iccid_ == sim_properties.iccid) {
+    ConnectToPending();
     return;
   }
 

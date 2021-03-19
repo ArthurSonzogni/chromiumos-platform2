@@ -139,7 +139,7 @@ void CellularService::AutoConnect() {
 }
 
 void CellularService::CompleteCellularActivation(Error* error) {
-  if (!cellular_) {
+  if (!cellular_ || cellular_->service() != this) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         base::StringPrintf("CompleteCellularActivation attempted but %s "
@@ -450,6 +450,10 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     *reason = kAutoConnSimUnselected;
     return false;
   }
+  if (cellular_->has_pending_connect()) {
+    *reason = kAutoConnConnecting;
+    return false;
+  }
   if (failure() == kFailurePPPAuth) {
     *reason = kAutoConnBadPPPCredentials;
     return false;
@@ -472,7 +476,8 @@ bool CellularService::IsMeteredByServiceProperties() const {
 }
 
 RpcIdentifier CellularService::GetDeviceRpcId(Error* error) const {
-  if (!cellular_)
+  // Only provide cellular_->GetRpcIdentifier() if this is the active service.
+  if (!cellular_ || iccid() != cellular_->iccid())
     return control_interface()->NullRpcIdentifier();
   return cellular_->GetRpcIdentifier();
 }

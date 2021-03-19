@@ -311,6 +311,7 @@ class Cellular : public Device,
 
   Type type() const { return type_; }
   bool inhibited() const { return inhibited_; }
+  bool has_pending_connect() const { return !connect_pending_iccid_.empty(); }
 
   // Returns a unique identifier for a SIM Card. For physical cards this will be
   // the ICCID and there should only be one matching service. For eSIM cards,
