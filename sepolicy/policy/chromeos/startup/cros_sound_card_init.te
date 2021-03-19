@@ -1,0 +1,4 @@
+type cros_sound_card_init, domain, chromeos_domain;
+permissive cros_sound_card_init;
+
+domain_auto_trans(cros_init, cros_sound_card_init_exec, cros_sound_card_init);

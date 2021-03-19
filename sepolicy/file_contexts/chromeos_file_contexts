@@ -100,6 +100,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/seneschal              u:object_r:cros_seneschal_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
+/usr/bin/sound_card_init        u:object_r:cros_sound_card_init_exec:s0
 /usr/bin/timberslide            u:object_r:cros_timberslide_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
 /usr/bin/tpm2-simulator         u:object_r:cros_tpm2_simulator_exec:s0
