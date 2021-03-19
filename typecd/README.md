@@ -16,12 +16,16 @@ The general structure of the classes is best illustrated by a few diagrams:
                            |
                            |
                            |
-        ------------------------------------------------------------------
-        |                                         |                       |
-        |                                         |                       |
-        |                                         |                       |
-        |                                         |                       |
-   UdevMonitor    ---typec- udev- events--->   PortManager    ------>   ECUtil
+        -----------------------------------------------------------------------------------------
+        |                                         |                       |                      |
+        |                                         |                       |                      |
+        |                                         |                       |                      |
+        |                                         |                       |                      |
+   UdevMonitor    ---typec- udev- events--->   PortManager    ------>   ECUtil         SessionManagerProxy
+                                                  /|\                                            |
+                                                   |                                             |
+                                                   ----------------------------------------------
+                                                                 session_manager events
 ```
 
 ### UdevMonitor
@@ -157,3 +161,32 @@ The `debugd` API used by `CrosECUtil` is protected by D-Bus policy files that on
 
 For unit tests, a mock implementation of the interface is used (`MockECUtil`) and its behaviour can be controlled based
 on what is being tested.
+
+### SessionManagerProxy
+
+On devices where AP-driven mode entry is supported, the alternate mode which a Type C peripheral will enter is dictated
+by the current session state (logged in, locked, etc.). To receive the state updates, `typecd` registers a listener for
+`session_manager` session event D-Bus signals using `SessionManagerProxy`. When these signals are received, `PortManager`
+is notified. `PortManager` then updates its internal state variable (which tracks session state), and depending on the
+session event, performs an alternate mode switch (by exiting the current mode and then running the mode entry sequence again).
+
+```
+
+                PortManager
+   (implements SessionManagerObserverInterface)
+                   /|\
+                    |
+                    |
+                    |-------------> SessionManagerProxy
+                                            /|\
+                                             |
+                                             |
+                                          (D-Bus)
+                                             |
+                                             |
+                                             |---------- session_manager
+
+```
+
+For unit tests, where it's difficult to emulate the asynchronous `session_manager` events, we emulate the same behaviour by calling
+the `PortManager`'s `SessionManagerObserverInterface` functions.
