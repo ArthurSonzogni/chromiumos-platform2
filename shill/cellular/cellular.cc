@@ -899,13 +899,9 @@ void Cellular::UpdateServices() {
     return;
   }
 
-  // If the associated Service does not have a matching ICCID, destroy it.
-  if (service_ && service_->iccid() != iccid_)
-    DestroyServices();
-
   // Ensure that a Service matching the Device SIM Profile exists and has its
   // |connectable_| property set correctly.
-  if (!service_) {
+  if (!service_ || service_->iccid() != iccid_) {
     CreateServices();
   } else {
     manager()->cellular_service_provider()->UpdateServices(this);
@@ -925,8 +921,8 @@ void Cellular::CreateServices() {
     return;
 
   SLOG(this, 2) << __func__;
-  if (service_) {
-    LOG(ERROR) << "Service already exists.";
+  if (service_ && service_->iccid() == iccid_) {
+    LOG(ERROR) << "Service already exists for: " << iccid_;
     return;
   }
 
@@ -936,6 +932,7 @@ void Cellular::CreateServices() {
   // Create or update Cellular Services for the primary SIM.
   service_ =
       manager()->cellular_service_provider()->LoadServicesForDevice(this);
+  SLOG(this, 2) << ": Service=" << service_->log_name();
 
   // Create or update Cellular Services for secondary SIMs.
   CreateSecondaryServices();
@@ -963,7 +960,6 @@ void Cellular::DestroyServices() {
 }
 
 void Cellular::CreateSecondaryServices() {
-  manager()->cellular_service_provider()->RemoveSecondaryServices(this);
   for (const SimProperties& sim_properties : sim_slot_properties_) {
     if (sim_properties.iccid.empty() || sim_properties.iccid == iccid_)
       continue;
@@ -1080,8 +1076,8 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
   KeyValueStore properties;
   capability_->SetupConnectProperties(&properties);
-  ResultCallback cb =
-      Bind(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr());
+  ResultCallback cb = Bind(&Cellular::OnConnectReply,
+                           weak_ptr_factory_.GetWeakPtr(), service->iccid());
   OnConnecting();
   capability_->Connect(properties, error, cb);
   if (!error->IsSuccess())
@@ -1093,14 +1089,15 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
 // Note that there's no ResultCallback argument to this,
 // since Connect() isn't yet passed one.
-void Cellular::OnConnectReply(const Error& error) {
+void Cellular::OnConnectReply(std::string iccid, const Error& error) {
   SLOG(this, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess()) {
     metrics()->NotifyDeviceConnectFinished(interface_index());
     OnConnected();
   } else {
     metrics()->NotifyCellularDeviceConnectionFailure();
-    OnConnectFailed(error);
+    if (service_ && service_->iccid() == iccid)
+      service_->SetFailure(Service::kFailureUnknown);
   }
 }
 
@@ -1137,11 +1134,6 @@ void Cellular::OnConnected() {
   } else {
     EstablishLink();
   }
-}
-
-void Cellular::OnConnectFailed(const Error& error) {
-  if (service_)
-    service_->SetFailure(Service::kFailureUnknown);
 }
 
 void Cellular::Disconnect(Error* error, const char* reason) {
@@ -1654,11 +1646,15 @@ void Cellular::ConnectToPending() {
   if (connect_pending_iccid_.empty())
     return;
   if (state_ != kStateRegistered) {
-    SLOG(this, 2) << __func__ << ": Modem not registered";
+    SLOG(this, 2) << __func__ << ": Cellular not registered";
     return;
   }
   if (capability_state_ != CapabilityState::kModemStarted) {
     SLOG(this, 2) << __func__ << ": Modem not started";
+    return;
+  }
+  if (modem_state_ != kModemStateRegistered) {
+    SLOG(this, 2) << __func__ << ": Modem not registered";
     return;
   }
   if (connect_pending_iccid_ != iccid_) {
@@ -1793,6 +1789,18 @@ const std::string& Cellular::GetSimCardId() const {
   return iccid_;
 }
 
+bool Cellular::HasSimCardId(const std::string& sim_card_id) const {
+  if (sim_card_id == eid_ || sim_card_id == iccid_)
+    return true;
+  for (const SimProperties& sim_properties : sim_slot_properties_) {
+    if (sim_properties.iccid == sim_card_id ||
+        sim_properties.eid == sim_card_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::deque<Stringmap> Cellular::BuildApnTryList() const {
   std::deque<Stringmap> apn_try_list;
 
@@ -1919,25 +1927,24 @@ void Cellular::SetSimSlotProperties(
   // Set |sim_slot_info_| and emit SIMSlotInfo
   sim_slot_info_.clear();
   for (const SimProperties& sim_properties : slot_properties) {
-    SLOG(this, 2) << __func__ << " Slot: " << sim_properties.slot
-                  << " EID: " << sim_properties.eid
-                  << " ICCID: " << sim_properties.iccid;
     KeyValueStore properties;
     properties.Set(kSIMSlotInfoEID, sim_properties.eid);
     properties.Set(kSIMSlotInfoICCID, sim_properties.iccid);
     bool is_primary = !iccid_.empty() && sim_properties.iccid == iccid_;
     properties.Set(kSIMSlotInfoPrimary, is_primary);
     sim_slot_info_.push_back(properties);
+    SLOG(this, 2) << __func__ << " Slot: " << sim_properties.slot
+                  << " EID: " << sim_properties.eid
+                  << " ICCID: " << sim_properties.iccid
+                  << " Primary: " << is_primary;
   }
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
 
-  // If the primary SIM changed, all Services will be updated from
-  // SetPrimarySimProperties.
-  if (!service_ || service_->iccid() != iccid_)
-    return;
-
-  // Otherwise update the secondary services here.
+  // Ensure that secondary services are created and updated. The Primary service
+  // will be created when SetPrimarySimProperties calls UpdateServices().
   CreateSecondaryServices();
+  // Remove any services not associated with a SIM slot.
+  manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
 }
 
 void Cellular::set_mdn(const string& mdn) {

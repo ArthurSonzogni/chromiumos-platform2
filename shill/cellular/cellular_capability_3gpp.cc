@@ -280,6 +280,7 @@ bool CellularCapability3gpp::SetPrimarySimSlotForIccid(
       return true;
     }
   }
+  LOG(ERROR) << "No slot found for ICCID: " << iccid;
   return false;
 }
 
@@ -1418,16 +1419,21 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
     SetPrimarySimProperties(SimProperties());
   }
   // Update SIM slot properties for each SIM slot. Slots with an empty path
-  // will contain an empty SimProperties entry.
+  // will contain an empty SimProperties entry. Note: Avoid sending a list of
+  // empty slots which may happen while the Modem is starting.
+  bool sim_slots_empty = true;
   size_t num_slots = sim_slots_.size();
   std::vector<SimProperties> sim_slot_properties(num_slots);
   for (const auto& iter : sim_properties_) {
     size_t slot = iter.second.slot;
     DCHECK_GE(slot, 0u);
     DCHECK_LT(slot, num_slots);
+    if (!iter.second.eid.empty() || !iter.second.iccid.empty())
+      sim_slots_empty = false;
     sim_slot_properties[slot] = iter.second;
   }
-  cellular()->SetSimSlotProperties(sim_slot_properties);
+  if (!sim_slots_empty)
+    cellular()->SetSimSlotProperties(sim_slot_properties);
 }
 
 void CellularCapability3gpp::SetPrimarySimProperties(
@@ -1450,7 +1456,8 @@ void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
   LOG(INFO) << "SetPrimarySimSlot: " << slot_idx;
   modem_proxy_->SetPrimarySimSlot(
       slot_idx, base::Bind([](const Error& error) {
-        LOG(ERROR) << "Error Setting Primary SIM slot: " << error;
+        if (error.IsFailure())
+          LOG(ERROR) << "Error Setting Primary SIM slot: " << error;
       }),
       kTimeoutDefault);
 }

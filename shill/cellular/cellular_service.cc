@@ -143,7 +143,7 @@ void CellularService::CompleteCellularActivation(Error* error) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         base::StringPrintf("CompleteCellularActivation attempted but %s "
-                           "Service %s has no device.",
+                           "Service %s is not active.",
                            kTypeCellular, log_name().c_str()));
     return;
   }

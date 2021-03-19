@@ -192,10 +192,11 @@ CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
   return active_service;
 }
 
-void CellularServiceProvider::RemoveSecondaryServices(Cellular* device) {
+void CellularServiceProvider::RemoveNonDeviceServices(Cellular* device) {
+  SLOG(this, 2) << __func__ << ": " << device->iccid();
   std::vector<CellularServiceRefPtr> services_to_remove;
   for (CellularServiceRefPtr& service : services_) {
-    if (service->GetSimCardId() != device->GetSimCardId())
+    if (!device->HasSimCardId(service->GetSimCardId()))
       services_to_remove.push_back(service);
   }
   for (CellularServiceRefPtr& service : services_to_remove)

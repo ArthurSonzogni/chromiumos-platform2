@@ -233,6 +233,9 @@ class CellularService : public Service {
   // The storage identifier defaults to cellular_{iccid}.
   std::string storage_identifier_;
 
+  // The Cellular Device associated with this Service. Note: This may not be
+  // the active service for |cellular_| if there are multiple SIM profiles for
+  // |cellular_|.
   CellularRefPtr cellular_;
 
   // Flag indicating that a connect request is an auto-connect request.

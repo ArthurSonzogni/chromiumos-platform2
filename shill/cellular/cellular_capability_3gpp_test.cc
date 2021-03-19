@@ -193,6 +193,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
   }
 
   void TearDown() override {
+    cellular_service_provider_.Stop();
     cellular_->SetServiceForTesting(nullptr);
     cellular_->DestroyCapability();
     capability_ = nullptr;

@@ -188,25 +188,28 @@ TEST_F(CellularServiceProviderTest, LoadMultipleServicesFromProfile) {
   EXPECT_FALSE(service1b->connectable());
 }
 
-// When a SIM or eSIM is switched the Cellular Device will be rebuilt,
-// generating a new call to LoadServicesForDevice with a different ICCID. This
-// should remove services with the previous ICCID.
+// When a SIM is switched (e.g. after a hotswap), LoadServicesForDevice will be
+// called with a different primary ICCID. This should create a new Service, and
+// destroy the old Service when RemoveNonDeviceServices is called.
 TEST_F(CellularServiceProviderTest, SwitchDeviceIccid) {
   CellularRefPtr device = CreateDevice("imsi1", "iccid1");
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
   ASSERT_TRUE(service);
-  EXPECT_EQ("imsi1", service->imsi());
+  EXPECT_EQ("iccid1", service->iccid());
   EXPECT_EQ(1u, GetProviderServices().size());
   unsigned int serial_number1 = service->serial_number();
 
   // Adding a device with a new ICCID should create a new service with a
   // different serial number.
-  device = CreateDevice("imsi2", "iccid2");
+  Cellular::SimProperties sim_properties;
+  sim_properties.iccid = "iccid2";
+  sim_properties.imsi = "imsi2";
+  device->SetPrimarySimProperties(sim_properties);
   service = provider()->LoadServicesForDevice(device.get());
-  provider()->RemoveSecondaryServices(device.get());
   ASSERT_TRUE(service);
-  EXPECT_EQ("imsi2", service->imsi());
+  EXPECT_EQ("iccid2", service->iccid());
+  provider()->RemoveNonDeviceServices(device.get());
   EXPECT_EQ(1u, GetProviderServices().size());
   EXPECT_NE(serial_number1, service->serial_number());
 
@@ -231,7 +234,7 @@ TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {
   // Ensure that the service with a non empty imsi loaded from storage.
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
-  provider()->RemoveSecondaryServices(device.get());
+  provider()->RemoveNonDeviceServices(device.get());
   ASSERT_TRUE(service);
   EXPECT_EQ("imsi1", service->imsi());
   EXPECT_EQ("iccid1", service->iccid());

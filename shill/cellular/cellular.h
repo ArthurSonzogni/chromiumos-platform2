@@ -319,6 +319,9 @@ class Cellular : public Device,
   // associated with the card.
   const std::string& GetSimCardId() const;
 
+  // Returns true if |sim_card_id| matches any available SIM cards.
+  bool HasSimCardId(const std::string& sim_card_id) const;
+
   // Property setters. TODO(b/176904580): Rename SetFoo and alphabetize.
   void set_home_provider(const Stringmap& home_provider);
   void set_carrier(const std::string& carrier);
@@ -480,7 +483,6 @@ class Cellular : public Device,
   void OnEnabled();
   void OnConnecting();
   void OnConnected() override;
-  void OnConnectFailed(const Error& error);
   void OnDisconnected();
   void OnDisconnectFailed();
 
@@ -517,7 +519,7 @@ class Cellular : public Device,
   void HelpRegisterConstDerivedString(
       const std::string& name, std::string (Cellular::*get)(Error* error));
 
-  void OnConnectReply(const Error& error);
+  void OnConnectReply(std::string iccid, const Error& error);
   void OnDisconnectReply(const Error& error);
 
   // DBus accessors
