@@ -440,7 +440,7 @@ int main(int argc, char* argv[]) {
       }},
   });
 
-  ArcCollector arc_collector;
+  ArcCollector arc_collector(FLAGS_arc_is_arcvm);
 
   // Always initialize arc_collector so that we can use it to determine if the
   // process is an arc process.

@@ -72,11 +72,13 @@ std::string FormatDuration(uint64_t seconds);
 
 }  // namespace
 
-ArcCollector::ArcCollector() : ArcCollector(ContextPtr(new ArcContext(this))) {}
+ArcCollector::ArcCollector(bool is_arcvm)
+    : ArcCollector(ContextPtr(new ArcContext(this)), is_arcvm) {}
 
-ArcCollector::ArcCollector(ContextPtr context)
+ArcCollector::ArcCollector(ContextPtr context, bool is_arcvm)
     : UserCollectorBase("ARC", kAlwaysUseUserCrashDirectory),
-      context_(std::move(context)) {}
+      context_(std::move(context)),
+      is_arcvm_(is_arcvm) {}
 
 bool ArcCollector::IsArcProcess(pid_t pid) const {
   pid_t arc_pid;
@@ -341,16 +343,19 @@ void ArcCollector::AddArcMetaData(const std::string& process,
       AddCrashMetaUploadData(arc_util::kAbiMigrationField, abi_migration_state);
   }
 
-  int64_t start_time;
-  brillo::ErrorPtr error;
-  SetUpDBus();
-  if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
-    const uint64_t delta = static_cast<uint64_t>(
-        (TimeTicks::Now() - TimeTicks::FromInternalValue(start_time))
-            .InSeconds());
-    AddCrashMetaUploadData(arc_util::kUptimeField, FormatDuration(delta));
-  } else {
-    LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
+  // TODO(b/138095700): Support ARCVM
+  if (!is_arcvm_) {
+    int64_t start_time;
+    brillo::ErrorPtr error;
+    SetUpDBus();
+    if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
+      const uint64_t delta = static_cast<uint64_t>(
+          (TimeTicks::Now() - TimeTicks::FromInternalValue(start_time))
+              .InSeconds());
+      AddCrashMetaUploadData(arc_util::kUptimeField, FormatDuration(delta));
+    } else {
+      LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
+    }
   }
 
   if (arc_util::IsSilentReport(crash_type))

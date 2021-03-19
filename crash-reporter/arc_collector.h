@@ -37,8 +37,8 @@ class ArcCollector : public UserCollectorBase {
 
   using ContextPtr = std::unique_ptr<Context>;
 
-  ArcCollector();
-  explicit ArcCollector(ContextPtr context);
+  explicit ArcCollector(bool is_arcvm);
+  ArcCollector(ContextPtr context, bool is_arcvm);
   ArcCollector(const ArcCollector&) = delete;
   ArcCollector& operator=(const ArcCollector&) = delete;
 
@@ -120,6 +120,7 @@ class ArcCollector : public UserCollectorBase {
   ErrorType Is64BitProcess(int pid, bool* is_64_bit) const;
 
   const ContextPtr context_;
+  const bool is_arcvm_;
 };
 
 #endif  // CRASH_REPORTER_ARC_COLLECTOR_H_
