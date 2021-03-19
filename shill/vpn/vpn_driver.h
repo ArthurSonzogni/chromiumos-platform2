@@ -137,7 +137,8 @@ class VPNDriver {
       kEphemeral = 1 << 0,   // Never load or save.
       kCredential = 1 << 1,  // Save if saving credentials (crypted).
       kWriteOnly = 1 << 2,   // Never read over RPC.
-      kArray = 1 << 3,       // Property is an array of strings.
+      kReadOnly = 1 << 3,    // Never write over RPC.
+      kArray = 1 << 4,       // Property is an array of strings.
     };
 
     const char* property;

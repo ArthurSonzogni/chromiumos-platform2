@@ -4,6 +4,7 @@
 
 #include "shill/vpn/wireguard_driver.h"
 
+#include <map>
 #include <memory>
 #include <utility>
 
@@ -35,9 +36,7 @@ using testing::SaveArg;
 // Expose necessary private members of WireguardDriver for testing.
 class WireguardDriverTestPeer {
  public:
-  explicit WireguardDriverTestPeer(WireguardDriver* driver) : driver_(driver) {}
-
-  void PrepareForConfigFile() {
+  explicit WireguardDriverTestPeer(WireguardDriver* driver) : driver_(driver) {
     // Creates a temp directory for storing the config file.
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     driver_->config_directory_ = scoped_temp_dir_.GetPath();
@@ -47,7 +46,7 @@ class WireguardDriverTestPeer {
   }
 
  private:
-  WireguardDriver* driver_;
+  std::unique_ptr<WireguardDriver> driver_;
   base::ScopedTempDir scoped_temp_dir_;
 };
 
@@ -65,10 +64,14 @@ constexpr pid_t kWireguardToolsPid = 12346;
 const char kIfName[] = "wg0";
 constexpr int kIfIndex = 123;
 
+// Randomly generated key for testing.
+constexpr char kPrivateKey1[] = "gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmM=";
+constexpr char kPrivateKey2[] = "wARBVZOPBWo7OoyHLfv2mDgFxYJ3S6uc9lIOpRiGqVI=";
+
 // Consistent with the properties set in
 // WireguardDriverTest::InitializePropertyStore().
 const char kExpectedConfigFileContents[] = R"([Interface]
-PrivateKey=private-key
+PrivateKey=gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmM=
 
 [Peer]
 PublicKey=public-key-1
@@ -86,22 +89,27 @@ AllowedIPs=192.168.1.2/32,192.168.3.0/24
 class WireguardDriverTest : public testing::Test {
  public:
   WireguardDriverTest()
-      : manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&manager_),
-        driver_(new WireguardDriver(&manager_, &process_manager_)),
-        driver_test_peer_(driver_.get()) {
+      : manager_(&control_, &dispatcher_, &metrics_), device_info_(&manager_) {
+    ResetDriver();
     manager_.set_mock_device_info(&device_info_);
-    driver_test_peer_.PrepareForConfigFile();
+    SetFakeKeyGenerator();
   }
 
  protected:
+  // Useful in storage-related tests.
+  void ResetDriver() {
+    driver_ = new WireguardDriver(&manager_, &process_manager_);
+    driver_test_peer_.reset(new WireguardDriverTestPeer(driver_));
+    property_store_.reset(new PropertyStore());
+    driver_->InitPropertyStore(property_store_.get());
+  }
+
   void InitializePropertyStore() {
-    driver_->InitPropertyStore(&property_store_);
     Error err;
-    property_store_.SetStringProperty(kWireguardPrivateKey, "private-key",
-                                      &err);
-    property_store_.SetStringProperty(kWireguardAddress, "192.168.1.2", &err);
-    property_store_.SetStringmapsProperty(
+    property_store_->SetStringProperty(kWireguardPrivateKey, kPrivateKey1,
+                                       &err);
+    property_store_->SetStringProperty(kWireguardAddress, "192.168.1.2", &err);
+    property_store_->SetStringmapsProperty(
         kWireguardPeers,
         {
             {{kWireguardPeerPublicKey, "public-key-1"},
@@ -114,6 +122,29 @@ class WireguardDriverTest : public testing::Test {
              {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
         },
         &err);
+  }
+
+  // Whenever the driver asks for calculating a public key, just echoes the
+  // input back.
+  void SetFakeKeyGenerator() {
+    EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes(
+                                      _, base::FilePath("/usr/sbin/wg"),
+                                      std::vector<std::string>{"pubkey"}, _,
+                                      "vpn", "vpn", 0, true, true, _, _))
+        .WillRepeatedly([](const base::Location&, const base::FilePath&,
+                           const std::vector<std::string>&,
+                           const std::map<std::string, std::string>&,
+                           const std::string&, const std::string&, uint64_t,
+                           bool, bool, const base::Callback<void(int)>&,
+                           struct std_file_descriptors std_fds) {
+          CHECK(std_fds.stdin_fd);
+          CHECK(std_fds.stdout_fd);
+          int echo_pipe[2];
+          CHECK_EQ(pipe(echo_pipe), 0);
+          *std_fds.stdin_fd = echo_pipe[1];
+          *std_fds.stdout_fd = echo_pipe[0];
+          return 0;
+        });
   }
 
   void InvokeConnectAsync() {
@@ -155,10 +186,10 @@ class WireguardDriverTest : public testing::Test {
   MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
   FakeStore fake_store_;
-  PropertyStore property_store_;
+  std::unique_ptr<PropertyStore> property_store_;
   MockVPNDriverEventHandler driver_event_handler_;
-  std::unique_ptr<WireguardDriver> driver_;
-  WireguardDriverTestPeer driver_test_peer_;
+  WireguardDriver* driver_;  // owned by driver_test_peer_
+  std::unique_ptr<WireguardDriverTestPeer> driver_test_peer_;
 
   base::RepeatingCallback<void(int)> wireguard_exit_callback_;
   base::RepeatingCallback<void(int)> wireguard_tools_exit_callback_;
@@ -221,6 +252,7 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
   // Save & load should not lose any information.
   const std::string kStorageId = "wireguard-test";
   driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  ResetDriver();
   driver_->Load(&fake_store_, kStorageId);
   InvokeConnectAsync();
   InvokeLinkReady();
@@ -231,9 +263,10 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
   // Checks reading properties. Private keys and preshared keys should not be
   // readable.
   KeyValueStore provider;
-  EXPECT_TRUE(property_store_.GetKeyValueStoreProperty(kProviderProperty,
-                                                       &provider, &err));
+  EXPECT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
+                                                        &provider, &err));
   EXPECT_FALSE(provider.Contains<std::string>(kWireguardPrivateKey));
+  EXPECT_TRUE(provider.Contains<std::string>(kWireguardPublicKey));
   EXPECT_EQ(provider.Get<std::string>(kWireguardAddress), "192.168.1.2");
   EXPECT_EQ(provider.Get<Stringmaps>(kWireguardPeers),
             (Stringmaps{
@@ -249,7 +282,7 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
 
   // Setting peers without touching PresharedKey property should leave it
   // unchanged.
-  property_store_.SetStringmapsProperty(
+  property_store_->SetStringmapsProperty(
       kWireguardPeers,
       {
           {{kWireguardPeerPublicKey, "public-key-1"},
@@ -269,7 +302,7 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
 
   // Setting peers with an empty PresharedKey property should clear the
   // PresharedKey of that peer.
-  property_store_.SetStringmapsProperty(
+  property_store_->SetStringmapsProperty(
       kWireguardPeers,
       {
           {{kWireguardPeerPublicKey, "public-key-1"},
@@ -286,6 +319,43 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_THAT(contents, Not(HasSubstr("PresharedKey=")));
+}
+
+TEST_F(WireguardDriverTest, KeyPairGeneration) {
+  Error err;
+  const std::string kStorageId = "wireguard-test";
+
+  auto assert_pubkey_is = [&](const std::string& key) {
+    KeyValueStore provider;
+    ASSERT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
+                                                          &provider, &err));
+    ASSERT_EQ(provider.Get<std::string>(kWireguardPublicKey), key);
+  };
+  auto assert_pubkey_not_empty = [&]() {
+    KeyValueStore provider;
+    ASSERT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
+                                                          &provider, &err));
+    ASSERT_FALSE(provider.Get<std::string>(kWireguardPublicKey).empty());
+  };
+
+  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  assert_pubkey_not_empty();
+
+  ResetDriver();
+  driver_->Load(&fake_store_, kStorageId);
+  assert_pubkey_not_empty();
+
+  property_store_->SetStringProperty(kWireguardPrivateKey, kPrivateKey1, &err);
+  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  assert_pubkey_is(kPrivateKey1);
+
+  property_store_->SetStringProperty(kWireguardPrivateKey, "", &err);
+  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  assert_pubkey_not_empty();
+
+  property_store_->SetStringProperty(kWireguardPrivateKey, kPrivateKey2, &err);
+  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  assert_pubkey_is(kPrivateKey2);
 }
 
 TEST_F(WireguardDriverTest, DisconnectBeforeConnected) {

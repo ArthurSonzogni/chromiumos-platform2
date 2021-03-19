@@ -152,6 +152,9 @@ void VPNDriver::UnloadCredentials() {
 void VPNDriver::InitPropertyStore(PropertyStore* store) {
   SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
+    if (properties_[i].flags & Property::kReadOnly) {
+      continue;
+    }
     if (properties_[i].flags & Property::kArray) {
       store->RegisterDerivedStrings(
           properties_[i].property,

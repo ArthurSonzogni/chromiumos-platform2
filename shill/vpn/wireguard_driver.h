@@ -43,6 +43,12 @@ class WireguardDriver : public VPNDriver {
   void InitPropertyStore(PropertyStore* store) override;
   bool Load(const StoreInterface* storage,
             const std::string& storage_id) override;
+  // Save() will also trigger the key-pair generation if the private key is
+  // empty. Given that Save() will always be called after any property changes
+  // by Manager::ConfigureService*(), this guarantees that there will always be
+  // a valid key pair in the service.
+  // TODO(b/177877860): May need to change this logic when hardware-backed keys
+  // come, especially when the service is switching between these two key types.
   bool Save(StoreInterface* storage,
             const std::string& storage_id,
             bool save_credentials) override;
@@ -97,6 +103,10 @@ class WireguardDriver : public VPNDriver {
   int interface_index_ = -1;
   IPConfig::Properties ip_properties_;
   base::FilePath config_file_;
+
+  // This variable is set in Load() and Save(), and only used to check whether
+  // we need to re-calculate the public key in Save().
+  std::string saved_private_key_;
 
   // The following two fields are constants. Makes them member variables for
   // testing.

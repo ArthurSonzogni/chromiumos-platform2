@@ -299,6 +299,7 @@ const char kObjectPathSuffixProperty[] = "ObjectPathSuffix";
 
 // WireGuard Service property names.
 const char kWireguardPrivateKey[] = "Wireguard.PrivateKey";
+const char kWireguardPublicKey[] = "Wireguard.PublicKey";
 const char kWireguardAddress[] = "Wireguard.Address";
 const char kWireguardPeers[] = "Wireguard.Peers";
 // Property names of a peer in "Wireguard.Peers"

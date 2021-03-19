@@ -4,9 +4,11 @@
 
 #include "shill/vpn/wireguard_driver.h"
 
+#include <poll.h>
 #include <string>
 #include <vector>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_util.h>
@@ -18,6 +20,7 @@
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <crypto/random.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -53,6 +56,9 @@ const char kVpnUser[] = "vpn";
 const char kVpnGroup[] = "vpn";
 constexpr gid_t kVpnGid = 20174;
 
+constexpr int kWgKeyLength = 32;
+constexpr int kWgBase64KeyLength = (((kWgKeyLength) + 2) / 3) * 4;
+
 // Properties of a peer.
 struct PeerProperty {
   // A name will be used in 1) D-Bus API, 2) profile storage, and 3) config file
@@ -70,6 +76,75 @@ constexpr PeerProperty kPeerProperties[] = {
     {kWireguardPeerPersistentKeepalive, false},
 };
 
+std::string GenerateBase64PrivateKey() {
+  uint8_t key[kWgKeyLength];
+  crypto::RandBytes(key, kWgKeyLength);
+  return base::Base64Encode(base::span<uint8_t>(key, kWgKeyLength));
+}
+
+// Invokes wireguard-tools to calculates the public key based on the given
+// private key. Returns an empty string on error. Note that the call to
+// wireguard-tools is blocking but with a timeout (kPollTimeout below).
+std::string CalculateBase64PublicKey(const std::string& base64_private_key,
+                                     ProcessManager* process_manager) {
+  constexpr auto kPollTimeout = base::TimeDelta::FromMilliseconds(200);
+
+  int stdin_fd = -1;
+  int stdout_fd = -1;
+  pid_t pid = process_manager->StartProcessInMinijailWithPipes(
+      FROM_HERE, base::FilePath(kWireguardToolsPath), {"pubkey"},
+      /*environment=*/{}, kVpnUser, kVpnGroup, /*caps=*/0,
+      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
+      /*exit_callback=*/base::DoNothing(),
+      {.stdin_fd = &stdin_fd, .stdout_fd = &stdout_fd});
+  if (pid == -1) {
+    LOG(ERROR) << "Failed to run 'wireguard-tools pubkey'";
+    return "";
+  }
+
+  base::ScopedFD scoped_stdin(stdin_fd);
+  base::ScopedFD scoped_stdout(stdout_fd);
+
+  if (!base::WriteFileDescriptor(scoped_stdin.get(), base64_private_key.c_str(),
+                                 static_cast<int>(base64_private_key.size()))) {
+    LOG(ERROR) << "Failed to send private key to wireguard-tools";
+    process_manager->StopProcess(pid);
+    return "";
+  }
+  scoped_stdin.reset();
+
+  struct pollfd pollfds[] = {{
+      .fd = scoped_stdout.get(),
+      .events = POLLIN,
+  }};
+  int ret = poll(pollfds, 1, kPollTimeout.InMilliseconds());
+  if (ret == -1) {
+    PLOG(ERROR) << "poll() failed";
+    process_manager->StopProcess(pid);
+    return "";
+  } else if (ret == 0) {
+    LOG(ERROR) << "poll() timeout";
+    process_manager->StopProcess(pid);
+    return "";
+  }
+
+  char buf[kWgBase64KeyLength];
+  ssize_t read_cnt =
+      HANDLE_EINTR(read(scoped_stdout.get(), buf, size_t{kWgBase64KeyLength}));
+  if (read_cnt == -1) {
+    PLOG(ERROR) << "read() failed";
+    process_manager->StopProcess(pid);
+    return "";
+  } else if (read_cnt != kWgBase64KeyLength) {
+    LOG(ERROR) << "Failed to read enough chars for a public key. read_cnt="
+               << read_cnt;
+    process_manager->StopProcess(pid);
+    return "";
+  }
+
+  return std::string{buf, std::string::size_type{kWgBase64KeyLength}};
+}
+
 }  // namespace
 
 // static
@@ -82,6 +157,9 @@ const VPNDriver::Property WireguardDriver::kProperties[] = {
     // TODO(b/177876632): Consider making this kCredential. Peer.PresharedKey
     // may need some similar handling.
     {kWireguardPrivateKey, Property::kWriteOnly},
+    // TODO(b/177877860): This field is for software-backed keys only. May need
+    // to change this logic when hardware-backed keys come.
+    {kWireguardPublicKey, Property::kReadOnly},
     // Address for the wireguard interface.
     // TODO(b/177876632): Support IPv6 (multiple addresses).
     // TODO(b/177876632): Verify that putting other properties for the interface
@@ -180,16 +258,32 @@ bool WireguardDriver::Load(const StoreInterface* storage,
     peers_.push_back(peer);
   }
 
+  saved_private_key_ = args()->Lookup<std::string>(kWireguardPrivateKey, "");
+
   return true;
 }
 
 bool WireguardDriver::Save(StoreInterface* storage,
                            const std::string& storage_id,
                            bool save_credentials) {
-  if (!VPNDriver::Save(storage, storage_id, save_credentials)) {
-    return false;
+  // Keys should be processed before calling VPNDriver::Save().
+  auto private_key = args()->Lookup<std::string>(kWireguardPrivateKey, "");
+  if (private_key.empty()) {
+    private_key = GenerateBase64PrivateKey();
+    args()->Set<std::string>(kWireguardPrivateKey, private_key);
+  }
+  if (private_key != saved_private_key_) {
+    std::string public_key =
+        CalculateBase64PublicKey(private_key, process_manager());
+    if (public_key.empty()) {
+      LOG(ERROR) << "Failed to calculate public key in Save().";
+      return false;
+    }
+    args()->Set<std::string>(kWireguardPublicKey, public_key);
+    saved_private_key_ = public_key;
   }
 
+  // Handles peers.
   std::vector<std::string> encoded_peers;
   for (auto& peer : peers_) {
     base::Value root(base::Value::Type::DICTIONARY);
@@ -211,7 +305,7 @@ bool WireguardDriver::Save(StoreInterface* storage,
     return false;
   }
 
-  return true;
+  return VPNDriver::Save(storage, storage_id, save_credentials);
 }
 
 void WireguardDriver::ConnectInternal() {
