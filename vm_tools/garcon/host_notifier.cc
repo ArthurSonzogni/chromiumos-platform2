@@ -365,7 +365,7 @@ bool HostNotifier::Init(uint32_t vsock_port,
   for (auto& path : watch_paths) {
     std::unique_ptr<base::FilePathWatcher> watcher =
         std::make_unique<base::FilePathWatcher>();
-    if (!watcher->Watch(path, true,
+    if (!watcher->Watch(path, base::FilePathWatcher::Type::kRecursive,
                         base::Bind(&HostNotifier::DesktopPathsChanged,
                                    base::Unretained(this)))) {
       LOG(ERROR) << "Failed setting up filesystem path watcher for dir: "
@@ -384,7 +384,8 @@ bool HostNotifier::Init(uint32_t vsock_port,
   std::unique_ptr<base::FilePathWatcher> mime_type_watcher =
       std::make_unique<base::FilePathWatcher>();
   base::FilePath mime_type_path(kMimeTypesDir);
-  if (!mime_type_watcher->Watch(mime_type_path, false,
+  if (!mime_type_watcher->Watch(mime_type_path,
+                                base::FilePathWatcher::Type::kNonRecursive,
                                 base::Bind(&HostNotifier::MimeTypesChanged,
                                            base::Unretained(this)))) {
     LOG(ERROR) << "Failed setting up filesystem path watcher for: "
@@ -395,7 +396,8 @@ bool HostNotifier::Init(uint32_t vsock_port,
   // Also setup the watcher for the $HOME/.mime.types file.
   std::unique_ptr<base::FilePathWatcher> home_mime_type_watcher =
       std::make_unique<base::FilePathWatcher>();
-  if (!home_mime_type_watcher->Watch(base::GetHomeDir(), false,
+  if (!home_mime_type_watcher->Watch(base::GetHomeDir(),
+                                     base::FilePathWatcher::Type::kNonRecursive,
                                      base::Bind(&HostNotifier::MimeTypesChanged,
                                                 base::Unretained(this)))) {
     LOG(ERROR) << "Failed setting up filesystem path watcher for: "
@@ -766,9 +768,15 @@ bool HostNotifier::AddFileWatch(const base::FilePath& path,
 
   task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(base::IgnoreResult(&base::FilePathWatcher::Watch),
+      // TODO(crbug.com/1179608): after libchrome is upreved to r860220,
+      // base::FilePathWatcher will not be overloaded and could be simplified to
+      // base::IgnoreResult(&base::FilePathWatcher::Watch).
+      base::BindOnce(base::IgnoreResult<bool (base::FilePathWatcher::*)(
+                         const base::FilePath&, base::FilePathWatcher::Type,
+                         const base::FilePathWatcher::Callback&)>(
+                         &base::FilePathWatcher::Watch),
                      base::Unretained(watcher.get()), path_in_home,
-                     /*recursive=*/false,
+                     base::FilePathWatcher::Type::kNonRecursive,
                      base::BindRepeating(&HostNotifier::FileWatchTriggered,
                                          base::Unretained(this))));
 

@@ -1416,7 +1416,8 @@ bool Service::Init(
   // Setup file path watcher to monitor for changes to kLocaltimePath. If the
   // file at kLocaltimePath is a symlink, the callback will be called when the
   // target of that symlink changes.
-  localtime_watcher_.Watch(base::FilePath(kLocaltimePath), false,
+  localtime_watcher_.Watch(base::FilePath(kLocaltimePath),
+                           base::FilePathWatcher::Type::kNonRecursive,
                            base::BindRepeating(&Service::OnLocaltimeFileChanged,
                                                weak_ptr_factory_.GetWeakPtr()));
 
