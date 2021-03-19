@@ -17,7 +17,7 @@ EthernetTemporaryService::EthernetTemporaryService(
     Manager* manager, const string& storage_identifier)
     : Service(manager, Technology::kEthernet),
       storage_identifier_(storage_identifier) {
-  set_friendly_name("Ethernet");
+  friendly_name_ = "Ethernet";
 }
 
 EthernetTemporaryService::~EthernetTemporaryService() = default;

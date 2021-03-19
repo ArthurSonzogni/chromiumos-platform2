@@ -46,11 +46,11 @@ VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
       driver_(std::move(driver)),
       last_default_physical_service_online_(true) {
   if (driver_) {
-    set_log_name("vpn_" + driver_->GetProviderType() + "_" +
-                 base::NumberToString(serial_number()));
+    log_name_ = "vpn_" + driver_->GetProviderType() + "_" +
+                base::NumberToString(serial_number());
   } else {
     // |driver| may be null in tests.
-    set_log_name("vpn_" + base::NumberToString(serial_number()));
+    log_name_ = "vpn_" + base::NumberToString(serial_number());
   }
   SetConnectable(true);
   set_save_credentials(false);

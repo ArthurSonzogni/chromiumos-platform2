@@ -20,9 +20,9 @@ namespace shill {
 
 EthernetEapService::EthernetEapService(Manager* manager)
     : Service(manager, Technology::kEthernetEap) {
-  set_log_name("etherneteap_" + base::NumberToString(serial_number()));
+  log_name_ = "etherneteap_" + base::NumberToString(serial_number());
+  friendly_name_ = "Ethernet EAP Parameters";
   SetEapCredentials(new EapCredentials());
-  set_friendly_name("Ethernet EAP Parameters");
 }
 
 EthernetEapService::~EthernetEapService() = default;

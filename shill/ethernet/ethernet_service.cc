@@ -49,10 +49,11 @@ EthernetService::EthernetService(Manager* manager,
 EthernetService::~EthernetService() {}
 
 void EthernetService::SetUp() {
-  set_log_name("ethernet_" + base::NumberToString(serial_number()));
+  log_name_ = "ethernet_" + base::NumberToString(serial_number());
+  friendly_name_ = "Ethernet";
+
   SetConnectable(true);
   SetAutoConnect(true);
-  set_friendly_name("Ethernet");
   SetStrength(kStrengthMax);
 
   // Now that |this| is a fully constructed EthernetService, synchronize

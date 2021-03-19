@@ -709,9 +709,6 @@ class Service : public base::RefCounted<Service> {
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
 
-  void set_friendly_name(const std::string& n) { friendly_name_ = n; }
-  void set_log_name(const std::string& log_name) { log_name_ = log_name; }
-
   // Save the service's auto_connect value, without affecting its auto_connect
   // property itself. (cf. EnableAndRetainAutoConnect)
   void RetainAutoConnect();
@@ -728,6 +725,14 @@ class Service : public base::RefCounted<Service> {
   // True if the properties of this network connection (e.g. user contract)
   // imply it is metered.
   virtual bool IsMeteredByServiceProperties() const;
+
+  // Service's user friendly name, mapped to the Service Object kNameProperty.
+  // Use |log_name_| for logging to avoid logging PII.
+  std::string friendly_name_;
+
+  // Name used for logging. It includes |unique_id|, the service type, and other
+  // non PII identifiers.
+  std::string log_name_;
 
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];
@@ -964,14 +969,6 @@ class Service : public base::RefCounted<Service> {
 
   // A unique identifier for the service.
   unsigned int serial_number_;
-
-  // Service's user friendly name, mapped to the Service Object kNameProperty.
-  // Use |log_name_| for logging to avoid logging PII.
-  std::string friendly_name_;
-
-  // Name used for logging. It includes |unique_id|, the service type, and other
-  // non PII identifiers.
-  std::string log_name_;
 
   // List of subject names reported by remote entity during TLS setup.
   std::vector<std::string> remote_certification_;

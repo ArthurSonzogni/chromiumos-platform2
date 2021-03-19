@@ -82,12 +82,12 @@ CellularService::CellularService(Manager* manager,
       out_of_credits_(false) {
   // Note: This will change once SetNetworkTechnology() is called, but the
   // serial number remains unchanged so correlating log lines will be easy.
-  set_log_name("cellular_" + base::NumberToString(serial_number()));
+  log_name_ = "cellular_" + base::NumberToString(serial_number());
 
   // This will get overwritten in Load and in Cellular::UpdateServingOperator
   // when the service is the primary service for the device.
-  set_friendly_name(kGenericServiceNamePrefix +
-                    base::NumberToString(serial_number()));
+  friendly_name_ =
+      kGenericServiceNamePrefix + base::NumberToString(serial_number());
 
   PropertyStore* store = mutable_store();
   HelpRegisterDerivedString(kActivationTypeProperty,
@@ -233,7 +233,7 @@ bool CellularService::Load(const StoreInterface* storage) {
   if (storage->GetString(id, kStorageName, &friendly_name) &&
       !friendly_name.empty() &&
       !base::StartsWith(friendly_name, kGenericServiceNamePrefix)) {
-    set_friendly_name(friendly_name);
+    friendly_name_ = friendly_name;
   }
 
   const Stringmaps& apn_list =
@@ -378,8 +378,8 @@ void CellularService::SetNetworkTechnology(const string& technology) {
     return;
   }
   network_technology_ = technology;
-  set_log_name("cellular_" + network_technology_ + "_" +
-               base::NumberToString(serial_number()));
+  log_name_ = "cellular_" + network_technology_ + "_" +
+              base::NumberToString(serial_number());
   adaptor()->EmitStringChanged(kNetworkTechnologyProperty, technology);
 }
 

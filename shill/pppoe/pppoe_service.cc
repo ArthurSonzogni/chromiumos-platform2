@@ -49,7 +49,9 @@ PPPoEService::PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet)
       max_failure_(kDefaultMaxFailure),
       authenticating_(false),
       weak_ptr_factory_(this) {
-  set_log_name("ppoe_" + base::NumberToString(serial_number()));
+  log_name_ = "ppoe_" + base::NumberToString(serial_number());
+  friendly_name_ = "PPPoE";
+
   PropertyStore* store = this->mutable_store();
   store->RegisterString(kPPPoEUsernameProperty, &username_);
   store->RegisterString(kPPPoEPasswordProperty, &password_);
@@ -57,7 +59,6 @@ PPPoEService::PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet)
   store->RegisterInt32(kPPPoELCPEchoFailureProperty, &lcp_echo_failure_);
   store->RegisterInt32(kPPPoEMaxAuthFailureProperty, &max_failure_);
 
-  set_friendly_name("PPPoE");
   SetConnectable(true);
   SetAutoConnect(true);
   NotifyIfVisibilityChanged();

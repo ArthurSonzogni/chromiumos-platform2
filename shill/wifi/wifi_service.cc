@@ -86,12 +86,15 @@ WiFiService::WiFiService(Manager* manager,
       provider_(provider),
       roam_state_(kRoamStateIdle),
       is_rekey_in_progress_(false) {
+  string ssid_string(reinterpret_cast<const char*>(ssid_.data()), ssid_.size());
+  WiFi::SanitizeSSID(&ssid_string);
+
   // Must be constructed with a SecurityClass. We only detect (for internal and
   // informational purposes) the specific mode in use later.
   CHECK(IsValidSecurityClass(security_)) << base::StringPrintf(
       "Security \"%s\" is not a SecurityClass", security_.c_str());
-  set_log_name("wifi_" + security_ + "_" +
-               base::NumberToString(serial_number()));
+  log_name_ = "wifi_" + security_ + "_" + base::NumberToString(serial_number());
+  friendly_name_ = ssid_string;
 
   PropertyStore* store = this->mutable_store();
   store->RegisterConstString(kModeProperty, &mode_);
@@ -118,10 +121,6 @@ WiFiService::WiFiService(Manager* manager,
 
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
-
-  string ssid_string(reinterpret_cast<const char*>(ssid_.data()), ssid_.size());
-  WiFi::SanitizeSSID(&ssid_string);
-  set_friendly_name(ssid_string);
 
   SetEapCredentials(new EapCredentials());
 
