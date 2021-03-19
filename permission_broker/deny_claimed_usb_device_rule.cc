@@ -7,6 +7,7 @@
 #include <libudev.h>
 #include <linux/usb/ch9.h>
 
+#include <iterator>
 #include <memory>
 #include <string>
 
@@ -59,6 +60,23 @@ bool GetUIntSysattr(udev_device* device, const char* key, uint32_t* val) {
   return str_val && base::HexStringToUInt(str_val, val);
 }
 
+// Check if a USB vendor:product ID pair is in the provided list.
+// Entries in the list with |product_id| of 0 match any product with the
+// corresponding |vendor_id|.
+template <typename Iterator>
+bool UsbDeviceListContainsId(Iterator first,
+                             Iterator last,
+                             uint16_t vendor_id,
+                             uint16_t product_id) {
+  while (first != last) {
+    if (first->vendor_id == vendor_id &&
+        (!first->product_id || first->product_id == product_id))
+      return true;
+    ++first;
+  }
+  return false;
+}
+
 }  // namespace
 
 namespace permission_broker {
@@ -95,13 +113,8 @@ bool DenyClaimedUsbDeviceRule::IsDeviceDetachableByPolicy(udev_device* device) {
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  for (const DevicePolicy::UsbDeviceId& id : usb_allow_list_) {
-    if (id.vendor_id == vendor_id &&
-        (!id.product_id || id.product_id == product_id))
-      return true;
-  }
-
-  return false;
+  return UsbDeviceListContainsId(usb_allow_list_.begin(), usb_allow_list_.end(),
+                                 vendor_id, product_id);
 }
 
 bool DenyClaimedUsbDeviceRule::IsInterfaceAdb(udev_device* device) {
@@ -161,49 +174,42 @@ bool IsInterfaceSafeToDetach(udev_device* iface) {
 }
 
 bool IsDeviceAllowedSerial(udev_device* device) {
-  // These vendor IDs are derived from https://raw.githubusercontent.com
+  // The Arduino vendor IDs are derived from https://raw.githubusercontent.com
   // /arduino/ArduinoCore-avr/master/boards.txt
   // /arduino/ArduinoCore-sam/master/boards.txt
   // /arduino/ArduinoCore-samd/master/boards.txt
   // using
   // grep -o -E  "vid\..*=(0x.*)" *boards.txt | sed "s/vid\..=//g" | sort -f | \
   // uniq -i
-  const uint32_t kArduinoVendorIds[] = {0x2341, 0x1b4f, 0x239a, 0x2a03, 0x10c4};
-  const uint32_t kGoogleVendorId = 0x18d1;
-  const uint32_t kRaspberryPiVendorId = 0x2e8a;
+  const DevicePolicy::UsbDeviceId kAllowedIds[] = {
+      {0x2341, 0},  // Arduino
+      {0x1b4f, 0},  // Sparkfun
+      {0x239a, 0},  // Adafruit
+      {0x2a03, 0},  // doghunter.org
+      {0x10c4, 0},  // Silicon Labs
+
+      {0x2e8a, 0},  // Raspberry Pi
+
+      {0x18d1, 0x5002},  // Google Servo V2
+      {0x18d1, 0x5003},  // Google Servo V2
+      {0x18d1, 0x500a},  // Google twinkie
+      {0x18d1, 0x500b},  // Google Plankton
+      {0x18d1, 0x500c},  // Google Plankton
+      {0x18d1, 0x5014},  // Google Cr50
+      {0x18d1, 0x501a},  // Google Servo micro
+      {0x18d1, 0x501b},  // Google Servo V4
+      {0x18d1, 0x501f},  // Google Suzyq
+      {0x18d1, 0x5020},  // Google Sweetberry
+      {0x18d1, 0x5027},  // Google Tigertail
+      {0x18d1, 0x5036},  // Google Chocodile
+  };
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  if (vendor_id == kGoogleVendorId) {
-    switch (product_id) {
-      case 0x5002:  // Servo V2
-      case 0x5003:  // Servo V2
-      case 0x500a:  // twinkie
-      case 0x500b:  // Plankton
-      case 0x500c:  // Plankton
-      case 0x5014:  // Cr50
-      case 0x501a:  // Servo micro
-      case 0x501b:  // Servo V4
-      case 0x501f:  // Suzyq
-      case 0x5020:  // Sweetberry
-      case 0x5027:  // Tigertail
-      case 0x5036:  // Chocodile
-        return true;
-    }
-  }
-
-  for (const auto& arduino_vendor_id : kArduinoVendorIds) {
-    if (vendor_id == arduino_vendor_id) {
-      return true;
-    }
-  }
-
-  if (vendor_id == kRaspberryPiVendorId) {
-    return true;
-  }
-  return false;
+  return UsbDeviceListContainsId(std::begin(kAllowedIds), std::end(kAllowedIds),
+                                 vendor_id, product_id);
 }
 
 Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
