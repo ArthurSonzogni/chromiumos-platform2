@@ -43,7 +43,10 @@ std::string ModeToString(typecd::TypeCMode mode) {
 namespace typecd {
 
 PortManager::PortManager()
-    : mode_entry_supported_(true), notify_mgr_(nullptr), user_active_(false) {}
+    : mode_entry_supported_(true),
+      notify_mgr_(nullptr),
+      user_active_(false),
+      peripheral_data_access_(true) {}
 
 void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
                                        int port_num,
@@ -229,6 +232,10 @@ void PortManager::HandleUnlock() {
     if (!port->CanEnterTBTCompatibilityMode())
       continue;
 
+    // If peripheral data access is disabled, we shouldn't switch modes at all.
+    if (!GetPeripheralDataAccess())
+      continue;
+
     // First try exiting the alt mode.
     if (ec_util_->ExitMode(port_num)) {
       port->SetCurrentMode(TypeCMode::kNone);
@@ -313,13 +320,20 @@ void PortManager::RunModeEntry(int port_num) {
   }
 
   if (port->CanEnterTBTCompatibilityMode()) {
-    // If the user is not active, check if DP alt mode can be entered. If so,
-    // enter that. If not, proceed to enter TBT.
+    // Check if DP alt mode can be entered. If so:
+    // - If the user is not active: enter DP.
+    // - If the user is active: if peripheral data access is disabled, enter DP,
+    //   else enter TBT.
+    //
+    // If DP alt mode cannot be entered, proceed to enter TBT in all cases.
     TypeCMode cur_mode = TypeCMode::kTBT;
-    if (!GetUserActive() && port->CanEnterDPAltMode()) {
+    if (port->CanEnterDPAltMode() &&
+        (!GetUserActive() || (GetUserActive() && !GetPeripheralDataAccess()))) {
       cur_mode = TypeCMode::kDP;
-      LOG(INFO) << "Not entering TBT compat mode since user not active, port "
-                << port_num;
+      LOG(INFO) << "Not entering TBT compat mode since user_active: "
+                << GetUserActive()
+                << ", peripheral data access: " << GetPeripheralDataAccess()
+                << ", port " << port_num;
     }
 
     if (ec_util_->EnterMode(port_num, cur_mode)) {

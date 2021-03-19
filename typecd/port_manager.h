@@ -42,6 +42,10 @@ class PortManager : public UdevMonitor::Observer,
 
   void SetNotificationManager(NotificationManager* mgr) { notify_mgr_ = mgr; }
 
+ protected:
+  bool GetPeripheralDataAccess() { return peripheral_data_access_; }
+  void SetPeripheralDataAccess(bool val) { peripheral_data_access_ = val; }
+
  private:
   friend class PortManagerTest;
   FRIEND_TEST(PortManagerTest, ModeEntryNotSupported);
@@ -50,6 +54,9 @@ class PortManager : public UdevMonitor::Observer,
   FRIEND_TEST(PortManagerTest, ModeSwitchUnlockUSB4);
   FRIEND_TEST(PortManagerTest, ModeSwitchSessionStoppedDPandTBT);
   FRIEND_TEST(PortManagerTest, ModeSwitchSessionStoppedTBT);
+  FRIEND_TEST(PortManagerTest, ModeSwitchUnlockDPAndTBTNoPeripheralAccess);
+  FRIEND_TEST(PortManagerTest, ModeSwitchDPandTBTPeripheralDataAccessChanging);
+  FRIEND_TEST(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,
@@ -97,6 +104,11 @@ class PortManager : public UdevMonitor::Observer,
   // set to true when a session starts i.e when a user logs in, and false when a
   // session ends i.e the user logs out.
   bool user_active_;
+
+  // Variable used to reflect the Chrome setting regarding peripheral data
+  // access. When it is false, we should *not* trigger a switch to TBT mode
+  // (if applicable) even if the |user_active_| state is true.
+  bool peripheral_data_access_;
 };
 
 }  // namespace typecd
