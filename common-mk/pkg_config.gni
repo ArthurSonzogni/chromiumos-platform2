@@ -84,7 +84,7 @@ template("generate_pkg_config") {
     outputs = [ "${target_out_dir}/${output_name}.pc" ]
 
     script = "//common-mk/generate-pc.py"
-    args = [ "--output" ] + outputs + [ "--name=" + name ]
+    args = [ "--output" ] + rebase_path(outputs) + [ "--name=" + name ]
     if (defined(description)) {
       args += [ "--description=" + description ]
     }
