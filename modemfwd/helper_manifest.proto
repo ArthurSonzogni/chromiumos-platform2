@@ -10,6 +10,7 @@ message HelperEntry {
   string filename = 1;
   repeated string device_id = 2;
   repeated string extra_argument = 3;
+  repeated string variant = 4;
 }
 
 message HelperManifest {

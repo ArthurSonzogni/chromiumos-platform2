@@ -12,6 +12,7 @@
 #include <base/macros.h>
 #include <brillo/proto_file_io.h>
 
+#include "modemfwd/firmware_directory.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/helper_manifest.pb.h"
@@ -27,10 +28,18 @@ namespace modemfwd {
 class ModemHelperDirectoryImpl : public ModemHelperDirectory {
  public:
   ModemHelperDirectoryImpl(const HelperManifest& manifest,
-                           const base::FilePath& directory) {
+                           const base::FilePath& directory,
+                           const std::string variant) {
     for (const HelperEntry& entry : manifest.helper()) {
       if (entry.filename().empty())
         continue;
+
+      // If the helper is restricted to a set of 'variant', do the filtering.
+      if (entry.variant_size() && !base::Contains(entry.variant(), variant)) {
+        ELOG(INFO) << "Skipping helper " << entry.filename()
+                   << ", variant is not matching.";
+        continue;
+      }
 
       HelperInfo helper_info(directory.Append(entry.filename()));
       for (const std::string& extra_argument : entry.extra_argument()) {
@@ -81,8 +90,10 @@ std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
                                 &parsed_manifest))
     return nullptr;
 
-  auto helper_dir =
-      std::make_unique<ModemHelperDirectoryImpl>(parsed_manifest, directory);
+  std::string variant = GetModemFirmwareVariant();
+
+  auto helper_dir = std::make_unique<ModemHelperDirectoryImpl>(
+      parsed_manifest, directory, variant);
   if (!helper_dir->FoundHelpers())
     return nullptr;
 

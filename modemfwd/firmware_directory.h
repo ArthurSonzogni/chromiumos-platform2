@@ -46,6 +46,8 @@ class FirmwareDirectory {
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
     const base::FilePath& directory);
 
+std::string GetModemFirmwareVariant();
+
 }  // namespace modemfwd
 
 #endif  // MODEMFWD_FIRMWARE_DIRECTORY_H_

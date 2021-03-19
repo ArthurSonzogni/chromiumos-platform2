@@ -21,6 +21,10 @@ namespace {
 
 const char kManifestName[] = "firmware_manifest.prototxt";
 
+}  // namespace
+
+const char FirmwareDirectory::kGenericCarrierId[] = "generic";
+
 // Returns the modem firmware variant for the current model of the device by
 // reading the /modem/firmware-variant property of the current model via
 // chromeos-config. Returns an empty string if it fails to read the modem
@@ -42,10 +46,6 @@ std::string GetModemFirmwareVariant() {
   LOG(INFO) << "Use modem firmware variant: " << variant;
   return variant;
 }
-
-}  // namespace
-
-const char FirmwareDirectory::kGenericCarrierId[] = "generic";
 
 class FirmwareDirectoryImpl : public FirmwareDirectory {
  public:
