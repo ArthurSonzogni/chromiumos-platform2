@@ -61,8 +61,8 @@ powerd's default preferences are stored either in [chromeos-config] or on the
 read-only partition in `/usr/share/power_manager` and
 `/usr/share/power_manager/board_specific`. These preferences can be overridden
 by identically-named files on the stateful partition in
-`/var/lib/power_manager`. In most cases, preference changes won't
-take effect until the powerd process is restarted.
+`/var/lib/power_manager`. In most cases, preference changes won't take effect
+until the powerd process is restarted.
 
 To revert to the normal behavior, remove the files that you just created from
 `/var/lib/power_manager` and restart the powerd job again.
@@ -83,7 +83,7 @@ To temporarily change prefs in an autotest, use [PowerPrefChanger].
 timeouts to low values and restart powerd. To disable the power manager's
 timeouts more permanently, run the following as root:
 
-``` sh
+```sh
 echo 1 >/var/lib/power_manager/ignore_external_policy
 for i in {,un}plugged_{dim,off,suspend}_ms; do
   echo 0 >/var/lib/power_manager/$i
