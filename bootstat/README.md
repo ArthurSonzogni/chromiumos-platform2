@@ -57,18 +57,4 @@ not as the interface.  You should not add new code that depends on
 the file names; instead, you should enhance the bootstat command
 and/or library to provide access to the data you need.
 
-## Code Conventions
-
-This is currently C code, because a) the code is required for use
-as a library accessible to both C and C++ code, and b) it's too
-small to justify the boilerplate required to have separate C and
-C++ bindings.  However, if the program grows, it may be appropriate
-to convert all or part to C++.
-
-To the extent that the code can be acceptable both to C and C++
-compilers, it should also adhere to Google's C++ coding conventions.
-In areas where the code is C specific, use your best judgment (note
-that Google also has Objective-C coding conventions that may be
-useful).
-
 [platform.BootPerf]: https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/HEAD/src/chromiumos/tast/remote/bundles/cros/platform/boot_perf.go
