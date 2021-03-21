@@ -6,9 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <utility>
 
 #include <base/bind.h>
@@ -21,6 +18,7 @@
 
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"
+#include "missive/util/test_support_callbacks.h"
 
 namespace reporting {
 namespace {
@@ -31,19 +29,6 @@ using ::testing::Invoke;
 using ::testing::NotNull;
 using ::testing::WithArgs;
 
-class TestCallbackWaiter {
- public:
-  TestCallbackWaiter() : run_loop_(std::make_unique<base::RunLoop>()) {}
-
-  virtual void Signal() { run_loop_->Quit(); }
-
-  void Complete() { Signal(); }
-
-  void Wait() { run_loop_->Run(); }
-
- protected:
-  std::unique_ptr<base::RunLoop> run_loop_;
-};
 
 MATCHER_P(EqualsProto,
           message,
@@ -85,19 +70,7 @@ class EnqueueJobTest : public ::testing::Test {
     record_.set_dm_token("TEST_DM_TOKEN");
     record_.set_timestamp_us(1234567);
 
-    fd_ = memfd_create("TempMemFile", 0);
-    ASSERT_GE(fd_, 0);
-    ASSERT_TRUE(record_.SerializeToFileDescriptor(fd_));
-
-    pid_ = getpid();
-
     storage_module_ = MockStorageModule::Create();
-  }
-
-  void TearDown() override {
-    if (fd_ >= 0) {
-      close(fd_);
-    }
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -108,8 +81,6 @@ class EnqueueJobTest : public ::testing::Test {
       brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>
       response_;
   Record record_;
-  int fd_;
-  pid_t pid_;
 
   scoped_refptr<MockStorageModule> storage_module_;
 };
@@ -117,15 +88,13 @@ class EnqueueJobTest : public ::testing::Test {
 TEST_F(EnqueueJobTest, CompletesSuccessfully) {
   response_->set_return_callback(
       base::Bind([](const EnqueueRecordResponse& response) {
-        LOG(ERROR) << response.status().error_message();
         EXPECT_EQ(response.status().code(), error::OK);
       }));
   auto delegate = std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
       std::move(response_));
 
   EnqueueRecordRequest request;
-  request.set_record_fd(fd_);
-  request.set_pid(pid_);
+  *request.mutable_record() = record_;
   request.set_priority(Priority::BACKGROUND_BATCH);
 
   EXPECT_CALL(*storage_module_, AddRecord(Eq(Priority::BACKGROUND_BATCH),
@@ -136,9 +105,10 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
 
   EnqueueJob job(storage_module_, request, std::move(delegate));
 
-  TestCallbackWaiter waiter;
+  test::TestCallbackWaiter waiter;
+  waiter.Attach();
   job.Start(base::BindOnce(
-      [](TestCallbackWaiter* waiter, Status status) {
+      [](test::TestCallbackWaiter* waiter, Status status) {
         EXPECT_TRUE(status.ok());
         waiter->Signal();
       },
@@ -157,8 +127,7 @@ TEST_F(EnqueueJobTest, CancelsSuccessfully) {
       std::move(response_));
 
   EnqueueRecordRequest request;
-  request.set_record_fd(fd_);
-  request.set_pid(pid_);
+  *request.mutable_record() = std::move(record_);
   request.set_priority(Priority::BACKGROUND_BATCH);
 
   EnqueueJob job(storage_module_, request, std::move(delegate));

@@ -1,0 +1,194 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "missive/scheduler/upload_job.h"
+
+#include <memory>
+#include <utility>
+
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/callback_helpers.h>
+#include <base/memory/ptr_util.h>
+#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/sequenced_task_runner.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/memory/weak_ptr.h>
+
+#include "missive/dbus/upload_client.h"
+#include "missive/proto/record.pb.h"
+#include "missive/scheduler/scheduler.h"
+#include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/status.h"
+#include "missive/util/statusor.h"
+
+namespace reporting {
+namespace {
+
+// This is a fuzzy max, some functions may go over it but most requests should
+// be limited to kMaxUploadSize.
+const constexpr size_t kMaxUploadSize = 10 * 1024 * 1024;  // 10MiB
+
+}  // namespace
+
+UploadJob::UploadDelegate::UploadDelegate(
+    scoped_refptr<UploadClient> upload_client, bool need_encryption_key)
+    : upload_client_(upload_client),
+      need_encryption_key_(need_encryption_key) {}
+
+UploadJob::SetRecordsCb UploadJob::UploadDelegate::GetSetRecordsCb() {
+  return base::BindOnce(&UploadDelegate::SetRecords,
+                        weak_ptr_factory_.GetWeakPtr());
+}
+
+Status UploadJob::UploadDelegate::Complete() {
+  upload_client_->SendEncryptedRecords(
+      std::move(records_), need_encryption_key_,
+      // For now the response doesn't contain anything interesting, so we don't
+      // handle it. In the future this could change. If it does, UploadClient
+      // should be updated to use CallMethodAndBlock rather than CallMethod.
+      base::DoNothing());
+  return Status::StatusOK();
+}
+
+Status UploadJob::UploadDelegate::Cancel(Status status) {
+  // UploadJob has nothing to do in the event of cancellation.
+  return Status::StatusOK();
+}
+
+void UploadJob::UploadDelegate::SetRecords(Records records) {
+  records_ = std::move(records);
+}
+
+UploadJob::RecordProcessor::RecordProcessor(
+    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
+    DoneCb done_cb)
+    : sequenced_task_runner_(sequenced_task_runner),
+      done_cb_(std::move(done_cb)),
+      records_(std::make_unique<std::vector<EncryptedRecord>>()) {}
+
+void UploadJob::RecordProcessor::ProcessRecord(
+    EncryptedRecord record, base::OnceCallback<void(bool)> processed_cb) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&RecordProcessor::ProcessRecordInternal,
+                                weak_ptr_factory_.GetWeakPtr(),
+                                std::move(record), std::move(processed_cb)));
+}
+
+void UploadJob::RecordProcessor::ProcessGap(
+    SequencingInformation start,
+    uint64_t count,
+    base::OnceCallback<void(bool)> processed_cb) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&RecordProcessor::ProcessGapInternal,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(start), count,
+                     std::move(processed_cb)));
+}
+
+void UploadJob::RecordProcessor::Completed(Status final_status) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&RecordProcessor::CompletedInternal,
+                                weak_ptr_factory_.GetWeakPtr(), final_status));
+}
+
+void UploadJob::RecordProcessor::ProcessRecordInternal(
+    EncryptedRecord record, base::OnceCallback<void(bool)> processed_cb) {
+  if (completed_) {
+    std::move(processed_cb).Run(false);
+    return;
+  }
+
+  size_t record_size = record.ByteSizeLong();
+  // We have to allow a single record through even if it is too large.
+  // Otherwise the whole system will backup.
+  if (current_size_ != 0 && record_size + current_size_ > kMaxUploadSize) {
+    std::move(processed_cb).Run(false);
+    return;
+  }
+  records_->push_back(std::move(record));
+  current_size_ += record_size;
+  std::move(processed_cb).Run(current_size_ < kMaxUploadSize);
+}
+
+void UploadJob::RecordProcessor::ProcessGapInternal(
+    SequencingInformation start,
+    uint64_t count,
+    base::OnceCallback<void(bool)> processed_cb) {
+  if (completed_) {
+    std::move(processed_cb).Run(false);
+    return;
+  }
+  // We'll process the whole gap request, even if it goes over our max.
+  for (uint64_t i = 0; i < count; ++i) {
+    records_->emplace_back();
+    *records_->rbegin()->mutable_sequencing_information() = start;
+    start.set_sequencing_id(start.sequencing_id() + 1);
+    current_size_ += records_->rbegin()->ByteSizeLong();
+  }
+  std::move(processed_cb).Run(current_size_ < kMaxUploadSize);
+}
+
+void UploadJob::RecordProcessor::CompletedInternal(Status final_status) {
+  if (completed_) {
+    return;
+  }
+  completed_ = true;
+
+  if (!final_status.ok()) {
+    // Destroy the records to regain system memory now.
+    records_.reset();
+    std::move(done_cb_).Run(final_status);
+    return;
+  }
+  std::move(done_cb_).Run(std::move(records_));
+}
+
+// static
+StatusOr<std::unique_ptr<UploadJob>> UploadJob::Create(
+    scoped_refptr<UploadClient> upload_client,
+    bool need_encryption_key,
+    UploaderInterface::UploaderInterfaceResultCb start_cb) {
+  if (upload_client == nullptr) {
+    Status status(error::INVALID_ARGUMENT,
+                  "Unable to create UploadJob, invalid upload_client");
+    std::move(start_cb).Run(status);
+    return status;
+  }
+
+  auto upload_delegate =
+      std::make_unique<UploadDelegate>(upload_client, need_encryption_key);
+  SetRecordsCb set_records_callback = upload_delegate->GetSetRecordsCb();
+
+  return base::WrapUnique<UploadJob>(
+      new UploadJob(std::move(upload_delegate), std::move(set_records_callback),
+                    std::move(start_cb)));
+}
+
+void UploadJob::StartImpl() {
+  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+  // Currently running tasks are not destroyable under normal circumstances, so
+  // base::Unretained is safe here.
+  std::move(start_cb_).Run(std::make_unique<RecordProcessor>(
+      base::SequencedTaskRunnerHandle::Get(),
+      base::BindOnce(&UploadJob::Done, base::Unretained(this))));
+}
+
+void UploadJob::Done(StatusOr<Records> records_result) {
+  if (!records_result.ok()) {
+    Finish(records_result.status());
+    return;
+  }
+  std::move(set_records_cb_).Run(std::move(records_result.ValueOrDie()));
+  Finish(Status::StatusOK());
+}
+
+UploadJob::UploadJob(std::unique_ptr<UploadDelegate> upload_delegate,
+                     SetRecordsCb set_records_cb,
+                     UploaderInterface::UploaderInterfaceResultCb start_cb)
+    : Job(std::move(upload_delegate)),
+      set_records_cb_(std::move(set_records_cb)),
+      start_cb_(std::move(start_cb)) {}
+
+}  // namespace reporting

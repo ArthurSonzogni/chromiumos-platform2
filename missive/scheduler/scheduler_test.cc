@@ -40,7 +40,7 @@ class FakeJob : public Scheduler::Job {
   using ReportCompletionCallback = base::OnceCallback<Status()>;
   using CancelCallback = base::OnceCallback<Status(Status)>;
 
-  class FakeJobDelegate : public Scheduler::Job::JobResponseDelegate {
+  class FakeJobDelegate : public Scheduler::Job::JobDelegate {
    public:
     FakeJobDelegate(ReportCompletionCallback report_completion_callback,
                     CancelCallback cancel_callback)

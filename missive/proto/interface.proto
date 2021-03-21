@@ -16,14 +16,8 @@ import "status.proto";
 // EnqueueRecordRequest enqueues records for encryption,
 // storage, and upload.
 message EnqueueRecordRequest {
-  // record_fd holds the file descriptor for a serialized Record proto. File
-  // descriptor must point to a block of memory, because the record cannot
-  // be stored to disk prior to encryption.
-  // //chrome/cros/reporting/api/proto/record.proto
-  optional int32 record_fd = 1;
-
-  // pid holds the pid of the sending process.
-  optional int32 pid = 2;
+  // Record the user wants to enqueue.
+  optional Record record = 1;
 
   // Priority from
   // //chrome/cros/reporting/api/proto/record_constants.proto
@@ -78,9 +72,7 @@ message FlushPriorityResponse {
 // one) as it can for upload. Records not sent for upload can be sent again
 // at a later time.
 message UploadEncryptedRecordRequest {
-  // encrypted_record_fd holds the file descriptors for the serialized
-  // EncryptedRecords.
-  repeated int32 encrypted_record_fd = 1;
+  repeated EncryptedRecord encrypted_record = 1;
 
   // If true, server should send the encryption keys with the next response.
   optional bool need_encryption_keys = 2;

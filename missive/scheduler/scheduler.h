@@ -39,12 +39,12 @@ class Scheduler {
     // CANCELLED is an unsuccessful terminal state for the job.
     enum class JobState { NOT_RUNNING, RUNNING, COMPLETED, CANCELLED };
 
-    // JobResponseDelegate is responsible for sending responses to any
+    // JobDelegate is responsible for sending responses to any
     // listeners.
-    class JobResponseDelegate {
+    class JobDelegate {
      public:
-      JobResponseDelegate() = default;
-      virtual ~JobResponseDelegate() = default;
+      JobDelegate() = default;
+      virtual ~JobDelegate() = default;
 
      private:
       // Job should be the only class calling Complete or Cancel;
@@ -56,7 +56,7 @@ class Scheduler {
       virtual Status Cancel(Status status) = 0;
     };
 
-    explicit Job(std::unique_ptr<JobResponseDelegate> job_response_delegate);
+    explicit Job(std::unique_ptr<JobDelegate> job_response_delegate);
     virtual ~Job() = default;
 
     Job(const Job&) = delete;
@@ -85,7 +85,7 @@ class Scheduler {
     // appropriately.
     void Finish(Status status);
 
-    std::unique_ptr<JobResponseDelegate> job_response_delegate_;
+    std::unique_ptr<JobDelegate> job_response_delegate_;
 
    private:
     std::atomic<JobState> job_state_{JobState::NOT_RUNNING};

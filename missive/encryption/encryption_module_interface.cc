@@ -7,6 +7,7 @@
 #include <atomic>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/callback.h>
 #include <base/feature_list.h>
 #include <base/strings/string_piece.h>

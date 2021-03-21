@@ -4,11 +4,8 @@
 
 #include "missive/scheduler/enqueue_job.h"
 
-#include <fcntl.h>
 #include <memory>
 #include <string>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <utility>
 
 #include <base/strings/strcat.h>
@@ -20,38 +17,6 @@
 #include "missive/util/status.h"
 
 namespace reporting {
-namespace {
-
-class ManagedFileDescriptor {
- public:
-  static StatusOr<std::unique_ptr<ManagedFileDescriptor>> Create(
-      const std::string& path) {
-    const int fd = open(path.c_str(), O_RDONLY);
-    if (fd < 0) {
-      return Status(error::INTERNAL, "Unable to open record file for reading.");
-    }
-    return base::WrapUnique(new ManagedFileDescriptor(fd));
-  }
-
-  ~ManagedFileDescriptor() {
-    if (IsFileOpen()) {
-      if (close(fd_) == -1) {
-        LOG(ERROR) << "Unable to close file";
-      }
-    }
-  }
-
-  bool IsFileOpen() const { return fd_ >= 0; }
-
-  int fd() const { return fd_; }
-
- private:
-  explicit ManagedFileDescriptor(int fd) : fd_(fd) {}
-
-  const int fd_;
-};
-
-}  // namespace
 
 EnqueueJob::EnqueueResponseDelegate::EnqueueResponseDelegate(
     std::unique_ptr<
@@ -86,23 +51,8 @@ EnqueueJob::EnqueueJob(scoped_refptr<StorageModuleInterface> storage_module,
       request_(std::move(request)) {}
 
 void EnqueueJob::StartImpl() {
-  auto fd_result = ManagedFileDescriptor::Create(
-      base::StrCat({"/proc/", base::NumberToString(request_.pid()), "/fd/",
-                    base::NumberToString(request_.record_fd())}));
-  if (!fd_result.ok()) {
-    Finish(fd_result.status());
-    return;
-  }
-
-  Record record;
-  if (!record.ParseFromFileDescriptor(fd_result.ValueOrDie()->fd())) {
-    Finish(Status(error::INVALID_ARGUMENT,
-                  "Unable to parse record from provided file descriptor."));
-    return;
-  }
-
   storage_module_->AddRecord(
-      request_.priority(), std::move(record),
+      request_.priority(), std::move(request_.record()),
       base::BindOnce(&EnqueueJob::Finish, base::Unretained(this)));
 }
 

@@ -9,7 +9,9 @@
 #include <tuple>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/callback.h>
+#include <base/callback_helpers.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 

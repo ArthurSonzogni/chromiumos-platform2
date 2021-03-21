@@ -31,6 +31,13 @@ class UploaderInterface {
       base::RepeatingCallback<StatusOr<std::unique_ptr<UploaderInterface>>(
           Priority priority, bool need_encryption_key)>;
 
+  using UploaderInterfaceResultCb =
+      base::OnceCallback<void(StatusOr<std::unique_ptr<UploaderInterface>>)>;
+  // Priority is an artifact in StartCb, and not needed any longer. So it is
+  // omitted from AsyncStartCb.
+  using AsyncStartCb = base::RepeatingCallback<void(bool need_encryption_key,
+                                                    UploaderInterfaceResultCb)>;
+
   UploaderInterface(const UploaderInterface& other) = delete;
   const UploaderInterface& operator=(const UploaderInterface& other) = delete;
   virtual ~UploaderInterface();

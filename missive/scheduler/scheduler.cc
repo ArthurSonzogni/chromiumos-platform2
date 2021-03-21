@@ -12,6 +12,7 @@
 #include <base/sequence_checker.h>
 #include <base/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/util/shared_queue.h"
 #include "missive/util/status.h"
@@ -33,7 +34,7 @@ using CompleteJobResponse = Status;
 using CompleteJobCallback = base::OnceCallback<void(CompleteJobResponse)>;
 using Notification = Scheduler::SchedulerObserver::Notification;
 
-Scheduler::Job::Job(std::unique_ptr<JobResponseDelegate> job_response_delegate)
+Scheduler::Job::Job(std::unique_ptr<JobDelegate> job_response_delegate)
     : job_response_delegate_(std::move(job_response_delegate)) {}
 
 void Scheduler::Job::Start(base::OnceCallback<void(Status)> complete_cb) {
@@ -241,6 +242,8 @@ void Scheduler::OnJobEnqueued() {
 }
 
 void Scheduler::StartJobs() {
+  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+
   // Get JobBlockers and assign them to jobs until job_semaphore_ returns a
   // non-OK status.
   StatusOr<std::unique_ptr<JobBlocker>> blocker_result =

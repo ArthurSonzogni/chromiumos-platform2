@@ -18,7 +18,7 @@ namespace reporting {
 
 class EnqueueJob : public Scheduler::Job {
  public:
-  class EnqueueResponseDelegate : public Job::JobResponseDelegate {
+  class EnqueueResponseDelegate : public Job::JobDelegate {
    public:
     EnqueueResponseDelegate(
         std::unique_ptr<
