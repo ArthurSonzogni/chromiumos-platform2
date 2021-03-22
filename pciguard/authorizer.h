@@ -39,6 +39,7 @@ class Authorizer {
   std::queue<Job> queue_;  // Queue of authorization jobs
   pthread_mutex_t mutex_;  // To protect the queue
   pthread_cond_t job_available_;
+  bool authorization_in_flight_;
 
   pthread_t authorizer_thread_;
   SysfsUtils* utils_;

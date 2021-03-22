@@ -22,6 +22,10 @@ void* Authorizer::AuthorizerThread(void* ptr) {
       authorizer->utils_->AuthorizeAllDevices();
     else
       authorizer->utils_->AuthorizeThunderboltDev(job.syspath_);
+
+    pthread_mutex_lock(&authorizer->mutex_);
+    authorizer->authorization_in_flight_ = false;
+    pthread_mutex_unlock(&authorizer->mutex_);
   }
   return NULL;
 }
@@ -29,6 +33,7 @@ void* Authorizer::AuthorizerThread(void* ptr) {
 Authorizer::Authorizer(SysfsUtils* utils)
     : mutex_(PTHREAD_MUTEX_INITIALIZER),
       job_available_(PTHREAD_COND_INITIALIZER),
+      authorization_in_flight_(false),
       utils_(utils) {
   if (pthread_create(&authorizer_thread_, NULL, &Authorizer::AuthorizerThread,
                      this)) {
@@ -67,7 +72,7 @@ bool Authorizer::IsJobQueueEmpty() {
     PLOG(ERROR) << "Mutex lock issue while checking job queue status";
     exit(EXIT_FAILURE);
   }
-  auto ret = queue_.empty();
+  auto ret = queue_.empty() && !authorization_in_flight_;
   if (pthread_mutex_unlock(&mutex_)) {
     PLOG(ERROR) << "Mutex unlock issue while checking job queue status";
     exit(EXIT_FAILURE);
@@ -89,6 +94,8 @@ bool Authorizer::GetNextJob(Job* job) {
       queue_.pop();
       LOG(INFO) << "Fetched authorization job (" << job->type_ << ","
                 << job->syspath_ << ")";
+
+      authorization_in_flight_ = true;
 
       if (pthread_mutex_unlock(&mutex_))
         PLOG(ERROR) << "Mutex unlock issue while retrieving job";
