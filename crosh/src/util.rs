@@ -4,6 +4,8 @@
 
 // Provides helper functions used by handler implementations of crosh commands.
 
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use std::env;
 use std::error;
 use std::fmt::{self, Display};
@@ -13,6 +15,7 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use chrono::Local;
 use dbus::blocking::Connection;
 use libc::c_int;
 use libchromeos::chromeos;
@@ -64,6 +67,20 @@ pub fn get_user_id_hash() -> Result<String, ()> {
 
     env::set_var(CROS_USER_ID_HASH, &user_id_hash);
     Ok(user_id_hash)
+}
+
+// Return the output file path for the given output type in user's Downloads directory.
+pub fn generate_output_file_path(output_type: &str, file_extension: &str) -> Result<String, ()> {
+    let date = Local::now();
+    let formatted_date = date.format("%Y-%m-%d_%H.%M.%S");
+    let user_id_hash = get_user_id_hash()?;
+    let random_string: String = thread_rng().sample_iter(&Alphanumeric).take(6).collect();
+    let result = format!(
+        "/home/user/{}/Downloads/{}_{}_{}.{}",
+        user_id_hash, output_type, formatted_date, random_string, file_extension
+    )
+    .to_string();
+    return Ok(result);
 }
 
 pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool, ()> {
@@ -152,4 +169,19 @@ fn root_dev() -> Result<String, Error> {
     child.wait()?;
 
     Ok(result.trim().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_output_file_path() {
+        // Set the user id hash env variable to a random value because it is necessary for output path generation.
+        env::set_var(CROS_USER_ID_HASH, "useridhashfortesting");
+        let expected_path_re =
+            Regex::new(r"^/home/user/.+/Downloads/packet_capture_\d{4}-\d{2}-\d{2}_\d{2}.\d{2}.\d{2}_.{6}\.pcap$").unwrap();
+        let result_output_path = generate_output_file_path("packet_capture", "pcap").unwrap();
+        assert!(expected_path_re.is_match(&result_output_path));
+    }
 }

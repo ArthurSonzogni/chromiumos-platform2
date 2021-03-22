@@ -16,14 +16,12 @@ use dbus::arg::{self, OwnedFd, Variant};
 use dbus::blocking::Connection;
 use getopts::{self, Options};
 use libc::{c_int, SIGINT};
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
 use sys_util::{error, pipe};
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::{
-    clear_signal_handlers, get_user_id_hash, set_signal_handlers, DEFAULT_DBUS_TIMEOUT,
+    clear_signal_handlers, generate_output_file_path, set_signal_handlers, DEFAULT_DBUS_TIMEOUT,
 };
 
 const FLAGS: [(&str, &str, &str); 5] = [
@@ -126,7 +124,7 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
     }
 
     // Create and open the capture file.
-    let capture_file_path = create_capture_file_path();
+    let capture_file_path = generate_output_file_path("packet_capture", "pcap").unwrap();
     execute_packet_capture_helper(&capture_file_path, dbus_options)?;
 
     let capture_file_metadata =
@@ -138,17 +136,6 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
         println!("Capture file stored in: {}", &capture_file_path);
     }
     Ok(())
-}
-
-/// Create path for a .pcap file in user's Downloads folder for packet captures and return the path.
-fn create_capture_file_path() -> String {
-    let user_id: String = get_user_id_hash().unwrap();
-    let random_string: String = thread_rng().sample_iter(&Alphanumeric).take(6).collect();
-    return format!(
-        "/home/user/{}/Downloads/packet_capture_{}.pcap",
-        user_id, random_string
-    )
-    .to_string();
 }
 
 fn remove_capture_file_on_error(capture_file_path: &str) {
