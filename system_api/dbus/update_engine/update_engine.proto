@@ -30,6 +30,13 @@ enum Operation {
   ERROR = -1;
 }
 
+// Keep in sync with:
+// update_engine/client_library/include/update_engine/update_status.h
+enum UpdateUrgency {
+  REGULAR = 0;
+  CRITICAL = 1;
+}
+
 // This is the message transferred between update_engine and other processes
 // about the current status of the update_engine. It is used either in
 // |GetUpdateStatusAdvanced| DBus method or |StatusUpdateAdvanced| signal.
@@ -72,6 +79,9 @@ message StatusResult {
   // will propagate into this field.
   int32 last_attempt_error = 10;
 
-  // If true, the update is critical.
-  bool critical_update = 11;
+  // If true, the update is critical. DEPRECATED.
+  // bool critical_update = 11;
+
+  // Indicates how important an update is.
+  UpdateUrgency update_urgency = 12;
 }
