@@ -56,19 +56,20 @@ source_set("libocr_mojo_adapter") {
 }
 
 executable("ocr_service") {
+  sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libocr" ]
-  sources = [ "main.cc" ]
 }
 
 executable("ocr_tool") {
+  sources = [ "ocr_tool/ocr_tool.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libocr_mojo_adapter" ]
-  sources = [ "ocr_tool/ocr_tool.cc" ]
 }
 
 if (use.test) {
   executable("ocr_service_test") {
+    sources = [ "ocr_service_impl_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -77,6 +78,5 @@ if (use.test) {
       ":libocr",
       "//common-mk/testrunner:testrunner",
     ]
-    sources = [ "ocr_service_impl_test.cc" ]
   }
 }
