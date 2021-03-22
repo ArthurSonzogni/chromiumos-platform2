@@ -809,6 +809,20 @@ const char kIPDelimiter = ' ';
 const char kAlwaysOnVpnModeOff[] = "off";
 const char kAlwaysOnVpnModeBestEffort[] = "best-effort";
 const char kAlwaysOnVpnModeStrict[] = "strict";
+
+// Possible traffic sources. Note that these sources should be kept in sync with
+// the sources defined in TrafficCounter::Source at:
+// src/platform2/system_api/dbus/patchpanel/patchpanel_service.proto
+const char kTrafficCounterSourceUnknown[] = "unknown";
+const char kTrafficCounterSourceChrome[] = "chrome";
+const char kTrafficCounterSourceUser[] = "user";
+const char kTrafficCounterSourceArc[] = "arc";
+const char kTrafficCounterSourceCrosvm[] = "crosvm";
+const char kTrafficCounterSourcePluginvm[] = "pluginvm";
+const char kTrafficCounterSourceUpdateEngine[] = "update_engine";
+const char kTrafficCounterSourceVpn[] = "vpn";
+const char kTrafficCounterSourceSystem[] = "system";
+
 }  // namespace shill
 
 #endif  // SYSTEM_API_DBUS_SHILL_DBUS_CONSTANTS_H_
