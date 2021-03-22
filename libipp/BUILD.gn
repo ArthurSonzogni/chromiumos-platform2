@@ -41,7 +41,6 @@ shared_library("libipp") {
 
 if (use.test) {
   executable("libipp_test") {
-    configs += [ "//common-mk:test" ]
     sources = [
       "ipp_attribute_test.cc",
       "ipp_encoding_test.cc",
@@ -49,6 +48,7 @@ if (use.test) {
       "ipp_package_test.cc",
       "ipp_test.cc",
     ]
+    configs += [ "//common-mk:test" ]
     deps = [
       ":libipp",
       "//common-mk/testrunner",
@@ -64,11 +64,11 @@ if (use.fuzzer) {
     ]
   }
   executable("libipp_fuzzer") {
+    sources = [ "ipp_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":libchrome_test_config",
     ]
-    sources = [ "ipp_fuzzer.cc" ]
     deps = [ ":libipp" ]
   }
 }
