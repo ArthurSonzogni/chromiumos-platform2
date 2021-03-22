@@ -15,6 +15,9 @@ group("all") {
       ":runtime_probe_resultchecker_fuzzer",
     ]
   }
+  if (use.factory_runtime_probe) {
+    deps += [ ":factory_runtime_probe_installer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -129,5 +132,24 @@ if (use.fuzzer) {
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [ ":libruntime_probe" ]
     pkg_deps = [ "libchrome-test" ]
+  }
+}
+
+if (use.factory_runtime_probe) {
+  action("factory_runtime_probe_installer") {
+    script = "bundler.py"
+    deps = [ ":runtime_probe" ]
+    inputs = [ "$root_build_dir/factory_runtime_probe" ]
+    outputs = [ "$root_build_dir/factory_runtime_probe_installer" ]
+    args = [
+             "--root-dir",
+             getenv("SYSROOT"),
+             "--target-path",
+           ] + inputs +
+           [
+             "--bundle-description",
+             "Installer of the standalone version of factory_runtime_probe.",
+             "--output-path",
+           ] + outputs
   }
 }
