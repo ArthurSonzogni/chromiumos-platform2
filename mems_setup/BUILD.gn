@@ -25,18 +25,18 @@ config("target_defaults") {
 }
 
 static_library("libmems_setup") {
-  configs += [ ":target_defaults" ]
   sources = [
     "configuration.cc",
     "delegate_impl.cc",
     "sensor_kind.cc",
   ]
   public_pkg_deps = [ "libmems" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("mems_setup") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libmems_setup" ]
 }
 
@@ -49,18 +49,6 @@ if (use.test) {
   }
 
   executable("mems_setup_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":mems_setup_testrunner_pkg_deps",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libmems_setup",
-      "//common-mk/testrunner",
-    ]
-
-    pkg_deps = [ "libmems_test_support" ]
-
     sources = [
       "accelerometer_test.cc",
       "als_test.cc",
@@ -70,5 +58,15 @@ if (use.test) {
       "test_helper.cc",
       "vpd_loader_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":mems_setup_testrunner_pkg_deps",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libmems_setup",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [ "libmems_test_support" ]
   }
 }

@@ -21,8 +21,8 @@ config("target_defaults") {
 }
 
 static_library("libperfetto_simple_producer") {
-  configs += [ ":target_defaults" ]
   sources = [ "my_app_tracing_categories.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [
     "pthread",
     "perfetto_sdk",
@@ -30,7 +30,7 @@ static_library("libperfetto_simple_producer") {
 }
 
 executable("perfetto_simple_producer") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libperfetto_simple_producer" ]
 }

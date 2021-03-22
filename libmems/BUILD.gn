@@ -9,7 +9,6 @@ group("all") {
     ":libmems",
     ":libmems_test_support",
   ]
-
   if (use.test) {
     deps += [ ":libmems_testrunner" ]
   }
@@ -24,7 +23,6 @@ pkg_config("target_defaults_pkg_deps") {
 }
 
 shared_library("libmems") {
-  configs += [ ":target_defaults_pkg_deps" ]
   sources = [
     "iio_channel_impl.cc",
     "iio_context_impl.cc",
@@ -32,12 +30,13 @@ shared_library("libmems") {
     "iio_device_impl.cc",
     "iio_device_trigger_impl.cc",
   ]
+  configs += [ ":target_defaults_pkg_deps" ]
 }
 
 shared_library("libmems_test_support") {
+  sources = [ "test_fakes.cc" ]
   configs += [ ":target_defaults_pkg_deps" ]
   deps = [ ":libmems" ]
-  sources = [ "test_fakes.cc" ]
 }
 
 if (use.test) {
@@ -50,20 +49,17 @@ if (use.test) {
   }
 
   executable("libmems_testrunner") {
+    sources = [ "iio_device_test.cc" ]
     configs += [
       "//common-mk:test",
       ":libmems_testrunner_pkg_deps",
       ":target_defaults_pkg_deps",
     ]
-
     deps = [
       ":libmems",
       ":libmems_test_support",
       "//common-mk/testrunner",
     ]
-
     pkg_deps = [ "libmems_test_support" ]
-
-    sources = [ "iio_device_test.cc" ]
   }
 }
