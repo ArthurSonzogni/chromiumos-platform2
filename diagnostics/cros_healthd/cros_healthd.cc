@@ -16,7 +16,6 @@
 #include <base/unguessable_token.h>
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <dbus/object_path.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 #include <mojo/public/cpp/system/invitation.h>
 
@@ -57,7 +56,7 @@ CrosHealthd::CrosHealthd(Context* context)
       context_, fetch_aggregator_.get(), bluetooth_events_.get(),
       lid_events_.get(), power_events_.get());
 
-  service_factory_binding_set_.set_connection_error_handler(
+  service_factory_receiver_set_.set_disconnect_handler(
       base::Bind(&CrosHealthd::OnDisconnect, base::Unretained(this)));
 }
 
@@ -116,7 +115,9 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
 
   std::string token;
 
-  chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryRequest request;
+  mojo::PendingReceiver<
+      chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>
+      receiver;
   if (is_chrome) {
     if (mojo_service_bind_attempted_) {
       // This should not normally be triggered, since the other endpoint - the
@@ -136,7 +137,7 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
     mojo::IncomingInvitation invitation =
         mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
-    request = mojo::InterfaceRequest<
+    receiver = mojo::PendingReceiver<
         chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
         invitation.ExtractMessagePipe(kCrosHealthdMojoConnectionChannelToken));
     mojo_service_bind_attempted_ = true;
@@ -151,37 +152,39 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
         std::move(invitation), base::kNullProcessHandle,
         mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
-    request = mojo::InterfaceRequest<
+    receiver = mojo::PendingReceiver<
         chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
         std::move(pipe));
   }
-  service_factory_binding_set_.AddBinding(this /* impl */, std::move(request),
-                                          is_chrome);
+  service_factory_receiver_set_.Add(this /* impl */, std::move(receiver),
+                                    is_chrome);
 
   VLOG(1) << "Successfully bootstrapped Mojo connection";
   return token;
 }
 
 void CrosHealthd::GetProbeService(
-    chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest service) {
-  mojo_service_->AddProbeBinding(std::move(service));
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdProbeService> service) {
+  mojo_service_->AddProbeReceiver(std::move(service));
 }
 
 void CrosHealthd::GetDiagnosticsService(
-    chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
-        service) {
-  diagnostics_binding_set_.AddBinding(routine_service_.get(),
-                                      std::move(service));
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
+  diagnostics_receiver_set_.Add(routine_service_.get(), std::move(service));
 }
 
 void CrosHealthd::GetEventService(
-    chromeos::cros_healthd::mojom::CrosHealthdEventServiceRequest service) {
-  mojo_service_->AddEventBinding(std::move(service));
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdEventService> service) {
+  mojo_service_->AddEventReceiver(std::move(service));
 }
 
 void CrosHealthd::GetSystemService(
-    chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest service) {
-  mojo_service_->AddSystemBinding(std::move(service));
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdSystemService> service) {
+  mojo_service_->AddSystemReceiver(std::move(service));
 }
 
 void CrosHealthd::SendNetworkHealthService(
@@ -211,7 +214,7 @@ void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {
 void CrosHealthd::OnDisconnect() {
   // Only respond to disconnects caused by the browser. All others are
   // recoverable.
-  if (service_factory_binding_set_.dispatch_context())
+  if (service_factory_receiver_set_.current_context())
     ShutDownDueToMojoError("Lost mojo connection to browser.");
 }
 

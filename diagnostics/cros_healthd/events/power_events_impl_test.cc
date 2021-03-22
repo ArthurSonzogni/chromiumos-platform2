@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/common/system/fake_powerd_adapter.h"
@@ -32,9 +32,9 @@ using ::testing::StrictMock;
 class MockCrosHealthdPowerObserver : public mojo_ipc::CrosHealthdPowerObserver {
  public:
   MockCrosHealthdPowerObserver(
-      mojo_ipc::CrosHealthdPowerObserverRequest request)
-      : binding_{this /* impl */, std::move(request)} {
-    DCHECK(binding_.is_bound());
+      mojo::PendingReceiver<mojo_ipc::CrosHealthdPowerObserver> receiver)
+      : receiver_{this /* impl */, std::move(receiver)} {
+    DCHECK(receiver_.is_bound());
   }
   MockCrosHealthdPowerObserver(const MockCrosHealthdPowerObserver&) = delete;
   MockCrosHealthdPowerObserver& operator=(const MockCrosHealthdPowerObserver&) =
@@ -46,7 +46,7 @@ class MockCrosHealthdPowerObserver : public mojo_ipc::CrosHealthdPowerObserver {
   MOCK_METHOD(void, OnOsResume, (), (override));
 
  private:
-  mojo::Binding<mojo_ipc::CrosHealthdPowerObserver> binding_;
+  mojo::Receiver<mojo_ipc::CrosHealthdPowerObserver> receiver_;
 };
 
 }  // namespace
@@ -65,12 +65,12 @@ class PowerEventsImplTest : public testing::Test {
     // powerd_adapter.
     ASSERT_FALSE(fake_adapter()->HasPowerObserver(&power_events_impl_));
 
-    mojo_ipc::CrosHealthdPowerObserverPtr observer_ptr;
-    mojo_ipc::CrosHealthdPowerObserverRequest observer_request(
-        mojo::MakeRequest(&observer_ptr));
+    mojo::PendingRemote<mojo_ipc::CrosHealthdPowerObserver> observer;
+    mojo::PendingReceiver<mojo_ipc::CrosHealthdPowerObserver> observer_receiver(
+        observer.InitWithNewPipeAndPassReceiver());
     observer_ = std::make_unique<StrictMock<MockCrosHealthdPowerObserver>>(
-        std::move(observer_request));
-    power_events_impl_.AddObserver(std::move(observer_ptr));
+        std::move(observer_receiver));
+    power_events_impl_.AddObserver(std::move(observer));
     // Now that an observer has been added, we should have subscribed to
     // powerd_adapter.
     ASSERT_TRUE(fake_adapter()->HasPowerObserver(&power_events_impl_));

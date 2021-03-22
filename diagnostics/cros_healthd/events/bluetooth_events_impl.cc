@@ -20,62 +20,57 @@ BluetoothEventsImpl::~BluetoothEventsImpl() {
 }
 
 void BluetoothEventsImpl::AddObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer) {
+    mojo::PendingRemote<
+        chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer) {
   if (!is_observing_bluetooth_client_) {
     context_->bluetooth_client()->AddObserver(this);
     is_observing_bluetooth_client_ = true;
   }
 
-  observers_.AddPtr(std::move(observer));
+  observers_.Add(std::move(observer));
 }
 
 void BluetoothEventsImpl::AdapterAdded(
     const dbus::ObjectPath& adapter_path,
     const BluetoothClient::AdapterProperties& properties) {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver*
-             observer) { observer->OnAdapterAdded(); });
+  for (auto& observer : observers_)
+    observer->OnAdapterAdded();
   StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::AdapterRemoved(const dbus::ObjectPath& adapter_path) {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver*
-             observer) { observer->OnAdapterRemoved(); });
+  for (auto& observer : observers_)
+    observer->OnAdapterRemoved();
   StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::AdapterPropertyChanged(
     const dbus::ObjectPath& adapter_path,
     const BluetoothClient::AdapterProperties& properties) {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver*
-             observer) { observer->OnAdapterPropertyChanged(); });
+  for (auto& observer : observers_)
+    observer->OnAdapterPropertyChanged();
   StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::DeviceAdded(
     const dbus::ObjectPath& device_path,
     const BluetoothClient::DeviceProperties& properties) {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver*
-             observer) { observer->OnDeviceAdded(); });
+  for (auto& observer : observers_)
+    observer->OnDeviceAdded();
   StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::DeviceRemoved(const dbus::ObjectPath& device_path) {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver*
-             observer) { observer->OnDeviceRemoved(); });
+  for (auto& observer : observers_)
+    observer->OnDeviceRemoved();
   StopObservingBluetoothClientIfNecessary();
 }
 
 void BluetoothEventsImpl::DevicePropertyChanged(
     const dbus::ObjectPath& device_path,
     const BluetoothClient::DeviceProperties& properties) {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver*
-             observer) { observer->OnDevicePropertyChanged(); });
+  for (auto& observer : observers_)
+    observer->OnDevicePropertyChanged();
   StopObservingBluetoothClientIfNecessary();
 }
 

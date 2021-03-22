@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
@@ -31,9 +31,9 @@ using ::testing::StrictMock;
 class MockCrosHealthdLidObserver : public mojo_ipc::CrosHealthdLidObserver {
  public:
   explicit MockCrosHealthdLidObserver(
-      mojo_ipc::CrosHealthdLidObserverRequest request)
-      : binding_{this /* impl */, std::move(request)} {
-    DCHECK(binding_.is_bound());
+      mojo::PendingReceiver<mojo_ipc::CrosHealthdLidObserver> receiver)
+      : receiver_{this /* impl */, std::move(receiver)} {
+    DCHECK(receiver_.is_bound());
   }
   MockCrosHealthdLidObserver(const MockCrosHealthdLidObserver&) = delete;
   MockCrosHealthdLidObserver& operator=(const MockCrosHealthdLidObserver&) =
@@ -43,7 +43,7 @@ class MockCrosHealthdLidObserver : public mojo_ipc::CrosHealthdLidObserver {
   MOCK_METHOD(void, OnLidOpened, (), (override));
 
  private:
-  mojo::Binding<mojo_ipc::CrosHealthdLidObserver> binding_;
+  mojo::Receiver<mojo_ipc::CrosHealthdLidObserver> receiver_;
 };
 
 }  // namespace
@@ -62,12 +62,12 @@ class LidEventsImplTest : public testing::Test {
     // powerd_adapter.
     ASSERT_FALSE(fake_adapter()->HasLidObserver(&lid_events_impl_));
 
-    mojo_ipc::CrosHealthdLidObserverPtr observer_ptr;
-    mojo_ipc::CrosHealthdLidObserverRequest observer_request(
-        mojo::MakeRequest(&observer_ptr));
+    mojo::PendingRemote<mojo_ipc::CrosHealthdLidObserver> observer;
+    mojo::PendingReceiver<mojo_ipc::CrosHealthdLidObserver> observer_receiver(
+        observer.InitWithNewPipeAndPassReceiver());
     observer_ = std::make_unique<StrictMock<MockCrosHealthdLidObserver>>(
-        std::move(observer_request));
-    lid_events_impl_.AddObserver(std::move(observer_ptr));
+        std::move(observer_receiver));
+    lid_events_impl_.AddObserver(std::move(observer));
     // Now that an observer has been added, we should have subscribed to
     // powerd_adapter.
     ASSERT_TRUE(fake_adapter()->HasLidObserver(&lid_events_impl_));

@@ -31,30 +31,24 @@ EventSubscriber::EventSubscriber()
 EventSubscriber::~EventSubscriber() = default;
 
 bool EventSubscriber::SubscribeToBluetoothEvents() {
-  mojo_ipc::CrosHealthdBluetoothObserverPtr observer_ptr;
-  mojo_ipc::CrosHealthdBluetoothObserverRequest observer_request(
-      mojo::MakeRequest(&observer_ptr));
-  bluetooth_subscriber_ =
-      std::make_unique<BluetoothSubscriber>(std::move(observer_request));
-  return mojo_adapter_->AddBluetoothObserver(std::move(observer_ptr));
+  mojo::PendingRemote<mojo_ipc::CrosHealthdBluetoothObserver> remote;
+  bluetooth_subscriber_ = std::make_unique<BluetoothSubscriber>(
+      remote.InitWithNewPipeAndPassReceiver());
+  return mojo_adapter_->AddBluetoothObserver(std::move(remote));
 }
 
 bool EventSubscriber::SubscribeToLidEvents() {
-  mojo_ipc::CrosHealthdLidObserverPtr observer_ptr;
-  mojo_ipc::CrosHealthdLidObserverRequest observer_request(
-      mojo::MakeRequest(&observer_ptr));
+  mojo::PendingRemote<mojo_ipc::CrosHealthdLidObserver> remote;
   lid_subscriber_ =
-      std::make_unique<LidSubscriber>(std::move(observer_request));
-  return mojo_adapter_->AddLidObserver(std::move(observer_ptr));
+      std::make_unique<LidSubscriber>(remote.InitWithNewPipeAndPassReceiver());
+  return mojo_adapter_->AddLidObserver(std::move(remote));
 }
 
 bool EventSubscriber::SubscribeToPowerEvents() {
-  mojo_ipc::CrosHealthdPowerObserverPtr observer_ptr;
-  mojo_ipc::CrosHealthdPowerObserverRequest observer_request(
-      mojo::MakeRequest(&observer_ptr));
-  power_subscriber_ =
-      std::make_unique<PowerSubscriber>(std::move(observer_request));
-  return mojo_adapter_->AddPowerObserver(std::move(observer_ptr));
+  mojo::PendingRemote<mojo_ipc::CrosHealthdPowerObserver> remote;
+  power_subscriber_ = std::make_unique<PowerSubscriber>(
+      remote.InitWithNewPipeAndPassReceiver());
+  return mojo_adapter_->AddPowerObserver(std::move(remote));
 }
 
 bool EventSubscriber::SubscribeToNetworkEvents() {

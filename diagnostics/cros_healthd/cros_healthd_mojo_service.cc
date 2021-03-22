@@ -39,17 +39,20 @@ CrosHealthdMojoService::CrosHealthdMojoService(
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
 
 void CrosHealthdMojoService::AddBluetoothObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer) {
+    mojo::PendingRemote<
+        chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer) {
   bluetooth_events_->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::AddLidObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr observer) {
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+        observer) {
   lid_events_->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::AddPowerObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) {
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+        observer) {
   power_events_->AddObserver(std::move(observer));
 }
 
@@ -80,19 +83,22 @@ void CrosHealthdMojoService::GetServiceStatus(
   std::move(callback).Run(std::move(response));
 }
 
-void CrosHealthdMojoService::AddProbeBinding(
-    chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest request) {
-  probe_binding_set_.AddBinding(this /* impl */, std::move(request));
+void CrosHealthdMojoService::AddProbeReceiver(
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdProbeService> receiver) {
+  probe_receiver_set_.Add(this /* impl */, std::move(receiver));
 }
 
-void CrosHealthdMojoService::AddEventBinding(
-    chromeos::cros_healthd::mojom::CrosHealthdEventServiceRequest request) {
-  event_binding_set_.AddBinding(this /* impl */, std::move(request));
+void CrosHealthdMojoService::AddEventReceiver(
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdEventService> receiver) {
+  event_receiver_set_.Add(this /* impl */, std::move(receiver));
 }
 
-void CrosHealthdMojoService::AddSystemBinding(
-    chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest request) {
-  system_binding_set_.AddBinding(this /* impl */, std::move(request));
+void CrosHealthdMojoService::AddSystemReceiver(
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdSystemService> receiver) {
+  system_receiver_set_.Add(this /* impl */, std::move(receiver));
 }
 
 }  // namespace diagnostics

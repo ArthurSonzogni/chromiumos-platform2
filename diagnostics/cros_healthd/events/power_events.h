@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_POWER_EVENTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_POWER_EVENTS_H_
 
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
 #include "mojo/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -16,7 +18,9 @@ class PowerEvents {
 
   // Adds a new observer to be notified when power-related events occur.
   virtual void AddObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) = 0;
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+          observer) = 0;
 };
 
 }  // namespace diagnostics

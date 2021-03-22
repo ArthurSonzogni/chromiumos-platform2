@@ -8,7 +8,8 @@
 #include <map>
 #include <string>
 
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "mojo/cros_healthd_events.mojom.h"
 
@@ -27,8 +28,9 @@ class BluetoothSubscriber final
     : public chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver {
  public:
   explicit BluetoothSubscriber(
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverRequest
-          request);
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+          receiver);
   BluetoothSubscriber(const BluetoothSubscriber&) = delete;
   BluetoothSubscriber& operator=(const BluetoothSubscriber&) = delete;
   ~BluetoothSubscriber();
@@ -73,9 +75,9 @@ class BluetoothSubscriber final
 
   // Allows the remote cros_healthd to call BluetoothSubscriber's
   // CrosHealthdBluetoothObserver methods.
-  const mojo::Binding<
+  const mojo::Receiver<
       chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
-      binding_;
+      receiver_;
 };
 
 }  // namespace diagnostics

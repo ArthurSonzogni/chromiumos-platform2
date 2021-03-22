@@ -181,17 +181,19 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
 
   // Subscribes the client to Bluetooth events.
   bool AddBluetoothObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer)
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer)
       override;
 
   // Subscribes the client to lid events.
-  bool AddLidObserver(chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr
-                          observer) override;
+  bool AddLidObserver(
+      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+          observer) override;
 
   // Subscribes the client to power events.
-  bool AddPowerObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer)
-      override;
+  bool AddPowerObserver(mojo::PendingRemote<
+                        chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+                            observer) override;
 
   // Subscribes the client to network events.
   bool AddNetworkObserver(
@@ -840,7 +842,8 @@ CrosHealthdMojoAdapterImpl::GetRoutineUpdate(
 }
 
 bool CrosHealthdMojoAdapterImpl::AddBluetoothObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer) {
+    mojo::PendingRemote<
+        chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return false;
 
@@ -849,7 +852,8 @@ bool CrosHealthdMojoAdapterImpl::AddBluetoothObserver(
 }
 
 bool CrosHealthdMojoAdapterImpl::AddLidObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr observer) {
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+        observer) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return false;
 
@@ -858,7 +862,8 @@ bool CrosHealthdMojoAdapterImpl::AddLidObserver(
 }
 
 bool CrosHealthdMojoAdapterImpl::AddPowerObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) {
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+        observer) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return false;
 

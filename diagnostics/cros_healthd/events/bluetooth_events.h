@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_BLUETOOTH_EVENTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_BLUETOOTH_EVENTS_H_
 
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
 #include "mojo/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -16,7 +18,8 @@ class BluetoothEvents {
 
   // Adds a new observer to be notified when Bluetooth-related events occur.
   virtual void AddObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
           observer) = 0;
 };
 

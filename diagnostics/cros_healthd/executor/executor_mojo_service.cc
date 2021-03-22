@@ -61,10 +61,10 @@ void RunMojoProcessResultCallback(
 
 ExecutorMojoService::ExecutorMojoService(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
-    mojo_ipc::ExecutorRequest request)
+    mojo::PendingReceiver<mojo_ipc::Executor> receiver)
     : mojo_task_runner_(mojo_task_runner),
-      binding_{this /* impl */, std::move(request)} {
-  binding_.set_connection_error_handler(
+      receiver_{this /* impl */, std::move(receiver)} {
+  receiver_.set_disconnect_handler(
       base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
 }
 

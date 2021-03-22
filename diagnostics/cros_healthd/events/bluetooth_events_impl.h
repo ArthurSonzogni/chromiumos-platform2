@@ -6,7 +6,8 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_BLUETOOTH_EVENTS_IMPL_H_
 
 #include <dbus/object_path.h>
-#include <mojo/public/cpp/bindings/interface_ptr_set.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -24,9 +25,9 @@ class BluetoothEventsImpl final : public BluetoothEvents,
   ~BluetoothEventsImpl() override;
 
   // BluetoothEvents overrides:
-  void AddObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer)
-      override;
+  void AddObserver(mojo::PendingRemote<
+                   chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+                       observer) override;
 
  private:
   // BluetoothClient::Observer overrides:
@@ -58,8 +59,7 @@ class BluetoothEventsImpl final : public BluetoothEvents,
   // The InterfacePtrSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::InterfacePtrSet<
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
       observers_;
 
   // Unowned pointer. Should outlive this instance.

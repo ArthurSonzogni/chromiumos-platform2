@@ -6,7 +6,8 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_POWER_EVENTS_IMPL_H_
 
 #include <base/optional.h>
-#include <mojo/public/cpp/bindings/interface_ptr_set.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote_set.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
@@ -26,7 +27,8 @@ class PowerEventsImpl final : public PowerEvents,
   ~PowerEventsImpl() override;
 
   // PowerEvents overrides:
-  void AddObserver(chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr
+  void AddObserver(mojo::PendingRemote<
+                   chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
                        observer) override;
 
  private:
@@ -71,7 +73,7 @@ class PowerEventsImpl final : public PowerEvents,
   // InterfacePtrSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::InterfacePtrSet<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
       observers_;
 
   // Unowned pointer. Should outlive this instance.

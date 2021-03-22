@@ -18,9 +18,10 @@ const char kHumanReadableOnOsSuspendEvent[] = "OS suspend";
 const char kHumanReadableOnOsResumeEvent[] = "OS resume";
 
 PowerSubscriber::PowerSubscriber(
-    chromeos::cros_healthd::mojom::CrosHealthdPowerObserverRequest request)
-    : binding_{this /* impl */, std::move(request)} {
-  DCHECK(binding_.is_bound());
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdPowerObserver> receiver)
+    : receiver_{this /* impl */, std::move(receiver)} {
+  DCHECK(receiver_.is_bound());
 }
 
 PowerSubscriber::~PowerSubscriber() = default;

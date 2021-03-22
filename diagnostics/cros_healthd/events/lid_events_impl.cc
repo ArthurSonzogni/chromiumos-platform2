@@ -21,28 +21,25 @@ LidEventsImpl::~LidEventsImpl() {
 }
 
 void LidEventsImpl::AddObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr observer) {
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+        observer) {
   if (!is_observing_powerd_) {
     context_->powerd_adapter()->AddLidObserver(this);
     is_observing_powerd_ = true;
   }
-  observers_.AddPtr(std::move(observer));
+  observers_.Add(std::move(observer));
 }
 
 void LidEventsImpl::OnLidClosedSignal() {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdLidObserver* observer) {
-        observer->OnLidClosed();
-      });
+  for (auto& observer : observers_)
+    observer->OnLidClosed();
 
   StopObservingPowerdIfNecessary();
 }
 
 void LidEventsImpl::OnLidOpenedSignal() {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdLidObserver* observer) {
-        observer->OnLidOpened();
-      });
+  for (auto& observer : observers_)
+    observer->OnLidOpened();
 
   StopObservingPowerdIfNecessary();
 }

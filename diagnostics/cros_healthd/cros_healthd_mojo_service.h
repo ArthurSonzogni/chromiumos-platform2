@@ -8,8 +8,9 @@
 #include <cstdint>
 #include <vector>
 
-#include <mojo/public/cpp/bindings/binding_set.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
@@ -44,13 +45,15 @@ class CrosHealthdMojoService final
 
   // chromeos::cros_healthd::mojom::CrosHealthdEventService overrides:
   void AddBluetoothObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr observer)
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer)
       override;
-  void AddLidObserver(chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr
-                          observer) override;
-  void AddPowerObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer)
-      override;
+  void AddLidObserver(
+      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+          observer) override;
+  void AddPowerObserver(mojo::PendingRemote<
+                        chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+                            observer) override;
   void AddNetworkObserver(
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer)
@@ -66,22 +69,25 @@ class CrosHealthdMojoService final
   void GetServiceStatus(GetServiceStatusCallback callback) override;
 
   // Adds a new binding to the internal binding sets.
-  void AddProbeBinding(
-      chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest request);
-  void AddEventBinding(
-      chromeos::cros_healthd::mojom::CrosHealthdEventServiceRequest request);
-  void AddSystemBinding(
-      chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest request);
+  void AddProbeReceiver(
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdProbeService> receiver);
+  void AddEventReceiver(
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdEventService> receiver);
+  void AddSystemReceiver(
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdSystemService> receiver);
 
  private:
   // Mojo binding sets that connect |this| with message pipes, allowing the
   // remote ends to call our methods.
-  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdProbeService>
-      probe_binding_set_;
-  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdEventService>
-      event_binding_set_;
-  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdSystemService>
-      system_binding_set_;
+  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdProbeService>
+      probe_receiver_set_;
+  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdEventService>
+      event_receiver_set_;
+  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdSystemService>
+      system_receiver_set_;
 
   // Unowned. The Context instance should outlive this instance.
   Context* const context_ = nullptr;

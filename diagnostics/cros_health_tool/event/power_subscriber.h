@@ -8,7 +8,8 @@
 #include <map>
 #include <string>
 
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "mojo/cros_healthd_events.mojom.h"
 
@@ -25,7 +26,8 @@ class PowerSubscriber final
     : public chromeos::cros_healthd::mojom::CrosHealthdPowerObserver {
  public:
   explicit PowerSubscriber(
-      chromeos::cros_healthd::mojom::CrosHealthdPowerObserverRequest request);
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdPowerObserver> receiver);
   PowerSubscriber(const PowerSubscriber&) = delete;
   PowerSubscriber& operator=(const PowerSubscriber&) = delete;
   ~PowerSubscriber();
@@ -57,8 +59,8 @@ class PowerSubscriber final
 
   // Allows the remote cros_healthd to call PowerSubscriber's
   // CrosHealthdPowerObserver methods.
-  const mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
-      binding_;
+  const mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+      receiver_;
 };
 
 }  // namespace diagnostics

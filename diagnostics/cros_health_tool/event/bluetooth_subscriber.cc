@@ -22,9 +22,10 @@ const char kHumanReadableOnDevicePropertyChangedEvent[] =
     "Device property changed";
 
 BluetoothSubscriber::BluetoothSubscriber(
-    chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverRequest request)
-    : binding_{this /* impl */, std::move(request)} {
-  DCHECK(binding_.is_bound());
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> receiver)
+    : receiver_{this /* impl */, std::move(receiver)} {
+  DCHECK(receiver_.is_bound());
 }
 
 BluetoothSubscriber::~BluetoothSubscriber() = default;

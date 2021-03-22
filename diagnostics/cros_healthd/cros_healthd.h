@@ -12,7 +12,8 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_object.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#include <mojo/public/cpp/bindings/binding_set.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
@@ -42,18 +43,19 @@ class CrosHealthd final
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdServiceFactory overrides:
-  void GetProbeService(
-      chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest service)
-      override;
+  void GetProbeService(mojo::PendingReceiver<
+                       chromeos::cros_healthd::mojom::CrosHealthdProbeService>
+                           service) override;
   void GetDiagnosticsService(
-      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
-          service) override;
-  void GetEventService(
-      chromeos::cros_healthd::mojom::CrosHealthdEventServiceRequest service)
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
       override;
-  void GetSystemService(
-      chromeos::cros_healthd::mojom::CrosHealthdSystemServiceRequest service)
-      override;
+  void GetEventService(mojo::PendingReceiver<
+                       chromeos::cros_healthd::mojom::CrosHealthdEventService>
+                           service) override;
+  void GetSystemService(mojo::PendingReceiver<
+                        chromeos::cros_healthd::mojom::CrosHealthdSystemService>
+                            service) override;
   void SendNetworkHealthService(
       mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
           remote) override;
@@ -100,18 +102,20 @@ class CrosHealthd final
       routine_service_;
   // Maintains the Mojo connection with cros_healthd clients.
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
-  // Binding set that connects this instance (which is an implementation of
+  // Receiver set that connects this instance (which is an implementation of
   // chromeos::cros_healthd::mojom::CrosHealthdServiceFactory) with
-  // any message pipes set up on top of received file descriptors. A new binding
-  // is added whenever the BootstrapMojoConnection D-Bus method is called.
-  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdServiceFactory,
-                   bool>
-      service_factory_binding_set_;
-  // Mojo binding set that connects |routine_service_| with message pipes,
+  // any message pipes set up on top of received file descriptors. A new
+  // receiver is added whenever the BootstrapMojoConnection D-Bus method is
+  // called.
+  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdServiceFactory,
+                    bool>
+      service_factory_receiver_set_;
+  // Mojo receiver set that connects |routine_service_| with message pipes,
   // allowing the remote ends to call our methods.
-  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
-      diagnostics_binding_set_;
-  // Whether binding of the Mojo service was attempted. This flag is needed for
+  mojo::ReceiverSet<
+      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+      diagnostics_receiver_set_;
+  // Whether receiver of the Mojo service was attempted. This flag is needed for
   // detecting repeated Mojo bootstrapping attempts.
   bool mojo_service_bind_attempted_ = false;
 

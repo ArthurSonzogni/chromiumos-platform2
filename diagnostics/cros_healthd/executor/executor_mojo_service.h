@@ -16,7 +16,8 @@
 #include <base/optional.h>
 #include <base/single_thread_task_runner.h>
 #include <base/synchronization/lock.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "mojo/cros_healthd_executor.mojom.h"
@@ -30,7 +31,8 @@ class ExecutorMojoService final
  public:
   ExecutorMojoService(
       const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
-      chromeos::cros_healthd_executor::mojom::ExecutorRequest request);
+      mojo::PendingReceiver<chromeos::cros_healthd_executor::mojom::Executor>
+          receiver);
   ExecutorMojoService(const ExecutorMojoService&) = delete;
   ExecutorMojoService& operator=(const ExecutorMojoService&) = delete;
 
@@ -83,7 +85,7 @@ class ExecutorMojoService final
 
   // Provides a Mojo endpoint that cros_healthd can call to access the
   // executor's Mojo methods.
-  mojo::Binding<chromeos::cros_healthd_executor::mojom::Executor> binding_;
+  mojo::Receiver<chromeos::cros_healthd_executor::mojom::Executor> receiver_;
 
   // Prevents multiple simultaneous writes to |processes_|.
   base::Lock lock_;

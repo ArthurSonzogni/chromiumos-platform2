@@ -15,6 +15,7 @@
 #include <base/optional.h>
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "mojo/cros_healthd.mojom.h"
 #include "mojo/cros_healthd_diagnostics.mojom.h"
@@ -180,16 +181,20 @@ class CrosHealthdMojoAdapter {
 
   // Subscribes the client to Bluetooth events.
   virtual bool AddBluetoothObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserverPtr
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
           observer) = 0;
 
   // Subscribes the client to lid events.
   virtual bool AddLidObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdLidObserverPtr observer) = 0;
+      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+          observer) = 0;
 
   // Subscribes the client to power events.
   virtual bool AddPowerObserver(
-      chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) = 0;
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+          observer) = 0;
 
   // Subscribes the client to network events.
   virtual bool AddNetworkObserver(

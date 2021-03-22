@@ -14,8 +14,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/common/system/bluetooth_client.h"
 #include "diagnostics/common/system/fake_bluetooth_client.h"
@@ -57,9 +57,9 @@ class MockCrosHealthdBluetoothObserver
     : public mojo_ipc::CrosHealthdBluetoothObserver {
  public:
   MockCrosHealthdBluetoothObserver(
-      mojo_ipc::CrosHealthdBluetoothObserverRequest request)
-      : binding_{this /* impl */, std::move(request)} {
-    DCHECK(binding_.is_bound());
+      mojo::PendingReceiver<mojo_ipc::CrosHealthdBluetoothObserver> receiver)
+      : receiver_{this /* impl */, std::move(receiver)} {
+    DCHECK(receiver_.is_bound());
   }
   MockCrosHealthdBluetoothObserver(const MockCrosHealthdBluetoothObserver&) =
       delete;
@@ -74,7 +74,7 @@ class MockCrosHealthdBluetoothObserver
   MOCK_METHOD(void, OnDevicePropertyChanged, (), (override));
 
  private:
-  mojo::Binding<mojo_ipc::CrosHealthdBluetoothObserver> binding_;
+  mojo::Receiver<mojo_ipc::CrosHealthdBluetoothObserver> receiver_;
 };
 
 }  // namespace
@@ -93,12 +93,12 @@ class BluetoothEventsImplTest : public testing::Test {
     // BluetoothClient.
     ASSERT_FALSE(fake_bluetooth_client()->HasObserver(&bluetooth_events_impl_));
 
-    mojo_ipc::CrosHealthdBluetoothObserverPtr observer_ptr;
-    mojo_ipc::CrosHealthdBluetoothObserverRequest observer_request(
-        mojo::MakeRequest(&observer_ptr));
+    mojo::PendingRemote<mojo_ipc::CrosHealthdBluetoothObserver> observer;
+    mojo::PendingReceiver<mojo_ipc::CrosHealthdBluetoothObserver>
+        observer_receiver(observer.InitWithNewPipeAndPassReceiver());
     observer_ = std::make_unique<StrictMock<MockCrosHealthdBluetoothObserver>>(
-        std::move(observer_request));
-    bluetooth_events_impl_.AddObserver(std::move(observer_ptr));
+        std::move(observer_receiver));
+    bluetooth_events_impl_.AddObserver(std::move(observer));
     // Now that an observer has been added, we should have subscribed to
     // BluetoothClient.
     ASSERT_TRUE(fake_bluetooth_client()->HasObserver(&bluetooth_events_impl_));

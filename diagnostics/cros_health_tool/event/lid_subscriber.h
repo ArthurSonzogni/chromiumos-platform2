@@ -5,7 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_EVENT_LID_SUBSCRIBER_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_EVENT_LID_SUBSCRIBER_H_
 
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "mojo/cros_healthd_events.mojom.h"
 
@@ -17,7 +18,8 @@ class LidSubscriber final
     : public chromeos::cros_healthd::mojom::CrosHealthdLidObserver {
  public:
   explicit LidSubscriber(
-      chromeos::cros_healthd::mojom::CrosHealthdLidObserverRequest request);
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdLidObserver> receiver);
   LidSubscriber(const LidSubscriber&) = delete;
   LidSubscriber& operator=(const LidSubscriber&) = delete;
   ~LidSubscriber();
@@ -29,8 +31,8 @@ class LidSubscriber final
  private:
   // Allows the remote cros_healthd to call LidSubscriber's
   // CrosHealthdLidObserver methods.
-  const mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
-      binding_;
+  const mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+      receiver_;
 };
 
 }  // namespace diagnostics

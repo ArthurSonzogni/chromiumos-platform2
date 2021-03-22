@@ -21,12 +21,13 @@ PowerEventsImpl::~PowerEventsImpl() {
 }
 
 void PowerEventsImpl::AddObserver(
-    chromeos::cros_healthd::mojom::CrosHealthdPowerObserverPtr observer) {
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+        observer) {
   if (!is_observing_powerd_) {
     context_->powerd_adapter()->AddPowerObserver(this);
     is_observing_powerd_ = true;
   }
-  observers_.AddPtr(std::move(observer));
+  observers_.Add(std::move(observer));
 }
 
 void PowerEventsImpl::OnPowerSupplyPollSignal(
@@ -57,18 +58,16 @@ void PowerEventsImpl::OnPowerSupplyPollSignal(
   }
 
   external_power_ac_event_ = event_type;
-  observers_.ForAllPtrs(
-      [event_type](
-          chromeos::cros_healthd::mojom::CrosHealthdPowerObserver* observer) {
-        switch (event_type) {
-          case PowerEventType::kAcInserted:
-            observer->OnAcInserted();
-            break;
-          case PowerEventType::kAcRemoved:
-            observer->OnAcRemoved();
-            break;
-        }
-      });
+  for (auto& observer : observers_) {
+    switch (event_type) {
+      case PowerEventType::kAcInserted:
+        observer->OnAcInserted();
+        break;
+      case PowerEventType::kAcRemoved:
+        observer->OnAcRemoved();
+        break;
+    }
+  }
 
   StopObservingPowerdIfNecessary();
 }
@@ -85,19 +84,15 @@ void PowerEventsImpl::OnDarkSuspendImminentSignal(
 
 void PowerEventsImpl::OnSuspendDoneSignal(
     const power_manager::SuspendDone& suspend_done) {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdPowerObserver* observer) {
-        observer->OnOsResume();
-      });
+  for (auto& observer : observers_)
+    observer->OnOsResume();
 
   StopObservingPowerdIfNecessary();
 }
 
 void PowerEventsImpl::OnAnySuspendImminentSignal() {
-  observers_.ForAllPtrs(
-      [](chromeos::cros_healthd::mojom::CrosHealthdPowerObserver* observer) {
-        observer->OnOsSuspend();
-      });
+  for (auto& observer : observers_)
+    observer->OnOsSuspend();
 
   StopObservingPowerdIfNecessary();
 }
