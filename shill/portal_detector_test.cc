@@ -389,7 +389,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
         HttpRequest::kResultDNSFailure);
     PortalDetector::Result https_result = PortalDetector::Result(
         PortalDetector::Phase::kContent, PortalDetector::Status::kFailure);
-    portal_detector()->CompleteTrial(r, https_result);
+    portal_detector()->CompleteAttempt(r, https_result);
     init_delay *= 2;
   }
   portal_detector()->Stop();
