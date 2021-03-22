@@ -1,10 +1,10 @@
-use calculate_available_memory_kb;
-use calculate_reserved_free_kb;
-use parse_file_to_u64;
-use parse_margins;
-use parse_meminfo;
-use parse_psi_memory;
-use MemInfo;
+use common::parse_file_to_u64;
+use memory::calculate_available_memory_kb;
+use memory::calculate_reserved_free_kb;
+use memory::parse_margins;
+use memory::parse_meminfo;
+use memory::parse_psi_memory;
+use memory::MemInfo;
 
 #[test]
 fn test_parse_file_to_u64() {
