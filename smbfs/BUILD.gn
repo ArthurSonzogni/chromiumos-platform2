@@ -120,12 +120,6 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("smbfs_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":smbfs_test_config",
-    ]
-    deps = [ ":libsmbfs" ]
     sources = [
       "fake_kerberos_artifact_client.cc",
       "fake_kerberos_artifact_client.h",
@@ -138,5 +132,11 @@ if (use.test) {
       "testrunner.cc",
       "util_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":smbfs_test_config",
+    ]
+    deps = [ ":libsmbfs" ]
   }
 }
