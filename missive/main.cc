@@ -34,8 +34,8 @@ int main(int argc, char* argv[]) {
   SetLogItems();
 
   LOG(INFO) << "Starting Missive Service.";
-  reporting::MissiveDaemon().Run();
-  LOG(INFO) << "Missive Service ended.";
+  int exit_code = reporting::MissiveDaemon().Run();
+  LOG(INFO) << "Missive Service ended with exit_code=" << exit_code;
 
-  return 0;
+  return exit_code;
 }

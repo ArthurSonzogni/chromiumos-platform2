@@ -25,30 +25,43 @@ namespace reporting {
 
 namespace {
 
-// Logs the error message and returns a D-Bus error object with the message.
-brillo::ErrorPtr LogError(const std::string& msg) {
-  LOG(ERROR) << msg;
-  return brillo::Error::Create(FROM_HERE, "missived", "INTERNAL", msg);
-}
+// In order to get things compiled while we wait for StorageModule to be
+// available.
+class FakeStorageModule : public StorageModuleInterface {
+ public:
+  static scoped_refptr<FakeStorageModule> Create() {
+    return base::WrapRefCounted(new FakeStorageModule);
+  }
+
+  void AddRecord(Priority priority,
+                 Record record,
+                 base::OnceCallback<void(Status)> callback) override {
+    std::move(callback).Run(Status::StatusOK());
+  }
+
+  void Flush(Priority priority,
+             base::OnceCallback<void(Status)> callback) override {
+    std::move(callback).Run(Status::StatusOK());
+  }
+
+  void ReportSuccess(SequencingInformation sequencing_information,
+                     bool force) override {}
+
+  void UpdateEncryptionKey(
+      SignedEncryptionInfo signed_encryption_key) override {}
+
+ private:
+  FakeStorageModule() = default;
+};
 
 }  // namespace
 
 MissiveDaemon::MissiveDaemon()
     : brillo::DBusServiceDaemon(::missive::kMissiveServiceName),
-      org::chromium::MissivedAdaptor(this) {}
+      org::chromium::MissivedAdaptor(this),
+      storage_module_(FakeStorageModule::Create()) {}
 
-int MissiveDaemon::OnInit() {
-  const int exit_code = DBusServiceDaemon::OnInit();
-  if (exit_code != EXIT_SUCCESS) {
-    LOG(ERROR) << "Shutting down due to fatal DBus initialization failure";
-    return exit_code;
-  }
-
-  LOG(INFO) << "Starting...";
-
-  // TODO(zatrudo): startup code here
-  return EXIT_SUCCESS;
-}
+MissiveDaemon::~MissiveDaemon() = default;
 
 void MissiveDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
@@ -59,34 +72,71 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync failed." /* descriptive_message */,
                             true /* failure_is_fatal */));
-  LOG(INFO) << "Initialized Missive Service DBus interface";
 }
 
 void MissiveDaemon::EnqueueRecords(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         reporting::EnqueueRecordResponse>> response,
     const reporting::EnqueueRecordRequest& in_request) {
-  // TODO(zatrudo): Consider wrapping this in a task and reply and posting to a
-  // separate task runner off of DBus.
-  brillo::ErrorPtr err = LogError("Function EnqueueRecords not implemented");
-  std::move(response)->ReplyWithError(err.get());
+  if (!in_request.has_record()) {
+    reporting::EnqueueRecordResponse response_body;
+    auto* status = response_body.mutable_status();
+    status->set_code(error::INVALID_ARGUMENT);
+    status->set_error_message("Request had no Record");
+    response->Return(response_body);
+    return;
+  }
+  if (!in_request.has_priority()) {
+    reporting::EnqueueRecordResponse response_body;
+    auto* status = response_body.mutable_status();
+    status->set_code(error::INVALID_ARGUMENT);
+    status->set_error_message("Request had no Priority");
+    response->Return(response_body);
+    return;
+  }
+
+  scheduler_.EnqueueJob(std::make_unique<EnqueueJob>(
+      storage_module_, in_request,
+      std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
+          std::move(response))));
 }
 
 void MissiveDaemon::FlushPriority(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         reporting::FlushPriorityResponse>> response,
     const reporting::FlushPriorityRequest& in_request) {
-  brillo::ErrorPtr err = LogError("Function FlushPriority not implemented");
-  std::move(response)->ReplyWithError(err.get());
+  storage_module_->Flush(
+      in_request.priority(),
+      base::BindOnce(&MissiveDaemon::HandleFlushResponse,
+                     weak_factory_.GetWeakPtr(), std::move(response)));
+}
+
+void MissiveDaemon::HandleFlushResponse(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        reporting::FlushPriorityResponse>> response,
+    Status status) const {
+  reporting::FlushPriorityResponse response_body;
+  status.SaveTo(response_body.mutable_status());
+  response->Return(response_body);
 }
 
 void MissiveDaemon::ConfirmRecordUpload(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         reporting::ConfirmRecordUploadResponse>> response,
     const reporting::ConfirmRecordUploadRequest& in_request) {
-  brillo::ErrorPtr err =
-      LogError("Function ConfirmRecordUpload not implemented");
-  std::move(response)->ReplyWithError(err.get());
+  ConfirmRecordUploadResponse response_body;
+  if (!in_request.has_sequencing_information()) {
+    auto* status = response_body.mutable_status();
+    status->set_code(error::INVALID_ARGUMENT);
+    status->set_error_message("Request had no SequencingInformation");
+    response->Return(response_body);
+    return;
+  }
+
+  storage_module_->ReportSuccess(in_request.sequencing_information(),
+                                 in_request.force_confirm());
+
+  response->Return(response_body);
 }
 
 }  // namespace reporting

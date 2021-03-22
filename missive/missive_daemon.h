@@ -13,6 +13,8 @@
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "missive/proto/interface.pb.h"
+#include "missive/scheduler/scheduler.h"
+#include "missive/storage/storage_module_interface.h"
 
 #include "dbus_adaptors/org.chromium.Missived.h"
 
@@ -25,10 +27,9 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
   MissiveDaemon();
   MissiveDaemon(const MissiveDaemon&) = delete;
   MissiveDaemon& operator=(const MissiveDaemon&) = delete;
-  virtual ~MissiveDaemon() = default;
+  virtual ~MissiveDaemon();
 
  private:
-  int OnInit() override;
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
@@ -37,10 +38,16 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           reporting::EnqueueRecordResponse>> response,
       const reporting::EnqueueRecordRequest& in_request) override;
+
   void FlushPriority(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           reporting::FlushPriorityResponse>> response,
       const reporting::FlushPriorityRequest& in_request) override;
+
+  void HandleFlushResponse(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          reporting::FlushPriorityResponse>> response,
+      Status status) const;
 
   void ConfirmRecordUpload(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -48,6 +55,9 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
       const reporting::ConfirmRecordUploadRequest& in_request) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  scoped_refptr<StorageModuleInterface> storage_module_;
+  Scheduler scheduler_;
 
   // Note: This should remain the last member so it'll be destroyed and
   // invalidate its weak pointers before any other members are destroyed.

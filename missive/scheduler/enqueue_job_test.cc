@@ -16,6 +16,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/proto/interface.pb.h"
+#include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/test_support_callbacks.h"
@@ -49,7 +51,10 @@ class MockStorageModule : public StorageModuleInterface {
               AddRecord,
               (Priority, Record, base::OnceCallback<void(Status)>),
               (override));
-
+  MOCK_METHOD(void,
+              Flush,
+              (Priority, base::OnceCallback<void(Status)>),
+              (override));
   MOCK_METHOD(void, ReportSuccess, (SequencingInformation, bool), (override));
   MOCK_METHOD(void, UpdateEncryptionKey, (SignedEncryptionInfo), (override));
 };
