@@ -61,14 +61,14 @@ pkg_config("liboobeconfig_config") {
 
 # oobe_config library.
 static_library("liboobeconfig") {
-  configs += [ ":liboobeconfig_config" ]
-  all_dependent_configs = [ ":target_defaults" ]
   sources = [
     "load_oobe_config_rollback.cc",
     "metrics.cc",
     "oobe_config.cc",
     "rollback_constants.cc",
   ]
+  configs += [ ":liboobeconfig_config" ]
+  all_dependent_configs = [ ":target_defaults" ]
   libs = [
     "policy",
     "tpmcrypto",
@@ -84,53 +84,53 @@ pkg_config("crypto") {
 }
 
 static_library("libload_oobe_config_usb") {
-  configs += [
-    ":crypto",
-    ":target_defaults",
-  ]
   sources = [
     "load_oobe_config_usb.cc",
     "usb_utils.cc",
   ]
-}
-
-static_library("libsave_oobe_config_usb") {
   configs += [
     ":crypto",
     ":target_defaults",
   ]
+}
+
+static_library("libsave_oobe_config_usb") {
   sources = [
     "save_oobe_config_usb.cc",
     "usb_utils.cc",
   ]
-}
-
-executable("finish_oobe_auto_config") {
-  configs += [ ":target_defaults" ]
-  sources = [ "save_oobe_config_usb_main.cc" ]
-  deps = [ ":libsave_oobe_config_usb" ]
-}
-
-executable("store_usb_oobe_config") {
-  configs += [ ":target_defaults" ]
-  sources = [ "store_usb_oobe_config.cc" ]
-  deps = [ ":libload_oobe_config_usb" ]
-}
-
-executable("oobe_config_save") {
-  configs += [ ":target_defaults" ]
-  sources = [ "oobe_config_save_main.cc" ]
-  deps = [ ":liboobeconfig" ]
-}
-
-executable("oobe_config_restore") {
   configs += [
     ":crypto",
     ":target_defaults",
   ]
+}
+
+executable("finish_oobe_auto_config") {
+  sources = [ "save_oobe_config_usb_main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libsave_oobe_config_usb" ]
+}
+
+executable("store_usb_oobe_config") {
+  sources = [ "store_usb_oobe_config.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libload_oobe_config_usb" ]
+}
+
+executable("oobe_config_save") {
+  sources = [ "oobe_config_save_main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":liboobeconfig" ]
+}
+
+executable("oobe_config_restore") {
   sources = [
     "oobe_config_restore_main.cc",
     "oobe_config_restore_service.cc",
+  ]
+  configs += [
+    ":crypto",
+    ":target_defaults",
   ]
   deps = [
     ":libload_oobe_config_usb",
@@ -142,17 +142,17 @@ executable("oobe_config_restore") {
 # rollback_helper library.
 # Used by rollback_prepare_save and rollback_finish_restore.
 static_library("librollback_helper") {
-  configs += [ ":target_defaults" ]
   sources = [
     "rollback_constants.cc",
     "rollback_helper.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 # Helper running as root before oobe_config_save.
 executable("rollback_prepare_save") {
-  configs += [ ":target_defaults" ]
   sources = [ "rollback_prepare_save_main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":liboobeconfig",
     ":librollback_helper",
@@ -161,8 +161,8 @@ executable("rollback_prepare_save") {
 
 # Helper running as root after oobe_config_restore.
 executable("rollback_finish_restore") {
-  configs += [ ":target_defaults" ]
   sources = [ "rollback_finish_restore_main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":liboobeconfig",
     ":librollback_helper",
@@ -181,12 +181,6 @@ if (use.test) {
   }
 
   executable("oobe_config_test") {
-    configs += [
-      "//common-mk:test",
-      ":crypto",
-      ":target_defaults",
-      ":test_config",
-    ]
     sources = [
       "load_oobe_config_rollback_test.cc",
       "load_oobe_config_usb_test.cc",
@@ -194,6 +188,12 @@ if (use.test) {
       "rollback_helper_test.cc",
       "save_oobe_config_usb_test.cc",
       "usb_utils_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":crypto",
+      ":target_defaults",
+      ":test_config",
     ]
     deps = [
       ":libload_oobe_config_usb",

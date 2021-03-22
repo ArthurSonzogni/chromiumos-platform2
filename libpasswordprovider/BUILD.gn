@@ -16,29 +16,29 @@ pkg_config("target_defaults") {
 }
 
 shared_library("libpasswordprovider") {
-  configs += [ ":target_defaults" ]
   sources = [
     "password.cc",
     "password.h",
     "password_provider.cc",
     "password_provider.h",
   ]
+  configs += [ ":target_defaults" ]
   libs = [ "keyutils" ]
 }
 
 if (use.test) {
   executable("password_provider_test") {
-    configs += [
-      # //common-mk:test should be at the top. crbug.com/887845
-      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "password.cc",
       "password_provider.cc",
       "password_provider_test.cc",
       "password_test.cc",
+    ]
+    configs += [
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
     ]
     libs = [ "keyutils" ]
     deps = [
