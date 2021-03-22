@@ -29,7 +29,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   CrosFpBiometricsManager(
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
       std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
-      std::unique_ptr<BiodMetricsInterface> biod_metrics);
+      std::unique_ptr<BiodMetricsInterface> biod_metrics,
+      std::unique_ptr<BiodStorageInterface> biod_storage);
   CrosFpBiometricsManager(const CrosFpBiometricsManager&) = delete;
   CrosFpBiometricsManager& operator=(const CrosFpBiometricsManager&) = delete;
 
@@ -118,14 +119,15 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   // Request an action from the Fingerprint MCU and set the appropriate callback
   // when the event with the result will arrive.
-  bool RequestEnrollImage(BiodStorage::RecordMetadata record);
-  bool RequestEnrollFingerUp(BiodStorage::RecordMetadata record);
+  bool RequestEnrollImage(BiodStorageInterface::RecordMetadata record);
+  bool RequestEnrollFingerUp(BiodStorageInterface::RecordMetadata record);
   bool RequestMatch(int attempt = 0);
   bool RequestMatchFingerUp();
 
   // Actions taken when the corresponding Fingerprint MKBP events happen.
-  void DoEnrollImageEvent(BiodStorage::RecordMetadata record, uint32_t event);
-  void DoEnrollFingerUpEvent(BiodStorage::RecordMetadata record,
+  void DoEnrollImageEvent(BiodStorageInterface::RecordMetadata record,
+                          uint32_t event);
+  void DoEnrollFingerUpEvent(BiodStorageInterface::RecordMetadata record,
                              uint32_t event);
   void DoMatchEvent(int attempt, uint32_t event);
   void DoMatchFingerUpEvent(uint32_t event);
@@ -137,10 +139,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   void OnTaskComplete();
 
-  bool LoadRecord(const BiodStorage::Record record);
+  bool LoadRecord(const BiodStorageInterface::Record record);
   // Clear FPMCU context and re-upload all records from storage.
   bool ReloadAllRecords(std::string user_id);
-
   // BiodMetrics must come before CrosFpDevice, since CrosFpDevice has a
   // raw pointer to BiodMetrics. We must ensure CrosFpDevice is destructed
   // first.
@@ -150,7 +151,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   SessionAction next_session_action_;
 
   // This list of records should be matching the templates loaded on the MCU.
-  std::vector<BiodStorage::RecordMetadata> records_;
+  std::vector<BiodStorageInterface::RecordMetadata> records_;
 
   // Set of templates that came with a wrong validation value in matching.
   std::unordered_set<uint32_t> suspicious_templates_;
@@ -163,7 +164,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   base::WeakPtrFactory<CrosFpBiometricsManager> weak_factory_;
 
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
-  BiodStorage biod_storage_;
+
+  std::unique_ptr<BiodStorageInterface> biod_storage_;
 
   bool use_positive_match_secret_;
 

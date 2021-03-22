@@ -156,7 +156,7 @@ BiodStorage::ReadValidationValueFromRecord(int record_format_version,
                                                 validation_val_str.end());
 }
 
-BiodStorage::ReadRecordResult BiodStorage::ReadRecords(
+BiodStorageInterface::ReadRecordResult BiodStorage::ReadRecords(
     const std::unordered_set<std::string>& user_ids) {
   ReadRecordResult ret;
   for (const auto& user_id : user_ids) {
@@ -171,9 +171,9 @@ BiodStorage::ReadRecordResult BiodStorage::ReadRecords(
   return ret;
 }
 
-BiodStorage::ReadRecordResult BiodStorage::ReadRecordsForSingleUser(
+BiodStorageInterface::ReadRecordResult BiodStorage::ReadRecordsForSingleUser(
     const std::string& user_id) {
-  BiodStorage::ReadRecordResult ret;
+  BiodStorageInterface::ReadRecordResult ret;
 
   if (!allow_access_) {
     LOG(ERROR) << "Access to the storage mounts not yet allowed.";
@@ -187,7 +187,7 @@ BiodStorage::ReadRecordResult BiodStorage::ReadRecordsForSingleUser(
   for (FilePath record_path = enum_records.Next(); !record_path.empty();
        record_path = enum_records.Next()) {
     std::string json_string;
-    BiodStorage::Record cur_record;
+    BiodStorageInterface::Record cur_record;
 
     cur_record.metadata.user_id = user_id;
 

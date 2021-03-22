@@ -17,6 +17,7 @@
 #include <brillo/flag_helper.h>
 #include <dbus/bus.h>
 
+#include "biod/biod_storage.h"
 #include "biod/biod_version.h"
 #include "biod/cros_fp_biometrics_manager.h"
 #include "biod/cros_fp_device.h"
@@ -43,7 +44,8 @@ int DoBioWash(const bool factory_init = false) {
       biod::PowerButtonFilter::Create(bus),
       biod::CrosFpDevice::Create(biod_metrics.get(),
                                  std::make_unique<ec::EcCommandFactory>()),
-      std::move(biod_metrics));
+      std::move(biod_metrics),
+      std::make_unique<biod::BiodStorage>(biod::kCrosFpBiometricsManagerName));
   if (cros_fp_bio) {
     managers.emplace_back(std::move(cros_fp_bio));
   }

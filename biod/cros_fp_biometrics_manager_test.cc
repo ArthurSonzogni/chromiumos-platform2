@@ -17,6 +17,7 @@
 #include "biod/biod_crypto_test_data.h"
 #include "biod/cros_fp_device_interface.h"
 #include "biod/mock_biod_metrics.h"
+#include "biod/mock_biod_storage.h"
 #include "biod/mock_cros_fp_biometrics_manager.h"
 #include "biod/mock_cros_fp_device.h"
 
@@ -115,7 +116,8 @@ class CrosFpBiometricsManagerPeer {
 
     cros_fp_biometrics_manager_ = std::make_unique<CrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(fake_cros_dev),
-        std::make_unique<metrics::MockBiodMetrics>());
+        std::make_unique<metrics::MockBiodMetrics>(),
+        std::make_unique<storage::MockBiodStorage>());
   }
 
   // Methods to access or modify the fake device.
@@ -140,8 +142,8 @@ class CrosFpBiometricsManagerPeer {
                 const std::string& user_id,
                 const std::string& label,
                 const std::vector<uint8_t>& validation_value) {
-    BiodStorage::RecordMetadata record = {record_format_version, record_id,
-                                          user_id, label, validation_value};
+    BiodStorageInterface::RecordMetadata record = {
+        record_format_version, record_id, user_id, label, validation_value};
     cros_fp_biometrics_manager_->records_.emplace_back(std::move(record));
     return cros_fp_biometrics_manager_->records_.size() - 1;
   }
@@ -282,10 +284,12 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
     mock_cros_dev_ = mock_cros_fp_dev.get();
     auto mock_biod_metrics = std::make_unique<metrics::MockBiodMetrics>();
     mock_metrics_ = mock_biod_metrics.get();
+    auto mock_biod_storage = std::make_unique<storage::MockBiodStorage>();
+    mock_biod_storage_ = mock_biod_storage.get();
 
     mock_ = std::make_unique<MockCrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_fp_dev),
-        std::move(mock_biod_metrics));
+        std::move(mock_biod_metrics), std::move(mock_biod_storage));
     EXPECT_TRUE(mock_);
   }
 
@@ -295,6 +299,7 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
   std::unique_ptr<MockCrosFpBiometricsManager> mock_;
   MockCrosFpDevice* mock_cros_dev_;
   metrics::MockBiodMetrics* mock_metrics_;
+  storage::MockBiodStorage* mock_biod_storage_;
 };
 
 TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_TooShort) {

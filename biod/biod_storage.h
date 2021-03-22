@@ -24,7 +24,7 @@ namespace biod {
 constexpr int kRecordFormatVersion = 2;
 constexpr int kRecordFormatVersionNoValidationValue = 1;
 
-class BiodStorage {
+class BiodStorageInterface {
  public:
   struct RecordMetadata {
     /** Record file's scheme version. */
@@ -50,6 +50,24 @@ class BiodStorage {
     std::vector<Record> invalid_records;
   };
 
+  virtual ~BiodStorageInterface() = default;
+
+  virtual void SetRootPathForTesting(const base::FilePath& root_path) = 0;
+  virtual base::FilePath GetRecordFilename(
+      const BiometricsManagerRecord& record) = 0;
+  virtual bool WriteRecord(const BiometricsManagerRecord& record,
+                           base::Value data) = 0;
+  virtual ReadRecordResult ReadRecords(
+      const std::unordered_set<std::string>& user_ids) = 0;
+  virtual ReadRecordResult ReadRecordsForSingleUser(
+      const std::string& user_id) = 0;
+  virtual bool DeleteRecord(const std::string& user_id,
+                            const std::string& record_id) = 0;
+  virtual void set_allow_access(bool allow_access) = 0;
+};
+
+class BiodStorage : public BiodStorageInterface {
+ public:
   // Constructor sets the file path to be
   // /run/daemon-store/biod/<user_id>/CrosFpBiometricsManager/<record_id>,
   // which is bound to
@@ -57,7 +75,7 @@ class BiodStorage {
   explicit BiodStorage(const std::string& biometrics_manager_name);
 
   // Set root path to a different path for testing purpose only.
-  void SetRootPathForTesting(const base::FilePath& root_path);
+  void SetRootPathForTesting(const base::FilePath& root_path) override;
 
   /**
    * Get the file name for a given record. Intended to be used for testing.
@@ -65,11 +83,13 @@ class BiodStorage {
    * @param record
    * @return Full path on success. Empty path on failure.
    */
-  base::FilePath GetRecordFilename(const BiometricsManagerRecord& record);
+  base::FilePath GetRecordFilename(
+      const BiometricsManagerRecord& record) override;
 
   // Write one record to file in per user stateful. This is called whenever
   // we enroll a new record.
-  bool WriteRecord(const BiometricsManagerRecord& record, base::Value data);
+  bool WriteRecord(const BiometricsManagerRecord& record,
+                   base::Value data) override;
 
   // Read validation value from |record_dictionary| and store in |output|.
   static std::unique_ptr<std::vector<uint8_t>> ReadValidationValueFromRecord(
@@ -79,16 +99,19 @@ class BiodStorage {
 
   // Read all records from file for all users in the set. Called whenever biod
   // starts or when a new user logs in.
-  ReadRecordResult ReadRecords(const std::unordered_set<std::string>& user_ids);
+  ReadRecordResult ReadRecords(
+      const std::unordered_set<std::string>& user_ids) override;
 
   // Read all records from disk for a single user. Uses a file enumerator to
   // enumerate through all record files. Called whenever biod starts or when
   // a new user logs in.
-  ReadRecordResult ReadRecordsForSingleUser(const std::string& user_id);
+  ReadRecordResult ReadRecordsForSingleUser(
+      const std::string& user_id) override;
 
   // Delete one record file. User will be able to do this via UI. True if
   // this record does not exist on disk.
-  bool DeleteRecord(const std::string& user_id, const std::string& record_id);
+  bool DeleteRecord(const std::string& user_id,
+                    const std::string& record_id) override;
 
   // Generate a uuid with guid.h for each record. Uuid is 128 bit number,
   // which is then turned into a string of format
@@ -99,7 +122,9 @@ class BiodStorage {
   // location can be accessed or not. Depending on the mounting mechanism and
   // namespace restrictions, the mounts might not be visible until after
   // certain points of the user flow (like successful login) are complete.
-  void set_allow_access(bool allow_access) { allow_access_ = allow_access; }
+  void set_allow_access(bool allow_access) override {
+    allow_access_ = allow_access;
+  }
 
  private:
   base::FilePath root_path_;

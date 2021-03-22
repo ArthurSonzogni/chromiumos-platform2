@@ -25,6 +25,7 @@
 
 #include "biod/biod_crypto.h"
 #include "biod/biod_metrics.h"
+#include "biod/biod_storage.h"
 #include "biod/power_button_filter.h"
 #include "biod/utils.h"
 
@@ -135,8 +136,8 @@ bool CrosFpBiometricsManager::Record::Remove() {
   std::string user_id = record.user_id;
 
   // TODO(mqg): only delete record if user_id is primary user.
-  if (!biometrics_manager_->biod_storage_.DeleteRecord(user_id,
-                                                       record.record_id))
+  if (!biometrics_manager_->biod_storage_->DeleteRecord(user_id,
+                                                        record.record_id))
     return false;
 
   // We cannot remove only one record if we want to stay in sync with the MCU,
@@ -150,7 +151,7 @@ bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
   records_.clear();
   suspicious_templates_.clear();
   cros_dev_->SetContext(user_id);
-  auto result = biod_storage_.ReadRecordsForSingleUser(user_id);
+  auto result = biod_storage_->ReadRecordsForSingleUser(user_id);
   for (const auto& record : result.valid_records) {
     LoadRecord(std::move(record));
   }
@@ -176,7 +177,7 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
   }
 
   std::vector<uint8_t> validation_val;
-  if (!RequestEnrollImage(BiodStorage::RecordMetadata{
+  if (!RequestEnrollImage(BiodStorageInterface::RecordMetadata{
           kRecordFormatVersion, BiodStorage::GenerateNewRecordId(),
           std::move(user_id), std::move(label), std::move(validation_val)}))
     return BiometricsManager::EnrollSession();
@@ -212,7 +213,7 @@ bool CrosFpBiometricsManager::DestroyAllRecords() {
   bool delete_all_records = true;
   for (auto& record : records_) {
     delete_all_records &=
-        biod_storage_.DeleteRecord(record.user_id, record.record_id);
+        biod_storage_->DeleteRecord(record.user_id, record.record_id);
   }
   RemoveRecordsFromMemory();
   return delete_all_records;
@@ -227,7 +228,7 @@ void CrosFpBiometricsManager::RemoveRecordsFromMemory() {
 bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
     const std::string& user_id) {
   cros_dev_->SetContext(user_id);
-  auto result = biod_storage_.ReadRecordsForSingleUser(user_id);
+  auto result = biod_storage_->ReadRecordsForSingleUser(user_id);
   for (const auto& record : result.valid_records) {
     LoadRecord(record);
   }
@@ -259,7 +260,7 @@ bool CrosFpBiometricsManager::SendStatsOnLogin() {
 }
 
 void CrosFpBiometricsManager::SetDiskAccesses(bool allow) {
-  biod_storage_.set_allow_access(allow);
+  biod_storage_->set_allow_access(allow);
 }
 
 bool CrosFpBiometricsManager::ResetSensor() {
@@ -322,13 +323,14 @@ void CrosFpBiometricsManager::KillMcuSession() {
 CrosFpBiometricsManager::CrosFpBiometricsManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
     std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
-    std::unique_ptr<BiodMetricsInterface> biod_metrics)
+    std::unique_ptr<BiodMetricsInterface> biod_metrics,
+    std::unique_ptr<BiodStorageInterface> biod_storage)
     : biod_metrics_(std::move(biod_metrics)),
       cros_dev_(std::move(cros_fp_device)),
       session_weak_factory_(this),
       weak_factory_(this),
       power_button_filter_(std::move(power_button_filter)),
-      biod_storage_(kCrosFpBiometricsManagerName),
+      biod_storage_(std::move(biod_storage)),
       use_positive_match_secret_(false),
       maintenance_timer_(std::make_unique<base::RepeatingTimer>()) {
   CHECK(power_button_filter_);
@@ -374,7 +376,7 @@ void CrosFpBiometricsManager::OnMkbpEvent(uint32_t event) {
 }
 
 bool CrosFpBiometricsManager::RequestEnrollImage(
-    BiodStorage::RecordMetadata record) {
+    BiodStorageInterface::RecordMetadata record) {
   next_session_action_ =
       base::Bind(&CrosFpBiometricsManager::DoEnrollImageEvent,
                  base::Unretained(this), std::move(record));
@@ -387,7 +389,7 @@ bool CrosFpBiometricsManager::RequestEnrollImage(
 }
 
 bool CrosFpBiometricsManager::RequestEnrollFingerUp(
-    BiodStorage::RecordMetadata record) {
+    BiodStorageInterface::RecordMetadata record) {
   next_session_action_ =
       base::Bind(&CrosFpBiometricsManager::DoEnrollFingerUpEvent,
                  base::Unretained(this), std::move(record));
@@ -422,7 +424,7 @@ bool CrosFpBiometricsManager::RequestMatchFingerUp() {
 }
 
 void CrosFpBiometricsManager::DoEnrollImageEvent(
-    BiodStorage::RecordMetadata record, uint32_t event) {
+    BiodStorageInterface::RecordMetadata record, uint32_t event) {
   if (!(event & EC_MKBP_FP_ENROLL)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
     // Continue waiting for the proper event, do not abort session.
@@ -511,7 +513,7 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
 }
 
 void CrosFpBiometricsManager::DoEnrollFingerUpEvent(
-    BiodStorage::RecordMetadata record, uint32_t event) {
+    BiodStorageInterface::RecordMetadata record, uint32_t event) {
   if (!(event & EC_MKBP_FP_FINGER_UP)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
     // Continue waiting for the proper event, do not abort session.
@@ -714,7 +716,8 @@ void CrosFpBiometricsManager::OnTaskComplete() {
   next_session_action_ = SessionAction();
 }
 
-bool CrosFpBiometricsManager::LoadRecord(const BiodStorage::Record record) {
+bool CrosFpBiometricsManager::LoadRecord(
+    const BiodStorageInterface::Record record) {
   std::string tmpl_data_str;
   base::Base64Decode(record.data, &tmpl_data_str);
 
@@ -733,8 +736,8 @@ bool CrosFpBiometricsManager::LoadRecord(const BiodStorage::Record record) {
     LOG(ERROR) << "Version mismatch between template ("
                << metadata->struct_version << ") and hardware ("
                << cros_dev_->TemplateVersion() << ")";
-    biod_storage_.DeleteRecord(record.metadata.user_id,
-                               record.metadata.record_id);
+    biod_storage_->DeleteRecord(record.metadata.user_id,
+                                record.metadata.record_id);
     return false;
   }
   if (!cros_dev_->UploadTemplate(tmpl)) {
@@ -754,7 +757,8 @@ bool CrosFpBiometricsManager::WriteRecord(const BiometricsManagerRecord& record,
   std::string tmpl_base64;
   base::Base64Encode(tmpl_sp, &tmpl_base64);
 
-  return biod_storage_.WriteRecord(record, base::Value(std::move(tmpl_base64)));
+  return biod_storage_->WriteRecord(record,
+                                    base::Value(std::move(tmpl_base64)));
 }
 
 void CrosFpBiometricsManager::OnMaintenanceTimerFired() {
