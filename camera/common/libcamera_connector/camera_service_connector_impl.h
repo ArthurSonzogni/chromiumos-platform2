@@ -18,6 +18,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "common/libcamera_connector/camera_client.h"
 #include "cros-camera/camera_service_connector.h"
