@@ -11,6 +11,9 @@
 
 namespace diagnostics {
 
+constexpr auto kStatefulPartitionPath = "mnt/stateful_partition";
+constexpr auto kMtabPath = "etc/mtab";
+
 // Returns stateful partition data or the error
 // that occurred retrieving the information.
 chromeos::cros_healthd::mojom::StatefulPartitionResultPtr

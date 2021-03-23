@@ -470,9 +470,12 @@ void DisplayStatefulPartitionInfo(
 
   const auto& stateful_partition_info =
       stateful_partition_result->get_partition_info();
-  std::cout << "available_space,total_space" << std::endl;
+  std::cout << "available_space,total_space,filesystem,mount_source"
+            << std::endl;
   std::cout << stateful_partition_info->available_space << ","
-            << stateful_partition_info->total_space << std::endl;
+            << stateful_partition_info->total_space << ","
+            << stateful_partition_info->filesystem << ","
+            << stateful_partition_info->mount_source << std::endl;
 }
 
 void DisplaySystemInfo(

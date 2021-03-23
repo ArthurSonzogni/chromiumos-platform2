@@ -978,13 +978,16 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             base::Bind([]() {
               constexpr uint64_t kAvailableBytes = 220403699712ull;
+              constexpr auto kFakeFilesystem = "ext4";
+              constexpr auto kFakeMountSource = "/dev/mmcblk0p1";
               auto probe_response =
                   chromeos::cros_healthd::mojom::TelemetryInfo::New();
               probe_response
                   ->stateful_partition_result = chromeos::cros_healthd::mojom::
                   StatefulPartitionResult::NewPartitionInfo(
                       chromeos::cros_healthd::mojom::StatefulPartitionInfo::New(
-                          kAvailableBytes, 0));
+                          kAvailableBytes, 0, kFakeFilesystem,
+                          kFakeMountSource));
               return probe_response;
             }),
             grpc_api::GetStatefulPartitionAvailableCapacityResponse::STATUS_OK,
