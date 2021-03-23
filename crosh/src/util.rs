@@ -9,17 +9,15 @@ use std::error;
 use std::fmt::{self, Display};
 use std::fs::read_to_string;
 use std::io::Read;
-use std::mem;
 use std::process::{Command, Stdio};
-use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use dbus::blocking::Connection;
-use libc::{c_int, sigaction, SA_RESTART, SIG_DFL};
+use libc::c_int;
 use libchromeos::chromeos;
 use regex::Regex;
-use sys_util::error;
+use sys_util::{clear_signal_handler, error, register_signal_handler};
 
 // 25 seconds is the default timeout for dbus-send.
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
@@ -124,31 +122,20 @@ pub fn usb_commands_included() -> bool {
     INCLUDE_USB.load(Ordering::Acquire)
 }
 
-pub fn set_signal_handlers(signums: &[c_int], handler: unsafe extern "C" fn()) {
-    for &signum in signums {
-        unsafe {
-            let mut sigact: sigaction = mem::zeroed();
-            sigact.sa_flags = SA_RESTART;
-            sigact.sa_sigaction = handler as *const () as usize;
-
-            let ret = sigaction(signum, &sigact, null_mut());
-            if ret < 0 {
-                error!("sigaction failed for {}", signum);
-            }
+/// Safety:
+/// handler needs to be async safe.
+pub unsafe fn set_signal_handlers(signums: &[c_int], handler: extern "C" fn(c_int)) {
+    for signum in signums {
+        if register_signal_handler(*signum, handler).is_err() {
+            error!("sigaction failed for {}", signum);
         }
     }
 }
 
 pub fn clear_signal_handlers(signums: &[c_int]) {
-    for &signum in signums {
-        unsafe {
-            let mut sigact: sigaction = mem::zeroed();
-            sigact.sa_sigaction = SIG_DFL;
-
-            let ret = sigaction(signum, &sigact, null_mut());
-            if ret < 0 {
-                error!("sigaction failed for {}", signum);
-            }
+    for signum in signums {
+        if clear_signal_handler(*signum).is_err() {
+            error!("sigaction failed for {}", signum);
         }
     }
 }

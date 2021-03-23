@@ -15,7 +15,7 @@ use std::time::Duration;
 use dbus::arg::{self, OwnedFd, Variant};
 use dbus::blocking::Connection;
 use getopts::{self, Options};
-use libc::SIGINT;
+use libc::{c_int, SIGINT};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use sys_util::{error, pipe};
@@ -94,7 +94,7 @@ static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static DONE_FLAG: AtomicBool = AtomicBool::new(false);
 
 // Handle Ctrl-c/SIGINT by sending a stop over D-Bus.
-unsafe extern "C" fn sigint_handler() {
+extern "C" fn sigint_handler(_: c_int) {
     STOP_FLAG.store(true, Ordering::Release);
 }
 
@@ -177,7 +177,8 @@ fn execute_packet_capture_helper(
         DEFAULT_DBUS_TIMEOUT,
     );
 
-    set_signal_handlers(&[SIGINT], sigint_handler);
+    // Safe because sigint_handler is async signal safe.
+    unsafe { set_signal_handlers(&[SIGINT], sigint_handler) };
     // Pass a pipe through D-Bus to collect the response.
     let (mut read_pipe, write_pipe) = pipe(true).unwrap();
     let handle = conn_path

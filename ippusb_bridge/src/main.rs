@@ -12,6 +12,7 @@ mod util;
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::net::TcpListener;
+use std::os::raw::c_int;
 use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
@@ -67,7 +68,7 @@ static SHUTDOWN: AtomicBool = AtomicBool::new(false);
 // polling threads.
 static SHUTDOWN_FD: AtomicI32 = AtomicI32::new(-1);
 
-extern "C" fn sigint_handler() {
+extern "C" fn sigint_handler(_: c_int) {
     // Check if we've already received one SIGINT. If we have, the program may be misbehaving and
     // not terminating, so to be safe we'll forcefully exit.
     if SHUTDOWN.load(Ordering::Relaxed) {

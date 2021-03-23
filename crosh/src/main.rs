@@ -9,7 +9,9 @@ use std::sync::atomic::{AtomicI32, Ordering};
 
 use crosh::dispatcher::{CompletionResult, Dispatcher};
 use crosh::{setup_dispatcher, util};
-use libc::{c_int, fork, kill, pid_t, waitpid, SIGHUP, SIGINT, SIGKILL, WIFSTOPPED};
+use libc::{
+    c_int, c_void, fork, kill, pid_t, waitpid, SIGHUP, SIGINT, SIGKILL, STDERR_FILENO, WIFSTOPPED,
+};
 use libchromeos::chromeos::is_dev_mode;
 use rustyline::completion::Completer;
 use rustyline::config::Configurer;
@@ -18,7 +20,7 @@ use rustyline::highlight::Highlighter;
 use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{CompletionType, Config, Context, Editor, Helper};
-use sys_util::{error, syslog};
+use sys_util::{block_signal, error, syslog, unblock_signal};
 
 const HISTORY_FILENAME: &str = ".crosh_history";
 
@@ -52,11 +54,6 @@ If you want to customize the look/behavior, you can use the options page.
 Load it by using the Ctrl-Shift-P keyboard shortcut.
 "#
     );
-}
-
-fn new_prompt() {
-    print!("\x1b[1;33mcrosh>\x1b[0m ");
-    let _ = stdout().flush();
 }
 
 static COMMAND_RUNNING_PID: AtomicI32 = AtomicI32::new(-1);
@@ -189,32 +186,35 @@ fn dispatch_cmd(dispatcher: &Dispatcher, args: Vec<String>) {
 }
 
 // Handle Ctrl-c/SIGINT by sending a SIGINT to any running child process.
-unsafe extern "C" fn sigint_handler() {
+extern "C" fn sigint_handler(_: c_int) {
     let mut command_pid: i32 = COMMAND_RUNNING_PID.load(Ordering::Acquire);
     if command_pid >= 0 {
         let _ = stdout().flush();
-        if kill(command_pid, SIGINT) != 0 {
-            error!("kill failed.");
+        // Safe because command_pid belongs to a child process.
+        if unsafe { kill(command_pid, SIGINT) } != 0 {
+            let bytes = "kill failed.".as_bytes();
+            // Safe because the length is checked and it is ok if it fails.
+            unsafe { libc::write(STDERR_FILENO, bytes.as_ptr() as *const c_void, bytes.len()) };
         } else {
             command_pid = -1;
         }
-    } else {
-        println!();
-        new_prompt();
     }
     COMMAND_RUNNING_PID.store(command_pid, Ordering::Release);
 }
 
-// Ignore SIGHUP.
-extern "C" fn sighup_handler() {}
-
 fn register_signal_handlers() {
-    util::set_signal_handlers(&[SIGINT], sigint_handler);
-    util::set_signal_handlers(&[SIGHUP], sighup_handler);
+    // Safe because sigint_handler is async-signal-safe.
+    unsafe { util::set_signal_handlers(&[SIGINT], sigint_handler) };
+    if let Err(err) = block_signal(SIGHUP) {
+        error!("Failed to block SIGHUP: {}", err);
+    }
 }
 
 fn clear_signal_handlers() {
-    util::clear_signal_handlers(&[SIGINT, SIGHUP]);
+    util::clear_signal_handlers(&[SIGINT]);
+    if let Err(err) = unblock_signal(SIGHUP) {
+        error!("Failed to unblock SIGHUP: {}", err);
+    }
 }
 
 // Loop for getting each command from the user and dispatching it to the handler.
