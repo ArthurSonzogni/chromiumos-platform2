@@ -79,11 +79,14 @@ class SaneClient {
   virtual base::Optional<std::vector<ScannerInfo>> ListDevices(
       brillo::ErrorPtr* error) = 0;
   std::unique_ptr<SaneDevice> ConnectToDevice(brillo::ErrorPtr* error,
+                                              SANE_Status* sane_status,
                                               const std::string& device_name);
 
  protected:
   virtual std::unique_ptr<SaneDevice> ConnectToDeviceInternal(
-      brillo::ErrorPtr* error, const std::string& device_name) = 0;
+      brillo::ErrorPtr* error,
+      SANE_Status* sane_status,
+      const std::string& device_name) = 0;
 };
 
 }  // namespace lorgnette

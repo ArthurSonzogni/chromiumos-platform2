@@ -38,7 +38,9 @@ class SaneClientImpl : public SaneClient {
 
  protected:
   std::unique_ptr<SaneDevice> ConnectToDeviceInternal(
-      brillo::ErrorPtr* error, const std::string& device_name) override;
+      brillo::ErrorPtr* error,
+      SANE_Status* sane_status,
+      const std::string& device_name) override;
 
  private:
   SaneClientImpl();

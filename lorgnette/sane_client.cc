@@ -12,7 +12,9 @@
 namespace lorgnette {
 
 std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
-    brillo::ErrorPtr* error, const std::string& device_name) {
+    brillo::ErrorPtr* error,
+    SANE_Status* sane_status,
+    const std::string& device_name) {
   std::string real_device = device_name;
   if (device_name.substr(0, 7) == "ippusb:") {
     LOG(INFO) << "Finding real backend for device: " << device_name;
@@ -30,7 +32,7 @@ std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
     LOG(INFO) << "Updated backend for device: " << real_device;
   }
 
-  return ConnectToDeviceInternal(error, real_device);
+  return ConnectToDeviceInternal(error, sane_status, real_device);
 }
 
 }  // namespace lorgnette

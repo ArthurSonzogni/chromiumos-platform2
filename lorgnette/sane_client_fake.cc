@@ -17,7 +17,9 @@ static const char* kDbusDomain = brillo::errors::dbus::kDomain;
 namespace lorgnette {
 
 std::unique_ptr<SaneDevice> SaneClientFake::ConnectToDeviceInternal(
-    brillo::ErrorPtr* error, const std::string& device_name) {
+    brillo::ErrorPtr* error,
+    SANE_Status* sane_status,
+    const std::string& device_name) {
   if (devices_.count(device_name) > 0) {
     auto ptr = std::move(devices_[device_name]);
     devices_.erase(device_name);

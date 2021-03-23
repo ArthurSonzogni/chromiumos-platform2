@@ -292,6 +292,24 @@ std::string GenerateUUID() {
   return uuid;
 }
 
+// Converts the |status| to a ScanFailureMode.
+ScanFailureMode GetScanFailureMode(const SANE_Status& status) {
+  switch (status) {
+    case SANE_STATUS_DEVICE_BUSY:
+      return SCAN_FAILURE_MODE_DEVICE_BUSY;
+    case SANE_STATUS_JAMMED:
+      return SCAN_FAILURE_MODE_ADF_JAMMED;
+    case SANE_STATUS_NO_DOCS:
+      return SCAN_FAILURE_MODE_ADF_EMPTY;
+    case SANE_STATUS_COVER_OPEN:
+      return SCAN_FAILURE_MODE_FLATBED_OPEN;
+    case SANE_STATUS_IO_ERROR:
+      return SCAN_FAILURE_MODE_IO_ERROR;
+    default:
+      return SCAN_FAILURE_MODE_UNKNOWN;
+  }
+}
+
 }  // namespace
 
 namespace impl {
@@ -376,7 +394,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   LOG(INFO) << "Found " << ippusb_devices.size() << " possible IPP-USB devices";
   for (const ScannerInfo& scanner : ippusb_devices) {
     std::unique_ptr<SaneDevice> device =
-        sane_client_->ConnectToDevice(nullptr, scanner.name());
+        sane_client_->ConnectToDevice(nullptr, nullptr, scanner.name());
     activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
 
     if (!device) {
@@ -438,9 +456,8 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
       epson_probe::ProbeForScanners(firewall_manager_.get());
   activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
   for (const ScannerInfo& scanner : probed_scanners) {
-    brillo::ErrorPtr error;
     std::unique_ptr<SaneDevice> device =
-        sane_client_->ConnectToDevice(&error, scanner.name());
+        sane_client_->ConnectToDevice(nullptr, nullptr, scanner.name());
     activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
     if (device) {
       scanners.push_back(scanner);
@@ -483,7 +500,7 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
   base::Optional<PortToken> token =
       RequestPortAccessIfNeeded(device_name, firewall_manager_.get());
   std::unique_ptr<SaneDevice> device =
-      sane_client_->ConnectToDevice(error, device_name);
+      sane_client_->ConnectToDevice(error, nullptr, device_name);
   if (!device)
     return false;
 
@@ -537,6 +554,7 @@ std::vector<uint8_t> Manager::StartScan(
   LOG(INFO) << "Starting StartScan";
   StartScanResponse response;
   response.set_state(SCAN_STATE_FAILED);
+  response.set_scan_failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
 
   StartScanRequest request;
   if (!request.ParseFromArray(start_scan_request.data(),
@@ -546,9 +564,11 @@ std::vector<uint8_t> Manager::StartScan(
   }
 
   brillo::ErrorPtr error;
+  ScanFailureMode failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
   std::unique_ptr<SaneDevice> device;
-  if (!StartScanInternal(&error, request, &device)) {
+  if (!StartScanInternal(&error, &failure_mode, request, &device)) {
     response.set_failure_reason(SerializeError(error));
+    response.set_scan_failure_mode(failure_mode);
     return impl::SerializeProto(response);
   }
 
@@ -584,6 +604,7 @@ std::vector<uint8_t> Manager::StartScan(
 
   response.set_scan_uuid(uuid);
   response.set_state(SCAN_STATE_IN_PROGRESS);
+  response.set_scan_failure_mode(SCAN_FAILURE_MODE_NO_FAILURE);
   return impl::SerializeProto(response);
 }
 
@@ -592,11 +613,12 @@ void Manager::GetNextImage(
     const std::vector<uint8_t>& get_next_image_request,
     const base::ScopedFD& out_fd) {
   GetNextImageResponse response;
+  response.set_success(false);
+  response.set_scan_failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
 
   GetNextImageRequest request;
   if (!request.ParseFromArray(get_next_image_request.data(),
                               get_next_image_request.size())) {
-    response.set_success(false);
     response.set_failure_reason("Failed to parse GetNextImageRequest");
     method_response->Return(impl::SerializeProto(response));
     return;
@@ -607,7 +629,6 @@ void Manager::GetNextImage(
   {
     base::AutoLock auto_lock(active_scans_lock_);
     if (!base::Contains(active_scans_, uuid)) {
-      response.set_success(false);
       response.set_failure_reason("No scan job with UUID " + uuid + " found");
       method_response->Return(impl::SerializeProto(response));
       return;
@@ -615,7 +636,6 @@ void Manager::GetNextImage(
     scan_state = &active_scans_[uuid];
 
     if (scan_state->in_use) {
-      response.set_success(false);
       response.set_failure_reason("Scan job with UUID " + uuid +
                                   " is currently busy");
       method_response->Return(impl::SerializeProto(response));
@@ -645,7 +665,6 @@ void Manager::GetNextImage(
   brillo::ErrorPtr error;
   base::ScopedFILE out_file = SetupOutputFile(&error, out_fd);
   if (!out_file) {
-    response.set_success(false);
     response.set_failure_reason("Failed to setup output file: " +
                                 SerializeError(error));
     method_response->Return(impl::SerializeProto(response));
@@ -653,6 +672,7 @@ void Manager::GetNextImage(
   }
 
   response.set_success(true);
+  response.set_scan_failure_mode(SCAN_FAILURE_MODE_NO_FAILURE);
   method_response->Return(impl::SerializeProto(response));
 
   GetNextImageInternal(uuid, scan_state, std::move(out_file));
@@ -749,6 +769,7 @@ void Manager::RemoveDuplicateScanners(
 }
 
 bool Manager::StartScanInternal(brillo::ErrorPtr* error,
+                                ScanFailureMode* failure_mode,
                                 const StartScanRequest& request,
                                 std::unique_ptr<SaneDevice>* device_out) {
   LOG(INFO) << "Starting StartScanInternal for device: "
@@ -773,9 +794,16 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
 
   base::Optional<PortToken> token =
       RequestPortAccessIfNeeded(request.device_name(), firewall_manager_.get());
+
+  // If ConnectToDevice() fails without updating |status|, |status| will be
+  // converted to an unknown failure mode.
+  SANE_Status status = SANE_STATUS_GOOD;
   std::unique_ptr<SaneDevice> device =
-      sane_client_->ConnectToDevice(error, request.device_name());
+      sane_client_->ConnectToDevice(error, &status, request.device_name());
   if (!device) {
+    if (failure_mode)
+      *failure_mode = GetScanFailureMode(status);
+
     return false;
   }
 
@@ -823,11 +851,14 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     }
   }
 
-  SANE_Status status = device->StartScan(error);
+  status = device->StartScan(error);
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                kManagerServiceError, "Failed to start scan: %s",
                                sane_strstatus(status));
+    if (failure_mode)
+      *failure_mode = GetScanFailureMode(status);
+
     ReportScanFailed(request.device_name());
     return false;
   }
@@ -840,7 +871,9 @@ void Manager::GetNextImageInternal(const std::string& uuid,
                                    ScanJobState* scan_state,
                                    base::ScopedFILE out_file) {
   brillo::ErrorPtr error;
-  ScanState result = RunScanLoop(&error, scan_state, std::move(out_file), uuid);
+  ScanFailureMode failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
+  ScanState result =
+      RunScanLoop(&error, &failure_mode, scan_state, std::move(out_file), uuid);
   switch (result) {
     case SCAN_STATE_PAGE_COMPLETED:
       // Do nothing.
@@ -857,7 +890,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
       FALLTHROUGH;
     case SCAN_STATE_FAILED:
       ReportScanFailed(scan_state->device_name);
-      SendFailureSignal(uuid, SerializeError(error));
+      SendFailureSignal(uuid, SerializeError(error), failure_mode);
       {
         base::AutoLock auto_lock(active_scans_lock_);
         active_scans_.erase(uuid);
@@ -918,7 +951,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
                                kManagerServiceError, "Failed to start scan: %s",
                                sane_strstatus(status));
     ReportScanFailed(scan_state->device_name);
-    SendFailureSignal(uuid, SerializeError(error));
+    SendFailureSignal(uuid, SerializeError(error), GetScanFailureMode(status));
     {
       base::AutoLock auto_lock(active_scans_lock_);
       active_scans_.erase(uuid);
@@ -932,6 +965,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
 }
 
 ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
+                               ScanFailureMode* failure_mode,
                                ScanJobState* scan_state,
                                base::ScopedFILE out_file,
                                const std::string& scan_uuid) {
@@ -1013,6 +1047,9 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
           "Reading scan data failed: %s", sane_strstatus(result));
+      if (failure_mode)
+        *failure_mode = GetScanFailureMode(result);
+
       return SCAN_STATE_FAILED;
     }
 
@@ -1088,11 +1125,11 @@ void Manager::ReportScanFailed(const std::string& device_name) {
                                   DocumentScanSaneBackend::kMaxValue);
 }
 
-void Manager::SendStatusSignal(std::string uuid,
-                               ScanState state,
-                               int page,
-                               int progress,
-                               bool more_pages) {
+void Manager::SendStatusSignal(const std::string& uuid,
+                               const ScanState state,
+                               const int page,
+                               const int progress,
+                               const bool more_pages) {
   ScanStatusChangedSignal signal;
   signal.set_scan_uuid(uuid);
   signal.set_state(state);
@@ -1102,18 +1139,21 @@ void Manager::SendStatusSignal(std::string uuid,
   status_signal_sender_.Run(signal);
 }
 
-void Manager::SendCancelledSignal(std::string uuid) {
+void Manager::SendCancelledSignal(const std::string& uuid) {
   ScanStatusChangedSignal signal;
   signal.set_scan_uuid(uuid);
   signal.set_state(SCAN_STATE_CANCELLED);
   status_signal_sender_.Run(signal);
 }
 
-void Manager::SendFailureSignal(std::string uuid, std::string failure_reason) {
+void Manager::SendFailureSignal(const std::string& uuid,
+                                const std::string& failure_reason,
+                                const ScanFailureMode failure_mode) {
   ScanStatusChangedSignal signal;
   signal.set_scan_uuid(uuid);
   signal.set_state(SCAN_STATE_FAILED);
   signal.set_failure_reason(failure_reason);
+  signal.set_scan_failure_mode(failure_mode);
   status_signal_sender_.Run(signal);
 }
 

@@ -24,7 +24,7 @@ class SaneDeviceImplTest : public testing::Test {
  protected:
   void SetUp() override {
     client_ = SaneClientImpl::Create();
-    device_ = client_->ConnectToDevice(nullptr, "test");
+    device_ = client_->ConnectToDevice(nullptr, nullptr, "test");
     EXPECT_TRUE(device_);
   }
 

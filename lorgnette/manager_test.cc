@@ -140,9 +140,11 @@ class ManagerTest : public testing::Test {
         << path_a << " and " << path_b << " are not the same image";
   }
 
-  void SetUpTestDevice(const std::string& name,
-                       const std::vector<base::FilePath>& image_paths,
-                       const ScanParameters& parameters) {
+  void SetUpTestDevice(
+      const std::string& name,
+      const std::vector<base::FilePath>& image_paths,
+      const ScanParameters& parameters,
+      const SANE_Status& read_scan_data_result = SANE_STATUS_GOOD) {
     std::vector<std::vector<uint8_t>> pages;
     for (const base::FilePath& path : image_paths) {
       std::string contents;
@@ -154,6 +156,7 @@ class ManagerTest : public testing::Test {
     std::unique_ptr<SaneDeviceFake> device = std::make_unique<SaneDeviceFake>();
     device->SetScanData(pages);
     device->SetScanParameters(parameters);
+    device->SetReadScanDataResult(read_scan_data_result);
     sane_client_->SetDeviceForName(name, std::move(device));
   }
 
@@ -440,6 +443,7 @@ TEST_F(ManagerTest, StartScanFailNoDevice) {
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
   EXPECT_EQ(signals_.size(), 0);
 }
 
@@ -459,6 +463,87 @@ TEST_F(ManagerTest, StartScanFailToStart) {
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_IO_ERROR);
+  EXPECT_EQ(signals_.size(), 0);
+}
+
+TEST_F(ManagerTest, StartScanDeviceBusy) {
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(base::FilePath("./test_images/color.pnm"),
+                                     &contents));
+  std::vector<uint8_t> image_data(contents.begin(), contents.end());
+  std::unique_ptr<SaneDeviceFake> device = std::make_unique<SaneDeviceFake>();
+  device->SetScanData({image_data});
+  device->SetStartScanResult(SANE_STATUS_DEVICE_BUSY);
+  sane_client_->SetDeviceForName("TestDevice", std::move(device));
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
+  EXPECT_NE(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_DEVICE_BUSY);
+  EXPECT_EQ(signals_.size(), 0);
+}
+
+TEST_F(ManagerTest, StartScanAdfJammed) {
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(base::FilePath("./test_images/color.pnm"),
+                                     &contents));
+  std::vector<uint8_t> image_data(contents.begin(), contents.end());
+  std::unique_ptr<SaneDeviceFake> device = std::make_unique<SaneDeviceFake>();
+  device->SetScanData({image_data});
+  device->SetStartScanResult(SANE_STATUS_JAMMED);
+  sane_client_->SetDeviceForName("TestDevice", std::move(device));
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
+  EXPECT_NE(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_ADF_JAMMED);
+  EXPECT_EQ(signals_.size(), 0);
+}
+
+TEST_F(ManagerTest, StartScanAdfEmpty) {
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(base::FilePath("./test_images/color.pnm"),
+                                     &contents));
+  std::vector<uint8_t> image_data(contents.begin(), contents.end());
+  std::unique_ptr<SaneDeviceFake> device = std::make_unique<SaneDeviceFake>();
+  device->SetScanData({image_data});
+  device->SetStartScanResult(SANE_STATUS_NO_DOCS);
+  sane_client_->SetDeviceForName("TestDevice", std::move(device));
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
+  EXPECT_NE(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_ADF_EMPTY);
+  EXPECT_EQ(signals_.size(), 0);
+}
+
+TEST_F(ManagerTest, StartScanFlatbedOpen) {
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(base::FilePath("./test_images/color.pnm"),
+                                     &contents));
+  std::vector<uint8_t> image_data(contents.begin(), contents.end());
+  std::unique_ptr<SaneDeviceFake> device = std::make_unique<SaneDeviceFake>();
+  device->SetScanData({image_data});
+  device->SetStartScanResult(SANE_STATUS_COVER_OPEN);
+  sane_client_->SetDeviceForName("TestDevice", std::move(device));
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
+  EXPECT_NE(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_FLATBED_OPEN);
   EXPECT_EQ(signals_.size(), 0);
 }
 
@@ -487,6 +572,119 @@ TEST_F(ManagerTest, StartScanFailToRead) {
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_NE(signals_[0].failure_reason(), "");
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
+}
+
+TEST_F(ManagerTest, GetNextImageDeviceBusy) {
+  ScanParameters parameters;
+  parameters.format = kGrayscale;
+  parameters.bytes_per_line = 11;
+  parameters.pixels_per_line = 85;
+  parameters.lines = 29;
+  parameters.depth = 1;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/bw.pnm")},
+                  parameters, SANE_STATUS_DEVICE_BUSY);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
+  EXPECT_NE(response.scan_uuid(), "");
+
+  GetNextImageResponse get_next_image_response =
+      GetNextImage(response.scan_uuid(), scan_fd_);
+  EXPECT_TRUE(get_next_image_response.success());
+
+  EXPECT_EQ(signals_.size(), 1);
+  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
+  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
+  EXPECT_NE(signals_[0].failure_reason(), "");
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_DEVICE_BUSY);
+}
+
+TEST_F(ManagerTest, GetNextImageAdfJammed) {
+  ScanParameters parameters;
+  parameters.format = kGrayscale;
+  parameters.bytes_per_line = 11;
+  parameters.pixels_per_line = 85;
+  parameters.lines = 29;
+  parameters.depth = 1;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/bw.pnm")},
+                  parameters, SANE_STATUS_JAMMED);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
+  EXPECT_NE(response.scan_uuid(), "");
+
+  GetNextImageResponse get_next_image_response =
+      GetNextImage(response.scan_uuid(), scan_fd_);
+  EXPECT_TRUE(get_next_image_response.success());
+
+  EXPECT_EQ(signals_.size(), 1);
+  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
+  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
+  EXPECT_NE(signals_[0].failure_reason(), "");
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_ADF_JAMMED);
+}
+
+TEST_F(ManagerTest, GetNextImageFlatbedOpen) {
+  ScanParameters parameters;
+  parameters.format = kGrayscale;
+  parameters.bytes_per_line = 11;
+  parameters.pixels_per_line = 85;
+  parameters.lines = 29;
+  parameters.depth = 1;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/bw.pnm")},
+                  parameters, SANE_STATUS_COVER_OPEN);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
+  EXPECT_NE(response.scan_uuid(), "");
+
+  GetNextImageResponse get_next_image_response =
+      GetNextImage(response.scan_uuid(), scan_fd_);
+  EXPECT_TRUE(get_next_image_response.success());
+
+  EXPECT_EQ(signals_.size(), 1);
+  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
+  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
+  EXPECT_NE(signals_[0].failure_reason(), "");
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_FLATBED_OPEN);
+}
+
+TEST_F(ManagerTest, GetNextImageIoError) {
+  ScanParameters parameters;
+  parameters.format = kGrayscale;
+  parameters.bytes_per_line = 11;
+  parameters.pixels_per_line = 85;
+  parameters.lines = 29;
+  parameters.depth = 1;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/bw.pnm")},
+                  parameters, SANE_STATUS_IO_ERROR);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+
+  EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
+  EXPECT_NE(response.scan_uuid(), "");
+
+  GetNextImageResponse get_next_image_response =
+      GetNextImage(response.scan_uuid(), scan_fd_);
+  EXPECT_TRUE(get_next_image_response.success());
+
+  EXPECT_EQ(signals_.size(), 1);
+  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
+  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
+  EXPECT_NE(signals_[0].failure_reason(), "");
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_IO_ERROR);
 }
 
 TEST_F(ManagerTest, GetNextImageBadFd) {
@@ -503,6 +701,8 @@ TEST_F(ManagerTest, GetNextImageBadFd) {
       GetNextImage(response.scan_uuid(), base::ScopedFD());
   EXPECT_FALSE(get_next_image_response.success());
   EXPECT_NE(get_next_image_response.failure_reason(), "");
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_UNKNOWN);
 
   // Scan should not have failed.
   EXPECT_EQ(signals_.size(), 0);
@@ -551,17 +751,21 @@ TEST_F(ManagerTest, GetNextImageNegativeWidth) {
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_NO_FAILURE);
   EXPECT_NE(response.scan_uuid(), "");
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
   EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_NO_FAILURE);
 
   EXPECT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_THAT(signals_[0].failure_reason(), ContainsRegex("invalid width"));
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
 }
 
 TEST_F(ManagerTest, GetNextImageExcessWidth) {
@@ -580,17 +784,21 @@ TEST_F(ManagerTest, GetNextImageExcessWidth) {
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_NO_FAILURE);
   EXPECT_NE(response.scan_uuid(), "");
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
   EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_NO_FAILURE);
 
   EXPECT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_THAT(signals_[0].failure_reason(), ContainsRegex("invalid width"));
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
 }
 
 TEST_F(ManagerTest, GetNextImageInvalidHeight) {
@@ -609,17 +817,21 @@ TEST_F(ManagerTest, GetNextImageInvalidHeight) {
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_NO_FAILURE);
   EXPECT_NE(response.scan_uuid(), "");
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
   EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_NO_FAILURE);
 
   EXPECT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_THAT(signals_[0].failure_reason(), ContainsRegex("invalid height"));
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
 }
 
 TEST_F(ManagerTest, GetNextImageMismatchedSizes) {
@@ -638,18 +850,22 @@ TEST_F(ManagerTest, GetNextImageMismatchedSizes) {
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_NO_FAILURE);
   EXPECT_NE(response.scan_uuid(), "");
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
   EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_NO_FAILURE);
 
   EXPECT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_THAT(signals_[0].failure_reason(),
               ContainsRegex("bytes_per_line.*too small"));
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
 }
 
 TEST_F(ManagerTest, GetNextImageTooLarge) {
@@ -668,18 +884,22 @@ TEST_F(ManagerTest, GetNextImageTooLarge) {
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_NO_FAILURE);
   EXPECT_NE(response.scan_uuid(), "");
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
   EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_NO_FAILURE);
 
   EXPECT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_THAT(signals_[0].failure_reason(),
               ContainsRegex("scan buffer.*too large"));
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
 }
 
 TEST_F(ManagerTest, RemoveDupNoRepeats) {

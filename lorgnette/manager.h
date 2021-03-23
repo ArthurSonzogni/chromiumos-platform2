@@ -118,6 +118,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   static const char kMetricScanFailed[];
 
   bool StartScanInternal(brillo::ErrorPtr* error,
+                         ScanFailureMode* failure_mode,
                          const StartScanRequest& request,
                          std::unique_ptr<SaneDevice>* device_out);
 
@@ -126,6 +127,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                             base::ScopedFILE out_file);
 
   ScanState RunScanLoop(brillo::ErrorPtr* error,
+                        ScanFailureMode* failure_mode,
                         ScanJobState* scan_state,
                         base::ScopedFILE out_file,
                         const std::string& scan_uuid);
@@ -134,13 +136,15 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   void ReportScanSucceeded(const std::string& device_name);
   void ReportScanFailed(const std::string& device_name);
 
-  void SendStatusSignal(std::string uuid,
-                        ScanState state,
-                        int page,
-                        int progress,
-                        bool more_pages);
-  void SendCancelledSignal(std::string uuid);
-  void SendFailureSignal(std::string uuid, std::string failure_reason);
+  void SendStatusSignal(const std::string& uuid,
+                        const ScanState state,
+                        const int page,
+                        const int progress,
+                        const bool more_pages);
+  void SendCancelledSignal(const std::string& uuid);
+  void SendFailureSignal(const std::string& uuid,
+                         const std::string& failure_reason,
+                         const ScanFailureMode failure_mode);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   base::Callback<void(size_t)> activity_callback_;

@@ -107,7 +107,9 @@ SaneClientImpl::SaneClientImpl()
     : open_devices_(std::make_shared<DeviceSet>()) {}
 
 std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
-    brillo::ErrorPtr* error, const std::string& device_name) {
+    brillo::ErrorPtr* error,
+    SANE_Status* sane_status,
+    const std::string& device_name) {
   LOG(INFO) << "Creating connection to device: " << device_name;
   base::AutoLock auto_lock(lock_);
   SANE_Handle handle;
@@ -126,6 +128,9 @@ std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
                                  kManagerServiceError,
                                  "Unable to open device '%s': %s",
                                  device_name.c_str(), sane_strstatus(status));
+      if (sane_status)
+        *sane_status = status;
+
       return nullptr;
     }
 
