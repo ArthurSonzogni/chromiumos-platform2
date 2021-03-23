@@ -105,6 +105,20 @@ void AdjustMetadataForAE(android::CameraMetadata* data) {
     data->update(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
                  available_characteristics_keys);
   }
+  // Remove ANDROID_SENSOR_EXPOSURE_TIME in
+  // ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS
+  entry = data->find(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
+  if (entry.count != 0) {
+    std::vector<int32_t> available_request_keys;
+    for (size_t i = 0; i < entry.count; i++) {
+      if (entry.data.i32[i] == ANDROID_SENSOR_EXPOSURE_TIME) {
+        continue;
+      }
+      available_request_keys.push_back(entry.data.i32[i]);
+    }
+    data->update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                 available_request_keys);
+  }
 }
 
 ScopedCameraMetadata StaticMetadataForAndroid(
