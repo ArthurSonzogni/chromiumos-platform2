@@ -31,6 +31,8 @@ class Configuration {
   bool Configure();
 
  private:
+  bool ConfigureOnKind();
+
   bool ConfigGyro();
   bool ConfigAccelerometer();
   bool ConfigIlluminance();

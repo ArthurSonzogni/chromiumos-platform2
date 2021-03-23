@@ -60,6 +60,7 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
 
   bool SetTrigger(IioDevice* trigger_device) override;
   IioDevice* GetTrigger() override;
+  IioDevice* GetHrtimer() override;
 
   base::Optional<size_t> GetSampleSize() const override;
 
@@ -79,6 +80,8 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
 
   IioContextImpl* context_;   // non-owned
   iio_device* const device_;  // non-owned
+
+  IioDevice* hrtimer_ = nullptr;
 
   using ScopedBuffer = std::unique_ptr<iio_buffer, decltype(&IioBufferDeleter)>;
   ScopedBuffer buffer_;

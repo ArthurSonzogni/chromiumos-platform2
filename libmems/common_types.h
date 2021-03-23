@@ -16,6 +16,8 @@ constexpr char kDeviceIdPrefix[] = "iio:device";
 constexpr char kIioSysfsTrigger[] = "iio_sysfs_trigger";
 constexpr char kTriggerIdPrefix[] = "trigger";
 
+constexpr char kHrtimerNameFormatString[] = "iioservice-%i";
+
 // The attribute name to get the device name with
 // IioDevice::ReadStringAttribute.
 constexpr char kDeviceName[] = "name";

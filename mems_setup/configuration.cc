@@ -93,8 +93,6 @@ constexpr char kFilesToSetWriteAndOwnership[][24] = {"sampling_frequency",
 constexpr char kScanElementsString[] = "scan_elements";
 constexpr char kChnEnableFormatString[] = "in_%s_en";
 
-constexpr char kAcpiAlsTriggerName[] = "iioservice-acpi-als";
-
 }  // namespace
 
 // static
@@ -117,6 +115,15 @@ Configuration::Configuration(libmems::IioContext* context,
 }
 
 bool Configuration::Configure() {
+  iioservice_gid_ = delegate_->FindGroupId(GetGroupNameForSysfs());
+  if (!iioservice_gid_.has_value()) {
+    LOG(ERROR) << "iioservice group not found";
+    return false;
+  }
+
+  if (!ConfigureOnKind())
+    return false;
+
   if (!SetupPermissions())
     return false;
 
@@ -131,30 +138,7 @@ bool Configuration::Configure() {
   // Ignores the error as it may fail on kernel 4.4.
   sensor_->WriteStringAttribute("current_timestamp_clock", "boottime");
 
-  switch (kind_) {
-    case SensorKind::ACCELEROMETER:
-      return ConfigAccelerometer();
-    case SensorKind::GYROSCOPE:
-      return ConfigGyro();
-    case SensorKind::LIGHT:
-      return ConfigIlluminance();
-    case SensorKind::SYNC:
-      // No other configs needed.
-      return true;
-    case SensorKind::MAGNETOMETER:
-      // No other configs needed.
-      return true;
-    case SensorKind::LID_ANGLE:
-      // No other configs needed.
-      return true;
-    case SensorKind::BAROMETER:
-      // TODO(chenghaoyang): Setup calibrations for the barometer.
-      return true;
-    default:
-      CHECK(kind_ == SensorKind::OTHERS);
-      LOG(ERROR) << sensor_->GetName() << " unimplemented";
-      return false;
-  }
+  return true;
 }
 
 bool Configuration::CopyLightCalibrationFromVpd() {
@@ -491,6 +475,33 @@ bool Configuration::EnableKeyboardAngle() {
   return true;
 }
 
+bool Configuration::ConfigureOnKind() {
+  switch (kind_) {
+    case SensorKind::ACCELEROMETER:
+      return ConfigAccelerometer();
+    case SensorKind::GYROSCOPE:
+      return ConfigGyro();
+    case SensorKind::LIGHT:
+      return ConfigIlluminance();
+    case SensorKind::SYNC:
+      // No other configs needed.
+      return true;
+    case SensorKind::MAGNETOMETER:
+      // No other configs needed.
+      return true;
+    case SensorKind::LID_ANGLE:
+      // No other configs needed.
+      return true;
+    case SensorKind::BAROMETER:
+      // TODO(chenghaoyang): Setup calibrations for the barometer.
+      return true;
+    default:
+      CHECK(kind_ == SensorKind::OTHERS);
+      LOG(ERROR) << sensor_->GetName() << " unimplemented";
+      return false;
+  }
+}
+
 bool Configuration::ConfigGyro() {
   CopyImuCalibationFromVpd(kGyroMaxVpdCalibration);
 
@@ -539,9 +550,11 @@ bool Configuration::ConfigAccelerometer() {
 
 bool Configuration::ConfigIlluminance() {
   if (USE_IIOSERVICE && strcmp(sensor_->GetName(), "acpi-als") == 0) {
-    if (context_->GetTriggersByName(kAcpiAlsTriggerName).empty()) {
+    std::string trigger_name =
+        base::StringPrintf(libmems::kHrtimerNameFormatString, sensor_->GetId());
+    if (context_->GetTriggersByName(trigger_name).empty()) {
       base::FilePath hrtimer_path("/sys/kernel/config/iio/triggers/hrtimer");
-      hrtimer_path = hrtimer_path.Append(kAcpiAlsTriggerName);
+      hrtimer_path = hrtimer_path.Append(trigger_name);
 
       if (!delegate_->Exists(hrtimer_path) &&
           !delegate_->ProbeKernelModule("iio-trig-hrtimer")) {
@@ -557,20 +570,20 @@ bool Configuration::ConfigIlluminance() {
     }
 
     context_->Reload();
-    auto triggers = context_->GetTriggersByName(kAcpiAlsTriggerName);
+    auto triggers = context_->GetTriggersByName(trigger_name);
     if (triggers.empty()) {
       LOG(ERROR) << "cannot find acpi-als's trigger";
       return false;
     }
 
+    // Don't set |trigger| as |sensor_|'s trigger, or else the samples start
+    // flowing.
     auto trigger = triggers.front();
     // /sys/bus/iio/devices/triggerX
     base::FilePath sys_trg_path =
         trigger->GetPath().Append(libmems::kSamplingFrequencyAttr);
     SetReadPermissionAndOwnership(sys_trg_path);
     SetWritePermissionAndOwnership(sys_trg_path);
-
-    sensor_->SetTrigger(trigger);
   }
 
   if (!CopyLightCalibrationFromVpd())
@@ -585,12 +598,6 @@ bool Configuration::ConfigIlluminance() {
 }
 
 bool Configuration::SetupPermissions() {
-  iioservice_gid_ = delegate_->FindGroupId(GetGroupNameForSysfs());
-  if (!iioservice_gid_.has_value()) {
-    LOG(ERROR) << "iioservice group not found";
-    return false;
-  }
-
   std::vector<base::FilePath> files_to_set_read_own;
   std::vector<base::FilePath> files_to_set_write_own;
 

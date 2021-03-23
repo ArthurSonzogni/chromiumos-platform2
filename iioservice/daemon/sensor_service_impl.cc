@@ -215,11 +215,6 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
     return;
   }
 
-  if (strcmp(device->GetName(), "acpi-als") == 0 && !device->GetTrigger()) {
-    LOGF(ERROR) << "No trigger in acpi-als";
-    return;
-  }
-
   std::vector<cros::mojom::DeviceType> types;
   for (int32_t i = static_cast<int32_t>(cros::mojom::DeviceType::ACCEL);
        i < static_cast<int32_t>(cros::mojom::DeviceType::MAX); ++i) {

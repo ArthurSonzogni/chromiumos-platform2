@@ -82,6 +82,13 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
     libmems::IioDevice* iio_device) {
   ScopedSamplesHandler handler(nullptr, SamplesHandlerDeleter);
 
+  if (!iio_device->HasFifo() && !iio_device->GetHrtimer()) {
+    LOGF(ERROR)
+        << "Device " << iio_device->GetId()
+        << " has neither fifo nor hrtimer. Cannot read samples from it.";
+    return handler;
+  }
+
   if (!DisableBufferAndEnableChannels(iio_device))
     return handler;
 
@@ -191,9 +198,15 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   DCHECK(!watcher_.get());
 
   // Flush the old samples in EC FIFO.
-  if (iio_device_->HasFifo() &&
-      !iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n")) {
-    LOGF(ERROR) << "Failed to flush the old samples in EC FIFO";
+  if (iio_device_->HasFifo()) {
+    if (!iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n"))
+      LOGF(ERROR) << "Failed to flush the old samples in EC FIFO";
+  } else {
+    DCHECK(iio_device_->GetHrtimer());
+    if (!iio_device_->SetTrigger(iio_device_->GetHrtimer())) {
+      LOGF(ERROR) << "Failed to set trigger";
+      return;
+    }
   }
 
   if (!iio_device_->CreateBuffer()) {
@@ -228,6 +241,7 @@ void SamplesHandler::StopSampleWatcherOnThread() {
 
   watcher_.reset();
   iio_device_->FreeBuffer();
+  iio_device_->SetTrigger(nullptr);
 }
 
 void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
@@ -479,17 +493,12 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
     return true;
   }
 
-  // |iio_device_| does not have a trigger, like activity sensors.
-  // We should not set frequency to begin with.
-  if (!iio_device_->GetTrigger()) {
-    LOGF(ERROR) << "No trigger associated to sensor.";
-    return false;
-  }
+  DCHECK(iio_device_->GetHrtimer());
 
   // |iio_device_| has a trigger that needs to be setup.
-  if (!iio_device_->GetTrigger()->WriteDoubleAttribute(
+  if (!iio_device_->GetHrtimer()->WriteDoubleAttribute(
           libmems::kSamplingFrequencyAttr, frequency)) {
-    LOGF(ERROR) << "Failed to set trigger's frequency";
+    LOGF(ERROR) << "Failed to set hrtimer's frequency";
     return false;
   }
 

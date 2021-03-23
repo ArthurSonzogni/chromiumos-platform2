@@ -63,6 +63,7 @@ class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
 
   bool SetTrigger(IioDevice* trigger_device) override { return false; }
   IioDevice* GetTrigger() override { return nullptr; }
+  IioDevice* GetHrtimer() override { return nullptr; }
 
   base::Optional<size_t> GetSampleSize() const override {
     return base::nullopt;

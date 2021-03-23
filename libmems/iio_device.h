@@ -103,6 +103,10 @@ class LIBMEMS_EXPORT IioDevice {
   // has no trigger, or the trigger can't be found.
   virtual IioDevice* GetTrigger() = 0;
 
+  // Returns the IIO hrtimer trigger device for this device, or nullptr if there
+  // is no such hrtimer trigger device.
+  virtual IioDevice* GetHrtimer() = 0;
+
   // Returns all channels belonging to this device.
   std::vector<IioChannel*> GetAllChannels();
 

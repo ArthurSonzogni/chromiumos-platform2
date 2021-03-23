@@ -102,13 +102,13 @@ class SamplesHandlerTestBase : cros::mojom::SensorDeviceSamplesObserver {
   }
 
  protected:
-  void SetUpAccelBase(bool with_trigger) {
+  void SetUpAccelBase(bool with_hrtimer) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
-    if (with_trigger) {
-      trigger_ = std::make_unique<libmems::fakes::FakeIioDevice>(
+    if (with_hrtimer) {
+      hrtimer_ = std::make_unique<libmems::fakes::FakeIioDevice>(
           nullptr, kFakeTriggerName, kFakeTriggerId);
-      device_->SetTrigger(trigger_.get());
+      device_->SetHrtimer(hrtimer_.get());
     }
 
     EXPECT_TRUE(
@@ -129,13 +129,13 @@ class SamplesHandlerTestBase : cros::mojom::SensorDeviceSamplesObserver {
     EXPECT_TRUE(handler_);
   }
 
-  void SetUpLightBase(bool with_trigger) {
+  void SetUpLightBase(bool with_hrtimer) {
     device_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, kFakeLightName, kFakeLightId);
-    if (with_trigger) {
-      trigger_ = std::make_unique<libmems::fakes::FakeIioDevice>(
+    if (with_hrtimer) {
+      hrtimer_ = std::make_unique<libmems::fakes::FakeIioDevice>(
           nullptr, kFakeTriggerName, kFakeTriggerId);
-      device_->SetTrigger(trigger_.get());
+      device_->SetHrtimer(hrtimer_.get());
     }
 
     EXPECT_TRUE(
@@ -180,7 +180,7 @@ class SamplesHandlerTestBase : cros::mojom::SensorDeviceSamplesObserver {
       base::test::TaskEnvironment::MainThreadType::IO};
 
   std::unique_ptr<libmems::fakes::FakeIioDevice> device_;
-  std::unique_ptr<libmems::fakes::FakeIioDevice> trigger_;
+  std::unique_ptr<libmems::fakes::FakeIioDevice> hrtimer_;
 
   fakes::FakeSamplesHandler::ScopedFakeSamplesHandler handler_ = {
       nullptr, SamplesHandler::SamplesHandlerDeleter};
@@ -192,7 +192,7 @@ class SamplesHandlerTestBase : cros::mojom::SensorDeviceSamplesObserver {
 class SamplesHandlerTest : public ::testing::Test,
                            public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpAccelBase(/*with_trigger=*/false); }
+  void SetUp() override { SetUpAccelBase(/*with_hrtimer=*/false); }
 
   void TearDown() override { TearDownBase(); }
 };
@@ -332,7 +332,7 @@ class SamplesHandlerTestWithParam
     : public ::testing::TestWithParam<std::vector<std::pair<double, double>>>,
       public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpAccelBase(/*with_trigger=*/false); }
+  void SetUp() override { SetUpAccelBase(/*with_hrtimer=*/false); }
 
   void TearDown() override { TearDownBase(); }
 };
@@ -547,7 +547,7 @@ INSTANTIATE_TEST_SUITE_P(
 class SamplesHandlerWithTriggerTest : public ::testing::Test,
                                       public SamplesHandlerTestBase {
  protected:
-  void SetUp() override { SetUpAccelBase(/*with_trigger=*/true); }
+  void SetUp() override { SetUpAccelBase(/*with_hrtimer=*/true); }
 
   void TearDown() override { TearDownBase(); }
 };
@@ -569,7 +569,7 @@ TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
   EXPECT_EQ(device_->ReadDoubleAttribute(libmems::kSamplingFrequencyAttr)
                 .value_or(-1),
             frequency);
-  EXPECT_EQ(trigger_->ReadDoubleAttribute(libmems::kSamplingFrequencyAttr)
+  EXPECT_EQ(hrtimer_->ReadDoubleAttribute(libmems::kSamplingFrequencyAttr)
                 .value_or(-1),
             frequency);
 }
@@ -581,7 +581,7 @@ class SamplesHandlerLightTest : public ::testing::Test,
 };
 
 TEST_F(SamplesHandlerLightTest, CrosECLight) {
-  SetUpLightBase(/*with_trigger=*/false);
+  SetUpLightBase(/*with_hrtimer=*/false);
 
   // Set the pause in the beginning to test only the first sample from raw
   // values.
@@ -623,7 +623,7 @@ TEST_F(SamplesHandlerLightTest, CrosECLight) {
 }
 
 TEST_F(SamplesHandlerLightTest, AcpiAls) {
-  SetUpLightBase(/*with_trigger=*/true);
+  SetUpLightBase(/*with_hrtimer=*/true);
 
   // Set the pause in the beginning to test only the first sample from raw
   // values.

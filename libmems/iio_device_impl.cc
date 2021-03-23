@@ -225,6 +225,24 @@ IioDevice* IioDeviceImpl::GetTrigger() {
   return trigger_device;
 }
 
+IioDevice* IioDeviceImpl::GetHrtimer() {
+  if (hrtimer_)
+    return hrtimer_;
+
+  auto triggers = context_->GetTriggersByName(
+      base::StringPrintf(kHrtimerNameFormatString, GetId()));
+  if (triggers.empty())
+    return nullptr;
+
+  if (triggers.size() > 1) {
+    LOG(WARNING) << log_prefix_ << triggers.size()
+                 << " hrtimers existing for this device";
+  }
+
+  hrtimer_ = triggers.front();
+  return hrtimer_;
+}
+
 base::Optional<size_t> IioDeviceImpl::GetSampleSize() const {
   ssize_t sample_size = iio_device_get_sample_size(device_);
   if (sample_size < 0) {

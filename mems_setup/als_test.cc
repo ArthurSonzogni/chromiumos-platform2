@@ -6,8 +6,10 @@
 #include <memory>
 #include <string>
 
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include <libmems/common_types.h>
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 #include <libmems/test_fakes.h>
@@ -23,15 +25,12 @@ namespace mems_setup {
 
 namespace {
 
+constexpr int kDeviceId = 5;
 static gid_t kIioserviceGroupId = 777;
-
-#if USE_IIOSERVICE
-constexpr char kAcpiAlsTriggerName[] = "iioservice-acpi-als";
-#endif  // USE_IIOSERVICE
 
 class AlsTest : public SensorTestBase {
  public:
-  AlsTest() : SensorTestBase("acpi-als", 5) {
+  AlsTest() : SensorTestBase("acpi-als", kDeviceId) {
     mock_delegate_->AddGroup(Configuration::GetGroupNameForSysfs(),
                              kIioserviceGroupId);
     mock_delegate_->SetMockContext(mock_context_.get());
@@ -45,9 +44,12 @@ TEST_F(AlsTest, TriggerSet) {
 
   EXPECT_TRUE(GetConfiguration()->Configure());
 
-  EXPECT_TRUE(mock_device_->GetTrigger());
-  EXPECT_EQ(strcmp(mock_device_->GetTrigger()->GetName(), kAcpiAlsTriggerName),
-            0);
+  EXPECT_FALSE(mock_device_->GetTrigger());
+  EXPECT_EQ(mock_context_
+                ->GetTriggersByName(base::StringPrintf(
+                    libmems::kHrtimerNameFormatString, kDeviceId))
+                .size(),
+            1);
 }
 #endif  // USE_IIOSERVICE
 

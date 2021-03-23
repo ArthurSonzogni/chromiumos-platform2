@@ -202,10 +202,13 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
   bool WriteDoubleAttribute(const std::string& name, double value) override;
 
-  bool HasFifo() const override { return !trigger_; }
+  bool HasFifo() const override { return !hrtimer_; }
 
   bool SetTrigger(IioDevice* trigger) override;
   IioDevice* GetTrigger() override { return trigger_; }
+
+  void SetHrtimer(IioDevice* hrtimer) { hrtimer_ = hrtimer; }
+  IioDevice* GetHrtimer() override { return hrtimer_; }
 
   void AddChannel(std::unique_ptr<FakeIioChannel> chn) {
     channels_.push_back({chn->GetId(), std::move(chn)});
@@ -258,6 +261,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   std::map<std::string, int64_t> numeric_attributes_;
   std::map<std::string, double> double_attributes_;
   IioDevice* trigger_ = nullptr;
+  IioDevice* hrtimer_ = nullptr;
 
   // For |EnableBuffer|, |DisableBuffer|, and |IsBufferEnabled|.
   size_t buffer_length_ = 0;
