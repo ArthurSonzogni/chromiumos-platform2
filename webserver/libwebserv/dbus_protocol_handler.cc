@@ -33,8 +33,15 @@ void IgnoreDBusError(brillo::Error* /* error */) {}
 // by a file descriptor |fd|.
 void WriteResponseData(brillo::StreamPtr src_stream, const base::ScopedFD& fd) {
   int dupfd = dup(fd.get());
+  if (dupfd < 0) {
+    PLOG(ERROR) << "Error fd.get(): " << fd.get();
+  }
+  brillo::ErrorPtr error;
   auto dest_stream =
-      brillo::FileStream::FromFileDescriptor(dupfd, true, nullptr);
+      brillo::FileStream::FromFileDescriptor(dupfd, true, &error);
+  if (!dest_stream) {
+    LOG(ERROR) << "Error in FromFileDescriptor: " << error->GetMessage();
+  }
   CHECK(dest_stream);
   // Dummy callbacks for success/error of data-copy operation. We ignore both
   // notifications here.

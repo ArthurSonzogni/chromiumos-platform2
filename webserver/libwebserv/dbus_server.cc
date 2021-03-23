@@ -94,7 +94,11 @@ bool DBusServer::RequestHandler::ProcessRequest(
                                     std::get<4>(tuple)}});  // transfer_encoding
   }
 
-  request->raw_data_fd_ = base::File(dup(in_body.get()));
+  int fd = dup(in_body.get());
+  if (fd < 0) {
+    PLOG(ERROR) << "Error in_body.get(): " << in_body.get();
+  }
+  request->raw_data_fd_ = base::File(fd);
   CHECK(request->raw_data_fd_.IsValid());
 
   return protocol_handler->ProcessRequest(protocol_handler_id,
