@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -60,6 +60,8 @@ static_library("libmessaging_layer") {
     "//missive/proto:interface_proto",
     "//missive/scheduler",
     "//missive/scheduler:enqueue_job",
+    "//missive/storage",
+    "//missive/storage:storage_module",
   ]
 }
 
@@ -88,11 +90,13 @@ if (use.test) {
     deps = [
       ":libmessaging_layer",
       "//common-mk/testrunner",
-      "//missive/encryption:test_support",
+      "//missive/dbus:upload_client",
+      "//missive/encryption:encryption_test_support",
       "//missive/encryption:unit_tests",
       "//missive/scheduler",
       "//missive/scheduler:enqueue_job",
       "//missive/scheduler:upload_job",
+      "//missive/storage:storage_test_support",
       "//missive/storage:storage_uploader_interface",
       "//missive/storage/resources:resource_interface",
       "//missive/util:shared_queue",
@@ -107,6 +111,9 @@ if (use.test) {
       "scheduler/scheduler_test.cc",
       "scheduler/upload_job_test.cc",
       "storage/resources/resource_interface_test.cc",
+      "storage/storage_queue_stress_test.cc",
+      "storage/storage_queue_test.cc",
+      "storage/storage_test.cc",
       "util/shared_queue_test.cc",
       "util/status_macros_test.cc",
       "util/status_test.cc",

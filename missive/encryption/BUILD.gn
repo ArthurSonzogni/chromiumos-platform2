@@ -20,10 +20,7 @@ pkg_config("target_defaults") {
 }
 
 static_library("encryption_module_interface") {
-  sources = [
-    "encryption_module_interface.cc",
-    "encryption_module_interface.h",
-  ]
+  sources = [ "encryption_module_interface.cc" ]
   deps = [
     "//missive/proto:record_proto",
     "//missive/util:status",
@@ -33,29 +30,20 @@ static_library("encryption_module_interface") {
 }
 
 static_library("primitives") {
-  sources = [
-    "primitives.cc",
-    "primitives.h",
-  ]
+  sources = [ "primitives.cc" ]
 
   configs += [ ":target_defaults" ]
 }
 
 static_library("testing_primitives") {
-  sources = [
-    "testing_primitives.cc",
-    "testing_primitives.h",
-  ]
+  sources = [ "testing_primitives.cc" ]
   deps = [ ":primitives" ]
 
   configs += [ ":target_defaults" ]
 }
 
 static_library("encryption_module") {
-  sources = [
-    "encryption_module.cc",
-    "encryption_module.h",
-  ]
+  sources = [ "encryption_module.cc" ]
   deps = [
     ":encryption",
     ":encryption_module_interface",
@@ -67,10 +55,7 @@ static_library("encryption_module") {
 }
 
 static_library("encryption") {
-  sources = [
-    "encryption.cc",
-    "encryption.h",
-  ]
+  sources = [ "encryption.cc" ]
   deps = [
     ":primitives",
     "//missive/proto:record_proto",
@@ -81,10 +66,7 @@ static_library("encryption") {
 }
 
 static_library("decryption") {
-  sources = [
-    "decryption.cc",
-    "decryption.h",
-  ]
+  sources = [ "decryption.cc" ]
   deps = [
     ":encryption",
     ":primitives",
@@ -97,10 +79,7 @@ static_library("decryption") {
 }
 
 static_library("verification") {
-  sources = [
-    "verification.cc",
-    "verification.h",
-  ]
+  sources = [ "verification.cc" ]
   deps = [
     ":primitives",
     "//missive/util:status",
@@ -109,11 +88,12 @@ static_library("verification") {
   configs += [ ":target_defaults" ]
 }
 
-static_library("test_support") {
+static_library("encryption_test_support") {
   sources = [
+    "scoped_encryption_feature.cc",
     "test_encryption_module.cc",
-    "test_encryption_module.h",
   ]
+
   deps = [
     ":decryption",
     ":encryption",
@@ -141,8 +121,8 @@ source_set("unit_tests") {
     ":encryption",
     ":encryption_module",
     ":encryption_module_interface",
+    ":encryption_test_support",
     ":primitives",
-    ":test_support",
     ":testing_primitives",
     ":verification",
     "//missive/proto:record_proto",

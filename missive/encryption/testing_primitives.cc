@@ -10,11 +10,11 @@
 
 #include <base/strings/string_piece.h>
 #include <crypto/scoped_openssl_types.h>
+#include <gtest/gtest.h>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
 
 #include "missive/encryption/primitives.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace reporting {
 namespace test {

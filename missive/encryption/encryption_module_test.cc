@@ -18,52 +18,26 @@
 #include <base/feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "missive/encryption/decryption.h"
 #include "missive/encryption/encryption.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
+#include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 using ::testing::Eq;
 using ::testing::Ne;
 
 namespace reporting {
 namespace {
-
-// Replacement of base::test::ScopedFeatureList which is unavailable in
-// ChromeOS.
-class ScopedEncryptionFeature {
- public:
-  explicit ScopedEncryptionFeature(bool enable) {
-    std::unique_ptr<base::FeatureList> feature_list(new base::FeatureList);
-    if (enable) {
-      feature_list->InitializeFromCommandLine(
-          {EncryptionModuleInterface::kEncryptedReporting}, {});
-    } else {
-      feature_list->InitializeFromCommandLine(
-          {}, {EncryptionModuleInterface::kEncryptedReporting});
-    }
-    original_feature_list_ = base::FeatureList::ClearInstanceForTesting();
-    base::FeatureList::SetInstance(std::move(feature_list));
-  }
-
-  ~ScopedEncryptionFeature() {
-    base::FeatureList::ClearInstanceForTesting();
-    base::FeatureList::RestoreInstanceForTesting(
-        std::move(original_feature_list_));
-  }
-
- private:
-  std::unique_ptr<base::FeatureList> original_feature_list_;
-};
 
 class EncryptionModuleTest : public ::testing::Test {
  protected:
@@ -156,7 +130,7 @@ class EncryptionModuleTest : public ::testing::Test {
   scoped_refptr<test::Decryptor> decryptor_;
 
  private:
-  ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
+  test::ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
 };
 
 TEST_F(EncryptionModuleTest, EncryptAndDecrypt) {
@@ -188,7 +162,7 @@ TEST_F(EncryptionModuleTest, EncryptionDisabled) {
   constexpr char kTestString[] = "ABCDEF";
 
   // Disable encryption.
-  ScopedEncryptionFeature encryption_feature_{/*enable=*/false};
+  test::ScopedEncryptionFeature encryption_feature_{/*enable=*/false};
 
   // Encrypt the test string.
   const auto encrypted_result = EncryptSync(kTestString);
