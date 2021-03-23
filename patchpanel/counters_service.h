@@ -68,9 +68,6 @@ class CountersService {
   CountersService(Datapath* datapath, MinijailedProcessRunner* runner);
   ~CountersService() = default;
 
-  // Installs the initial iptables setup for vpn accounting and for the given
-  // set of devices.
-  void Init(const std::set<std::string>& devices);
   // Adds accounting rules and jump rules for a new physical device if this is
   // the first time this device is seen.
   void OnPhysicalDeviceAdded(const std::string& ifname);
@@ -96,8 +93,8 @@ class CountersService {
   bool MakeAccountingChain(const std::string& chain_name);
   bool AddAccountingRule(const std::string& chain_name, TrafficSource source);
   // Installs the required accounting chains and rules for the target
-  // |chain_tag|. Returns false if these chains and rules already existed.
-  bool SetupAccountingRules(const std::string& chain_tag);
+  // |chain_tag| if they did not exist already.
+  void SetupAccountingRules(const std::string& chain_tag);
   // Installs jump rules in POSTROUTING to count traffic ingressing and
   // egressing |ifname| with the accounting target |chain_tag|.
   void SetupJumpRules(const std::string& op,

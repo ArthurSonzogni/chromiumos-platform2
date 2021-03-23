@@ -187,167 +187,6 @@ class CountersServiceTest : public testing::Test {
   std::unique_ptr<CountersService> counters_svc_;
 };
 
-TEST_F(CountersServiceTest, OnCreation_WithNoDevices) {
-  // The following commands are expected when eth0 comes up.
-  const std::vector<std::vector<std::string>> expected_calls{
-      {"-N", "rx_vpn", "-w"},
-      {"-N", "tx_vpn", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-w"},
-      {"-A", "rx_vpn", "-w"},
-  };
-
-  for (const auto& rule : expected_calls) {
-    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
-    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
-  }
-
-  counters_svc_->Init({});
-}
-
-TEST_F(CountersServiceTest, OnCreation_WithDevices) {
-  // The following commands are expected when eth0 comes up.
-  const std::vector<std::vector<std::string>> expected_calls{
-      {"-N", "rx_vpn", "-w"},
-      {"-N", "tx_vpn", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-w"},
-      {"-A", "rx_vpn", "-w"},
-      {"-N", "rx_wlan0", "-w"},
-      {"-N", "tx_wlan0", "-w"},
-      {"-A", "INPUT", "-i", "wlan0", "-j", "rx_wlan0", "-w"},
-      {"-A", "FORWARD", "-i", "wlan0", "-j", "rx_wlan0", "-w"},
-      {"-A", "POSTROUTING", "-o", "wlan0", "-j", "tx_wlan0", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_wlan0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_wlan0", "-w"},
-      {"-A", "rx_wlan0", "-w"},
-  };
-
-  for (const auto& rule : expected_calls) {
-    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
-    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
-  }
-
-  counters_svc_->Init({"wlan0"});
-}
-
 TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   // The following commands are expected when eth0 comes up.
   const std::vector<std::vector<std::string>> expected_calls{
@@ -408,8 +247,23 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   counters_svc_->OnPhysicalDeviceAdded("eth0");
 }
 
+TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
+  const std::vector<std::vector<std::string>> expected_calls{
+      {"-D", "INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"},
+      {"-D", "FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"},
+      {"-D", "POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"},
+  };
+
+  for (const auto& rule : expected_calls) {
+    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
+    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
+  }
+
+  counters_svc_->OnPhysicalDeviceRemoved("eth0");
+}
+
 TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
-  // The following commands are expected when eth0 comes up.
+  // The following commands are expected when tun0 comes up.
   const std::vector<std::vector<std::string>> expected_calls{
       {"-N", "rx_vpn", "-w"},
       {"-N", "tx_vpn", "-w"},
@@ -465,7 +319,6 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
     EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
   }
 
-  counters_svc_->Init({});
   counters_svc_->OnVpnDeviceAdded("tun0");
 }
 
@@ -492,12 +345,20 @@ TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
   EXPECT_CALL(runner_, ip6tables(_, Contains("-N"), _, _))
       .WillRepeatedly(Return(1));
 
-  // Creating chains commands are expected but no more creating rules command
-  // (with "-I" or "-A") should come.
-  EXPECT_CALL(runner_, iptables(_, Contains("-A"), _, _)).Times(0);
-  EXPECT_CALL(runner_, ip6tables(_, Contains("-A"), _, _)).Times(0);
-  EXPECT_CALL(runner_, iptables(_, Contains("-I"), _, _)).Times(0);
-  EXPECT_CALL(runner_, ip6tables(_, Contains("-I"), _, _)).Times(0);
+  // Only the jump rules should be recreated.
+  const std::vector<std::vector<std::string>> expected_calls{
+      {"-A", "FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"},
+      {"-A", "INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"},
+      {"-A", "POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"},
+  };
+  for (const auto& rule : expected_calls) {
+    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
+    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
+  }
+
+  // No fwmark matching rule should be created.
+  EXPECT_CALL(runner_, iptables(_, Contains("mark"), _, _)).Times(0);
+  EXPECT_CALL(runner_, ip6tables(_, Contains("mark"), _, _)).Times(0);
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");
 }

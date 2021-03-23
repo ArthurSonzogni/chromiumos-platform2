@@ -258,7 +258,6 @@ void Manager::InitialSetup() {
       base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
                           weak_factory_.GetWeakPtr()));
   network_monitor_svc_->Start();
-  counters_svc_->Init(shill_client_->get_devices());
   nd_proxy_->Listen();
 }
 

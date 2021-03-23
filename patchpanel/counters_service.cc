@@ -188,16 +188,9 @@ std::map<SourceDevice, Counter> CountersService::GetCounters(
   return counters;
 }
 
-void CountersService::Init(const std::set<std::string>& devices) {
-  SetupAccountingRules(kVpnChainTag);
-  for (const auto& device : devices) {
-    OnPhysicalDeviceAdded(device);
-  }
-}
-
 void CountersService::OnPhysicalDeviceAdded(const std::string& ifname) {
-  if (SetupAccountingRules(ifname))
-    SetupJumpRules("-A", ifname, ifname);
+  SetupAccountingRules(ifname);
+  SetupJumpRules("-A", ifname, ifname);
 }
 
 void CountersService::OnPhysicalDeviceRemoved(const std::string& ifname) {
@@ -205,6 +198,7 @@ void CountersService::OnPhysicalDeviceRemoved(const std::string& ifname) {
 }
 
 void CountersService::OnVpnDeviceAdded(const std::string& ifname) {
+  SetupAccountingRules(kVpnChainTag);
   SetupJumpRules("-A", ifname, kVpnChainTag);
 }
 
@@ -232,7 +226,7 @@ bool CountersService::AddAccountingRule(const std::string& chain_name,
   return datapath_->ModifyIptables(IpFamily::Dual, kMangleTable, args);
 }
 
-bool CountersService::SetupAccountingRules(const std::string& chain_tag) {
+void CountersService::SetupAccountingRules(const std::string& chain_tag) {
   // For a new target accounting chain, create
   //  1) an accounting chain to jump to,
   //  2) source accounting rules in the chain.
@@ -245,7 +239,7 @@ bool CountersService::SetupAccountingRules(const std::string& chain_tag) {
   if (!MakeAccountingChain(egress_chain) ||
       !MakeAccountingChain(ingress_chain)) {
     LOG(INFO) << "Traffic accounting chains already exist for " << chain_tag;
-    return false;
+    return;
   }
 
   // Add source accounting rules.
@@ -258,8 +252,6 @@ bool CountersService::SetupAccountingRules(const std::string& chain_tag) {
                             {"-A", ingress_chain, "-w"});
   datapath_->ModifyIptables(IpFamily::Dual, kMangleTable,
                             {"-A", egress_chain, "-w"});
-
-  return true;
 }
 
 void CountersService::SetupJumpRules(const std::string& op,
