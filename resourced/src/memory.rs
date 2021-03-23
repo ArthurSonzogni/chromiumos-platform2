@@ -1,3 +1,7 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -90,7 +94,7 @@ pub fn parse_psi_memory<R: BufRead>(reader: R) -> Result<f64> {
             continue;
         }
         if let Some(pair) = tokens.next() {
-            let mut elements = pair.split("=");
+            let mut elements = pair.split('=');
             if elements.next() != Some("avg10") {
                 continue;
             }

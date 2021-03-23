@@ -1,10 +1,12 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 use common::parse_file_to_u64;
-use memory::calculate_available_memory_kb;
-use memory::calculate_reserved_free_kb;
-use memory::parse_margins;
-use memory::parse_meminfo;
-use memory::parse_psi_memory;
-use memory::MemInfo;
+use memory::{
+    calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
+    parse_psi_memory, MemInfo,
+};
 
 #[test]
 fn test_parse_file_to_u64() {
@@ -46,7 +48,7 @@ Node 0, zone   Normal
         protection: (0, 0, 0, 0)"#;
     let page_size_kb = 4;
     let high_watermarks = 205 + 24404 + 26073;
-    let lowmem_reserves = 3786 + 1953 + 0;
+    let lowmem_reserves = 3786 + 1953;
     let reserved = calculate_reserved_free_kb(mock_partial_zoneinfo.as_bytes()).unwrap();
     assert_eq!(reserved, (high_watermarks + lowmem_reserves) * page_size_kb);
 }
@@ -57,7 +59,7 @@ fn test_parse_psi_memory() {
 some avg10=57.25 avg60=35.97 avg300=10.18 total=32748793
 full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
     let pressure = parse_psi_memory(mock_psi_memory.as_bytes()).unwrap();
-    assert_eq!(pressure, 57.25);
+    assert!((pressure - 57.25).abs() < f64::EPSILON);
 }
 
 #[test]
