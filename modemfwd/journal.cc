@@ -11,6 +11,7 @@
 #include <base/files/file.h>
 #include <base/strings/string_split.h>
 #include <brillo/proto_file_io.h>
+#include <chromeos/switches/modemfwd_switches.h>
 
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
@@ -52,8 +53,8 @@ bool RestartOperation(const JournalEntry& entry,
     const FirmwareFileInfo& firmware_file = res.carrier_firmware.value();
     ELOG(INFO) << "Journal reflashing carrier firmware "
                << firmware_file.firmware_path.value();
-    return helper->FlashCarrierFirmware(firmware_file.firmware_path,
-                                        firmware_file.version);
+    return helper->FlashFirmware(kFwCarrier, firmware_file.firmware_path,
+                                 firmware_file.version);
   }
 
   DCHECK(entry.type() == JournalEntryType::MAIN ||
@@ -67,8 +68,8 @@ bool RestartOperation(const JournalEntry& entry,
   const FirmwareFileInfo& firmware_file = res.main_firmware.value();
   ELOG(INFO) << "Journal reflashing main firmware "
              << firmware_file.firmware_path.value();
-  return helper->FlashMainFirmware(firmware_file.firmware_path,
-                                   firmware_file.version);
+  return helper->FlashFirmware(kFwMain, firmware_file.firmware_path,
+                               firmware_file.version);
 }
 
 class JournalImpl : public Journal {

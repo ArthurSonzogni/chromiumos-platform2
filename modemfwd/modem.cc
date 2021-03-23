@@ -17,6 +17,7 @@
 #include <base/unguessable_token.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/switches/modemfwd_switches.h>
 #include <ModemManager/ModemManager.h>
 
 #include "modemfwd/logging.h"
@@ -124,12 +125,12 @@ class ModemImpl : public Modem {
 
   bool FlashMainFirmware(const base::FilePath& path_to_fw,
                          const std::string& version) override {
-    return helper_->FlashMainFirmware(path_to_fw, version);
+    return helper_->FlashFirmware(kFwMain, path_to_fw, version);
   }
 
   bool FlashCarrierFirmware(const base::FilePath& path_to_fw,
                             const std::string& version) override {
-    return helper_->FlashCarrierFirmware(path_to_fw, version);
+    return helper_->FlashFirmware(kFwCarrier, path_to_fw, version);
   }
 
   bool ClearAttachAPN(const std::string& carrier_uuid) override {
@@ -235,12 +236,12 @@ class StubModem : public Modem {
 
   bool FlashMainFirmware(const base::FilePath& path_to_fw,
                          const std::string& version) override {
-    return helper_->FlashMainFirmware(path_to_fw, version);
+    return helper_->FlashFirmware(kFwMain, path_to_fw, version);
   }
 
   bool FlashCarrierFirmware(const base::FilePath& path_to_fw,
                             const std::string& version) override {
-    return helper_->FlashCarrierFirmware(path_to_fw, version);
+    return helper_->FlashFirmware(kFwCarrier, path_to_fw, version);
   }
 
   bool ClearAttachAPN(const std::string& carrier_uuid) override {

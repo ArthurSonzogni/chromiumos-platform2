@@ -166,44 +166,42 @@ class ModemHelperImpl : public ModemHelper {
     if (!RunHelperProcess(helper_info_, {kGetFirmwareInfo}, &helper_output))
       return false;
 
-    std::vector<std::string> parsed_output = base::SplitString(
-        helper_output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if (parsed_output.size() != 3) {
+    base::StringPairs parsed_versions;
+    bool result = base::SplitStringIntoKeyValuePairs(helper_output, ':', '\n',
+                                                     &parsed_versions);
+    if (!result || parsed_versions.size() == 0) {
       LOG(WARNING) << "Modem helper returned malformed firmware version info";
       return false;
     }
 
-    out_info->main_version = parsed_output[0];
-    out_info->carrier_uuid = parsed_output[1];
-    out_info->carrier_version = parsed_output[2];
+    for (const auto& pair : parsed_versions) {
+      if (pair.first == kFwMain)
+        out_info->main_version = pair.second;
+      else if (pair.first == kFwCarrier)
+        out_info->carrier_version = pair.second;
+      else if (pair.first == kFwCarrierUuid)
+        out_info->carrier_uuid = pair.second;
+      else
+        LOG(WARNING) << "Unknown version '" << pair.first << "', skipping.";
+    }
+
     return true;
   }
 
   // modemfwd::ModemHelper overrides.
-  bool FlashMainFirmware(const base::FilePath& path_to_fw,
-                         const std::string& version) override {
+  bool FlashFirmware(const std::string& fw_type,
+                     const base::FilePath& path_to_fw,
+                     const std::string& version) override {
     auto flash_mode = FlashMode::Create(helper_info_);
     if (!flash_mode)
       return false;
 
     return RunHelperProcessWithLogs(
         helper_info_,
-        {base::StringPrintf("%s=%s", kFlashMainFirmware,
+        {base::StringPrintf("%s=%s:%s", kFlashFirmware, fw_type.c_str(),
                             path_to_fw.value().c_str()),
-         base::StringPrintf("%s=%s", kFwVersion, version.c_str())});
-  }
-
-  bool FlashCarrierFirmware(const base::FilePath& path_to_fw,
-                            const std::string& version) override {
-    auto flash_mode = FlashMode::Create(helper_info_);
-    if (!flash_mode)
-      return false;
-
-    return RunHelperProcessWithLogs(
-        helper_info_,
-        {base::StringPrintf("%s=%s", kFlashCarrierFirmware,
-                            path_to_fw.value().c_str()),
-         base::StringPrintf("%s=%s", kFwVersion, version.c_str())});
+         base::StringPrintf("%s=%s:%s", kFwVersion, fw_type.c_str(),
+                            version.c_str())});
   }
 
   bool FlashModeCheck() override {
