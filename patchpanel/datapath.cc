@@ -855,7 +855,7 @@ bool Datapath::ModifyRedirectDnsDNATRule(const std::string& op,
                                    "--to-destination",
                                    dns_ipv4_addr,
                                    "-w"};
-  return process_runner_->iptables("nat", args) != 0;
+  return process_runner_->iptables("nat", args) == 0;
 }
 
 bool Datapath::ModifyRedirectDnsJumpRule(const std::string& op) {
@@ -870,7 +870,7 @@ bool Datapath::ModifyRedirectDnsJumpRule(const std::string& op) {
       "-j",
       kRedirectDnsChain,
       "-w"};
-  return process_runner_->iptables("nat", args) != 0;
+  return process_runner_->iptables("nat", args) == 0;
 }
 
 bool Datapath::MaskInterfaceFlags(const std::string& ifname,
