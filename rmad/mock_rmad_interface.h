@@ -20,6 +20,10 @@ class MockRmadInterface : public RmadInterface {
               GetCurrentState,
               (const GetCurrentStateRequest&, const GetCurrentStateCallback&),
               (override));
+  MOCK_METHOD(void,
+              TransitionState,
+              (const TransitionStateRequest&, const TransitionStateCallback&),
+              (override));
 };
 
 }  // namespace rmad

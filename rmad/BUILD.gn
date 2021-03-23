@@ -54,7 +54,10 @@ static_library("libdbus_service") {
 static_library("librmad_interface") {
   configs += [ ":target_defaults" ]
   sources = [ "rmad_interface_impl.cc" ]
-  deps = [ ":libjson_store" ]
+  deps = [
+    ":libjson_store",
+    ":libstate_handler",
+  ]
 }
 
 executable("rmad") {

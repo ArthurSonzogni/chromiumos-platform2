@@ -49,3 +49,12 @@ message GetCurrentStateReply {
   RmadErrorCode error = 1;
   RmadState state = 2;
 }
+
+// Request from client to transition to next state.
+message TransitionStateRequest {}
+
+// Reply from daemon.
+message TransitionStateReply {
+  RmadErrorCode error = 1;
+  RmadState state = 2;
+}

@@ -7,6 +7,7 @@
 
 #include "rmad/rmad_interface.h"
 
+#include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {
@@ -23,9 +24,15 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   void GetCurrentState(const GetCurrentStateRequest& request,
                        const GetCurrentStateCallback& callback) override;
+  void TransitionState(const TransitionStateRequest& request,
+                       const TransitionStateCallback& callback) override;
 
  private:
+  void Initialize();
+
   JsonStore json_store_;
+  RmadState current_state_;
+  StateHandlerManager state_handler_manager_;
 };
 
 }  // namespace rmad

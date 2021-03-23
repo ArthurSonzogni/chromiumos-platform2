@@ -54,6 +54,9 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   dbus_interface->AddMethodHandler(kGetCurrentStateMethod,
                                    base::Unretained(this),
                                    &DBusService::HandleGetCurrentState);
+  dbus_interface->AddMethodHandler(kTransitionStateMethod,
+                                   base::Unretained(this),
+                                   &DBusService::HandleTransitionState);
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
@@ -67,6 +70,18 @@ void DBusService::HandleGetCurrentState(
   rmad_interface_->GetCurrentState(
       request, base::Bind(&DBusService::ReplyAndQuit<GetCurrentStateResponse,
                                                      GetCurrentStateReply>,
+                          base::Unretained(this),
+                          SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleTransitionState(
+    std::unique_ptr<TransitionStateResponse> response,
+    const TransitionStateRequest& request) {
+  // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
+  using SharedResponsePointer = std::shared_ptr<TransitionStateResponse>;
+  rmad_interface_->TransitionState(
+      request, base::Bind(&DBusService::ReplyAndQuit<TransitionStateResponse,
+                                                     TransitionStateReply>,
                           base::Unretained(this),
                           SharedResponsePointer(std::move(response))));
 }

@@ -90,4 +90,22 @@ TEST_F(DBusServiceTest, GetCurrentState) {
   EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
 }
 
+TEST_F(DBusServiceTest, TransitionState) {
+  RegisterDBusObjectAsync();
+
+  EXPECT_CALL(mock_rmad_service_, TransitionState(_, _))
+      .WillOnce(
+          Invoke([](const TransitionStateRequest& request,
+                    const RmadInterface::TransitionStateCallback& callback) {
+            TransitionStateReply reply;
+            reply.set_state(RMAD_STATE_RMA_NOT_REQUIRED);
+            callback.Run(reply);
+          }));
+
+  TransitionStateRequest request;
+  TransitionStateReply reply;
+  ExecuteMethod(kTransitionStateMethod, request, &reply);
+  EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
+}
+
 }  // namespace rmad

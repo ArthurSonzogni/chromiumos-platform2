@@ -42,6 +42,12 @@ class DBusService : public brillo::DBusServiceDaemon {
   void HandleGetCurrentState(std::unique_ptr<GetCurrentStateResponse> response,
                              const GetCurrentStateRequest& request);
 
+  // Handler for TransitionState D-Bus call.
+  using TransitionStateResponse =
+      brillo::dbus_utils::DBusMethodResponse<const TransitionStateReply&>;
+  void HandleTransitionState(std::unique_ptr<TransitionStateResponse> response,
+                             const TransitionStateRequest& request);
+
   template <typename ResponseType, typename ReplyProtobufType>
   void ReplyAndQuit(std::shared_ptr<ResponseType> response,
                     const ReplyProtobufType& reply);

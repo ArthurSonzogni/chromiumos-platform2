@@ -38,6 +38,9 @@ class RmadInterfaceImplTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
 };
 
+// TODO(chenghan): Make RmadInterfaceImpl able to inject state_manager_handler
+//                 so we don't depend on actual return values of state handlers.
+
 TEST_F(RmadInterfaceImplTest, GetCurrentState_Set) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
@@ -75,6 +78,32 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
     EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
   };
   rmad_interface.GetCurrentState(request, base::Bind(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, TransitionState) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
+  RmadInterfaceImpl rmad_interface(json_store_file_path);
+
+  TransitionStateRequest request;
+  auto callback = [](const TransitionStateReply& reply) {
+    EXPECT_EQ(RMAD_STATE_UNKNOWN, reply.state());
+  };
+  rmad_interface.TransitionState(request, base::Bind(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, TransitionState_NotSet) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateNotSetJson,
+                      std::size(kCurrentStateNotSetJson) - 1);
+  RmadInterfaceImpl rmad_interface(json_store_file_path);
+
+  TransitionStateRequest request;
+  auto callback = [](const TransitionStateReply& reply) {
+    EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
+  };
+  rmad_interface.TransitionState(request, base::Bind(callback));
 }
 
 }  // namespace rmad
