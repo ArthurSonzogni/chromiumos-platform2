@@ -258,7 +258,18 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
       removed.insert(d);
   }
 
+  // This can happen if the default network switched from one device to another.
+  if (added.empty() && removed.empty())
+    return;
+
   devices_ = new_devices;
+
+  LOG(INFO) << "Shill devices changed: added={"
+            << base::JoinString(std::vector(added.begin(), added.end()), ",")
+            << "}, removed={"
+            << base::JoinString(std::vector(removed.begin(), removed.end()),
+                                ",")
+            << "}";
 
   for (const auto& h : device_handlers_)
     h.Run(added, removed);
