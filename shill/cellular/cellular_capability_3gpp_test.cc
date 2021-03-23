@@ -250,16 +250,22 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
     UpdateSims(path);
   }
 
+  void SetCellularSimProperties(const Cellular::SimProperties& sim_properties) {
+    std::vector<Cellular::SimProperties> slot_properties;
+    slot_properties.push_back(sim_properties);
+    cellular_->SetSimProperties(slot_properties, 0u);
+  }
+
   void SetDefaultCellularSimProperties() {
     Cellular::SimProperties sim_properties;
     sim_properties.eid = kEid;
     sim_properties.iccid = kIccid;
     sim_properties.imsi = kImsi;
-    cellular_->SetPrimarySimProperties(sim_properties);
+    SetCellularSimProperties(sim_properties);
   }
 
   void ClearCellularSimProperties() {
-    cellular_->SetPrimarySimProperties(Cellular::SimProperties());
+    SetCellularSimProperties(Cellular::SimProperties());
   }
 
   void ClearCapabilitySimProperties() {
@@ -794,7 +800,6 @@ TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {
   EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
 
   ClearCellularSimProperties();
-  capability_->spn_ = "";
 
   // SIM is locked.
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN;
@@ -803,7 +808,6 @@ TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {
 
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->iccid());
-  EXPECT_EQ("", capability_->spn_);
 
   // SIM is unlocked.
   SetSimPropertiesAndPath(kSimPath1, sim_properties);
@@ -814,7 +818,6 @@ TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {
 
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->iccid());
-  EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is missing and SIM path is "/".
   ClearCapabilitySimProperties();
@@ -833,7 +836,6 @@ TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {
 
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->iccid());
-  EXPECT_EQ("", capability_->spn_);
 
   // SIM is missing and SIM path is empty.
   ClearCapabilitySimProperties();
@@ -849,7 +851,6 @@ TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {
 
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->iccid());
-  EXPECT_EQ("", capability_->spn_);
 }
 
 TEST_F(CellularCapability3gppTest, PropertiesChanged) {
@@ -1183,7 +1184,6 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
   EXPECT_EQ(RpcIdentifier(""), capability_->sim_path_for_testing());
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->iccid());
-  EXPECT_EQ("", capability_->spn_);
 
   SetSimPropertiesAndPath(kSimPath1, sim_properties);
   EXPECT_TRUE(cellular_->sim_present());
@@ -1191,7 +1191,6 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
   EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->iccid());
-  EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // Changing to the same SIM path should be a no-op.
   SetSimPath(kSimPath1);
@@ -1200,7 +1199,6 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
   EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->iccid());
-  EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is removed, Modem.Sim path is empty.
   ClearCapabilitySimProperties();
@@ -1210,7 +1208,6 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
   EXPECT_EQ(RpcIdentifier(""), capability_->sim_path_for_testing());
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->iccid());
-  EXPECT_EQ("", capability_->spn_);
 
   // SIM is replaced.
   SetSimPropertiesAndPath(kSimPath1, sim_properties);
@@ -1219,7 +1216,6 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
   EXPECT_EQ(kSimPath1, capability_->sim_path_for_testing());
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->iccid());
-  EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is removed, Modem.Sim path is "/".
   ClearCapabilitySimProperties();
@@ -1230,7 +1226,6 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
             capability_->sim_path_for_testing());
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->iccid());
-  EXPECT_EQ("", capability_->spn_);
 }
 
 TEST_F(CellularCapability3gppTest, Reset) {
@@ -1584,7 +1579,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
   Cellular::SimProperties sim_properties;
   sim_properties.iccid = "6";
   sim_properties.imsi = "2";
-  cellular_->SetPrimarySimProperties(sim_properties);
+  SetCellularSimProperties(sim_properties);
   cellular_->set_mdn("10123456789");
   cellular_->set_min("5");
 

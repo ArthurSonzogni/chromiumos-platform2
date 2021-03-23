@@ -319,6 +319,11 @@ class Cellular : public Device,
   // Returns true if |sim_card_id| matches any available SIM cards.
   bool HasSimCardId(const std::string& sim_card_id) const;
 
+  // Sets the SIM properties and the primary SIM, and updates services and
+  // state accordingly.
+  void SetSimProperties(const std::vector<SimProperties>& slot_properties,
+                        size_t primary_slot);
+
   // Property setters. TODO(b/176904580): Rename SetFoo and alphabetize.
   void set_home_provider(const Stringmap& home_provider);
   void set_carrier(const std::string& carrier);
@@ -329,10 +334,6 @@ class Cellular : public Device,
   void set_hardware_revision(const std::string& hardware_revision);
   void set_device_id(std::unique_ptr<DeviceId> device_id);
   void SetImei(const std::string& imei);
-  // Sets |eid_|, |iccid_|, |imsi_|, and |sim_present_| from |properties|.
-  void SetPrimarySimProperties(SimProperties properties);
-  // Sets |sim_slot_info_| from |slot_properties| for providing SIMSlotInfo.
-  void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties);
   void set_mdn(const std::string& mdn);
   void set_meid(const std::string& meid);
   void set_min(const std::string& min);
@@ -481,6 +482,9 @@ class Cellular : public Device,
   void EstablishLink();
 
   void InitCapability(Type type);
+
+  void SetPrimarySimProperties(SimProperties properties);
+  void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties);
 
   // Creates or destroys services as required.
   void UpdateServices();

@@ -1819,6 +1819,39 @@ bool Cellular::HasSimCardId(const std::string& sim_card_id) const {
   return false;
 }
 
+void Cellular::SetSimProperties(
+    const std::vector<SimProperties>& sim_properties, size_t primary_slot) {
+  SLOG(this, 1) << __func__ << " Slots: " << sim_properties.size()
+                << " Primary: " << primary_slot;
+
+  const SimProperties* primary_sim_properties = nullptr;
+  if (primary_slot < sim_properties.size())
+    primary_sim_properties = &sim_properties[primary_slot];
+
+  // Ensure that the primary SIM slot is set correctly.
+  if (!primary_sim_properties || primary_sim_properties->iccid.empty()) {
+    LOG(INFO) << "No Primary SIM properties.";
+    SetPrimarySimProperties(SimProperties());
+    SetSimSlotProperties(sim_properties);
+    // Attempt to switch to the first valid sim slot.
+    capability_->SetPrimarySimSlotForIccid(std::string());
+    return;
+  }
+
+  // Update SIM properties for the primary SIM slot and create or update the
+  // primary Service.
+  SetPrimarySimProperties(*primary_sim_properties);
+
+  // Ensure that secondary services are created and updated.
+  CreateSecondaryServices();
+
+  // Remove any services not associated with a SIM slot.
+  manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
+
+  // Update the KeyValueStore for Device.Cellular.SIMSlotInfo and emit it.
+  SetSimSlotProperties(sim_properties);
+}
+
 std::deque<Stringmap> Cellular::BuildApnTryList() const {
   std::deque<Stringmap> apn_try_list;
 
@@ -1903,6 +1936,9 @@ void Cellular::SetImei(const string& imei) {
 }
 
 void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
+  home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
+  home_provider_info()->UpdateOperatorName(sim_properties.spn);
+
   if (eid_ == sim_properties.eid && iccid_ == sim_properties.iccid) {
     ConnectToPending();
     return;
@@ -1957,12 +1993,6 @@ void Cellular::SetSimSlotProperties(
                   << " Primary: " << is_primary;
   }
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
-
-  // Ensure that secondary services are created and updated. The Primary service
-  // will be created when SetPrimarySimProperties calls UpdateServices().
-  CreateSecondaryServices();
-  // Remove any services not associated with a SIM slot.
-  manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
 }
 
 void Cellular::set_mdn(const string& mdn) {

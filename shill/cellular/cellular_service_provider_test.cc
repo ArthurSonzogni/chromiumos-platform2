@@ -50,6 +50,8 @@ class CellularServiceProviderTest : public testing::Test {
     provider_.set_profile_for_testing(profile_);
     EXPECT_CALL(*profile_, GetConstStorage()).WillRepeatedly(Return(&storage_));
     EXPECT_CALL(*profile_, GetStorage()).WillRepeatedly(Return(&storage_));
+    EXPECT_CALL(manager_, cellular_service_provider())
+        .WillRepeatedly(Return(&provider_));
   }
 
   void TearDown() override { provider_.Stop(); }
@@ -205,7 +207,9 @@ TEST_F(CellularServiceProviderTest, SwitchDeviceIccid) {
   Cellular::SimProperties sim_properties;
   sim_properties.iccid = "iccid2";
   sim_properties.imsi = "imsi2";
-  device->SetPrimarySimProperties(sim_properties);
+  std::vector<Cellular::SimProperties> slot_properties;
+  slot_properties.push_back(sim_properties);
+  device->SetSimProperties(slot_properties, 0u);
   service = provider()->LoadServicesForDevice(device.get());
   ASSERT_TRUE(service);
   EXPECT_EQ("iccid2", service->iccid());

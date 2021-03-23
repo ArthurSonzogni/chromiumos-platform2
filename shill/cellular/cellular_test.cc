@@ -416,6 +416,15 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         Bind(&CellularTest::TestCallback, Unretained(this)), error);
   }
 
+  void CallSetPrimarySimProperties(const Cellular::SimProperties& properties) {
+    device_->SetPrimarySimProperties(properties);
+  }
+
+  void CallSetSimSlotProperties(
+      const std::vector<Cellular::SimProperties>& properties) {
+    device_->SetSimSlotProperties(properties);
+  }
+
   MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
@@ -720,7 +729,6 @@ TEST_P(CellularTest, StartGsmRegister) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kIMEI, device_->imei());
   EXPECT_EQ(kIMSI, device_->imsi());
-  EXPECT_EQ(kTestCarrierSPN, GetCapabilityGsm()->spn_);
   EXPECT_EQ(kMSISDN, device_->mdn());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_NE(nullptr, device_->service_);
@@ -1060,7 +1068,7 @@ TEST_P(CellularTest, SetPrimarySimProperties) {
       .Times(1);
   EXPECT_CALL(*adaptor, EmitStringChanged(kImsiProperty, sim_properties.imsi))
       .Times(1);
-  device_->SetPrimarySimProperties(sim_properties);
+  CallSetPrimarySimProperties(sim_properties);
   EXPECT_EQ("test_eid", device_->eid());
   EXPECT_EQ("test_iccid", device_->iccid());
   EXPECT_EQ("test_imsi", device_->imsi());
@@ -1088,8 +1096,8 @@ TEST_P(CellularTest, SetSimSlotProperties) {
               EmitKeyValueStoresChanged(kSIMSlotInfoProperty, expected))
       .Times(1);
 
-  device_->SetPrimarySimProperties(slot_properties[1]);
-  device_->SetSimSlotProperties(slot_properties);
+  CallSetPrimarySimProperties(slot_properties[1]);
+  CallSetSimSlotProperties(slot_properties);
 }
 
 TEST_P(CellularTest, StorageIdentifier) {
@@ -1098,7 +1106,7 @@ TEST_P(CellularTest, StorageIdentifier) {
   Cellular::SimProperties sim_properties;
   sim_properties.iccid = "test_iccid";
   sim_properties.imsi = "test_imsi";
-  device_->SetPrimarySimProperties(sim_properties);
+  CallSetPrimarySimProperties(sim_properties);
   device_->CreateServices();
   EXPECT_EQ("cellular_test_iccid", device_->service()->GetStorageIdentifier());
   device_->DestroyServices();

@@ -219,7 +219,7 @@ class CellularCapability {
   virtual KeyValueStore SimLockStatusToProperty(Error* error) = 0;
 
   // Sends a request to the modem to set the primary SIM slot to the slot
-  // matching |iccid|.
+  // matching |iccid|. If |iccid| is empty, switches to the first valid slot.
   virtual bool SetPrimarySimSlotForIccid(const std::string& iccid) = 0;
 
   // -------------------------------------------------------------------------

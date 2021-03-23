@@ -274,11 +274,15 @@ bool CellularCapability3gpp::SetPrimarySimSlotForIccid(
     const std::string& iccid) {
   SLOG(this, 2) << __func__ << ": " << iccid;
   for (const auto& iter : sim_properties_) {
-    const SimProperties* properties = &iter.second;
-    if (properties->iccid == iccid) {
-      SetPrimarySimSlot(properties->slot);
-      return true;
-    }
+    if (iter.first == sim_path_)
+      continue;
+    const SimProperties& properties = iter.second;
+    if (properties.iccid.empty())
+      continue;
+    if (!iccid.empty() && iccid != properties.iccid)
+      continue;
+    SetPrimarySimSlot(properties.slot);
+    return true;
   }
   LOG(ERROR) << "No slot found for ICCID: " << iccid;
   return false;
@@ -1383,7 +1387,7 @@ void CellularCapability3gpp::UpdateSims() {
 }
 
 void CellularCapability3gpp::OnAllSimPropertiesReceived() {
-  SLOG(this, 1) << __func__ << " Primary Sim path=" << sim_path_.value();
+  SLOG(this, 1) << __func__ << " Primary SIM path=" << sim_path_.value();
   if (IsValidSimPath(sim_path_)) {
     sim_proxy_ = control_interface()->CreateMM1SimProxy(
         sim_path_, cellular()->dbus_service());
@@ -1391,61 +1395,23 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
     sim_proxy_ = nullptr;
   }
 
-  // Ensure that the primary SIM slot is set correctly.
-  const SimProperties* primary_sim_properties = nullptr;
-  auto iter = sim_properties_.find(sim_path_);
-  if (iter != sim_properties_.end())
-    primary_sim_properties = &iter->second;
-  if (!primary_sim_properties || primary_sim_properties->iccid.empty()) {
-    // Check secondary SIM slots for a non empty ICCID.
-    for (const auto& iter : sim_properties_) {
-      if (iter.first == sim_path_)
-        continue;
-      const SimProperties* properties = &iter.second;
-      if (!properties->iccid.empty()) {
-        // This will complete immediately, at which point the Modem object will
-        // become invalid. TODO(b/169581681): Ensure this is handled gracefully.
-        SetPrimarySimSlot(properties->slot);
-        return;
-      }
-    }
-  }
-
-  // Update SIM properties for the primary SIM slot.
-  if (primary_sim_properties) {
-    SetPrimarySimProperties(*primary_sim_properties);
-  } else {
-    LOG(INFO) << " No Primary SIM properties.";
-    SetPrimarySimProperties(SimProperties());
-  }
   // Update SIM slot properties for each SIM slot. Slots with an empty path
   // will contain an empty SimProperties entry. Note: Avoid sending a list of
   // empty slots which may happen while the Modem is starting.
-  bool sim_slots_empty = true;
   size_t num_slots = sim_slots_.size();
+  // Cellular::SetSimProperties only sets the primary sim properties if
+  // |primary_slot| < |num_slots|, so use |num_slots| for no primary slot.
+  size_t primary_slot = num_slots;
   std::vector<SimProperties> sim_slot_properties(num_slots);
   for (const auto& iter : sim_properties_) {
     size_t slot = iter.second.slot;
     DCHECK_GE(slot, 0u);
     DCHECK_LT(slot, num_slots);
-    if (!iter.second.eid.empty() || !iter.second.iccid.empty())
-      sim_slots_empty = false;
     sim_slot_properties[slot] = iter.second;
+    if (iter.first == sim_path_)
+      primary_slot = slot;
   }
-  if (!sim_slots_empty)
-    cellular()->SetSimSlotProperties(sim_slot_properties);
-}
-
-void CellularCapability3gpp::SetPrimarySimProperties(
-    const SimProperties& sim_properties) {
-  SLOG(this, 1) << __func__ << " EID= " << sim_properties.eid
-                << " ICCID= " << sim_properties.iccid;
-
-  cellular()->home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
-  spn_ = sim_properties.spn;
-  cellular()->home_provider_info()->UpdateOperatorName(spn_);
-
-  cellular()->SetPrimarySimProperties(sim_properties);
+  cellular()->SetSimProperties(sim_slot_properties, primary_slot);
 
   UpdateServiceActivationState();
   UpdatePendingActivationState();

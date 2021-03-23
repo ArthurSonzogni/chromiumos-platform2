@@ -336,7 +336,6 @@ class CellularCapability3gpp : public CellularCapability {
 
   void UpdateSims();
   void OnAllSimPropertiesReceived();
-  void SetPrimarySimProperties(const SimProperties& sim_properties);
   void SetPrimarySimSlot(size_t slot);
 
   // Post-payment activation handlers.
@@ -368,7 +367,6 @@ class CellularCapability3gpp : public CellularCapability {
   uint32_t access_technologies_;   // Bits based on MMModemAccessTechnology
 
   Stringmap serving_operator_;
-  std::string spn_;  // For testing only.
   std::string desired_network_;
 
   // Properties.
