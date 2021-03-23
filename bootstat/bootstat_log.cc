@@ -91,9 +91,10 @@ base::ScopedFD BootStat::OpenEventFile(const std::string& output_name_prefix,
 
   base::FilePath output_path = output_directory_path_.Append(output_file);
 
-  int output_fd = HANDLE_EINTR(open(output_path.value().c_str(),
-                                    O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW,
-                                    kFileCreationMode));
+  int output_fd =
+      HANDLE_EINTR(open(output_path.value().c_str(),
+                        O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW | O_CLOEXEC,
+                        kFileCreationMode));
 
   return base::ScopedFD(output_fd);
 }
