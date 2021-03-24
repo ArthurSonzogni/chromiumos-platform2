@@ -134,8 +134,11 @@ bool DiskCleanup::FreeDiskSpace() {
     return false;
   }
 
-  ReportFreeDiskSpaceTotalFreedInMb(
-      MAX(0, after_cleanup.value() - free_space.value()) / 1024 / 1024);
+  auto cleaned_in_mb =
+      MAX(0, after_cleanup.value() - free_space.value()) / 1024 / 1024;
+  ReportFreeDiskSpaceTotalFreedInMb(cleaned_in_mb);
+
+  VLOG(1) << "Disk cleanup cleared " << cleaned_in_mb << "MB.";
 
   LOG(INFO) << "Disk cleanup complete.";
 
