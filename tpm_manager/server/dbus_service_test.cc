@@ -20,6 +20,7 @@
 #include "tpm_manager/server/mock_local_data_store.h"
 
 using testing::_;
+using testing::DoAll;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
