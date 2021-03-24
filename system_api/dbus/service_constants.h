@@ -227,6 +227,8 @@ const char kChromeFeaturesServiceIsShillSandboxingEnabledMethod[] =
     "IsShillSandboxingEnabled";
 const char kChromeFeaturesServiceIsFsNosymfollowEnabledMethod[] =
     "IsFsNosymfollowEnabled";
+const char kChromeFeaturesServiceIsPeripheralDataAccessEnabledMethod[] =
+    "IsPeripheralDataAccessEnabled";
 
 const char kUrlHandlerServiceName[] = "org.chromium.UrlHandlerService";
 const char kUrlHandlerServicePath[] = "/org/chromium/UrlHandlerService";
