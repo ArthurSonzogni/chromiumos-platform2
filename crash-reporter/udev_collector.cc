@@ -64,7 +64,7 @@ bool UdevCollector::IsSafeDevCoredump(
   }
 
   // Check for safe drivers:
-  return driver_name == "msm";
+  return driver_name == "msm" || driver_name == "qcom-venus";
 }
 
 bool UdevCollector::HandleCrash(const std::string& udev_event) {
