@@ -40,6 +40,7 @@ write_deps("libshill-net_deps") {
 
 net_sources = [
   "../logging.cc",
+  "../scope_logger.cc",
   "arp_client.cc",
   "arp_packet.cc",
   "attribute_list.cc",
