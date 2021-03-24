@@ -196,7 +196,7 @@ constexpr char kServicesResolvedProperty[] = "ServicesResolved";
 constexpr char kAdvertisingDataFlagsProperty[] = "AdvertisingFlags";
 constexpr char kMTUProperty[] = "MTU";
 constexpr char kEIRProperty[] = "EIR";
-constexpr char kIsBlockedByPolicy[] = "IsBlockedByPolicy";
+constexpr char kIsBlockedByPolicyProperty[] = "IsBlockedByPolicy";
 
 // Bluetooth Device errors.
 constexpr char kErrorNotReady[] = "org.bluez.Error.NotReady";
@@ -598,13 +598,13 @@ constexpr char kKernelLevelProperty[] = "KernelLevel";
 }  // namespace bluetooth_debug
 
 namespace bluetooth_admin_policy {
-constexpr char kBluetoothDebugInterface[] = "org.bluez.AdminPolicy1";
+constexpr char kBluetoothAdminPolicyInterface[] = "org.bluez.AdminPolicy1";
 
 // Methods.
 constexpr char kSetServiceAllowList[] = "SetServiceAllowList";
 
 // Properties
-constexpr char kServiceAllowList[] = "ServiceAllowList";
+constexpr char kServiceAllowListProperty[] = "ServiceAllowList";
 }  // namespace bluetooth_admin_policy
 
 #endif  // SYSTEM_API_DBUS_BLUETOOTH_DBUS_CONSTANTS_H_
