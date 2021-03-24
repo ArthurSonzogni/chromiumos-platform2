@@ -34,6 +34,17 @@ struct FunctionMapEntry {
   base::RepeatingCallback<base::Optional<std::string>()> function;
 };
 
+// Helper function to get the form factor from /etc/lsb-release
+base::Optional<std::string> GetFormFactor() {
+  std::string device_type;
+  if (!base::SysInfo::GetLsbReleaseValue("DEVICETYPE", &device_type)) {
+    CROS_CONFIG_LOG(ERROR) << "Unable to get DEVICETYPE from /etc/lsb-release";
+    return base::nullopt;
+  }
+
+  return device_type;
+}
+
 // Helper function to determine if the device has a backlight.
 base::Optional<std::string> GetHasBacklight() {
   // Assume the device has a backlight unless it is a CHROMEBOX or CHROMEBIT.
@@ -79,6 +90,8 @@ const FunctionMapEntry kFunctionMap[] = {
      base::BindRepeating(&GetOutputForCommand, "mosys platform sku")},
     {"/identity", "platform-name",
      base::BindRepeating(&GetOutputForCommand, "mosys platform name")},
+    {"/hardware-properties", "form-factor",
+     base::BindRepeating(&GetFormFactor)},
     {"/hardware-properties", "psu-type",
      base::BindRepeating(&GetOutputForCommand, "mosys psu type")},
     {"/hardware-properties", "has-backlight",
