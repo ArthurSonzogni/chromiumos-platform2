@@ -146,7 +146,8 @@ bool NotificationDaemon::CloseNotification(uint32_t id) {
 void NotificationDaemon::OnClosed(const std::string& notification_key,
                                   bool by_user) {
   uint32_t id = 0;
-  DCHECK(base::StringToUint(notification_key, &id));
+  auto ret = base::StringToUint(notification_key, &id);
+  DCHECK(ret);
   // Forward notification closed event to client via D-Bus.
   dbus_service_->SendNotificationClosedSignal(
       id, by_user ? DBusService::ClosedReason::BY_USER

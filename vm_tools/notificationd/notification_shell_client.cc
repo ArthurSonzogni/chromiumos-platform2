@@ -393,7 +393,8 @@ void NotificationShellClient::HandleVirtwlSocketEvent() {
   // The data were extracted from the recvmsg call into the ioctl_send
   // structure which we now pass along to the kernel.
   ioctl_send->len = bytes;
-  DCHECK_EQ(0, ioctl(virtwl_ctx_fd_.get(), VIRTWL_IOCTL_SEND, ioctl_send));
+  auto ret = ioctl(virtwl_ctx_fd_.get(), VIRTWL_IOCTL_SEND, ioctl_send);
+  DCHECK_EQ(ret, 0);
 
   // We do not forwards FDs in notificationd. If any FDs are included in msg,
   // we just ignore them. We can do this because noification shell protocol does
