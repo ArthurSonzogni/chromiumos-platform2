@@ -91,8 +91,9 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
     return false;
 
   // Insert the proper root device for non-verity boots
-  if (!ReplaceInFile("HDROOT" + install_config.slot,
-                     install_config.root.device(), new_root_cfg_file))
+  const string root_opt = "PARTUUID=" + install_config.root.uuid();
+  if (!ReplaceInFile("HDROOT" + install_config.slot, root_opt,
+                     new_root_cfg_file))
     return false;
 
   string kernel_config_dm =
