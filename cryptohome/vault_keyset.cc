@@ -200,10 +200,7 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
     // For LE credentials, if decrypting the keyset failed due to too many
     // attempts, set auth_locked=true in the keyset. Then save it for future
     // callers who can Load it w/o Decrypt'ing to check that flag.
-    if (!key_data_.has_value()) {
-      key_data_ = KeyData();
-    }
-    key_data_->mutable_policy()->set_auth_locked(true);
+    auth_locked_ = true;
     if (!Save(source_file_)) {
       LOG(WARNING) << "Failed to set auth_locked in VaultKeyset on disk.";
     }
@@ -243,7 +240,6 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
   if (IsLECredential()) {
     reset_salt_ = brillo::SecureBlob(serialized.reset_salt().begin(),
                                      serialized.reset_salt().end());
-    key_data_->mutable_policy()->set_auth_locked(true);
   }
   if (serialized.has_le_fek_iv()) {
     le_fek_iv_ = brillo::SecureBlob(serialized.le_fek_iv().begin(),
@@ -382,11 +378,6 @@ void VaultKeyset::ClearKeyData() {
 const KeyData& VaultKeyset::GetKeyData() const {
   DCHECK(key_data_.has_value());
   return key_data_.value();
-}
-
-KeyData* VaultKeyset::GetMutableKeyData() {
-  DCHECK(key_data_.has_value());
-  return &(key_data_.value());
 }
 
 void VaultKeyset::SetResetIV(const brillo::SecureBlob& iv) {
@@ -612,7 +603,8 @@ SerializedVaultKeyset VaultKeyset::ToSerialized() const {
   }
 
   if (auth_locked_) {
-    serialized.mutable_key_data()->mutable_policy()->set_auth_locked(false);
+    serialized.mutable_key_data()->mutable_policy()->set_auth_locked(
+        auth_locked_);
   }
 
   if (wrapped_chaps_key_.has_value()) {
@@ -791,6 +783,10 @@ const base::FilePath& VaultKeyset::GetSourceFile() const {
 
 void VaultKeyset::SetAuthLocked(bool locked) {
   auth_locked_ = locked;
+}
+
+bool VaultKeyset::GetAuthLocked() const {
+  return auth_locked_;
 }
 
 void VaultKeyset::SetFlags(int32_t flags) {

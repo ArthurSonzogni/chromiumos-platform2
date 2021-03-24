@@ -590,9 +590,6 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
     reset_secret = inner_reset_secret;
     serialized->set_reset_salt(reset_salt.data(), reset_salt.size());
     store_reset_seed = false;
-
-    // This field only applies to PinWeaver credentials.
-    serialized->mutable_key_data()->mutable_policy()->set_auth_locked(false);
   }
 
   AuthInput user_input = {vault_key, /*locked_to_single_user*=*/base::nullopt,

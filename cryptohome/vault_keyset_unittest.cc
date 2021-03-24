@@ -201,4 +201,21 @@ TEST_F(VaultKeysetTest, WriteError) {
   EXPECT_FALSE(keyset.Save(FilePath("foo")));
 }
 
+TEST_F(VaultKeysetTest, AuthLockedDefault) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  VaultKeyset keyset;
+  keyset.Initialize(&platform, &crypto);
+
+  static const int kFscryptPolicyVersion = 2;
+
+  keyset.CreateRandom();
+  keyset.SetFscryptPolicyVersion(kFscryptPolicyVersion);
+  keyset.SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
+
+  SecureBlob key("key");
+  EXPECT_TRUE(keyset.Encrypt(key, ""));
+  EXPECT_FALSE(keyset.GetAuthLocked());
+}
+
 }  // namespace cryptohome

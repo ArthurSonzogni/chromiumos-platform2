@@ -739,7 +739,7 @@ void KeysetManagement::ResetLECredentials(const Credentials& creds) {
     if (!crypto_->ResetLECredential(*vk_reset, *vk, &err)) {
       LOG(WARNING) << "Failed to reset an LE credential: " << err;
     } else {
-      vk_reset->GetMutableKeyData()->mutable_policy()->set_auth_locked(false);
+      vk_reset->SetAuthLocked(false);
       if (!vk_reset->Save(vk_reset->GetSourceFile())) {
         LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
       }

@@ -71,6 +71,7 @@ class VaultKeyset {
   virtual const base::FilePath& GetSourceFile() const;
 
   virtual void SetAuthLocked(bool locked);
+  virtual bool GetAuthLocked() const;
 
   // Group 1. Methods to access plaintext metadata as stored in AuthBlockState.
   // Returns the SerializedVaultKeyset flags.
@@ -99,7 +100,6 @@ class VaultKeyset {
   virtual void SetKeyData(const KeyData& key_data);
   virtual void ClearKeyData();
   virtual const KeyData& GetKeyData() const;
-  virtual KeyData* GetMutableKeyData();
 
   // Gets the label from the KeyData.
   virtual std::string GetLabel() const;
