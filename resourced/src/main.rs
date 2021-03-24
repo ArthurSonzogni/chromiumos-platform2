@@ -4,7 +4,7 @@
 
 extern crate anyhow;
 extern crate dbus as dbus_crate;
-extern crate lazy_static;
+extern crate once_cell;
 
 mod common;
 mod dbus;

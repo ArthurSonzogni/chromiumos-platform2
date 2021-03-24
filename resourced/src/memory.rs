@@ -7,7 +7,7 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 use common;
 
@@ -219,18 +219,19 @@ struct MemoryParameters {
 }
 
 fn get_memory_parameters() -> MemoryParameters {
-    lazy_static! {
-        static ref RESERVED_FREE: u64 = match get_reserved_memory_kb() {
-            Ok(reserved) => reserved,
-            Err(e) => {
-                println!("get_reserved_memory_kb failed: {}", e);
-                0
-            }
-        };
-        static ref MIN_FILELIST: u64 = common::read_file_to_u64("/proc/sys/vm/min_filelist_kbytes").unwrap_or(0);
-        // TODO(vovoy): Use a regular config file instead of sysfs file.
-        static ref RAM_SWAP_WEIGHT: u64 = common::read_file_to_u64("/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight").unwrap_or(0);
-    }
+    static RESERVED_FREE: Lazy<u64> = Lazy::new(|| match get_reserved_memory_kb() {
+        Ok(reserved) => reserved,
+        Err(e) => {
+            println!("get_reserved_memory_kb failed: {}", e);
+            0
+        }
+    });
+    static MIN_FILELIST: Lazy<u64> =
+        Lazy::new(|| common::read_file_to_u64("/proc/sys/vm/min_filelist_kbytes").unwrap_or(0));
+    // TODO(vovoy): Use a regular config file instead of sysfs file.
+    static RAM_SWAP_WEIGHT: Lazy<u64> = Lazy::new(|| {
+        common::read_file_to_u64("/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight").unwrap_or(0)
+    });
     MemoryParameters {
         reserved_free: *RESERVED_FREE,
         min_filelist: *MIN_FILELIST,
@@ -307,8 +308,6 @@ fn get_memory_margins_kb_impl() -> (u64, u64) {
 }
 
 pub fn get_memory_margins_kb() -> (u64, u64) {
-    lazy_static! {
-        static ref MARGINS: (u64, u64) = get_memory_margins_kb_impl();
-    }
+    static MARGINS: Lazy<(u64, u64)> = Lazy::new(get_memory_margins_kb_impl);
     *MARGINS
 }

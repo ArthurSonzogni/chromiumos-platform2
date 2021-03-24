@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 // Extract the parsing function for unittest.
 pub fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
@@ -32,10 +32,7 @@ pub enum GameMode {
     Borealis = 1,
 }
 
-// lazy_static + Mutex is safer than static mutable variable.
-lazy_static! {
-    static ref GAME_MODE: Mutex<GameMode> = Mutex::new(GameMode::Off);
-}
+static GAME_MODE: Lazy<Mutex<GameMode>> = Lazy::new(|| Mutex::new(GameMode::Off));
 
 pub fn set_game_mode(mode: GameMode) -> Result<()> {
     match GAME_MODE.lock() {
