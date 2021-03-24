@@ -199,6 +199,29 @@ TEST_F(CellularServiceTest, SetApn) {
   EXPECT_NE(nullptr, service_->GetUserSpecifiedApn());
 }
 
+TEST_F(CellularServiceTest, SetAttachApn) {
+  static const char kApn[] = "AttachInternetAPN";
+  static const char kUsername[] = "commander.data";
+  ProfileRefPtr profile(new NiceMock<MockProfile>(&manager_));
+  service_->set_profile(profile);
+  Error error;
+  Stringmap testapn;
+  testapn[kApnProperty] = kApn;
+  testapn[kApnUsernameProperty] = kUsername;
+  testapn[kApnAttachProperty] = kApnAttachProperty;
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularApnProperty, _));
+  EXPECT_CALL(*device_, ReAttach());
+  service_->SetApn(testapn, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  Stringmap resultapn = service_->GetApn(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  Stringmap::const_iterator it = resultapn.find(kApnProperty);
+  EXPECT_TRUE(it != resultapn.end() && it->second == kApn);
+  it = resultapn.find(kApnAttachProperty);
+  EXPECT_TRUE(it != resultapn.end() && it->second == kApnAttachProperty);
+  EXPECT_NE(nullptr, service_->GetUserSpecifiedApn());
+}
+
 TEST_F(CellularServiceTest, ClearApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
@@ -418,6 +441,7 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   testapn[kApnUsernameProperty] = kUsername;
   testapn[kApnPasswordProperty] = kPassword;
   testapn[kApnAuthenticationProperty] = kAuthentication;
+  testapn[kApnAttachProperty] = kApnAttachProperty;
   service_->SetApn(testapn, &error);
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->Save(&storage_));
@@ -435,6 +459,7 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   EXPECT_EQ(kUsername, resultapn[kApnUsernameProperty]);
   EXPECT_EQ(kPassword, resultapn[kApnPasswordProperty]);
   EXPECT_EQ(kAuthentication, resultapn[kApnAuthenticationProperty]);
+  EXPECT_EQ(kApnAttachProperty, kApnAttachProperty);
 }
 
 TEST_F(CellularServiceTest, IgnoreUnversionedLastGoodApn) {

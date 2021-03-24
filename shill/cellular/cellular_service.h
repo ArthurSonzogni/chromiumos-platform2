@@ -144,6 +144,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularTest, FriendlyServiceName);
   FRIEND_TEST(CellularTest, GetLogin);  // ppp_username_, ppp_password_
   FRIEND_TEST(CellularServiceTest, SetApn);
+  FRIEND_TEST(CellularServiceTest, SetAttachApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);

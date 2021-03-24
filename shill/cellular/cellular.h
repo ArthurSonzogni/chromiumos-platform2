@@ -149,6 +149,9 @@ class Cellular : public Device,
   // |error| on failure, leaves it unchanged otherwise.
   virtual void Disconnect(Error* error, const char* reason);
 
+  // Asynchronously detach then re-attach the network.
+  virtual void ReAttach();
+
   // Performs the necessary steps to bring the service to the activated state,
   // once an online payment has been done.
   void CompleteActivation(Error* error);
@@ -511,6 +514,8 @@ class Cellular : public Device,
 
   void OnConnectReply(std::string iccid, const Error& error);
   void OnDisconnectReply(const Error& error);
+
+  void ReAttachOnDetachComplete(const Error& error);
 
   // DBus accessors
   bool GetAllowRoaming(Error* /*error*/);

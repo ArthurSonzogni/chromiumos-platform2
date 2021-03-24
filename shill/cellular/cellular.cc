@@ -772,6 +772,28 @@ void Cellular::OnAfterResume() {
   Device::OnAfterResume();
 }
 
+void Cellular::ReAttach() {
+  if (!enabled() && !enabled_pending()) {
+    LOG(WARNING) << __func__ << " Modem not enabled, skipped re-attach.";
+    return;
+  }
+
+  Error error;
+  SetEnabledNonPersistent(false, &error,
+                          Bind(&Cellular::ReAttachOnDetachComplete,
+                               weak_ptr_factory_.GetWeakPtr()));
+  if (error.IsFailure() && error.type() != Error::kInProgress)
+    LOG(WARNING) << __func__ << " Detaching the modem failed: " << error;
+}
+
+void Cellular::ReAttachOnDetachComplete(const Error&) {
+  Error error;
+  SLOG(this, 2) << __func__;
+  SetEnabledUnchecked(true, &error, Bind(LogRestartModemResult));
+  if (error.IsFailure() && !error.IsOngoing())
+    LOG(WARNING) << "Modem restart completed immediately.";
+}
+
 void Cellular::Scan(Error* error, const string& /*reason*/) {
   SLOG(this, 2) << "Scanning started";
   CHECK(error);
@@ -1418,10 +1440,9 @@ bool Cellular::SetUseAttachApn(const bool& value, Error* error) {
   use_attach_apn_ = value;
 
   if (capability_) {
-    // Re-creating services will set the attach APN again and eventually
-    // re-attach if needed.
-    DestroyAllServices();
-    CreateServices();
+    // We need to detach and re-attach to the LTE network in order to use the
+    // attach APN.
+    ReAttach();
   }
 
   adaptor()->EmitBoolChanged(kUseAttachAPNProperty, value);

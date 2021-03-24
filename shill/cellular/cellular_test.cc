@@ -467,21 +467,26 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     std::unique_ptr<mm1::ModemLocationProxyInterface>
     CreateMM1ModemLocationProxy(const RpcIdentifier& path,
                                 const std::string& service) override {
-      CHECK(test_->mm1_modem_location_proxy_);
+      if (!test_->mm1_modem_location_proxy_) {
+        test_->mm1_modem_location_proxy_.reset(
+            new mm1::MockModemLocationProxy());
+      }
       return std::move(test_->mm1_modem_location_proxy_);
     }
 
     std::unique_ptr<mm1::ModemModem3gppProxyInterface>
     CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
                                  const std::string& service) override {
-      CHECK(test_->mm1_modem_3gpp_proxy_);
+      if (!test_->mm1_modem_3gpp_proxy_)
+        test_->mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
       return std::move(test_->mm1_modem_3gpp_proxy_);
     }
 
     std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
     CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
                                  const std::string& service) override {
-      CHECK(test_->mm1_modem_cdma_proxy_);
+      if (!test_->mm1_modem_cdma_proxy_)
+        test_->mm1_modem_cdma_proxy_.reset(new mm1::MockModemModemCdmaProxy());
       return std::move(test_->mm1_modem_cdma_proxy_);
     }
 
@@ -493,19 +498,22 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
         const RpcIdentifier& path, const std::string& service) override {
-      CHECK(test_->mm1_modem_proxy_);
+      if (!test_->mm1_modem_proxy_)
+        test_->mm1_modem_proxy_.reset(new mm1::MockModemProxy());
       return std::move(test_->mm1_modem_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
         const RpcIdentifier& /*path*/, const string& /*service*/) override {
-      CHECK(test_->mm1_simple_proxy_);
+      if (!test_->mm1_simple_proxy_)
+        test_->mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
       return std::move(test_->mm1_simple_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSignalProxyInterface> CreateMM1ModemSignalProxy(
         const RpcIdentifier& /*path*/, const string& /*service*/) override {
-      CHECK(test_->mm1_signal_proxy_);
+      if (!test_->mm1_signal_proxy_)
+        test_->mm1_signal_proxy_.reset(new mm1::MockModemSignalProxy());
       return std::move(test_->mm1_signal_proxy_);
     }
 
@@ -1388,15 +1396,34 @@ TEST_P(CellularTest, SetAllowRoaming) {
 }
 
 TEST_P(CellularTest, SetUseAttachApn) {
-  EXPECT_FALSE(device_->use_attach_apn_);
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
+    return;
+  }
+  mm1::MockModemProxy* mm1_modem_proxy = mm1_modem_proxy_.get();
   InitCapability3gppProxies();
-  // It's going to process again the mobile network information for the APN
-  SetMockMobileOperatorInfoObjects();
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
-      .Times(AtLeast(1));
+  // initial state: modem enabled, attach APN disabled
+  EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+  device_->SetEnabled(true);
+  EXPECT_FALSE(device_->use_attach_apn_);
+
+  // The modem is going to be disabled then enabled
+  // in order to use the new attach APN.
+  EXPECT_CALL(*mm1_modem_proxy, Enable(false, _, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+  EXPECT_CALL(*mm1_modem_proxy, SetPowerState(_, _, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeSetPowerState));
+  // It will call again Enable(true,...) but with another proxy as the previous
+  // one was released at the end of the Disabling process.
   Error error;
   device_->SetUseAttachApn(true, &error);
+  dispatcher_.DispatchPendingEvents();  // StopModem yields a deferred task
   EXPECT_TRUE(error.IsSuccess());
+  // We have (re)enabled the modem but as the final Enable() didn't invoke its
+  // callback for the reason stated above we won't reach the final
+  // kModemStarted state.
+  EXPECT_EQ(device_->capability_state_,
+            Cellular::CapabilityState::kModemStarting);
   EXPECT_TRUE(device_->use_attach_apn_);
 }
 

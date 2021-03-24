@@ -588,6 +588,8 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
       new_apn_info[kApnPasswordProperty] = str;
     if (GetNonEmptyField(value, kApnAuthenticationProperty, &str))
       new_apn_info[kApnAuthenticationProperty] = str;
+    if (GetNonEmptyField(value, kApnAttachProperty, &str))
+      new_apn_info[kApnAttachProperty] = str;
 
     new_apn_info[kApnVersionProperty] =
         base::NumberToString(kCurrentApnCacheVersion);
@@ -598,16 +600,21 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
   apn_info_ = new_apn_info;
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
 
-  if (IsConnected()) {
-    Disconnect(error, __func__);
-    if (!error->IsSuccess()) {
-      return false;
-    }
-    Connect(error, __func__);
-    return error->IsSuccess();
+  if (apn_info_.count(kApnAttachProperty)) {
+    // The new APN is also an 'attach APN'.
+    // We need to detach and re-attach to the LTE network in order to use it.
+    cellular_->ReAttach();
+    return true;
   }
-
-  return true;
+  if (!IsConnected()) {
+    return true;
+  }
+  Disconnect(error, __func__);
+  if (!error->IsSuccess()) {
+    return false;
+  }
+  Connect(error, __func__);
+  return error->IsSuccess();
 }
 
 void CellularService::LoadApn(const StoreInterface* storage,
@@ -635,6 +642,7 @@ void CellularService::LoadApn(const StoreInterface* storage,
   LoadApnField(storage, storage_group, keytag, kApnAuthenticationProperty,
                apn_info);
   LoadApnField(storage, storage_group, keytag, kApnIpTypeProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnAttachProperty, apn_info);
 }
 
 bool CellularService::LoadApnField(const StoreInterface* storage,
@@ -661,6 +669,7 @@ void CellularService::SaveApn(StoreInterface* storage,
   SaveApnField(storage, storage_group, apn_info, keytag,
                kApnAuthenticationProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnIpTypeProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnAttachProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnVersionProperty);
 }
 
