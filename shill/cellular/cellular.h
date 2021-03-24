@@ -460,8 +460,6 @@ class Cellular : public Device,
   void StartModem(Error* error, const EnabledStateChangedCallback& callback);
   void StartModemCallback(const EnabledStateChangedCallback& callback,
                           const Error& error);
-  void StartModemGetDeviceCallback(const EnabledStateChangedCallback& callback,
-                                   const brillo::Any& device);
   void StopModem(Error* error, const EnabledStateChangedCallback& callback);
   void StopModemCallback(const EnabledStateChangedCallback& callback,
                          const Error& error);
@@ -519,6 +517,7 @@ class Cellular : public Device,
   bool SetAllowRoaming(const bool& value, Error* error);
   bool GetInhibited(Error* /*error*/);
   bool SetInhibited(const bool& inhibited, Error* error);
+  void SetInhibitedGetDeviceCallback(bool inhibited, const brillo::Any& device);
   void OnInhibitDevice(bool inhibited, const Error& error);
   KeyValueStore GetSimLockStatus(Error* error);
   void SetSimPresent(bool sim_present);

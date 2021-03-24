@@ -509,29 +509,6 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
   }
 
   UpdateScanning();
-
-  // Request Device property for setting uid_.
-  std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy =
-      control_interface()->CreateDBusPropertiesProxy(dbus_path_, dbus_service_);
-  dbus_properties_proxy->GetAsync(
-      modemmanager::kModemManager1ModemInterface, MM_MODEM_PROPERTY_DEVICE,
-      base::Bind(&Cellular::StartModemGetDeviceCallback,
-                 weak_ptr_factory_.GetWeakPtr(), callback),
-      base::Bind(
-          [](const EnabledStateChangedCallback& callback, const Error& error) {
-            LOG(ERROR) << "Error geeting Device property from Modem: " << error;
-            if (callback)
-              callback.Run(Error(Error::kOperationFailed));
-          },
-          callback));
-}
-
-void Cellular::StartModemGetDeviceCallback(
-    const EnabledStateChangedCallback& callback, const brillo::Any& device) {
-  SLOG(this, 2) << __func__;
-  if (!device.IsEmpty())
-    uid_ = device.Get<std::string>();
-
   metrics()->NotifyDeviceEnableFinished(interface_index());
 
   if (callback)
@@ -995,15 +972,13 @@ void Cellular::DestroyCapability() {
 
   capability_.reset();
   SetModemState(kModemStateUnknown);
-  if (capability_state_ == CapabilityState::kModemStopping ||
-      capability_state_ == CapabilityState::kCellularStopped) {
-    // If Cellular::StopModem has been called, nothing more to do.
-    UpdateScanning();
-    return;
+
+  if (capability_state_ != CapabilityState::kModemStopping &&
+      capability_state_ != CapabilityState::kCellularStopped) {
+    // Clear any modem starting/started/stopped state by resetting the
+    // capability state to kCellularStarted.
+    SetCapabilityState(CapabilityState::kCellularStarted);
   }
-  // Clear any modem starting/started/stopped state by resetting the capability
-  // state to kCellularStarted.
-  SetCapabilityState(CapabilityState::kCellularStarted);
   UpdateScanning();
 }
 
@@ -1419,20 +1394,77 @@ bool Cellular::GetInhibited(Error* error) {
 }
 
 bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
-  if (inhibited == inhibited_)
-    return false;
+  SLOG(this, 2) << __func__ << ": " << inhibited;
 
-  if (!mm1_proxy_)
+  if (inhibited == inhibited_) {
+    SLOG(this, 2) << __func__ << ": State already set, ignoring request.";
     return false;
+  }
 
-  if (inhibited && capability_state_ != CapabilityState::kModemStarted)
+  if (!mm1_proxy_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound, "No Modem.");
     return false;
+  }
+
+  // When setting inhibited to true, ensure that the Modem has started.
+  // Exception : If no SIM slots are available, the modem state will be set to
+  // kModemStateFailed and the capability state will be reset to
+  // kCellularStarted. Allow inhibit in that state.
+  if (inhibited && !(capability_state_ == CapabilityState::kModemStarted ||
+                     modem_state_ == kModemStateFailed)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
+                          "Modem not started.");
+    return false;
+  }
+
+  // When setting inhibited to false, ensure that Cellular has started but the
+  // Modem has not started.
+  if (!inhibited && capability_state_ != CapabilityState::kCellularStarted) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
+                          "Cellular capability in unexpected state.");
+    return false;
+  }
+
+  if (uid_.empty()) {
+    if (inhibited_) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
+                            "SetInhibited=false called with no UID set.");
+      return false;
+    }
+    // Request and cache the Device (uid) property before calling InhibitDevice.
+    std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy =
+        control_interface()->CreateDBusPropertiesProxy(dbus_path_,
+                                                       dbus_service_);
+    dbus_properties_proxy->GetAsync(
+        modemmanager::kModemManager1ModemInterface, MM_MODEM_PROPERTY_DEVICE,
+        base::Bind(&Cellular::SetInhibitedGetDeviceCallback,
+                   weak_ptr_factory_.GetWeakPtr(), inhibited),
+        base::Bind([](const Error& error) {
+          LOG(ERROR) << "Error getting Device property from Modem: " << error;
+        }));
+    return true;
+  }
 
   mm1_proxy_->InhibitDevice(
       uid_, inhibited,
       base::Bind(&Cellular::OnInhibitDevice, weak_ptr_factory_.GetWeakPtr(),
                  inhibited));
   return true;
+}
+
+void Cellular::SetInhibitedGetDeviceCallback(bool inhibited,
+                                             const brillo::Any& device) {
+  SLOG(this, 2) << __func__;
+  if (device.IsEmpty()) {
+    LOG(ERROR) << "Empty Device property";
+    return;
+  }
+
+  uid_ = device.Get<std::string>();
+  mm1_proxy_->InhibitDevice(
+      uid_, inhibited,
+      base::Bind(&Cellular::OnInhibitDevice, weak_ptr_factory_.GetWeakPtr(),
+                 inhibited));
 }
 
 void Cellular::OnInhibitDevice(bool inhibited, const Error& error) {
