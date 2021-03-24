@@ -43,6 +43,7 @@ static_library("typecd_common") {
   sources = [
     "alt_mode.cc",
     "cable.cc",
+    "chrome_features_service_client.cc",
     "cros_ec_util.cc",
     "metrics.cc",
     "notification_manager.cc",

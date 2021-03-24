@@ -45,6 +45,7 @@ namespace typecd {
 PortManager::PortManager()
     : mode_entry_supported_(true),
       notify_mgr_(nullptr),
+      features_client_(nullptr),
       user_active_(false),
       peripheral_data_access_(true) {}
 

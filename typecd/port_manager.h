@@ -11,6 +11,7 @@
 
 #include <gtest/gtest_prod.h>
 
+#include "typecd/chrome_features_service_client.h"
 #include "typecd/ec_util.h"
 #include "typecd/metrics.h"
 #include "typecd/notification_manager.h"
@@ -44,6 +45,10 @@ class PortManager : public UdevMonitor::Observer,
   void SetNotificationManager(NotificationManager* mgr) { notify_mgr_ = mgr; }
 
   void SetMetrics(Metrics* metrics) { metrics_ = metrics; }
+
+  void SetFeaturesClient(ChromeFeaturesServiceClient* client) {
+    features_client_ = client;
+  }
 
  protected:
   bool GetPeripheralDataAccess() { return peripheral_data_access_; }
@@ -103,6 +108,10 @@ class PortManager : public UdevMonitor::Observer,
   // Pointer to the NotificationManager instance. NOTE: This is owned by the
   // parent Daemon, and not PortManager.
   NotificationManager* notify_mgr_;
+
+  // Pointer to the ChromeFeaturesServiceClient instance. NOTE: This is owned
+  // by the parent Daemon, and not PortManager.
+  ChromeFeaturesServiceClient* features_client_;
 
   // Variable that is used to determine what alt mode should be entered. It is
   // updated in response to session manager events. It is set to false when the
