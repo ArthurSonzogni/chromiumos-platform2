@@ -84,28 +84,26 @@ impl FromStr for ListenAddress {
     type Err = ParseAddressError;
 
     fn from_str(s: &str) -> result::Result<Self, Self::Err> {
-        if s.starts_with(VSOCK) {
-            if s.len() > VSOCK.len() {
+        if let Some(s) = s.strip_prefix(VSOCK) {
+            if !s.is_empty() {
                 Ok(ListenAddress::Vsock(
-                    s[VSOCK.len()..].parse().map_err(ParseAddressError::Vsock)?,
+                    s.parse().map_err(ParseAddressError::Vsock)?,
                 ))
             } else {
                 Err(ParseAddressError::MissingVsockPort)
             }
-        } else if s.starts_with(UNIX) {
-            if s.len() > UNIX.len() {
+        } else if let Some(s) = s.strip_prefix(UNIX) {
+            if !s.is_empty() {
                 Ok(ListenAddress::Unix(
-                    s[UNIX.len()..].parse().map_err(ParseAddressError::Unix)?,
+                    s.parse().map_err(ParseAddressError::Unix)?,
                 ))
             } else {
                 Err(ParseAddressError::MissingUnixPath)
             }
-        } else if s.starts_with(UNIX_FD) {
-            if s.len() > UNIX_FD.len() {
+        } else if let Some(s) = s.strip_prefix(UNIX_FD) {
+            if !s.is_empty() {
                 Ok(ListenAddress::UnixFd(
-                    s[UNIX_FD.len()..]
-                        .parse()
-                        .map_err(ParseAddressError::UnixFd)?,
+                    s.parse().map_err(ParseAddressError::UnixFd)?,
                 ))
             } else {
                 Err(ParseAddressError::MissingUnixFd)
