@@ -280,6 +280,9 @@ class TpmManagerService : public TpmNvramInterface,
   // for reset.
   bool ResetDictionaryAttackCounterIfNeeded();
 
+  // Disables DA mitigation mechanism by TPM if it is enabled.
+  void DisableDictionaryAttackMitigationIfNeeded();
+
   // This task performs the DA reset and posts itself with the delay determined
   // by |dictionary_attack_timer_|.
   void PeriodicResetDictionaryAttackCounterTask();

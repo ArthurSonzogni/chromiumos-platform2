@@ -260,6 +260,7 @@ void TpmManagerService::InitializeTask(
       ReportSecretStatus(local_data);
       *(reply->mutable_local_data()) = std::move(local_data);
     }
+    DisableDictionaryAttackMitigationIfNeeded();
     reply->set_status(STATUS_SUCCESS);
     NotifyTpmIsOwned();
     return;
@@ -567,6 +568,9 @@ void TpmManagerService::TakeOwnershipTask(
     LOG(WARNING) << __func__ << ": DA reset failed after taking ownership.";
   }
   dictionary_attack_timer_.Reset();
+  // Forcedly disable DA mitigation to be extra sure the DA mitigation is
+  // disabled for a device through OOBE.
+  DisableDictionaryAttackMitigationIfNeeded();
   reply->set_status(STATUS_SUCCESS);
 }
 
@@ -838,6 +842,27 @@ void TpmManagerService::PeriodicResetDictionaryAttackCounterTask() {
       base::Bind(&TpmManagerService::PeriodicResetDictionaryAttackCounterTask,
                  base::Unretained(this)),
       time_remaining);
+}
+
+void TpmManagerService::DisableDictionaryAttackMitigationIfNeeded() {
+  bool is_enabled = false;
+  if (!tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled)) {
+    LOG(WARNING) << __func__
+                 << ": Failed to check if DA mitigation mechanism is "
+                    "enabled...Still attempting to disable it.";
+  } else if (!is_enabled) {
+    return;
+  }
+
+  switch (tpm_initializer_->DisableDictionaryAttackMitigation()) {
+    case TpmInitializerStatus::kSuccess:
+      break;
+    case TpmInitializerStatus::kFailure:
+      LOG(ERROR) << __func__ << ": Failed to disable DA mitigation.";
+      return;
+    case TpmInitializerStatus::kNotSupport:
+      return;
+  }
 }
 
 void TpmManagerService::ShutdownTask() {

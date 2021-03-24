@@ -34,6 +34,7 @@ class TpmStatusImpl : public TpmStatus {
                                uint32_t* threshold,
                                bool* lockout,
                                uint32_t* seconds_remaining) override;
+  bool IsDictionaryAttackMitigationEnabled(bool* is_enabled) override;
   bool GetVersionInfo(uint32_t* family,
                       uint64_t* spec_level,
                       uint32_t* manufacturer,

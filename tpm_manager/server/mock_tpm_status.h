@@ -24,6 +24,7 @@ class MockTpmStatus : public TpmStatus {
               GetDictionaryAttackInfo,
               (uint32_t*, uint32_t*, bool*, uint32_t*),
               (override));
+  MOCK_METHOD(bool, IsDictionaryAttackMitigationEnabled, (bool*), (override));
   MOCK_METHOD(bool,
               GetVersionInfo,
               (uint32_t*,

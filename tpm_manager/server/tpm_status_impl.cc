@@ -155,6 +155,12 @@ bool TpmStatusImpl::GetDictionaryAttackInfo(uint32_t* counter,
   return true;
 }
 
+bool TpmStatusImpl::IsDictionaryAttackMitigationEnabled(bool* is_enabled) {
+  // For TPM1.2, it is always enabled.
+  *is_enabled = true;
+  return true;
+}
+
 bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
                                    uint64_t* spec_level,
                                    uint32_t* manufacturer,

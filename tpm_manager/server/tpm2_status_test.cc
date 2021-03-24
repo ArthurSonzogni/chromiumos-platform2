@@ -163,4 +163,38 @@ TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoAlwaysRefresh) {
                                                    &seconds_remaining));
 }
 
+TEST_F(Tpm2StatusTest, IsDictionaryAttackMitigationEnabledInitializeFailure) {
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  bool is_enabled;
+  EXPECT_FALSE(tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled));
+}
+
+TEST_F(Tpm2StatusTest, IsDictionaryAttackMitigationEnabledSuccess) {
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+
+  // Either lockout interval or lockout recovery indicates a positive test.
+  EXPECT_CALL(mock_tpm_state_, GetLockoutInterval())
+      .WillRepeatedly(Return(2000));
+  EXPECT_CALL(mock_tpm_state_, GetLockoutRecovery()).WillRepeatedly(Return(0));
+  bool is_enabled = false;
+  EXPECT_TRUE(tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled));
+  EXPECT_TRUE(is_enabled);
+
+  EXPECT_CALL(mock_tpm_state_, GetLockoutInterval()).WillRepeatedly(Return(0));
+  EXPECT_CALL(mock_tpm_state_, GetLockoutRecovery())
+      .WillRepeatedly(Return(2000));
+  is_enabled = false;
+  EXPECT_TRUE(tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled));
+  EXPECT_TRUE(is_enabled);
+
+  // Otherwise both values being 0 indicates a negative test.
+  EXPECT_CALL(mock_tpm_state_, GetLockoutInterval()).WillRepeatedly(Return(0));
+  EXPECT_CALL(mock_tpm_state_, GetLockoutRecovery()).WillRepeatedly(Return(0));
+  is_enabled = true;
+  EXPECT_TRUE(tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled));
+  EXPECT_FALSE(is_enabled);
+}
+
 }  // namespace tpm_manager

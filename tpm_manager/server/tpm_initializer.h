@@ -9,6 +9,16 @@
 
 namespace tpm_manager {
 
+// Status code returned by certain interfaces of `TpmInitializer`.
+enum class TpmInitializerStatus {
+  // The operation succeeds.
+  kSuccess,
+  // The operation fails.
+  kFailure,
+  // The operation is not suupport.
+  kNotSupport,
+};
+
 // TpmInitializer performs initialization tasks on some kind of TPM device.
 class TpmInitializer {
  public:
@@ -43,6 +53,10 @@ class TpmInitializer {
   // Reset the state of TPM dictionary attack protection. Returns true on
   // success.
   virtual DictionaryAttackResetStatus ResetDictionaryAttackLock() = 0;
+
+  // Disables the dictionary attack mitigation mechanism of TPM. Returns
+  // `TpmInitializerStatus` to indicates the result.
+  virtual TpmInitializerStatus DisableDictionaryAttackMitigation() = 0;
 
   // Removes stale auths and owner dependencies from the on-disk local data, if
   // any. If the local data is already in use, or if we cannot determine that,

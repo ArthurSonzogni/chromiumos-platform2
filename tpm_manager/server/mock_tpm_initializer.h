@@ -24,6 +24,10 @@ class MockTpmInitializer : public TpmInitializer {
               ResetDictionaryAttackLock,
               (),
               (override));
+  MOCK_METHOD(TpmInitializerStatus,
+              DisableDictionaryAttackMitigation,
+              (),
+              (override));
   MOCK_METHOD(void, PruneStoredPasswords, (), (override));
 };
 

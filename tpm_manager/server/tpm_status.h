@@ -50,6 +50,11 @@ class TpmStatus {
                                        bool* lockout,
                                        uint32_t* seconds_remaining) = 0;
 
+  // Checks whether the dictionary attack mitigation mechanism is enabled.
+  // Returns `true` if the operation succeeds and stores the result in
+  // `is_enabled`.
+  virtual bool IsDictionaryAttackMitigationEnabled(bool* is_enabled) = 0;
+
   // Get TPM hardware and software version information.
   virtual bool GetVersionInfo(uint32_t* family,
                               uint64_t* spec_level,

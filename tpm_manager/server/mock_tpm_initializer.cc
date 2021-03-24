@@ -15,6 +15,8 @@ MockTpmInitializer::MockTpmInitializer() {
   ON_CALL(*this, ResetDictionaryAttackLock())
       .WillByDefault(
           Return(DictionaryAttackResetStatus::kResetAttemptSucceeded));
+  ON_CALL(*this, DisableDictionaryAttackMitigation())
+      .WillByDefault(Return(TpmInitializerStatus::kSuccess));
 }
 MockTpmInitializer::~MockTpmInitializer() {}
 

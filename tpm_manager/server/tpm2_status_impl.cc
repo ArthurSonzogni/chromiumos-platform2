@@ -68,6 +68,17 @@ bool Tpm2StatusImpl::GetDictionaryAttackInfo(uint32_t* counter,
   return true;
 }
 
+bool Tpm2StatusImpl::IsDictionaryAttackMitigationEnabled(bool* is_enabled) {
+  CHECK(is_enabled);
+
+  if (!Refresh()) {
+    return false;
+  }
+  *is_enabled = trunks_tpm_state_->GetLockoutInterval() != 0 ||
+                trunks_tpm_state_->GetLockoutRecovery() != 0;
+  return true;
+}
+
 bool Tpm2StatusImpl::GetVersionInfo(uint32_t* family,
                                     uint64_t* spec_level,
                                     uint32_t* manufacturer,

@@ -131,4 +131,9 @@ TEST_F(TpmInitializerTest, DAResetFailedWrongPcr0) {
             DictionaryAttackResetStatus::kInvalidPcr0State);
 }
 
+TEST_F(TpmInitializerTest, DisableDictionaryAttackMitigationNotSupported) {
+  EXPECT_EQ(tpm_initializer_.DisableDictionaryAttackMitigation(),
+            TpmInitializerStatus::kNotSupport);
+}
+
 }  // namespace tpm_manager

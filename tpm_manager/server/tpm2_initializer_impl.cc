@@ -192,6 +192,38 @@ DictionaryAttackResetStatus Tpm2InitializerImpl::ResetDictionaryAttackLock() {
   return DictionaryAttackResetStatus::kResetAttemptSucceeded;
 }
 
+TpmInitializerStatus Tpm2InitializerImpl::DisableDictionaryAttackMitigation() {
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": Error reading local data.";
+    return TpmInitializerStatus::kFailure;
+  }
+  if (local_data.lockout_password().empty()) {
+    LOG(ERROR) << __func__ << ": Lockout password not available.";
+    return TpmInitializerStatus::kFailure;
+  }
+  std::unique_ptr<trunks::HmacSession> session =
+      trunks_factory_.GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true, false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error initializing AuthorizationSession: "
+               << trunks::GetErrorString(result);
+    return TpmInitializerStatus::kFailure;
+  }
+  session->SetEntityAuthorizationValue(local_data.lockout_password());
+  std::unique_ptr<trunks::TpmUtility> tpm_utility =
+      trunks_factory_.GetTpmUtility();
+  result = tpm_utility->SetDictionaryAttackParameters(
+      /*max_tries=*/200, /*recovery_time=*/0, /*lockout_recovery=*/0,
+      session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error calling SetDictionaryAttackParameters: "
+               << trunks::GetErrorString(result);
+    return TpmInitializerStatus::kFailure;
+  }
+  return TpmInitializerStatus::kSuccess;
+}
+
 void Tpm2InitializerImpl::PruneStoredPasswords() {
   std::unique_ptr<trunks::TpmState> trunks_tpm_state =
       trunks_factory_.GetTpmState();

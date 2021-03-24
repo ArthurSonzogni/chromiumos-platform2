@@ -208,6 +208,43 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwned) {
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
+      .WillOnce(DoAll(SetArgPointee<0>(true), Return(true)));
+  EXPECT_CALL(mock_tpm_initializer_, DisableDictionaryAttackMitigation())
+      .Times(1);
+  SetupService();
+  RunServiceWorkerAndQuit();
+}
+
+TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwnedSkipDisableDA) {
+  // Called in InitializeTask()
+  EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
+      .Times(1)
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(true)));
+  EXPECT_CALL(mock_tpm_initializer_, DisableDictionaryAttackMitigation())
+      .Times(0);
+  SetupService();
+  RunServiceWorkerAndQuit();
+}
+
+TEST_F(TpmManagerServiceTest_Preinit,
+       TpmAlreadyOwnedStillDisableDAWhenCheckFails) {
+  // Called in InitializeTask()
+  EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
+      .Times(1)
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_initializer_, DisableDictionaryAttackMitigation())
+      .Times(1);
   SetupService();
   RunServiceWorkerAndQuit();
 }
@@ -659,6 +696,28 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipNoTpm) {
   auto callback = [](TpmManagerServiceTestBase* self,
                      const TakeOwnershipReply& reply) {
     EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
+    self->Quit();
+  };
+  TakeOwnershipRequest request;
+  service_->TakeOwnership(request, base::Bind(callback, this));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipFollowedByDisableDA) {
+  // Called in `InitializeTask()`.
+  EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
+      .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).WillOnce(Return(true));
+  EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
+      .WillOnce(DoAll(SetArgPointee<0>(true), Return(true)));
+  EXPECT_CALL(mock_tpm_initializer_, DisableDictionaryAttackMitigation())
+      .Times(1);
+
+  SetupService();
+
+  auto callback = [](TpmManagerServiceTestBase* self,
+                     const TakeOwnershipReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
     self->Quit();
   };
   TakeOwnershipRequest request;

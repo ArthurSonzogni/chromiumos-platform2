@@ -47,6 +47,8 @@ MockTpmStatus::MockTpmStatus() {
 
   ON_CALL(*this, GetDictionaryAttackInfo(_, _, _, _))
       .WillByDefault(Invoke(GetDefaultDictionaryAttackInfo));
+  ON_CALL(*this, IsDictionaryAttackMitigationEnabled(_))
+      .WillByDefault(DoAll(SetArgPointee<0>(true), Return(true)));
   ON_CALL(*this, GetVersionInfo(_, _, _, _, _, _))
       .WillByDefault(Invoke(GetDefaultVersionInfo));
 }

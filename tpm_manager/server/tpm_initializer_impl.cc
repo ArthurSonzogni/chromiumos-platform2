@@ -194,6 +194,10 @@ DictionaryAttackResetStatus TpmInitializerImpl::ResetDictionaryAttackLock() {
   return DictionaryAttackResetStatus::kResetAttemptSucceeded;
 }
 
+TpmInitializerStatus TpmInitializerImpl::DisableDictionaryAttackMitigation() {
+  return TpmInitializerStatus::kNotSupport;
+}
+
 void TpmInitializerImpl::PruneStoredPasswords() {
   TpmStatus::TpmOwnershipStatus ownership_status;
   if (!tpm_status_->GetTpmOwned(&ownership_status)) {

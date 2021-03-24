@@ -41,7 +41,7 @@ class Tpm2StatusImpl : public TpmStatus {
                       uint32_t* tpm_model,
                       uint64_t* firmware_version,
                       std::vector<uint8_t>* vendor_specific) override;
-
+  bool IsDictionaryAttackMitigationEnabled(bool* is_enabled) override;
   void MarkRandomOwnerPasswordSet() override;
 
  private:
