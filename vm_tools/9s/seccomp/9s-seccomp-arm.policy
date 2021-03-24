@@ -62,8 +62,8 @@ futex: 1
 futex_time64: 1
 bind: 1
 rmdir: 1
-# Calling fchown with -1 as the uid/gid will change the ctime but do nothing else.
-fchown: arg1 == 0xffffffff && arg2 == 0xffffffff
+fchmod: 1
+fchown: 1
 mremap: 1
 fstatat64: 1
 send: 1

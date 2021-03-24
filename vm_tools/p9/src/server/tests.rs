@@ -672,13 +672,13 @@ fn set_len() {
 #[test]
 fn set_file_mode() {
     let mode = 0o640;
-    let err = set_attr_test(SetAttrKind::File, |tsetattr| {
+    let md = set_attr_test(SetAttrKind::File, |tsetattr| {
         tsetattr.valid = P9_SETATTR_MODE;
         tsetattr.mode = mode;
     })
-    .expect_err("successfully set mode");
+    .expect("failed to set mode");
 
-    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+    assert_eq!(md.mode() & 0o777, mode);
 }
 
 #[test]
@@ -736,13 +736,13 @@ fn set_file_atime() {
 #[test]
 fn set_dir_mode() {
     let mode = 0o640;
-    let err = set_attr_test(SetAttrKind::Directory, |tsetattr| {
+    let md = set_attr_test(SetAttrKind::Directory, |tsetattr| {
         tsetattr.valid = P9_SETATTR_MODE;
         tsetattr.mode = mode;
     })
-    .expect_err("successfully set mode");
+    .expect("failed to set mode");
 
-    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+    assert_eq!(md.mode() & 0o777, mode);
 }
 
 #[test]

@@ -750,11 +750,6 @@ impl Server {
     }
 
     fn set_attr(&mut self, set_attr: &Tsetattr) -> io::Result<()> {
-        let blocked_ops = P9_SETATTR_MODE | P9_SETATTR_UID | P9_SETATTR_GID;
-        if set_attr.valid & blocked_ops != 0 {
-            return Err(io::Error::from_raw_os_error(libc::EPERM));
-        }
-
         let fid = self.fids.get(&set_attr.fid).ok_or_else(ebadf)?;
 
         let file = if let Some(ref file) = fid.file {
@@ -767,6 +762,27 @@ impl Server {
             };
             MaybeOwned::Owned(open_fid(&self.proc, &fid.path, P9_NONBLOCK | flags)?)
         };
+
+        if set_attr.valid & P9_SETATTR_MODE != 0 {
+            // Safe because this doesn't modify any memory and we check the return value.
+            syscall!(unsafe { libc::fchmod(file.as_raw_fd(), set_attr.mode) })?;
+        }
+
+        if set_attr.valid & (P9_SETATTR_UID | P9_SETATTR_GID) != 0 {
+            let uid = if set_attr.valid & P9_SETATTR_UID != 0 {
+                set_attr.uid
+            } else {
+                -1i32 as u32
+            };
+            let gid = if set_attr.valid & P9_SETATTR_GID != 0 {
+                set_attr.gid
+            } else {
+                -1i32 as u32
+            };
+
+            // Safe because this doesn't modify any memory and we check the return value.
+            syscall!(unsafe { libc::fchown(file.as_raw_fd(), uid, gid) })?;
+        }
 
         if set_attr.valid & P9_SETATTR_SIZE != 0 {
             file.set_len(set_attr.size)?;
