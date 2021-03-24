@@ -133,6 +133,13 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to install forwarding rule for established"
                << " connections.";
 
+  // Create a FORWARD rule for accepting any ARC originated traffic regardless
+  // of the output interface. This enables for ARC certain multihoming
+  // scenarios (b/182594063).
+  if (process_runner_->iptables(
+          "filter", {"-A", "FORWARD", "-i", "arc+", "-j", "ACCEPT", "-w"}) != 0)
+    LOG(ERROR) << "Failed to install forwarding rule for ARC traffic";
+
   // chromium:898210: Drop any locally originated traffic that would exit a
   // physical interface with a source IPv4 address from the subnet of IPs used
   // for VMs, containers, and connected namespaces This is needed to prevent

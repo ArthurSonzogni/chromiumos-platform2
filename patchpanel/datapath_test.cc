@@ -230,6 +230,7 @@ TEST(DatapathTest, Start) {
       // Asserts for AddForwardEstablishedRule
       {IPv4,
        "filter -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT -w"},
+      {IPv4, "filter -A FORWARD -i arc+ -j ACCEPT -w"},
       // Asserts for AddSourceIPv4DropRule() calls.
       {IPv4, "filter -N drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -I OUTPUT -j drop_guest_ipv4_prefix -w"},
