@@ -29,13 +29,14 @@ enum ErrorCode {
 // Request from client that indicates what categories to probe. Category must
 // be existed on the per-board probe statement in rootfs.
 message ProbeRequest {
+  // The name style here is on purposely align with factory probe output.
   enum SupportCategory {
-    // The name style here is on purposely align with factory probe output.
     UNKNOWN = 0;
     audio_codec = 1;
     battery = 2;
     storage = 3;
     vpd_cached = 4;
+    // Obsolete in M91.
     network = 5;
     camera = 6;
     stylus = 7;
@@ -43,6 +44,9 @@ message ProbeRequest {
     touchscreen = 9;
     dram = 10;
     display_panel = 11;
+    cellular = 12;
+    ethernet = 13;
+    wireless = 14;
   }
   reserved 1;
   repeated SupportCategory categories = 4;
@@ -373,12 +377,12 @@ message ProbeResult {
   ErrorCode error = 1;
   // The checksum of probe config content calculated using SHA1 hash.
   string probe_config_checksum = 6;
-
   // The following are the fields for different component categories.
   repeated AudioCodec audio_codec = 2;
   repeated Battery battery = 3;
   repeated Storage storage = 4;
   repeated VpdCached vpd_cached = 5;
+  // Obsolete in M91.
   repeated Network network = 7;
   repeated Camera camera = 8;
   repeated InputDevice stylus = 9;
@@ -386,4 +390,7 @@ message ProbeResult {
   repeated InputDevice touchscreen = 11;
   repeated Memory dram = 12;
   repeated Edid display_panel = 13;
+  repeated Network cellular = 14;
+  repeated Network ethernet = 15;
+  repeated Network wireless = 16;
 }
