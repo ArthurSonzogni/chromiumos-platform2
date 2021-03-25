@@ -33,6 +33,10 @@ namespace {
 
 namespace mojo_ipc = chromeos::ocr::mojom;
 
+// The maximum amount of time to block while waiting for a response from the OCR
+// service.
+constexpr int kOcrServiceDBusTimeout = 5 * 1000;
+
 // Sends |raw_fd| to OCR Daemon via D-Bus. Sets |token_out| to a unique token
 // which can be used to create a message pipe to the OCR service.
 void DoDBusBootstrap(int raw_fd,
@@ -51,9 +55,10 @@ void DoDBusBootstrap(int raw_fd,
 
   brillo::dbus_utils::FileDescriptor fd(raw_fd);
   brillo::ErrorPtr error;
-  auto response = brillo::dbus_utils::CallMethodAndBlock(
-      ocr_service_proxy, kOcrServiceInterface, kBootstrapMojoConnectionMethod,
-      &error, fd, false /* should_accept_invitation */);
+  auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+      kOcrServiceDBusTimeout, ocr_service_proxy, kOcrServiceInterface,
+      kBootstrapMojoConnectionMethod, &error, fd,
+      false /* should_accept_invitation */);
 
   if (!response) {
     LOG(ERROR) << "No response received.";
