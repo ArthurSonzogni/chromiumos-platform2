@@ -42,9 +42,8 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_ptr.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_test_utils.h"
@@ -286,24 +285,24 @@ class CoreTest : public testing::Test {
   FakeCoreDelegate* core_delegate() { return &core_delegate_; }
 
   // Fake for MojoServiceFactory::BindFactoryCallback that simulates
-  // successful Mojo service binding to the given file descriptor. After the
-  // mock gets triggered, |mojo_service_factory_interface_ptr_| becomes
+  // successful Mojo service receiver to the given file descriptor. After the
+  // mock gets triggered, |mojo_service_factory_remote_| becomes
   // initialized to point to the tested Mojo service.
-  MojoServiceFactory::MojoBindingPtr FakeBindMojoFactory(
+  MojoServiceFactory::MojoReceiverPtr FakeBindMojoFactory(
       MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
       base::ScopedFD mojo_pipe_fd) {
     if (simulate_bind_failure_)
       return nullptr;
-    // Initialize a Mojo binding that, instead of working through the
+    // Initialize a Mojo receiver that, instead of working through the
     // given (fake) file descriptor, talks to the test endpoint
-    // |mojo_service_interface_ptr_|.
-    auto mojo_service_factory_binding =
-        std::make_unique<MojoServiceFactory::MojoBinding>(
+    // |mojo_service_|.
+    auto mojo_service_factory_receiver =
+        std::make_unique<MojoServiceFactory::MojoReceiver>(
             mojo_service_factory,
-            mojo::MakeRequest(&mojo_service_factory_interface_ptr_));
-    DCHECK(mojo_service_factory_interface_ptr_);
-    return MojoServiceFactory::MojoBindingPtr(
-        mojo_service_factory_binding.release());
+            mojo_service_factory_remote_.BindNewPipeAndPassReceiver());
+    DCHECK(mojo_service_factory_remote_);
+    return MojoServiceFactory::MojoReceiverPtr(
+        mojo_service_factory_receiver.release());
   }
 
   GrpcClientManager* grpc_client_manager() { return &grpc_client_manager_; }
@@ -312,9 +311,9 @@ class CoreTest : public testing::Test {
 
   MojoServiceFactory* mojo_service_factory() { return &mojo_service_factory_; }
 
-  mojo::InterfacePtr<MojomWilcoDtcSupportdServiceFactory>*
-  mojo_service_factory_interface_ptr() {
-    return &mojo_service_factory_interface_ptr_;
+  mojo::Remote<MojomWilcoDtcSupportdServiceFactory>*
+  mojo_service_factory_remote() {
+    return &mojo_service_factory_remote_;
   }
 
   void SimulateBindFailure() { simulate_bind_failure_ = true; }
@@ -330,8 +329,8 @@ class CoreTest : public testing::Test {
   StrictMock<MockDaemon> daemon_;
 
   // Mojo interface to the service factory exposed by the tested code.
-  mojo::InterfacePtr<MojomWilcoDtcSupportdServiceFactory>
-      mojo_service_factory_interface_ptr_;
+  mojo::Remote<MojomWilcoDtcSupportdServiceFactory>
+      mojo_service_factory_remote_;
 
   MojoServiceFactory mojo_service_factory_{
       &mojo_grpc_adapter_,
@@ -384,9 +383,8 @@ class StartedCoreTest : public CoreTest {
 
     SetUpDBus();
 
-    fake_browser_ =
-        std::make_unique<FakeBrowser>(mojo_service_factory_interface_ptr(),
-                                      bootstrap_mojo_connection_dbus_method_);
+    fake_browser_ = std::make_unique<FakeBrowser>(
+        mojo_service_factory_remote(), bootstrap_mojo_connection_dbus_method_);
   }
 
   void TearDown() override {
@@ -553,7 +551,7 @@ class StartedCoreTest : public CoreTest {
 TEST_F(StartedCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   BootstrapMojoConnection(&fake_mojo_fd_generator);
-  EXPECT_TRUE(*mojo_service_factory_interface_ptr());
+  EXPECT_TRUE(*mojo_service_factory_remote());
 }
 
 // Test failure to bootstrap the Mojo service due to an error returned by
@@ -594,7 +592,7 @@ TEST_F(StartedCoreTest, MojoBootstrapSuccessThenAbort) {
   EXPECT_CALL(*daemon(), ShutDown());
 
   // Abort the Mojo connection by closing the browser-side endpoint.
-  mojo_service_factory_interface_ptr()->reset();
+  mojo_service_factory_remote()->reset();
   base::RunLoop().RunUntilIdle();
 }
 
@@ -725,7 +723,7 @@ class BootstrappedCoreTest : public StartedCoreTest {
     FakeMojoFdGenerator fake_mojo_fd_generator;
     BootstrapMojoConnection(&fake_mojo_fd_generator);
 
-    ASSERT_TRUE(*mojo_service_factory_interface_ptr());
+    ASSERT_TRUE(*mojo_service_factory_remote());
 
     fake_wilco_dtc_ = std::make_unique<FakeWilcoDtc>(
         wilco_dtc_grpc_uri(), wilco_dtc_supportd_grpc_uri());

@@ -17,6 +17,7 @@
 #include <brillo/grpc/async_grpc_client.h>
 #include <brillo/grpc/async_grpc_server.h>
 #include <dbus/bus.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "diagnostics/common/system/bluetooth_client.h"
 #include "diagnostics/common/system/debugd_adapter.h"
@@ -121,10 +122,10 @@ class Core final : public GrpcService::Delegate,
 
  private:
   using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
-  using MojomWilcoDtcSupportdClientPtr =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
-  using MojomWilcoDtcSupportdServiceRequest =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest;
+  using MojomWilcoDtcSupportdClient =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient;
+  using MojomWilcoDtcSupportdService =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 
   // WilcoDtcSupportdGrpcService::Delegate overrides:
   void SendWilcoDtcMessageToUi(
@@ -158,13 +159,15 @@ class Core final : public GrpcService::Delegate,
 
   // ProbeService::Delegate overrides:
   bool BindCrosHealthdProbeService(
-      chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest service)
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdProbeService> service)
       override;
 
   // RoutineService::Delegate overrides:
   bool GetCrosHealthdDiagnosticsService(
-      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
-          service) override;
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
+      override;
 
   // BluetoothEventService::Observer overrides:
   void BluetoothAdapterDataChanged(

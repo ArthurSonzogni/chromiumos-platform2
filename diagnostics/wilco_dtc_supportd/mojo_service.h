@@ -13,7 +13,10 @@
 #include <base/optional.h>
 #include <base/strings/string_piece.h>
 #include <grpcpp/grpcpp.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/buffer.h>
 
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
@@ -30,12 +33,10 @@ class MojoGrpcAdapter;
 class MojoService final
     : public chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService {
  public:
-  using MojomWilcoDtcSupportdClientPtr =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
+  using MojomWilcoDtcSupportdClient =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient;
   using MojomWilcoDtcSupportdService =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
-  using MojomWilcoDtcSupportdServiceRequest =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest;
   using MojomWilcoDtcSupportdWebRequestHttpMethod =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
   using MojomWilcoDtcSupportdWebRequestStatus =
@@ -50,14 +51,14 @@ class MojoService final
       base::OnceCallback<void(const std::string&)>;
 
   // |grpc_adapter| - used to forward calls to wilco gRPC clients.
-  // |self_interface_request| - Mojo interface request that will be fulfilled
+  // |self_receiver| - Mojo interface request that will be fulfilled
   // by this instance. In production, this interface request is created by the
   // browser process, and allows the browser to call our methods.
   // |client_ptr| - Mojo interface to the WilcoDtcSupportdServiceClient
   // endpoint. In production, it allows this instance to call browser's methods.
   MojoService(MojoGrpcAdapter* grpc_adapter,
-              MojomWilcoDtcSupportdServiceRequest self_interface_request,
-              MojomWilcoDtcSupportdClientPtr client_ptr);
+              mojo::PendingReceiver<MojomWilcoDtcSupportdService> self_receiver,
+              mojo::PendingRemote<MojomWilcoDtcSupportdClient> client);
   MojoService(const MojoService&) = delete;
   MojoService& operator=(const MojoService&) = delete;
 
@@ -92,12 +93,12 @@ class MojoService final
 
   // Mojo binding that connects |this| with the message pipe, allowing the
   // remote end to call our methods.
-  const mojo::Binding<MojomWilcoDtcSupportdService> self_binding_;
+  const mojo::Receiver<MojomWilcoDtcSupportdService> self_receiver_;
 
   // Mojo interface to the WilcoDtcSupportdServiceClient endpoint.
   //
   // In production this interface is implemented in the Chrome browser process.
-  MojomWilcoDtcSupportdClientPtr client_ptr_;
+  mojo::Remote<MojomWilcoDtcSupportdClient> client_;
 };
 
 }  // namespace diagnostics

@@ -16,6 +16,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -243,7 +244,7 @@ void RoutineService::GetAvailableRoutines(
   next_get_available_routines_key_++;
   DCHECK_EQ(get_available_routines_callbacks_.count(callback_key), 0);
   get_available_routines_callbacks_.insert({callback_key, std::move(callback)});
-  service_ptr_->GetAvailableRoutines(
+  service_->GetAvailableRoutines(
       base::Bind(&RoutineService::ForwardGetAvailableRoutinesResponse,
                  weak_ptr_factory_.GetWeakPtr(), callback_key));
 }
@@ -266,21 +267,21 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_BATTERY:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kBatteryParams);
-      service_ptr_->RunBatteryCapacityRoutine(
+      service_->RunBatteryCapacityRoutine(
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
                      weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;
     case grpc_api::ROUTINE_BATTERY_SYSFS:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kBatterySysfsParams);
-      service_ptr_->RunBatteryHealthRoutine(
+      service_->RunBatteryHealthRoutine(
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
                      weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;
     case grpc_api::ROUTINE_URANDOM:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kUrandomParams);
-      service_ptr_->RunUrandomRoutine(
+      service_->RunUrandomRoutine(
           chromeos::cros_healthd::mojom::NullableUint32::New(
               request.urandom_params().length_seconds()),
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
@@ -289,14 +290,14 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_SMARTCTL_CHECK:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kSmartctlCheckParams);
-      service_ptr_->RunSmartctlCheckRoutine(
+      service_->RunSmartctlCheckRoutine(
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
                      weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;
     case grpc_api::ROUTINE_CPU_CACHE:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kCpuParams);
-      service_ptr_->RunCpuCacheRoutine(
+      service_->RunCpuCacheRoutine(
           chromeos::cros_healthd::mojom::NullableUint32::New(
               request.cpu_params().length_seconds()),
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
@@ -305,7 +306,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_CPU_STRESS:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kCpuParams);
-      service_ptr_->RunCpuStressRoutine(
+      service_->RunCpuStressRoutine(
           chromeos::cros_healthd::mojom::NullableUint32::New(
               request.cpu_params().length_seconds()),
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
@@ -314,7 +315,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_FLOATING_POINT_ACCURACY:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kFloatingPointAccuracyParams);
-      service_ptr_->RunFloatingPointAccuracyRoutine(
+      service_->RunFloatingPointAccuracyRoutine(
           chromeos::cros_healthd::mojom::NullableUint32::New(
               request.floating_point_accuracy_params().length_seconds()),
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
@@ -323,7 +324,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_NVME_WEAR_LEVEL:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kNvmeWearLevelParams);
-      service_ptr_->RunNvmeWearLevelRoutine(
+      service_->RunNvmeWearLevelRoutine(
           request.nvme_wear_level_params().wear_level_threshold(),
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
                      weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -331,7 +332,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_NVME_SHORT_SELF_TEST:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kNvmeShortSelfTestParams);
-      service_ptr_->RunNvmeSelfTestRoutine(
+      service_->RunNvmeSelfTestRoutine(
           chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum::kShortSelfTest,
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
                      weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -339,7 +340,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_NVME_LONG_SELF_TEST:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kNvmeLongSelfTestParams);
-      service_ptr_->RunNvmeSelfTestRoutine(
+      service_->RunNvmeSelfTestRoutine(
           chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum::kLongSelfTest,
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
                      weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -347,7 +348,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_DISK_LINEAR_READ:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kDiskLinearReadParams);
-      service_ptr_->RunDiskReadRoutine(
+      service_->RunDiskReadRoutine(
           mojo_ipc::DiskReadRoutineTypeEnum::kLinearRead,
           request.disk_linear_read_params().length_seconds(),
           request.disk_linear_read_params().file_size_mb(),
@@ -357,7 +358,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_DISK_RANDOM_READ:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kDiskRandomReadParams);
-      service_ptr_->RunDiskReadRoutine(
+      service_->RunDiskReadRoutine(
           mojo_ipc::DiskReadRoutineTypeEnum::kRandomRead,
           request.disk_random_read_params().length_seconds(),
           request.disk_random_read_params().file_size_mb(),
@@ -367,7 +368,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
     case grpc_api::ROUTINE_PRIME_SEARCH:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kPrimeSearchParams);
-      service_ptr_->RunPrimeSearchRoutine(
+      service_->RunPrimeSearchRoutine(
           chromeos::cros_healthd::mojom::NullableUint32::New(
               request.prime_search_params().length_seconds()),
           base::Bind(&RoutineService::ForwardRunRoutineResponse,
@@ -410,7 +411,7 @@ void RoutineService::GetRoutineUpdate(
   DCHECK_EQ(get_routine_update_callbacks_.count(callback_key), 0);
   get_routine_update_callbacks_.insert(
       {callback_key, {uuid, std::move(callback)}});
-  service_ptr_->GetRoutineUpdate(
+  service_->GetRoutineUpdate(
       uuid, mojo_command, include_output,
       base::Bind(&RoutineService::ForwardGetRoutineUpdateResponse,
                  weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -487,15 +488,15 @@ void RoutineService::ForwardGetRoutineUpdateResponse(
 }
 
 bool RoutineService::BindCrosHealthdDiagnosticsServiceIfNeeded() {
-  if (service_ptr_.is_bound())
+  if (service_.is_bound())
     return true;
 
-  auto request = mojo::MakeRequest(&service_ptr_);
+  auto receiver = service_.BindNewPipeAndPassReceiver();
 
-  service_ptr_.set_connection_error_handler(base::Bind(
-      &RoutineService::OnDisconnect, weak_ptr_factory_.GetWeakPtr()));
+  service_.set_disconnect_handler(base::Bind(&RoutineService::OnDisconnect,
+                                             weak_ptr_factory_.GetWeakPtr()));
 
-  if (!delegate_->GetCrosHealthdDiagnosticsService(std::move(request)))
+  if (!delegate_->GetCrosHealthdDiagnosticsService(std::move(receiver)))
     return false;
 
   return true;
@@ -504,7 +505,7 @@ bool RoutineService::BindCrosHealthdDiagnosticsServiceIfNeeded() {
 void RoutineService::OnDisconnect() {
   VLOG(1) << "cros_healthd Mojo connection closed.";
   RunInFlightCallbacks();
-  service_ptr_.reset();
+  service_.reset();
 }
 
 void RoutineService::RunInFlightCallbacks() {

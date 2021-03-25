@@ -232,8 +232,8 @@ void Core::CreateDbusAdapters(const scoped_refptr<dbus::Bus>& bus) {
 }
 
 bool Core::GetCrosHealthdDiagnosticsService(
-    chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
-        service) {
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
   MojoService* mojo_service = mojo_service_factory_->Get();
   if (!mojo_service) {
     LOG(WARNING) << "GetCrosHealthdDiagnosticsService happens before Mojo "
@@ -246,7 +246,8 @@ bool Core::GetCrosHealthdDiagnosticsService(
 }
 
 bool Core::BindCrosHealthdProbeService(
-    chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest service) {
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdProbeService> service) {
   MojoService* mojo_service = mojo_service_factory_->Get();
   if (!mojo_service) {
     LOG(WARNING) << "BindCrosHealthdProbeService happens before Mojo "

@@ -23,16 +23,15 @@ using MojomWilcoDtcSupportdService =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 
 FakeBrowser::FakeBrowser(
-    MojomWilcoDtcSupportdServiceFactoryPtr*
-        wilco_dtc_supportd_service_factory_ptr,
+    mojo::Remote<MojomWilcoDtcSupportdServiceFactory>*
+        wilco_dtc_supportd_service_factory,
     DBusMethodCallCallback bootstrap_mojo_connection_dbus_method)
-    : wilco_dtc_supportd_service_factory_ptr_(
-          wilco_dtc_supportd_service_factory_ptr),
+    : wilco_dtc_supportd_service_factory_(wilco_dtc_supportd_service_factory),
       bootstrap_mojo_connection_dbus_method_(
           bootstrap_mojo_connection_dbus_method),
-      wilco_dtc_supportd_client_binding_(
+      wilco_dtc_supportd_client_receiver_(
           &wilco_dtc_supportd_client_ /* impl */) {
-  DCHECK(wilco_dtc_supportd_service_factory_ptr);
+  DCHECK(wilco_dtc_supportd_service_factory_);
   DCHECK(!bootstrap_mojo_connection_dbus_method.is_null());
 }
 
@@ -58,13 +57,13 @@ bool FakeBrowser::SendUiMessageToWilcoDtc(
   if (!handle.is_valid()) {
     return false;
   }
-  wilco_dtc_supportd_service_ptr_->SendUiMessageToWilcoDtc(std::move(handle),
-                                                           callback);
+  wilco_dtc_supportd_service_->SendUiMessageToWilcoDtc(std::move(handle),
+                                                       callback);
   return true;
 }
 
 void FakeBrowser::NotifyConfigurationDataChanged() {
-  wilco_dtc_supportd_service_ptr_->NotifyConfigurationDataChanged();
+  wilco_dtc_supportd_service_->NotifyConfigurationDataChanged();
 }
 
 bool FakeBrowser::CallBootstrapMojoConnectionDBusMethod(
@@ -98,18 +97,19 @@ void FakeBrowser::CallGetServiceMojoMethod(
     const base::Closure& get_service_mojo_method_callback) {
   // Queue a Mojo GetService() method call that allows to establish full-duplex
   // Mojo communication with the tested Mojo service.
-  // After this call, |wilco_dtc_supportd_service_ptr_| can be used for requests
+  // After this call, |wilco_dtc_supportd_service_| can be used for requests
   // to the tested service and |wilco_dtc_supportd_client_| for receiving
   // requests made by the tested service. Note that despite that GetService() is
   // an asynchronous call, it's actually allowed to use
-  // |wilco_dtc_supportd_service_ptr_| straight away, before the call completes.
-  DCHECK(wilco_dtc_supportd_service_factory_ptr_);
-  DCHECK(*wilco_dtc_supportd_service_factory_ptr_);
-  MojomWilcoDtcSupportdClientPtr wilco_dtc_supportd_client_proxy;
-  wilco_dtc_supportd_client_binding_.Bind(
-      mojo::MakeRequest(&wilco_dtc_supportd_client_proxy));
-  (*wilco_dtc_supportd_service_factory_ptr_)
-      ->GetService(mojo::MakeRequest(&wilco_dtc_supportd_service_ptr_),
+  // |wilco_dtc_supportd_service_| straight away, before the call completes.
+  DCHECK(wilco_dtc_supportd_service_factory_);
+  DCHECK(*wilco_dtc_supportd_service_factory_);
+  mojo::PendingRemote<MojomWilcoDtcSupportdClient>
+      wilco_dtc_supportd_client_proxy;
+  wilco_dtc_supportd_client_receiver_.Bind(
+      wilco_dtc_supportd_client_proxy.InitWithNewPipeAndPassReceiver());
+  (*wilco_dtc_supportd_service_factory_)
+      ->GetService(wilco_dtc_supportd_service_.BindNewPipeAndPassReceiver(),
                    std::move(wilco_dtc_supportd_client_proxy),
                    get_service_mojo_method_callback);
 }

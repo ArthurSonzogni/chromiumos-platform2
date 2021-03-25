@@ -16,7 +16,7 @@ FakeDiagnosticsService::FakeDiagnosticsService() = default;
 FakeDiagnosticsService::~FakeDiagnosticsService() = default;
 
 bool FakeDiagnosticsService::GetCrosHealthdDiagnosticsService(
-    mojo_ipc::CrosHealthdDiagnosticsServiceRequest service) {
+    mojo::PendingReceiver<mojo_ipc::CrosHealthdDiagnosticsService> service) {
   // In situations where cros_healthd is unresponsive, the delegate wouldn't
   // know this, and would think that it had passed along the service request
   // and everything is fine. However, nothing would bind that request.
@@ -29,7 +29,7 @@ bool FakeDiagnosticsService::GetCrosHealthdDiagnosticsService(
     return false;
 
   // When there are no errors with the request, it will be bound.
-  service_binding_.Bind(std::move(service));
+  service_receiver_.Bind(std::move(service));
   return true;
 }
 
@@ -209,7 +209,7 @@ void FakeDiagnosticsService::SetMojoServiceIsResponsive(bool is_responsive) {
 }
 
 void FakeDiagnosticsService::ResetMojoConnection() {
-  service_binding_.Close();
+  service_receiver_.reset();
 }
 
 void FakeDiagnosticsService::SetGetAvailableRoutinesResponse(

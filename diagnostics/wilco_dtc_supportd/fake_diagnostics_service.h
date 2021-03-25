@@ -10,7 +10,8 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/system/handle.h>
 
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
@@ -32,8 +33,9 @@ class FakeDiagnosticsService final
 
   // RoutineService::Delegate overrides:
   bool GetCrosHealthdDiagnosticsService(
-      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
-          service) override;
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
+      override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
   void GetAvailableRoutines(GetAvailableRoutinesCallback callback) override;
@@ -142,8 +144,8 @@ class FakeDiagnosticsService final
       chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
 
  private:
-  mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
-      service_binding_{this /* impl */};
+  mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+      service_receiver_{this /* impl */};
 
   // Used as the return value for any GetAvailableRoutines IPCs received.
   std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>

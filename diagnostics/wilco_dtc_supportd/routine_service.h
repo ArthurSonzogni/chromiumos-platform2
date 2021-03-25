@@ -13,6 +13,8 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "mojo/cros_healthd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
@@ -48,7 +50,8 @@ class RoutineService final {
     // if wilco_dtc_supportd's mojo service has not been started by Chrome at
     // the time this is called.
     virtual bool GetCrosHealthdDiagnosticsService(
-        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+        mojo::PendingReceiver<
+            chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
             service) = 0;
   };
 
@@ -101,7 +104,8 @@ class RoutineService final {
   // Mojo interface to the CrosHealthdDiagnosticsService endpoint.
   //
   // In production this interface is implemented by the cros_healthd process.
-  chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServicePtr service_ptr_;
+  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+      service_;
 
   // The following three maps each hold in flight callbacks to |service_ptr_|.
   // In case the remote mojo endpoint closes while there are any in flight

@@ -9,7 +9,6 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/posix/eintr_wrapper.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
 
@@ -18,7 +17,7 @@
 namespace diagnostics {
 namespace {
 
-MojoServiceFactory::MojoBindingPtr BindMojoServiceFactory(
+MojoServiceFactory::MojoReceiverPtr BindMojoServiceFactory(
     MojoServiceFactory::WilcoServiceFactory* mojo_service_factory,
     base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_service_factory);
@@ -35,10 +34,10 @@ MojoServiceFactory::MojoBindingPtr BindMojoServiceFactory(
     return nullptr;
   }
 
-  return std::make_unique<mojo::Binding<
+  return std::make_unique<mojo::Receiver<
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory>>(
       mojo_service_factory,
-      mojo::InterfaceRequest<
+      mojo::PendingReceiver<
           chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory>(
           std::move(mojo_pipe_handle)));
 }
@@ -102,13 +101,13 @@ base::Optional<std::string> MojoServiceFactory::Start(
   }
 
   mojo_service_bind_attempted_ = true;
-  mojo_service_factory_binding_ =
+  mojo_service_factory_receiver_ =
       std::move(bind_factory_callback_).Run(this, std::move(mojo_pipe_fd));
-  if (!mojo_service_factory_binding_) {
+  if (!mojo_service_factory_receiver_) {
     ShutdownDueToMojoError("Mojo bootstrap failed" /* debug_reason */);
     return "Failed to bootstrap Mojo";
   }
-  mojo_service_factory_binding_->set_connection_error_handler(base::Bind(
+  mojo_service_factory_receiver_->set_disconnect_handler(base::Bind(
       &MojoServiceFactory::ShutdownDueToMojoError, base::Unretained(this),
       "Mojo connection error" /* debug_reason */));
 
@@ -130,18 +129,20 @@ void MojoServiceFactory::ShutdownDueToMojoError(
   LOG(INFO) << "Shutting down due to: " << debug_reason;
 
   mojo_service_.reset();
-  mojo_service_factory_binding_.reset();
+  mojo_service_factory_receiver_.reset();
 
   shutdown_.Run();
 }
 
 void MojoServiceFactory::GetService(
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest service,
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr client,
+    mojo::PendingReceiver<
+        chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService> service,
+    mojo::PendingRemote<
+        chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient> client,
     GetServiceCallback callback) {
   // Mojo guarantees that these parameters are nun-null (see
   // VALIDATION_ERROR_UNEXPECTED_INVALID_HANDLE).
-  DCHECK(service.is_pending());
+  DCHECK(service);
   DCHECK(client);
 
   if (mojo_service_) {

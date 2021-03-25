@@ -79,14 +79,14 @@ void ForwardMojoWebResponse(
 
 MojoService::MojoService(
     MojoGrpcAdapter* grpc_adapter,
-    MojomWilcoDtcSupportdServiceRequest self_interface_request,
-    MojomWilcoDtcSupportdClientPtr client_ptr)
+    mojo::PendingReceiver<MojomWilcoDtcSupportdService> self_receiver,
+    mojo::PendingRemote<MojomWilcoDtcSupportdClient> client)
     : grpc_adapter_(grpc_adapter),
-      self_binding_(this /* impl */, std::move(self_interface_request)),
-      client_ptr_(std::move(client_ptr)) {
-  DCHECK(self_binding_.is_bound());
+      self_receiver_(this /* impl */, std::move(self_receiver)),
+      client_(std::move(client)) {
+  DCHECK(self_receiver_.is_bound());
   DCHECK(grpc_adapter_);
-  DCHECK(client_ptr_);
+  DCHECK(client_);
 }
 
 MojoService::~MojoService() = default;
@@ -133,7 +133,7 @@ void MojoService::SendWilcoDtcMessageToUi(
     return;
   }
 
-  client_ptr_->SendWilcoDtcMessageToUi(
+  client_->SendWilcoDtcMessageToUi(
       std::move(json_message_mojo_handle),
       base::Bind(&ForwardMojoSendtoUiResponse, callback));
 }
@@ -144,7 +144,7 @@ void MojoService::PerformWebRequest(
     const std::vector<std::string>& headers,
     const std::string& request_body,
     const MojomPerformWebRequestCallback& callback) {
-  DCHECK(client_ptr_);
+  DCHECK(client_);
   mojo::ScopedHandle url_handle =
       CreateReadOnlySharedMemoryRegionMojoHandle(url);
   if (!url_handle.is_valid()) {
@@ -175,31 +175,31 @@ void MojoService::PerformWebRequest(
     return;
   }
 
-  client_ptr_->PerformWebRequest(http_method, std::move(url_handle),
-                                 std::move(header_handles),
-                                 std::move(request_body_handle),
-                                 base::Bind(&ForwardMojoWebResponse, callback));
+  client_->PerformWebRequest(http_method, std::move(url_handle),
+                             std::move(header_handles),
+                             std::move(request_body_handle),
+                             base::Bind(&ForwardMojoWebResponse, callback));
 }
 
 void MojoService::GetConfigurationData(
     MojomGetConfigurationDataCallback callback) {
-  DCHECK(client_ptr_);
-  client_ptr_->GetConfigurationData(std::move(callback));
+  DCHECK(client_);
+  client_->GetConfigurationData(std::move(callback));
 }
 
 void MojoService::HandleEvent(const MojomWilcoDtcSupportdEvent event) {
-  client_ptr_->HandleEvent(event);
+  client_->HandleEvent(event);
 }
 
 void MojoService::GetCrosHealthdDiagnosticsService(
     chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
         service) {
-  client_ptr_->GetCrosHealthdDiagnosticsService(std::move(service));
+  client_->GetCrosHealthdDiagnosticsService(std::move(service));
 }
 
 void MojoService::GetCrosHealthdProbeService(
     chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest service) {
-  client_ptr_->GetCrosHealthdProbeService(std::move(service));
+  client_->GetCrosHealthdProbeService(std::move(service));
 }
 
 }  // namespace diagnostics

@@ -11,7 +11,8 @@
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/wilco_dtc_supportd/probe_service_impl.h"
 #include "mojo/cros_healthd.mojom.h"
@@ -49,7 +50,7 @@ class MockProbeServiceDelegate : public ProbeService::Delegate {
  public:
   MOCK_METHOD(bool,
               BindCrosHealthdProbeService,
-              (mojo_ipc::CrosHealthdProbeServiceRequest),
+              (mojo::PendingReceiver<mojo_ipc::CrosHealthdProbeService>),
               (override));
 };
 
@@ -64,8 +65,8 @@ class ProbeServiceImplTest : public testing::Test {
 
   MockProbeService* mock_probe_service() { return &mock_probe_service_; }
 
-  mojo::Binding<mojo_ipc::CrosHealthdProbeService>* service_binding() {
-    return &service_binding_;
+  mojo::Receiver<mojo_ipc::CrosHealthdProbeService>* service_receiver() {
+    return &service_receiver_;
   }
 
   MockProbeServiceDelegate* mock_delegate() { return &mock_delegate_; }
@@ -79,7 +80,7 @@ class ProbeServiceImplTest : public testing::Test {
   StrictMock<MockCallback> mock_callback_;
 
   StrictMock<MockProbeService> mock_probe_service_;
-  mojo::Binding<mojo_ipc::CrosHealthdProbeService> service_binding_{
+  mojo::Receiver<mojo_ipc::CrosHealthdProbeService> service_receiver_{
       &mock_probe_service_ /* impl */};
 
   StrictMock<MockProbeServiceDelegate> mock_delegate_;
@@ -149,10 +150,11 @@ TEST_F(ProbeServiceImplTest, RecoverAfterDroppedConnection) {
           }));
 
   EXPECT_CALL(*mock_delegate(), BindCrosHealthdProbeService(_))
-      .WillOnce(
-          Invoke([service_binding = service_binding()](
-                     mojo_ipc::CrosHealthdProbeServiceRequest request) -> bool {
-            service_binding->Bind(std::move(request));
+      .WillOnce(Invoke(
+          [service_receiver = service_receiver()](
+              mojo::PendingReceiver<mojo_ipc::CrosHealthdProbeService> receiver)
+              -> bool {
+            service_receiver->Bind(std::move(receiver));
             return true;
           }));
 
@@ -185,10 +187,11 @@ TEST_F(ProbeServiceImplTest, ProbeTelemetryInfo) {
           }));
 
   EXPECT_CALL(*mock_delegate(), BindCrosHealthdProbeService(_))
-      .WillOnce(
-          Invoke([service_binding = service_binding()](
-                     mojo_ipc::CrosHealthdProbeServiceRequest request) -> bool {
-            service_binding->Bind(std::move(request));
+      .WillOnce(Invoke(
+          [service_receiver = service_receiver()](
+              mojo::PendingReceiver<mojo_ipc::CrosHealthdProbeService> receiver)
+              -> bool {
+            service_receiver->Bind(std::move(receiver));
             return true;
           }));
 

@@ -9,6 +9,7 @@
 #include <brillo/errors/error.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/common/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/dbus_service.h"
@@ -25,7 +26,7 @@ namespace {
 
 class MockCallback {
  public:
-  MojoServiceFactory::MojoBindingPtr BindMojoServiceFactory(
+  MojoServiceFactory::MojoReceiverPtr BindMojoServiceFactory(
       MojoServiceFactory::WilcoServiceFactory* mojo_service_factory,
       base::ScopedFD mojo_pipe_fd) {
     DCHECK(mojo_service_factory);
@@ -33,9 +34,9 @@ class MockCallback {
 
     BindMojoServiceFactoryImpl(mojo_pipe_fd);
 
-    return std::make_unique<MojoServiceFactory::MojoBinding>(
+    return std::make_unique<MojoServiceFactory::MojoReceiver>(
         mojo_service_factory,
-        mojo::MakeRequest(&mojo_service_factory_interface_ptr_));
+        mojo_service_factory_remote_.BindNewPipeAndPassReceiver());
   }
 
   MOCK_METHOD(void,
@@ -45,9 +46,9 @@ class MockCallback {
   MOCK_METHOD(void, ShutDown, ());
 
  private:
-  mojo::InterfacePtr<
+  mojo::Remote<
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory>
-      mojo_service_factory_interface_ptr_;
+      mojo_service_factory_remote_;
 };
 
 // Tests for the DBusService class.

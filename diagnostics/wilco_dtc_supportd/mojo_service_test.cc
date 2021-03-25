@@ -17,9 +17,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/interface_ptr.h>
-#include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/buffer.h>
 
 #include "diagnostics/common/mojo_test_utils.h"
@@ -38,10 +35,8 @@ using testing::WithArg;
 
 using MojomWilcoDtcSupportdClient =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient;
-using MojomWilcoDtcSupportdClientPtr =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
-using MojomWilcoDtcSupportdServiceRequest =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest;
+using MojomWilcoDtcSupportdService =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 using MojomWilcoDtcSupportdWebRequestStatus =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
 using MojomWilcoDtcSupportdWebRequestHttpMethod =
@@ -54,18 +49,18 @@ namespace {
 class MojoServiceTest : public testing::Test {
  protected:
   MojoServiceTest() {
-    // Obtain Mojo interface pointer that talks to |mojo_client_| - the
-    // connection between them will be maintained by |mojo_client_binding_|.
-    MojomWilcoDtcSupportdClientPtr mojo_client_interface_ptr;
-    mojo_client_binding_ =
-        std::make_unique<mojo::Binding<MojomWilcoDtcSupportdClient>>(
-            &mojo_client_, mojo::MakeRequest(&mojo_client_interface_ptr));
-    DCHECK(mojo_client_interface_ptr);
+    // Obtain Mojo pending remote that talks to |mojo_client_| - the
+    // connection between them will be maintained by |mojo_client_receiver_|.
+    mojo::PendingRemote<MojomWilcoDtcSupportdClient> mojo_client;
+    mojo_client_receiver_ =
+        std::make_unique<mojo::Receiver<MojomWilcoDtcSupportdClient>>(
+            &mojo_client_, mojo_client.InitWithNewPipeAndPassReceiver());
+    DCHECK(mojo_client);
 
+    mojo::Remote<MojomWilcoDtcSupportdService> mojo_service;
     mojo_service_ = std::make_unique<MojoService>(
-        &mojo_grpc_adapter_,
-        MojomWilcoDtcSupportdServiceRequest() /* self_interface_request */,
-        std::move(mojo_client_interface_ptr));
+        &mojo_grpc_adapter_, mojo_service.BindNewPipeAndPassReceiver(),
+        std::move(mojo_client));
   }
 
   MockMojoClient* mojo_client() { return &mojo_client_; }
@@ -76,8 +71,8 @@ class MojoServiceTest : public testing::Test {
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
 
   StrictMock<MockMojoClient> mojo_client_;
-  std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdClient>>
-      mojo_client_binding_;
+  std::unique_ptr<mojo::Receiver<MojomWilcoDtcSupportdClient>>
+      mojo_client_receiver_;
 
   GrpcClientManager grpc_client_manager_;
   MojoGrpcAdapter mojo_grpc_adapter_{&grpc_client_manager_};

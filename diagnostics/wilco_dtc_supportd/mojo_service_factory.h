@@ -11,7 +11,9 @@
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/optional.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
@@ -29,13 +31,13 @@ class MojoGrpcAdapter;
 class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
                                      WilcoDtcSupportdServiceFactory {
  public:
-  using MojoBinding = mojo::Binding<
+  using MojoReceiver = mojo::Receiver<
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory>;
-  using MojoBindingPtr = std::unique_ptr<MojoBinding>;
+  using MojoReceiverPtr = std::unique_ptr<MojoReceiver>;
   using WilcoServiceFactory =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory;
   using BindFactoryCallback =
-      base::OnceCallback<MojoBindingPtr(WilcoServiceFactory*, base::ScopedFD)>;
+      base::OnceCallback<MojoReceiverPtr(WilcoServiceFactory*, base::ScopedFD)>;
 
   MojoServiceFactory(MojoGrpcAdapter* grpc_adapter,
                      base::RepeatingClosure shutdown,
@@ -73,9 +75,10 @@ class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
   // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory
   // overrides:
   void GetService(
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest
-          service,
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr client,
+      mojo::PendingReceiver<
+          chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService> service,
+      mojo::PendingRemote<
+          chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient> client,
       GetServiceCallback callback) override;
 
   // Unowned. The mojo_grpc_adapter must outlive this instance.
@@ -83,24 +86,24 @@ class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
   // To be called in case of an unrecoverable mojo error.
   base::RepeatingClosure shutdown_;
 
-  // OnceCallback to populate the |mojo_service_factory_binding_|.
+  // OnceCallback to populate the |mojo_service_factory_receiver_|.
   BindFactoryCallback bind_factory_callback_;
-  // Binding that connects this instance (which is an implementation of
+  // Receiver that connects this instance (which is an implementation of
   // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory) with
   // the message pipe set up on top of the received file descriptor.
   //
   // Gets created after the BootstrapMojoConnection D-Bus method is called.
-  std::unique_ptr<mojo::Binding<WilcoServiceFactory>>
-      mojo_service_factory_binding_;
+  std::unique_ptr<mojo::Receiver<WilcoServiceFactory>>
+      mojo_service_factory_receiver_;
   // Implementation of the Mojo interface exposed by the wilco_dtc_supportd
   // daemon and a proxy that allows sending outgoing Mojo requests.
   //
   // Gets created after the GetService() Mojo method is called.
   std::unique_ptr<MojoService> mojo_service_;
-  // Whether binding of the Mojo service was attempted.
+  // Whether receiver of the Mojo service was attempted.
   //
   // This flag is needed for detecting repeated Mojo bootstrapping attempts
-  // (alternative ways, like checking |mojo_service_factory_binding_|, are
+  // (alternative ways, like checking |mojo_service_factory_receiver_|, are
   // unreliable during shutdown).
   bool mojo_service_bind_attempted_ = false;
 };

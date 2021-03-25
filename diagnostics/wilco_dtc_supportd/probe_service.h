@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "mojo/cros_healthd.mojom.h"
 #include "mojo/cros_healthd_probe.mojom.h"
@@ -28,7 +29,8 @@ class ProbeService {
     // production, the implementation is provided by cros_healthd. Returns
     // whether binding is successful.
     virtual bool BindCrosHealthdProbeService(
-        chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest
+        mojo::PendingReceiver<
+            chromeos::cros_healthd::mojom::CrosHealthdProbeService>
             service) = 0;
   };
 
