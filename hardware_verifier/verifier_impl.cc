@@ -57,6 +57,10 @@ VerifierImpl::VerifierImpl() {
     comp_category_info->enum_value = category_enum_desc->value(i)->number();
     comp_category_info->enum_name = comp_category_name;
 
+    if (comp_category_info->enum_value ==
+        runtime_probe::ProbeRequest_SupportCategory_UNKNOWN)
+      continue;
+
     const auto* field_desc =
         probe_result_desc->FindFieldByName(comp_category_name);
     DCHECK(field_desc && field_desc->cpp_type() == kCppTypeMsg &&
@@ -148,6 +152,9 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
 
   const auto* probe_result_refl = probe_result.GetReflection();
   for (const auto& comp_category_info : comp_category_infos_) {
+    if (comp_category_info.enum_value ==
+        runtime_probe::ProbeRequest_SupportCategory_UNKNOWN)
+      continue;
     const auto& comp_name_to_qual_status =
         qual_status_dict[comp_category_info.enum_value];
 

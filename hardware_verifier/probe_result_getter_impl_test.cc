@@ -29,13 +29,13 @@ class MockRuntimeProbeProxy : public RuntimeProbeProxy {
                           runtime_probe::ProbeResult*));
   void ConfigProbeCategories(bool retval,
                              const runtime_probe::ProbeResult& resp) {
-    // |probe_request| should include all the categories.  Here we only check
-    // if the number of category in the protobuf message matches the size of
-    // the defined enum.
+    // |probe_request| should include all the categories except UNKNWON.  Here
+    // we only check if the number of category in the protobuf message matches
+    // the size of the defined enum - 1.
     const auto desc = runtime_probe::ProbeRequest_SupportCategory_descriptor();
     const auto probe_request_arg_matcher =
         testing::Property(&runtime_probe::ProbeRequest::categories_size,
-                          testing::Eq(desc->value_count()));
+                          testing::Eq(desc->value_count() - 1));
 
     const auto handler = [retval, resp](runtime_probe::ProbeResult* pr) {
       pr->CopyFrom(resp);

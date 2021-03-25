@@ -55,13 +55,15 @@ ProbeResultGetterImpl::GetFromRuntimeProbe() const {
   // TODO(yhong): Call the proper API to probe components of all categories
   //     directly once b/132127083 is fixed.
   runtime_probe::ProbeRequest probe_request;
-  const auto categories_enum_desc =
+  const auto category_enum_desc =
       runtime_probe::ProbeRequest_SupportCategory_descriptor();
-  for (int i = 0; i < categories_enum_desc->value_count(); ++i) {
-    const auto category_desc = categories_enum_desc->value(i);
-    probe_request.add_categories(
+  for (int i = 0; i < category_enum_desc->value_count(); ++i) {
+    const auto category =
         static_cast<runtime_probe::ProbeRequest_SupportCategory>(
-            category_desc->number()));
+            category_enum_desc->value(i)->number());
+    if (category == runtime_probe::ProbeRequest_SupportCategory_UNKNOWN)
+      continue;
+    probe_request.add_categories(category);
   }
   VLogProtobuf(2, "ProbeRequest", probe_request);
 

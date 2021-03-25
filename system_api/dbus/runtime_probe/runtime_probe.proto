@@ -31,19 +31,21 @@ enum ErrorCode {
 message ProbeRequest {
   enum SupportCategory {
     // The name style here is on purposely align with factory probe output.
-    audio_codec = 0;
-    battery = 1;
-    storage = 2;
-    vpd_cached = 3;
-    network = 4;
-    camera = 5;
-    stylus = 6;
-    touchpad = 7;
-    touchscreen = 8;
-    dram = 9;
-    display_panel = 10;
+    UNKNOWN = 0;
+    audio_codec = 1;
+    battery = 2;
+    storage = 3;
+    vpd_cached = 4;
+    network = 5;
+    camera = 6;
+    stylus = 7;
+    touchpad = 8;
+    touchscreen = 9;
+    dram = 10;
+    display_panel = 11;
   }
-  repeated SupportCategory categories = 1;
+  reserved 1;
+  repeated SupportCategory categories = 4;
   // This option allows clients to retrieve data with privacy implication from
   // D-Bus call to runtime_probe. Default to false and please use with caution.
   bool include_privacy_fields = 2;
