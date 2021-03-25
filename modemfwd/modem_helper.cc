@@ -5,6 +5,7 @@
 #include "modemfwd/modem_helper.h"
 
 #include <memory>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -49,7 +50,7 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
 
   int exit_code = helper.Run();
   if (exit_code != 0) {
-    LOG(ERROR) << "Failed to perform \"" << base::JoinString(arguments, ",")
+    LOG(ERROR) << "Failed to perform \"" << base::JoinString(arguments, " ")
                << "\" on the modem";
     return false;
   }
@@ -99,7 +100,7 @@ bool RunHelperProcess(const HelperInfo& helper_info,
   }
 
   if (exit_code != 0) {
-    LOG(ERROR) << "Failed to perform \"" << base::JoinString(arguments, ",")
+    LOG(ERROR) << "Failed to perform \"" << base::JoinString(arguments, " ")
                << "\" on the modem";
     return false;
   }
@@ -189,19 +190,37 @@ class ModemHelperImpl : public ModemHelper {
   }
 
   // modemfwd::ModemHelper overrides.
-  bool FlashFirmware(const std::string& fw_type,
-                     const base::FilePath& path_to_fw,
-                     const std::string& version) override {
+  bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) override {
     auto flash_mode = FlashMode::Create(helper_info_);
     if (!flash_mode)
       return false;
 
+    if (!configs.size())
+      return false;
+
+    std::vector<std::string> firmwares;
+    std::vector<std::string> versions;
+    for (const auto& config : configs) {
+      firmwares.push_back(base::StringPrintf("%s:%s", config.fw_type.c_str(),
+                                             config.path.value().c_str()));
+      versions.push_back(base::StringPrintf("%s:%s", config.fw_type.c_str(),
+                                            config.version.c_str()));
+    }
+
     return RunHelperProcessWithLogs(
         helper_info_,
-        {base::StringPrintf("%s=%s:%s", kFlashFirmware, fw_type.c_str(),
-                            path_to_fw.value().c_str()),
-         base::StringPrintf("%s=%s:%s", kFwVersion, fw_type.c_str(),
-                            version.c_str())});
+        {base::StringPrintf("%s=%s", kFlashFirmware,
+                            base::JoinString(firmwares, ",").c_str()),
+         base::StringPrintf("%s=%s", kFwVersion,
+                            base::JoinString(versions, ",").c_str())});
+  }
+
+  bool FlashFirmware(const std::string& fw_type,
+                     const base::FilePath& path_to_fw,
+                     const std::string& version) override {
+    std::vector<FirmwareConfig> configs = {{fw_type, path_to_fw, version}};
+
+    return FlashFirmwares(configs);
   }
 
   bool FlashModeCheck() override {

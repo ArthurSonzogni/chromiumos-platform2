@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -35,6 +36,17 @@ struct HelperInfo {
   std::vector<std::string> extra_arguments;
 };
 
+struct FirmwareConfig {
+  std::string fw_type;
+  base::FilePath path;
+  std::string version;
+
+  // Used to get a proper default matcher in googletest.
+  bool operator==(const FirmwareConfig& rhs) const {
+    return fw_type == rhs.fw_type && path == rhs.path && version == rhs.version;
+  }
+};
+
 class ModemHelper {
  public:
   virtual ~ModemHelper() = default;
@@ -44,6 +56,7 @@ class ModemHelper {
   virtual bool FlashFirmware(const std::string& fw_type,
                              const base::FilePath& path_to_fw,
                              const std::string& version) = 0;
+  virtual bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) = 0;
 
   virtual bool Reboot() = 0;
   virtual bool FlashModeCheck() = 0;

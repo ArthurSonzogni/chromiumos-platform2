@@ -6,6 +6,7 @@
 #define MODEMFWD_MOCK_MODEM_HELPER_H_
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -24,6 +25,10 @@ class MockModemHelper : public ModemHelper {
   MOCK_METHOD(bool,
               FlashFirmware,
               (const std::string&, const base::FilePath&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              FlashFirmwares,
+              (const std::vector<FirmwareConfig>&),
               (override));
   MOCK_METHOD(bool, FlashModeCheck, (), (override));
   MOCK_METHOD(bool, Reboot, (), (override));
