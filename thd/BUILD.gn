@@ -19,7 +19,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libthd") {
-  configs += [ ":target_defaults" ]
   sources = [
     "mechanism/fake_mechanism.cc",
     "mechanism/file_write_mechanism.cc",
@@ -28,6 +27,7 @@ static_library("libthd") {
     "source/fake_source.cc",
     "source/file_source.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 if (use.test) {
@@ -36,14 +36,14 @@ if (use.test) {
   }
 
   executable("thd_unittests") {
+    sources = [
+      "mechanism/file_write_mechanism_test.cc",
+      "source/file_source_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
       ":test_config",
-    ]
-    sources = [
-      "mechanism/file_write_mechanism_test.cc",
-      "source/file_source_test.cc",
     ]
     deps = [
       ":libthd",
