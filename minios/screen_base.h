@@ -69,7 +69,7 @@ class ScreenBase {
 
   // Shows the title and corresponding description using offsets from
   // `constants` to place.
-  void ShowInstructionsWithTitle(const std::string& message_token);
+  virtual void ShowInstructionsWithTitle(const std::string& message_token);
 
   // Show progress bar at percentage given.
   void ShowProgressPercentage(double progress);

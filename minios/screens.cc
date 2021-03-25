@@ -10,6 +10,7 @@
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+#include <dbus/shill/dbus-constants.h>
 
 #include "minios/minios.h"
 
@@ -304,8 +305,17 @@ void Screens::GetPassword() {
   // TODO(vyshu) : Logging password for development purposes only. Remove.
   LOG(INFO) << "User password is: " << plain_text_password;
 
-  // Connect to network.
+  // Wait to connect to network.
+  current_screen_ = ScreenType::kWaitForConnection;
+  ShowNewScreen();
   network_manager_->Connect(chosen_network_, plain_text_password);
+}
+
+void Screens::ShowWaitingForConnectionScreen() {
+  MessageBaseScreen();
+  ShowStepper({"done", "2-done", "3-done"});
+  ShowLanguageMenu(false);
+  ShowInstructions("title_MiniOS_wait_for_connection");
 }
 
 void Screens::ShowMiniOsDownloadingScreen() {
@@ -326,20 +336,28 @@ void Screens::ShowMiniOsCompleteScreen() {
   ShowButton("Reboot", -100, false, default_button_width_, true);
 }
 
-void Screens::ShowMiniOsErrorScreen() {
+void Screens::ShowErrorScreen(std::string error_message) {
   MessageBaseScreen();
-  ShowInstructionsWithTitle("MiniOS_general_error");
+  base::FilePath error_path_title =
+      screens_path_.Append(locale_).Append("title_" + error_message + ".png");
+  base::FilePath error_path_desc =
+      screens_path_.Append(locale_).Append("desc_" + error_message + ".png");
+  if (!base::PathExists(error_path_title) ||
+      !base::PathExists(error_path_desc)) {
+    LOG(WARNING) << "Could not find error " << error_message;
+    error_message = "MiniOS_general_error";
+  }
+  ShowInstructionsWithTitle(error_message);
   ShowStepper({"done", "done", "stepper_error"});
   ShowLanguageMenu(index_ == 0);
   ShowButton("btn_try_again", -100, index_ == 1, default_button_width_, false);
 }
 
-void Screens::ShowMiniOsConnectionErrorScreen() {
-  MessageBaseScreen();
-  ShowInstructionsWithTitle("MiniOS_error");
-  ShowStepper({"done", "done", "stepper_error"});
-  ShowLanguageMenu(index_ == 0);
-  ShowButton("btn_try_again", -100, index_ == 1, default_button_width_, false);
+void Screens::ChangeToErrorScreen(enum ScreenType error_screen) {
+  current_screen_ = error_screen;
+  display_update_engine_state_ = false;
+  index_ = 1;
+  ShowNewScreen();
 }
 
 void Screens::UpdateButtons(int menu_count, int key, bool* enter) {
@@ -467,6 +485,7 @@ void Screens::ShowNetworkDropdown() {
     ShowBox(kBackgroundX, offset_y, 718, 38, kMenuDropdownBackgroundBlack);
     ShowText("Please wait while we find available networks.", kOffsetX,
              offset_y, "grey");
+    LOG(ERROR) << "No available networks.";
     return;
   }
 
@@ -612,6 +631,7 @@ void Screens::SwitchScreen(bool enter) {
   if (enter && index_ == 0 &&
       current_screen_ != ScreenType::kLanguageDropDownScreen &&
       current_screen_ != ScreenType::kExpandedNetworkDropDownScreen &&
+      current_screen_ != ScreenType::kWaitForConnection &&
       current_screen_ != ScreenType::kStartDownload) {
     previous_screen_ = current_screen_;
     current_screen_ = ScreenType::kLanguageDropDownScreen;
@@ -663,7 +683,6 @@ void Screens::SwitchScreen(bool enter) {
     case ScreenType::kPasswordScreen:
       if (index_ == 1) {
         GetPassword();
-        current_screen_ = ScreenType::kStartDownload;
       } else {
         index_ = 1;
         current_screen_ = ScreenType::kNetworkDropDownScreen;
@@ -678,6 +697,7 @@ void Screens::SwitchScreen(bool enter) {
         return;
       }
       break;
+    case ScreenType::kWaitForConnection:
     case ScreenType::kStartDownload:
       return;
     case ScreenType::kDownloadError:
@@ -686,7 +706,9 @@ void Screens::SwitchScreen(bool enter) {
         current_screen_ = ScreenType::kWelcomeScreen;
       }
       break;
+    case ScreenType::kPasswordError:
     case ScreenType::kNetworkError:
+    case ScreenType::kConnectionError:
       if (index_ == 1) {
         // Back to dropdown screen,
         current_screen_ = ScreenType::kNetworkDropDownScreen;
@@ -714,14 +736,23 @@ void Screens::ShowNewScreen() {
     case ScreenType::kLanguageDropDownScreen:
       ShowLanguageDropdown();
       break;
+    case ScreenType::kWaitForConnection:
+      ShowWaitingForConnectionScreen();
+      break;
     case ScreenType::kStartDownload:
       ShowMiniOsDownloadingScreen();
       break;
     case ScreenType::kDownloadError:
-      ShowMiniOsErrorScreen();
+      ShowErrorScreen("MiniOS_download_error");
       break;
     case ScreenType::kNetworkError:
-      ShowMiniOsConnectionErrorScreen();
+      ShowErrorScreen("MiniOS_network_error");
+      break;
+    case ScreenType::kPasswordError:
+      ShowErrorScreen("MiniOS_password_error");
+      break;
+    case ScreenType::kConnectionError:
+      ShowErrorScreen("MiniOS_connection_error");
       break;
   }
 }
@@ -741,9 +772,9 @@ void Screens::OnProgressChanged(const update_engine::StatusResult& status) {
       ShowProgressPercentage(status.progress());
       break;
     case update_engine::Operation::FINALIZING:
-      if (previous_update_state_ != operation)
+      if (previous_update_state_ != operation) {
         LOG(INFO) << "Finalizing installation please wait.";
-      // TODO(vyshu): Add a new screen and progress bar for this stage.
+      }
       break;
     case update_engine::Operation::UPDATED_NEED_REBOOT:
       ShowMiniOsCompleteScreen();
@@ -755,7 +786,7 @@ void Screens::OnProgressChanged(const update_engine::StatusResult& status) {
     case update_engine::Operation::ERROR:
       LOG(ERROR) << "Could not finish the installation, failed with status: "
                  << status.current_operation();
-      ChangeToDownloadErrorScreen();
+      ChangeToErrorScreen(ScreenType::kDownloadError);
       break;
     default:
       // Only `IDLE` and `CHECKING_FOR_UPDATE` can go back to `IDLE` without
@@ -766,7 +797,7 @@ void Screens::OnProgressChanged(const update_engine::StatusResult& status) {
           operation == update_engine::Operation::IDLE) {
         LOG(WARNING) << "Update engine went from " << operation
                      << "back to IDLE.";
-        ChangeToDownloadErrorScreen();
+        ChangeToErrorScreen(ScreenType::kDownloadError);
       }
       break;
   }
@@ -778,13 +809,21 @@ void Screens::OnConnect(const std::string& ssid, brillo::Error* error) {
     LOG(ERROR) << "Could not connect to " << ssid
                << ". ErrorCode=" << error->GetCode()
                << " ErrorMessage=" << error->GetMessage();
-    ChangeToNetworkErrorScreen();
+    chosen_network_.clear();
+    if (error->GetCode() == shill::kErrorResultInvalidPassphrase) {
+      ChangeToErrorScreen(ScreenType::kPasswordError);
+    } else {
+      // General network error.
+      ChangeToErrorScreen(ScreenType::kConnectionError);
+    }
     return;
   }
   LOG(INFO) << "Successfully connected to " << ssid;
   // TODO(b/181248366): MiniOs: Stop update engine from scheduling periodic
   // update checks in recovery mode and then call update check manually.
   display_update_engine_state_ = true;
+  current_screen_ = ScreenType::kStartDownload;
+  ShowNewScreen();
 }
 
 void Screens::OnGetNetworks(const std::vector<std::string>& networks,
@@ -793,7 +832,7 @@ void Screens::OnGetNetworks(const std::vector<std::string>& networks,
     LOG(ERROR) << "Could not get networks. ErrorCode=" << error->GetCode()
                << " ErrorMessage=" << error->GetMessage();
     network_list_.clear();
-    ChangeToNetworkErrorScreen();
+    ChangeToErrorScreen(ScreenType::kNetworkError);
     // Add one extra slot for the back button.
     menu_count_[ScreenType::kExpandedNetworkDropDownScreen] = 1;
     return;
@@ -806,13 +845,6 @@ void Screens::OnGetNetworks(const std::vector<std::string>& networks,
   menu_count_[ScreenType::kExpandedNetworkDropDownScreen] =
       network_list_.size() + 1;
 
-  if (network_list_.empty()) {
-    LOG(ERROR) << "No available networks.";
-    // TODO(vyshu) : Create a more specific error for this as it is not a
-    // network error.
-    ChangeToNetworkErrorScreen();
-    return;
-  }
   // If already waiting on the dropdown screen, refresh.
   if (current_screen_ == ScreenType::kExpandedNetworkDropDownScreen) {
     index_ = 0;
@@ -822,18 +854,6 @@ void Screens::OnGetNetworks(const std::vector<std::string>& networks,
 
 void Screens::UpdateNetworkList() {
   network_manager_->GetNetworks();
-  chosen_network_.clear();
-}
-void Screens::ChangeToDownloadErrorScreen() {
-  current_screen_ = ScreenType::kDownloadError;
-  display_update_engine_state_ = false;
-  index_ = 1;
-  ShowNewScreen();
-}
-void Screens::ChangeToNetworkErrorScreen() {
-  current_screen_ = ScreenType::kNetworkError;
-  index_ = 1;
-  ShowNewScreen();
   chosen_network_.clear();
 }
 

@@ -39,16 +39,22 @@ extern const int kKeyPower;
 extern const int kFdsMax;
 extern const int kKeyMax;
 
-// All the different screens in the MiniOs Flow.
+// All the different screens in the MiniOs Flow. `kDownloadError` is shown when
+// there is an Update Engine failure, `kNetworkError` is shown when there is an
+// issue getting the networks. `kPasswordError` and `kConnectionError` are shown
+// upon failures connecting to a chosen network.
 enum class ScreenType {
   kWelcomeScreen = 0,
   kNetworkDropDownScreen = 1,
   kExpandedNetworkDropDownScreen = 2,
   kPasswordScreen = 3,
   kLanguageDropDownScreen = 4,
-  kStartDownload = 5,
-  kDownloadError = 6,
-  kNetworkError = 7,
+  kWaitForConnection = 5,
+  kStartDownload = 6,
+  kDownloadError = 7,
+  kNetworkError = 8,
+  kPasswordError = 9,
+  kConnectionError = 10,
 };
 
 // Screens contains the different MiniOs Screens as well as specific components
@@ -166,8 +172,12 @@ class Screens : public ScreenBase,
   FRIEND_TEST(ScreensTestMocks, IdleError);
   FRIEND_TEST(ScreensTestMocks, GetNetworks);
   FRIEND_TEST(ScreensTestMocks, OnConnectError);
+  FRIEND_TEST(ScreensTestMocks, OnPasswordError);
   FRIEND_TEST(ScreensTestMocks, NoNetworksGiven);
+  FRIEND_TEST(ScreensTestMocks, ScreenFlowForwardWithNetwork);
   FRIEND_TEST(ScreensTestMocks, GetNetworksRefresh);
+  FRIEND_TEST(ScreensTestMocks, ChangeErrorScreen);
+  FRIEND_TEST(ScreensTestMocks, ErrorScreenFallBack);
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items.
@@ -208,10 +218,9 @@ class Screens : public ScreenBase,
   void ShowMiniOsWelcomeScreen();
   void ShowMiniOsNetworkDropdownScreen();
   void ShowMiniOsGetPasswordScreen();
+  void ShowWaitingForConnectionScreen();
   void ShowMiniOsDownloadingScreen();
   virtual void ShowMiniOsCompleteScreen();
-  void ShowMiniOsErrorScreen();
-  void ShowMiniOsConnectionErrorScreen();
 
   // Checks whether the current language is read from right to left. Must be
   // updated every time the language changes.
@@ -233,12 +242,11 @@ class Screens : public ScreenBase,
   // `DOWNLOADING` then shows a progress bar with percentage.
   void OnProgressChanged(const update_engine::StatusResult& status) override;
 
-  // Changes screen to download error.
-  void ChangeToDownloadErrorScreen();
+  // Calls error screen components with different messages.
+  void ShowErrorScreen(std::string error_message);
 
-  // Changes screen to network error. Resets `index_` and
-  // `display_engine_state_`.
-  void ChangeToNetworkErrorScreen();
+  // Reset and show error screen.
+  void ChangeToErrorScreen(enum ScreenType error_screen);
 
   ProcessManagerInterface* process_manager_;
 
@@ -283,9 +291,12 @@ class Screens : public ScreenBase,
       {ScreenType::kExpandedNetworkDropDownScreen, 0},
       {ScreenType::kPasswordScreen, 3},
       {ScreenType::kLanguageDropDownScreen, 0},
+      {ScreenType::kWaitForConnection, 0},
       {ScreenType::kStartDownload, 0},
       {ScreenType::kDownloadError, 2},
-      {ScreenType::kNetworkError, 2}};
+      {ScreenType::kNetworkError, 2},
+      {ScreenType::kPasswordError, 2},
+      {ScreenType::kConnectionError, 2}};
 
   ScreenType current_screen_{ScreenType::kWelcomeScreen};
   // Previous screen only used when changing the language so you know what

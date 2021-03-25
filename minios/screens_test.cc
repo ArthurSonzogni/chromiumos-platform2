@@ -506,6 +506,9 @@ class MockScreens : public Screens {
                int glyph_offset_h,
                int glyph_offset_v,
                const std::string& color));
+  MOCK_METHOD(void,
+              ShowInstructionsWithTitle,
+              (const std::string& message_token));
   MOCK_METHOD(void, ShowNewScreen, ());
   MOCK_METHOD(void, LanguageMenuOnSelect, ());
   MOCK_METHOD(void, GetPassword, ());
@@ -783,8 +786,9 @@ TEST_F(ScreensTestMocks, ScreenFlowForwardWithNetwork) {
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(ScreenType::kPasswordScreen, mock_screens_.GetScreenForTest());
 
-  // Enter finishes the flow with downloading and complete screens.
   EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnConnect("", nullptr);
+  // Enter finishes the flow with downloading and complete screens.
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(ScreenType::kStartDownload, mock_screens_.GetScreenForTest());
 }
@@ -853,7 +857,7 @@ TEST_F(ScreensTestMocks, InvalidNetwork) {
   mock_screens_.SetScreenForTest(ScreenType::kExpandedNetworkDropDownScreen);
 
   // Set list of available networks to empty.
-  mock_screens_.SetNetworkListForTest_({});
+  mock_screens_.SetNetworkListForTest_({"network"});
   mock_screens_.SetIndexForTest(1);
 
   EXPECT_CALL(mock_screens_, ShowNewScreen());
@@ -921,13 +925,6 @@ TEST_F(ScreensTestMocks, GetNetworksRefresh) {
       4, mock_screens_.menu_count_[ScreenType::kExpandedNetworkDropDownScreen]);
 }
 
-TEST_F(ScreensTestMocks, NoNetworksGiven) {
-  EXPECT_CALL(mock_screens_, ShowNewScreen());
-  mock_screens_.OnGetNetworks({}, nullptr);
-  // Network error screen.
-  EXPECT_EQ(ScreenType::kNetworkError, mock_screens_.GetScreenForTest());
-}
-
 TEST_F(ScreensTestMocks, OnConnectError) {
   mock_screens_.chosen_network_ = "test-ssid";
   // Network error, show corresponding screen.
@@ -936,8 +933,48 @@ TEST_F(ScreensTestMocks, OnConnectError) {
 
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.OnConnect(mock_screens_.chosen_network_, error_ptr.get());
-  EXPECT_EQ(ScreenType::kNetworkError, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kConnectionError, mock_screens_.GetScreenForTest());
   EXPECT_TRUE(mock_screens_.chosen_network_.empty());
+}
+
+TEST_F(ScreensTestMocks, OnPasswordError) {
+  mock_screens_.chosen_network_ = "test-ssid";
+  // Network error, show corresponding screen.
+  brillo::ErrorPtr error_ptr = brillo::Error::Create(
+      FROM_HERE, "Password", "org.chromium.flimflam.Error.InvalidPassphrase",
+      "Invalid passphrase", nullptr);
+
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.OnConnect(mock_screens_.chosen_network_, error_ptr.get());
+  EXPECT_EQ(ScreenType::kPasswordError, mock_screens_.GetScreenForTest());
+  EXPECT_TRUE(mock_screens_.chosen_network_.empty());
+}
+
+TEST_F(ScreensTestMocks, ChangeErrorScreen) {
+  mock_screens_.SetScreenForTest(ScreenType::kNetworkDropDownScreen);
+  mock_screens_.SetIndexForTest(2);
+  mock_screens_.display_update_engine_state_ = true;
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.ChangeToErrorScreen(ScreenType::kNetworkError);
+
+  // Reset state and show error.
+  EXPECT_EQ(ScreenType::kNetworkError, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(1, mock_screens_.GetIndexForTest());
+  EXPECT_FALSE(mock_screens_.display_update_engine_state_);
+}
+
+TEST_F(ScreensTestMocks, ErrorScreenFallBack) {
+  // Error images not available, fall back to general error screen.
+  brillo::TouchFile(
+      screens_path_.Append("en-US").Append("title_MiniOS_test_error.png"));
+  EXPECT_CALL(mock_screens_, ShowInstructionsWithTitle("MiniOS_general_error"));
+  mock_screens_.ShowErrorScreen("MiniOS_test_error");
+
+  // Create both error images to show error.
+  brillo::TouchFile(
+      screens_path_.Append("en-US").Append("desc_MiniOS_test_error.png"));
+  EXPECT_CALL(mock_screens_, ShowInstructionsWithTitle("MiniOS_test_error"));
+  mock_screens_.ShowErrorScreen("MiniOS_test_error");
 }
 
 }  // namespace screens
