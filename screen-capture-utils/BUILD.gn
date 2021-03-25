@@ -36,22 +36,22 @@ pkg_config("libvncserver") {
 }
 
 executable("screenshot") {
-  configs += [ ":target_defaults" ]
   sources = [
     "png.cc",
     "screenshot.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libscreen-capture" ]
 }
 
 executable("kmsvnc") {
-  configs += [
-    ":target_defaults",
-    ":libvncserver",
-  ]
   sources = [
     "kmsvnc.cc",
     "uinput.cc",
+  ]
+  configs += [
+    ":target_defaults",
+    ":libvncserver",
   ]
   deps = [ ":libscreen-capture" ]
   pkg_deps = [ "libmetrics" ]
