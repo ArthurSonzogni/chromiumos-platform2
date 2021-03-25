@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -82,18 +83,16 @@ class JournalTest : public ::testing::Test {
 };
 
 TEST_F(JournalTest, EmptyJournal) {
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   GetJournal();
 }
 
 TEST_F(JournalTest, PriorRunWasNotInterrupted_Main) {
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingMainFirmware(kDeviceId, kCarrierId);
-  journal->MarkEndOfFlashingMainFirmware(kDeviceId, kCarrierId);
+  journal->MarkStartOfFlashingFirmware({kFwMain}, kDeviceId, kCarrierId);
+  journal->MarkEndOfFlashingFirmware(kDeviceId, kCarrierId);
 
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   // Getting a new journal simulates a crash or shutdown.
   journal = GetJournal();
 }
@@ -103,28 +102,25 @@ TEST_F(JournalTest, PriorRunWasInterrupted_Main) {
   AddMainFirmwareFile(main_fw_path, kMainFirmwareVersion);
 
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingMainFirmware(kDeviceId, kCarrierId);
+  journal->MarkStartOfFlashingFirmware({kFwMain}, kDeviceId, kCarrierId);
 
-  EXPECT_CALL(modem_helper_,
-              FlashFirmware(kFwMain, main_fw_path, kMainFirmwareVersion))
-      .WillOnce(Return(true));
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  const std::vector<FirmwareConfig> main_cfg = {
+      {kFwMain, main_fw_path, kMainFirmwareVersion}};
+  EXPECT_CALL(modem_helper_, FlashFirmwares(main_cfg)).WillOnce(Return(true));
   journal = GetJournal();
 
   // Test that the journal is cleared afterwards, so we don't try to
   // flash a second time if we crash again.
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   journal = GetJournal();
 }
 
 TEST_F(JournalTest, PriorRunWasNotInterrupted_Carrier) {
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingCarrierFirmware(kDeviceId, kCarrierId);
-  journal->MarkEndOfFlashingCarrierFirmware(kDeviceId, kCarrierId);
+  journal->MarkStartOfFlashingFirmware({kFwCarrier}, kDeviceId, kCarrierId);
+  journal->MarkEndOfFlashingFirmware(kDeviceId, kCarrierId);
 
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   // Getting a new journal simulates a crash or shutdown.
   journal = GetJournal();
 }
@@ -134,37 +130,56 @@ TEST_F(JournalTest, PriorRunWasInterrupted_Carrier) {
   AddCarrierFirmwareFile(carrier_fw_path, kCarrierFirmwareVersion);
 
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingCarrierFirmware(kDeviceId, kCarrierId);
+  journal->MarkStartOfFlashingFirmware({kFwCarrier}, kDeviceId, kCarrierId);
 
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, carrier_fw_path,
-                                           kCarrierFirmwareVersion))
+  const std::vector<FirmwareConfig> carrier_cfg = {
+      {kFwCarrier, carrier_fw_path, kCarrierFirmwareVersion}};
+  EXPECT_CALL(modem_helper_, FlashFirmwares(carrier_cfg))
       .WillOnce(Return(true));
   journal = GetJournal();
 
   // Test that the journal is cleared afterwards, so we don't try to
   // flash a second time if we crash again.
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
+  journal = GetJournal();
+}
+
+TEST_F(JournalTest, PriorRunWasInterrupted_MultipleFirmwares) {
+  const base::FilePath main_fw_path(kMainFirmwarePath);
+  AddMainFirmwareFile(main_fw_path, kMainFirmwareVersion);
+  const base::FilePath carrier_fw_path(kCarrierFirmwarePath);
+  AddCarrierFirmwareFile(carrier_fw_path, kCarrierFirmwareVersion);
+
+  auto journal = GetJournal();
+  journal->MarkStartOfFlashingFirmware({kFwMain, kFwCarrier}, kDeviceId,
+                                       kCarrierId);
+
+  const std::vector<FirmwareConfig> all_cfg = {
+      {kFwMain, main_fw_path, kMainFirmwareVersion},
+      {kFwCarrier, carrier_fw_path, kCarrierFirmwareVersion}};
+  EXPECT_CALL(modem_helper_, FlashFirmwares(all_cfg)).WillOnce(Return(true));
+  journal = GetJournal();
+
+  // Test that the journal is cleared afterwards, so we don't try to
+  // flash a second time if we crash again.
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   journal = GetJournal();
 }
 
 TEST_F(JournalTest, IgnoreMalformedJournalEntries) {
   SetUpJournal("blahblah");
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   GetJournal();
 }
 
 TEST_F(JournalTest, MultipleEntries) {
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingMainFirmware(kDeviceId, kCarrierId);
-  journal->MarkEndOfFlashingMainFirmware(kDeviceId, kCarrierId);
-  journal->MarkStartOfFlashingCarrierFirmware(kDeviceId, kCarrierId);
-  journal->MarkEndOfFlashingCarrierFirmware(kDeviceId, kCarrierId);
+  journal->MarkStartOfFlashingFirmware({kFwMain}, kDeviceId, kCarrierId);
+  journal->MarkEndOfFlashingFirmware(kDeviceId, kCarrierId);
+  journal->MarkStartOfFlashingFirmware({kFwCarrier}, kDeviceId, kCarrierId);
+  journal->MarkEndOfFlashingFirmware(kDeviceId, kCarrierId);
 
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwMain, _, _)).Times(0);
-  EXPECT_CALL(modem_helper_, FlashFirmware(kFwCarrier, _, _)).Times(0);
+  EXPECT_CALL(modem_helper_, FlashFirmwares(_)).Times(0);
   journal = GetJournal();
 }
 

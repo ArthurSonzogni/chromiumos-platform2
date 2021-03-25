@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <chromeos/switches/modemfwd_switches.h>
 #include <gtest/gtest.h>
 
 #include "modemfwd/firmware_directory_stub.h"
@@ -62,6 +63,9 @@ class ModemFlasherTest : public ::testing::Test {
 
     modem_flasher_ = std::make_unique<ModemFlasher>(
         std::move(firmware_directory), std::move(journal));
+
+    only_main_ = {kFwMain};
+    only_carrier_ = {kFwCarrier};
   }
 
  protected:
@@ -115,6 +119,9 @@ class ModemFlasherTest : public ::testing::Test {
 
   MockJournal* journal_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
+  // helpers for the mock_journal calls
+  std::vector<std::string> only_main_;
+  std::vector<std::string> only_carrier_;
 
  private:
   // We pass this off to |modem_flasher_| but keep a reference to it to ensure
@@ -507,13 +514,9 @@ TEST_F(ModemFlasherTest, WritesToJournal) {
   EXPECT_CALL(*modem, FlashMainFirmware(new_firmware, kMainFirmware2Version))
       .WillOnce(Return(true));
   EXPECT_CALL(*modem, FlashCarrierFirmware(_, _)).Times(0);
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, _))
+  EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(only_main_, kDeviceId1, _))
       .Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, _)).Times(1);
-  EXPECT_CALL(*journal_, MarkStartOfFlashingCarrierFirmware(kDeviceId1, _))
-      .Times(0);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
-      .Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, _)).Times(1);
   base::Closure cb = modem_flasher_->TryFlash(modem.get());
   // The cleanup callback marks the end of flashing the firmware.
   ASSERT_FALSE(cb.is_null());
@@ -530,13 +533,9 @@ TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
   EXPECT_CALL(*modem, FlashMainFirmware(new_firmware, kMainFirmware2Version))
       .WillOnce(Return(false));
   EXPECT_CALL(*modem, FlashCarrierFirmware(_, _)).Times(0);
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, _))
+  EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(only_main_, kDeviceId1, _))
       .Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, _)).Times(1);
-  EXPECT_CALL(*journal_, MarkStartOfFlashingCarrierFirmware(kDeviceId1, _))
-      .Times(0);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
-      .Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, _)).Times(1);
   // There should be no journal cleanup after the flashing fails.
   base::Closure cb = modem_flasher_->TryFlash(modem.get());
   ASSERT_TRUE(cb.is_null());
@@ -560,15 +559,10 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*modem,
               FlashCarrierFirmware(other_firmware, kCarrier2Firmware1Version))
       .WillOnce(Return(true));
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, kCarrier2))
-      .Times(0);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, kCarrier2))
-      .Times(0);
   EXPECT_CALL(*journal_,
-              MarkStartOfFlashingCarrierFirmware(kDeviceId1, kCarrier2))
+              MarkStartOfFlashingFirmware(only_carrier_, kDeviceId1, kCarrier2))
       .Times(1);
-  EXPECT_CALL(*journal_,
-              MarkEndOfFlashingCarrierFirmware(kDeviceId1, kCarrier2))
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, kCarrier2))
       .Times(1);
   base::Closure cb = modem_flasher_->TryFlash(modem.get());
   ASSERT_FALSE(cb.is_null());
@@ -591,14 +585,10 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*modem, FlashCarrierFirmware(original_firmware,
                                            kCarrier1Firmware1Version))
       .WillOnce(Return(true));
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, _))
-      .Times(0);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, _)).Times(0);
   EXPECT_CALL(*journal_,
-              MarkStartOfFlashingCarrierFirmware(kDeviceId1, kCarrier1))
+              MarkStartOfFlashingFirmware(only_carrier_, kDeviceId1, kCarrier1))
       .Times(1);
-  EXPECT_CALL(*journal_,
-              MarkEndOfFlashingCarrierFirmware(kDeviceId1, kCarrier1))
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, kCarrier1))
       .Times(1);
   cb = modem_flasher_->TryFlash(modem.get());
   ASSERT_FALSE(cb.is_null());

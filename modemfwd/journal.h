@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 
@@ -25,15 +26,12 @@ class Journal {
   // * When we come back up, a newer version of the component is loaded.
   // The file path to the relevant firmware has now changed, so we need to
   // be able to load from the new location.
-  virtual void MarkStartOfFlashingMainFirmware(
-      const std::string& device_id, const std::string& carrier_id) = 0;
-  virtual void MarkEndOfFlashingMainFirmware(const std::string& device_id,
-                                             const std::string& carrier_id) = 0;
-
-  virtual void MarkStartOfFlashingCarrierFirmware(
-      const std::string& device_id, const std::string& carrier_id) = 0;
-  virtual void MarkEndOfFlashingCarrierFirmware(
-      const std::string& device_id, const std::string& carrier_id) = 0;
+  virtual void MarkStartOfFlashingFirmware(
+      const std::vector<std::string>& firmware_types,
+      const std::string& device_id,
+      const std::string& carrier_id) = 0;
+  virtual void MarkEndOfFlashingFirmware(const std::string& device_id,
+                                         const std::string& carrier_id) = 0;
 };
 
 // Opens the journal at |journal_path|. If there was an operation in

@@ -15,5 +15,5 @@ enum JournalEntryType {
 message JournalEntry {
   string device_id = 1;
   string carrier_id = 2;
-  JournalEntryType type = 3;
+  repeated JournalEntryType type = 3;
 };

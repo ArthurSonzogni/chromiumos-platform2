@@ -4,13 +4,16 @@
 
 #include "modemfwd/modem_flasher.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <chromeos/switches/modemfwd_switches.h>
 
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/logging.h"
@@ -106,19 +109,20 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
       // reboot afterwards, we can wait to get called again to check the
       // carrier firmware.
       InhibitMode _inhibit(modem);
-      journal_->MarkStartOfFlashingMainFirmware(device_id, current_carrier);
+      journal_->MarkStartOfFlashingFirmware({kFwMain}, device_id,
+                                            current_carrier);
       if (modem->FlashMainFirmware(firmware_file.path_on_filesystem(),
                                    file_info.version)) {
         // Refer to |firmware_file.path_for_logging()| in the log and journal.
         flash_state->OnFlashedMainFirmware();
         ELOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                    << " to the modem";
-        return base::Bind(&Journal::MarkEndOfFlashingMainFirmware,
+        return base::Bind(&Journal::MarkEndOfFlashingFirmware,
                           base::Unretained(journal_.get()), device_id,
                           current_carrier);
       } else {
         flash_state->OnFlashFailed();
-        journal_->MarkEndOfFlashingMainFirmware(device_id, current_carrier);
+        journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
         return base::Closure();
       }
     }
@@ -173,19 +177,20 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
       return base::Closure();
 
     InhibitMode _inhibit(modem);
-    journal_->MarkStartOfFlashingCarrierFirmware(device_id, current_carrier);
+    journal_->MarkStartOfFlashingFirmware({kFwCarrier}, device_id,
+                                          current_carrier);
     if (modem->FlashCarrierFirmware(firmware_file.path_on_filesystem(),
                                     file_info.version)) {
       // Refer to |firmware_file.path_for_logging()| in the log and journal.
       flash_state->OnFlashedCarrierFirmware(firmware_file.path_for_logging());
       ELOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                  << " to the modem";
-      return base::Bind(&Journal::MarkEndOfFlashingCarrierFirmware,
+      return base::Bind(&Journal::MarkEndOfFlashingFirmware,
                         base::Unretained(journal_.get()), device_id,
                         current_carrier);
     } else {
       flash_state->OnFlashFailed();
-      journal_->MarkEndOfFlashingCarrierFirmware(device_id, current_carrier);
+      journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
       return base::Closure();
     }
   }

@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/files/file.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <brillo/proto_file_io.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
@@ -20,6 +21,27 @@
 namespace modemfwd {
 
 namespace {
+
+std::string JournalTypeToFirmwareType(int t) {
+  switch (t) {
+    case JournalEntryType::MAIN:
+      return modemfwd::kFwMain;
+    case JournalEntryType::CARRIER:
+      return modemfwd::kFwCarrier;
+    default:
+      return std::string();
+  }
+  NOTREACHED();
+}
+
+JournalEntryType FirmwareTypeToJournalType(std::string fw_type) {
+  if (fw_type == modemfwd::kFwMain)
+    return JournalEntryType::MAIN;
+  else if (fw_type == modemfwd::kFwCarrier)
+    return JournalEntryType::CARRIER;
+  else
+    return JournalEntryType::UNKNOWN;
+}
 
 // Returns true if the operation was restarted successfully or false if it
 // failed.
@@ -34,42 +56,47 @@ bool RestartOperation(const JournalEntry& entry,
     return false;
   }
 
-  if (!JournalEntryType_IsValid(entry.type())) {
-    LOG(ERROR) << "Malformed journal entry with type "
-               << JournalEntryType_Name(entry.type());
-    return false;
-  }
-
   std::string carrier_id(entry.carrier_id());
   FirmwareDirectory::Files res = firmware_dir->FindFirmware(
       entry.device_id(), carrier_id.empty() ? nullptr : &carrier_id);
-  if (entry.type() == JournalEntryType::CARRIER ||
-      (entry.type() == JournalEntryType::UNKNOWN && !carrier_id.empty())) {
-    if (!res.carrier_firmware.has_value()) {
-      LOG(ERROR) << "Unfinished carrier firmware flash for device with ID \""
-                 << entry.device_id() << "\" but no firmware was found";
-      return false;
+
+  std::vector<FirmwareConfig> flashed_fw;
+  std::vector<std::string> paths_for_logging;
+  for (const auto& entry_type : entry.type()) {
+    std::string fw_type = JournalTypeToFirmwareType(entry_type);
+    FirmwareFileInfo* info = nullptr;
+    base::FilePath fw_path;
+    std::string fw_version;
+
+    if (fw_type.empty())
+      continue;
+
+    switch (entry_type) {
+      case JournalEntryType::MAIN:
+        info = base::OptionalOrNullptr<FirmwareFileInfo>(res.main_firmware);
+        break;
+      case JournalEntryType::CARRIER:
+        info = base::OptionalOrNullptr<FirmwareFileInfo>(res.carrier_firmware);
+        break;
     }
-    const FirmwareFileInfo& firmware_file = res.carrier_firmware.value();
-    ELOG(INFO) << "Journal reflashing carrier firmware "
-               << firmware_file.firmware_path.value();
-    return helper->FlashFirmware(kFwCarrier, firmware_file.firmware_path,
-                                 firmware_file.version);
+    if (info == nullptr) {
+      LOG(ERROR) << "Unfinished \"" << fw_type
+                 << "\" firmware flash for device with ID \""
+                 << entry.device_id() << "\" but no firmware was found";
+      continue;
+    }
+
+    flashed_fw.push_back({fw_type, info->firmware_path, info->version});
+    paths_for_logging.push_back(info->firmware_path.value());
   }
-
-  DCHECK(entry.type() == JournalEntryType::MAIN ||
-         (entry.type() == JournalEntryType::UNKNOWN && carrier_id.empty()));
-
-  if (!res.main_firmware.has_value()) {
-    LOG(ERROR) << "Unfinished main firmware flash for device with ID \""
-               << entry.device_id() << "\" but no firmware was found";
+  if (flashed_fw.size() != entry.type_size() || !flashed_fw.size()) {
+    LOG(ERROR) << "Malformed journal entry with invalid types.";
     return false;
   }
-  const FirmwareFileInfo& firmware_file = res.main_firmware.value();
-  ELOG(INFO) << "Journal reflashing main firmware "
-             << firmware_file.firmware_path.value();
-  return helper->FlashFirmware(kFwMain, firmware_file.firmware_path,
-                               firmware_file.version);
+
+  ELOG(INFO) << "Journal reflashing firmwares: "
+             << base::JoinString(paths_for_logging, ",");
+  return helper->FlashFirmwares(flashed_fw);
 }
 
 class JournalImpl : public Journal {
@@ -84,48 +111,26 @@ class JournalImpl : public Journal {
   JournalImpl(const JournalImpl&) = delete;
   JournalImpl& operator=(const JournalImpl&) = delete;
 
-  void MarkStartOfFlashingMainFirmware(const std::string& device_id,
-                                       const std::string& carrier_id) override {
+  void MarkStartOfFlashingFirmware(
+      const std::vector<std::string>& firmware_types,
+      const std::string& device_id,
+      const std::string& carrier_id) override {
     JournalEntry entry;
     entry.set_device_id(device_id);
     entry.set_carrier_id(carrier_id);
-    entry.set_type(JournalEntryType::MAIN);
+    for (const auto& t : firmware_types)
+      entry.add_type(FirmwareTypeToJournalType(t));
     WriteJournalEntry(entry);
   }
 
-  void MarkEndOfFlashingMainFirmware(const std::string& device_id,
-                                     const std::string& carrier_id) override {
+  void MarkEndOfFlashingFirmware(const std::string& device_id,
+                                 const std::string& carrier_id) override {
     JournalEntry entry;
     if (!ReadJournalEntry(&entry)) {
       LOG(ERROR) << __func__ << ": no journal entry to commit";
       return;
     }
-    if (entry.device_id() != device_id || entry.carrier_id() != carrier_id ||
-        entry.type() != JournalEntryType::MAIN) {
-      LOG(ERROR) << __func__ << ": found journal entry, but it didn't match";
-      return;
-    }
-    ClearJournalFile();
-  }
-
-  void MarkStartOfFlashingCarrierFirmware(
-      const std::string& device_id, const std::string& carrier_id) override {
-    JournalEntry entry;
-    entry.set_device_id(device_id);
-    entry.set_carrier_id(carrier_id);
-    entry.set_type(JournalEntryType::CARRIER);
-    WriteJournalEntry(entry);
-  }
-
-  void MarkEndOfFlashingCarrierFirmware(
-      const std::string& device_id, const std::string& carrier_id) override {
-    JournalEntry entry;
-    if (!ReadJournalEntry(&entry)) {
-      LOG(ERROR) << __func__ << ": no journal entry to commit";
-      return;
-    }
-    if (entry.device_id() != device_id || entry.carrier_id() != carrier_id ||
-        entry.type() != JournalEntryType::CARRIER) {
+    if (entry.device_id() != device_id || entry.carrier_id() != carrier_id) {
       LOG(ERROR) << __func__ << ": found journal entry, but it didn't match";
       return;
     }

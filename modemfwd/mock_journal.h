@@ -6,6 +6,7 @@
 #define MODEMFWD_MOCK_JOURNAL_H_
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
@@ -20,19 +21,13 @@ class MockJournal : public Journal {
   ~MockJournal() override = default;
 
   MOCK_METHOD(void,
-              MarkStartOfFlashingMainFirmware,
-              (const std::string&, const std::string&),
+              MarkStartOfFlashingFirmware,
+              (const std::vector<std::string>&,
+               const std::string&,
+               const std::string&),
               (override));
   MOCK_METHOD(void,
-              MarkEndOfFlashingMainFirmware,
-              (const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(void,
-              MarkStartOfFlashingCarrierFirmware,
-              (const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(void,
-              MarkEndOfFlashingCarrierFirmware,
+              MarkEndOfFlashingFirmware,
               (const std::string&, const std::string&),
               (override));
 };
