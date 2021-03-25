@@ -37,7 +37,9 @@ namespace mojo_ipc = chromeos::ocr::mojom;
 // which can be used to create a message pipe to the OCR service.
 void DoDBusBootstrap(int raw_fd,
                      base::WaitableEvent* event,
-                     std::string* token_out) {
+                     std::string* token_out,
+                     bool* success) {
+  *success = false;
   dbus::Bus::Options bus_options;
   bus_options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(bus_options);
@@ -55,15 +57,18 @@ void DoDBusBootstrap(int raw_fd,
 
   if (!response) {
     LOG(ERROR) << "No response received.";
+    event->Signal();
     return;
   }
 
   dbus::MessageReader reader(response.get());
   if (!reader.PopString(token_out)) {
     LOG(ERROR) << "Failed to extract token.";
+    event->Signal();
     return;
   }
 
+  *success = true;
   event->Signal();
 }
 
@@ -97,13 +102,17 @@ OcrServiceMojoAdapterDelegateImpl::GetOcrService() {
   // send an invitation to connect to the OCR service.
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool success;
   dbus_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(
           &DoDBusBootstrap,
           channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD().release(),
-          &event, &token));
+          &event, &token, &success));
   event.Wait();
+
+  if (!success)
+    return mojo::Remote<mojo_ipc::OpticalCharacterRecognitionService>();
 
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());

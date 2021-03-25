@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/run_loop.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/handle.h>
@@ -44,7 +45,7 @@ class OcrServiceMojoAdapterImpl final : public OcrServiceMojoAdapter {
  private:
   // Binds our remote endpoint |ocr_service_| to the implementation
   // provided by the OCR service.
-  void Connect();
+  bool Connect();
 
   // Default delegate implementation.
   std::unique_ptr<OcrServiceMojoAdapterDelegateImpl> delegate_impl_;
@@ -81,8 +82,8 @@ OcrServiceMojoAdapterImpl::GenerateSearchablePdfFromImage(
     mojo::ScopedHandle output_fd_handle,
     mojo_ipc::OcrConfigPtr ocr_config,
     mojo_ipc::PdfRendererConfigPtr pdf_renderer_config) {
-  if (!ocr_service_.is_bound())
-    Connect();
+  if (!ocr_service_.is_bound() && !Connect())
+    return nullptr;
 
   mojo_ipc::OpticalCharacterRecognitionServiceResponsePtr response;
   base::RunLoop run_loop;
@@ -97,8 +98,12 @@ OcrServiceMojoAdapterImpl::GenerateSearchablePdfFromImage(
   return response;
 }
 
-void OcrServiceMojoAdapterImpl::Connect() {
+bool OcrServiceMojoAdapterImpl::Connect() {
   ocr_service_ = delegate_->GetOcrService();
+  if (!ocr_service_.is_bound())
+    LOG(ERROR) << "Failed to connect to OCR service.";
+
+  return ocr_service_.is_bound();
 }
 
 }  // namespace
