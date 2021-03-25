@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -123,14 +124,8 @@ class ModemImpl : public Modem {
     return inhibitor_->SetInhibited(inhibited);
   }
 
-  bool FlashMainFirmware(const base::FilePath& path_to_fw,
-                         const std::string& version) override {
-    return helper_->FlashFirmware(kFwMain, path_to_fw, version);
-  }
-
-  bool FlashCarrierFirmware(const base::FilePath& path_to_fw,
-                            const std::string& version) override {
-    return helper_->FlashFirmware(kFwCarrier, path_to_fw, version);
+  bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) override {
+    return helper_->FlashFirmwares(configs);
   }
 
   bool ClearAttachAPN(const std::string& carrier_uuid) override {
@@ -234,14 +229,8 @@ class StubModem : public Modem {
 
   bool SetInhibited(bool inhibited) override { return true; }
 
-  bool FlashMainFirmware(const base::FilePath& path_to_fw,
-                         const std::string& version) override {
-    return helper_->FlashFirmware(kFwMain, path_to_fw, version);
-  }
-
-  bool FlashCarrierFirmware(const base::FilePath& path_to_fw,
-                            const std::string& version) override {
-    return helper_->FlashFirmware(kFwCarrier, path_to_fw, version);
+  bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) override {
+    return helper_->FlashFirmwares(configs);
   }
 
   bool ClearAttachAPN(const std::string& carrier_uuid) override {

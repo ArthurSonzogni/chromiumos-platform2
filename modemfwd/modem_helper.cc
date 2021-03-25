@@ -215,14 +215,6 @@ class ModemHelperImpl : public ModemHelper {
                             base::JoinString(versions, ",").c_str())});
   }
 
-  bool FlashFirmware(const std::string& fw_type,
-                     const base::FilePath& path_to_fw,
-                     const std::string& version) override {
-    std::vector<FirmwareConfig> configs = {{fw_type, path_to_fw, version}};
-
-    return FlashFirmwares(configs);
-  }
-
   bool FlashModeCheck() override {
     std::string output;
     if (!RunHelperProcess(helper_info_, {kFlashModeCheck}, &output))

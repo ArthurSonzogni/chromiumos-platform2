@@ -6,6 +6,7 @@
 #define MODEMFWD_MOCK_MODEM_H_
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -30,12 +31,8 @@ class MockModem : public Modem {
   MOCK_METHOD(bool, SetInhibited, (bool), (override));
 
   MOCK_METHOD(bool,
-              FlashMainFirmware,
-              (const base::FilePath&, const std::string&),
-              (override));
-  MOCK_METHOD(bool,
-              FlashCarrierFirmware,
-              (const base::FilePath&, const std::string&),
+              FlashFirmwares,
+              (const std::vector<FirmwareConfig>&),
               (override));
   MOCK_METHOD(bool,
               ClearAttachAPN,

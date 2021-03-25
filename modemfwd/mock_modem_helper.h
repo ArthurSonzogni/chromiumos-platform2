@@ -23,10 +23,6 @@ class MockModemHelper : public ModemHelper {
 
   MOCK_METHOD(bool, GetFirmwareInfo, (FirmwareInfo*), (override));
   MOCK_METHOD(bool,
-              FlashFirmware,
-              (const std::string&, const base::FilePath&, const std::string&),
-              (override));
-  MOCK_METHOD(bool,
               FlashFirmwares,
               (const std::vector<FirmwareConfig>&),
               (override));

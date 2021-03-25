@@ -7,10 +7,12 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
 
+#include "modemfwd/modem_helper.h"
 #include "modemfwd/modem_helper_directory.h"
 #include "shill/dbus-proxies.h"
 
@@ -39,10 +41,7 @@ class Modem {
   // Tell ModemManager not to deal with this modem for a little while.
   virtual bool SetInhibited(bool inhibited) = 0;
 
-  virtual bool FlashMainFirmware(const base::FilePath& path_to_fw,
-                                 const std::string& version) = 0;
-  virtual bool FlashCarrierFirmware(const base::FilePath& path_to_fw,
-                                    const std::string& version) = 0;
+  virtual bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) = 0;
   virtual bool ClearAttachAPN(const std::string& carrier_uuid) = 0;
 };
 
