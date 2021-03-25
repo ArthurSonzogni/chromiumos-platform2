@@ -301,6 +301,10 @@ class UserDataAuth {
   // Note that this should only be called from mount thread.
   void Pkcs11Terminate();
 
+  // Calling this method will restore all the tokens to chaps.
+  // Note that this should only be called from mount thread.
+  void Pkcs11RestoreTpmTokens();
+
   // =============== Install Attributes Related Public Methods ===============
 
   // Retrieve the key value pair in install attributes with the key of |name|,

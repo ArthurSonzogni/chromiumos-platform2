@@ -988,6 +988,65 @@ TEST_F(UserDataAuthTest, Pkcs11Terminate) {
   userdataauth_->Pkcs11Terminate();
 }
 
+TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // This test the most common success case for PKCS#11 retrieving TPM tokens.
+
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  EXPECT_CALL(*mount_, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
+
+  // |mount_| should get a request to insert PKCS#11 token.
+  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
+
+  userdataauth_->Pkcs11RestoreTpmTokens();
+}
+
+TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensTpmNotOwned) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // This test the case for PKCS#11 retrieving TPM tokens when TPM isn't ready.
+
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  // It shouldn't call any thing.
+  EXPECT_CALL(*mount_, IsMounted()).Times(0);
+  EXPECT_CALL(*mount_, InsertPkcs11Token()).Times(0);
+  EXPECT_CALL(*mount_, pkcs11_state()).Times(0);
+
+  // TPM is enabled but not owned.
+  ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
+  EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
+
+  userdataauth_->Pkcs11RestoreTpmTokens();
+}
+
+TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // This test the most common success case for PKCS#11 retrieving TPM tokens
+  // when it's waiting TPM ready.
+
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  EXPECT_CALL(*mount_, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsWaitingOnTPM));
+
+  // PKCS#11 will initialization works only when it's mounted.
+  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  // The initialization code should at least check, right?
+  EXPECT_CALL(*mount_, IsMounted())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+
+  // |mount_| should get a request to insert PKCS#11 token.
+  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
+
+  userdataauth_->Pkcs11RestoreTpmTokens();
+}
+
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));

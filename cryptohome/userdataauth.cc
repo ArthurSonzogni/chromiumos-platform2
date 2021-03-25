@@ -985,6 +985,31 @@ void UserDataAuth::ResumeAllPkcs11Initialization() {
   }
 }
 
+void UserDataAuth::Pkcs11RestoreTpmTokens() {
+  AssertOnMountThread();
+
+  // There is no token needs to resume if TPM isn't ready.
+  if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
+    return;
+  }
+
+  for (auto& session_pair : sessions_) {
+    scoped_refptr<UserSession> session = session_pair.second;
+    switch (session->GetMount()->pkcs11_state()) {
+      case Mount::kIsWaitingOnTPM:
+        InitializePkcs11(session.get());
+        break;
+      case Mount::kIsInitialized:
+        // Chaps would ignore this token if it's already managing this token.
+        session->GetMount()->InsertPkcs11Token();
+        break;
+      default:
+        // Do nothing.
+        break;
+    }
+  }
+}
+
 void UserDataAuth::ResetAllTPMContext() {
   if (!IsOnMountThread()) {
     // We are not on mount thread, but to be safe, we'll only access Mount
