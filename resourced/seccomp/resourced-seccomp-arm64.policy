@@ -2,28 +2,28 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-read: 1
-ppoll: 1
-recvmsg: 1
-openat: 1
 close: 1
-rt_sigaction: 1
-sendto: 1
-sendmsg: 1
-sigaltstack: 1
-fcntl: 1
-prlimit64: 1
-fstat: 1
-sched_getaffinity: 1
-mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-getresuid: 1
-getresgid: 1
-socket: arg0 == AF_UNIX
 connect: 1
-geteuid: 1
-getsockname: 1
-restart_syscall: 1
 exit: 1
 exit_group: 1
+fcntl: 1
+fstat: 1
+geteuid: 1
+getresgid: 1
+getresuid: 1
+getsockname: 1
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+openat: 1
+ppoll: 1
+prlimit64: 1
+read: 1
+recvmsg: 1
+restart_syscall: 1
+rt_sigaction: 1
 rt_sigreturn: 1
+sched_getaffinity: 1
+sendmsg: 1
+sendto: 1
+sigaltstack: 1
+socket: arg0 == AF_UNIX
