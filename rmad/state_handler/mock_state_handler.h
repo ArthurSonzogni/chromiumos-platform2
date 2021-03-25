@@ -13,7 +13,7 @@ namespace rmad {
 
 class MockStateHandler : public BaseStateHandler {
  public:
-  explicit MockStateHandler(JsonStore* json_store)
+  explicit MockStateHandler(scoped_refptr<JsonStore> json_store)
       : BaseStateHandler(json_store) {}
   virtual ~MockStateHandler() = default;
 

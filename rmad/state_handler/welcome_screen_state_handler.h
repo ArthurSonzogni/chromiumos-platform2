@@ -11,7 +11,7 @@ namespace rmad {
 
 class WelcomeScreenStateHandler : public BaseStateHandler {
  public:
-  explicit WelcomeScreenStateHandler(JsonStore* json_store);
+  explicit WelcomeScreenStateHandler(scoped_refptr<JsonStore> json_store);
   ~WelcomeScreenStateHandler() override = default;
 
   ASSIGN_STATE(RMAD_STATE_WELCOME_SCREEN);

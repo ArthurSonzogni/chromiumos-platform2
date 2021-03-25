@@ -6,7 +6,8 @@
 
 namespace rmad {
 
-WelcomeScreenStateHandler::WelcomeScreenStateHandler(JsonStore* json_store)
+WelcomeScreenStateHandler::WelcomeScreenStateHandler(
+    scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {}
 
 RmadState WelcomeScreenStateHandler::GetNextState() const {

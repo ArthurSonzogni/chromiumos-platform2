@@ -6,6 +6,7 @@
 #define RMAD_STATE_HANDLER_BASE_STATE_HANDLER_H_
 
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
@@ -14,7 +15,7 @@ namespace rmad {
 
 class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
  public:
-  explicit BaseStateHandler(JsonStore* json_store);
+  explicit BaseStateHandler(scoped_refptr<JsonStore> json_store);
   virtual ~BaseStateHandler() = default;
 
   // Returns the RmadState that the class handles. This can be declared by the
@@ -26,7 +27,7 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   virtual RmadState GetNextState() const = 0;
 
  protected:
-  JsonStore* json_store_;
+  scoped_refptr<JsonStore> json_store_;
 };
 
 #define ASSIGN_STATE(state) \

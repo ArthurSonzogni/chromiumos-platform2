@@ -2,15 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_refptr.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "rmad/rmad_interface_impl.h"
+#include "rmad/state_handler/mock_state_handler.h"
+#include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/utils/json_store.h"
+
+using testing::NiceMock;
+using testing::Return;
 
 namespace rmad {
 
@@ -32,20 +40,39 @@ class RmadInterfaceImplTest : public testing::Test {
     return file_path;
   }
 
+  scoped_refptr<BaseStateHandler> CreateMockHandler(
+      scoped_refptr<JsonStore> json_store,
+      RmadState state,
+      RmadState next_state) {
+    auto mock_handler =
+        base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store);
+    ON_CALL(*mock_handler, GetState()).WillByDefault(Return(state));
+    ON_CALL(*mock_handler, GetNextState()).WillByDefault(Return(next_state));
+    return mock_handler;
+  }
+
+  std::unique_ptr<StateHandlerManager> CreateStateHandlerManager(
+      scoped_refptr<JsonStore> json_store) {
+    auto state_handler_manager =
+        std::make_unique<StateHandlerManager>(json_store);
+    state_handler_manager->RegisterStateHandler(CreateMockHandler(
+        json_store, RMAD_STATE_WELCOME_SCREEN, RMAD_STATE_COMPONENT_SELECTION));
+    return state_handler_manager;
+  }
+
  protected:
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
 
   base::ScopedTempDir temp_dir_;
 };
 
-// TODO(chenghan): Make RmadInterfaceImpl able to inject state_manager_handler
-//                 so we don't depend on actual return values of state handlers.
-
 TEST_F(RmadInterfaceImplTest, GetCurrentState_Set) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  RmadInterfaceImpl rmad_interface(json_store_file_path);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
 
   GetCurrentStateRequest request;
   auto callback = [](const GetCurrentStateReply& reply) {
@@ -58,7 +85,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateNotSetJson,
                       std::size(kCurrentStateNotSetJson) - 1);
-  RmadInterfaceImpl rmad_interface(json_store_file_path);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
 
   GetCurrentStateRequest request;
   auto callback = [](const GetCurrentStateReply& reply) {
@@ -71,7 +100,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateInvalidStateJson,
                       std::size(kCurrentStateInvalidStateJson) - 1);
-  RmadInterfaceImpl rmad_interface(json_store_file_path);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
 
   GetCurrentStateRequest request;
   auto callback = [](const GetCurrentStateReply& reply) {
@@ -84,11 +115,13 @@ TEST_F(RmadInterfaceImplTest, TransitionState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  RmadInterfaceImpl rmad_interface(json_store_file_path);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
 
   TransitionStateRequest request;
   auto callback = [](const TransitionStateReply& reply) {
-    EXPECT_EQ(RMAD_STATE_UNKNOWN, reply.state());
+    EXPECT_EQ(RMAD_STATE_COMPONENT_SELECTION, reply.state());
   };
   rmad_interface.TransitionState(request, base::Bind(callback));
 }
@@ -97,7 +130,9 @@ TEST_F(RmadInterfaceImplTest, TransitionState_NotSet) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateNotSetJson,
                       std::size(kCurrentStateNotSetJson) - 1);
-  RmadInterfaceImpl rmad_interface(json_store_file_path);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
 
   TransitionStateRequest request;
   auto callback = [](const TransitionStateReply& reply) {

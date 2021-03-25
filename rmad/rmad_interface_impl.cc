@@ -4,6 +4,10 @@
 
 #include "rmad/rmad_interface_impl.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/memory/scoped_refptr.h>
 #include <base/values.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
@@ -22,24 +26,25 @@ bool RoVerificationKeyPressed() {
 
 }  // namespace
 
-RmadInterfaceImpl::RmadInterfaceImpl()
-    : RmadInterface(),
-      json_store_(kDefaultJsonStoreFilePath),
-      state_handler_manager_(&json_store_) {
-  Initialize();
+RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
+  json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
+  state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
+  state_handler_manager_->InitializeStateHandlers();
+  InitializeState();
 }
 
-RmadInterfaceImpl::RmadInterfaceImpl(const base::FilePath& json_store_file_path)
+RmadInterfaceImpl::RmadInterfaceImpl(
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<StateHandlerManager> state_handler_manager)
     : RmadInterface(),
-      json_store_(json_store_file_path),
-      state_handler_manager_(&json_store_) {
-  Initialize();
+      json_store_(json_store),
+      state_handler_manager_(std::move(state_handler_manager)) {
+  InitializeState();
 }
 
-void RmadInterfaceImpl::Initialize() {
-  // Initialize state_.
+void RmadInterfaceImpl::InitializeState() {
   if (const base::Value * value;
-      json_store_.GetValue(kRmadCurrentState, &value)) {
+      json_store_->GetValue(kRmadCurrentState, &value)) {
     if (!value->is_string() ||
         !RmadState_Parse(value->GetString(), &current_state_)) {
       // State string in json_store_ is invalid.
@@ -47,15 +52,13 @@ void RmadInterfaceImpl::Initialize() {
     }
   } else if (RoVerificationKeyPressed()) {
     current_state_ = RMAD_STATE_WELCOME_SCREEN;
-    if (!json_store_.SetValue(kRmadCurrentState,
-                              base::Value(RmadState_Name(current_state_)))) {
+    if (!json_store_->SetValue(kRmadCurrentState,
+                               base::Value(RmadState_Name(current_state_)))) {
       current_state_ = RMAD_STATE_UNKNOWN;
     }
   } else {
     current_state_ = RMAD_STATE_RMA_NOT_REQUIRED;
   }
-  // Initialize state_handler_manager_.
-  state_handler_manager_.InitializeStateHandlers();
 }
 
 void RmadInterfaceImpl::GetCurrentState(
@@ -71,11 +74,11 @@ void RmadInterfaceImpl::TransitionState(
     const TransitionStateCallback& callback) {
   // TODO(chenghan): Add error replies when failed to get `state_handler`, or
   //                 failed to write `json_store_`.
-  auto state_handler = state_handler_manager_.GetStateHandler(current_state_);
+  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
   if (state_handler) {
     current_state_ = state_handler->GetNextState();
-    json_store_.SetValue(kRmadCurrentState,
-                         base::Value(RmadState_Name(current_state_)));
+    json_store_->SetValue(kRmadCurrentState,
+                          base::Value(RmadState_Name(current_state_)));
   }
 
   TransitionStateReply reply;

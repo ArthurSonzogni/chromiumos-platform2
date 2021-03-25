@@ -6,7 +6,7 @@
 
 namespace rmad {
 
-BaseStateHandler::BaseStateHandler(JsonStore* json_store)
+BaseStateHandler::BaseStateHandler(scoped_refptr<JsonStore> json_store)
     : json_store_(json_store) {}
 
 }  // namespace rmad

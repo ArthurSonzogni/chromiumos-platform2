@@ -13,7 +13,7 @@
 
 namespace rmad {
 
-StateHandlerManager::StateHandlerManager(JsonStore* json_store)
+StateHandlerManager::StateHandlerManager(scoped_refptr<JsonStore> json_store)
     : json_store_(json_store) {}
 
 void StateHandlerManager::RegisterStateHandler(

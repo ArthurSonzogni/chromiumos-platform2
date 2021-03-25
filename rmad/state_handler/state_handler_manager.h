@@ -17,7 +17,7 @@ class JsonStore;
 
 class StateHandlerManager {
  public:
-  explicit StateHandlerManager(JsonStore* json_store);
+  explicit StateHandlerManager(scoped_refptr<JsonStore> json_store);
   ~StateHandlerManager() = default;
 
   void RegisterStateHandler(scoped_refptr<BaseStateHandler> handler);
@@ -25,9 +25,9 @@ class StateHandlerManager {
 
   scoped_refptr<BaseStateHandler> GetStateHandler(RmadState state) const;
 
- private:
+ protected:
   std::map<RmadState, scoped_refptr<BaseStateHandler>> state_handler_map_;
-  JsonStore* json_store_;
+  scoped_refptr<JsonStore> json_store_;
 };
 
 }  // namespace rmad

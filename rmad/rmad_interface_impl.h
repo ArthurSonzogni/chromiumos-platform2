@@ -7,6 +7,10 @@
 
 #include "rmad/rmad_interface.h"
 
+#include <memory>
+
+#include <base/memory/scoped_refptr.h>
+
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/utils/json_store.h"
 
@@ -15,8 +19,10 @@ namespace rmad {
 class RmadInterfaceImpl final : public RmadInterface {
  public:
   RmadInterfaceImpl();
-  // Used to inject a specified file.
-  explicit RmadInterfaceImpl(const base::FilePath& json_store_file_path);
+  // Used to inject mocked json_store and state_handler_manager.
+  explicit RmadInterfaceImpl(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<StateHandlerManager> state_handler_manager);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
   RmadInterfaceImpl& operator=(const RmadInterfaceImpl&) = delete;
 
@@ -28,11 +34,11 @@ class RmadInterfaceImpl final : public RmadInterface {
                        const TransitionStateCallback& callback) override;
 
  private:
-  void Initialize();
+  void InitializeState();
 
-  JsonStore json_store_;
+  scoped_refptr<JsonStore> json_store_;
+  std::unique_ptr<StateHandlerManager> state_handler_manager_;
   RmadState current_state_;
-  StateHandlerManager state_handler_manager_;
 };
 
 }  // namespace rmad

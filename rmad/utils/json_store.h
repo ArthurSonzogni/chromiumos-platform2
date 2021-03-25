@@ -9,12 +9,13 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
 #include <base/values.h>
 
 namespace rmad {
 
 // A class to store a JSON dictionary and keep in sync with a file.
-class JsonStore {
+class JsonStore : public base::RefCounted<JsonStore> {
  public:
   enum ReadError {
     READ_ERROR_NONE = 0,
@@ -28,7 +29,6 @@ class JsonStore {
   };
 
   explicit JsonStore(const base::FilePath& file_path);
-  ~JsonStore() = default;
 
   // Set a (key, value) pair to the dictionary. Return true if there's no
   // update or the updated data is successfully written to the file, false if
@@ -57,6 +57,11 @@ class JsonStore {
   bool ReadOnly() const { return read_only_; }
 
  private:
+  // Hide the destructor so we don't accidentally delete this while there are
+  // references to it.
+  friend class base::RefCounted<JsonStore>;
+  ~JsonStore() = default;
+
   // Read result returned from internal read tasks.
   struct ReadResult;
 
