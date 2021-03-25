@@ -731,9 +731,18 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
   if (!ext_ifname.empty()) {
     // If |ext_ifname| is not null, mark egress traffic with the
     // fwmark routing tag corresponding to |ext_ifname|.
-    if (!ModifyFwmarkRoutingTag("PREROUTING", "-A", ext_ifname, int_ifname))
-      LOG(ERROR) << "Failed to add PREROUTING fwmark routing tag for "
-                 << ext_ifname << "<-" << int_ifname;
+    int ifindex = FindIfIndex(ext_ifname);
+    if (ifindex != 0) {
+      Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
+      if (!ModifyFwmarkRoutingTag("PREROUTING", "-A", routing_mark, int_ifname))
+        LOG(ERROR) << "Failed to add PREROUTING fwmark routing tag for "
+                   << ext_ifname << "<-" << int_ifname;
+    } else {
+      // Do not abort: if the PREROUTING tagging mark cannot be
+      // set then |int_ifname| will instead be routed to the default logical
+      // network without connection pinning, aka legacy routing.
+      LOG(ERROR) << "Failed to retrieve interface index of " << ext_ifname;
+    }
   } else {
     // Otherwise if ext_ifname is null, set up a CONNMARK restore rule in
     // PREROUTING to apply any fwmark routing tag saved for the current
@@ -764,7 +773,8 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
   StopIpForwarding(IpFamily::IPv4, int_ifname, ext_ifname);
   ModifyFwmarkSourceTag("-D", int_ifname, source);
   if (!ext_ifname.empty()) {
-    ModifyFwmarkRoutingTag("PREROUTING", "-D", ext_ifname, int_ifname);
+    Fwmark routing_mark = CachedRoutingFwmark(ext_ifname);
+    ModifyFwmarkRoutingTag("PREROUTING", "-D", routing_mark, int_ifname);
   } else {
     ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING", "-D", int_ifname,
                           kFwmarkRoutingMask);
@@ -935,16 +945,26 @@ void Datapath::RemoveIPv6Address(const std::string& ifname,
 
 void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
   int ifindex = FindIfIndex(ext_ifname);
-  if (ifindex != 0 && !ModifyIptables(IpFamily::Dual, "mangle",
-                                      {"-A", kCheckRoutingMarkChain, "-o",
-                                       ext_ifname, "-m", "mark", "!", "--mark",
-                                       Fwmark::FromIfIndex(ifindex).ToString() +
-                                           "/" + kFwmarkRoutingMask.ToString(),
-                                       "-j", "DROP", "-w"}))
+  if (ifindex == 0) {
+    // Can happen if the interface has already been removed (b/183679000).
+    LOG(ERROR) << "Failed to set up connection pinning on " << ext_ifname;
+    return;
+  }
+
+  Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
+  LOG(INFO) << "Start connection pinning on " << ext_ifname
+            << " fwmark=" << routing_mark.ToString();
+  if (!ModifyIptables(
+          IpFamily::Dual, "mangle",
+          {"-A", kCheckRoutingMarkChain, "-o", ext_ifname, "-m", "mark", "!",
+           "--mark",
+           routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(), "-j",
+           "DROP", "-w"}))
     LOG(ERROR) << "Could not set fwmark routing filter rule for " << ext_ifname;
 
   // Set in CONNMARK the routing tag associated with |ext_ifname|.
-  if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-A", ext_ifname))
+  if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-A", ext_ifname,
+                                    routing_mark))
     LOG(ERROR) << "Could not start connection pinning on " << ext_ifname;
   // Save in CONNMARK the source tag for egress traffic of this connection.
   if (!ModifyConnmarkSave(IpFamily::Dual, "POSTROUTING", "-A", ext_ifname,
@@ -962,17 +982,19 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
 }
 
 void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
-  int ifindex = FindIfIndex(ext_ifname);
-  if (ifindex != 0 && !ModifyIptables(IpFamily::Dual, "mangle",
-                                      {"-D", kCheckRoutingMarkChain, "-o",
-                                       ext_ifname, "-m", "mark", "!", "--mark",
-                                       Fwmark::FromIfIndex(ifindex).ToString() +
-                                           "/" + kFwmarkRoutingMask.ToString(),
-                                       "-j", "DROP", "-w"}))
+  Fwmark routing_mark = CachedRoutingFwmark(ext_ifname);
+  LOG(INFO) << "Stop connection pinning on " << ext_ifname
+            << " fwmark=" << routing_mark.ToString();
+  if (!ModifyIptables(
+          IpFamily::Dual, "mangle",
+          {"-D", kCheckRoutingMarkChain, "-o", ext_ifname, "-m", "mark", "!",
+           "--mark",
+           routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(), "-j",
+           "DROP", "-w"}))
     LOG(ERROR) << "Could not remove fwmark routing filter rule for "
                << ext_ifname;
-
-  if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-D", ext_ifname))
+  if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-D", ext_ifname,
+                                    routing_mark))
     LOG(ERROR) << "Could not stop connection pinning on " << ext_ifname;
   if (!ModifyConnmarkSave(IpFamily::Dual, "POSTROUTING", "-D", ext_ifname,
                           kFwmarkAllSourcesMask))
@@ -987,11 +1009,21 @@ void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
 }
 
 void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
+  int ifindex = FindIfIndex(vpn_ifname);
+  if (ifindex == 0) {
+    // Can happen if the interface has already been removed (b/183679000).
+    LOG(ERROR) << "Failed to start VPN routing on " << vpn_ifname;
+    return;
+  }
+
+  Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
+  LOG(INFO) << "Start VPN routing on " << vpn_ifname
+            << " fwmark=" << routing_mark.ToString();
   if (process_runner_->iptables("nat", {"-A", "POSTROUTING", "-o", vpn_ifname,
                                         "-j", "MASQUERADE", "-w"}) != 0)
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
   StartConnectionPinning(vpn_ifname);
-  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", vpn_ifname, ""))
+  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark, ""))
     LOG(ERROR) << "Failed to set up VPN set-mark rule for " << vpn_ifname;
   if (vpn_ifname != kArcBridge)
     StartRoutingDevice(vpn_ifname, kArcBridge, 0 /*no inbound DNAT */,
@@ -1001,10 +1033,13 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
 }
 
 void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
+  Fwmark routing_mark = CachedRoutingFwmark(vpn_ifname);
+  LOG(INFO) << "Stop VPN routing on " << vpn_ifname
+            << " fwmark=" << routing_mark.ToString();
   if (vpn_ifname != kArcBridge)
     StopRoutingDevice(vpn_ifname, kArcBridge, 0 /* no inbound DNAT */,
                       TrafficSource::ARC, false /* route_on_vpn */);
-  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-D", vpn_ifname, ""))
+  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-D", routing_mark, ""))
     LOG(ERROR) << "Failed to remove VPN set-mark rule for " << vpn_ifname;
   StopConnectionPinning(vpn_ifname);
   if (process_runner_->iptables("nat", {"-D", "POSTROUTING", "-o", vpn_ifname,
@@ -1016,15 +1051,10 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
 
 bool Datapath::ModifyConnmarkSetPostrouting(IpFamily family,
                                             const std::string& op,
-                                            const std::string& oif) {
-  int ifindex = FindIfIndex(oif);
-  if (ifindex == 0) {
-    PLOG(ERROR) << "if_nametoindex(" << oif << ") failed";
-    return false;
-  }
-
-  return ModifyConnmarkSet(family, "POSTROUTING", op, oif,
-                           Fwmark::FromIfIndex(ifindex), kFwmarkRoutingMask);
+                                            const std::string& oif,
+                                            Fwmark routing_mark) {
+  return ModifyConnmarkSet(family, "POSTROUTING", op, oif, routing_mark,
+                           kFwmarkRoutingMask);
 }
 
 bool Datapath::ModifyConnmarkSet(IpFamily family,
@@ -1084,17 +1114,10 @@ bool Datapath::ModifyConnmarkSave(IpFamily family,
 
 bool Datapath::ModifyFwmarkRoutingTag(const std::string& chain,
                                       const std::string& op,
-                                      const std::string& ext_ifname,
+                                      Fwmark routing_mark,
                                       const std::string& int_ifname) {
-  int ifindex = FindIfIndex(ext_ifname);
-  if (ifindex == 0) {
-    PLOG(ERROR) << "if_nametoindex(" << ext_ifname << ") failed";
-    return false;
-  }
-
   return ModifyFwmark(IpFamily::Dual, chain, op, int_ifname, "" /*uid_name*/,
-                      0 /*classid*/, Fwmark::FromIfIndex(ifindex),
-                      kFwmarkRoutingMask);
+                      0 /*classid*/, routing_mark, kFwmarkRoutingMask);
 }
 
 bool Datapath::ModifyFwmarkSourceTag(const std::string& op,
@@ -1399,6 +1422,15 @@ int Datapath::FindIfIndex(const std::string& ifname) {
     return it->second;
 
   return 0;
+}
+
+Fwmark Datapath::CachedRoutingFwmark(const std::string& ifname) {
+  const auto it = if_nametoindex_.find(ifname);
+  if (it != if_nametoindex_.end())
+    return Fwmark::FromIfIndex(it->second);
+
+  LOG(WARNING) << "No interface index known for " << ifname;
+  return Fwmark();
 }
 
 std::ostream& operator<<(std::ostream& stream,

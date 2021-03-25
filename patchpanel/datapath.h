@@ -327,7 +327,8 @@ class Datapath {
 
   bool ModifyConnmarkSetPostrouting(IpFamily family,
                                     const std::string& op,
-                                    const std::string& oif);
+                                    const std::string& oif,
+                                    Fwmark routing_mark);
   bool ModifyConnmarkSet(IpFamily family,
                          const std::string& chain,
                          const std::string& op,
@@ -346,7 +347,7 @@ class Datapath {
                           Fwmark mask);
   bool ModifyFwmarkRoutingTag(const std::string& chain,
                               const std::string& op,
-                              const std::string& ext_ifname,
+                              Fwmark routing_mark,
                               const std::string& int_ifname);
   bool ModifyFwmarkSourceTag(const std::string& op,
                              const std::string& iif,
@@ -375,7 +376,16 @@ class Datapath {
                                Fwmark mark,
                                Fwmark mask);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
+  // Uses if_nametoindex to return the interface index of |ifname|. If |ifname|
+  // does not exist anymore, looks up the cache |if_nametoindex_|. It is
+  // incorrect to use this function in situations where the interface has been
+  // recreated and the older value must be recovered (b/183679000).
   int FindIfIndex(const std::string& ifname);
+  // Returns the routing Fwmark value associated with |ifname| based on the
+  // ifindex values currently cached in |if_nametoindex_|. This function must
+  // be used when tearing down iptables rules referencing routing fwmark values
+  // (b/183679000).
+  Fwmark CachedRoutingFwmark(const std::string& ifname);
 
   MinijailedProcessRunner* process_runner_;
   Firewall* firewall_;
