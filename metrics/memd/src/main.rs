@@ -1171,7 +1171,11 @@ impl<'a> Sampler<'a> {
                     "[{}] saving clip: ({} ... {}), final {}",
                     self.current_time, clip_start_time, clip_end_time, final_collection_time
                 );
-                self.save_clip(clip_start_time)?;
+                let res = self.save_clip(clip_start_time);
+                // Don't panic if there's an error writing to disk, log it instead.
+                if res.is_err() {
+                    warn!("Error saving clip: {:?}", res);
+                }
                 self.collecting = false;
                 earliest_start_time = clip_end_time;
                 // Need to schedule another collection?
