@@ -5,8 +5,11 @@
 #include "rmad/rmad_interface_impl.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
+#include <base/check.h>
+#include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/values.h>
 
@@ -72,16 +75,21 @@ void RmadInterfaceImpl::GetCurrentState(
 void RmadInterfaceImpl::TransitionState(
     const TransitionStateRequest& request,
     const TransitionStateCallback& callback) {
-  // TODO(chenghan): Add error replies when failed to get `state_handler`, or
-  //                 failed to write `json_store_`.
+  TransitionStateReply reply;
   auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
-  if (state_handler) {
-    current_state_ = state_handler->GetNextState();
-    json_store_->SetValue(kRmadCurrentState,
-                          base::Value(RmadState_Name(current_state_)));
+
+  if (RmadState next_state;
+      state_handler && state_handler->GetNextState(&next_state)) {
+    std::string next_state_name = RmadState_Name(next_state);
+    DLOG(INFO) << "TransitionState: Transition to " << next_state_name << ".";
+    current_state_ = next_state;
+    DCHECK(
+        json_store_->SetValue(kRmadCurrentState, base::Value(next_state_name)));
+  } else {
+    DLOG(INFO) << "TransitionState: Failed to get next state.";
+    reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
   }
 
-  TransitionStateReply reply;
   reply.set_state(current_state_);
   callback.Run(reply);
 }

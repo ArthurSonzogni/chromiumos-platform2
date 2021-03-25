@@ -10,9 +10,12 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {}
 
-RmadState WelcomeScreenStateHandler::GetNextState() const {
+bool WelcomeScreenStateHandler::GetNextState(RmadState* next_state) const {
   // This is currently fake.
-  return RMAD_STATE_UNKNOWN;
+  if (next_state) {
+    *next_state = RMAD_STATE_UNKNOWN;
+  }
+  return true;
 }
 
 }  // namespace rmad

@@ -16,7 +16,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
 
   ASSIGN_STATE(RMAD_STATE_WELCOME_SCREEN);
 
-  RmadState GetNextState() const override;
+  bool GetNextState(RmadState* next_state) const override;
 };
 
 }  // namespace rmad

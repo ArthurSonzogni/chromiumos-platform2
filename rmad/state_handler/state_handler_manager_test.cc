@@ -15,8 +15,11 @@
 
 namespace rmad {
 
+using testing::_;
+using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 
 class StateHandlerManagerTest : public testing::Test {
  public:
@@ -30,7 +33,8 @@ class StateHandlerManagerTest : public testing::Test {
     auto handler =
         base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store_);
     ON_CALL(*handler, GetState()).WillByDefault(Return(state));
-    ON_CALL(*handler, GetNextState()).WillByDefault(Return(next_state));
+    ON_CALL(*handler, GetNextState(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(next_state), Return(true)));
     return handler;
   }
 
@@ -55,7 +59,9 @@ TEST_F(StateHandlerManagerTest, GetStateHandler) {
       state_handler_manager_->GetStateHandler(RMAD_STATE_WELCOME_SCREEN);
   EXPECT_TRUE(retrieve_handler.get());
   EXPECT_EQ(RMAD_STATE_WELCOME_SCREEN, retrieve_handler->GetState());
-  EXPECT_EQ(RMAD_STATE_UNKNOWN, retrieve_handler->GetNextState());
+  RmadState next_state;
+  EXPECT_EQ(true, retrieve_handler->GetNextState(&next_state));
+  EXPECT_EQ(RMAD_STATE_UNKNOWN, next_state);
 }
 
 TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {

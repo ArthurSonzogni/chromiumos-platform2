@@ -17,8 +17,11 @@
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/utils/json_store.h"
 
+using testing::_;
+using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 
 namespace rmad {
 
@@ -43,11 +46,14 @@ class RmadInterfaceImplTest : public testing::Test {
   scoped_refptr<BaseStateHandler> CreateMockHandler(
       scoped_refptr<JsonStore> json_store,
       RmadState state,
-      RmadState next_state) {
+      RmadState next_state,
+      bool next_state_retval) {
     auto mock_handler =
         base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store);
     ON_CALL(*mock_handler, GetState()).WillByDefault(Return(state));
-    ON_CALL(*mock_handler, GetNextState()).WillByDefault(Return(next_state));
+    ON_CALL(*mock_handler, GetNextState(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(next_state), Return(next_state_retval)));
     return mock_handler;
   }
 
@@ -55,8 +61,12 @@ class RmadInterfaceImplTest : public testing::Test {
       scoped_refptr<JsonStore> json_store) {
     auto state_handler_manager =
         std::make_unique<StateHandlerManager>(json_store);
-    state_handler_manager->RegisterStateHandler(CreateMockHandler(
-        json_store, RMAD_STATE_WELCOME_SCREEN, RMAD_STATE_COMPONENT_SELECTION));
+    state_handler_manager->RegisterStateHandler(
+        CreateMockHandler(json_store, RMAD_STATE_WELCOME_SCREEN,
+                          RMAD_STATE_COMPONENT_SELECTION, true));
+    state_handler_manager->RegisterStateHandler(
+        CreateMockHandler(json_store, RMAD_STATE_COMPONENT_SELECTION,
+                          RMAD_STATE_DESTINATION_SELECTION, false));
     return state_handler_manager;
   }
 
@@ -120,10 +130,20 @@ TEST_F(RmadInterfaceImplTest, TransitionState) {
                                    CreateStateHandlerManager(json_store));
 
   TransitionStateRequest request;
-  auto callback = [](const TransitionStateReply& reply) {
+  // First transition:
+  // RMAD_STATE_WELCOME_SCREEN -> RMAD_STATE_COMPONENT_SELECTION.
+  auto callback1 = [](const TransitionStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_NOT_SET, reply.error());
     EXPECT_EQ(RMAD_STATE_COMPONENT_SELECTION, reply.state());
   };
-  rmad_interface.TransitionState(request, base::Bind(callback));
+  rmad_interface.TransitionState(request, base::Bind(callback1));
+  // Second transition:
+  // RMAD_STATE_COMPONENT_SELECTION -> transition fail.
+  auto callback2 = [](const TransitionStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
+    EXPECT_EQ(RMAD_STATE_COMPONENT_SELECTION, reply.state());
+  };
+  rmad_interface.TransitionState(request, base::Bind(callback2));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionState_NotSet) {
@@ -136,6 +156,7 @@ TEST_F(RmadInterfaceImplTest, TransitionState_NotSet) {
 
   TransitionStateRequest request;
   auto callback = [](const TransitionStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
   };
   rmad_interface.TransitionState(request, base::Bind(callback));

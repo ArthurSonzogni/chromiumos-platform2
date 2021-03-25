@@ -14,8 +14,8 @@ enum RmadErrorCode {
   // 0 is the default value. It should never be used.
   RMAD_ERROR_NOT_SET = 0;
 
-  // Not able to read the Rmad as DBus signature indicated.
-  RMAD_ERROR_REQUEST_INVALID = 1;
+  // Failed to do state transition.
+  RMAD_ERROR_TRANSITION_FAILED = 1;
 }
 
 // Defined Rmad states.

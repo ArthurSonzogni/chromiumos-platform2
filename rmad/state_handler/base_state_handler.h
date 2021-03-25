@@ -22,9 +22,11 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // macro ASSIGN_STATE(state).
   virtual RmadState GetState() const = 0;
 
-  // Returns the next RmadState in the RMA flow depending on device status and
-  // user input (e.g. json_store_ content).
-  virtual RmadState GetNextState() const = 0;
+  // Store the next RmadState in the RMA flow depending on device status and
+  // user input (e.g. |json_store_| content) to |next_state|. Return true if a
+  // transition is valid, false if the device status is not eligible for a state
+  // transition (in this case |next_state| will be the same as GetState()).
+  virtual bool GetNextState(RmadState* next_state) const = 0;
 
  protected:
   scoped_refptr<JsonStore> json_store_;
