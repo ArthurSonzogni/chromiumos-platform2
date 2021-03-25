@@ -13,12 +13,6 @@ allow cros_cryptohomed cros_cryptohome_namespace_mounter:process      signal;
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
 # TODO(betuls): Reevaluate after OOP flags are removed from the cryptohome code.
 allow cros_cryptohomed cros_cryptohomed:fifo_file w_file_perms;
-allow cros_cryptohomed {
-  cros_home_chronos
-  cros_home_root
-  cros_home_shadow_uid_root
-  cros_run_dbus
-}:dir create_dir_perms;
 
 allow cros_cryptohomed {
   cros_home_chronos
@@ -29,15 +23,26 @@ allow cros_cryptohomed {
 
 allow cros_cryptohomed cros_home_shadow_uid_root:dir relabelfrom;
 create_dir_file(cros_cryptohomed, {
+  cros_home
+  cros_home_chronos
+  cros_home_root
   cros_home_shadow
-  cros_home_user
+  cros_home_shadow_low_entropy_creds
+  cros_home_shadow_uid
+  cros_home_shadow_uid_root
   cros_home_shadow_uid_user
+  cros_home_user
+  cros_run
+  cros_run_daemon_store
+  cros_run_dbus
 });
 create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
 
 allow cros_cryptohomed {
   cros_stateful_partition
   cros_run_daemon_store
+  cros_var_db
+  unlabeled
 }:dir r_dir_perms;
 
 # ioctl is restricted for Chrome OS domains, see chrome_os.te. Give required
@@ -47,21 +52,40 @@ allowxperm cros_cryptohomed {
   cros_home_shadow_uid
   cros_home_shadow_uid_user
   cros_stateful_partition
+  unlabeled
 }:dir ioctl cryptohome_fscrypt_ioctls;
 
-# TODO(betuls): Add access for daemon-stores of the daemons 'cdm-oemcrypto',
-# 'crash', 'crosvm', 'debugd', 'kerberosd', 'pvm', 'pvm-dispatcher', 'smbfs',
-# 'smbproviderd' after adding context for these daemon-stores.
-cros_daemon_store_create(cros_cryptohomed, session_manager);
-cros_daemon_store_perms(cros_cryptohomed, session_manager, relabelto);
+# cryptohomed creates and relabelto dirs/files in
+# daemon-store directories.
 cros_daemon_store_create(cros_cryptohomed, authpolicyd);
 cros_daemon_store_perms(cros_cryptohomed, authpolicyd, relabelto);
+cros_daemon_store_create(cros_cryptohomed, cdm-oemcrypto);
+cros_daemon_store_perms(cros_cryptohomed, cdm-oemcrypto, relabelto);
 cros_daemon_store_create(cros_cryptohomed, chaps);
 cros_daemon_store_perms(cros_cryptohomed, chaps, relabelto);
+cros_daemon_store_create(cros_cryptohomed, crash);
+cros_daemon_store_perms(cros_cryptohomed, crash, relabelto);
+cros_daemon_store_create(cros_cryptohomed, crosvm);
+cros_daemon_store_perms(cros_cryptohomed, crosvm, relabelto);
+cros_daemon_store_create(cros_cryptohomed, debugd);
+cros_daemon_store_perms(cros_cryptohomed, debugd, relabelto);
+cros_daemon_store_create(cros_cryptohomed, kerberosd);
+cros_daemon_store_perms(cros_cryptohomed, kerberosd, relabelto);
+cros_daemon_store_create(cros_cryptohomed, pvm);
+cros_daemon_store_perms(cros_cryptohomed, pvm, relabelto);
+cros_daemon_store_create(cros_cryptohomed, pvm-dispatcher);
+cros_daemon_store_perms(cros_cryptohomed, pvm-dispatcher, relabelto);
+cros_daemon_store_create(cros_cryptohomed, session_manager);
+cros_daemon_store_perms(cros_cryptohomed, session_manager, relabelto);
 cros_daemon_store_create(cros_cryptohomed, shill);
 cros_daemon_store_perms(cros_cryptohomed, shill, relabelto);
+cros_daemon_store_create(cros_cryptohomed, smbfs);
+cros_daemon_store_perms(cros_cryptohomed, smbfs, relabelto);
+cros_daemon_store_create(cros_cryptohomed, smbproviderd);
+cros_daemon_store_perms(cros_cryptohomed, smbproviderd, relabelto);
 cros_daemon_store_create(cros_cryptohomed, usb_bouncer);
 cros_daemon_store_perms(cros_cryptohomed, usb_bouncer, relabelto);
+
 
 allow cros_cryptohomed chromeos_startup_tmp_file:file mounton;
 allow cros_cryptohomed cros_init_scripts:fd use;
@@ -85,13 +109,18 @@ allow cros_cryptohomed {
 allow cros_cryptohomed {
   cros_run
   cros_run_cryptohome
+  proc_drop_caches
 }:file create_file_perms;
 allow cros_cryptohomed cros_system_bus_socket:sock_file write;
 
 create_dir_file( cros_cryptohomed cros_var_lib_whitelist );
 
 has_arc(`
-  allow cros_cryptohomed media_rw_data_file:dir create_dir_perms;
+  create_dir_file(cros_cryptohomed media_rw_data_file);
+  allowxperm cros_cryptohomed media_rw_data_file:{ file dir } ioctl {
+    FS_IOC_FSGETXATTR
+    FS_IOC_FSSETXATTR
+  };
 ')
 
 r_dir_file(cros_cryptohomed {
@@ -106,6 +135,7 @@ r_dir_file( cros_cryptohomed sysfs );
 # cryptohomed capabilities
 allow cros_cryptohomed self:capability {
   chown
+  fowner
   ipc_lock
   sys_admin
 };
@@ -162,9 +192,18 @@ filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_r
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_user, dir, "user");
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "Downloads");
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "MyFiles");
-filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_chaps, dir, "chaps");
-filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_usb_bouncer, dir, "usb_bouncer");
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_authpolicyd, dir, "authpolicyd");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_cdm-oemcrypto, dir, "cdm-oemcrypto");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_chaps, dir, "chaps");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_crash, dir, "crash");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_crosvm, dir, "crosvm");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_debugd, dir, "debugd");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_kerberosd, dir, "kerberosd");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_pvm, dir, "pvm");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_pvm-dispatcher, dir, "pvm-dispatcher");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_smbfs, dir, "smbfs");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_smbproviderd, dir, "smbproviderd");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_usb_bouncer, dir, "usb_bouncer");
 
 # Ephemeral mount should have the same treatment as normal mount.
 filetrans_pattern({cros_init_scripts cros_cryptohomed}, cros_run, cros_run_cryptohome, dir, "cryptohome");

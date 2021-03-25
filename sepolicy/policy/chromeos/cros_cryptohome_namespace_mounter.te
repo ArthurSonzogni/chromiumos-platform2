@@ -10,18 +10,19 @@ allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd use;
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
 # TODO(betuls): Define a cryptohome domain and add these rules to there.
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file rw_file_perms;
-allow cros_cryptohome_namespace_mounter {
+create_dir_file(cros_cryptohome_namespace_mounter,  {
+  cros_home
   cros_home_chronos
   cros_home_root
+  cros_home_shadow
+  cros_home_shadow_low_entropy_creds
+  cros_home_shadow_uid
   cros_home_shadow_uid_root
+  cros_home_shadow_uid_user
+  cros_home_user
   cros_run
   cros_run_daemon_store
-}:dir create_dir_perms;
-r_dir_file(cros_cryptohome_namespace_mounter, cros_home_shadow);
-create_dir_file(cros_cryptohome_namespace_mounter, {
-  cros_home_user
-  cros_home_shadow_uid_user
-  cros_home_shadow_uid
+  cros_run_dbus
 });
 allow cros_cryptohome_namespace_mounter {
   cros_home_user
@@ -34,17 +35,34 @@ allow cros_cryptohome_namespace_mounter {
 allow cros_cryptohome_namespace_mounter cros_home_shadow_uid:dir relabelto;
 allow cros_cryptohome_namespace_mounter cros_home_shadow_uid_root:dir relabelfrom;
 
-# TODO(betuls): Add access for daemon-stores of the daemons 'cdm-oemcrypto',
-# 'crash', 'crosvm', 'debugd', 'kerberosd', 'pvm', 'pvm-dispatcher', 'smbfs',
-# 'smbproviderd' after adding context for these daemon-stores.
-cros_daemon_store_create(cros_cryptohome_namespace_mounter, session_manager);
-cros_daemon_store_perms(cros_cryptohome_namespace_mounter, session_manager, relabelto);
+# cryptohome_namespace_mounter creates and relabelto dirs/files in
+# daemon-store directories.
 cros_daemon_store_create(cros_cryptohome_namespace_mounter, authpolicyd);
 cros_daemon_store_perms(cros_cryptohome_namespace_mounter, authpolicyd, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, cdm-oemcrypto);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, cdm-oemcrypto, relabelto);
 cros_daemon_store_create(cros_cryptohome_namespace_mounter, chaps);
 cros_daemon_store_perms(cros_cryptohome_namespace_mounter, chaps, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, crash);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, crash, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, crosvm);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, crosvm, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, debugd);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, debugd, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, kerberosd);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, kerberosd, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, pvm);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, pvm, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, pvm-dispatcher);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, pvm-dispatcher, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, session_manager);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, session_manager, relabelto);
 cros_daemon_store_create(cros_cryptohome_namespace_mounter, shill);
 cros_daemon_store_perms(cros_cryptohome_namespace_mounter, shill, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, smbfs);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, smbfs, relabelto);
+cros_daemon_store_create(cros_cryptohome_namespace_mounter, smbproviderd);
+cros_daemon_store_perms(cros_cryptohome_namespace_mounter, smbproviderd, relabelto);
 cros_daemon_store_create(cros_cryptohome_namespace_mounter, usb_bouncer);
 cros_daemon_store_perms(cros_cryptohome_namespace_mounter, usb_bouncer, relabelto);
 
@@ -117,6 +135,12 @@ is_arc_vm(`
     dac_override
     dac_read_search
   };
+  # TODO(b/178237710) Label with specific contexts.
+  allow cros_cryptohome_namespace_mounter unlabeled:filesystem {
+    mount
+    remount
+    unmount
+  };
   allow cros_cryptohome_namespace_mounter labeledfs:filesystem {
     mount
     remount
@@ -153,9 +177,18 @@ filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid, cros_
 filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid, cros_home_shadow_uid_user, dir, "user");
 filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_user, cros_downloads_file, dir, "Downloads");
 filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_user, cros_downloads_file, dir, "MyFiles");
-filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_chaps, dir, "chaps");
-filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_usb_bouncer, dir, "usb_bouncer");
 filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_authpolicyd, dir, "authpolicyd");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_cdm-oemcrypto, dir, "cdm-oemcrypto");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_chaps, dir, "chaps");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_crash, dir, "crash");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_crosvm, dir, "crosvm");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_debugd, dir, "debugd");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_kerberosd, dir, "kerberosd");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_pvm, dir, "pvm");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_pvm-dispatcher, dir, "pvm-dispatcher");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_smbfs, dir, "smbfs");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_smbproviderd, dir, "smbproviderd");
+filetrans_pattern(cros_cryptohome_namespace_mounter, cros_home_shadow_uid_root, cros_home_shadow_uid_root_usb_bouncer, dir, "usb_bouncer");
 
 # Ephemeral mount should be considered home directory as well.
 # Note that this transition is currently ineffective as the ephemeral mount is a new filesystem.
