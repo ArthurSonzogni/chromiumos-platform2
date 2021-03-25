@@ -60,6 +60,5 @@ if (use.test) {
       ":libmems_test_support",
       "//common-mk/testrunner",
     ]
-    pkg_deps = [ "libmems_test_support" ]
   }
 }
