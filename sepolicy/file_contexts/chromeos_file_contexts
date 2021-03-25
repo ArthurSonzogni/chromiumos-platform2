@@ -363,8 +363,17 @@ has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache u:object_r:cache_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data u:object_r:system_data_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/crash(/.*)?   u:object_r:cros_home_shadow_uid_root_crash:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/crosvm(/.*)?   u:object_r:cros_home_shadow_uid_root_crosvm:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/debugd(/.*)?   u:object_r:cros_home_shadow_uid_root_debugd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/kerberosd(/.*)?   u:object_r:cros_home_shadow_uid_root_kerberosd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/pvm(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/pvm-dispatcher(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm-dispatcher:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/session_manager(/.*)?   u:object_r:cros_home_shadow_uid_root_session_manager:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/shill(/.*)?   u:object_r:cros_home_shadow_uid_root_shill:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/shill_logs(/.*)?   u:object_r:cros_home_shadow_uid_root_shill_logs:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/smbfs(/.*)?   u:object_r:cros_home_shadow_uid_root_smbfs:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/smbproviderd(/.*)?   u:object_r:cros_home_shadow_uid_root_smbproviderd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/usb_bouncer(/.*)?   u:object_r:cros_home_shadow_uid_root_usb_bouncer:s0
