@@ -13,7 +13,11 @@ const char kResourceManagerServiceName[] = "org.chromium.ResourceManager";
 
 // Methods.
 const char kGetAvailableMemoryKBMethod[] = "GetAvailableMemoryKB";
+const char kGetForegroundAvailableMemoryKBMethod[] =
+    "GetForegroundAvailableMemoryKB";
 const char kGetMemoryMarginsKBMethod[] = "GetMemoryMarginsKB";
+const char kGetGameModeMethod[] = "GetGameMode";
+const char kSetGameModeMethod[] = "SetGameMode";
 
 // Signals.
 const char kCriticalMemoryPressure[] = "CriticalMemoryPressure";
