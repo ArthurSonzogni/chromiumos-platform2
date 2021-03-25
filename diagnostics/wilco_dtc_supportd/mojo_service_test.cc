@@ -48,13 +48,11 @@ namespace {
 // Tests for the MojoService class.
 class MojoServiceTest : public testing::Test {
  protected:
-  MojoServiceTest() {
+  MojoServiceTest() : mojo_client_receiver_(&mojo_client_) {
     // Obtain Mojo pending remote that talks to |mojo_client_| - the
     // connection between them will be maintained by |mojo_client_receiver_|.
     mojo::PendingRemote<MojomWilcoDtcSupportdClient> mojo_client;
-    mojo_client_receiver_ =
-        std::make_unique<mojo::Receiver<MojomWilcoDtcSupportdClient>>(
-            &mojo_client_, mojo_client.InitWithNewPipeAndPassReceiver());
+    mojo_client_receiver_.Bind(mojo_client.InitWithNewPipeAndPassReceiver());
     DCHECK(mojo_client);
 
     mojo::Remote<MojomWilcoDtcSupportdService> mojo_service;
@@ -71,8 +69,7 @@ class MojoServiceTest : public testing::Test {
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
 
   StrictMock<MockMojoClient> mojo_client_;
-  std::unique_ptr<mojo::Receiver<MojomWilcoDtcSupportdClient>>
-      mojo_client_receiver_;
+  mojo::Receiver<MojomWilcoDtcSupportdClient> mojo_client_receiver_;
 
   GrpcClientManager grpc_client_manager_;
   MojoGrpcAdapter mojo_grpc_adapter_{&grpc_client_manager_};

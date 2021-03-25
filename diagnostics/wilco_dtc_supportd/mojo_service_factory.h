@@ -31,13 +31,11 @@ class MojoGrpcAdapter;
 class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
                                      WilcoDtcSupportdServiceFactory {
  public:
-  using MojoReceiver = mojo::Receiver<
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory>;
-  using MojoReceiverPtr = std::unique_ptr<MojoReceiver>;
   using WilcoServiceFactory =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory;
+  using MojoReceiver = mojo::Receiver<WilcoServiceFactory>;
   using BindFactoryCallback =
-      base::OnceCallback<MojoReceiverPtr(WilcoServiceFactory*, base::ScopedFD)>;
+      base::OnceCallback<void(MojoReceiver*, base::ScopedFD)>;
 
   MojoServiceFactory(MojoGrpcAdapter* grpc_adapter,
                      base::RepeatingClosure shutdown,
@@ -60,10 +58,9 @@ class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
 
   // Creates the |BindFactoryCallback| to be used in production:
   //
-  // The callback binds the given |mojo_service_factory| to the Mojo message
+  // The callback binds the given |receiver| to the Mojo message
   // pipe that works via the given |mojo_pipe_fd|. The pipe has to contain a
-  // valid invitation. On success, returns the created Mojo binding, otherwise
-  // returns nullptr.
+  // valid invitation, otherwise |receiver| remains unbound.
   //
   // This is a OnceCallback, since Mojo EDK gives no guarantee to support
   // repeated initialization with different parent handles.
@@ -86,15 +83,14 @@ class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
   // To be called in case of an unrecoverable mojo error.
   base::RepeatingClosure shutdown_;
 
-  // OnceCallback to populate the |mojo_service_factory_receiver_|.
+  // OnceCallback to bind the |mojo_service_factory_receiver_|.
   BindFactoryCallback bind_factory_callback_;
   // Receiver that connects this instance (which is an implementation of
   // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory) with
   // the message pipe set up on top of the received file descriptor.
   //
-  // Gets created after the BootstrapMojoConnection D-Bus method is called.
-  std::unique_ptr<mojo::Receiver<WilcoServiceFactory>>
-      mojo_service_factory_receiver_;
+  // Is bound after the BootstrapMojoConnection D-Bus method is called.
+  MojoReceiver mojo_service_factory_receiver_;
   // Implementation of the Mojo interface exposed by the wilco_dtc_supportd
   // daemon and a proxy that allows sending outgoing Mojo requests.
   //

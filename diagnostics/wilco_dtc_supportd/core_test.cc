@@ -288,21 +288,17 @@ class CoreTest : public testing::Test {
   // successful Mojo service receiver to the given file descriptor. After the
   // mock gets triggered, |mojo_service_factory_remote_| becomes
   // initialized to point to the tested Mojo service.
-  MojoServiceFactory::MojoReceiverPtr FakeBindMojoFactory(
-      MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
-      base::ScopedFD mojo_pipe_fd) {
+  // If |simulate_bind_failure_| is true, |mojo_service_factory_remote_| will
+  // not be bound and fail the is_bound() check in MojoServiceFactory::Start.
+  void FakeBindMojoFactory(MojoServiceFactory::MojoReceiver* receiver,
+                           base::ScopedFD mojo_pipe_fd) {
     if (simulate_bind_failure_)
-      return nullptr;
+      return;
     // Initialize a Mojo receiver that, instead of working through the
     // given (fake) file descriptor, talks to the test endpoint
     // |mojo_service_|.
-    auto mojo_service_factory_receiver =
-        std::make_unique<MojoServiceFactory::MojoReceiver>(
-            mojo_service_factory,
-            mojo_service_factory_remote_.BindNewPipeAndPassReceiver());
+    receiver->Bind(mojo_service_factory_remote_.BindNewPipeAndPassReceiver());
     DCHECK(mojo_service_factory_remote_);
-    return MojoServiceFactory::MojoReceiverPtr(
-        mojo_service_factory_receiver.release());
   }
 
   GrpcClientManager* grpc_client_manager() { return &grpc_client_manager_; }

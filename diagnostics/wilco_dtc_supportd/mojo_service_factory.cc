@@ -17,10 +17,9 @@
 namespace diagnostics {
 namespace {
 
-MojoServiceFactory::MojoReceiverPtr BindMojoServiceFactory(
-    MojoServiceFactory::WilcoServiceFactory* mojo_service_factory,
-    base::ScopedFD mojo_pipe_fd) {
-  DCHECK(mojo_service_factory);
+void BindMojoServiceFactory(MojoServiceFactory::MojoReceiver* receiver,
+                            base::ScopedFD mojo_pipe_fd) {
+  DCHECK(receiver);
   DCHECK(mojo_pipe_fd.is_valid());
 
   mojo::IncomingInvitation invitation =
@@ -30,16 +29,11 @@ MojoServiceFactory::MojoReceiverPtr BindMojoServiceFactory(
   mojo::ScopedMessagePipeHandle mojo_pipe_handle =
       invitation.ExtractMessagePipe(
           kWilcoDtcSupportdMojoConnectionChannelToken);
-  if (!mojo_pipe_handle.is_valid()) {
-    return nullptr;
+  if (mojo_pipe_handle.is_valid()) {
+    receiver->Bind(
+        mojo::PendingReceiver<MojoServiceFactory::WilcoServiceFactory>(
+            std::move(mojo_pipe_handle)));
   }
-
-  return std::make_unique<mojo::Receiver<
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory>>(
-      mojo_service_factory,
-      mojo::PendingReceiver<
-          chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory>(
-          std::move(mojo_pipe_handle)));
 }
 
 }  // namespace
@@ -50,7 +44,8 @@ MojoServiceFactory::MojoServiceFactory(
     BindFactoryCallback bind_factory_callback)
     : grpc_adapter_(grpc_adapter),
       shutdown_(shutdown),
-      bind_factory_callback_(std::move(bind_factory_callback)) {
+      bind_factory_callback_(std::move(bind_factory_callback)),
+      mojo_service_factory_receiver_(this) {
   DCHECK(grpc_adapter_);
 }
 
@@ -101,13 +96,13 @@ base::Optional<std::string> MojoServiceFactory::Start(
   }
 
   mojo_service_bind_attempted_ = true;
-  mojo_service_factory_receiver_ =
-      std::move(bind_factory_callback_).Run(this, std::move(mojo_pipe_fd));
-  if (!mojo_service_factory_receiver_) {
+  std::move(bind_factory_callback_)
+      .Run(&mojo_service_factory_receiver_, std::move(mojo_pipe_fd));
+  if (!mojo_service_factory_receiver_.is_bound()) {
     ShutdownDueToMojoError("Mojo bootstrap failed" /* debug_reason */);
     return "Failed to bootstrap Mojo";
   }
-  mojo_service_factory_receiver_->set_disconnect_handler(base::Bind(
+  mojo_service_factory_receiver_.set_disconnect_handler(base::Bind(
       &MojoServiceFactory::ShutdownDueToMojoError, base::Unretained(this),
       "Mojo connection error" /* debug_reason */));
 

@@ -26,17 +26,14 @@ namespace {
 
 class MockCallback {
  public:
-  MojoServiceFactory::MojoReceiverPtr BindMojoServiceFactory(
-      MojoServiceFactory::WilcoServiceFactory* mojo_service_factory,
-      base::ScopedFD mojo_pipe_fd) {
-    DCHECK(mojo_service_factory);
+  void BindMojoServiceFactory(MojoServiceFactory::MojoReceiver* receiver,
+                              base::ScopedFD mojo_pipe_fd) {
+    DCHECK(receiver);
     DCHECK(mojo_pipe_fd.is_valid());
 
     BindMojoServiceFactoryImpl(mojo_pipe_fd);
 
-    return std::make_unique<MojoServiceFactory::MojoReceiver>(
-        mojo_service_factory,
-        mojo_service_factory_remote_.BindNewPipeAndPassReceiver());
+    receiver->Bind(mojo_service_factory_remote_.BindNewPipeAndPassReceiver());
   }
 
   MOCK_METHOD(void,
