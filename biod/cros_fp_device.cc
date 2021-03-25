@@ -598,7 +598,7 @@ bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
 }
 
 std::unique_ptr<struct ec_response_flash_protect>
-CrosFpDevice::GetFlashProtect() {
+CrosFpDevice::GetFlashProtect() const {
   auto fp_cmd = ec_command_factory_->FpFlashProtectCommand(0, 0);
 
   if (!fp_cmd) {
