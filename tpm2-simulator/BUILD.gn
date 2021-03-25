@@ -21,24 +21,24 @@ pkg_config("target_defaults") {
 }
 
 executable("tpm2-simulator") {
-  configs += [ ":target_defaults" ]
   sources = [
     "main.cc",
     "simulator.cc",
     "tpm_executor_tpm2_impl.cc",
   ]
+  configs += [ ":target_defaults" ]
   libs = [ "tpm2" ]
   pkg_deps = [ "libminijail" ]
 }
 
 executable("tpm2-simulator-init") {
-  configs += [ ":target_defaults" ]
   sources = [ "simulator-init.cc" ]
   pkg_deps = [ "vboot_host" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("tpm2-simulator-stop") {
-  configs += [ ":target_defaults" ]
   sources = [ "simulator-stop.cc" ]
   pkg_deps = [ "vboot_host" ]
+  configs += [ ":target_defaults" ]
 }
