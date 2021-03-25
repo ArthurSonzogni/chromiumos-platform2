@@ -497,7 +497,7 @@ class Cellular : public Device,
   // Destroys all services and the connection, if any. This also eliminates any
   // circular references between this device and the associated service,
   // allowing eventual device destruction.
-  void DestroyServices();
+  void DestroyAllServices();
 
   // Creates or updates services for secondary SIMs.
   void CreateSecondaryServices();

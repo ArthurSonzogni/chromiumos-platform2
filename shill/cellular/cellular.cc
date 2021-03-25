@@ -531,7 +531,7 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   SetCapabilityState(CapabilityState::kCellularStopped);
   // Destroy any cellular services regardless of any errors that occur during
   // the stop process since we do not know the state of the modem at this point.
-  DestroyServices();
+  DestroyAllServices();
   if (state_ != kStateDisabled)
     SetState(kStateDisabled);
   callback.Run(error);
@@ -865,11 +865,16 @@ void Cellular::HandleNewRegistrationState() {
 
 void Cellular::UpdateServices() {
   SLOG(this, 2) << __func__;
-  // If Cellular is disabled or does not have an associated SIM+ICCID, ensure
-  // that it does not have an associated Service.
-  if (state_ == kStateDisabled || iccid_.empty()) {
-    if (service_)
-      DestroyServices();
+  // If iccid_ is empty, the primary slot is not set, so do not create services.
+  // If modem_state_ == kModemStateLocked, the primary SIM is locked and
+  // the modem has not started, so state_ == kStateDisabled. In that case,
+  // we want to load any services we know about, so that the UI can present
+  // the unlock UI, even though Connect and other operations will fail on
+  // any Service until the SIM is unlocked (or removed).
+  // Otherwise, if state_ == kStateDisabled, destroy any remaining services.
+  if ((state_ == kStateDisabled && modem_state_ != kModemStateLocked) ||
+      iccid_.empty()) {
+    DestroyAllServices();
     return;
   }
 
@@ -919,7 +924,7 @@ void Cellular::CreateServices() {
   OnOperatorChanged();
 }
 
-void Cellular::DestroyServices() {
+void Cellular::DestroyAllServices() {
   if (service_for_testing_)
     return;
 
@@ -1005,12 +1010,6 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (capability_state_ != CapabilityState::kModemStarted) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Connect Failed: Modem not started.");
-    return;
-  }
-
   if (service->iccid() != iccid_) {
     // If the Service has a different ICCID than the current one, Disconnect
     // from the current Service if connected, switch to the correct SIM slot,
@@ -1025,6 +1024,12 @@ void Cellular::Connect(CellularService* service, Error* error) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "Connect Failed: ICCID not available.");
     }
+    return;
+  }
+
+  if (capability_state_ != CapabilityState::kModemStarted) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Connect Failed: Modem not started.");
     return;
   }
 
@@ -1381,7 +1386,7 @@ bool Cellular::SetUseAttachApn(const bool& value, Error* error) {
   if (capability_) {
     // Re-creating services will set the attach APN again and eventually
     // re-attach if needed.
-    DestroyServices();
+    DestroyAllServices();
     CreateServices();
   }
 

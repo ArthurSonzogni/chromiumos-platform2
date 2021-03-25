@@ -802,7 +802,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
             device_->service_->friendly_name().substr(0, prefix_len));
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (2) Service created, then home provider determined => Name provided by
   //     home provider.
@@ -821,7 +821,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
   EXPECT_EQ(kHomeProviderName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (3) Service created, then serving operator determined => Name provided by
   //     serving operator.
@@ -840,7 +840,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (4) Service created, then home provider determined, then serving operator
   // determined => final name is serving operator.
@@ -866,7 +866,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (5) Service created, then serving operator determined, then home provider
   // determined => final name is serving operator.
@@ -892,7 +892,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (6) Serving operator known, home provider known, and then service created
   //     => Name is serving operator.
@@ -908,7 +908,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
   EXPECT_EQ(kServingOperatorName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (7) Serving operator known, home provider known, and roaming state is set
   //     => Name is the form of "home provider | serving operator".
@@ -927,7 +927,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
             device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (8) Like (7) but home provider and serving operator have the same name
   //     => Only one name is shown.
@@ -945,7 +945,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
   EXPECT_EQ(kHomeProviderName, device_->service_->friendly_name());
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 }
 #endif  // !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 
@@ -974,7 +974,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
   VerifyOperatorMap(serving_operator, "", "", "");
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (2) serving operator known.
   // When home provider is not known, serving operator proxies in.
@@ -999,7 +999,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
                     kServingOperatorName, kServingOperatorCountry);
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (3) home provider known.
   // When serving operator is not known, home provider proxies in.
@@ -1024,7 +1024,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
                     kHomeProviderCountry);
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 
   // (4) Serving operator known, home provider known.
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
@@ -1120,7 +1120,7 @@ TEST_P(CellularTest, StorageIdentifier) {
   CallSetPrimarySimProperties(sim_properties);
   device_->CreateServices();
   EXPECT_EQ("cellular_test_iccid", device_->service()->GetStorageIdentifier());
-  device_->DestroyServices();
+  device_->DestroyAllServices();
 }
 
 TEST_P(CellularTest, Connect) {
