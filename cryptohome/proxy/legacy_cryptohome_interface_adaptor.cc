@@ -2089,6 +2089,28 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11TerminateOnSuccess(
   response->Return();
 }
 
+void LegacyCryptohomeInterfaceAdaptor::Pkcs11RestoreTpmTokens(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
+
+  user_data_auth::Pkcs11RestoreTpmTokensRequest request;
+  pkcs11_proxy_->Pkcs11RestoreTpmTokensAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::Pkcs11RestoreTpmTokensOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                 base::Unretained(this), response_shared),
+      kDefaultTimeout.InMilliseconds());
+}
+
+void LegacyCryptohomeInterfaceAdaptor::Pkcs11RestoreTpmTokensOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<>> response,
+    const user_data_auth::Pkcs11RestoreTpmTokensReply& reply) {
+  response->Return();
+}
+
 void LegacyCryptohomeInterfaceAdaptor::GetStatusString(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
         response) {

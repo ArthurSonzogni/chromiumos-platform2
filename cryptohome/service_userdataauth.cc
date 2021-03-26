@@ -722,6 +722,29 @@ void Pkcs11Adaptor::DoPkcs11Terminate(
   response->Return(reply);
 }
 
+void Pkcs11Adaptor::Pkcs11RestoreTpmTokens(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::Pkcs11RestoreTpmTokensReply>> response,
+    const user_data_auth::Pkcs11RestoreTpmTokensRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&Pkcs11Adaptor::DoPkcs11RestoreTpmTokens,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::Pkcs11RestoreTpmTokensReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void Pkcs11Adaptor::DoPkcs11RestoreTpmTokens(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::Pkcs11RestoreTpmTokensReply>> response,
+    const user_data_auth::Pkcs11RestoreTpmTokensRequest& in_request) {
+  user_data_auth::Pkcs11RestoreTpmTokensReply reply;
+  service_->Pkcs11RestoreTpmTokens();
+  response->Return(reply);
+}
+
 void InstallAttributesAdaptor::InstallAttributesGet(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::InstallAttributesGetReply>> response,

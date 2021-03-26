@@ -645,6 +645,10 @@
                   value="async"/>
       <arg type="s" name="username" direction="in" />
     </method>
+    <method name="Pkcs11RestoreTpmTokens">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+    </method>
     <method name="GetStatusString">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

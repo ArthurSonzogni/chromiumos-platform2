@@ -432,6 +432,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void Pkcs11Terminate(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::string& in_username) override;
+  void Pkcs11RestoreTpmTokens(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
+      override;
   void GetStatusString(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
           response) override;
@@ -813,6 +816,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void Pkcs11TerminateOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::Pkcs11TerminateReply& reply);
+  void Pkcs11RestoreTpmTokensOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<>> response,
+      const user_data_auth::Pkcs11RestoreTpmTokensReply& reply);
   void GetStatusStringOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::string>> response,
       const user_data_auth::GetStatusStringReply& reply);

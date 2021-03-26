@@ -128,6 +128,7 @@ static const char* kActions[] = {"mount_ex",
                                  "pkcs11_get_system_token_info",
                                  "pkcs11_is_user_token_ok",
                                  "pkcs11_terminate",
+                                 "pkcs11_restore_tpm_tokens",
                                  "tpm_verify_attestation",
                                  "tpm_verify_ek",
                                  "tpm_attestation_status",
@@ -213,6 +214,7 @@ enum ActionEnum {
   ACTION_PKCS11_GET_SYSTEM_TOKEN_INFO,
   ACTION_PKCS11_IS_USER_TOKEN_OK,
   ACTION_PKCS11_TERMINATE,
+  ACTION_PKCS11_RESTORE_TPM_TOKENS,
   ACTION_TPM_VERIFY_ATTESTATION,
   ACTION_TPM_VERIFY_EK,
   ACTION_TPM_ATTESTATION_STATUS,
@@ -2060,6 +2062,14 @@ int main(int argc, char** argv) {
             proxy.gproxy(), account_id.c_str(),
             &brillo::Resetter(&error).lvalue())) {
       printf("PKCS #11 terminate call failed: %s.\n", error->message);
+    }
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_PKCS11_RESTORE_TPM_TOKENS],
+                 action.c_str())) {
+    brillo::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_pkcs11_restore_tpm_tokens(
+            proxy.gproxy(), &brillo::Resetter(&error).lvalue())) {
+      printf("PKCS #11 restore TPM tokens call failed: %s.\n", error->message);
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],

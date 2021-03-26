@@ -710,6 +710,18 @@ message Pkcs11TerminateReply {
   // Nothing at the moment.
 }
 
+// Input parameters to Pkcs11RestoreTpmTokens()
+message Pkcs11RestoreTpmTokensRequest {
+  // This call will retrieve all the tokens to chaps.
+
+  // Nothing at the moment.
+}
+
+// Output parameters for Pkcs11RestoreTpmTokens()
+message Pkcs11RestoreTpmTokensReply {
+  // Nothing at the moment.
+}
+
 // ----------------------- Install Attributes Interface -----------------------
 
 // The possible states of Install Attributes module, this is used by
