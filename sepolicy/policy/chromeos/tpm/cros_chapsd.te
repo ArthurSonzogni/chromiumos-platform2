@@ -15,6 +15,7 @@ allow cros_chapsd self:capability { setuid setgid };
 
 rw_dir_file(cros_chapsd, cros_var_lib_chaps);
 allow cros_chapsd cros_var_lib_chaps:{file dir} { create unlink rename };
+allow cros_chapsd cros_var_lock:dir rw_dir_perms;
 
 r_dir_file(cros_chapsd, cros_passwd_file);
 
