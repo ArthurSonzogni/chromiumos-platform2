@@ -1,2 +1,2 @@
-allow cros_uma_events_writer_domain cros_metrics_file:dir { search getattr };
-allow cros_uma_events_writer_domain cros_metrics_uma_events_file:file rw_file_perms;
+rw_dir_file(cros_uma_events_writer_domain, cros_metrics_file);
+rw_dir_file(cros_uma_events_writer_domain, cros_metrics_uma_events_file);
