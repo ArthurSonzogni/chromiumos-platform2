@@ -91,18 +91,18 @@ class Screens : public ScreenBase,
   // Clears screen and shows footer and language drop down menu.
   void MessageBaseScreen();
 
-  // Shows a list of all available items.
-  void ShowItemDropdown();
+  // Shows a list of all available networks.
+  void ShowNetworkDropdown();
 
-  // Shows item menu drop down button on the dropdown screen. Button is
+  // Shows network menu drop down button on the screen. Button is
   // highlighted if it is currently selected. Selecting this button directs to
-  // the expanded dropdown.
-  void ShowCollapsedItemMenu(bool is_selected);
+  // the expanded network dropdown.
+  void ShowCollapsedNetworkDropDown(bool is_selected);
 
-  // Queries list of available items and shows them as a drop down. On
-  // selection sets the 'chosen_item' and redirects to the password
+  // Queries list of available networks and shows them as a drop down. On
+  // selection sets the 'chosen_network' and redirects to the password
   // screen.
-  void ExpandItemDropdown();
+  void ExpandNetworkDropdown();
 
   // Get user password using the keyboard layout stored in locale. Users can use
   // the tab key to toggle showing the password.
@@ -193,7 +193,7 @@ class Screens : public ScreenBase,
   // Shows the buttons of MiniOs screens. Index changes button focus based on
   // button order.
   void ShowMiniOsWelcomeScreen();
-  void ShowMiniOsDropdownScreen();
+  void ShowMiniOsNetworkDropdownScreen();
   void ShowMiniOsGetPasswordScreen();
   void ShowMiniOsDownloadingScreen();
   virtual void ShowMiniOsCompleteScreen();
@@ -243,10 +243,10 @@ class Screens : public ScreenBase,
   // List of all supported locales.
   std::vector<std::string> supported_locales_;
 
-  // List of currently available items.
+  // List of currently available networks.
   std::vector<std::string> network_list_;
 
-  // The item the user has picked from the dropdown menu.
+  // The networks the user has picked from the menu.
   std::string chosen_network_;
 
   // Hardware Id read from crossystem.
@@ -269,8 +269,8 @@ class Screens : public ScreenBase,
   // All the different screens in the MiniOs Flow.
   enum class ScreenType {
     kWelcomeScreen = 0,
-    kDropDownScreen = 1,
-    kExpandedDropDownScreen = 2,
+    kNetworkDropDownScreen = 1,
+    kExpandedNetworkDropDownScreen = 2,
     kPasswordScreen = 3,
     kLanguageDropDownScreen = 4,
     kStartDownload = 5,

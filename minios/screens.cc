@@ -239,23 +239,23 @@ void Screens::ShowMiniOsWelcomeScreen() {
              default_button_width_, false);
 }
 
-void Screens::ShowMiniOsDropdownScreen() {
+void Screens::ShowMiniOsNetworkDropdownScreen() {
   MessageBaseScreen();
   ShowInstructions("title_MiniOS_dropdown");
   ShowStepper({"1-done", "2", "3"});
   ShowLanguageMenu(index_ == 0);
-  ShowCollapsedItemMenu((index_ == 1));
+  ShowCollapsedNetworkDropDown((index_ == 1));
   ShowButton("btn_back", kTitleY + 58 + (4 * kBtnYStep), (index_ == 2),
              default_button_width_, false);
 }
 
-void Screens::ExpandItemDropdown() {
+void Screens::ExpandNetworkDropdown() {
   ShowInstructions("title_MiniOS_dropdown");
   ShowStepper({"1-done", "2", "3"});
   ShowLanguageMenu(false);
-  ShowCollapsedItemMenu(true);
+  ShowCollapsedNetworkDropDown(true);
 
-  ShowItemDropdown();
+  ShowNetworkDropdown();
   int items_on_page =
       std::min(kNetworksPerPage, static_cast<int>(network_list_.size()));
   ShowButton("btn_back", -frecon_canvas_size_ / 2 + 450 + (items_on_page * 40),
@@ -438,7 +438,7 @@ void Screens::OnLocaleChange() {
   index_ = 1;
 }
 
-void Screens::ShowCollapsedItemMenu(bool is_selected) {
+void Screens::ShowCollapsedNetworkDropDown(bool is_selected) {
   const int kOffsetY = -frecon_canvas_size_ / 2 + 350;
   const int kBgX = -frecon_canvas_size_ / 2 + 145;
   const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
@@ -456,7 +456,7 @@ void Screens::ShowCollapsedItemMenu(bool is_selected) {
   ShowMessage("btn_MiniOS_display_options", kTextX, kOffsetY);
 }
 
-void Screens::ShowItemDropdown() {
+void Screens::ShowNetworkDropdown() {
   int offset_y = -frecon_canvas_size_ / 2 + 350 + 40;
   const int kBackgroundX = -frecon_canvas_size_ / 2 + 360;
   const int kOffsetX = -frecon_canvas_size_ / 2 + 60;
@@ -613,7 +613,7 @@ void Screens::SwitchScreen(bool enter) {
   // Changing locale. Remember the current screen to return back to it.
   if (enter && index_ == 0 &&
       current_screen_ != ScreenType::kLanguageDropDownScreen &&
-      current_screen_ != ScreenType::kExpandedDropDownScreen &&
+      current_screen_ != ScreenType::kExpandedNetworkDropDownScreen &&
       current_screen_ != ScreenType::kStartDownload) {
     previous_screen_ = current_screen_;
     current_screen_ = ScreenType::kLanguageDropDownScreen;
@@ -631,24 +631,24 @@ void Screens::SwitchScreen(bool enter) {
   switch (current_screen_) {
     case ScreenType::kWelcomeScreen:
       if (index_ == 1) {
-        current_screen_ = ScreenType::kDropDownScreen;
+        current_screen_ = ScreenType::kNetworkDropDownScreen;
         // Update available networks every time the dropdown screen is picked.
         // TODO(vyshu): Change this to only update networks when necessary.
         UpdateNetworkList();
       }
       index_ = 1;
       break;
-    case ScreenType::kDropDownScreen:
+    case ScreenType::kNetworkDropDownScreen:
       if (index_ == 1) {
         index_ = 0;
-        current_screen_ = ScreenType::kExpandedDropDownScreen;
+        current_screen_ = ScreenType::kExpandedNetworkDropDownScreen;
         MessageBaseScreen();
       } else {
         index_ = 1;
         current_screen_ = ScreenType::kWelcomeScreen;
       }
       break;
-    case ScreenType::kExpandedDropDownScreen:
+    case ScreenType::kExpandedNetworkDropDownScreen:
       if (index_ == menu_count_[static_cast<int>(current_screen_)] - 1) {
         index_ = 1;
         current_screen_ = ScreenType::kWelcomeScreen;
@@ -668,7 +668,7 @@ void Screens::SwitchScreen(bool enter) {
         current_screen_ = ScreenType::kStartDownload;
       } else {
         index_ = 1;
-        current_screen_ = ScreenType::kDropDownScreen;
+        current_screen_ = ScreenType::kNetworkDropDownScreen;
         UpdateNetworkList();
       }
       break;
@@ -691,7 +691,7 @@ void Screens::SwitchScreen(bool enter) {
     case ScreenType::kNetworkError:
       if (index_ == 1) {
         // Back to dropdown screen,
-        current_screen_ = ScreenType::kDropDownScreen;
+        current_screen_ = ScreenType::kNetworkDropDownScreen;
       }
       break;
   }
@@ -704,11 +704,11 @@ void Screens::ShowNewScreen() {
     case ScreenType::kWelcomeScreen:
       ShowMiniOsWelcomeScreen();
       break;
-    case ScreenType::kDropDownScreen:
-      ShowMiniOsDropdownScreen();
+    case ScreenType::kNetworkDropDownScreen:
+      ShowMiniOsNetworkDropdownScreen();
       break;
-    case ScreenType::kExpandedDropDownScreen:
-      ExpandItemDropdown();
+    case ScreenType::kExpandedNetworkDropDownScreen:
+      ExpandNetworkDropdown();
       break;
     case ScreenType::kPasswordScreen:
       ShowMiniOsGetPasswordScreen();
@@ -796,15 +796,16 @@ void Screens::OnGetNetworks(const std::vector<std::string>& networks,
                << " ErrorMessage=" << error->GetMessage();
     network_list_.clear();
     ChangeToNetworkErrorScreen();
-    menu_count_[static_cast<int>(ScreenType::kExpandedDropDownScreen)] = 0;
+    menu_count_[static_cast<int>(ScreenType::kExpandedNetworkDropDownScreen)] =
+        0;
     return;
   }
   network_list_ = networks;
   LOG(INFO) << "Trying to update network list.";
 
   // Change the menu count for the Expanded dropdown menu based on number of
-  // items. Add one extra slot for the back button.
-  menu_count_[static_cast<int>(ScreenType::kExpandedDropDownScreen)] =
+  // networks. Add one extra slot for the back button.
+  menu_count_[static_cast<int>(ScreenType::kExpandedNetworkDropDownScreen)] =
       network_list_.size() + 1;
 
   if (network_list_.empty()) {
@@ -815,7 +816,7 @@ void Screens::OnGetNetworks(const std::vector<std::string>& networks,
     return;
   }
   // If already waiting on the dropdown screen, refresh.
-  if (current_screen_ == ScreenType::kExpandedDropDownScreen) {
+  if (current_screen_ == ScreenType::kExpandedNetworkDropDownScreen) {
     index_ = 0;
     ShowNewScreen();
   }

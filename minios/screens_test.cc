@@ -763,12 +763,12 @@ TEST_F(ScreensTestMocks, ScreenFlowForwardWithNetwork) {
   // Screen has not changed since enter is false.
   EXPECT_EQ(0, mock_screens_.GetScreenForTest());
 
-  // Moves to next screen in flow. kDropDownScreen.
+  // Moves to next screen in flow. kNetworkDropDownScreen.
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(1, mock_screens_.GetScreenForTest());
 
-  // Enter goes to kExpandedDropDownScreen.
+  // Enter goes to kExpandedNetworkDropDownScreen.
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(2, mock_screens_.GetScreenForTest());
@@ -794,7 +794,7 @@ TEST_F(ScreensTestMocks, ScreenBackward) {
 
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  // Moves back to kDropDownScreen.
+  // Moves back to kNetworkDropDownScreen.
   EXPECT_EQ(1, mock_screens_.GetScreenForTest());
 
   // Enter goes back to kWelcomeScreen.
