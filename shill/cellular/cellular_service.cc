@@ -38,6 +38,8 @@ const char CellularService::kAutoConnActivating[] = "activating";
 const char CellularService::kAutoConnBadPPPCredentials[] =
     "bad PPP credentials";
 const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
+const char CellularService::kAutoConnNotRegistered[] =
+    "cellular not registered";
 const char CellularService::kAutoConnOutOfCredits[] = "service out of credits";
 const char CellularService::kAutoConnSimUnselected[] = "SIM not selected";
 const char CellularService::kStorageIccid[] = "Cellular.Iccid";
@@ -460,6 +462,10 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
   }
   if (cellular_->IsActivating()) {
     *reason = kAutoConnActivating;
+    return false;
+  }
+  if (cellular_->state() != Cellular::kStateRegistered) {
+    *reason = kAutoConnNotRegistered;
     return false;
   }
   if (cellular_->iccid() != iccid()) {

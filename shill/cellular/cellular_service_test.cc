@@ -258,8 +258,13 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   device_->running_ = false;
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(CellularService::kAutoConnDeviceDisabled, reason);
-
   device_->running_ = true;
+
+  // Auto-connect should be suppressed if the device is not registered.
+  device_->set_state_for_testing(Cellular::kStateDisabled);
+  EXPECT_FALSE(IsAutoConnectable(&reason));
+  EXPECT_STREQ(CellularService::kAutoConnNotRegistered, reason);
+  device_->set_state_for_testing(Cellular::kStateRegistered);
 
   // If we're in a process of activation, don't auto-connect.
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),

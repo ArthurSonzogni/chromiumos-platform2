@@ -155,6 +155,7 @@ class CellularService : public Service {
   static const char kAutoConnSimUnselected[];
   static const char kAutoConnBadPPPCredentials[];
   static const char kAutoConnDeviceDisabled[];
+  static const char kAutoConnNotRegistered[];
   static const char kAutoConnOutOfCredits[];
 
   KeyValueStore GetStorageProperties() const;

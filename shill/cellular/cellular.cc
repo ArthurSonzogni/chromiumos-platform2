@@ -1416,6 +1416,7 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
   // kModemStateFailed and the capability state will be reset to
   // kCellularStarted. Allow inhibit in that state.
   if (inhibited && !(capability_state_ == CapabilityState::kModemStarted ||
+                     modem_state_ == kModemStateLocked ||
                      modem_state_ == kModemStateFailed)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Modem not started.");
@@ -1668,6 +1669,14 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 void Cellular::ConnectToPending() {
   if (connect_pending_iccid_.empty())
     return;
+  if (modem_state_ == kModemStateLocked) {
+    SLOG(this, 2) << __func__ << ": Modem locked";
+    if (service_ && service_->iccid() == connect_pending_iccid_) {
+      service_->SetFailure(Service::kFailureConnect);
+      connect_pending_iccid_.clear();
+    }
+    return;
+  }
   if (state_ != kStateRegistered) {
     SLOG(this, 2) << __func__ << ": Cellular not registered";
     return;
