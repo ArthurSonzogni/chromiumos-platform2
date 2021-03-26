@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -37,6 +38,18 @@ extern const int kKeyPower;
 // Key state parameters.
 extern const int kFdsMax;
 extern const int kKeyMax;
+
+// All the different screens in the MiniOs Flow.
+enum class ScreenType {
+  kWelcomeScreen = 0,
+  kNetworkDropDownScreen = 1,
+  kExpandedNetworkDropDownScreen = 2,
+  kPasswordScreen = 3,
+  kLanguageDropDownScreen = 4,
+  kStartDownload = 5,
+  kDownloadError = 6,
+  kNetworkError = 7,
+};
 
 // Screens contains the different MiniOs Screens as well as specific components
 // such as dropdowns and footers which are built using the pieces of
@@ -116,10 +129,10 @@ class Screens : public ScreenBase,
   // Getter and setter test functions for `index_` and `current_screen`.
   void SetIndexForTest(int index) { index_ = index; }
   int GetIndexForTest() { return index_; }
-  void SetScreenForTest(int current_screen) {
-    current_screen_ = static_cast<ScreenType>(current_screen);
+  void SetScreenForTest(ScreenType current_screen) {
+    current_screen_ = current_screen;
   }
-  int GetScreenForTest() { return static_cast<int>(current_screen_); }
+  ScreenType GetScreenForTest() { return current_screen_; }
 
   // Sets network list for test.
   void SetNetworkListForTest_(const std::vector<std::string>& networks) {
@@ -262,21 +275,17 @@ class Screens : public ScreenBase,
   std::vector<std::vector<bool>> key_states_;
 
   // The number of menu buttons on each screen corresponding to the enum
-  // numbers, used to keep the index in bounds. The dropdown menu counts are
-  // updated based on the number of items in the dropdown.
-  std::vector<int> menu_count_{3, 3, 0, 3, 0, 0, 2, 2};
-
-  // All the different screens in the MiniOs Flow.
-  enum class ScreenType {
-    kWelcomeScreen = 0,
-    kNetworkDropDownScreen = 1,
-    kExpandedNetworkDropDownScreen = 2,
-    kPasswordScreen = 3,
-    kLanguageDropDownScreen = 4,
-    kStartDownload = 5,
-    kDownloadError = 6,
-    kNetworkError = 7,
-  };
+  // numbers, used to keep the index in bounds. The drop down screen counts are
+  // updated later based on the locale and network lists.
+  std::unordered_map<ScreenType, int> menu_count_{
+      {ScreenType::kWelcomeScreen, 3},
+      {ScreenType::kNetworkDropDownScreen, 3},
+      {ScreenType::kExpandedNetworkDropDownScreen, 0},
+      {ScreenType::kPasswordScreen, 3},
+      {ScreenType::kLanguageDropDownScreen, 0},
+      {ScreenType::kStartDownload, 0},
+      {ScreenType::kDownloadError, 2},
+      {ScreenType::kNetworkError, 2}};
 
   ScreenType current_screen_{ScreenType::kWelcomeScreen};
   // Previous screen only used when changing the language so you know what

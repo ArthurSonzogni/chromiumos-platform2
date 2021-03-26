@@ -393,8 +393,7 @@ void Screens::ReadLangConstants() {
   }
 
   // Add size of language dropdown menu using the number of locales.
-  menu_count_[static_cast<int>(ScreenType::kLanguageDropDownScreen)] =
-      supported_locales_.size();
+  menu_count_[ScreenType::kLanguageDropDownScreen] = supported_locales_.size();
 
   if (supported_locales_.empty()) {
     LOG(WARNING) << "Unable to get supported locales. Will not be able to "
@@ -600,8 +599,7 @@ void Screens::OnKeyPress(int fd_index, int key_changed, bool key_released) {
   if (key_released && key_states_[fd_index][key_changed]) {
     key_states_[fd_index][key_changed] = false;
     bool enter = false;
-    UpdateButtons(menu_count_[static_cast<int>(current_screen_)], key_changed,
-                  &enter);
+    UpdateButtons(menu_count_[current_screen_], key_changed, &enter);
     SwitchScreen(enter);
     return;
   } else if (!key_released) {
@@ -649,7 +647,7 @@ void Screens::SwitchScreen(bool enter) {
       }
       break;
     case ScreenType::kExpandedNetworkDropDownScreen:
-      if (index_ == menu_count_[static_cast<int>(current_screen_)] - 1) {
+      if (index_ == menu_count_[current_screen_] - 1) {
         index_ = 1;
         current_screen_ = ScreenType::kWelcomeScreen;
       } else if (network_list_.size() > index_ && index_ >= 0) {
@@ -796,8 +794,8 @@ void Screens::OnGetNetworks(const std::vector<std::string>& networks,
                << " ErrorMessage=" << error->GetMessage();
     network_list_.clear();
     ChangeToNetworkErrorScreen();
-    menu_count_[static_cast<int>(ScreenType::kExpandedNetworkDropDownScreen)] =
-        0;
+    // Add one extra slot for the back button.
+    menu_count_[ScreenType::kExpandedNetworkDropDownScreen] = 1;
     return;
   }
   network_list_ = networks;
@@ -805,7 +803,7 @@ void Screens::OnGetNetworks(const std::vector<std::string>& networks,
 
   // Change the menu count for the Expanded dropdown menu based on number of
   // networks. Add one extra slot for the back button.
-  menu_count_[static_cast<int>(ScreenType::kExpandedNetworkDropDownScreen)] =
+  menu_count_[ScreenType::kExpandedNetworkDropDownScreen] =
       network_list_.size() + 1;
 
   if (network_list_.empty()) {

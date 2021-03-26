@@ -739,75 +739,79 @@ TEST_F(ScreensTestMocks, ScreenFlowLanguage) {
   // the previous screen.
   // Index 0 on a normal screen is the language dropdown button.
   mock_screens_.SetIndexForTest(0);
-  mock_screens_.SetScreenForTest(0);
+  mock_screens_.SetScreenForTest(ScreenType::kWelcomeScreen);
 
   // Calls language menu.
   EXPECT_CALL(mock_screens_, LanguageMenuOnSelect());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(4, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kLanguageDropDownScreen,
+            mock_screens_.GetScreenForTest());
 
   // Select language from menu, make changes, and return to previous screen.
   EXPECT_CALL(mock_screens_, OnLocaleChange());
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kWelcomeScreen, mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, ScreenFlowForwardWithNetwork) {
   // Test the screen flow forward starting from the welcome screen.
   mock_screens_.SetIndexForTest(1);
-  mock_screens_.SetScreenForTest(0);
+  mock_screens_.SetScreenForTest(ScreenType::kWelcomeScreen);
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(/*enter=*/false);
 
   // Screen has not changed since enter is false.
-  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kWelcomeScreen, mock_screens_.GetScreenForTest());
 
   // Moves to next screen in flow. kNetworkDropDownScreen.
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(1, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
+            mock_screens_.GetScreenForTest());
 
   // Enter goes to kExpandedNetworkDropDownScreen.
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(2, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kExpandedNetworkDropDownScreen,
+            mock_screens_.GetScreenForTest());
 
   // Enter goes to kPasswordScreen.
   mock_screens_.SetIndexForTest(1);
   mock_screens_.SetNetworkListForTest_({"test1", "test2"});
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(3, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kPasswordScreen, mock_screens_.GetScreenForTest());
 
   // Enter finishes the flow with downloading and complete screens.
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(5, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kStartDownload, mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, ScreenBackward) {
   // Test the screen flow backward starting from the password screen.
   mock_screens_.SetIndexForTest(2);
   // Start at password screen.
-  mock_screens_.SetScreenForTest(3);
+  mock_screens_.SetScreenForTest(ScreenType::kPasswordScreen);
 
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  // Moves back to kNetworkDropDownScreen.
-  EXPECT_EQ(1, mock_screens_.GetScreenForTest());
+  // Moves back to kDropDownScreen.
+  EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
+            mock_screens_.GetScreenForTest());
 
   // Enter goes back to kWelcomeScreen.
   mock_screens_.SetIndexForTest(2);
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kWelcomeScreen, mock_screens_.GetScreenForTest());
 
   // Cannot go further back from kWelcomeScreen.
   mock_screens_.SetIndexForTest(2);
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kWelcomeScreen, mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, UpdateEngineError) {
@@ -846,7 +850,7 @@ TEST_F(ScreensTestMocks, IdleError) {
 }
 
 TEST_F(ScreensTestMocks, InvalidNetwork) {
-  mock_screens_.SetScreenForTest(2);
+  mock_screens_.SetScreenForTest(ScreenType::kExpandedNetworkDropDownScreen);
 
   // Set list of available networks to empty.
   mock_screens_.SetNetworkListForTest_({});
@@ -855,40 +859,44 @@ TEST_F(ScreensTestMocks, InvalidNetwork) {
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   // Goes back to the dropdown screen because the network chosen was invalid.
-  EXPECT_EQ(2, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kExpandedNetworkDropDownScreen,
+            mock_screens_.GetScreenForTest());
 
   mock_screens_.SetNetworkListForTest_({"test1"});
   mock_screens_.SetIndexForTest(5);
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   // Goes back to the dropdown screen because the network chosen was invalid.
-  EXPECT_EQ(2, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kExpandedNetworkDropDownScreen,
+            mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, RestartFromDownloadError) {
   // Starting from Download error screen.
-  mock_screens_.SetScreenForTest(6);
+  mock_screens_.SetScreenForTest(ScreenType::kDownloadError);
   mock_screens_.SetIndexForTest(1);
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   // Back to start screen.
-  EXPECT_EQ(0, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kWelcomeScreen, mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, RestartFromNetworkError) {
   // Starting from network error screen.
-  mock_screens_.SetScreenForTest(7);
+  mock_screens_.SetScreenForTest(ScreenType::kNetworkError);
   mock_screens_.SetIndexForTest(1);
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   // Back to dropdown.
-  EXPECT_EQ(1, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
+            mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, GetNetworks) {
   mock_screens_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
   // Menu count is updated.
-  EXPECT_EQ(4, mock_screens_.menu_count_[2]);
+  EXPECT_EQ(
+      4, mock_screens_.menu_count_[ScreenType::kExpandedNetworkDropDownScreen]);
 
   // Network error.
   brillo::ErrorPtr error_ptr =
@@ -896,25 +904,28 @@ TEST_F(ScreensTestMocks, GetNetworks) {
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   // Reset and show error screen.
   mock_screens_.OnGetNetworks({}, error_ptr.get());
-  EXPECT_EQ(0, mock_screens_.menu_count_[2]);
+  // One in the menu count for the back button.
+  EXPECT_EQ(
+      1, mock_screens_.menu_count_[ScreenType::kExpandedNetworkDropDownScreen]);
   EXPECT_EQ(0, mock_screens_.network_list_.size());
-  EXPECT_EQ(7, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kNetworkError, mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, GetNetworksRefresh) {
-  mock_screens_.SetScreenForTest(2);
+  mock_screens_.SetScreenForTest(ScreenType::kExpandedNetworkDropDownScreen);
   EXPECT_TRUE(mock_screens_.network_list_.empty());
   // Menu count is updated amd drop down screen is refreshed.
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
-  EXPECT_EQ(4, mock_screens_.menu_count_[2]);
+  EXPECT_EQ(
+      4, mock_screens_.menu_count_[ScreenType::kExpandedNetworkDropDownScreen]);
 }
 
 TEST_F(ScreensTestMocks, NoNetworksGiven) {
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.OnGetNetworks({}, nullptr);
   // Network error screen.
-  EXPECT_EQ(7, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kNetworkError, mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, OnConnectError) {
@@ -925,7 +936,7 @@ TEST_F(ScreensTestMocks, OnConnectError) {
 
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.OnConnect(mock_screens_.chosen_network_, error_ptr.get());
-  EXPECT_EQ(7, mock_screens_.GetScreenForTest());
+  EXPECT_EQ(ScreenType::kNetworkError, mock_screens_.GetScreenForTest());
   EXPECT_TRUE(mock_screens_.chosen_network_.empty());
 }
 
