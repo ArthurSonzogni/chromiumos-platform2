@@ -96,13 +96,7 @@ bool UserCollectorBase::HandleCrash(
   const auto message = StringPrintf(
       "Received crash notification for %s[%d] sig %d, user %u group %u",
       exec.c_str(), attrs.pid, attrs.signal, attrs.uid, attrs.gid);
-
-  // TODO(crbug.com/1053847) The executable name is sensitive user data inside
-  // the VM, so don't log this message. Eventually we will move the VM logs
-  // inside the cryptohome and this will be unnecessary.
-  if (!VmSupport::Get()) {
-    LogCrash(message, reason);
-  }
+  LogCrash(message, reason);
 
   if (dump) {
     AccounceUserCrash();
