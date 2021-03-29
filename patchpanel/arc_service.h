@@ -28,8 +28,7 @@ constexpr char kArcBridge[] = "arcbr0";
 class ArcService {
  public:
   // All pointers are required and cannot be null, and are owned by the caller.
-  ArcService(ShillClient* shill_client,
-             Datapath* datapath,
+  ArcService(Datapath* datapath,
              AddressManager* addr_mgr,
              GuestMessage::GuestType guest,
              Device::ChangeEventHandler device_changed_handler);
@@ -50,24 +49,18 @@ class ArcService {
   // callback for each, allowing for safe inspection/evaluation.
   void ScanDevices(base::RepeatingCallback<void(const Device&)> callback) const;
 
-  // Callback from ShillClient, invoked whenever the device list changes.
-  // |shill_devices_| will contain all devices currently connected to shill
-  // (e.g. "eth0", "wlan0", etc).
-  void OnDevicesChanged(const std::set<std::string>& added,
-                        const std::set<std::string>& removed);
-
   // Returns true if the service has been started for ARC container or ARCVM.
   bool IsStarted() const;
 
- private:
   // Build and configure the ARC datapath for the physical device |ifname|
   // provided by Shill.
   void AddDevice(const std::string& ifname, ShillClient::Device::Type type);
 
   // Teardown the ARC datapath associated with the physical device |ifname| and
   // stops forwarding services.
-  void RemoveDevice(const std::string& ifname, ShillClient::Device::Type type);
+  void RemoveDevice(const std::string& ifname);
 
+ private:
   // Creates device configurations for all available IPv4 subnets which will be
   // assigned to devices as they are added.
   void AllocateAddressConfigs();
@@ -79,7 +72,6 @@ class ArcService {
   void ReleaseConfig(ShillClient::Device::Type type,
                      std::unique_ptr<Device::Config> config);
 
-  ShillClient* shill_client_;
   Datapath* datapath_;
   AddressManager* addr_mgr_;
   GuestMessage::GuestType guest_;

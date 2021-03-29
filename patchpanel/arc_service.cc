@@ -161,22 +161,17 @@ std::unique_ptr<Device> MakeArcDevice(AddressManager* addr_mgr,
 }
 }  // namespace
 
-ArcService::ArcService(ShillClient* shill_client,
-                       Datapath* datapath,
+ArcService::ArcService(Datapath* datapath,
                        AddressManager* addr_mgr,
                        GuestMessage::GuestType guest,
                        Device::ChangeEventHandler device_changed_handler)
-    : shill_client_(shill_client),
-      datapath_(datapath),
+    : datapath_(datapath),
       addr_mgr_(addr_mgr),
       guest_(guest),
       device_changed_handler_(device_changed_handler),
       id_(kInvalidId) {
   arc_device_ = MakeArcDevice(addr_mgr, guest_);
   AllocateAddressConfigs();
-  shill_client_->RegisterDevicesChangedHandler(
-      base::Bind(&ArcService::OnDevicesChanged, weak_factory_.GetWeakPtr()));
-  shill_client_->ScanDevices();
 }
 
 ArcService::~ArcService() {
@@ -356,8 +351,13 @@ void ArcService::Stop(uint32_t id) {
     LOG(ERROR) << "Failed to disable conntrack helpers";
 
   // Stop Shill <-> ARC mapped devices.
-  for (const auto& [ifname, type] : shill_devices_)
-    RemoveDevice(ifname, type);
+  // Make a copy of |shill_devices_| to avoid invalidating any iterator over
+  // |shill_devices_| while removing device from it and resetting it afterwards.
+  auto shill_devices = shill_devices_;
+  for (const auto& [ifname, _] : shill_devices) {
+    RemoveDevice(ifname);
+  }
+  shill_devices_ = shill_devices;
 
   // Stop the bridge for the management device arc0.
   if (guest_ == GuestMessage::ARC) {
@@ -379,26 +379,9 @@ void ArcService::Stop(uint32_t id) {
   id_ = kInvalidId;
 }
 
-void ArcService::OnDevicesChanged(const std::set<std::string>& added,
-                                  const std::set<std::string>& removed) {
-  for (const std::string& ifname : removed) {
-    RemoveDevice(ifname, shill_devices_[ifname]);
-    shill_devices_.erase(ifname);
-  }
-
-  for (const std::string& ifname : added) {
-    ShillClient::Device shill_device;
-    if (!shill_client_->GetDeviceProperties(ifname, &shill_device)) {
-      LOG(ERROR) << "Could not read shill Device properties for " << ifname;
-      continue;
-    }
-    shill_devices_[ifname] = shill_device.type;
-    AddDevice(ifname, shill_device.type);
-  }
-}
-
 void ArcService::AddDevice(const std::string& ifname,
                            ShillClient::Device::Type type) {
+  shill_devices_[ifname] = type;
   if (!IsStarted())
     return;
 
@@ -467,8 +450,9 @@ void ArcService::AddDevice(const std::string& ifname,
   devices_.emplace(ifname, std::move(device));
 }
 
-void ArcService::RemoveDevice(const std::string& ifname,
-                              ShillClient::Device::Type type) {
+void ArcService::RemoveDevice(const std::string& ifname) {
+  ShillClient::Device::Type type = shill_devices_[ifname];
+  shill_devices_.erase(ifname);
   if (!IsStarted())
     return;
 
@@ -491,6 +475,7 @@ void ArcService::RemoveDevice(const std::string& ifname,
                                device->config().guest_ipv4_addr(),
                                TrafficSource::ARC, false /*route_on_vpn*/);
   datapath_->RemoveBridge(device->host_ifname());
+
   if (IsAdbAllowed(type))
     datapath_->DeleteAdbPortAccessRule(ifname);
 

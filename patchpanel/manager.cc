@@ -257,7 +257,7 @@ void Manager::InitialSetup() {
   GuestMessage::GuestType arc_guest =
       USE_ARCVM ? GuestMessage::ARC_VM : GuestMessage::ARC;
   arc_svc_ = std::make_unique<ArcService>(
-      shill_client_.get(), datapath_.get(), &addr_mgr_, arc_guest,
+      datapath_.get(), &addr_mgr_, arc_guest,
       base::BindRepeating(&Manager::OnDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
@@ -358,6 +358,7 @@ void Manager::OnDevicesChanged(const std::set<std::string>& added,
     datapath_->StopConnectionPinning(ifname);
     datapath_->RemoveRedirectDnsRule(ifname);
     counters_svc_->OnPhysicalDeviceRemoved(ifname);
+    arc_svc_->RemoveDevice(ifname);
   }
 
   for (const std::string& ifname : added) {
@@ -371,6 +372,7 @@ void Manager::OnDevicesChanged(const std::set<std::string>& added,
                                     device.ipconfig.ipv4_dns_addresses.front());
 
     counters_svc_->OnPhysicalDeviceAdded(ifname);
+    arc_svc_->AddDevice(ifname, device.type);
   }
 }
 
