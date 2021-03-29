@@ -311,8 +311,6 @@ TEST(DatapathTest, Start) {
       {Dual,
        "mangle -A OUTPUT -m mark --mark 0x00008000/0x0000c000 -j "
        "apply_vpn_mark -w"},
-      {Dual,
-       "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w"},
       // Asserts for redirect_dns chain creation
       {IPv4, "nat -N redirect_dns -w"},
   };
@@ -828,6 +826,9 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   "--set-mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(
       runner, Dual,
+      "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w");
+  Verify_iptables(
+      runner, Dual,
       "mangle -A apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(runner, Dual,
                   "mangle -A POSTROUTING_arcbr0 -j CONNMARK "
@@ -845,9 +846,7 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   Verify_iptables(runner, Dual,
                   "mangle -D POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
   Verify_iptables(runner, Dual, "mangle -X POSTROUTING_arcbr0 -w");
-  Verify_iptables(
-      runner, Dual,
-      "mangle -D apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
+  Verify_iptables(runner, Dual, "mangle -F apply_vpn_mark -w");
   Verify_iptables(runner, Dual,
                   "mangle -D PREROUTING -i arcbr0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
@@ -878,6 +877,9 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "0x03ed0000/0xffff0000 -w");
   Verify_iptables(
       runner, Dual,
+      "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w");
+  Verify_iptables(
+      runner, Dual,
       "mangle -A apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(runner, Dual,
                   "mangle -A POSTROUTING_tun0 -j CONNMARK "
@@ -893,9 +895,7 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(runner, Dual,
                   "mangle -D POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
   Verify_iptables(runner, Dual, "mangle -X POSTROUTING_tun0 -w");
-  Verify_iptables(
-      runner, Dual,
-      "mangle -D apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
+  Verify_iptables(runner, Dual, "mangle -F apply_vpn_mark -w");
   Verify_iptables(runner, Dual,
                   "mangle -D PREROUTING -i tun0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");

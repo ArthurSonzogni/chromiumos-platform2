@@ -391,11 +391,6 @@ class Datapath {
   // incorrect to use this function in situations where the interface has been
   // recreated and the older value must be recovered (b/183679000).
   int FindIfIndex(const std::string& ifname);
-  // Returns the routing Fwmark value associated with |ifname| based on the
-  // ifindex values currently cached in |if_nametoindex_|. This function must
-  // be used when tearing down iptables rules referencing routing fwmark values
-  // (b/183679000).
-  Fwmark CachedRoutingFwmark(const std::string& ifname);
 
   MinijailedProcessRunner* process_runner_;
   Firewall* firewall_;

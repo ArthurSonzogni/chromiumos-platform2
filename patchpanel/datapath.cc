@@ -212,13 +212,6 @@ void Datapath::Start() {
   if (!ModifyFwmarkVpnJumpRule("OUTPUT", "-A", kFwmarkRouteOnVpn,
                                kFwmarkVpnMask))
     LOG(ERROR) << "Failed to add jump rule to VPN chain in mangle OUTPUT chain";
-  // Any traffic that already has a routing tag applied is accepted.
-  if (!ModifyIptables(
-          IpFamily::Dual, "mangle",
-          {"-A", kApplyVpnMarkChain, "-m", "mark", "!", "--mark",
-           "0x0/" + kFwmarkRoutingMask.ToString(), "-j", "ACCEPT", "-w"}))
-    LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
-                  "connections";
 
   // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS queries
   // of system services. When a VPN is connected, a query routed through a
@@ -995,8 +988,21 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
                       "" /*iif*/, vpn_ifname))
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
   StartConnectionPinning(vpn_ifname);
+
+  // Any traffic that already has a routing tag applied is accepted.
+  if (!ModifyIptables(
+          IpFamily::Dual, "mangle",
+          {"-A", kApplyVpnMarkChain, "-m", "mark", "!", "--mark",
+           "0x0/" + kFwmarkRoutingMask.ToString(), "-j", "ACCEPT", "-w"}))
+    LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
+                  "connections";
+  // Otherwise, any new traffic from a new connection gets marked with the
+  // VPN routing tag.
   if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark))
     LOG(ERROR) << "Failed to set up VPN set-mark rule for " << vpn_ifname;
+
+  // When the VPN client runs on the host, also route arcbr0 to that VPN so
+  // that ARC can access the VPN network through arc0.
   if (vpn_ifname != kArcBridge)
     StartRoutingDevice(vpn_ifname, kArcBridge, 0 /*no inbound DNAT */,
                        TrafficSource::ARC, true /* route_on_vpn */);
@@ -1005,14 +1011,13 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
 }
 
 void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
-  Fwmark routing_mark = CachedRoutingFwmark(vpn_ifname);
-  LOG(INFO) << "Stop VPN routing on " << vpn_ifname
-            << " fwmark=" << routing_mark.ToString();
+  LOG(INFO) << "Stop VPN routing on " << vpn_ifname;
   if (vpn_ifname != kArcBridge)
     StopRoutingDevice(vpn_ifname, kArcBridge, 0 /* no inbound DNAT */,
                       TrafficSource::ARC, false /* route_on_vpn */);
-  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-D", routing_mark))
-    LOG(ERROR) << "Failed to remove VPN set-mark rule for " << vpn_ifname;
+  if (!FlushChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain))
+    LOG(ERROR) << "Could not flush " << kApplyVpnMarkChain;
+
   StopConnectionPinning(vpn_ifname);
   if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "POSTROUTING", "MASQUERADE",
                       "" /*iif*/, vpn_ifname))
@@ -1388,15 +1393,6 @@ int Datapath::FindIfIndex(const std::string& ifname) {
     return it->second;
 
   return 0;
-}
-
-Fwmark Datapath::CachedRoutingFwmark(const std::string& ifname) {
-  const auto it = if_nametoindex_.find(ifname);
-  if (it != if_nametoindex_.end())
-    return Fwmark::FromIfIndex(it->second);
-
-  LOG(WARNING) << "No interface index known for " << ifname;
-  return Fwmark();
 }
 
 std::ostream& operator<<(std::ostream& stream,
