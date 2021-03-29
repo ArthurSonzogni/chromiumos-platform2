@@ -36,8 +36,10 @@ base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   int ret = rootdev(boot_path, sizeof(boot_path),
                     true,    // Do full resolution.
                     false);  // Do not remove partition number.
-  if (ret < 0)
+  if (ret < 0) {
+    LOG(ERROR) << "Cannot get rootdev.";
     return base::FilePath();
+  }
 
   // The general idea is to use the the root device's sysfs entry to
   // get the path to the root disk's sysfs entry.
@@ -54,16 +56,20 @@ base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
 
   // Normalize the path as some functions refuse to follow symlink/`..`.
   base::FilePath norm;
-  if (!base::NormalizeFilePath(stat_path, &norm))
+  if (!base::NormalizeFilePath(stat_path, &norm)) {
+    LOG(ERROR) << "Cannot normalize disk statistics file path.";
     return base::FilePath();
+  }
   return norm;
 }
 
 std::optional<struct timespec> BootStatSystem::GetUpTime() const {
   struct timespec uptime;
   int ret = clock_gettime(CLOCK_BOOTTIME, &uptime);
-  if (ret != 0)
+  if (ret != 0) {
+    PLOG(ERROR) << "Cannot get uptime (CLOCK_BOOTTIME).";
     return std::nullopt;
+  }
   return {uptime};
 }
 
@@ -164,6 +170,9 @@ base::ScopedFD BootStat::OpenEventFile(const std::string& output_name_prefix,
                         O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW | O_CLOEXEC,
                         kFileCreationMode));
 
+  LOG_IF(ERROR, output_fd < 0)
+      << "Cannot open event file " << output_path.value() << ".";
+
   return base::ScopedFD(output_fd);
 }
 
@@ -175,14 +184,20 @@ bool BootStat::LogDiskEvent(const std::string& event_name) const {
     return false;
 
   std::string data;
-  if (!base::ReadFileToString(disk_statistics_file_path, &data))
+  if (!base::ReadFileToString(disk_statistics_file_path, &data)) {
+    LOG(ERROR) << "Cannot read disk statistics "
+               << disk_statistics_file_path.value() << ".";
     return false;
+  }
 
   base::ScopedFD output_fd = OpenEventFile("disk", event_name);
   if (!output_fd.is_valid())
     return false;
 
-  return base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  bool ret =
+      base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  LOG_IF(ERROR, !ret) << "Cannot write disk event.";
+  return ret;
 }
 
 bool BootStat::LogUptimeEvent(const std::string& event_name) const {
@@ -197,7 +212,10 @@ bool BootStat::LogUptimeEvent(const std::string& event_name) const {
   if (!output_fd.is_valid())
     return false;
 
-  return base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  bool ret =
+      base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  LOG_IF(ERROR, !ret) << "Cannot write uptime event.";
+  return ret;
 }
 
 // API functions.
@@ -227,7 +245,10 @@ bool BootStat::LogRtcSync(const char* event_name) {
       tick->rtc_time.tm_mday, tick->rtc_time.tm_hour, tick->rtc_time.tm_min,
       tick->rtc_time.tm_sec);
 
-  return base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  bool ret =
+      base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  LOG_IF(ERROR, !ret) << "Cannot write rtc sync.";
+  return ret;
 }
 
 };  // namespace bootstat
