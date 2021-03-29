@@ -281,6 +281,15 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   //    The offset of the specified plane; -1 on error.
   static off_t GetPlaneOffset(buffer_handle_t buffer, size_t plane);
 
+  // Gets the plane fd of the buffer handle.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //
+  // Returns:
+  //    The plane fd; -1 on error.
+  static int GetPlaneFd(buffer_handle_t buffer, size_t plane);
+
   // Gets the Android HAL pixel format of the buffer handle.
   //
   // Args:
@@ -290,6 +299,15 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   //    The HAL pixel format as defined in Android's system/graphics.h header;
   //    0 on error.
   static uint32_t GetHalPixelFormat(buffer_handle_t buffer);
+
+  // Gets the DRM pixel format of the buffer handle.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //
+  // Returns:
+  //    The DRM pixel format as defined in drm_fourcc.h header; 0 on error.
+  static uint32_t GetDrmPixelFormat(buffer_handle_t buffer);
 };
 
 }  // namespace cros

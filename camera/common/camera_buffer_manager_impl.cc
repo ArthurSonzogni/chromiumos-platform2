@@ -325,12 +325,35 @@ off_t CameraBufferManager::GetPlaneOffset(buffer_handle_t buffer,
   return handle->offsets[plane];
 }
 
+// static
+int CameraBufferManager::GetPlaneFd(buffer_handle_t buffer, size_t plane) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -1;
+  }
+  if (plane >= GetNumPlanes(buffer)) {
+    LOGF(ERROR) << "Invalid plane: " << plane;
+    return -1;
+  }
+  return handle->fds[plane];
+}
+
+// static
 uint32_t CameraBufferManager::GetHalPixelFormat(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return 0;
   }
   return handle->hal_pixel_format;
+}
+
+// static
+uint32_t CameraBufferManager::GetDrmPixelFormat(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+  return handle->drm_format;
 }
 
 CameraBufferManagerImpl::CameraBufferManagerImpl()
