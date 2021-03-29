@@ -20,6 +20,7 @@
 #include <dbus/object_proxy.h>
 
 #include "patchpanel/adb_proxy.h"
+#include "patchpanel/guest_type.h"
 
 namespace patchpanel {
 namespace {
@@ -166,10 +167,8 @@ std::vector<const Device*> CrostiniService::GetDevices() const {
 
 std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
                                                 int subnet_index) {
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
-      is_termina ? AddressManager::Guest::VM_TERMINA
-                 : AddressManager::Guest::VM_PLUGIN,
-      subnet_index);
+  auto guest_type = is_termina ? GuestType::VM_TERMINA : GuestType::VM_PLUGIN;
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest_type, subnet_index);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable.";
     return nullptr;
@@ -186,8 +185,7 @@ std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
   }
   std::unique_ptr<Subnet> lxd_subnet;
   if (is_termina) {
-    lxd_subnet =
-        addr_mgr_->AllocateIPv4Subnet(AddressManager::Guest::CONTAINER);
+    lxd_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::LXD_CONTAINER);
     if (!lxd_subnet) {
       LOG(ERROR) << "lxd subnet already in use or unavailable.";
       return nullptr;
@@ -217,7 +215,7 @@ std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr), std::move(lxd_subnet));
 
-  return std::make_unique<Device>(tap, tap, "", std::move(config));
+  return std::make_unique<Device>(guest_type, tap, tap, "", std::move(config));
 }
 
 void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {

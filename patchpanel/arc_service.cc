@@ -20,6 +20,7 @@
 #include <chromeos/constants/vm_tools.h>
 
 #include "patchpanel/adb_proxy.h"
+#include "patchpanel/guest_type.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/manager.h"
 #include "patchpanel/minijailed_process_runner.h"
@@ -130,9 +131,9 @@ void OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
 }
 
 // Returns the ARC management device used for VPN forwarding, ADB-over-TCP.
-std::unique_ptr<Device> MakeArcDevice(AddressManager* addr_mgr,
-                                      GuestMessage::GuestType guest) {
-  auto ipv4_subnet = addr_mgr->AllocateIPv4Subnet(AddressManager::Guest::ARC);
+std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
+                                       GuestMessage::GuestType guest) {
+  auto ipv4_subnet = addr_mgr->AllocateIPv4Subnet(GuestType::ARC0);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable";
     return nullptr;
@@ -156,8 +157,8 @@ std::unique_ptr<Device> MakeArcDevice(AddressManager* addr_mgr,
       addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet),
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
 
-  return std::make_unique<Device>(kArcIfname, kArcBridge, kArcIfname,
-                                  std::move(config));
+  return std::make_unique<Device>(GuestType::ARC0, kArcIfname, kArcBridge,
+                                  kArcIfname, std::move(config));
 }
 }  // namespace
 
@@ -170,7 +171,7 @@ ArcService::ArcService(Datapath* datapath,
       guest_(guest),
       device_changed_handler_(device_changed_handler),
       id_(kInvalidId) {
-  arc_device_ = MakeArcDevice(addr_mgr, guest_);
+  arc_device_ = MakeArc0Device(addr_mgr, guest_);
   AllocateAddressConfigs();
 }
 
@@ -194,8 +195,7 @@ void ArcService::AllocateAddressConfigs() {
         ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
         ShillClient::Device::Type::kWifi,
         ShillClient::Device::Type::kCellular}) {
-    auto ipv4_subnet =
-        addr_mgr_->AllocateIPv4Subnet(AddressManager::Guest::ARC_NET);
+    auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::ARC_NET);
     if (!ipv4_subnet) {
       LOG(ERROR) << "Subnet already in use or unavailable";
       continue;
@@ -399,7 +399,8 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
   }
 
-  auto device = std::make_unique<Device>(ifname, ArcBridgeName(ifname), ifname,
+  auto device = std::make_unique<Device>(GuestType::ARC_NET, ifname,
+                                         ArcBridgeName(ifname), ifname,
                                          std::move(config));
   LOG(INFO) << "Starting device " << *device;
 

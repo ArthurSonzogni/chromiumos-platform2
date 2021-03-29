@@ -61,6 +61,7 @@ util_sources = [
   "dns/dns_response.cc",
   "dns/dns_util.cc",
   "dns/io_buffer.cc",
+  "guest_type.cc",
   "mac_address_generator.cc",
   "net_util.cc",
   "socket.cc",

@@ -18,6 +18,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.pb.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
@@ -70,8 +71,6 @@ class Device {
     void set_tap_ifname(const std::string& tap);
     const std::string& tap_ifname() const;
 
-    friend std::ostream& operator<<(std::ostream& stream, const Device& device);
-
    private:
     // A random MAC address assigned to the device.
     MacAddress mac_addr_;
@@ -91,12 +90,14 @@ class Device {
     std::string tap_;
   };
 
-  // |phys_ifname| corresponds either to the physical interface provided by
-  // shill or a placeholder for a guest-specific control interface (e.g. arc0).
-  // |host_ifname| identifies the name of the virtual (bridge) interface.
-  // |guest_ifname|, if specified, identifies the name of the interface used
-  // inside the guest.
-  Device(const std::string& phys_ifname,
+  // |type| the type of guest associated with this virtual device created by
+  // patchpanel. |phys_ifname| corresponds either to the physical interface
+  // provided by shill or a placeholder for a guest-specific control interface
+  // (e.g. arc0). |host_ifname| identifies the name of the virtual (bridge)
+  // interface. |guest_ifname|, if specified, identifies the name of the
+  // interface used inside the guest.
+  Device(GuestType type,
+         const std::string& phys_ifname,
          const std::string& host_ifname,
          const std::string& guest_ifname,
          std::unique_ptr<Config> config);
@@ -105,15 +106,15 @@ class Device {
 
   ~Device() = default;
 
+  GuestType type() const { return type_; }
   const std::string& phys_ifname() const { return phys_ifname_; }
   const std::string& host_ifname() const { return host_ifname_; }
   const std::string& guest_ifname() const { return guest_ifname_; }
   Config& config() const;
   std::unique_ptr<Config> release_config();
 
-  friend std::ostream& operator<<(std::ostream& stream, const Device& device);
-
  private:
+  GuestType type_;
   std::string phys_ifname_;
   std::string host_ifname_;
   std::string guest_ifname_;
@@ -123,6 +124,8 @@ class Device {
 
   base::WeakPtrFactory<Device> weak_factory_{this};
 };
+
+std::ostream& operator<<(std::ostream& stream, const Device& device);
 
 }  // namespace patchpanel
 

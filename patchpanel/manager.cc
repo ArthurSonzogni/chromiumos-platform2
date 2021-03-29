@@ -28,6 +28,7 @@
 #include <brillo/key_value_store.h>
 #include <brillo/minijail/minijail.h>
 
+#include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.pb.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/net_util.h"
@@ -1063,7 +1064,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   auto response = std::make_unique<patchpanel::ConnectNamespaceResponse>();
 
   std::unique_ptr<Subnet> subnet =
-      addr_mgr_.AllocateIPv4Subnet(AddressManager::Guest::MINIJAIL_NETNS);
+      addr_mgr_.AllocateIPv4Subnet(GuestType::MINIJAIL_NETNS);
   if (!subnet) {
     LOG(ERROR) << "Exhausted IPv4 subnet space";
     return response;

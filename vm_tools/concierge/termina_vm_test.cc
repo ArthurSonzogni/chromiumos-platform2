@@ -36,6 +36,7 @@
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 #include <chromeos/patchpanel/address_manager.h>
+#include <chromeos/patchpanel/guest_type.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <chromeos/patchpanel/subnet.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
@@ -392,7 +393,7 @@ void TerminaVmTest::SetUp() {
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   std::unique_ptr<patchpanel::Subnet> subnet =
       network_address_manager_->AllocateIPv4Subnet(
-          patchpanel::AddressManager::Guest::VM_TERMINA);
+          patchpanel::GuestType::VM_TERMINA);
 
   ASSERT_TRUE(subnet);
 

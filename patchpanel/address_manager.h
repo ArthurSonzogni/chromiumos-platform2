@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 
+#include "patchpanel/guest_type.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/subnet_pool.h"
@@ -22,21 +23,6 @@ namespace patchpanel {
 // Responsible for address provisioning for guest networks.
 class BRILLO_EXPORT AddressManager {
  public:
-  enum class Guest {
-    // ARC++ or ARCVM management interface.
-    ARC,
-    // ARC++ or ARCVM virtual networks connected to shill Devices.
-    ARC_NET,
-    /// Crostini VM root namespace.
-    VM_TERMINA,
-    // Crostini plugin VMs.
-    VM_PLUGIN,
-    // Crostini VM user containers.
-    CONTAINER,
-    // Other network namespaces hosting minijailed host processes.
-    MINIJAIL_NETNS,
-  };
-
   AddressManager();
   AddressManager(const AddressManager&) = delete;
   AddressManager& operator=(const AddressManager&) = delete;
@@ -55,12 +41,12 @@ class BRILLO_EXPORT AddressManager {
   // available for allocation.
   // |index| is used to acquire a particular subnet from the pool, if supported
   // for |guest|, it is 1-based, so 0 indicates no preference.
-  std::unique_ptr<Subnet> AllocateIPv4Subnet(Guest guest,
+  std::unique_ptr<Subnet> AllocateIPv4Subnet(GuestType guest_type,
                                              uint32_t index = kAnySubnetIndex);
 
  private:
   MacAddressGenerator mac_addrs_;
-  std::map<Guest, std::unique_ptr<SubnetPool>> pools_;
+  std::map<GuestType, std::unique_ptr<SubnetPool>> pools_;
 
   base::WeakPtrFactory<AddressManager> weak_ptr_factory_{this};
 };
