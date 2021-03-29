@@ -32,21 +32,10 @@ Chrome OS DLC is an extension of the Chrome OS package (ebuild).
 
 The workflow of a DLC developer involves following few tasks:
 
-* [Enable DLC for your board]
 * [Create a DLC]
 * [Write platform code to request DLC]
 * [Install a DLC for dev/test]
 * [Write tests for a DLC]
-
-## Enable DLC for your board
-
-To enable DLCs for your board, you have to add the `USE` flags `dlc` and
-`dlc_test` to the overlay of the board you are building for.
-If DLC was not previously enabled for your board, you will have to build and
-flash a new image to your DUT before deploying your first DLC, since the
-`dlcservice` user permissions are not yet in devices without DLC support.
-
-See example: [overlay-eve make.defaults]
 
 ## Create a DLC
 
