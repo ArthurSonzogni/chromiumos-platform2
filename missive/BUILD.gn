@@ -56,12 +56,18 @@ static_library("libmessaging_layer") {
   deps = [
     ":missive_dbus_adaptors",
     ":missive_dbus_proxies",
-    "//missive/encryption",
+    "//missive/dbus:chrome_client",
+    "//missive/encryption:encryption_module",
+    "//missive/encryption:verification",
     "//missive/proto:interface_proto",
     "//missive/scheduler",
     "//missive/scheduler:enqueue_job",
-    "//missive/storage",
+    "//missive/scheduler:upload_job",
+    "//missive/storage:storage_configuration",
     "//missive/storage:storage_module",
+    "//missive/storage:storage_module_interface",
+    "//missive/storage:storage_uploader_interface",
+    "//missive/util:status",
   ]
 }
 

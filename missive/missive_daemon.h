@@ -12,9 +12,13 @@
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "missive/dbus/chrome_client.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_module_interface.h"
+#include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/status.h"
+#include "missive/util/statusor.h"
 
 #include "dbus_adaptors/org.chromium.Missived.h"
 
@@ -30,6 +34,14 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
   virtual ~MissiveDaemon();
 
  private:
+  void OnStorageModuleConfigured(
+      StatusOr<scoped_refptr<StorageModuleInterface>> storage_module_result);
+
+  void AsyncStartUpload(
+      Priority priority,
+      bool need_encryption_key,
+      UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
+
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
@@ -61,6 +73,9 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
+  std::atomic<bool> daemon_is_ready_{false};
+
+  scoped_refptr<ChromeClient> chrome_client_;
   scoped_refptr<StorageModuleInterface> storage_module_;
   Scheduler scheduler_;
 
