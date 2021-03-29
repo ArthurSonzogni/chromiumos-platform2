@@ -21,6 +21,7 @@
 
 #include <vboot/crossystem.h>
 
+#include "secanomalyd/metrics.h"
 #include "secanomalyd/mount_entry.h"
 
 namespace {
@@ -105,10 +106,18 @@ void Daemon::DoRwMountCheck() {
           // |src| or |dest|.
           continue;
         }
-        // If we haven't seen the mount, save it...
+        // If we haven't seen the mount, save it.
         wx_mounts_[e.dest()] = e;
         VLOG(1) << "Found W+X mount at " << e.dest();
-        // ... and report it, when required to.
+
+        // Report metrics on it, if not running in dev mode.
+        if (ShouldReport(dev_)) {
+          if (!SendSecurityAnomalyToUMA("Mount.InitNS.WX")) {
+            LOG(WARNING) << "Could not upload metrics";
+          }
+        }
+
+        // And report the actual anomalous mount, when required to.
         if (generate_reports_) {
           ReportMount(e, dev_);
         }

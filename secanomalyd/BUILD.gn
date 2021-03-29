@@ -15,6 +15,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmetrics",
     "vboot_host",
   ]
 }
@@ -22,6 +23,7 @@ pkg_config("target_defaults") {
 static_library("libsecanomaly") {
   sources = [
     "daemon.cc",
+    "metrics.cc",
     "mount_entry.cc",
   ]
   configs += [ ":target_defaults" ]
