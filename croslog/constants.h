@@ -46,6 +46,9 @@ static constexpr std::array kLogsToRotate{
     std::string_view("/var/log/upstart.log"),
     std::string_view("/var/log/typecd.log"),
     std::string_view("/var/log/bluetooth.log"),
+    // Log file for testing. On production, this file should not exist and
+    // should just be ignored.
+    std::string_view("/var/log/temporary_log_file_for_testing.log"),
     // clang-format on
 };
 
