@@ -959,6 +959,20 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
     return;
   }
 
+  std::string subchain = "POSTROUTING_" + ext_ifname;
+  // This can fail if patchpanel did not stopped correctly or failed to cleanup
+  // the chain when |ext_ifname| was previously deleted.
+  if (!AddChain(IpFamily::Dual, "mangle", subchain))
+    LOG(ERROR) << "Failed to create mangle chain " << subchain;
+  // Make sure the chain is empty if patchpanel did not cleaned correctly that
+  // chain before.
+  if (!FlushChain(IpFamily::Dual, "mangle", subchain))
+    LOG(ERROR) << "Could not flush " << subchain;
+  if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "POSTROUTING", subchain,
+                      "" /*iif*/, ext_ifname))
+    LOG(ERROR) << "Could not add jump rule from mangle POSTROUTING to "
+               << subchain;
+
   Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
   LOG(INFO) << "Start connection pinning on " << ext_ifname
             << " fwmark=" << routing_mark.ToString();
@@ -970,11 +984,11 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
            "-w"}))
     LOG(ERROR) << "Could not set fwmark routing filter rule for " << ext_ifname;
   // Set in CONNMARK the routing tag associated with |ext_ifname|.
-  if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-A", ext_ifname,
-                                    routing_mark))
+  if (!ModifyConnmarkSet(IpFamily::Dual, subchain, "-A", routing_mark,
+                         kFwmarkRoutingMask))
     LOG(ERROR) << "Could not start connection pinning on " << ext_ifname;
   // Save in CONNMARK the source tag for egress traffic of this connection.
-  if (!ModifyConnmarkSave(IpFamily::Dual, "POSTROUTING", "-A", ext_ifname,
+  if (!ModifyConnmarkSave(IpFamily::Dual, subchain, "-A",
                           kFwmarkAllSourcesMask))
     LOG(ERROR) << "Failed to add POSTROUTING CONNMARK rule for saving fwmark "
                   "source tag on "
@@ -989,6 +1003,19 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
 }
 
 void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
+  std::string subchain = "POSTROUTING_" + ext_ifname;
+  ModifyJumpRule(IpFamily::Dual, "mangle", "-D", "POSTROUTING", subchain,
+                 "" /*iif*/, ext_ifname);
+  FlushChain(IpFamily::Dual, "mangle", subchain);
+  RemoveChain(IpFamily::Dual, "mangle", subchain);
+  if (!ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING", "-D", ext_ifname,
+                             kFwmarkAllSourcesMask))
+    LOG(ERROR) << "Could not remove fwmark source tagging rule for return "
+                  "traffic received on "
+               << ext_ifname;
+
+  // TODO(b/183679000) Reorganize these rules such that they can be removed
+  // with just the interface name.
   Fwmark routing_mark = CachedRoutingFwmark(ext_ifname);
   LOG(INFO) << "Stop connection pinning on " << ext_ifname
             << " fwmark=" << routing_mark.ToString();
@@ -999,19 +1026,6 @@ void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
            routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(),
            "-w"}))
     LOG(ERROR) << "Could not remove fwmark routing filter rule for "
-               << ext_ifname;
-  if (!ModifyConnmarkSetPostrouting(IpFamily::Dual, "-D", ext_ifname,
-                                    routing_mark))
-    LOG(ERROR) << "Could not stop connection pinning on " << ext_ifname;
-  if (!ModifyConnmarkSave(IpFamily::Dual, "POSTROUTING", "-D", ext_ifname,
-                          kFwmarkAllSourcesMask))
-    LOG(ERROR) << "Could not remove POSTROUTING CONNMARK rule for saving "
-                  "fwmark source tag on "
-               << ext_ifname;
-  if (!ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING", "-D", ext_ifname,
-                             kFwmarkAllSourcesMask))
-    LOG(ERROR) << "Could not remove fwmark source tagging rule for return "
-                  "traffic received on "
                << ext_ifname;
 }
 
@@ -1056,37 +1070,14 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
     LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
 }
 
-bool Datapath::ModifyConnmarkSetPostrouting(IpFamily family,
-                                            const std::string& op,
-                                            const std::string& oif,
-                                            Fwmark routing_mark) {
-  return ModifyConnmarkSet(family, "POSTROUTING", op, oif, routing_mark,
-                           kFwmarkRoutingMask);
-}
-
 bool Datapath::ModifyConnmarkSet(IpFamily family,
                                  const std::string& chain,
                                  const std::string& op,
-                                 const std::string& oif,
                                  Fwmark mark,
                                  Fwmark mask) {
-  if (chain != kApplyVpnMarkChain && (chain != "POSTROUTING" || oif.empty())) {
-    LOG(ERROR) << "Invalid arguments chain=" << chain << " oif=" << oif;
-    return false;
-  }
-
-  std::vector<std::string> args = {op, chain};
-  if (!oif.empty()) {
-    args.push_back("-o");
-    args.push_back(oif);
-  }
-  args.push_back("-j");
-  args.push_back("CONNMARK");
-  args.push_back("--set-mark");
-  args.push_back(mark.ToString() + "/" + mask.ToString());
-  args.push_back("-w");
-
-  return ModifyIptables(family, "mangle", args);
+  return ModifyIptables(family, "mangle",
+                        {op, chain, "-j", "CONNMARK", "--set-mark",
+                         mark.ToString() + "/" + mask.ToString(), "-w"});
 }
 
 bool Datapath::ModifyConnmarkRestore(IpFamily family,
@@ -1107,15 +1098,10 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
 bool Datapath::ModifyConnmarkSave(IpFamily family,
                                   const std::string& chain,
                                   const std::string& op,
-                                  const std::string& oif,
                                   Fwmark mask) {
-  std::vector<std::string> args = {op, chain};
-  if (!oif.empty()) {
-    args.push_back("-o");
-    args.push_back(oif);
-  }
-  args.insert(args.end(), {"-j", "CONNMARK", "--save-mark", "--mask",
-                           mask.ToString(), "-w"});
+  std::vector<std::string> args = {
+      op,       chain,           "-j", "CONNMARK", "--save-mark",
+      "--mask", mask.ToString(), "-w"};
   return ModifyIptables(family, "mangle", args);
 }
 

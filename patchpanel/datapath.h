@@ -335,14 +335,9 @@ class Datapath {
                                  const std::string& dns_ipv4_addr);
   bool ModifyRedirectDnsJumpRule(const std::string& op);
 
-  bool ModifyConnmarkSetPostrouting(IpFamily family,
-                                    const std::string& op,
-                                    const std::string& oif,
-                                    Fwmark routing_mark);
   bool ModifyConnmarkSet(IpFamily family,
                          const std::string& chain,
                          const std::string& op,
-                         const std::string& oif,
                          Fwmark mark,
                          Fwmark mask);
   bool ModifyConnmarkRestore(IpFamily family,
@@ -353,7 +348,6 @@ class Datapath {
   bool ModifyConnmarkSave(IpFamily family,
                           const std::string& chain,
                           const std::string& op,
-                          const std::string& oif,
                           Fwmark mask);
   bool ModifyFwmarkRoutingTag(const std::string& chain,
                               const std::string& op,
