@@ -357,10 +357,9 @@ class Datapath {
                           Fwmark mask);
   bool ModifyFwmarkRoutingTag(const std::string& chain,
                               const std::string& op,
-                              Fwmark routing_mark,
-                              const std::string& int_ifname);
-  bool ModifyFwmarkSourceTag(const std::string& op,
-                             const std::string& iif,
+                              Fwmark routing_mark);
+  bool ModifyFwmarkSourceTag(const std::string& chain,
+                             const std::string& op,
                              TrafficSource source);
   bool ModifyFwmarkDefaultLocalSourceTag(const std::string& op,
                                          TrafficSource source);
@@ -390,7 +389,6 @@ class Datapath {
                       bool log_failures = true);
   bool ModifyFwmarkVpnJumpRule(const std::string& chain,
                                const std::string& op,
-                               const std::string& iif,
                                Fwmark mark,
                                Fwmark mask);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);

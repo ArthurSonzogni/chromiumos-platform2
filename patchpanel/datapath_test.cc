@@ -147,7 +147,8 @@ void Verify_ip6(MockProcessRunner& runner, const std::string& command) {
 
 void Verify_iptables(MockProcessRunner& runner,
                      IpFamily family,
-                     const std::string& command) {
+                     const std::string& command,
+                     int call_count = 1) {
   auto args =
       base::SplitString(command, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
                         base::SplitResult::SPLIT_WANT_NONEMPTY);
@@ -155,10 +156,12 @@ void Verify_iptables(MockProcessRunner& runner,
   args.erase(args.begin());
   if (family & IPv4)
     EXPECT_CALL(runner,
-                iptables(StrEq(table), ElementsAreArray(args), _, nullptr));
+                iptables(StrEq(table), ElementsAreArray(args), _, nullptr))
+        .Times(call_count);
   if (family & IPv6)
     EXPECT_CALL(runner,
-                ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr));
+                ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr))
+        .Times(call_count);
 }
 
 void Verify_sysctl_w(MockProcessRunner& runner,
@@ -600,14 +603,18 @@ TEST(DatapathTest, StartRoutingNamespace) {
   Verify_iptables(runner, IPv4, "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
   Verify_iptables(runner, IPv4,
                   "mangle -A PREROUTING -i arc_ns0 -j MARK --set-mark 1/1 -w");
+  Verify_iptables(runner, Dual, "mangle -N PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i arc_ns0 -j MARK --set-mark "
+                  "mangle -A PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner, Dual,
+                  "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
                   "0x00000200/0x00003f00 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i arc_ns0 -j CONNMARK "
+                  "mangle -A PREROUTING_arc_ns0 -j CONNMARK "
                   "--restore-mark --mask 0xffff0000 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i arc_ns0 -j apply_vpn_mark -w");
+                  "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -635,13 +642,9 @@ TEST(DatapathTest, StopRoutingNamespace) {
   Verify_iptables(runner, IPv4,
                   "mangle -D PREROUTING -i arc_ns0 -j MARK --set-mark 1/1 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i arc_ns0 -j MARK --set-mark "
-                  "0x00000200/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i arc_ns0 -j CONNMARK "
-                  "--restore-mark --mask 0xffff0000 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i arc_ns0 -j apply_vpn_mark -w");
+                  "mangle -D PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner, Dual, "mangle -X PREROUTING_arc_ns0 -w");
   Verify_ip_netns_delete(runner, "netns_foo");
   Verify_ip(runner, "link delete arc_ns0");
 
@@ -675,11 +678,15 @@ TEST(DatapathTest, StartRoutingDevice_Arc) {
                   "filter -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
   Verify_iptables(runner, IPv4,
                   "filter -A FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
+  Verify_iptables(runner, Dual, "mangle -N PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i arc_eth0 -j MARK --set-mark "
+                  "mangle -A PREROUTING -i arc_eth0 -j PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner, Dual,
+                  "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i arc_eth0 -j MARK --set-mark "
+                  "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x03ea0000/0xffff0000 -w");
 
   Datapath datapath(&runner, &firewall);
@@ -693,14 +700,18 @@ TEST(DatapathTest, StartRoutingDevice_CrosVM) {
   MockFirewall firewall;
   Verify_iptables(runner, IPv4, "filter -A FORWARD -o vmtap0 -j ACCEPT -w");
   Verify_iptables(runner, IPv4, "filter -A FORWARD -i vmtap0 -j ACCEPT -w");
+  Verify_iptables(runner, Dual, "mangle -N PREROUTING_vmtap0 -w");
+  Verify_iptables(runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i vmtap0 -j MARK --set-mark "
+                  "mangle -A PREROUTING -i vmtap0 -j PREROUTING_vmtap0 -w");
+  Verify_iptables(runner, Dual,
+                  "mangle -A PREROUTING_vmtap0 -j MARK --set-mark "
                   "0x00002100/0x00003f00 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i vmtap0 -j CONNMARK "
-                  "--restore-mark --mask 0xffff0000 -w");
+                  "mangle -A PREROUTING_vmtap0 -j CONNMARK --restore-mark "
+                  "--mask 0xffff0000 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i vmtap0 -j apply_vpn_mark -w");
+                  "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
   Datapath datapath(&runner, &firewall);
   datapath.StartRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
@@ -724,14 +735,11 @@ TEST(DatapathTest, StopRoutingDevice_Arc) {
   Verify_iptables(runner, IPv4,
                   "filter -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
   Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i arc_eth0 -j MARK --set-mark "
-                  "0x00002000/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i arc_eth0 -j MARK --set-mark "
-                  "0x03ea0000/0xffff0000 -w");
+                  "mangle -D PREROUTING -i arc_eth0 -j PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner, Dual, "mangle -X PREROUTING_arc_eth0 -w");
 
   Datapath datapath(&runner, &firewall);
-  datapath.SetIfnameIndex("eth0", 2);
   datapath.StopRoutingDevice("eth0", "arc_eth0", Ipv4Addr(1, 2, 3, 4),
                              TrafficSource::ARC, true);
 }
@@ -742,13 +750,9 @@ TEST(DatapathTest, StopRoutingDevice_CrosVM) {
   Verify_iptables(runner, IPv4, "filter -D FORWARD -o vmtap0 -j ACCEPT -w");
   Verify_iptables(runner, IPv4, "filter -D FORWARD -i vmtap0 -j ACCEPT -w");
   Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i vmtap0 -j MARK --set-mark "
-                  "0x00002100/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i vmtap0 -j CONNMARK "
-                  "--restore-mark --mask 0xffff0000 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i vmtap0 -j apply_vpn_mark -w");
+                  "mangle -D PREROUTING -i vmtap0 -j PREROUTING_vmtap0 -w");
+  Verify_iptables(runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
+  Verify_iptables(runner, Dual, "mangle -X PREROUTING_vmtap0 -w");
 
   Datapath datapath(&runner, &firewall);
   datapath.StopRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
@@ -941,11 +945,16 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "filter -A FORWARD -i tun0 -o arcbr0 -j ACCEPT -w");
   Verify_iptables(runner, IPv4,
                   "filter -A FORWARD -i arcbr0 -o tun0 -j ACCEPT -w");
+  Verify_iptables(runner, Dual, "mangle -N PREROUTING_arcbr0 -w");
+  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arcbr0 -w",
+                  2 /* Start and Stop */);
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i arcbr0 -j MARK --set-mark "
+                  "mangle -A PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
+  Verify_iptables(runner, Dual,
+                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A PREROUTING -i arcbr0 -j MARK --set-mark "
+                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
   // Stop tun0 <-> arcbr0 routing
   Verify_iptables(runner, IPv4,
@@ -953,11 +962,8 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(runner, IPv4,
                   "filter -D FORWARD -i arcbr0 -o tun0 -j ACCEPT -w");
   Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
-                  "0x00002000/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
-                  "0x03ed0000/0xffff0000 -w");
+                  "mangle -D PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
+  Verify_iptables(runner, Dual, "mangle -X PREROUTING_arcbr0 -w");
 
   Datapath datapath(&runner, &firewall);
   datapath.SetIfnameIndex("tun0", 5);

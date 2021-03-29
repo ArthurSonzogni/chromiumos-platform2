@@ -217,7 +217,7 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to set up " << kApplyVpnMarkChain << " mangle chain";
   // All local outgoing traffic eligible to VPN routing should traverse the VPN
   // marking chain.
-  if (!ModifyFwmarkVpnJumpRule("OUTPUT", "-A", "" /*iif*/, kFwmarkRouteOnVpn,
+  if (!ModifyFwmarkVpnJumpRule("OUTPUT", "-A", kFwmarkRouteOnVpn,
                                kFwmarkVpnMask))
     LOG(ERROR) << "Failed to add jump rule to VPN chain in mangle OUTPUT chain";
   // Any traffic that already has a routing tag applied is accepted.
@@ -728,40 +728,47 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "<-"
                << int_ifname;
 
-  if (!ModifyFwmarkSourceTag("-A", int_ifname, source))
-    LOG(ERROR) << "Failed to add PREROUTING fwmark tagging rule for source "
-               << source << " for " << int_ifname;
+  std::string subchain = "PREROUTING_" + int_ifname;
+  // This can fail if patchpanel did not stopped correctly or failed to cleanup
+  // the chain when |int_ifname| was previously deleted.
+  if (!AddChain(IpFamily::Dual, "mangle", subchain))
+    LOG(ERROR) << "Failed to create mangle chain " << subchain;
+  // Make sure the chain is empty if patchpanel did not cleaned correctly that
+  // chain before.
+  if (!FlushChain(IpFamily::Dual, "mangle", subchain))
+    LOG(ERROR) << "Could not flush " << subchain;
+  if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "PREROUTING", subchain,
+                      int_ifname, "" /*oif*/))
+    LOG(ERROR) << "Could not add jump rule from mangle PREROUTING to "
+               << subchain;
+  if (!ModifyFwmarkSourceTag(subchain, "-A", source))
+    LOG(ERROR) << "Failed to add fwmark tagging rule for source " << source
+               << " in " << subchain;
 
   if (!ext_ifname.empty()) {
     // If |ext_ifname| is not null, mark egress traffic with the
     // fwmark routing tag corresponding to |ext_ifname|.
     int ifindex = FindIfIndex(ext_ifname);
-    if (ifindex != 0) {
-      Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
-      if (!ModifyFwmarkRoutingTag("PREROUTING", "-A", routing_mark, int_ifname))
-        LOG(ERROR) << "Failed to add PREROUTING fwmark routing tag for "
-                   << ext_ifname << "<-" << int_ifname;
-    } else {
-      // Do not abort: if the PREROUTING tagging mark cannot be
-      // set then |int_ifname| will instead be routed to the default logical
-      // network without connection pinning, aka legacy routing.
+    if (ifindex == 0) {
       LOG(ERROR) << "Failed to retrieve interface index of " << ext_ifname;
+      return;
     }
+    if (!ModifyFwmarkRoutingTag(subchain, "-A", Fwmark::FromIfIndex(ifindex)))
+      LOG(ERROR) << "Failed to add fwmark routing tag for " << ext_ifname
+                 << "<-" << int_ifname << " in " << subchain;
   } else {
     // Otherwise if ext_ifname is null, set up a CONNMARK restore rule in
     // PREROUTING to apply any fwmark routing tag saved for the current
     // connection, and rely on implicit routing to the default logical network
     // otherwise.
-    if (!ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING", "-A", int_ifname,
+    if (!ModifyConnmarkRestore(IpFamily::Dual, subchain, "-A", "" /*iif*/,
                                kFwmarkRoutingMask))
-      LOG(ERROR) << "Failed to add PREROUTING CONNMARK restore rule for "
-                 << int_ifname;
+      LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
 
     // Forwarded traffic from downstream virtual devices routed to the system
     // default network is eligible to be routed through a VPN if |route_on_vpn|
     // is true.
-    if (route_on_vpn &&
-        !ModifyFwmarkVpnJumpRule("PREROUTING", "-A", int_ifname, {}, {}))
+    if (route_on_vpn && !ModifyFwmarkVpnJumpRule(subchain, "-A", {}, {}))
       LOG(ERROR) << "Failed to add jump rule to VPN chain for " << int_ifname;
   }
 }
@@ -775,16 +782,12 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
     RemoveInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr));
   StopIpForwarding(IpFamily::IPv4, ext_ifname, int_ifname);
   StopIpForwarding(IpFamily::IPv4, int_ifname, ext_ifname);
-  ModifyFwmarkSourceTag("-D", int_ifname, source);
-  if (!ext_ifname.empty()) {
-    Fwmark routing_mark = CachedRoutingFwmark(ext_ifname);
-    ModifyFwmarkRoutingTag("PREROUTING", "-D", routing_mark, int_ifname);
-  } else {
-    ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING", "-D", int_ifname,
-                          kFwmarkRoutingMask);
-    if (route_on_vpn)
-      ModifyFwmarkVpnJumpRule("PREROUTING", "-D", int_ifname, {}, {});
-  }
+
+  std::string subchain = "PREROUTING_" + int_ifname;
+  ModifyJumpRule(IpFamily::Dual, "mangle", "-D", "PREROUTING", subchain,
+                 int_ifname, "" /*oif*/);
+  FlushChain(IpFamily::Dual, "mangle", subchain);
+  RemoveChain(IpFamily::Dual, "mangle", subchain);
 }
 
 bool Datapath::AddInboundIPv4DNAT(const std::string& ifname,
@@ -825,6 +828,7 @@ void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
               "-j", "ACCEPT", "-w"});
 }
 
+// TODO(b/161060333) Migrate this rule to the PREROUTING_<iface> subchains
 bool Datapath::AddOutboundIPv4SNATMark(const std::string& ifname) {
   return process_runner_->iptables(
              "mangle", {"-A", "PREROUTING", "-i", ifname, "-j", "MARK",
@@ -1026,7 +1030,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
                       "" /*iif*/, vpn_ifname))
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
   StartConnectionPinning(vpn_ifname);
-  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark, ""))
+  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark))
     LOG(ERROR) << "Failed to set up VPN set-mark rule for " << vpn_ifname;
   if (vpn_ifname != kArcBridge)
     StartRoutingDevice(vpn_ifname, kArcBridge, 0 /*no inbound DNAT */,
@@ -1042,7 +1046,7 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   if (vpn_ifname != kArcBridge)
     StopRoutingDevice(vpn_ifname, kArcBridge, 0 /* no inbound DNAT */,
                       TrafficSource::ARC, false /* route_on_vpn */);
-  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-D", routing_mark, ""))
+  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-D", routing_mark))
     LOG(ERROR) << "Failed to remove VPN set-mark rule for " << vpn_ifname;
   StopConnectionPinning(vpn_ifname);
   if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "POSTROUTING", "MASQUERADE",
@@ -1117,16 +1121,16 @@ bool Datapath::ModifyConnmarkSave(IpFamily family,
 
 bool Datapath::ModifyFwmarkRoutingTag(const std::string& chain,
                                       const std::string& op,
-                                      Fwmark routing_mark,
-                                      const std::string& int_ifname) {
-  return ModifyFwmark(IpFamily::Dual, chain, op, int_ifname, "" /*uid_name*/,
-                      0 /*classid*/, routing_mark, kFwmarkRoutingMask);
+                                      Fwmark routing_mark) {
+  return ModifyFwmark(IpFamily::Dual, chain, op, "" /*int_ifname*/,
+                      "" /*uid_name*/, 0 /*classid*/, routing_mark,
+                      kFwmarkRoutingMask);
 }
 
-bool Datapath::ModifyFwmarkSourceTag(const std::string& op,
-                                     const std::string& iif,
+bool Datapath::ModifyFwmarkSourceTag(const std::string& chain,
+                                     const std::string& op,
                                      TrafficSource source) {
-  return ModifyFwmark(IpFamily::Dual, "PREROUTING", op, iif, "" /*uid_name*/,
+  return ModifyFwmark(IpFamily::Dual, chain, op, "" /*iif*/, "" /*uid_name*/,
                       0 /*classid*/, Fwmark::FromSource(source),
                       kFwmarkAllSourcesMask);
 }
@@ -1234,14 +1238,9 @@ bool Datapath::ModifyJumpRule(IpFamily family,
 
 bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
                                        const std::string& op,
-                                       const std::string& iif,
                                        Fwmark mark,
                                        Fwmark mask) {
   std::vector<std::string> args = {op, chain};
-  if (!iif.empty()) {
-    args.push_back("-i");
-    args.push_back(iif);
-  }
   if (mark.Value() != 0 && mask.Value() != 0) {
     args.push_back("-m");
     args.push_back("mark");
