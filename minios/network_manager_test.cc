@@ -166,6 +166,56 @@ TEST_F(NetworkManagerTest,
   network_manager_->ConnectToNetworkError(iter, error_ptr.get());
 }
 
+TEST_F(NetworkManagerTest,
+       Connect_GetServiceCheckConnectionSuccess_FailureState) {
+  const brillo::VariantDictionary input_properties = {
+      {shill::kStateProperty, brillo::Any(std::string(shill::kStateFailure))},
+  };
+  network_manager_->connect_map_["ssid"] = NetworkManager::ConnectField{
+      .service_path = dbus::ObjectPath("some-service-path")};
+  auto iter = network_manager_->connect_map_.begin();
+  EXPECT_CALL(mock_network_manager_observer_, OnConnect("ssid", NotNull()));
+  network_manager_->GetServiceCheckConnectionSuccess(iter, input_properties);
+}
+
+TEST_F(NetworkManagerTest,
+       Connect_GetServiceCheckConnectionSuccess_OnlineState) {
+  const brillo::VariantDictionary input_properties = {
+      {shill::kStateProperty, brillo::Any(std::string(shill::kStateOnline))},
+  };
+  network_manager_->connect_map_["ssid"] = NetworkManager::ConnectField{
+      .service_path = dbus::ObjectPath("some-service-path")};
+  auto iter = network_manager_->connect_map_.begin();
+  EXPECT_CALL(mock_network_manager_observer_, OnConnect("ssid", IsNull()));
+  network_manager_->GetServiceCheckConnectionSuccess(iter, input_properties);
+}
+
+TEST_F(NetworkManagerTest,
+       Connect_GetServiceCheckConnectionSuccess_MissingState) {
+  network_manager_->connect_map_["ssid"] = NetworkManager::ConnectField{
+      .service_path = dbus::ObjectPath("some-service-path")};
+  auto iter = network_manager_->connect_map_.begin();
+  EXPECT_CALL(mock_network_manager_observer_, OnConnect("ssid", NotNull()));
+  network_manager_->GetServiceCheckConnectionSuccess(iter, {});
+}
+
+TEST_F(NetworkManagerTest,
+       Connect_GetServiceCheckConnectionSuccess_IntermediateState) {
+  const brillo::VariantDictionary input_properties = {
+      {shill::kStateProperty, brillo::Any(std::string(shill::kStateReady))},
+  };
+  network_manager_->connect_map_["ssid"] = NetworkManager::ConnectField{
+      .service_path = dbus::ObjectPath("some-service-path")};
+  auto iter = network_manager_->connect_map_.begin();
+  network_manager_->GetServiceCheckConnectionSuccess(iter, input_properties);
+
+  EXPECT_CALL(*mock_shill_proxy_ptr_,
+              ServiceGetProperties(iter->second.service_path, _, _));
+  clock_.Advance(base::TimeDelta::FromSeconds(
+      NetworkManager::kCheckConnectionRetryMsDelay * 2));
+  loop_.RunOnce(false);
+}
+
 TEST_F(NetworkManagerTest, GetNetworks) {
   EXPECT_TRUE(network_manager_->get_networks_list_.empty());
   EXPECT_CALL(*mock_shill_proxy_ptr_,

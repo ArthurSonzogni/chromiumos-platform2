@@ -164,8 +164,14 @@ void NetworkManager::ServiceConnect(ConnectMapIter iter) {
 }
 
 void NetworkManager::ConnectToNetworkSuccess(ConnectMapIter iter) {
-  LOG(INFO) << "ConnectToNetwork success for SSID=" << iter->first;
-  Return(iter);
+  LOG(INFO) << "ConnectToNetwork success for SSID=" << iter->first
+            << " proceeding to verify connection.";
+  shill_proxy_->ServiceGetProperties(
+      iter->second.service_path,
+      base::Bind(&NetworkManager::GetServiceCheckConnectionSuccess,
+                 weak_ptr_factory_.GetWeakPtr(), iter),
+      base::Bind(&NetworkManager::GetServiceCheckConnectionError,
+                 weak_ptr_factory_.GetWeakPtr(), iter));
 }
 
 void NetworkManager::ConnectToNetworkError(ConnectMapIter iter,
@@ -190,6 +196,45 @@ void NetworkManager::ConnectToNetworkError(ConnectMapIter iter,
                << ToString(error);
     Return(iter, error);
   }
+}
+
+void NetworkManager::GetServiceCheckConnectionSuccess(
+    ConnectMapIter iter, const brillo::VariantDictionary& dict) {
+  for (const auto& [property, any] : dict) {
+    if (property == shill::kStateProperty) {
+      const auto& state = any.Get<std::string>();
+      LOG(INFO) << "GetServiceCheckConnection state is " << state;
+      if (state == shill::kStateOnline) {
+        Return(iter);
+      } else if (state == shill::kStateAssociation ||
+                 state == shill::kStateConfiguration ||
+                 state == shill::kStateReady) {
+        brillo::MessageLoop::current()->PostDelayedTask(
+            FROM_HERE,
+            base::Bind(&NetworkManager::ConnectToNetworkSuccess,
+                       weak_ptr_factory_.GetWeakPtr(), iter),
+            base::TimeDelta::FromMilliseconds(kCheckConnectionRetryMsDelay));
+      } else {
+        Return(iter,
+               brillo::Error::Create(
+                   FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+                   "Connection failed for SSID=" + iter->first)
+                   .get());
+      }
+      return;
+    }
+  }
+  Return(iter, brillo::Error::Create(
+                   FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+                   "Connection property missing for SSID=" + iter->first)
+                   .get());
+}
+
+void NetworkManager::GetServiceCheckConnectionError(ConnectMapIter iter,
+                                                    brillo::Error* error) {
+  LOG(ERROR) << "GetServiceCheckConnection failed for SSID=" << iter->first
+             << ": " << ToString(error);
+  Return(iter, error);
 }
 
 void NetworkManager::Return(ConnectMapIter iter, brillo::Error* error) {

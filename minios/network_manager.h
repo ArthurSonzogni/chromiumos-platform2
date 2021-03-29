@@ -23,6 +23,8 @@ class NetworkManager : public NetworkManagerInterface {
  public:
   // The delay in milliseconds before retrying connection to network.
   static const int kConnectionRetryMsDelay = 500;
+  // The delay in milliseconds before checking connection state.
+  static const int kCheckConnectionRetryMsDelay = 1000;
 
   explicit NetworkManager(std::unique_ptr<ShillProxyInterface> shill_proxy);
   virtual ~NetworkManager() = default;
@@ -48,6 +50,14 @@ class NetworkManager : public NetworkManagerInterface {
               Connect_ConnectToNetworkError_AlreadyConnected);
   FRIEND_TEST(NetworkManagerTest,
               Connect_ConnectToNetworkError_OtherErrorResponsesFromShill);
+  FRIEND_TEST(NetworkManagerTest,
+              Connect_GetServiceCheckConnectionSuccess_FailureState);
+  FRIEND_TEST(NetworkManagerTest,
+              Connect_GetServiceCheckConnectionSuccess_OnlineState);
+  FRIEND_TEST(NetworkManagerTest,
+              Connect_GetServiceCheckConnectionSuccess_MissingState);
+  FRIEND_TEST(NetworkManagerTest,
+              Connect_GetServiceCheckConnectionSuccess_IntermediateState);
   FRIEND_TEST(NetworkManagerTest, GetNetworks);
   FRIEND_TEST(NetworkManagerTest, GetGlobalPropertiesSuccess_MultipleServices);
   FRIEND_TEST(NetworkManagerTest, GetGlobalPropertiesSuccess_EmptyServices);
@@ -109,6 +119,11 @@ class NetworkManager : public NetworkManagerInterface {
   // `ServiceConnect()` callbacks.
   void ConnectToNetworkSuccess(ConnectMapIter iter);
   void ConnectToNetworkError(ConnectMapIter iter, brillo::Error* error);
+  // `ServiceGetProperties()` callbacks on connection sanity check.
+  void GetServiceCheckConnectionSuccess(ConnectMapIter iter,
+                                        const brillo::VariantDictionary& dict);
+  void GetServiceCheckConnectionError(ConnectMapIter iter,
+                                      brillo::Error* error);
   // Response helpers for `ConnectMapIter`.
   void Return(ConnectMapIter iter, brillo::Error* error = nullptr);
 
