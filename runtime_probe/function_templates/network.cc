@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
@@ -14,6 +15,7 @@
 #include <shill/dbus-proxies.h>
 
 #include "runtime_probe/utils/file_utils.h"
+#include "runtime_probe/utils/type_utils.h"
 #include "runtime_probe/utils/value_utils.h"
 
 namespace runtime_probe {
@@ -38,6 +40,28 @@ const std::vector<FieldType> kSdioOptionalFields = {
 const std::vector<FieldType> kUsbFields = {{"vendor_id", "idVendor"},
                                            {"product_id", "idProduct"}};
 const std::vector<FieldType> kUsbOptionalFields = {{"bcd_device", "bcdDevice"}};
+
+constexpr int PCI_REVISION_ID_OFFSET = 0x08;
+
+// For linux kernels of versions before 4.10-rc1, there is no standalone file
+// `revision` describing the revision id of the PCI component.  The revision is
+// still available at offset 8 of the binary file `config`.
+base::Optional<uint8_t> GetPciRevisionIdFromConfig(base::FilePath node_path) {
+  const auto file_path = node_path.Append("config");
+  if (!base::PathExists(file_path)) {
+    LOG(ERROR) << file_path.value() << " doesn't exist.";
+    return base::nullopt;
+  }
+  base::File config{file_path, base::File::FLAG_OPEN | base::File::FLAG_READ};
+  uint8_t revision_array[1];
+  base::span<uint8_t> revision_span(revision_array);
+  if (!config.ReadAndCheck(PCI_REVISION_ID_OFFSET, revision_span)) {
+    LOG(ERROR) << "Cannot read file " << file_path << " at offset "
+               << PCI_REVISION_ID_OFFSET;
+    return base::nullopt;
+  }
+  return revision_array[0];
+}
 
 }  // namespace
 
@@ -180,6 +204,13 @@ base::Optional<base::Value> NetworkFunction::EvalInHelperByPath(
     LOG(ERROR) << "Cannot find " << bus_type << "-specific fields on network \""
                << dev_path.value() << "\"";
     return base::nullopt;
+  }
+
+  if (bus_type == kBusTypePci && !res->FindKey("revision")) {
+    auto revision_id = GetPciRevisionIdFromConfig(dev_path);
+    if (revision_id) {
+      res->SetStringKey("revision", ByteToHexString(*revision_id));
+    }
   }
   PrependToDVKey(&*res, std::string(bus_type) + "_");
   res->SetStringKey("bus_type", bus_type);

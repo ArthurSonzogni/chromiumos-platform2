@@ -55,4 +55,8 @@ bool HexStringToInt64(const std::string& input, int64_t* output) {
   return base::HexStringToInt64(trimmed_input, output);
 }
 
+std::string ByteToHexString(const uint8_t byte) {
+  return "0x" + base::HexEncode(&byte, 1);
+}
+
 }  // namespace runtime_probe

@@ -31,6 +31,8 @@ bool HexStringToInt(const std::string& input, int* output);
 
 // Converts a hex string to int64.
 bool HexStringToInt64(const std::string& input, int64_t* output);
-}  // namespace runtime_probe
 
+// Converts a byte to hex string.
+std::string ByteToHexString(const uint8_t byte);
+}  // namespace runtime_probe
 #endif  // RUNTIME_PROBE_UTILS_TYPE_UTILS_H_
