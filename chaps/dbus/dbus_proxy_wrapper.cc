@@ -12,6 +12,10 @@
 
 namespace {
 
+// Timeout of dbus proxy construction.
+constexpr base::TimeDelta kConstructProxyTimeout =
+    base::TimeDelta::FromMinutes(5);
+
 void OnServiceAvailable(chaps::OnObjectProxyConstructedCallback callback,
                         chaps::ScopedBus bus,
                         scoped_refptr<dbus::ObjectProxy> proxy,
@@ -86,7 +90,7 @@ ProxyWrapperConstructionTask::ConstructProxyWrapper(
 
   // If we wait too long for the chapsd service to become available,
   // cancel construction.
-  if (!completion_event_.TimedWait(base::TimeDelta::FromSeconds(5))) {
+  if (!completion_event_.TimedWait(kConstructProxyTimeout)) {
     LOG(ERROR) << "Chaps service is not available";
     return nullptr;
   }
