@@ -6,6 +6,7 @@
 
 #include <net/if.h>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
@@ -18,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/address_manager.h"
+#include "patchpanel/guest_type.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/net_util.h"
 
@@ -272,7 +274,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
-TEST_F(ArcServiceTest, ContainerImpl_ScanDevices) {
+TEST_F(ArcServiceTest, ContainerImpl_GetDevices) {
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   // Expectations for arc0 setup.
@@ -301,16 +303,24 @@ TEST_F(ArcServiceTest, ContainerImpl_ScanDevices) {
   svc->AddDevice("wlan0", ShillClient::Device::Type::kWifi);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
-  std::vector<std::string> devs;
-  svc->ScanDevices(base::BindRepeating(
-      [](std::vector<std::string>* list, const Device& device) {
-        list->push_back(device.host_ifname());
-      },
-      &devs));
-
+  const auto devs = svc->GetDevices();
   EXPECT_EQ(devs.size(), 2);
-  EXPECT_THAT(devs,
-              UnorderedElementsAre(StrEq("arc_eth0"), StrEq("arc_wlan0")));
+
+  const auto it1 = std::find_if(
+      devs.begin(), devs.end(),
+      [](const Device* dev) { return dev->phys_ifname() == "eth0"; });
+  EXPECT_NE(it1, devs.end());
+  EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
+  EXPECT_EQ((*it1)->guest_ifname(), "eth0");
+  EXPECT_EQ((*it1)->type(), GuestType::ARC_NET);
+
+  const auto it2 = std::find_if(
+      devs.begin(), devs.end(),
+      [](const Device* dev) { return dev->phys_ifname() == "wlan0"; });
+  EXPECT_NE(it2, devs.end());
+  EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
+  EXPECT_EQ((*it2)->guest_ifname(), "wlan0");
+  EXPECT_EQ((*it2)->type(), GuestType::ARC_NET);
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
@@ -821,7 +831,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
-TEST_F(ArcServiceTest, VmImpl_ScanDevices) {
+TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -848,16 +858,32 @@ TEST_F(ArcServiceTest, VmImpl_ScanDevices) {
   svc->AddDevice("eth1", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
-  std::vector<std::string> devs;
-  svc->ScanDevices(base::BindRepeating(
-      [](std::vector<std::string>* list, const Device& device) {
-        list->push_back(device.host_ifname());
-      },
-      &devs));
-
+  const auto devs = svc->GetDevices();
   EXPECT_EQ(devs.size(), 3);
-  EXPECT_THAT(devs, UnorderedElementsAre(StrEq("arc_eth0"), StrEq("arc_wlan0"),
-                                         StrEq("arc_eth1")));
+
+  const auto it1 = std::find_if(
+      devs.begin(), devs.end(),
+      [](const Device* dev) { return dev->phys_ifname() == "eth0"; });
+  EXPECT_NE(it1, devs.end());
+  EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
+  EXPECT_EQ((*it1)->guest_ifname(), "eth0");
+  EXPECT_EQ((*it1)->type(), GuestType::ARC_NET);
+
+  const auto it2 = std::find_if(
+      devs.begin(), devs.end(),
+      [](const Device* dev) { return dev->phys_ifname() == "wlan0"; });
+  EXPECT_NE(it2, devs.end());
+  EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
+  EXPECT_EQ((*it2)->guest_ifname(), "wlan0");
+  EXPECT_EQ((*it2)->type(), GuestType::ARC_NET);
+
+  const auto it3 = std::find_if(
+      devs.begin(), devs.end(),
+      [](const Device* dev) { return dev->phys_ifname() == "eth1"; });
+  EXPECT_NE(it3, devs.end());
+  EXPECT_EQ((*it3)->host_ifname(), "arc_eth1");
+  EXPECT_EQ((*it3)->guest_ifname(), "eth1");
+  EXPECT_EQ((*it3)->type(), GuestType::ARC_NET);
 }
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {

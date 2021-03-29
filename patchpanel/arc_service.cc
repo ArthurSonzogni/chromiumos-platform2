@@ -494,10 +494,12 @@ std::vector<const Device::Config*> ArcService::GetDeviceConfigs() const {
   return configs;
 }
 
-void ArcService::ScanDevices(
-    base::RepeatingCallback<void(const Device&)> callback) const {
-  for (const auto& [_, d] : devices_)
-    callback.Run(*d.get());
+std::vector<const Device*> ArcService::GetDevices() const {
+  std::vector<const Device*> devices;
+  for (const auto& [_, dev] : devices_) {
+    devices.push_back(dev.get());
+  }
+  return devices;
 }
 
 }  // namespace patchpanel

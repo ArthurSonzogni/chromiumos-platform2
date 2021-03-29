@@ -35,19 +35,6 @@ std::string MakeKey(uint64_t vm_id, bool is_termina) {
   return base::StringPrintf("%s:%s", is_termina ? "t" : "p",
                             base::NumberToString(vm_id).c_str());
 }
-
-bool ParseKey(const std::string& key, uint64_t* vm_id, bool* is_termina) {
-  auto s =
-      base::SplitString(key, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (s.size() != 2 || !base::StringToUint64(s[1], vm_id) ||
-      (s[0] != "t" && s[0] != "p")) {
-    LOG(DFATAL) << "Invalid key: " + key;
-    return false;
-  }
-  *is_termina = s[0] == "t";
-  return true;
-}
-
 }  // namespace
 
 CrostiniService::CrostiniService(
@@ -144,17 +131,6 @@ const Device* const CrostiniService::TAP(uint64_t vm_id,
     return nullptr;
   }
   return it->second.get();
-}
-
-void CrostiniService::ScanDevices(
-    base::RepeatingCallback<void(uint64_t, bool, const Device&)> callback)
-    const {
-  for (const auto& [key, dev] : taps_) {
-    uint64_t vm_id;
-    bool is_termina;
-    if (ParseKey(key, &vm_id, &is_termina))
-      callback.Run(vm_id, is_termina, *dev.get());
-  }
 }
 
 std::vector<const Device*> CrostiniService::GetDevices() const {

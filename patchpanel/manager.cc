@@ -527,30 +527,34 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
 
   static const auto arc_guest_type =
       USE_ARCVM ? NetworkDevice::ARCVM : NetworkDevice::ARC;
+  for (const auto* arc_device : arc_svc_->GetDevices()) {
+    auto* dev = response.add_devices();
+    FillDeviceProto(*arc_device, dev);
+    dev->set_guest_type(arc_guest_type);
+    if (const auto* subnet = arc_device->config().ipv4_subnet()) {
+      FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
+    }
+  }
 
-  arc_svc_->ScanDevices(base::BindRepeating(
-      [](patchpanel::GetDevicesResponse* resp, const Device& device) {
-        auto* dev = resp->add_devices();
-        FillDeviceProto(device, dev);
-        dev->set_guest_type(arc_guest_type);
-        if (const auto* subnet = device.config().ipv4_subnet()) {
-          FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
-        }
-      },
-      &response));
-
-  cros_svc_->ScanDevices(base::BindRepeating(
-      [](patchpanel::GetDevicesResponse* resp, uint64_t vm_id, bool is_termina,
-         const Device& device) {
-        auto* dev = resp->add_devices();
-        FillDeviceProto(device, dev);
-        dev->set_guest_type(is_termina ? NetworkDevice::TERMINA_VM
-                                       : NetworkDevice::PLUGIN_VM);
-        if (const auto* subnet = device.config().ipv4_subnet()) {
-          FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
-        }
-      },
-      &response));
+  for (const auto* crosvm_device : cros_svc_->GetDevices()) {
+    auto* dev = response.add_devices();
+    FillDeviceProto(*crosvm_device, dev);
+    switch (crosvm_device->type()) {
+      case GuestType::VM_TERMINA:
+        dev->set_guest_type(NetworkDevice::TERMINA_VM);
+        break;
+      case GuestType::VM_PLUGIN:
+        dev->set_guest_type(NetworkDevice::PLUGIN_VM);
+        break;
+      default:
+        LOG(ERROR) << "Unexpected Device::Type for CrostiniService Device: "
+                   << crosvm_device->type();
+        continue;
+    }
+    if (const auto* subnet = crosvm_device->config().ipv4_subnet()) {
+      FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
+    }
+  }
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

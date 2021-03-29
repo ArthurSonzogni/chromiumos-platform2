@@ -45,9 +45,9 @@ class ArcService {
   // configurations, if any, are currently associated to TAP devices.
   std::vector<const Device::Config*> GetDeviceConfigs() const;
 
-  // Walks the current list of devices managed by the service invoking the
-  // callback for each, allowing for safe inspection/evaluation.
-  void ScanDevices(base::RepeatingCallback<void(const Device&)> callback) const;
+  // Returns a list of all patchpanel Devices currently managed by this service
+  // and attached to a shill Device.
+  std::vector<const Device*> GetDevices() const;
 
   // Returns true if the service has been started for ARC container or ARCVM.
   bool IsStarted() const;
@@ -78,7 +78,7 @@ class ArcService {
   Device::ChangeEventHandler device_changed_handler_;
 
   // A set of preallocated device configurations keyed by technology type and
-  // used for setting up ARCVM tap devices at VM booting time.
+  // used for setting up ARCVM TAP devices at VM booting time.
   std::map<ShillClient::Device::Type,
            std::deque<std::unique_ptr<Device::Config>>>
       available_configs_;
