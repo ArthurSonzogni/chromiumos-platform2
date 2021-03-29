@@ -21,6 +21,8 @@
 // corresponds to DRM_FORMAT_XBGR8888 which is used as the underlying format for
 // the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
 #define V4L2_PIX_FMT_RGBX32 v4l2_fourcc('X', 'B', '2', '4')
+#define V4L2_PIX_FMT_P010 v4l2_fourcc('P', '0', '1', '0')
+#define V4L2_PIX_FMT_P010M v4l2_fourcc('P', 'M', '1', '0')
 
 // A 10-bit bayer format for private reprocessing on MediaTek ISP P1. It's a
 // private RAW format that other DRM drivers will never support and thus making

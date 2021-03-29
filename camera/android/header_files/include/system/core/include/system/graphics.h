@@ -42,6 +42,11 @@ extern "C" {
  * pixel format definitions
  */
 
+// TODO: This can be removed once we uprev the Android header files.
+#ifndef HAL_PIXEL_FORMAT_YCBCR_P010
+#define HAL_PIXEL_FORMAT_YCBCR_P010     54
+#endif
+
 enum {
     /*
      * "linear" color pixel formats:

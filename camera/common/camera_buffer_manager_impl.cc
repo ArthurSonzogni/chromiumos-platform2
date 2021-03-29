@@ -30,7 +30,9 @@ std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
     {HAL_PIXEL_FORMAT_BLOB, {DRM_FORMAT_R8}},
     {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
      {DRM_FORMAT_NV12, DRM_FORMAT_XBGR8888, DRM_FORMAT_MTISP_SXYZW10}},
+    {HAL_PIXEL_FORMAT_RGBX_8888, {DRM_FORMAT_XBGR8888}},
     {HAL_PIXEL_FORMAT_YCbCr_420_888, {DRM_FORMAT_NV12}},
+    {HAL_PIXEL_FORMAT_YCBCR_P010, {DRM_FORMAT_P010}},
 };
 
 uint32_t GetGbmUseFlags(uint32_t hal_format, uint32_t usage) {
@@ -87,6 +89,20 @@ bool IsMatchingFormat(int32_t hal_pixel_format, uint32_t drm_format) {
       return drm_format == DRM_FORMAT_YVU420;
   }
   return false;
+}
+
+size_t GetChromaStep(uint32_t drm_format) {
+  switch (drm_format) {
+    case DRM_FORMAT_P010:
+      return 4;
+    case DRM_FORMAT_NV12:
+    case DRM_FORMAT_NV21:
+      return 2;
+    case DRM_FORMAT_YUV420:
+    case DRM_FORMAT_YVU420:
+      return 1;
+  }
+  return 0;
 }
 
 }  // namespace
@@ -195,6 +211,7 @@ uint32_t CameraBufferManager::GetNumPlanes(buffer_handle_t buffer) {
       return 1;
     case DRM_FORMAT_NV12:
     case DRM_FORMAT_NV21:
+    case DRM_FORMAT_P010:
       return 2;
     case DRM_FORMAT_YUV420:
     case DRM_FORMAT_YVU420:
@@ -257,6 +274,8 @@ uint32_t CameraBufferManager::GetV4L2PixelFormat(buffer_handle_t buffer) {
       return is_mplane ? V4L2_PIX_FMT_NV12M : V4L2_PIX_FMT_NV12;
     case DRM_FORMAT_NV21:
       return is_mplane ? V4L2_PIX_FMT_NV21M : V4L2_PIX_FMT_NV21;
+    case DRM_FORMAT_P010:
+      return is_mplane ? V4L2_PIX_FMT_P010M : V4L2_PIX_FMT_P010;
 
     // Multi-planar formats.
     case DRM_FORMAT_YUV420:
@@ -300,6 +319,7 @@ size_t CameraBufferManager::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
   switch (handle->drm_format) {
     case DRM_FORMAT_NV12:
     case DRM_FORMAT_NV21:
+    case DRM_FORMAT_P010:
     case DRM_FORMAT_YUV420:
     case DRM_FORMAT_YVU420:
       vertical_subsampling = (plane == 0) ? 1 : 2;
@@ -565,17 +585,19 @@ int CameraBufferManagerImpl::LockYCbCr(buffer_handle_t buffer,
   out_ycbcr->y = addr[0];
   out_ycbcr->ystride = handle->strides[0];
   out_ycbcr->cstride = handle->strides[1];
+  out_ycbcr->chroma_step = GetChromaStep(handle->drm_format);
+  CHECK_GT(out_ycbcr->chroma_step, 0);
 
   if (num_planes == 2) {
-    out_ycbcr->chroma_step = 2;
     switch (handle->drm_format) {
       case DRM_FORMAT_NV12:
+      case DRM_FORMAT_P010:
         out_ycbcr->cb = addr[1];
-        out_ycbcr->cr = addr[1] + 1;
+        out_ycbcr->cr = addr[1] + (out_ycbcr->chroma_step / 2);
         break;
 
       case DRM_FORMAT_NV21:
-        out_ycbcr->cb = addr[1] + 1;
+        out_ycbcr->cb = addr[1] + (out_ycbcr->chroma_step / 2);
         out_ycbcr->cr = addr[1];
         break;
 
@@ -585,7 +607,6 @@ int CameraBufferManagerImpl::LockYCbCr(buffer_handle_t buffer,
         return -EINVAL;
     }
   } else {  // num_planes == 3
-    out_ycbcr->chroma_step = 1;
     switch (handle->drm_format) {
       case DRM_FORMAT_YUV420:
         out_ycbcr->cb = addr[1];
