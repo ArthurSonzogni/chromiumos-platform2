@@ -13,9 +13,8 @@ use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use libchromeos::linux::{getpid, gettid};
 use libchromeos::scoped_path::get_temp_path;
-use sys_util::{self, handle_eintr};
+use sys_util::{self, getpid, gettid, handle_eintr};
 
 use super::events::{EventSource, Mutator, RemoveFdMutator};
 

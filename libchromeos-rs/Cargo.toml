@@ -16,6 +16,7 @@ log = "0.4"
 protobuf = "2.1"
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
 system_api = { path = "../system_api", optional = true } # provided by ebuild
+sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
 thiserror = "1.0.20"
 zeroize = { version = "1.2.0", features = ["zeroize_derive"] }
 

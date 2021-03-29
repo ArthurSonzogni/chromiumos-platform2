@@ -18,5 +18,6 @@ chromeos-dbus-bindings = { path = "../../chromeos-dbus-bindings"} # provided by 
 dbus = "0.8"
 getopts = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
+sys_util = { path = "../../../platform/crosvm/sys_util" } # provided by ebuild
 thiserror = "1.0.20"
 which = "4.0"

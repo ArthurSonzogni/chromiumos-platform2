@@ -17,10 +17,9 @@ use std::time::Duration;
 
 use dbus::blocking::Connection;
 use getopts::Options;
-use libchromeos::linux::KillOnDrop;
 use manatee_client::client::OrgChromiumManaTEEInterface;
+use sys_util::KillOnDrop;
 use thiserror::Error as ThisError;
-use which;
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
@@ -115,7 +114,7 @@ fn read_line<R: Read>(
     Ok(())
 }
 
-fn get_listening_port<'a, R: Read + Send + 'static, C: Fn(&str) -> bool>(
+fn get_listening_port<R: Read + Send + 'static, C: Fn(&str) -> bool>(
     job_name: &'static str,
     read: R,
     conditions: &[C],
@@ -133,7 +132,7 @@ fn get_listening_port<'a, R: Read + Send + 'static, C: Fn(&str) -> bool>(
     if !line.contains("waiting for connection at: ip://127.0.0.1:") {
         return Err(Error::FindUri(job_name.to_string(), line));
     }
-    let port = u32::from_str(&line[line.rfind(":").unwrap() + 1..line.len() - 1])
+    let port = u32::from_str(&line[line.rfind(':').unwrap() + 1..line.len() - 1])
         .map_err(|_| Error::ParsePort(line.clone()))?;
 
     let join_handle =

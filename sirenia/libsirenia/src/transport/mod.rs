@@ -24,13 +24,12 @@ use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::str::FromStr;
 
 use core::mem::replace;
-use libchromeos::linux::getpid;
 use libchromeos::net::{InetVersion, TcpSocket};
 use libchromeos::vsock::{
     AddrParseError, SocketAddr as VSocketAddr, ToSocketAddr, VsockCid, VsockListener, VsockSocket,
     VsockStream, VMADDR_PORT_ANY,
 };
-use sys_util::{handle_eintr, pipe};
+use sys_util::{getpid, handle_eintr, pipe};
 
 pub const CROS_CID: VsockCid = VsockCid::Cid(3);
 

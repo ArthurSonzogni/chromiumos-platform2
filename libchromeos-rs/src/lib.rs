@@ -5,7 +5,6 @@
 pub mod base;
 #[cfg(feature = "chromeos-module")]
 pub mod chromeos;
-pub mod linux;
 pub mod net;
 mod read_dir;
 pub mod scoped_path;

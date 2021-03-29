@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::thread::panicking;
 
-use super::linux::{getpid, gettid};
+use sys_util::{getpid, gettid};
 
 /// Returns a stable path based on the label, pid, and tid. If the label isn't provided the
 /// current_exe is used instead.

@@ -9,8 +9,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use libc::{c_uint, c_void};
-
-use crate::handle_eintr_errno;
+use sys_util::handle_eintr_errno;
 
 /// How long to wait before calling getrandom again if it does not return
 /// enough bytes.

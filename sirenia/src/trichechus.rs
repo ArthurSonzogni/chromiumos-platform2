@@ -18,7 +18,6 @@ use std::rc::Rc;
 use std::result::Result as StdResult;
 
 use getopts::Options;
-use libchromeos::linux::{getpid, getsid, setsid};
 use libchromeos::vsock::SocketAddr as VSocketAddr;
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::communication::persistence::{Cronista, CronistaClient, Status};
@@ -37,7 +36,7 @@ use sirenia::app_info::{self, AppManifest, AppManifestEntry, SandboxType};
 use sirenia::build_info::BUILD_TIMESTAMP;
 use sirenia::cli::initialize_common_arguments;
 use sirenia::communication::{AppInfo, Trichechus, TrichechusServer};
-use sys_util::{self, error, info, syslog};
+use sys_util::{self, error, getpid, getsid, info, setsid, syslog};
 use thiserror::Error as ThisError;
 
 const CRONISTA_URI_SHORT_NAME: &str = "C";
@@ -407,8 +406,7 @@ fn main() -> Result<()> {
     info!("starting trichechus: {}", BUILD_TIMESTAMP);
 
     if getpid() != getsid(None).unwrap() {
-        // This is safe because we expect to be our own process group leader.
-        if let Err(err) = unsafe { setsid() } {
+        if let Err(err) = setsid() {
             error!("Unable to start new process group: {}", err);
         }
     }
