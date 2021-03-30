@@ -356,6 +356,15 @@ grpc::Status ServiceImpl::GetDebugInformation(
     }
   }
 
+  // Their username might be PII so filter it out of the logs.
+  std::unique_ptr<base::Environment> env = base::Environment::Create();
+  std::string username;
+  if (!env->GetVar("USER", &username)) {
+    LOG(ERROR) << "Unable to retrieve username from environment";
+  } else {
+    base::ReplaceSubstringsAfterOffset(debug_information, 0, username,
+                                       "$USERNAME");
+  }
   return grpc::Status::OK;
 }
 

@@ -23,7 +23,7 @@ bool ParseMimeTypes(const std::string& file_name, MimeTypeMap* out_mime_types) {
   CHECK(out_mime_types);
   base::FilePath file_path(file_name);
   if (!base::PathExists(file_path)) {
-    LOG(ERROR) << "MIME types file does not exist at: " << file_name;
+    VLOG(1) << "MIME types file does not exist at: " << file_name;
     return false;
   }
 
