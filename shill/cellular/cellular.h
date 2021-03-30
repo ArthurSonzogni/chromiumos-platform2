@@ -484,7 +484,8 @@ class Cellular : public Device,
   void InitCapability(Type type);
 
   void SetPrimarySimProperties(SimProperties properties);
-  void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties);
+  void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties,
+                            size_t primary_slot);
 
   // Creates or destroys services as required.
   void UpdateServices();
@@ -630,6 +631,7 @@ class Cellular : public Device,
 
   // vector of SimProperties, ordered by slot.
   std::vector<SimProperties> sim_slot_properties_;
+  size_t primary_sim_slot_ = 0u;
   // vector of KeyValueStore dictionaries, emitted as Device.SIMSlotInfo.
   KeyValueStores sim_slot_info_;
 

@@ -1821,8 +1821,8 @@ bool Cellular::HasSimCardId(const std::string& sim_card_id) const {
 
 void Cellular::SetSimProperties(
     const std::vector<SimProperties>& sim_properties, size_t primary_slot) {
-  SLOG(this, 1) << __func__ << " Slots: " << sim_properties.size()
-                << " Primary: " << primary_slot;
+  LOG(INFO) << __func__ << " Slots: " << sim_properties.size()
+            << " Primary: " << primary_slot;
 
   const SimProperties* primary_sim_properties = nullptr;
   if (primary_slot < sim_properties.size())
@@ -1832,7 +1832,7 @@ void Cellular::SetSimProperties(
   if (!primary_sim_properties || primary_sim_properties->iccid.empty()) {
     LOG(INFO) << "No Primary SIM properties.";
     SetPrimarySimProperties(SimProperties());
-    SetSimSlotProperties(sim_properties);
+    SetSimSlotProperties(sim_properties, 0u);
     // Attempt to switch to the first valid sim slot.
     capability_->SetPrimarySimSlotForIccid(std::string());
     return;
@@ -1849,7 +1849,7 @@ void Cellular::SetSimProperties(
   manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
 
   // Update the KeyValueStore for Device.Cellular.SIMSlotInfo and emit it.
-  SetSimSlotProperties(sim_properties);
+  SetSimSlotProperties(sim_properties, primary_slot);
 }
 
 std::deque<Stringmap> Cellular::BuildApnTryList() const {
@@ -1972,19 +1972,23 @@ void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
 }
 
 void Cellular::SetSimSlotProperties(
-    const std::vector<SimProperties>& slot_properties) {
-  if (sim_slot_properties_ == slot_properties)
+    const std::vector<SimProperties>& slot_properties, size_t primary_slot) {
+  if (sim_slot_properties_ == slot_properties &&
+      primary_sim_slot_ == primary_slot) {
     return;
-
-  SLOG(this, 1) << __func__ << " Slots: " << slot_properties.size();
+  }
+  SLOG(this, 1) << __func__ << " Slots: " << slot_properties.size()
+                << " Primary: " << primary_slot;
   sim_slot_properties_ = slot_properties;
+  primary_sim_slot_ = primary_slot;
   // Set |sim_slot_info_| and emit SIMSlotInfo
   sim_slot_info_.clear();
-  for (const SimProperties& sim_properties : slot_properties) {
+  for (size_t i = 0u; i < slot_properties.size(); ++i) {
+    const SimProperties& sim_properties = slot_properties[i];
     KeyValueStore properties;
     properties.Set(kSIMSlotInfoEID, sim_properties.eid);
     properties.Set(kSIMSlotInfoICCID, sim_properties.iccid);
-    bool is_primary = !iccid_.empty() && sim_properties.iccid == iccid_;
+    bool is_primary = i == primary_slot;
     properties.Set(kSIMSlotInfoPrimary, is_primary);
     sim_slot_info_.push_back(properties);
     SLOG(this, 2) << __func__ << " Slot: " << sim_properties.slot

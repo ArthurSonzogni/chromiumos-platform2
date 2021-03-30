@@ -421,8 +421,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   }
 
   void CallSetSimSlotProperties(
-      const std::vector<Cellular::SimProperties>& properties) {
-    device_->SetSimSlotProperties(properties);
+      const std::vector<Cellular::SimProperties>& properties, size_t primary) {
+    device_->SetSimSlotProperties(properties, primary);
   }
 
   MOCK_METHOD(void, TestCallback, (const Error&));
@@ -1082,22 +1082,33 @@ TEST_P(CellularTest, SetSimSlotProperties) {
       {0, "iccid1", "eid1", "operator_id1", "spn1", "imsi1"},
       {1, "iccid2", "eid2", "operator_id2", "spn2", "imsi2"},
   };
-  KeyValueStores expected;
   KeyValueStore expected1, expected2;
   expected1.Set(kSIMSlotInfoEID, slot_properties[0].eid);
   expected1.Set(kSIMSlotInfoICCID, slot_properties[0].iccid);
   expected1.Set(kSIMSlotInfoPrimary, false);
-  expected.push_back(expected1);
   expected2.Set(kSIMSlotInfoEID, slot_properties[1].eid);
   expected2.Set(kSIMSlotInfoICCID, slot_properties[1].iccid);
   expected2.Set(kSIMSlotInfoPrimary, true);
+
+  KeyValueStores expected;
+  expected.push_back(expected1);
   expected.push_back(expected2);
   EXPECT_CALL(*static_cast<DeviceMockAdaptor*>(device_->adaptor()),
               EmitKeyValueStoresChanged(kSIMSlotInfoProperty, expected))
       .Times(1);
+  CallSetSimSlotProperties(slot_properties, 1u);
 
-  CallSetPrimarySimProperties(slot_properties[1]);
-  CallSetSimSlotProperties(slot_properties);
+  // Set the primary slot to 0 and ensure that a SimSlots properties change is
+  // emitted.
+  expected1.Set(kSIMSlotInfoPrimary, true);
+  expected2.Set(kSIMSlotInfoPrimary, false);
+  expected.clear();
+  expected.push_back(expected1);
+  expected.push_back(expected2);
+  EXPECT_CALL(*static_cast<DeviceMockAdaptor*>(device_->adaptor()),
+              EmitKeyValueStoresChanged(kSIMSlotInfoProperty, expected))
+      .Times(1);
+  CallSetSimSlotProperties(slot_properties, 0u);
 }
 
 TEST_P(CellularTest, StorageIdentifier) {
