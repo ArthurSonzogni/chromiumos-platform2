@@ -157,11 +157,11 @@ mod tests {
     }
 
     impl Storage for MockStorage {
-        fn read_raw(&mut self, id: &str) -> Result<Vec<u8>> {
+        fn read_raw(&mut self, _id: &str) -> Result<Vec<u8>> {
             Err(libsirenia::storage::Error::ReadData(None))
         }
 
-        fn write_raw(&mut self, id: &str, data: &[u8]) -> Result<()> {
+        fn write_raw(&mut self, _id: &str, _data: &[u8]) -> Result<()> {
             Err(libsirenia::storage::Error::WriteData(None))
         }
 
