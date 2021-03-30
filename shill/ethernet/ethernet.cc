@@ -10,6 +10,7 @@
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/netdevice.h>
 #include <linux/sockios.h>
+#include <set>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -79,6 +80,42 @@ bool IsValidMac(const std::string& mac_address) {
   return base::ContainsOnlyChars(mac_address, "0123456789abcdef");
 }
 
+// NETDEV_FEATURE_COUNT in kernel is < 60 in 5.10 kernel, and has 64 as upper
+// bound (since netdev_features_t is typedef'ed to u64 in kernel).
+#define MAX_FEATURE_COUNT 64
+
+// This represents the maximum number of u32 blocks needed to store a bit mask
+// for all available features (This is similar to ETHTOOL_DEV_FEATURE_WORDS in
+// kernel).
+#define MAX_FEATURE_BLOCKS ((MAX_FEATURE_COUNT + 31) / 32)
+// Features that need to be disabled on potentially untrusted devices. Please
+// see go/disable-offloading-features for more context. Feature Strings are
+// taken from netdev_features_strings[] in kernel.
+constexpr std::array<const char*, 6> kFeaturesToDisable = {
+    "tx-generic-segmentation",       // NETIF_F_GSO (aka ethtool's gso feature)
+    "rx-gro",                        // NETIF_F_GRO (aka ethtool's gro feature)
+    "tx-tcp-segmentation",           // NETIF_F_TSO_ECN (part of ethtool's tso)
+    "tx-tcp-ecn-segmentation",       // NETIF_F_TSO (part of ethtool's tso)
+    "tx-tcp-mangleid-segmentation",  // NETIF_F_TSO_MANGLEID (ethtools's tso)
+    "tx-tcp6-segmentation",          // NETIF_F_TSO6 (part of ethtool's tso)
+};
+
+// The BIOS / firmware marks the external facing PCI ports with a special
+// "external-facing" tag. That is used by the kernel to determine whether
+// a PCI device is attached to an internal port or external port. Please
+// note that not all platforms shall be able to distinguish between internal /
+// external PCI devices (because this needs BIOS/firmware changes). However
+// any platforms that support external PCI devices (i.e. thunderbolt / USB4)
+// shall be able to (since those shall be new platforms hence forward).
+static bool IsExternalPciDev(const string& ifname) {
+  auto device_id = DeviceId::CreateFromSysfs(base::FilePath(
+      base::StringPrintf("/sys/class/net/%s/device", ifname.c_str())));
+
+  constexpr DeviceId kPciDevicePattern{DeviceId::BusType::kPci,
+                                       DeviceId::LocationType::kExternal};
+  return (device_id && device_id->Match(kPciDevicePattern));
+}
+
 }  // namespace
 
 Ethernet::Ethernet(Manager* manager,
@@ -137,6 +174,17 @@ Ethernet::~Ethernet() {}
 
 void Ethernet::Start(Error* error,
                      const EnabledStateChangedCallback& /*callback*/) {
+  if (IsExternalPciDev(link_name())) {
+    if (!DisableOffloadFeatures()) {
+      LOG(ERROR) << link_name()
+                 << " Interface disabled due to security reasons "
+                 << "(failed to disable Offload features)";
+      error->Populate(Error::kPermissionDenied);
+      OnEnabledStateChanged(EnabledStateChangedCallback(), *error);
+      return;
+    }
+  }
+
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   LOG(INFO) << "Registering " << link_name() << " with manager.";
@@ -519,6 +567,150 @@ void Ethernet::SetupWakeOnLan() {
                  << ".";
     return;
   }
+}
+
+bool Ethernet::DisableOffloadFeatures() {
+  int sock;
+  struct ifreq interface_command;
+
+  LOG(INFO) << "Disabling offloading features for " << link_name();
+
+  memset(&interface_command, 0, sizeof(interface_command));
+  strncpy(interface_command.ifr_name, link_name().c_str(),
+          sizeof(interface_command.ifr_name) - 1);
+
+  sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
+  if (sock < 0) {
+    PLOG(ERROR) << "Failed to allocate socket: " << sockets_->ErrorString();
+    return false;
+  }
+  ScopedSocketCloser socket_closer(sockets_.get(), sock);
+
+  // Prepare and send a ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) command to
+  // get number of features.
+  struct {
+    struct ethtool_sset_info sset_info;
+    uint32_t num_features;
+  } sset_info_buf;
+  memset(&sset_info_buf, 0, sizeof(sset_info_buf));
+  struct ethtool_sset_info* sset_info = &sset_info_buf.sset_info;
+  sset_info->cmd = ETHTOOL_GSSET_INFO;
+  sset_info->reserved = 0;
+  sset_info->sset_mask = 1ULL << ETH_SS_FEATURES;
+  interface_command.ifr_data = sset_info;
+  int res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
+  if (res < 0 || !sset_info->sset_mask || !sset_info_buf.num_features) {
+    PLOG(ERROR) << "ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed "
+                << sockets_->ErrorString();
+    return false;
+  }
+
+  // Get the number of features
+  uint32_t num_features = sset_info_buf.num_features;
+  uint32_t num_feature_blocks = (num_features + 31) / 32;
+
+  // Now prepare and send ETHTOOL_GSTRINGS(ETH_SS_FEATURES), to actually
+  // get the all the feature strings, for this device.
+  struct GstringsBuf {
+    ethtool_gstrings gstrings;
+    char features[MAX_FEATURE_COUNT][ETH_GSTRING_LEN];
+  };
+  std::unique_ptr<GstringsBuf> gstrings_buf(new GstringsBuf);
+  memset(gstrings_buf.get(), 0, sizeof(GstringsBuf));
+  struct ethtool_gstrings* gstrings = &gstrings_buf->gstrings;
+  gstrings->cmd = ETHTOOL_GSTRINGS;
+  gstrings->string_set = ETH_SS_FEATURES;
+  gstrings->len = num_features;
+  interface_command.ifr_data = gstrings;
+  res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
+  if (res < 0) {
+    PLOG(ERROR) << "ETHTOOL_GSTRINGS(ETH_SS_FEATURES) failed "
+                << sockets_->ErrorString();
+    return false;
+  }
+
+  // Ensure strings are null terminated
+  unsigned int i;
+  for (i = 0; i < num_features; i++)
+    gstrings_buf->features[i][ETH_GSTRING_LEN - 1] = 0;
+
+  // Prepare & send a ETHTOOL_GFEATURES command to get the current state of
+  // features
+  struct {
+    struct ethtool_gfeatures gfeatures;
+    ethtool_get_features_block feature_block[MAX_FEATURE_BLOCKS];
+  } gfeatures_buf;
+  memset(&gfeatures_buf, 0, sizeof(gfeatures_buf));
+  struct ethtool_gfeatures* gfeatures = &gfeatures_buf.gfeatures;
+  gfeatures->cmd = ETHTOOL_GFEATURES;
+  gfeatures->size = num_feature_blocks;
+  interface_command.ifr_data = gfeatures;
+  res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
+  if (res < 0) {
+    PLOG(ERROR) << "ETHTOOL_GFEATURES command failed: "
+                << sockets_->ErrorString();
+    return false;
+  }
+
+  // Prepare & send a ETHTOOL_SFEATURES command to enable/disable the features
+  // features we need
+  struct {
+    struct ethtool_sfeatures sfeatures;
+    ethtool_set_features_block feature_block[MAX_FEATURE_BLOCKS];
+  } sfeatures_buf;
+  memset(&sfeatures_buf, 0, sizeof(sfeatures_buf));
+  struct ethtool_sfeatures* sfeatures = &sfeatures_buf.sfeatures;
+  sfeatures->cmd = ETHTOOL_SFEATURES;
+  sfeatures->size = num_feature_blocks;
+
+  int ret = true;
+
+  std::set<std::string> features_to_disable(kFeaturesToDisable.begin(),
+                                            kFeaturesToDisable.end());
+
+  for (i = 0; i < num_features && !features_to_disable.empty(); i++) {
+    string feature = gstrings_buf->features[i];
+    if (features_to_disable.find(feature) == features_to_disable.end())
+      continue;
+
+    features_to_disable.erase(feature);
+
+    uint32_t block_num = i / 32;
+    uint32_t feature_mask = 1 << (i % 32);
+
+    if (feature_mask & gfeatures->features[block_num].never_changed) {
+      LOG(ERROR) << "[Not Allowed] cannot disable [" << i << "] " << feature;
+      ret = false;
+      continue;
+    }
+    if (feature_mask & ~gfeatures->features[block_num].available) {
+      LOG(ERROR) << "[Not Available] cannot disable [" << i << "] " << feature;
+      // OK to return success since device does not support the feature.
+      continue;
+    }
+    if (!(feature_mask & gfeatures->features[block_num].active)) {
+      LOG(INFO) << "[Already Disabled] Not disabling [" << i << "] " << feature;
+      // OK to return success since device has it already disabled.
+      continue;
+    }
+    sfeatures->features[block_num].valid |= feature_mask;
+    sfeatures->features[block_num].requested &= ~feature_mask;
+    LOG(INFO) << link_name() << ": Disabling [" << i << "] " << feature;
+  }
+
+  for (const auto& feature : features_to_disable)
+    LOG(INFO) << "[No Such Feature] Skipped disabling: " << feature;
+
+  interface_command.ifr_data = sfeatures;
+  res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
+  if (res < 0) {
+    PLOG(ERROR) << "Failed to disable offloading features: "
+                << sockets_->ErrorString();
+    return false;
+  }
+  LOG(INFO) << link_name() << ": Disabled offloading features successfully";
+
+  return ret;
 }
 
 bool Ethernet::ConfigurePPPoEMode(const bool& enable, Error* error) {

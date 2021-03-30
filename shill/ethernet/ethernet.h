@@ -151,6 +151,9 @@ class Ethernet
   void DeregisterService(EthernetServiceRefPtr service);
 
   void SetupWakeOnLan();
+  // Disable Offload features i the network device.
+  // Returns true on success, false on failure
+  bool DisableOffloadFeatures();
 
   void SetUsbEthernetMacAddressSource(const std::string& source,
                                       Error* error,
