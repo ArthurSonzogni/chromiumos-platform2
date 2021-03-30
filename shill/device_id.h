@@ -26,6 +26,12 @@ class DeviceId {
     kUsb,
   };
 
+  // Location of the device (Currently only supported for PCI devices).
+  enum class LocationType {
+    kInternal,
+    kExternal,
+  };
+
   // Takes a device |syspath| as would be given by e.g. udev and tries to read
   // the bus type and device identifiers.
   static std::unique_ptr<DeviceId> CreateFromSysfs(
@@ -33,6 +39,10 @@ class DeviceId {
 
   // DeviceId matching all devices by a particular bus type.
   explicit constexpr DeviceId(BusType bus_type) : bus_type_(bus_type) {}
+  // DeviceId matching all devices on a particular bus and location type.
+  // Location type is currently only supported for PCI devices.
+  explicit constexpr DeviceId(BusType bus_type, LocationType location_type)
+      : bus_type_(bus_type), location_type_(location_type) {}
   // DeviceId matching all devices by a particular bus type and vendor id.
   constexpr DeviceId(BusType bus_type, uint16_t vendor_id)
       : bus_type_(bus_type), vendor_id_(vendor_id) {}
@@ -57,6 +67,7 @@ class DeviceId {
 
  private:
   BusType bus_type_;
+  base::Optional<LocationType> location_type_;
   base::Optional<uint16_t> vendor_id_;
   base::Optional<uint16_t> product_id_;
 };

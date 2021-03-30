@@ -22,6 +22,15 @@ namespace shill {
 
 namespace {
 
+// Attribute file in sysfs for PCI devices that indicate whether the PCI device
+// is internal or external (0=internal, 1=external). This works because the
+// firmware tags the external facing PCI ports by a flag that the kernel looks
+// at, to determine whether a device is internal or external. This sysfs
+// is something we couldnt reach agreement upstream with yet, and are carrying
+// ourselves currently. Ref:
+// https://chromium-review.googlesource.com/c/chromiumos/third_party/kernel/+/2511510
+constexpr char kExternalAttribute[] = "untrusted";
+
 // Reads a file containing a string device ID and normalizes it by trimming
 // whitespace and converting to lowercase.
 bool ReadDeviceIdFile(const base::FilePath& path, std::string* out_id) {
@@ -91,8 +100,20 @@ std::unique_ptr<DeviceId> DeviceId::CreateFromSysfs(
 
   std::string bus_type = subsystem.BaseName().value();
   if (bus_type == "pci") {
-    return ReadDeviceId(DeviceId::BusType::kPci, syspath.Append("vendor"),
-                        syspath.Append("product"));
+    auto dev = ReadDeviceId(DeviceId::BusType::kPci, syspath.Append("vendor"),
+                            syspath.Append("product"));
+
+    std::string is_external;
+    if (base::ReadFileToString(syspath.Append(kExternalAttribute),
+                               &is_external) &&
+        !is_external.empty()) {
+      if (is_external == "0") {
+        dev->location_type_ = LocationType::kInternal;
+      } else {
+        dev->location_type_ = LocationType::kExternal;
+      }
+    }
+    return dev;
   } else if (bus_type == "usb") {
     return ReadDeviceId(DeviceId::BusType::kUsb, syspath.Append("idVendor"),
                         syspath.Append("idProduct"));
@@ -111,21 +132,35 @@ std::string DeviceId::AsString() const {
       break;
   }
 
+  const char* loc;
+  if (location_type_ == LocationType::kExternal)
+    loc = "External";
+  else if (location_type_ == LocationType::kInternal)
+    loc = "Internal";
+  else
+    loc = "UnknownLocation";
+
   if (!vendor_id_.has_value()) {
-    return base::StringPrintf("%s:*:*", bus_name);
+    return base::StringPrintf("%s:*:* (%s)", bus_name, loc);
   }
 
   if (!product_id_.has_value()) {
-    return base::StringPrintf("%s:%04" PRIx16 ":*", bus_name,
-                              vendor_id_.value());
+    return base::StringPrintf("%s:%04" PRIx16 ":* (%s)", bus_name,
+                              vendor_id_.value(), loc);
   }
 
-  return base::StringPrintf("%s:%04" PRIx16 ":%04" PRIx16, bus_name,
-                            vendor_id_.value(), product_id_.value());
+  return base::StringPrintf("%s:%04" PRIx16 ":%04" PRIx16 " (%s)", bus_name,
+                            vendor_id_.value(), product_id_.value(), loc);
 }
 
 bool DeviceId::Match(const DeviceId& pattern) const {
   if (bus_type_ != pattern.bus_type_) {
+    return false;
+  }
+
+  // Check if match is specifically desired based on location type.
+  if (pattern.location_type_.has_value() &&
+      location_type_ != pattern.location_type_) {
     return false;
   }
 

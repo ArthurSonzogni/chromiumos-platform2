@@ -80,6 +80,55 @@ TEST(DeviceIdTest, AnyProductNotMatchByProduct) {
       << kDeviceId << " matches " << kPattern;
 }
 
+TEST(DeviceIdTest, MatchByLocationTypeExternal) {
+  constexpr DeviceId kDeviceId{DeviceId::BusType::kPci,
+                               DeviceId::LocationType::kExternal};
+  constexpr DeviceId kPattern{DeviceId::BusType::kPci,
+                              DeviceId::LocationType::kExternal};
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
+}
+
+TEST(DeviceIdTest, NotMatchByLocationTypeExternalAndInternal) {
+  constexpr DeviceId kDeviceId{DeviceId::BusType::kPci,
+                               DeviceId::LocationType::kInternal};
+  constexpr DeviceId kPattern{DeviceId::BusType::kPci,
+                              DeviceId::LocationType::kExternal};
+  EXPECT_FALSE(kDeviceId.Match(kPattern))
+      << kDeviceId << " matches " << kPattern;
+}
+
+TEST(DeviceIdTest, NotMatchByLocationTypeExternalAndUnknown) {
+  constexpr DeviceId kDeviceId{DeviceId::BusType::kPci};
+  constexpr DeviceId kPattern{DeviceId::BusType::kPci,
+                              DeviceId::LocationType::kExternal};
+  EXPECT_FALSE(kDeviceId.Match(kPattern))
+      << kDeviceId << " matches " << kPattern;
+}
+
+TEST(DeviceIdTest, MatchByNoLocationTypeInternal) {
+  constexpr DeviceId kDeviceId{DeviceId::BusType::kPci,
+                               DeviceId::LocationType::kInternal};
+  constexpr DeviceId kPattern{DeviceId::BusType::kPci};
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
+}
+
+TEST(DeviceIdTest, MatchByNoLocationTypeExternal) {
+  constexpr DeviceId kDeviceId{DeviceId::BusType::kPci,
+                               DeviceId::LocationType::kExternal};
+  constexpr DeviceId kPattern{DeviceId::BusType::kPci};
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
+}
+
+TEST(DeviceIdTest, MatchByNoLocationType) {
+  constexpr DeviceId kDeviceId{DeviceId::BusType::kPci};
+  constexpr DeviceId kPattern{DeviceId::BusType::kPci};
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
+}
+
 namespace {
 
 class DeviceIdFromSysfsTest : public testing::Test {
@@ -160,6 +209,20 @@ TEST_F(DeviceIdFromSysfsTest, PciDeviceWithAnyProductId) {
 TEST_F(DeviceIdFromSysfsTest, PciDeviceWithAnyVendorId) {
   CreateDeviceSysfs(kDeviceName0, kPciBusName);
   ExpectDeviceId(kDeviceName0, DeviceId{DeviceId::BusType::kPci});
+}
+
+TEST_F(DeviceIdFromSysfsTest, ExternalPciDeviceWithAnyVendorId) {
+  CreateDeviceSysfs(kDeviceName0, kPciBusName);
+  CreateDeviceSysfsFile(kDeviceName0, "untrusted", "1");
+  ExpectDeviceId(kDeviceName0, DeviceId{DeviceId::BusType::kPci,
+                                        DeviceId::LocationType::kExternal});
+}
+
+TEST_F(DeviceIdFromSysfsTest, InternalPciDeviceWithAnyVendorId) {
+  CreateDeviceSysfs(kDeviceName0, kPciBusName);
+  CreateDeviceSysfsFile(kDeviceName0, "untrusted", "0");
+  ExpectDeviceId(kDeviceName0, DeviceId{DeviceId::BusType::kPci,
+                                        DeviceId::LocationType::kInternal});
 }
 
 TEST_F(DeviceIdFromSysfsTest, UsbDevice) {
