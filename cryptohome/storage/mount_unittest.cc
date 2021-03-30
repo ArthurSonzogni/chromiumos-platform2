@@ -2001,6 +2001,20 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
       .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+
+  // Expect deletion of cryptohome mount points.
+  EXPECT_CALL(platform_,
+              DeletePathRecursively(
+                  brillo::cryptohome::home::GetRootPath(user->username)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              DeletePathRecursively(
+                  brillo::cryptohome::home::GetUserPath(user->username)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeletePathRecursively(
+                             MountHelper::GetNewUserPath(user->username)))
+      .WillOnce(Return(true));
+
   std::vector<FilePath> empty;
   EXPECT_CALL(
       platform_,
@@ -2103,6 +2117,20 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
       .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+
+  // Expect deletion of cryptohome mount points.
+  EXPECT_CALL(platform_,
+              DeletePathRecursively(
+                  brillo::cryptohome::home::GetRootPath(user->username)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              DeletePathRecursively(
+                  brillo::cryptohome::home::GetUserPath(user->username)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeletePathRecursively(
+                             MountHelper::GetNewUserPath(user->username)))
+      .WillOnce(Return(true));
+
   std::vector<FilePath> empty;
   EXPECT_CALL(
       platform_,

@@ -301,22 +301,22 @@ bool MountHelper::EnsureUserMountPoints(const std::string& username) const {
 
   if (platform_->DirectoryExists(multi_home_user) &&
       (platform_->IsDirectoryMounted(multi_home_user) ||
-       !platform_->DeleteFile(multi_home_user))) {
-    LOG(ERROR) << "Failed to remove mount point: " << multi_home_user.value();
+       !platform_->DeletePathRecursively(multi_home_user))) {
+    PLOG(ERROR) << "Failed to remove mount point: " << multi_home_user.value();
     return false;
   }
 
   if (platform_->DirectoryExists(multi_home_root) &&
       (platform_->IsDirectoryMounted(multi_home_root) ||
-       !platform_->DeleteFile(multi_home_root))) {
-    LOG(ERROR) << "Failed to remove mount point: " << multi_home_root.value();
+       !platform_->DeletePathRecursively(multi_home_root))) {
+    PLOG(ERROR) << "Failed to remove mount point: " << multi_home_root.value();
     return false;
   }
 
   if (platform_->DirectoryExists(new_user_path) &&
       (platform_->IsDirectoryMounted(new_user_path) ||
-       !platform_->DeleteFile(new_user_path))) {
-    LOG(ERROR) << "Failed to remove mount point: " << new_user_path.value();
+       !platform_->DeletePathRecursively(new_user_path))) {
+    PLOG(ERROR) << "Failed to remove mount point: " << new_user_path.value();
     return false;
   }
 
