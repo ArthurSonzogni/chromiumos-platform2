@@ -14,6 +14,7 @@
 #include <brillo/proto_file_io.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
+#include "modemfwd/firmware_file.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/journal_entry.pb.h"
@@ -62,6 +63,8 @@ bool RestartOperation(const JournalEntry& entry,
 
   std::vector<FirmwareConfig> flashed_fw;
   std::vector<std::string> paths_for_logging;
+  // Keep a reference to all temporary uncompressed files.
+  std::vector<std::unique_ptr<FirmwareFile>> all_files;
   for (const auto& entry_type : entry.type()) {
     std::string fw_type = JournalTypeToFirmwareType(entry_type);
     FirmwareFileInfo* info = nullptr;
@@ -79,15 +82,19 @@ bool RestartOperation(const JournalEntry& entry,
         info = base::OptionalOrNullptr<FirmwareFileInfo>(res.carrier_firmware);
         break;
     }
-    if (info == nullptr) {
+
+    auto firmware_file = std::make_unique<FirmwareFile>();
+    if (info == nullptr || !firmware_file->PrepareFrom(*info)) {
       LOG(ERROR) << "Unfinished \"" << fw_type
                  << "\" firmware flash for device with ID \""
                  << entry.device_id() << "\" but no firmware was found";
       continue;
     }
 
-    flashed_fw.push_back({fw_type, info->firmware_path, info->version});
-    paths_for_logging.push_back(info->firmware_path.value());
+    flashed_fw.push_back(
+        {fw_type, firmware_file->path_on_filesystem(), info->version});
+    paths_for_logging.push_back(firmware_file->path_for_logging().value());
+    all_files.push_back(std::move(firmware_file));
   }
   if (flashed_fw.size() != entry.type_size() || !flashed_fw.size()) {
     LOG(ERROR) << "Malformed journal entry with invalid types.";
