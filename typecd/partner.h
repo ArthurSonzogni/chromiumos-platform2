@@ -70,6 +70,18 @@ class Partner : public Peripheral {
   void ReportMetrics(Metrics* metrics);
 
  private:
+  friend class MetricsTest;
+  FRIEND_TEST(MetricsTest, CheckPartnerTypeUSB4Hub);
+  FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTDPAltHub);
+  FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTDPAltPeripheral);
+  FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTPeripheral);
+  FRIEND_TEST(MetricsTest, CheckPartnerTypeDPAltHub);
+  FRIEND_TEST(MetricsTest, CheckPartnerTypeOther);
+
+  // Convenience function used by ReportMetrics to get the right enum for
+  // PartnerTypeMetric.
+  PartnerTypeMetric GetPartnerTypeMetric();
+
   // A map representing all the alternate modes supported by the partner.
   // The key is the index of the alternate mode as determined by the connector
   // class sysfs directories that represent them. For example, and alternate

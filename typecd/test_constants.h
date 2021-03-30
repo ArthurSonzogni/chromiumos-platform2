@@ -20,6 +20,12 @@ const uint32_t kDPVDOIndex_WD19TB = 0;
 // DP Alt mode Discovery data for Gatkex Creek dock.
 const uint32_t kDPVDO_GatkexCreek = 0x1c0045;
 const uint32_t kDPVDOIndex_GatkexCreek = 0;
+// DP Alt mode Discovery data for Startech DK30C2DAGPD dock.
+const uint32_t kDPVDO_Startech_DK30C2DAGPD = 0x40045;
+const uint32_t kDPVDOIndex_Startech_DK30C2DAGPD = 0;
+// DP Alt mode Discovery data for Sabrent Rocket XTRM-Q SSD enclosure.
+const uint32_t kDPVDO_Sabrent = 0xc0045;
+const uint32_t kDPVDOIndex_Sabrent = 0;
 
 // Common responses to DiscoveSVID for TBT Alt mode.
 const int kTBTAltModeIndex = 1;

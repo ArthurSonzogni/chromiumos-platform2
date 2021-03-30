@@ -12,6 +12,8 @@
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
 
+#include "typecd/pd_vdo_constants.h"
+
 namespace {
 
 constexpr char kPartnerAltModeRegex[] = R"(port(\d+)-partner.(\d+))";
@@ -124,11 +126,93 @@ bool Partner::DiscoveryComplete() {
   return num_alt_modes_ == alt_modes_.size();
 }
 
+PartnerTypeMetric Partner::GetPartnerTypeMetric() {
+  bool usb4 = false;
+  auto partner_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
+                     kDeviceCapabilityMask;
+  if (partner_cap & kDeviceCapabilityUSB4) {
+    usb4 = true;
+  }
+
+  // Check for TBT/DP.
+  bool tbt_present = false;
+  bool dp_present = false;
+  for (const auto& [index, mode] : alt_modes_) {
+    if (mode->GetSVID() == kTBTAltModeVID)
+      tbt_present = true;
+
+    if ((mode->GetSVID() == kDPAltModeSID) && (mode->GetVDO() & kDPModeSnk))
+      dp_present = true;
+  }
+
+  bool usb_present = false;
+  // For situations where the device is a "regular" USB peripheral, try to
+  // determine whether it at least supports anything other than billboard.
+  auto product_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+                      kIDHeaderVDOProductTypeMask;
+  if (product_type == kIDHeaderVDOProductTypeUFPPeripheral ||
+      product_type == kIDHeaderVDOProductTypeUFPHub) {
+    auto device_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
+                      kDeviceCapabilityMask;
+    if (device_cap != kDeviceCapabilityBillboard)
+      usb_present = true;
+  }
+
+  // Determine whether it is a hub or peripheral.
+  bool hub = false;
+  bool peripheral = false;
+  if (product_type == kIDHeaderVDOProductTypeUFPHub) {
+    hub = true;
+  } else if (product_type == kIDHeaderVDOProductTypeUFPPeripheral) {
+    peripheral = true;
+  } else if (product_type == kIDHeaderVDOProductTypeUFPAMA) {
+    // If it's an Alternate Mode Adapter, we have to guess.
+    // Check the AMA VDO. If only billboard is supported, we guess that it's a
+    // peripheral. In all other cases, we consider it's a hub.
+    auto usb_speed = GetProductTypeVDO1() & kAMAVDOUSBSpeedBitMask;
+    if (usb_speed != kAMAVDOUSBSpeedBillboard)
+      hub = true;
+    else
+      peripheral = true;
+  }
+
+  // Now that we have all the data, let's make a type selection.
+  PartnerTypeMetric ret = PartnerTypeMetric::kOther;
+  if (usb4) {
+    if (hub)
+      ret = PartnerTypeMetric::kUSB4Hub;
+    else if (peripheral)
+      ret = PartnerTypeMetric::kUSB4Peripheral;
+  } else if (tbt_present && dp_present) {
+    if (hub)
+      ret = PartnerTypeMetric::kTBTDPAltHub;
+    else if (peripheral)
+      ret = PartnerTypeMetric::kTBTDPAltPeripheral;
+  } else if (tbt_present) {
+    if (hub)
+      ret = PartnerTypeMetric::kTBTHub;
+    else if (peripheral)
+      ret = PartnerTypeMetric::kTBTPeripheral;
+  } else if (dp_present) {
+    if (hub)
+      ret = PartnerTypeMetric::kDPAltHub;
+    else if (peripheral)
+      ret = PartnerTypeMetric::kDPAltPeripheral;
+  } else if (usb_present) {
+    if (hub)
+      ret = PartnerTypeMetric::kUSBHub;
+    else if (peripheral)
+      ret = PartnerTypeMetric::kUSBPeripheral;
+  }
+
+  return ret;
+}
+
 void Partner::ReportMetrics(Metrics* metrics) {
   if (!metrics || metrics_reported_)
     return;
 
-  // TODO(b/164522182): Report metrics here.
+  metrics->ReportPartnerType(GetPartnerTypeMetric());
 
   metrics_reported_ = true;
 }

@@ -15,10 +15,6 @@ namespace {
 
 constexpr char kDataRoleDRPRegex[] = R"(\[(\w+)\])";
 
-// DP altmode VDO capabilities.
-// NOTE: We only include the bit fields we are interested in.
-constexpr uint32_t kDPModeSnk = 0x1;
-
 }  // namespace
 
 namespace typecd {

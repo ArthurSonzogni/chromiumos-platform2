@@ -18,6 +18,9 @@ constexpr uint8_t kIDHeaderVDOProductTypeBitOffset = 27;
 constexpr uint8_t kIDHeaderVDOProductTypeMask = 0x7;
 constexpr uint8_t kIDHeaderVDOProductTypeCablePassive = 0x3;
 constexpr uint8_t kIDHeaderVDOProductTypeCableActive = 0x4;
+constexpr uint8_t kIDHeaderVDOProductTypeUFPHub = 0x1;
+constexpr uint8_t kIDHeaderVDOProductTypeUFPPeripheral = 0x2;
+constexpr uint8_t kIDHeaderVDOProductTypeUFPAMA = 0x5;
 constexpr uint32_t kIdHeaderVDOVidMask = 0x0000ffff;
 
 // Bit Masks for Product VDO
@@ -30,6 +33,7 @@ constexpr uint32_t kProductVDOPidMask = 0xffff0000;
 // Table 6-35 UFP VDO 1
 constexpr uint32_t kDeviceCapabilityBitOffset = 24;
 constexpr uint8_t kDeviceCapabilityMask = 0xF;
+constexpr uint8_t kDeviceCapabilityBillboard = 0x2;
 constexpr uint8_t kDeviceCapabilityUSB4 = 0x8;
 constexpr uint32_t kUSBSpeedBitMask = 0x3;
 constexpr uint32_t kUSBSpeed20 = 0x0;
@@ -61,7 +65,17 @@ constexpr uint8_t kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded = 0x1;
 
 // Standard and Vendor Indentifications commonly expected in cables and partners
 constexpr uint16_t kDPAltModeSID = 0xff01;
+// DP altmode VDO capabilities.
+// NOTE: We only include the bit fields we are interested in.
+constexpr uint32_t kDPModeSnk = 0x1;
+
 constexpr uint16_t kTBTAltModeVID = 0x8087;
+
+// Bit Masks for Alternate Mode Adapter (AMA) VDO
+// USB PD spec rev 3.0, v 2.0.
+// Table 6-41 AMA VDO
+constexpr uint32_t kAMAVDOUSBSpeedBitMask = 0x7;
+constexpr uint32_t kAMAVDOUSBSpeedBillboard = 0x3;
 
 }  // namespace typecd
 

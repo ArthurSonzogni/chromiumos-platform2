@@ -9,6 +9,23 @@
 
 namespace typecd {
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class PartnerTypeMetric {
+  kOther = 0,
+  kTBTDPAltHub = 1,
+  kTBTDPAltPeripheral = 2,
+  kTBTHub = 3,
+  kTBTPeripheral = 4,
+  kUSB4Hub = 5,
+  kUSB4Peripheral = 6,
+  kDPAltHub = 7,
+  kDPAltPeripheral = 8,
+  kUSBHub = 9,
+  kUSBPeripheral = 10,
+  kMaxValue = kUSBPeripheral,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -17,6 +34,8 @@ class Metrics {
   Metrics& operator=(const Metrics&) = delete;
 
   ~Metrics() = default;
+
+  void ReportPartnerType(PartnerTypeMetric type);
 
  private:
   MetricsLibrary metrics_library_;

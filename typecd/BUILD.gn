@@ -44,6 +44,7 @@ static_library("typecd_common") {
     "alt_mode.cc",
     "cable.cc",
     "cros_ec_util.cc",
+    "metrics.cc",
     "notification_manager.cc",
     "partner.cc",
     "peripheral.cc",
@@ -78,6 +79,7 @@ if (use.test) {
     sources = [
       "cable_test.cc",
       "cros_ec_util_test.cc",
+      "metrics_test.cc",
       "partner_test.cc",
       "peripheral_test.cc",
       "port_manager_test.cc",
