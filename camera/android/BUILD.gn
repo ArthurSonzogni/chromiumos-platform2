@@ -43,7 +43,5 @@ generate_pkg_config("libcros_camera_android_deps_pkg_config") {
     "-I/usr/include/android/hardware/libhardware/include",
     "-I/usr/include/android/system/core/include",
   ]
-  libs = [
-    "-lcros_camera_android_deps",
-  ]
+  libs = [ "-lcros_camera_android_deps" ]
 }

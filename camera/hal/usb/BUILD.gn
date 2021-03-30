@@ -64,14 +64,14 @@ shared_library("libcamera_hal") {
 
 if (use.test) {
   executable("image_processor_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "frame_buffer.cc",
       "image_processor.cc",
       "unittest/image_processor_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
   }
 }
