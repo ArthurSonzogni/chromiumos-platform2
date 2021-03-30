@@ -29,9 +29,9 @@ pkg_config("target_defaults") {
 }
 
 shared_library("container_config_parser") {
+  sources = [ "container_config_parser.cc" ]
   configs += [ ":target_defaults" ]
   configs -= [ "//common-mk:no_exceptions" ]
-  sources = [ "container_config_parser.cc" ]
 }
 
 pkg_config("run_oci_config") {
@@ -39,16 +39,16 @@ pkg_config("run_oci_config") {
 }
 
 executable("run_oci") {
-  configs += [
-    ":run_oci_config",
-    ":target_defaults",
-  ]
-  configs -= [ "//common-mk:no_exceptions" ]
   sources = [
     "container_config_parser.cc",
     "run_oci.cc",
     "run_oci_utils.cc",
   ]
+  configs += [
+    ":run_oci_config",
+    ":target_defaults",
+  ]
+  configs -= [ "//common-mk:no_exceptions" ]
 }
 
 if (use.test) {
@@ -57,31 +57,31 @@ if (use.test) {
   }
 
   executable("container_config_parser_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":test_config",
-    ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "container_config_parser.cc",
       "container_config_parser_test.cc",
     ]
-    deps = [ "//common-mk/testrunner" ]
-  }
-
-  executable("run_oci_test") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
       ":test_config",
     ]
     configs -= [ "//common-mk:no_exceptions" ]
+    deps = [ "//common-mk/testrunner" ]
+  }
+
+  executable("run_oci_test") {
     sources = [
       "run_oci_test.cc",
       "run_oci_utils.cc",
       "run_oci_utils_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
     deps = [ "//common-mk/testrunner" ]
   }
 }
