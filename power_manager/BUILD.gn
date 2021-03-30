@@ -109,8 +109,6 @@ pkg_config("libutil_dependent_config") {
 }
 
 static_library("libutil") {
-  configs += [ ":target_defaults" ]
-  all_dependent_configs = [ ":libutil_dependent_config" ]
   sources = [
     "common/activity_logger.cc",
     "common/battery_percentage_converter.cc",
@@ -123,10 +121,11 @@ static_library("libutil") {
     "common/prefs.cc",
     "common/util.cc",
   ]
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libutil_dependent_config" ]
 }
 
 static_library("libsystem") {
-  configs += [ ":target_defaults" ]
   sources = [
     "powerd/system/acpi_wakeup_helper.cc",
     "powerd/system/ambient_light_sensor.cc",
@@ -170,13 +169,12 @@ static_library("libsystem") {
     "powerd/system/wakeup_source_identifier.cc",
     "powerd/system/wilco_charge_controller_helper.cc",
   ]
-
+  configs += [ ":target_defaults" ]
+  libs = [ "rt" ]
   deps = [
     "//iioservice/libiioservice_ipc:libiioservice_ipc",
     "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
   ]
-
-  libs = [ "rt" ]
 }
 
 pkg_config("libsystem_stub_dependent_config") {
@@ -184,8 +182,6 @@ pkg_config("libsystem_stub_dependent_config") {
 }
 
 static_library("libsystem_stub") {
-  configs += [ ":target_defaults" ]
-  all_dependent_configs = [ ":libsystem_stub_dependent_config" ]
   sources = [
     "powerd/system/acpi_wakeup_helper_stub.cc",
     "powerd/system/ambient_light_sensor_manager_stub.cc",
@@ -207,10 +203,11 @@ static_library("libsystem_stub") {
     "powerd/system/user_proximity_watcher_stub.cc",
     "powerd/system/wakeup_source_identifier_stub.cc",
   ]
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libsystem_stub_dependent_config" ]
 }
 
 static_library("libpolicy") {
-  configs += [ ":target_defaults" ]
   sources = [
     "powerd/policy/ambient_light_handler.cc",
     "powerd/policy/backlight_controller.cc",
@@ -230,20 +227,20 @@ static_library("libpolicy") {
     "powerd/policy/user_proximity_voting.cc",
     "powerd/policy/wifi_controller.cc",
   ]
+  configs += [ ":target_defaults" ]
+  libs = [ "m" ]
   if (use.trogdor_sar_hack) {
     sources += [ "powerd/policy/cellular_controller_trogdor.cc" ]
-
     deps = [ ":upstart_proxies" ]
   }
-  libs = [ "m" ]
 }
 
 static_library("libpolicy_stub") {
-  configs += [ ":target_defaults" ]
   sources = [
     "powerd/policy/backlight_controller_observer_stub.cc",
     "powerd/policy/backlight_controller_stub.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 pkg_config("libpowerd_dependent_config") {
@@ -251,13 +248,12 @@ pkg_config("libpowerd_dependent_config") {
 }
 
 static_library("libpowerd") {
-  configs += [ ":target_defaults" ]
-  all_dependent_configs = [ ":libpowerd_dependent_config" ]
   sources = [
     "powerd/daemon.cc",
     "powerd/metrics_collector.cc",
   ]
-
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libpowerd_dependent_config" ]
   deps = [
     ":libpolicy",
     ":libsystem",
@@ -270,19 +266,19 @@ static_library("libpowerd") {
 }
 
 executable("powerd") {
-  configs += [ ":target_defaults" ]
   sources = [ "powerd/main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libpowerd" ]
 }
 
 executable("powerd_setuid_helper") {
-  configs += [ ":target_defaults" ]
   sources = [ "powerd/powerd_setuid_helper.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("set_cellular_transmit_power") {
-  configs += [ ":target_defaults" ]
   sources = [ "powerd/set_cellular_transmit_power.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 pkg_config("set_wifi_transmit_power_config") {
@@ -290,16 +286,16 @@ pkg_config("set_wifi_transmit_power_config") {
 }
 
 executable("set_wifi_transmit_power") {
+  sources = [ "powerd/set_wifi_transmit_power.cc" ]
   configs += [
     ":set_wifi_transmit_power_config",
     ":target_defaults",
   ]
-  sources = [ "powerd/set_wifi_transmit_power.cc" ]
 }
 
 executable("backlight_tool") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/backlight_tool.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libpolicy",
     ":libsystem",
@@ -309,30 +305,30 @@ executable("backlight_tool") {
 }
 
 executable("check_powerd_config") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/check_powerd_config.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libutil" ]
 }
 
 executable("inject_powerd_input_event") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/inject_powerd_input_event.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("memory_suspend_test") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/memory_suspend_test.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("powerd_dbus_suspend") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/powerd_dbus_suspend.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libutil" ]
 }
 
 executable("power_supply_info") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/power_supply_info.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libsystem",
     ":libsystem_stub",
@@ -341,8 +337,8 @@ executable("power_supply_info") {
 }
 
 executable("dump_power_status") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/dump_power_status.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libsystem",
     ":libsystem_stub",
@@ -351,18 +347,18 @@ executable("dump_power_status") {
 }
 
 executable("send_debug_power_status") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/send_debug_power_status.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("set_power_policy") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/set_power_policy.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("suspend_delay_sample") {
-  configs += [ ":target_defaults" ]
   sources = [ "tools/suspend_delay_sample.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 if (use.buffet) {
@@ -372,15 +368,14 @@ if (use.buffet) {
     sources = [ "../buffet/dbus_bindings/org.chromium.Buffet.Command.xml" ]
   }
   static_library("buffet_command_handlers") {
-    configs += [ ":target_defaults" ]
     sources = [ "powerd/buffet/command_handlers.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [ ":generate_buffet_proxies" ]
   }
 }
 
 if (use.fuzzer || use.test) {
   static_library("libutil_test") {
-    configs += [ ":target_defaults" ]
     sources = [
       "common/action_recorder.cc",
       "common/battery_percentage_converter.cc",
@@ -388,22 +383,23 @@ if (use.fuzzer || use.test) {
       "common/metrics_sender_stub.cc",
       "common/test_main_loop_runner.cc",
     ]
+    configs += [ ":target_defaults" ]
   }
 }
 
 if (use.test) {
   executable("power_manager_util_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":libchrome_test_config",
-    ]
     sources = [
       "common/activity_logger_test.cc",
       "common/battery_percentage_converter_test.cc",
       "common/prefs_test.cc",
       "common/testrunner.cc",
       "common/util_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":libchrome_test_config",
     ]
     deps = [
       ":libutil",
@@ -417,12 +413,6 @@ if (use.test) {
   }
 
   executable("power_manager_system_test") {
-    configs += [
-      "//common-mk:test",
-      ":power_manager_system_test_config",
-      ":target_defaults",
-      ":libchrome_test_config",
-    ]
     sources = [
       "common/testrunner.cc",
       "powerd/system/acpi_wakeup_helper_test.cc",
@@ -457,6 +447,12 @@ if (use.test) {
       "powerd/system/wakeup_device_test.cc",
       "powerd/system/wakeup_source_identifier_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":power_manager_system_test_config",
+      ":target_defaults",
+      ":libchrome_test_config",
+    ]
     deps = [
       ":libsystem",
       ":libsystem_stub",
@@ -466,11 +462,6 @@ if (use.test) {
   }
 
   executable("power_manager_policy_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":libchrome_test_config",
-    ]
     sources = [
       "common/testrunner.cc",
       "powerd/policy/ambient_light_handler_test.cc",
@@ -491,6 +482,11 @@ if (use.test) {
       "powerd/policy/user_proximity_voting_test.cc",
       "powerd/policy/wifi_controller_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":libchrome_test_config",
+    ]
     deps = [
       ":libpolicy",
       ":libpolicy_stub",
@@ -502,15 +498,15 @@ if (use.test) {
   }
 
   executable("power_manager_daemon_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":libchrome_test_config",
-    ]
     sources = [
       "common/testrunner.cc",
       "powerd/daemon_test.cc",
       "powerd/metrics_collector_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":libchrome_test_config",
     ]
     deps = [
       ":libpolicy",
@@ -526,23 +522,23 @@ if (use.test) {
 
 if (use.amd64) {
   executable("dump_intel_rapl_consumption") {
-    configs += [ ":target_defaults" ]
     sources = [ "tools/dump_intel_rapl_consumption.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [ ":libutil" ]
   }
 }
 
 if (use.fuzzer) {
   static_library("libpolicy_test") {
-    configs += [ ":target_defaults" ]
     sources = [ "powerd/policy/ambient_light_pref_fuzz_util.cc" ]
+    configs += [ ":target_defaults" ]
   }
   executable("ambient_light_handler_fuzzer") {
+    sources = [ "powerd/policy/ambient_light_handler_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "powerd/policy/ambient_light_handler_fuzzer.cc" ]
     deps = [
       ":libpolicy_test",
       ":libpowerd",
@@ -550,11 +546,11 @@ if (use.fuzzer) {
     ]
   }
   executable("internal_backlight_controller_fuzzer") {
+    sources = [ "powerd/policy/internal_backlight_controller_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    sources = [ "powerd/policy/internal_backlight_controller_fuzzer.cc" ]
     deps = [
       ":libpolicy_test",
       ":libpowerd",
@@ -573,6 +569,7 @@ if (use.fuzzer) {
     ]
   }
   executable("powerd_als_fuzzer") {
+    sources = [ "powerd/system/fuzzers/powerd_als_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       "//common-mk:test",
@@ -583,6 +580,5 @@ if (use.fuzzer) {
       ":libsystem",
       ":libutil",
     ]
-    sources = [ "powerd/system/fuzzers/powerd_als_fuzzer.cc" ]
   }
 }

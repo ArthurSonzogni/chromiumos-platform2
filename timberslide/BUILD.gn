@@ -21,16 +21,16 @@ pkg_config("target_defaults") {
 }
 
 static_library("libtimberslide") {
-  configs += [ ":target_defaults" ]
   sources = [
     "fingerprint_log_listener_impl.cc",
     "timberslide.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("timberslide") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libtimberslide" ]
 }
 
@@ -39,15 +39,15 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("timberslide_test_runner") {
-    configs += [
-      "//common-mk:test",
-      ":timberslide_test_config",
-      ":target_defaults",
-    ]
     sources = [
       "fingerprint_log_listener_impl_test.cc",
       "timberslide_test.cc",
       "timberslide_testrunner.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":timberslide_test_config",
+      ":target_defaults",
     ]
     deps = [
       ":libtimberslide",
