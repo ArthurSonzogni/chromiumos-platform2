@@ -24,8 +24,9 @@ use crate::util::{
     clear_signal_handlers, generate_output_file_path, set_signal_handlers, DEFAULT_DBUS_TIMEOUT,
 };
 
-const FLAGS: [(&str, &str, &str); 5] = [
+const FLAGS: [(&str, &str, &str); 6] = [
     ("device", "<device>", "device"),
+    ("max-size", "<max size in MiB>", "max_size"),
     ("frequency", "<frequency>", "frequency"),
     ("ht-location", "<above|below>", "ht_location"),
     ("vht-width", "<80|160>", "vht_width"),
@@ -42,7 +43,9 @@ Start packet capture.  Start a device-based capture on <device>,
   provided HT channel location or VHT channel width.  An over-the-air
   capture can also be initiated using the channel parameters of a
   currently connected <monitored_device>.  Note that over-the-air
-  captures are not available with all 802.11 devices.
+  captures are not available with all 802.11 devices. Set <max_size>
+  to stop the packet capture if the output .pcap file size exceedes this
+  limit.
 "#;
 
 pub fn register(dispatcher: &mut Dispatcher) {
@@ -113,12 +116,14 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
         let name = flag.2;
         let argument_name = flag.0;
         if let Some(value) = matches.opt_str(argument_name) {
-            // The argument will be sent to dbus as int for "frequency" option and String for other options.
-            let variant_value: Variant<Box<dyn arg::RefArg>> = if argument_name == "frequency" {
-                Variant(Box::new(value.parse::<i32>().unwrap()))
-            } else {
-                Variant(Box::new(value))
-            };
+            // The argument will be sent to dbus as int for "frequency" and "max-size" option
+            // and String for other options.
+            let variant_value: Variant<Box<dyn arg::RefArg>> =
+                if argument_name == "frequency" || argument_name == "max-size" {
+                    Variant(Box::new(value.parse::<i32>().unwrap()))
+                } else {
+                    Variant(Box::new(value))
+                };
             dbus_options.insert(name, variant_value);
         }
     }

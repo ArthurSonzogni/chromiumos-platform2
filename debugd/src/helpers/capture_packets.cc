@@ -7,6 +7,7 @@
 
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <chromeos/libminijail.h>
 #include <pcap.h>
@@ -14,7 +15,7 @@
 #define RECEIVE_PACKET_SIZE 2048
 #define PACKET_TIMEOUT_MS 1000
 
-int perform_capture(char* device, char* output_file) {
+int perform_capture(char* device, char* output_file, char* max_size) {
   char buf[RECEIVE_PACKET_SIZE];
   const int promiscuous = 0;
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -30,6 +31,11 @@ int perform_capture(char* device, char* output_file) {
     fprintf(stderr, "Could not open dump file.\n");
     return -1;
   }
+
+  // max_size argument is given in MiB. Convert max_size from MiB to bytes.
+  int mib_to_byte_conversion = 1048576;
+  int max_capture_size = atoi(max_size) * mib_to_byte_conversion;
+  int total_captured_size = 0;
 
   // Now that we have all our handles open, drop privileges.
   struct minijail* j = minijail_new();
@@ -53,7 +59,14 @@ int perform_capture(char* device, char* output_file) {
       continue;
     }
     ++packet_count;
+    total_captured_size += header.caplen;
     pcap_dump(reinterpret_cast<u_char*>(dumper), &header, packet);
+    if (max_capture_size && total_captured_size >= max_capture_size) {
+      fprintf(
+          stderr,
+          "Reached capture file size limit! Stopping packet capture now.\n");
+      break;
+    }
   }
 
   pcap_close(pcap);
@@ -65,10 +78,10 @@ int perform_capture(char* device, char* output_file) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 3) {
+  if (argc < 4) {
     fprintf(stderr, "Usage: %s <device> <output_file>\n", argv[0]);
     return 1;
   }
 
-  return perform_capture(argv[1], argv[2]);
+  return perform_capture(argv[1], argv[2], argv[3]);
 }

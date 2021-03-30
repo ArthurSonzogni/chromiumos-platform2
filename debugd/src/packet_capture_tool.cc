@@ -77,6 +77,8 @@ bool PacketCaptureTool::Start(const base::ScopedFD& status_fd,
   p->AddArg(exec_path);
   if (!AddValidatedStringOption(p, options, "device", "--device", error))
     return false;
+  if (!AddIntOption(p, options, "max_size", "--max-size", error))
+    return false;
   if (!AddIntOption(p, options, "frequency", "--frequency", error))
     return false;
   if (!AddValidatedStringOption(p, options, "ht_location", "--ht-location",

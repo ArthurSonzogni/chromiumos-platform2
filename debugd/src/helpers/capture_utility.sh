@@ -447,9 +447,11 @@ start_capture ()
 {
   local device="${1}"
   local output_file="${2}"
+  local max_size="${3}"
   echo "Capturing from ${device}.  Press Ctrl-C to stop."
   ip link set "${device}" up
-  exec /usr/libexec/debugd/helpers/capture_packets "${device}" "${output_file}"
+  exec /usr/libexec/debugd/helpers/capture_packets \
+    "${device}" "${output_file}" "${max_size}"
 }
 
 
@@ -457,6 +459,7 @@ start_capture ()
 usage ()
 {
   echo "Usage: $0 [ --device <device> ] [ --frequency <frequency> ] "
+  echo "        [ --max-size <max_size> ] "
   echo "        [ --ht-location <above|below> ] "
   echo "        [ --vht-width <80|160> ] "
   echo "        [ --monitor-connection-on <monitored_device> ] "
@@ -520,6 +523,7 @@ main ()
 {
   local device
   local frequency
+  local max_size="0"
   local ht_location
   local vht_chan_width
   local center_freq
@@ -535,6 +539,10 @@ main ()
         ;;
       --frequency)
         frequency="${1}"
+        shift
+        ;;
+      --max-size)
+        max_size="${1}"
         shift
         ;;
       --ht-location)
@@ -617,7 +625,7 @@ main ()
     done
   fi
 
-  start_capture "${device}" "${output_file}"
+  start_capture "${device}" "${output_file}" "${max_size}"
 }
 
 set -e  # exit on failures
