@@ -54,6 +54,7 @@ class ChromeCollector : public CrashCollector {
  private:
   friend class ChromeCollectorTest;
   FRIEND_TEST(ChromeCollectorTest, GoodValues);
+  FRIEND_TEST(ChromeCollectorTest, GoodLacros);
   FRIEND_TEST(ChromeCollectorTest, ParseCrashLogNoDump);
   FRIEND_TEST(ChromeCollectorTest, ParseCrashLogJSStack);
   FRIEND_TEST(ChromeCollectorTest, BadValues);
@@ -94,7 +95,8 @@ class ChromeCollector : public CrashCollector {
                      const base::FilePath& dir,
                      const std::string& basename,
                      CrashType crash_type,
-                     base::FilePath* payload);
+                     base::FilePath* payload,
+                     bool* is_lacros_crash);
 
   // Some classes of JavaScript errors do not have stacks. Since crash_sender
   // cannot send error reports without a payload, create a simple payload that

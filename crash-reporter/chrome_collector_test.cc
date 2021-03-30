@@ -41,6 +41,9 @@ const char kTestCrashDirectory[] = "test-crash-directory";
 const char kCrashFormatGood[] =
     "value1:10:abcdefghijvalue2:5:12345"
     "upload_file_minidump\"; filename=\"dump\":3:abc";
+const char kCrashFormatGoodLacros[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "prod:13:Chrome_Lacros";
 const char kCrashFormatNoDump[] = "value1:10:abcdefghijvalue2:5:12345";
 const char kCrashFormatEmbeddedNewline[] =
     "value1:10:abcd\r\nghijvalue2:5:12\n34"
@@ -249,9 +252,11 @@ TEST_F(ChromeCollectorTest, GoodValues) {
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
+  bool is_lacros_crash;
   EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGood, dir, "base",
                                        ChromeCollector::kExecutableCrash,
-                                       &payload));
+                                       &payload, &is_lacros_crash));
+  EXPECT_FALSE(is_lacros_crash);
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 
@@ -261,14 +266,33 @@ TEST_F(ChromeCollectorTest, GoodValues) {
   EXPECT_TRUE(meta.find("value2=12345") != std::string::npos);
 }
 
+TEST_F(ChromeCollectorTest, GoodLacros) {
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  const FilePath& dir = scoped_temp_dir.GetPath();
+  FilePath payload;
+  bool is_lacros_crash;
+  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGoodLacros, dir, "base",
+                                       ChromeCollector::kExecutableCrash,
+                                       &payload, &is_lacros_crash));
+  EXPECT_TRUE(is_lacros_crash);
+  EXPECT_EQ(payload, dir.Append("base.dmp"));
+  ExpectFileEquals("abc", payload);
+
+  // Check to see if the values made it in properly.
+  std::string meta = collector_.extra_metadata_;
+  EXPECT_TRUE(meta.find("upload_var_prod=Chrome_Lacros") != std::string::npos);
+}
+
 TEST_F(ChromeCollectorTest, ParseCrashLogNoDump) {
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
+  bool is_lacros_crash;
   EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatNoDump, dir, "base",
                                        ChromeCollector::kExecutableCrash,
-                                       &payload));
+                                       &payload, &is_lacros_crash));
   EXPECT_EQ(payload.value(), "");
   EXPECT_FALSE(base::PathExists(dir.Append("base.dmp")));
 
@@ -283,9 +307,10 @@ TEST_F(ChromeCollectorTest, ParseCrashLogJSStack) {
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
+  bool is_lacros_crash;
   EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatWithJSStack, dir, "base",
                                        ChromeCollector::kJavaScriptError,
-                                       &payload));
+                                       &payload, &is_lacros_crash));
   EXPECT_EQ(payload, dir.Append("base.js_stack"));
   ExpectFileEquals("0123456789abcdefghij", payload);
 
@@ -300,9 +325,10 @@ TEST_F(ChromeCollectorTest, Newlines) {
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
+  bool is_lacros_crash;
   EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatEmbeddedNewline, dir, "base",
                                        ChromeCollector::kExecutableCrash,
-                                       &payload));
+                                       &payload, &is_lacros_crash));
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("a\nc", payload);
 
@@ -321,10 +347,11 @@ TEST_F(ChromeCollectorTest, BadValues) {
     for (auto crash_type : {ChromeCollector::kExecutableCrash,
                             ChromeCollector::kJavaScriptError}) {
       FilePath payload;
+      bool is_lacros_crash;
       EXPECT_FALSE(collector_.ParseCrashLog(
           data, dir,
           base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
-          crash_type, &payload))
+          crash_type, &payload, &is_lacros_crash))
           << data << " did not fail (for crash_type "
           << static_cast<int>(crash_type) << ")";
       test_number++;
@@ -332,19 +359,21 @@ TEST_F(ChromeCollectorTest, BadValues) {
   }
   for (const char* data : kCrashFormatBadValuesExecutable) {
     FilePath payload;
+    bool is_lacros_crash;
     EXPECT_FALSE(collector_.ParseCrashLog(
         data, dir,
         base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
-        ChromeCollector::kExecutableCrash, &payload))
+        ChromeCollector::kExecutableCrash, &payload, &is_lacros_crash))
         << data << " did not fail";
     test_number++;
   }
   for (const char* data : kCrashFormatBadValuesJavaScript) {
     FilePath payload;
+    bool is_lacros_crash;
     EXPECT_FALSE(collector_.ParseCrashLog(
         data, dir,
         base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
-        ChromeCollector::kJavaScriptError, &payload))
+        ChromeCollector::kJavaScriptError, &payload, &is_lacros_crash))
         << data << " did not fail";
     test_number++;
   }
@@ -355,9 +384,10 @@ TEST_F(ChromeCollectorTest, File) {
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
+  bool is_lacros_crash;
   EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatWithFile, dir, "base",
                                        ChromeCollector::kExecutableCrash,
-                                       &payload));
+                                       &payload, &is_lacros_crash));
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 

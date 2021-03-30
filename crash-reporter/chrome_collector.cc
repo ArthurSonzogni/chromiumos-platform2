@@ -48,6 +48,9 @@ const char kShutdownBrowserPidPath[] = "/run/chrome/shutdown_browser_pid";
 // file. See HandleCrashWithDumpData for explanation.
 constexpr char kExecLogKeyName[] = "chrome";
 
+// When the executable is a lacros-chrome instance, use this key instead.
+constexpr char kLacrosChromeLogKeyName[] = "lacros_chrome";
+
 // Extract a string delimited by the given character, from the given offset
 // into a source string. Returns false if the string is zero-sized or no
 // delimiter was found.
@@ -114,9 +117,11 @@ bool ChromeCollector::HandleCrashWithDumpData(
 
   std::string dump_basename =
       FormatDumpBasename(key_for_basename, time(nullptr), pid);
+  bool is_lacros_crash = false;
   FilePath meta_path = GetCrashPath(dir, dump_basename, "meta");
   FilePath payload_path;
-  if (!ParseCrashLog(data, dir, dump_basename, crash_type, &payload_path)) {
+  if (!ParseCrashLog(data, dir, dump_basename, crash_type, &payload_path,
+                     &is_lacros_crash)) {
     LOG(ERROR) << "Failed to parse Chrome's crash log";
     return false;
   }
@@ -136,17 +141,26 @@ bool ChromeCollector::HandleCrashWithDumpData(
   }
 
   // Keyed by crash metadata key name.
-  // If we have a crashing executable, we always use the logging key "chrome",
-  // because we treat any type of chrome binary crash the same. (In particular,
-  // we may get names that amount to "unknown" if the process disappeared before
-  // Breakpad / Crashpad could retrieve the executable name. It's probably
-  // chrome, so get the normal chrome logs.) However, JavaScript crashes with
-  // their non-exe error keys are definitely not chrome crashes and we want
-  // different logs. For example, there's no point in getting session_manager
-  // logs for a JavaScript crash.
-  const std::string key_for_logs = (crash_type == kExecutableCrash)
-                                       ? std::string(kExecLogKeyName)
-                                       : non_exe_error_key;
+  // If we have a crashing executable, we always use the logging key "chrome"
+  // (or "lacros_chrome", if the crash is in lacros), because we treat any type
+  // of chrome binary crash the same. (In particular, we may get names that
+  // amount to "unknown" if the process disappeared before Breakpad / Crashpad
+  // could retrieve the executable name. It's probably chrome, so get the normal
+  // chrome logs.)
+  // However, JavaScript crashes with their non-exe error keys are definitely
+  // not chrome crashes and we want different logs. For example, there's no
+  // point in getting session_manager logs for a JavaScript crash.
+  std::string key_for_logs;
+  if (crash_type == kExecutableCrash) {
+    if (is_lacros_crash) {
+      key_for_logs = std::string(kLacrosChromeLogKeyName);
+    } else {
+      key_for_logs = std::string(kExecLogKeyName);
+    }
+  } else {
+    key_for_logs = non_exe_error_key;
+  }
+
   const std::map<std::string, base::FilePath> additional_logs =
       GetAdditionalLogs(dir, dump_basename, key_for_logs, crash_type);
   for (const auto& it : additional_logs) {
@@ -239,7 +253,10 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
                                     const base::FilePath& dir,
                                     const std::string& basename,
                                     CrashType crash_type,
-                                    base::FilePath* payload) {
+                                    base::FilePath* payload,
+                                    bool* is_lacros_crash) {
+  // Initialize value
+  *is_lacros_crash = false;
   size_t at = 0;
   while (at < data.size()) {
     // Look for a : followed by a decimal number, followed by another :
@@ -372,6 +389,9 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         }
       }
       AddCrashMetaUploadData(name, value_str);
+      if (name == "prod" && value_str == "Chrome_Lacros") {
+        *is_lacros_crash = true;
+      }
     }
 
     at += size;
