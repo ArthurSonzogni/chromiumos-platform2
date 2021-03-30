@@ -48,6 +48,12 @@ class DBusService : public brillo::DBusServiceDaemon {
   void HandleTransitionState(std::unique_ptr<TransitionStateResponse> response,
                              const TransitionStateRequest& request);
 
+  // Handler for AbortRma D-Bus call.
+  using AbortRmaResponse =
+      brillo::dbus_utils::DBusMethodResponse<const AbortRmaReply&>;
+  void HandleAbortRma(std::unique_ptr<AbortRmaResponse> response,
+                      const AbortRmaRequest& request);
+
   template <typename ResponseType, typename ReplyProtobufType>
   void ReplyAndQuit(std::shared_ptr<ResponseType> response,
                     const ReplyProtobufType& reply);

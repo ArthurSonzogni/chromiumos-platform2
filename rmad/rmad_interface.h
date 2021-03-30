@@ -24,6 +24,10 @@ class RmadInterface {
       base::Callback<void(const TransitionStateReply&)>;
   virtual void TransitionState(const TransitionStateRequest& request,
                                const TransitionStateCallback& callback) = 0;
+
+  using AbortRmaCallback = base::Callback<void(const AbortRmaReply&)>;
+  virtual void AbortRma(const AbortRmaRequest& request,
+                        const AbortRmaCallback& callback) = 0;
 };
 
 }  // namespace rmad

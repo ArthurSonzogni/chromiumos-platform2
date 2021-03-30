@@ -16,6 +16,8 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
 
   ASSIGN_STATE(RMAD_STATE_WELCOME_SCREEN);
 
+  SET_ALLOW_ABORT;
+
   bool GetNextState(RmadState* next_state) const override;
 };
 

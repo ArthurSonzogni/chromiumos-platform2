@@ -18,6 +18,7 @@ class MockStateHandler : public BaseStateHandler {
   virtual ~MockStateHandler() = default;
 
   MOCK_METHOD(RmadState, GetState, (), (const, override));
+  MOCK_METHOD(bool, IsAllowAbort, (), (const, override));
   MOCK_METHOD(bool, GetNextState, (RmadState*), (const, override));
 };
 

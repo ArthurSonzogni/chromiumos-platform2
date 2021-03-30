@@ -49,6 +49,10 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // Get the complete copy of the dictionary.
   base::Value GetValues() const;
 
+  // Clear the dictionary. Return true on success, false if failed to write to
+  // the file.
+  bool Clear();
+
   // Get read status of the file.
   ReadError GetReadError() const { return read_error_; }
 

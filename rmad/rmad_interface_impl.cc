@@ -94,4 +94,21 @@ void RmadInterfaceImpl::TransitionState(
   callback.Run(reply);
 }
 
+void RmadInterfaceImpl::AbortRma(const AbortRmaRequest& request,
+                                 const AbortRmaCallback& callback) {
+  AbortRmaReply reply;
+  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
+
+  if (state_handler && state_handler->IsAllowAbort()) {
+    DLOG(INFO) << "AbortRma: Abort allowed.";
+    json_store_->Clear();
+    current_state_ = RMAD_STATE_RMA_NOT_REQUIRED;
+  } else {
+    DLOG(INFO) << "AbortRma: Failed to abort.";
+    reply.set_error(RMAD_ERROR_ABORT_FAILED);
+  }
+
+  callback.Run(reply);
+}
+
 }  // namespace rmad

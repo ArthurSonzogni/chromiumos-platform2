@@ -16,6 +16,9 @@ enum RmadErrorCode {
 
   // Failed to do state transition.
   RMAD_ERROR_TRANSITION_FAILED = 1;
+
+  // Failed to abort the RMA process.
+  RMAD_ERROR_ABORT_FAILED = 2;
 }
 
 // Defined Rmad states.
@@ -57,4 +60,12 @@ message TransitionStateRequest {}
 message TransitionStateReply {
   RmadErrorCode error = 1;
   RmadState state = 2;
+}
+
+// Request from client to abort the entire RMA process.
+message AbortRmaRequest {}
+
+// Reply from daemon.
+message AbortRmaReply {
+  RmadErrorCode error = 1;
 }

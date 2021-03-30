@@ -57,6 +57,8 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   dbus_interface->AddMethodHandler(kTransitionStateMethod,
                                    base::Unretained(this),
                                    &DBusService::HandleTransitionState);
+  dbus_interface->AddMethodHandler(kAbortRmaMethod, base::Unretained(this),
+                                   &DBusService::HandleAbortRma);
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
@@ -84,6 +86,17 @@ void DBusService::HandleTransitionState(
                                                      TransitionStateReply>,
                           base::Unretained(this),
                           SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleAbortRma(std::unique_ptr<AbortRmaResponse> response,
+                                 const AbortRmaRequest& request) {
+  // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
+  using SharedResponsePointer = std::shared_ptr<AbortRmaResponse>;
+  rmad_interface_->AbortRma(
+      request,
+      base::Bind(&DBusService::ReplyAndQuit<AbortRmaResponse, AbortRmaReply>,
+                 base::Unretained(this),
+                 SharedResponsePointer(std::move(response))));
 }
 
 template <typename ResponseType, typename ReplyProtobufType>

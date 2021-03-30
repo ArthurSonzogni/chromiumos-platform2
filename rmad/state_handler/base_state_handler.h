@@ -22,6 +22,11 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // macro ASSIGN_STATE(state).
   virtual RmadState GetState() const = 0;
 
+  // Returns whether it's allowed to abort the RMA process from the state. This
+  // is not allowed by default, and can be set as allowed by the macro
+  // SET_ALLOW_ABORT.
+  virtual bool IsAllowAbort() const { return false; }
+
   // Store the next RmadState in the RMA flow depending on device status and
   // user input (e.g. |json_store_| content) to |next_state|. Return true if a
   // transition is valid, false if the device status is not eligible for a state
@@ -34,6 +39,9 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
 
 #define ASSIGN_STATE(state) \
   RmadState GetState() const override { return state; }
+
+#define SET_ALLOW_ABORT \
+  bool IsAllowAbort() const override { return true; }
 
 }  // namespace rmad
 

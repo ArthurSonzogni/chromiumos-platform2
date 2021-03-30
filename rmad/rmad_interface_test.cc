@@ -46,11 +46,14 @@ class RmadInterfaceImplTest : public testing::Test {
   scoped_refptr<BaseStateHandler> CreateMockHandler(
       scoped_refptr<JsonStore> json_store,
       RmadState state,
+      bool is_allow_abort,
       RmadState next_state,
       bool next_state_retval) {
     auto mock_handler =
         base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store);
     ON_CALL(*mock_handler, GetState()).WillByDefault(Return(state));
+    ON_CALL(*mock_handler, IsAllowAbort())
+        .WillByDefault(Return(is_allow_abort));
     ON_CALL(*mock_handler, GetNextState(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(next_state), Return(next_state_retval)));
@@ -62,10 +65,10 @@ class RmadInterfaceImplTest : public testing::Test {
     auto state_handler_manager =
         std::make_unique<StateHandlerManager>(json_store);
     state_handler_manager->RegisterStateHandler(
-        CreateMockHandler(json_store, RMAD_STATE_WELCOME_SCREEN,
+        CreateMockHandler(json_store, RMAD_STATE_WELCOME_SCREEN, false,
                           RMAD_STATE_COMPONENT_SELECTION, true));
     state_handler_manager->RegisterStateHandler(
-        CreateMockHandler(json_store, RMAD_STATE_COMPONENT_SELECTION,
+        CreateMockHandler(json_store, RMAD_STATE_COMPONENT_SELECTION, true,
                           RMAD_STATE_DESTINATION_SELECTION, false));
     return state_handler_manager;
   }
@@ -160,6 +163,32 @@ TEST_F(RmadInterfaceImplTest, TransitionState_NotSet) {
     EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
   };
   rmad_interface.TransitionState(request, base::Bind(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, AbortRma) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
+
+  AbortRmaRequest request;
+  // RMAD_STATE_WELCOME_SCREEN doesn't allow abort.
+  auto callback1 = [](const AbortRmaReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
+  };
+  rmad_interface.AbortRma(request, base::Bind(callback1));
+  // Do a state transition.
+  TransitionStateRequest transition_request;
+  auto transition_callback = [](const TransitionStateReply& reply) {};
+  rmad_interface.TransitionState(transition_request,
+                                 base::Bind(transition_callback));
+  // RMAD_STATE_UNKNOWN allows abort.
+  auto callback2 = [](const AbortRmaReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_NOT_SET, reply.error());
+  };
+  rmad_interface.AbortRma(request, base::Bind(callback2));
 }
 
 }  // namespace rmad

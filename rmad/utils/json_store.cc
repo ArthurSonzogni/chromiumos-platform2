@@ -108,6 +108,11 @@ base::Value JsonStore::GetValues() const {
   return data_.Clone();
 }
 
+bool JsonStore::Clear() {
+  data_ = base::Value(base::Value::Type::DICTIONARY);
+  return WriteToFile();
+}
+
 void JsonStore::InitFromFile() {
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();
   read_error_ = read_result->read_error;

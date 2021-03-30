@@ -108,4 +108,21 @@ TEST_F(DBusServiceTest, TransitionState) {
   EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
 }
 
+TEST_F(DBusServiceTest, AbortRma) {
+  RegisterDBusObjectAsync();
+
+  EXPECT_CALL(mock_rmad_service_, AbortRma(_, _))
+      .WillOnce(Invoke([](const AbortRmaRequest& request,
+                          const RmadInterface::AbortRmaCallback& callback) {
+        AbortRmaReply reply;
+        reply.set_error(RMAD_ERROR_ABORT_FAILED);
+        callback.Run(reply);
+      }));
+
+  AbortRmaRequest request;
+  AbortRmaReply reply;
+  ExecuteMethod(kAbortRmaMethod, request, &reply);
+  EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
+}
+
 }  // namespace rmad
