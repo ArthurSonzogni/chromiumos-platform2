@@ -306,4 +306,13 @@ bool Port::IsCableDiscoveryComplete() {
   return cable_->DiscoveryComplete();
 }
 
+void Port::ReportPartnerMetrics(Metrics* metrics) {
+  if (!partner_) {
+    LOG(INFO) << "Trying to report metrics for non-existent partner.";
+    return;
+  }
+
+  partner_->ReportMetrics(metrics);
+}
+
 }  // namespace typecd

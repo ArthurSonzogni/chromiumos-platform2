@@ -79,6 +79,10 @@ class Port {
   // returns true.
   virtual bool IsCableDiscoveryComplete();
 
+  // Calls the |partner_|'s metrics reporting function, if a |partner_| is
+  // registered.
+  void ReportPartnerMetrics(Metrics* metrics);
+
  private:
   friend class PortTest;
   FRIEND_TEST(PortTest, TestBasicAdd);

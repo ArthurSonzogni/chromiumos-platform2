@@ -51,3 +51,4 @@ clock_getres: 1
 getresuid: 1
 getresgid: 1
 munmap: 1
+flock: 1

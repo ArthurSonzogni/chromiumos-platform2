@@ -17,6 +17,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libdebugd-client",
+    "libmetrics",
     "libsession_manager-client",
     "libudev",
     "re2",

@@ -13,6 +13,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "typecd/alt_mode.h"
+#include "typecd/metrics.h"
 #include "typecd/peripheral.h"
 
 namespace typecd {
@@ -63,6 +64,11 @@ class Partner : public Peripheral {
   // which is read from sysfs.
   bool DiscoveryComplete();
 
+  // Report any metrics associated with the partner using UMA reporting. If the
+  // |metrics| pointer is nullptr, or if metrics have already been reported i.e
+  // |metrics_reported_| is true, we return immediately.
+  void ReportMetrics(Metrics* metrics);
+
  private:
   // A map representing all the alternate modes supported by the partner.
   // The key is the index of the alternate mode as determined by the connector
@@ -71,6 +77,9 @@ class Partner : public Peripheral {
   // "/sys/class/typec/port1-partner/port1-partner.0" will use an key of "0".
   std::map<int, std::unique_ptr<AltMode>> alt_modes_;
   int num_alt_modes_;
+  // Field which tracks whether metrics have been reported for the partner. This
+  // prevents duplicate reporting.
+  bool metrics_reported_;
 };
 
 }  // namespace typecd

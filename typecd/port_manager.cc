@@ -253,7 +253,28 @@ void PortManager::HandleUnlock() {
   }
 }
 
+void PortManager::ReportMetrics(int port_num) {
+  if (!metrics_)
+    return;
+
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING) << "Metrics reporting attempted for non-existent port "
+                 << port_num;
+    return;
+  }
+
+  auto port = it->second.get();
+  if (port->IsPartnerDiscoveryComplete()) {
+    port->ReportPartnerMetrics(metrics_);
+  }
+}
+
 void PortManager::RunModeEntry(int port_num) {
+  // Since RunModeEntry() executes after any Type C change, we can just run the
+  // metrics reporting before executing the mode entry logic.
+  ReportMetrics(port_num);
+
   if (!ec_util_) {
     LOG(ERROR) << "No EC Util implementation registered, mode entry aborted.";
     return;

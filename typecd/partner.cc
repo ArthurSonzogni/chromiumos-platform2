@@ -21,7 +21,9 @@ constexpr char kPartnerAltModeRegex[] = R"(port(\d+)-partner.(\d+))";
 namespace typecd {
 
 Partner::Partner(const base::FilePath& syspath)
-    : Peripheral(syspath, "Partner"), num_alt_modes_(-1) {
+    : Peripheral(syspath, "Partner"),
+      num_alt_modes_(-1),
+      metrics_reported_(false) {
   // Search for all alt modes which were already registered prior to daemon
   // init.
   base::FileEnumerator iter(GetSysPath(), false,
@@ -120,6 +122,15 @@ AltMode* Partner::GetAltMode(int index) {
 
 bool Partner::DiscoveryComplete() {
   return num_alt_modes_ == alt_modes_.size();
+}
+
+void Partner::ReportMetrics(Metrics* metrics) {
+  if (!metrics || metrics_reported_)
+    return;
+
+  // TODO(b/164522182): Report metrics here.
+
+  metrics_reported_ = true;
 }
 
 }  // namespace typecd

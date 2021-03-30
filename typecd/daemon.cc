@@ -34,6 +34,9 @@ int Daemon::OnInit() {
     return -1;
   }
 
+  // Set the metrics reporting class.
+  port_manager_->SetMetrics(&metrics_);
+
   // Register the session_manager proxy.
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus_);
 
