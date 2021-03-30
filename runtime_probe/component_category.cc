@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/values.h>
+#include <brillo/map_utils.h>
 
 #include "runtime_probe/component_category.h"
 
@@ -55,6 +56,10 @@ base::Value ComponentCategory::Eval() const {
   }
 
   return base::Value(std::move(results));
+}
+
+std::vector<std::string> ComponentCategory::GetComponentNames() const {
+  return brillo::GetMapKeysAsVector(component_);
 }
 
 }  // namespace runtime_probe

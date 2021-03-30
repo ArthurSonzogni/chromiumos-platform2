@@ -65,6 +65,11 @@ void Daemon::InitDBus() {
       kRuntimeProbeInterfaceName, kProbeCategoriesMethod,
       base::Bind(&Daemon::ProbeCategories, weak_ptr_factory_.GetWeakPtr())));
 
+  // Register a handler of the GetKnownComponents method.
+  CHECK(runtime_probe_exported_object->ExportMethodAndBlock(
+      kRuntimeProbeInterfaceName, kGetKnownComponentsMethod,
+      base::Bind(&Daemon::GetKnownComponents, weak_ptr_factory_.GetWeakPtr())));
+
   // Take ownership of the RuntimeProbe service.
   CHECK(bus_->RequestOwnershipAndBlock(kRuntimeProbeServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
@@ -82,10 +87,9 @@ void Daemon::QuitDaemonInternal() {
   Quit();
 }
 
-void Daemon::SendProbeResult(
-    const ProbeResult& reply,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
+void Daemon::SendMessage(const google::protobuf::Message& reply,
+                         dbus::MethodCall* method_call,
+                         dbus::ExportedObject::ResponseSender response_sender) {
   DumpProtocolBuffer(reply, "ProbeResult");
 
   std::unique_ptr<dbus::Response> message(
@@ -116,7 +120,7 @@ void Daemon::ProbeCategories(
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_REQUEST_INVALID);
-    return SendProbeResult(reply, method_call, std::move(response_sender));
+    return SendMessage(reply, method_call, std::move(response_sender));
   }
 
   DumpProtocolBuffer(request, "ProbeRequest");
@@ -126,7 +130,7 @@ void Daemon::ProbeCategories(
   const auto probe_config_data = probe_config_loader->LoadDefault();
   if (!probe_config_data) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
-    return SendProbeResult(reply, method_call, std::move(response_sender));
+    return SendMessage(reply, method_call, std::move(response_sender));
   }
   LOG(INFO) << "Load probe config from: " << probe_config_data->path
             << " (checksum: " << probe_config_data->sha1_hash << ")";
@@ -137,7 +141,7 @@ void Daemon::ProbeCategories(
       runtime_probe::ProbeConfig::FromValue(probe_config_data->config);
   if (!probe_config) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
-    return SendProbeResult(reply, method_call, std::move(response_sender));
+    return SendMessage(reply, method_call, std::move(response_sender));
   }
 
   base::Value probe_result;
@@ -173,7 +177,49 @@ void Daemon::ProbeCategories(
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_RESULT_INVALID);
   }
 
-  return SendProbeResult(reply, method_call, std::move(response_sender));
+  return SendMessage(reply, method_call, std::move(response_sender));
+}
+
+void Daemon::GetKnownComponents(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  std::unique_ptr<dbus::Response> message(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(message.get());
+  GetKnownComponentsRequest request;
+  GetKnownComponentsResult reply;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_REQUEST_INVALID);
+    return SendMessage(reply, method_call, std::move(response_sender));
+  }
+
+  const auto probe_config_loader =
+      std::make_unique<runtime_probe::ProbeConfigLoaderImpl>();
+  const auto probe_config_data = probe_config_loader->LoadDefault();
+  if (!probe_config_data) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
+    return SendMessage(reply, method_call, std::move(response_sender));
+  }
+
+  const auto probe_config =
+      runtime_probe::ProbeConfig::FromValue(probe_config_data->config);
+  if (!probe_config) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
+    return SendMessage(reply, method_call, std::move(response_sender));
+  }
+
+  std::string category_name =
+      ProbeRequest_SupportCategory_Name(request.category());
+  if (auto category = probe_config->GetComponentCategory(category_name);
+      category != nullptr) {
+    for (const auto& name : category->GetComponentNames()) {
+      reply.add_component_names(name);
+    }
+  }
+
+  return SendMessage(reply, method_call, std::move(response_sender));
 }
 
 }  // namespace runtime_probe

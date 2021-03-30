@@ -394,3 +394,12 @@ message ProbeResult {
   repeated Network ethernet = 15;
   repeated Network wireless = 16;
 }
+
+message GetKnownComponentsRequest {
+  ProbeRequest.SupportCategory category = 1;
+}
+
+message GetKnownComponentsResult {
+  ErrorCode error = 1;
+  repeated string component_names = 2;
+}

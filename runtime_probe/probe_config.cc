@@ -56,4 +56,12 @@ base::Value ProbeConfig::Eval(const std::vector<std::string>& category) const {
   return result;
 }
 
+ComponentCategory* ProbeConfig::GetComponentCategory(
+    const std::string& category_name) const {
+  auto itr = category_.find(category_name);
+  if (itr == category_.end())
+    return nullptr;
+  return itr->second.get();
+}
+
 }  // namespace runtime_probe

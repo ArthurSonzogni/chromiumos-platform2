@@ -51,6 +51,9 @@ class ProbeConfig {
   // This is the same as calling `this->eval({keys of category_})`.
   base::Value Eval() const;
 
+  ComponentCategory* GetComponentCategory(
+      const std::string& category_name) const;
+
  private:
   // Must call `FromValue()` to create an instance.
   ProbeConfig() = default;

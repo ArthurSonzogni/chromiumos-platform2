@@ -32,13 +32,18 @@ class Daemon : public brillo::DBusDaemon {
   void InitDBus();
 
   // Sugar wrapper for packing protocol buffer with error handling.
-  void SendProbeResult(const ProbeResult& reply,
-                       dbus::MethodCall* method_call,
-                       dbus::ExportedObject::ResponseSender response_sender);
+  void SendMessage(const google::protobuf::Message& reply,
+                   dbus::MethodCall* method_call,
+                   dbus::ExportedObject::ResponseSender response_sender);
 
-  // Handler of org.chromium.ProbeCategories method calls.
+  // Handler of org.chromium.RuntimeProbe.ProbeCategories method calls.
   void ProbeCategories(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
+
+  // Handler of org.chromium.RuntimeProbe.GetKnownComponents method calls.
+  // Get known components from probe config.
+  void GetKnownComponents(dbus::MethodCall* method_call,
+                          dbus::ExportedObject::ResponseSender response_sender);
 
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();

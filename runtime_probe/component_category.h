@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/values.h>
 #include <gtest/gtest.h>
@@ -29,6 +30,8 @@ class ComponentCategory {
 
   // Evaluates this category and return a base::Value with type list.
   base::Value Eval() const;
+
+  std::vector<std::string> GetComponentNames() const;
 
  private:
   std::string category_name_;
