@@ -42,8 +42,6 @@ generate_dbus_adaptors("smbproviderd_adaptors") {
 }
 
 static_library("libsmbprovider") {
-  configs += [ ":target_defaults" ]
-  deps = [ ":smbproviderd_adaptors" ]
   sources = [
     "authpolicy_kerberos_artifact_client.cc",
     "authpolicy_kerberos_artifact_client.h",
@@ -92,13 +90,15 @@ static_library("libsmbprovider") {
     "temp_file_manager.cc",
     "temp_file_manager.h",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":smbproviderd_adaptors" ]
 }
 
 executable("smbproviderd") {
-  configs += [ ":target_defaults" ]
-  deps = [ ":libsmbprovider" ]
   sources = [ "smbprovider_main.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [ "installattributes" ]
+  deps = [ ":libsmbprovider" ]
 }
 
 # Unit tests.
@@ -107,14 +107,6 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("smbprovider_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libsmbprovider",
-      "//common-mk/testrunner:testrunner",
-    ]
     sources = [
       "fake_kerberos_artifact_client.cc",
       "fake_kerberos_artifact_client.h",
@@ -145,17 +137,25 @@ if (use.test) {
       "smbprovider_test_helper.h",
       "temp_file_manager_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libsmbprovider",
+      "//common-mk/testrunner:testrunner",
+    ]
   }
 }
 
 # Fuzzer target.
 if (use.fuzzer) {
   executable("netbios_packet_fuzzer") {
+    sources = [ "netbios_packet_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
     deps = [ ":libsmbprovider" ]
-    sources = [ "netbios_packet_fuzzer.cc" ]
   }
 }
