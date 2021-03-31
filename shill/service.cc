@@ -95,6 +95,8 @@ const char Service::kAutoConnOffline[] = "offline";
 const char Service::kAutoConnTechnologyNotAutoConnectable[] =
     "technology not auto connectable";
 const char Service::kAutoConnThrottled[] = "throttled";
+const char Service::kAutoConnMediumUnavailable[] =
+    "connection medium unavailable";
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 const size_t Service::kEAPMaxCertificationElements = 10;
@@ -304,7 +306,8 @@ void Service::AutoConnect() {
         reason == kAutoConnConnected) {
       SLOG(this, 3) << "Suppressed autoconnect to " << log_name()
                     << " Reason: " << reason;
-    } else if (reason == kAutoConnBusy) {
+    } else if (reason == kAutoConnBusy ||
+               reason == kAutoConnMediumUnavailable) {
       SLOG(this, 1) << "Suppressed autoconnect to " << log_name()
                     << " Reason: " << reason;
     } else {

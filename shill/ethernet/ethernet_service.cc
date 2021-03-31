@@ -24,12 +24,6 @@
 
 namespace shill {
 
-namespace {
-
-constexpr char kAutoConnNoCarrier[] = "no carrier";
-
-}  // namespace
-
 constexpr char EthernetService::kDefaultEthernetDeviceIdentifier[];
 
 EthernetService::EthernetService(Manager* manager, const Properties& props)
@@ -119,7 +113,7 @@ bool EthernetService::IsAutoConnectable(const char** reason) const {
     return false;
   }
   if (!props_.ethernet_ || !props_.ethernet_->link_up()) {
-    *reason = kAutoConnNoCarrier;
+    *reason = Service::kAutoConnMediumUnavailable;
     return false;
   }
   return true;

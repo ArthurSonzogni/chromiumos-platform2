@@ -370,11 +370,18 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
                    hidden_ssid);
   }
 
+  std::string asgn_endpoint_log = base::StringPrintf(
+      "Assigning endpoint %s to service %s", endpoint->bssid_string().c_str(),
+      service->log_name().c_str());
+
+  if (!service->HasEndpoints() && service->IsRemembered()) {
+    LOG(INFO) << asgn_endpoint_log;
+  } else {
+    SLOG(this, 1) << asgn_endpoint_log;
+  }
+
   service->AddEndpoint(endpoint);
   service_by_endpoint_[endpoint.get()] = service;
-
-  SLOG(this, 1) << "Assigned endpoint " << endpoint->bssid_string()
-                << " to service " << service->log_name() << ".";
 
   manager_->UpdateService(service);
 }
@@ -389,10 +396,19 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
 
   CHECK(service) << "Can't find Service for Endpoint "
                  << "(with BSSID " << endpoint->bssid_string() << ").";
-  SLOG(this, 1) << "Removing endpoint " << endpoint->bssid_string()
-                << " from Service " << service->log_name();
+
+  std::string rmv_endpoint_log = base::StringPrintf(
+      "Removed endpoint %s from service %s", endpoint->bssid_string().c_str(),
+      service->log_name().c_str());
+
   service->RemoveEndpoint(endpoint);
   service_by_endpoint_.erase(endpoint.get());
+
+  if (!service->HasEndpoints() && service->IsRemembered()) {
+    LOG(INFO) << rmv_endpoint_log;
+  } else {
+    SLOG(this, 1) << rmv_endpoint_log;
+  }
 
   if (service->HasEndpoints() || service->IsRemembered()) {
     // Keep services around if they are in a profile or have remaining

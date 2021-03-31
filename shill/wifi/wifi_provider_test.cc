@@ -1188,8 +1188,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
 
   EXPECT_CALL(*service0, RemoveEndpoint(RefPtrMatch(endpoint0))).Times(1);
   EXPECT_CALL(*service1, RemoveEndpoint(_)).Times(0);
-  EXPECT_CALL(*service0, HasEndpoints()).WillOnce(Return(false));
-  EXPECT_CALL(*service0, IsRemembered()).WillOnce(Return(false));
+  EXPECT_CALL(*service0, HasEndpoints()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service0, IsRemembered()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service0, ResetWiFi()).Times(1);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(0);
   EXPECT_CALL(manager_, DeregisterService(RefPtrMatch(service0))).Times(1);
@@ -1219,7 +1219,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
   EXPECT_EQ(1, GetServiceByEndpoint().size());
 
   EXPECT_CALL(*service0, RemoveEndpoint(RefPtrMatch(endpoint0))).Times(1);
-  EXPECT_CALL(*service0, HasEndpoints()).WillOnce(Return(true));
+  EXPECT_CALL(*service0, HasEndpoints()).WillRepeatedly(Return(true));
   EXPECT_CALL(*service0, IsRemembered()).WillRepeatedly(Return(false));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, ResetWiFi()).Times(0);
@@ -1249,7 +1249,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
 
   EXPECT_CALL(*service0, RemoveEndpoint(RefPtrMatch(endpoint0))).Times(1);
   EXPECT_CALL(*service0, HasEndpoints()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service0, IsRemembered()).WillOnce(Return(true));
+  EXPECT_CALL(*service0, IsRemembered()).WillRepeatedly(Return(true));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, ResetWiFi()).Times(0);
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
@@ -1301,7 +1301,7 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
   EXPECT_CALL(*open_service, RemoveEndpoint(RefPtrMatch(endpoint)));
   // We are playing out a scenario where the open service is not removed
   // since it still claims to have more endpoints remaining.
-  EXPECT_CALL(*open_service, HasEndpoints()).WillOnce(Return(true));
+  EXPECT_CALL(*open_service, HasEndpoints()).WillRepeatedly(Return(true));
   EXPECT_CALL(*rsn_service, AddEndpoint(RefPtrMatch(endpoint)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(rsn_service)));

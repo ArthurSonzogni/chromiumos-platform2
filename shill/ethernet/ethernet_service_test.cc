@@ -133,7 +133,7 @@ TEST_F(EthernetServiceTest, IsAutoConnectable) {
       .WillOnce(Return(true));
   const char* reason;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-  EXPECT_STREQ("no carrier", reason);
+  EXPECT_STREQ("connection medium unavailable", reason);
   EXPECT_TRUE(service_->IsAutoConnectable(nullptr));
 }
 

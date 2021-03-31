@@ -1130,7 +1130,7 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
   EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
   EXPECT_FALSE(service->HasEndpoints());
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
-  EXPECT_STREQ(WiFiService::kAutoConnNoEndpoint, reason);
+  EXPECT_STREQ(WiFiService::kAutoConnMediumUnavailable, reason);
 
   reason = "";
   WiFiEndpointRefPtr endpoint =

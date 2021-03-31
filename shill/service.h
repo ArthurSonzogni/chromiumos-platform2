@@ -749,6 +749,7 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnOffline[];
   static const char kAutoConnTechnologyNotAutoConnectable[];
   static const char kAutoConnThrottled[];
+  static const char kAutoConnMediumUnavailable[];
 
  private:
   friend class EthernetEapServiceTest;

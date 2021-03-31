@@ -204,7 +204,6 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, UpdateSecurity);  // SetEAPKeyManagement
   FRIEND_TEST(WiFiServiceTest, ChooseDevice);
 
-  static const char kAutoConnNoEndpoint[];
   static const char kAnyDeviceAddress[];
   static const int kSuspectedCredentialFailureThreshold;
 

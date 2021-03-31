@@ -49,7 +49,6 @@ namespace {
 const char kStorageDeprecatedPassphrase[] = "Passphrase";
 }  // namespace
 
-const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
 const char WiFiService::kAnyDeviceAddress[] = "any";
 const int WiFiService::kSuspectedCredentialFailureThreshold = 3;
 
@@ -180,7 +179,7 @@ bool WiFiService::IsAutoConnectable(const char** reason) const {
   // (Needed because hidden Services may remain registered with
   // Manager even without visible Endpoints.)
   if (!HasEndpoints()) {
-    *reason = kAutoConnNoEndpoint;
+    *reason = Service::kAutoConnMediumUnavailable;
     return false;
   }
 
