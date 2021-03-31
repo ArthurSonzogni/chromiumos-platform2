@@ -14,7 +14,7 @@
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/strong_binding.h>
+#include <mojo/public/cpp/bindings/self_owned_receiver.h>
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "arc/keymaster/cert_store_instance.h"
@@ -99,18 +99,19 @@ void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
   {
     mojo::ScopedMessagePipeHandle child_pipe =
         invitation.ExtractMessagePipe("arc-keymaster-pipe");
-    mojo::MakeStrongBinding(std::move(keymaster_server),
-                            mojo::InterfaceRequest<arc::mojom::KeymasterServer>(
-                                std::move(child_pipe)));
+    mojo::MakeSelfOwnedReceiver(
+        std::move(keymaster_server),
+        mojo::PendingReceiver<arc::mojom::KeymasterServer>(
+            std::move(child_pipe)));
   }
   {
     mojo::ScopedMessagePipeHandle child_pipe =
         invitation.ExtractMessagePipe("arc-cert-store-pipe");
 
     // TODO(b/147573396): remove strong binding to be able to use cert store.
-    mojo::MakeStrongBinding(
+    mojo::MakeSelfOwnedReceiver(
         std::move(cert_store_instance),
-        mojo::InterfaceRequest<arc::keymaster::mojom::CertStoreInstance>(
+        mojo::PendingReceiver<arc::keymaster::mojom::CertStoreInstance>(
             std::move(child_pipe)));
   }
   is_bound_ = true;
