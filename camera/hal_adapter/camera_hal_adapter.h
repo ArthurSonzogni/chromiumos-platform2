@@ -156,6 +156,12 @@ class CameraHalAdapter {
       const char* camera_id,
       int new_status);
 
+  // Gets the static metadata of a camera given the original static metadata
+  // with updated metadata modifications from the camera service such as vendor
+  // tags and available request keys.
+  const camera_metadata_t* GetUpdatedCameraMetadata(
+      int camera_id, const camera_metadata_t* static_metadata);
+
   void CameraDeviceStatusChange(const CameraModuleCallbacksAux* callbacks,
                                 int camera_id,
                                 camera_device_status_t new_status);
@@ -203,6 +209,10 @@ class CameraHalAdapter {
   // (external camera id) <=> (module id, internal camera id)
   std::map<int, std::pair<int, int>> camera_id_map_;
   std::vector<std::map<int, int>> camera_id_inverse_map_;
+
+  // A mapping from camera ID to their static metadata.
+  base::flat_map<int, std::unique_ptr<android::CameraMetadata>>
+      static_metadata_map_;
 
   // A set of camera IDs on which ZSL can be attempted.
   base::flat_set<int> can_attempt_zsl_camera_ids_;

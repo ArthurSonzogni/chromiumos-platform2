@@ -189,6 +189,8 @@ int32_t CameraHalAdapter::OpenDevice(
     LOGF(ERROR) << "Failed to get camera info of camera " << camera_id;
     return ret;
   }
+  const camera_metadata_t* metadata =
+      GetUpdatedCameraMetadata(camera_id, info.static_camera_characteristics);
   // This method is called by |camera_module_delegate_| on its mojo IPC
   // handler thread.
   // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
@@ -198,7 +200,7 @@ int32_t CameraHalAdapter::OpenDevice(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
-      camera_device, info.static_camera_characteristics, close_callback,
+      camera_device, metadata, close_callback,
       base::Contains(can_attempt_zsl_camera_ids_, camera_id));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
@@ -268,16 +270,11 @@ int32_t CameraHalAdapter::GetCameraInfo(
   LOGF(INFO) << camera_client_type << " camera_id = " << camera_id
              << ", facing = " << info.facing;
 
-  if (VLOG_IS_ON(2)) {
-    dump_camera_metadata(info.static_camera_characteristics, 2, 3);
-  }
+  const camera_metadata_t* metadata =
+      GetUpdatedCameraMetadata(camera_id, info.static_camera_characteristics);
 
-  android::CameraMetadata metadata =
-      clone_camera_metadata(info.static_camera_characteristics);
-  reprocess_effect_manager_.UpdateStaticMetadata(&metadata);
-  if (ZslHelper::TryAddEnableZslKey(&metadata)) {
-    LOGF(INFO) << "Will attempt to enable ZSL by private reprocessing";
-    can_attempt_zsl_camera_ids_.insert(camera_id);
+  if (VLOG_IS_ON(2)) {
+    dump_camera_metadata(metadata, 2, 3);
   }
 
   mojom::CameraInfoPtr info_ptr = mojom::CameraInfo::New();
@@ -285,7 +282,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
   info_ptr->orientation = info.orientation;
   info_ptr->device_version = info.device_version;
   info_ptr->static_camera_characteristics =
-      internal::SerializeCameraMetadata(metadata.getAndLock());
+      internal::SerializeCameraMetadata(metadata);
   info_ptr->resource_cost = mojom::CameraResourceCost::New();
   info_ptr->resource_cost->resource_cost = info.resource_cost;
 
@@ -422,6 +419,24 @@ void CameraHalAdapter::torch_mode_status_change(
       base::Bind(&CameraHalAdapter::TorchModeStatusChange,
                  base::Unretained(self), aux, atoi(internal_camera_id),
                  static_cast<torch_mode_status_t>(new_status)));
+}
+
+const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
+    int camera_id, const camera_metadata_t* static_metadata) {
+  auto& metadata_scoped = static_metadata_map_[camera_id];
+  if (metadata_scoped) {
+    return metadata_scoped.get()->getAndLock();
+  }
+
+  metadata_scoped = std::make_unique<android::CameraMetadata>();
+  auto* metadata = metadata_scoped.get();
+  metadata->acquire(clone_camera_metadata(static_metadata));
+  reprocess_effect_manager_.UpdateStaticMetadata(metadata);
+  if (ZslHelper::TryAddEnableZslKey(metadata)) {
+    LOGF(INFO) << "Will attempt to enable ZSL by private reprocessing";
+    can_attempt_zsl_camera_ids_.insert(camera_id);
+  }
+  return metadata->getAndLock();
 }
 
 void CameraHalAdapter::CameraDeviceStatusChange(
