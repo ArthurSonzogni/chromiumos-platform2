@@ -87,7 +87,6 @@ constexpr mode_t kRootDirMode = S_IRWXU | S_IRWXG | S_ISVTX;
 
 constexpr mode_t kTrackedDirMode = S_IRWXU;
 constexpr mode_t kPathComponentDirMode = S_IRWXU;
-constexpr mode_t kGroupExecAccess = S_IXGRP;
 constexpr mode_t kGroupWriteAccess = S_IWGRP;
 
 }  // namespace
@@ -153,8 +152,7 @@ std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
   std::vector<DirectoryACL> durable_only_subdirs{
       {FilePath(kRootHomeSuffix), kRootDirMode, kMountOwnerUid,
        kDaemonStoreGid},
-      {FilePath(kUserHomeSuffix), kTrackedDirMode | kGroupExecAccess, uid,
-       access_gid},
+      {FilePath(kUserHomeSuffix), kAccessMode, uid, access_gid},
   };
 
   std::vector<DirectoryACL> common_subdirs =
@@ -261,8 +259,7 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
   platform_->DeletePathRecursively(root_path);
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          user_path, kTrackedDirMode | kGroupExecAccess, default_uid_,
-          default_access_gid_)) {
+          user_path, kAccessMode, default_uid_, default_access_gid_)) {
     PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
                 << user_path.value();
     return;
