@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/memory/ptr_util.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include "libec/ec_command.h"
