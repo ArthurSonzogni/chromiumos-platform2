@@ -21,10 +21,14 @@
 #include "cros-camera/v4l2_device.h"
 
 #include <fcntl.h>
+#include <linux/media.h>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
+
+#include <base/files/file_enumerator.h>
 
 #include "cros-camera/common.h"
 
@@ -48,19 +52,22 @@ int V4L2Device::Open(int flags) {
 
   struct stat st = {};
   if (stat(name_.c_str(), &st) == -1) {
-    PLOGF(ERROR) << "Error stat video device " << name_.c_str();
+    PLOGF(ERROR) << "Error stat video device " << name_;
     return -ENODEV;
   }
   if (!S_ISCHR(st.st_mode)) {
-    LOGF(ERROR) << name_.c_str() << " is not a device";
+    LOGF(ERROR) << name_ << " is not a device";
     return -ENODEV;
   }
 
   fd_ = ::open(name_.c_str(), flags);
   if (fd_ < 0) {
-    PLOGF(ERROR) << "Error opening video device " << name_.c_str();
+    PLOGF(ERROR) << "Error opening video device " << name_;
     return -errno;
   }
+
+  GetDescriptiveName();
+
   return 0;
 }
 
@@ -74,7 +81,7 @@ int V4L2Device::Close() {
 
   int ret = ::close(fd_);
   if (ret < 0) {
-    PLOGF(ERROR) << "Error closing video device " << name_.c_str();
+    PLOGF(ERROR) << "Error closing video device " << descriptive_name_;
     return ret;
   }
 
@@ -85,7 +92,8 @@ int V4L2Device::Close() {
 int V4L2Device::SubscribeEvent(int event) {
   VLOGF_ENTER();
   if (!IsOpened()) {
-    LOGF(ERROR) << "Device " << name_ << " already closed. Do nothing.";
+    LOGF(ERROR) << "Device " << descriptive_name_
+                << " already closed. Do nothing.";
     return -1;
   }
 
@@ -179,7 +187,7 @@ int V4L2Device::SetControl(int id, int32_t value) {
   ret = SetControl(&ext_control);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to set value " << value << " for control " << id
-                 << " on device " << name_.c_str();
+                 << " on device " << descriptive_name_;
   }
   return ret;
 }
@@ -193,7 +201,7 @@ int V4L2Device::SetControl(int id, int64_t value) {
   int ret = SetControl(&ext_control);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to set value " << value << " for control " << id
-                 << " on device " << name_.c_str();
+                 << " on device " << descriptive_name_;
   }
   return ret;
 }
@@ -207,7 +215,7 @@ int V4L2Device::SetControl(int id, const std::string value) {
   int ret = SetControl(&ext_control);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to set value " << value << " for control " << id
-                 << " on device " << name_.c_str();
+                 << " on device " << descriptive_name_;
   }
   return ret;
 }
@@ -225,7 +233,7 @@ int V4L2Device::GetControl(struct v4l2_ext_control* ext_control) {
   int ret = ::ioctl(fd_, VIDIOC_G_EXT_CTRLS, &controls);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to get value for control (" << ext_control->id
-                 << ") on device " << name_.c_str();
+                 << ") on device " << descriptive_name_;
     return ret;
   }
   return 0;
@@ -287,7 +295,7 @@ int V4L2Device::QueryMenu(v4l2_querymenu* menu) {
   int ret = ::ioctl(fd_, VIDIOC_QUERYMENU, menu);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to get values for query menu (" << menu->id
-                 << ") on device" << name_.c_str();
+                 << ") on device" << descriptive_name_;
   }
   return ret;
 }
@@ -306,9 +314,49 @@ int V4L2Device::QueryControl(v4l2_queryctrl* control) {
   int ret = ::ioctl(fd_, VIDIOC_QUERYCTRL, control);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to get values for query control (" << control->id
-                 << ") on device " << name_.c_str();
+                 << ") on device " << descriptive_name_;
   }
   return ret;
+}
+
+void V4L2Device::GetDescriptiveName() {
+  struct stat sb;
+
+  descriptive_name_ = name_;
+
+  // Try to get the descriptive name from media info.
+  if (fstat(fd_, &sb) == 0) {
+    base::FileEnumerator enumerator(base::FilePath("/dev"), false,
+                                    base::FileEnumerator::FILES, "media*");
+
+    for (base::FilePath target_path = enumerator.Next(); !target_path.empty();
+         target_path = enumerator.Next()) {
+      int fd = open(target_path.value().c_str(), O_RDWR | O_NONBLOCK);
+      if (fd < 0) {
+        continue;
+      }
+      base::ScopedFD media_fd(fd);
+
+      struct media_entity_desc ent = {};
+      ent.id = MEDIA_ENT_ID_FLAG_NEXT;
+      while (::ioctl(media_fd.get(), MEDIA_IOC_ENUM_ENTITIES, &ent) == 0) {
+        if (ent.dev.major == major(sb.st_rdev) &&
+            ent.dev.minor == minor(sb.st_rdev)) {
+          descriptive_name_ = descriptive_name_ + "(" + ent.name + ")";
+          return;
+        }
+        ent.id |= MEDIA_ENT_ID_FLAG_NEXT;
+      }
+    }
+  }
+
+  // If we can't get debug name from media info, try to get card name.
+  v4l2_capability cap = {};
+  if (::ioctl(fd_, VIDIOC_QUERYCAP, &cap) == 0) {
+    descriptive_name_ =
+        descriptive_name_ + "(" + reinterpret_cast<char*>(cap.card) + ")";
+    return;
+  }
 }
 
 int V4L2Device::Poll(int timeout) {
@@ -317,7 +365,7 @@ int V4L2Device::Poll(int timeout) {
   int ret(0);
 
   if (fd_ == -1) {
-    LOGF(ERROR) << "Device " << name_.c_str() << " already closed. Do nothing.";
+    LOGF(ERROR) << "Device " << name_ << " already closed. Do nothing.";
     return -1;
   }
 
@@ -373,8 +421,8 @@ int V4L2DevicePoller::Poll(int timeout_ms,
   int ret = ::poll(poll_fds_.data(), poll_fds_.size(), timeout_ms);
   if (ret <= 0) {
     for (size_t i = 0; i < devices_.size(); i++) {
-      PLOGF(ERROR) << "Device " << devices_[i]->name_ << " poll failed ("
-                   << ((ret == 0) ? "timeout)" : "error)");
+      PLOGF(ERROR) << "Device " << devices_[i]->descriptive_name_
+                   << " poll failed (" << ((ret == 0) ? "timeout)" : "error)");
     }
     return ret;
   }

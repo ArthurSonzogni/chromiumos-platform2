@@ -254,8 +254,11 @@ class CROS_CAMERA_EXPORT V4L2Device {
 
   int GetControl(struct v4l2_ext_control* ext_control);
 
+  void GetDescriptiveName();
+
  protected:
   std::string name_; /*!< path to device in file system, ex: /dev/video0 */
+  std::string descriptive_name_; /*!< name for log, ex: EasyCamera */
 
   int fd_; /*!< file descriptor obtained when device is open */
 };
