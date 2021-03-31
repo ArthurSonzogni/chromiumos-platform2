@@ -340,7 +340,6 @@ class Cellular : public Device,
   void set_manufacturer(const std::string& manufacturer);
   void set_model_id(const std::string& model_id);
   void set_mm_plugin(const std::string& mm_plugin);
-  void SetScanning(bool scanning);
 
   void set_selected_network(const std::string& selected_network);
   void clear_found_networks();
@@ -449,11 +448,6 @@ class Cellular : public Device,
   // Time between stop and start of modem device
   static const int64_t kModemResetTimeoutMilliseconds;
 
-  // the |kScanningProperty| exposed by Cellular device is sticky false. Every
-  // time it is set to true, it must be reset to false after a time equal to
-  // this constant.
-  static const int64_t kDefaultScanningTimeoutMilliseconds;
-
   // Time between asynchronous calls to ModemManager1's GetLocation()
   static const int64_t kPollLocationIntervalMilliseconds;
 
@@ -470,6 +464,7 @@ class Cellular : public Device,
   void SetState(State state);
   void SetModemState(ModemState modem_state_state);
   void SetCapabilityState(CapabilityState capability_state);
+  void SetScanning(bool scanning);
 
   void OnEnabled();
   void OnConnecting();
@@ -677,12 +672,10 @@ class Cellular : public Device,
 
   std::unique_ptr<NetlinkSockDiag> socket_destroyer_;
 
-  // Sometimes modems may be stuck in the SEARCHING state during the lack of
-  // presence of a network. During this indefinite duration of time, keeping
-  // the Device.Scanning property as |true| causes a bad user experience.
-  // This callback sets it to |false| after a timeout period has passed.
+  // Used to keep scanning=true while the Modem is restarting so that tests and
+  // the UI will not attempt to Enable or Connect while in that state.
+  // TODO(b/177588333): Make Modem and/or the MM dbus API more robust.
   base::CancelableClosure scanning_timeout_callback_;
-  int64_t scanning_timeout_milliseconds_;
 
   std::string connect_pending_iccid_;
 

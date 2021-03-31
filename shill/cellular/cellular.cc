@@ -141,7 +141,6 @@ const char Cellular::kModemDriverSysfsName[] =
 const char Cellular::kModemResetSysfsName[] =
     "/sys/class/remoteproc/remoteproc0/state";
 const int64_t Cellular::kModemResetTimeoutMilliseconds = 1000;
-const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
 const int64_t Cellular::kPollLocationIntervalMilliseconds = 300000;  // 5 mins
 
 Cellular::Cellular(ModemInfo* modem_info,
@@ -178,7 +177,6 @@ Cellular::Cellular(ModemInfo* modem_info,
       proposed_scan_in_progress_(false),
       explicit_disconnect_(false),
       is_ppp_authenticating_(false),
-      scanning_timeout_milliseconds_(kDefaultScanningTimeoutMilliseconds),
       weak_ptr_factory_(this) {
   RegisterProperties();
 
@@ -358,12 +356,14 @@ void Cellular::SetState(State state) {
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_) << " -> "
                 << GetStateString(state);
   state_ = state;
+  UpdateScanning();
 }
 
 void Cellular::SetModemState(ModemState modem_state) {
   SLOG(this, 2) << __func__ << ": " << GetModemStateString(modem_state_)
                 << " -> " << GetModemStateString(modem_state);
   modem_state_ = modem_state;
+  UpdateScanning();
 }
 
 void Cellular::SetCapabilityState(CapabilityState capability_state) {
@@ -371,6 +371,22 @@ void Cellular::SetCapabilityState(CapabilityState capability_state) {
                 << GetCapabilityStateString(capability_state_) << " -> "
                 << GetCapabilityStateString(capability_state);
   capability_state_ = capability_state;
+
+  if (capability_state_ == CapabilityState::kCellularStopped) {
+    // When |capability_state_| is set to CellularStopped, set |scanning_| to
+    // true and set a timer to clear |scanning_| after a short delay. This
+    // allows the Modem time to properly shut down. Otherwise immediate
+    // Enable+Connect calls may fail.
+    SetScanning(true);
+    scanning_timeout_callback_.Reset(
+        Bind(&Cellular::SetScanning, weak_ptr_factory_.GetWeakPtr(), false));
+    dispatcher()->PostDelayedTask(FROM_HERE,
+                                  scanning_timeout_callback_.callback(),
+                                  kModemResetTimeoutMilliseconds);
+    return;
+  }
+
+  UpdateScanning();
 }
 
 void Cellular::HelpRegisterDerivedBool(const string& name,
@@ -416,7 +432,6 @@ void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
     // disabled state.
     SetCapabilityState(CapabilityState::kCellularStopped);
     callback.Run(Error());
-    UpdateScanning();
   }
 
   // Sockets should be destroyed here to ensure we make new connections
@@ -495,7 +510,6 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
         callback.Run(error);
       }
     }
-    UpdateScanning();
     return;
   }
 
@@ -508,7 +522,6 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
     HandleNewRegistrationState();
   }
 
-  UpdateScanning();
   metrics()->NotifyDeviceEnableFinished(interface_index());
 
   if (callback)
@@ -746,7 +759,7 @@ void Cellular::OnAfterResume() {
 }
 
 void Cellular::Scan(Error* error, const string& /*reason*/) {
-  SLOG(this, 2) << __func__;
+  SLOG(this, 2) << "Scanning started";
   CHECK(error);
   if (proposed_scan_in_progress_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
@@ -771,6 +784,7 @@ void Cellular::Scan(Error* error, const string& /*reason*/) {
 
 void Cellular::OnScanReply(const Stringmaps& found_networks,
                            const Error& error) {
+  SLOG(this, 2) << "Scanning completed";
   proposed_scan_in_progress_ = false;
   UpdateScanning();
 
@@ -918,9 +932,7 @@ void Cellular::CreateServices() {
 
   capability_->OnServiceCreated();
 
-  // We might have missed a property update because the service wasn't created
-  // ealier.
-  UpdateScanning();
+  // Ensure operator properties are updated.
   OnOperatorChanged();
 }
 
@@ -984,7 +996,6 @@ void Cellular::DestroyCapability() {
     // capability state to kCellularStarted.
     SetCapabilityState(CapabilityState::kCellularStarted);
   }
-  UpdateScanning();
 }
 
 bool Cellular::GetConnectable(CellularService* service) const {
@@ -1030,6 +1041,12 @@ void Cellular::Connect(CellularService* service, Error* error) {
   if (capability_state_ != CapabilityState::kModemStarted) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Connect Failed: Modem not started.");
+    return;
+  }
+
+  if (scanning_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Connect Failed: Modem is not ready.");
     return;
   }
 
@@ -1330,10 +1347,6 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
         OnConnected();
       break;
   }
-
-  // Update the kScanningProperty property after we've handled the current state
-  // update completely.
-  UpdateScanning();
 }
 
 bool Cellular::IsActivating() const {
@@ -1721,23 +1734,24 @@ void Cellular::UpdateScanning() {
   bool scanning;
   switch (capability_state_) {
     case CapabilityState::kCellularStopped:
-      scanning = false;
-      break;
+      // We set |scanning_| to true in SetCapabilityState() when the state is
+      // set to kCellularStopped and set a timer to clear it.
+      return;
     case CapabilityState::kCellularStarted:
-      // CellularStarted indicates that Cellular is enabled, but no Modem
-      // object or Capability exists. Treat as scanning for the UI, unless
-      // |inhibited_| is true.
-      scanning = !inhibited_;
+      // CellularStarted indicates that Cellular is enabled, but the Modem
+      // object has not been created, or was destroyed because the Modem is
+      // Inhibited or Locked, or StartModem failed. Treat as scanning for the
+      // UI, unless |inhibited_| is true or the SIM is locked
+      scanning = !inhibited_ && modem_state_ != kModemStateLocked;
       break;
     case CapabilityState::kModemStarting:
       // ModemStarting indicates that a Modem object exists but has not started.
       scanning = true;
       break;
     case CapabilityState::kModemStarted:
-      // When the modem is started but not yet registered, treat as scanning.
+      // When the modem is started and enabling or searching, treat as scanning.
       // Also set scanning if an active scan is in progress.
-      scanning = modem_state_ == kModemStateEnabled ||
-                 modem_state_ == kModemStateEnabling ||
+      scanning = modem_state_ == kModemStateEnabling ||
                  modem_state_ == kModemStateSearching ||
                  proposed_scan_in_progress_;
       break;
@@ -1745,6 +1759,10 @@ void Cellular::UpdateScanning() {
       scanning = true;
       break;
   }
+  SLOG(this, 2) << __func__ << ": Capability State: "
+                << GetCapabilityStateString(capability_state_)
+                << ", Modem State: " << GetModemStateString(modem_state_)
+                << ", Scanning: " << scanning;
   SetScanning(scanning);
 }
 
@@ -1812,7 +1830,6 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
   dbus_path_str_ = dbus_path.value();
   SetModemState(kModemStateUnknown);
   set_mac_address(mac_address);
-  UpdateScanning();
 }
 
 const std::string& Cellular::GetSimCardId() const {
@@ -2096,6 +2113,7 @@ void Cellular::SetScanning(bool scanning) {
   if (scanning_ == scanning)
     return;
 
+  SLOG(this, 2) << __func__ << ": " << scanning;
   scanning_ = scanning;
   adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
 
@@ -2104,23 +2122,7 @@ void Cellular::SetScanning(bool scanning) {
   else
     metrics()->NotifyDeviceScanFinished(interface_index());
 
-  // kScanningProperty is a sticky-false property.
-  // Every time it is set to |true|, it will remain |true| up to a maximum of
-  // |kScanningTimeout| time, after which it will be reset to |false|.
-  if (!scanning_ && !scanning_timeout_callback_.IsCancelled()) {
-    SLOG(this, 2) << "Scanning set to false. "
-                  << "Cancelling outstanding timeout.";
-    scanning_timeout_callback_.Cancel();
-  } else {
-    CHECK(scanning_timeout_callback_.IsCancelled());
-    SLOG(this, 2) << "Scanning set to true. "
-                  << "Starting timeout to reset to false.";
-    scanning_timeout_callback_.Reset(
-        Bind(&Cellular::SetScanning, weak_ptr_factory_.GetWeakPtr(), false));
-    dispatcher()->PostDelayedTask(FROM_HERE,
-                                  scanning_timeout_callback_.callback(),
-                                  scanning_timeout_milliseconds_);
-  }
+  scanning_timeout_callback_.Cancel();
 }
 
 void Cellular::set_selected_network(const string& selected_network) {
