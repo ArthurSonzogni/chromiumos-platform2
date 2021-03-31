@@ -24,6 +24,7 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/notreached.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>

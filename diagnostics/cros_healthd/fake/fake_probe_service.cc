@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/fake/fake_probe_service.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 namespace diagnostics {
 

@@ -13,6 +13,7 @@
 #include <base/json/json_file_value_serializer.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/values.h>
 
 namespace rmad {

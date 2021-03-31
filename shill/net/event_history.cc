@@ -9,6 +9,7 @@
 #include <deque>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 #include "shill/net/shill_time.h"
 

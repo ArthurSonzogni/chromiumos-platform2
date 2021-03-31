@@ -6,6 +6,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 
 namespace power_manager {
 namespace policy {

@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/fake/fake_routine_service.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 #include "mojo/nullable_primitives.mojom.h"
 
