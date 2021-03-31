@@ -207,7 +207,7 @@ class StubModem : public Modem {
  public:
   StubModem(const std::string& device_id, ModemHelper* helper)
       : device_id_(device_id),
-        equipment_id_(base::UnguessableToken().ToString()),
+        equipment_id_(base::UnguessableToken().Create().ToString()),
         helper_(helper) {}
   StubModem(const StubModem&) = delete;
   StubModem& operator=(const StubModem&) = delete;
