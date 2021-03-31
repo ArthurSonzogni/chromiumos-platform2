@@ -75,6 +75,7 @@ shared_library("libcros_camera") {
     "//camera/common/v4l2_device/v4l2_device.cc",
     "//camera/common/v4l2_device/v4l2_subdevice.cc",
     "//camera/common/v4l2_device/v4l2_video_node.cc",
+    "//camera/mojo/cros_camera_mojo_verifier.cc",
   ]
   output_name = "libcros_camera"
   configs += [ ":target_defaults" ]

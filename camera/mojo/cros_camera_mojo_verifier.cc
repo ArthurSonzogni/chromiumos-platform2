@@ -19,12 +19,6 @@ namespace {
                 "Definition of " #name                                   \
                 " is inconsistent between mojom and Android framework");
 
-#define CHECK_BUFFER_TYPE_DEFINITION(type) \
-  CHECK_MOJOM_DEFINITION(type, Camera3DeviceOps::BufferType)
-
-CHECK_BUFFER_TYPE_DEFINITION(GRALLOC);
-CHECK_BUFFER_TYPE_DEFINITION(SHM);
-
 // We must make sure the HAL pixel format definitions in mojom and from Android
 // framework are consistent.
 #define CHECK_FORMAT_DEFINITION(format) \
