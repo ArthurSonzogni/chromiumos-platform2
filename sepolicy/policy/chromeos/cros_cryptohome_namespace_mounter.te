@@ -179,7 +179,7 @@ is_arc_vm(`
 
 allow kernel cros_cryptohome_namespace_mounter:fd use;
 
-allow cros_cryptohomed cros_var_lib:file r_file_perms;
+allow cros_cryptohomed cros_var_lib:file create_file_perms;
 
 log_writer(cros_cryptohome_namespace_mounter);
 uma_writer(cros_cryptohome_namespace_mounter);
