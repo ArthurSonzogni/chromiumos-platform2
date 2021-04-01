@@ -17,8 +17,6 @@
 #include "cryptohome/tpm_live_test.h"
 
 int main(int argc, char** argv) {
-  DEFINE_string(owner_password, "", "deprecated flag");
-  DEFINE_bool(tpm2_use_system_owner_password, "", "deprecated flag");
   brillo::FlagHelper::Init(argc, argv,
                            "Executes cryptohome tests on a live TPM.\nNOTE: "
                            "the TPM must be available and owned.");

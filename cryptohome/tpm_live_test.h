@@ -26,8 +26,7 @@ class TpmLiveTest {
 
   ~TpmLiveTest() = default;
 
-  // This method runs all or a subset of all tests, depending on the supplied
-  // parameters.
+  // This method runs all of the tests.
   bool RunLiveTests();
 
  private:
