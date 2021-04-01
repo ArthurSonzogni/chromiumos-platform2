@@ -25,6 +25,7 @@ allow cros_cryptohomed {
 
 allow cros_cryptohomed cros_home_shadow_uid_root:dir relabelfrom;
 create_dir_file(cros_cryptohomed, {
+  cros_downloads_file
   cros_home
   cros_home_chronos
   cros_home_root
@@ -146,8 +147,12 @@ allow cros_cryptohomed self:key {
   write
 };
 
+allow cros_cryptohomed {
+  cros_stateful_partition
+  cgroup
+}:dir r_dir_perms;
+
 # TODO(b/178237710) Label the directories and files with specific contexts.
-allow cros_cryptohomed cros_stateful_partition:dir  r_dir_perms;
 allow cros_cryptohomed cros_run_namespaces:dir      search;
 allow cros_cryptohomed labeledfs:filesystem {
   quotaget

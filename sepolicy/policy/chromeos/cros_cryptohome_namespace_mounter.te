@@ -7,12 +7,14 @@ type cros_cryptohome_namespace_mounter, chromeos_domain, domain;
 domain_auto_trans(cros_cryptohomed, cros_cryptohome_namespace_mounter_exec, cros_cryptohome_namespace_mounter);
 domain_auto_trans(cros_cryptohome_namespace_mounter, cros_unconfined_exec, chromeos);
 
+allow domain cros_cryptohome_namespace_mounter:key search;
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd use;
 
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
 # TODO(betuls): Define a cryptohome domain and add these rules to there.
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fifo_file rw_file_perms;
-create_dir_file(cros_cryptohome_namespace_mounter,  {
+create_dir_file(cros_cryptohome_namespace_mounter, {
+  cros_downloads_file
   cros_home
   cros_home_chronos
   cros_home_root
@@ -94,7 +96,10 @@ allow cros_cryptohome_namespace_mounter media_rw_data_file:dir {
 ')
 
 allow cros_cryptohome_namespace_mounter proc_swaps:file r_file_perms;
-allow cros_cryptohome_namespace_mounter rootfs:dir      r_dir_perms;
+allow cros_cryptohome_namespace_mounter {
+  rootfs
+  cgroup
+}:dir r_dir_perms;
 
 r_dir_file(cros_cryptohome_namespace_mounter, sysfs_fs_ext4_features);
 
@@ -149,12 +154,17 @@ is_arc_vm(`
     unmount
   };
   allow cros_cryptohome_namespace_mounter device:chr_file r_file_perms;
-  allow cros_cryptohome_namespace_mounter unlabeled:file create;
+  create_dir_file(cros_cryptohome_namespace_mounter, unlabeled);
 ',`
   arc_cts_fails_release(`
     allow cros_cryptohome_namespace_mounter self:capability {
       dac_override
       dac_read_search
+    };
+    allow cros_cryptohome_namespace_mounter unlabeled:filesystem {
+      mount
+      remount
+      unmount
     };
     allow cros_cryptohome_namespace_mounter labeledfs:filesystem {
       mount
@@ -162,6 +172,7 @@ is_arc_vm(`
       unmount
     };
     allow cros_cryptohome_namespace_mounter device:chr_file r_file_perms;
+    create_dir_file(cros_cryptohome_namespace_mounter, unlabeled);
   ', (cros_cryptohome_namespace_mounter));
 ')
 
