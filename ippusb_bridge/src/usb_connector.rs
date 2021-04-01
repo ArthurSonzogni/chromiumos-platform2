@@ -19,6 +19,7 @@ const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(30);
 #[derive(Debug)]
 pub enum Error {
     ClaimInterface(rusb::Error),
+    ReleaseInterface(rusb::Error),
     DetachDrivers(rusb::Error),
     DeviceList(rusb::Error),
     OpenDevice(rusb::Error),
@@ -40,6 +41,7 @@ impl fmt::Display for Error {
         use Error::*;
         match self {
             ClaimInterface(err) => write!(f, "Failed to claim interface: {}", err),
+            ReleaseInterface(err) => write!(f, "Failed to release interface: {}", err),
             DetachDrivers(err) => write!(f, "Failed to detach kernel drivers: {}", err),
             DeviceList(err) => write!(f, "Failed to read device list: {}", err),
             OpenDevice(err) => write!(f, "Failed to open device: {}", err),
@@ -169,12 +171,39 @@ struct ClaimedInterface {
     descriptor: IppusbDescriptor,
 }
 
+impl ClaimedInterface {
+    fn claim(&mut self) -> Result<()> {
+        self.handle
+            .claim_interface(self.descriptor.interface_number)
+            .map_err(Error::ClaimInterface)?;
+        self.handle
+            .set_alternate_setting(
+                self.descriptor.interface_number,
+                self.descriptor.alternate_setting,
+            )
+            .map_err(Error::SetAlternateSetting)?;
+        Ok(())
+    }
+
+    fn release(&mut self) -> Result<()> {
+        self.handle
+            .release_interface(self.descriptor.interface_number)
+            .map_err(Error::ReleaseInterface)
+    }
+}
+
 /// InterfaceManager is responsible for managing a pool of claimed USB interfaces.
 /// At construction, it is provided with a set of interfaces, and then clients
 /// can use its member functions in order to request and free interfaces.
 ///
 /// If no interfaces are currently available, requesting an interface will block
 /// until an interface is freed by another thread.
+///
+/// InterfaceManager maintains the invariant that interfaces are claimed when
+/// handed out.  It expects newly-inserted interfaces to be claimed by libusb and
+/// it ensures that they are still claimed when retrieved.  Internally it releases
+/// and claims free interfaces to allow sharing with other programs that might need
+/// to access the USB interfaces.
 #[derive(Clone)]
 pub struct InterfaceManager {
     interface_available: Arc<Condvar>,
@@ -183,7 +212,15 @@ pub struct InterfaceManager {
 
 impl InterfaceManager {
     fn new(interfaces: Vec<ClaimedInterface>) -> Self {
-        let deque: VecDeque<ClaimedInterface> = interfaces.into();
+        let mut deque: VecDeque<ClaimedInterface> = interfaces.into();
+        for interface in &mut deque {
+            interface.release().unwrap_or_else(|e| {
+                error!(
+                    "Failed to release interface {}: {}",
+                    interface.descriptor.interface_number, e
+                );
+            });
+        }
         Self {
             interface_available: Arc::new(Condvar::new()),
             free_interfaces: Arc::new(Mutex::new(deque)),
@@ -192,15 +229,27 @@ impl InterfaceManager {
 
     /// Claim an interface from the pool of interfaces.
     /// Will block until an interface is available.
-    fn request_interface(&mut self) -> ClaimedInterface {
+    fn request_interface(&mut self) -> Result<ClaimedInterface> {
         let mut free_interfaces = self.free_interfaces.lock();
         loop {
-            if let Some(interface) = free_interfaces.pop_front() {
+            if let Some(mut interface) = free_interfaces.pop_front() {
                 debug!(
                     "* Claimed interface {}",
                     interface.descriptor.interface_number
                 );
-                return interface;
+
+                return match interface.claim() {
+                    Ok(()) => Ok(interface),
+                    Err(e) => {
+                        error!(
+                            "Failed to reclaim interface {}: {}",
+                            interface.descriptor.interface_number, e
+                        );
+                        free_interfaces.push_back(interface);
+                        self.interface_available.notify_one();
+                        Err(e)
+                    }
+                };
             }
 
             free_interfaces = self.interface_available.wait(free_interfaces);
@@ -208,11 +257,19 @@ impl InterfaceManager {
     }
 
     /// Return an interface to the pool of interfaces.
-    fn free_interface(&mut self, interface: ClaimedInterface) {
+    fn free_interface(&mut self, mut interface: ClaimedInterface) {
         debug!(
             "* Released interface {}",
             interface.descriptor.interface_number
         );
+        interface.release().unwrap_or_else(|e| {
+            error!(
+                "Failed to release interface {}: {}",
+                interface.descriptor.interface_number, e
+            );
+            // Put the interface back into the pool instead of a panic.  Since it failed to
+            // release, we can hopefully reclaim it on the next connection.
+        });
         let mut free_interfaces = self.free_interfaces.lock();
         free_interfaces.push_back(interface);
         self.interface_available.notify_one();
@@ -429,9 +486,13 @@ impl UsbConnector {
         self.handle.device()
     }
 
-    pub fn get_connection(&mut self) -> UsbConnection {
-        let interface = self.manager.request_interface();
-        UsbConnection::new(self.verbose_log, self.manager.clone(), interface)
+    pub fn get_connection(&mut self) -> Result<UsbConnection> {
+        let interface = self.manager.request_interface()?;
+        Ok(UsbConnection::new(
+            self.verbose_log,
+            self.manager.clone(),
+            interface,
+        ))
     }
 }
 

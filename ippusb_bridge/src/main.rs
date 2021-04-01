@@ -290,7 +290,14 @@ impl Daemon {
         std::thread::spawn(move || {
             thread_connection_tracker.lock().client_connected();
             for request in connection {
-                let usb_conn = thread_usb.get_connection();
+                let usb_conn = match thread_usb.get_connection() {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Getting USB connection failed: {}", e);
+                        continue;
+                    }
+                };
+
                 if let Err(e) = handle_request(verbose, usb_conn, request) {
                     error!("Handling request failed: {}", e);
                 }
