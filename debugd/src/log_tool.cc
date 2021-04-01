@@ -994,8 +994,10 @@ void LogTool::DeleteArcBugReportBackup(const std::string& username) {
 
   arc_bug_report_backups_.erase(userhash);
 
-  if (backupDir.Unlink(kArcBugReportBackupFileName) !=
-      brillo::SafeFD::Error::kNoError) {
+  if (base::PathExists(daemon_store_base_dir_.Append(userhash).Append(
+          kArcBugReportBackupFileName)) &&
+      backupDir.Unlink(kArcBugReportBackupFileName) !=
+          brillo::SafeFD::Error::kNoError) {
     PLOG(ERROR) << "Failed to delete ARC bug report backup at "
                 << daemon_store_base_dir_.Append(userhash)
                        .Append(kArcBugReportBackupFileName)
