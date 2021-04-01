@@ -21,12 +21,11 @@ pkg_config("target_defaults") {
 
 static_library("encryption_module_interface") {
   sources = [ "encryption_module_interface.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     "//missive/proto:record_proto",
     "//missive/util:status",
   ]
-
-  configs += [ ":target_defaults" ]
 }
 
 static_library("primitives") {
@@ -37,36 +36,34 @@ static_library("primitives") {
 
 static_library("testing_primitives") {
   sources = [ "testing_primitives.cc" ]
-  deps = [ ":primitives" ]
-
   configs += [ ":target_defaults" ]
+  deps = [ ":primitives" ]
 }
 
 static_library("encryption_module") {
   sources = [ "encryption_module.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":encryption",
     ":encryption_module_interface",
     "//missive/proto:record_proto",
     "//missive/util:status",
   ]
-
-  configs += [ ":target_defaults" ]
 }
 
 static_library("encryption") {
   sources = [ "encryption.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":primitives",
     "//missive/proto:record_proto",
     "//missive/util:status",
   ]
-
-  configs += [ ":target_defaults" ]
 }
 
 static_library("decryption") {
   sources = [ "decryption.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":encryption",
     ":primitives",
@@ -74,18 +71,15 @@ static_library("decryption") {
     "//missive/proto:record_proto",
     "//missive/util:status",
   ]
-
-  configs += [ ":target_defaults" ]
 }
 
 static_library("verification") {
   sources = [ "verification.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":primitives",
     "//missive/util:status",
   ]
-
-  configs += [ ":target_defaults" ]
 }
 
 static_library("encryption_test_support") {
@@ -93,7 +87,7 @@ static_library("encryption_test_support") {
     "scoped_encryption_feature.cc",
     "test_encryption_module.cc",
   ]
-
+  configs += [ ":target_defaults" ]
   deps = [
     ":decryption",
     ":encryption",
@@ -106,8 +100,6 @@ static_library("encryption_test_support") {
     "//missive/util:status",
     "//missive/util:status_macros",
   ]
-
-  configs += [ ":target_defaults" ]
 }
 
 source_set("unit_tests") {

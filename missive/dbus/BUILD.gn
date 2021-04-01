@@ -22,8 +22,8 @@ pkg_config("target_defaults") {
 }
 
 static_library("upload_client") {
-  configs += [ ":target_defaults" ]
   sources = [ "upload_client.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     "//missive/proto:interface_proto",
     "//missive/proto:record_proto",

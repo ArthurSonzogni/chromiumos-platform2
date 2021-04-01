@@ -51,8 +51,8 @@ generate_dbus_proxies("missive_dbus_proxies") {
 }
 
 static_library("libmessaging_layer") {
-  configs += [ ":target_defaults" ]
   sources = [ "missive_daemon.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":missive_dbus_adaptors",
     ":missive_dbus_proxies",
@@ -72,9 +72,9 @@ static_library("libmessaging_layer") {
 }
 
 executable("missived") {
+  sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libmessaging_layer" ]
-  sources = [ "main.cc" ]
 }
 
 if (use.test) {
@@ -87,6 +87,22 @@ if (use.test) {
   }
 
   executable("missived_testrunner") {
+    sources = [
+      "dbus/upload_client_test.cc",
+      "missive_daemon_test.cc",
+      "scheduler/enqueue_job_test.cc",
+      "scheduler/scheduler_test.cc",
+      "scheduler/upload_job_test.cc",
+      "storage/resources/resource_interface_test.cc",
+      "storage/storage_queue_stress_test.cc",
+      "storage/storage_queue_test.cc",
+      "storage/storage_test.cc",
+      "util/shared_queue_test.cc",
+      "util/status_macros_test.cc",
+      "util/status_test.cc",
+      "util/statusor_test.cc",
+    ]
+
     configs += [
       ":target_defaults",
       ":target_test",
@@ -108,22 +124,6 @@ if (use.test) {
       "//missive/util:shared_queue",
       "//missive/util:status",
       "//missive/util:test_callbacks_support",
-    ]
-
-    sources = [
-      "dbus/upload_client_test.cc",
-      "missive_daemon_test.cc",
-      "scheduler/enqueue_job_test.cc",
-      "scheduler/scheduler_test.cc",
-      "scheduler/upload_job_test.cc",
-      "storage/resources/resource_interface_test.cc",
-      "storage/storage_queue_stress_test.cc",
-      "storage/storage_queue_test.cc",
-      "storage/storage_test.cc",
-      "util/shared_queue_test.cc",
-      "util/status_macros_test.cc",
-      "util/status_test.cc",
-      "util/statusor_test.cc",
     ]
   }
 }

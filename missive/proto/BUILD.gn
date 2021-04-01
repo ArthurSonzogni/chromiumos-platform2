@@ -26,23 +26,23 @@ proto_library("record_constants") {
 proto_library("record_proto") {
   sources = [ "record.proto" ]
 
-  deps = [ ":record_constants" ]
-
   proto_in_dir = "//missive/proto"
   proto_out_dir = "include/missive/proto"
   standalone = true
+
+  deps = [ ":record_constants" ]
 }
 
 proto_library("interface_proto") {
   sources = [ "interface.proto" ]
+
+  proto_in_dir = "//missive/proto"
+  proto_out_dir = "include/missive/proto"
+  standalone = true
 
   deps = [
     ":record_constants",
     ":record_proto",
     ":status_proto",
   ]
-
-  proto_in_dir = "//missive/proto"
-  proto_out_dir = "include/missive/proto"
-  standalone = true
 }

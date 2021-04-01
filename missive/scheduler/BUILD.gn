@@ -13,8 +13,8 @@ pkg_config("target_defaults") {
 }
 
 static_library("scheduler") {
-  configs += [ ":target_defaults" ]
   sources = [ "scheduler.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     "//missive/util:shared_queue",
     "//missive/util:status",
@@ -23,10 +23,11 @@ static_library("scheduler") {
 }
 
 static_library("enqueue_job") {
-  configs += [ ":target_defaults" ]
   sources = [ "enqueue_job.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":scheduler",
+    "//missive/proto:interface_proto",
     "//missive/storage:storage_module_interface",
     "//missive/util:shared_queue",
     "//missive/util:status",
@@ -35,8 +36,8 @@ static_library("enqueue_job") {
 }
 
 static_library("upload_job") {
-  configs += [ ":target_defaults" ]
   sources = [ "upload_job.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":scheduler",
     "//missive/dbus:upload_client",
