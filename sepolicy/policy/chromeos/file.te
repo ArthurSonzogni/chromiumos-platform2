@@ -355,6 +355,7 @@ allow file_type tmpfs:filesystem associate;
 allow file_type rootfs:filesystem associate;
 allow dev_type tmpfs:filesystem associate;
 allow dev_type device:filesystem associate;
+allow debugfs tmpfs:filesystem associate;
 allow debugfs_type debugfs:filesystem associate;
 allow debugfs_trace_marker debugfs_tracing:filesystem associate;
 allow sysfs_type sysfs:filesystem associate;

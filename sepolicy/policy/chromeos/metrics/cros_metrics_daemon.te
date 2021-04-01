@@ -70,3 +70,4 @@ allow cros_metrics_daemon domain:dir { search getattr };
 r_dir_file(cros_metrics_daemon, unlabeled);
 
 r_dir_file(cros_metrics_daemon, debugfs_gpu);
+allow cros_metrics_daemon debugfs:dir r_dir_perms;
