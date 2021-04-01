@@ -139,4 +139,21 @@ void MissiveDaemon::ConfirmRecordUpload(
   response->Return(response_body);
 }
 
+void MissiveDaemon::UpdateEncryptionKey(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        reporting::UpdateEncryptionKeyResponse>> response,
+    const reporting::UpdateEncryptionKeyRequest& in_request) {
+  reporting::UpdateEncryptionKeyResponse response_body;
+  if (!in_request.has_signed_encryption_info()) {
+    auto status = response_body.mutable_status();
+    status->set_code(error::INVALID_ARGUMENT);
+    status->set_error_message("Request had no SignedEncryptionInfo");
+    response->Return(response_body);
+    return;
+  }
+
+  storage_module_->UpdateEncryptionKey(in_request.signed_encryption_info());
+  response->Return(response_body);
+}
+
 }  // namespace reporting

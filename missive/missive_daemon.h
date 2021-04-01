@@ -54,6 +54,11 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
           reporting::ConfirmRecordUploadResponse>> response,
       const reporting::ConfirmRecordUploadRequest& in_request) override;
 
+  void UpdateEncryptionKey(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          reporting::UpdateEncryptionKeyResponse>> response,
+      const reporting::UpdateEncryptionKeyRequest& in_request) override;
+
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   scoped_refptr<StorageModuleInterface> storage_module_;
