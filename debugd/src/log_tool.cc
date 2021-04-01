@@ -385,6 +385,12 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "zram new stats names",
     "echo orig_size compr_size used_total limit used_max zero_pages migrated"},
   {kFile, "zram new stats values", "/sys/block/zram0/mm_stat"},
+  {kCommand, "zram block device stat names",
+    "echo read_ios read_merges read_sectors read_ticks write_ios "
+    "write_merges write_sectors write_ticks in_flight io_ticks "
+    "time_in_queue discard_ios dicard_merges discard_sectors discard_ticks "
+    "flush_ios flush_ticks"},
+  {kFile, "zram block device stat", "/sys/block/zram0/stat"},
   {kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
   {kCommand, "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
     kRoot, kRoot},
