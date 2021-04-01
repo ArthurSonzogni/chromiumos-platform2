@@ -35,7 +35,6 @@ class ZslHelperTest;
 }  // namespace tests
 
 const int GRALLOC_USAGE_STILL_CAPTURE = GRALLOC_USAGE_PRIVATE_1;
-const int GRALLOC_USAGE_ZSL_ENABLED = GRALLOC_USAGE_PRIVATE_2;
 
 struct ZslBuffer {
  public:
