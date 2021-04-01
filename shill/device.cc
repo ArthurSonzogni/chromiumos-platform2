@@ -84,6 +84,7 @@ constexpr char kIPFlagVersion6[] = "ipv6";
 constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
 constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
 constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
+constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";
 constexpr char kIPFlagReversePathFilter[] = "rp_filter";
 constexpr char kIPFlagReversePathFilterEnabled[] = "1";
 constexpr char kIPFlagReversePathFilterLooseMode[] = "2";
@@ -125,6 +126,7 @@ Service::ConnectState CalculatePortalStateFromProbeResults(
 
 const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
 const char Device::kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
+const char Device::kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
 const char Device::kStoragePowered[] = "Powered";
 const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
 const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
@@ -328,6 +330,9 @@ void Device::StartIPv6() {
     return;
   }
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
+
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptDuplicateAddressDetection,
+            kIPFlagAcceptDuplicateAddressDetectionEnabled);
 
   // Force the kernel to accept RAs even when global IPv6 forwarding is
   // enabled.  Unfortunately this needs to be set on a per-interface basis.

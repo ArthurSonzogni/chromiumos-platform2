@@ -466,6 +466,11 @@ TEST_F(DeviceTest, StartIPv6) {
               SetIPFlag(IPAddress::kFamilyIPv6,
                         StrEq(Device::kIPFlagDisableIPv6), StrEq("0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*device_,
+              SetIPFlag(IPAddress::kFamilyIPv6,
+                        StrEq(Device::kIPFlagAcceptDuplicateAddressDetection),
+                        StrEq("1")))
+      .WillOnce(Return(true));
   EXPECT_CALL(
       *device_,
       SetIPFlag(IPAddress::kFamilyIPv6,
