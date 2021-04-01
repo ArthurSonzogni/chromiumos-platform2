@@ -20,9 +20,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/strcat.h>
 
-#define READ_WRITE_ALL_FILE_FLAGS \
-  (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
-
 namespace metrics {
 namespace structured {
 namespace {
@@ -30,6 +27,8 @@ namespace {
 constexpr char kEventsPath[] = "/var/lib/metrics/structured/events";
 
 constexpr char kKeysPath[] = "/var/lib/metrics/structured/keys";
+
+constexpr mode_t kFilePermissions = 0660;
 
 // Writes |events| to a file within |directory|. Fails if |directory| doesn't
 // exist. Returns whether the write was successful.
@@ -44,9 +43,8 @@ bool WriteEventsProtoToDir(const std::string& directory,
     return false;
   const std::string filepath = base::StrCat({directory, "/", guid});
 
-  base::ScopedFD file_descriptor(open(filepath.c_str(),
-                                      O_WRONLY | O_APPEND | O_CREAT,
-                                      READ_WRITE_ALL_FILE_FLAGS));
+  base::ScopedFD file_descriptor(
+      open(filepath.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600));
   if (file_descriptor.get() < 0) {
     PLOG(ERROR) << filepath << " cannot open";
     return false;
@@ -63,6 +61,13 @@ bool WriteEventsProtoToDir(const std::string& directory,
   if (!base::WriteFileDescriptor(file_descriptor.get(), proto_str.c_str(),
                                  proto_str.size())) {
     PLOG(ERROR) << filepath << " write error";
+    return false;
+  }
+
+  // Explicitly set permissions on the created event file. This is done
+  // separately to the open call to be independent of the umask.
+  if (fchmod(file_descriptor.get(), kFilePermissions) < 0) {
+    PLOG(ERROR) << filepath << " cannot chmod";
     return false;
   }
 
