@@ -17,6 +17,7 @@ allow cros_cryptohomed cros_cryptohome_namespace_mounter:process      signal;
 allow cros_cryptohomed cros_cryptohomed:fifo_file w_file_perms;
 
 allow cros_cryptohomed {
+  cros_downloads_file
   cros_home_chronos
   cros_home_root
   cros_home_user

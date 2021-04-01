@@ -29,6 +29,7 @@ create_dir_file(cros_cryptohome_namespace_mounter, {
   cros_run_dbus
 });
 allow cros_cryptohome_namespace_mounter {
+  cros_downloads_file
   cros_home_user
   cros_home_chronos
   cros_home_root
