@@ -122,6 +122,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetHighestDeviceMinimumVersion,
               (base::Version*),
               (const, override));
+  MOCK_METHOD(bool,
+              GetDeviceMarketSegment,
+              (DeviceMarketSegment*),
+              (const, override));
 };
 }  // namespace policy
 

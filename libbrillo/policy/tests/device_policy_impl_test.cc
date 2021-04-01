@@ -456,4 +456,33 @@ TEST_F(DevicePolicyImplTest, GetHighestDeviceMinimumVersion_SetConsumer) {
   ASSERT_FALSE(device_policy_.GetHighestDeviceMinimumVersion(&version));
 }
 
+// Should only write a value and return true as the
+// |device_market_segment| should be present.
+TEST_F(DevicePolicyImplTest, GetDeviceMarketSegment_EducationDevice) {
+  em::PolicyData policy_data;
+  policy_data.set_market_segment(em::PolicyData::ENROLLED_EDUCATION);
+  device_policy_.set_policy_data_for_testing(policy_data);
+
+  DeviceMarketSegment segment;
+  EXPECT_TRUE(device_policy_.GetDeviceMarketSegment(&segment));
+  EXPECT_EQ(segment, DeviceMarketSegment::kEducation);
+}
+
+TEST_F(DevicePolicyImplTest, GetDeviceMarketSegment_UnspecifiedDevice) {
+  em::PolicyData policy_data;
+  policy_data.set_market_segment(em::PolicyData::MARKET_SEGMENT_UNSPECIFIED);
+  device_policy_.set_policy_data_for_testing(policy_data);
+
+  DeviceMarketSegment segment;
+  EXPECT_TRUE(device_policy_.GetDeviceMarketSegment(&segment));
+  EXPECT_EQ(segment, DeviceMarketSegment::kUnknown);
+}
+
+TEST_F(DevicePolicyImplTest, GetDeviceMarketSegment_NotSet) {
+  em::PolicyData policy_data;
+  device_policy_.set_policy_data_for_testing(policy_data);
+
+  DeviceMarketSegment segment;
+  EXPECT_FALSE(device_policy_.GetDeviceMarketSegment(&segment));
+}
 }  // namespace policy

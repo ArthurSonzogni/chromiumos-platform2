@@ -824,6 +824,31 @@ bool DevicePolicyImpl::GetHighestDeviceMinimumVersion(
   return true;
 }
 
+bool DevicePolicyImpl::GetDeviceMarketSegment(
+    DeviceMarketSegment* device_market_segment) const {
+  if (!policy_data_.has_market_segment()) {
+    return false;
+  }
+
+  em::PolicyData::MarketSegment market_segment = policy_data_.market_segment();
+  switch (market_segment) {
+    case em::PolicyData::MARKET_SEGMENT_UNSPECIFIED:
+      *device_market_segment = DeviceMarketSegment::kUnknown;
+      break;
+    case em::PolicyData::ENROLLED_EDUCATION:
+      *device_market_segment = DeviceMarketSegment::kEducation;
+      break;
+    case em::PolicyData::ENROLLED_ENTERPRISE:
+      *device_market_segment = DeviceMarketSegment::kEnterprise;
+      break;
+    default:
+      LOG(ERROR) << "MarketSegment enum value has changed!";
+      *device_market_segment = DeviceMarketSegment::kUnknown;
+  }
+
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;

@@ -27,6 +27,7 @@ namespace policy {
 // This class defines the interface for querying device policy on ChromeOS.
 // The implementation is hidden in DevicePolicyImpl to prevent protobuf
 // definition from leaking into the libraries using this interface.
+// TODO(b:184745765) Refactor the Getters return bool type and pointer style
 class DevicePolicy {
  public:
   // Identifiers of a USB device or device family.
@@ -61,6 +62,14 @@ class DevicePolicy {
     }
     int days;
     int percentage;
+  };
+
+  // Device Market Segment enum which is translated from MarketSegment in
+  // components/policy/proto/device_management_backend.proto.
+  enum class DeviceMarketSegment {
+    kUnknown = 0,
+    kEducation,
+    kEnterprise,
   };
 
   DevicePolicy();
@@ -263,6 +272,13 @@ class DevicePolicy {
   // version can be parsed from it.
   virtual bool GetHighestDeviceMinimumVersion(
       base::Version* versions_out) const = 0;
+
+  // Write the value of the DeviceMarketSegment policy in
+  // |device_market_segment|. Returns true on success. If the proto value is
+  // not set, then return false.
+  // Translated value from MarketSegment in device_management_backend.proto
+  virtual bool GetDeviceMarketSegment(
+      DeviceMarketSegment* device_market_segment) const = 0;
 
  private:
   // Verifies that the policy signature is correct.

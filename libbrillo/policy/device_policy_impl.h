@@ -95,6 +95,8 @@ class DevicePolicyImpl : public DevicePolicy {
       int* channel_downgrade_behavior_out) const override;
   bool GetHighestDeviceMinimumVersion(
       base::Version* versions_out) const override;
+  bool GetDeviceMarketSegment(
+      DeviceMarketSegment* device_market_segment) const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(
