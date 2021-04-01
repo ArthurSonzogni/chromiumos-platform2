@@ -1323,9 +1323,9 @@ void CellularCapability3gpp::OnPropertiesChanged(
     OnModemSignalPropertiesChanged(changed_properties);
   }
   if (interface == MM_DBUS_INTERFACE_SIM) {
-    // A SIM change will generate a new Modem object so we do not expect a SIM
-    // interface change event.
-    LOG(ERROR) << "Unexpected SIM properties change, ignoring";
+    // sim properties (imsi, operator name) are updated when MM moves out
+    // of the locked state.
+    UpdateSims();
   }
 }
 
@@ -1537,17 +1537,6 @@ void CellularCapability3gpp::OnSimLockStatusChanged() {
   SLOG(this, 2) << __func__;
   cellular()->adaptor()->EmitKeyValueStoreChanged(
       kSIMLockStatusProperty, SimLockStatusToProperty(nullptr));
-
-  if (!IsValidSimPath(sim_path_) ||
-      (sim_lock_status_.lock_type != MM_MODEM_LOCK_NONE &&
-       sim_lock_status_.lock_type != MM_MODEM_LOCK_UNKNOWN)) {
-    return;
-  }
-
-  // If the SIM is currently unlocked, assume that we need to refresh
-  // carrier information, since a locked SIM prevents shill from obtaining
-  // the necessary data to establish a connection later (e.g. IMSI).
-  UpdateSims();
 }
 
 void CellularCapability3gpp::OnModem3gppPropertiesChanged(
