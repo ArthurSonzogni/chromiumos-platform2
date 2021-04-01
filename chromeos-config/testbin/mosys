@@ -5,6 +5,10 @@
 
 # This is a fake mosys used during tests.
 
+if [[ "${I_AM_CROS_CONFIG}" != "1" ]]; then
+  exit 1
+fi
+
 if [[ $# -ne 2 ]]; then
   exit 1
 fi

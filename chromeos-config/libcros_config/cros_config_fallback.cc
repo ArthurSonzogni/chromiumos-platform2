@@ -65,8 +65,8 @@ base::Optional<std::string> GetHasBacklight() {
 // |command| is just a space-separated argv (not parsed by shell)
 base::Optional<std::string> GetOutputForCommand(const std::string& command) {
   std::string result;
-  std::vector<std::string> argv = base::SplitString(
-      command, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  std::vector<std::string> argv{"/usr/bin/env", "-S",
+                                "I_AM_CROS_CONFIG=1 " + command};
 
   if (!base::GetAppOutput(argv, &result)) {
     CROS_CONFIG_LOG(ERROR) << "\"" << command << "\" has non-zero exit code";
