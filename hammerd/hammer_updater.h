@@ -74,7 +74,7 @@ class HammerUpdater {
                 const std::string& touchpad_fw_ver,
                 uint16_t vendor_id,
                 uint16_t product_id,
-                const std::string& path,
+                const std::string& usb_path,
                 bool at_boot,
                 UpdateCondition update_condition);
   virtual ~HammerUpdater() = default;
@@ -111,6 +111,7 @@ class HammerUpdater {
                 const std::string& touchpad_image,
                 const std::string& touchpad_product_id,
                 const std::string& touchpad_fw_ver,
+                const std::string& path,
                 bool at_boot,
                 UpdateCondition update_condition,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
@@ -149,6 +150,8 @@ class HammerUpdater {
   const std::string touchpad_product_id_;
   // The touchpad firmware version.
   const std::string touchpad_fw_ver_;
+  // A string of combined USB bus and port.
+  const std::string usb_path_;
   // Set this flag when hammerd is triggered at boot time.
   const bool at_boot_;
   // The update mode. Leave as non-const for unittesting purposes.

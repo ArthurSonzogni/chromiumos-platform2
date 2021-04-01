@@ -94,6 +94,7 @@ class UsbEndpointInterface {
 class UsbEndpoint : public UsbEndpointInterface {
  public:
   UsbEndpoint(uint16_t vendor_id, uint16_t product_id, std::string path);
+  explicit UsbEndpoint(std::string path);
   UsbEndpoint(const UsbEndpoint&) = delete;
   UsbEndpoint& operator=(const UsbEndpoint&) = delete;
 
@@ -131,14 +132,14 @@ class UsbEndpoint : public UsbEndpointInterface {
                    int len,
                    unsigned int timeout_ms = 0);
 
-  uint16_t vendor_id_;
-  uint16_t product_id_;
+  std::optional<uint16_t> vendor_id_;
+  std::optional<uint16_t> product_id_;
   std::string path_;
-  int fd_;
+  int fd_ = -1;
   std::string configuration_string_;
-  int iface_num_;
-  int ep_num_;
-  int chunk_len_;
+  int iface_num_ = -1;
+  int ep_num_ = -1;
+  int chunk_len_ = -1;
 };
 
 }  // namespace hammerd

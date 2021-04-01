@@ -52,7 +52,7 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
                              const std::string& touchpad_fw_ver,
                              uint16_t vendor_id,
                              uint16_t product_id,
-                             const std::string& path,
+                             const std::string& usb_path,
                              bool at_boot,
                              UpdateCondition update_condition)
     : HammerUpdater(
@@ -60,10 +60,11 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
           touchpad_image,
           touchpad_product_id,
           touchpad_fw_ver,
+          usb_path,
           at_boot,
           update_condition,
           std::make_unique<FirmwareUpdater>(
-              std::make_unique<UsbEndpoint>(vendor_id, product_id, path)),
+              std::make_unique<UsbEndpoint>(vendor_id, product_id, usb_path)),
           std::make_unique<PairManager>(),
           std::make_unique<DBusWrapper>(),
           std::make_unique<MetricsLibrary>()) {}
@@ -73,6 +74,7 @@ HammerUpdater::HammerUpdater(
     const std::string& touchpad_image,
     const std::string& touchpad_product_id,
     const std::string& touchpad_fw_ver,
+    const std::string& usb_path,
     bool at_boot,
     UpdateCondition update_condition,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
@@ -83,6 +85,7 @@ HammerUpdater::HammerUpdater(
       touchpad_image_(touchpad_image),
       touchpad_product_id_(touchpad_product_id),
       touchpad_fw_ver_(touchpad_fw_ver),
+      usb_path_(usb_path),
       at_boot_(at_boot),
       update_condition_(update_condition),
       task_(HammerUpdater::TaskState()),
@@ -123,9 +126,10 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   constexpr unsigned int kMaximumRunCount = 20;
   // Time it takes hammer to reset or jump to RW, before being
   // available for the next USB connection.
-  constexpr unsigned int kResetTimeMs = 100;
+  constexpr unsigned int kResetTimeMs = 200;
   bool criticality_checked = false;
   bool can_update = update_condition_ != UpdateCondition::kNever;
+  bool invalid_device_seen = false;
   // Set all update flags if update mode is forced.
   if (update_condition_ == UpdateCondition::kAlways) {
     task_.update_ro = true;
@@ -137,6 +141,25 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
     UsbConnectStatus connect_status = fw_updater_->TryConnectUsb();
     if (connect_status != UsbConnectStatus::kSuccess) {
+      // If this is the first InvalidDevice error and not the last
+      // iteration, try to reboot the device back to RO and give it
+      // a second chance.
+      if (connect_status == UsbConnectStatus::kInvalidDevice &&
+          !invalid_device_seen && run_count != kMaximumRunCount - 1) {
+        LOG(INFO) << "Device with invalid ID found, try to reboot to RO.";
+        invalid_device_seen = true;
+        // Create an updater instance that allows any usb ID.
+        FirmwareUpdater fw_updater(std::make_unique<UsbEndpoint>(usb_path_));
+        if (fw_updater.TryConnectUsb() == UsbConnectStatus::kSuccess) {
+          fw_updater.SendSubcommand(UpdateExtraCommand::kImmediateReset);
+          fw_updater.CloseUsb();
+          base::PlatformThread::Sleep(
+              base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        }
+        status = HammerUpdater::RunStatus::kNeedJump;
+        continue;
+      }
+
       if (!criticality_checked && !can_update) {
         metrics_->SendEnumToUMA(
             kMetricPendingRWUpdate,
