@@ -15,13 +15,6 @@
 
 #include "label_detect.h"
 
-static bool is_blacklisted_driver(const char* vendor_string,
-                                  VAProfile profile,
-                                  VAEntrypoint entrypoint) {
-  // No blacklisted driver today.
-  return false;
-}
-
 /* Returns true if given VA profile |va_profile| has |entrypoint| and the entry
  * point supports given raw |format|.
  */
@@ -71,14 +64,10 @@ static bool match_vaapi_capabilities(VADisplay va_display,
     TRACE("vaQueryConfigProfiles failed (%d)\n", va_res);
     return false;
   }
-  const char* vendor_string = vaQueryVendorString(va_display);
   for (i = 0; i < num_supported_profiles; i++) {
     int j;
     VAProfile profile = profiles[i];
     TRACE("supported profile: %d\n", profile);
-    if (is_blacklisted_driver(vendor_string, profile, entrypoint)) {
-      continue;
-    }
     for (j = 0; required_profiles[j] != VAProfileNone; j++) {
       if (required_profiles[j] == profile &&
           has_vaapi_entrypoint(va_display, profile, entrypoint, format)) {
