@@ -97,6 +97,11 @@ constexpr char kAnomalyDetectorReady[] = "anomaly-detector-ready";
 // found on the method documentation of `utils::SkipCrashCollection`
 constexpr char kFilterInFile[] = "filter-in";
 
+// Base name of file whose contents tell us which crashes, if any, to *ignore*.
+// Used for tests only. Implementation details can be found on the method
+// documentation of `utils::SkipCrashCollection`
+constexpr char kFilterOutFile[] = "filter-out";
+
 // Base name of the file containing the name of the in-progress tast test, if
 // any.  If there is a tast test name here when a crash happens, it's added to
 // the .meta file.

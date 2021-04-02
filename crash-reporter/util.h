@@ -47,12 +47,14 @@ bool HasMockConsent();
 bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib);
 
 // Returns true if we should skip crash collection (based on the filter-in
-// file).
-// Specifically, if the file exists, crash_reporter will exit early unless its
+// and filter-out files).
+// Specifically, if filter-in exists, crash_reporter will exit early unless its
 // contents are a substring of the command-line parameters.
-// Alternatively, if the file contains the string "none", then crash_reporter
+// Alternatively, if filter-in contains the string "none", then crash_reporter
 // will always exit early.
-bool SkipCrashCollection(int argc, char* argv[]);
+// If filter-out exists, crash_reporter will exit early *if* its contents
+// are a substring of the command-line parameters.
+bool SkipCrashCollection(int argc, const char* const argv[]);
 
 // Change group ownership of "file" to "group", and grant g+rw (optionally x).
 bool SetGroupAndPermissions(const base::FilePath& file,

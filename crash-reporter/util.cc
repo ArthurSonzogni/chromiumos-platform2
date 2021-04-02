@@ -146,14 +146,8 @@ bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
   return ret;
 }
 
-bool SkipCrashCollection(int argc, char* argv[]) {
-  // Don't skip crashes on real Chromebooks; this is for testing.
-  // We can't use IsTestImage because that's always false if a crash test is in
-  // progress.
-  if (!IsReallyTestImage()) {
-    return false;
-  }
-
+// Determine if the filter-in file tells us to skip
+static bool SkipForFilterIn(std::string command_line) {
   base::FilePath file =
       paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterInFile);
   if (!base::PathExists(file)) {
@@ -163,6 +157,46 @@ bool SkipCrashCollection(int argc, char* argv[]) {
   std::string contents;
   if (!base::ReadFileToString(file, &contents)) {
     LOG(WARNING) << "Failed to read " << file;
+    return false;
+  }
+
+  if (contents == "none" || command_line.find(contents) == std::string::npos) {
+    // Doesn't match, so skip this crash.
+    LOG(WARNING) << "Ignoring crash invocation '" << command_line << "' due to "
+                 << "filter_in=" << contents << ".";
+    return true;
+  }
+  return false;
+}
+
+// Determine if the filter-out file tells us to skip
+static bool SkipForFilterOut(std::string command_line) {
+  base::FilePath file =
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterOutFile);
+  if (!base::PathExists(file)) {
+    return false;
+  }
+
+  std::string contents;
+  if (!base::ReadFileToString(file, &contents)) {
+    LOG(WARNING) << "Failed to read " << file;
+    return false;
+  }
+
+  if (command_line.find(contents) != std::string::npos) {
+    // Matches, so skip this crash.
+    LOG(WARNING) << "Ignoring crash invocation '" << command_line << "' due to "
+                 << "filter_out=" << contents << ".";
+    return true;
+  }
+  return false;
+}
+
+bool SkipCrashCollection(int argc, const char* const argv[]) {
+  // Don't skip crashes on real Chromebooks; this is for testing.
+  // We can't use IsTestImage because that's always false if a crash test is in
+  // progress.
+  if (!IsReallyTestImage()) {
     return false;
   }
 
@@ -190,13 +224,7 @@ bool SkipCrashCollection(int argc, char* argv[]) {
     return false;
   }
 
-  if (contents == "none" || command_line.find(contents) == std::string::npos) {
-    // Doesn't match, so skip this crash.
-    LOG(WARNING) << "Ignoring crash invocation '" << command_line << "' due to "
-                 << "filter_in=" << contents << ".";
-    return true;
-  }
-  return false;
+  return SkipForFilterIn(command_line) || SkipForFilterOut(command_line);
 }
 
 bool SetGroupAndPermissions(const base::FilePath& file,

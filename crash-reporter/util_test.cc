@@ -469,6 +469,74 @@ TEST_F(CrashCommonUtilTest, IsFeedbackAllowedRespectsMetricsLib) {
 }
 #endif  // USE_KVM_GUEST
 
+// Verify that SkipCrashCollection behaves as expected for filter-in.
+TEST_F(CrashCommonUtilTest, SkipCrashCollection_FilterIn) {
+  // Force test image.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kEtcDirectory, paths::kLsbRelease),
+      "CHROMEOS_RELEASE_TRACK=testimage-channel"));
+
+  int argc = 2;
+  const char* argv_some_exec[] = {"/sbin/crash_reporter",
+                                  "--user=--user=14074:11:0:0:some_exec"};
+  const char* argv_foobar[] = {"/sbin/crash_reporter",
+                               "--user=--user=14074:11:0:0:foobar"};
+
+  // With neither file existing, both should be collected.
+  ASSERT_FALSE(base::PathExists(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterInFile)));
+  ASSERT_FALSE(base::PathExists(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterOutFile)));
+
+  EXPECT_FALSE(SkipCrashCollection(argc, argv_some_exec));
+  EXPECT_FALSE(SkipCrashCollection(argc, argv_foobar));
+
+  // Create filter-in with "none" -- both should be skipped
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterInFile),
+      "none"));
+  EXPECT_TRUE(SkipCrashCollection(argc, argv_some_exec));
+  EXPECT_TRUE(SkipCrashCollection(argc, argv_foobar));
+
+  // Create filter-in with "some_exec" -- some_exec should be allowed.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterInFile),
+      "some_exec"));
+  EXPECT_FALSE(SkipCrashCollection(argc, argv_some_exec));
+  EXPECT_TRUE(SkipCrashCollection(argc, argv_foobar));
+}
+
+// Verify that SkipCrashCollection behaves as expected for filter-out.
+TEST_F(CrashCommonUtilTest, SkipCrashCollection_FilterOut) {
+  // Force test image.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kEtcDirectory, paths::kLsbRelease),
+      "CHROMEOS_RELEASE_TRACK=testimage-channel"));
+
+  int argc = 2;
+  const char* argv_some_exec[] = {"/sbin/crash_reporter",
+                                  "--user=--user=14074:11:0:0:some_exec"};
+  const char* argv_foobar[] = {"/sbin/crash_reporter",
+                               "--user=--user=14074:11:0:0:foobar"};
+
+  // With neither file existing, both should be collected.
+  ASSERT_FALSE(base::PathExists(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterInFile)));
+  ASSERT_FALSE(base::PathExists(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterOutFile)));
+
+  EXPECT_FALSE(SkipCrashCollection(argc, argv_some_exec));
+  EXPECT_FALSE(SkipCrashCollection(argc, argv_foobar));
+
+  // Create filter-out with "some_exec" -- some_exec should be skipped, but
+  // not foobar.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kFilterOutFile),
+      "some_exec"));
+  EXPECT_TRUE(SkipCrashCollection(argc, argv_some_exec));
+  EXPECT_FALSE(SkipCrashCollection(argc, argv_foobar));
+}
+
 // Test fixture for |GetPathToThisBinary()|.
 class CrashCommonUtilGetPathToThisBinaryTest : public CrashCommonUtilTest {
  public:

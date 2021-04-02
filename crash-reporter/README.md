@@ -402,6 +402,9 @@ VmSupport to control which processes may have crash reports generated.
 *   `/run/crash_reporter/filter-in`: Used by integration tests to tell the
     crash_reporter to ignore invocations unless the command line contains
     the contents of this file as a substring.
+*   `/run/crash_reporter/filter-out`: Used by integration tests to tell the
+    crash_reporter to ignore invocations *if* the command line contains
+    the contents of this file as a substring.
 *   `/mnt/stateful_partition/etc/collect_chrome_crashes`: Used by tast tests
     to let [crash_reporter] collect browser crashes directly (normally it
     ignores them and lets Chrome handle things).
