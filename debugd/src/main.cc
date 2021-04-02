@@ -136,6 +136,14 @@ void enter_vfs_namespace() {
   // Mount /run/lock so that lock file for crossystem is shared.
   PCHECK(mj_call(minijail_bind(j.get(), "/run/lock", "/run/lock", 1)));
 
+  // Mount /run/touch-updater to access touch firmware version information.
+  // /run/touch-updater is not available in VM's since they don't have internal
+  // touch devices. Make the failure non-fatal.
+  if (!mj_call(minijail_bind(j.get(), "/run/touch-updater",
+                             "/run/touch-updater", 0))) {
+    PLOG(ERROR) << "Could not bind mount /run/touch-updater";
+  }
+
   minijail_enter(j.get());
 }
 

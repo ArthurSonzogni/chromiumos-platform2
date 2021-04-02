@@ -376,11 +376,7 @@ const std::array kCommandLogs {
   Log{kCommand, "top memory",
     "/usr/bin/top -o \"+%MEM\" -w128 -bcn 1 | head -n 57"},
   Log{kCommand, "top thread", "/usr/bin/top -Hbc -w128 -n 1 | head -n 40"},
-  Log{kCommand, "touch_fw_version",
-    "grep -aE"
-    " -e 'synaptics: Touchpad model'"
-    " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
-    " /var/log/messages | tail -n 20"},
+  Log{kFile, "touch_fw_version", "/run/touch-updater/firmware-versions"},
   Log{kCommand, "tpm_version", "/usr/bin/tpm_manager_client get_version_info"},
   // Type-C data from the type-c connector class.
   Log{kCommand, "typec_connector_class",
