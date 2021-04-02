@@ -35,7 +35,6 @@
 #include "shill/device.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
-#include "shill/file_reader.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
