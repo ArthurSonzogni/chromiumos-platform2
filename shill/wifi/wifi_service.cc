@@ -1041,10 +1041,6 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   params.Set<std::string>(WPASupplicant::kNetworkPropertyEapKeyManagement,
                           key_mgmt);
 
-  // "Enabled" means "negotiate." Let's always do that.
-  params.Set<uint32_t>(WPASupplicant::kNetworkPropertyIeee80211w,
-                       WPASupplicant::kNetworkIeee80211wEnabled);
-
   params.Set<std::vector<uint8_t>>(WPASupplicant::kNetworkPropertySSID, ssid_);
 
   SLOG(this, 2) << "Sending MAC policy: "
