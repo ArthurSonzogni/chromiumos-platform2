@@ -77,13 +77,17 @@ class WiFiServiceTest : public PropertyStoreTest {
     service->eap_.reset(eap);  // Passes ownership.
     return eap;
   }
+  bool SetPassphrase(WiFiServiceRefPtr service, const string& passphrase) {
+    Error error;
+    service->SetPassphrase(passphrase, &error);
+    return error.IsSuccess();
+  }
   bool CheckConnectable(const string& security_class,
                         const char* passphrase,
                         bool is_1x_connectable) {
-    Error error;
     WiFiServiceRefPtr service = MakeSimpleService(security_class);
     if (passphrase)
-      service->SetPassphrase(passphrase, &error);
+      SetPassphrase(service, passphrase);
     MockEapCredentials* eap = SetMockEap(service);
     EXPECT_CALL(*eap, IsConnectable())
         .WillRepeatedly(Return(is_1x_connectable));
@@ -437,8 +441,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityPsk);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
-  Error error;
-  wifi_service->SetPassphrase("0:mumblemumblem", &error);
+  SetPassphrase(wifi_service, "0:mumblemumblem");
   wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               PSKSecurityArgs());
@@ -447,8 +450,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
 TEST_F(WiFiServiceTest, ConnectTaskRawPMK) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityPsk);
   EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
-  Error error;
-  service->SetPassphrase(string(IEEE_80211::kWPAHexLen, '1'), &error);
+  SetPassphrase(service, string(IEEE_80211::kWPAHexLen, '1'));
   service->Connect(nullptr, "in test");
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_FALSE(params.Contains<string>(WPASupplicant::kPropertyPreSharedKey));
@@ -496,32 +498,31 @@ MATCHER_P(WEPSecurityArgsKeyIndex, index, "") {
 
 TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWep);
-  Error error;
-  wifi_service->SetPassphrase("0:abcdefghijklm", &error);
+  SetPassphrase(wifi_service, "0:abcdefghijklm");
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(0));
 
-  wifi_service->SetPassphrase("abcdefghijklm", &error);
+  SetPassphrase(wifi_service, "abcdefghijklm");
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(0));
 
-  wifi_service->SetPassphrase("1:abcdefghijklm", &error);
+  SetPassphrase(wifi_service, "1:abcdefghijklm");
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(1));
 
-  wifi_service->SetPassphrase("2:abcdefghijklm", &error);
+  SetPassphrase(wifi_service, "2:abcdefghijklm");
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(2));
 
-  wifi_service->SetPassphrase("3:abcdefghijklm", &error);
+  SetPassphrase(wifi_service, "3:abcdefghijklm");
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
@@ -610,11 +611,10 @@ TEST_F(WiFiServiceTest, SetPassphraseResetHasEverConnected) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityPsk);
   const string kPassphrase = "abcdefgh";
 
-  Error error;
   // A changed passphrase should reset has_ever_connected_ field.
   wifi_service->has_ever_connected_ = true;
   EXPECT_TRUE(wifi_service->has_ever_connected());
-  wifi_service->SetPassphrase(kPassphrase, &error);
+  SetPassphrase(wifi_service, kPassphrase);
   EXPECT_FALSE(wifi_service->has_ever_connected());
 }
 
@@ -624,30 +624,24 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
   const string kPassphrase = "abcdefgh";
 
   {
-    Error error;
     // A changed passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    wifi_service->SetPassphrase(kPassphrase, &error);
+    EXPECT_TRUE(SetPassphrase(wifi_service, kPassphrase));
     Mock::VerifyAndClearExpectations(wifi().get());
-    EXPECT_TRUE(error.IsSuccess());
   }
 
   {
-    Error error;
     // An unchanged passphrase should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
-    wifi_service->SetPassphrase(kPassphrase, &error);
+    EXPECT_TRUE(SetPassphrase(wifi_service, kPassphrase));
     Mock::VerifyAndClearExpectations(wifi().get());
-    EXPECT_TRUE(error.IsSuccess());
   }
 
   {
-    Error error;
     // A modified passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    wifi_service->SetPassphrase(kPassphrase + "X", &error);
+    EXPECT_TRUE(SetPassphrase(wifi_service, kPassphrase + "X"));
     Mock::VerifyAndClearExpectations(wifi().get());
-    EXPECT_TRUE(error.IsSuccess());
   }
 
   {
@@ -660,12 +654,10 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
   }
 
   {
-    Error error;
     // An invalid passphrase should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
-    wifi_service->SetPassphrase("", &error);
+    EXPECT_FALSE(SetPassphrase(wifi_service, ""));
     Mock::VerifyAndClearExpectations(wifi().get());
-    EXPECT_FALSE(error.IsSuccess());
   }
 
   {

@@ -191,11 +191,6 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, ComputeCipher8021x);
-  FRIEND_TEST(WiFiServiceTest, ConnectTask8021x);
-  FRIEND_TEST(WiFiServiceTest, ConnectTaskDynamicWEP);
-  FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
-  FRIEND_TEST(WiFiServiceTest, ConnectTaskRawPMK);
-  FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
   FRIEND_TEST(WiFiServiceTest, GetTethering);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
