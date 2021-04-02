@@ -16,8 +16,8 @@ static_library("log_rotator_static") {
     "log_rotator.cc",
     "log_rotator.h",
   ]
-  deps = [ "//croslog:log_constants" ]
   configs += [ ":target_defaults" ]
+  deps = [ "//croslog:log_constants" ]
 }
 
 pkg_config("target_defaults") {

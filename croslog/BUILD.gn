@@ -57,9 +57,9 @@ static_library("libcroslog_static") {
     "viewer_plaintext.cc",
     "viewer_plaintext.h",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":log_constants" ]
   pkg_deps = [ "re2" ]
-  configs += [ ":target_defaults" ]
 }
 
 pkg_config("target_defaults") {
