@@ -37,21 +37,17 @@ libec_sources = [
 ]
 
 static_library("libec_static") {
-  configs += [ ":target_defaults_pkg_deps" ]
   sources = libec_sources
+  configs += [ ":target_defaults_pkg_deps" ]
 }
 
 shared_library("libec") {
-  configs += [ ":target_defaults_pkg_deps" ]
   sources = libec_sources
+  configs += [ ":target_defaults_pkg_deps" ]
 }
 
 if (use.test) {
   executable("libec_tests") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults_pkg_deps",
-    ]
     sources = [
       "ec_command_async_test.cc",
       "ec_command_test.cc",
@@ -63,6 +59,10 @@ if (use.test) {
       "fingerprint/fp_mode_test.cc",
       "fingerprint/fp_seed_command_test.cc",
       "versions_command_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults_pkg_deps",
     ]
     deps = [
       ":libec_static",
