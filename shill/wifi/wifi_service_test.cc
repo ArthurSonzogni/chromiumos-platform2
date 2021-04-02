@@ -1089,6 +1089,30 @@ TEST_F(WiFiServiceTest, Connectable) {
 
   // Dynamic WEP + 802.1X should be connectable under the same conditions.
   EXPECT_TRUE(CheckConnectable(kSecurityWep, nullptr, true));
+
+  {
+    WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityPsk);
+    SetPassphrase(service, "abcdefgh");
+    WiFiEndpoint::SecurityFlags flags;
+    flags.rsn_psk = true;
+    flags.rsn_sae = true;
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    service->AddEndpoint(endpoint);
+    // WPA3-transitional; all devices should support.
+    EXPECT_TRUE(service->connectable());
+  }
+  {
+    WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityPsk);
+    SetPassphrase(service, "abcdefgh");
+    WiFiEndpoint::SecurityFlags flags;
+    flags.rsn_sae = true;
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    service->AddEndpoint(endpoint);
+    // WPA3-only; match device support.
+    EXPECT_EQ(wifi()->SupportsWPA3(), service->connectable());
+  }
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {

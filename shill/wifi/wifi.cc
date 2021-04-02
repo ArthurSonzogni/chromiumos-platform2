@@ -3370,4 +3370,13 @@ bool WiFi::RequestRoam(const std::string& addr, Error* error) {
   return true;
 }
 
+// TODO(b/184395063): determine this at runtime.
+bool WiFi::SupportsWPA3() const {
+#if !defined(DISABLE_WPA3_SAE)
+  return true;
+#else
+  return false;
+#endif
+}
+
 }  // namespace shill

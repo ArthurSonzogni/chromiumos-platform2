@@ -862,6 +862,7 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
                      WiFiEndpoint::SecurityFlags());
     EXPECT_FALSE(endpoint->has_wpa_property());
     EXPECT_FALSE(endpoint->has_rsn_property());
+    EXPECT_FALSE(endpoint->has_psk_property());
   }
   {
     WiFiEndpoint::SecurityFlags flags;
@@ -870,6 +871,7 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
         MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
     EXPECT_TRUE(endpoint->has_wpa_property());
     EXPECT_FALSE(endpoint->has_rsn_property());
+    EXPECT_TRUE(endpoint->has_psk_property());
   }
   {
     WiFiEndpoint::SecurityFlags flags;
@@ -878,24 +880,39 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
         MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
     EXPECT_FALSE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
+    EXPECT_FALSE(endpoint->has_psk_property());
   }
   {
+    // WPA/WPA2-mixed.
     WiFiEndpoint::SecurityFlags flags;
-    // Both can be true.
     flags.wpa_psk = true;
     flags.rsn_psk = true;
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
     EXPECT_TRUE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
+    EXPECT_TRUE(endpoint->has_psk_property());
   }
   {
+    // WPA3-transition.
+    WiFiEndpoint::SecurityFlags flags;
+    flags.rsn_psk = true;
+    flags.rsn_sae = true;
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
+    EXPECT_FALSE(endpoint->has_wpa_property());
+    EXPECT_TRUE(endpoint->has_rsn_property());
+    EXPECT_TRUE(endpoint->has_psk_property());
+  }
+  {
+    // WPA3-SAE only.
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_sae = true;
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
     EXPECT_FALSE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
+    EXPECT_FALSE(endpoint->has_psk_property());
   }
 }
 

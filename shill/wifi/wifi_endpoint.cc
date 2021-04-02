@@ -300,6 +300,11 @@ bool WiFiEndpoint::has_wpa_property() const {
   return has_wpa_property_;
 }
 
+// "PSK", as in WPA-PSK or WPA2-PSK.
+bool WiFiEndpoint::has_psk_property() const {
+  return security_flags_.rsn_psk || security_flags_.wpa_psk;
+}
+
 bool WiFiEndpoint::has_tethering_signature() const {
   return has_tethering_signature_;
 }

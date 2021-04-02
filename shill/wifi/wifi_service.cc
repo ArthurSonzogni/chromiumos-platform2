@@ -691,6 +691,25 @@ RpcIdentifier WiFiService::GetDeviceRpcId(Error* error) const {
   return wifi_->GetRpcIdentifier();
 }
 
+// It's possible to have a WPA3 Service on a system that doesn't support it. To
+// avoid disruption upon making a bad Connect decision, we rule out
+// incompatible Services here.
+bool WiFiService::IsWPA3Connectable() const {
+  if (!wifi_)
+    return false;
+
+  if (wifi_->SupportsWPA3())
+    return true;
+
+  // PSK property means WPA2 compatibility. If any endpoint supports WPA2/3
+  // transitional, then we assume the network will be connectable.
+  for (const auto& endpoint : endpoints_)
+    if (endpoint->has_psk_property())
+      return true;
+
+  return false;
+}
+
 void WiFiService::UpdateConnectable() {
   bool is_connectable = false;
   if (security_ == kSecurityNone) {
@@ -704,6 +723,8 @@ void WiFiService::UpdateConnectable() {
              security_ == kSecurityWpa3) {
     need_passphrase_ = passphrase_.empty();
     is_connectable = !need_passphrase_;
+    if (is_connectable && security_ == kSecurityWpa3)
+      is_connectable = IsWPA3Connectable();
   }
   SetConnectable(is_connectable);
 }
@@ -807,6 +828,8 @@ void WiFiService::UpdateFromEndpoints() {
   // Either cipher_8021x_ or security_ may have changed. Recomputing is
   // harmless.
   UpdateSecurity();
+  // WPA2/3 info may change this.
+  UpdateConnectable();
 
   NotifyIfVisibilityChanged();
 }

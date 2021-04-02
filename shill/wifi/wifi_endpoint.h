@@ -106,6 +106,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const std::string& security_mode() const;
   bool has_rsn_property() const;
   bool has_wpa_property() const;
+  bool has_psk_property() const;
   bool has_tethering_signature() const;
   const Ap80211krvSupport& krv_support() const;
   const HS20Information& hs20_information() const;

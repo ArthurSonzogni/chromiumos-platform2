@@ -228,6 +228,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool RequestRoam(const std::string& addr, Error* error) override;
 
+  bool SupportsWPA3() const;
+
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
   enum ScanState {

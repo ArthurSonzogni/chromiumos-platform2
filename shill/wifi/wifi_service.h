@@ -230,6 +230,10 @@ class WiFiService : public Service {
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
   void ClearPassphrase(Error* error);
+
+  // Check if an WPA3 service is connectable (e.g., underlying device does not
+  // support WPA3-SAE?).
+  bool IsWPA3Connectable() const;
   void UpdateConnectable();
   void UpdateFromEndpoints();
   void UpdateSecurity();
