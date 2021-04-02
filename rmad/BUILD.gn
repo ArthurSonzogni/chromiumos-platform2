@@ -32,28 +32,28 @@ pkg_config("target_defaults") {
 }
 
 static_library("libjson_store") {
-  configs += [ ":target_defaults" ]
   sources = [ "utils/json_store.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("libstate_handler") {
-  configs += [ ":target_defaults" ]
   sources = [
     "state_handler/base_state_handler.cc",
     "state_handler/state_handler_manager.cc",
     "state_handler/welcome_screen_state_handler.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libjson_store" ]
 }
 
 static_library("libdbus_service") {
-  configs += [ ":target_defaults" ]
   sources = [ "dbus_service.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("librmad_interface") {
-  configs += [ ":target_defaults" ]
   sources = [ "rmad_interface_impl.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libjson_store",
     ":libstate_handler",
@@ -61,8 +61,8 @@ static_library("librmad_interface") {
 }
 
 executable("rmad") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libdbus_service",
     ":librmad_interface",
@@ -71,15 +71,15 @@ executable("rmad") {
 
 if (use.test) {
   executable("rmad_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "dbus_service_test.cc",
       "rmad_interface_test.cc",
       "state_handler/state_handler_manager_test.cc",
       "utils/json_store_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libdbus_service",
