@@ -32,14 +32,14 @@ constexpr char kProcSelfMountsPath[] = "/proc/self/mounts";
 constexpr char kCrashReporterPath[] = "/sbin/crash_reporter";
 constexpr char kSecurityAnomalyFlag[] = "--security_anomaly";
 
-bool ShouldReport() {
+bool ShouldReport(bool report_in_dev_mode) {
   // Reporting should only happen when booted in Verified mode and not running
-  // a developer image.
-  return ::VbGetSystemPropertyInt("cros_debug") == 0;
+  // a developer image, unless explicitly instructed otherwise.
+  return ::VbGetSystemPropertyInt("cros_debug") == 0 || report_in_dev_mode;
 }
 
-bool ReportMount(const MountEntry& e) {
-  if (!ShouldReport()) {
+bool ReportMount(const MountEntry& e, bool report_in_dev_mode) {
+  if (!ShouldReport(report_in_dev_mode)) {
     VLOG(1) << "Not in Verified mode, not reporting " << e.dest();
     return true;
   }
@@ -107,8 +107,11 @@ void Daemon::DoRwMountCheck() {
         }
         // If we haven't seen the mount, save it...
         wx_mounts_[e.dest()] = e;
-        // ... and report it.
-        ReportMount(e);
+        VLOG(1) << "Found W+X mount at " << e.dest();
+        // ... and report it, when required to.
+        if (generate_reports_) {
+          ReportMount(e, dev_);
+        }
       }
     }
   }

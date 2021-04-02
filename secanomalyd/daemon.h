@@ -13,7 +13,8 @@
 
 class Daemon : public brillo::Daemon {
  public:
-  Daemon() : brillo::Daemon() {}
+  explicit Daemon(bool generate_reports = false, bool dev = false)
+      : brillo::Daemon(), generate_reports_{generate_reports}, dev_{dev} {}
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
@@ -23,6 +24,9 @@ class Daemon : public brillo::Daemon {
  private:
   void CheckRwMounts();
   void DoRwMountCheck();
+
+  bool generate_reports_ = false;
+  bool dev_ = false;
 
   std::map<base::FilePath, MountEntry> wx_mounts_;
 };

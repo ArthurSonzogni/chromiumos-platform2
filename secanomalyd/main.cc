@@ -8,9 +8,13 @@
 #include "secanomalyd/daemon.h"
 
 int main(int argc, char* argv[]) {
-  brillo::FlagHelper::Init(argc, argv, "CrOS monitor daemon");
+  DEFINE_bool(generate_reports, false, "generate crash reports for anomalies");
+  DEFINE_bool(dev, false, "report anomalies when cros_debug=1");
+  brillo::FlagHelper::Init(argc, argv,
+                           "CrOS security anomaly reporting daemon");
+
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  Daemon().Run();
+  Daemon(FLAGS_generate_reports, FLAGS_dev).Run();
   return 0;
 }
