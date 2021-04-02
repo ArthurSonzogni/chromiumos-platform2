@@ -20,17 +20,16 @@ pkg_config("target_defaults") {
 }
 
 static_library("libsecanomaly") {
-  configs += [ ":target_defaults" ]
   sources = [
     "daemon.cc",
     "mount_entry.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("secanomalyd") {
-  configs += [ ":target_defaults" ]
   sources = [ "main.cc" ]
-
+  configs += [ ":target_defaults" ]
   deps = [ ":libsecanomaly" ]
 }
 
@@ -40,12 +39,12 @@ if (use.test) {
   }
 
   executable("secanomalyd_testrunner") {
+    sources = []
     configs += [
       "//common-mk:test",
       ":secanomalyd_testrunner_config",
       ":target_defaults",
     ]
-    sources = []
     deps = [
       ":libsecanomaly",
       "//common-mk/testrunner",
