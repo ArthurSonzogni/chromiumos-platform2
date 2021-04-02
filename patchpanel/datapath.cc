@@ -139,8 +139,8 @@ void Datapath::Start() {
   // Create a FORWARD rule for accepting any ARC originated traffic regardless
   // of the output interface. This enables for ARC certain multihoming
   // scenarios (b/182594063).
-  if (process_runner_->iptables(
-          "filter", {"-A", "FORWARD", "-i", "arc+", "-j", "ACCEPT", "-w"}) != 0)
+  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-A", "FORWARD", "ACCEPT",
+                      "arc+", "" /*oif*/))
     LOG(ERROR) << "Failed to install forwarding rule for ARC traffic";
 
   // chromium:898210: Drop any locally originated traffic that would exit a
@@ -151,8 +151,8 @@ void Datapath::Start() {
   if (!AddChain(IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain))
     LOG(ERROR) << "Failed to create " << kDropGuestIpv4PrefixChain
                << " filter chain";
-  if (!ModifyIptables(IpFamily::IPv4, "filter",
-                      {"-I", "OUTPUT", "-j", kDropGuestIpv4PrefixChain, "-w"}))
+  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-I", "OUTPUT",
+                      kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/))
     LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
                << kDropGuestIpv4PrefixChain;
   for (const auto& oif : kPhysicalIfnamePrefixes) {
@@ -194,8 +194,9 @@ void Datapath::Start() {
   if (!AddChain(IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain))
     LOG(ERROR) << "Failed to set up " << kApplyLocalSourceMarkChain
                << " mangle chain";
-  if (!ModifyIptables(IpFamily::Dual, "mangle",
-                      {"-A", "OUTPUT", "-j", kApplyLocalSourceMarkChain, "-w"}))
+  if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "OUTPUT",
+                      kApplyLocalSourceMarkChain, "" /*iif*/, "" /*oif*/))
+
     LOG(ERROR) << "Failed to attach " << kApplyLocalSourceMarkChain
                << " to mangle OUTPUT";
   // Create rules for tagging local sources with the source tag and the vpn
@@ -285,8 +286,8 @@ void Datapath::Stop() {
 void Datapath::ResetIptables() {
   // If it exists, remove jump rules from a built-in chain to a custom routing
   // or tagging chain.
-  ModifyIptables(IpFamily::IPv4, "filter",
-                 {"-D", "OUTPUT", "-j", kDropGuestIpv4PrefixChain, "-w"},
+  ModifyJumpRule(IpFamily::IPv4, "filter", "-D", "OUTPUT",
+                 kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
 
   // Flush chains used for routing and fwmark tagging. Also delete additional
@@ -1021,8 +1022,8 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
   LOG(INFO) << "Start VPN routing on " << vpn_ifname
             << " fwmark=" << routing_mark.ToString();
-  if (process_runner_->iptables("nat", {"-A", "POSTROUTING", "-o", vpn_ifname,
-                                        "-j", "MASQUERADE", "-w"}) != 0)
+  if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-A", "POSTROUTING", "MASQUERADE",
+                      "" /*iif*/, vpn_ifname))
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
   StartConnectionPinning(vpn_ifname);
   if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark, ""))
@@ -1044,8 +1045,8 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-D", routing_mark, ""))
     LOG(ERROR) << "Failed to remove VPN set-mark rule for " << vpn_ifname;
   StopConnectionPinning(vpn_ifname);
-  if (process_runner_->iptables("nat", {"-D", "POSTROUTING", "-o", vpn_ifname,
-                                        "-j", "MASQUERADE", "-w"}) != 0)
+  if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "POSTROUTING", "MASQUERADE",
+                      "" /*iif*/, vpn_ifname))
     LOG(ERROR) << "Could not stop SNAT for traffic outgoing " << vpn_ifname;
   if (!ModifyRedirectDnsJumpRule("-D"))
     LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
@@ -1206,8 +1207,19 @@ bool Datapath::ModifyIpForwarding(IpFamily family,
                   "interface specified";
     return false;
   }
+  return ModifyJumpRule(family, "filter", op, "FORWARD", "ACCEPT", iif, oif,
+                        log_failures);
+}
 
-  std::vector<std::string> args = {op, "FORWARD"};
+bool Datapath::ModifyJumpRule(IpFamily family,
+                              const std::string& table,
+                              const std::string& op,
+                              const std::string& chain,
+                              const std::string& target,
+                              const std::string& iif,
+                              const std::string& oif,
+                              bool log_failures) {
+  std::vector<std::string> args = {op, chain};
   if (!iif.empty()) {
     args.push_back("-i");
     args.push_back(iif);
@@ -1216,11 +1228,8 @@ bool Datapath::ModifyIpForwarding(IpFamily family,
     args.push_back("-o");
     args.push_back(oif);
   }
-  args.push_back("-j");
-  args.push_back("ACCEPT");
-  args.push_back("-w");
-
-  return ModifyIptables(family, "filter", args, log_failures);
+  args.insert(args.end(), {"-j", target, "-w"});
+  return ModifyIptables(family, table, args, log_failures);
 }
 
 bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,

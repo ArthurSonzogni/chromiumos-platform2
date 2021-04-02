@@ -380,6 +380,14 @@ class Datapath {
                           const std::string& iif,
                           const std::string& oif,
                           bool log_failures = true);
+  bool ModifyJumpRule(IpFamily family,
+                      const std::string& table,
+                      const std::string& op,
+                      const std::string& chain,
+                      const std::string& target,
+                      const std::string& iif,
+                      const std::string& oif,
+                      bool log_failures = true);
   bool ModifyFwmarkVpnJumpRule(const std::string& chain,
                                const std::string& op,
                                const std::string& iif,
