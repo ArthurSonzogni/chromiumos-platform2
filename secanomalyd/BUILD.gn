@@ -39,7 +39,7 @@ if (use.test) {
   }
 
   executable("secanomalyd_testrunner") {
-    sources = []
+    sources = [ "mount_entry_test.cc" ]
     configs += [
       "//common-mk:test",
       ":secanomalyd_testrunner_config",
