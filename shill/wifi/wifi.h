@@ -207,9 +207,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Called by a WiFiService when it unloads to destroy its lease file.
   virtual void DestroyServiceLease(const WiFiService& service);
 
-  // Overridden from Device superclass.
-  bool IsTrafficMonitorEnabled() const override;
-
   // Remove all networks from WPA supplicant.
   // Passed as a callback to |wake_on_wifi_| where it is used.
   void RemoveSupplicantNetworks();

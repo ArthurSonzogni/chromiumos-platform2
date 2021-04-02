@@ -71,10 +71,6 @@ class MockMetrics : public Metrics {
               (const std::string&, const Service::ConnectFailure),
               (override));
   MOCK_METHOD(void,
-              NotifyNetworkProblemDetected,
-              (Technology, int),
-              (override));
-  MOCK_METHOD(void,
               NotifyDeviceConnectionStatus,
               (Metrics::ConnectionStatus),
               (override));

@@ -3355,11 +3355,6 @@ void WiFi::StopRequestingStationInfo() {
   link_statistics_.Clear();
 }
 
-// Traffic monitor is enabled for wifi.
-bool WiFi::IsTrafficMonitorEnabled() const {
-  return true;
-}
-
 void WiFi::RemoveSupplicantNetworks() {
   for (const auto& map_entry : rpcid_by_service_) {
     RemoveNetwork(map_entry.second);

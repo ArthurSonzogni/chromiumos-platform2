@@ -41,7 +41,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"
 #include "shill/mock_service.h"
-#include "shill/mock_traffic_monitor.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/ndisc.h"
@@ -52,7 +51,6 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 #include "shill/tethering.h"
-#include "shill/traffic_monitor.h"
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -80,9 +78,6 @@ class TestDevice : public Device {
       : Device(manager, link_name, address, interface_index, technology) {
     ON_CALL(*this, SetIPFlag(_, _, _))
         .WillByDefault(Invoke(this, &TestDevice::DeviceSetIPFlag));
-    ON_CALL(*this, IsTrafficMonitorEnabled())
-        .WillByDefault(
-            Invoke(this, &TestDevice::DeviceIsTrafficMonitorEnabled));
     ON_CALL(*this, ShouldBringNetworkInterfaceDownAfterDisabled())
         .WillByDefault(Invoke(
             this,
@@ -101,7 +96,6 @@ class TestDevice : public Device {
     DCHECK(error);
   }
 
-  MOCK_METHOD(bool, IsTrafficMonitorEnabled, (), (const, override));
   MOCK_METHOD(bool,
               ShouldBringNetworkInterfaceDownAfterDisabled,
               (),
@@ -114,10 +108,6 @@ class TestDevice : public Device {
               StartConnectionDiagnosticsAfterPortalDetection,
               (const PortalDetector::Result&),
               (override));
-
-  virtual bool DeviceIsTrafficMonitorEnabled() const {
-    return Device::IsTrafficMonitorEnabled();
-  }
 
   virtual bool DeviceSetIPFlag(IPAddress::Family family,
                                const std::string& flag,
@@ -197,21 +187,6 @@ class DeviceTest : public testing::Test {
 
   void SetConnection(ConnectionRefPtr connection) {
     device_->connection_ = connection;
-  }
-
-  MockTrafficMonitor* SetTrafficMonitor(
-      std::unique_ptr<MockTrafficMonitor> traffic_monitor) {
-    MockTrafficMonitor* underlying_traffic_monitor = traffic_monitor.get();
-    device_->set_traffic_monitor_for_test(std::move(traffic_monitor));
-    return underlying_traffic_monitor;
-  }
-
-  void StartTrafficMonitor() { device_->StartTrafficMonitor(); }
-
-  void StopTrafficMonitor() { device_->StopTrafficMonitor(); }
-
-  void NetworkProblemDetected(int reason) {
-    device_->OnEncounterNetworkProblem(reason);
   }
 
   DeviceMockAdaptor* GetDeviceMockAdaptor() {
@@ -928,54 +903,6 @@ TEST_F(DeviceTest, ResumeWithoutIPConfig) {
   // Just test that we don't crash in this case.
   ASSERT_EQ(nullptr, device_->ipconfig());
   device_->OnAfterResume();
-}
-
-TEST_F(DeviceTest, TrafficMonitor) {
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  SetConnection(connection.get());
-  MockTrafficMonitor* traffic_monitor =
-      SetTrafficMonitor(std::make_unique<StrictMock<MockTrafficMonitor>>());
-
-  EXPECT_CALL(*device_, IsTrafficMonitorEnabled()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*traffic_monitor, Start());
-  StartTrafficMonitor();
-  EXPECT_CALL(*traffic_monitor, Stop());
-  StopTrafficMonitor();
-  Mock::VerifyAndClearExpectations(traffic_monitor);
-
-  EXPECT_CALL(*metrics(), NotifyNetworkProblemDetected(
-                              _, Metrics::kNetworkProblemDNSFailure))
-      .Times(1);
-  NetworkProblemDetected(TrafficMonitor::kNetworkProblemDNSFailure);
-
-  // Verify traffic monitor not running when it is disabled.
-  traffic_monitor =
-      SetTrafficMonitor(std::make_unique<StrictMock<MockTrafficMonitor>>());
-  EXPECT_CALL(*device_, IsTrafficMonitorEnabled())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*traffic_monitor, Start()).Times(0);
-  StartTrafficMonitor();
-  EXPECT_CALL(*traffic_monitor, Stop()).Times(0);
-  StopTrafficMonitor();
-}
-
-TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  SetConnection(connection.get());
-  MockTrafficMonitor* traffic_monitor =
-      SetTrafficMonitor(std::make_unique<StrictMock<MockTrafficMonitor>>());
-  EXPECT_CALL(*device_, IsTrafficMonitorEnabled()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service, state()).WillOnce(Return(Service::kStateIdle));
-  EXPECT_CALL(*service, SetState(_));
-  EXPECT_CALL(*service, SetConnection(_));
-  EXPECT_CALL(*traffic_monitor, Stop());
-  SelectService(nullptr);
 }
 
 TEST_F(DeviceTest, ShouldUseArpGateway) {

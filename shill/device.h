@@ -42,7 +42,6 @@ class Manager;
 class Metrics;
 class RoutingTable;
 class RTNLHandler;
-class TrafficMonitor;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
@@ -687,24 +686,9 @@ class Device : public base::RefCounted<Device> {
   // Called by the ConnectionTester whenever a connectivity test completes.
   void ConnectionTesterCallback(const PortalDetector::Result& result);
 
-  // Returns true if traffic monitor is enabled on this device. The default
-  // implementation will return false, which can be overridden by a derived
-  // class.
-  virtual bool IsTrafficMonitorEnabled() const;
-
-  // Initiates traffic monitoring on the device if traffic monitor is enabled.
-  void StartTrafficMonitor();
-
-  // Stops traffic monitoring on the device if traffic monitor is enabled.
-  void StopTrafficMonitor();
-
   // Stop all monitoring/testing activities on this device. Called when tearing
   // down or changing network connection on the device.
   void StopAllActivities();
-
-  // Called by the Traffic Monitor when it detects a network problem. Handles
-  // metric reporting of the network problem.
-  void OnEncounterNetworkProblem(int reason);
 
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
@@ -740,10 +724,6 @@ class Device : public base::RefCounted<Device> {
   // and new selected_service_ respectively.
   void FetchTrafficCounters(const ServiceRefPtr& old_service,
                             const ServiceRefPtr& new_service);
-
-  // Use for unit test.
-  void set_traffic_monitor_for_test(
-      std::unique_ptr<TrafficMonitor> traffic_monitor);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -787,7 +767,6 @@ class Device : public base::RefCounted<Device> {
   std::unique_ptr<PortalDetector> portal_detector_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableClosure ipv6_dns_server_expired_callback_;
-  std::unique_ptr<TrafficMonitor> traffic_monitor_;
   // DNS servers obtained from ipconfig (either from DHCP or static config)
   // that are not working.
   std::vector<std::string> config_dns_servers_;

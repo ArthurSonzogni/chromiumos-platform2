@@ -724,15 +724,6 @@ TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
       Metrics::kUserInitiatedConnectionResultSuccess);
 }
 
-TEST_F(MetricsTest, NotifyNetworkProblemDetected) {
-  EXPECT_CALL(library_,
-              SendEnumToUMA("Network.Shill.Wifi.NetworkProblemDetected",
-                            Metrics::kNetworkProblemDNSFailure,
-                            Metrics::kNetworkProblemMax));
-  metrics_.NotifyNetworkProblemDetected(Technology::kWifi,
-                                        Metrics::kNetworkProblemDNSFailure);
-}
-
 TEST_F(MetricsTest, NotifyDhcpClientStatus) {
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.DHCPClientStatus",
                                       Metrics::kDhcpClientStatusReboot,

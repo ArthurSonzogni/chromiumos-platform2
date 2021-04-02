@@ -390,13 +390,6 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionResultMax
   };
 
-  // Network problem detected by traffic monitor.
-  enum NetworkProblem {
-    kNetworkProblemCongestedTCPTxQueue = 0,
-    kNetworkProblemDNSFailure,
-    kNetworkProblemMax
-  };
-
   // Device's connection status.
   enum ConnectionStatus {
     kConnectionStatusOffline = 0,
@@ -837,9 +830,6 @@ class Metrics : public DefaultServiceObserver {
   // DNS test result.
   static const char kMetricFallbackDNSTestResultSuffix[];
 
-  // Network problem detected by traffic monitor
-  static const char kMetricNetworkProblemDetectedSuffix[];
-
   // Device's connection status.
   static const char kMetricDeviceConnectionStatus[];
 
@@ -1145,11 +1135,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object about user-initiated event.
   virtual void NotifyUserInitiatedEvent(int event);
-
-  // Notifies this object about a network problem detected on the currently
-  // connected network.
-  virtual void NotifyNetworkProblemDetected(Technology technology_id,
-                                            int reason);
 
   // Notifies this object about current connection status (online vs offline).
   virtual void NotifyDeviceConnectionStatus(Metrics::ConnectionStatus status);

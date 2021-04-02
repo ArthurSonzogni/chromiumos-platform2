@@ -51,11 +51,9 @@
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 #include "shill/service.h"
-#include "shill/socket_info_reader.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 #include "shill/tethering.h"
-#include "shill/traffic_monitor.h"
 
 namespace shill {
 
@@ -596,7 +594,6 @@ void Device::IPv6DNSServerExpired() {
 }
 
 void Device::StopAllActivities() {
-  StopTrafficMonitor();
   StopPortalDetection();
   StopConnectivityTest();
   StopConnectionDiagnostics();
@@ -928,7 +925,6 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   }
 
   SetHostname(ipconfig->properties().accepted_hostname);
-  StartTrafficMonitor();
 }
 
 bool Device::SetHostname(const std::string& hostname) {
@@ -1395,11 +1391,6 @@ void Device::set_mac_address(const std::string& mac_address) {
   adaptor_->EmitStringChanged(kAddressProperty, mac_address_);
 }
 
-void Device::set_traffic_monitor_for_test(
-    std::unique_ptr<TrafficMonitor> traffic_monitor) {
-  traffic_monitor_ = std::move(traffic_monitor);
-}
-
 bool Device::TimeToNextDHCPLeaseRenewal(uint32_t* result) {
   if (!ipconfig() && !ip6config()) {
     return false;
@@ -1414,58 +1405,6 @@ bool Device::TimeToNextDHCPLeaseRenewal(uint32_t* result) {
   }
   *result = std::min(time_to_ipv4_lease_expiry, time_to_ipv6_lease_expiry);
   return true;
-}
-
-bool Device::IsTrafficMonitorEnabled() const {
-  return false;
-}
-
-void Device::StartTrafficMonitor() {
-  // Return if traffic monitor is not enabled for this device.
-  if (!IsTrafficMonitorEnabled()) {
-    return;
-  }
-
-  SLOG(this, 2) << "Device " << link_name() << ": Traffic Monitor starting.";
-  if (!traffic_monitor_) {
-    traffic_monitor_ = std::make_unique<TrafficMonitor>(
-        this, dispatcher(),
-        base::Bind(&Device::OnEncounterNetworkProblem, AsWeakPtr()));
-  }
-  traffic_monitor_->Start();
-}
-
-void Device::StopTrafficMonitor() {
-  // Return if traffic monitor is not enabled for this device.
-  if (!IsTrafficMonitorEnabled()) {
-    return;
-  }
-
-  if (traffic_monitor_) {
-    SLOG(this, 2) << "Device " << link_name() << ": Traffic Monitor stopping.";
-    traffic_monitor_->Stop();
-  }
-  traffic_monitor_.reset();
-}
-
-void Device::OnEncounterNetworkProblem(int reason) {
-  int metric_code;
-  switch (reason) {
-    case TrafficMonitor::kNetworkProblemCongestedTxQueue:
-      metric_code = Metrics::kNetworkProblemCongestedTCPTxQueue;
-      break;
-    case TrafficMonitor::kNetworkProblemDNSFailure:
-      metric_code = Metrics::kNetworkProblemDNSFailure;
-      break;
-    default:
-      LOG(ERROR) << "Invalid network problem code: " << reason;
-      return;
-  }
-
-  metrics()->NotifyNetworkProblemDetected(technology_, metric_code);
-  // Stop the traffic monitor, only report the first network problem detected
-  // on the connection for now.
-  StopTrafficMonitor();
 }
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {

@@ -417,10 +417,6 @@ const int Metrics::kMetricWifiSupplicantAttemptsMin = 1;
 const int Metrics::kMetricWifiSupplicantAttemptsNumBuckets = 11;
 
 // static
-const char Metrics::kMetricNetworkProblemDetectedSuffix[] =
-    "NetworkProblemDetected";
-
-// static
 const char Metrics::kMetricDeviceConnectionStatus[] =
     "Network.Shill.DeviceConnectionStatus";
 
@@ -1625,13 +1621,6 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
       break;
   }
   SendEnumToUMA(name, reason, kUserInitiatedConnectionFailureReasonMax);
-}
-
-void Metrics::NotifyNetworkProblemDetected(Technology technology_id,
-                                           int reason) {
-  const auto histogram =
-      GetFullMetricName(kMetricNetworkProblemDetectedSuffix, technology_id);
-  SendEnumToUMA(histogram, reason, kNetworkProblemMax);
 }
 
 void Metrics::NotifyDeviceConnectionStatus(ConnectionStatus status) {
