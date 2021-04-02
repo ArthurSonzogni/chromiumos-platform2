@@ -1506,7 +1506,7 @@ void DeviceInfo::OnNeighborReachabilityEvent(
       device->OnNeighborLinkFailure(address, signal.role());
       return;
     case SignalProto::RECOVERED:
-      device->OnNeighborLinkRecovered(address, signal.role());
+      // Currently shill does not need this signal.
       return;
     default:
       LOG(ERROR) << "Invalid NeighborRecabilityEvent type " << signal.type();
