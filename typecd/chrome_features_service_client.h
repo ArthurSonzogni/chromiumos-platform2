@@ -23,6 +23,8 @@ class ChromeFeaturesServiceClient {
 
   ~ChromeFeaturesServiceClient() = default;
 
+  bool IsPeripheralDataAccessEnabled();
+
  private:
   dbus::ObjectProxy* proxy_;
 
