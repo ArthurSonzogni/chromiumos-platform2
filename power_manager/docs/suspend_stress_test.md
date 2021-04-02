@@ -61,11 +61,11 @@ time in suspend on every iteration.
 Note that this test generates several GB of logs. Most of the log includes
 suspend/resume times of individual drivers on every suspend. If you are not
 interested in suspend/resume times of individual drivers, you can turn that off
-using `pm_print_times` option. Note that this is not recommended as it will hide
-the exact driver that caused the suspend failure.
+using the `nopm_print_times` option. Note that this is not recommended as it
+will hide the exact driver that caused the suspend failure.
 
 ```sh
-# suspend_stress_test --count=2500 --suspend_min=5 --suspend_max=10 --pm_print_times=false
+# suspend_stress_test --count=2500 --suspend_min=5 --suspend_max=10 --nopm_print_times
 ```
 
 After running the test, check for any crashes in `/var/spool/crash`. Also check
