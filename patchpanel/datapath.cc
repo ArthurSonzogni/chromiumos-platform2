@@ -54,6 +54,9 @@ constexpr char kCheckRoutingMarkChain[] = "check_routing_mark";
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
 constexpr char kRedirectDnsChain[] = "redirect_dns";
 
+// Maximum length of an iptables chain name.
+constexpr int kIptablesMaxChainLength = 28;
+
 std::string PrefixIfname(const std::string& prefix, const std::string& ifname) {
   std::string n = prefix + ifname;
   if (n.length() < IFNAMSIZ)
@@ -145,7 +148,7 @@ void Datapath::Start() {
   // for VMs, containers, and connected namespaces This is needed to prevent
   // packets leaking with an incorrect src IP when a local process binds to the
   // wrong interface.
-  if (!ModifyChain(IpFamily::IPv4, "filter", "-N", kDropGuestIpv4PrefixChain))
+  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain))
     LOG(ERROR) << "Failed to create " << kDropGuestIpv4PrefixChain
                << " filter chain";
   if (!ModifyIptables(IpFamily::IPv4, "filter",
@@ -188,7 +191,7 @@ void Datapath::Start() {
 
   // Set up a mangle chain used in OUTPUT for applying the fwmark TrafficSource
   // tag and tagging the local traffic that should be routed through a VPN.
-  if (!ModifyChain(IpFamily::Dual, "mangle", "-N", kApplyLocalSourceMarkChain))
+  if (!AddChain(IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain))
     LOG(ERROR) << "Failed to set up " << kApplyLocalSourceMarkChain
                << " mangle chain";
   if (!ModifyIptables(IpFamily::Dual, "mangle",
@@ -209,7 +212,7 @@ void Datapath::Start() {
 
   // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
   // traffic that should be routed through a VPN.
-  if (!ModifyChain(IpFamily::Dual, "mangle", "-N", kApplyVpnMarkChain))
+  if (!AddChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain))
     LOG(ERROR) << "Failed to set up " << kApplyVpnMarkChain << " mangle chain";
   // All local outgoing traffic eligible to VPN routing should traverse the VPN
   // marking chain.
@@ -226,7 +229,7 @@ void Datapath::Start() {
 
   // Sets up a mangle chain used in POSTROUTING for checking consistency between
   // the routing tag and the output interface.
-  if (!ModifyChain(IpFamily::Dual, "mangle", "-N", kCheckRoutingMarkChain))
+  if (!AddChain(IpFamily::Dual, "mangle", kCheckRoutingMarkChain))
     LOG(ERROR) << "Failed to set up " << kCheckRoutingMarkChain
                << " mangle chain";
   // b/177787823 If it already exists, the routing tag of any traffic exiting an
@@ -241,7 +244,7 @@ void Datapath::Start() {
   // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS queries
   // of system services. When a VPN is connected, a query routed through a
   // physical network is redirected to the primary nameserver of that network.
-  if (!ModifyChain(IpFamily::IPv4, "nat", "-N", kRedirectDnsChain))
+  if (!AddChain(IpFamily::IPv4, "nat", kRedirectDnsChain))
     LOG(ERROR) << "Failed to set up " << kRedirectDnsChain << " nat chain";
 
   // b/176260499: on 4.4 kernel, the following connmark rules are observed to
@@ -318,11 +321,11 @@ void Datapath::ResetIptables() {
                                          false /*log_failures*/))
       continue;
 
-    if (!ModifyChain(op.family, op.table, "-F", op.chain))
+    if (!FlushChain(op.family, op.table, op.chain))
       LOG(ERROR) << "Failed to flush " << op.chain << " chain in table "
                  << op.table;
 
-    if (op.should_delete && !ModifyChain(op.family, op.table, "-X", op.chain))
+    if (op.should_delete && !RemoveChain(op.family, op.table, op.chain))
       LOG(ERROR) << "Failed to delete " << op.chain << " chain in table "
                  << op.table;
   }
@@ -1238,6 +1241,25 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
   }
   args.insert(args.end(), {"-j", kApplyVpnMarkChain, "-w"});
   return ModifyIptables(IpFamily::Dual, "mangle", args);
+}
+
+bool Datapath::AddChain(IpFamily family,
+                        const std::string& table,
+                        const std::string& name) {
+  DCHECK(name.size() <= kIptablesMaxChainLength);
+  return ModifyChain(family, table, "-N", name);
+}
+
+bool Datapath::RemoveChain(IpFamily family,
+                           const std::string& table,
+                           const std::string& name) {
+  return ModifyChain(family, table, "-X", name);
+}
+
+bool Datapath::FlushChain(IpFamily family,
+                          const std::string& table,
+                          const std::string& name) {
+  return ModifyChain(family, table, "-F", name);
 }
 
 bool Datapath::ModifyChain(IpFamily family,

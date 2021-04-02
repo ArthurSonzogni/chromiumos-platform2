@@ -264,6 +264,16 @@ class Datapath {
   // Only used for testing.
   void SetIfnameIndex(const std::string& ifname, int ifindex);
 
+  // Add, remove, or flush chain |chain| in table |table|.
+  bool AddChain(IpFamily family,
+                const std::string& table,
+                const std::string& name);
+  bool RemoveChain(IpFamily family,
+                   const std::string& table,
+                   const std::string& name);
+  bool FlushChain(IpFamily family,
+                  const std::string& table,
+                  const std::string& name);
   // Manipulates a chain |chain| in table |table|.
   bool ModifyChain(IpFamily family,
                    const std::string& table,
