@@ -200,7 +200,7 @@ device that need to be fixed.
 ## Things to consider during platform bring-up
 
 *   Please check every wake-capable input device triggers a Full Resume.
-*   Please check RTC triggers a Dark Resume.
+*   Please check RTC, AC connect & AC disconnect trigger a Dark Resume.
 *   Shared interrupt lines can be a problem. When there is an interrupt on a
     shared line, kernel invokes the interrupt handler of every driver that
     shares the line. Individual drivers should then be able to distinguish if
@@ -221,6 +221,14 @@ Thus when adding a new device under EC that can wakeup the system
 *   Call `device_init_wakeup()` in the probe method of the driver.
 *   Call `pm_wakeup_event()` if the  event is for this particular driver in
     the notification handler.
+
+## Dark Resume Wake Sources
+
+The following wake sources result in a dark resume if the feature is enabled.
+
+* RTC
+* AC connected
+* AC disconnected
 
 ## Features dependent on Dark Resume
 
