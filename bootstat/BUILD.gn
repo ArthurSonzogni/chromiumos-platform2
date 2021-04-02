@@ -19,14 +19,14 @@ pkg_config("target_defaults") {
 }
 
 shared_library("libbootstat") {
-  configs += [ ":target_defaults" ]
   sources = [ "bootstat_log.cc" ]
+  configs += [ ":target_defaults" ]
   libs = [ "rootdev" ]
 }
 
 executable("bootstat") {
-  configs += [ ":target_defaults" ]
   sources = [ "bootstat.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libbootstat" ]
 }
 
