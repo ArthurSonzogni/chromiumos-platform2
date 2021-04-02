@@ -64,6 +64,8 @@ class PortManager : public UdevMonitor::Observer,
   FRIEND_TEST(PortManagerTest, ModeSwitchSessionStoppedTBT);
   FRIEND_TEST(PortManagerTest, ModeSwitchUnlockDPAndTBTNoPeripheralAccess);
   FRIEND_TEST(PortManagerTest, ModeSwitchDPandTBTPeripheralDataAccessChanging);
+  FRIEND_TEST(PortManagerTest,
+              ModeSwitchDPandTBTPeripheralDataAccessChangingLockUnlock);
   FRIEND_TEST(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging);
 
   // UdevMonitor::Observer overrides.

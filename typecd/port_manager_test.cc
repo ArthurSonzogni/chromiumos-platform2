@@ -460,6 +460,69 @@ TEST_F(PortManagerTest, ModeSwitchDPandTBTPeripheralDataAccessChanging) {
 
 // Check mode switch for a device which was:
 // - plugged in while unlocked.
+// - supports both TBT and DP.
+// - a subsequent lock and then unlock occurs.
+//
+// Additionally, we add the following test conditions:
+// - Before the device was plugged in, peripheral data access was disabled.
+// - After the device was plugged in, but before lock, peripheral data access
+//   was enabled.
+TEST_F(PortManagerTest,
+       ModeSwitchDPandTBTPeripheralDataAccessChangingLockUnlock) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Since we only have a MockECUtil, just force the |mode_entry_supported_|
+  // flag.
+  port_manager->SetModeEntrySupported(true);
+
+  // Manually set the |peripheral_data_access_| field, initially to false.
+  port_manager->SetPeripheralDataAccess(false);
+
+  // Create the MockECUtil and set the expectations:
+  // first enter DP, then exit (on logout), and then enter TBT on subsequent
+  // login.
+  Sequence s1;
+  auto ec_util = std::make_unique<MockECUtil>();
+  EXPECT_CALL(*ec_util, ModeEntrySupported()).Times(0);
+  EXPECT_CALL(*ec_util, EnterMode(0, TypeCMode::kDP))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*ec_util, ExitMode(0)).Times(0);
+  port_manager->SetECUtil(ec_util.get());
+
+  // Add a fake port that supports both TBT & DP.
+  auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
+  EXPECT_CALL(*port, GetDataRole())
+      .WillRepeatedly(testing::Return(std::string("host")));
+  EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, IsCableDiscoveryComplete())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
+
+  // We are unlocked, so set |user_active_| accordingly.
+  port_manager->SetUserActive(true);
+
+  // Simulate hotplug.
+  port_manager->RunModeEntry(0);
+
+  // Flip the |peripheral_data_access_| field to true.
+  port_manager->SetPeripheralDataAccess(true);
+
+  // Simulate lock (just call the OnScreenLocked callback since we don't have
+  // a SessionManager).
+  port_manager->OnScreenIsLocked();
+
+  // Simulate unlock.
+  port_manager->HandleUnlock();
+}
+
+// Check mode switch for a device which was:
+// - plugged in while unlocked.
 // - supports only TBT.
 // - a subsequent logout and then log in occurs.
 //

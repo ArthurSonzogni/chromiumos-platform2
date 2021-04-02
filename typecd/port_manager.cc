@@ -190,6 +190,11 @@ void PortManager::HandleSessionStopped() {
   for (auto const& x : ports_) {
     Port* port = x.second.get();
     int port_num = x.first;
+
+    // Since we've logged out, we can reset all expectations about active
+    // state during mode entry.
+    port->SetActiveStateOnModeEntry(GetUserActive());
+
     // If the current mode is anything other than kTBT, we don't care about
     // changing modes.
     if (port->GetCurrentMode() != TypeCMode::kTBT)
@@ -235,6 +240,12 @@ void PortManager::HandleUnlock() {
 
     // If peripheral data access is disabled, we shouldn't switch modes at all.
     if (!GetPeripheralDataAccess())
+      continue;
+
+    // If the port had initially entered the mode during an unlocked state,
+    // we shouldn't change modes now. Doing so will abruptly kick storage
+    // devices off the peripheral without a safe unmount.
+    if (port->GetActiveStateOnModeEntry())
       continue;
 
     // First try exiting the alt mode.
@@ -328,6 +339,8 @@ void PortManager::RunModeEntry(int port_num) {
       notify_mgr_->NotifyConnected(notif);
     }
   }
+
+  port->SetActiveStateOnModeEntry(GetUserActive());
 
   // If the host supports USB4 and we can enter USB4 in this partner, do so.
   if (port->CanEnterUSB4()) {

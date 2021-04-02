@@ -45,6 +45,11 @@ class Port {
 
   TypeCMode GetCurrentMode() { return current_mode_; }
 
+  void SetActiveStateOnModeEntry(bool state) {
+    user_active_on_mode_entry_ = state;
+  }
+  bool GetActiveStateOnModeEntry() { return user_active_on_mode_entry_; }
+
   // Read and return the current port data role from sysfs.
   // Returns either "host" or "device" on success, empty string on failure.
   virtual std::string GetDataRole();
@@ -108,6 +113,8 @@ class Port {
   int port_num_;
   std::unique_ptr<Cable> cable_;
   std::unique_ptr<Partner> partner_;
+  // Tracks the user active state when a mode was last entered.
+  bool user_active_on_mode_entry_;
   TypeCMode current_mode_;
 };
 

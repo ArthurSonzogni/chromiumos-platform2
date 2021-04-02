@@ -20,7 +20,10 @@ constexpr char kDataRoleDRPRegex[] = R"(\[(\w+)\])";
 namespace typecd {
 
 Port::Port(const base::FilePath& syspath, int port_num)
-    : syspath_(syspath), port_num_(port_num), current_mode_(TypeCMode::kNone) {
+    : syspath_(syspath),
+      port_num_(port_num),
+      user_active_on_mode_entry_(false),
+      current_mode_(TypeCMode::kNone) {
   LOG(INFO) << "Port " << port_num_ << " enumerated.";
 }
 
