@@ -42,12 +42,12 @@ pkg_config("target_defaults") {
 }
 
 executable("dlp") {
-  configs += [ ":target_defaults" ]
   sources = [
     "dlp.cc",
     "dlp_adaptor.cc",
     "dlp_daemon.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":dlp_proto" ]
 }
 
@@ -66,12 +66,12 @@ if (use.test) {
     ]
   }
   executable("dlp_test") {
+    sources = []
     configs += [
       "//common-mk:test",
       ":dlp_test_config",
       ":target_defaults",
     ]
-    sources = []
     defines = [ "UNIT_TEST" ]
     deps = [ "//common-mk/testrunner:testrunner" ]
   }
