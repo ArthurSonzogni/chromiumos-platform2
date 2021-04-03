@@ -225,6 +225,9 @@ void PortManager::HandleUnlock() {
   if (!GetModeEntrySupported())
     return;
 
+  if (features_client_)
+    SetPeripheralDataAccess(features_client_->IsPeripheralDataAccessEnabled());
+
   SetUserActive(true);
   for (auto const& x : ports_) {
     Port* port = x.second.get();
@@ -345,6 +348,9 @@ void PortManager::RunModeEntry(int port_num) {
   }
 
   port->SetActiveStateOnModeEntry(GetUserActive());
+
+  if (features_client_)
+    SetPeripheralDataAccess(features_client_->IsPeripheralDataAccessEnabled());
 
   // If the host supports USB4 and we can enter USB4 in this partner, do so.
   if (port->CanEnterUSB4()) {
