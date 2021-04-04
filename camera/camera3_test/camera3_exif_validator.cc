@@ -318,12 +318,12 @@ void Camera3ExifValidator::ValidateExifKeys(
   EXPECT_EQ(exif_test_data.thumbnail_quality,
             GetMetadataInteger(metadata, ANDROID_JPEG_THUMBNAIL_QUALITY))
       << "JPEG thumbnail quality result and request should match";
-  // TAG_IMAGE_WIDTH and TAG_IMAGE_LENGTH and TAG_ORIENTATION.
-  // Orientation and exif width/height need to be tested carefully, two cases:
-  // 1. Device rotates the image buffer physically, then exif width/height may
-  // not match the requested still capture size, we need swap them to check.
+  // TAG_ORIENTATION.
+  // Orientation and exif x/y dimensions need to be tested carefully, two cases:
+  // 1. Device rotates the image buffer physically, then exif x/y dimensions
+  // may not match the requested still capture size, we need swap them to check.
   // 2. Device uses the exif tag to record the image orientation, it doesn't
-  // rotate the jpeg image buffer itself. In this case, the exif width/height
+  // rotate the jpeg image buffer itself. In this case, the exif x/y dimensions
   // should always match the requested still capture size, and the exif
   // orientation should always match the requested orientation.
   ResolutionInfo expected_jpeg_size(jpeg_resolution);
@@ -331,16 +331,9 @@ void Camera3ExifValidator::ValidateExifKeys(
       exif_orientation == ORIENTATION_UNDEFINED) {
     // Device captured image doesn't respect the requested orientation, which
     // means it rotates the image buffer physically. Then we should swap the
-    // exif width/height accordingly to compare.
+    // exif x/y dimensions accordingly to compare.
     SwapWidthAndHeight(&expected_jpeg_size);
   }
-  EXPECT_EQ(
-      expected_jpeg_size,
-      ResolutionInfo(GetExifTagInteger(exif_data, EXIF_IFD_0,
-                                       EXIF_TAG_IMAGE_WIDTH, byte_order),
-                     GetExifTagInteger(exif_data, EXIF_IFD_0,
-                                       EXIF_TAG_IMAGE_LENGTH, byte_order)))
-      << "EXIF JPEG size should match requested size";
   EXPECT_EQ(
       expected_jpeg_size,
       ResolutionInfo(GetExifTagInteger(exif_data, EXIF_IFD_EXIF,
