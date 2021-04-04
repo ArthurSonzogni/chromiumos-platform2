@@ -728,6 +728,20 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                })!!!");
   EXPECT_TRUE(policy.has_arc_data_snapshot_hours());
 
+  EncodeBoolean(&policy, key::kDevicePciPeripheralDataAccessEnabled, kBool);
+  EXPECT_EQ(kBool,
+            policy.device_pci_peripheral_data_access_enabled().enabled());
+
+  EncodeBoolean(&policy, key::kDeviceBorealisAllowed, kBool);
+  EXPECT_EQ(kBool, policy.device_borealis_allowed().allowed());
+
+  EncodeBoolean(&policy, key::kDeviceSystemWideTracingEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_system_wide_tracing_enabled().enabled());
+
+  EncodeBoolean(&policy, key::kDeviceAllowMGSToStoreDisplayProperties, kBool);
+  EXPECT_EQ(kBool,
+            policy.device_allow_mgs_to_store_display_properties().value());
+
   //
   // Check whether all device policies have been handled.
   //

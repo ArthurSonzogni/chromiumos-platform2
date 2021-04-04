@@ -1094,6 +1094,27 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
           value.value());
     }
   }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDevicePciPeripheralDataAccessEnabled)) {
+    policy->mutable_device_pci_peripheral_data_access_enabled()->set_enabled(
+        value.value());
+  }
+
+  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceBorealisAllowed))
+    policy->mutable_device_borealis_allowed()->set_allowed(value.value());
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceSystemWideTracingEnabled)) {
+    policy->mutable_device_system_wide_tracing_enabled()->set_enabled(
+        value.value());
+  }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceAllowMGSToStoreDisplayProperties)) {
+    policy->mutable_device_allow_mgs_to_store_display_properties()->set_value(
+        value.value());
+  }
 }
 
 base::Optional<bool> DevicePolicyEncoder::EncodeBoolean(
