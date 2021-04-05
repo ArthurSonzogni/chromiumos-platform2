@@ -71,7 +71,7 @@ class BluezBatteryProvider : public dbus::ObjectManager::Interface {
 
   // Notifies about a change in Bluetooth device battery level, or creates one
   // if this is the first notification of the device.
-  void UpdateDeviceBattery(const std::string& address, int level);
+  virtual void UpdateDeviceBattery(const std::string& address, int level);
 
   // dbus::ObjectManager::Interface overrides:
   // This is to monitor BlueZ's BatteryProviderManager interface presence.

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -76,6 +77,8 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   void OnUdevEvent(const UdevEvent& event) override;
 
  private:
+  friend class PeripheralBatteryWatcherTest;
+
   // Reads battery status of a single peripheral device and send out a signal.
   void ReadBatteryStatus(const base::FilePath& path, bool active_update);
 
@@ -118,6 +121,12 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
                     bool active_update,
                     const std::string& data);
   void ErrorCallback(const base::FilePath& path, const std::string& model_name);
+
+  // Useful to pass mock BluezBatteryProvider in tests.
+  void SetBluezBatteryProviderForTest(
+      std::unique_ptr<BluezBatteryProvider> bluez_battery_provider) {
+    bluez_battery_provider_ = std::move(bluez_battery_provider);
+  }
 
   // Handles D-Bus method calls.
   // TODO(b/166543531): Remove this method handler after migrating to BlueZ

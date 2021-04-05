@@ -17,6 +17,7 @@
 
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/system/mock_bluez_battery_provider.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
@@ -82,6 +83,10 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
   ~PeripheralBatteryWatcherTest() override {}
 
   void SetUp() override {
+    auto bluez_battery_provider = std::make_unique<MockBluezBatteryProvider>();
+    bluez_battery_provider_ = bluez_battery_provider.get();
+    battery_.SetBluezBatteryProviderForTest(std::move(bluez_battery_provider));
+
     CHECK(temp_dir_.CreateUniqueTempDir());
 
     // Create a fake peripheral directory.
@@ -155,6 +160,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
   UdevStub udev_;
 
   PeripheralBatteryWatcher battery_;
+  MockBluezBatteryProvider* bluez_battery_provider_;
 };
 
 TEST_F(PeripheralBatteryWatcherTest, Basic) {
@@ -174,6 +180,18 @@ TEST_F(PeripheralBatteryWatcherTest, Basic) {
             proto.charge_status());
   EXPECT_TRUE(proto.has_active_update());
   EXPECT_FALSE(proto.active_update());
+}
+
+TEST_F(PeripheralBatteryWatcherTest, Bluetooth) {
+  std::string level = base::NumberToString(80);
+  WriteFile(bluetooth_capacity_file_, level);
+
+  // Bluetooth battery update should not sent any signal, but update to BlueZ.
+  EXPECT_CALL(*bluez_battery_provider_,
+              UpdateDeviceBattery("11:22:33:aa:bb:cc", 80));
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
+  EXPECT_EQ(0, test_wrapper_.num_sent_signals());
 }
 
 TEST_F(PeripheralBatteryWatcherTest, NoLevelReading) {
