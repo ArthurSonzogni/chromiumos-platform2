@@ -66,6 +66,7 @@ class StaticIPParametersTest : public Test {
     EXPECT_FALSE(ipconfig_props_.subnet_prefix);
     EXPECT_TRUE(ipconfig_props_.exclusion_list.empty());
     EXPECT_TRUE(ipconfig_props_.routes.empty());
+    EXPECT_TRUE(ipconfig_props_.default_route);
   }
   // Modify an IP address string in some predictable way.  There's no need
   // for the output string to be valid from a networking perspective.
@@ -113,6 +114,7 @@ class StaticIPParametersTest : public Test {
               ipconfig_props_.routes[0].prefix);
     EXPECT_EQ(VersionedAddress(kIncludedRoute0.gateway, version),
               ipconfig_props_.routes[0].gateway);
+    EXPECT_FALSE(ipconfig_props_.default_route);
   }
   void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
   void ExpectPropertiesWithVersion(PropertyStore* store,
@@ -158,6 +160,7 @@ class StaticIPParametersTest : public Test {
     ipconfig_props_.subnet_prefix = kPrefixLen;
     ipconfig_props_.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
     ipconfig_props_.routes = {kIncludedRoute0};
+    ipconfig_props_.default_route = false;
   }
   void SetStaticProperties(PropertyStore* store) {
     SetStaticPropertiesWithVersion(store, 0);
@@ -185,6 +188,14 @@ class StaticIPParametersTest : public Test {
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
   }
+  void SetStaticPropertiesWithoutRoute(PropertyStore* store) {
+    KeyValueStore args;
+    args.Set<string>(kAddressProperty, kAddress);
+    args.Set<string>(kGatewayProperty, kGateway);
+    args.Set<int32_t>(kMtuProperty, kMtu);
+    Error error;
+    store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
+  }
   KeyValueStore* static_args() { return &static_params_.args_; }
   KeyValueStore* saved_args() { return &static_params_.saved_args_; }
 
@@ -206,6 +217,18 @@ TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
   PopulateIPConfig();
   static_params_.ApplyTo(&ipconfig_props_);
   ExpectPopulatedIPConfig();
+}
+
+TEST_F(StaticIPParametersTest, DefaultRoute) {
+  IPConfig::Properties props;
+  PropertyStore store;
+  static_params_.PlumbPropertyStore(&store);
+  SetStaticPropertiesWithoutRoute(&store);
+  static_params_.ApplyTo(&props);
+  EXPECT_TRUE(props.default_route);
+  SetStaticProperties(&store);
+  static_params_.ApplyTo(&props);
+  EXPECT_FALSE(props.default_route);
 }
 
 TEST_F(StaticIPParametersTest, ControlInterface) {

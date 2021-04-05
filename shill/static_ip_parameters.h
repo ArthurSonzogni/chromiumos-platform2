@@ -98,12 +98,8 @@ class StaticIPParameters {
   void ParseRoutes(const std::vector<std::string>& route_list,
                    const std::string& gateway,
                    std::vector<IPConfig::Route>* value_out);
-  void ApplyRoutes(const std::string& property,
-                   const std::string& gateway,
-                   std::vector<IPConfig::Route>* value_out);
-  void RestoreRoutes(const std::string& property,
-                     const std::string& gateway,
-                     std::vector<IPConfig::Route>* value_out);
+  void ApplyRoutes(IPConfig::Properties* props);
+  void RestoreRoutes(IPConfig::Properties* props);
 
   KeyValueStore GetSavedIPConfig(Error* error);
   KeyValueStore GetStaticIPConfig(Error* error);
