@@ -41,7 +41,16 @@ const char BrowserJobInterface::kCrashLoopBeforeFlag[] = "--crash-loop-before=";
 
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 
-const int BrowserJob::kUseExtraArgsRuns = 3;
+// Check for last 4 runs with extra args to detect startup crash. 4 allows
+// the case of applying flags in guest sessions, where we have:
+//   1st chrome start to show the login screen
+//   2nd chrome start to enter guest sessions
+//   3rd chrome start to apply flags from about:flags page
+// If `kUseExtraArgsRuns` is 3 and the 3rd run is less than
+// `kRestartWindowSecond` seconds (60s) apart from 1st run, it would be
+// considered as too crashy and flags are dropped for the 3rd run.
+// See https://crbug.com/1129951.
+const int BrowserJob::kUseExtraArgsRuns = 4;
 static_assert(BrowserJob::kUseExtraArgsRuns > 1,
               "kUseExtraArgsRuns should be greater than 1 because extra "
               "arguments could need one restart to apply them.");
