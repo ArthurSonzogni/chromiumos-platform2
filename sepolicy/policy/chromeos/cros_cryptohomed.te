@@ -37,6 +37,9 @@ create_dir_file(cros_cryptohomed, {
   cros_run
   cros_run_daemon_store
   cros_run_dbus
+  cros_run_arcvm
+  testharness_file
+  system_data_root_file
 });
 create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
 
