@@ -216,8 +216,7 @@ void ModemQrtr::InitializeUim() {
 
 void ModemQrtr::ReacquireChannel() {
   LOG(INFO) << "Reacquiring Channel";
-  if (current_state_ != State::kUimStarted)
-    current_state_.Transition(State::kUimStarted);
+  current_state_.Transition(State::kUimStarted);
   channel_ = kInvalidChannel;
   tx_queue_.push_back({std::unique_ptr<TxInfo>(), AllocateId(),
                        std::make_unique<UimCmd>(UimCmd::QmiType::kReset)});
@@ -859,8 +858,9 @@ bool ModemQrtr::State::Transition(ModemQrtr::State::Value value) {
       valid_transition = true;
       break;
     case kUimStarted:
-      // we reacquire the channel from kSendApduReady after profile (en/dis)able
-      valid_transition = (value_ == kSendApduReady || value_ == kDmsStarted);
+      // We transition to kUimStarted just before acquiring a channel
+      valid_transition = (value_ == kSendApduReady || value_ == kDmsStarted ||
+                          value_ == kUimStarted);
       break;
     default:
       // Most states can only transition from the previous state.
@@ -868,6 +868,8 @@ bool ModemQrtr::State::Transition(ModemQrtr::State::Value value) {
   }
 
   if (valid_transition) {
+    LOG(INFO) << "Transitioning from state " << *this << " to state "
+              << State(value);
     value_ = value;
   } else {
     LOG(ERROR) << "Cannot transition from state " << *this << " to state "
