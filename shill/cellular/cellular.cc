@@ -74,6 +74,10 @@ static string ObjectID(const Cellular* c) {
 
 namespace {
 
+// Delay after a slot switch before connecting. This helps prevent connect
+// failures while the Modem is still starting up.
+const int64_t kPendingConnectDelayMilliseconds = 2 * 1000;
+
 class ApnList {
  public:
   void AddApns(
@@ -683,6 +687,7 @@ void Cellular::SetServiceState(Service::ConnectState state) {
 
 void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
   connect_pending_iccid_.clear();
+  connect_pending_callback_.Cancel();
   if (ppp_device_) {
     ppp_device_->SetServiceFailure(failure_state);
   } else if (selected_service()) {
@@ -696,6 +701,7 @@ void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
 
 void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   connect_pending_iccid_.clear();
+  connect_pending_callback_.Cancel();
   if (ppp_device_) {
     ppp_device_->SetServiceFailureSilent(failure_state);
   } else if (selected_service()) {
@@ -1030,6 +1036,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
       Disconnect(nullptr, "switching service");
     if (capability_->SetPrimarySimSlotForIccid(service->iccid())) {
       SLOG(this, 2) << "Set Pending connect: " << service->log_name();
+      connect_pending_callback_.Cancel();
       connect_pending_iccid_ = service->iccid();
     } else {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -1091,7 +1098,7 @@ void Cellular::OnConnectReply(std::string iccid, const Error& error) {
   } else {
     metrics()->NotifyCellularDeviceConnectionFailure();
     if (service_ && service_->iccid() == iccid)
-      service_->SetFailure(Service::kFailureUnknown);
+      service_->SetFailure(Service::kFailureConnect);
   }
 }
 
@@ -1686,8 +1693,12 @@ void Cellular::ConnectToPending() {
     SLOG(this, 2) << __func__ << ": Modem locked";
     if (service_ && service_->iccid() == connect_pending_iccid_) {
       service_->SetFailure(Service::kFailureConnect);
+      connect_pending_callback_.Cancel();
       connect_pending_iccid_.clear();
     }
+    return;
+  }
+  if (!connect_pending_callback_.IsCancelled()) {
     return;
   }
   if (state_ != kStateRegistered) {
@@ -1702,21 +1713,31 @@ void Cellular::ConnectToPending() {
     SLOG(this, 2) << __func__ << ": Modem not registered";
     return;
   }
-  if (connect_pending_iccid_ != iccid_) {
-    LOG(ERROR) << __func__ << " Pending ICCID: " << connect_pending_iccid_
+
+  LOG(INFO) << __func__ << ": " << connect_pending_iccid_;
+  connect_pending_callback_.Reset(Bind(&Cellular::ConnectToPendingAfterDelay,
+                                       weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(FROM_HERE, connect_pending_callback_.callback(),
+                                kPendingConnectDelayMilliseconds);
+}
+
+void Cellular::ConnectToPendingAfterDelay() {
+  LOG(INFO) << __func__ << ": " << connect_pending_iccid_;
+
+  // Clear pending connect request regardless of whether a service is found.
+  std::string pending_iccid = connect_pending_iccid_;
+  connect_pending_iccid_.clear();
+
+  if (pending_iccid != iccid_) {
+    LOG(ERROR) << __func__ << " Pending ICCID: " << pending_iccid
                << " != ICCID: " << iccid_;
     return;
   }
   if (service_ && service_->iccid() != iccid_) {
-    LOG(ERROR) << __func__ << " Pending ICCID: " << connect_pending_iccid_
+    LOG(ERROR) << __func__ << " Pending ICCID: " << pending_iccid
                << " != Service ICCID: " << service_->iccid();
     return;
   }
-
-  LOG(INFO) << __func__ << ": " << connect_pending_iccid_;
-
-  // Clear pending connect request regardless of whether a service is found.
-  connect_pending_iccid_.clear();
 
   CellularServiceRefPtr service =
       manager()->cellular_service_provider()->FindService(iccid_);

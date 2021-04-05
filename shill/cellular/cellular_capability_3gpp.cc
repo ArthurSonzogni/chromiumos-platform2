@@ -1418,10 +1418,10 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
 }
 
 void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
-  size_t slot_idx = slot + 1;
-  LOG(INFO) << "SetPrimarySimSlot: " << slot_idx;
+  size_t slot_id = slot + 1;
+  LOG(INFO) << "SetPrimarySimSlot: " << slot_id << " (index=" << slot << ")";
   modem_proxy_->SetPrimarySimSlot(
-      slot_idx, base::Bind([](const Error& error) {
+      slot_id, base::Bind([](const Error& error) {
         if (error.IsFailure())
           LOG(ERROR) << "Error Setting Primary SIM slot: " << error;
       }),

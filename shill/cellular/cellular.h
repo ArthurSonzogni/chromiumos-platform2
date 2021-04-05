@@ -558,6 +558,7 @@ class Cellular : public Device,
   void OnPPPConnected(const std::map<std::string, std::string>& params);
 
   void ConnectToPending();
+  void ConnectToPendingAfterDelay();
   void UpdateScanning();
   void GetLocationCallback(const std::string& gpp_lac_ci_string,
                            const Error& error);
@@ -678,6 +679,7 @@ class Cellular : public Device,
   base::CancelableClosure scanning_timeout_callback_;
 
   std::string connect_pending_iccid_;
+  base::CancelableClosure connect_pending_callback_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 };

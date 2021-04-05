@@ -157,6 +157,7 @@ class CellularService : public Service {
   static const char kAutoConnDeviceDisabled[];
   static const char kAutoConnNotRegistered[];
   static const char kAutoConnOutOfCredits[];
+  static const char kAutoConnConnectFailed[];
 
   KeyValueStore GetStorageProperties() const;
   std::string GetDefaultStorageIdentifier() const;
