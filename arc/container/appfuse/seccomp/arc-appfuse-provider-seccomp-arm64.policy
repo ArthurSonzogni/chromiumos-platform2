@@ -58,3 +58,5 @@ madvise: 1
 unlinkat: 1
 getpid: 1
 faccessat: 1
+sched_getattr: 1
+sched_setattr: 1

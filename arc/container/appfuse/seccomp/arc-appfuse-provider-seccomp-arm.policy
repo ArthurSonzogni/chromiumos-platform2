@@ -64,3 +64,5 @@ madvise: 1
 rmdir: 1
 getpid: 1
 access: 1
+sched_getattr: 1
+sched_setattr: 1
