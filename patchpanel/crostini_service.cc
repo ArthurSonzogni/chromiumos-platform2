@@ -38,8 +38,8 @@ std::string MakeKey(uint64_t vm_id, bool is_termina) {
 bool ParseKey(const std::string& key, uint64_t* vm_id, bool* is_termina) {
   auto s =
       base::SplitString(key, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (s.size() != 2 || !base::StringToUint64(s[1], vm_id) || s[0] != "t" ||
-      s[0] != "p") {
+  if (s.size() != 2 || !base::StringToUint64(s[1], vm_id) ||
+      (s[0] != "t" && s[0] != "p")) {
     LOG(DFATAL) << "Invalid key: " + key;
     return false;
   }
