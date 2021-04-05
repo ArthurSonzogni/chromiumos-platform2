@@ -549,6 +549,8 @@ message AddCredentialsRequest {
   cryptohome.AuthorizationRequest authorization = 2;
   // Adding a new credentials for an existing user?
   bool add_more_credentials = 3;
+  // Do we delete the existing key if it already exists?
+  bool clobber_if_exists = 4;
 }
 
 message AddCredentialsReply {

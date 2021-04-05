@@ -60,14 +60,24 @@ void AuthSession::AuthSessionTimedOut() {
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
-    const cryptohome::AuthorizationRequest& authorization_request) {
-  if (user_exists_) {
-    return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
-  }
+    const user_data_auth::AddCredentialsRequest& request) {
   MountError code;
-  auto credentials = GetCredentials(authorization_request, &code);
+  auto credentials = GetCredentials(request.authorization(), &code);
   if (!credentials) {
     return MountErrorToCryptohomeError(code);
+  }
+  if (user_exists_) {
+    // Check the privileges to ensure Add is allowed.
+    // Keys without extended data are considered fully privileged.
+    if (vault_keyset_->HasKeyData() &&
+        !vault_keyset_->GetKeyData().privileges().add()) {
+      LOG(WARNING) << "Add Credentials: no add() privilege";
+      return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
+    }
+
+    return keyset_management_->AddKeyset(
+        *credentials, *vault_keyset_, request.clobber_if_exists(),
+        request.authorization().key().has_data() /* Has new data */);
   }
 
   user_data_auth::CryptohomeErrorCode errorCode =
@@ -87,16 +97,15 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     return MountErrorToCryptohomeError(code);
   }
 
-  std::unique_ptr<VaultKeyset> vault_keyset =
-      keyset_management_->LoadUnwrappedKeyset(*credentials, &code);
-  if (vault_keyset && code == MOUNT_ERROR_NONE) {
-    file_system_keyset_ = std::make_unique<FileSystemKeyset>(*vault_keyset);
+  vault_keyset_ = keyset_management_->LoadUnwrappedKeyset(*credentials, &code);
+  if (vault_keyset_ && code == MOUNT_ERROR_NONE) {
+    file_system_keyset_ = std::make_unique<FileSystemKeyset>(*vault_keyset_);
     status_ = AuthStatus::kAuthStatusAuthenticated;
   }
   password_verifier_.reset(new ScryptPasswordVerifier());
   password_verifier_->Set(credentials->passkey());
   current_key_data_ = credentials->key_data();
-  key_index_ = vault_keyset->GetLegacyIndex();
+  key_index_ = vault_keyset_->GetLegacyIndex();
   return MountErrorToCryptohomeError(code);
 }
 

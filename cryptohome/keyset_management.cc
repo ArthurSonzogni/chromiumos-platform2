@@ -12,6 +12,8 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
@@ -377,6 +379,14 @@ bool KeysetManagement::ReSaveKeysetIfNeeded(const Credentials& credentials,
     force_resave = true;
   }
 
+  // If the VaultKeyset doesn't have a reset seed, simply generate
+  // one and re-encrypt before proceeding.
+  if (!keyset->HasWrappedResetSeed()) {
+    LOG(INFO) << "Keyset lacks reset_seed; generating one.";
+    keyset->CreateRandomResetSeed();
+    force_resave = true;
+  }
+
   if (force_resave || ShouldReSaveKeyset(keyset)) {
     return ReSaveKeyset(credentials, keyset);
   }
@@ -511,6 +521,71 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
     *index = new_index;
   }
   return added;
+}
+
+// Overloaded AddKeyset for use with AuthSession.
+user_data_auth::CryptohomeErrorCode KeysetManagement::AddKeyset(
+    const Credentials& new_credentials,
+    VaultKeyset vault_keyset,
+    bool clobber,
+    bool has_new_key_data) {
+  std::string obfuscated_username =
+      new_credentials.GetObfuscatedUsername(system_salt_);
+
+  // Walk the namespace looking for the first free spot.
+  // Note, nothing is stopping simultaneous access to these files
+  // or enforcing mandatory locking.
+  base::FilePath vk_path;
+  bool file_found = false;
+  for (int new_index = 0; new_index < kKeyFileMax; ++new_index) {
+    vk_path = VaultKeysetPath(obfuscated_username, new_index);
+    // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
+    // repeatedly until there is an opening.
+    base::ScopedFILE vk_file(base::OpenFile(vk_path, "wx"));
+    if (vk_file) {  // got one
+      file_found = true;
+      break;
+    }
+  }
+
+  if (!file_found) {
+    LOG(WARNING) << "Failed to find an available keyset slot";
+    return user_data_auth::CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED;
+  }
+
+  // Before persisting, check if there is an existing labeled credential.
+  if (has_new_key_data) {
+    std::unique_ptr<VaultKeyset> match =
+        GetVaultKeyset(obfuscated_username, new_credentials.key_data().label());
+    if (match.get()) {
+      LOG(INFO) << "Label already exists.";
+      platform_->DeleteFile(vk_path);
+      if (!clobber) {
+        return user_data_auth::CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
+      }
+      vk_path = match->GetSourceFile();
+    }
+  }
+  // Since we're reusing the authorizing VaultKeyset, be careful with the
+  // metadata.
+  vault_keyset.ClearKeyData();
+  if (has_new_key_data) {
+    vault_keyset.SetKeyData(new_credentials.key_data());
+  }
+
+  // Repersist the VK with the new creds.
+  user_data_auth::CryptohomeErrorCode ret_code =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  if (!vault_keyset.Encrypt(new_credentials.passkey(), obfuscated_username) ||
+      !vault_keyset.Save(vk_path)) {
+    LOG(WARNING) << "Failed to encrypt or write the new keyset";
+    ret_code = user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+    // If we're clobbering, don't delete on error.
+    if (!clobber) {
+      platform_->DeleteFile(vk_path);
+    }
+  }
+  return ret_code;
 }
 
 CryptohomeErrorCode KeysetManagement::RemoveKeyset(

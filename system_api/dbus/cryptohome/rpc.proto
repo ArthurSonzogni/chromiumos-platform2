@@ -596,6 +596,8 @@ message AddCredentialsRequest {
   optional AuthorizationRequest authorization = 2;
   // Are we adding more credentials for existing user?
   optional bool add_more_credentials = 3;
+  // Do we delete the existing key if it already exists?
+  optional bool clobber_if_exists = 4;
 }
 
 message AuthenticateAuthSessionRequest {

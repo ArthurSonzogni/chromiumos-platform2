@@ -3376,6 +3376,8 @@ void LegacyCryptohomeInterfaceAdaptor::AddCredentials(
   user_data_auth::AddCredentialsRequest request;
   request.set_auth_session_id(in_request.auth_session_id());
   request.mutable_authorization()->CopyFrom(in_request.authorization());
+  request.set_add_more_credentials(in_request.add_more_credentials());
+  request.set_clobber_if_exists(in_request.clobber_if_exists());
   userdataauth_proxy_->AddCredentialsAsync(
       request,
       base::Bind(&LegacyCryptohomeInterfaceAdaptor::AddCredentialsOnDone,

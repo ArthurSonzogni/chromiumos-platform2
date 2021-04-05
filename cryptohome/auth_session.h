@@ -68,7 +68,7 @@ class AuthSession final {
   // TODO(crbug.com/1181102): Add functionality for adding credentials for an
   // existing user.
   user_data_auth::CryptohomeErrorCode AddCredentials(
-      const cryptohome::AuthorizationRequest& authorization_request);
+      const user_data_auth::AddCredentialsRequest& request);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
@@ -134,6 +134,7 @@ class AuthSession final {
   // TODO(crbug.com/1171025): Replace FileSystemKeyset with intermediate key as
   // a proof of authentication.
   std::unique_ptr<FileSystemKeyset> file_system_keyset_;
+  std::unique_ptr<VaultKeyset> vault_keyset_;
   // This is used by User Session to verify users credentials at unlock.
   std::unique_ptr<PasswordVerifier> password_verifier_;
 

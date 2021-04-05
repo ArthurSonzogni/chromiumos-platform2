@@ -3110,7 +3110,7 @@ bool UserDataAuth::AddCredentials(
   // Add credentials using data in AuthorizationRequest and
   // auth_session_token.
   user_data_auth::CryptohomeErrorCode error =
-      auth_sessions_[token.value()]->AddCredentials(request.authorization());
+      auth_sessions_[token.value()]->AddCredentials(request);
   reply.set_error(error);
   std::move(on_done).Run(reply);
   return true;

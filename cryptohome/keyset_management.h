@@ -16,6 +16,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/rpc.pb.h"
+#include "cryptohome/UserDataAuth.pb.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
@@ -95,6 +96,19 @@ class KeysetManagement {
                                         const KeyData* new_data,
                                         bool clobber,
                                         int* index);
+
+  // Adds a new vault keyset for the user rewrap |vault_keyset| and persist to
+  // disk. |has_new_key_data|, is set true when new credentials carry new
+  // key_data. If provided, key_data is copied to the new keyset. If |new_data|
+  // is provided, a best-effort attempt will be made at ensuring
+  // key_data().label() is unique. If |clobber| is true and there are no
+  // matching, labeled keys, then it does nothing.  If there is an identically
+  // labeled key, it will overwrite it.
+  virtual user_data_auth::CryptohomeErrorCode AddKeyset(
+      const Credentials& new_credentials,
+      VaultKeyset vault_keyset,
+      bool clobber,
+      bool has_new_key_data);
 
   // Removes the keyset identified by |key_data| if |credentials|
   // has the remove() KeyPrivilege.  The VaultKeyset backing
