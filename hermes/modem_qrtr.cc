@@ -614,8 +614,8 @@ void ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
     bool is_active = (resp.status[i].physical_slot_state ==
                       uim_physical_slot_status::kSlotActive);
 
-    VLOG(2) << "Slot:" << i + 1 << " is_present:" << is_present
-            << " is_euicc:" << is_euicc << " is_active:" << is_active;
+    LOG(INFO) << "Slot:" << i + 1 << " is_present:" << is_present
+              << " is_euicc:" << is_euicc << " is_active:" << is_active;
     if (is_active) {
       stored_active_slot_ = i + 1;
       if (!logical_slot_found) {
@@ -625,7 +625,8 @@ void ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
       }
     }
     if (!is_present || !is_euicc) {
-      euicc_manager_->OnEuiccRemoved(i + 1);
+      // TODO(b/184541133): Call euicc_manager_->OnEuiccRemoved(i + 1); once
+      // firmware gives correct status.
       continue;
     }
 
