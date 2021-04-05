@@ -189,8 +189,8 @@ int32_t CameraHalAdapter::OpenDevice(
     LOGF(ERROR) << "Failed to get camera info of camera " << camera_id;
     return ret;
   }
-  const camera_metadata_t* metadata =
-      GetUpdatedCameraMetadata(camera_id, info.static_camera_characteristics);
+  const camera_metadata_t* metadata = GetUpdatedCameraMetadata(
+      camera_id, camera_client_type, info.static_camera_characteristics);
   // This method is called by |camera_module_delegate_| on its mojo IPC
   // handler thread.
   // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
@@ -270,8 +270,8 @@ int32_t CameraHalAdapter::GetCameraInfo(
   LOGF(INFO) << camera_client_type << " camera_id = " << camera_id
              << ", facing = " << info.facing;
 
-  const camera_metadata_t* metadata =
-      GetUpdatedCameraMetadata(camera_id, info.static_camera_characteristics);
+  const camera_metadata_t* metadata = GetUpdatedCameraMetadata(
+      camera_id, camera_client_type, info.static_camera_characteristics);
 
   if (VLOG_IS_ON(2)) {
     dump_camera_metadata(metadata, 2, 3);
@@ -422,8 +422,11 @@ void CameraHalAdapter::torch_mode_status_change(
 }
 
 const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
-    int camera_id, const camera_metadata_t* static_metadata) {
-  auto& metadata_scoped = static_metadata_map_[camera_id];
+    int camera_id,
+    mojom::CameraClientType camera_client_type,
+    const camera_metadata_t* static_metadata) {
+  auto& metadata_scoped =
+      static_metadata_map_[std::make_pair(camera_id, camera_client_type)];
   if (metadata_scoped) {
     return metadata_scoped.get()->getAndLock();
   }
