@@ -29,6 +29,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <policy/mock_device_policy.h>
 
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/paths.h"
@@ -869,6 +870,7 @@ struct MetaDataTest {
   std::string test_case_name;
   bool test_in_prog = false;
   std::string exec_name = "kernel";
+  base::Optional<bool> enterprise_enrolled = false;
   std::string expected_meta;
 };
 
@@ -942,6 +944,16 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
                      base::TimeDelta::FromMilliseconds(kFakeNow));
   collector_.set_test_clock(std::move(test_clock));
   collector_.set_test_kernel_info(kKernelName, kKernelVersion);
+  std::unique_ptr<policy::MockDevicePolicy> test_device_policy =
+      std::make_unique<policy::MockDevicePolicy>();
+  if (!test_case.enterprise_enrolled) {
+    EXPECT_CALL(*test_device_policy, LoadPolicy()).WillOnce(Return(false));
+  } else {
+    EXPECT_CALL(*test_device_policy, LoadPolicy()).WillOnce(Return(true));
+    EXPECT_CALL(*test_device_policy, IsEnterpriseEnrolled())
+        .WillOnce(Return(*test_case.enterprise_enrolled));
+  }
+  collector_.set_device_policy_for_test(std::move(test_device_policy));
   collector_.FinishCrash(meta_file, test_case.exec_name, kPayloadName);
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   EXPECT_EQ(test_case.expected_meta, contents);
@@ -958,6 +970,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "foo=bar\n"
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
+      "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -983,6 +996,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "foo=bar\n"
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
+      "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_in_progress_integration_test=some.Test\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
@@ -1009,6 +1023,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "foo=bar\n"
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
+      "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "ver=6727.0.2015_01_26_0853\n"
@@ -1025,7 +1040,59 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
 
-  return {base, test_in_progress, no_exec_name};
+  MetaDataTest enterprise_enrolled;
+  enterprise_enrolled.test_case_name = "Enterprise_enrolled";
+  enterprise_enrolled.enterprise_enrolled = true;
+  enterprise_enrolled.expected_meta = StringPrintf(
+      "upload_var_collector=mock\n"
+      "foo=bar\n"
+      "weird__key___=weird\\nvalue\n"
+      "upload_var_channel=test\n"
+      "upload_var_is-enterprise-enrolled=true\n"
+      "upload_var_reportTimeMillis=%" PRId64
+      "\n"
+      "exec_name=kernel\n"
+      "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
+      "upload_var_cros_milestone=82\n"
+      "os_millis=%" PRId64
+      "\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
+      "payload=%s\n"
+      "done=1\n",
+      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      CrashCollectorParameterizedTest::kKernelName,
+      CrashCollectorParameterizedTest::kKernelVersion,
+      CrashCollectorParameterizedTest::kPayloadName);
+
+  MetaDataTest device_policy_not_loaded;
+  device_policy_not_loaded.test_case_name = "Device_policy_not_loaded";
+  device_policy_not_loaded.enterprise_enrolled = base::nullopt;
+  device_policy_not_loaded.expected_meta = StringPrintf(
+      "upload_var_collector=mock\n"
+      "foo=bar\n"
+      "weird__key___=weird\\nvalue\n"
+      "upload_var_channel=test\n"
+      "upload_var_reportTimeMillis=%" PRId64
+      "\n"
+      "exec_name=kernel\n"
+      "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
+      "upload_var_cros_milestone=82\n"
+      "os_millis=%" PRId64
+      "\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
+      "payload=%s\n"
+      "done=1\n",
+      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      CrashCollectorParameterizedTest::kKernelName,
+      CrashCollectorParameterizedTest::kKernelVersion,
+      CrashCollectorParameterizedTest::kPayloadName);
+
+  return {base, test_in_progress, no_exec_name, enterprise_enrolled,
+          device_policy_not_loaded};
 }
 
 INSTANTIATE_TEST_SUITE_P(CrashCollectorInstantiation,

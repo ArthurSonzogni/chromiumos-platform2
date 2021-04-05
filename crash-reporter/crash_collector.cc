@@ -42,6 +42,7 @@
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 #include <debugd/dbus-constants.h>
+#include <policy/device_policy_impl.h>
 #include <re2/re2.h>
 #include <zlib.h>
 
@@ -331,6 +332,8 @@ CrashCollector::CrashCollector(
       crash_reporter_state_path_(paths::kCrashReporterStateDirectory),
       log_config_path_(kDefaultLogConfig),
       max_log_size_(kMaxLogSize),
+      device_policy_loaded_(false),
+      device_policy_(std::make_unique<policy::DevicePolicyImpl>()),
       crash_sending_mode_(crash_sending_mode),
       crash_directory_selection_method_(crash_directory_selection_method),
       is_finished_(false),
@@ -1249,6 +1252,19 @@ std::string CrashCollector::GetKernelVersion() const {
   return StringPrintf("%s %s", buf.release, buf.version);
 }
 
+base::Optional<bool> CrashCollector::IsEnterpriseEnrolled() {
+  DCHECK(device_policy_);
+  if (!device_policy_loaded_) {
+    if (!device_policy_->LoadPolicy()) {
+      LOG(ERROR) << "Failed to load device policy";
+      return base::nullopt;
+    }
+    device_policy_loaded_ = true;
+  }
+
+  return device_policy_->IsEnterpriseEnrolled();
+}
+
 // Callback for CallMethodWithErrorCallback(). Discards the response pointer
 // and just calls |callback|.
 static void IgnoreResponsePointer(base::Callback<void()> callback,
@@ -1316,6 +1332,12 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
 
   std::string version_info =
       product_version_info + lsb_release_info + kernel_info;
+
+  base::Optional<bool> is_enterprise_enrolled = IsEnterpriseEnrolled();
+  if (is_enterprise_enrolled.has_value()) {
+    AddCrashMetaUploadData("is-enterprise-enrolled",
+                           *is_enterprise_enrolled ? "true" : "false");
+  }
 
   std::string in_progress_test;
   if (base::ReadFileToString(paths::GetAt(paths::kSystemRunStateDirectory,

@@ -93,6 +93,8 @@ static_library("libcrash_reporter") {
     "USE_DIRENCRYPTION=${use.direncryption}",
     "USE_KVM_GUEST=${use.kvm_guest}",
   ]
+  libs = [ "policy" ]
+  deps = [ "//common-mk/external_dependencies:policy-protos" ]
 
   if (use.arcpp || use.arcvm) {
     sources += [

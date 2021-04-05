@@ -24,10 +24,11 @@
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/dbus/file_descriptor.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <session_manager/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
+#include <policy/device_policy.h>
+#include <session_manager/dbus-proxies.h>
 
 constexpr mode_t kSystemCrashFilesMode = 0660;
 
@@ -119,6 +120,13 @@ class CrashCollector {
                             const std::string& kernel_version) {
     test_kernel_name_ = kernel_name;
     test_kernel_version_ = kernel_version;
+  }
+
+  // For testing, use to set the mock device policy object instead.
+  void set_device_policy_for_test(
+      std::unique_ptr<policy::DevicePolicy> device_policy) {
+    device_policy_loaded_ = false;
+    device_policy_ = std::move(device_policy);
   }
 
   // For testing, return the in-memory files generated when in
@@ -390,6 +398,9 @@ class CrashCollector {
   // 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018
   std::string GetKernelVersion() const;
 
+  // Returns the enrollment status written to the metadata file.
+  base::Optional<bool> IsEnterpriseEnrolled();
+
   // Called after all files have been written and we want to send out this
   // crash. Write a file of metadata about crash and, if in crash-loop mode,
   // sends the UploadSingleCrash message to debugd. Not called if we failed to
@@ -412,6 +423,8 @@ class CrashCollector {
   std::unique_ptr<base::Clock> test_clock_;
   std::string test_kernel_name_;
   std::string test_kernel_version_;
+  bool device_policy_loaded_;
+  std::unique_ptr<policy::DevicePolicy> device_policy_;
 
   scoped_refptr<dbus::Bus> bus_;
 
