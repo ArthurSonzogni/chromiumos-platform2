@@ -36,9 +36,11 @@ constexpr base::TimeDelta kShortUpdateTimeout =
     base::TimeDelta::FromMilliseconds(100);
 
 const char kDeviceModelName[] = "Test HID Mouse";
+const char kWacomUevent[] = "HID_UNIQ=aa:aa:aa:aa:aa:aa";
 
 constexpr char kPeripheralBatterySysname[] = "hid-someperipheral-battery";
 constexpr char kBluetoothBatterySysname[] = "hid-11:22:33:aa:bb:cc-battery";
+constexpr char kWacomBatterySysname[] = "wacom_battery_1";
 constexpr char kNonPeripheralBatterySysname[] = "AC";
 constexpr char kPeripheralChargerBatterySysname[] = "PCHG0";
 
@@ -112,6 +114,16 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
     bluetooth_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
 
+    // Create a fake wacom directory.
+    device_dir = temp_dir_.GetPath().Append(kWacomBatterySysname);
+    CHECK(base::CreateDirectory(device_dir.Append("powers")));
+    WriteFile(device_dir.Append(PeripheralBatteryWatcher::kScopeFile),
+              PeripheralBatteryWatcher::kScopeValueDevice);
+    WriteFile(device_dir.Append(PeripheralBatteryWatcher::kModelNameFile),
+              kDeviceModelName);
+    wacom_capacity_file_ =
+        device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
+
     // Create a fake non-peripheral directory (there is no "scope" file.)
     device_dir = temp_dir_.GetPath().Append(kNonPeripheralBatterySysname);
     CHECK(base::CreateDirectory(device_dir));
@@ -151,6 +163,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
   base::FilePath model_name_file_;
   base::FilePath non_peripheral_capacity_file_;
   base::FilePath bluetooth_capacity_file_;
+  base::FilePath wacom_capacity_file_;
   base::FilePath peripheral_charger_capacity_file_;
   base::FilePath peripheral_charger_status_file_;
   base::FilePath peripheral_charger_health_file_;
@@ -189,6 +202,35 @@ TEST_F(PeripheralBatteryWatcherTest, Bluetooth) {
   // Bluetooth battery update should not sent any signal, but update to BlueZ.
   EXPECT_CALL(*bluez_battery_provider_,
               UpdateDeviceBattery("11:22:33:aa:bb:cc", 80));
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
+  EXPECT_EQ(0, test_wrapper_.num_sent_signals());
+}
+
+TEST_F(PeripheralBatteryWatcherTest, Wacom) {
+  // Wacom not detected as a Bluetooth device, treat it as a generic peripheral.
+  std::string level = base::NumberToString(80);
+  WriteFile(wacom_capacity_file_, level);
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  EXPECT_EQ(1, test_wrapper_.num_sent_signals());
+  PeripheralBatteryStatus proto;
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+}
+
+TEST_F(PeripheralBatteryWatcherTest, WacomWithBluetooth) {
+  // Wacom detected as a Bluetooth device (having HID_UNIQ= in powers/uevent).
+  base::FilePath device_dir = temp_dir_.GetPath().Append(kWacomBatterySysname);
+  WriteFile(device_dir.Append(PeripheralBatteryWatcher::kPowersUeventFile),
+            kWacomUevent);
+  std::string level = base::NumberToString(70);
+  WriteFile(wacom_capacity_file_, level);
+
+  // Bluetooth battery update should not sent any signal, but update to BlueZ.
+  EXPECT_CALL(*bluez_battery_provider_,
+              UpdateDeviceBattery("aa:aa:aa:aa:aa:aa", 70));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
   EXPECT_EQ(0, test_wrapper_.num_sent_signals());

@@ -35,6 +35,8 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
 
   // sysfs file containing a battery's status.
   static const char kStatusFile[];
+  // sysfs file containing a uevent info.
+  static const char kPowersUeventFile[];
   // kStatusFile value used to report an unknown status.
   static const char kStatusValueUnknown[];
   // kStatusFile value used to report battery is full.

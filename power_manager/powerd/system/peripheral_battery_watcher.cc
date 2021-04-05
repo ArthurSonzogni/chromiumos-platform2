@@ -55,11 +55,28 @@ std::string SysnameFromBluetoothAddress(const std::string& address) {
   return "hid-" + base::ToLowerASCII(address) + "-battery";
 }
 
+bool ExtractBluetoothAddress(const base::FilePath& path, std::string* address) {
+  // Standard HID devices have the convention of "hid-{btaddr}-battery"
+  // file name in /sys/class/power_supply."
+  if (RE2::FullMatch(path.value(), ".*hid-(.+)-battery", address))
+    return true;
+
+  if (path.value().find("wacom") == std::string::npos)
+    return false;
+
+  // Handle wacom specifically, the Bluetooth address is in
+  // /sys/class/power_suply/wacom_xxx/powers/uevent having HID_UNIQ= prefix.
+  std::string uevent;
+  return (ReadStringFromFile(path.Append("powers/uevent"), &uevent) &&
+          RE2::PartialMatch(uevent, "HID_UNIQ=(.+)", address));
+}
+
 }  // namespace
 
 const char PeripheralBatteryWatcher::kScopeFile[] = "scope";
 const char PeripheralBatteryWatcher::kScopeValueDevice[] = "Device";
 const char PeripheralBatteryWatcher::kStatusFile[] = "status";
+const char PeripheralBatteryWatcher::kPowersUeventFile[] = "powers/uevent";
 const char PeripheralBatteryWatcher::kStatusValueUnknown[] = "Unknown";
 const char PeripheralBatteryWatcher::kStatusValueFull[] = "Full";
 const char PeripheralBatteryWatcher::kStatusValueCharging[] = "Charging";
@@ -236,8 +253,8 @@ void PeripheralBatteryWatcher::SendBatteryStatus(const base::FilePath& path,
                                                  int charge_status,
                                                  bool active_update) {
   std::string address;
-  RE2::FullMatch(path.value(), ".*hid-(.+)-battery", &address);
-  if (RE2::FullMatch(address, kBluetoothAddressRegex)) {
+  if (ExtractBluetoothAddress(path, &address) &&
+      RE2::FullMatch(address, kBluetoothAddressRegex)) {
     // Bluetooth batteries is reported separately to BlueZ.
     bluez_battery_provider_->UpdateDeviceBattery(address, level);
     return;
