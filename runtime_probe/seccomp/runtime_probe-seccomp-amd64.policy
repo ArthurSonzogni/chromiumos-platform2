@@ -41,6 +41,8 @@ close: 1
 exit_group: 1
 stat: 1
 access: 1
+mmap: arg2 == PROT_READ || arg2 == PROT_READ|PROT_WRITE || arg2 == PROT_READ|PROT_EXEC
+mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 
 # The following are syscalls enabled by -L in minijail.
 # Document those syscalls here because runtime_probe daemon doesn't use -L by default.
