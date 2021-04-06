@@ -97,6 +97,8 @@ class V4L2Device {
                         float* frame_rate);
   float GetFrameRate();
   bool GetV4L2Format(v4l2_format* format);
+  bool GetSelection(uint32_t target, v4l2_selection* selection);
+  bool SetSelection(uint32_t target, const v4l2_rect& rect);
   bool Stop();
 
   // Getter.

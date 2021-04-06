@@ -50,6 +50,10 @@ V4L2TestEnvironment* g_env;
 constexpr char kDefaultTestList[] = "default";
 constexpr char kHalv3TestList[] = "halv3";
 constexpr char kCertificationTestList[] = "certification";
+// Correctness check the V4L2_SEL_TGT_ROI_BOUNDS_MIN value. 320x320 is very
+// large.
+constexpr uint32_t kMaxMinRoiWidth = 320;
+constexpr uint32_t kMaxMinRoiHeight = 320;
 
 std::string GetUsbVidPid(const base::FilePath& path) {
   auto read_id = [&](const char* name) -> std::string {
@@ -297,6 +301,8 @@ class V4L2TestEnvironment : public ::testing::Environment {
               device_info->sensor_info_pixel_array_size_height;
         }
       }
+
+      check_roi_control_ = device_info->enable_face_detection;
     }
 
     if (test_list_ == kDefaultTestList) {
@@ -339,6 +345,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
   bool check_1920x1080_ = true;
   bool check_constant_framerate_ = false;
   bool check_timestamps_in_order_ = true;
+  bool check_roi_control_ = false;
 
   bool support_constant_framerate_ = false;
   uint32_t skip_frames_ = 0;
@@ -476,6 +483,56 @@ class V4L2Test : public ::testing::Test {
     }
     if (!dev_.SetControl(id, query_ctrl.default_value)) {
       LOG(WARNING) << "Cannot set " << control << " to default value";
+    }
+    return true;
+  }
+
+  bool ExerciseROI() {
+    v4l2_selection selection;
+    v4l2_selection selection_min;
+    v4l2_selection selection_max;
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_DEFAULT, &selection)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_DEFAULT";
+      return false;
+    }
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MIN, &selection_min)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MIN";
+      return false;
+    }
+    if (selection_min.r.width > kMaxMinRoiWidth ||
+        selection_min.r.height > kMaxMinRoiHeight) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN: " << selection_min.r.width
+                 << "x" << selection_min.r.height << " is too large.";
+      return false;
+    }
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MAX, &selection_max)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MAX";
+      return false;
+    }
+    if (selection_max.r.width <= selection_min.r.width ||
+        selection_max.r.height <= selection_min.r.height) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX: " << selection_max.r.width
+                 << "x" << selection_max.r.height << " is too small.";
+      return false;
+    }
+    v4l2_rect rect = {
+        .left = 10,
+        .top = 20,
+        .width = (selection_min.r.width + selection_max.r.width) / 2,
+        .height = (selection_min.r.height + selection_max.r.height) / 2,
+    };
+    if (!dev_.SetSelection(V4L2_SEL_TGT_ROI, rect)) {
+      LOG(ERROR) << "Cannot set select V4L2_SEL_TGT_ROI";
+      return false;
+    }
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI, &selection)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI";
+      return false;
+    }
+    if (rect.left != selection.r.left || rect.top != selection.r.top ||
+        rect.width != selection.r.width || rect.height != selection.r.height) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI set and get mismatch";
+      return false;
     }
     return true;
   }
@@ -650,6 +707,15 @@ TEST_F(V4L2Test, SetControl) {
   ExerciseControl(V4L2_CID_HUE, "hue");
   ExerciseControl(V4L2_CID_GAIN, "gain");
   ExerciseControl(V4L2_CID_SHARPNESS, "sharpness");
+}
+
+TEST_F(V4L2Test, SetROI) {
+  if (g_env->check_roi_control_) {
+    ExerciseControl(V4L2_CID_REGION_OF_INTEREST_AUTO, "roi auto");
+    ASSERT_TRUE(ExerciseROI());
+  } else {
+    GTEST_SKIP() << "Skipped because enable_face_detection is not set";
+  }
 }
 
 // SetCrop is optional.

@@ -1025,6 +1025,30 @@ bool V4L2Device::GetV4L2Format(v4l2_format* format) {
   return true;
 }
 
+bool V4L2Device::GetSelection(uint32_t target, v4l2_selection* selection) {
+  memset(selection, 0, sizeof(v4l2_selection));
+  selection->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  selection->target = target;
+  if (-1 == DoIoctl(VIDIOC_G_SELECTION, selection)) {
+    printf("<<< Error: VIDIOC_G_SELECTION on %s.>>>\n", dev_name_);
+    return false;
+  }
+  return true;
+}
+
+bool V4L2Device::SetSelection(uint32_t target, const v4l2_rect& rect) {
+  v4l2_selection selection = {
+      .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+      .target = target,
+      .r = rect,
+  };
+  if (-1 == DoIoctl(VIDIOC_S_SELECTION, &selection)) {
+    printf("<<< Error: VIDIOC_S_SELECTION on %s.>>>\n", dev_name_);
+    return false;
+  }
+  return true;
+}
+
 uint64_t V4L2Device::Now() {
   struct timespec ts;
   int res = clock_gettime(CLOCK_MONOTONIC, &ts);
