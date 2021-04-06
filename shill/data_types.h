@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <brillo/variant_dictionary.h>
 #include <dbus/object_path.h>
 
 namespace shill {
@@ -26,6 +27,7 @@ using Strings = std::vector<std::string>;
 using Stringmap = std::map<std::string, std::string>;
 using Stringmaps = std::vector<Stringmap>;
 using Uint16s = std::vector<uint16_t>;
+using VariantDictionaries = std::vector<brillo::VariantDictionary>;
 
 }  // namespace shill
 
