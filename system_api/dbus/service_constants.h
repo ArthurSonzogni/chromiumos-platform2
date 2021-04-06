@@ -409,6 +409,7 @@ const char kCrasControlInterface[] = "org.chromium.cras.Control";
 const char kSetOutputVolume[] = "SetOutputVolume";
 const char kSetOutputNodeVolume[] = "SetOutputNodeVolume";
 const char kSwapLeftRight[] = "SwapLeftRight";
+const char kSetDisplayRotation[] = "SetDisplayRotation";
 const char kSetOutputMute[] = "SetOutputMute";
 const char kSetOutputUserMute[] = "SetOutputUserMute";
 const char kSetSuspendAudio[] = "SetSuspendAudio";
