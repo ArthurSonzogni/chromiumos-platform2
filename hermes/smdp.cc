@@ -22,6 +22,7 @@ namespace {
 void OnHttpsResponse(hermes::Smdp::LpaCallback cb,
                      brillo::http::RequestID /*request_id*/,
                      std::unique_ptr<brillo::http::Response> response) {
+  LOG(INFO) << __func__;
   std::string raw_data;
   if (!response) {
     cb(0, raw_data, lpa::smdp::SmdpClient::kMalformedResponse);
@@ -96,6 +97,8 @@ lpa::util::Executor* Smdp::executor() {
 void Smdp::SendHttps(const std::string& path,
                      const std::string& request,
                      LpaCallback cb) {
+  // path is hardcoded by the LPA. There is no PII.
+  LOG(INFO) << __func__ << " path:" << path;
   brillo::ErrorPtr error = nullptr;
   std::string url = "https://" + smdp_addr_ + path;
   VLOG(1) << __func__ << ": sending data to " << url << ": " << request;

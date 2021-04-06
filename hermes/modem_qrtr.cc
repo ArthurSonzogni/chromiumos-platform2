@@ -141,6 +141,7 @@ ModemQrtr::~ModemQrtr() {
 }
 
 void ModemQrtr::SetActiveSlot(const uint32_t physical_slot) {
+  LOG(INFO) << __func__ << "physical_slot:" << physical_slot;
   tx_queue_.push_back(
       {std::make_unique<SwitchSlotTxInfo>(physical_slot, logical_slot_),
        AllocateId(), std::make_unique<UimCmd>(UimCmd::QmiType::kSwitchSlot)});
@@ -148,12 +149,14 @@ void ModemQrtr::SetActiveSlot(const uint32_t physical_slot) {
 }
 
 void ModemQrtr::StoreAndSetActiveSlot(const uint32_t physical_slot) {
+  LOG(INFO) << __func__ << "physical_slot:" << physical_slot;
   tx_queue_.push_back({std::make_unique<TxInfo>(), AllocateId(),
                        std::make_unique<UimCmd>(UimCmd::QmiType::kGetSlots)});
   SetActiveSlot(physical_slot);
 }
 
 void ModemQrtr::RestoreActiveSlot() {
+  LOG(INFO) << __func__;
   if (stored_active_slot_) {
     tx_queue_.push_back(
         {std::make_unique<SwitchSlotTxInfo>(stored_active_slot_.value(),
@@ -195,6 +198,7 @@ bool ModemQrtr::IsSimValidAfterDisable() {
 }
 
 void ModemQrtr::Initialize(EuiccManagerInterface* euicc_manager) {
+  LOG(INFO) << __func__;
   CHECK(current_state_ == State::kUninitialized);
   euicc_manager_ = euicc_manager;
   if (!socket_->StartService(QmiCmdInterface::Service::kDms, 1, 0)) {
@@ -205,6 +209,7 @@ void ModemQrtr::Initialize(EuiccManagerInterface* euicc_manager) {
   current_state_.Transition(State::kInitializeStarted);
 }
 void ModemQrtr::InitializeUim() {
+  LOG(INFO) << __func__;
   // StartService should result in a received QRTR_TYPE_NEW_SERVER
   // packet. Don't send other packets until that occurs.
   if (!socket_->StartService(QmiCmdInterface::Service::kUim, 1, 0)) {
@@ -226,8 +231,8 @@ void ModemQrtr::ReacquireChannel() {
 }
 
 void ModemQrtr::RetryInitialization() {
-  VLOG(1) << "Reprobing for eSIM in " << kInitRetryDelay.InSeconds()
-          << " seconds";
+  LOG(INFO) << "Reprobing for eSIM in " << kInitRetryDelay.InSeconds()
+            << " seconds";
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&ModemQrtr::Initialize, base::Unretained(this),
@@ -236,6 +241,7 @@ void ModemQrtr::RetryInitialization() {
 }
 
 void ModemQrtr::FinalizeInitialization() {
+  LOG(INFO) << __func__;
   if (current_state_ != State::kLogicalChannelOpened) {
     VLOG(1) << "Could not open logical channel to eSIM";
     Shutdown();
@@ -250,6 +256,7 @@ void ModemQrtr::FinalizeInitialization() {
 }
 
 void ModemQrtr::Shutdown() {
+  LOG(INFO) << __func__;
   if (current_state_ != State::kUninitialized &&
       current_state_ != State::kInitializeStarted) {
     socket_->StopService(to_underlying(QmiCmdInterface::Service::kUim), 1, 0);
@@ -879,19 +886,21 @@ bool ModemQrtr::State::Transition(ModemQrtr::State::Value value) {
 }
 
 void ModemQrtr::DisableQmi(base::TimeDelta duration) {
+  LOG(INFO) << __func__ << " for " << duration << "seconds";
   qmi_disabled_ = true;
-  VLOG(1) << "Blocking QMI messages for " << duration << "seconds";
   executor_->PostDelayedTask(
       FROM_HERE, base::BindOnce(&ModemQrtr::EnableQmi, base::Unretained(this)),
       duration);
 }
 
 void ModemQrtr::EnableQmi() {
+  LOG(INFO) << __func__;
   qmi_disabled_ = false;
   TransmitFromQueue();
 }
 
 void ModemQrtr::StartProfileOp(const uint32_t physical_slot) {
+  LOG(INFO) << __func__ << " physical_slot:" << physical_slot;
   StoreAndSetActiveSlot(physical_slot);
   // The card triggers a refresh after profile enable. This refresh can cause
   // response apdu's with intermediate bytes to be flushed during a qmi
@@ -901,6 +910,7 @@ void ModemQrtr::StartProfileOp(const uint32_t physical_slot) {
 }
 
 void ModemQrtr::FinishProfileOp() {
+  LOG(INFO) << __func__;
   DisableQmi(kSimRefreshDelay);
   SetProcedureBytes(ProcedureBytesMode::EnableIntermediateBytes);
   ReacquireChannel();

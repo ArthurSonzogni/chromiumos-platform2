@@ -16,7 +16,7 @@
 #include <google-lpa/lpa/core/lpa.h>
 
 #include "hermes/executor.h"
-#include "hermes/hermes_constants.h"
+#include "hermes/hermes_common.h"
 #include "hermes/lpa_util.h"
 
 using lpa::proto::ProfileInfo;
@@ -53,6 +53,7 @@ void Euicc::InstallProfileFromActivationCode(
     std::string activation_code,
     std::string confirmation_code,
     ResultCallback<dbus::ObjectPath> result_callback) {
+  LOG(INFO) << __func__;
   if (!context_->lpa()->IsLpaIdle()) {
     // The LPA performs background tasks even after a dbus call is returned.
     // During this period(about 2 seconds), we must not perform any operations
@@ -90,6 +91,7 @@ void Euicc::InstallPendingProfile(
     dbus::ObjectPath profile_path,
     std::string confirmation_code,
     ResultCallback<dbus::ObjectPath> result_callback) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(profile_path);
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
@@ -120,6 +122,7 @@ void Euicc::InstallPendingProfile(
 
 void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
                              ResultCallback<> result_callback) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(profile_path);
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
@@ -153,6 +156,7 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
 
 void Euicc::UpdateInstalledProfilesProperty() {
   std::vector<dbus::ObjectPath> profile_paths;
+  LOG(INFO) << __func__;
   for (auto& profile : installed_profiles_) {
     profile_paths.push_back(profile->object_path());
   }
@@ -160,6 +164,7 @@ void Euicc::UpdateInstalledProfilesProperty() {
 }
 
 void Euicc::UpdatePendingProfilesProperty() {
+  LOG(INFO) << __func__;
   std::vector<dbus::ObjectPath> profile_paths;
   for (auto& profile : pending_profiles_) {
     profile_paths.push_back(profile->object_path());
@@ -171,6 +176,7 @@ void Euicc::OnProfileInstalled(
     const lpa::proto::ProfileInfo& profile_info,
     int error,
     ResultCallback<dbus::ObjectPath> result_callback) {
+  LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     result_callback.Error(decoded_error);
@@ -219,6 +225,7 @@ void Euicc::OnProfileInstalled(
 void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
                                  int error,
                                  ResultCallback<> result_callback) {
+  LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     result_callback.Error(decoded_error);
@@ -249,6 +256,7 @@ void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
 }
 
 void Euicc::RequestInstalledProfiles(ResultCallback<> result_callback) {
+  LOG(INFO) << __func__;
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
@@ -272,6 +280,7 @@ void Euicc::OnInstalledProfilesReceived(
     const std::vector<lpa::proto::ProfileInfo>& profile_infos,
     int error,
     ResultCallback<> result_callback) {
+  LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(ERROR) << "Failed to retrieve installed profiles";
@@ -292,6 +301,7 @@ void Euicc::OnInstalledProfilesReceived(
 
 void Euicc::RequestPendingProfiles(ResultCallback<> result_callback,
                                    std::string root_smds) {
+  LOG(INFO) << __func__;
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
@@ -316,6 +326,7 @@ void Euicc::OnPendingProfilesReceived(
     const std::vector<lpa::proto::ProfileInfo>& profile_infos,
     int error,
     ResultCallback<> result_callback) {
+  LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(ERROR) << "Failed to retrieve pending profiles";

@@ -10,6 +10,8 @@
 #include <string>
 #include <utility>
 
+#include "hermes/hermes_common.h"
+
 namespace hermes {
 
 // Information used to inform an EuiccManagerInterface about an eUICC slot, and
@@ -26,10 +28,7 @@ class EuiccSlotInfo {
   }
   bool IsActive() const { return logical_slot_.has_value(); }
   const std::string& eid() const { return eid_; }
-  uint8_t GetLogicalSlot() const {
-    CHECK(IsActive());
-    return logical_slot_.value();
-  }
+  const base::Optional<uint8_t>& logical_slot() const { return logical_slot_; }
   bool operator==(const EuiccSlotInfo& rhs) const {
     return logical_slot_ == rhs.logical_slot_ && eid_ == rhs.eid_;
   }

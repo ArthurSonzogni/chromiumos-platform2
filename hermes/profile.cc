@@ -13,7 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "hermes/executor.h"
-#include "hermes/hermes_constants.h"
+#include "hermes/hermes_common.h"
 #include "hermes/lpa_util.h"
 
 namespace hermes {
@@ -61,7 +61,8 @@ std::unique_ptr<Profile> Profile::Create(
   auto profile = std::unique_ptr<Profile>(new Profile(
       dbus::ObjectPath(kBasePath + eid + "/" + profile_info.iccid()),
       physical_slot));
-
+  LOG(INFO) << __func__ << " Slot:" << physical_slot << " "
+            << GetObjectPathForLog(profile->object_path_);
   // Initialize properties.
   profile->SetIccid(profile_info.iccid());
   profile->SetServiceProvider(profile_info.service_provider_name());
@@ -90,8 +91,7 @@ std::unique_ptr<Profile> Profile::Create(
   profile->RegisterWithDBusObject(&profile->dbus_object_);
   profile->dbus_object_.RegisterAndBlock();
 
-  LOG(INFO) << "Created Profile: " << profile->object_path_.value()
-            << " on slot: " << profile->physical_slot_;
+  LOG(INFO) << "Successfuly created Profile";
   VLOG(2) << profile_info.DebugString();
   return profile;
 }
@@ -105,6 +105,7 @@ Profile::Profile(dbus::ObjectPath object_path, const uint32_t physical_slot)
       weak_factory_(this) {}
 
 void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
@@ -134,6 +135,7 @@ void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
 }
 
 void Profile::Disable(std::unique_ptr<DBusResponse<>> response) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
@@ -163,6 +165,7 @@ void Profile::Disable(std::unique_ptr<DBusResponse<>> response) {
 }
 
 void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(INFO) << "Failed enabling profile: " << object_path_.value()
@@ -170,12 +173,13 @@ void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
     response->ReplyWithError(decoded_error.get());
     return;
   }
-  LOG(INFO) << "Enabled profile: " << object_path_.value();
+  VLOG(2) << "Enabled profile: " << object_path_.value();
   SetState(profile::kActive);
   response->Return();
 }
 
 void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(INFO) << "Failed disabling profile: " << object_path_.value()
@@ -183,12 +187,13 @@ void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
     response->ReplyWithError(decoded_error.get());
     return;
   }
-  LOG(INFO) << "Disabled profile: " << object_path_.value();
+  VLOG(2) << "Disabled profile: " << object_path_.value();
   SetState(profile::kInactive);
   response->Return();
 }
 
 void Profile::SetProfileNickname(std::string nickname) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,

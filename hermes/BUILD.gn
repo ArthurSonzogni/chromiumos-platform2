@@ -49,6 +49,7 @@ static_library("libhermes") {
     "euicc.cc",
     "euicc_dbus_adaptor.cc",
     "executor.cc",
+    "hermes_common.cc",
     "lpa_util.cc",
     "manager.cc",
     "manager_dbus_adaptor.cc",
