@@ -214,9 +214,6 @@ TEST(DatapathTest, Start) {
       {Dual, "mangle -L apply_vpn_mark -w"},
       {Dual, "mangle -F apply_vpn_mark -w"},
       {Dual, "mangle -X apply_vpn_mark -w"},
-      {Dual, "mangle -L check_routing_mark -w"},
-      {Dual, "mangle -F check_routing_mark -w"},
-      {Dual, "mangle -X check_routing_mark -w"},
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
@@ -270,18 +267,6 @@ TEST(DatapathTest, Start) {
       {IPv6,
        "mangle -I OUTPUT -p icmpv6 --icmpv6-type neighbour-advertisement -j "
        "ACCEPT -w"},
-      {IPv6,
-       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
-       "router-solicitation -j RETURN -w"},
-      {IPv6,
-       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
-       "router-advertisement -j RETURN -w"},
-      {IPv6,
-       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
-       "neighbour-solicitation -j RETURN -w"},
-      {IPv6,
-       "mangle -I check_routing_mark -p icmpv6 --icmpv6-type "
-       "neighbour-advertisement -j RETURN -w"},
       // Asserts for OUTPUT CONNMARK restore rule
       {Dual,
        "mangle -A OUTPUT -j CONNMARK --restore-mark --mask 0xffff0000 -w"},
@@ -328,13 +313,6 @@ TEST(DatapathTest, Start) {
        "apply_vpn_mark -w"},
       {Dual,
        "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w"},
-      // Asserts for check_routing_mark chain
-      {Dual, "mangle -N check_routing_mark -w"},
-      {Dual,
-       "mangle -A POSTROUTING -j CONNMARK --restore-mark --mask 0xffff0000 -w"},
-      {Dual,
-       "mangle -A POSTROUTING -m mark ! --mark 0x0/0xffff0000 -j "
-       "check_routing_mark -w"},
       // Asserts for redirect_dns chain creation
       {IPv4, "nat -N redirect_dns -w"},
   };
@@ -368,9 +346,6 @@ TEST(DatapathTest, Stop) {
       {Dual, "mangle -L apply_vpn_mark -w"},
       {Dual, "mangle -F apply_vpn_mark -w"},
       {Dual, "mangle -X apply_vpn_mark -w"},
-      {Dual, "mangle -L check_routing_mark -w"},
-      {Dual, "mangle -F check_routing_mark -w"},
-      {Dual, "mangle -X check_routing_mark -w"},
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
@@ -809,9 +784,6 @@ TEST(DatapathTest, StartStopConnectionPinning) {
   MockFirewall firewall;
 
   // Setup
-  Verify_iptables(runner, Dual,
-                  "mangle -A check_routing_mark -o eth0 -m mark ! "
-                  "--mark 0x03eb0000/0xffff0000 -w");
   Verify_iptables(runner, Dual, "mangle -N POSTROUTING_eth0 -w");
   Verify_iptables(runner, Dual, "mangle -F POSTROUTING_eth0 -w",
                   2 /* Start and Stop */);
@@ -832,9 +804,6 @@ TEST(DatapathTest, StartStopConnectionPinning) {
                   "mangle -D POSTROUTING -o eth0 -j POSTROUTING_eth0 -w");
   Verify_iptables(runner, Dual, "mangle -X POSTROUTING_eth0 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -D check_routing_mark -o eth0 -m mark ! "
-                  "--mark 0x03eb0000/0xffff0000 -w");
-  Verify_iptables(runner, Dual,
                   "mangle -D PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
 
@@ -854,9 +823,6 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   2 /* Start and Stop */);
   Verify_iptables(runner, Dual,
                   "mangle -A POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -A check_routing_mark -o arcbr0 -m mark ! "
-                  "--mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(runner, Dual,
                   "mangle -A POSTROUTING_arcbr0 -j CONNMARK "
                   "--set-mark 0x03ed0000/0xffff0000 -w");
@@ -879,9 +845,6 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   Verify_iptables(runner, Dual,
                   "mangle -D POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
   Verify_iptables(runner, Dual, "mangle -X POSTROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D check_routing_mark -o arcbr0 -m mark ! "
-                  "--mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(
       runner, Dual,
       "mangle -D apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
@@ -911,9 +874,6 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(runner, Dual,
                   "mangle -A POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
   Verify_iptables(runner, Dual,
-                  "mangle -A check_routing_mark -o tun0 -m mark ! "
-                  "--mark 0x03ed0000/0xffff0000 -w");
-  Verify_iptables(runner, Dual,
                   "mangle -A POSTROUTING_tun0 -j CONNMARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
   Verify_iptables(
@@ -933,9 +893,6 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(runner, Dual,
                   "mangle -D POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
   Verify_iptables(runner, Dual, "mangle -X POSTROUTING_tun0 -w");
-  Verify_iptables(runner, Dual,
-                  "mangle -D check_routing_mark -o tun0 -m mark ! "
-                  "--mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(
       runner, Dual,
       "mangle -D apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");

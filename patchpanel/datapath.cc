@@ -50,7 +50,6 @@ constexpr std::array<const char*, 6> kPhysicalIfnamePrefixes{
 
 constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
-constexpr char kCheckRoutingMarkChain[] = "check_routing_mark";
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
 constexpr char kRedirectDnsChain[] = "redirect_dns";
 
@@ -181,13 +180,6 @@ void Datapath::Start() {
   if (!ModifyConnmarkRestore(IpFamily::Dual, "OUTPUT", "-A", "" /*iif*/,
                              kFwmarkRoutingMask))
     LOG(ERROR) << "Failed to add OUTPUT CONNMARK restore rule";
-  // b/177787823 Also restore the routing tag after routing has taken place so
-  // that packets pre-tagged with the VPN routing tag are in sync with their
-  // associated CONNMARK routing tag. This is necessary to correctly identify
-  // packets exiting through the wrong interface.
-  if (!ModifyConnmarkRestore(IpFamily::Dual, "POSTROUTING", "-A", "" /*iif*/,
-                             kFwmarkRoutingMask))
-    LOG(ERROR) << "Failed to add POSTROUTING CONNMARK restore rule";
 
   // Set up a mangle chain used in OUTPUT for applying the fwmark TrafficSource
   // tag and tagging the local traffic that should be routed through a VPN.
@@ -228,20 +220,6 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
                   "connections";
 
-  // Sets up a mangle chain used in POSTROUTING for checking consistency between
-  // the routing tag and the output interface.
-  if (!AddChain(IpFamily::Dual, "mangle", kCheckRoutingMarkChain))
-    LOG(ERROR) << "Failed to set up " << kCheckRoutingMarkChain
-               << " mangle chain";
-  // b/177787823 If it already exists, the routing tag of any traffic exiting an
-  // interface (physical or VPN) must match the routing tag of that interface.
-  if (!ModifyIptables(IpFamily::Dual, "mangle",
-                      {"-A", "POSTROUTING", "-m", "mark", "!", "--mark",
-                       "0x0/" + kFwmarkRoutingMask.ToString(), "-j",
-                       kCheckRoutingMarkChain, "-w"}))
-    LOG(ERROR) << "Failed to add POSTROUTING jump rule to "
-               << kCheckRoutingMarkChain;
-
   // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS queries
   // of system services. When a VPN is connected, a query routed through a
   // physical network is redirected to the primary nameserver of that network.
@@ -257,11 +235,6 @@ void Datapath::Start() {
                          "-j", "ACCEPT", "-w"}))
       LOG(ERROR) << "Failed to set up connmark bypass rule for " << type
                  << " packets in OUTPUT";
-    if (!ModifyIptables(IpFamily::IPv6, "mangle",
-                        {"-I", kCheckRoutingMarkChain, "-p", "icmpv6",
-                         "--icmpv6-type", type, "-j", "RETURN", "-w"}))
-      LOG(ERROR) << "Failed to set up connmark bypass rule for " << type
-                 << " packets in " << kCheckRoutingMarkChain;
   }
 }
 
@@ -308,7 +281,6 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "mangle", "PREROUTING", false},
       {IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain, true},
       {IpFamily::Dual, "mangle", kApplyVpnMarkChain, true},
-      {IpFamily::Dual, "mangle", kCheckRoutingMarkChain, true},
       {IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain, true},
       {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
       {IpFamily::IPv4, "nat", "POSTROUTING", false},
@@ -976,13 +948,6 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
   Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
   LOG(INFO) << "Start connection pinning on " << ext_ifname
             << " fwmark=" << routing_mark.ToString();
-  if (!ModifyIptables(
-          IpFamily::Dual, "mangle",
-          {"-A", kCheckRoutingMarkChain, "-o", ext_ifname, "-m", "mark", "!",
-           "--mark",
-           routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(),
-           "-w"}))
-    LOG(ERROR) << "Could not set fwmark routing filter rule for " << ext_ifname;
   // Set in CONNMARK the routing tag associated with |ext_ifname|.
   if (!ModifyConnmarkSet(IpFamily::Dual, subchain, "-A", routing_mark,
                          kFwmarkRoutingMask))
@@ -1012,20 +977,6 @@ void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
                              kFwmarkAllSourcesMask))
     LOG(ERROR) << "Could not remove fwmark source tagging rule for return "
                   "traffic received on "
-               << ext_ifname;
-
-  // TODO(b/183679000) Reorganize these rules such that they can be removed
-  // with just the interface name.
-  Fwmark routing_mark = CachedRoutingFwmark(ext_ifname);
-  LOG(INFO) << "Stop connection pinning on " << ext_ifname
-            << " fwmark=" << routing_mark.ToString();
-  if (!ModifyIptables(
-          IpFamily::Dual, "mangle",
-          {"-D", kCheckRoutingMarkChain, "-o", ext_ifname, "-m", "mark", "!",
-           "--mark",
-           routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(),
-           "-w"}))
-    LOG(ERROR) << "Could not remove fwmark routing filter rule for "
                << ext_ifname;
 }
 
