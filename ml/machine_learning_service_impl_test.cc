@@ -1288,6 +1288,156 @@ MATCHER_P(StructPtrEq, n, "") {
   return n.get().Equals(arg);
 }
 
+// Test class for WebPlatformHandwritingRecognizerTest.
+class WebPlatformHandwritingRecognizerTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    // Nothing to test on an unsupported platform.
+    if (!ml::HandwritingLibrary::IsHandwritingLibraryUnitTestSupported()) {
+      return;
+    }
+    // Set ml_service.
+    ml_service_impl_ = std::make_unique<MachineLearningServiceImplForTesting>(
+        ml_service_.BindNewPipeAndPassReceiver());
+
+    // Set default inputs.
+    hints_ = chromeos::machine_learning::web_platform::mojom::HandwritingHints::
+        New();
+    hints_->alternatives = 1u;
+    auto stroke = chromeos::machine_learning::web_platform::mojom::
+        HandwritingStroke::New();
+    for (int i = 0; i < 23; ++i) {
+      auto point = chromeos::machine_learning::web_platform::mojom::
+          HandwritingPoint::New();
+      auto location = gfx::mojom::PointF::New();
+      location->x = kHandwritingTestPoints[i][0];
+      location->y = kHandwritingTestPoints[i][1];
+      point->location = std::move(location);
+      stroke->points.push_back(std::move(point));
+    }
+    strokes_.push_back(std::move(stroke));
+  }
+
+  // recognizer_ should be loaded successfully for this `language`.
+  void LoadRecognizerWithLanguage(const std::string& language) {
+    bool model_callback_done = false;
+    auto constraint = chromeos::machine_learning::web_platform::mojom::
+        HandwritingModelConstraint::New();
+    constraint->languages.push_back(language);
+    ml_service_->LoadWebPlatformHandwritingModel(
+        std::move(constraint), recognizer_.BindNewPipeAndPassReceiver(),
+        base::Bind(
+            [](bool* model_callback_done,
+               const LoadHandwritingModelResult result) {
+              ASSERT_EQ(result, LoadHandwritingModelResult::OK);
+              *model_callback_done = true;
+            },
+            &model_callback_done));
+    base::RunLoop().RunUntilIdle();
+    ASSERT_TRUE(model_callback_done);
+    ASSERT_TRUE(recognizer_.is_bound());
+  }
+
+  // Recognizing on the strokes_ and hints_, should produce expected text and
+  // score.
+  void ExpectRecognizeResult(const std::string& text) {
+    // Perform inference.
+    bool infer_callback_done = false;
+    // Make a copy of strokes and hints to avoid them being cleared after
+    recognizer_->GetPrediction(
+        GetDefaultStrokes(), hints_.Clone(),
+        base::Bind(
+            [](bool* infer_callback_done, const std::string& text,
+               base::Optional<
+                   std::vector<chromeos::machine_learning::web_platform::mojom::
+                                   HandwritingPredictionPtr>> predictions) {
+              // Check that the inference succeeded and gives
+              // the expected number of outputs.
+              ASSERT_TRUE(predictions.has_value());
+              ASSERT_EQ(predictions->size(), 1u);
+              EXPECT_EQ(predictions->at(0)->text, text);
+              *infer_callback_done = true;
+            },
+            &infer_callback_done, text));
+    base::RunLoop().RunUntilIdle();
+    ASSERT_TRUE(infer_callback_done);
+  }
+
+  //  Make a copy of strokes_ to avoid them being cleared after
+  // `GetPrediction()`.
+  std::vector<
+      chromeos::machine_learning::web_platform::mojom::HandwritingStrokePtr>
+  GetDefaultStrokes() {
+    std::vector<
+        chromeos::machine_learning::web_platform::mojom::HandwritingStrokePtr>
+        strokes_clone;
+    for (const auto& stroke : strokes_) {
+      strokes_clone.push_back(stroke.Clone());
+    }
+    return strokes_clone;
+  }
+
+  std::unique_ptr<MachineLearningServiceImplForTesting> ml_service_impl_;
+  mojo::Remote<MachineLearningService> ml_service_;
+  mojo::Remote<
+      chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>
+      recognizer_;
+  std::vector<
+      chromeos::machine_learning::web_platform::mojom::HandwritingStrokePtr>
+      strokes_;
+  chromeos::machine_learning::web_platform::mojom::HandwritingHintsPtr hints_;
+};
+
+// Tests that the web_platform::mojom::HandwritingRecognizer::GetPrediction
+// returns expected scores.
+TEST_F(WebPlatformHandwritingRecognizerTest, GetExpectedRecognizedText) {
+  // Nothing to test on an unsupported platform.
+  if (!ml::HandwritingLibrary::IsHandwritingLibraryUnitTestSupported()) {
+    return;
+  }
+
+  // Load Recognizer successfully.
+  LoadRecognizerWithLanguage("en");
+
+  // Run Recognition on the default strokes_.
+  ExpectRecognizeResult("a");
+
+  // Modify the strokes_ by setting fake time.
+  ASSERT_EQ(strokes_.size(), 1u);
+  ASSERT_EQ(strokes_[0]->points.size(), 23u);
+  for (int i = 0; i < 23; ++i) {
+    strokes_[0]->points[i]->t = base::TimeDelta::FromMilliseconds(i * i * 100);
+  }
+  ExpectRecognizeResult("a");
+}
+
+TEST_F(WebPlatformHandwritingRecognizerTest, FailOnEmptyStrokes) {
+  // Nothing to test on an unsupported platform.
+  if (!ml::HandwritingLibrary::IsHandwritingLibraryUnitTestSupported()) {
+    return;
+  }
+
+  // Load Recognizer successfully.
+  LoadRecognizerWithLanguage("en");
+
+  // Perform inference should return an error.
+  bool infer_callback_done = false;
+  recognizer_->GetPrediction(
+      {}, hints_.Clone(),
+      base::Bind(
+          [](bool* infer_callback_done,
+             base::Optional<
+                 std::vector<chromeos::machine_learning::web_platform::mojom::
+                                 HandwritingPredictionPtr>> predictions) {
+            // Check that the inference failed.
+            EXPECT_FALSE(predictions.has_value());
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
 // Tests the SODA CrOS mojo callback for the fake implementation can return
 // expected error string.
 TEST(SODARecognizerTest, FakeImplMojoCallback) {

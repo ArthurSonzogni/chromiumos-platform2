@@ -34,6 +34,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
     use_pic = true
   }
   sources = [
+    "mojom/geometry.mojom",
     "mojom/grammar_checker.mojom",
     "mojom/graph_executor.mojom",
     "mojom/handwriting_recognizer.mojom",
@@ -44,6 +45,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
     "mojom/text_classifier.mojom",
     "mojom/text_suggester.mojom",
     "mojom/time.mojom",
+    "mojom/web_platform_handwriting.mojom",
   ]
   mojo_extra_args = [
     "--typemap",
@@ -116,6 +118,8 @@ static_library("ml_common") {
     "text_suggester_proto_mojom_conversion.cc",
     "text_suggestions.cc",
     "util.cc",
+    "web_platform_handwriting_proto_mojom_conversion.cc",
+    "web_platform_handwriting_recognizer_impl.cc",
   ]
   include_dirs = [
     "${sysroot}/usr/include/icu-chrome/common",
@@ -226,6 +230,7 @@ if (use.test) {
       "text_suggester_proto_mojom_conversion_test.cc",
       "text_suggestions_test.cc",
       "util_test.cc",
+      "web_platform_handwriting_proto_mojom_conversion_test.cc",
     ]
     configs += [ "//common-mk:test" ]
     include_dirs = [ "${sysroot}/usr/include/tensorflow" ]

@@ -28,9 +28,9 @@ constexpr char kLanguageCodeGesture[] = "gesture_in_context";
 
 // Returns HandwritingRecognizerModelPaths based on the `spec`.
 HandwritingRecognizerModelPaths GetModelPaths(
-    HandwritingRecognizerSpecPtr spec, const base::FilePath& model_path) {
+    const std::string& language, const base::FilePath& model_path) {
   HandwritingRecognizerModelPaths paths;
-  if (spec->language == kLanguageCodeEn) {
+  if (language == kLanguageCodeEn) {
     paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
     paths.set_seg_model_path(
         model_path.Append("latin_indy_seg.tflite").value());
@@ -41,7 +41,7 @@ HandwritingRecognizerModelPaths GetModelPaths(
     return paths;
   }
 
-  DCHECK_EQ(spec->language, kLanguageCodeGesture);
+  DCHECK_EQ(language, kLanguageCodeGesture);
   paths.set_reco_model_path(model_path.Append("gic.reco_model.tflite").value());
   paths.set_recospec_path(model_path.Append("gic.recospec.pb").value());
   return paths;
@@ -117,8 +117,7 @@ HandwritingRecognizer HandwritingLibrary::CreateHandwritingRecognizer() const {
 }
 
 bool HandwritingLibrary::LoadHandwritingRecognizer(
-    HandwritingRecognizer const recognizer,
-    HandwritingRecognizerSpecPtr spec) const {
+    HandwritingRecognizer const recognizer, const std::string& language) const {
   DCHECK(status_ == Status::kOk);
 
   // options is not used for now.
@@ -126,7 +125,7 @@ bool HandwritingLibrary::LoadHandwritingRecognizer(
       HandwritingRecognizerOptions().SerializeAsString();
 
   const std::string paths_pb =
-      GetModelPaths(std::move(spec), model_path_).SerializeAsString();
+      GetModelPaths(language, model_path_).SerializeAsString();
   return (*load_handwriting_recognizer_)(recognizer, options_pb.data(),
                                          options_pb.size(), paths_pb.data(),
                                          paths_pb.size());

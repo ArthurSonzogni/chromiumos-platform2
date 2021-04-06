@@ -72,8 +72,7 @@ TEST(HandwritingLibraryTest, ExampleRequest) {
   for (int i = 0; i < languages.size(); ++i) {
     HandwritingRecognizer const recognizer =
         instance->CreateHandwritingRecognizer();
-    ASSERT_TRUE(instance->LoadHandwritingRecognizer(
-        recognizer, HandwritingRecognizerSpec::New(languages[i])));
+    ASSERT_TRUE(instance->LoadHandwritingRecognizer(recognizer, languages[i]));
 
     chrome_knowledge::HandwritingRecognizerLabeledRequests test_data;
     std::string buf;

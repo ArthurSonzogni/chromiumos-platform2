@@ -97,10 +97,8 @@ class HandwritingLibrary {
   // of the model (machine learning models, configurations etc.).
   // Returns true if HandwritingRecognizer is correctly loaded and
   // initialized. Returns false otherwise.
-  bool LoadHandwritingRecognizer(
-      HandwritingRecognizer recognizer,
-      chromeos::machine_learning::mojom::HandwritingRecognizerSpecPtr spec)
-      const;
+  bool LoadHandwritingRecognizer(HandwritingRecognizer recognizer,
+                                 const std::string& language) const;
   // Sends the specified `request` to `recognizer`, if succeeds, `result` (which
   // should not be null) is populated with the recognition result.
   // Returns true if succeeds, otherwise returns false.
