@@ -16,14 +16,42 @@ end script
 Can be replaced with a `tmpfiles.d` file with:
 
 ```bash
-d /run/dbus 0755 messagebus messagebus
-d /var/lib/dbus/ 0755 root root
+d= /run/dbus 0755 messagebus messagebus
+d= /var/lib/dbus 0755 root root
 ```
+
+This configuration will take care of creating the listed paths with the correct
+type, ownership, permissions, and SELinux labels. If the type is wrong (e.g. a
+symlink instead of a directory) the path will be recreated. If the path already
+exists with the wrong ownership or permissions they will be changed to match the
+configuration. Remember the root-fs is read-only and uses verity for integrity
+checking so you cannot create or change paths on it without building a new
+image.
+
+Also, tmpfiles.d checks to make sure symlinks in the parent directories paths do
+not cross from lower privilege to higher privilege. Directories owned by root
+are allowed to contain symlinks to directories owned by a different user id. If
+the parent directory is not owned by root and the symlink points to a path owned
+by a different user, it is treated as an unsafe transition. Currently, an unsafe
+transition in a configured path will cause tmpfiles.d to fail with an error and
+chromeos_startup will trigger a cleanup of the stateful partition.
 
 This file should have the `.conf` extension and be installed to
 `/usr/lib/tmpfiles.d` using `dotmpfiles` or `newtmpfiles` from
 [tmpfiles.eclass]. For more information about the `conf` format see the
 [upstream documentation](https://www.freedesktop.org/software/systemd/man/tmpfiles.d.html).
+
+***note
+**Note:**
+The = action is still in the process of being upstreamed so upstream
+documentation may not exist yet. It enables a feature that checks file types
+for the path if it exists or the first existing parent path. If the type check
+fails, the offending path is removed before executing the creation rule.
+
+It does not apply to all rules, but specifically to ones that create or open
+file-system objects as opposed to ones that change permissions for or delete a
+glob path.
+***
 
 The preferred location of these config files in the source tree is a
 subdirectory of the parent project named `tmpfiles.d`.
