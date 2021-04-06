@@ -16,13 +16,12 @@ namespace cros {
 
 // The bitmask for each quirk.
 enum : uint32_t {
-  kQuirkMonocle = 1 << 0,
-  kQuirkPreferMjpeg = 1 << 1,
-  kQuirkRestartOnTimeout = 1 << 2,
-  kQuirkReportLeastFpsRanges = 1 << 3,
-  kQuirkDisableFrameRateSetting = 1 << 4,
-  kQuirkV1Device = 1 << 5,
-  kQuirkUserSpaceTimestamp = 1 << 6,
+  kQuirkPreferMjpeg = 1 << 0,
+  kQuirkRestartOnTimeout = 1 << 1,
+  kQuirkReportLeastFpsRanges = 1 << 2,
+  kQuirkDisableFrameRateSetting = 1 << 3,
+  kQuirkV1Device = 1 << 4,
+  kQuirkUserSpaceTimestamp = 1 << 5,
 };
 
 uint32_t GetQuirks(const std::string& vid, const std::string& pid);

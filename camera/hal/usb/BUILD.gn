@@ -23,10 +23,6 @@ pkg_config("target_defaults") {
     "re2",
   ]
   configs = [ "//camera/build:cros_camera_common" ]
-  if (use.usb_camera_monocle) {
-    pkg_deps += [ "librealtek-sdk" ]
-    defines = [ "MONOCLE_QUIRKS=1" ]
-  }
 }
 
 generate_mojom_bindings("libcamera_hal_mojom") {
@@ -49,15 +45,11 @@ shared_library("libcamera_hal") {
     "image_processor.cc",
     "metadata_handler.cc",
     "quirks.cc",
-    "sensor_handler.cc",
     "stream_format.cc",
     "test_pattern.cc",
     "v4l2_camera_device.cc",
     "vendor_tag.cc",
   ]
-  if (use.usb_camera_monocle) {
-    sources += [ "sensor_handler_monocle.cc" ]
-  }
   configs += [ ":target_defaults" ]
   deps = [ ":libcamera_hal_mojom" ]
 }

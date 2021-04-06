@@ -221,8 +221,6 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& static_metadata,
     template_settings_[i] = CreateDefaultRequestSettings(i);
   }
 
-  sensor_handler_ = SensorHandler::Create(device_info, supported_formats);
-
   is_awb_control_supported_ = V4L2CameraDevice::IsControlSupported(
       device_info_.device_path, kControlWhiteBalanceTemperature);
   awb_temperature_ = GetAvailableAwbTemperatures(device_info);
@@ -893,13 +891,6 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   update_request(ANDROID_CONTROL_AE_ANTIBANDING_MODE,
                  ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO);
 
-  // Set vendor tags for specified boards.
-  if (device_info.quirks & kQuirkMonocle) {
-    int32_t timestamp_sync =
-        static_cast<int32_t>(mojom::CameraSensorSyncTimestamp::NEAREST);
-    update_static(kVendorTagTimestampSync, timestamp_sync);
-  }
-
   ControlInfo info;
 
   if (V4L2CameraDevice::QueryControl(device_info.device_path,
@@ -1192,8 +1183,7 @@ int MetadataHandler::PreHandleRequest(int frame_number,
       LOGF(WARNING) << "Unsupported AWB mode:" << mode;
   }
 
-  const int64_t rolling_shutter_skew =
-      sensor_handler_->GetRollingShutterSkew(resolution);
+  const int64_t rolling_shutter_skew = 33'300'000;
   update_request(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, rolling_shutter_skew);
 
   if (metadata->exists(kVendorTagControlBrightness)) {
@@ -1233,16 +1223,17 @@ int MetadataHandler::PreHandleRequest(int frame_number,
 
   if (metadata->exists(ANDROID_CONTROL_AE_MODE)) {
     camera_metadata_entry entry = metadata->find(ANDROID_CONTROL_AE_MODE);
-    int32_t exposure_time;
     switch (entry.data.u8[0]) {
-      case ANDROID_CONTROL_AE_MODE_ON:
+      case ANDROID_CONTROL_AE_MODE_ON: {
         device_->SetExposureTimeHundredUs(kExposureTimeAuto);
-        update_request(ANDROID_SENSOR_EXPOSURE_TIME,
-                       sensor_handler_->GetExposureTime(resolution));
+        const int64_t exposure_time = 16'600'000;
+        update_request(ANDROID_SENSOR_EXPOSURE_TIME, exposure_time);
         break;
+      }
 
-      case ANDROID_CONTROL_AE_MODE_OFF:
+      case ANDROID_CONTROL_AE_MODE_OFF: {
         if (metadata->exists(ANDROID_SENSOR_EXPOSURE_TIME)) {
+          int32_t exposure_time;
           entry = metadata->find(ANDROID_SENSOR_EXPOSURE_TIME);
           exposure_time =
               static_cast<int32_t>(entry.data.i64[0] / (100 * 1000));  // ns
@@ -1255,6 +1246,7 @@ int MetadataHandler::PreHandleRequest(int frame_number,
           LOGF(WARNING) << "There is no ANDROID_SENSOR_EXPOSURE_TIME metadata";
         }
         break;
+      }
 
       default:
         LOGF(WARNING) << "Unsupport AE mode " << entry.data.u8[0];

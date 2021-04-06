@@ -67,7 +67,6 @@ std::vector<T> ParseCommaSeparated(const std::string& value) {
 
 uint32_t ParseQuirks(const std::string& value) {
   static const std::map<std::string, uint32_t> kNameMap = {
-      {"monocle", kQuirkMonocle},
       {"prefer_mjpeg", kQuirkPreferMjpeg},
       {"report_least_fps_ranges", kQuirkReportLeastFpsRanges},
       {"v1device", kQuirkV1Device},

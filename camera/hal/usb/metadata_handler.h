@@ -15,7 +15,6 @@
 #include <hardware/camera3.h>
 
 #include "hal/usb/common_types.h"
-#include "hal/usb/sensor_handler.h"
 #include "hal/usb/v4l2_camera_device.h"
 
 namespace cros {
@@ -124,9 +123,6 @@ class MetadataHandler {
   bool af_trigger_;
 
   int max_supported_fps_;
-
-  // Sensor handler to get sensor related metadata.
-  std::unique_ptr<SensorHandler> sensor_handler_;
 
   // Awb mode to color temperature map
   AwbModeToTemperatureMap awb_temperature_;
