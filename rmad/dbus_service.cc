@@ -45,68 +45,25 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_->AddOrGetInterface(kRmadInterfaceName);
 
-  dbus_interface->AddMethodHandler(kGetCurrentStateMethod,
-                                   base::Unretained(this),
-                                   &DBusService::HandleGetCurrentState);
-  dbus_interface->AddMethodHandler(kTransitionNextStateMethod,
-                                   base::Unretained(this),
-                                   &DBusService::HandleTransitionNextState);
-  dbus_interface->AddMethodHandler(kTransitionPreviousStateMethod,
-                                   base::Unretained(this),
-                                   &DBusService::HandleTransitionPreviousState);
-  dbus_interface->AddMethodHandler(kAbortRmaMethod, base::Unretained(this),
-                                   &DBusService::HandleAbortRma);
+  dbus_interface->AddMethodHandler(
+      kGetCurrentStateMethod, base::Unretained(this),
+      &DBusService::HandleMethod<GetStateReply,
+                                 &RmadInterface::GetCurrentState>);
+  dbus_interface->AddMethodHandler(
+      kTransitionNextStateMethod, base::Unretained(this),
+      &DBusService::HandleMethod<TransitionNextStateRequest, GetStateReply,
+                                 &RmadInterface::TransitionNextState>);
+  dbus_interface->AddMethodHandler(
+      kTransitionPreviousStateMethod, base::Unretained(this),
+      &DBusService::HandleMethod<GetStateReply,
+                                 &RmadInterface::TransitionPreviousState>);
+  dbus_interface->AddMethodHandler(
+      kAbortRmaMethod, base::Unretained(this),
+      &DBusService::HandleMethod<AbortRmaRequest, AbortRmaReply,
+                                 &RmadInterface::AbortRma>);
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
-}
-
-void DBusService::HandleGetCurrentState(
-    std::unique_ptr<GetStateResponse> response) {
-  // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-  using SharedResponsePointer = std::shared_ptr<GetStateResponse>;
-  rmad_interface_->GetCurrentState(base::Bind(
-      &DBusService::ReplyAndQuit<GetStateResponse, GetStateReply>,
-      base::Unretained(this), SharedResponsePointer(std::move(response))));
-}
-
-void DBusService::HandleTransitionNextState(
-    std::unique_ptr<GetStateResponse> response,
-    const TransitionNextStateRequest& request) {
-  // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-  using SharedResponsePointer = std::shared_ptr<GetStateResponse>;
-  rmad_interface_->TransitionNextState(
-      request,
-      base::Bind(&DBusService::ReplyAndQuit<GetStateResponse, GetStateReply>,
-                 base::Unretained(this),
-                 SharedResponsePointer(std::move(response))));
-}
-
-void DBusService::HandleTransitionPreviousState(
-    std::unique_ptr<GetStateResponse> response) {
-  // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-  using SharedResponsePointer = std::shared_ptr<GetStateResponse>;
-  rmad_interface_->TransitionPreviousState(base::Bind(
-      &DBusService::ReplyAndQuit<GetStateResponse, GetStateReply>,
-      base::Unretained(this), SharedResponsePointer(std::move(response))));
-}
-
-void DBusService::HandleAbortRma(std::unique_ptr<AbortRmaResponse> response,
-                                 const AbortRmaRequest& request) {
-  // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-  using SharedResponsePointer = std::shared_ptr<AbortRmaResponse>;
-  rmad_interface_->AbortRma(
-      request,
-      base::Bind(&DBusService::ReplyAndQuit<AbortRmaResponse, AbortRmaReply>,
-                 base::Unretained(this),
-                 SharedResponsePointer(std::move(response))));
-}
-
-template <typename ResponseType, typename ReplyProtobufType>
-void DBusService::ReplyAndQuit(std::shared_ptr<ResponseType> response,
-                               const ReplyProtobufType& reply) {
-  response->Return(reply);
-  PostQuitTask();
 }
 
 void DBusService::PostQuitTask() {

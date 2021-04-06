@@ -6,6 +6,7 @@
 #define RMAD_DBUS_SERVICE_H_
 
 #include <memory>
+#include <utility>
 
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -36,28 +37,57 @@ class DBusService : public brillo::DBusServiceDaemon {
  private:
   friend class DBusServiceTest;
 
-  using GetStateResponse =
-      brillo::dbus_utils::DBusMethodResponse<const GetStateReply&>;
-  // Handler for GetCurrentState D-Bus call.
-  void HandleGetCurrentState(std::unique_ptr<GetStateResponse> response);
+  template <typename... Types>
+  using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
 
-  // Handler for TransitionNextState D-Bus call.
-  void HandleTransitionNextState(std::unique_ptr<GetStateResponse> response,
-                                 const TransitionNextStateRequest& request);
+  // Template for handling D-Bus methods.
+  template <typename RequestProtobufType, typename ReplyProtobufType>
+  using HandlerFunction = void (RmadInterface::*)(
+      const RequestProtobufType&,
+      const base::Callback<void(const ReplyProtobufType&)>&);
 
-  // Handler for TransitionPreviousState D-Bus call.
-  void HandleTransitionPreviousState(
-      std::unique_ptr<GetStateResponse> response);
+  template <
+      typename RequestProtobufType,
+      typename ReplyProtobufType,
+      DBusService::HandlerFunction<RequestProtobufType, ReplyProtobufType> func>
+  void HandleMethod(
+      std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response,
+      const RequestProtobufType& request) {
+    // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
+    using SharedResponsePointer =
+        std::shared_ptr<DBusMethodResponse<ReplyProtobufType>>;
+    (rmad_interface_->*func)(
+        request, base::Bind(&DBusService::ReplyAndQuit<ReplyProtobufType>,
+                            base::Unretained(this),
+                            SharedResponsePointer(std::move(response))));
+  }
 
-  // Handler for AbortRma D-Bus call.
-  using AbortRmaResponse =
-      brillo::dbus_utils::DBusMethodResponse<const AbortRmaReply&>;
-  void HandleAbortRma(std::unique_ptr<AbortRmaResponse> response,
-                      const AbortRmaRequest& request);
+  // Template for handling D-Bus methods without request protobuf.
+  template <typename ReplyProtobufType>
+  using HandlerFunctionEmptyRequest = void (RmadInterface::*)(
+      const base::Callback<void(const ReplyProtobufType&)>&);
 
-  template <typename ResponseType, typename ReplyProtobufType>
-  void ReplyAndQuit(std::shared_ptr<ResponseType> response,
-                    const ReplyProtobufType& reply);
+  template <typename ReplyProtobufType,
+            DBusService::HandlerFunctionEmptyRequest<ReplyProtobufType> func>
+  void HandleMethod(
+      std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response) {
+    // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
+    using SharedResponsePointer =
+        std::shared_ptr<DBusMethodResponse<ReplyProtobufType>>;
+    (rmad_interface_->*func)(base::Bind(
+        &DBusService::ReplyAndQuit<ReplyProtobufType>, base::Unretained(this),
+        SharedResponsePointer(std::move(response))));
+  }
+
+  // Template for sending out the reply and exit the daemon.
+  template <typename ReplyProtobufType>
+  void ReplyAndQuit(
+      std::shared_ptr<DBusMethodResponse<ReplyProtobufType>> response,
+      const ReplyProtobufType& reply) {
+    response->Return(reply);
+    PostQuitTask();
+  }
+
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();
 
