@@ -73,3 +73,8 @@ umask: 1
 uname: 1
 unlink: 1
 write: 1
+# rt_sigprocmask, tgkill: Used for direct abort and CHECK()/LOG(FATAL).
+rt_sigprocmask: 1
+tgkill: 1
+# futex: Used by CHECK()/LOG(FATAL).
+futex: 1
