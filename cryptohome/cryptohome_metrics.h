@@ -249,14 +249,116 @@ enum class DiskCleanupResult {
 // https://uma.googleplex.com/histograms/?histograms=Platform.Cryptohome.DeprecatedApiCalled
 enum class DeprecatedApiEvent {
   kInitializeCastKey = 0,
-  kGetBootAttribute,            // 1
-  kSetBootAttribute,            // 2
-  kFlushAndSignBootAttributes,  // 3
-  kSignBootLockbox,             // 4
-  kVerifyBootLockbox,           // 5
-  kFinalizeBootLockbox,         // 6
-  kTpmIsBeingOwned,             // 7
-  kMaxValue                     // 8
+  kGetBootAttribute,                                // 1
+  kSetBootAttribute,                                // 2
+  kFlushAndSignBootAttributes,                      // 3
+  kSignBootLockbox,                                 // 4
+  kVerifyBootLockbox,                               // 5
+  kFinalizeBootLockbox,                             // 6
+  kTpmIsBeingOwned,                                 // 7
+  kProxyIsMounted,                                  // 8
+  kProxyIsMountedForUser,                           // 9
+  kProxyListKeysEx,                                 // 10
+  kProxyCheckKeyEx,                                 // 11
+  kProxyRemoveKeyEx,                                // 12
+  kProxyMassRemoveKeys,                             // 13
+  kProxyGetKeyDataEx,                               // 14
+  kProxyMigrateKeyEx,                               // 15
+  kProxyAddKeyEx,                                   // 16
+  kProxyAddDataRestoreKey,                          // 17
+  kProxyRemoveEx,                                   // 18
+  kProxyGetSystemSalt,                              // 19
+  kProxyGetSanitizedUsername,                       // 20
+  kProxyMountEx,                                    // 21
+  kProxyMountGuestEx,                               // 22
+  kProxyRenameCryptohome,                           // 23
+  kProxyGetAccountDiskUsage,                        // 24
+  kProxyUnmountEx,                                  // 25
+  kProxyUpdateCurrentUserActivityTimestamp,         // 26
+  kProxyTpmIsReady,                                 // 27
+  kProxyTpmIsEnabled,                               // 28
+  kProxyTpmGetPassword,                             // 29
+  kProxyTpmIsOwned,                                 // 30
+  kProxyTpmIsBeingOwned,                            // 31
+  kProxyTpmCanAttemptOwnership,                     // 32
+  kProxyTpmClearStoredPassword,                     // 33
+  kProxyTpmIsAttestationPrepared,                   // 34
+  kProxyTpmAttestationGetEnrollmentPreparationsEx,  // 35
+  kProxyTpmVerifyAttestationData,                   // 36
+  kProxyTpmVerifyEK,                                // 37
+  kProxyTpmAttestationCreateEnrollRequest,          // 38
+  kProxyAsyncTpmAttestationCreateEnrollRequest,     // 39
+  kProxyTpmAttestationEnroll,                       // 40
+  kProxyAsyncTpmAttestationEnroll,                  // 41
+  kProxyTpmAttestationEnrollEx,                     // 42
+  kProxyAsyncTpmAttestationEnrollEx,                // 43
+  kProxyTpmAttestationCreateCertRequest,            // 44
+  kProxyAsyncTpmAttestationCreateCertRequest,       // 45
+  kProxyTpmAttestationFinishCertRequest,            // 46
+  kProxyAsyncTpmAttestationFinishCertRequest,       // 47
+  kProxyTpmAttestationGetCertificateEx,             // 48
+  kProxyAsyncTpmAttestationGetCertificateEx,        // 49
+  kProxyTpmIsAttestationEnrolled,                   // 50
+  kProxyTpmAttestationDoesKeyExist,                 // 51
+  kProxyTpmAttestationGetCertificate,               // 52
+  kProxyTpmAttestationGetPublicKey,                 // 53
+  kProxyTpmAttestationGetEnrollmentId,              // 54
+  kProxyTpmAttestationRegisterKey,                  // 55
+  kProxyTpmAttestationSignEnterpriseChallenge,      // 56
+  kProxyTpmAttestationSignEnterpriseVaChallenge,    // 57
+  kProxyTpmAttestationSignEnterpriseVaChallengeV2,  // 58
+  kProxyTpmAttestationSignSimpleChallenge,          // 59
+  kProxyTpmAttestationGetKeyPayload,                // 60
+  kProxyTpmAttestationSetKeyPayload,                // 61
+  kProxyTpmAttestationDeleteKeys,                   // 62
+  kProxyTpmAttestationDeleteKey,                    // 63
+  kProxyTpmAttestationGetEK,                        // 64
+  kProxyTpmAttestationResetIdentity,                // 65
+  kProxyTpmGetVersionStructured,                    // 66
+  kProxyPkcs11IsTpmTokenReady,                      // 67
+  kProxyPkcs11GetTpmTokenInfo,                      // 68
+  kProxyPkcs11GetTpmTokenInfoForUser,               // 69
+  kProxyPkcs11Terminate,                            // 70
+  kProxyGetStatusString,                            // 71
+  kProxyInstallAttributesGet,                       // 72
+  kProxyInstallAttributesSet,                       // 73
+  kProxyInstallAttributesCount,                     // 74
+  kProxyInstallAttributesFinalize,                  // 75
+  kProxyInstallAttributesIsReady,                   // 76
+  kProxyInstallAttributesIsSecure,                  // 77
+  kProxyInstallAttributesIsInvalid,                 // 78
+  kProxyInstallAttributesIsFirstInstall,            // 79
+  kProxySignBootLockbox,                            // 80
+  kProxyVerifyBootLockbox,                          // 81
+  kProxyFinalizeBootLockbox,                        // 82
+  kProxyGetBootAttribute,                           // 83
+  kProxySetBootAttribute,                           // 84
+  kProxyFlushAndSignBootAttributes,                 // 85
+  kProxyGetLoginStatus,                             // 86
+  kProxyGetTpmStatus,                               // 87
+  kProxyGetEndorsementInfo,                         // 88
+  kProxyInitializeCastKey,                          // 89
+  kProxyStartFingerprintAuthSession,                // 90
+  kProxyEndFingerprintAuthSession,                  // 91
+  kProxyGetWebAuthnSecret,                          // 92
+  kProxyGetFirmwareManagementParameters,            // 93
+  kProxySetFirmwareManagementParameters,            // 94
+  kProxyRemoveFirmwareManagementParameters,         // 95
+  kProxyMigrateToDircrypto,                         // 96
+  kProxyNeedsDircryptoMigration,                    // 97
+  kProxyGetSupportedKeyPolicies,                    // 98
+  kProxyIsQuotaSupported,                           // 99
+  kProxyGetCurrentSpaceForUid,                      // 100
+  kProxyGetCurrentSpaceForGid,                      // 101
+  kProxyGetCurrentSpaceForProjectId,                // 102
+  kProxySetProjectId,                               // 103
+  kProxyLockToSingleUserMountUntilReboot,           // 104
+  kProxyGetRsuDeviceId,                             // 105
+  kProxyCheckHealth,                                // 106
+  kProxyStartAuthSession,                           // 107
+  kProxyAuthenticateAuthSession,                    // 108
+  kProxyAddCredentials,                             // 109
+  kMaxValue                                         // 110
 };
 
 // List of the possible results of attempting a mount operation using the
@@ -290,7 +392,7 @@ enum class AttestationOpsStatus {
 };
 
 // Just to make sure I count correctly.
-static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 8,
+static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 110,
               "DeprecatedApiEvent Enum miscounted");
 
 // Cros events emitted by cryptohome.

@@ -13,6 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/constants/cryptohome.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/proxy/legacy_cryptohome_interface_adaptor.h"
 
@@ -49,6 +50,8 @@ void LegacyCryptohomeInterfaceAdaptor::RegisterAsync() {
 
 void LegacyCryptohomeInterfaceAdaptor::IsMounted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyIsMounted);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -72,6 +75,8 @@ void LegacyCryptohomeInterfaceAdaptor::IsMountedForUser(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool, bool>>
         response,
     const std::string& in_username) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyIsMountedForUser);
+
   auto response_shared = std::make_shared<SharedDBusMethodResponse<bool, bool>>(
       std::move(response));
 
@@ -98,6 +103,8 @@ void LegacyCryptohomeInterfaceAdaptor::ListKeysEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::ListKeysRequest& /*in_list_keys_request*/) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyListKeysEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -134,6 +141,8 @@ void LegacyCryptohomeInterfaceAdaptor::CheckKeyEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::CheckKeyRequest& in_check_key_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyCheckKeyEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -158,6 +167,8 @@ void LegacyCryptohomeInterfaceAdaptor::RemoveKeyEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::RemoveKeyRequest& in_remove_key_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyRemoveKeyEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -183,6 +194,8 @@ void LegacyCryptohomeInterfaceAdaptor::MassRemoveKeys(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::MassRemoveKeysRequest& in_mass_remove_keys_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyMassRemoveKeys);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -209,6 +222,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetKeyDataEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::GetKeyDataRequest& in_get_key_data_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetKeyDataEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -245,6 +260,8 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateKeyEx(
     const cryptohome::AccountIdentifier& in_account,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::MigrateKeyRequest& in_migrate_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyMigrateKeyEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -270,6 +287,8 @@ void LegacyCryptohomeInterfaceAdaptor::AddKeyEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::AddKeyRequest& in_add_key_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyAddKeyEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -295,6 +314,8 @@ void LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKey(
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyAddDataRestoreKey);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -330,6 +351,8 @@ void LegacyCryptohomeInterfaceAdaptor::RemoveEx(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_account) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyRemoveEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -351,6 +374,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetSystemSalt(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>>
         response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetSystemSalt);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<std::vector<uint8_t>>>(
           std::move(response));
@@ -377,6 +402,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetSanitizedUsername(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
         response,
     const std::string& in_username) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetSanitizedUsername);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<std::string>>(
           std::move(response));
@@ -405,6 +432,8 @@ void LegacyCryptohomeInterfaceAdaptor::MountEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::MountRequest& in_mount_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyMountEx);
+
   std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>>
       response_shared =
           std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
@@ -468,6 +497,8 @@ void LegacyCryptohomeInterfaceAdaptor::MountGuestEx(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::MountGuestRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyMountGuestEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -491,6 +522,8 @@ void LegacyCryptohomeInterfaceAdaptor::RenameCryptohome(
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_cryptohome_id_from,
     const cryptohome::AccountIdentifier& in_cryptohome_id_to) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyRenameCryptohome);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -513,6 +546,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsage(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_account_id) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetAccountDiskUsage);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -546,6 +581,8 @@ void LegacyCryptohomeInterfaceAdaptor::UnmountEx(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::UnmountRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyUnmountEx);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -565,6 +602,9 @@ void LegacyCryptohomeInterfaceAdaptor::UnmountEx(
 void LegacyCryptohomeInterfaceAdaptor::UpdateCurrentUserActivityTimestamp(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     int32_t in_time_shift_sec) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyUpdateCurrentUserActivityTimestamp);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
 
@@ -594,6 +634,8 @@ void LegacyCryptohomeInterfaceAdaptor::
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmIsReady);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -615,6 +657,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsReadyOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsEnabled(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmIsEnabled);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -637,6 +681,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsEnabledOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::TpmGetPassword(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
         response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmGetPassword);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<std::string>>(
           std::move(response));
@@ -659,6 +705,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetPasswordOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsOwned(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmIsOwned);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -680,6 +728,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsOwnedOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnership(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmCanAttemptOwnership);
+
   tpm_manager::TakeOwnershipRequest request;
   tpm_ownership_proxy_->TakeOwnershipAsync(
       request,
@@ -717,6 +767,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnershipOnFailure(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPassword(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmClearStoredPassword);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
 
@@ -739,6 +791,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPasswordOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationPrepared(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmIsAttestationPrepared);
+
   attestation::GetEnrollmentPreparationsRequest request;
 
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
@@ -774,6 +828,9 @@ void LegacyCryptohomeInterfaceAdaptor::
             cryptohome::BaseReply>> response,
         const cryptohome::AttestationGetEnrollmentPreparationsRequest&
             in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationGetEnrollmentPreparationsEx);
+
   base::Optional<attestation::ACAType> aca_type;
   const int in_pca_type = in_request.pca_type();
   aca_type = IntegerToACAType(in_pca_type);
@@ -830,6 +887,8 @@ void LegacyCryptohomeInterfaceAdaptor::
 void LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationData(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool in_is_cros_core) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmVerifyAttestationData);
+
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
       new SharedDBusMethodResponse<bool>(std::move(response)));
 
@@ -864,6 +923,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationDataOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::TpmVerifyEK(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool in_is_cros_core) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmVerifyEK);
+
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
       new SharedDBusMethodResponse<bool>(std::move(response)));
 
@@ -898,6 +959,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateEnrollRequest(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     int32_t in_pca_type) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationCreateEnrollRequest);
+
   attestation::CreateEnrollRequestRequest request;
   base::Optional<attestation::ACAType> aca_type;
   aca_type = IntegerToACAType(in_pca_type);
@@ -945,6 +1009,9 @@ void LegacyCryptohomeInterfaceAdaptor::
 void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateEnrollRequest(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
     int32_t in_pca_type) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyAsyncTpmAttestationCreateEnrollRequest);
+
   attestation::CreateEnrollRequestRequest request;
 
   base::Optional<attestation::ACAType> aca_type;
@@ -973,6 +1040,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnroll(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     int32_t in_pca_type,
     const std::vector<uint8_t>& in_pca_response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmAttestationEnroll);
+
   attestation::FinishEnrollRequest request;
   request.set_pca_response(in_pca_response.data(), in_pca_response.size());
   base::Optional<attestation::ACAType> aca_type;
@@ -1008,6 +1077,9 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationEnroll(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
     int32_t in_pca_type,
     const std::vector<uint8_t>& in_pca_response) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyAsyncTpmAttestationEnroll);
+
   attestation::FinishEnrollRequest request;
   request.set_pca_response(in_pca_response.data(), in_pca_response.size());
   base::Optional<attestation::ACAType> aca_type;
@@ -1039,6 +1111,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateCertRequest(
     int32_t in_certificate_profile,
     const std::string& in_username,
     const std::string& in_request_origin) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationCreateCertRequest);
+
   attestation::CreateCertificateRequestRequest request;
   request.set_certificate_profile(
       IntegerToCertificateProfile(in_certificate_profile));
@@ -1090,6 +1165,9 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateCertRequest(
     int32_t in_certificate_profile,
     const std::string& in_username,
     const std::string& in_request_origin) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyAsyncTpmAttestationCreateCertRequest);
+
   attestation::CreateCertificateRequestRequest request;
 
   base::Optional<attestation::ACAType> aca_type;
@@ -1124,6 +1202,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationFinishCertRequest(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationFinishCertRequest);
+
   attestation::FinishCertificateRequestRequest request;
   request.set_pca_response(in_pca_response.data(), in_pca_response.size());
   request.set_key_label(in_key_name);
@@ -1168,6 +1249,9 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationFinishCertRequest(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyAsyncTpmAttestationFinishCertRequest);
+
   attestation::FinishCertificateRequestRequest request;
   request.set_pca_response(in_pca_response.data(), in_pca_response.size());
   request.set_key_label(in_key_name);
@@ -1189,6 +1273,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnrollEx(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     int32_t in_pca_type,
     bool in_forced) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmAttestationEnrollEx);
+
   DCHECK(false) << "Not implemented.";
 }
 
@@ -1196,6 +1282,9 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationEnrollEx(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
     int32_t in_pca_type,
     bool in_forced) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyAsyncTpmAttestationEnrollEx);
+
   DCHECK(false) << "Not implemented.";
 }
 
@@ -1210,6 +1299,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetCertificateEx(
     const std::string& in_key_name,
     bool in_forced,
     bool in_shall_trigger_enrollment) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationGetCertificateEx);
+
   DCHECK(false) << "Not implemented.";
 }
 
@@ -1223,11 +1315,16 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationGetCertificateEx(
     const std::string& in_key_name,
     bool in_forced,
     bool in_shall_trigger_enrollment) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyAsyncTpmAttestationGetCertificateEx);
+
   DCHECK(false) << "Not implemented.";
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationEnrolled(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmIsAttestationEnrolled);
+
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
       new SharedDBusMethodResponse<bool>(std::move(response)));
 
@@ -1263,6 +1360,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDoesKeyExist(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationDoesKeyExist);
+
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
       new SharedDBusMethodResponse<bool>(std::move(response)));
 
@@ -1295,6 +1395,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetCertificate(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationGetCertificate);
+
   std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
       response_shared(new SharedDBusMethodResponse<std::vector<uint8_t>, bool>(
           std::move(response)));
@@ -1341,6 +1444,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetPublicKey(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationGetPublicKey);
+
   std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
       response_shared(new SharedDBusMethodResponse<std::vector<uint8_t>, bool>(
           std::move(response)));
@@ -1386,6 +1492,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEnrollmentId(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
                                                            bool>> response,
     bool in_ignore_cache) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationGetEnrollmentId);
+
   attestation::GetEnrollmentIdRequest request;
   request.set_ignore_cache(in_ignore_cache);
 
@@ -1427,6 +1536,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationRegisterKey(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationRegisterKey);
+
   attestation::RegisterKeyWithChapsTokenRequest request;
   request.set_key_label(in_key_name);
   if (in_is_user_specific) {
@@ -1454,6 +1566,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignEnterpriseChallenge(
     const std::vector<uint8_t>& in_device_id,
     bool in_include_signed_public_key,
     const std::vector<uint8_t>& in_challenge) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationSignEnterpriseChallenge);
+
   TpmAttestationSignEnterpriseVaChallenge(
       std::move(response), static_cast<int32_t>(attestation::DEFAULT_VA),
       in_is_user_specific, in_username, in_key_name, in_domain, in_device_id,
@@ -1470,6 +1585,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignEnterpriseVaChallenge(
     const std::vector<uint8_t>& in_device_id,
     bool in_include_signed_public_key,
     const std::vector<uint8_t>& in_challenge) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationSignEnterpriseVaChallenge);
+
   TpmAttestationSignEnterpriseVaChallengeV2Actual(
       std::move(response), in_va_type, in_is_user_specific, in_username,
       in_key_name, in_domain, in_device_id, in_include_signed_public_key,
@@ -1489,6 +1607,9 @@ void LegacyCryptohomeInterfaceAdaptor::
         bool in_include_signed_public_key,
         const std::vector<uint8_t>& in_challenge,
         const std::string& in_key_name_for_spkac) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationSignEnterpriseVaChallengeV2);
+
   TpmAttestationSignEnterpriseVaChallengeV2Actual(
       std::move(response), in_va_type, in_is_user_specific, in_username,
       in_key_name, in_domain, in_device_id, in_include_signed_public_key,
@@ -1548,6 +1669,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignSimpleChallenge(
     const std::string& in_username,
     const std::string& in_key_name,
     const std::vector<uint8_t>& in_challenge) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationSignSimpleChallenge);
+
   attestation::SignSimpleChallengeRequest request;
   request.set_key_label(in_key_name);
   if (in_is_user_specific) {
@@ -1572,6 +1696,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetKeyPayload(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationGetKeyPayload);
+
   std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
       response_shared(new SharedDBusMethodResponse<std::vector<uint8_t>, bool>(
           std::move(response)));
@@ -1619,6 +1746,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSetKeyPayload(
     const std::string& in_username,
     const std::string& in_key_name,
     const std::vector<uint8_t>& in_payload) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationSetKeyPayload);
+
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
       new SharedDBusMethodResponse<bool>(std::move(response)));
 
@@ -1656,6 +1786,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeys(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_prefix) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmAttestationDeleteKeys);
+
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
       new SharedDBusMethodResponse<bool>(std::move(response)));
 
@@ -1694,6 +1826,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKey(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmAttestationDeleteKey);
+
   std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
       new SharedDBusMethodResponse<bool>(std::move(response)));
 
@@ -1730,6 +1864,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeyOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEK(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string, bool>>
         response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmAttestationGetEK);
+
   std::shared_ptr<SharedDBusMethodResponse<std::string, bool>> response_shared(
       new SharedDBusMethodResponse<std::string, bool>(std::move(response)));
 
@@ -1762,6 +1898,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationResetIdentity(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
                                                            bool>> response,
     const std::string& in_reset_token) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyTpmAttestationResetIdentity);
+
   attestation::ResetIdentityRequest request;
   request.set_reset_token(in_reset_token);
 
@@ -1806,6 +1945,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructured(
                                                            uint64_t,
                                                            std::string>>
         response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyTpmGetVersionStructured);
+
   auto response_shared = std::make_shared<SharedDBusMethodResponse<
       uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, std::string>>(
       std::move(response));
@@ -1841,6 +1982,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructuredOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyPkcs11IsTpmTokenReady);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -1865,6 +2008,8 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfo(
     std::unique_ptr<brillo::dbus_utils::
                         DBusMethodResponse<std::string, std::string, int32_t>>
         response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyPkcs11GetTpmTokenInfo);
+
   auto response_shared = std::make_shared<
       SharedDBusMethodResponse<std::string, std::string, int32_t>>(
       std::move(response));
@@ -1887,6 +2032,9 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoForUser(
                         DBusMethodResponse<std::string, std::string, int32_t>>
         response,
     const std::string& in_username) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyPkcs11GetTpmTokenInfoForUser);
+
   auto response_shared = std::make_shared<
       SharedDBusMethodResponse<std::string, std::string, int32_t>>(
       std::move(response));
@@ -1919,6 +2067,8 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11Terminate(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_username) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyPkcs11Terminate);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
 
@@ -1942,6 +2092,8 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11TerminateOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::GetStatusString(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
         response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetStatusString);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<std::string>>(
           std::move(response));
@@ -1966,6 +2118,8 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesGet(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
                                                            bool>> response,
     const std::string& in_name) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyInstallAttributesGet);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>(
           std::move(response));
@@ -1997,6 +2151,8 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesSet(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     const std::string& in_name,
     const std::vector<uint8_t>& in_value) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyInstallAttributesSet);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2022,6 +2178,8 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesSetOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesCount(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyInstallAttributesCount);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<int32_t>>(std::move(response));
 
@@ -2044,6 +2202,9 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesCountOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesFinalize(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyInstallAttributesFinalize);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2067,6 +2228,8 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesFinalizeOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyInstallAttributesIsReady);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2092,6 +2255,9 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsReadyOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecure(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyInstallAttributesIsSecure);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2114,6 +2280,9 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecureOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsInvalid(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyInstallAttributesIsInvalid);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2138,6 +2307,9 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsInvalidOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsFirstInstall(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyInstallAttributesIsFirstInstall);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2164,6 +2336,8 @@ void LegacyCryptohomeInterfaceAdaptor::SignBootLockbox(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::SignBootLockboxRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxySignBootLockbox);
+
   // Note that this version of Boot Lockbox is deprecated for security and
   // performance issue. Please use the version in bootlockboxd instead.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
@@ -2175,6 +2349,8 @@ void LegacyCryptohomeInterfaceAdaptor::VerifyBootLockbox(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::VerifyBootLockboxRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyVerifyBootLockbox);
+
   // Note that this version of Boot Lockbox is deprecated for security and
   // performance issue. Please use the version in bootlockboxd instead.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
@@ -2186,6 +2362,8 @@ void LegacyCryptohomeInterfaceAdaptor::FinalizeBootLockbox(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::FinalizeBootLockboxRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyFinalizeBootLockbox);
+
   // Note that this version of Boot Lockbox is deprecated for security and
   // performance issue. Please use the version in bootlockboxd instead.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
@@ -2197,6 +2375,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetBootAttribute(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetBootAttributeRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetBootAttribute);
+
   // BootAttribute series methods are no longer available.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
@@ -2207,6 +2387,8 @@ void LegacyCryptohomeInterfaceAdaptor::SetBootAttribute(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::SetBootAttributeRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxySetBootAttribute);
+
   // BootAttribute series methods are no longer available.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
@@ -2217,6 +2399,9 @@ void LegacyCryptohomeInterfaceAdaptor::FlushAndSignBootAttributes(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::FlushAndSignBootAttributesRequest& in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyFlushAndSignBootAttributes);
+
   // BootAttribute series methods are no longer available.
   response->ReplyWithError(
       FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
@@ -2227,6 +2412,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetLoginStatus(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetLoginStatusRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetLoginStatus);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2266,6 +2453,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetTpmStatus(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetTpmStatusRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetTpmStatus);
+
   // This method requires the output of more than 1 method and thus is divided
   // into various parts:
   // - TpmManager stage: Calls GetTpmStatus() in tpm_manager
@@ -2468,6 +2657,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfo(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetEndorsementInfoRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetEndorsementInfo);
+
   std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>>
       response_shared(new SharedDBusMethodResponse<cryptohome::BaseReply>(
           std::move(response)));
@@ -2508,6 +2699,8 @@ void LegacyCryptohomeInterfaceAdaptor::InitializeCastKey(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::InitializeCastKeyRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyInitializeCastKey);
+
   // InitializeCastKey() is no longer available.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
@@ -2519,6 +2712,9 @@ void LegacyCryptohomeInterfaceAdaptor::StartFingerprintAuthSession(
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::StartFingerprintAuthSessionRequest& in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyStartFingerprintAuthSession);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2540,6 +2736,9 @@ void LegacyCryptohomeInterfaceAdaptor::EndFingerprintAuthSession(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::EndFingerprintAuthSessionRequest& in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyEndFingerprintAuthSession);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2561,6 +2760,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetWebAuthnSecret(
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::GetWebAuthnSecretRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetWebAuthnSecret);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2594,6 +2795,9 @@ void LegacyCryptohomeInterfaceAdaptor::GetFirmwareManagementParameters(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetFirmwareManagementParametersRequest& in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyGetFirmwareManagementParameters);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2629,6 +2833,9 @@ void LegacyCryptohomeInterfaceAdaptor::SetFirmwareManagementParameters(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::SetFirmwareManagementParametersRequest& in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxySetFirmwareManagementParameters);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2652,6 +2859,9 @@ void LegacyCryptohomeInterfaceAdaptor::RemoveFirmwareManagementParameters(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::RemoveFirmwareManagementParametersRequest& in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyRemoveFirmwareManagementParameters);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2672,6 +2882,8 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::MigrateToDircryptoRequest& in_migrate_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyMigrateToDircrypto);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
 
@@ -2700,6 +2912,8 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateToDircryptoOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::NeedsDircryptoMigration(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     const cryptohome::AccountIdentifier& in_account_id) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyNeedsDircryptoMigration);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2735,6 +2949,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPolicies(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetSupportedKeyPoliciesRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetSupportedKeyPolicies);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2767,6 +2983,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPoliciesOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::IsQuotaSupported(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyIsQuotaSupported);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2789,6 +3007,8 @@ void LegacyCryptohomeInterfaceAdaptor::IsQuotaSupportedOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForUid(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int64_t>> response,
     uint32_t in_uid) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetCurrentSpaceForUid);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<int64_t>>(std::move(response));
 
@@ -2813,6 +3033,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForUidOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForGid(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int64_t>> response,
     uint32_t in_gid) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetCurrentSpaceForGid);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<int64_t>>(std::move(response));
 
@@ -2837,6 +3059,9 @@ void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForGidOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForProjectId(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int64_t>> response,
     uint32_t in_project_id) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyGetCurrentSpaceForProjectId);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<int64_t>>(std::move(response));
 
@@ -2863,6 +3088,8 @@ void LegacyCryptohomeInterfaceAdaptor::SetProjectId(
     int32_t in_parent_path,
     const std::string& in_child_path,
     const cryptohome::AccountIdentifier& in_account_id) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxySetProjectId);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
 
@@ -2890,6 +3117,9 @@ void LegacyCryptohomeInterfaceAdaptor::LockToSingleUserMountUntilReboot(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::LockToSingleUserMountUntilRebootRequest& in_request) {
+  ReportDeprecatedApiCalled(
+      DeprecatedApiEvent::kProxyLockToSingleUserMountUntilReboot);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2944,6 +3174,8 @@ void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceId(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetRsuDeviceIdRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyGetRsuDeviceId);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -2977,6 +3209,8 @@ void LegacyCryptohomeInterfaceAdaptor::CheckHealth(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::CheckHealthRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyCheckHealth);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -3076,6 +3310,8 @@ void LegacyCryptohomeInterfaceAdaptor::StartAuthSession(
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::StartAuthSessionRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyStartAuthSession);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -3109,6 +3345,8 @@ void LegacyCryptohomeInterfaceAdaptor::AddCredentials(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AddCredentialsRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyAddCredentials);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
@@ -3139,6 +3377,8 @@ void LegacyCryptohomeInterfaceAdaptor::AuthenticateAuthSession(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AuthenticateAuthSessionRequest& in_request) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyAuthenticateAuthSession);
+
   auto response_shared =
       std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
           std::move(response));
