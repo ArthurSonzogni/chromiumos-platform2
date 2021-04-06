@@ -82,6 +82,9 @@ constexpr char kTestHarnessSharedDirTag[] = "testharness";
 constexpr char kApkCacheSharedDir[] = "/run/arcvm/apkcache";
 constexpr char kApkCacheSharedDirTag[] = "apkcache";
 
+constexpr char kFontsSharedDir[] = "/usr/share/fonts";
+constexpr char kFontsSharedDirTag[] = "fonts";
+
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
@@ -245,6 +248,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const base::FilePath apkcache_dir(kApkCacheSharedDir);
   std::string shared_apkcache =
       CreateSharedDataParam(apkcache_dir, kApkCacheSharedDirTag, true, false);
+  const base::FilePath fonts_dir(kFontsSharedDir);
+  std::string shared_fonts =
+      CreateSharedDataParam(fonts_dir, kFontsSharedDirTag, true, false);
 
   vm_builder
       .SetMemory(GetVmMemoryMiB())
@@ -263,6 +269,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(shared_media)
       .AppendSharedDir(shared_testharness)
       .AppendSharedDir(shared_apkcache)
+      .AppendSharedDir(shared_fonts)
       .EnableBattery(true /* enable */);
 
   auto args = vm_builder.BuildVmArgs();
