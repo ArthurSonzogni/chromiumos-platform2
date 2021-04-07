@@ -125,6 +125,16 @@ class ApnList {
   std::map<ApnIndexKey, Stringmap*> apn_index_;
 };
 
+// Gets a printable value from a Stringmap without adding a value when it
+// doesn't exist.
+std::string GetStringmapValue(const Stringmap& string_map,
+                              const std::string& key) {
+  if (!base::Contains(string_map, key))
+    return "";
+
+  return string_map.at(key);
+}
+
 }  // namespace
 
 // static
@@ -2039,12 +2049,22 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
 
   if (service_) {
     const Stringmap* apn_info = service_->GetUserSpecifiedApn();
-    if (apn_info)
+    if (apn_info) {
       apn_try_list.push_back(*apn_info);
+      SLOG(this, 3) << __func__ << " Adding User Specified APN:"
+                    << GetStringmapValue(*apn_info, kApnProperty)
+                    << " Is attach:"
+                    << GetStringmapValue(*apn_info, kApnAttachProperty);
+    }
 
     apn_info = service_->GetLastGoodApn();
-    if (apn_info)
+    if (apn_info) {
       apn_try_list.push_back(*apn_info);
+      SLOG(this, 3) << __func__ << " Adding last good APN:"
+                    << GetStringmapValue(*apn_info, kApnProperty)
+                    << " Is attach:"
+                    << GetStringmapValue(*apn_info, kApnAttachProperty);
+    }
   }
 
   apn_try_list.insert(apn_try_list.end(), apn_list_.begin(), apn_list_.end());
