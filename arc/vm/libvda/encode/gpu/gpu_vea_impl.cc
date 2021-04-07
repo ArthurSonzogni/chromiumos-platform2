@@ -316,7 +316,7 @@ void GpuVeaContext::OnFlushDone(bool flush_done) {
   DispatchFlushResponse(flush_done);
 }
 
-// VideoDecodeClient implementation function.
+// VideoEncodeClient implementation function.
 void GpuVeaContext::RequireBitstreamBuffers(
     uint32_t input_count,
     arc::mojom::SizePtr input_coded_size,
@@ -325,7 +325,7 @@ void GpuVeaContext::RequireBitstreamBuffers(
                               input_coded_size->height, output_buffer_size);
 }
 
-// VideoDecodeClient implementation function.
+// VideoEncodeClient implementation function.
 void GpuVeaContext::NotifyError(
     arc::mojom::VideoEncodeAccelerator::Error error) {
   DispatchNotifyError(ConvertMojoError(error));

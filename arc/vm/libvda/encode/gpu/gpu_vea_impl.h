@@ -25,7 +25,7 @@ class WaitableEvent;
 namespace arc {
 
 // GpuVdaImpl connects to GpuArcVideoEncodeAccelerator using the LibvdaService
-// D-Bus service LibvdaService and Mojo to perform video decoding.
+// D-Bus service LibvdaService and Mojo to perform video encoding.
 class GpuVeaImpl : public VeaImpl {
  public:
   explicit GpuVeaImpl(VafConnection* conn);
