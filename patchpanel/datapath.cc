@@ -164,16 +164,16 @@ void Datapath::Start() {
   // Crostini, ...) or a connected namespace.
   // chromium:1050579: INVALID packets cannot be tracked by conntrack therefore
   // need to be explicitly dropped as SNAT cannot be applied to them.
+  std::string snatMark =
+      kFwmarkLegacySNAT.ToString() + "/" + kFwmarkLegacySNAT.ToString();
   if (process_runner_->iptables(
-          "filter", {"-A", "FORWARD", "-m", "mark", "--mark", "1/1", "-m",
+          "filter", {"-A", "FORWARD", "-m", "mark", "--mark", snatMark, "-m",
                      "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0)
     LOG(ERROR) << "Failed to install SNAT mark rules.";
   if (process_runner_->iptables(
-          "nat", {"-A", "POSTROUTING", "-m", "mark", "--mark", "1/1", "-j",
+          "nat", {"-A", "POSTROUTING", "-m", "mark", "--mark", snatMark, "-j",
                   "MASQUERADE", "-w"}) != 0)
     LOG(ERROR) << "Failed to install SNAT mark rules.";
-  if (!AddOutboundIPv4SNATMark("vmtap+"))
-    LOG(ERROR) << "Failed to set up NAT for TAP devices.";
 
   // Applies the routing tag saved in conntrack for any established connection
   // for sockets created in the host network namespace.
@@ -332,17 +332,10 @@ bool Datapath::AddBridge(const std::string& ifname,
     return false;
   }
 
-  // See nat.conf in chromeos-nat-init for the rest of the NAT setup rules.
-  if (!AddOutboundIPv4SNATMark(ifname)) {
-    RemoveBridge(ifname);
-    return false;
-  }
-
   return true;
 }
 
 void Datapath::RemoveBridge(const std::string& ifname) {
-  RemoveOutboundIPv4SNATMark(ifname);
   process_runner_->ip("link", "set", {ifname, "down"});
   if (!Ioctl(ioctl_, SIOCBRDELBR, ifname.c_str()))
     LOG(ERROR) << "Failed to destroy bridge " << ifname;
@@ -642,23 +635,9 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  // TODO(b/161508179) Do not rely on legacy fwmark 1 for SNAT.
-  if (!AddOutboundIPv4SNATMark(nsinfo.host_ifname)) {
-    LOG(ERROR) << "Failed to set SNAT for traffic"
-                  " outgoing from "
-               << nsinfo.host_ifname;
-    RemoveInterface(nsinfo.host_ifname);
-    DeleteIPv4Route(nsinfo.peer_subnet->AddressAtOffset(0),
-                    nsinfo.peer_subnet->BaseAddress(), netmask);
-    StopIpForwarding(IpFamily::IPv4, "", nsinfo.host_ifname);
-    NetnsDeleteName(nsinfo.netns_name);
-    return false;
-  }
-
   StartRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
                      nsinfo.peer_subnet->AddressAtOffset(0), nsinfo.source,
                      nsinfo.route_on_vpn);
-
   return true;
 }
 
@@ -667,7 +646,6 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
                     nsinfo.peer_subnet->AddressAtOffset(0), nsinfo.source,
                     nsinfo.route_on_vpn);
   RemoveInterface(nsinfo.host_ifname);
-  RemoveOutboundIPv4SNATMark(nsinfo.host_ifname);
   DeleteIPv4Route(nsinfo.peer_subnet->AddressAtOffset(0),
                   nsinfo.peer_subnet->BaseAddress(),
                   Ipv4Netmask(nsinfo.peer_subnet->PrefixLength()));
@@ -706,6 +684,11 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                       int_ifname, "" /*oif*/))
     LOG(ERROR) << "Could not add jump rule from mangle PREROUTING to "
                << subchain;
+  // IPv4 traffic from all downstream devices should be tagged to go through
+  // SNAT.
+  if (!ModifyFwmark(IpFamily::IPv4, subchain, "-A", "", "", 0,
+                    kFwmarkLegacySNAT, kFwmarkLegacySNAT))
+    LOG(ERROR) << "Failed to add fwmark SNAT tagging rule for " << int_ifname;
   if (!ModifyFwmarkSourceTag(subchain, "-A", source))
     LOG(ERROR) << "Failed to add fwmark tagging rule for source " << source
                << " in " << subchain;
@@ -791,18 +774,6 @@ void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
   process_runner_->iptables(
       "nat", {"-D", "PREROUTING", "-i", ifname, "-m", "socket", "--nowildcard",
               "-j", "ACCEPT", "-w"});
-}
-
-// TODO(b/161060333) Migrate this rule to the PREROUTING_<iface> subchains
-bool Datapath::AddOutboundIPv4SNATMark(const std::string& ifname) {
-  return process_runner_->iptables(
-             "mangle", {"-A", "PREROUTING", "-i", ifname, "-j", "MARK",
-                        "--set-mark", "1/1", "-w"}) == 0;
-}
-
-void Datapath::RemoveOutboundIPv4SNATMark(const std::string& ifname) {
-  process_runner_->iptables("mangle", {"-D", "PREROUTING", "-i", ifname, "-j",
-                                       "MARK", "--set-mark", "1/1", "-w"});
 }
 
 bool Datapath::AddRedirectDnsRule(const std::string& ifname,

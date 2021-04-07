@@ -323,12 +323,6 @@ class Datapath {
                           const std::string& ipv4_addr);
   void RemoveInboundIPv4DNAT(const std::string& ifname,
                              const std::string& ipv4_addr);
-  // Create (or delete) a mangle PREROUTING rule for marking IPv4 traffic
-  // outgoing of |ifname| with the SNAT fwmark value 0x1.
-  // TODO(hugobenichi) Refer to RoutingService to obtain the fwmark value and
-  // add a fwmark mask in the generated rule.
-  bool AddOutboundIPv4SNATMark(const std::string& ifname);
-  void RemoveOutboundIPv4SNATMark(const std::string& ifname);
   bool ModifyRedirectDnsDNATRule(const std::string& op,
                                  const std::string& protocol,
                                  const std::string& ifname,
@@ -397,7 +391,6 @@ class Datapath {
   ioctl_t ioctl_;
 
   FRIEND_TEST(DatapathTest, AddInboundIPv4DNAT);
-  FRIEND_TEST(DatapathTest, AddOutboundIPv4SNATMark);
   FRIEND_TEST(DatapathTest, AddVirtualInterfacePair);
   FRIEND_TEST(DatapathTest, ConfigureInterface);
   FRIEND_TEST(DatapathTest, RemoveInboundIPv4DNAT);
