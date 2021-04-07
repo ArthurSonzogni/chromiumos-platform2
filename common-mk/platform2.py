@@ -32,6 +32,7 @@ import ebuild_function
 _IUSE = [
     'amd64',
     'arc_adb_sideloading',
+    'arcpp',
     'arcvm',
     'arm',
     'asan',
