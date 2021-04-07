@@ -14,7 +14,7 @@ group("all") {
     ":libcrash",
     ":libcrash_reporter",
   ]
-  if (use.cheets) {
+  if (use.arcpp) {
     deps += [ ":core_collector" ]
   }
   if (use.test) {
@@ -94,10 +94,15 @@ static_library("libcrash_reporter") {
     "USE_KVM_GUEST=${use.kvm_guest}",
   ]
 
-  if (use.cheets) {
+  if (use.arcpp || use.arcvm) {
     sources += [
       "arc_collector.cc",
       "arc_util.cc",
+    ]
+  }
+
+  if (use.arcvm) {
+    sources += [
       "arcvm_kernel_collector.cc",
       "arcvm_native_collector.cc",
     ]
@@ -132,7 +137,8 @@ executable("crash_reporter") {
   sources = [ "crash_reporter.cc" ]
   configs += [ ":crash_reporter_config" ]
   defines = [
-    "USE_CHEETS=${use.cheets}",
+    "USE_ARCPP=${use.arcpp}",
+    "USE_ARCVM=${use.arcvm}",
     "USE_KVM_GUEST=${use.kvm_guest}",
   ]
   deps = [
@@ -251,7 +257,7 @@ executable("anomaly_detector") {
   deps = [ ":libcrash" ]
 }
 
-if (use.cheets) {
+if (use.arcpp) {
   pkg_config("core_collector_config") {
     pkg_deps = [ "breakpad-client" ]
   }
@@ -391,10 +397,15 @@ if (use.test) {
       ":lock_file_tester",
     ]
 
-    if (use.cheets) {
+    if (use.arcpp || use.arcvm) {
       sources += [
         "arc_collector_test.cc",
         "arc_util_test.cc",
+      ]
+    }
+
+    if (use.arcvm) {
+      sources += [
         "arcvm_kernel_collector_test.cc",
         "arcvm_native_collector_test.cc",
       ]

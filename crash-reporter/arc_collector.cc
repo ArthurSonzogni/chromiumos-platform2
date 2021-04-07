@@ -68,17 +68,17 @@ bool GetArcProperties(arc_util::BuildProperty* build_property);
 // See b/170238737 for detail.
 bool GetAbiMigrationState(std::string* state);
 
+#if USE_ARCPP
 std::string FormatDuration(uint64_t seconds);
+#endif  // USE_ARCPP
 
 }  // namespace
 
-ArcCollector::ArcCollector(bool is_arcvm)
-    : ArcCollector(ContextPtr(new ArcContext(this)), is_arcvm) {}
+ArcCollector::ArcCollector() : ArcCollector(ContextPtr(new ArcContext(this))) {}
 
-ArcCollector::ArcCollector(ContextPtr context, bool is_arcvm)
+ArcCollector::ArcCollector(ContextPtr context)
     : UserCollectorBase("ARC", kAlwaysUseUserCrashDirectory),
-      context_(std::move(context)),
-      is_arcvm_(is_arcvm) {}
+      context_(std::move(context)) {}
 
 bool ArcCollector::IsArcProcess(pid_t pid) const {
   pid_t arc_pid;
@@ -344,19 +344,19 @@ void ArcCollector::AddArcMetaData(const std::string& process,
   }
 
   // TODO(b/138095700): Support ARCVM
-  if (!is_arcvm_) {
-    int64_t start_time;
-    brillo::ErrorPtr error;
-    SetUpDBus();
-    if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
-      const uint64_t delta = static_cast<uint64_t>(
-          (TimeTicks::Now() - TimeTicks::FromInternalValue(start_time))
-              .InSeconds());
-      AddCrashMetaUploadData(arc_util::kUptimeField, FormatDuration(delta));
-    } else {
-      LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
-    }
+#if USE_ARCPP
+  int64_t start_time;
+  brillo::ErrorPtr error;
+  SetUpDBus();
+  if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
+    const uint64_t delta = static_cast<uint64_t>(
+        (TimeTicks::Now() - TimeTicks::FromInternalValue(start_time))
+            .InSeconds());
+    AddCrashMetaUploadData(arc_util::kUptimeField, FormatDuration(delta));
+  } else {
+    LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
   }
+#endif  // USE_ARCPP
 
   if (arc_util::IsSilentReport(crash_type))
     AddCrashMetaData(arc_util::kSilentKey, "true");
@@ -561,6 +561,7 @@ bool GetAbiMigrationState(std::string* state) {
   }
 }
 
+#if USE_ARCPP
 std::string FormatDuration(uint64_t seconds) {
   constexpr uint64_t kSecondsPerMinute = 60;
   constexpr uint64_t kSecondsPerHour = 60 * kSecondsPerMinute;
@@ -585,5 +586,6 @@ std::string FormatDuration(uint64_t seconds) {
   out << seconds << 's';
   return out.str();
 }
+#endif  // USE_ARCPP
 
 }  // namespace

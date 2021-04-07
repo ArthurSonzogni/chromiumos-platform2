@@ -60,13 +60,13 @@ const char k64BitAuxv[] = R"(
 
 class MockArcCollector : public ArcCollector {
  public:
-  explicit MockArcCollector(bool is_arcvm) : ArcCollector(is_arcvm) {}
-  MockArcCollector(ContextPtr context, bool is_arcvm)
-      : ArcCollector(std::move(context), is_arcvm) {}
+  MockArcCollector() : ArcCollector() {}
+  explicit MockArcCollector(ContextPtr context)
+      : ArcCollector(std::move(context)) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
-class Test : public ::testing::TestWithParam<bool> {
+class Test : public ::testing::Test {
  protected:
   void Initialize() {
     EXPECT_CALL(*collector_, SetUpDBus()).WillRepeatedly(testing::Return());
@@ -162,8 +162,8 @@ class ArcCollectorTest : public Test {
  private:
   void SetUp() override {
     context_ = new MockContext;
-    collector_ = std::make_unique<MockArcCollector>(
-        ArcCollector::ContextPtr(context_), GetParam());
+    collector_ =
+        std::make_unique<MockArcCollector>(ArcCollector::ContextPtr(context_));
     Initialize();
   }
 };
@@ -174,13 +174,13 @@ class ArcContextTest : public Test {
 
  private:
   void SetUp() override {
-    collector_ = std::make_unique<MockArcCollector>(GetParam());
+    collector_ = std::make_unique<MockArcCollector>();
     Initialize();
     pid_ = getpid();
   }
 };
 
-TEST_P(ArcCollectorTest, IsArcProcess) {
+TEST_F(ArcCollectorTest, IsArcProcess) {
   EXPECT_FALSE(collector_->IsArcProcess(123));
   EXPECT_TRUE(FindLog("Failed to get PID of ARC container"));
   ClearLog();
@@ -209,7 +209,7 @@ TEST_P(ArcCollectorTest, IsArcProcess) {
   EXPECT_TRUE(GetLog().empty());
 }
 
-TEST_P(ArcCollectorTest, GetExeBaseNameForUserCrash) {
+TEST_F(ArcCollectorTest, GetExeBaseNameForUserCrash) {
   context_->SetArcPid(100);
   context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
   context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
@@ -220,7 +220,7 @@ TEST_P(ArcCollectorTest, GetExeBaseNameForUserCrash) {
   EXPECT_EQ("chrome", exe);
 }
 
-TEST_P(ArcCollectorTest, GetExeBaseNameForArcCrash) {
+TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
   context_->SetArcPid(100);
   context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
   context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
@@ -241,7 +241,7 @@ TEST_P(ArcCollectorTest, GetExeBaseNameForArcCrash) {
   EXPECT_EQ("com.arc.app", exe);
 }
 
-TEST_P(ArcCollectorTest, ShouldDump) {
+TEST_F(ArcCollectorTest, ShouldDump) {
   context_->SetArcPid(100);
   context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
                        k32BitAuxv);
@@ -262,7 +262,7 @@ TEST_P(ArcCollectorTest, ShouldDump) {
   EXPECT_EQ("ignoring - not a system process", reason);
 }
 
-TEST_P(ArcCollectorTest, CorrectlyDetectBitness) {
+TEST_F(ArcCollectorTest, CorrectlyDetectBitness) {
   bool is_64_bit;
 
   context_->AddProcess(100, "arc", "app_process64", "zygote64", k64BitAuxv);
@@ -276,29 +276,27 @@ TEST_P(ArcCollectorTest, CorrectlyDetectBitness) {
   EXPECT_FALSE(is_64_bit);
 }
 
-INSTANTIATE_TEST_SUITE_P(IsArcVm, ArcCollectorTest, testing::Bool());
-
-TEST_P(ArcContextTest, GetArcPid) {
+TEST_F(ArcContextTest, GetArcPid) {
   EXPECT_FALSE(ArcCollector::IsArcRunning());
 
   pid_t pid;
   EXPECT_FALSE(collector_->context().GetArcPid(&pid));
 }
 
-TEST_P(ArcContextTest, GetPidNamespace) {
+TEST_F(ArcContextTest, GetPidNamespace) {
   std::string ns;
   EXPECT_TRUE(collector_->context().GetPidNamespace(pid_, &ns));
   EXPECT_THAT(ns, testing::MatchesRegex("^pid:\\[[0-9]+\\]$"));
 }
 
-TEST_P(ArcContextTest, GetExeBaseName) {
+TEST_F(ArcContextTest, GetExeBaseName) {
   std::string exe;
   EXPECT_TRUE(collector_->context().GetExeBaseName(pid_, &exe));
   EXPECT_EQ("crash_reporter_test", exe);
 }
 
 // TODO(crbug.com/590044)
-TEST_P(ArcContextTest, DISABLED_GetCommand) {
+TEST_F(ArcContextTest, DISABLED_GetCommand) {
   std::string command;
   EXPECT_TRUE(collector_->context().GetCommand(pid_, &command));
 
@@ -307,5 +305,3 @@ TEST_P(ArcContextTest, DISABLED_GetCommand) {
   // Keep in sync with qargv[1] in qemu-binfmt-wrapper.c for now.
   EXPECT_EQ("-0", command);
 }
-
-INSTANTIATE_TEST_SUITE_P(IsArcVm, ArcContextTest, testing::Bool());

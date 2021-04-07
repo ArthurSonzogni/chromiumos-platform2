@@ -316,14 +316,18 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(
       always_allow_feedback, false,
       "Force if feedback is allowed check to return true, used for tests only");
-#if USE_CHEETS
+#if USE_ARCPP || USE_ARCVM
   DEFINE_string(arc_java_crash, "",
                 "Read Java crash log of the given type from standard input");
   DEFINE_string(arc_device, "", "Metadata for ARC crashes");
   DEFINE_string(arc_board, "", "Metadata for ARC crashes");
   DEFINE_string(arc_cpu_abi, "", "Metadata for ARC crashes");
   DEFINE_string(arc_fingerprint, "", "Metadata for ARC crashes");
+
+  // TODO(hashimoto): Remove this switch after fixing chrome.
   DEFINE_bool(arc_is_arcvm, false, "Is ARCVM");
+#endif
+#if USE_ARCVM
   DEFINE_bool(arc_native, false, "ARC Native Crash");
   DEFINE_int64(arc_native_time, -1,
                "UNIX timestamp of the time when the native crash happened. "
@@ -402,13 +406,13 @@ int main(int argc, char* argv[]) {
   }
 
   std::vector<CollectorInfo> collectors;
-#if USE_CHEETS
+#if USE_ARCVM
   ArcvmNativeCollector arcvm_native_collector;
   collectors.push_back({
       .collector = &arcvm_native_collector,
       .handlers = {{
           // This handles native crashes of ARCVM.
-          .should_handle = FLAGS_arc_is_arcvm && FLAGS_arc_native,
+          .should_handle = FLAGS_arc_native,
           .cb = base::BindRepeating(
               &ArcvmNativeCollector::HandleCrash,
               base::Unretained(&arcvm_native_collector),
@@ -428,7 +432,7 @@ int main(int argc, char* argv[]) {
       .collector = &arcvm_kernel_collector,
       .handlers = {{
           // This handles kernel crashes of ARCVM.
-          .should_handle = FLAGS_arc_is_arcvm && FLAGS_arc_kernel,
+          .should_handle = FLAGS_arc_kernel,
           .cb = base::BindRepeating(&ArcvmKernelCollector::HandleCrash,
                                     base::Unretained(&arcvm_kernel_collector),
                                     arc_util::BuildProperty{
@@ -439,8 +443,10 @@ int main(int argc, char* argv[]) {
                                     }),
       }},
   });
+#endif  // USE_ARCVM
 
-  ArcCollector arc_collector(FLAGS_arc_is_arcvm);
+#if USE_ARCPP || USE_ARCVM
+  ArcCollector arc_collector;
 
   // Always initialize arc_collector so that we can use it to determine if the
   // process is an arc process.
@@ -452,30 +458,33 @@ int main(int argc, char* argv[]) {
       .collector = &arc_collector,
       .init = base::DoNothing(),
       .handlers =
-          {{
-               // This handles native crashes of ARC++.
-               .should_handle = !FLAGS_arc_is_arcvm && is_arc_process,
-               .cb = base::BindRepeating(&ArcCollector::HandleCrash,
-                                         base::Unretained(&arc_collector),
-                                         user_crash_attrs, nullptr),
-           },
-           {
-               // This handles Java app crashes of ARC++ and ARCVM.
-               .should_handle = !FLAGS_arc_java_crash.empty(),
-               .cb = base::BindRepeating(
-                   &ArcCollector::HandleJavaCrash,
-                   base::Unretained(&arc_collector), FLAGS_arc_java_crash,
-                   arc_util::BuildProperty{
-                       .device = FLAGS_arc_device,
-                       .board = FLAGS_arc_board,
-                       .cpu_abi = FLAGS_arc_cpu_abi,
-                       .fingerprint = FLAGS_arc_fingerprint,
-                   }),
-           }},
+          {
+#if USE_ARCPP
+              {
+                  // This handles native crashes of ARC++.
+                  .should_handle = is_arc_process,
+                  .cb = base::BindRepeating(&ArcCollector::HandleCrash,
+                                            base::Unretained(&arc_collector),
+                                            user_crash_attrs, nullptr),
+              },
+#endif  // USE_ARCPP
+              {
+                  // This handles Java app crashes of ARC++ and ARCVM.
+                  .should_handle = !FLAGS_arc_java_crash.empty(),
+                  .cb = base::BindRepeating(
+                      &ArcCollector::HandleJavaCrash,
+                      base::Unretained(&arc_collector), FLAGS_arc_java_crash,
+                      arc_util::BuildProperty{
+                          .device = FLAGS_arc_device,
+                          .board = FLAGS_arc_board,
+                          .cpu_abi = FLAGS_arc_cpu_abi,
+                          .fingerprint = FLAGS_arc_fingerprint,
+                      }),
+              }},
   });
-#else   // USE_CHEETS
+#else   // USE_ARCPP || USE_ARCVM
   bool is_arc_process = false;
-#endif  // USE_CHEETS
+#endif  // USE_ARCPP || USE_ARCVM
 
   UserCollector user_collector;
   collectors.push_back({
