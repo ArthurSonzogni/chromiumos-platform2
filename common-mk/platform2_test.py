@@ -26,8 +26,8 @@ import tempfile
 
 import psutil  # pylint: disable=import-error
 
+from chromite.lib import build_target_lib
 from chromite.lib import commandline
-from chromite.lib import cros_build_lib
 from chromite.lib import namespaces
 from chromite.lib import osutils
 from chromite.lib import process_util
@@ -137,7 +137,7 @@ class Platform2Test(object):
     if sysroot:
       self.sysroot = sysroot
     else:
-      self.sysroot = cros_build_lib.GetSysroot(self.board)
+      self.sysroot = build_target_lib.get_default_sysroot_path(self.board)
 
     self.framework = framework
     if self.framework == 'auto':
