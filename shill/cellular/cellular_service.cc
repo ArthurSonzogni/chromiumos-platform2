@@ -134,11 +134,16 @@ void CellularService::SetDevice(Cellular* device) {
     // destroyed from the available SIM properties.
     SetConnectable(false);
     SetState(kStateIdle);
+    SetStrength(0);
     return;
   }
 
   SetConnectable(cellular_->GetConnectable(this));
   SetActivationType(kActivationTypeUnknown);
+  if (cellular_->iccid() != iccid_) {
+    SetState(kStateIdle);
+    SetStrength(0);
+  }
 }
 
 void CellularService::AutoConnect() {

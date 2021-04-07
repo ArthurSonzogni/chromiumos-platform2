@@ -63,10 +63,12 @@ class CellularServiceProviderTest : public testing::Test {
         &modem_info_, kTestDeviceName, kTestDeviceAddress, kTestInterfaceIndex,
         Cellular::kType3gpp, kDBusService, kDBusPath);
     cellular->CreateCapability(&modem_info_);
-    Cellular::SimProperties sim_properties;
-    sim_properties.iccid = iccid;
-    sim_properties.imsi = imsi;
-    cellular->SetPrimarySimProperties(sim_properties);
+    if (!iccid.empty()) {
+      Cellular::SimProperties sim_properties;
+      sim_properties.iccid = iccid;
+      sim_properties.imsi = imsi;
+      cellular->SetPrimarySimProperties(sim_properties);
+    }
     return cellular;
   }
 
@@ -220,6 +222,47 @@ TEST_F(CellularServiceProviderTest, SwitchDeviceIccid) {
   // Stopping should remove all services.
   provider()->Stop();
   EXPECT_EQ(0u, GetProviderServices().size());
+}
+
+// When the active SIM slot is switched, UpdateServices() should update
+// the State and Strength properties of the inactive Service.
+TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
+  CellularRefPtr cellular = CreateDevice("", "");
+  Cellular::SimProperties sim1_properties;
+  sim1_properties.iccid = "iccid1";
+  sim1_properties.imsi = "imsi1";
+  Cellular::SimProperties sim2_properties;
+  sim2_properties.eid = "eid";
+  sim2_properties.iccid = "iccid2";
+  sim2_properties.imsi = "imsi2";
+  std::vector<Cellular::SimProperties> slot_properties;
+  slot_properties.push_back(sim1_properties);
+  slot_properties.push_back(sim2_properties);
+  cellular->SetSimProperties(slot_properties, /*primary=*/0);
+  CellularServiceRefPtr service1 =
+      provider()->LoadServicesForDevice(cellular.get());
+  ASSERT_TRUE(service1);
+  EXPECT_EQ("iccid1", service1->iccid());
+
+  // Set the Service to connected with a non 0 signal strength.
+  service1->SetConnectable(true);
+  service1->SetState(Service::kStateConnected);
+  service1->SetStrength(50);
+
+  // Setting the other SIM to primary should clear the |service1| properties
+  // associated with being connected.
+  cellular->SetSimProperties(slot_properties, /*primary=*/1);
+  CellularServiceRefPtr service2 =
+      provider()->LoadServicesForDevice(cellular.get());
+  ASSERT_TRUE(service2);
+  EXPECT_EQ("iccid2", service2->iccid());
+
+  provider()->UpdateServices(cellular.get());
+  // |service1| is still connectable since it is an available SIM.
+  EXPECT_TRUE(service1->connectable());
+  // |service1| State is set to Idle and Strength is set to 0.
+  EXPECT_EQ(Service::kStateIdle, service1->state());
+  EXPECT_EQ(0u, service1->strength());
 }
 
 TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {
