@@ -260,6 +260,9 @@ message StartArcVmRequest {
 
   // Whether rt-vcpus are enabled.
   bool enable_rt_vcpu = 10;
+
+  // Whether Huge Pages should be used.
+  bool use_hugepages = 11;
 }
 
 enum VmStatus {

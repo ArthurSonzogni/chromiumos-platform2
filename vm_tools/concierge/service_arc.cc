@@ -256,6 +256,10 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       vm_builder.AppendCustomParam("--cpu-affinity", cpu_affinity);
   }
 
+  if (request.use_hugepages()) {
+    vm_builder.AppendCustomParam("--hugepages", "");
+  }
+
   auto vm =
       ArcVm::Create(std::move(kernel), vsock_cid, std::move(network_client),
                     std::move(server_proxy), std::move(runtime_dir), features,
