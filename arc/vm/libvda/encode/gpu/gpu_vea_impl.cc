@@ -94,7 +94,8 @@ class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
   void OnVeaClientError(uint32_t custom_reason, const std::string& description);
 
   // Callback invoked when VideoEncodeAcceleratorPtr::Initialize completes.
-  void OnInitialized(InitializeCallback, bool success);
+  void OnInitialized(InitializeCallback,
+                     arc::mojom::VideoEncodeAccelerator::Result result);
 
   void OnInputBufferProcessed(vea_input_buffer_id_t input_buffer_id);
   void OnOutputBufferFilled(vea_output_buffer_id_t output_buffer_id,
@@ -175,14 +176,18 @@ void GpuVeaContext::Initialize(vea_config_t* config,
   mojo_config->storage_type = arc::mojom::VideoFrameStorageType::DMABUF;
 
   // TODO(alexlau): Make this use BindOnce.
-  vea_ptr_->InitializeDeprecated(
+  vea_ptr_->Initialize(
       std::move(mojo_config), std::move(client_ptr),
       base::Bind(&GpuVeaContext::OnInitialized, base::Unretained(this),
                  base::Passed(std::move(callback))));
 }
 
-void GpuVeaContext::OnInitialized(InitializeCallback callback, bool success) {
+void GpuVeaContext::OnInitialized(
+    InitializeCallback callback,
+    arc::mojom::VideoEncodeAccelerator::Result result) {
   DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  // TODO(b/174967467): propagate result to client.
+  bool success = (result == mojom::VideoEncodeAccelerator::Result::kSuccess);
   std::move(callback).Run(success);
 }
 
