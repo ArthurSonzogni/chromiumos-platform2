@@ -521,6 +521,7 @@ class Metrics : public DefaultServiceObserver {
     kNetworkServiceErrorNotAuthenticated = 23,
     kNetworkServiceErrorTooManySTAs = 24,
     kNetworkServiceErrorDisconnect = 25,
+    kNetworkServiceErrorSimLocked = 26,
     kNetworkServiceErrorMax
   };
 

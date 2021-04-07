@@ -615,6 +615,7 @@ const char kErrorOtaspFailed[] = "otasp-failed";
 const char kErrorOutOfRange[] = "out-of-range";
 const char kErrorPinMissing[] = "pin-missing";
 const char kErrorPppAuthFailed[] = "ppp-auth-failed";
+const char kErrorSimLocked[] = "sim-locked";
 const char kErrorTooManySTAs[] = "too-many-stas";
 const char kErrorDisconnect[] = "disconnect-failure";
 const char kErrorUnknownFailure[] = "unknown-failure";

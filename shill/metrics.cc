@@ -2118,6 +2118,9 @@ void Metrics::SendServiceFailure(const Service& service) {
     case Service::kFailurePPPAuth:
       error = kNetworkServiceErrorPPPAuth;
       break;
+    case Service::kFailureSimLocked:
+      error = kNetworkServiceErrorSimLocked;
+      break;
     case Service::kFailurePinMissing:
       error = kNetworkServiceErrorPinMissing;
       break;

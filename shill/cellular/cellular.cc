@@ -1692,7 +1692,7 @@ void Cellular::ConnectToPending() {
   if (modem_state_ == kModemStateLocked) {
     SLOG(this, 2) << __func__ << ": Modem locked";
     if (service_ && service_->iccid() == connect_pending_iccid_) {
-      service_->SetFailure(Service::kFailureConnect);
+      service_->SetFailure(Service::kFailureSimLocked);
       connect_pending_callback_.Cancel();
       connect_pending_iccid_.clear();
     }

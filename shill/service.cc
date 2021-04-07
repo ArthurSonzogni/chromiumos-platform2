@@ -1144,6 +1144,8 @@ const char* Service::ConnectFailureToString(const ConnectFailure& state) {
       return kErrorPinMissing;
     case kFailurePPPAuth:
       return kErrorPppAuthFailed;
+    case kFailureSimLocked:
+      return kErrorSimLocked;
     case kFailureUnknown:
       return kErrorUnknownFailure;
     case kFailureNotAssociated:
