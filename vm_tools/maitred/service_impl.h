@@ -101,6 +101,11 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
       const EmptyMessage* request,
       vm_tools::GetResizeBoundsResponse* response) override;
 
+  grpc::Status GetAvailableSpace(
+      grpc::ServerContext* ctx,
+      const EmptyMessage* request,
+      vm_tools::GetAvailableSpaceResponse* response) override;
+
   grpc::Status PrepareToSuspend(grpc::ServerContext* ctx,
                                 const EmptyMessage* request,
                                 EmptyMessage* response) override;

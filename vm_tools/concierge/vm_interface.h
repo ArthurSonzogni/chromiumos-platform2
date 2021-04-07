@@ -137,6 +137,10 @@ class VmInterface {
   // or 0 for unknown.
   virtual uint64_t GetMinDiskSize() { return 0; }
 
+  // Get the space that is available/unallocated on the disk,
+  // or 0 for unknown.
+  virtual uint64_t GetAvailableDiskSpace() { return 0; }
+
   // Notes that SetVmId() has been called for the VM.
   virtual void VmIdChanged() {}
 

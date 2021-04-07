@@ -251,6 +251,12 @@ message GetResizeBoundsResponse {
   uint64 minimum_size = 1;
 }
 
+// Response to GetAvailableSpace request.
+message GetAvailableSpaceResponse {
+  // Available space, in bytes, on the disk.
+  uint64 available_space = 1;
+}
+
 // Implemented by maitred inside the VM.
 service Maitred {
   // Set up networking inside the VM so that it can access the internet.
@@ -307,6 +313,9 @@ service Maitred {
 
   // Gets information about the valid range of parameters to ResizeFilesystem.
   rpc GetResizeBounds(EmptyMessage) returns (GetResizeBoundsResponse);
+
+  // Gets information about unallocated space on a disk.
+  rpc GetAvailableSpace(EmptyMessage) returns (GetAvailableSpaceResponse);
 
   // Prepares to suspend the VM.
   rpc PrepareToSuspend(EmptyMessage) returns (EmptyMessage);

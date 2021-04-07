@@ -690,13 +690,16 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
     total_size += size;
 
     uint64_t min_size;
+    uint64_t available_space;
     auto iter = FindVm(cryptohome_id, image_name);
     if (iter == vms_.end()) {
-      // VM may not be running - in this case, we can't determine min_size, so
-      // report 0 for unknown.
+      // VM may not be running - in this case, we can't determine min_size or
+      // available_space, so report 0 for unknown.
       min_size = 0;
+      available_space = 0;
     } else {
       min_size = iter->second->GetMinDiskSize();
+      available_space = iter->second->GetAvailableDiskSpace();
     }
 
     enum DiskImageType image_type = DiskImageType::DISK_IMAGE_AUTO;
@@ -713,6 +716,7 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
     image->set_storage_location(location);
     image->set_size(size);
     image->set_min_size(min_size);
+    image->set_available_space(available_space);
     image->set_image_type(image_type);
     image->set_user_chosen_size(IsDiskUserChosenSize(path.value()));
     image->set_path(path.value());

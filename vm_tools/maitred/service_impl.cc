@@ -43,6 +43,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/system/sys_info.h>
 #include <brillo/file_utils.h>
 
 #include "vm_tools/common/paths.h"
@@ -902,6 +903,15 @@ grpc::Status ServiceImpl::GetResizeBounds(
   }
 
   response->set_minimum_size(min_size);
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::GetAvailableSpace(
+    grpc::ServerContext* ctx,
+    const EmptyMessage* request,
+    vm_tools::GetAvailableSpaceResponse* response) {
+  response->set_available_space(
+      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful")));
   return grpc::Status::OK;
 }
 

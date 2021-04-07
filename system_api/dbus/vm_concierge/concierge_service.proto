@@ -707,6 +707,9 @@ message VmDiskInfo {
 
   // The absolute path to the disk.
   string path = 7;
+
+  // The available space on the disk, or 0 if unknown.
+  uint64 available_space = 8;
 }
 
 // Response to ListVmDisks {

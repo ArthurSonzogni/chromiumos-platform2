@@ -856,6 +856,25 @@ uint64_t TerminaVm::GetMinDiskSize() {
   return response.minimum_size();
 }
 
+uint64_t TerminaVm::GetAvailableDiskSpace() {
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  vm_tools::EmptyMessage request;
+  vm_tools::GetAvailableSpaceResponse response;
+
+  grpc::Status status = stub_->GetAvailableSpace(&ctx, request, &response);
+
+  if (!status.ok()) {
+    LOG(ERROR) << "GetAvailableSpace RPC failed";
+    return 0;
+  }
+
+  return response.available_space();
+}
+
 uint32_t TerminaVm::GatewayAddress() const {
   return subnet_->AddressAtOffset(kHostAddressOffset);
 }
