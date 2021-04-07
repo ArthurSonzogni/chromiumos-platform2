@@ -58,6 +58,8 @@ constexpr char kJsonLogKeySource[] = "source";
 // Keys used in CrashDetails::metadata.
 constexpr char kMetadataKeyCaptureTimeMillis[] = "upload_var_reportTimeMillis";
 constexpr char kMetadataKeySource[] = "exec_name";
+constexpr char kHwTestSuiteRun[] = "hwtest_suite_run";
+constexpr char kHwTestSenderUpload[] = "hwtest_sender_direct";
 
 // Values used for kJsonLogKeySource.
 constexpr char kMetadataValueRedacted[] = "REDACTED";
@@ -104,6 +106,10 @@ void ParseCommandLine(int argc,
               "crash is valid. Used by tast test ChromeCrashLoop.");
   DEFINE_bool(upload_old_reports, false,
               "If set, ignore the timestamp check and upload older reports.");
+  DEFINE_bool(force_upload_on_test_images, false,
+              "If set, upload even on test images. Still respects consent. "
+              "(Use either the mock-consent file or normal consent settings.)");
+
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Sender");
   if (FLAGS_max_spread_time < 0) {
     LOG(ERROR) << "Invalid value for max spread time: "
@@ -118,6 +124,7 @@ void ParseCommandLine(int argc,
   flags->ignore_pause_file = FLAGS_ignore_pause_file;
   flags->test_mode = FLAGS_test_mode;
   flags->upload_old_reports = FLAGS_upload_old_reports;
+  flags->force_upload_on_test_images = FLAGS_force_upload_on_test_images;
   if (flags->test_mode) {
     // The pause file is intended to pause the cronjob crash_sender during
     // tests, not the crash_sender invoked by the test code.
@@ -336,7 +343,8 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       max_spread_time_(options.max_spread_time),
       allow_dev_sending_(options.allow_dev_sending),
       test_mode_(options.test_mode),
-      upload_old_reports_(options.upload_old_reports) {}
+      upload_old_reports_(options.upload_old_reports),
+      force_upload_on_test_images_(options.force_upload_on_test_images) {}
 
 bool Sender::HasCrashUploadingConsent() {
   if (util::HasMockConsent()) {
@@ -392,6 +400,13 @@ SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,
   std::unique_ptr<util::ScopedProcessingFile> f;
   SenderBase::Action act = EvaluateMetaFileMinimal(
       meta_file, allow_old_os_timestamps, reason, info, &f);
+
+  // Always set these tags on test images for easier filtering in dashboards.
+  if (force_upload_on_test_images_) {
+    info->metadata.SetString(kHwTestSuiteRun, "true");
+    info->metadata.SetString(kHwTestSenderUpload, "true");
+  }
+
   if (act != kSend) {
     return act;
   }

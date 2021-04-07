@@ -81,7 +81,7 @@ int RunChildMain(int argc, char* argv[]) {
               << "crashes to staging server at go/crash-staging";
   } else {
     // Normal mode (not test, not dev).
-    if (util::IsTestImage()) {
+    if (util::IsTestImage() && !flags.force_upload_on_test_images) {
       LOG(INFO) << "Exiting early due to test image.";
       return EXIT_FAILURE;
     }
@@ -107,6 +107,7 @@ int RunChildMain(int argc, char* argv[]) {
   }
   options.allow_dev_sending = flags.allow_dev_sending;
   options.test_mode = flags.test_mode;
+  options.force_upload_on_test_images = flags.force_upload_on_test_images;
   util::Sender sender(std::move(metrics_lib), std::move(clock), options);
 
   // If you add sigificant code past this point, consider updating

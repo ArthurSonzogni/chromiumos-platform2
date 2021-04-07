@@ -595,6 +595,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
@@ -611,6 +612,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
@@ -627,6 +629,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
@@ -643,6 +646,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
@@ -659,6 +663,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
   EXPECT_TRUE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
@@ -675,6 +680,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_TRUE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
@@ -691,6 +697,24 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_TRUE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
+}
+
+TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
+  const char* argv[] = {"crash_sender", "--force_upload_on_test_images"};
+  base::CommandLine command_line(base::size(argv), argv);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      &command_line);
+  CommandLineFlags flags;
+  ParseCommandLine(base::size(argv), argv, &flags);
+  EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
+  EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
+  EXPECT_FALSE(flags.allow_dev_sending);
+  EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_TRUE(flags.force_upload_on_test_images);
 }
 
 TEST_F(CrashSenderUtilTest, DoesPauseFileExist) {
@@ -966,6 +990,55 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
                             raw_metrics_lib));
   EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
+}
+
+// Test that when force_upload_on_test_images is set, we set hwtest_suite_run.
+TEST_F(CrashSenderUtilTest, ChooseAction_SetsHwtestSuiteRun) {
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+
+  Sender::Options options;
+  options.force_upload_on_test_images = true;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  std::string reason;
+  CrashInfo info;
+  // The file should be sent.
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+  std::string out;
+  EXPECT_EQ(info.metadata.GetString("hwtest_suite_run", &out), true);
+  EXPECT_EQ(out, "true");
+
+  EXPECT_EQ(info.metadata.GetString("hwtest_sender_direct", &out), true);
+  EXPECT_EQ(out, "true");
+}
+
+// Test that when force_upload_on_test_images is unset, we don't set
+// hwtest_suite_run.
+TEST_F(CrashSenderUtilTest, ChooseAction_NonForceNoHwTestSuiteRun) {
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  std::string reason;
+  CrashInfo info;
+  // The file should be sent.
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+  std::string out;
+  EXPECT_EQ(info.metadata.GetString("hwtest_suite_run", &out), false);
+  EXPECT_EQ(info.metadata.GetString("hwtest_sender_direct", &out), false);
 }
 
 TEST_F(CrashSenderUtilDeathTest, ChooseActionCrash) {

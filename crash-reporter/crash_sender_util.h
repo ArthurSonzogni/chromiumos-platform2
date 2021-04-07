@@ -58,6 +58,7 @@ struct CommandLineFlags {
   bool ignore_pause_file = false;
   bool test_mode = false;
   bool upload_old_reports = false;
+  bool force_upload_on_test_images = false;
 };
 
 // Represents a metadata file name, and its parsed metadata.
@@ -160,6 +161,10 @@ class Sender : public SenderBase {
 
     // If true, ignore timestamp check and upload old reports.
     bool upload_old_reports = false;
+
+    // If true, always upload on test images and add a flag to the metadata
+    // indicating that it's from a test image.
+    bool force_upload_on_test_images = false;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -248,6 +253,7 @@ class Sender : public SenderBase {
   bool allow_dev_sending_;
   const bool test_mode_;
   const bool upload_old_reports_;
+  const bool force_upload_on_test_images_;
 };
 
 }  // namespace util
