@@ -110,7 +110,6 @@ _IUSE = [
     'trogdor_sar_hack',
     'ubsan',
     'udev',
-    'usb_camera_monocle',
     'user_session_isolation',
     'vm_borealis',
     'vpn',
