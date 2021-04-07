@@ -1335,7 +1335,8 @@ bool InitializeTest(int* argc,
   // Set up logging so we can enable VLOGs with -v / --vmodule.
   base::CommandLine::Init(*argc, *argv);
   logging::LoggingSettings settings;
-  settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  settings.logging_dest =
+      logging::LOG_TO_SYSTEM_DEBUG_LOG | logging::LOG_TO_STDERR;
   LOG_ASSERT(logging::InitLogging(settings));
 
   if (geteuid() == 0) {
@@ -1367,7 +1368,7 @@ bool InitializeTest(int* argc,
                   "`--camera_hal_path=` into command line argument.";
     LOGF(INFO) << "List of possible paths:";
     for (const auto& path : camera_hal_paths) {
-      LOGF(ERROR) << path.value();
+      LOGF(INFO) << path.value();
     }
   }
 
