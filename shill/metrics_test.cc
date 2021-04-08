@@ -705,15 +705,6 @@ TEST_F(MetricsTest, Logging) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(MetricsTest, NotifyServicesOnSameNetwork) {
-  EXPECT_CALL(library_,
-              SendToUMA(Metrics::kMetricServicesOnSameNetwork, 1,
-                        Metrics::kMetricServicesOnSameNetworkMin,
-                        Metrics::kMetricServicesOnSameNetworkMax,
-                        Metrics::kMetricServicesOnSameNetworkNumBuckets));
-  metrics_.NotifyServicesOnSameNetwork(1);
-}
-
 TEST_F(MetricsTest, NotifyUserInitiatedEvent) {
   EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricUserInitiatedEvents,
                                       Metrics::kUserInitiatedEventWifiScan,

@@ -123,7 +123,6 @@ const char kDhcpPropertyVendorClassProperty[] = "DHCPProperty.VendorClass";
 const char kAutoConnectProperty[] = "AutoConnect";
 const char kCheckPortalProperty[] = "CheckPortal";
 const char kConnectableProperty[] = "Connectable";
-const char kConnectionIdProperty[] = "ConnectionId";
 const char kDeviceProperty[] = "Device";
 const char kDiagnosticsDisconnectsProperty[] = "Diagnostics.Disconnects";
 const char kDiagnosticsMisconnectsProperty[] = "Diagnostics.Misconnects";

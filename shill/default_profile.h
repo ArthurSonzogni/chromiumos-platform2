@@ -5,7 +5,6 @@
 #ifndef SHILL_DEFAULT_PROFILE_H_
 #define SHILL_DEFAULT_PROFILE_H_
 
-#include <random>
 #include <string>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -63,7 +62,6 @@ class DefaultProfile : public Profile {
 
   static const char kStorageArpGateway[];
   static const char kStorageCheckPortalList[];
-  static const char kStorageConnectionIdSalt[];
   static const char kStorageHostName[];
   static const char kStorageIgnoredDNSSearchPaths[];
   static const char kStorageLinkMonitorTechnologies[];
@@ -79,7 +77,6 @@ class DefaultProfile : public Profile {
 
   const std::string profile_id_;
   const Manager::Properties& props_;
-  std::default_random_engine random_engine_;
 };
 
 }  // namespace shill

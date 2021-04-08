@@ -1643,22 +1643,6 @@ void Manager::RemoveDefaultServiceObserver(DefaultServiceObserver* observer) {
   default_service_observers_.RemoveObserver(observer);
 }
 
-int Manager::CalcConnectionId(const string& gateway_ip,
-                              const string& gateway_mac) {
-  return static_cast<int>(std::hash<std::string>()(
-      gateway_ip + gateway_mac + std::to_string(props_.connection_id_salt)));
-}
-
-void Manager::ReportServicesOnSameNetwork(int connection_id) {
-  int num_services = 0;
-  for (const auto& service : services_) {
-    if (service->connection_id() == connection_id) {
-      num_services++;
-    }
-  }
-  metrics_->NotifyServicesOnSameNetwork(num_services);
-}
-
 void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
                                     const ServiceRefPtr& physical_service) {
   // Since GetDefaultService returns nullptr when the Service doesn't

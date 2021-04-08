@@ -2439,27 +2439,6 @@ TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
   manager()->UpdateDefaultServices(mock_service1, mock_service1);
 }
 
-TEST_F(ManagerTest, ReportServicesOnSameNetwork) {
-  int connection_id1 = 100;
-  int connection_id2 = 200;
-  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
-  mock_service1->set_connection_id(connection_id1);
-  MockServiceRefPtr mock_service2 = new NiceMock<MockService>(manager());
-  mock_service2->set_connection_id(connection_id1);
-  MockServiceRefPtr mock_service3 = new NiceMock<MockService>(manager());
-  mock_service3->set_connection_id(connection_id2);
-
-  manager()->RegisterService(mock_service1);
-  manager()->RegisterService(mock_service2);
-  manager()->RegisterService(mock_service3);
-
-  EXPECT_CALL(*metrics(), NotifyServicesOnSameNetwork(2));
-  manager()->ReportServicesOnSameNetwork(connection_id1);
-
-  EXPECT_CALL(*metrics(), NotifyServicesOnSameNetwork(1));
-  manager()->ReportServicesOnSameNetwork(connection_id2);
-}
-
 TEST_F(ManagerTest, AvailableTechnologies) {
   mock_devices_.push_back(
       new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));

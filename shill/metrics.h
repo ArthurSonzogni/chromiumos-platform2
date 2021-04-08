@@ -1190,10 +1190,6 @@ class Metrics : public DefaultServiceObserver {
   // when attempt to connect to that service.
   virtual void NotifyWifiAvailableBSSes(int num_services);
 
-  // Notifies this object about number of services associated to the
-  // currently connected network.
-  virtual void NotifyServicesOnSameNetwork(int num_services);
-
   // Notifies this object about WIFI TX bitrate in Mbps.
   virtual void NotifyWifiTxBitrate(int bitrate);
 

@@ -72,10 +72,7 @@ class Manager {
  public:
   struct Properties {
    public:
-    Properties()
-        : arp_gateway(true),
-          connection_id_salt(0),
-          minimum_mtu(IPConfig::kUndefinedMTU) {}
+    Properties() : arp_gateway(true), minimum_mtu(IPConfig::kUndefinedMTU) {}
     std::string check_portal_list;
     std::string portal_http_url;
     std::string portal_https_url;
@@ -94,8 +91,6 @@ class Manager {
     std::string ignored_dns_search_paths;
     // Comma-separated list of DNS servers to prepend to resolver list.
     std::string prepend_dns_servers;
-    // Salt value use for calculating network connection ID.
-    int connection_id_salt;
     // The minimum MTU value that will be respected in DHCP responses.
     int minimum_mtu;
     // Name of Android VPN package that should be enforced for user traffic.
@@ -454,15 +449,6 @@ class Manager {
   // Add/remove observers to subscribe to default Service notifications.
   void AddDefaultServiceObserver(DefaultServiceObserver* observer);
   void RemoveDefaultServiceObserver(DefaultServiceObserver* observer);
-
-  // Calculate connection identifier, which is hash of salt value, gateway IP
-  // address, and gateway MAC address.
-  int CalcConnectionId(const std::string& gateway_ip,
-                       const std::string& gateway_mac);
-
-  // Report the number of services associated with given connection
-  // |connection_id|.
-  void ReportServicesOnSameNetwork(int connection_id);
 
   // Running in passive mode, manager will not manage any devices (all devices
   // are blocked) by default. Remote application can specify devices for

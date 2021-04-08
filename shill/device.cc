@@ -1531,8 +1531,7 @@ bool Device::StartLinkMonitor() {
   if (!link_monitor()) {
     set_link_monitor(new LinkMonitor(
         connection_, dispatcher(), metrics(), manager_->device_info(),
-        Bind(&Device::OnLinkMonitorFailure, AsWeakPtr()),
-        Bind(&Device::OnLinkMonitorGatewayChange, AsWeakPtr())));
+        Bind(&Device::OnLinkMonitorFailure, AsWeakPtr()), base::DoNothing()));
   }
 
   SLOG(this, 2) << "Device " << link_name() << ": Link Monitor starting.";
@@ -1559,17 +1558,6 @@ void Device::OnLinkMonitorFailure() {
     OnUnreliableLink();
   }
   last_link_monitor_failed_time_ = now;
-}
-
-void Device::OnLinkMonitorGatewayChange() {
-  string gateway_mac = link_monitor()->gateway_mac_address().HexEncode();
-  int connection_id =
-      manager_->CalcConnectionId(ipconfig_->properties().gateway, gateway_mac);
-
-  CHECK(selected_service_);
-  selected_service_->set_connection_id(connection_id);
-
-  manager_->ReportServicesOnSameNetwork(connection_id);
 }
 
 void Device::set_traffic_monitor_for_test(

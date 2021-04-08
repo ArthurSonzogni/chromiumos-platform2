@@ -4,8 +4,6 @@
 
 #include "shill/default_profile.h"
 
-#include <random>
-
 #include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
@@ -26,6 +24,9 @@ namespace {
 // OfflineMode was removed in crrev.com/c/2202196.
 // This was left here to remove OfflineMode entries from profiles.
 const char kStorageOfflineMode[] = "OfflineMode";
+// ConnectionIdSalt was removed in crrev.com/c/2814180.
+// This was left here to remove ConnectionIdSalt entries from profiles.
+const char kStorageConnectionIdSaltDeprecated[] = "ConnectionIdSalt";
 }  // namespace
 
 // static
@@ -34,8 +35,6 @@ const char DefaultProfile::kDefaultId[] = "default";
 const char DefaultProfile::kStorageArpGateway[] = "ArpGateway";
 // static
 const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
-// static
-const char DefaultProfile::kStorageConnectionIdSalt[] = "ConnectionIdSalt";
 // static
 const char DefaultProfile::kStorageIgnoredDNSSearchPaths[] =
     "IgnoredDNSSearchPaths";
@@ -62,8 +61,7 @@ DefaultProfile::DefaultProfile(Manager* manager,
                                const Manager::Properties& manager_props)
     : Profile(manager, Identifier(profile_id), storage_directory, true),
       profile_id_(profile_id),
-      props_(manager_props),
-      random_engine_(time(nullptr)) {
+      props_(manager_props) {
   PropertyStore* store = this->mutable_store();
   store->RegisterConstBool(kArpGatewayProperty, &manager_props.arp_gateway);
   store->RegisterConstString(kCheckPortalListProperty,
@@ -106,11 +104,6 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
   if (!storage()->GetString(kStorageId, kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
-  }
-  if (!storage()->GetInt(kStorageId, kStorageConnectionIdSalt,
-                         &manager_props->connection_id_salt)) {
-    manager_props->connection_id_salt =
-        std::uniform_int_distribution<int>()(random_engine_);
   }
   if (!storage()->GetString(kStorageId, kStorageIgnoredDNSSearchPaths,
                             &manager_props->ignored_dns_search_paths)) {
@@ -166,13 +159,13 @@ bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
 bool DefaultProfile::Save() {
   // OfflineMode was removed in crrev.com/c/2202196.
   storage()->DeleteKey(kStorageId, kStorageOfflineMode);
+  // ConnectionIdSalt was removed in crrev.com/c/2814180.
+  storage()->DeleteKey(kStorageId, kStorageConnectionIdSaltDeprecated);
 
   storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetString(kStorageId, kStorageCheckPortalList,
                        props_.check_portal_list);
-  storage()->SetInt(kStorageId, kStorageConnectionIdSalt,
-                    props_.connection_id_salt);
   storage()->SetString(kStorageId, kStorageIgnoredDNSSearchPaths,
                        props_.ignored_dns_search_paths);
   storage()->SetString(kStorageId, kStorageLinkMonitorTechnologies,

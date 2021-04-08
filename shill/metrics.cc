@@ -431,13 +431,6 @@ const int Metrics::kMetricWifiAvailableBSSesMax = 50;
 const int Metrics::kMetricWifiAvailableBSSesMin = 1;
 const int Metrics::kMetricWifiAvailableBSSesNumBuckets = 10;
 
-// Number of services associated with currently connected network.
-const char Metrics::kMetricServicesOnSameNetwork[] =
-    "Network.Shill.ServicesOnSameNetwork";
-const int Metrics::kMetricServicesOnSameNetworkMax = 20;
-const int Metrics::kMetricServicesOnSameNetworkMin = 1;
-const int Metrics::kMetricServicesOnSameNetworkNumBuckets = 10;
-
 // static
 const char Metrics::kMetricUserInitiatedEvents[] =
     "Network.Shill.UserInitiatedEvents";
@@ -1651,12 +1644,6 @@ void Metrics::NotifyWifiAutoConnectableServices(int num_services) {
 void Metrics::NotifyWifiAvailableBSSes(int num_bss) {
   SendToUMA(kMetricWifiAvailableBSSes, num_bss, kMetricWifiAvailableBSSesMin,
             kMetricWifiAvailableBSSesMax, kMetricWifiAvailableBSSesNumBuckets);
-}
-
-void Metrics::NotifyServicesOnSameNetwork(int num_services) {
-  SendToUMA(kMetricServicesOnSameNetwork, num_services,
-            kMetricServicesOnSameNetworkMin, kMetricServicesOnSameNetworkMax,
-            kMetricServicesOnSameNetworkNumBuckets);
 }
 
 void Metrics::NotifyUserInitiatedEvent(int event) {

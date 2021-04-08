@@ -623,9 +623,6 @@ class Service : public base::RefCounted<Service> {
   mockable void RefreshTrafficCounters(
       const std::vector<patchpanel::TrafficCounter>& counters);
 
-  void set_connection_id(int connection_id) { connection_id_ = connection_id; }
-  int connection_id() const { return connection_id_; }
-
   void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
   bool unreliable() const { return unreliable_; }
 
@@ -998,9 +995,6 @@ class Service : public base::RefCounted<Service> {
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;
 
-  // Network identifier indicating the network (gateway) the service is
-  // connected to.
-  int connection_id_;
   // When set to true, will not start link monitor when the connection to this
   // service is established.
   bool link_monitor_disabled_;

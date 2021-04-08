@@ -59,7 +59,6 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
   MOCK_METHOD(void, NotifyWifiAutoConnectableServices, (int), (override));
   MOCK_METHOD(void, NotifyWifiAvailableBSSes, (int), (override));
-  MOCK_METHOD(void, NotifyServicesOnSameNetwork, (int), (override));
   MOCK_METHOD(void, NotifyUserInitiatedEvent, (int), (override));
   MOCK_METHOD(void, NotifyWifiTxBitrate, (int), (override));
   MOCK_METHOD(void,

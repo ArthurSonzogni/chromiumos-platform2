@@ -191,7 +191,6 @@ Service::Service(Manager* manager, Technology technology)
       serial_number_(next_serial_number_++),
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
-      connection_id_(0),
       link_monitor_disabled_(false),
       managed_credentials_(false),
       unreliable_(false),
@@ -267,7 +266,6 @@ Service::Service(Manager* manager, Technology technology)
                                   &Service::GetDisconnectsProperty);
   HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
-  store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
   store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
   store_.RegisterBool(kManagedCredentialsProperty, &managed_credentials_);
   HelpRegisterDerivedBool(kMeteredProperty, &Service::GetMeteredProperty,
@@ -706,7 +704,6 @@ bool Service::Load(const StoreInterface* storage) {
   }
   SLOG(this, 2) << " Service source = " << static_cast<size_t>(source_);
 
-  storage->GetInt(id, kStorageConnectionId, &connection_id_);
   storage->GetBool(id, kStorageLinkMonitorDisabled, &link_monitor_disabled_);
   if (!storage->GetBool(id, kStorageManagedCredentials,
                         &managed_credentials_)) {
@@ -779,6 +776,10 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
     source_ = ParseONCSourceFromUIData();
     storage->SetInt(id, kStorageONCSource, toUnderlying(source_));
   }
+
+  // This property is deprecated in M92 in crrev.com/c/2814180. Remove this
+  // migration code in M94+.
+  storage->DeleteKey(id, kStorageConnectionId);
 }
 
 bool Service::Unload() {
@@ -792,7 +793,6 @@ bool Service::Unload() {
   proxy_config_ = "";
   save_credentials_ = true;
   ui_data_ = "";
-  connection_id_ = 0;
   link_monitor_disabled_ = false;
   managed_credentials_ = false;
   source_ = ONCSource::kONCSourceUnknown;
@@ -847,7 +847,6 @@ bool Service::Save(StoreInterface* storage) {
   storage->SetBool(id, kStorageSaveCredentials, save_credentials_);
   SaveStringOrClear(storage, id, kStorageUIData, ui_data_);
   storage->SetInt(id, kStorageONCSource, static_cast<int>(source_));
-  storage->SetInt(id, kStorageConnectionId, connection_id_);
   storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
   storage->SetBool(id, kStorageManagedCredentials, managed_credentials_);
 
