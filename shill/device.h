@@ -226,7 +226,6 @@ class Device : public base::RefCounted<Device> {
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
   RTNLHandler* rtnl_handler() { return rtnl_handler_; }
-  bool running() const { return running_; }
 
   EventDispatcher* dispatcher() const;
 
@@ -391,6 +390,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, Start);
   FRIEND_TEST(DeviceTest, StartIPv6);
   FRIEND_TEST(DeviceTest, StartIPv6Disabled);
+  FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(DeviceTest, StopWithFixedIpParams);
   FRIEND_TEST(DeviceTest, StopWithNetworkInterfaceDisabledAfterward);
@@ -400,6 +400,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, GetEnabledDeviceWithTechnology);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
+  FRIEND_TEST(PPPoEServiceTest, OnPPPConnected);
   FRIEND_TEST(WiFiMainTest, UseArpGateway);
 
   virtual ~Device();
@@ -814,7 +815,6 @@ class Device : public base::RefCounted<Device> {
   PropertyStore store_;
 
   const int interface_index_;
-  bool running_;  // indicates whether the device is actually in operation
   const std::string link_name_;
   Manager* manager_;
   IPConfigRefPtr ipconfig_;

@@ -727,7 +727,7 @@ bool WiFi::SetScanInterval(const uint16_t& seconds, Error* /*error*/) {
     return false;
   }
   scan_interval_seconds_ = seconds;
-  if (running()) {
+  if (enabled()) {
     StartScanTimer();
   }
   // The scan interval affects both foreground scans (handled by

@@ -470,7 +470,7 @@ void CellularService::OnDisconnect(Error* error, const char* reason) {
 }
 
 bool CellularService::IsAutoConnectable(const char** reason) const {
-  if (!cellular_ || !cellular_->running()) {
+  if (!cellular_ || !cellular_->enabled()) {
     *reason = kAutoConnDeviceDisabled;
     return false;
   }

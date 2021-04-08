@@ -167,8 +167,8 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Note that crbug.com/1030324 precludes the ability of VirtualDevices to be
-  // enabled(). running() suffices here.
-  EXPECT_TRUE(device()->running());
+  // enabled(). enabled_pending() suffices here.
+  EXPECT_TRUE(device()->enabled_pending());
   EXPECT_EQ(device()->selected_service(), service_);
   ASSERT_NE(device()->ipconfig(), nullptr);
   EXPECT_FALSE(device()->ipconfig()->properties().blackhole_ipv6);

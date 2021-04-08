@@ -282,11 +282,11 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
 
   const char* reason = nullptr;
 
-  // Auto-connect should be suppressed if the device is not running.
-  device_->running_ = false;
+  // Auto-connect should be suppressed if the device is not enabled.
+  device_->enabled_ = false;
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(CellularService::kAutoConnDeviceDisabled, reason);
-  device_->running_ = true;
+  device_->enabled_ = true;
 
   // Auto-connect should be suppressed if the device is not registered.
   device_->set_state_for_testing(Cellular::kStateDisabled);

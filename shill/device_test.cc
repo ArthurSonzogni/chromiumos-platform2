@@ -907,15 +907,14 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
 }
 
 TEST_F(DeviceTest, Start) {
-  EXPECT_FALSE(device_->running_);
   EXPECT_FALSE(device_->enabled_);
   EXPECT_FALSE(device_->enabled_pending_);
   device_->SetEnabled(true);
-  EXPECT_TRUE(device_->running_);
   EXPECT_TRUE(device_->enabled_pending_);
   device_->OnEnabledStateChanged(ResultCallback(),
                                  Error(Error::kOperationFailed));
   EXPECT_FALSE(device_->enabled_pending_);
+  EXPECT_FALSE(device_->enabled_);
 }
 
 TEST_F(DeviceTest, Stop) {
@@ -988,7 +987,7 @@ TEST_F(DeviceTest, StartProhibited) {
   }
 
   device->SetEnabled(true);
-  EXPECT_FALSE(device->running());
+  EXPECT_FALSE(device->enabled_pending());
 
   {
     Error error;
@@ -996,7 +995,7 @@ TEST_F(DeviceTest, StartProhibited) {
     EXPECT_TRUE(error.IsSuccess());
   }
   device->SetEnabled(true);
-  EXPECT_TRUE(device->running());
+  EXPECT_TRUE(device->enabled_pending());
 }
 
 TEST_F(DeviceTest, Reset) {

@@ -138,7 +138,6 @@ Device::Device(Manager* manager,
       enabled_pending_(enabled_),
       mac_address_(base::ToLowerASCII(mac_address)),
       interface_index_(interface_index),
-      running_(false),
       link_name_(link_name),
       manager_(manager),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
@@ -1893,10 +1892,8 @@ void Device::SetEnabledUnchecked(bool enable,
   EnabledStateChangedCallback chained_callback =
       Bind(&Device::OnEnabledStateChanged, AsWeakPtr(), on_enable_complete);
   if (enable) {
-    running_ = true;
     Start(error, chained_callback);
   } else {
-    running_ = false;
     DestroyIPConfig();       // breaks a reference cycle
     SelectService(nullptr);  // breaks a reference cycle
     if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
