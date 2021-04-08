@@ -43,6 +43,12 @@ bool ParseDevice(const Device& device,
     if (!compression.has_value())
       return false;
 
+    if (base::FilePath(main_firmware.filename()).IsAbsolute()) {
+      LOG(ERROR) << "Main firmware should use relative path ("
+                 << main_firmware.filename() << ").";
+      return false;
+    }
+
     main_firmware_infos.emplace(
         main_firmware.version(),
         std::make_unique<FirmwareFileInfo>(
@@ -81,6 +87,12 @@ bool ParseDevice(const Device& device,
     if (!compression.has_value())
       return false;
 
+    if (base::FilePath(oem_firmware.filename()).IsAbsolute()) {
+      LOG(ERROR) << "OEM firmware should use relative path ("
+                 << oem_firmware.filename() << ").";
+      return false;
+    }
+
     auto oem_info = std::make_unique<FirmwareFileInfo>(
         directory_path.Append(oem_firmware.filename()), oem_firmware.version(),
         compression.value());
@@ -88,7 +100,8 @@ bool ParseDevice(const Device& device,
       for (const std::string& version : oem_firmware.main_firmware_version())
         oem_firmware_infos.emplace(version, oem_info.get());
     } else {
-      oem_firmware_infos.emplace(default_main_entry->version, oem_info.get());
+      if (default_main_entry)
+        oem_firmware_infos.emplace(default_main_entry->version, oem_info.get());
     }
     out_cache->all_files.push_back(std::move(oem_info));
   }
@@ -134,6 +147,12 @@ bool ParseDevice(const Device& device,
     } else {
       LOG(ERROR) << "No main firmware specified for carrier firmware "
                  << carrier_firmware.filename();
+      return false;
+    }
+
+    if (base::FilePath(carrier_firmware.filename()).IsAbsolute()) {
+      LOG(ERROR) << "Carrier firmware should use relative path ("
+                 << carrier_firmware.filename() << ").";
       return false;
     }
 
