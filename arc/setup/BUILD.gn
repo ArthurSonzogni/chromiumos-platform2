@@ -69,7 +69,6 @@ static_library("libarc_setup") {
     "arc_setup_metrics.cc",
     "arc_setup_util.cc",
     "art_container.cc",
-    "boot_lockbox_client.cc",
     "config.cc",
   ]
   configs += [ ":target_defaults" ]
