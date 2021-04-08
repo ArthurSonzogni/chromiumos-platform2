@@ -9,8 +9,9 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 
+#include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/openssl_util.h"
+#include "cryptohome/crypto/error_util.h"
 
 namespace cryptohome {
 

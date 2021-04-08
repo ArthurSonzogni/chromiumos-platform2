@@ -11,7 +11,8 @@
 #include <base/strings/strcat.h>
 #include <openssl/obj_mac.h>
 
-#include "cryptohome/crypto/openssl_util.h"
+#include "cryptohome/crypto/big_num_util.h"
+#include "cryptohome/crypto/error_util.h"
 
 namespace cryptohome {
 

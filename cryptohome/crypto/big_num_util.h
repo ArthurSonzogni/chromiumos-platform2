@@ -2,12 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// OpenSSL util. It should be used only by OpenSSL C++ wrappers.
-
-#ifndef CRYPTOHOME_CRYPTO_OPENSSL_UTIL_H_
-#define CRYPTOHOME_CRYPTO_OPENSSL_UTIL_H_
-
-#include <string>
+#ifndef CRYPTOHOME_CRYPTO_BIG_NUM_UTIL_H_
+#define CRYPTOHOME_CRYPTO_BIG_NUM_UTIL_H_
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -39,11 +35,6 @@ crypto::ScopedBIGNUM SecureBlobToBigNum(const brillo::SecureBlob& blob);
 // The resulting SecureBlob is encoded in big-endian form.
 bool BigNumToSecureBlob(const BIGNUM& bn, brillo::SecureBlob* result);
 
-// Returns all errors in OpenSSL error queue delimited with a semicolon
-// starting from the earliest. Returns empty string if there are no errors in
-// the queue. Clears the queue.
-std::string GetOpenSSLErrors();
-
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_CRYPTO_OPENSSL_UTIL_H_
+#endif  // CRYPTOHOME_CRYPTO_BIG_NUM_UTIL_H_
