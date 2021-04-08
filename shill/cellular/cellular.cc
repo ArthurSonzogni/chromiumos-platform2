@@ -1761,9 +1761,9 @@ void Cellular::UpdateScanning() {
     case CapabilityState::kCellularStarted:
       // CellularStarted indicates that Cellular is enabled, but the Modem
       // object has not been created, or was destroyed because the Modem is
-      // Inhibited or Locked, or StartModem failed. Treat as scanning for the
-      // UI, unless |inhibited_| is true or the SIM is locked
-      scanning = !inhibited_ && modem_state_ != kModemStateLocked;
+      // Inhibited or Locked, or StartModem failed.
+      scanning = !inhibited_ && modem_state_ != kModemStateLocked &&
+                 modem_state_ != kModemStateFailed;
       break;
     case CapabilityState::kModemStarting:
       // ModemStarting indicates that a Modem object exists but has not started.
