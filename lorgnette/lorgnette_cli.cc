@@ -493,12 +493,7 @@ bool ScanRunner::RunScanner(const std::string& scanner) {
   return true;
 }
 
-bool DoScan(std::unique_ptr<ManagerProxy> manager,
-            uint32_t scan_resolution,
-            lorgnette::SourceType source_type,
-            const lorgnette::ScanRegion& region,
-            lorgnette::ColorMode color_mode,
-            bool scan_from_all_scanners) {
+std::vector<std::string> BuildScannerList(ManagerProxy* manager) {
   // Start the airscan-discover process immediately since it can be slightly
   // long-running. We read the output later after we've gotten a scanner list
   // from lorgnette.
@@ -507,23 +502,36 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
   discover.RedirectUsingPipe(STDOUT_FILENO, false);
   if (!discover.Start()) {
     LOG(ERROR) << "Failed to start airscan-discover process";
-    return false;
+    return {};
   }
 
   std::cout << "Getting scanner list." << std::endl;
   base::Optional<std::vector<std::string>> sane_scanners =
-      ListScanners(manager.get());
+      ListScanners(manager);
   if (!sane_scanners.has_value())
-    return false;
+    return {};
 
   base::Optional<std::vector<std::string>> airscan_scanners =
       ReadAirscanOutput(&discover);
   if (!airscan_scanners.has_value())
-    return false;
+    return {};
 
   std::vector<std::string> scanners = std::move(sane_scanners.value());
   scanners.insert(scanners.end(), airscan_scanners.value().begin(),
                   airscan_scanners.value().end());
+  return scanners;
+}
+
+bool DoScan(std::unique_ptr<ManagerProxy> manager,
+            uint32_t scan_resolution,
+            lorgnette::SourceType source_type,
+            const lorgnette::ScanRegion& region,
+            lorgnette::ColorMode color_mode,
+            bool scan_from_all_scanners) {
+  std::vector<std::string> scanners = BuildScannerList(manager.get());
+  if (scanners.empty()) {
+    return false;
+  }
 
   ScanRunner runner(manager.get());
   runner.SetResolution(scan_resolution);
@@ -609,8 +617,9 @@ int main(int argc, char** argv) {
 
   const std::vector<std::string>& args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() != 1 || (args[0] != "scan" && args[0] != "cancel_scan")) {
-    std::cerr << "usage: lorgnette_cli [scan|cancel_scan] [FLAGS...]"
+  if (args.size() != 1 ||
+      (args[0] != "scan" && args[0] != "cancel_scan" && args[0] != "list")) {
+    std::cerr << "usage: lorgnette_cli [list|scan|cancel_scan] [FLAGS...]"
               << std::endl;
     return 1;
   }
@@ -673,6 +682,14 @@ int main(int argc, char** argv) {
     bool success = DoScan(std::move(manager), FLAGS_scan_resolution,
                           source_type.value(), region, color_mode, FLAGS_all);
     return success ? 0 : 1;
+  } else if (command == "list") {
+    std::vector<std::string> scanners = BuildScannerList(manager.get());
+
+    std::cout << "Detected scanners:" << std::endl;
+    for (int i = 0; i < scanners.size(); i++) {
+      std::cout << scanners[i] << std::endl;
+    }
+
   } else if (command == "cancel_scan") {
     if (FLAGS_uuid.empty()) {
       LOG(ERROR) << "Must specify scan uuid to cancel using --uuid=[...]";
