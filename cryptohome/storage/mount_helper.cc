@@ -439,31 +439,13 @@ bool MountHelper::MountLegacyHome(const FilePath& from) {
 }
 
 bool MountHelper::BindMyFilesDownloads(const base::FilePath& user_home) {
-  if (!platform_->DirectoryExists(user_home)) {
-    LOG(ERROR) << "Failed to bind MyFiles/Downloads, missing directory: "
-               << user_home.value();
-    return false;
-  }
-
   const FilePath downloads = user_home.Append(kDownloadsDir);
-  if (!platform_->DirectoryExists(downloads)) {
-    LOG(ERROR) << "Failed to bind MyFiles/Downloads, missing directory: "
-               << downloads.value();
-    return false;
-  }
-
   const FilePath downloads_in_myfiles =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
-  if (!platform_->DirectoryExists(downloads_in_myfiles)) {
-    LOG(ERROR) << "Failed to bind MyFiles/Downloads, missing directory: "
-               << downloads_in_myfiles.value();
-    return false;
-  }
-  /*
-   * User could have saved files in MyFiles/Downloads in case cryptohome
-   * crashed and bind mounts were removed by error. See crbug.com/1080730.
-   * Move the files back to Download unless a file already exits.
-   */
+
+  // User could have saved files in MyFiles/Downloads in case cryptohome
+  // crashed and bind mounts were removed by error. See crbug.com/1080730.
+  // Move the files back to Download unless a file already exists.
   MigrateDirectory(downloads, downloads_in_myfiles);
 
   if (!BindAndPush(downloads, downloads_in_myfiles, true /*is_shared*/))
@@ -618,9 +600,8 @@ bool MountHelper::MountHomesAndDaemonStores(
     return false;
 
   if (bind_mount_downloads_) {
-    // Mount Downloads to MyFiles/Downloads in:
-    //  - /home/chronos/u-<user_hash>
-    if (!BindMyFilesDownloads(user_multi_home)) {
+    // Mount Downloads to MyFiles/Downloads in the user shadow directory.
+    if (!BindMyFilesDownloads(user_home)) {
       return false;
     }
   }
