@@ -200,6 +200,8 @@ class EncryptionKeyTest : public testing::Test {
     ResetLoader();
   }
 
+  void TearDown() override { ASSERT_EQ(tlcl_.GetDictionaryAttackCounter(), 0); }
+
   void ResetLoader() {
     tpm_ = std::make_unique<Tpm>();
     loader_ = SystemKeyLoader::Create(tpm_.get(), tmpdir_.GetPath());

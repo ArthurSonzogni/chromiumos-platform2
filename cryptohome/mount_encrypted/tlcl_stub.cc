@@ -102,6 +102,10 @@ void TlclStub::SetPCRValue(uint32_t index,
   memcpy(pcr_values_[index], value, TPM_PCR_DIGEST);
 }
 
+int TlclStub::GetDictionaryAttackCounter() {
+  return dictionary_attack_counter_;
+}
+
 TlclStub* TlclStub::Get() {
   CHECK(g_instance);
   return g_instance;
@@ -138,6 +142,9 @@ uint32_t TlclStub::DefineSpaceEx(const uint8_t* owner_auth,
 #else
   std::vector<uint8_t> in_auth(owner_auth, owner_auth + owner_auth_size);
   authenticated = is_owned() && in_auth == owner_auth_;
+  if (is_owned() && in_auth != owner_auth_) {
+    ++dictionary_attack_counter_;
+  }
 #endif
 
   if (!authenticated) {

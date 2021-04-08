@@ -50,6 +50,9 @@ class TlclStub {
   // Configure a PCR to contain the specified value.
   void SetPCRValue(uint32_t index, const uint8_t value[TPM_PCR_DIGEST]);
 
+  // Returns the emulated dictionary attack counter.
+  int GetDictionaryAttackCounter();
+
   // This is used to obtain the current stub instance for servicing Tlcl calls.
   // Do not call directly in tests, but construct your own TlclStub instance
   // which will then be returned by Get().
@@ -115,6 +118,9 @@ class TlclStub {
   uint32_t delegation_family_id_ = 0;
   std::vector<TPM_FAMILY_TABLE_ENTRY> delegation_family_table_;
 #endif  // !USE_TPM2
+
+  // The emulated dictionary attack counter.
+  int dictionary_attack_counter_ = 0;
 
   // The static instance pointer return by Get(). Points at the most recently
   // constructed TlclStub instance.

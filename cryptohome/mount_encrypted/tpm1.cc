@@ -373,6 +373,14 @@ result_code Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
     }
     MountEncryptedMetrics::Get()->ReportTimeToTakeTpmOwnership(
         base::TimeTicks::Now() - take_ownerhip_start_time);
+  } else {
+    const base::FilePath tpm_owned_path =
+        rootdir_.AppendASCII(paths::cryptohome::kTpmOwned);
+    if (base::PathExists(tpm_owned_path)) {
+      LOG(ERROR)
+          << "Unable to define space because TPM is already fully initialized.";
+      return RESULT_FAIL_FATAL;
+    }
   }
 
   uint32_t pcr_selection = (1 << kPCRBootMode);
