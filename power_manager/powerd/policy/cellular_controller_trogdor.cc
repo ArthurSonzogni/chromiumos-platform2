@@ -111,6 +111,16 @@ RadioTransmitPower CellularControllerTrogdor::DetermineTransmitPower() const {
   RadioTransmitPower proximity_power = RadioTransmitPower::HIGH;
   RadioTransmitPower tablet_mode_power = RadioTransmitPower::HIGH;
 
+  // Note: On devices where dynamic SAR is not enabled (i.e. neither
+  // set_transmit_power_for_proximity_ or set_transmit_power_for_tablet_mode_
+  // is set) Set the power level to 0 (since the other levels are not
+  // programmed)
+  if (!set_transmit_power_for_proximity_ &&
+      !set_transmit_power_for_tablet_mode_) {
+    LOG(INFO) << "Set Cellular power level to index 0 as SAR is disabled";
+    return RadioTransmitPower::LOW;
+  }
+
   if (set_transmit_power_for_proximity_) {
     switch (proximity_) {
       case UserProximity::UNKNOWN:
