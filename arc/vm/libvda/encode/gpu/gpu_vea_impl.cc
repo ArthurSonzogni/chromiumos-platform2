@@ -176,11 +176,10 @@ void GpuVeaContext::Initialize(vea_config_t* config,
   mojo_config->has_h264_output_level = config->has_h264_output_level;
   mojo_config->storage_type = arc::mojom::VideoFrameStorageType::DMABUF;
 
-  // TODO(alexlau): Make this use BindOnce.
   remote_vea_->Initialize(
       std::move(mojo_config), std::move(remote_client),
-      base::Bind(&GpuVeaContext::OnInitialized, base::Unretained(this),
-                 base::Passed(std::move(callback))));
+      base::BindOnce(&GpuVeaContext::OnInitialized, base::Unretained(this),
+                     base::Passed(std::move(callback))));
 }
 
 void GpuVeaContext::OnInitialized(
@@ -241,11 +240,10 @@ void GpuVeaContext::EncodeOnIpcThread(vea_input_buffer_id_t input_buffer_id,
     mojo_planes.push_back(std::move(mojo_plane));
   }
 
-  // TODO(alexlau): Make this use BindOnce.
   remote_vea_->Encode(default_mojo_input_format_, std::move(handle_fd),
                       std::move(mojo_planes), timestamp, force_keyframe,
-                      base::Bind(&GpuVeaContext::OnInputBufferProcessed,
-                                 base::Unretained(this), input_buffer_id));
+                      base::BindOnce(&GpuVeaContext::OnInputBufferProcessed,
+                                     base::Unretained(this), input_buffer_id));
 }
 
 void GpuVeaContext::OnInputBufferProcessed(
@@ -275,11 +273,10 @@ void GpuVeaContext::UseOutputBufferOnIpcThread(
     return;
   }
 
-  // TODO(alexlau): Make this use BindOnce.
   remote_vea_->UseBitstreamBuffer(
       std::move(handle_fd), offset, size,
-      base::Bind(&GpuVeaContext::OnOutputBufferFilled, base::Unretained(this),
-                 output_buffer_id));
+      base::BindOnce(&GpuVeaContext::OnOutputBufferFilled,
+                     base::Unretained(this), output_buffer_id));
 }
 
 void GpuVeaContext::OnOutputBufferFilled(
@@ -313,9 +310,8 @@ int GpuVeaContext::Flush() {
 }
 
 void GpuVeaContext::FlushOnIpcThread() {
-  // TODO(alexlau): Make this use BindOnce.
   remote_vea_->Flush(
-      base::Bind(&GpuVeaContext::OnFlushDone, base::Unretained(this)));
+      base::BindOnce(&GpuVeaContext::OnFlushDone, base::Unretained(this)));
 }
 
 void GpuVeaContext::OnFlushDone(bool flush_done) {
@@ -393,10 +389,9 @@ void GpuVeaImpl::InitializeOnIpcThread(
   mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea =
       connection_->CreateEncodeAccelerator();
 
-  // TODO(alexlau): Make this use BindOnce.
-  remote_vea->GetSupportedProfiles(
-      base::Bind(&GpuVeaImpl::OnGetSupportedProfiles, base::Unretained(this),
-                 base::Passed(std::move(remote_vea)), init_complete_event));
+  remote_vea->GetSupportedProfiles(base::BindOnce(
+      &GpuVeaImpl::OnGetSupportedProfiles, base::Unretained(this),
+      base::Passed(std::move(remote_vea)), init_complete_event));
 }
 
 void GpuVeaImpl::OnGetSupportedProfiles(
@@ -451,10 +446,9 @@ void GpuVeaImpl::InitEncodeSessionOnIpcThread(
   std::unique_ptr<GpuVeaContext> context =
       std::make_unique<GpuVeaContext>(ipc_task_runner_, std::move(remote_vea));
   GpuVeaContext* context_ptr = context.get();
-  // TODO(alexlau): Make this use BindOnce.
   context_ptr->Initialize(
       config,
-      base::Bind(
+      base::BindOnce(
           &GpuVeaImpl::InitEncodeSessionAfterContextInitializedOnIpcThread,
           base::Unretained(this), init_complete_event, out_context,
           base::Passed(std::move(context))));
