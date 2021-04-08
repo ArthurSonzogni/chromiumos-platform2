@@ -25,6 +25,8 @@
 #include <base/values.h>
 #include <brillo/scoped_umask.h>
 
+#include "biod/utils.h"
+
 namespace biod {
 
 using base::FilePath;
@@ -83,7 +85,7 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
   std::string json_string;
   JSONStringValueSerializer json_serializer(&json_string);
   if (!json_serializer.Serialize(record_value)) {
-    LOG(ERROR) << "Failed to serialize record with id " << record_id
+    LOG(ERROR) << "Failed to serialize record " << LogSafeID(record_id)
                << " to JSON.";
     return false;
   }
@@ -109,13 +111,13 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
 
     if (!base::ImportantFileWriter::WriteFileAtomically(record_storage_filename,
                                                         json_string)) {
-      LOG(ERROR) << "Failed to write JSON file: "
-                 << record_storage_filename.value() << ".";
+      LOG(ERROR) << "Failed to write JSON file for record "
+                 << LogSafeID(record.GetId()) << ".";
       return false;
     }
   }
 
-  LOG(INFO) << "Done writing record with id " << record_id
+  LOG(INFO) << "Done writing record " << LogSafeID(record_id)
             << " to file successfully. ";
   return true;
 }
@@ -277,15 +279,16 @@ bool BiodStorage::DeleteRecord(const std::string& user_id,
                                          .Append(kRecordFileName + record_id);
 
   if (!base::PathExists(record_storage_filename)) {
-    LOG(INFO) << "Trying to delete record " << record_id
+    LOG(INFO) << "Trying to delete record " << LogSafeID(record_id)
               << " which does not exist on disk.";
     return true;
   }
   if (!base::DeleteFile(record_storage_filename)) {
-    LOG(ERROR) << "Fail to delete record " << record_id << " from disk.";
+    LOG(ERROR) << "Fail to delete record " << LogSafeID(record_id)
+               << " from disk.";
     return false;
   }
-  LOG(INFO) << "Done deleting record " << record_id << " from disk.";
+  LOG(INFO) << "Done deleting record " << LogSafeID(record_id) << " from disk.";
   return true;
 }
 

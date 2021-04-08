@@ -26,6 +26,7 @@
 #include "biod/biod_crypto.h"
 #include "biod/biod_metrics.h"
 #include "biod/power_button_filter.h"
+#include "biod/utils.h"
 
 namespace {
 
@@ -719,12 +720,12 @@ bool CrosFpBiometricsManager::LoadRecord(const BiodStorage::Record record) {
 
   if (records_.size() >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space to upload template from "
-               << record.metadata.record_id << ".";
+               << LogSafeID(record.metadata.record_id) << ".";
     return false;
   }
 
   biod_metrics_->SendRecordFormatVersion(record.metadata.record_format_version);
-  LOG(INFO) << "Upload record " << record.metadata.record_id;
+  LOG(INFO) << "Upload record " << LogSafeID(record.metadata.record_id) << ".";
   VendorTemplate tmpl(tmpl_data_str.begin(), tmpl_data_str.end());
   auto* metadata =
       reinterpret_cast<const ec_fp_template_encryption_metadata*>(tmpl.data());
@@ -738,7 +739,7 @@ bool CrosFpBiometricsManager::LoadRecord(const BiodStorage::Record record) {
   }
   if (!cros_dev_->UploadTemplate(tmpl)) {
     LOG(ERROR) << "Cannot send template to the MCU from "
-               << record.metadata.record_id << ".";
+               << LogSafeID(record.metadata.record_id) << ".";
     return false;
   }
 
@@ -811,7 +812,7 @@ bool CrosFpBiometricsManager::UpdateTemplatesOnDisk(
 
     Record current_record(weak_factory_.GetWeakPtr(), i);
     if (!WriteRecord(current_record, templ->data(), templ->size())) {
-      LOG(ERROR) << "Cannot update record " << records_[i].record_id
+      LOG(ERROR) << "Cannot update record " << LogSafeID(records_[i].record_id)
                  << " in storage during AuthSession because writing failed.";
       ret = false;
     }

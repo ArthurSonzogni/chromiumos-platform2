@@ -5,6 +5,7 @@
 #ifndef BIOD_UTILS_H_
 #define BIOD_UTILS_H_
 
+#include <string>
 #include <type_traits>
 
 namespace biod {
@@ -23,6 +24,19 @@ template <typename E>
 constexpr auto to_utype(E enumerator) noexcept {
   return static_cast<std::underlying_type_t<E>>(enumerator);
 }
+
+/**
+ * @brief Convert id to a privacy preserving identifier string.
+ *
+ * Log files are uploaded via crash reports and feedback reports.
+ * This function helps ensure that the IDs logged are only unique within
+ * a single crash/feedback report and not across many different reports.
+ * Only use this string for logging purposes.
+ *
+ * @param id A plain text string id.
+ * @return std::string The mutated loggable id string.
+ */
+std::string LogSafeID(const std::string& id);
 
 }  // namespace biod
 
