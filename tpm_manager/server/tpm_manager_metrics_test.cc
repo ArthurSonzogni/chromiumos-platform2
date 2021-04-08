@@ -91,4 +91,20 @@ TEST_F(TpmManagerMetricsTest, ReportSecretStatus) {
   }
 }
 
+TEST_F(TpmManagerMetricsTest, ReportVersionFingerprint) {
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kTPMVersionFingerprint, 0xdeadbeaf))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportVersionFingerprint(0xdeadbeaf);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportTimeToTakeOwnership) {
+  const base::TimeDelta elapsed_time = base::TimeDelta::FromMinutes(3);
+  EXPECT_CALL(mock_metrics_library_,
+              SendToUMA(kTPMTimeToTakeOwnership, elapsed_time.InMilliseconds(),
+                        _, _, _))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportTimeToTakeOwnership(elapsed_time);
+}
+
 }  // namespace tpm_manager

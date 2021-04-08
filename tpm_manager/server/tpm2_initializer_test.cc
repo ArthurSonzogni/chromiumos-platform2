@@ -69,19 +69,23 @@ class Tpm2InitializerTest : public testing::Test {
 TEST_F(Tpm2InitializerTest, InitializeTpmNoSeedTpm) {
   EXPECT_CALL(mock_tpm_utility_, StirRandom(_, _))
       .WillRepeatedly(Return(trunks::TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_initializer_->InitializeTpm());
+  bool already_owned;
+  EXPECT_FALSE(tpm_initializer_->InitializeTpm(&already_owned));
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmAlreadyOwned) {
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
-  EXPECT_TRUE(tpm_initializer_->InitializeTpm());
+  bool already_owned = false;
+  EXPECT_TRUE(tpm_initializer_->InitializeTpm(&already_owned));
+  EXPECT_TRUE(already_owned);
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmOwnershipStatusError) {
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_)).WillOnce(Return(false));
   EXPECT_CALL(mock_data_store_, Read(_)).Times(0);
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
-  EXPECT_FALSE(tpm_initializer_->InitializeTpm());
+  bool already_owned;
+  EXPECT_FALSE(tpm_initializer_->InitializeTpm(&already_owned));
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataReadError) {
@@ -90,7 +94,8 @@ TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataReadError) {
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_data_store_, Read(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
-  EXPECT_FALSE(tpm_initializer_->InitializeTpm());
+  bool already_owned;
+  EXPECT_FALSE(tpm_initializer_->InitializeTpm(&already_owned));
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataWriteError) {
@@ -99,7 +104,8 @@ TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataWriteError) {
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_data_store_, Write(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
-  EXPECT_FALSE(tpm_initializer_->InitializeTpm());
+  bool already_owned;
+  EXPECT_FALSE(tpm_initializer_->InitializeTpm(&already_owned));
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmOwnershipError) {
@@ -108,7 +114,8 @@ TEST_F(Tpm2InitializerTest, InitializeTpmOwnershipError) {
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
       .WillRepeatedly(Return(trunks::TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_initializer_->InitializeTpm());
+  bool already_owned;
+  EXPECT_FALSE(tpm_initializer_->InitializeTpm(&already_owned));
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
@@ -130,11 +137,13 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
                       Return(trunks::TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_TRUE(tpm_initializer_->InitializeTpm());
+  bool already_owned = true;
+  EXPECT_TRUE(tpm_initializer_->InitializeTpm(&already_owned));
   EXPECT_LT(0, fake_local_data_.owner_dependency_size());
   EXPECT_EQ(owner_password, fake_local_data_.owner_password());
   EXPECT_EQ(endorsement_password, fake_local_data_.endorsement_password());
   EXPECT_EQ(lockout_password, fake_local_data_.lockout_password());
+  EXPECT_FALSE(already_owned);
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
@@ -151,11 +160,13 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
       mock_tpm_utility_,
       TakeOwnership(owner_password, endorsement_password, lockout_password))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_TRUE(tpm_initializer_->InitializeTpm());
+  bool already_owned = true;
+  EXPECT_TRUE(tpm_initializer_->InitializeTpm(&already_owned));
   EXPECT_LT(0, fake_local_data_.owner_dependency_size());
   EXPECT_EQ(owner_password, fake_local_data_.owner_password());
   EXPECT_EQ(endorsement_password, fake_local_data_.endorsement_password());
   EXPECT_EQ(lockout_password, fake_local_data_.lockout_password());
+  EXPECT_FALSE(already_owned);
 }
 
 TEST_F(Tpm2InitializerTest, PruneStoredPasswordsSuccess) {

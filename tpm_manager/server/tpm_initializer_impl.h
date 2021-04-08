@@ -46,7 +46,7 @@ class TpmInitializerImpl : public TpmInitializer {
   ~TpmInitializerImpl() override = default;
 
   // TpmInitializer methods.
-  bool InitializeTpm() override;
+  bool InitializeTpm(bool* already_owned) override;
   bool PreInitializeTpm() override;
   bool EnsurePersistentOwnerDelegate() override;
   void VerifiedBootHelper() override;

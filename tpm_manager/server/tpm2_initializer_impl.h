@@ -26,7 +26,7 @@ namespace tpm_manager {
 // Tpm2StatusImpl status;
 // OwnershipTakenCallBack callback;
 // Tpm2InitializerImpl initializer(&data_store, &status, callback);
-// initializer.InitializeTpm();
+// initializer.InitializeTpm(&already_owned);
 //
 // If the tpm is unowned, InitializeTpm injects random owner, endorsement and
 // lockout passwords, intializes the SRK with empty authorization, and persists
@@ -51,7 +51,7 @@ class Tpm2InitializerImpl : public TpmInitializer {
   ~Tpm2InitializerImpl() override = default;
 
   // TpmInitializer methods.
-  bool InitializeTpm() override;
+  bool InitializeTpm(bool* already_owned) override;
   bool PreInitializeTpm() override;
   bool EnsurePersistentOwnerDelegate() override;
   void VerifiedBootHelper() override;

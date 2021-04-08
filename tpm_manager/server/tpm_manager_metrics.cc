@@ -12,6 +12,12 @@ namespace {
 constexpr int kDictionaryAttackCounterNumBuckets = 100;
 constexpr int kSecretStatusNumBuckets = kSecretMaxBit << 1;
 
+constexpr base::TimeDelta kTimeToTakeOwnershipMin =
+    base::TimeDelta::FromMilliseconds(1);
+constexpr base::TimeDelta kTimeToTakeOwnershipMax =
+    base::TimeDelta::FromMinutes(5);
+constexpr int kTimeToTakeOwnershipNumBuckets = 50;
+
 }  // namespace
 
 
@@ -52,6 +58,14 @@ void TpmManagerMetrics::ReportSecretStatus(const SecretStatus& status) {
 
 void TpmManagerMetrics::ReportVersionFingerprint(int fingerprint) {
   metrics_library_->SendSparseToUMA(kTPMVersionFingerprint, fingerprint);
+}
+
+void TpmManagerMetrics::ReportTimeToTakeOwnership(
+    base::TimeDelta elapsed_time) {
+  metrics_library_->SendToUMA(
+      kTPMTimeToTakeOwnership, elapsed_time.InMilliseconds(),
+      kTimeToTakeOwnershipMin.InMilliseconds(),
+      kTimeToTakeOwnershipMax.InMilliseconds(), kTimeToTakeOwnershipNumBuckets);
 }
 
 }  // namespace tpm_manager

@@ -4,13 +4,17 @@
 
 #include "tpm_manager/server/mock_tpm_initializer.h"
 
+using testing::_;
+using testing::DoAll;
 using testing::Return;
+using testing::SetArgPointee;
 
 namespace tpm_manager {
 
 MockTpmInitializer::MockTpmInitializer() {
   ON_CALL(*this, PreInitializeTpm()).WillByDefault(Return(true));
-  ON_CALL(*this, InitializeTpm()).WillByDefault(Return(true));
+  ON_CALL(*this, InitializeTpm(_))
+      .WillByDefault(DoAll(SetArgPointee<0>(false), Return(true)));
   ON_CALL(*this, EnsurePersistentOwnerDelegate()).WillByDefault(Return(true));
   ON_CALL(*this, ResetDictionaryAttackLock())
       .WillByDefault(

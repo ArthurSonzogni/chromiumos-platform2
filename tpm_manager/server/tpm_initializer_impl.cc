@@ -46,7 +46,7 @@ bool TpmInitializerImpl::PreInitializeTpm() {
   return true;
 }
 
-bool TpmInitializerImpl::InitializeTpm() {
+bool TpmInitializerImpl::InitializeTpm(bool* already_owned) {
   TpmStatus::TpmOwnershipStatus ownership_status;
   if (!tpm_status_->GetTpmOwned(&ownership_status)) {
     LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
@@ -55,8 +55,10 @@ bool TpmInitializerImpl::InitializeTpm() {
   if (ownership_status == TpmStatus::kTpmOwned) {
     // Tpm is already owned, so we do not need to do anything.
     VLOG(1) << "Tpm already owned.";
+    *already_owned = true;
     return true;
   }
+  *already_owned = false;
   // Makes sure EK is there when unowned.
   if (ownership_status != TpmStatus::kTpmUnowned) {
     LOG(INFO) << __func__

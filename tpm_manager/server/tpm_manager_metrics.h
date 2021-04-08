@@ -5,6 +5,7 @@
 #ifndef TPM_MANAGER_SERVER_TPM_MANAGER_METRICS_H_
 #define TPM_MANAGER_SERVER_TPM_MANAGER_METRICS_H_
 
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 #include "tpm_manager/server/dictionary_attack_reset_status.h"
@@ -39,6 +40,8 @@ class TpmManagerMetrics : private MetricsLibrary {
   // Reports the TPM version fingerprint to the
   // "Platform.TPM.VersionFingerprint" histogram.
   virtual void ReportVersionFingerprint(int fingerprint);
+
+  virtual void ReportTimeToTakeOwnership(base::TimeDelta elapsed_time);
 
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {

@@ -57,7 +57,7 @@ bool Tpm2InitializerImpl::PreInitializeTpm() {
   return true;
 }
 
-bool Tpm2InitializerImpl::InitializeTpm() {
+bool Tpm2InitializerImpl::InitializeTpm(bool* already_owned) {
   if (!SeedTpmRng()) {
     return false;
   }
@@ -70,8 +70,11 @@ bool Tpm2InitializerImpl::InitializeTpm() {
   if (ownership_status == TpmStatus::kTpmOwned) {
     // Tpm is already owned, so we do not need to do anything.
     VLOG(1) << "Tpm already owned.";
+    *already_owned = true;
     return true;
   }
+  *already_owned = false;
+
   // First we read the local data. If we did not finish removing owner
   // dependencies or if TakeOwnership failed, we want to retake ownership
   // with the same passwords.

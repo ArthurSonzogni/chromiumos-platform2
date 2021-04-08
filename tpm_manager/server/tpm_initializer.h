@@ -26,10 +26,10 @@ class TpmInitializer {
   virtual ~TpmInitializer() = default;
 
   // Initializes a TPM and returns true on success. If the TPM is already
-  // initialized, this method has no effect and succeeds. If the TPM is
-  // partially initialized, e.g. the process was previously interrupted, then
-  // the process picks up where it left off.
-  virtual bool InitializeTpm() = 0;
+  // initialized, this method will set |already_owned| to true and succeeds . If
+  // the TPM is partially initialized, e.g. the process was previously
+  // interrupted, then the process picks up where it left off.
+  virtual bool InitializeTpm(bool* already_owned) = 0;
 
   // Performs actions that can be done on uninitialized TPM before
   // receiving a signal that taking ownership can be attempted.

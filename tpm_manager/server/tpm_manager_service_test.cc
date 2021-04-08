@@ -129,8 +129,9 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
 
   // Make sure InitializeTpm doesn't get multiple calls.
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(1);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(1);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
   SetupService();
   RunServiceWorkerAndQuit();
 }
@@ -141,7 +142,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
   RunServiceWorkerAndQuit();
@@ -149,7 +150,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
 
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeNoTpm) {
   EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
   RunServiceWorkerAndQuit();
@@ -161,8 +162,9 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeFailure) {
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm())
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(0);
   SetupService();
   RunServiceWorkerAndQuit();
 }
@@ -172,9 +174,10 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm())
-      .Times(2)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(true), Return(true)));
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportDictionaryAttackResetStatus(_))
       .Times(1);
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportDictionaryAttackCounter(_))
@@ -194,7 +197,7 @@ TEST_F(TpmManagerServiceTest_Preinit, NoAutoInitialize) {
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(1);
   SetupService();
   RunServiceWorkerAndQuit();
@@ -206,7 +209,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwned) {
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
       .WillOnce(DoAll(SetArgPointee<0>(true), Return(true)));
@@ -222,7 +225,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwnedSkipDisableDA) {
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
       .WillOnce(DoAll(SetArgPointee<0>(false), Return(true)));
@@ -239,7 +242,7 @@ TEST_F(TpmManagerServiceTest_Preinit,
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
       .WillOnce(Return(false));
@@ -286,7 +289,7 @@ TEST_F(TpmManagerServiceTest_Preinit, PruneLocalData) {
 }
 
 TEST_F(TpmManagerServiceTest_NoPreinit, NoPreInitialize) {
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
   RunServiceWorkerAndQuit();
@@ -301,8 +304,10 @@ TEST_F(TpmManagerServiceTest_Preinit,
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).WillOnce(Return(true));
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
 
   // Sets the period to 50 ms.
   service_->set_dictionary_attack_reset_timer_for_testing(
@@ -650,7 +655,7 @@ TEST_F(TpmManagerServiceTest, ResetDictionaryAttackLockFailure) {
 
 TEST_F(TpmManagerServiceTest, TakeOwnershipSuccess) {
   // Make sure InitializeTpm doesn't get multiple calls.
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(1);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(1);
   // Successful TPM initialization should trigger the DA reset and metrics
   // collection.
   EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _))
@@ -661,6 +666,7 @@ TEST_F(TpmManagerServiceTest, TakeOwnershipSuccess) {
       .Times(1);
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportDictionaryAttackCounter(0))
       .Times(1);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
   auto callback = [](TpmManagerServiceTestBase* self,
                      const TakeOwnershipReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -672,8 +678,10 @@ TEST_F(TpmManagerServiceTest, TakeOwnershipSuccess) {
 }
 
 TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipFailure) {
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm())
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_))
       .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(0);
 
   SetupService();
 
@@ -689,7 +697,9 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipFailure) {
 
 TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipNoTpm) {
   EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
+
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(0);
 
   SetupService();
 
@@ -707,7 +717,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipFollowedByDisableDA) {
   // Called in `InitializeTask()`.
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).WillOnce(Return(true));
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).WillOnce(Return(true));
   EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
       .WillOnce(DoAll(SetArgPointee<0>(true), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, DisableDictionaryAttackMitigation())
@@ -1132,7 +1142,8 @@ TEST_F(TpmManagerServiceTest_Preinit, UpdateTpmStatusAfterTakeOwnership) {
       .WillOnce(Return(true))
       .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
 
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).WillOnce(Return(true));
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(true)));
 
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportDictionaryAttackCounter(0))
       .Times(1);
@@ -1140,6 +1151,8 @@ TEST_F(TpmManagerServiceTest_Preinit, UpdateTpmStatusAfterTakeOwnership) {
               ReportDictionaryAttackResetStatus(
                   DictionaryAttackResetStatus::kResetNotNecessary))
       .Times(1);
+
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
 
   SetupService();
 

@@ -17,7 +17,7 @@ class MockTpmInitializer : public TpmInitializer {
   ~MockTpmInitializer() override;
 
   MOCK_METHOD(bool, PreInitializeTpm, (), (override));
-  MOCK_METHOD(bool, InitializeTpm, (), (override));
+  MOCK_METHOD(bool, InitializeTpm, (bool*), (override));
   MOCK_METHOD(bool, EnsurePersistentOwnerDelegate, (), (override));
   MOCK_METHOD(void, VerifiedBootHelper, (), (override));
   MOCK_METHOD(DictionaryAttackResetStatus,
