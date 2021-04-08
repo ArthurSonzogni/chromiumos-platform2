@@ -38,7 +38,8 @@ interface VideoAcceleratorFactory {
       pending_receiver<VideoEncodeAccelerator> video_encoder);
 
   [MinVersion=6]
-  CreateDecodeAccelerator@2(VideoDecodeAccelerator& video_decoder);
+  CreateDecodeAccelerator@2(
+      pending_receiver<VideoDecodeAccelerator> video_decoder);
 
   [Minversion=7]
   CreateProtectedBufferAllocator@3(

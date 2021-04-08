@@ -28,7 +28,6 @@
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <sys/eventfd.h>
@@ -184,17 +183,20 @@ scoped_refptr<base::SingleThreadTaskRunner> VafConnection::GetIpcTaskRunner() {
   return ipc_thread_.task_runner();
 }
 
-void VafConnection::CreateDecodeAccelerator(
-    arc::mojom::VideoDecodeAcceleratorPtr* vda_ptr) {
+mojo::Remote<arc::mojom::VideoDecodeAccelerator>
+VafConnection::CreateDecodeAccelerator() {
+  mojo::Remote<arc::mojom::VideoDecodeAccelerator> remote_vda;
   RunTaskOnThread(
       ipc_thread_.task_runner(),
       base::BindOnce(&VafConnection::CreateDecodeAcceleratorOnIpcThread,
-                     base::Unretained(this), vda_ptr));
+                     base::Unretained(this), &remote_vda));
+  return remote_vda;
 }
 
 void VafConnection::CreateDecodeAcceleratorOnIpcThread(
-    arc::mojom::VideoDecodeAcceleratorPtr* vda_ptr) {
-  remote_factory_->CreateDecodeAccelerator(mojo::MakeRequest(vda_ptr));
+    mojo::Remote<arc::mojom::VideoDecodeAccelerator>* remote_vda) {
+  remote_factory_->CreateDecodeAccelerator(
+      remote_vda->BindNewPipeAndPassReceiver());
 }
 
 mojo::Remote<arc::mojom::VideoEncodeAccelerator>

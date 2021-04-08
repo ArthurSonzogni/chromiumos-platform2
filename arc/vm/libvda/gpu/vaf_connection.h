@@ -29,7 +29,7 @@ class VafConnection {
  public:
   ~VafConnection();
   scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner();
-  void CreateDecodeAccelerator(arc::mojom::VideoDecodeAcceleratorPtr* vda_ptr);
+  mojo::Remote<arc::mojom::VideoDecodeAccelerator> CreateDecodeAccelerator();
   mojo::Remote<arc::mojom::VideoEncodeAccelerator> CreateEncodeAccelerator();
 
   // Returns a VafConnection instance.
@@ -42,7 +42,7 @@ class VafConnection {
   void CleanupOnIpcThread();
   void OnFactoryError(uint32_t custom_reason, const std::string& description);
   void CreateDecodeAcceleratorOnIpcThread(
-      arc::mojom::VideoDecodeAcceleratorPtr* vda_ptr);
+      mojo::Remote<arc::mojom::VideoDecodeAccelerator>* remote_vda);
   void CreateEncodeAcceleratorOnIpcThread(
       mojo::Remote<arc::mojom::VideoEncodeAccelerator>* remote_vea);
 
