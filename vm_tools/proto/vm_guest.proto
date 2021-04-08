@@ -145,6 +145,7 @@ message StartTerminaRequest {
     USED_BY_TESTS = 1;
     START_LXD = 2;
     RESET_LXD_ON_LAUNCH = 3;
+    LXD_4_LTS = 4;
   }
   // The address for tremplin to connect to.
   uint32 tremplin_ipv4_address = 1;

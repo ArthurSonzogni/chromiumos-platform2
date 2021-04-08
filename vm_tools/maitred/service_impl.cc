@@ -68,6 +68,9 @@ constexpr char kResolvConfPath[] = "/run/resolv.conf";
 constexpr char kRunPath[] = "/run";
 constexpr char kTmpResolvConfPath[] = "/run/resolv.conf.tmp";
 
+constexpr char kBashRc[] = "/etc/bash/bashrc.d/";
+constexpr char kSetPathScript[] = "set-path-for-lxd-next.sh";
+
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
   struct in_addr in = {
@@ -238,6 +241,15 @@ bool WriteResolvConf(const std::vector<string> nameservers,
   }
 
   return true;
+}
+
+bool PrefixPath(const char* env_name, std::string new_val) {
+  const auto* curr_val = getenv(env_name);
+  if (curr_val != nullptr) {
+    new_val = new_val + std::string(":") + curr_val;
+  }
+
+  return setenv(env_name, new_val.c_str(), /*overwrite=*/true) == 0;
 }
 
 }  // namespace
@@ -651,6 +663,50 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   if (!request->allow_privileged_containers())
     lxd_env_.emplace("LXD_UNPRIVILEGED_ONLY", "true");
 
+  for (const auto feature : request->feature()) {
+    if (feature == StartTerminaRequest::LXD_4_LTS) {
+      // Set PATH and LD_LIBRARY_PATH to prefer things in the lxd-next
+      // directory. Note that we don't just want to affect our child processes,
+      // we want to affect our own path resolution, since we call lxcfs by name
+      // below.
+      if (!PrefixPath("PATH", "/opt/google/lxd-next/bin") ||
+          !PrefixPath("PATH", "/opt/google/lxd-next/usr/bin") ||
+          !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/lib") ||
+          !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/lib64") ||
+          !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/usr/lib") ||
+          !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/usr/lib64")) {
+        return grpc::Status(
+            grpc::INTERNAL,
+            std::string("failed to set PATH or LD_LIBRARY_PATH: ") +
+                strerror(errno));
+      }
+
+      // We also want to add these paths to the environment of vsh shells, but
+      // using normal environment inheritance presents several issues:
+      //
+      // 1) vshd has already started, so we would need to restart it from here
+      // 2) /etc/profile adds the "normal" PATH entries *before* anything
+      //    inherited from the parent of the shell, but we need our paths to
+      //    take precedence.
+      // 3) vshd clears the environment before execing anyway
+      //
+      // The scripts in /etc/bash/bashrc.d/ get run after the issues above, so
+      // we can do our environment modifications there. Because this directory
+      // is part of the read-only rootfs we use a bind-mount to insert the
+      // appropriate script when the LXD_4_LTS feature is set.
+      //
+      // This script is installed as a dot-file by the app-emulation/lxd:4
+      // ebuild, so it's ignored by default.
+      if (mount((string(kBashRc) + "." + kSetPathScript).c_str(),
+                (string(kBashRc) + kSetPathScript).c_str(), nullptr, MS_BIND,
+                nullptr) != 0) {
+        return grpc::Status(
+            grpc::INTERNAL,
+            std::string("failed to set up bashrc.d: ") + strerror(errno));
+      }
+    }
+  }
+
   response->set_mount_result(StartTerminaResponse::UNKNOWN);
 
   if (!init_) {
@@ -735,8 +791,11 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   std::vector<std::string> tremplin_argv{"tremplin", "-lxd_subnet",
                                          request->lxd_ipv4_subnet()};
   for (const auto feature : request->feature()) {
-    tremplin_argv.emplace_back("-feature");
-    tremplin_argv.emplace_back(request->Feature_Name(feature));
+    if (feature == StartTerminaRequest::START_LXD ||
+        feature == StartTerminaRequest::RESET_LXD_ON_LAUNCH) {
+      tremplin_argv.emplace_back("-feature");
+      tremplin_argv.emplace_back(request->Feature_Name(feature));
+    }
   }
 
   if (!init_->Spawn(tremplin_argv, lxd_env_, true /*respawn*/,
