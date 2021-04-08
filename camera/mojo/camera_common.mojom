@@ -13,6 +13,9 @@ enum CameraFacing {
   CAMERA_FACING_BACK = 0,
   CAMERA_FACING_FRONT = 1,
   CAMERA_FACING_EXTERNAL = 2,
+  CAMERA_FACING_VIRTUAL_BACK = 3,
+  CAMERA_FACING_VIRTUAL_FRONT = 4,
+  CAMERA_FACING_VIRTUAL_EXTERNAL = 5,
 };
 
 struct CameraResourceCost {
@@ -66,7 +69,8 @@ interface CameraModuleCallbacks {
 // TODO(hywu): evaluate passing an array of vendor tags along with their
 // section names, tag names, and types
 interface VendorTagOps {
-  // Get the number of vendor tags supported on this platform.
+  // Get the number of vendor tags supported on this platform. Return -1 on
+  // error.
   GetTagCount@0() => (int32 result);
 
   // Fill an array with all of the supported vendor tags on this platform.
@@ -78,7 +82,7 @@ interface VendorTagOps {
   // Get the tag name for a vendor-specified entry tag.
   GetTagName@3(uint32 tag) => (string? name);
 
-  // Get tag type for a vendor-specified entry tag.
+  // Get tag type for a vendor-specified entry tag. Return -1 on error.
   GetTagType@4(uint32 tag) => (int32 type);
 };
 
@@ -120,7 +124,8 @@ interface CameraModule {
   // should fill in all the vendor tag operation methods, or leave ops unchanged
   // if no vendor tags are defined.
   [MinVersion=2]
-  GetVendorTagOps@6(pending_receiver<VendorTagOps> vendor_tag_ops_receiver) => ();
+  GetVendorTagOps@6(pending_receiver<VendorTagOps> vendor_tag_ops_receiver)
+      => ();
 
   // Registers the CameraModuleCallbacks associated interface with the camera
   // HAL. TODO(b/169324225): Migrate all camera HAL clients to use this.

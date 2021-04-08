@@ -56,6 +56,10 @@ struct Camera3Stream {
   uint32 width;
   uint32 height;
   HalPixelFormat format;
+  // usage stores the gralloc usage flags for this stream and determines the
+  // nature of it. The value is used by Chrome VCD, Android framework and camera
+  // HAL. Read more on:
+  // https://source.android.com/devices/graphics/arch-bq-gralloc#gralloc_HAL
   uint32 usage;
   uint32 max_buffers;
   uint32 data_space;
