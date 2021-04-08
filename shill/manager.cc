@@ -1511,6 +1511,12 @@ bool Manager::UnloadService(vector<ServiceRefPtr>::iterator* service_iterator) {
     return false;
   }
 
+  if (IsServiceAlwaysOnVpn(**service_iterator)) {
+    ActiveProfile()->ClearAlwaysOnVpn();
+    always_on_vpn_mode_ = kAlwaysOnVpnModeOff;
+    always_on_vpn_service_ = nullptr;
+  }
+
   DCHECK(!(**service_iterator)->connection());
   (**service_iterator)->SetProfile(nullptr);
   *service_iterator = services_.erase(*service_iterator);
@@ -2008,18 +2014,17 @@ void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
   string mode;
   RpcIdentifier service_id;
   if (profile->GetAlwaysOnVpnSettings(&mode, &service_id)) {
-    always_on_vpn_mode_ = mode;
     ServiceRefPtr service = GetServiceWithRpcIdentifier(service_id);
-    if (service != nullptr) {
-      // The service type is enforced by the profile when the service is set.
-      DCHECK_EQ(service->technology(), Technology::kVPN);
-      always_on_vpn_service_ = static_cast<VPNService*>(service.get());
-    } else {
-      // No valid service configured. It's ok to set the service to null as
-      // always-on VPN is designed to handle a mode set while the service is not
-      // set/not available anymore.
+    if (service == nullptr || service->technology() != Technology::kVPN) {
+      LOG(WARNING) << "Invalid VPN service: " << service_id.value()
+                   << ". Always-on is disabled";
+      always_on_vpn_mode_ = kAlwaysOnVpnModeOff;
+      // The service should be set to null as always-on VPN is disabled.
       always_on_vpn_service_ = nullptr;
+      return;
     }
+    always_on_vpn_mode_ = mode;
+    always_on_vpn_service_ = static_cast<VPNService*>(service.get());
   }
 }
 
@@ -2037,6 +2042,12 @@ void Manager::ResetAlwaysOnVpnBackoff() {
 
   always_on_vpn_connect_attempts_ = 0u;
   always_on_vpn_connect_task_.Cancel();
+}
+
+bool Manager::IsServiceAlwaysOnVpn(const ServiceConstRefPtr& service) const {
+  return always_on_vpn_service_ && service->technology() == Technology::kVPN &&
+         always_on_vpn_service_->GetStorageIdentifier() ==
+             service->GetStorageIdentifier();
 }
 
 void Manager::DeviceStatusCheckTask() {

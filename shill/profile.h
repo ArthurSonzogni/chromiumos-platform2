@@ -177,6 +177,9 @@ class Profile : public base::RefCounted<Profile> {
   // Returns the always-on VPN configuration.
   virtual bool GetAlwaysOnVpnSettings(std::string* mode, RpcIdentifier* id);
 
+  // Clears the profile always-on VPN configuration.
+  virtual void ClearAlwaysOnVpn();
+
   virtual StoreInterface* GetStorage() { return storage_.get(); }
 
   // Returns a read-only copy of the backing storage of the profile.

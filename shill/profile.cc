@@ -379,6 +379,11 @@ bool Profile::GetAlwaysOnVpnSettings(std::string* mode, RpcIdentifier* id) {
   return true;
 }
 
+void Profile::ClearAlwaysOnVpn() {
+  properties_.always_on_vpn_mode = kAlwaysOnVpnModeOff;
+  properties_.always_on_vpn_service.clear();
+}
+
 string Profile::DBusGetAlwaysOnVpnMode(Error* /*error*/) {
   return properties_.always_on_vpn_mode;
 }

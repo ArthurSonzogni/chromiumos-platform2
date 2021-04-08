@@ -625,6 +625,7 @@ class Manager {
   // Reset the connection backoff to its initial state.  Used on a successful
   // attempt or a physical network change for instance.
   void ResetAlwaysOnVpnBackoff();
+  bool IsServiceAlwaysOnVpn(const ServiceConstRefPtr& service) const;
   std::vector<std::string> AvailableTechnologies(Error* error);
   std::vector<std::string> ConnectedTechnologies(Error* error);
   std::string DefaultTechnology(Error* error);
