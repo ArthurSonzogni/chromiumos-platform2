@@ -11,7 +11,8 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/notreached.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "arc/vm/libvda/gbm_util.h"
@@ -52,7 +53,7 @@ class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
   // Create a new GpuVeaContext. Must be called on |ipc_task_runner|.
   GpuVeaContext(
       const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-      arc::mojom::VideoEncodeAcceleratorPtr vea_ptr);
+      mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea);
   ~GpuVeaContext();
 
   using InitializeCallback = base::OnceCallback<void(bool)>;
@@ -87,13 +88,13 @@ class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
   void NotifyError(arc::mojom::VideoEncodeAccelerator::Error error) override;
 
  private:
-  // Callback for VideoEncodeAcceleratorPtr connection errors.
+  // Callback for VideoEncodeAccelerator connection errors.
   void OnVeaError(uint32_t custom_reason, const std::string& description);
 
-  // Callback for VideoEncodeClientPtr connection errors.
+  // Callback for VideoEncodeClient connection errors.
   void OnVeaClientError(uint32_t custom_reason, const std::string& description);
 
-  // Callback invoked when VideoEncodeAcceleratorPtr::Initialize completes.
+  // Callback invoked when VideoEncodeAccelerator::Initialize completes.
   void OnInitialized(InitializeCallback,
                      arc::mojom::VideoEncodeAccelerator::Result result);
 
@@ -122,22 +123,22 @@ class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
   // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
   // (crbug.com/909719).
   base::ThreadChecker ipc_thread_checker_;
-  arc::mojom::VideoEncodeAcceleratorPtr vea_ptr_;
-  mojo::Binding<arc::mojom::VideoEncodeClient> binding_;
+  mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea_;
+  mojo::Receiver<arc::mojom::VideoEncodeClient> receiver_;
 
   arc::mojom::VideoPixelFormat default_mojo_input_format_;
 };
 
 GpuVeaContext::GpuVeaContext(
     const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-    arc::mojom::VideoEncodeAcceleratorPtr vea_ptr)
+    mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea)
     : ipc_task_runner_(std::move(ipc_task_runner)),
-      vea_ptr_(std::move(vea_ptr)),
-      binding_(this) {
+      remote_vea_(std::move(remote_vea)),
+      receiver_(this) {
   // Since ipc_thread_checker_ binds to whichever thread it's created on, check
   // that we're on the correct thread first using BelongsToCurrentThread.
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  vea_ptr_.set_connection_error_with_reason_handler(
+  remote_vea_.set_disconnect_with_reason_handler(
       base::BindRepeating(&GpuVeaContext::OnVeaError, base::Unretained(this)));
 
   DLOG(INFO) << "Created new GPU context";
@@ -150,9 +151,9 @@ GpuVeaContext::~GpuVeaContext() {
 void GpuVeaContext::Initialize(vea_config_t* config,
                                InitializeCallback callback) {
   DCHECK(ipc_thread_checker_.CalledOnValidThread());
-  arc::mojom::VideoEncodeClientPtr client_ptr;
-  binding_.Bind(mojo::MakeRequest(&client_ptr));
-  binding_.set_connection_error_with_reason_handler(base::BindRepeating(
+  mojo::PendingRemote<arc::mojom::VideoEncodeClient> remote_client =
+      receiver_.BindNewPipeAndPassRemote();
+  receiver_.set_disconnect_with_reason_handler(base::BindRepeating(
       &GpuVeaContext::OnVeaClientError, base::Unretained(this)));
 
   arc::mojom::VideoEncodeAcceleratorConfigPtr mojo_config =
@@ -176,8 +177,8 @@ void GpuVeaContext::Initialize(vea_config_t* config,
   mojo_config->storage_type = arc::mojom::VideoFrameStorageType::DMABUF;
 
   // TODO(alexlau): Make this use BindOnce.
-  vea_ptr_->Initialize(
-      std::move(mojo_config), std::move(client_ptr),
+  remote_vea_->Initialize(
+      std::move(mojo_config), std::move(remote_client),
       base::Bind(&GpuVeaContext::OnInitialized, base::Unretained(this),
                  base::Passed(std::move(callback))));
 }
@@ -241,10 +242,10 @@ void GpuVeaContext::EncodeOnIpcThread(vea_input_buffer_id_t input_buffer_id,
   }
 
   // TODO(alexlau): Make this use BindOnce.
-  vea_ptr_->Encode(default_mojo_input_format_, std::move(handle_fd),
-                   std::move(mojo_planes), timestamp, force_keyframe,
-                   base::Bind(&GpuVeaContext::OnInputBufferProcessed,
-                              base::Unretained(this), input_buffer_id));
+  remote_vea_->Encode(default_mojo_input_format_, std::move(handle_fd),
+                      std::move(mojo_planes), timestamp, force_keyframe,
+                      base::Bind(&GpuVeaContext::OnInputBufferProcessed,
+                                 base::Unretained(this), input_buffer_id));
 }
 
 void GpuVeaContext::OnInputBufferProcessed(
@@ -275,7 +276,7 @@ void GpuVeaContext::UseOutputBufferOnIpcThread(
   }
 
   // TODO(alexlau): Make this use BindOnce.
-  vea_ptr_->UseBitstreamBuffer(
+  remote_vea_->UseBitstreamBuffer(
       std::move(handle_fd), offset, size,
       base::Bind(&GpuVeaContext::OnOutputBufferFilled, base::Unretained(this),
                  output_buffer_id));
@@ -301,7 +302,7 @@ int GpuVeaContext::RequestEncodingParamsChange(uint32_t bitrate,
 
 void GpuVeaContext::RequestEncodingParamsChangeOnIpcThread(uint32_t bitrate,
                                                            uint32_t framerate) {
-  vea_ptr_->RequestEncodingParametersChange(bitrate, framerate);
+  remote_vea_->RequestEncodingParametersChange(bitrate, framerate);
 }
 
 int GpuVeaContext::Flush() {
@@ -313,7 +314,7 @@ int GpuVeaContext::Flush() {
 
 void GpuVeaContext::FlushOnIpcThread() {
   // TODO(alexlau): Make this use BindOnce.
-  vea_ptr_->Flush(
+  remote_vea_->Flush(
       base::Bind(&GpuVeaContext::OnFlushDone, base::Unretained(this)));
 }
 
@@ -389,18 +390,17 @@ void GpuVeaImpl::InitializeOnIpcThread(
     base::WaitableEvent* init_complete_event) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  arc::mojom::VideoEncodeAcceleratorPtr vea_ptr;
-  connection_->CreateEncodeAccelerator(&vea_ptr);
-  auto* proxy = vea_ptr.get();
+  mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea =
+      connection_->CreateEncodeAccelerator();
 
   // TODO(alexlau): Make this use BindOnce.
-  proxy->GetSupportedProfiles(
+  remote_vea->GetSupportedProfiles(
       base::Bind(&GpuVeaImpl::OnGetSupportedProfiles, base::Unretained(this),
-                 base::Passed(std::move(vea_ptr)), init_complete_event));
+                 base::Passed(std::move(remote_vea)), init_complete_event));
 }
 
 void GpuVeaImpl::OnGetSupportedProfiles(
-    arc::mojom::VideoEncodeAcceleratorPtr vea_ptr,
+    mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea,
     base::WaitableEvent* init_complete_event,
     std::vector<arc::mojom::VideoEncodeProfilePtr> profiles) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
@@ -446,10 +446,10 @@ void GpuVeaImpl::InitEncodeSessionOnIpcThread(
     VeaContext** out_context) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  arc::mojom::VideoEncodeAcceleratorPtr vea_ptr;
-  connection_->CreateEncodeAccelerator(&vea_ptr);
+  mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea =
+      connection_->CreateEncodeAccelerator();
   std::unique_ptr<GpuVeaContext> context =
-      std::make_unique<GpuVeaContext>(ipc_task_runner_, std::move(vea_ptr));
+      std::make_unique<GpuVeaContext>(ipc_task_runner_, std::move(remote_vea));
   GpuVeaContext* context_ptr = context.get();
   // TODO(alexlau): Make this use BindOnce.
   context_ptr->Initialize(

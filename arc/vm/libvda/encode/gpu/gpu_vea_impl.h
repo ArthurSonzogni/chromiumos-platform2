@@ -45,7 +45,7 @@ class GpuVeaImpl : public VeaImpl {
   bool Initialize();
   void InitializeOnIpcThread(base::WaitableEvent* init_complete_event);
   void OnGetSupportedProfiles(
-      arc::mojom::VideoEncodeAcceleratorPtr vea_ptr,
+      mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea,
       base::WaitableEvent* init_complete_event,
       std::vector<arc::mojom::VideoEncodeProfilePtr> profiles);
   void InitEncodeSessionOnIpcThread(vea_config_t* config,

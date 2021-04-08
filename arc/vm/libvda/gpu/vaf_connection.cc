@@ -93,8 +93,8 @@ VafConnection::~VafConnection() {
 
 void VafConnection::CleanupOnIpcThread() {
   DCHECK(ipc_thread_checker_.CalledOnValidThread());
-  if (factory_ptr_.is_bound())
-    factory_ptr_.reset();
+  if (remote_factory_.is_bound())
+    remote_factory_.reset();
 }
 
 bool VafConnection::Initialize() {
@@ -163,11 +163,11 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
   // Setup the mojo pipe.
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
-  mojo::InterfacePtrInfo<arc::mojom::VideoAcceleratorFactory>
-      interface_ptr_info(invitation.ExtractMessagePipe(pipe_name),
-                         kRequiredVideoAcceleratorFactoryMojoVersion);
-  factory_ptr_ = mojo::MakeProxy(std::move(interface_ptr_info));
-  factory_ptr_.set_connection_error_with_reason_handler(base::BindRepeating(
+  mojo::PendingRemote<arc::mojom::VideoAcceleratorFactory> pending_factory(
+      invitation.ExtractMessagePipe(pipe_name),
+      kRequiredVideoAcceleratorFactoryMojoVersion);
+  remote_factory_.Bind(std::move(pending_factory));
+  remote_factory_.set_disconnect_with_reason_handler(base::BindRepeating(
       &VafConnection::OnFactoryError, base::Unretained(this)));
 
   *init_success = true;
@@ -194,20 +194,23 @@ void VafConnection::CreateDecodeAccelerator(
 
 void VafConnection::CreateDecodeAcceleratorOnIpcThread(
     arc::mojom::VideoDecodeAcceleratorPtr* vda_ptr) {
-  factory_ptr_->CreateDecodeAccelerator(mojo::MakeRequest(vda_ptr));
+  remote_factory_->CreateDecodeAccelerator(mojo::MakeRequest(vda_ptr));
 }
 
-void VafConnection::CreateEncodeAccelerator(
-    arc::mojom::VideoEncodeAcceleratorPtr* vea_ptr) {
+mojo::Remote<arc::mojom::VideoEncodeAccelerator>
+VafConnection::CreateEncodeAccelerator() {
+  mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea;
   RunTaskOnThread(
       ipc_thread_.task_runner(),
       base::BindOnce(&VafConnection::CreateEncodeAcceleratorOnIpcThread,
-                     base::Unretained(this), vea_ptr));
+                     base::Unretained(this), &remote_vea));
+  return remote_vea;
 }
 
 void VafConnection::CreateEncodeAcceleratorOnIpcThread(
-    arc::mojom::VideoEncodeAcceleratorPtr* vea_ptr) {
-  factory_ptr_->CreateEncodeAccelerator(mojo::MakeRequest(vea_ptr));
+    mojo::Remote<arc::mojom::VideoEncodeAccelerator>* remote_vea) {
+  remote_factory_->CreateEncodeAccelerator(
+      remote_vea->BindNewPipeAndPassReceiver());
 }
 
 VafConnection* VafConnection::Get() {

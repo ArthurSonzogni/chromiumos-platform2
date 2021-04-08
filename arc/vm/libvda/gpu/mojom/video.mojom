@@ -34,7 +34,8 @@ interface VideoInstance {
 // Next method ID: 4
 interface VideoAcceleratorFactory {
   [MinVersion=1]
-  CreateEncodeAccelerator@1(VideoEncodeAccelerator& video_encoder);
+  CreateEncodeAccelerator@1(
+      pending_receiver<VideoEncodeAccelerator> video_encoder);
 
   [MinVersion=6]
   CreateDecodeAccelerator@2(VideoDecodeAccelerator& video_decoder);

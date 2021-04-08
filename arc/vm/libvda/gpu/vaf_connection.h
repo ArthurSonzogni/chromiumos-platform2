@@ -12,6 +12,7 @@
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "arc/vm/libvda/gpu/mojom/video.mojom.h"
 
@@ -29,7 +30,7 @@ class VafConnection {
   ~VafConnection();
   scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner();
   void CreateDecodeAccelerator(arc::mojom::VideoDecodeAcceleratorPtr* vda_ptr);
-  void CreateEncodeAccelerator(arc::mojom::VideoEncodeAcceleratorPtr* vea_ptr);
+  mojo::Remote<arc::mojom::VideoEncodeAccelerator> CreateEncodeAccelerator();
 
   // Returns a VafConnection instance.
   static VafConnection* Get();
@@ -43,14 +44,14 @@ class VafConnection {
   void CreateDecodeAcceleratorOnIpcThread(
       arc::mojom::VideoDecodeAcceleratorPtr* vda_ptr);
   void CreateEncodeAcceleratorOnIpcThread(
-      arc::mojom::VideoEncodeAcceleratorPtr* vea_ptr);
+      mojo::Remote<arc::mojom::VideoEncodeAccelerator>* remote_vea);
 
   base::Thread ipc_thread_;
   // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
   // (crbug.com/909719).
   base::ThreadChecker ipc_thread_checker_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  arc::mojom::VideoAcceleratorFactoryPtr factory_ptr_;
+  mojo::Remote<arc::mojom::VideoAcceleratorFactory> remote_factory_;
 };
 
 }  // namespace arc
