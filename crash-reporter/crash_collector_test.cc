@@ -45,7 +45,7 @@ using ::testing::Return;
 // The QEMU emulator we use to run unit tests on simulated ARM boards does not
 // support memfd_create. (https://bugs.launchpad.net/qemu/+bug/1734792) Skip
 // tests that rely on memfd_create on ARM boards. (The tast test will still
-// provide a basic sanity check.)
+// provide a basic check.)
 #if defined(ARCH_CPU_ARM_FAMILY)
 #define DISABLED_ON_QEMU_FOR_MEMFD_CREATE(test_name) DISABLED_##test_name
 #else

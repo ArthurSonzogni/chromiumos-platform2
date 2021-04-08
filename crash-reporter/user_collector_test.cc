@@ -128,7 +128,7 @@ TEST_F(UserCollectorTest, EnableOK) {
 }
 
 TEST_F(UserCollectorTest, EnableNoPatternFileAccess) {
-  // Sanity checking:
+  // Basic checking:
   // Confirm we don't have junk left over from other tests.
   ASSERT_FALSE(base::PathExists(base::FilePath("/does_not_exist")));
   // We've seen strange problems that might be explained by having / writable.
@@ -141,7 +141,7 @@ TEST_F(UserCollectorTest, EnableNoPatternFileAccess) {
 }
 
 TEST_F(UserCollectorTest, EnableNoPipeLimitFileAccess) {
-  // Sanity checking:
+  // Basic checking:
   // Confirm we don't have junk left over from other tests.
   ASSERT_FALSE(base::PathExists(base::FilePath("/does_not_exist")));
   // We've seen strange problems that might be explained by having / writable.
@@ -163,7 +163,7 @@ TEST_F(UserCollectorTest, DisableOK) {
 }
 
 TEST_F(UserCollectorTest, DisableNoFileAccess) {
-  // Sanity checking:
+  // Basic checking:
   // Confirm we don't have junk left over from other tests.
   ASSERT_FALSE(base::PathExists(base::FilePath("/does_not_exist")));
   // We've seen strange problems that might be explained by having / writable.

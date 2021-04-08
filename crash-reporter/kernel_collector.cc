@@ -63,7 +63,7 @@ constexpr size_t kMaxRecordSize = 1024 * 1024;
 constexpr pid_t kKernelPid = 0;
 constexpr char kKernelSignatureKey[] = "sig";
 
-static LazyRE2 kSanityCheckRe = {"\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]"};
+static LazyRE2 kBasicCheckRe = {"\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]"};
 
 }  // namespace
 
@@ -122,11 +122,11 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
     // Found a ramoops header, so strip the header and append the rest.
     contents->append(captured);
     *record_found = true;
-  } else if (RE2::PartialMatch(record.substr(0, 1024), *kSanityCheckRe)) {
+  } else if (RE2::PartialMatch(record.substr(0, 1024), *kBasicCheckRe)) {
     // pstore compression has been added since kernel 3.12. In order to
     // decompress dmesg correctly, ramoops driver has to strip the header
     // before handing over the record to the pstore driver, so we don't
-    // need to do it here anymore. However, the sanity check is needed because
+    // need to do it here anymore. However, the basic check is needed because
     // sometimes a pstore record is just a chunk of uninitialized memory which
     // is not the result of a kernel crash. See crbug.com/443764
     contents->append(record);
@@ -312,7 +312,7 @@ bool KernelCollector::LoadConsoleRamoops(std::string* contents) {
     return false;
   }
 
-  if (!RE2::PartialMatch(contents->substr(0, 1024), *kSanityCheckRe)) {
+  if (!RE2::PartialMatch(contents->substr(0, 1024), *kBasicCheckRe)) {
     LOG(WARNING) << "Found invalid console-ramoops file";
     return false;
   }

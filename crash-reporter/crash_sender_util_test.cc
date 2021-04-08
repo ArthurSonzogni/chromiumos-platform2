@@ -830,7 +830,7 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   // Verify that RemoveReason wasn't sent
   testing::Mock::VerifyAndClearExpectations(raw_metrics_lib);
 
-  // Sanity check that the valid crash info is returned.
+  // Basic check that the valid crash info is returned.
   std::string value;
   EXPECT_EQ(absolute_log_.value(), info.payload_file.value());
   EXPECT_EQ("log", info.payload_kind);
@@ -1156,7 +1156,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_EQ(absolute_meta_.value(), to_send[1].first.value());
   EXPECT_EQ(recent_os_meta_.value(), to_send[2].first.value());
 
-  // Sanity check that the valid crash info is returned.
+  // Basic check that the valid crash info is returned.
   std::string value;
   EXPECT_EQ(good_log_.value(), to_send[0].second.payload_file.value());
   EXPECT_EQ("log", to_send[0].second.payload_kind);
