@@ -27,10 +27,15 @@ constexpr int kRecordFormatVersionNoValidationValue = 1;
 class BiodStorage {
  public:
   struct RecordMetadata {
+    /** Record file's scheme version. */
     int record_format_version;
+    /** Record/fingerprint-template's UUID. */
     std::string record_id;
+    /** Sanitized user session ID. */
     std::string user_id;
+    /** User supplied description of finger. */
     std::string label;
+    /** Positive match secrect validation value. */
     std::vector<uint8_t> validation_val;
   };
 
@@ -45,11 +50,13 @@ class BiodStorage {
     std::vector<Record> invalid_records;
   };
 
-  // Constructor set the file path to be
-  // /home/root/<hash of user id>/biod/<BiometricsManager>/RecordUUID.
+  // Constructor sets the file path to be
+  // /run/daemon-store/biod/<user_id>/CrosFpBiometricsManager/<record_id>,
+  // which is bound to
+  // /home/root/<user_id>/biod/CrosFpBiometricsManager/<record_id>.
   explicit BiodStorage(const std::string& biometrics_manager_name);
 
-  // Set root path to a different path for testing purpose only
+  // Set root path to a different path for testing purpose only.
   void SetRootPathForTesting(const base::FilePath& root_path);
 
   /**
