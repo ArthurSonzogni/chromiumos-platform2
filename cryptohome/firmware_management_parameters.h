@@ -14,6 +14,7 @@
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>
 
+#include "cryptohome/fwmp_checker.h"
 #include "cryptohome/tpm.h"
 
 namespace cryptohome {
@@ -71,7 +72,8 @@ class FirmwareManagementParameters {
   // behave unexpectedly. See firmware_management_parameters.md for info.
   FirmwareManagementParameters(ResetMethod reset_method,
                                WriteProtectionMethod write_protection_method,
-                               Tpm* tpm);
+                               Tpm* tpm,
+                               std::unique_ptr<FwmpChecker> fwmp_checker);
   FirmwareManagementParameters(const FirmwareManagementParameters&) = delete;
   FirmwareManagementParameters& operator=(const FirmwareManagementParameters&) =
       delete;
@@ -152,6 +154,7 @@ class FirmwareManagementParameters {
   const ResetMethod reset_method_;
   const WriteProtectionMethod write_protection_method_;
   Tpm* const tpm_;
+  const std::unique_ptr<FwmpChecker> fwmp_checker_;
   std::unique_ptr<FirmwareManagementParametersRawV1_0> raw_;
   bool loaded_ = false;
 };

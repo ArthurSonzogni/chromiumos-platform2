@@ -9,7 +9,8 @@ namespace cryptohome {
 MockFirmwareManagementParameters::MockFirmwareManagementParameters()
     : FirmwareManagementParameters(ResetMethod::kRecreateSpace,
                                    WriteProtectionMethod::kWriteLock,
-                                   nullptr) {}
+                                   /*tpm=*/nullptr,
+                                   /*fwmp_checker=*/nullptr) {}
 
 MockFirmwareManagementParameters::~MockFirmwareManagementParameters() {}
 

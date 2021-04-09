@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/mock_firmware_management_parameters.h"
+#include "cryptohome/mock_fwmp_checker.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
@@ -44,7 +45,11 @@ template <
 class FirmwareManagementParametersTestBase : public ::testing::Test {
  public:
   FirmwareManagementParametersTestBase()
-      : fwmp_(reset_method, write_protection_method, &tpm_) {}
+      : fwmp_checker_(new MockFwmpChecker()),
+        fwmp_(reset_method,
+              write_protection_method,
+              &tpm_,
+              std::unique_ptr<FwmpChecker>(fwmp_checker_)) {}
   FirmwareManagementParametersTestBase(
       const FirmwareManagementParametersTestBase&) = delete;
   FirmwareManagementParametersTestBase& operator=(
@@ -73,6 +78,9 @@ class FirmwareManagementParametersTestBase : public ::testing::Test {
         .WillOnce(Return(false));
     EXPECT_CALL(tpm_, GetNvramSize(FirmwareManagementParameters::kNvramIndex))
         .WillOnce(Return(FirmwareManagementParameters::kNvramBytes));
+    EXPECT_CALL(*fwmp_checker_,
+                IsValidForWrite(FirmwareManagementParameters::kNvramIndex))
+        .WillOnce(Return(true));
 
     // Save blob that was written
     if (write_protection_method ==
@@ -123,6 +131,7 @@ class FirmwareManagementParametersTestBase : public ::testing::Test {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
       // clang-format on
   };
+  MockFwmpChecker* fwmp_checker_;
   FirmwareManagementParameters fwmp_;
   NiceMock<MockTpm> tpm_;
   uint32_t fwmp_flags_;
@@ -335,6 +344,24 @@ TEST_F(FirmwareManagementParametersTest, StoreNvramSizeBad) {
   // Return a bad NVRAM size.
   EXPECT_CALL(tpm_, GetNvramSize(FirmwareManagementParameters::kNvramIndex))
       .WillOnce(Return(4));
+  EXPECT_FALSE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
+}
+
+// Store fails if the space is not valid for write operation.
+TEST_F(FirmwareManagementParametersTest, StoreNvramNotValidForWrite) {
+  EXPECT_CALL(tpm_, IsEnabled()).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, IsOwned()).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
+      .WillOnce(Return(true));
+  EXPECT_CALL(tpm_, IsNvramLocked(FirmwareManagementParameters::kNvramIndex))
+      .WillOnce(Return(false));
+
+  // Return a bad NVRAM size.
+  EXPECT_CALL(tpm_, GetNvramSize(FirmwareManagementParameters::kNvramIndex))
+      .WillOnce(Return(FirmwareManagementParameters::kNvramBytes));
+  EXPECT_CALL(*fwmp_checker_,
+              IsValidForWrite(FirmwareManagementParameters::kNvramIndex))
+      .WillOnce(Return(false));
   EXPECT_FALSE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
 }
 

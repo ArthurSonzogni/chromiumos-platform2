@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -18,6 +19,8 @@
 #include <openssl/sha.h>
 
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/fwmp_checker_owner_index.h"
+#include "cryptohome/fwmp_checker_platform_index.h"
 
 extern "C" {
 #include "cryptohome/crc8.h"
@@ -54,21 +57,25 @@ FirmwareManagementParameters::CreateInstance(Tpm* tpm) {
   if (PLATFORM_FWMP_INDEX) {
     return std::make_unique<FirmwareManagementParameters>(
         ResetMethod::kStoreDefaultFlags,
-        WriteProtectionMethod::kOwnerAuthorization, tpm);
+        WriteProtectionMethod::kOwnerAuthorization, tpm,
+        std::unique_ptr<FwmpChecker>(new FwmpCheckerPlatformIndex()));
   } else {
     // TPM1.2 and cr50 cases.
     return std::make_unique<FirmwareManagementParameters>(
-        ResetMethod::kRecreateSpace, WriteProtectionMethod::kWriteLock, tpm);
+        ResetMethod::kRecreateSpace, WriteProtectionMethod::kWriteLock, tpm,
+        std::unique_ptr<FwmpChecker>(new FwmpCheckerOwnerIndex()));
   }
 }
 
 FirmwareManagementParameters::FirmwareManagementParameters(
     ResetMethod reset_method,
     WriteProtectionMethod write_protection_method,
-    Tpm* tpm)
+    Tpm* tpm,
+    std::unique_ptr<FwmpChecker> fwmp_checker)
     : reset_method_(reset_method),
       write_protection_method_(write_protection_method),
       tpm_(tpm),
+      fwmp_checker_(std::move(fwmp_checker)),
       raw_(new FirmwareManagementParametersRawV1_0()) {
   DCHECK(
       (reset_method_ == ResetMethod::kRecreateSpace &&
@@ -219,9 +226,10 @@ bool FirmwareManagementParameters::Store(
     return false;
   }
 
-  // TODO(b/183474803): Determine a better way to perform the integrity check.
-
   // Ensure we have the space ready.
+  //
+  // TODO(b/183474803): Consider merge all the following check into
+  // `FwmpChecker`.
   if (!tpm_->IsNvramDefined(kNvramIndex)) {
     LOG(ERROR) << "Store() called with no NVRAM space.";
     return false;
@@ -235,6 +243,11 @@ bool FirmwareManagementParameters::Store(
   unsigned int nvram_size = tpm_->GetNvramSize(kNvramIndex);
   if (nvram_size != kNvramBytes) {
     LOG(ERROR) << "Store() found unexpected NVRAM size " << nvram_size << ".";
+    return false;
+  }
+
+  if (!fwmp_checker_->IsValidForWrite(kNvramIndex)) {
+    LOG(ERROR) << "Store() called with unexpected nv index template.";
     return false;
   }
 
