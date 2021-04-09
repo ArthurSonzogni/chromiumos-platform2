@@ -762,6 +762,11 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
 
+  // Deprecated key removed in M91 by patch with Change-Id
+  // Ic45f1fff097a1e54e0d762cacb3d2bdf7d8f5341
+  // TODO(b/182744859): Remove code after M93.
+  storage->DeleteKey(id, "DNSAutoFallback");
+
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (eap()) {
     eap()->MigrateDeprecatedStorage(storage, id);
