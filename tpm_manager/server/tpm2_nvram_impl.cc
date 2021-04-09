@@ -89,9 +89,11 @@ bool MapAttributesToTpm(const std::vector<NvramSpaceAttribute>& attributes,
       case NVRAM_PLATFORM_READ:
         *tpm_flags |= trunks::TPMA_NV_PPREAD;
         break;
+      case NVRAM_OWNER_WRITE:
+        *tpm_flags |= trunks::TPMA_NV_OWNERWRITE;
+        break;
       case NVRAM_GLOBAL_LOCK:
       case NVRAM_PLATFORM_WRITE:
-      case NVRAM_OWNER_WRITE:
       case NVRAM_OWNER_READ:
         return false;
       default:
