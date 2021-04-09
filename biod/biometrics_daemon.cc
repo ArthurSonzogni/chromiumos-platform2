@@ -18,6 +18,7 @@
 #include "biod/power_button_filter.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
+#include "biod/utils.h"
 
 namespace biod {
 
@@ -495,7 +496,8 @@ bool BiometricsDaemon::RetrievePrimarySession() {
     LOG(INFO) << "Primary session does not exist.";
     return false;
   }
-  LOG(INFO) << "Primary user updated to " << sanitized_username << ".";
+  LOG(INFO) << "Primary user updated to " << LogSafeID(sanitized_username)
+            << ".";
   primary_user_.assign(sanitized_username);
   return true;
 }

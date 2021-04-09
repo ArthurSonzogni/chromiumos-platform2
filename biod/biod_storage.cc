@@ -100,8 +100,8 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
     brillo::ScopedUmask owner_only_umask(~(0700));
 
     if (!base::CreateDirectory(record_storage_filename.DirName())) {
-      PLOG(ERROR) << "Cannot create directory: "
-                  << record_storage_filename.DirName().value() << ".";
+      PLOG(ERROR) << "Cannot create directory for user "
+                  << LogSafeID(record.GetUserId()) << ".";
       return false;
     }
   }
