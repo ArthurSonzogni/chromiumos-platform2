@@ -101,8 +101,6 @@ bool FirmwareManagementParameters::Destroy(void) {
 }
 
 bool FirmwareManagementParameters::Create(void) {
-  uint32_t nvram_bytes;
-
   // Make sure we have what we need now.
   if (!HasAuthorization()) {
     LOG(ERROR) << "Create() called with insufficient authorization.";
@@ -114,11 +112,9 @@ bool FirmwareManagementParameters::Create(void) {
     return false;
   }
 
-  nvram_bytes = kNvramBytes;
-
   // Use a WriteDefine space with no PCR0 locking
   if (!tpm_->DefineNvram(
-          kNvramIndex, nvram_bytes,
+          kNvramIndex, kNvramBytes,
           Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramFirmwareReadable)) {
     LOG(ERROR) << "Create() failed to defined NVRAM space.";
     return false;

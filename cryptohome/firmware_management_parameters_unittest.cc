@@ -90,13 +90,6 @@ class FirmwareManagementParametersTest : public ::testing::Test {
     EXPECT_TRUE(fwmp->Store(fwmp_flags_, fwmp_hash_ptr_));
   }
 
-  // Populate the mock NVRAM with valid data.
-  void GenerateNvramData(SecureBlob* nvram) {
-    FirmwareManagementParameters throwaway_fwmp(NULL);
-    DoStore(&throwaway_fwmp, nvram);
-    Mock::VerifyAndClearExpectations(&tpm_);
-  }
-
   static const char* kHashData;
   static brillo::SecureBlob kContentsWithHash;
   static brillo::SecureBlob kContentsNoHash;

@@ -52,7 +52,7 @@ class FirmwareManagementParameters {
   //
   // FirmwareManagementParameters requires a |tpm|.  If a NULL |tpm| is
   // supplied, none of the operations will succeed, but it should not crash or
-  // behave unexpectedly.  See README.firmware_management_parameters for info.
+  // behave unexpectedly. See firmware_management_parameters.md for info.
   explicit FirmwareManagementParameters(Tpm* tpm);
   FirmwareManagementParameters(const FirmwareManagementParameters&) = delete;
   FirmwareManagementParameters& operator=(const FirmwareManagementParameters&) =
@@ -123,15 +123,14 @@ class FirmwareManagementParameters {
   // Offset of CRC'd data (past CRC and size)
   static const uint32_t kCrcDataOffset;
 
- protected:
+ private:
   // Returns true if we have the authorization needed to create/destroy
   // NVRAM spaces.
-  virtual bool HasAuthorization() const;
+  bool HasAuthorization() const;
 
   // Returns true if the tpm is owned and connected.
-  virtual bool TpmIsReady() const;
+  bool TpmIsReady() const;
 
- private:
   Tpm* tpm_;
   std::unique_ptr<FirmwareManagementParametersRawV1_0> raw_;
   bool loaded_ = false;

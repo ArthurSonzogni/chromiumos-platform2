@@ -21,10 +21,6 @@ class MockFirmwareManagementParameters : public FirmwareManagementParameters {
   MOCK_METHOD(bool, GetFlags, (uint32_t*), (override));
   MOCK_METHOD(bool, GetDeveloperKeyHash, (brillo::Blob*), (override));
   MOCK_METHOD(bool, IsLoaded, (), (const, override));
-
-  // Formerly protected methods.
-  MOCK_METHOD(bool, HasAuthorization, (), (const, override));
-  MOCK_METHOD(bool, TpmIsReady, (), (const, override));
 };
 }  // namespace cryptohome
 
