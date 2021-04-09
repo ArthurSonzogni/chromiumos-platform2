@@ -34,12 +34,12 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/notreached.h>
-#include <base/posix/unix_domain_socket.h>
-#include <base/task/single_thread_task_executor.h>
-#include "base/test/bind_test_util.h"
 #include <base/optional.h>
+#include <base/posix/unix_domain_socket.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
+#include <base/task/single_thread_task_executor.h>
+#include <base/test/bind.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_param_writer.h>
