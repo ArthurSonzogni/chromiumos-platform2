@@ -45,6 +45,9 @@ struct FirmwareManagementParametersRawV1_0 {
   uint8_t developer_key_hash[SHA256_DIGEST_LENGTH];
 } __attribute__((packed));
 
+static_assert(sizeof(FirmwareManagementParametersRawV1_0) == 40,
+              "Unexpected size of FWMP");
+
 // Index must match firmware; see README.firmware_management_parameters
 const uint32_t FirmwareManagementParameters::kNvramIndex = 0x100a;
 const uint32_t FirmwareManagementParameters::kNvramBytes =
