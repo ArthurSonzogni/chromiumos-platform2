@@ -114,6 +114,9 @@ std::string GetProtoDebugStringWithIndent(NvramSpaceAttribute value,
   if (value == NVRAM_PLATFORM_READ) {
     return "NVRAM_PLATFORM_READ";
   }
+  if (value == NVRAM_PLATFORM_CREATE) {
+    return "NVRAM_PLATFORM_CREATE";
+  }
   return "<unknown>";
 }
 
