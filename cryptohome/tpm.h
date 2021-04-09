@@ -361,6 +361,16 @@ class Tpm {
   // authorization.
   virtual bool WriteNvram(uint32_t index, const brillo::SecureBlob& blob) = 0;
 
+  // Writes the given blob to NVRAM with owner authorization
+  //
+  // Parameters
+  //  index - The index of the space to write
+  //  blob - the data to write (size==0 may be used for locking)
+  // Returns false if the index is invalid or the request lacks the required
+  // authorization.
+  virtual bool OwnerWriteNvram(uint32_t index,
+                               const brillo::SecureBlob& blob) = 0;
+
   // Reads from the NVRAM index to the given blob
   //
   // Parameters

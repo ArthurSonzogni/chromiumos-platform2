@@ -76,6 +76,7 @@ class TpmImpl : public Tpm {
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override;
   bool DestroyNvram(uint32_t index) override;
   bool WriteNvram(uint32_t index, const brillo::SecureBlob& blob) override;
+  bool OwnerWriteNvram(uint32_t index, const brillo::SecureBlob& blob) override;
   bool ReadNvram(uint32_t index, brillo::SecureBlob* blob) override;
   bool IsNvramDefined(uint32_t index) override;
   bool IsNvramLocked(uint32_t index) override;

@@ -486,26 +486,23 @@ TEST_F(TpmImplTest, DestroyNvramFailure) {
   EXPECT_FALSE(GetTpm()->DestroyNvram(0));
 }
 
-TEST_F(TpmImplTest, WriteNvramSuccess) {
+TEST_F(TpmImplTest, WriteNvram) {
   constexpr uint32_t kIndex = 2;
   const std::string kData("nvram_data");
-  constexpr bool kUserOwnerAuth = false;
-  uint32_t index = 0;
-  std::string data = "";
-  bool user_owner_auth = false;
-  EXPECT_CALL(mock_tpm_manager_utility_, WriteSpace(_, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&index), SaveArg<1>(&data),
-                      SaveArg<2>(&user_owner_auth), Return(true)));
+
+  EXPECT_CALL(mock_tpm_manager_utility_,
+              WriteSpace(kIndex, kData, /*use_owner_auth=*/false))
+      .WillOnce(Return(true));
   EXPECT_TRUE(GetTpm()->WriteNvram(kIndex, SecureBlob(kData)));
-  EXPECT_EQ(index, kIndex);
-  EXPECT_EQ(data, kData);
-  EXPECT_EQ(user_owner_auth, kUserOwnerAuth);
+
+  EXPECT_CALL(mock_tpm_manager_utility_,
+              WriteSpace(kIndex, kData, /*use_owner_auth=*/false))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(GetTpm()->WriteNvram(kIndex, SecureBlob(kData)));
 }
 
-TEST_F(TpmImplTest, WriteNvramFailure) {
-  EXPECT_CALL(mock_tpm_manager_utility_, WriteSpace(_, _, _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(GetTpm()->WriteNvram(0, SecureBlob()));
+TEST_F(TpmImplTest, OwnerWriteNvramAlwaysReturnFalse) {
+  EXPECT_FALSE(GetTpm()->OwnerWriteNvram(0, SecureBlob()));
 }
 
 TEST_F(TpmImplTest, WriteLockNvramSuccess) {

@@ -1108,10 +1108,17 @@ bool TpmImpl::WriteNvram(uint32_t index, const SecureBlob& blob) {
     LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
-  tpm_manager::WriteSpaceRequest request;
-  request.set_index(index);
-  request.set_data(blob.to_string());
-  return tpm_manager_utility_->WriteSpace(index, blob.to_string(), false);
+  return tpm_manager_utility_->WriteSpace(index, blob.to_string(),
+                                          /*use_owner_auth=*/false);
+}
+
+bool TpmImpl::OwnerWriteNvram(uint32_t index, const SecureBlob& blob) {
+  // Not implemented in TPM 1.2.
+  // Note that technically the implementation should be the same as
+  // `Tpm2Impl::OwnerWriteNvram()`; however, because 1. there is no demand by
+  // cryptohome and 2. there is no active consumption of OWNERWRITE case for
+  // TPM1.2, it is unnecessary and confusing to implement this block.
+  return false;
 }
 
 bool TpmImpl::WriteLockNvram(uint32_t index) {

@@ -76,6 +76,10 @@ class MockTpm : public Tpm {
               WriteNvram,
               (uint32_t, const brillo::SecureBlob&),
               (override));
+  MOCK_METHOD(bool,
+              OwnerWriteNvram,
+              (uint32_t, const brillo::SecureBlob&),
+              (override));
   MOCK_METHOD(bool, ReadNvram, (uint32_t, brillo::SecureBlob*), (override));
   MOCK_METHOD(bool, DestroyNvram, (uint32_t), (override));
   MOCK_METHOD(bool, IsNvramDefined, (uint32_t), (override));

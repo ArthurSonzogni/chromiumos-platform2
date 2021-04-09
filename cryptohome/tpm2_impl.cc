@@ -436,10 +436,17 @@ bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
     LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
-  tpm_manager::WriteSpaceRequest request;
-  request.set_index(index);
-  request.set_data(blob.to_string());
-  return tpm_manager_utility_->WriteSpace(index, blob.to_string(), false);
+  return tpm_manager_utility_->WriteSpace(index, blob.to_string(),
+                                          /*use_owner_auth=*/false);
+}
+
+bool Tpm2Impl::OwnerWriteNvram(uint32_t index, const SecureBlob& blob) {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_->WriteSpace(index, blob.to_string(),
+                                          /*use_owner_auth=*/true);
 }
 
 bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
