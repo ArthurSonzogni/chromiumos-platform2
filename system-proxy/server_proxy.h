@@ -69,6 +69,7 @@ class ServerProxy {
   virtual int GetStdinPipe();
   virtual int GetStdoutPipe();
   virtual void HandleStdinReadable();
+  virtual void OnConnectionAccept();
 
  private:
   friend class ServerProxyTest;
@@ -87,7 +88,6 @@ class ServerProxy {
   bool HandleSignal(const struct signalfd_siginfo& siginfo);
 
   void CreateListeningSocket();
-  void OnConnectionAccept();
 
   // Called by |ProxyConnectJob| after setting up the connection with the remote
   // server via the remote proxy server. If the connection is successful, |fwd|

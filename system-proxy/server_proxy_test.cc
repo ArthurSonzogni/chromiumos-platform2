@@ -52,8 +52,21 @@ class MockServerProxy : public ServerProxy {
   MockServerProxy& operator=(const MockServerProxy&) = delete;
   ~MockServerProxy() override = default;
 
+  void RunAfterOnConnectionAccept(base::OnceClosure closure) {
+    conn_accept_closure_ = std::move(closure);
+  }
+
   MOCK_METHOD(int, GetStdinPipe, (), (override));
   MOCK_METHOD(int, GetStdoutPipe, (), (override));
+
+ private:
+  void OnConnectionAccept() override {
+    ServerProxy::OnConnectionAccept();
+    if (conn_accept_closure_)
+      std::move(conn_accept_closure_).Run();
+  }
+
+  base::OnceClosure conn_accept_closure_;
 };
 
 class MockProxyConnectJob : public ProxyConnectJob {
@@ -176,11 +189,16 @@ TEST_F(ServerProxyTest, HandleConnectRequest) {
   ipv4addr.sin_port = htons(kTestPort);
   ipv4addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
+  base::RunLoop run_loop;
+  server_proxy_->RunAfterOnConnectionAccept(run_loop.QuitClosure());
+
   auto client_socket =
       std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM);
   EXPECT_TRUE(client_socket->Connect((const struct sockaddr*)&ipv4addr,
                                      sizeof(ipv4addr)));
-  brillo_loop_.RunOnce(false);
+  // This loop will stop once a connection request is processed and added to the
+  // queue.
+  run_loop.Run();
 
   EXPECT_EQ(1, server_proxy_->pending_connect_jobs_.size());
   const std::string_view http_req =
@@ -291,11 +309,16 @@ TEST_F(ServerProxyTest, HandleCanceledJobWhilePendingProxyResolution) {
   ipv4addr.sin_port = htons(3129);
   ipv4addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
+  base::RunLoop run_loop;
+  server_proxy_->RunAfterOnConnectionAccept(run_loop.QuitClosure());
+
   auto client_socket =
       std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM);
   EXPECT_TRUE(client_socket->Connect((const struct sockaddr*)&ipv4addr,
                                      sizeof(ipv4addr)));
-  brillo_loop_.RunOnce(false);
+  // This loop will stop once a connection request is processed and added to the
+  // queue.
+  run_loop.Run();
 
   EXPECT_EQ(1, server_proxy_->pending_connect_jobs_.size());
   const std::string_view http_req =
