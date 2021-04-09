@@ -330,6 +330,11 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
       biod_storage_(kCrosFpBiometricsManagerName),
       use_positive_match_secret_(false),
       maintenance_timer_(std::make_unique<base::RepeatingTimer>()) {
+  CHECK(power_button_filter_);
+  CHECK(cros_dev_);
+  CHECK(biod_metrics_);
+  CHECK(maintenance_timer_);
+
   cros_dev_->SetMkbpEventCallback(base::Bind(
       &CrosFpBiometricsManager::OnMkbpEvent, base::Unretained(this)));
 
