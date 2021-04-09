@@ -347,9 +347,10 @@ void GpuVdaContext::UseOutputBufferOnIpcThread(
     mojo_planes.push_back(std::move(mojo_plane));
   }
 
+  // TODO(b/174967467): Add modifiers
   vda_ptr_->ImportBufferForPicture(
       picture_buffer_id, ConvertPixelFormatToHalPixelFormat(format),
-      std::move(handle_fd), std::move(mojo_planes));
+      std::move(handle_fd), std::move(mojo_planes), 0);
 }
 
 vda_result_t GpuVdaContext::ReuseOutputBuffer(int32_t picture_buffer_id) {

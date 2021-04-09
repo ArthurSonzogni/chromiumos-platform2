@@ -6,6 +6,7 @@
 
 module arc.mojom;
 
+import "arc/vm/libvda/gpu/mojom/gfx.mojom";
 import "arc/vm/libvda/gpu/mojom/video_common.mojom";
 
 // Next method ID: 3

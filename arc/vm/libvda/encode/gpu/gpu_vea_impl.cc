@@ -175,7 +175,7 @@ void GpuVeaContext::Initialize(vea_config_t* config,
   mojo_config->storage_type = arc::mojom::VideoFrameStorageType::DMABUF;
 
   // TODO(alexlau): Make this use BindOnce.
-  vea_ptr_->Initialize(
+  vea_ptr_->InitializeDeprecated(
       std::move(mojo_config), std::move(client_ptr),
       base::Bind(&GpuVeaContext::OnInitialized, base::Unretained(this),
                  base::Passed(std::move(callback))));
