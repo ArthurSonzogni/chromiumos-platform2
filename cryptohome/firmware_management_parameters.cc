@@ -51,12 +51,31 @@ const uint32_t FirmwareManagementParameters::kCrcDataOffset = 2;
 // static
 std::unique_ptr<FirmwareManagementParameters>
 FirmwareManagementParameters::CreateInstance(Tpm* tpm) {
-  // TODO(b/183474803): Create the right FWMP object for generic TPM2.0.
-  return std::make_unique<FirmwareManagementParameters>(tpm);
+  if (PLATFORM_FWMP_INDEX) {
+    return std::make_unique<FirmwareManagementParameters>(
+        ResetMethod::kStoreDefaultFlags,
+        WriteProtectionMethod::kOwnerAuthorization, tpm);
+  } else {
+    // TPM1.2 and cr50 cases.
+    return std::make_unique<FirmwareManagementParameters>(
+        ResetMethod::kRecreateSpace, WriteProtectionMethod::kWriteLock, tpm);
+  }
 }
 
-FirmwareManagementParameters::FirmwareManagementParameters(Tpm* tpm)
-    : tpm_(tpm), raw_(new FirmwareManagementParametersRawV1_0()) {}
+FirmwareManagementParameters::FirmwareManagementParameters(
+    ResetMethod reset_method,
+    WriteProtectionMethod write_protection_method,
+    Tpm* tpm)
+    : reset_method_(reset_method),
+      write_protection_method_(write_protection_method),
+      tpm_(tpm),
+      raw_(new FirmwareManagementParametersRawV1_0()) {
+  DCHECK(
+      (reset_method_ == ResetMethod::kRecreateSpace &&
+       write_protection_method_ == WriteProtectionMethod::kWriteLock) ||
+      (reset_method_ == ResetMethod::kStoreDefaultFlags &&
+       write_protection_method_ == WriteProtectionMethod::kOwnerAuthorization));
+}
 
 FirmwareManagementParameters::~FirmwareManagementParameters() {}
 
@@ -91,6 +110,10 @@ bool FirmwareManagementParameters::HasAuthorization() const {
 }
 
 bool FirmwareManagementParameters::Destroy(void) {
+  if (reset_method_ == ResetMethod::kStoreDefaultFlags) {
+    return Store(/*flags=*/0, /*developer_key_hash=*/nullptr);
+  }
+
   if (!HasAuthorization()) {
     LOG(ERROR) << "Destroy() called with insufficient authorization.";
     return false;
@@ -108,6 +131,10 @@ bool FirmwareManagementParameters::Destroy(void) {
 }
 
 bool FirmwareManagementParameters::Create(void) {
+  if (reset_method_ == ResetMethod::kStoreDefaultFlags) {
+    return Store(/*flags=*/0, /*developer_key_hash=*/nullptr);
+  }
+
   // Make sure we have what we need now.
   if (!HasAuthorization()) {
     LOG(ERROR) << "Create() called with insufficient authorization.";
@@ -192,6 +219,8 @@ bool FirmwareManagementParameters::Store(
     return false;
   }
 
+  // TODO(b/183474803): Determine a better way to perform the integrity check.
+
   // Ensure we have the space ready.
   if (!tpm_->IsNvramDefined(kNvramIndex)) {
     LOG(ERROR) << "Store() called with no NVRAM space.";
@@ -236,21 +265,33 @@ bool FirmwareManagementParameters::Store(
   // Write the data to nvram
   SecureBlob nvram_data(raw_->struct_size);
   memcpy(nvram_data.data(), raw_.get(), raw_->struct_size);
-  if (!tpm_->WriteNvram(kNvramIndex, nvram_data)) {
+
+  bool store_result = false;
+  switch (write_protection_method_) {
+    case WriteProtectionMethod::kWriteLock:
+      store_result = tpm_->WriteNvram(kNvramIndex, nvram_data);
+      break;
+    case WriteProtectionMethod::kOwnerAuthorization:
+      store_result = tpm_->OwnerWriteNvram(kNvramIndex, nvram_data);
+      break;
+  }
+  if (!store_result) {
     LOG(ERROR) << "Store() failed to write to NVRAM";
     return false;
   }
 
-  // Lock nvram index for writing.
-  if (!tpm_->WriteLockNvram(kNvramIndex)) {
-    LOG(ERROR) << "Store() failed to lock the NVRAM space";
-    return false;
-  }
+  // Lock nvram index for writing if the write protection is `kWriteLock`.
+  if (write_protection_method_ == WriteProtectionMethod::kWriteLock) {
+    if (!tpm_->WriteLockNvram(kNvramIndex)) {
+      LOG(ERROR) << "Store() failed to lock the NVRAM space";
+      return false;
+    }
 
-  // Ensure the space is now locked.
-  if (!tpm_->IsNvramLocked(kNvramIndex)) {
-    LOG(ERROR) << "NVRAM space did not lock as expected.";
-    return false;
+    // Ensure the space is now locked.
+    if (!tpm_->IsNvramLocked(kNvramIndex)) {
+      LOG(ERROR) << "NVRAM space did not lock as expected.";
+      return false;
+    }
   }
 
   loaded_ = true;

@@ -38,15 +38,19 @@ using ::testing::SetArgPointee;
 // Multiple helpers are included to ensure tests are starting from the same
 // baseline for difference scenarios, such as first boot or all-other-normal
 // boots.
-class FirmwareManagementParametersTest : public ::testing::Test {
+template <
+    FirmwareManagementParameters::ResetMethod reset_method,
+    FirmwareManagementParameters::WriteProtectionMethod write_protection_method>
+class FirmwareManagementParametersTestBase : public ::testing::Test {
  public:
-  FirmwareManagementParametersTest() : fwmp_(&tpm_) {}
-  FirmwareManagementParametersTest(const FirmwareManagementParametersTest&) =
-      delete;
-  FirmwareManagementParametersTest& operator=(
-      const FirmwareManagementParametersTest&) = delete;
+  FirmwareManagementParametersTestBase()
+      : fwmp_(reset_method, write_protection_method, &tpm_) {}
+  FirmwareManagementParametersTestBase(
+      const FirmwareManagementParametersTestBase&) = delete;
+  FirmwareManagementParametersTestBase& operator=(
+      const FirmwareManagementParametersTestBase&) = delete;
 
-  virtual ~FirmwareManagementParametersTest() {}
+  virtual ~FirmwareManagementParametersTestBase() {}
 
   virtual void SetUp() {
     // Create the OOBE data to reuse for post-boot tests.
@@ -55,31 +59,36 @@ class FirmwareManagementParametersTest : public ::testing::Test {
     fwmp_hash_ptr_ = &fwmp_hash_;
   }
 
-  // Perform an NVRAM store.
-  // fwmp: FirmwareManagementParameters object to operate on.
-  // nvram_data: destination for blob saved to NVRAM
-  void DoStore(FirmwareManagementParameters* fwmp, SecureBlob* nvram_data) {
+  // Sets the expectations for `FirmwareManagementParameters::Store()` according
+  // to the configurations.
+  void SetExpectationForStore(SecureBlob* nvram_data) {
     // Ensure an enabled, owned TPM.
     EXPECT_CALL(tpm_, IsEnabled()).WillOnce(Return(true));
     EXPECT_CALL(tpm_, IsOwned()).WillOnce(Return(true));
 
-    {
-      InSequence s;
-      EXPECT_CALL(tpm_,
-                  IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
-          .WillOnce(Return(true));
-      EXPECT_CALL(tpm_,
-                  IsNvramLocked(FirmwareManagementParameters::kNvramIndex))
-          .WillOnce(Return(false));
-      EXPECT_CALL(tpm_, GetNvramSize(FirmwareManagementParameters::kNvramIndex))
-          .WillOnce(Return(FirmwareManagementParameters::kNvramBytes));
+    InSequence s;
+    EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
+        .WillOnce(Return(true));
+    EXPECT_CALL(tpm_, IsNvramLocked(FirmwareManagementParameters::kNvramIndex))
+        .WillOnce(Return(false));
+    EXPECT_CALL(tpm_, GetNvramSize(FirmwareManagementParameters::kNvramIndex))
+        .WillOnce(Return(FirmwareManagementParameters::kNvramBytes));
 
-      // Save blob that was written
+    // Save blob that was written
+    if (write_protection_method ==
+        FirmwareManagementParameters::WriteProtectionMethod::
+            kOwnerAuthorization) {
+      EXPECT_CALL(tpm_,
+                  OwnerWriteNvram(FirmwareManagementParameters::kNvramIndex, _))
+          .WillOnce(DoAll(SaveArg<1>(nvram_data), Return(true)));
+    } else {
       EXPECT_CALL(tpm_,
                   WriteNvram(FirmwareManagementParameters::kNvramIndex, _))
-          .Times(1)
           .WillOnce(DoAll(SaveArg<1>(nvram_data), Return(true)));
+    }
 
+    if (write_protection_method ==
+        FirmwareManagementParameters::WriteProtectionMethod::kWriteLock) {
       EXPECT_CALL(tpm_,
                   WriteLockNvram(FirmwareManagementParameters::kNvramIndex))
           .WillOnce(Return(true));
@@ -87,22 +96,11 @@ class FirmwareManagementParametersTest : public ::testing::Test {
                   IsNvramLocked(FirmwareManagementParameters::kNvramIndex))
           .WillOnce(Return(true));
     }
-    EXPECT_TRUE(fwmp->Store(fwmp_flags_, fwmp_hash_ptr_));
   }
 
-  static const char* kHashData;
-  static brillo::SecureBlob kContentsWithHash;
-  static brillo::SecureBlob kContentsNoHash;
-  FirmwareManagementParameters fwmp_;
-  NiceMock<MockTpm> tpm_;
-  uint32_t fwmp_flags_;
-  brillo::Blob fwmp_hash_;
-  brillo::Blob* fwmp_hash_ptr_;
-};
-const char* FirmwareManagementParametersTest::kHashData =
-    "AxxxxxxxBxxxxxxxCxxxxxxxDxxxxxxE";
-brillo::SecureBlob FirmwareManagementParametersTest::kContentsWithHash({
-    // clang-format off
+  const char* kHashData = "AxxxxxxxBxxxxxxxCxxxxxxxDxxxxxxE";
+  const brillo::SecureBlob kContentsWithHash = {
+      // clang-format off
     0xd2,
     0x28,
     0x10,
@@ -112,10 +110,10 @@ brillo::SecureBlob FirmwareManagementParametersTest::kContentsWithHash({
     'B', 'x', 'x', 'x', 'x', 'x', 'x', 'x',
     'C', 'x', 'x', 'x', 'x', 'x', 'x', 'x',
     'D', 'x', 'x', 'x', 'x', 'x', 'x', 'E'
-    // clang-format on
-});
-brillo::SecureBlob FirmwareManagementParametersTest::kContentsNoHash({
-    // clang-format off
+      // clang-format on
+  };
+  const brillo::SecureBlob kContentsNoHash = {
+      // clang-format off
     0x6c,
     0x28,
     0x10,
@@ -123,12 +121,19 @@ brillo::SecureBlob FirmwareManagementParametersTest::kContentsNoHash({
     0x34, 0x12, 0x00, 0x00,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    // clang-format on
-});
+      // clang-format on
+  };
+  FirmwareManagementParameters fwmp_;
+  NiceMock<MockTpm> tpm_;
+  uint32_t fwmp_flags_;
+  brillo::Blob fwmp_hash_;
+  brillo::Blob* fwmp_hash_ptr_;
+};
 
-//
-// The actual tests!
-//
+class FirmwareManagementParametersTest
+    : public FirmwareManagementParametersTestBase<
+          FirmwareManagementParameters::ResetMethod::kRecreateSpace,
+          FirmwareManagementParameters::WriteProtectionMethod::kWriteLock> {};
 
 // Create a new space
 TEST_F(FirmwareManagementParametersTest, CreateNew) {
@@ -276,7 +281,8 @@ TEST_F(FirmwareManagementParametersTest, DestroyFailure) {
 // Store flags and hash
 TEST_F(FirmwareManagementParametersTest, StoreFlagsAndHash) {
   SecureBlob nvram_data;
-  DoStore(&fwmp_, &nvram_data);
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
   EXPECT_TRUE(fwmp_.IsLoaded());
   EXPECT_EQ(nvram_data, kContentsWithHash);
 }
@@ -285,7 +291,8 @@ TEST_F(FirmwareManagementParametersTest, StoreFlagsAndHash) {
 TEST_F(FirmwareManagementParametersTest, StoreFlagsOnly) {
   SecureBlob nvram_data;
   fwmp_hash_ptr_ = NULL;
-  DoStore(&fwmp_, &nvram_data);
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
   EXPECT_TRUE(fwmp_.IsLoaded());
   EXPECT_EQ(nvram_data, kContentsNoHash);
 }
@@ -518,6 +525,63 @@ TEST_F(FirmwareManagementParametersTest, LoadMajorVersion) {
       .Times(1)
       .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
   EXPECT_FALSE(fwmp_.Load());
+}
+
+class FirmwareManagementParametersPlatformIndexTest
+    : public FirmwareManagementParametersTestBase<
+          FirmwareManagementParameters::ResetMethod::kStoreDefaultFlags,
+          FirmwareManagementParameters::WriteProtectionMethod::
+              kOwnerAuthorization> {};
+
+// Store flags and hash
+TEST_F(FirmwareManagementParametersPlatformIndexTest, StoreFlagsAndHash) {
+  SecureBlob nvram_data;
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
+  EXPECT_TRUE(fwmp_.IsLoaded());
+  EXPECT_EQ(nvram_data, kContentsWithHash);
+}
+
+// Store flags only
+TEST_F(FirmwareManagementParametersPlatformIndexTest, StoreFlagsOnly) {
+  SecureBlob nvram_data;
+  fwmp_hash_ptr_ = nullptr;
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
+  EXPECT_TRUE(fwmp_.IsLoaded());
+  EXPECT_EQ(nvram_data, kContentsNoHash);
+}
+
+TEST_F(FirmwareManagementParametersPlatformIndexTest, CreateSetsDefaultFlags) {
+  SecureBlob default_nvram_data;
+  SetExpectationForStore(&default_nvram_data);
+  EXPECT_TRUE(fwmp_.Store(/*flags=*/0, /*developer_key_hash=*/nullptr));
+  EXPECT_TRUE(fwmp_.IsLoaded());
+
+  // Modify the content of FWMP.
+  SecureBlob nvram_data;
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
+  EXPECT_TRUE(fwmp_.IsLoaded());
+  EXPECT_EQ(nvram_data, kContentsWithHash);
+
+  // `Create()` is supposed to write the default content.
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Create());
+  EXPECT_TRUE(fwmp_.IsLoaded());
+  EXPECT_EQ(nvram_data.to_string(), default_nvram_data.to_string());
+
+  // Modify the content of FWMP again.
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Store(fwmp_flags_, fwmp_hash_ptr_));
+  EXPECT_TRUE(fwmp_.IsLoaded());
+  EXPECT_EQ(nvram_data, kContentsWithHash);
+
+  // `Destroy()` is supposed to write the default content.
+  SetExpectationForStore(&nvram_data);
+  EXPECT_TRUE(fwmp_.Destroy());
+  EXPECT_TRUE(fwmp_.IsLoaded());
+  EXPECT_EQ(nvram_data.to_string(), default_nvram_data.to_string());
 }
 
 }  // namespace cryptohome

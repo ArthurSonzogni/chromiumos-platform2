@@ -45,6 +45,15 @@ struct FirmwareManagementParametersRawV1_0;
 // ...
 class FirmwareManagementParameters {
  public:
+  // TODO(b/183474803): add doc.
+  enum class ResetMethod {
+    kRecreateSpace,
+    kStoreDefaultFlags,
+  };
+  enum class WriteProtectionMethod {
+    kWriteLock,
+    kOwnerAuthorization,
+  };
   // Creates a propoer firmware management parameters according to the TPM
   // version on the device.
   static std::unique_ptr<FirmwareManagementParameters> CreateInstance(Tpm* tpm);
@@ -52,12 +61,17 @@ class FirmwareManagementParameters {
   // Populates the basic internal state of the firmware management parameters.
   //
   // Parameters
+  // - reset_method: how we reset the content of FWMP. See `ResetMethod`.
+  // - write_protection_method: how we prevent the content from being modified
+  // after write. See `WriteProtectionMethod`.
   // - tpm: a required pointer to a TPM object.
   //
   // FirmwareManagementParameters requires a |tpm|.  If a NULL |tpm| is
   // supplied, none of the operations will succeed, but it should not crash or
   // behave unexpectedly. See firmware_management_parameters.md for info.
-  explicit FirmwareManagementParameters(Tpm* tpm);
+  FirmwareManagementParameters(ResetMethod reset_method,
+                               WriteProtectionMethod write_protection_method,
+                               Tpm* tpm);
   FirmwareManagementParameters(const FirmwareManagementParameters&) = delete;
   FirmwareManagementParameters& operator=(const FirmwareManagementParameters&) =
       delete;
@@ -135,7 +149,9 @@ class FirmwareManagementParameters {
   // Returns true if the tpm is owned and connected.
   bool TpmIsReady() const;
 
-  Tpm* tpm_;
+  const ResetMethod reset_method_;
+  const WriteProtectionMethod write_protection_method_;
+  Tpm* const tpm_;
   std::unique_ptr<FirmwareManagementParametersRawV1_0> raw_;
   bool loaded_ = false;
 };

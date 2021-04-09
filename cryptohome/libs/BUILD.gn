@@ -212,6 +212,7 @@ static_library("libcrostpm") {
     "../tpm_not_bound_to_pcr_auth_block.cc",
     "../vault_keyset.cc",
   ]
+  defines = [ "PLATFORM_FWMP_INDEX=${use.generic_tpm2}" ]
   configs += [ ":target_defaults" ]
   libs = [
     "chaps",

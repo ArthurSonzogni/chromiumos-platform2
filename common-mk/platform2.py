@@ -70,6 +70,7 @@ _IUSE = [
     'fp_on_power_button',
     'ftdi_tpm',
     'fuzzer',
+    'generic_tpm2',
     'hammerd_api',
     'houdini',
     'houdini64',
