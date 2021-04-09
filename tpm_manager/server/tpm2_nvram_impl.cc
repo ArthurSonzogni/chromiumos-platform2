@@ -255,11 +255,11 @@ NvramResult Tpm2NvramImpl::WriteSpace(uint32_t index,
       return NVRAM_RESULT_ACCESS_DENIED;
     }
     authorization = policy_session->GetDelegate();
-  } else if (nvram_public.attributes & trunks::TPMA_NV_AUTHWRITE) {
-    authorization = nvindex_auth.GetDirectAuthDelegate(authorization_value);
   } else if (nvram_public.attributes & trunks::TPMA_NV_OWNERWRITE) {
     using_owner_authorization = true;
     authorization = nvindex_auth.GetOwnerAuthDelegate(GetOwnerPassword());
+  } else if (nvram_public.attributes & trunks::TPMA_NV_AUTHWRITE) {
+    authorization = nvindex_auth.GetDirectAuthDelegate(authorization_value);
   } else {
     // TPMA_NV_PPWRITE: Platform authorization is long gone.
     return NVRAM_RESULT_OPERATION_DISABLED;
