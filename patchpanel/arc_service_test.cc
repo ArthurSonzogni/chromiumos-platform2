@@ -24,6 +24,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::Eq;
 using testing::Invoke;
+using testing::Mock;
 using testing::Pair;
 using testing::Pointee;
 using testing::Return;
@@ -216,11 +217,12 @@ TEST_F(ArcServiceTest, ContainerImpl_Start) {
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  // Needed because the service will be stopped in dtor.
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC);
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_FailsToCreateInterface) {
@@ -232,9 +234,12 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToCreateInterface) {
       .WillOnce(Return(false));
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30)).Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(_)).Times(0);
 
   auto svc = NewService(GuestMessage::ARC);
   svc->Start(kTestPID);
+  EXPECT_FALSE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_FailsToAddInterfaceToBridge) {
@@ -248,16 +253,17 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToAddInterfaceToBridge) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(false));
-
-  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetharc0")));
+  EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).Times(0);
 
   auto svc = NewService(GuestMessage::ARC);
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
-  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   // Expectations for arc0 setup.
@@ -269,7 +275,15 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto svc = NewService(GuestMessage::ARC);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for eth0 setup.
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_,
               ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetheth0"),
                               StrEq("eth0"), _, kFirstEthGuestIP, 30, false))
@@ -282,23 +296,38 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
                                              kFirstEthGuestIP,
                                              TrafficSource::ARC, false, _));
 
-  auto svc = NewService(GuestMessage::ARC);
-  svc->Start(kTestPID);
   svc->OnDevicesChanged({"eth0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_ScanDevices) {
+  EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
+      .WillOnce(Return(true));
+  // Expectations for arc0 setup.
+  EXPECT_CALL(*datapath_,
+              ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetharc0"),
+                              StrEq("arc0"), _, kArcGuestIP, 30, false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto svc = NewService(GuestMessage::ARC);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
-  EXPECT_CALL(*datapath_, NetnsAttachName(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, ConnectVethPair(_, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddBridge(_, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
-  svc->Start(kTestPID);
   svc->OnDevicesChanged({"eth0", "wlan0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
 
   std::vector<std::string> devs;
   svc->ScanDevices(base::BindRepeating(
@@ -313,16 +342,30 @@ TEST_F(ArcServiceTest, ContainerImpl_ScanDevices) {
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
-  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
-  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
-  EXPECT_CALL(*datapath_, NetnsAttachName(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, ConnectVethPair(_, _, _, _, _, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
+      .WillOnce(Return(true));
+  // Expectations for arc0 setup.
+  EXPECT_CALL(*datapath_,
+              ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetharc0"),
+                              StrEq("arc0"), _, kArcGuestIP, 30, false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC);
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
+  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, ConnectVethPair(_, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(true));
 
   svc->OnDevicesChanged({"eth0", "wlan0"}, {});
   EXPECT_EQ(guest_devices_.size(), 2);
@@ -330,15 +373,16 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
               UnorderedElementsAre(
                   Pair(StrEq("arc_eth0"), Device::ChangeEvent::ADDED),
                   Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
+  guest_devices_.clear();
 
   svc->OnDevicesChanged({}, {"wlan0"});
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::ADDED),
                   Pair(StrEq("arc_wlan0"), Device::ChangeEvent::REMOVED)));
-
   guest_devices_.clear();
+
   svc->OnDevicesChanged({"wlan0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
                   Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
@@ -373,12 +417,12 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
   auto svc = NewService(GuestMessage::ARC);
   svc->OnDevicesChanged({"eth0"}, {});
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_Stop) {
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, NetnsDeleteName(StrEq("arc_netns")))
       .WillOnce(Return(true));
   // Expectations for arc0 setup.
   EXPECT_CALL(*datapath_,
@@ -390,20 +434,41 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  // Expectations for arc0 teardown.
-  EXPECT_CALL(*datapath_,
-              MaskInterfaceFlags(StrEq("arcbr0"), IFF_DEBUG, IFF_UP))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetharc0")));
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC);
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  // Expectations for eth0 setup.
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
+  EXPECT_CALL(*datapath_,
+              ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetheth0"),
+                              StrEq("eth0"), _, kFirstEthGuestIP, 30, false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), kFirstEthHostIP, 30))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
+      .WillOnce(Return(true));
+
+  svc->OnDevicesChanged({"eth0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  // Expectations for arc0 teardown.
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetharc0"))).Times(1);
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0"))).Times(1);
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, NetnsDeleteName(StrEq("arc_netns")))
+      .WillOnce(Return(true));
+
   svc->Stop(kTestPID);
+  EXPECT_FALSE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
-  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
   // Expectations for arc0 setup.
@@ -415,6 +480,13 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
+
+  auto svc = NewService(GuestMessage::ARC);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   // Expectations for eth0 setup.
   EXPECT_CALL(*datapath_,
               ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetheth0"),
@@ -424,16 +496,19 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
+
+  svc->OnDevicesChanged({"eth0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for eth0 teardown.
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                             Ipv4Addr(100, 115, 92, 6),
                                             TrafficSource::ARC, false));
-  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
 
-  auto svc = NewService(GuestMessage::ARC);
-  svc->Start(kTestPID);
-  svc->OnDevicesChanged({"eth0"}, {});
   svc->OnDevicesChanged({}, {"eth0"});
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 // VM Impl
@@ -453,11 +528,11 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  // Required because the service will be stopped in dtor.
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC_VM);
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, VmImpl_StartDevice) {
@@ -475,6 +550,13 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto svc = NewService(GuestMessage::ARC_VM);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for eth0 setup.
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), kFirstEthHostIP, 30))
       .WillOnce(Return(true));
@@ -484,15 +566,11 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
                                              Ipv4Addr(100, 115, 92, 6),
                                              TrafficSource::ARC, false, _));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
-  svc->Start(kTestPID);
   svc->OnDevicesChanged({"eth0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
-  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
-  ExpectGetDeviceProperties("eth1", ShillClient::Device::Type::kEthernet);
-  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -506,7 +584,15 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto svc = NewService(GuestMessage::ARC_VM);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for eth0 setup.
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), kFirstEthHostIP, 30))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
@@ -514,7 +600,12 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              Ipv4Addr(100, 115, 92, 6),
                                              TrafficSource::ARC, false, _));
+
+  svc->OnDevicesChanged({"eth0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for wlan0 setup.
+  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_wlan0"), kFirstWifiHostIP, 30))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_wlan0"), StrEq("vmtap3")))
@@ -522,7 +613,12 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("wlan0"), StrEq("arc_wlan0"),
                                              Ipv4Addr(100, 115, 92, 14),
                                              TrafficSource::ARC, false, _));
+
+  svc->OnDevicesChanged({"wlan0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for eth1 setup.
+  ExpectGetDeviceProperties("eth1", ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth1"), kSecondEthHostIP, 30))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth1"), StrEq("vmtap2")))
@@ -531,11 +627,8 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
                                              Ipv4Addr(100, 115, 92, 10),
                                              TrafficSource::ARC, false, _));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
-  svc->Start(kTestPID);
-  svc->OnDevicesChanged({"eth0"}, {});
-  svc->OnDevicesChanged({"wlan0"}, {});
   svc->OnDevicesChanged({"eth1"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, VmImpl_Stop) {
@@ -553,10 +646,15 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto svc = NewService(GuestMessage::ARC_VM);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for "arc0" teardown.
-  EXPECT_CALL(*datapath_,
-              MaskInterfaceFlags(StrEq("arcbr0"), IFF_DEBUG, IFF_UP))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0"))).Times(1);
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetharc0"))).Times(0);
   // Expectations for tap devices teardown
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap0")));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap1")));
@@ -566,13 +664,12 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap5")));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
-  svc->Start(kTestPID);
   svc->Stop(kTestPID);
+  EXPECT_FALSE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, VmImpl_StopDevice) {
-  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -586,7 +683,15 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto svc = NewService(GuestMessage::ARC_VM);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for eth0 setup.
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), kFirstEthHostIP, 30))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
@@ -594,22 +699,21 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              Ipv4Addr(100, 115, 92, 6),
                                              TrafficSource::ARC, false, _));
+
+  svc->OnDevicesChanged({"eth0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
   // Expectations for eth0 teardown.
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                             Ipv4Addr(100, 115, 92, 6),
                                             TrafficSource::ARC, false));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
-  svc->Start(kTestPID);
-  svc->OnDevicesChanged({"eth0"}, {});
   svc->OnDevicesChanged({}, {"eth0"});
+  Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
 TEST_F(ArcServiceTest, VmImpl_ScanDevices) {
-  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
-  ExpectGetDeviceProperties("eth1", ShillClient::Device::Type::kEthernet);
-  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -618,12 +722,25 @@ TEST_F(ArcServiceTest, VmImpl_ScanDevices) {
       .WillOnce(Return("vmtap3"))
       .WillOnce(Return("vmtap4"))
       .WillOnce(Return("vmtap5"));
-  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC_VM);
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties("eth1", ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
+  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
+
   svc->OnDevicesChanged({"eth0", "wlan0", "eth1"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
 
   std::vector<std::string> devs;
   svc->ScanDevices(base::BindRepeating(
@@ -638,8 +755,6 @@ TEST_F(ArcServiceTest, VmImpl_ScanDevices) {
 }
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
-  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
-  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
@@ -648,27 +763,37 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
       .WillOnce(Return("vmtap3"))
       .WillOnce(Return("vmtap4"))
       .WillOnce(Return("vmtap5"));
-  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC_VM);
   svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  ExpectGetDeviceProperties("eth0", ShillClient::Device::Type::kEthernet);
+  ExpectGetDeviceProperties("wlan0", ShillClient::Device::Type::kWifi);
+  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
 
   svc->OnDevicesChanged({"eth0", "wlan0"}, {});
-  EXPECT_EQ(guest_devices_.size(), 2);
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
                   Pair(StrEq("arc_eth0"), Device::ChangeEvent::ADDED),
                   Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
+  guest_devices_.clear();
 
   svc->OnDevicesChanged({}, {"wlan0"});
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::ADDED),
                   Pair(StrEq("arc_wlan0"), Device::ChangeEvent::REMOVED)));
-
   guest_devices_.clear();
+
   svc->OnDevicesChanged({"wlan0"}, {});
+  Mock::VerifyAndClearExpectations(datapath_.get());
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
                   Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));

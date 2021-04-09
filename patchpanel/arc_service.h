@@ -56,10 +56,10 @@ class ArcService {
   void OnDevicesChanged(const std::set<std::string>& added,
                         const std::set<std::string>& removed);
 
- private:
   // Returns true if the service has been started for ARC container or ARCVM.
   bool IsStarted() const;
 
+ private:
   // Build and configure the ARC datapath for the physical device |ifname|
   // provided by Shill.
   void AddDevice(const std::string& ifname, ShillClient::Device::Type type);

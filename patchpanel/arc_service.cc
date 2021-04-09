@@ -314,13 +314,9 @@ bool ArcService::Start(uint32_t id) {
   id_ = id;
 
   // Create the bridge for the management device arc0.
-  // Per crbug/1008686 this device cannot be deleted and then re-added.
-  // So instead of removing the bridge when the service stops, bring down the
-  // device instead and re-up it on restart.
   if (!datapath_->AddBridge(kArcBridge, arc_device_->config().host_ipv4_addr(),
-                            30) &&
-      !datapath_->MaskInterfaceFlags(kArcBridge, IFF_UP)) {
-    LOG(ERROR) << "Failed to bring up arc bridge " << kArcBridge;
+                            30)) {
+    LOG(ERROR) << "Failed to setup bridge " << kArcBridge;
     return false;
   }
 
@@ -363,14 +359,7 @@ void ArcService::Stop(uint32_t id) {
   for (const auto& [ifname, type] : shill_devices_)
     RemoveDevice(ifname, type);
 
-  // Per crbug/1008686 this device cannot be deleted and then re-added.
-  // So instead of removing the bridge, bring it down and mark it. This will
-  // allow us to detect if the device is re-added in case of a crash restart
-  // and do the right thing.
-  if (!datapath_->MaskInterfaceFlags(kArcBridge, IFF_DEBUG, IFF_UP))
-    LOG(ERROR) << "Failed to bring down arc bridge "
-               << "- it may not restart correctly";
-
+  // Stop the bridge for the management device arc0.
   if (guest_ == GuestMessage::ARC) {
     datapath_->RemoveInterface(ArcVethHostName(arc_device_->phys_ifname()));
     if (!datapath_->NetnsDeleteName(kArcNetnsName))
@@ -385,6 +374,7 @@ void ArcService::Stop(uint32_t id) {
     config->set_tap_ifname("");
   }
 
+  datapath_->RemoveBridge(kArcBridge);
   LOG(INFO) << "Stopped ARC management device " << *arc_device_.get();
   id_ = kInvalidId;
 }
