@@ -176,7 +176,7 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
 
   std::vector<uint8_t> validation_val;
   if (!RequestEnrollImage(BiodStorage::RecordMetadata{
-          kRecordFormatVersion, biod_storage_.GenerateNewRecordId(),
+          kRecordFormatVersion, BiodStorage::GenerateNewRecordId(),
           std::move(user_id), std::move(label), std::move(validation_val)}))
     return BiometricsManager::EnrollSession();
 

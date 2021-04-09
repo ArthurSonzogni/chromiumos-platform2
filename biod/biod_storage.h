@@ -93,7 +93,7 @@ class BiodStorage {
   // Generate a uuid with guid.h for each record. Uuid is 128 bit number,
   // which is then turned into a string of format
   // xxxxxxxx_xxxx_xxxx_xxxx_xxxxxxxxxxxx, where x is a lowercase hex number.
-  std::string GenerateNewRecordId();
+  static std::string GenerateNewRecordId();
 
   // Set the |allow_access_| which determines whether the backing storage
   // location can be accessed or not. Depending on the mounting mechanism and

@@ -316,8 +316,8 @@ TEST_P(BiodStorageTest, DeleteRecord) {
 
 TEST_F(BiodStorageBaseTest, GenerateNewRecordId) {
   // Check the two record ids are different.
-  std::string record_id1(biod_storage_->GenerateNewRecordId());
-  std::string record_id2(biod_storage_->GenerateNewRecordId());
+  std::string record_id1(BiodStorage::GenerateNewRecordId());
+  std::string record_id2(BiodStorage::GenerateNewRecordId());
   EXPECT_NE(record_id1, record_id2);
 }
 
