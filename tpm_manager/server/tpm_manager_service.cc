@@ -689,6 +689,7 @@ void TpmManagerService::WriteSpaceTask(
   if (request.use_owner_authorization()) {
     authorization_value = GetOwnerPassword();
     if (authorization_value.empty()) {
+      LOG(ERROR) << __func__ << ": Owner auth missing while requested.";
       reply->set_result(NVRAM_RESULT_ACCESS_DENIED);
       return;
     }
