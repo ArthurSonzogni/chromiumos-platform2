@@ -204,6 +204,11 @@ bool IsDeviceAllowedSerial(udev_device* device) {
       {0x18d1, 0x5020},  // Google Sweetberry
       {0x18d1, 0x5027},  // Google Tigertail
       {0x18d1, 0x5036},  // Google Chocodile
+
+      {0x1d50, 0x6140},  // QuickLogic QuickFeather evaluation board bootloader
+      {0x1d50, 0x6130},  // TinyFPGA BX Bootloader old openmoko VID:PID
+      {0x1209, 0x2100},  // TinyFPGA BX Bootloader new pid.codes VID:PID
+      {0x1209, 0x5bf0},  // Arty FPGA board
   };
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
