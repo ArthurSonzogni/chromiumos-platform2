@@ -78,13 +78,14 @@ std::string PrefixIfname(const std::string& prefix, const std::string& ifname) {
   return n;
 }
 
-bool Ioctl(ioctl_t ioctl_h, ioctl_req_t req, const char* arg) {
+// ioctl helper that manages the control fd creation and destruction.
+bool Ioctl(System* system, ioctl_req_t req, const char* arg) {
   base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!control_fd.is_valid()) {
     PLOG(ERROR) << "Failed to create control socket for ioctl request=" << req;
     return false;
   }
-  if ((*ioctl_h)(control_fd.get(), req, arg) != 0) {
+  if (system->Ioctl(control_fd.get(), req, arg) != 0) {
     PLOG(ERROR) << "ioctl request=" << req << " failed";
     return false;
   }
@@ -102,14 +103,14 @@ std::string ArcBridgeName(const std::string& ifname) {
 }
 
 Datapath::Datapath()
-    : Datapath(new MinijailedProcessRunner(), new Firewall(), ioctl) {}
+    : Datapath(new MinijailedProcessRunner(), new Firewall(), new System()) {}
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner,
                    Firewall* firewall,
-                   ioctl_t ioctl_hook)
-    : ioctl_(ioctl_hook) {
+                   System* system) {
   process_runner_.reset(process_runner);
   firewall_.reset(firewall);
+  system_.reset(system);
 }
 
 void Datapath::Start() {
@@ -437,7 +438,7 @@ bool Datapath::NetnsDeleteName(const std::string& netns_name) {
 bool Datapath::AddBridge(const std::string& ifname,
                          uint32_t ipv4_addr,
                          uint32_t ipv4_prefix_len) {
-  if (!Ioctl(ioctl_, SIOCBRADDBR, ifname.c_str())) {
+  if (!Ioctl(system_.get(), SIOCBRADDBR, ifname.c_str())) {
     LOG(ERROR) << "Failed to create bridge " << ifname;
     return false;
   }
@@ -462,7 +463,7 @@ bool Datapath::AddBridge(const std::string& ifname,
 
 void Datapath::RemoveBridge(const std::string& ifname) {
   process_runner_->ip("link", "set", {ifname, "down"});
-  if (!Ioctl(ioctl_, SIOCBRDELBR, ifname.c_str()))
+  if (!Ioctl(system_.get(), SIOCBRDELBR, ifname.c_str()))
     LOG(ERROR) << "Failed to destroy bridge " << ifname;
 }
 
@@ -473,7 +474,7 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
   strncpy(ifr.ifr_name, br_ifname.c_str(), sizeof(ifr.ifr_name));
   ifr.ifr_ifindex = FindIfIndex(ifname);
 
-  if (!Ioctl(ioctl_, SIOCBRADDIF, reinterpret_cast<const char*>(&ifr))) {
+  if (!Ioctl(system_.get(), SIOCBRADDIF, reinterpret_cast<const char*>(&ifr))) {
     LOG(ERROR) << "Failed to add " << ifname << " to bridge " << br_ifname;
     return false;
   }
@@ -499,13 +500,13 @@ std::string Datapath::AddTAP(const std::string& name,
 
   // If a template was given as the name, ifr_name will be updated with the
   // actual interface name.
-  if ((*ioctl_)(dev.get(), TUNSETIFF, &ifr) != 0) {
+  if (system_->Ioctl(dev.get(), TUNSETIFF, &ifr) != 0) {
     PLOG(ERROR) << "Failed to create tap interface " << name;
     return "";
   }
   const char* ifname = ifr.ifr_name;
 
-  if ((*ioctl_)(dev.get(), TUNSETPERSIST, 1) != 0) {
+  if (system_->Ioctl(dev.get(), TUNSETPERSIST, 1) != 0) {
     PLOG(ERROR) << "Failed to persist the interface " << ifname;
     return "";
   }
@@ -517,7 +518,7 @@ std::string Datapath::AddTAP(const std::string& name,
       RemoveTAP(ifname);
       return "";
     }
-    if ((*ioctl_)(dev.get(), TUNSETOWNER, uid) != 0) {
+    if (system_->Ioctl(dev.get(), TUNSETOWNER, uid) != 0) {
       PLOG(ERROR) << "Failed to set owner " << uid << " of tap interface "
                   << ifname;
       RemoveTAP(ifname);
@@ -539,7 +540,7 @@ std::string Datapath::AddTAP(const std::string& name,
         reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
     addr->sin_family = AF_INET;
     addr->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr->Address());
-    if ((*ioctl_)(sock.get(), SIOCSIFADDR, &ifr) != 0) {
+    if (system_->Ioctl(sock.get(), SIOCSIFADDR, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set ip address for vmtap interface " << ifname
                   << " {" << ipv4_addr->ToCidrString() << "}";
       RemoveTAP(ifname);
@@ -550,7 +551,7 @@ std::string Datapath::AddTAP(const std::string& name,
         reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_netmask);
     netmask->sin_family = AF_INET;
     netmask->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr->Netmask());
-    if ((*ioctl_)(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
+    if (system_->Ioctl(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set netmask for vmtap interface " << ifname
                   << " {" << ipv4_addr->ToCidrString() << "}";
       RemoveTAP(ifname);
@@ -562,7 +563,7 @@ std::string Datapath::AddTAP(const std::string& name,
     struct sockaddr* hwaddr = &ifr.ifr_hwaddr;
     hwaddr->sa_family = ARPHRD_ETHER;
     memcpy(&hwaddr->sa_data, mac_addr, sizeof(*mac_addr));
-    if ((*ioctl_)(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
+    if (system_->Ioctl(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set mac address for vmtap interface " << ifname
                   << " {" << MacAddressToString(*mac_addr) << "}";
       RemoveTAP(ifname);
@@ -570,14 +571,14 @@ std::string Datapath::AddTAP(const std::string& name,
     }
   }
 
-  if ((*ioctl_)(sock.get(), SIOCGIFFLAGS, &ifr) != 0) {
+  if (system_->Ioctl(sock.get(), SIOCGIFFLAGS, &ifr) != 0) {
     PLOG(ERROR) << "Failed to get flags for tap interface " << ifname;
     RemoveTAP(ifname);
     return "";
   }
 
   ifr.ifr_flags |= (IFF_UP | IFF_RUNNING);
-  if ((*ioctl_)(sock.get(), SIOCSIFFLAGS, &ifr) != 0) {
+  if (system_->Ioctl(sock.get(), SIOCSIFFLAGS, &ifr) != 0) {
     PLOG(ERROR) << "Failed to enable tap interface " << ifname;
     RemoveTAP(ifname);
     return "";
@@ -1215,13 +1216,13 @@ bool Datapath::MaskInterfaceFlags(const std::string& ifname,
   }
   ifreq ifr;
   snprintf(ifr.ifr_name, IFNAMSIZ, "%s", ifname.c_str());
-  if ((*ioctl_)(sock.get(), SIOCGIFFLAGS, &ifr) < 0) {
+  if (system_->Ioctl(sock.get(), SIOCGIFFLAGS, &ifr) < 0) {
     PLOG(WARNING) << "ioctl() failed to get interface flag on " << ifname;
     return false;
   }
   ifr.ifr_flags |= on;
   ifr.ifr_flags &= ~off;
-  if ((*ioctl_)(sock.get(), SIOCSIFFLAGS, &ifr) < 0) {
+  if (system_->Ioctl(sock.get(), SIOCSIFFLAGS, &ifr) < 0) {
     PLOG(WARNING) << "ioctl() failed to set flag 0x" << std::hex << on
                   << " unset flag 0x" << std::hex << off << " on " << ifname;
     return false;
@@ -1744,7 +1745,7 @@ bool Datapath::ModifyRtentry(ioctl_req_t op, struct rtentry* route) {
     PLOG(ERROR) << "Failed to create socket for adding rtentry " << *route;
     return false;
   }
-  if (HANDLE_EINTR(ioctl_(fd.get(), op, route)) != 0) {
+  if (HANDLE_EINTR(system_->Ioctl(fd.get(), op, route)) != 0) {
     // b/190119762: Ignore "No such process" errors when deleting a struct
     // rtentry if some other prior or concurrent operation already resulted in
     // this route being deleted.

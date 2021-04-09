@@ -24,6 +24,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include "patchpanel/routing_service.h"
 #include "patchpanel/subnet.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 
@@ -79,12 +80,6 @@ enum IpFamily {
   Dual = IPv4 | IPv6,  // (1 << 0) | (1 << 1);
 };
 
-// cros lint will yell to force using int16/int64 instead of long here, however
-// note that unsigned long IS the correct signature for ioctl in Linux kernel -
-// it's 32 bits on 32-bit platform and 64 bits on 64-bit one.
-using ioctl_req_t = unsigned long;  // NOLINT(runtime/int)
-typedef int (*ioctl_t)(int, ioctl_req_t, ...);
-
 // Returns for given interface name the host name of a ARC veth pair.
 std::string ArcVethHostName(const std::string& ifname);
 
@@ -100,7 +95,7 @@ class Datapath {
   // Provided for testing only.
   Datapath(MinijailedProcessRunner* process_runner,
            Firewall* firewall,
-           ioctl_t ioctl_hook);
+           System* system);
   Datapath(const Datapath&) = delete;
   Datapath& operator=(const Datapath&) = delete;
 
@@ -448,7 +443,7 @@ class Datapath {
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
   std::unique_ptr<Firewall> firewall_;
-  ioctl_t ioctl_;
+  std::unique_ptr<System> system_;
 
   FRIEND_TEST(DatapathTest, AddInboundIPv4DNAT);
   FRIEND_TEST(DatapathTest, AddVirtualInterfacePair);

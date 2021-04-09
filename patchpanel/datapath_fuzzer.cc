@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <net/if.h>
+#include <sys/ioctl.h>
 
 #include <fuzzer/FuzzedDataProvider.h>
 #include <string>
@@ -19,16 +20,12 @@
 #include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/subnet.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
-
-// Always succeeds
-int ioctl_stub(int fd, ioctl_req_t req, ...) {
-  return 0;
-}
-
 namespace {
 
+// Always succeeds
 class FakeProcessRunner : public MinijailedProcessRunner {
  public:
   FakeProcessRunner() = default;
@@ -43,6 +40,19 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   int RunSync(const std::vector<std::string>& argv,
               bool log_failures,
               std::string* output) override {
+    return 0;
+  }
+};
+
+// Always succeeds
+class NoopSystem : public System {
+ public:
+  NoopSystem() = default;
+  NoopSystem(const NoopSystem&) = delete;
+  NoopSystem& operator=(const NoopSystem&) = delete;
+  virtual ~NoopSystem() = default;
+
+  int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
     return 0;
   }
 };
@@ -98,7 +108,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     auto runner = new FakeProcessRunner();
     auto firewall = new Firewall();
-    Datapath datapath(runner, firewall, ioctl_stub);
+    auto system = new System();
+    Datapath datapath(runner, firewall, system);
     datapath.Start();
     datapath.Stop();
     datapath.NetnsAttachName(netns_name, kTestPID);

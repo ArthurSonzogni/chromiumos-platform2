@@ -89,6 +89,7 @@ libpatchpanel_sources = [
   "routing_service.cc",
   "scoped_ns.cc",
   "shill_client.cc",
+  "system.cc",
 ]
 
 shared_library("libpatchpanel-util") {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/ioctl.h>
+
 #include <string>
 #include <vector>
 
@@ -13,14 +15,10 @@
 #include "patchpanel/datapath.h"
 #include "patchpanel/firewall.h"
 #include "patchpanel/minijailed_process_runner.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 namespace {
-
-// Always succeeds
-int ioctl_stub(int fd, ioctl_req_t req, ...) {
-  return 0;
-}
 
 class Environment {
  public:
@@ -48,13 +46,27 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   }
 };
 
+// Always succeeds
+class NoopSystem : public System {
+ public:
+  NoopSystem() = default;
+  NoopSystem(const NoopSystem&) = delete;
+  NoopSystem& operator=(const NoopSystem&) = delete;
+  virtual ~NoopSystem() = default;
+
+  int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
+    return 0;
+  }
+};
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
   FuzzedDataProvider provider(data, size);
   auto runner = new FakeProcessRunner();
   auto firewall = new Firewall();
-  Datapath datapath(runner, firewall, ioctl_stub);
+  auto system = new NoopSystem();
+  Datapath datapath(runner, firewall, system);
   CountersService counters_svc(&datapath);
 
   while (provider.remaining_bytes() > 0) {
