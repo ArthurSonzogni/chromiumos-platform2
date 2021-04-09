@@ -544,14 +544,24 @@ void Cellular::StopModem(Error* error,
 
 void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
                                  const Error& error) {
-  SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
+  SLOG(this, 1) << __func__ << ": " << GetStateString(state_)
+                << " Error: " << error;
   SetCapabilityState(CapabilityState::kCellularStopped);
   // Destroy any cellular services regardless of any errors that occur during
   // the stop process since we do not know the state of the modem at this point.
   DestroyAllServices();
   if (state_ != kStateDisabled)
     SetState(kStateDisabled);
-  callback.Run(error);
+  if (error.type() == Error::kWrongState) {
+    // ModemManager.Modem will not respond to Stop when in a failed state. Allow
+    // the callback to succeed so that Shill identifies and persists Cellular as
+    // disabled. TODO(b/184974739): StopModem should probably succeed when in a
+    // failed state.
+    LOG(ERROR) << "StopModem returned an error: " << error;
+    callback.Run(Error());
+  } else {
+    callback.Run(error);
+  }
   // In case no termination action was executed (and TerminationActionComplete
   // was not invoked) in response to a suspend request, any registered
   // termination action needs to be removed explicitly.
