@@ -149,6 +149,7 @@ class Screens : public ScreenBase,
   FRIEND_TEST(ScreensTest, ReadDimension);
   FRIEND_TEST(ScreensTest, GetDimension);
   FRIEND_TEST(ScreensTest, GetLangConsts);
+  FRIEND_TEST(ScreensTest, GetLangConstsError);
   FRIEND_TEST(ScreensTest, UpdateButtons);
   FRIEND_TEST(ScreensTest, UpdateButtonsIsDetachable);
   FRIEND_TEST(ScreensTest, CheckRightToLeft);
@@ -184,8 +185,8 @@ class Screens : public ScreenBase,
   void UpdateButtons(int menu_count, int key, bool* enter);
 
   // Read the language constants into memory. Does not change
-  // based on the current locale.
-  void ReadLangConstants();
+  // based on the current locale. Returns false on failure.
+  bool ReadLangConstants();
 
   // Sets the width of language token for a given locale. Returns false on
   // error.

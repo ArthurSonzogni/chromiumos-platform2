@@ -233,7 +233,7 @@ TEST_F(ScreensTest, GetLangConsts) {
       "ko\"";
   ASSERT_TRUE(
       base::WriteFile(screens_path_.Append("lang_constants.sh"), lang_consts));
-  screens_.ReadLangConstants();
+  EXPECT_TRUE(screens_.ReadLangConstants());
 
   EXPECT_EQ(5, screens_.lang_constants_.size());
   EXPECT_EQ(4, screens_.supported_locales_.size());
@@ -243,6 +243,15 @@ TEST_F(ScreensTest, GetLangConsts) {
   // Incorrect or doesn't exist.
   EXPECT_FALSE(screens_.GetLangConstants("fr", &lang_width));
   EXPECT_FALSE(screens_.GetLangConstants("mr", &lang_width));
+}
+
+TEST_F(ScreensTest, GetLangConstsError) {
+  std::string lang_consts =
+      "LANGUAGE_en_US_WIDTH=99\nLANGUAGE_fi_WIDTH=44\nLANGUAGE_mr_WIDTH="
+      "incorrect\n LANGUAGE_ko_WIDTH=  77 \n  SUPPORTED_LOCALES=";
+  ASSERT_TRUE(
+      base::WriteFile(screens_path_.Append("lang_constants.sh"), lang_consts));
+  EXPECT_FALSE(screens_.ReadLangConstants());
 }
 
 TEST_F(ScreensTest, UpdateButtons) {

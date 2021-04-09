@@ -52,7 +52,9 @@ bool Screens::Init() {
   screens_path_ = root_.Append(kScreens);
   // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
   ReadDimensionConstants();
-  ReadLangConstants();
+  if (!ReadLangConstants()) {
+    return false;
+  }
 
   std::vector<int> wait_keys;
   if (!is_detachable_)
@@ -383,21 +385,27 @@ void Screens::UpdateButtons(int menu_count, int key, bool* enter) {
   index_ = starting_index;
 }
 
-void Screens::ReadLangConstants() {
+bool Screens::ReadLangConstants() {
   lang_constants_.clear();
   supported_locales_.clear();
   // Read language widths from lang_constants.sh into memory.
   auto lang_constants_path = screens_path_.Append("lang_constants.sh");
+  if (!base::PathExists(lang_constants_path)) {
+    LOG(ERROR) << "Language constants path: " << lang_constants_path
+               << " not found.";
+    return false;
+  }
+
   std::string const_values;
   if (!ReadFileToString(lang_constants_path, &const_values)) {
     LOG(ERROR) << "Could not read lang constants file " << lang_constants_path;
-    return;
+    return false;
   }
 
   if (!base::SplitStringIntoKeyValuePairs(const_values, '=', '\n',
                                           &lang_constants_)) {
     LOG(ERROR) << "Unable to parse language width information.";
-    return;
+    return false;
   }
   for (const auto& pair : lang_constants_) {
     if (pair.first == "SUPPORTED_LOCALES") {
@@ -414,9 +422,11 @@ void Screens::ReadLangConstants() {
   menu_count_[ScreenType::kLanguageDropDownScreen] = supported_locales_.size();
 
   if (supported_locales_.empty()) {
-    LOG(WARNING) << "Unable to get supported locales. Will not be able to "
-                    "change locale.";
+    LOG(ERROR) << "Unable to get supported locales. Will not be able to "
+                  "change locale.";
+    return false;
   }
+  return true;
 }
 
 bool Screens::GetLangConstants(const std::string& locale, int* lang_width) {
