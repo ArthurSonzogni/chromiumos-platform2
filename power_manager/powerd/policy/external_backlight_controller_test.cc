@@ -14,6 +14,7 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
+#include "power_manager/powerd/system/external_ambient_light_sensor_factory_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
@@ -23,7 +24,8 @@ class ExternalBacklightControllerTest : public ::testing::Test {
  public:
   ExternalBacklightControllerTest() {
     controller_.AddObserver(&observer_);
-    controller_.Init(&ambient_light_sensor_watcher_, &display_watcher_,
+    controller_.Init(&ambient_light_sensor_watcher_,
+                     &ambient_light_sensor_factory_, &display_watcher_,
                      &display_power_setter_, &dbus_wrapper_);
   }
 
@@ -34,6 +36,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
  protected:
   BacklightControllerObserverStub observer_;
   system::AmbientLightSensorWatcherStub ambient_light_sensor_watcher_;
+  system::ExternalAmbientLightSensorFactoryStub ambient_light_sensor_factory_;
   system::DisplayWatcherStub display_watcher_;
   system::DisplayPowerSetterStub display_power_setter_;
   system::DBusWrapperStub dbus_wrapper_;

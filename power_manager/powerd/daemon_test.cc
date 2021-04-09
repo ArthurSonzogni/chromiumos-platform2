@@ -39,6 +39,7 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
+#include "power_manager/powerd/system/external_ambient_light_sensor_factory_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
@@ -65,6 +66,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
             new system::AmbientLightSensorManagerStub()),
         passed_ambient_light_sensor_watcher_(
             new system::AmbientLightSensorWatcherStub()),
+        passed_external_ambient_light_sensor_factory_(
+            new system::ExternalAmbientLightSensorFactoryStub()),
         passed_display_watcher_(new system::DisplayWatcherStub()),
         passed_display_power_setter_(new system::DisplayPowerSetterStub()),
         passed_internal_backlight_(new system::BacklightStub(
@@ -97,6 +100,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
             passed_ambient_light_sensor_manager_.get()),
         ambient_light_sensor_watcher_(
             passed_ambient_light_sensor_watcher_.get()),
+        external_ambient_light_sensor_factory_(
+            passed_external_ambient_light_sensor_factory_.get()),
         display_watcher_(passed_display_watcher_.get()),
         display_power_setter_(passed_display_power_setter_.get()),
         internal_backlight_(passed_internal_backlight_.get()),
@@ -173,6 +178,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(udev_, udev);
     return std::move(passed_ambient_light_sensor_watcher_);
   }
+  std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
+  CreateExternalAmbientLightSensorFactory() override {
+    return std::move(passed_external_ambient_light_sensor_factory_);
+  }
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) override {
     EXPECT_EQ(udev_, udev);
@@ -186,10 +195,14 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
       system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
+      system::ExternalAmbientLightSensorFactoryInterface*
+          external_ambient_light_sensor_factory,
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper) override {
     EXPECT_EQ(ambient_light_sensor_watcher_, ambient_light_sensor_watcher);
+    EXPECT_EQ(external_ambient_light_sensor_factory_,
+              external_ambient_light_sensor_factory);
     EXPECT_EQ(display_watcher_, display_watcher);
     EXPECT_EQ(display_power_setter_, display_power_setter);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
@@ -382,6 +395,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       passed_ambient_light_sensor_manager_;
   std::unique_ptr<system::AmbientLightSensorWatcherStub>
       passed_ambient_light_sensor_watcher_;
+  std::unique_ptr<system::ExternalAmbientLightSensorFactoryStub>
+      passed_external_ambient_light_sensor_factory_;
   std::unique_ptr<system::DisplayWatcherStub> passed_display_watcher_;
   std::unique_ptr<system::DisplayPowerSetterStub> passed_display_power_setter_;
   std::unique_ptr<system::BacklightStub> passed_internal_backlight_;
@@ -416,6 +431,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::UdevStub* udev_;
   system::AmbientLightSensorManagerStub* ambient_light_sensor_manager_;
   system::AmbientLightSensorWatcherStub* ambient_light_sensor_watcher_;
+  system::ExternalAmbientLightSensorFactoryStub*
+      external_ambient_light_sensor_factory_;
   system::DisplayWatcherStub* display_watcher_;
   system::DisplayPowerSetterStub* display_power_setter_;
   system::BacklightStub* internal_backlight_;

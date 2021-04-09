@@ -20,6 +20,7 @@
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/display/external_display.h"
+#include "power_manager/powerd/system/external_ambient_light_sensor_factory_interface.h"
 
 #include <base/check.h>
 #include <base/notreached.h>
@@ -48,10 +49,14 @@ ExternalBacklightController::~ExternalBacklightController() {
 
 void ExternalBacklightController::Init(
     system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
+    system::ExternalAmbientLightSensorFactoryInterface*
+        external_ambient_light_sensor_factory,
     system::DisplayWatcherInterface* display_watcher,
     system::DisplayPowerSetterInterface* display_power_setter,
     system::DBusWrapperInterface* dbus_wrapper) {
   ambient_light_sensor_watcher_ = ambient_light_sensor_watcher;
+  external_ambient_light_sensor_factory_ =
+      external_ambient_light_sensor_factory;
   if (ambient_light_sensor_watcher_) {
     ambient_light_sensor_watcher_->AddObserver(this);
   }

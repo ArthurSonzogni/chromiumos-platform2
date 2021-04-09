@@ -27,6 +27,7 @@ class DBusWrapperInterface;
 struct DisplayInfo;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
+class ExternalAmbientLightSensorFactoryInterface;
 class ExternalDisplay;
 }  // namespace system
 
@@ -49,6 +50,8 @@ class ExternalBacklightController
   // Initializes the object. Ownership of raw pointers remains with the caller.
   void Init(
       system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
+      system::ExternalAmbientLightSensorFactoryInterface*
+          external_ambient_light_sensor_factory,
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper);
@@ -115,6 +118,8 @@ class ExternalBacklightController
   // These pointers aren't owned by this class.
   system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher_ =
       nullptr;
+  system::ExternalAmbientLightSensorFactoryInterface*
+      external_ambient_light_sensor_factory_ = nullptr;
   system::DisplayWatcherInterface* display_watcher_ = nullptr;
   system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;

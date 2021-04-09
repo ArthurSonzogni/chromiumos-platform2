@@ -33,6 +33,7 @@ class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
 class EcHelperInterface;
+class ExternalAmbientLightSensorFactoryInterface;
 class InputWatcherInterface;
 class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
@@ -73,6 +74,9 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::AmbientLightSensorWatcherInterface>
   CreateAmbientLightSensorWatcher(system::UdevInterface* udev) = 0;
 
+  virtual std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
+  CreateExternalAmbientLightSensorFactory() = 0;
+
   virtual std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) = 0;
 
@@ -82,6 +86,8 @@ class DaemonDelegate {
   virtual std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
       system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
+      system::ExternalAmbientLightSensorFactoryInterface*
+          external_ambient_light_sensor_factory,
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper) = 0;

@@ -63,6 +63,7 @@
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/event_device_interface.h"
+#include "power_manager/powerd/system/external_ambient_light_sensor_factory_interface.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
@@ -339,6 +340,8 @@ void Daemon::Init() {
   if (BoolPrefIsTrue(kExternalAmbientLightSensorPref)) {
     ambient_light_sensor_watcher_ =
         delegate_->CreateAmbientLightSensorWatcher(udev_.get());
+    external_ambient_light_sensor_factory_ =
+        delegate_->CreateExternalAmbientLightSensorFactory();
   }
   display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
   display_power_setter_ =
@@ -352,8 +355,10 @@ void Daemon::Init() {
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =
           delegate_->CreateExternalBacklightController(
-              ambient_light_sensor_watcher_.get(), display_watcher_.get(),
-              display_power_setter_.get(), dbus_wrapper_.get());
+              ambient_light_sensor_watcher_.get(),
+              external_ambient_light_sensor_factory_.get(),
+              display_watcher_.get(), display_power_setter_.get(),
+              dbus_wrapper_.get());
     } else {
       display_backlight_ = delegate_->CreateInternalBacklight(
           base::FilePath(kInternalBacklightPath), kInternalBacklightPattern);

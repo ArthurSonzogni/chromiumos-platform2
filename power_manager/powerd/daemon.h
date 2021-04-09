@@ -82,6 +82,7 @@ class ChargeControllerHelperInterface;
 class DarkResumeInterface;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
+class ExternalAmbientLightSensorFactoryInterface;
 class CrosEcHelperInterface;
 class InputWatcherInterface;
 class LockfileCheckerInterface;
@@ -320,6 +321,8 @@ class Daemon :
       light_sensor_manager_;
   std::unique_ptr<system::AmbientLightSensorWatcherInterface>
       ambient_light_sensor_watcher_;
+  std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
+      external_ambient_light_sensor_factory_;
   std::unique_ptr<system::DisplayWatcherInterface> display_watcher_;
   std::unique_ptr<system::DisplayPowerSetterInterface> display_power_setter_;
   std::unique_ptr<system::BacklightInterface> display_backlight_;

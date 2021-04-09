@@ -58,6 +58,7 @@
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/event_device.h"
+#include "power_manager/powerd/system/external_ambient_light_sensor_factory_file.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
@@ -125,6 +126,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return watcher;
   }
 
+  std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
+  CreateExternalAmbientLightSensorFactory() override {
+    return std::make_unique<system::ExternalAmbientLightSensorFactoryFile>();
+  }
+
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) override {
     auto watcher = std::make_unique<system::DisplayWatcher>();
@@ -142,11 +148,14 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
       system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
+      system::ExternalAmbientLightSensorFactoryInterface*
+          external_ambient_light_sensor_factory,
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter,
       system::DBusWrapperInterface* dbus_wrapper) override {
     auto controller = std::make_unique<policy::ExternalBacklightController>();
-    controller->Init(ambient_light_sensor_watcher, display_watcher,
+    controller->Init(ambient_light_sensor_watcher,
+                     external_ambient_light_sensor_factory, display_watcher,
                      display_power_setter, dbus_wrapper);
     return controller;
   }
