@@ -213,10 +213,6 @@ class DeviceTest : public testing::Test {
 
   void StopLinkMonitor() { device_->StopLinkMonitor(); }
 
-  uint64_t GetLinkMonitorResponseTime(Error* error) {
-    return device_->GetLinkMonitorResponseTime(error);
-  }
-
   MockTrafficMonitor* SetTrafficMonitor(
       std::unique_ptr<MockTrafficMonitor> traffic_monitor) {
     MockTrafficMonitor* underlying_traffic_monitor = traffic_monitor.get();
@@ -1091,21 +1087,6 @@ TEST_F(DeviceTest, LinkMonitor) {
       .WillOnce(Return(true));
   EXPECT_FALSE(StartLinkMonitor());
   EXPECT_TRUE(StartLinkMonitor());
-
-  unsigned int kResponseTime = 123;
-  EXPECT_CALL(*link_monitor, GetResponseTimeMilliseconds())
-      .WillOnce(Return(kResponseTime));
-  {
-    Error error;
-    EXPECT_EQ(kResponseTime, GetLinkMonitorResponseTime(&error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-  StopLinkMonitor();
-  {
-    Error error;
-    EXPECT_EQ(0, GetLinkMonitorResponseTime(&error));
-    EXPECT_FALSE(error.IsSuccess());
-  }
 }
 
 TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {

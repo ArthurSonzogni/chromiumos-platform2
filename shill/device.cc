@@ -191,8 +191,6 @@ Device::Device(Manager* manager,
   store_.RegisterConstString(kNameProperty, &link_name_);
   store_.RegisterConstBool(kPoweredProperty, &enabled_);
   HelpRegisterConstDerivedString(kTypeProperty, &Device::GetTechnologyString);
-  HelpRegisterConstDerivedUint64(kLinkMonitorResponseTimeProperty,
-                                 &Device::GetLinkMonitorResponseTime);
 
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
@@ -1742,17 +1740,6 @@ RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
     identifiers.push_back(dhcpv6_config_->GetRpcIdentifier());
   }
   return identifiers;
-}
-
-uint64_t Device::GetLinkMonitorResponseTime(Error* error) {
-  if (!link_monitor_) {
-    // It is not strictly an error that the link monitor does not
-    // exist, but returning an error here allows the GetProperties
-    // call in our Adaptor to omit this parameter.
-    error->Populate(Error::kNotFound, "Device is not running LinkMonitor");
-    return 0;
-  }
-  return link_monitor_->GetResponseTimeMilliseconds();
 }
 
 uint64_t Device::GetReceiveByteCount() {

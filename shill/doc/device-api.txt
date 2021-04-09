@@ -550,12 +550,6 @@ Properties	string Address [readonly]
 			Disabling and enabling this switch has no impact on
 			IPv4 connectivity.
 
-		int32 LinkMonitorResponseTime [readonly]
-
-			Latest running average of the link monitor response
-			for this device in milliseconds, if the link monitor
-			is active.
-
 		dict LinkStatistics [readonly]
 
 			(WiFi only) A dictionary providing current link

@@ -719,9 +719,6 @@ class Device : public base::RefCounted<Device> {
   // Stop link monitoring if it is running.
   void StopLinkMonitor();
 
-  // Get the LinkMonitor's average response time.
-  uint64_t GetLinkMonitorResponseTime(Error* error);
-
   // Returns true if traffic monitor is enabled on this device. The default
   // implementation will return false, which can be overridden by a derived
   // class.

@@ -342,7 +342,6 @@ const char kInhibitedProperty[] = "Inhibited";
 const char kIPConfigsProperty[] = "IPConfigs";
 const char kIPv6DisabledProperty[] = "IPv6Disabled";
 const char kInterfaceProperty[] = "Interface";  // Network interface name.
-const char kLinkMonitorResponseTimeProperty[] = "LinkMonitorResponseTime";
 // kNameProperty: Defined above for Service. DEPRECATED (crbug.com/1011136).
 const char kPoweredProperty[] = "Powered";
 const char kReceiveByteCountProperty[] = "ReceiveByteCount";
