@@ -69,9 +69,6 @@ bool NeedProbeForState(uint16_t current_state) {
 
 }  // namespace
 
-constexpr base::TimeDelta NeighborLinkMonitor::kActiveProbeInterval;
-constexpr base::TimeDelta NeighborLinkMonitor::kResetFailureStateTimeout;
-
 NeighborLinkMonitor::NeighborLinkMonitor(
     int ifindex,
     const std::string& ifname,
@@ -296,7 +293,7 @@ void NeighborLinkMonitor::OnNeighborMessage(const shill::RTNLMessage& msg) {
     return;
   }
 
-  const auto it = watching_entries_.find(addr);
+  auto it = watching_entries_.find(addr);
   if (it == watching_entries_.end())
     return;
 
@@ -329,52 +326,31 @@ void NeighborLinkMonitor::OnNeighborMessage(const shill::RTNLMessage& msg) {
               << ", old_state=" << NUDStateToString(old_nud_state);
   }
 
-  // NUD_REACHABLE indicates the bidirectional reachability has been confirmed.
-  if (new_nud_state == NUD_REACHABLE) {
-    if (!it->second.in_failure ||
-        it->second.reset_failure_state_timer.IsRunning())
-      return;
-
-    it->second.reset_failure_state_timer.Start(
-        FROM_HERE, kResetFailureStateTimeout,
-        base::BindOnce(&NeighborLinkMonitor::ChangeWatchingEntryInFailureState,
-                       base::Unretained(this), addr, false /* in_failure */));
-    return;
-  }
-
-  // NUD_FAILED indicates we have a reachability issue now.
   if (new_nud_state == NUD_FAILED) {
     LOG(WARNING) << "Neighbor becomes NUD_FAILED from "
                  << NUDStateToString(old_nud_state) << " on " << ifname_ << " "
                  << it->second.ToString();
-    it->second.reset_failure_state_timer.Stop();
-    if (!it->second.in_failure)
-      ChangeWatchingEntryInFailureState(addr, true /* in_failure */);
   }
-}
 
-void NeighborLinkMonitor::ChangeWatchingEntryInFailureState(
-    const shill::IPAddress& addr, bool in_failure) {
-  // If this function is triggered by a timer, the WatchingEntry which contains
-  // that timer must exist.
-  const auto it = watching_entries_.find(addr);
-  if (it == watching_entries_.end()) {
-    LOG(DFATAL) << "Watching entry not found for " << addr;
+  // NUD_REACHABLE indicates the bidirectional reachability has been confirmed.
+  constexpr auto kReachableState = WatchingEntry::ReachabilityState::kReachable;
+  if (new_nud_state == NUD_REACHABLE &&
+      it->second.reachability_state != kReachableState) {
+    it->second.reachability_state = kReachableState;
+    neighbor_event_handler_->Run(ifindex_, it->second.addr, it->second.role,
+                                 NeighborReachabilityEventSignal::REACHABLE);
     return;
   }
 
-  if (it->second.in_failure == in_failure) {
-    LOG(DFATAL) << __func__ << " is called with |in_failure|=" << in_failure
-                << ", while the entry is already in that state";
+  // NUD_FAILED indicates we have a reachability issue now.
+  constexpr auto kFailedState = WatchingEntry::ReachabilityState::kFailed;
+  if (new_nud_state == NUD_FAILED &&
+      it->second.reachability_state != kFailedState) {
+    it->second.reachability_state = kFailedState;
+    neighbor_event_handler_->Run(ifindex_, it->second.addr, it->second.role,
+                                 NeighborReachabilityEventSignal::FAILED);
     return;
   }
-
-  it->second.in_failure = in_failure;
-  using SignalProto = NeighborReachabilityEventSignal;
-  SignalProto::EventType event_type =
-      in_failure ? SignalProto::FAILED : SignalProto::RECOVERED;
-  neighbor_event_handler_->Run(ifindex_, it->second.addr, it->second.role,
-                               event_type);
 }
 
 NetworkMonitorService::NetworkMonitorService(

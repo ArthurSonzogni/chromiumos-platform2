@@ -327,11 +327,20 @@ TEST_F(NeighborLinkMonitorTest, NotifyNeighborReachabilityEvent) {
 
   fake_neighbor_event_handler_.Enable();
 
-  SCOPED_TRACE("Nothing should happen if everything goes well.");
+  SCOPED_TRACE("Reachability is confirmed at the first time.");
+  fake_neighbor_event_handler_.Expect(
+      kTestInterfaceIndex, "1.2.3.5",
+      NeighborLinkMonitor::NeighborRole::kGateway,
+      NeighborReachabilityEventSignal::REACHABLE);
   link_monitor_->OnIPConfigChanged(ipconfig);
   NotifyNUDStateChanged("1.2.3.5", NUD_PROBE);
   NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
-  task_env_.FastForwardBy(NeighborLinkMonitor::kResetFailureStateTimeout);
+  NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
+  NotifyNUDStateChanged("1.2.3.5", NUD_STALE);
+  NotifyNUDStateChanged("1.2.3.5", NUD_PROBE);
+  NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
+  NotifyNUDStateChanged("1.2.3.5", NUD_STALE);
+  NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
 
   SCOPED_TRACE("Messages with NUD_FAILED should trigger the callback once.");
   fake_neighbor_event_handler_.Expect(
@@ -341,27 +350,6 @@ TEST_F(NeighborLinkMonitorTest, NotifyNeighborReachabilityEvent) {
   NotifyNUDStateChanged("1.2.3.5", NUD_FAILED);
   NotifyNUDStateChanged("1.2.3.5", NUD_FAILED);
   NotifyNeighborRemoved("1.2.3.5");
-
-  SCOPED_TRACE("NUD_FAILED after NUD_VALID should cancel the timer.");
-  NotifyNUDStateChanged("1.2.3.5", NUD_INCOMPLETE);
-  NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
-  NotifyNUDStateChanged("1.2.3.5", NUD_FAILED);
-  task_env_.FastForwardBy(NeighborLinkMonitor::kResetFailureStateTimeout);
-
-  SCOPED_TRACE(
-      "Callback should be called at kResetFailureStateTimeout seconds after "
-      "NUD "
-      "state becomes NUD_VALID.");
-  NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
-  fake_neighbor_event_handler_.Expect(
-      kTestInterfaceIndex, "1.2.3.5",
-      NeighborLinkMonitor::NeighborRole::kGateway,
-      NeighborReachabilityEventSignal::RECOVERED);
-  task_env_.FastForwardBy(NeighborLinkMonitor::kResetFailureStateTimeout);
-
-  SCOPED_TRACE("No callback should come when the neighbor keeps in NUD_VALID.");
-  NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
-  task_env_.FastForwardBy(NeighborLinkMonitor::kResetFailureStateTimeout * 2);
 }
 
 TEST_F(NeighborLinkMonitorTest, NeighborRole) {
@@ -390,7 +378,6 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
   fake_neighbor_event_handler_.Disable();
   NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
   NotifyNUDStateChanged("1.2.3.6", NUD_REACHABLE);
-  task_env_.FastForwardBy(NeighborLinkMonitor::kResetFailureStateTimeout);
   fake_neighbor_event_handler_.Enable();
 
   SCOPED_TRACE("On neighbor as gateway and DNS server failed");
@@ -406,7 +393,6 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
   SCOPED_TRACE("Neighbors back to normal.");
   fake_neighbor_event_handler_.Disable();
   NotifyNUDStateChanged("1.2.3.5", NUD_REACHABLE);
-  task_env_.FastForwardBy(NeighborLinkMonitor::kResetFailureStateTimeout);
   fake_neighbor_event_handler_.Enable();
 
   SCOPED_TRACE("Swaps the roles.");

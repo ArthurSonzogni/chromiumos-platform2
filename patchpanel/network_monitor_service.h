@@ -63,29 +63,24 @@ namespace patchpanel {
 //
 // We will broadcast a signal when the bidirectional reachability of a monitored
 // neighbor changes, based on its NUD state, as follows:
+// - Only NUD_FAILED and NUD_REACHABLE is considered for generating this signal.
+//   We refer to these two states as "effective states".
 // - If the NUD state becomes NUD_FAILED, that is a clear signal that the
 //   reachability has been lost. We will consider the neighbor is "in failure"
-//   now and broadcast the "FAILED" signal if its previous state was not in
-//   failure. (It's possible that the NUD state becomes NUD_FAILED for several
-//   times before it comes to NUD_REACHABLE, because (something makes) the
-//   kernel probing that entry. We only generate one signal for that case.)
-// - If the NUD state becomes NUD_REACHABLE when the neighbor is in failure,
-//   that is a clear signal that the reachability has been recovered. To avoid
-//   the unstable case, we will wait for some time to make sure it will not
-//   become NUD_FAILURE again soon, and after that, we will reset the in failure
-//   state, and broadcast a "RECOVERED" signal.
-// Also see the comments for |WatchingEntry::in_failure|.
+//   now and broadcast the "FAILED" signal if its previous effective state was
+//   not NUD_FAILED. (It's possible that the NUD state becomes NUD_FAILED for
+//   several times before it comes to NUD_REACHABLE, because (something makes)
+//   the kernel probing that entry. We only generate one signal for that case.)
+// - If the NUD state becomes NUD_REACHABLE when the previous effetive state was
+//   not NUD_REACHABLE, that is a clear signal that the reachability has been
+//   confirmed, and we will broadcast a "REACHABLE" signal.
+// - When a neighbor is just added, we treat its effective state as UNKNOWN, and
+//   will broadcast either "FAILED" or "REACHABLE" once we get its effective
+//   state.
 class NeighborLinkMonitor {
  public:
   static constexpr base::TimeDelta kActiveProbeInterval =
       base::TimeDelta::FromSeconds(60);
-
-  // If a neighbor does not become NUD_FAILED again in kResetFailureStateTimeout
-  // after it comes back to NUD_REACHABLE, we consider it as recovered from the
-  // previous failure. Since currently the RECOVERED signal is only used by
-  // shill for comparing link monitors, we use a relatively longer value here.
-  static constexpr base::TimeDelta kResetFailureStateTimeout =
-      base::TimeDelta::FromMinutes(3);
 
   // Possible neighbor roles in the ipconfig. Represents each individual role by
   // a single bit to make the internal implementation easier.
@@ -126,6 +121,22 @@ class NeighborLinkMonitor {
   // or both) we are watching. Also tracks the NUD state of this address in the
   // kernel.
   struct WatchingEntry {
+    // Used for checking whether we need to send out a signal.
+    enum class ReachabilityState {
+      // Initial state.
+      kUnknown,
+      // The last effective NUD state was NUD_FAILED. Note that this state
+      // doesn't exactly mean whether the neighbor is reachable currently: for
+      // instance, when the link is going down, the kernel would remove this
+      // entry from the neighbor table and thus we will get a RTM_DELNEIGH
+      // message and change the |nud_state| to NUD_NONE. Although the neighbor
+      // may not be reachable at that time, we will not consider it as a failure
+      // case, unless we get a NUD_FAILED signal.
+      kFailed,
+      // The last effective NUD state was NUD_REACHABLE.
+      kReachable,
+    };
+
     WatchingEntry(shill::IPAddress addr, NeighborRole role);
     WatchingEntry(const WatchingEntry&) = delete;
     WatchingEntry& operator=(const WatchingEntry&) = delete;
@@ -141,27 +152,9 @@ class NeighborLinkMonitor {
     // added or the kernel tells us this entry has been deleted). If an entry is
     // in this state, we will send a dump request to the kernel when the timer
     // is triggered.
-    // TODO(jiejiang): The following three fields are related. We may consider
-    // changing this struct into a class if it becomes more complicated.
     uint16_t nud_state = NUD_NONE;
 
-    // Indicates whether we have detected a failure and the layer 2 reachability
-    // has not been recovered from that. Specifically, this state will be set
-    // when the |nud_state| changes to NUD_FAILED, and be reset when the
-    // |nud_state| changes to NUD_REACHABLE once and hasn't become NUD_FAILED
-    // again in a given period (kResetFailureStateTimeout). Note that this state
-    // doesn't exactly mean whether the neighbor is reachable currently: for
-    // instance, when the link is going down, the kernel would remove this entry
-    // from the neighbor table and thus we will get a RTM_DELNEIGH message and
-    // change the |nud_state| to NUD_NONE. Although the neighbor may not be
-    // reachable at that time, we will not consider it as a failure case, unless
-    // we get a NUD_FAILED signal.
-    bool in_failure = false;
-
-    // This timer is used to reset |in_failure| state. It will be set on the
-    // first time when the NUD state of neighbor back to NUD_REACHABLE, and
-    // will be reset if the NUD state becomes NUD_FAILED again before triggered.
-    base::OneShotTimer reset_failure_state_timer;
+    ReachabilityState reachability_state = ReachabilityState::kUnknown;
   };
 
   // ProbeAll() is invoked periodically by |probe_timer_|. It will scan the
@@ -183,12 +176,6 @@ class NeighborLinkMonitor {
 
   // Creates a new entry if not exist or updates the role of an existing entry.
   void UpdateWatchingEntry(const shill::IPAddress& addr, NeighborRole role);
-
-  // Sets the failure state of the watching entry with |addr| to |in_failure|,
-  // and invokes |neighbor_event_handler_| to sent out a signal if the state
-  // changes.
-  void ChangeWatchingEntryInFailureState(const shill::IPAddress& addr,
-                                         bool in_failure);
 
   void SendNeighborDumpRTNLMessage();
   void SendNeighborProbeRTNLMessage(const WatchingEntry& entry);

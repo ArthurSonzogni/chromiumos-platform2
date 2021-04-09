@@ -1505,7 +1505,7 @@ void DeviceInfo::OnNeighborReachabilityEvent(
     case SignalProto::FAILED:
       device->OnNeighborLinkFailure(address, signal.role());
       return;
-    case SignalProto::RECOVERED:
+    case SignalProto::REACHABLE:
       // Currently shill does not need this signal.
       return;
     default:

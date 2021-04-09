@@ -389,19 +389,19 @@ message NeighborReachabilityEventSignal {
     GATEWAY_AND_DNS_SERVER = 3;
   };
 
-  // Possible event types. See the class comment of NeighborLinkMonitor for more
-  // details about how these events are generated.
+  // Possible event types. Two consecutive events for the same neighbor should
+  // have different types. Also see the class comment of NeighborLinkMonitor
+  // for more details about how these events are generated.
   enum EventType {
     INVALID_EVENT_TYPE = 0;
-    // Indicates a failure is detected for this neighbor. After this event, no
-    // more FAILED events will be generated for this neighbor until a RECOVERED
-    // event happens.
+    // Indicates a failure is detected for this neighbor. Note that the neighbor
+    // may still be unreachable even if this signal is not sent out. For
+    // example, sometimes we may lose track of a neighbor from the kernel. We
+    // will not send out a FAILED signal when that happens, since that does not
+    // always mean a link failure.
     FAILED = 1;
-    // Indicates this neighbor has recovered from the previous failure: the
-    // layer 2 bidirectional reachability has been confirmed for a while. Note
-    // that a new neighbor is considered as "reachable" so this event will not
-    // be generated when we start to monitor a new neighbor.
-    RECOVERED = 2;
+    // Indicates the bidirectional reachability has just been confirmed.
+    REACHABLE = 2;
   };
 
   // The interface index of the device that connects to this neighbor.
