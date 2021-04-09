@@ -572,7 +572,7 @@ TEST_F(TpmImplTest, IsNvramLockedSuccess) {
   constexpr uint32_t kIsReadLocked = false;
   constexpr uint32_t kIsWriteLocked = true;
   uint32_t index = 0;
-  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _, _))
       .WillOnce(DoAll(SaveArg<0>(&index), SetArgPointee<1>(kSize),
                       SetArgPointee<2>(kIsReadLocked),
                       SetArgPointee<3>(kIsWriteLocked), Return(true)));
@@ -586,7 +586,7 @@ TEST_F(TpmImplTest, IsNvramLockedNotLocked) {
   constexpr uint32_t kIsReadLocked = false;
   constexpr uint32_t kIsWriteLocked = false;
   uint32_t index = 0;
-  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _, _))
       .WillOnce(DoAll(SaveArg<0>(&index), SetArgPointee<1>(kSize),
                       SetArgPointee<2>(kIsReadLocked),
                       SetArgPointee<3>(kIsWriteLocked), Return(true)));
@@ -595,7 +595,7 @@ TEST_F(TpmImplTest, IsNvramLockedNotLocked) {
 }
 
 TEST_F(TpmImplTest, IsNvramLockedFailure) {
-  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(GetTpm()->IsNvramLocked(0));
 }
@@ -606,7 +606,7 @@ TEST_F(TpmImplTest, GetNvramSizeSuccess) {
   constexpr uint32_t kIsReadLocked = false;
   constexpr uint32_t kIsWriteLocked = true;
   uint32_t index = 0;
-  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _, _))
       .WillOnce(DoAll(SaveArg<0>(&index), SetArgPointee<1>(kSize),
                       SetArgPointee<2>(kIsReadLocked),
                       SetArgPointee<3>(kIsWriteLocked), Return(true)));
@@ -615,7 +615,7 @@ TEST_F(TpmImplTest, GetNvramSizeSuccess) {
 }
 
 TEST_F(TpmImplTest, GetNvramSizeFailure) {
-  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_EQ(GetTpm()->GetNvramSize(0), 0);
 }

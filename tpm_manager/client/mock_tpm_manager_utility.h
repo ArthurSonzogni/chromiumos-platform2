@@ -37,7 +37,7 @@ class TPM_MANAGER_EXPORT MockTpmManagerUtility : public TpmManagerUtility {
     ON_CALL(*this, WriteSpace(_, _, _)).WillByDefault(Return(true));
     ON_CALL(*this, ReadSpace(_, _, _)).WillByDefault(Return(true));
     ON_CALL(*this, ListSpaces(_)).WillByDefault(Return(true));
-    ON_CALL(*this, GetSpaceInfo(_, _, _, _)).WillByDefault(Return(true));
+    ON_CALL(*this, GetSpaceInfo(_, _, _, _, _)).WillByDefault(Return(true));
     ON_CALL(*this, LockSpace(_)).WillByDefault(Return(true));
     ON_CALL(*this, GetOwnershipTakenSignalStatus(_, _, _))
         .WillByDefault(Return(true));
@@ -74,10 +74,11 @@ class TPM_MANAGER_EXPORT MockTpmManagerUtility : public TpmManagerUtility {
               (override));
   MOCK_METHOD(bool, ReadSpace, (uint32_t, bool, std::string*), (override));
   MOCK_METHOD(bool, ListSpaces, (std::vector<uint32_t>*), (override));
-  MOCK_METHOD(bool,
-              GetSpaceInfo,
-              (uint32_t, uint32_t*, bool*, bool*),
-              (override));
+  MOCK_METHOD(
+      bool,
+      GetSpaceInfo,
+      (uint32_t, uint32_t*, bool*, bool*, std::vector<NvramSpaceAttribute>*),
+      (override));
   MOCK_METHOD(bool, LockSpace, (uint32_t), (override));
   MOCK_METHOD(bool,
               GetOwnershipTakenSignalStatus,

@@ -147,7 +147,8 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
   virtual bool GetSpaceInfo(uint32_t index,
                             uint32_t* size,
                             bool* is_read_locked,
-                            bool* is_write_locked);
+                            bool* is_write_locked,
+                            std::vector<NvramSpaceAttribute>* attributes);
 
   // Blocking call of |TpmNvramDBusProxy::LockSpace|. Returns
   // |true| iff the operation succeeds. This call sends a request to lock

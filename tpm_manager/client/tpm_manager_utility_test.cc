@@ -18,6 +18,7 @@ namespace {
 using ::testing::_;
 using ::testing::ByRef;
 using ::testing::DoAll;
+using ::testing::ElementsAreArray;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -603,15 +604,41 @@ TEST_F(TpmManagerUtilityTest, GetSpaceInfo) {
   constexpr uint32_t kSize = 0x9487;
   constexpr bool kReadLocked = true;
   constexpr bool kWriteLocked = true;
+  const std::vector<NvramSpaceAttribute> kAllAttributes{
+      NVRAM_READ_AUTHORIZATION, NVRAM_OWNER_WRITE};
   get_space_info_reply_.set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
   get_space_info_reply_.set_size(kSize);
   get_space_info_reply_.set_is_read_locked(kReadLocked);
   get_space_info_reply_.set_is_write_locked(kWriteLocked);
+  for (auto attr : kAllAttributes) {
+    get_space_info_reply_.add_attributes(attr);
+  }
+  uint32_t size = 0;
+  bool is_read_locked = false;
+  bool is_write_locked = false;
+  std::vector<NvramSpaceAttribute> attributes;
+  EXPECT_TRUE(tpm_manager_utility_.GetSpaceInfo(
+      0x123456, &size, &is_read_locked, &is_write_locked, &attributes));
+  EXPECT_EQ(kSize, size);
+  EXPECT_EQ(kReadLocked, is_read_locked);
+  EXPECT_EQ(kWriteLocked, is_write_locked);
+  EXPECT_THAT(attributes, ElementsAreArray(kAllAttributes));
+}
+
+TEST_F(TpmManagerUtilityTest, GetSpaceInfoNoOutputAttributes) {
+  constexpr uint32_t kSize = 0x9487;
+  constexpr bool kReadLocked = true;
+  constexpr bool kWriteLocked = true;
+  get_space_info_reply_.set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
+  get_space_info_reply_.set_size(kSize);
+  get_space_info_reply_.set_is_read_locked(kReadLocked);
+  get_space_info_reply_.set_is_write_locked(kWriteLocked);
+  get_space_info_reply_.add_attributes(NVRAM_READ_AUTHORIZATION);
   uint32_t size = 0;
   bool is_read_locked = false;
   bool is_write_locked = false;
   EXPECT_TRUE(tpm_manager_utility_.GetSpaceInfo(
-      0x123456, &size, &is_read_locked, &is_write_locked));
+      0x123456, &size, &is_read_locked, &is_write_locked, nullptr));
   EXPECT_EQ(kSize, size);
   EXPECT_EQ(kReadLocked, is_read_locked);
   EXPECT_EQ(kWriteLocked, is_write_locked);
@@ -621,12 +648,13 @@ TEST_F(TpmManagerUtilityTest, GetSpaceInfoFail) {
   uint32_t size = 0;
   bool is_read_locked = false;
   bool is_write_locked = false;
+  std::vector<NvramSpaceAttribute> attributes;
   get_space_info_reply_.set_result(tpm_manager::NVRAM_RESULT_DEVICE_ERROR);
   EXPECT_FALSE(tpm_manager_utility_.GetSpaceInfo(
-      0x123456, &size, &is_read_locked, &is_write_locked));
+      0x123456, &size, &is_read_locked, &is_write_locked, &attributes));
   get_space_info_reply_.set_result(tpm_manager::NVRAM_RESULT_ACCESS_DENIED);
   EXPECT_FALSE(tpm_manager_utility_.GetSpaceInfo(
-      0x123456, &size, &is_read_locked, &is_write_locked));
+      0x123456, &size, &is_read_locked, &is_write_locked, &attributes));
 }
 
 TEST_F(TpmManagerUtilityTest, LockSpace) {

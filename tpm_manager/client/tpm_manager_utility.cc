@@ -391,10 +391,12 @@ bool TpmManagerUtility::ListSpaces(std::vector<uint32_t>* spaces) {
   return true;
 }
 
-bool TpmManagerUtility::GetSpaceInfo(uint32_t index,
-                                     uint32_t* size,
-                                     bool* is_read_locked,
-                                     bool* is_write_locked) {
+bool TpmManagerUtility::GetSpaceInfo(
+    uint32_t index,
+    uint32_t* size,
+    bool* is_read_locked,
+    bool* is_write_locked,
+    std::vector<NvramSpaceAttribute>* attributes) {
   tpm_manager::GetSpaceInfoRequest request;
   request.set_index(index);
   tpm_manager::GetSpaceInfoReply reply;
@@ -409,6 +411,11 @@ bool TpmManagerUtility::GetSpaceInfo(uint32_t index,
   *size = reply.size();
   *is_read_locked = reply.is_read_locked();
   *is_write_locked = reply.is_write_locked();
+  if (attributes != nullptr) {
+    for (int i = 0; i < reply.attributes().size(); ++i) {
+      attributes->push_back(reply.attributes(i));
+    }
+  }
   return true;
 }
 

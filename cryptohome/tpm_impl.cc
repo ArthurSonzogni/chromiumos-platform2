@@ -1070,7 +1070,8 @@ unsigned int TpmImpl::GetNvramSize(uint32_t index) {
   bool is_read_locked;
   bool is_write_locked;
   if (!tpm_manager_utility_->GetSpaceInfo(index, &size, &is_read_locked,
-                                          &is_write_locked)) {
+                                          &is_write_locked,
+                                          /*attributes=*/nullptr)) {
     return 0;
   }
   return size;
@@ -1085,7 +1086,8 @@ bool TpmImpl::IsNvramLocked(uint32_t index) {
   bool is_read_locked;
   bool is_write_locked;
   if (!tpm_manager_utility_->GetSpaceInfo(index, &size, &is_read_locked,
-                                          &is_write_locked)) {
+                                          &is_write_locked,
+                                          /*attributes=*/nullptr)) {
     return false;
   }
   return is_write_locked;
