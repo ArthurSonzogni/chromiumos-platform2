@@ -52,6 +52,8 @@ void MapAttributesFromTpm(trunks::TPMA_NV tpm_flags,
     attributes->push_back(NVRAM_WRITE_EXTEND);
   if (tpm_flags & (trunks::TPMA_NV_PPREAD))
     attributes->push_back(NVRAM_PLATFORM_READ);
+  if (tpm_flags & (trunks::TPMA_NV_PLATFORMCREATE))
+    attributes->push_back(NVRAM_PLATFORM_CREATE);
 }
 
 bool MapAttributesToTpm(const std::vector<NvramSpaceAttribute>& attributes,
