@@ -32,7 +32,7 @@ class RTNLListenerTest : public testing::Test {
   }
 
   void TearDown() override {
-    ASSERT_FALSE(RTNLHandler::GetInstance()->listeners_.might_have_observers());
+    ASSERT_TRUE(RTNLHandler::GetInstance()->listeners_.empty());
   }
 };
 
