@@ -147,14 +147,12 @@ class Datapath {
 
   virtual void RemoveInterface(const std::string& ifname);
 
-  // Create (or delete) an OUTPUT DROP rule for any locally originated traffic
+  // Create an OUTPUT DROP rule for any locally originated traffic
   // whose src IPv4 matches |src_ip| and would exit |oif|. This is mainly used
   // for dropping Chrome webRTC traffic incorrectly bound on ARC and other
   // guests virtual interfaces (chromium:898210).
   virtual bool AddSourceIPv4DropRule(const std::string& oif,
                                      const std::string& src_ip);
-  virtual bool RemoveSourceIPv4DropRule(const std::string& oif,
-                                        const std::string& src_ip);
 
   // Creates a virtual ethernet interface pair shared with the client namespace
   // of |nsinfo.pid| and sets up routing outside and inside the client namespace
@@ -306,17 +304,6 @@ class Datapath {
                           bool enable_multicast);
   // Sets the link status.
   bool ToggleInterface(const std::string& ifname, bool up);
-  // Starts or stops accepting IP traffic forwarded between |iif| and |oif|
-  // by adding or removing ACCEPT rules in the filter FORWARD chain of iptables
-  // and/or ip6tables. If |iif| is empty, only specifies |oif| as the output
-  // interface.  If |iif| is empty, only specifies |iif| as the input interface.
-  // |oif| and |iif| cannot be both empty.
-  bool StartIpForwarding(IpFamily family,
-                         const std::string& iif,
-                         const std::string& oif);
-  bool StopIpForwarding(IpFamily family,
-                        const std::string& iif,
-                        const std::string& oif);
   // Create (or delete) pre-routing rules allowing direct ingress on |ifname|
   // to guest destination |ipv4_addr|.
   bool AddInboundIPv4DNAT(const std::string& ifname,
@@ -395,7 +382,6 @@ class Datapath {
   FRIEND_TEST(DatapathTest, ConfigureInterface);
   FRIEND_TEST(DatapathTest, RemoveInboundIPv4DNAT);
   FRIEND_TEST(DatapathTest, RemoveOutboundIPv4SNATMark);
-  FRIEND_TEST(DatapathTest, StartStopIpForwarding);
   FRIEND_TEST(DatapathTest, ToggleInterface);
 
   // A map used for remembering the interface index of an interface. This

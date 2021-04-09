@@ -557,13 +557,6 @@ bool Datapath::AddSourceIPv4DropRule(const std::string& oif,
                         src_ip, "-j", "DROP", "-w"}) == 0;
 }
 
-bool Datapath::RemoveSourceIPv4DropRule(const std::string& oif,
-                                        const std::string& src_ip) {
-  return process_runner_->iptables(
-             "filter", {"-D", kDropGuestIpv4PrefixChain, "-o", oif, "-s",
-                        src_ip, "-j", "DROP", "-w"}) == 0;
-}
-
 bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   // Veth interface configuration and client routing configuration:
   //  - attach a name to the client namespace.
@@ -663,11 +656,11 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     LOG(ERROR) << "Failed to configure ingress traffic rules for " << ext_ifname
                << "->" << int_ifname;
 
-  if (!StartIpForwarding(IpFamily::IPv4, ext_ifname, int_ifname))
+  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", ext_ifname, int_ifname))
     LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "->"
                << int_ifname;
 
-  if (!StartIpForwarding(IpFamily::IPv4, int_ifname, ext_ifname))
+  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", int_ifname, ext_ifname))
     LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "<-"
                << int_ifname;
 
@@ -728,8 +721,8 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
                                  bool route_on_vpn) {
   if (source == TrafficSource::ARC && !ext_ifname.empty() && int_ipv4_addr != 0)
     RemoveInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr));
-  StopIpForwarding(IpFamily::IPv4, ext_ifname, int_ifname);
-  StopIpForwarding(IpFamily::IPv4, int_ifname, ext_ifname);
+  ModifyIpForwarding(IpFamily::IPv4, "-D", ext_ifname, int_ifname);
+  ModifyIpForwarding(IpFamily::IPv4, "-D", int_ifname, ext_ifname);
 
   std::string subchain = "PREROUTING_" + int_ifname;
   ModifyJumpRule(IpFamily::Dual, "mangle", "-D", "PREROUTING", subchain,
@@ -1215,31 +1208,19 @@ bool Datapath::ModifyIptables(IpFamily family,
   return success;
 }
 
-bool Datapath::StartIpForwarding(IpFamily family,
-                                 const std::string& iif,
-                                 const std::string& oif) {
-  return ModifyIpForwarding(family, "-A", iif, oif);
-}
-
-bool Datapath::StopIpForwarding(IpFamily family,
-                                const std::string& iif,
-                                const std::string& oif) {
-  return ModifyIpForwarding(family, "-D", iif, oif);
-}
-
 bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
                                  const std::string& ifname2) {
   // Only start Ipv6 forwarding if -C returns false and it had not been
   // started yet.
   if (!ModifyIpForwarding(IpFamily::IPv6, "-C", ifname1, ifname2,
                           false /*log_failures*/) &&
-      !StartIpForwarding(IpFamily::IPv6, ifname1, ifname2)) {
+      !ModifyIpForwarding(IpFamily::IPv6, "-A", ifname1, ifname2)) {
     return false;
   }
 
   if (!ModifyIpForwarding(IpFamily::IPv6, "-C", ifname2, ifname1,
                           false /*log_failures*/) &&
-      !StartIpForwarding(IpFamily::IPv6, ifname2, ifname1)) {
+      !ModifyIpForwarding(IpFamily::IPv6, "-A", ifname2, ifname1)) {
     RemoveIPv6Forwarding(ifname1, ifname2);
     return false;
   }
@@ -1249,8 +1230,8 @@ bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
 
 void Datapath::RemoveIPv6Forwarding(const std::string& ifname1,
                                     const std::string& ifname2) {
-  StopIpForwarding(IpFamily::IPv6, ifname1, ifname2);
-  StopIpForwarding(IpFamily::IPv6, ifname2, ifname1);
+  ModifyIpForwarding(IpFamily::IPv6, "-D", ifname1, ifname2);
+  ModifyIpForwarding(IpFamily::IPv6, "-D", ifname2, ifname1);
 }
 
 bool Datapath::AddIPv4Route(uint32_t gateway_addr,

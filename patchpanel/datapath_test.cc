@@ -538,20 +538,6 @@ TEST(DatapathTest, RemoveInterface) {
   datapath.RemoveInterface("foo");
 }
 
-TEST(DatapathTest, AddRemoveSourceIPv4DropRule) {
-  MockProcessRunner runner;
-  MockFirewall firewall;
-  Verify_iptables(
-      runner, IPv4,
-      "filter -I drop_guest_ipv4_prefix -o eth+ -s 100.115.92.0/24 -j DROP -w");
-  Verify_iptables(
-      runner, IPv4,
-      "filter -D drop_guest_ipv4_prefix -o eth+ -s 100.115.92.0/24 -j DROP -w");
-  Datapath datapath(&runner, &firewall);
-  datapath.AddSourceIPv4DropRule("eth+", "100.115.92.0/24");
-  datapath.RemoveSourceIPv4DropRule("eth+", "100.115.92.0/24");
-}
-
 TEST(DatapathTest, StartRoutingNamespace) {
   MockProcessRunner runner;
   MockFirewall firewall;
@@ -732,51 +718,6 @@ TEST(DatapathTest, StopRoutingDevice_CrosVM) {
   Datapath datapath(&runner, &firewall);
   datapath.StopRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
                              TrafficSource::CROSVM, true);
-}
-
-TEST(DatapathTest, StartStopIpForwarding) {
-  struct {
-    IpFamily family;
-    std::string iif;
-    std::string oif;
-    std::string start_args;
-    std::string stop_args;
-    bool result;
-  } testcases[] = {
-      {IPv4, "", "", {}, {}, false},
-      {NONE, "foo", "bar", {}, {}, false},
-      {IPv4, "foo", "bar", "filter -A FORWARD -i foo -o bar -j ACCEPT -w",
-       "filter -D FORWARD -i foo -o bar -j ACCEPT -w", true},
-      {IPv4, "", "bar", "filter -A FORWARD -o bar -j ACCEPT -w",
-       "filter -D FORWARD -o bar -j ACCEPT -w", true},
-      {IPv4, "foo", "", "filter -A FORWARD -i foo -j ACCEPT -w",
-       "filter -D FORWARD -i foo -j ACCEPT -w", true},
-      {IPv6, "foo", "bar", "filter -A FORWARD -i foo -o bar -j ACCEPT -w",
-       "filter -D FORWARD -i foo -o bar -j ACCEPT -w", true},
-      {IPv6, "", "bar", "filter -A FORWARD -o bar -j ACCEPT -w",
-       "filter -D FORWARD -o bar -j ACCEPT -w", true},
-      {IPv6, "foo", "", "filter -A FORWARD -i foo -j ACCEPT -w",
-       "filter -D FORWARD -i foo -j ACCEPT -w", true},
-      {Dual, "foo", "bar", "filter -A FORWARD -i foo -o bar -j ACCEPT -w",
-       "filter -D FORWARD -i foo -o bar -j ACCEPT -w", true},
-      {Dual, "", "bar", "filter -A FORWARD -o bar -j ACCEPT -w",
-       "filter -D FORWARD -o bar -j ACCEPT -w", true},
-      {Dual, "foo", "", "filter -A FORWARD -i foo -j ACCEPT -w",
-       "filter -D FORWARD -i foo -j ACCEPT -w", true},
-  };
-
-  for (const auto& tt : testcases) {
-    MockProcessRunner runner;
-    MockFirewall firewall;
-    if (tt.result) {
-      Verify_iptables(runner, tt.family, tt.start_args);
-      Verify_iptables(runner, tt.family, tt.stop_args);
-    }
-    Datapath datapath(&runner, &firewall);
-
-    EXPECT_EQ(tt.result, datapath.StartIpForwarding(tt.family, tt.iif, tt.oif));
-    EXPECT_EQ(tt.result, datapath.StopIpForwarding(tt.family, tt.iif, tt.oif));
-  }
 }
 
 TEST(DatapathTest, StartStopConnectionPinning) {
