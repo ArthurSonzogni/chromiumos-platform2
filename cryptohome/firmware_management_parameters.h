@@ -45,6 +45,10 @@ struct FirmwareManagementParametersRawV1_0;
 // ...
 class FirmwareManagementParameters {
  public:
+  // Creates a propoer firmware management parameters according to the TPM
+  // version on the device.
+  static std::unique_ptr<FirmwareManagementParameters> CreateInstance(Tpm* tpm);
+
   // Populates the basic internal state of the firmware management parameters.
   //
   // Parameters

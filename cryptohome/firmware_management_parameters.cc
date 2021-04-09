@@ -48,6 +48,13 @@ const uint32_t FirmwareManagementParameters::kNvramBytes =
     sizeof(struct FirmwareManagementParametersRawV1_0);
 const uint32_t FirmwareManagementParameters::kCrcDataOffset = 2;
 
+// static
+std::unique_ptr<FirmwareManagementParameters>
+FirmwareManagementParameters::CreateInstance(Tpm* tpm) {
+  // TODO(b/183474803): Create the right FWMP object for generic TPM2.0.
+  return std::make_unique<FirmwareManagementParameters>(tpm);
+}
+
 FirmwareManagementParameters::FirmwareManagementParameters(Tpm* tpm)
     : tpm_(tpm), raw_(new FirmwareManagementParametersRawV1_0()) {}
 

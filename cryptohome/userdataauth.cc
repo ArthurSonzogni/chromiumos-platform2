@@ -236,8 +236,8 @@ bool UserDataAuth::Initialize() {
 
   // Initialize Firmware Management Parameters
   if (!firmware_management_parameters_) {
-    default_firmware_management_params_.reset(
-        new FirmwareManagementParameters(tpm_));
+    default_firmware_management_params_ =
+        FirmwareManagementParameters::CreateInstance(tpm_);
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
