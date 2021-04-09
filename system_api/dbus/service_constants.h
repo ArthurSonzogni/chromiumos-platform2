@@ -131,6 +131,23 @@ const char kNetworkProxyServiceInterface[] =
     "org.chromium.NetworkProxyServiceInterface";
 const char kNetworkProxyServiceResolveProxyMethod[] = "ResolveProxy";
 
+// Options to override the default behaviour of system-proxy, a local daemon
+// which does proxy authentication to a remote web proxy, on behalf of Chrome OS
+// system services. The default behaviour is to return the address of
+// system-proxy as the first entry in the PAC-style list of resolved proxy only
+// if the device policy SystemProxySettings is enabled.
+enum SystemProxyOverride {
+  // Default behaviour. System-proxy will be appended to the list of returned
+  // proxies only if enabled by policy.
+  kDefault = 0,
+  // System-proxy will be appended to the list of returned proxies only if
+  // enabled by policy or feature flag SystemProxyForSystemServices.
+  kOptIn = 1,
+  // System-proxy will not be added to the list of returned proxies, even if
+  // enabled by policy.
+  kOptOut = 2,
+};
+
 const char kLivenessServiceName[] = "org.chromium.LivenessService";
 const char kLivenessServicePath[] = "/org/chromium/LivenessService";
 const char kLivenessServiceInterface[] =
