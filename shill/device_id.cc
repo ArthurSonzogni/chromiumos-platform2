@@ -134,22 +134,22 @@ std::string DeviceId::AsString() const {
 
   const char* loc;
   if (location_type_ == LocationType::kExternal)
-    loc = "External";
+    loc = " (External)";
   else if (location_type_ == LocationType::kInternal)
-    loc = "Internal";
+    loc = " (Internal)";
   else
-    loc = "UnknownLocation";
+    loc = "";
 
   if (!vendor_id_.has_value()) {
-    return base::StringPrintf("%s:*:* (%s)", bus_name, loc);
+    return base::StringPrintf("%s:*:*%s", bus_name, loc);
   }
 
   if (!product_id_.has_value()) {
-    return base::StringPrintf("%s:%04" PRIx16 ":* (%s)", bus_name,
+    return base::StringPrintf("%s:%04" PRIx16 ":*%s", bus_name,
                               vendor_id_.value(), loc);
   }
 
-  return base::StringPrintf("%s:%04" PRIx16 ":%04" PRIx16 " (%s)", bus_name,
+  return base::StringPrintf("%s:%04" PRIx16 ":%04" PRIx16 "%s", bus_name,
                             vendor_id_.value(), product_id_.value(), loc);
 }
 

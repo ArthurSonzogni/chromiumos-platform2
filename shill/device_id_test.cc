@@ -243,4 +243,18 @@ TEST_F(DeviceIdFromSysfsTest, UsbDeviceWithAnyVendorId) {
   ExpectDeviceId(kDeviceName1, DeviceId{DeviceId::BusType::kUsb});
 }
 
+TEST_F(DeviceIdFromSysfsTest, UsbDeviceByString) {
+  const std::string kDeviceIdString = "usb:2cb7:01a0";
+  CreateDeviceSysfs(kDeviceName1, kUsbBusName);
+  CreateDeviceSysfsFile(kDeviceName1, "idVendor", "2cb7");
+  CreateDeviceSysfsFile(kDeviceName1, "idProduct", "01a0");
+  // In the cellular code(modemfwd), the manifests for the firmwares and the
+  // helpers match against the DeviceID string exported over D-Bus.
+  // We need to ensure that the following string doesn't change over time.
+  const auto device_id = DeviceId::CreateFromSysfs(GetDevicePath(kDeviceName1));
+  ASSERT_TRUE(device_id);
+  EXPECT_TRUE(device_id->AsString() == kDeviceIdString)
+      << device_id->AsString() << " does not match " << kDeviceIdString;
+}
+
 }  // namespace shill
