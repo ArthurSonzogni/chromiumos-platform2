@@ -23,6 +23,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/scoped_umask.h>
 
 namespace biod {
 
