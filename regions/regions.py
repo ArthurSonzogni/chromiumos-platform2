@@ -477,7 +477,7 @@ REGIONS_LIST = [
         'hr', 'xkb:hr::scr', 'Europe/Zagreb', ['hr', 'en-GB'], KML.ISO,
         'Croatia'),
     Region(
-        'kz', ['xkb:kz::kaz', 'xkb:ru::rus', 'xkb:us::eng'],
+        'kz', ['xkb:us::eng', 'xkb:kz::kaz', 'xkb:ru::rus'],
         ['Asia/Almaty', 'Asia/Aqtobe'], ['kk', 'ru'], KML.ANSI, 'Kazakhstan'),
     Region(
         'ee', 'xkb:ee::est', 'Europe/Tallinn', ['et', 'ru', 'en-GB'], KML.ISO,
