@@ -405,7 +405,8 @@ const std::vector<Log> kCommandLogs {
 // clang-format on
 
 const std::vector<Log> kCommandLogsVerbose{
-    {kCommand, "lspci_verbose", "/usr/sbin/lspci -vvvnn"},
+    // PCI config space accesses are limited without CAP_SYS_ADMIN.
+    {kCommand, "lspci_verbose", "/usr/sbin/lspci -vvvnn", kRoot, kRoot},
 };
 
 const std::vector<Log> kCommandLogsShort{
