@@ -183,6 +183,16 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
                                           host_list_);
   }
 
+  if (code == CURLE_OK && buffer_size_.has_value()) {
+    code = curl_interface_->EasySetOptInt(curl_handle, CURLOPT_BUFFERSIZE,
+                                          buffer_size_.value());
+  }
+
+  if (code == CURLE_OK && upload_buffer_size_.has_value()) {
+    code = curl_interface_->EasySetOptInt(
+        curl_handle, CURLOPT_UPLOAD_BUFFERSIZE, upload_buffer_size_.value());
+  }
+
   // Setup HTTP request method and optional request body.
   if (code == CURLE_OK) {
     if (method == request_type::kGet) {
@@ -302,6 +312,14 @@ void Transport::ResolveHostToIp(const std::string& host,
       host_list_,
       base::StringPrintf("%s:%d:%s", host.c_str(), port, ip_address.c_str())
           .c_str());
+}
+
+void Transport::SetBufferSize(base::Optional<int> buffer_size) {
+  buffer_size_ = buffer_size;
+}
+
+void Transport::SetUploadBufferSize(base::Optional<int> buffer_size) {
+  upload_buffer_size_ = buffer_size;
 }
 
 void Transport::ClearHost() {

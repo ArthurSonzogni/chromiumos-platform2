@@ -10,6 +10,7 @@
 
 #include <base/location.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <brillo/http/http_transport.h>
 #include <gmock/gmock.h>
 
@@ -48,6 +49,9 @@ class MockTransport : public Transport {
               ResolveHostToIp,
               (const std::string&, uint16_t, const std::string&),
               (override));
+
+  MOCK_METHOD(void, SetBufferSize, (base::Optional<int>), (override));
+  MOCK_METHOD(void, SetUploadBufferSize, (base::Optional<int>), (override));
 
  protected:
   MOCK_METHOD(void, ClearHost, (), (override));
