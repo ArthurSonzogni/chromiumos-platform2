@@ -17,5 +17,5 @@ python3 -m unittest discover -p '*test.py' -v
 # TODO(https://crbug.com/1101555): "cros lint" doesn't work when run as part of
 # an ebuild.
 if which cros; then
-  find . -name '*.py' -exec cros lint --py3 {} +
+  find . -name '*.py' -exec cros lint {} +
 fi
