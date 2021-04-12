@@ -934,7 +934,7 @@ void Cellular::CreateServices() {
   SLOG(this, 2) << ": Service=" << service_->log_name();
 
   // Create or update Cellular Services for secondary SIMs.
-  CreateSecondaryServices();
+  UpdateSecondaryServices();
 
   capability_->OnServiceCreated();
 
@@ -956,13 +956,16 @@ void Cellular::DestroyAllServices() {
   service_ = nullptr;
 }
 
-void Cellular::CreateSecondaryServices() {
+void Cellular::UpdateSecondaryServices() {
   for (const SimProperties& sim_properties : sim_slot_properties_) {
     if (sim_properties.iccid.empty() || sim_properties.iccid == iccid_)
       continue;
     manager()->cellular_service_provider()->LoadServicesForSecondarySim(
         sim_properties.eid, sim_properties.iccid, sim_properties.imsi, this);
   }
+
+  // Remove any Services no longer associated with a SIM slot.
+  manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
 }
 
 void Cellular::CreateCapability(ModemInfo* modem_info) {
@@ -1894,14 +1897,11 @@ void Cellular::SetSimProperties(
   // primary Service.
   SetPrimarySimProperties(*primary_sim_properties);
 
-  // Ensure that secondary services are created and updated.
-  CreateSecondaryServices();
-
-  // Remove any services not associated with a SIM slot.
-  manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
-
   // Update the KeyValueStore for Device.Cellular.SIMSlotInfo and emit it.
   SetSimSlotProperties(sim_properties, primary_slot);
+
+  // Ensure that secondary services are created and updated.
+  UpdateSecondaryServices();
 }
 
 std::deque<Stringmap> Cellular::BuildApnTryList() const {

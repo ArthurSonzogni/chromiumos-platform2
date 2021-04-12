@@ -495,7 +495,7 @@ class Cellular : public Device,
   void DestroyAllServices();
 
   // Creates or updates services for secondary SIMs.
-  void CreateSecondaryServices();
+  void UpdateSecondaryServices();
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
