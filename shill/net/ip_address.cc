@@ -30,13 +30,6 @@ const size_t kBitsPerByte = 8;
 }  // namespace
 
 // static
-const IPAddress::Family IPAddress::kFamilyUnknown = AF_UNSPEC;
-// static
-const IPAddress::Family IPAddress::kFamilyIPv4 = AF_INET;
-// static
-const IPAddress::Family IPAddress::kFamilyIPv6 = AF_INET6;
-
-// static
 const char IPAddress::kFamilyNameUnknown[] = "Unknown";
 // static
 const char IPAddress::kFamilyNameIPv4[] = "IPv4";

@@ -20,9 +20,9 @@ namespace shill {
 class SHILL_EXPORT IPAddress {
  public:
   using Family = unsigned char;
-  static const Family kFamilyUnknown;
-  static const Family kFamilyIPv4;
-  static const Family kFamilyIPv6;
+  static constexpr Family kFamilyUnknown = AF_UNSPEC;
+  static constexpr Family kFamilyIPv4 = AF_INET;
+  static constexpr Family kFamilyIPv6 = AF_INET6;
   static const char kFamilyNameUnknown[];
   static const char kFamilyNameIPv4[];
   static const char kFamilyNameIPv6[];
