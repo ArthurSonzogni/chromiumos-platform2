@@ -51,7 +51,8 @@ class FakeContext : public VdaContext {
                                vda_pixel_format_t format,
                                base::ScopedFD fd,
                                size_t num_planes,
-                               video_frame_plane_t* planes) override;
+                               video_frame_plane_t* planes,
+                               uint64_t modifier) override;
   vda_result_t ReuseOutputBuffer(int32_t picture_buffer_id) override;
   vda_result_t Reset() override;
   vda_result_t Flush() override;
@@ -85,10 +86,11 @@ vda_result_t FakeContext::UseOutputBuffer(int32_t picture_buffer_id,
                                           vda_pixel_format_t format,
                                           base::ScopedFD fd,
                                           size_t num_planes,
-                                          video_frame_plane_t* planes) {
+                                          video_frame_plane_t* planes,
+                                          uint64_t modifier) {
   LOG(INFO) << "FakeContext::UseOutputBuffer called with picture_buffer_id="
             << picture_buffer_id << " format=" << format << " fd=" << fd.get()
-            << " num_planes=" << num_planes;
+            << " num_planes=" << num_planes << " modifier=" << modifier;
 
   return SUCCESS;
 }

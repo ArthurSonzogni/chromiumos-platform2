@@ -119,6 +119,7 @@ impl<'a> Session<'a> {
         format: PixelFormat,
         output_buffer: BufferFd,
         planes: &[FramePlane],
+        modifier: u64,
     ) -> Result<()> {
         let mut planes: Vec<_> = planes.iter().map(FramePlane::to_raw_frame_plane).collect();
 
@@ -131,6 +132,7 @@ impl<'a> Session<'a> {
                 output_buffer,
                 planes.len(),
                 planes.as_mut_ptr(),
+                modifier,
             )
         };
         Response::new(r).into()

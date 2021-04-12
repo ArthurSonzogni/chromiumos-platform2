@@ -175,6 +175,7 @@ void DecodeEventThread::CallUseOutputBuffer(int32_t picture_buffer_id,
 
   int plane_count = gbm_bo_get_plane_count(bo);
   int plane_fd = gbm_bo_get_fd(bo);
+  uint64_t modifier = gbm_bo_get_modifier(bo);
 
   std::vector<video_frame_plane_t> vda_planes;
 
@@ -193,7 +194,7 @@ void DecodeEventThread::CallUseOutputBuffer(int32_t picture_buffer_id,
   }
 
   vda_use_output_buffer(session_->ctx, picture_buffer_id, vda_format_, plane_fd,
-                        plane_count, vda_planes.data());
+                        plane_count, vda_planes.data(), modifier);
 }
 
 void DecodeEventThread::OnProvidePictureBuffers(

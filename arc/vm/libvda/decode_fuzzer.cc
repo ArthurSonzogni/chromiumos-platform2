@@ -313,6 +313,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
 
     case VdaCommand::USE_OUTPUT_BUFFER: {
+      // This is the same value as DRM_FORMAT_MOD_INVALID, which is not a valid
+      // modifier.
+      const uint64_t kNoModifier = 0x00ffffffffffffffULL;
       const int32_t picture_buffer_id = reader.GetInt32();
       const vda_pixel_format_t format = static_cast<vda_pixel_format_t>(
           reader.GetUint32() % (PIXEL_FORMAT_MAX + 1));
@@ -326,7 +329,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       }
       // Ownership of the FD is passed.
       vda_use_output_buffer(session_manager.ctx(), picture_buffer_id, format,
-                            fd, num_planes, planes.data());
+                            fd, num_planes, planes.data(), kNoModifier);
       break;
     }
     case VdaCommand::FLUSH: {

@@ -191,7 +191,8 @@ vda_result_t LIBVDA_EXPORT vda_use_output_buffer(void* ctx,
                                                  vda_pixel_format_t format,
                                                  int fd,
                                                  size_t num_planes,
-                                                 video_frame_plane_t* planes);
+                                                 video_frame_plane_t* planes,
+                                                 uint64_t modifier);
 
 // Returns output buffer with id |picture_buffer_id| for reuse.
 vda_result_t LIBVDA_EXPORT vda_reuse_output_buffer(void* ctx,

@@ -43,7 +43,8 @@ class VdaContext {
                                        vda_pixel_format_t format,
                                        base::ScopedFD fd,
                                        size_t num_planes,
-                                       video_frame_plane_t* planes) = 0;
+                                       video_frame_plane_t* planes,
+                                       uint64_t modifier) = 0;
 
   // Returns the output buffer with id |picture_buffer_id| for reuse.
   virtual vda_result_t ReuseOutputBuffer(int32_t picture_buffer_id) = 0;

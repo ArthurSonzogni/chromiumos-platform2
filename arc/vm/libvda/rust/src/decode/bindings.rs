@@ -600,6 +600,7 @@ extern "C" {
         fd: ::std::os::raw::c_int,
         num_planes: usize,
         planes: *mut video_frame_plane_t,
+        modifier: u64,
     ) -> vda_result_t;
 }
 extern "C" {

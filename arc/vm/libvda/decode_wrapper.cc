@@ -171,9 +171,11 @@ vda_result_t vda_use_output_buffer(void* ctx,
                                    vda_pixel_format_t format,
                                    int fd,
                                    size_t num_planes,
-                                   video_frame_plane_t* planes) {
+                                   video_frame_plane_t* planes,
+                                   uint64_t modifier) {
   return static_cast<arc::VdaContext*>(ctx)->UseOutputBuffer(
-      picture_buffer_id, format, base::ScopedFD(fd), num_planes, planes);
+      picture_buffer_id, format, base::ScopedFD(fd), num_planes, planes,
+      modifier);
 }
 
 vda_result_t vda_reuse_output_buffer(void* ctx, int32_t picture_buffer_id) {
