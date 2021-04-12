@@ -280,6 +280,10 @@ void PortManager::ReportMetrics(int port_num) {
   if (port->IsPartnerDiscoveryComplete()) {
     port->ReportPartnerMetrics(metrics_);
   }
+
+  if (port->IsCableDiscoveryComplete()) {
+    port->ReportCableMetrics(metrics_);
+  }
 }
 
 void PortManager::RunModeEntry(int port_num) {

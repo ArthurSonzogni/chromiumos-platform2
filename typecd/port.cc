@@ -314,4 +314,13 @@ void Port::ReportPartnerMetrics(Metrics* metrics) {
   partner_->ReportMetrics(metrics);
 }
 
+void Port::ReportCableMetrics(Metrics* metrics) {
+  if (!cable_) {
+    LOG(INFO) << "Trying to report metrics for non-existent cable.";
+    return;
+  }
+
+  cable_->ReportMetrics(metrics);
+}
+
 }  // namespace typecd

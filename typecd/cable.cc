@@ -156,4 +156,11 @@ bool Cable::DiscoveryComplete() {
   return num_alt_modes_ == alt_modes_.size();
 }
 
+void Cable::ReportMetrics(Metrics* metrics) {
+  if (!metrics || metrics_reported_)
+    return;
+
+  metrics_reported_ = true;
+}
+
 }  // namespace typecd

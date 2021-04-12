@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>
 
+#include "typecd/metrics.h"
 #include "typecd/peripheral.h"
 
 namespace typecd {
@@ -22,7 +23,9 @@ namespace typecd {
 class Cable : public Peripheral {
  public:
   explicit Cable(const base::FilePath& syspath)
-      : Peripheral(syspath, "Cable"), num_alt_modes_(-1) {}
+      : Peripheral(syspath, "Cable"),
+        num_alt_modes_(-1),
+        metrics_reported_(false) {}
   Cable(const Cable&) = delete;
   Cable& operator=(const Cable&) = delete;
 
@@ -76,6 +79,11 @@ class Cable : public Peripheral {
   // which is read from sysfs.
   bool DiscoveryComplete();
 
+  // Report any metrics associated with the cable using UMA reporting. If the
+  // |metrics| pointer is nullptr, or if metrics have already been reported i.e
+  // |metrics_reported_| is true, we return immediately.
+  void ReportMetrics(Metrics* metrics);
+
  private:
   // Map representing all SOP' alternate modes.
   // The key is the index of the alternate mode as determined
@@ -84,6 +92,9 @@ class Cable : public Peripheral {
   // use a key of "2".
   std::map<int, std::unique_ptr<AltMode>> alt_modes_;
   int num_alt_modes_;
+  // Field which tracks whether metrics have been reported for the cable. This
+  // prevents duplicate reporting.
+  bool metrics_reported_;
 };
 
 }  // namespace typecd

@@ -88,6 +88,10 @@ class Port {
   // registered.
   void ReportPartnerMetrics(Metrics* metrics);
 
+  // Calls the |cable_|'s metrics reporting function, if a |cable_| is
+  // registered.
+  void ReportCableMetrics(Metrics* metrics);
+
  private:
   friend class PortTest;
   FRIEND_TEST(PortTest, TestBasicAdd);
