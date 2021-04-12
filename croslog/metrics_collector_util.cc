@@ -162,8 +162,13 @@ void CalculateChromeLogMetrics(const base::FilePath& directory,
   for (base::FilePath name = e.Next(); !name.empty(); name = e.Next()) {
     file_path.push_back(name);
   }
-  // Sorting in descending order: greater (newer) filename is earlier.
-  std::sort(file_path.begin(), file_path.end(), std::not_fn<>(std::less<>()));
+  // Sorting is in reverse lexicographic order, which will also sort the logs by
+  // time (more recent file first), since the chrome logs contain date and time
+  // in their filenames. For example, "chrome_20210115_123456.txt" comes before
+  // "chrome_20210115_123456.txt".
+  std::sort(
+      file_path.begin(), file_path.end(),
+      [](const auto& l, const auto& r) { return r.BaseName() < l.BaseName(); });
 
   for (const base::FilePath& name : file_path) {
     int64_t file_size;
@@ -177,7 +182,15 @@ void CalculateChromeLogMetrics(const base::FilePath& directory,
                         &byte_count_temporary, &entry_count_temporary,
                         &max_throughput_temporary);
 
-    if (entry_count_temporary <= 0)
+    // Skips this file since the file doesn't exist (this rarely happens by
+    // file remove/rename race).
+    if (entry_count_temporary < 0)
+      continue;
+
+    // Stops the traversal. We found no entries newer than |count_after| in
+    // this log files. So, we assume the later files contain older entries,
+    // since the file list has been sorted (more recent file first).
+    if (entry_count_temporary == 0)
       return;
 
     if (entry_count_out)

@@ -7,6 +7,8 @@
 #include <string>
 
 #include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "gtest/gtest.h"
 
 #include "croslog/log_parser_audit.h"
@@ -148,6 +150,46 @@ TEST_F(MetricsCollectorUtilTest, CalculateChromeLogMetrics) {
     EXPECT_EQ(222, byte_count);
     EXPECT_EQ(3, entry_count);
     EXPECT_EQ(1, max_throughput);
+  }
+
+  // Test to traverse many files.
+  {
+    // Prepares a temporary directory and many (empty) log files in it.
+    base::ScopedTempDir temp_dir;
+    EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+    for (int i = 0; i < 1000; i++) {
+      base::FilePath temp_file_path;
+      base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file_path);
+    }
+
+    // Calculate
+    int64_t byte_count = 0;
+    int64_t max_throughput = 0;
+    int64_t entry_count = 0;
+    base::Time count_after = TimeFromExploded(2020, 5, 25, 14, 16, 0, 0, 9);
+    CalculateChromeLogMetrics(temp_dir.GetPath(), "*", count_after, &byte_count,
+                              &entry_count, &max_throughput);
+
+    // All log files are empty so the results should be zero.
+    EXPECT_EQ(0, byte_count);
+    EXPECT_EQ(0, entry_count);
+    EXPECT_EQ(0, max_throughput);
+  }
+
+  // Test to traverse no file.
+  {
+    int64_t byte_count = 0;
+    int64_t max_throughput = 0;
+    int64_t entry_count = 0;
+    base::Time count_after = TimeFromExploded(2020, 5, 25, 14, 16, 0, 0, 9);
+    CalculateChromeLogMetrics(base::FilePath("./testdata/"), "NON_EXISTING",
+                              count_after, &byte_count, &entry_count,
+                              &max_throughput);
+
+    // Log files don't exist so the results should be zero.
+    EXPECT_EQ(0, byte_count);
+    EXPECT_EQ(0, entry_count);
+    EXPECT_EQ(0, max_throughput);
   }
 }
 
