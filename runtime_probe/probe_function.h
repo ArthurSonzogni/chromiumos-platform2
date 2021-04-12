@@ -90,33 +90,35 @@ class ProbeFunction {
     return std::make_unique<T>();
   }
 
-  // Evaluates this entire probe function.
-  //
-  // Output will be a list of base::Value.
-  virtual DataType Eval() const = 0;
+  // Evaluates this probe function. Returns a list of base::Value. For the probe
+  // function that requests sandboxing, see |PrivilegedProbeFunction|.
+  virtual DataType Eval() const { return EvalImpl(); }
 
   // Serializes this probe function and passes it to helper. The output of the
   // helper will store in |result|.
   //
   // true if success on executing helper.
+  //
+  // TODO(chungsheng): b/185084107: Move this to |PrivilegedProbeFunction|.
   bool InvokeHelper(std::string* result) const;
 
   // Serializes this probe function and passes it to helper.  Helper function
   // for InvokeHelper() where the output is known in advanced in JSON format.
   // The transform of JSON will be automatically applied.  Returns base::nullopt
   // on failure.
+  //
+  // TODO(chungsheng): b/185084107: Move this to |PrivilegedProbeFunction|.
   base::Optional<base::Value> InvokeHelperToJSON() const;
 
-  // Evaluates the helper part for this probe function. Helper part is
-  // designed for portion that need extended sandbox. ProbeFunction will
-  // be initialized with same json statement in the helper process, which
-  // invokes EvalInHelper() instead of Eval(). Since execution of
-  // EvalInHelper() implies a different sandbox, it is encouraged to keep work
-  // that doesn't need a privilege out of this function.
+  // This is for helper to evaluate the probe function. Helper is designed for
+  // portion that need extended sandbox. See |PrivilegedProbeFunction| for more
+  // detials.
   //
   // Output will be an integer and the interpretation of the integer on
   // purposely leaves to the caller because it might execute other binary
   // in sandbox environment and we might want to preserve the exit code.
+  //
+  // TODO(chungsheng): b/185084107: Make this non-virtual.
   virtual int EvalInHelper(std::string* output) const;
 
   // Function prototype of FromKwargsValue() that should be implemented by each
@@ -134,9 +136,39 @@ class ProbeFunction {
   ProbeFunction() = default;
 
  private:
+  // Implement this method to provide the probing. The output should be a list
+  // of base::Value.
+  //
+  // TODO(chungsheng): Remove the default implementation after refactoring.
+  virtual DataType EvalImpl() const { return {}; }
+
   base::Optional<base::Value> raw_value_;
 
   // Each probe function must define their own args type.
+};
+
+class PrivilegedProbeFunction : public ProbeFunction {
+  // |PrivilegedProbeFunction| run in the sandbox with pre-defined permissions.
+  // This is for all the operations which request special permission like sysfs
+  // access. |PrivilegedProbeFunction| will be initialized with same json
+  // statement in the helper process, which invokes |EvalImpl()|. Since
+  // execution of |PrivilegedProbeFunction::EvalImpl()| implies a different
+  // sandbox, it is encouraged to keep work that doesn't need a privilege in
+  // |PostHelperEvalImpl()|.
+  //
+  // For each |PrivilegedProbeFunction|, please modify `sandbox/args.json` and
+  // `sandbox/${ARCH}/${function_name}-seccomp.policy`.
+ public:
+  DataType Eval() const final;
+
+ private:
+  // This method is called after |EvalImpl()| finished. The |result| is the
+  // value returned by |EvalImpl()|. Because |EvalImpl()| is executed in helper,
+  // this method is for those operations that cannot or don't want to be
+  // performed in helper, for example dbus call. This method can do some extra
+  // logic out of helper and modify the |result|. See b/185292404 for the
+  // discussion about this two steps EvalImpl.
+  virtual void PostHelperEvalImpl(DataType* result) const {}
 };
 
 #define NAME_PROBE_FUNCTION(name)                       \

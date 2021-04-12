@@ -82,11 +82,32 @@ base::Optional<base::Value> ProbeFunction::InvokeHelperToJSON() const {
   if (!InvokeHelper(&raw_output)) {
     return base::nullopt;
   }
+  VLOG(3) << "InvokeHelper raw output:\n" << raw_output;
   return base::JSONReader::Read(raw_output);
 }
 
 int ProbeFunction::EvalInHelper(std::string* output) const {
-  return 0;
+  base::Value result = static_cast<base::Value>(EvalImpl());
+  if (base::JSONWriter::Write(result, output))
+    return 0;
+  LOG(ERROR) << "Failed to serialize probed result to json string";
+  return -1;
+}
+
+PrivilegedProbeFunction::DataType PrivilegedProbeFunction::Eval() const {
+  auto json_output = InvokeHelperToJSON();
+  if (!json_output) {
+    LOG(ERROR) << "Failed to invoke helper.";
+    return {};
+  }
+  if (!json_output->is_list()) {
+    LOG(ERROR) << "Failed to parse json output as list.";
+    return {};
+  }
+
+  auto result = json_output->TakeList();
+  PostHelperEvalImpl(&result);
+  return result;
 }
 
 }  // namespace runtime_probe
