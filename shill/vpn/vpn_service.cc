@@ -14,7 +14,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
-#include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -196,7 +196,7 @@ std::string VPNService::GetPhysicalTechnologyProperty(Error* error) {
 RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {
   if (!device_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
-    return control_interface()->NullRpcIdentifier();
+    return DBusControl::NullRpcIdentifier();
   }
   return device_->GetRpcIdentifier();
 }

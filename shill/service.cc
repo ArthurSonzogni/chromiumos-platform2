@@ -22,7 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
-#include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/dhcp/dhcp_properties.h"
 #include "shill/error.h"
 #include "shill/logging.h"
@@ -1530,7 +1530,7 @@ void Service::OnDefaultServiceStateChanged(const ServiceRefPtr& parent) {
 RpcIdentifier Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);
-    return control_interface()->NullRpcIdentifier();
+    return DBusControl::NullRpcIdentifier();
   }
 
   RpcIdentifier id = connection_->ipconfig_rpc_identifier();
@@ -1538,7 +1538,7 @@ RpcIdentifier Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (id.value().empty()) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
-    return control_interface()->NullRpcIdentifier();
+    return DBusControl::NullRpcIdentifier();
   }
 
   return id;
@@ -2037,10 +2037,6 @@ void Service::ClearExplicitlyDisconnected() {
     explicitly_disconnected_ = false;
     manager_->UpdateService(this);
   }
-}
-
-ControlInterface* Service::control_interface() const {
-  return manager_->control_interface();
 }
 
 EventDispatcher* Service::dispatcher() const {

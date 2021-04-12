@@ -15,7 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/ethernet/ethernet.h"
@@ -78,7 +78,7 @@ void EthernetService::OnDisconnect(Error* /*error*/, const char* /*reason*/) {
 RpcIdentifier EthernetService::GetDeviceRpcId(Error* error) const {
   if (!props_.ethernet_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
-    return control_interface()->NullRpcIdentifier();
+    return DBusControl::NullRpcIdentifier();
   }
   return props_.ethernet_->GetRpcIdentifier();
 }

@@ -18,7 +18,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_service_provider.h"
-#include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
@@ -520,7 +520,7 @@ bool CellularService::IsMeteredByServiceProperties() const {
 RpcIdentifier CellularService::GetDeviceRpcId(Error* error) const {
   // Only provide cellular_->GetRpcIdentifier() if this is the active service.
   if (!cellular_ || iccid() != cellular_->iccid())
-    return control_interface()->NullRpcIdentifier();
+    return DBusControl::NullRpcIdentifier();
   return cellular_->GetRpcIdentifier();
 }
 

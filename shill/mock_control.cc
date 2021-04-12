@@ -55,10 +55,6 @@ MockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
 }
 #endif
 
-const RpcIdentifier& MockControl::NullRpcIdentifier() {
-  return null_identifier_;
-}
-
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 std::unique_ptr<SupplicantProcessProxyInterface>
 MockControl::CreateSupplicantProcessProxy(const base::Closure& appear,

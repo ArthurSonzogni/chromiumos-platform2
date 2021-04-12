@@ -19,6 +19,8 @@ class Manager;
 
 class DBusControl : public ControlInterface {
  public:
+  static RpcIdentifier NullRpcIdentifier();
+
   explicit DBusControl(EventDispatcher* dispatcher);
   ~DBusControl() override;
 
@@ -41,8 +43,6 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<ThirdPartyVpnAdaptorInterface> CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) override;
 #endif
-
-  const RpcIdentifier& NullRpcIdentifier() override;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
@@ -129,7 +129,6 @@ class DBusControl : public ControlInterface {
   scoped_refptr<dbus::Bus> adaptor_bus_;
   scoped_refptr<dbus::Bus> proxy_bus_;
   EventDispatcher* dispatcher_;
-  RpcIdentifier null_identifier_;
   base::Closure registration_done_callback_;
 };
 

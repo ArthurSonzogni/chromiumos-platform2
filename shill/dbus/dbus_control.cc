@@ -54,7 +54,7 @@ namespace shill {
 const char DBusControl::kNullPath[] = "/";
 
 DBusControl::DBusControl(EventDispatcher* dispatcher)
-    : dispatcher_(dispatcher), null_identifier_(RpcIdentifier(kNullPath)) {
+    : dispatcher_(dispatcher) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
@@ -73,8 +73,9 @@ DBusControl::~DBusControl() {
   }
 }
 
-const RpcIdentifier& DBusControl::NullRpcIdentifier() {
-  return null_identifier_;
+// static
+RpcIdentifier DBusControl::NullRpcIdentifier() {
+  return RpcIdentifier(kNullPath);
 }
 
 void DBusControl::RegisterManagerObject(

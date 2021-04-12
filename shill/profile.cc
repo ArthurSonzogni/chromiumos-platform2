@@ -19,7 +19,7 @@
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/adaptor_interfaces.h"
-#include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -404,7 +404,7 @@ RpcIdentifier Profile::DBusGetAlwaysOnVpnService(Error* error) {
   ServiceRefPtr service = manager()->GetServiceWithStorageIdentifier(
       properties_.always_on_vpn_service);
   if (service == nullptr) {
-    return manager()->control_interface()->NullRpcIdentifier();
+    return DBusControl::NullRpcIdentifier();
   }
   return service->GetRpcIdentifier();
 }

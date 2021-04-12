@@ -75,7 +75,6 @@ class MockControl : public ControlInterface {
   std::unique_ptr<ThirdPartyVpnAdaptorInterface> CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) override;
 #endif
-  const RpcIdentifier& NullRpcIdentifier() override;
 
   MOCK_METHOD(std::unique_ptr<PowerManagerProxyInterface>,
               CreatePowerManagerProxy,

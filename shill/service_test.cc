@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/dbus/dbus_control.h"
 #include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
@@ -1390,7 +1391,7 @@ INSTANTIATE_TEST_SUITE_P(WriteOnlyServicePropertyTestInstance,
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   {
     Error error;
-    EXPECT_EQ(control_interface()->NullRpcIdentifier(),
+    EXPECT_EQ(DBusControl::NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }
@@ -1407,7 +1408,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     const RpcIdentifier empty_rpcid;
     EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
         .WillOnce(ReturnRef(empty_rpcid));
-    EXPECT_EQ(control_interface()->NullRpcIdentifier(),
+    EXPECT_EQ(DBusControl::NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }

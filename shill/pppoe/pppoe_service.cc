@@ -15,7 +15,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/control_interface.h"
 #include "shill/ethernet/ethernet.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
@@ -86,7 +85,7 @@ void PPPoEService::OnConnect(Error* error) {
   options.max_fail = max_failure_;
   options.use_ipv6 = true;
 
-  pppd_ = PPPDaemon::Start(control_interface(), process_manager_,
+  pppd_ = PPPDaemon::Start(manager()->control_interface(), process_manager_,
                            weak_ptr_factory_.GetWeakPtr(), options,
                            ethernet()->link_name(), callback, error);
   if (pppd_ == nullptr) {

@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/default_service_observer.h"
 #include "shill/device_claimer.h"
 #include "shill/ephemeral_profile.h"
@@ -2177,9 +2178,9 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // A single registered Service, without a connection.  The
   // DefaultService should be nullptr.  If a change notification is
   // generated, it should reference kNullPath.
-  EXPECT_CALL(*manager_adaptor_, EmitRpcIdentifierChanged(
-                                     kDefaultServiceProperty,
-                                     control_interface()->NullRpcIdentifier()))
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierChanged(kDefaultServiceProperty,
+                                       DBusControl::NullRpcIdentifier()))
       .Times(AnyNumber());
   manager()->RegisterService(mock_service0);
   CompleteServiceSort();
@@ -2943,14 +2944,12 @@ TEST_F(ManagerTest, RecheckPortalOnService) {
 
 TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_EQ(nullptr, manager()->GetDefaultService());
-  EXPECT_EQ(control_interface()->NullRpcIdentifier(),
-            GetDefaultServiceRpcIdentifier());
+  EXPECT_EQ(DBusControl::NullRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
   MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service);
   EXPECT_EQ(nullptr, manager()->GetDefaultService());
-  EXPECT_EQ(control_interface()->NullRpcIdentifier(),
-            GetDefaultServiceRpcIdentifier());
+  EXPECT_EQ(DBusControl::NullRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));

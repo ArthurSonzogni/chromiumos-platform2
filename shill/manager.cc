@@ -36,6 +36,7 @@
 #include "shill/callbacks.h"
 #include "shill/connection.h"
 #include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/default_profile.h"
 #include "shill/device.h"
 #include "shill/device_claimer.h"
@@ -1026,7 +1027,7 @@ ServiceRefPtr Manager::GetDefaultService() const {
 RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error* /*error*/) {
   ServiceRefPtr default_service = GetDefaultService();
   return default_service ? default_service->GetRpcIdentifier()
-                         : control_interface_->NullRpcIdentifier();
+                         : DBusControl::NullRpcIdentifier();
 }
 
 bool Manager::IsTechnologyInList(const string& technology_list,

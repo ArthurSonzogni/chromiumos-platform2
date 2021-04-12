@@ -711,7 +711,6 @@ class Service : public base::RefCounted<Service> {
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   EventDispatcher* dispatcher() const;
-  ControlInterface* control_interface() const;
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
 

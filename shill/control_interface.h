@@ -89,8 +89,6 @@ class ControlInterface {
   CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) = 0;
 #endif
 
-  virtual const RpcIdentifier& NullRpcIdentifier() = 0;
-
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
   virtual std::unique_ptr<PowerManagerProxyInterface> CreatePowerManagerProxy(

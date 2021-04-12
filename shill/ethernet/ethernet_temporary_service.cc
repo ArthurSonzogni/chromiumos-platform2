@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/manager.h"
 
 using std::string;
@@ -23,7 +23,7 @@ EthernetTemporaryService::EthernetTemporaryService(
 EthernetTemporaryService::~EthernetTemporaryService() = default;
 
 RpcIdentifier EthernetTemporaryService::GetDeviceRpcId(Error* /*error*/) const {
-  return control_interface()->NullRpcIdentifier();
+  return DBusControl::NullRpcIdentifier();
 }
 
 string EthernetTemporaryService::GetStorageIdentifier() const {
