@@ -360,27 +360,31 @@ class CellularCapability3gpp : public CellularCapability {
   // once the context has been separated out. (crbug.com/363874)
   std::unique_ptr<MobileOperatorInfo> mobile_operator_info_;
 
-  MMModem3gppRegistrationState registration_state_;
+  MMModem3gppRegistrationState registration_state_ =
+      MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN;
 
   // Bits based on MMModemCapabilities
-  uint32_t current_capabilities_;  // Technologies supported without a reload
-  uint32_t access_technologies_;   // Bits based on MMModemAccessTechnology
+  // Technologies supported without a reload
+  uint32_t current_capabilities_ = MM_MODEM_CAPABILITY_NONE;
+  // Bits based on MMModemAccessTechnology
+  uint32_t access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
 
   Stringmap serving_operator_;
   std::string desired_network_;
 
   // Properties.
   std::deque<Stringmap> apn_try_list_;
-  bool resetting_;
+  bool resetting_ = false;
   SimLockStatus sim_lock_status_;
-  SubscriptionState subscription_state_;
+  SubscriptionState subscription_state_ = SubscriptionState::kUnknown;
   std::unique_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
-  bool reset_done_;
+  bool reset_done_ = false;
   std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> profiles_;
 
   // SIM properties
   RpcIdentifier sim_path_;
+  uint32_t primary_sim_slot_ = 0u;
   RpcIdentifiers sim_slots_;
   base::flat_set<RpcIdentifier> pending_sim_requests_;
   base::flat_map<RpcIdentifier, SimProperties> sim_properties_;
@@ -389,7 +393,8 @@ class CellularCapability3gpp : public CellularCapability {
   // rapidly change from registered --> searching and back. Delay such updates
   // a little to smooth over temporary registration loss.
   base::CancelableClosure registration_dropped_update_callback_;
-  int64_t registration_dropped_update_timeout_milliseconds_;
+  int64_t registration_dropped_update_timeout_milliseconds_ =
+      kRegistrationDroppedUpdateTimeoutMilliseconds;
 
   base::WeakPtrFactory<CellularCapability3gpp> weak_ptr_factory_;
 };

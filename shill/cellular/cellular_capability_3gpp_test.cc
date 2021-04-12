@@ -875,9 +875,14 @@ TEST_F(CellularCapability3gppTest, PropertiesChanged) {
   EXPECT_EQ(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN,
             capability_->access_technologies_for_testing());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
+  // Cellular::SetPrimarySimProperties will emit Cellular properties.
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(_, _)).Times(AnyNumber());
+  // Ensure that Family and Imei are set properly.
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(kTechnologyFamilyProperty,
-                                                  kTechnologyFamilyGsm));
-  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kImeiProperty, kImei));
+                                                  kTechnologyFamilyGsm))
+      .Times(1);
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kImeiProperty, kImei))
+      .Times(1);
 
   SetSimPropertiesAndPath(kSimPath1, {});
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);

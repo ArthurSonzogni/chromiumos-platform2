@@ -231,14 +231,6 @@ CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
       metrics_(modem_info->manager()->metrics()),
       mobile_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
-      registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
-      current_capabilities_(MM_MODEM_CAPABILITY_NONE),
-      access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
-      resetting_(false),
-      subscription_state_(SubscriptionState::kUnknown),
-      reset_done_(false),
-      registration_dropped_update_timeout_milliseconds_(
-          kRegistrationDroppedUpdateTimeoutMilliseconds),
       weak_ptr_factory_(this) {
   SLOG(this, 2) << "Cellular capability constructed: 3GPP";
   mobile_operator_info_->Init();
@@ -1240,6 +1232,17 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
     sim_slots_ = properties.Get<RpcIdentifiers>(MM_MODEM_PROPERTY_SIMSLOTS);
     sim_changed = true;
   }
+  if (properties.Contains<uint32_t>(MM_MODEM_PROPERTY_PRIMARYSIMSLOT)) {
+    // This property should be redundant with SIM. Track it for debugging.
+    uint32_t slot_id =
+        properties.Get<uint32_t>(MM_MODEM_PROPERTY_PRIMARYSIMSLOT);
+    if (slot_id < 1) {
+      LOG(ERROR) << "Invalid PrimarySimSlot: " << slot_id << ", Using 1.";
+      slot_id = 1;
+    }
+    primary_sim_slot_ = slot_id - 1;
+    sim_changed = true;
+  }
   if (sim_changed)
     UpdateSims();
 
@@ -1399,9 +1402,7 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
   // will contain an empty SimProperties entry. Note: Avoid sending a list of
   // empty slots which may happen while the Modem is starting.
   size_t num_slots = sim_slots_.size();
-  // Cellular::SetSimProperties only sets the primary sim properties if
-  // |primary_slot| < |num_slots|, so use |num_slots| for no primary slot.
-  size_t primary_slot = num_slots;
+  size_t primary_slot = primary_sim_slot_;
   std::vector<SimProperties> sim_slot_properties(num_slots);
   for (const auto& iter : sim_properties_) {
     size_t slot = iter.second.slot;
@@ -1410,6 +1411,10 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
     sim_slot_properties[slot] = iter.second;
     if (iter.first == sim_path_)
       primary_slot = slot;
+  }
+  if (primary_slot != primary_sim_slot_) {
+    LOG(WARNING) << "Primary SIM slot mismatch: " << primary_slot
+                 << " != " << primary_sim_slot_;
   }
   cellular()->SetSimProperties(sim_slot_properties, primary_slot);
 

@@ -478,7 +478,7 @@ class Cellular : public Device,
 
   void InitCapability(Type type);
 
-  void SetPrimarySimProperties(SimProperties properties);
+  void SetPrimarySimProperties(const SimProperties& properties);
   void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties,
                             size_t primary_slot);
 

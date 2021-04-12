@@ -276,35 +276,35 @@ string Cellular::GetStateString(State state) {
 string Cellular::GetModemStateString(ModemState modem_state) {
   switch (modem_state) {
     case kModemStateFailed:
-      return "CellularModemStateFailed";
+      return "ModemStateFailed";
     case kModemStateUnknown:
-      return "CellularModemStateUnknown";
+      return "ModemStateUnknown";
     case kModemStateInitializing:
-      return "CellularModemStateInitializing";
+      return "ModemStateInitializing";
     case kModemStateLocked:
-      return "CellularModemStateLocked";
+      return "ModemStateLocked";
     case kModemStateDisabled:
-      return "CellularModemStateDisabled";
+      return "ModemStateDisabled";
     case kModemStateDisabling:
-      return "CellularModemStateDisabling";
+      return "ModemStateDisabling";
     case kModemStateEnabling:
-      return "CellularModemStateEnabling";
+      return "ModemStateEnabling";
     case kModemStateEnabled:
-      return "CellularModemStateEnabled";
+      return "ModemStateEnabled";
     case kModemStateSearching:
-      return "CellularModemStateSearching";
+      return "ModemStateSearching";
     case kModemStateRegistered:
-      return "CellularModemStateRegistered";
+      return "ModemStateRegistered";
     case kModemStateDisconnecting:
-      return "CellularModemStateDisconnecting";
+      return "ModemStateDisconnecting";
     case kModemStateConnecting:
-      return "CellularModemStateConnecting";
+      return "ModemStateConnecting";
     case kModemStateConnected:
-      return "CellularModemStateConnected";
+      return "ModemStateConnected";
     default:
       NOTREACHED();
   }
-  return StringPrintf("CellularModemStateUnknown-%d", modem_state);
+  return StringPrintf("ModemStateUnknown-%d", modem_state);
 }
 
 string Cellular::GetCapabilityStateString(CapabilityState capability_state) {
@@ -502,17 +502,15 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
   if (!error.IsSuccess()) {
     LOG(ERROR) << "StartModem failed: " << error;
     SetCapabilityState(CapabilityState::kCellularStarted);
-    if (callback) {
-      if (error.type() == Error::kWrongState) {
-        // If the enable operation failed with Error::kWrongState, the modem is
-        // in an unexpected state. This usually indicates a missing or locked
-        // SIM. Invoke |callback| with no error so that the enable completes.
-        // If the ModemState property later changes to 'disabled', StartModem
-        // will be called again.
-        callback.Run(Error());
-      } else {
-        callback.Run(error);
-      }
+    if (error.type() == Error::kWrongState) {
+      // If the enable operation failed with Error::kWrongState, the modem is
+      // in an unexpected state. This usually indicates a missing or locked
+      // SIM. Invoke |callback| with no error so that the enable completes.
+      // If the ModemState property later changes to 'disabled', StartModem
+      // will be called again.
+      callback.Run(Error());
+    } else {
+      callback.Run(error);
     }
     return;
   }
@@ -528,8 +526,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
 
   metrics()->NotifyDeviceEnableFinished(interface_index());
 
-  if (callback)
-    callback.Run(Error());
+  callback.Run(Error());
 }
 
 void Cellular::StopModem(Error* error,
@@ -990,7 +987,7 @@ void Cellular::CreateCapability(ModemInfo* modem_info) {
     return;
   }
 
-  StartModem(/*error=*/nullptr, EnabledStateChangedCallback());
+  StartModem(/*error=*/nullptr, base::DoNothing());
 }
 
 void Cellular::DestroyCapability() {
@@ -1343,7 +1340,7 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
       // This may occur after a SIM swap or eSIM profile change. Ensure that
       // the Modem is started.
       if (capability_state_ == CapabilityState::kCellularStarted)
-        StartModem(/*error=*/nullptr, EnabledStateChangedCallback());
+        StartModem(/*error=*/nullptr, base::DoNothing());
       break;
     case kModemStateDisabling:
     case kModemStateEnabling:
@@ -1888,13 +1885,21 @@ void Cellular::SetSimProperties(
     const std::vector<SimProperties>& sim_properties, size_t primary_slot) {
   LOG(INFO) << __func__ << " Slots: " << sim_properties.size()
             << " Primary: " << primary_slot;
+  if (sim_properties.empty()) {
+    // This might occur while the Modem is starting.
+    SetPrimarySimProperties(SimProperties());
+    SetSimSlotProperties(sim_properties, 0u);
+    return;
+  }
+  if (primary_slot >= sim_properties.size()) {
+    LOG(ERROR) << "Invalid Primary Slot Id: " << primary_slot;
+    primary_slot = 0u;
+  }
 
-  const SimProperties* primary_sim_properties = nullptr;
-  if (primary_slot < sim_properties.size())
-    primary_sim_properties = &sim_properties[primary_slot];
+  const SimProperties& primary_sim_properties = sim_properties[primary_slot];
 
   // Ensure that the primary SIM slot is set correctly.
-  if (!primary_sim_properties || primary_sim_properties->iccid.empty()) {
+  if (primary_sim_properties.iccid.empty()) {
     LOG(INFO) << "No Primary SIM properties.";
     SetPrimarySimProperties(SimProperties());
     SetSimSlotProperties(sim_properties, 0u);
@@ -1905,7 +1910,7 @@ void Cellular::SetSimProperties(
 
   // Update SIM properties for the primary SIM slot and create or update the
   // primary Service.
-  SetPrimarySimProperties(*primary_sim_properties);
+  SetPrimarySimProperties(primary_sim_properties);
 
   // Update the KeyValueStore for Device.Cellular.SIMSlotInfo and emit it.
   SetSimSlotProperties(sim_properties, primary_slot);
@@ -1997,18 +2002,13 @@ void Cellular::SetImei(const string& imei) {
   adaptor()->EmitStringChanged(kImeiProperty, imei_);
 }
 
-void Cellular::SetPrimarySimProperties(SimProperties sim_properties) {
-  home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
-  home_provider_info()->UpdateOperatorName(sim_properties.spn);
-
-  if (eid_ == sim_properties.eid && iccid_ == sim_properties.iccid) {
-    ConnectToPending();
-    return;
-  }
-
+void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
   // TODO(stevenjb): Change to SLOG once b/172064665 is thoroughly vetted.
   LOG(INFO) << __func__ << " EID= " << sim_properties.eid
             << " ICCID= " << sim_properties.iccid;
+
+  home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
+  home_provider_info()->UpdateOperatorName(sim_properties.spn);
 
   eid_ = sim_properties.eid;
   iccid_ = sim_properties.iccid;

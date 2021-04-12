@@ -637,31 +637,31 @@ TEST_P(CellularTest, GetStateString) {
 }
 
 TEST_P(CellularTest, GetModemStateString) {
-  EXPECT_EQ("CellularModemStateFailed",
+  EXPECT_EQ("ModemStateFailed",
             Cellular::GetModemStateString(Cellular::kModemStateFailed));
-  EXPECT_EQ("CellularModemStateUnknown",
+  EXPECT_EQ("ModemStateUnknown",
             Cellular::GetModemStateString(Cellular::kModemStateUnknown));
-  EXPECT_EQ("CellularModemStateInitializing",
+  EXPECT_EQ("ModemStateInitializing",
             Cellular::GetModemStateString(Cellular::kModemStateInitializing));
-  EXPECT_EQ("CellularModemStateLocked",
+  EXPECT_EQ("ModemStateLocked",
             Cellular::GetModemStateString(Cellular::kModemStateLocked));
-  EXPECT_EQ("CellularModemStateDisabled",
+  EXPECT_EQ("ModemStateDisabled",
             Cellular::GetModemStateString(Cellular::kModemStateDisabled));
-  EXPECT_EQ("CellularModemStateDisabling",
+  EXPECT_EQ("ModemStateDisabling",
             Cellular::GetModemStateString(Cellular::kModemStateDisabling));
-  EXPECT_EQ("CellularModemStateEnabling",
+  EXPECT_EQ("ModemStateEnabling",
             Cellular::GetModemStateString(Cellular::kModemStateEnabling));
-  EXPECT_EQ("CellularModemStateEnabled",
+  EXPECT_EQ("ModemStateEnabled",
             Cellular::GetModemStateString(Cellular::kModemStateEnabled));
-  EXPECT_EQ("CellularModemStateSearching",
+  EXPECT_EQ("ModemStateSearching",
             Cellular::GetModemStateString(Cellular::kModemStateSearching));
-  EXPECT_EQ("CellularModemStateRegistered",
+  EXPECT_EQ("ModemStateRegistered",
             Cellular::GetModemStateString(Cellular::kModemStateRegistered));
-  EXPECT_EQ("CellularModemStateDisconnecting",
+  EXPECT_EQ("ModemStateDisconnecting",
             Cellular::GetModemStateString(Cellular::kModemStateDisconnecting));
-  EXPECT_EQ("CellularModemStateConnecting",
+  EXPECT_EQ("ModemStateConnecting",
             Cellular::GetModemStateString(Cellular::kModemStateConnecting));
-  EXPECT_EQ("CellularModemStateConnected",
+  EXPECT_EQ("ModemStateConnected",
             Cellular::GetModemStateString(Cellular::kModemStateConnected));
 }
 
