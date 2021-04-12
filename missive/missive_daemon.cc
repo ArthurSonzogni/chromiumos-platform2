@@ -16,7 +16,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 
-#include "missive/dbus/chrome_client.h"
+#include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/interface.pb.h"
@@ -41,7 +41,7 @@ constexpr const char kReportingDirectory[] = "/var/cache/reporting";
 MissiveDaemon::MissiveDaemon()
     : brillo::DBusServiceDaemon(::missive::kMissiveServiceName),
       org::chromium::MissivedAdaptor(this),
-      chrome_client_(ChromeClient::Create()) {}
+      upload_client_(UploadClient::Create()) {}
 
 MissiveDaemon::~MissiveDaemon() = default;
 
@@ -84,7 +84,7 @@ void MissiveDaemon::AsyncStartUpload(
     bool need_encryption_key,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   auto upload_job_result = UploadJob::Create(
-      chrome_client_, need_encryption_key, std::move(uploader_result_cb));
+      upload_client_, need_encryption_key, std::move(uploader_result_cb));
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call
     // |uploader_result_cb| with a failure status.

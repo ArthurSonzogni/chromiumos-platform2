@@ -12,7 +12,7 @@
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 
-#include "missive/dbus/chrome_client.h"
+#include "missive/dbus/upload_client.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_module_interface.h"
@@ -75,7 +75,7 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
 
   std::atomic<bool> daemon_is_ready_{false};
 
-  scoped_refptr<ChromeClient> chrome_client_;
+  scoped_refptr<UploadClient> upload_client_;
   scoped_refptr<StorageModuleInterface> storage_module_;
   Scheduler scheduler_;
 

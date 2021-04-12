@@ -221,7 +221,6 @@ TEST_P(StorageQueueStressTest,
     base::RepeatingCallback<void(Status)> cb = base::BindRepeating(
         [](test::TestCallbackWaiter* waiter, Status status) {
           EXPECT_OK(status);
-          LOG(INFO) << "Signalling";
           waiter->Signal();
         },
         &write_waiter);
