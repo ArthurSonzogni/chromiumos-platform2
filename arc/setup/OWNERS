@@ -1,6 +1,4 @@
-# TODO(crbug.com/1184906): Include directly from chromium/src once branch
-# names match.
-include ../OWNERS.chromium.src.components.arc.session
+include chromium/src:/components/arc/session/OWNERS
 # Native bridge / binary translation setup
 levarum@chromium.org
 # Additional backup reviewers
