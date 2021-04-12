@@ -473,7 +473,7 @@ TEST(AnomalyDetectorTest, ServiceFailureCamera) {
 TEST(AnomalyDetectorTest, SELinuxViolation) {
   ParserRun selinux_violation = {
       .expected_text =
-          "-selinux-u:r:init:s0-u:r:kernel:s0-module_request-init-",
+          "-selinux-u:r:cros_init:s0-u:r:kernel:s0-module_request-init-",
       .expected_flags = {{"--selinux_violation"}}};
   SELinuxParser parser(true);
   ParserTest("TEST_SELINUX", {selinux_violation}, &parser);
@@ -483,6 +483,14 @@ TEST(AnomalyDetectorTest, SELinuxViolationPermissive) {
   ParserRun selinux_violation = {.find_this = "permissive=0",
                                  .replace_with = "permissive=1",
                                  .expected_size = 0};
+  SELinuxParser parser(true);
+  ParserTest("TEST_SELINUX", {selinux_violation}, &parser);
+}
+
+// Verify that we skip non-CrOS selinux violations
+TEST(AnomalyDetectorTest, SELinuxViolationNonCros) {
+  ParserRun selinux_violation = {
+      .find_this = "cros_init", .replace_with = "init", .expected_size = 0};
   SELinuxParser parser(true);
   ParserTest("TEST_SELINUX", {selinux_violation}, &parser);
 }

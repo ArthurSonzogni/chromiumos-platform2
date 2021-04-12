@@ -121,6 +121,20 @@ std::string GetField(const std::string& line, std::string pattern) {
   return field_value;
 }
 
+// Make cursory checks on specific fields in the selinux audit report to see if
+// the content is a CrOS selinux violation.
+bool IsCrosSelinuxViolation(const std::vector<std::string>& contents) {
+  for (const std::string& s : contents) {
+    if (s.find("cros") != std::string::npos) {
+      return true;
+    }
+    if (s.find("minijail") != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 constexpr LazyRE2 granted = {"avc:[ ]*granted"};
 
 SELinuxParser::SELinuxParser(bool testonly_send_all)
@@ -156,6 +170,19 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
   std::string permission = GetField(line, R"(\{ (\S*) \})");
   std::string comm = GetField(line, R"'(comm="([^"]*)")'");
   std::string name = GetField(line, R"'(name="([^"]*)")'");
+
+  // Ignore ARC++, and other non-CrOS, errors. They are extremely common and
+  // largely not used anyway, providing a lot of noise.
+  // (We do this by checking scontext, tcontext, and comm for certain known-CrOS
+  // strings.)
+  if (!IsCrosSelinuxViolation({scontext, tcontext, comm})) {
+    if (testonly_send_all_) {
+      // For tests, log something that we can match on to make sure
+      // anomaly_detector saw the line and ignored it.
+      LOG(INFO) << "Skipping non-CrOS selinux violation: " << line;
+    }
+    return base::nullopt;
+  }
 
   signature += base::JoinString({scontext, tcontext, permission,
                                  OnlyAsciiAlpha(comm), OnlyAsciiAlpha(name)},
