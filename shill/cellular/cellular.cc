@@ -508,6 +508,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
       // SIM. Invoke |callback| with no error so that the enable completes.
       // If the ModemState property later changes to 'disabled', StartModem
       // will be called again.
+      SetState(kStateEnabled);
       callback.Run(Error());
     } else {
       callback.Run(error);
@@ -892,16 +893,21 @@ void Cellular::HandleNewRegistrationState() {
 
 void Cellular::UpdateServices() {
   SLOG(this, 2) << __func__;
-  // If iccid_ is empty, the primary slot is not set, so do not create services.
-  // If modem_state_ == kModemStateLocked, the primary SIM is locked and
-  // the modem has not started, so state_ == kStateDisabled. In that case,
-  // we want to load any services we know about, so that the UI can present
-  // the unlock UI, even though Connect and other operations will fail on
-  // any Service until the SIM is unlocked (or removed).
-  // Otherwise, if state_ == kStateDisabled, destroy any remaining services.
-  if ((state_ == kStateDisabled && modem_state_ != kModemStateLocked) ||
-      iccid_.empty()) {
+  // When Disabled, ensure all services are destroyed except when ModemState is:
+  //  * Locked: The primary SIM is locked and the modem has not started.
+  //  * Failed: No valid SIM in the primary slot.
+  // In these cases we want to create any services we know about for the UI.
+  if (state_ == kStateDisabled && modem_state_ != kModemStateLocked &&
+      modem_state_ != kModemStateFailed) {
     DestroyAllServices();
+    return;
+  }
+
+  // If iccid_ is empty, the primary slot is not set, so do not create a
+  // primary service. CreateSecondaryServices() will have been called in
+  // SetSimProperties(). Just ensure that the Services are updated.
+  if (iccid_.empty()) {
+    manager()->cellular_service_provider()->UpdateServices(this);
     return;
   }
 
@@ -955,8 +961,6 @@ void Cellular::DestroyAllServices() {
 
   SLOG(this, 2) << __func__;
   DropConnection();
-  if (!service_)
-    return;
 
   DCHECK(manager()->cellular_service_provider());
   manager()->cellular_service_provider()->RemoveServices();
@@ -1898,16 +1902,6 @@ void Cellular::SetSimProperties(
 
   const SimProperties& primary_sim_properties = sim_properties[primary_slot];
 
-  // Ensure that the primary SIM slot is set correctly.
-  if (primary_sim_properties.iccid.empty()) {
-    LOG(INFO) << "No Primary SIM properties.";
-    SetPrimarySimProperties(SimProperties());
-    SetSimSlotProperties(sim_properties, 0u);
-    // Attempt to switch to the first valid sim slot.
-    capability_->SetPrimarySimSlotForIccid(std::string());
-    return;
-  }
-
   // Update SIM properties for the primary SIM slot and create or update the
   // primary Service.
   SetPrimarySimProperties(primary_sim_properties);
@@ -1917,6 +1911,14 @@ void Cellular::SetSimProperties(
 
   // Ensure that secondary services are created and updated.
   UpdateSecondaryServices();
+
+  // If the Primary SIM does not have a SIM profile available, attempt to switch
+  // to a slot with a SIM profile available.
+  if (!inhibited_ && primary_sim_properties.iccid.empty()) {
+    LOG(INFO) << "No Primary SIM properties.";
+    // Attempt to switch to the first valid sim slot.
+    capability_->SetPrimarySimSlotForIccid(std::string());
+  }
 }
 
 std::deque<Stringmap> Cellular::BuildApnTryList() const {

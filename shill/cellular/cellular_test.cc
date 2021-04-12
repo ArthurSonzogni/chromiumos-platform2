@@ -1898,9 +1898,12 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
       .WillOnce(Invoke(this, &CellularTest::InvokeEnableReturningWrongState));
   EXPECT_EQ(Cellular::kStateEnabled, device_->state_);  // disable still pending
   device_->OnAfterResume();
-  EXPECT_TRUE(device_->running());                       // changes immediately
-  EXPECT_TRUE(device_->enabled_persistent());            // no change
-  EXPECT_EQ(Cellular::kStateDisabled, device_->state_);  // by OnAfterResume
+  EXPECT_TRUE(device_->running());             // changes immediately
+  EXPECT_TRUE(device_->enabled_persistent());  // no change
+  // Note: This used to be Disabled, however changes to Start behavior set the
+  // Cellular State to Enabled when a WrongState error occurs.
+  // TODO(b:185517971) Investigate and improve suspend/resume behavior.
+  EXPECT_EQ(Cellular::kStateEnabled, device_->state_);  // by OnAfterResume
 
   // Set up state that we need.
   KeyValueStore modem_properties;

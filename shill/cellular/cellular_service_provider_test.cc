@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular/cellular.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/fake_store.h"
 #include "shill/mock_control.h"
@@ -228,17 +229,26 @@ TEST_F(CellularServiceProviderTest, SwitchDeviceIccid) {
 // the State and Strength properties of the inactive Service.
 TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
   CellularRefPtr cellular = CreateDevice("", "");
+
+  // Set the Cellular State to Enabled so that UpdateServices() behaves as
+  // expected. This requires creating a DBusPropertiesProxy for the Capability.
+  static_cast<CellularCapability3gpp*>(cellular->capability_for_testing())
+      ->SetDBusPropertiesProxyForTesting(
+          DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting());
+  cellular->set_state_for_testing(Cellular::kStateEnabled);
+
   Cellular::SimProperties sim1_properties;
   sim1_properties.iccid = "iccid1";
   sim1_properties.imsi = "imsi1";
   Cellular::SimProperties sim2_properties;
-  sim2_properties.eid = "eid";
+  sim2_properties.eid = kEid1;
   sim2_properties.iccid = "iccid2";
   sim2_properties.imsi = "imsi2";
   std::vector<Cellular::SimProperties> slot_properties;
   slot_properties.push_back(sim1_properties);
   slot_properties.push_back(sim2_properties);
   cellular->SetSimProperties(slot_properties, /*primary=*/0);
+
   CellularServiceRefPtr service1 =
       provider()->LoadServicesForDevice(cellular.get());
   ASSERT_TRUE(service1);
@@ -252,6 +262,7 @@ TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
   // Setting the other SIM to primary should clear the |service1| properties
   // associated with being connected.
   cellular->SetSimProperties(slot_properties, /*primary=*/1);
+  EXPECT_EQ("iccid2", cellular->iccid());
   CellularServiceRefPtr service2 =
       provider()->LoadServicesForDevice(cellular.get());
   ASSERT_TRUE(service2);
@@ -263,6 +274,8 @@ TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
   // |service1| State is set to Idle and Strength is set to 0.
   EXPECT_EQ(Service::kStateIdle, service1->state());
   EXPECT_EQ(0u, service1->strength());
+
+  cellular->DestroyCapability();
 }
 
 TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {

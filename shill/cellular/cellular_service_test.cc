@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular/cellular_capability.h"
+#include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
@@ -38,7 +39,8 @@ class CellularServiceTest : public testing::Test {
   CellularServiceTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         modem_info_(&control_, &manager_),
-        adaptor_(nullptr) {
+        profile_(new NiceMock<MockProfile>(&manager_)) {
+    cellular_service_provider_.set_profile_for_testing(profile_);
     Service::SetNextSerialNumberForTesting(0);
   }
   ~CellularServiceTest() override { adaptor_ = nullptr; }
@@ -48,6 +50,10 @@ class CellularServiceTest : public testing::Test {
     EXPECT_CALL(manager_, UpdateService(_)).Times(AnyNumber());
     device_ = new MockCellular(&modem_info_, "usb0", kAddress, 3,
                                Cellular::kTypeCdma, "", RpcIdentifier(""));
+
+    EXPECT_CALL(manager_, cellular_service_provider())
+        .WillRepeatedly(Return(&cellular_service_provider_));
+
     // CellularService expects an IMSI and SIM ID be set in the Device.
     Cellular::SimProperties sim_properties;
     sim_properties.iccid = kIccid;
@@ -82,10 +88,12 @@ class CellularServiceTest : public testing::Test {
   NiceMock<MockManager> manager_;
   MockModemInfo modem_info_;
   scoped_refptr<MockCellular> device_;
+  CellularServiceProvider cellular_service_provider_{&manager_};
   CellularServiceRefPtr service_;
-  ServiceMockAdaptor* adaptor_;  // Owned by |service_|.
+  ServiceMockAdaptor* adaptor_ = nullptr;  // Owned by |service_|.
   std::string storage_id_;
   FakeStore storage_;
+  scoped_refptr<NiceMock<MockProfile>> profile_;
 };
 
 const char CellularServiceTest::kAddress[] = "000102030405";
@@ -174,8 +182,7 @@ TEST_F(CellularServiceTest, SetUsageURL) {
 TEST_F(CellularServiceTest, SetApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
-  ProfileRefPtr profile(new NiceMock<MockProfile>(&manager_));
-  service_->set_profile(profile);
+  service_->set_profile(profile_);
   Error error;
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
@@ -195,8 +202,7 @@ TEST_F(CellularServiceTest, SetApn) {
 TEST_F(CellularServiceTest, ClearApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
-  ProfileRefPtr profile(new NiceMock<MockProfile>(&manager_));
-  service_->set_profile(profile);
+  service_->set_profile(profile_);
   Error error;
   // Set up an APN to make sure that it later gets cleared.
   Stringmap testapn;
@@ -222,8 +228,7 @@ TEST_F(CellularServiceTest, ClearApn) {
 TEST_F(CellularServiceTest, LastGoodApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
-  ProfileRefPtr profile(new NiceMock<MockProfile>(&manager_));
-  service_->set_profile(profile);
+  service_->set_profile(profile_);
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
@@ -522,8 +527,7 @@ TEST_F(CellularServiceTest, CustomSetterNoopChange) {
   static const char kUsername[] = "commander.data";
   Error error;
   Stringmap testapn;
-  ProfileRefPtr profile(new NiceMock<MockProfile>(&manager_));
-  service_->set_profile(profile);
+  service_->set_profile(profile_);
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
   // ... then set to a known value ...

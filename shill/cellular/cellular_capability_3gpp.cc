@@ -1871,4 +1871,10 @@ double CellularCapability3gpp::SignalQualityBounds::GetAsPercentage(
   return (clamped_signal_quality - min_threshold) * 100 /
          (max_threshold - min_threshold);
 }
+
+void CellularCapability3gpp::SetDBusPropertiesProxyForTesting(
+    std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy) {
+  dbus_properties_proxy_ = std::move(dbus_properties_proxy);
+}
+
 }  // namespace shill

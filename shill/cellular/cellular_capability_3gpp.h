@@ -144,6 +144,9 @@ class CellularCapability3gpp : public CellularCapability {
 
   bool IsLocationUpdateSupported() const override;
 
+  void SetDBusPropertiesProxyForTesting(
+      std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy);
+
   uint32_t access_technologies_for_testing() const {
     return access_technologies_;
   }
@@ -195,6 +198,7 @@ class CellularCapability3gpp : public CellularCapability {
   friend class CellularTest;
   friend class CellularCapability3gppTest;
   friend class CellularCapabilityCdmaTest;
+  friend class CellularServiceProviderTest;
   // CellularCapability3gppTimerTest
   FRIEND_TEST(CellularCapabilityCdmaMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, GetMdnForOLP);
