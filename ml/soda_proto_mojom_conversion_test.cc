@@ -96,6 +96,44 @@ TEST(SodaProtoMojomConversionTest, PrefetchResultsTest) {
   EXPECT_FALSE(IsShutdownSodaResponse(response));
 }
 
+TEST(SodaProtoMojomConversionTest, FinalResultsWithHypPartTest) {
+  SodaResponse response;
+  response.set_soda_type(SodaResponse::RECOGNITION);
+  auto* rec = response.mutable_recognition_result();
+  rec->add_hypothesis("first, hypo.");
+  rec->add_hypothesis("second hypo");
+  rec->set_result_type(speech::soda::chrome::SodaRecognitionResult::FINAL);
+  // Add the hyp parts.
+  auto* hyp_part = rec->add_hypothesis_part();
+  hyp_part->add_text("first,");
+  hyp_part->add_text("first");
+  hyp_part->set_alignment_ms(0);
+
+  hyp_part = rec->add_hypothesis_part();
+  hyp_part->add_text("hypo.");
+  hyp_part->add_text("hypo");
+  hyp_part->set_alignment_ms(50);
+
+  auto expected_rec_mojom =
+      chromeos::machine_learning::mojom::FinalResult::New();
+  expected_rec_mojom->final_hypotheses.push_back("first, hypo.");
+  expected_rec_mojom->final_hypotheses.push_back("second hypo");
+  expected_rec_mojom->hypothesis_part.emplace();
+  auto part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  part->text.push_back("first,");
+  part->text.push_back("first");
+  part->alignment = base::TimeDelta::FromMilliseconds(0);
+  expected_rec_mojom->hypothesis_part->push_back(std::move(part));
+  part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  part->text.push_back("hypo.");
+  part->text.push_back("hypo");
+  part->alignment = base::TimeDelta::FromMilliseconds(50);
+  expected_rec_mojom->hypothesis_part->push_back(std::move(part));
+
+  auto actual_rec_mojom = internal::FinalResultFromProto(response);
+  EXPECT_TRUE(actual_rec_mojom.Equals(expected_rec_mojom));
+}
+
 TEST(SodaProtoMojomConversionTest, FinalResultsTest) {
   SodaResponse response;
   response.set_soda_type(SodaResponse::RECOGNITION);

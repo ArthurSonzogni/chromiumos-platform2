@@ -125,6 +125,21 @@ chromeos::machine_learning::mojom::FinalResultPtr FinalResultFromProto(
        soda_response.recognition_result().hypothesis()) {
     final_result->final_hypotheses.push_back(hyp);
   }
+  if (soda_response.recognition_result().hypothesis_part_size() > 0) {
+    final_result->hypothesis_part.emplace();
+
+    for (const auto& hypothesis_part :
+         soda_response.recognition_result().hypothesis_part()) {
+      auto part_in_result =
+          chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+      for (const std::string& part : hypothesis_part.text()) {
+        part_in_result->text.push_back(part);
+      }
+      part_in_result->alignment =
+          base::TimeDelta::FromMilliseconds(hypothesis_part.alignment_ms());
+      final_result->hypothesis_part->push_back(std::move(part_in_result));
+    }
+  }
   // TODO(robsc): Add endpoint reason when available from
   final_result->endpoint_reason =
       chromeos::machine_learning::mojom::EndpointReason::ENDPOINT_UNKNOWN;
