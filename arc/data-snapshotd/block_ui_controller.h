@@ -11,6 +11,7 @@
 
 #include <base/callback.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/process/launch.h>
 
 #include "arc/data-snapshotd/esc_key_watcher.h"
@@ -22,7 +23,7 @@ namespace data_snapshotd {
 base::CommandLine GetShowScreenCommandLine();
 base::CommandLine GetUpdateProgressCommandLine(int percent);
 
-base::LaunchOptions GetShowScreenOptions();
+base::LaunchOptions GetShowScreenOptions(const base::FilePath& snapshot_dir);
 base::LaunchOptions GetUpdateProgressOptions();
 
 // This class controls a system update_arc_data_snapshot: shows the screen in
@@ -32,13 +33,16 @@ class BlockUiController final {
   using LaunchProcessCallback = base::RepeatingCallback<bool(
       const base::CommandLine&, const base::LaunchOptions&)>;
 
-  explicit BlockUiController(std::unique_ptr<EscKeyWatcher> watcher);
+  BlockUiController(std::unique_ptr<EscKeyWatcher> watcher,
+                    const base::FilePath& snapshot_dir);
   BlockUiController(const BlockUiController&) = delete;
   BlockUiController& operator=(const BlockUiController&) = delete;
   ~BlockUiController();
 
   static std::unique_ptr<BlockUiController> CreateForTesting(
-      std::unique_ptr<EscKeyWatcher> watcher, LaunchProcessCallback callback);
+      std::unique_ptr<EscKeyWatcher> watcher,
+      const base::FilePath& snapshot_dir,
+      LaunchProcessCallback callback);
 
   // Shows update_arc_data_snapshot. Returns true if succeeds to show a UI
   // screen.
@@ -54,12 +58,14 @@ class BlockUiController final {
 
  private:
   explicit BlockUiController(std::unique_ptr<EscKeyWatcher> watcher,
+                             const base::FilePath& snapshot_dir,
                              LaunchProcessCallback callback);
 
   // True if the screen is shown.
   bool shown_ = false;
 
   std::unique_ptr<EscKeyWatcher> watcher_;
+  base::FilePath snapshot_dir_;
 
   LaunchProcessCallback launch_process_callback_;
 };

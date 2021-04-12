@@ -18,9 +18,10 @@ FakeProcessLauncher::~FakeProcessLauncher() {
   EXPECT_TRUE(expected_events_.empty());
 }
 
-void FakeProcessLauncher::ExpectUiScreenShown(bool result) {
+void FakeProcessLauncher::ExpectUiScreenShown(
+    const base::FilePath& snapshot_dir, bool result) {
   expected_events_.push(
-      {GetShowScreenCommandLine(), GetShowScreenOptions(), result});
+      {GetShowScreenCommandLine(), GetShowScreenOptions(snapshot_dir), result});
 }
 
 void FakeProcessLauncher::ExpectProgressUpdated(int percent, bool result) {

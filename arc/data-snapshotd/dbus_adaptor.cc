@@ -125,7 +125,8 @@ bool DBusAdaptor::GenerateKeyPair() {
   // block_ui_controller_ is pre-initialized for tests or if already present.
   if (!block_ui_controller_) {
     block_ui_controller_ = std::make_unique<BlockUiController>(
-        std::make_unique<EscKeyWatcher>(this));
+        std::make_unique<EscKeyWatcher>(this),
+        base::FilePath(kCommonSnapshotPath));
   }
 
   if (!block_ui_controller_->ShowScreen()) {

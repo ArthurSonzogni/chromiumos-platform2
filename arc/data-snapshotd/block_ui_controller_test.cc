@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -18,6 +19,7 @@ namespace data_snapshotd {
 namespace {
 
 constexpr int kPercent = 10;
+constexpr char kSnapshotDir[] = "/snapshot/dir/";
 
 }  // namespace
 
@@ -30,7 +32,7 @@ class BlockUiControllerTest : public testing::Test {
   void TearDown() override { process_launcher_.reset(); }
 
   void ExpectUiScreenShown(bool shown = true) {
-    process_launcher_->ExpectUiScreenShown(shown);
+    process_launcher_->ExpectUiScreenShown(base::FilePath(kSnapshotDir), shown);
   }
 
   void ExpectProgressUpdated(int percent, bool updated = true) {
@@ -53,7 +55,8 @@ class BlockUiControllerTest : public testing::Test {
 TEST_F(BlockUiControllerTest, ShowScreenSucces) {
   ExpectUiScreenShown();
   auto controller = BlockUiController::CreateForTesting(
-      CreateWatcher(), GetLaunchProcessCallback());
+      CreateWatcher(), base::FilePath(kSnapshotDir),
+      GetLaunchProcessCallback());
   EXPECT_TRUE(controller->ShowScreen());
 }
 
@@ -61,14 +64,16 @@ TEST_F(BlockUiControllerTest, ShowScreenFailure) {
   ExpectUiScreenShown(false /* shown */);
 
   auto controller = BlockUiController::CreateForTesting(
-      CreateWatcher(), GetLaunchProcessCallback());
+      CreateWatcher(), base::FilePath(kSnapshotDir),
+      GetLaunchProcessCallback());
   EXPECT_FALSE(controller->ShowScreen());
 }
 
 TEST_F(BlockUiControllerTest, UpdateProgressSuccess) {
   ExpectUiScreenShown();
   auto controller = BlockUiController::CreateForTesting(
-      CreateWatcher(), GetLaunchProcessCallback());
+      CreateWatcher(), base::FilePath(kSnapshotDir),
+      GetLaunchProcessCallback());
   EXPECT_TRUE(controller->ShowScreen());
 
   ExpectProgressUpdated(kPercent);
@@ -78,7 +83,8 @@ TEST_F(BlockUiControllerTest, UpdateProgressSuccess) {
 TEST_F(BlockUiControllerTest, UpdateProgressNoScreenFailure) {
   ExpectUiScreenShown(false /* shown */);
   auto controller = BlockUiController::CreateForTesting(
-      CreateWatcher(), GetLaunchProcessCallback());
+      CreateWatcher(), base::FilePath(kSnapshotDir),
+      GetLaunchProcessCallback());
   EXPECT_FALSE(controller->ShowScreen());
 
   ExpectUiScreenShown(false /* shown */);
@@ -89,7 +95,8 @@ TEST_F(BlockUiControllerTest, UpdateProgressNoScreenFailure) {
 TEST_F(BlockUiControllerTest, UpdateProgressShowScreenSuccess) {
   ExpectUiScreenShown(false /* shown */);
   auto controller = BlockUiController::CreateForTesting(
-      CreateWatcher(), GetLaunchProcessCallback());
+      CreateWatcher(), base::FilePath(kSnapshotDir),
+      GetLaunchProcessCallback());
 
   EXPECT_FALSE(controller->ShowScreen());
 
@@ -102,7 +109,8 @@ TEST_F(BlockUiControllerTest, UpdateProgressShowScreenSuccess) {
 TEST_F(BlockUiControllerTest, UpdateProgressFailure) {
   ExpectUiScreenShown();
   auto controller = BlockUiController::CreateForTesting(
-      CreateWatcher(), GetLaunchProcessCallback());
+      CreateWatcher(), base::FilePath(kSnapshotDir),
+      GetLaunchProcessCallback());
   EXPECT_TRUE(controller->ShowScreen());
 
   ExpectProgressUpdated(kPercent, false /* updated */);

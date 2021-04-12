@@ -88,6 +88,7 @@ class DBusAdaptorTest : public testing::Test {
         std::move(boot_lockbox_client), salt_,
         BlockUiController::CreateForTesting(
             std::make_unique<FakeEscKeyWatcher>(&delegate_),
+            root_tempdir_.GetPath(),
             process_launcher_->GetLaunchProcessCallback()));
   }
 
@@ -125,7 +126,7 @@ class DBusAdaptorTest : public testing::Test {
   }
 
   void ExpectUiScreenShown(bool shown = true) {
-    process_launcher_->ExpectUiScreenShown(shown);
+    process_launcher_->ExpectUiScreenShown(root_tempdir_.GetPath(), shown);
   }
 
   void ExpectProgressUpdated(int percent, bool result = true) {

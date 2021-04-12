@@ -27,6 +27,12 @@ constexpr char kDisplayBinary[] = "chromeos-boot-alert";
 // Environment variables and values:
 constexpr char kMessageOptions[] = "MESSAGE_OPTIONS";
 constexpr char kMarkup[] = "--markup";
+constexpr char kImageBackgroundRgb[] = "IMAGE_BACKGROUND_RGB";
+constexpr char kImageBackgroundRgbValue[] = "fefefe";
+constexpr char kImageTextColor[] = "IMAGE_TEXT_COLOR";
+constexpr char kImageTextColorValue[] = "Black";
+constexpr char kAssetsImagePath[] = "ASSETS_IMAGE_PATH";
+constexpr char kAssetsImagePathValue[] = "images";
 constexpr char kProgressBarWidth[] = "PROGRESS_BAR_WIDTH";
 constexpr char kProgressBarWidthValue[] = "1";
 constexpr char kProgressBarRgb[] = "PROGRESS_BAR_RGB";
@@ -58,9 +64,12 @@ base::CommandLine GetUpdateProgressCommandLine(int percent) {
   return cmd;
 }
 
-base::LaunchOptions GetShowScreenOptions() {
+base::LaunchOptions GetShowScreenOptions(const base::FilePath& snapshot_dir) {
   base::EnvironmentMap env;
   env[kMessageOptions] = kMarkup;
+  env[kAssetsImagePath] = snapshot_dir.Append(kAssetsImagePathValue).value();
+  env[kImageBackgroundRgb] = kImageBackgroundRgbValue;
+  env[kImageTextColor] = kImageTextColorValue;
 
   base::LaunchOptions options;
   options.environment = std::move(env);
@@ -71,23 +80,28 @@ base::LaunchOptions GetUpdateProgressOptions() {
   base::EnvironmentMap env;
   env[kProgressBarWidth] = kProgressBarWidthValue;
   env[kProgressBarRgb] = kProgressBarRgbValue;
+  env[kImageBackgroundRgb] = kImageBackgroundRgbValue;
 
   base::LaunchOptions options;
   options.environment = std::move(env);
   return options;
 }
 
-BlockUiController::BlockUiController(std::unique_ptr<EscKeyWatcher> watcher)
+BlockUiController::BlockUiController(std::unique_ptr<EscKeyWatcher> watcher,
+                                     const base::FilePath& snapshot_dir)
     : BlockUiController(std::move(watcher),
+                        snapshot_dir,
                         base::BindRepeating(&LaunchProcessImpl)) {}
 
 BlockUiController::~BlockUiController() {}
 
 // static
 std::unique_ptr<BlockUiController> BlockUiController::CreateForTesting(
-    std::unique_ptr<EscKeyWatcher> watcher, LaunchProcessCallback callback) {
-  return base::WrapUnique(
-      new BlockUiController(std::move(watcher), std::move(callback)));
+    std::unique_ptr<EscKeyWatcher> watcher,
+    const base::FilePath& snapshot_dir,
+    LaunchProcessCallback callback) {
+  return base::WrapUnique(new BlockUiController(
+      std::move(watcher), snapshot_dir, std::move(callback)));
 }
 
 bool BlockUiController::ShowScreen() {
@@ -99,7 +113,7 @@ bool BlockUiController::ShowScreen() {
 
   // Once the screen is shown, it stays so until the daemon is stopped.
   shown_ = launch_process_callback_.Run(GetShowScreenCommandLine(),
-                                        GetShowScreenOptions());
+                                        GetShowScreenOptions(snapshot_dir_));
   if (!shown_)
     LOG(ERROR) << "Failed to launch update_arc_data_snapshot screen";
 
@@ -123,8 +137,10 @@ bool BlockUiController::UpdateProgress(int percent) {
 }
 
 BlockUiController::BlockUiController(std::unique_ptr<EscKeyWatcher> watcher,
+                                     const base::FilePath& snapshot_dir,
                                      LaunchProcessCallback callback)
     : watcher_(std::move(watcher)),
+      snapshot_dir_(snapshot_dir),
       launch_process_callback_(std::move(callback)) {
   DCHECK(watcher_);
 }

@@ -9,6 +9,7 @@
 
 #include <arc/data-snapshotd/block_ui_controller.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/process/launch.h>
 
 namespace arc {
@@ -21,7 +22,7 @@ class FakeProcessLauncher {
   FakeProcessLauncher& operator=(const FakeProcessLauncher&) = delete;
   ~FakeProcessLauncher();
 
-  void ExpectUiScreenShown(bool result);
+  void ExpectUiScreenShown(const base::FilePath& snapshot_dir, bool result);
   void ExpectProgressUpdated(int percent, bool result);
 
   // The returned callback should be passed into BlockUiController ctor for
