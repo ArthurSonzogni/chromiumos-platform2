@@ -707,10 +707,9 @@ dbus_get_object_list () {
   local parent="$2"
   local child="$3"
   local parent_path="${4-/}"
-  # The child (property) we are looking for is something like "Devices"
-  # or "LinkMonitorResponseTime".  The sed manipulation below will return
-  # the list of values for each entry.  For example, with an output that
-  # looks like:
+  # The child (property) we are looking for is something like "Devices".
+  # The sed manipulation below will return the list of values for each
+  # entry. For example, with an output that looks like:
   #   /8/Devices/0 /device/wlan0
   #   /8/Devices/1 /device/eth1
   #   /8/Devices/2 /device/eth0
@@ -947,35 +946,6 @@ diag_run () {
     diag_webget "${host}" "${proxy}"
   fi
   diag_date "${host}" "${proxy}"
-  diag_gateway_latency "${host}"
-}
-
-diag_gateway_latency () {
-  local ff="org.chromium.flimflam"
-  local services=($(dbus_get_object_list "${ff}" Manager Services /))
-  local service="${services[0]}"
-  local latency_threshold=800  # milliseconds
-  if [ -z "${service}" ]; then
-    fail "Found no services."
-    return
-  fi
-  local device="$(dbus_get_object_list "${ff}" Service Device "${service}")"
-  if [ -z "${device}" ]; then
-    fail "Service ${service} does not have an associated Device."
-    return
-  fi
-  local monitor_val="$(dbus_get_object_list "${ff}" Device \
-                      LinkMonitorResponseTime "${device}")"
-  if [ -z "${monitor_val}" ]; then
-    echo "Service ${service} on device ${device} has no current latency value"
-    return
-  fi
-  message="Current LinkMonitor latency for ${device} is ${monitor_val}ms"
-  if [ "${monitor_val}" -le "${latency_threshold}" ]; then
-    pass "$message"
-  else
-    fail "$message"
-  fi
 }
 
 valid_host () {
@@ -997,7 +967,6 @@ usage () {
   echo "    --flimflam:  Diagnose flimflam status"
   echo "    --hosts:     Diagnose SSL connection to Google hosts"
   echo "    --interface: Diagnose interface status"
-  echo "    --latency:   Diagnose link-latency to default gateway"
   echo "    --link:      Diagnose all network links"
   echo "    --no-log:    Do not log output"
   echo "    --proxy:     Specify proxy to use with tests"
@@ -1101,10 +1070,6 @@ main () {
       --interface)
         check_no_arg "${option}" "${option_and_arg_provided}"
         diag_ifall
-        ;;
-      --latency)
-        check_no_arg "${option}" "${option_and_arg_provided}"
-        diag_gateway_latency
         ;;
       --link)
         check_no_arg "${option}" "${option_and_arg_provided}"
