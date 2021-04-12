@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "typecd/cable.h"
 #include "typecd/partner.h"
 
 #include <base/files/scoped_temp_dir.h>
@@ -180,6 +181,67 @@ TEST_F(MetricsTest, CheckPartnerTypeOther) {
   Partner p(base::FilePath("foo"));
 
   EXPECT_EQ(PartnerTypeMetric::kOther, p.GetPartnerTypeMetric());
+}
+
+TEST_F(MetricsTest, CheckCableSpeedTBTOnly) {
+  // Belkin TBT3 Active Cable 40Gbps.
+  Cable c(base::FilePath("foo"));
+
+  c.SetPDRevision(PDRevision::k20);
+  c.SetIdHeaderVDO(0x240020c2);
+  c.SetCertStatVDO(0x0);
+  c.SetProductVDO(0x40010);
+  c.SetProductTypeVDO1(0x21085858);
+  c.SetProductTypeVDO2(0x0);
+  c.SetProductTypeVDO3(0x0);
+
+  c.SetNumAltModes(2);
+
+  std::string mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  auto mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x430001, 0));
+  c.AddAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0));
+  c.AddAltMode(mode_path);
+
+  EXPECT_EQ(CableSpeedMetric::kTBTOnly10G20G, c.GetCableSpeedMetric());
+}
+
+TEST_F(MetricsTest, CheckCableSpeedPassive40Gbps) {
+  // StarTech Passive Cable 40 Gbps PD 2.0
+  Cable c(base::FilePath("foo"));
+
+  c.SetPDRevision(PDRevision::k20);
+  c.SetIdHeaderVDO(0x1c0020c2);
+  c.SetCertStatVDO(0x000000b6);
+  c.SetProductVDO(0x00010310);
+  c.SetProductTypeVDO1(0x11082052);
+  c.SetProductTypeVDO2(0x0);
+  c.SetProductTypeVDO3(0x0);
+
+  c.SetNumAltModes(0);
+
+  EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1Gen2, c.GetCableSpeedMetric());
+}
+
+TEST_F(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1) {
+  // Hongju Full USB 3.1 Gen 1 5A passive cable.
+  Cable c(base::FilePath("foo"));
+
+  c.SetPDRevision(PDRevision::k20);
+  c.SetIdHeaderVDO(0x18005694);
+  c.SetCertStatVDO(0x88);
+  c.SetProductVDO(0xce901a0);
+  c.SetProductTypeVDO1(0x84051);
+  c.SetProductTypeVDO2(0x0);
+  c.SetProductTypeVDO3(0x0);
+
+  c.SetNumAltModes(0);
+
+  EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1, c.GetCableSpeedMetric());
 }
 
 }  // namespace typecd

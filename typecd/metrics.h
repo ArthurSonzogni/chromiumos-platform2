@@ -26,6 +26,20 @@ enum class PartnerTypeMetric {
   kMaxValue = kUSBPeripheral,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class CableSpeedMetric {
+  kOther = 0,
+  kUSB2_0 = 1,
+  kUSB3_2Gen1 = 2,
+  kUSB3_2USB4Gen2 = 3,
+  kUSB3_1Gen1 = 4,
+  kUSB3_1Gen1Gen2 = 5,
+  kUSB4Gen3 = 6,
+  kTBTOnly10G20G = 7,
+  kMaxValue = kTBTOnly10G20G,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -36,6 +50,7 @@ class Metrics {
   ~Metrics() = default;
 
   void ReportPartnerType(PartnerTypeMetric type);
+  void ReportCableSpeed(CableSpeedMetric speed);
 
  private:
   MetricsLibrary metrics_library_;

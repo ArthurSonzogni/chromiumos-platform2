@@ -85,6 +85,13 @@ class Cable : public Peripheral {
   void ReportMetrics(Metrics* metrics);
 
  private:
+  friend class MetricsTest;
+  FRIEND_TEST(MetricsTest, CheckCableSpeedTBTOnly);
+  FRIEND_TEST(MetricsTest, CheckCableSpeedPassive40Gbps);
+  FRIEND_TEST(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1);
+
+  CableSpeedMetric GetCableSpeedMetric();
+
   // Map representing all SOP' alternate modes.
   // The key is the index of the alternate mode as determined
   // by the connector class sysfs directory. For example,

@@ -62,6 +62,9 @@ constexpr uint32_t kActiveCableVDO2USB4SupportedBitField = (1 << 8);
 constexpr uint8_t kTBT3CableDiscModeVDORoundedSupportOffset = 19;
 constexpr uint8_t kTBT3CableDiscModeVDORoundedSupportMask = 0x3;
 constexpr uint8_t kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded = 0x1;
+constexpr uint8_t kTBT3CableDiscModeVDOSpeedOffset = 16;
+constexpr uint8_t kTBT3CableDiscModeVDOSpeedMask = 0x7;
+constexpr uint8_t kTBT3CableDiscModeVDOSpeed10G20G = 0x3;
 
 // Standard and Vendor Indentifications commonly expected in cables and partners
 constexpr uint16_t kDPAltModeSID = 0xff01;

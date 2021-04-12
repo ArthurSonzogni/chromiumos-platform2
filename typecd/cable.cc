@@ -156,9 +156,75 @@ bool Cable::DiscoveryComplete() {
   return num_alt_modes_ == alt_modes_.size();
 }
 
+CableSpeedMetric Cable::GetCableSpeedMetric() {
+  CableSpeedMetric ret = CableSpeedMetric::kOther;
+
+  // If we can't identify a valid cable in the ID Header, return early.
+  auto cable_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+                    kIDHeaderVDOProductTypeMask;
+  if (!(cable_type == kIDHeaderVDOProductTypeCableActive ||
+        cable_type == kIDHeaderVDOProductTypeCablePassive))
+    return ret;
+
+  // Parse the speed field in the Cable VDO.
+  auto cable_vdo = GetProductTypeVDO1();
+  uint32_t speed = cable_vdo & kUSBSpeedBitMask;
+  switch (speed) {
+    case kUSBSpeed20:
+      ret = CableSpeedMetric::kUSB2_0;
+      break;
+    case kUSBSuperSpeed32Gen1:
+      ret = CableSpeedMetric::kUSB3_2Gen1;
+      break;
+    case kUSBSuperSpeed32Or40Gen2:
+      ret = CableSpeedMetric::kUSB3_2USB4Gen2;
+      break;
+    case kUSB40SuperSpeedGen3:
+      ret = CableSpeedMetric::kUSB4Gen3;
+      break;
+  }
+
+  // Add special handling for the PD 2.0 Cable VDO speed.
+  if (GetPDRevision() == PDRevision::k20) {
+    if (speed == kUSBSuperSpeed31Gen1) {
+      ret = CableSpeedMetric::kUSB3_1Gen1;
+    } else if (speed == kUSBSuperSpeed31Gen2) {
+      ret = CableSpeedMetric::kUSB3_1Gen1Gen2;
+    }
+  }
+
+  if (ret != CableSpeedMetric::kUSB2_0)
+    return ret;
+
+  // Finally, handle TBT-only cables (only if the VDOs claim to only
+  // support USB 2.0 speeds).
+  for (const auto& [index, mode] : alt_modes_) {
+    if (mode->GetSVID() != kTBTAltModeVID)
+      continue;
+
+    uint32_t tbt_vdo = mode->GetVDO();
+
+    // If rounded support is there, we should continue.
+    auto rounded_support =
+        (tbt_vdo >> kTBT3CableDiscModeVDORoundedSupportOffset) &
+        kTBT3CableDiscModeVDORoundedSupportMask;
+    if (rounded_support == kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded)
+      continue;
+
+    auto speed = (tbt_vdo >> kTBT3CableDiscModeVDOSpeedOffset) &
+                 kTBT3CableDiscModeVDOSpeedMask;
+    if (speed == kTBT3CableDiscModeVDOSpeed10G20G)
+      ret = CableSpeedMetric::kTBTOnly10G20G;
+  }
+
+  return ret;
+}
+
 void Cable::ReportMetrics(Metrics* metrics) {
   if (!metrics || metrics_reported_)
     return;
+
+  metrics->ReportCableSpeed(GetCableSpeedMetric());
 
   metrics_reported_ = true;
 }
