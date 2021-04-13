@@ -12,6 +12,7 @@
 #include "gtest/gtest.h"
 
 #include "croslog/log_line_reader.h"
+#include "croslog/test_util.h"
 
 namespace croslog {
 
@@ -24,22 +25,6 @@ class LogParserAuditTest : public ::testing::Test {
   LogParserAuditTest() = default;
   LogParserAuditTest(const LogParserAuditTest&) = delete;
   LogParserAuditTest& operator=(const LogParserAuditTest&) = delete;
-
-  static base::Time TimeFromExploded(int year,
-                                     int month,
-                                     int day_of_month,
-                                     int hour,
-                                     int minute,
-                                     int second,
-                                     int microsec) {
-    base::Time time;
-    EXPECT_TRUE(base::Time::FromUTCExploded(
-        base::Time::Exploded{year, month, 0, day_of_month, hour, minute, second,
-                             0},
-        &time));
-    time += base::TimeDelta::FromMicroseconds(microsec);
-    return time;
-  }
 
   static void SetTimeZone(const char* time_zone) {
     // tzset() distinguishes between the TZ variable being present and empty

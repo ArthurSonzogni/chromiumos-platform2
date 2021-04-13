@@ -11,6 +11,7 @@
 
 #include "croslog/log_parser_audit.h"
 #include "croslog/log_parser_syslog.h"
+#include "croslog/test_util.h"
 
 namespace croslog {
 
@@ -19,24 +20,6 @@ class MetricsCollectorUtilTest : public ::testing::Test {
   MetricsCollectorUtilTest() = default;
   MetricsCollectorUtilTest(const MetricsCollectorUtilTest&) = delete;
   MetricsCollectorUtilTest& operator=(const MetricsCollectorUtilTest&) = delete;
-
-  static base::Time TimeFromExploded(int year,
-                                     int month,
-                                     int day_of_month,
-                                     int hour,
-                                     int minute,
-                                     int second,
-                                     int microsec,
-                                     int timezone_hour) {
-    base::Time time;
-    EXPECT_TRUE(base::Time::FromUTCExploded(
-        base::Time::Exploded{year, month, 0, day_of_month, hour, minute, second,
-                             0},
-        &time));
-    time += base::TimeDelta::FromMicroseconds(microsec);
-    time -= base::TimeDelta::FromHours(timezone_hour);
-    return time;
-  }
 };
 
 TEST_F(MetricsCollectorUtilTest, CalculateLogMetrics) {

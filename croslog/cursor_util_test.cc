@@ -12,6 +12,7 @@
 #include "gtest/gtest.h"
 
 #include "croslog/log_line_reader.h"
+#include "croslog/test_util.h"
 
 namespace croslog {
 
@@ -20,24 +21,6 @@ class CursorUtilTest : public ::testing::Test {
   CursorUtilTest() = default;
   CursorUtilTest(const CursorUtilTest&) = delete;
   CursorUtilTest& operator=(const CursorUtilTest&) = delete;
-
-  static base::Time TimeFromExploded(int year,
-                                     int month,
-                                     int day_of_month,
-                                     int hour,
-                                     int minute,
-                                     int second,
-                                     int microsec,
-                                     int timezone_hour) {
-    base::Time time;
-    EXPECT_TRUE(base::Time::FromUTCExploded(
-        base::Time::Exploded{year, month, 0, day_of_month, hour, minute, second,
-                             0},
-        &time));
-    time += base::TimeDelta::FromMicroseconds(microsec);
-    time -= base::TimeDelta::FromHours(timezone_hour);
-    return time;
-  }
 };
 
 TEST_F(CursorUtilTest, Generate) {

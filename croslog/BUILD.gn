@@ -89,6 +89,8 @@ if (use.test) {
       "log_parser_syslog_test.cc",
       "metrics_collector_util_test.cc",
       "multiplexer_test.cc",
+      "test_util.cc",
+      "test_util.h",
       "testrunner.cc",
       "viewer_plaintext_test.cc",
     ]

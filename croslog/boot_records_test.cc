@@ -12,6 +12,7 @@
 #include "gtest/gtest.h"
 
 #include "croslog/log_line_reader.h"
+#include "croslog/test_util.h"
 
 namespace croslog {
 
@@ -20,16 +21,6 @@ class BootRecordsTest : public ::testing::Test {
   BootRecordsTest() = default;
   BootRecordsTest(const BootRecordsTest&) = delete;
   BootRecordsTest& operator=(const BootRecordsTest&) = delete;
-
-  static base::Time TimeFromExploded(
-      int year, int month, int day_of_month, int hour, int minute, int second) {
-    base::Time time;
-    EXPECT_TRUE(base::Time::FromUTCExploded(
-        base::Time::Exploded{year, month, 0, day_of_month, hour, minute, second,
-                             0},
-        &time));
-    return time;
-  }
 };
 
 TEST_F(BootRecordsTest, Load) {
