@@ -5,25 +5,19 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_INPUT_DEVICE_H_
 #define RUNTIME_PROBE_FUNCTIONS_INPUT_DEVICE_H_
 
-#include <memory>
-#include <string>
-
-#include <base/values.h>
-
 #include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
 
-class InputDeviceFunction : public ProbeFunction {
+class InputDeviceFunction : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("input_device");
 
   static constexpr auto FromKwargsValue =
       FromEmptyKwargsValue<InputDeviceFunction>;
 
-  DataType Eval() const override;
-
-  int EvalInHelper(std::string* output) const override;
+ private:
+  DataType EvalImpl() const override;
 };
 
 }  // namespace runtime_probe

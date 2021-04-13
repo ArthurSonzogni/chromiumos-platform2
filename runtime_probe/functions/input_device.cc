@@ -4,6 +4,8 @@
 
 #include "runtime_probe/functions/input_device.h"
 
+#include <pcrecpp.h>
+
 #include <map>
 #include <string>
 #include <utility>
@@ -11,11 +13,9 @@
 
 #include <base/check_op.h>
 #include <base/files/file_util.h>
-#include <base/json/json_writer.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <pcrecpp.h>
 
 #include "runtime_probe/utils/file_utils.h"
 
@@ -32,23 +32,24 @@ const std::vector<FieldType> kTouchscreenI2cFields = {
 const std::map<std::string, std::string> kTouchscreenI2cDriverToVid = {
     {"elants_i2c", "04f3"}, {"raydium_ts", "27a3"}, {"atmel_ext_ts", "03eb"}};
 
-void AppendInputDevice(base::Value* list_value, base::Value&& value) {
+void AppendInputDevice(InputDeviceFunction::DataType* list_value,
+                       base::Value&& value) {
   const auto* sysfs = value.FindStringKey("sysfs");
   if (sysfs) {
     const auto path = base::StringPrintf("/sys%s", sysfs->c_str());
     value.RemoveKey("sysfs");
     value.SetStringKey("path", path);
   }
-  list_value->Append(std::move(value));
+  list_value->push_back(std::move(value));
 }
 
-base::Value LoadInputDevices() {
-  base::Value results(base::Value::Type::LIST);
+InputDeviceFunction::DataType LoadInputDevices() {
+  InputDeviceFunction::DataType results{};
   std::string input_devices_str;
   if (!base::ReadFileToString(base::FilePath(kInputDevicesPath),
                               &input_devices_str)) {
     LOG(ERROR) << "Failed to read " << kInputDevicesPath << ".";
-    return results;
+    return {};
   }
 
   base::Value data;
@@ -68,7 +69,7 @@ base::Value LoadInputDevices() {
         }
         if (!base::SplitStringIntoKeyValuePairs(content, '=', ' ', &keyVals)) {
           LOG(ERROR) << "Failed to parse input devices (I).";
-          return base::Value(base::Value::Type::LIST);
+          return {};
         }
         data = base::Value(base::Value::Type::DICTIONARY);
         for (const auto& [key, value] : keyVals) {
@@ -80,7 +81,7 @@ base::Value LoadInputDevices() {
       case 'S': {
         if (!base::SplitStringIntoKeyValuePairs(content, '=', '\n', &keyVals)) {
           LOG(ERROR) << "Failed to parse input devices (N/S).";
-          return base::Value(base::Value::Type::LIST);
+          return {};
         }
         const auto& [key, value] = keyVals[0];
         data.SetStringKey(base::ToLowerASCII(key),
@@ -90,7 +91,7 @@ base::Value LoadInputDevices() {
       case 'H': {
         if (!base::SplitStringIntoKeyValuePairs(content, '=', '\n', &keyVals)) {
           LOG(ERROR) << "Failed to parse input devices (H).";
-          return base::Value(base::Value::Type::LIST);
+          return {};
         }
         const auto& value = keyVals[0].second;
         const auto& handlers = base::SplitStringPiece(
@@ -123,8 +124,8 @@ std::string GetDriverName(const base::FilePath& node_path) {
   return driver_name;
 }
 
-void FixTouchscreenI2cDevices(base::Value* devices) {
-  for (auto& device : devices->GetList()) {
+void FixTouchscreenI2cDevices(InputDeviceFunction::DataType* devices) {
+  for (auto& device : *devices) {
     const auto* path = device.FindStringKey("path");
     if (!path)
       continue;
@@ -153,29 +154,10 @@ void FixTouchscreenI2cDevices(base::Value* devices) {
 
 }  // namespace
 
-InputDeviceFunction::DataType InputDeviceFunction::Eval() const {
-  auto json_output = InvokeHelperToJSON();
-  if (!json_output) {
-    LOG(ERROR) << "Failed to invoke helper to retrieve sysfs results.";
-    return {};
-  }
-  if (!json_output->is_list()) {
-    LOG(ERROR) << "Failed to parse json output as list.";
-    return {};
-  }
-
-  return DataType(json_output->TakeList());
-}
-
-int InputDeviceFunction::EvalInHelper(std::string* output) const {
+InputDeviceFunction::DataType InputDeviceFunction::EvalImpl() const {
   auto results = LoadInputDevices();
   FixTouchscreenI2cDevices(&results);
-
-  if (!base::JSONWriter::Write(results, output)) {
-    LOG(ERROR) << "Failed to serialize usb probed result to json string";
-    return -1;
-  }
-  return 0;
+  return results;
 }
 
 }  // namespace runtime_probe
