@@ -334,8 +334,8 @@ void Screens::ShowMiniOsCompleteScreen() {
   ShowInstructions("title_MiniOS_complete");
   ShowStepper({"done", "done", "done"});
   ShowLanguageMenu(false);
-  // TODO(vyshu): Automatically reboot after timeout or on button selection.
-  ShowButton("Reboot", -100, false, default_button_width_, true);
+
+  update_engine_proxy_->TriggerReboot();
 }
 
 void Screens::ShowErrorScreen(std::string error_message) {

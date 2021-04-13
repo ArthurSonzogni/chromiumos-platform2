@@ -75,7 +75,7 @@ class ScreensTest : public ::testing::Test {
   // Path to /etc/screens in test directory.
   base::FilePath screens_path_;
   MockProcessManager mock_process_manager_;
-  Screens screens_{&mock_process_manager_, nullptr};
+  Screens screens_{&mock_process_manager_, nullptr, nullptr};
   std::string test_root_;
 };
 
@@ -495,7 +495,7 @@ TEST_F(ScreensTest, MapRegionToKeyboard) {
 
 class MockScreens : public Screens {
  public:
-  MockScreens() : Screens(nullptr, nullptr) {}
+  MockScreens() : Screens(nullptr, nullptr, nullptr) {}
   MOCK_METHOD(bool,
               ShowBox,
               (int offset_x,

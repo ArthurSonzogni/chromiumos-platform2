@@ -68,9 +68,11 @@ class Screens : public ScreenBase,
  public:
   explicit Screens(
       ProcessManagerInterface* process_manager,
-      std::shared_ptr<minios::NetworkManagerInterface> network_manager)
+      std::shared_ptr<minios::NetworkManagerInterface> network_manager,
+      std::shared_ptr<UpdateEngineProxy> update_engine_proxy)
       : process_manager_(process_manager),
         network_manager_(network_manager),
+        update_engine_proxy_(update_engine_proxy),
         key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {
     key_reader_.SetDelegate(this);
   }
@@ -255,6 +257,8 @@ class Screens : public ScreenBase,
       key_reader::KeyReader(/*include_usb=*/true);
 
   std::shared_ptr<minios::NetworkManagerInterface> network_manager_;
+
+  std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
 
   // Whether the device has a detachable keyboard.
   bool is_detachable_{false};

@@ -19,7 +19,7 @@ extern const char kLogFile[];
 
 class MiniOs : public MiniOsInterface {
  public:
-  explicit MiniOs(std::unique_ptr<UpdateEngineProxy> update_engine_proxy,
+  explicit MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                   std::shared_ptr<NetworkManagerInterface> network_manager);
   virtual ~MiniOs() = default;
 
@@ -36,7 +36,7 @@ class MiniOs : public MiniOsInterface {
   // The current state of MiniOs.
   State state_;
 
-  std::unique_ptr<UpdateEngineProxy> update_engine_proxy_;
+  std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 
   ProcessManager process_manager_;

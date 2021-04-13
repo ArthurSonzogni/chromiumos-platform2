@@ -46,7 +46,7 @@ void Daemon::RegisterDBusObjectsAsync(
           std::make_unique<ShillProxy>(bus_for_proxies_));
 
   mini_os_ = std::make_shared<MiniOs>(
-      std::make_unique<UpdateEngineProxy>(
+      std::make_shared<UpdateEngineProxy>(
           std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
               bus_for_proxies_)),
       network_manager);

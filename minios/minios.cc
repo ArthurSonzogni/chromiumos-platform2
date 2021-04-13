@@ -15,11 +15,12 @@ namespace minios {
 const char kDebugConsole[] = "/dev/pts/2";
 const char kLogFile[] = "/log/recovery.log";
 
-MiniOs::MiniOs(std::unique_ptr<UpdateEngineProxy> update_engine_proxy,
+MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                std::shared_ptr<NetworkManagerInterface> network_manager)
-    : update_engine_proxy_(std::move(update_engine_proxy)),
+    : update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
-      screens_(screens::Screens(&process_manager_, network_manager_)) {
+      screens_(screens::Screens(
+          &process_manager_, network_manager_, update_engine_proxy_)) {
   update_engine_proxy_->SetDelegate(&screens_);
   update_engine_proxy_->Init();
   network_manager_->AddObserver(&screens_);
