@@ -14,6 +14,7 @@ getdents: 1
 getdents64: 1
 gettid: 1
 lseek: 1
+lstat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1

@@ -4,64 +4,43 @@
 
 #include "runtime_probe/functions/generic_battery.h"
 
+#include <pcrecpp.h>
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
-#include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <pcrecpp.h>
 
 #include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
 
-GenericBattery::DataType GenericBattery::Eval() const {
-  auto json_output = InvokeHelperToJSON();
-  if (!json_output) {
-    LOG(ERROR) << "Failed to invoke helper to retrieve battery sysfs results.";
-    return {};
-  }
-  if (!json_output->is_list()) {
-    LOG(ERROR) << "Failed to parse json output as list.";
-    return {};
-  }
+namespace {
+constexpr auto kSysfsBatteryPath = "/sys/class/power_supply/BAT*";
+constexpr auto kSysfsExpectedType = "Battery";
+// These keys are expected to present no matter what types of battery is:
+const std::vector<std::string> kBatteryKeys{"manufacturer", "model_name",
+                                            "technology", "type"};
+// These keys are optional
+const std::vector<std::string> kBatteryOptionalKeys{
+    "capacity",           "capacity_level",
+    "charge_full",        "charge_full_design",
+    "charge_now",         "current_now",
+    "cycle_count",        "present",
+    "serial_number",      "status",
+    "voltage_min_design", "voltage_now"};
+}  // namespace
 
-  return DataType(json_output->TakeList());
-}
-int GenericBattery::EvalInHelper(std::string* output) const {
-  constexpr char kSysfsBatteryPath[] = "/sys/class/power_supply/BAT*";
-  constexpr char kSysfsExpectedType[] = "Battery";
-  const std::vector<std::string> keys{"manufacturer", "model_name",
-                                      "technology", "type"};
-  const std::vector<std::string> optional_keys{
-      "capacity",           "capacity_level",
-      "charge_full",        "charge_full_design",
-      "charge_now",         "current_now",
-      "cycle_count",        "present",
-      "serial_number",      "status",
-      "voltage_min_design", "voltage_now"};
+GenericBattery::DataType GenericBattery::EvalImpl() const {
+  DataType result{};
 
-  base::Value result(base::Value::Type::LIST);
-
-  const base::FilePath glob_path{kSysfsBatteryPath};
-  const auto glob_root = glob_path.DirName();
-  const auto glob_pattern = glob_path.BaseName();
-
-  base::FileEnumerator battery_it(glob_root, false,
-                                  base::FileEnumerator::FileType::DIRECTORIES,
-                                  glob_pattern.value());
-  while (true) {
+  for (const auto& battery_path : Glob(kSysfsBatteryPath)) {
     // TODO(itspeter): Extra take care if there are multiple batteries.
-    auto battery_path = battery_it.Next();
-    if (battery_path.empty())
-      break;
-
-    auto dict_value = MapFilesToDict(battery_path, keys, optional_keys);
+    auto dict_value =
+        MapFilesToDict(battery_path, kBatteryKeys, kBatteryOptionalKeys);
     if (dict_value) {
       auto* power_supply_type = dict_value->FindStringKey("type");
       if (!power_supply_type)
@@ -84,20 +63,15 @@ int GenericBattery::EvalInHelper(std::string* output) const {
                                  base::NumberToString(battery_index + 1));
       }
 
-      result.Append(std::move(*dict_value));
+      result.push_back(std::move(*dict_value));
     }
   }
 
-  if (result.GetList().size() > 1) {
+  if (result.size() > 1) {
     LOG(ERROR) << "Multiple batteries is not supported yet.";
-    return -1;
+    return {};
   }
-  if (!base::JSONWriter::Write(result, output)) {
-    LOG(ERROR)
-        << "Failed to serialize generic battery probed result to json string";
-    return -1;
-  }
-  return 0;
+  return result;
 }
 
 }  // namespace runtime_probe
