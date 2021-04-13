@@ -36,6 +36,15 @@ class DBusServiceTest : public testing::Test {
         .WillByDefault(Return(mock_exported_object_.get()));
     dbus_service_ =
         std::make_unique<DBusService>(mock_bus_, &mock_rmad_service_);
+    // After handling the request, DBusService will query `GetCurrentState` to
+    // determine if it should quit itself.
+    EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
+        .WillRepeatedly(
+            Invoke([](const RmadInterface::GetStateCallback& callback) {
+              GetStateReply reply;
+              reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+              callback.Run(reply);
+            }));
   }
   ~DBusServiceTest() override = default;
 
@@ -83,13 +92,6 @@ class DBusServiceTest : public testing::Test {
 
 TEST_F(DBusServiceTest, GetCurrentState) {
   RegisterDBusObjectAsync();
-
-  EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
-      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
-        GetStateReply reply;
-        reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-        callback.Run(reply);
-      }));
 
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);

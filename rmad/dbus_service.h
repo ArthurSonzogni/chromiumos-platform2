@@ -57,7 +57,7 @@ class DBusService : public brillo::DBusServiceDaemon {
     using SharedResponsePointer =
         std::shared_ptr<DBusMethodResponse<ReplyProtobufType>>;
     (rmad_interface_->*func)(
-        request, base::Bind(&DBusService::ReplyAndQuit<ReplyProtobufType>,
+        request, base::Bind(&DBusService::SendReply<ReplyProtobufType>,
                             base::Unretained(this),
                             SharedResponsePointer(std::move(response))));
   }
@@ -75,18 +75,24 @@ class DBusService : public brillo::DBusServiceDaemon {
     using SharedResponsePointer =
         std::shared_ptr<DBusMethodResponse<ReplyProtobufType>>;
     (rmad_interface_->*func)(base::Bind(
-        &DBusService::ReplyAndQuit<ReplyProtobufType>, base::Unretained(this),
+        &DBusService::SendReply<ReplyProtobufType>, base::Unretained(this),
         SharedResponsePointer(std::move(response))));
   }
 
-  // Template for sending out the reply and exit the daemon.
+  // Template for sending out the reply.
   template <typename ReplyProtobufType>
-  void ReplyAndQuit(
+  void SendReply(
       std::shared_ptr<DBusMethodResponse<ReplyProtobufType>> response,
       const ReplyProtobufType& reply) {
     response->Return(reply);
-    PostQuitTask();
+
+    // Quit the daemon after sending the reply if RMA is not required.
+    rmad_interface_->GetCurrentState(
+        base::Bind(&DBusService::QuitIfRmaNotRequired, base::Unretained(this)));
   }
+
+  // If RMA is not required, quit the daemon.
+  void QuitIfRmaNotRequired(const GetStateReply& reply);
 
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();

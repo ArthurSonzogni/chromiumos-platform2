@@ -66,6 +66,12 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
 }
 
+void DBusService::QuitIfRmaNotRequired(const GetStateReply& reply) {
+  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
+    PostQuitTask();
+  }
+}
+
 void DBusService::PostQuitTask() {
   if (bus_) {
     bus_->GetOriginTaskRunner()->PostTask(
