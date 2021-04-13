@@ -359,6 +359,18 @@ int main(int argc, char* argv[]) {
               "Print brightness level used "
               "by powerd at boot");
 
+  // Flags that print the nits.
+  DEFINE_int32(
+      get_current_nits, -1,
+      "Given the max (typical) brightness (in nits) for the display panel, "
+      "print the current theoretically calculated brightness (in nits)");
+  DEFINE_int32(
+      get_calculated_nits, -1,
+      "Given the max (typical) brightness (in nits) for the display panel, "
+      "print the theoretically calculated brightness (in nits); can be used "
+      "with --lux and --force_battery; if --lux is not specified, use its "
+      "default value");
+
   // Flags that convert between units.
   DEFINE_double(nonlinear_to_level, -1.0,
                 "Convert supplied nonlinear brightness percent to level");
@@ -404,12 +416,19 @@ int main(int argc, char* argv[]) {
           (FLAGS_nonlinear_to_level >= 0.0) + (FLAGS_level_to_nonlinear >= 0) +
           (FLAGS_linear_to_level >= 0.0) + (FLAGS_level_to_linear >= 0) +
           (FLAGS_linear_to_nonlinear >= 0.0) +
-          (FLAGS_nonlinear_to_linear >= 0.0) >
+          (FLAGS_nonlinear_to_linear >= 0.0) + (FLAGS_get_current_nits >= 0) +
+          (FLAGS_get_calculated_nits >= 0) >
       1) {
-    Abort("At most one flag that prints a level or percent may be passed.");
+    Abort(
+        "At most one flag that prints a level or percent or nit may be "
+        "passed.");
   }
   if (FLAGS_set_brightness >= 0 && FLAGS_set_brightness_percent >= 0.0)
     Abort("At most one of -set_brightness* may be passed.");
+
+  if ((FLAGS_get_current_nits >= 0 || FLAGS_get_calculated_nits >= 0) &&
+      FLAGS_keyboard)
+    Abort("Nits calculation is only available for display panel.");
 
   if (FLAGS_get_ambient_light_lux) {
     // Needed for the D-Bus I/O that waits for fd without blocking.
@@ -482,6 +501,19 @@ int main(int argc, char* argv[]) {
     CHECK(backlight.SetBrightnessLevel(
         converter.LinearPercentToLevel(FLAGS_set_brightness_percent),
         base::TimeDelta()));
+  }
+
+  // Print nits.
+  if (FLAGS_get_current_nits >= 0) {
+    printf("%" PRIi32 "\n",
+           static_cast<int32_t>(converter.LevelToLinearPercent(current_level) *
+                                FLAGS_get_current_nits / 100.0));
+  }
+  if (FLAGS_get_calculated_nits >= 0) {
+    printf("%" PRIi32 "\n",
+           static_cast<int32_t>(
+               converter.LevelToLinearPercent(converter.GetInitialLevel()) *
+               FLAGS_get_calculated_nits / 100.0));
   }
 
   return 0;
