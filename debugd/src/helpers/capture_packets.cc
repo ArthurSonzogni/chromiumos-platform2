@@ -9,33 +9,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <chromeos/libminijail.h>
 #include <pcap.h>
 
 #define RECEIVE_PACKET_SIZE 2048
 #define PACKET_TIMEOUT_MS 1000
 
-int perform_capture(char* device, char* output_file, char* max_size) {
+int perform_capture(base::StringPiece device,
+                    base::StringPiece output_file,
+                    base::StringPiece max_size) {
   char buf[RECEIVE_PACKET_SIZE];
   const int promiscuous = 0;
   char errbuf[PCAP_ERRBUF_SIZE];
-  pcap_t* pcap = pcap_open_live(device, sizeof(buf), promiscuous,
+  pcap_t* pcap = pcap_open_live(device.data(), sizeof(buf), promiscuous,
                                 PACKET_TIMEOUT_MS, errbuf);
   if (pcap == nullptr) {
     fprintf(stderr, "Could not open capture handle.\n");
     return -1;
   }
 
-  pcap_dumper_t* dumper = pcap_dump_open(pcap, output_file);
+  pcap_dumper_t* dumper = pcap_dump_open(pcap, output_file.data());
   if (dumper == nullptr) {
     fprintf(stderr, "Could not open dump file.\n");
     return -1;
   }
 
+  u_int64_t max_size_parsed;
+  if (!base::StringToUint64(max_size, &max_size_parsed)) {
+    fprintf(
+        stderr,
+        "Can't parse max-size argument. Make sure you pass unsigned int!\n");
+    return 1;
+  }
   // max_size argument is given in MiB. Convert max_size from MiB to bytes.
   int mib_to_byte_conversion = 1048576;
-  int max_capture_size = atoi(max_size) * mib_to_byte_conversion;
-  int total_captured_size = 0;
+  u_int64_t max_capture_size = max_size_parsed * mib_to_byte_conversion;
+  u_int64_t total_captured_size = 0;
 
   // Now that we have all our handles open, drop privileges.
   struct minijail* j = minijail_new();
@@ -79,7 +90,7 @@ int perform_capture(char* device, char* output_file, char* max_size) {
 
 int main(int argc, char** argv) {
   if (argc < 4) {
-    fprintf(stderr, "Usage: %s <device> <output_file>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <device> <output_file> <max_size>\n", argv[0]);
     return 1;
   }
 
