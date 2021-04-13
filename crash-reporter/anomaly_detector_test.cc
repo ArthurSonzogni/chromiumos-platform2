@@ -463,7 +463,8 @@ TEST(AnomalyDetectorTest, SuspendFailure) {
       .expected_text =
           "-suspend failure: device: dummy_dev step: suspend errno: -22",
       .expected_flags = {{"--suspend_failure"}}};
-  ParserTest<SuspendParser>("TEST_SUSPEND_FAILURE", {suspend_failure});
+  SuspendParser parser(true);
+  ParserTest("TEST_SUSPEND_FAILURE", {suspend_failure}, &parser);
 }
 
 MATCHER_P2(SignalEq, interface, member, "") {

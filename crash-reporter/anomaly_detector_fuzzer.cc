@@ -39,7 +39,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   parsers["init"] =
       std::make_unique<anomaly::ServiceParser>(stream.ConsumeBool());
   parsers["kernel"] = std::make_unique<anomaly::KernelParser>();
-  parsers["powerd_suspend"] = std::make_unique<anomaly::SuspendParser>();
+  parsers["powerd_suspend"] =
+      std::make_unique<anomaly::SuspendParser>(stream.ConsumeBool());
   parsers["crash_reporter"] = std::make_unique<anomaly::CrashReporterParser>(
       std::make_unique<test_util::AdvancingClock>(),
       std::make_unique<testing::NiceMock<MetricsLibraryMock>>(),

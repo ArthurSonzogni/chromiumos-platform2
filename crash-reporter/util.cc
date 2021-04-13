@@ -534,6 +534,10 @@ int GetServiceFailureWeight() {
   return 50;
 }
 
+int GetSuspendFailureWeight() {
+  return 50;
+}
+
 bool ReadFdToStream(unsigned int fd, std::stringstream* stream) {
   base::File src(fd);
   char buffer[kBufferSize];

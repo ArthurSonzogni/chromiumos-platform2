@@ -683,9 +683,10 @@ int main(int argc, char* argv[]) {
            {
                .should_handle = FLAGS_suspend_failure,
                .cb = base::BindRepeating(
-                   &GenericFailureCollector::Collect,
+                   &GenericFailureCollector::CollectWithWeight,
                    base::Unretained(&generic_failure_collector),
-                   GenericFailureCollector::kSuspendFailure),
+                   GenericFailureCollector::kSuspendFailure,
+                   util::GetSuspendFailureWeight()),
            },
            {
                .should_handle = !FLAGS_arc_service_failure.empty(),

@@ -129,6 +129,10 @@ int GetSelinuxWeight();
 // 1.0/GetServiceFailureWeight() of the failures.
 int GetServiceFailureWeight();
 
+// Return the weight for suspend failures. We'll only collect
+// 1.0/GetSuspendFailureWeight() of the failures.
+int GetSuspendFailureWeight();
+
 // Read the content binding to fd to stream.
 bool ReadFdToStream(unsigned int fd, std::stringstream* stream);
 

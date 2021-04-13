@@ -34,6 +34,12 @@ class GenericFailureCollector : public CrashCollector {
     return CollectFull(exec_name, exec_name, base::nullopt);
   }
 
+  // Collects generic failure with a weight specified.
+  bool CollectWithWeight(const std::string& exec_name,
+                         base::Optional<int> weight) {
+    return CollectFull(exec_name, exec_name, weight);
+  }
+
   // All the bells and whistles.
   // exec_name is the string used for filenames on disk.
   // log_key_name is a key used for the exec_name as passed to GetLogContents

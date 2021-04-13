@@ -340,7 +340,16 @@ constexpr LazyRE2 last_failed_dev = {R"(\s*last_failed_dev: (.+))"};
 constexpr LazyRE2 last_failed_errno = {R"(\s*last_failed_errno: (.+))"};
 constexpr LazyRE2 last_failed_step = {R"(\s*last_failed_step: (.+))"};
 
+SuspendParser::SuspendParser(bool testonly_send_all)
+    : testonly_send_all_(testonly_send_all) {}
+
 MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
+  // We only want to report a fraction of suspend failures due to noise.
+  if (!testonly_send_all_ &&
+      base::RandGenerator(util::GetSuspendFailureWeight()) != 0) {
+    return base::nullopt;
+  }
+
   if (last_line_ == LineType::None &&
       line.find(begin_suspend_error_stats) == 0) {
     last_line_ = LineType::Start;

@@ -125,9 +125,11 @@ class KernelParser : public Parser {
 
 class SuspendParser : public Parser {
  public:
+  explicit SuspendParser(bool testonly_send_all);
   MaybeCrashReport ParseLogEntry(const std::string& line) override;
 
  private:
+  bool testonly_send_all_;
   LineType last_line_ = LineType::None;
   std::string dev_str_;
   std::string errno_str_;
