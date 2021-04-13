@@ -10773,61 +10773,9 @@ mno {
     }
     mccmnc : "26001"
     mobile_apn {
-      apn : "internet"
+      apn : "plus"
       localized_name {
         name : "LTE Plus"
-      }
-      username : "plusgsm"
-      password : "plusgsm"
-      dns : "212.2.96.51"
-      dns : "212.2.96.52"
-    }
-    mobile_apn {
-      apn : "www.plusgsm.pl"
-      localized_name {
-        name : "Standard access"
-      }
-      localized_name {
-        name : "Dostęp standardowy"
-      }
-      username : "plusgsm"
-      password : "plusgsm"
-      dns : "212.2.96.51"
-      dns : "212.2.96.52"
-    }
-    mobile_apn {
-      apn : "pro.plusgsm.pl"
-      localized_name {
-        name : "External dynamic IP address (requires activation)"
-      }
-      localized_name {
-        name : "Zewnętrzny dynamiczny adres IP (wymaga aktywacji)"
-      }
-      username : "plusgsm"
-      password : "plusgsm"
-      dns : "212.2.96.51"
-      dns : "212.2.96.52"
-    }
-    mobile_apn {
-      apn : "m2m.plusgsm.pl"
-      localized_name {
-        name : "External static IP address (requires activation)"
-      }
-      localized_name {
-        name : "Zewnętrzny statyczny adres IP (wymaga aktywacji)"
-      }
-      username : "plusgsm"
-      password : "plusgsm"
-      dns : "212.2.96.51"
-      dns : "212.2.96.52"
-    }
-    mobile_apn {
-      apn : "optimizer"
-      localized_name {
-        name : "iPlus optimizer with data compression"
-      }
-      localized_name {
-        name : "iPlus optimizer z kompresją danych"
       }
       dns : "212.2.96.51"
       dns : "212.2.96.52"
