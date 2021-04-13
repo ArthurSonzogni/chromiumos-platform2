@@ -4582,6 +4582,9 @@ int main(int argc, char** argv) {
           setenv("LIBGL_DRIVERS_PATH", XWAYLAND_GL_DRIVER_PATH, 1);
         }
 
+        // TODO(b/180731892): remove after fixing in host-side virglrenderer
+        setenv("VIRGL_DEBUG", "noemubgra,nobgraswz", 0);
+
         sl_execvp(args[0], const_cast<char* const*>(args), sv[1]);
         _exit(EXIT_FAILURE);
       }
