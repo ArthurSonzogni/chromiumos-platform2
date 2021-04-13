@@ -11,6 +11,15 @@
 
 namespace croslog {
 
+namespace {
+bool StartsWithCaseInsensitive(const base::StringPiece& s,
+                               const base::StringPiece& prefix) {
+  return (s.length() >= prefix.length()) &&
+         (base::CompareCaseInsensitiveASCII(s.substr(0, prefix.length()),
+                                            prefix) == 0);
+}
+}  // anonymous namespace
+
 Severity SeverityFromString(const std::string& severity_str) {
   if (severity_str == "0" ||
       base::CompareCaseInsensitiveASCII(severity_str, "emerg") == 0) {
@@ -37,7 +46,10 @@ Severity SeverityFromString(const std::string& severity_str) {
              base::CompareCaseInsensitiveASCII(severity_str, "info") == 0) {
     return Severity::INFO;
   } else if (severity_str == "7" ||
-             base::CompareCaseInsensitiveASCII(severity_str, "debug") == 0) {
+             base::CompareCaseInsensitiveASCII(severity_str, "debug") == 0 ||
+             // In Chrome log, "verbose" severity is followed by a number like
+             // verbose[0-9] (eg. "verbose1").
+             StartsWithCaseInsensitive(severity_str, "verbose")) {
     return Severity::DEBUG;
   } else {
     LOG(ERROR) << "Unknown value in 'priority' argument: " << severity_str
