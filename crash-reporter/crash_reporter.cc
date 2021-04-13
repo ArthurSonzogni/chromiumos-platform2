@@ -261,6 +261,9 @@ int main(int argc, char* argv[]) {
               "Persist early user crash reports across clobbers.");
   DEFINE_string(user, "", "User crash info (pid:signal:exec_name)");
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
+  DEFINE_int32(weight, 1,
+               "Weight to mark report. Used for sampling. "
+               "(If we send 1/n reports, the weight should be n.)");
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
   DEFINE_bool(kernel_iwlwifi_error, false,
               "Report collected kernel iwlwifi error");
@@ -634,9 +637,9 @@ int main(int argc, char* argv[]) {
 
   KernelWarningCollector kernel_warning_collector;
   base::RepeatingCallback<bool(KernelWarningCollector::WarningType)>
-      kernel_warn_cb =
-          base::BindRepeating(&KernelWarningCollector::Collect,
-                              base::Unretained(&kernel_warning_collector));
+      kernel_warn_cb = base::BindRepeating(
+          &KernelWarningCollector::Collect,
+          base::Unretained(&kernel_warning_collector), FLAGS_weight);
   collectors.push_back({
       .collector = &kernel_warning_collector,
       .handlers = {{

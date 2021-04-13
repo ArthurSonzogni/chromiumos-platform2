@@ -90,10 +90,13 @@ TEST_F(KernelWarningCollectorTest, CollectOK) {
                             "\n"
                             "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kGeneric));
+      collector_.Collect(10, KernelWarningCollector::WarningType::kGeneric));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_warning_iwl_mvm_rm_sta.*.meta",
       "sig=70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()"));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_warning_iwl_mvm_rm_sta.*.meta",
+      "upload_var_weight=10"));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectBad) {
@@ -103,7 +106,7 @@ TEST_F(KernelWarningCollectorTest, CollectBad) {
                             "[    0.000000] percpu: Embedded 32 pages/cpu "
                             "s91880 r8192 d31000 u131072"));
   EXPECT_FALSE(
-      collector_.Collect(KernelWarningCollector::WarningType::kGeneric));
+      collector_.Collect(10, KernelWarningCollector::WarningType::kGeneric));
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
 
@@ -116,7 +119,7 @@ TEST_F(KernelWarningCollectorTest, CollectOKMultiline) {
                             "\n"
                             "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kGeneric));
+      collector_.Collect(10, KernelWarningCollector::WarningType::kGeneric));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_warning_iwl_mvm_rm_sta.*.meta",
       "sig=70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()"));
@@ -130,7 +133,7 @@ TEST_F(KernelWarningCollectorTest, CollectOKUnknownFunc) {
                             "\n"
                             "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kGeneric));
+      collector_.Collect(10, KernelWarningCollector::WarningType::kGeneric));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_warning_unknown_function.*.meta",
       "sig=70e67541-unknown-function+0x161/0x344 [iwlmvm]()"));
@@ -143,7 +146,7 @@ TEST_F(KernelWarningCollectorTest, CollectOKBadSig) {
                                     "\n"
                                     "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kGeneric));
+      collector_.Collect(10, KernelWarningCollector::WarningType::kGeneric));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_warning.*.meta",
       "sig=70e67541-0x161/0x344 [iwlmvm]()"));
@@ -156,9 +159,13 @@ TEST_F(KernelWarningCollectorTest, CollectWifiWarningOK) {
                             "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
                             "\n"
                             "<remaining log contents>"));
-  EXPECT_TRUE(collector_.Collect(KernelWarningCollector::WarningType::kWifi));
+  EXPECT_TRUE(
+      collector_.Collect(50, KernelWarningCollector::WarningType::kWifi));
   EXPECT_TRUE(DirectoryHasFileWithPattern(
       test_crash_directory_, "kernel_wifi_warning_iwl_mvm_rm_sta.*.meta"));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_wifi_warning_iwl_mvm_rm_sta.*.meta",
+      "upload_var_weight=50"));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectAth10k) {
@@ -179,10 +186,14 @@ TEST_F(KernelWarningCollectorTest, CollectAth10k) {
       "[393652.070195] ath10k_snoc 18800000.wifi: "
       "htt-ver 3.86 wmi-op 4 htt-op 3 cal file max-sta 32 raw 0 hwcrypto 1\n"
       "<remaining log contents>"));
-  EXPECT_TRUE(collector_.Collect(KernelWarningCollector::WarningType::kAth10k));
+  EXPECT_TRUE(
+      collector_.Collect(50, KernelWarningCollector::WarningType::kAth10k));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_ath10k_error_firmware_crashed.*.meta",
       "sig=ath10k_snoc 18800000.wifi: firmware crashed"));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_ath10k_error_firmware_crashed.*.meta",
+      "upload_var_weight=50"));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectUMACOK) {
@@ -268,10 +279,13 @@ TEST_F(KernelWarningCollectorTest, CollectUMACOK) {
       "[47755.132606] iwlwifi 0000:00:14.3: Collecting data: trigger 2 fired.\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kIwlwifi));
+      collector_.Collect(50, KernelWarningCollector::WarningType::kIwlwifi));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
       "sig=iwlwifi 0000:00:14.3: 0x201002FF | ADVANCED_SYSASSERT"));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
+      "upload_var_weight=50"));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectSMMUFaultOk) {
@@ -283,10 +297,14 @@ TEST_F(KernelWarningCollectorTest, CollectSMMUFaultOk) {
       "read\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kSMMUFault));
+      collector_.Collect(1, KernelWarningCollector::WarningType::kSMMUFault));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_smmu_fault_15000000_iommu.*.meta",
       "sig=fsr=0x402, iova=0x04367000, fsynr=0x30023, cbfrsynra=0x800, cb=5"));
+  // Should *not* have a weight
+  EXPECT_FALSE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_smmu_fault_15000000_iommu.*.meta",
+      "upload_var_weight="));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectSMMUFaultBad) {
@@ -300,7 +318,7 @@ TEST_F(KernelWarningCollectorTest, CollectSMMUFaultBad) {
       "36-bit IPA\n"
       "<remaining log contents>"));
   EXPECT_FALSE(
-      collector_.Collect(KernelWarningCollector::WarningType::kSMMUFault));
+      collector_.Collect(1, KernelWarningCollector::WarningType::kSMMUFault));
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
 
@@ -386,11 +404,15 @@ TEST_F(KernelWarningCollectorTest, CollectLMACOK) {
       "CNVR_SCU_SD_REGS_SD_REG_ACTIVE_VDIG_MIRROR\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kIwlwifi));
+      collector_.Collect(50, KernelWarningCollector::WarningType::kIwlwifi));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_,
       "kernel_iwlwifi_error_NMI_INTERRUPT_UNKNOWN.*.meta",
       "sig=iwlwifi 0000:00:14.3: 0x00000084 | NMI_INTERRUPT_UNKNOWN"));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_,
+      "kernel_iwlwifi_error_NMI_INTERRUPT_UNKNOWN.*.meta",
+      "upload_var_weight=50"));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectDriverError) {
@@ -459,10 +481,13 @@ TEST_F(KernelWarningCollectorTest, CollectDriverError) {
       "[47755.132606] iwlwifi 0000:01:00.0: Scan failed! ret -110\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kIwlwifi));
+      collector_.Collect(50, KernelWarningCollector::WarningType::kIwlwifi));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
       "sig=iwlwifi 0000:01:00.0: 0x00000000 | ADVANCED_SYSASSERT"));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
+      "upload_var_weight=50"));
 }
 
 TEST_F(KernelWarningCollectorTest, CollectOKBadIwlwifiSig) {
@@ -485,8 +510,11 @@ TEST_F(KernelWarningCollectorTest, CollectOKBadIwlwifiSig) {
       "[47755.132606] iwlwifi 0000:01:00.0: 0x00000000 | umac branchlink1\n"
       "<remaining log contents>"));
   EXPECT_TRUE(
-      collector_.Collect(KernelWarningCollector::WarningType::kIwlwifi));
+      collector_.Collect(50, KernelWarningCollector::WarningType::kIwlwifi));
   EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error.*.meta",
       "sig=iwlwifi unknown signature"));
+  EXPECT_TRUE(DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_iwlwifi_error.*.meta",
+      "upload_var_weight=50"));
 }

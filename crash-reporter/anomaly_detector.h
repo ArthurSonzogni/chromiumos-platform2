@@ -88,6 +88,7 @@ class SELinuxParser : public Parser {
 
 class KernelParser : public Parser {
  public:
+  explicit KernelParser(bool testonly_send_all);
   MaybeCrashReport ParseLogEntry(const std::string& line) override;
 
  private:
@@ -111,6 +112,8 @@ class KernelParser : public Parser {
     None,
     Start,
   };
+  const bool testonly_send_all_;
+
   LineType last_line_ = LineType::None;
   IwlwifiLineType iwlwifi_last_line_ = IwlwifiLineType::None;
   std::string iwlwifi_text_;

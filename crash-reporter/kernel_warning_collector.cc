@@ -272,8 +272,12 @@ bool KernelWarningCollector::ExtractAth10kSignature(const std::string& content,
   return false;
 }
 
-bool KernelWarningCollector::Collect(WarningType type) {
+bool KernelWarningCollector::Collect(int weight, WarningType type) {
   LOG(INFO) << "Processing kernel warning";
+
+  if (weight != 1) {
+    AddCrashMetaUploadData("weight", StringPrintf("%d", weight));
+  }
 
   std::string kernel_warning;
   std::string warning_signature;

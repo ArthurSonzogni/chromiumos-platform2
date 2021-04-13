@@ -54,8 +54,9 @@ TEST(AnomalyDetectorTest, KernelAth10kSNOCError) {
           "[393652.070195] ath10k_snoc 18800000.wifi: "
           "htt-ver 3.86 wmi-op 4 htt-op 3 cal file max-sta 32 raw 0 hwcrypto "
           "1\n",
-      .expected_flags = {{"--kernel_ath10k_error"}}};
-  ParserTest<KernelParser>("TEST_ATH10K_SNOC", {wifi_error});
+      .expected_flags = {{"--kernel_ath10k_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_ATH10K_SNOC", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelAth10kSDIOError) {
@@ -76,8 +77,9 @@ TEST(AnomalyDetectorTest, KernelAth10kSDIOError) {
           "[10108611.999887] ath10k_sdio mmc1:0001:1: "
           "htt-ver 3.86 wmi-op 4 htt-op 3 cal otp max-sta 32 raw 0 hwcrypto "
           "1\n",
-      .expected_flags = {{"--kernel_ath10k_error"}}};
-  ParserTest<KernelParser>("TEST_ATH10K_SDIO", {wifi_error});
+      .expected_flags = {{"--kernel_ath10k_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_ATH10K_SDIO", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelAth10kPCIError) {
@@ -97,8 +99,9 @@ TEST(AnomalyDetectorTest, KernelAth10kPCIError) {
           "[ 1582.996936] ath10k_pci 0000:01:00.0: "
           "htt-ver 3.60 wmi-op 4 htt-op 3 cal otp max-sta 32 raw 0 hwcrypto "
           "1\n",
-      .expected_flags = {{"--kernel_ath10k_error"}}};
-  ParserTest<KernelParser>("TEST_ATH10K_PCI", {wifi_error});
+      .expected_flags = {{"--kernel_ath10k_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_ATH10K_PCI", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelAth10kErrorNoEnd) {
@@ -115,8 +118,9 @@ TEST(AnomalyDetectorTest, KernelAth10kErrorNoEnd) {
           "-info-per-channel crc32 3f19f7c1\n"
           "[393652.070158] ath10k_snoc 18800000.wifi: board_file api 2 bmi_id"
           " N/A crc32 00000000\n",
-      .expected_flags = {{"--kernel_ath10k_error"}}};
-  ParserTest<KernelParser>("TEST_ATH10K_NO_END", {wifi_error});
+      .expected_flags = {{"--kernel_ath10k_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_ATH10K_NO_END", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmacUmac) {
@@ -181,8 +185,9 @@ TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmacUmac) {
           "[15883.337511] iwlwifi 0000:00:0c.0: 0xC088627C | stack pointer\n"
           "[15883.337514] iwlwifi 0000:00:0c.0: 0x007B019C | last host cmd\n"
           "[15883.337516] iwlwifi 0000:00:0c.0: 0x00000000 | isr status reg\n",
-      .expected_flags = {{"--kernel_iwlwifi_error"}}};
-  ParserTest<KernelParser>("TEST_IWLWIFI_LMAC_UMAC", {wifi_error});
+      .expected_flags = {{"--kernel_iwlwifi_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_IWLWIFI_LMAC_UMAC", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmacTwoSpace) {
@@ -228,8 +233,9 @@ TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmacTwoSpace) {
           "[79553.431095] iwlwifi 0000:02:00.0: 0x00000005 | lmpm_pmg_sel\n"
           "[79553.431100] iwlwifi 0000:02:00.0: 0x07071159 | timestamp\n"
           "[79553.431104] iwlwifi 0000:02:00.0: 0x00340010 | flow_handler\n",
-      .expected_flags = {{"--kernel_iwlwifi_error"}}};
-  ParserTest<KernelParser>("TEST_IWLWIFI_LMAC_TWO_SPACE", {wifi_error});
+      .expected_flags = {{"--kernel_iwlwifi_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_IWLWIFI_LMAC_TWO_SPACE", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelIwlwifiDriverError) {
@@ -304,8 +310,9 @@ TEST(AnomalyDetectorTest, KernelIwlwifiDriverError) {
           "0000:01:00.0: 0x00000000 | timestamp\n"
           "2020-09-01T11:03:11.221478-07:00 ERR kernel: [ 2448.183473] iwlwifi "
           "0000:01:00.0: 0x00000000 | flow_handler\n",
-      .expected_flags = {{"--kernel_iwlwifi_error"}}};
-  ParserTest<KernelParser>("TEST_IWLWIFI_DRIVER_ERROR", {wifi_error});
+      .expected_flags = {{"--kernel_iwlwifi_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_IWLWIFI_DRIVER_ERROR", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmac) {
@@ -351,8 +358,9 @@ TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmac) {
           "[15883.337427] iwlwifi 0000:00:0c.0: 0x0000008F | lmpm_pmg_sel\n"
           "[15883.337429] iwlwifi 0000:00:0c.0: 0x24021230 | timestamp\n"
           "[15883.337432] iwlwifi 0000:00:0c.0: 0x0000B0D8 | flow_handler\n",
-      .expected_flags = {{"--kernel_iwlwifi_error"}}};
-  ParserTest<KernelParser>("TEST_IWLWIFI_LMAC", {wifi_error});
+      .expected_flags = {{"--kernel_iwlwifi_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_IWLWIFI_LMAC", {wifi_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelSMMU_FAULT) {
@@ -361,67 +369,80 @@ TEST(AnomalyDetectorTest, KernelSMMU_FAULT) {
           "[   74.047205] arm-smmu 15000000.iommu: Unhandled context fault: "
           "fsr=0x402, iova=0x04367000, fsynr=0x30023, cbfrsynra=0x800, cb=5\n",
       .expected_flags = {{"--kernel_smmu_fault"}}};
-  ParserTest<KernelParser>("TEST_SMMU_FAULT", {smmu_error});
+  KernelParser parser(true);
+  ParserTest("TEST_SMMU_FAULT", {smmu_error}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarning) {
   ParserRun second{
       .find_this = "ttm_bo_vm.c",
       .replace_with = "file_one.c",
-      .expected_text = "0x19e/0x1ab [ttm]()\n[ 3955.309298] Modules linked in"};
-  ParserTest<KernelParser>("TEST_WARNING", {simple_run, second});
+      .expected_text = "0x19e/0x1ab [ttm]()\n[ 3955.309298] Modules linked in",
+      .expected_flags = {{"--kernel_warning", "--weight=10"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING", {simple_run, second}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarningNoDuplicate) {
   ParserRun identical_warning{.expected_size = 0};
-  ParserTest<KernelParser>("TEST_WARNING", {simple_run, identical_warning});
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING", {simple_run, identical_warning}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarningHeader) {
   ParserRun warning_message{.expected_text = "Test Warning message asdfghjkl"};
-  ParserTest<KernelParser>("TEST_WARNING_HEADER", {warning_message});
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING_HEADER", {warning_message}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarningOld) {
-  ParserTest<KernelParser>("TEST_WARNING_OLD", {simple_run});
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING_OLD", {simple_run}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarningOldARM64) {
   ParserRun unknown_function{.expected_text = "-unknown-function\n"};
-  ParserTest<KernelParser>("TEST_WARNING_OLD_ARM64", {unknown_function});
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING_OLD_ARM64", {unknown_function}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarningWifi) {
-  ParserRun wifi_warning = {.find_this = "gpu/drm/ttm",
-                            .replace_with = "net/wireless",
-                            .expected_flags = {{"--kernel_wifi_warning"}}};
-  ParserTest<KernelParser>("TEST_WARNING", {wifi_warning});
+  ParserRun wifi_warning = {
+      .find_this = "gpu/drm/ttm",
+      .replace_with = "net/wireless",
+      .expected_flags = {{"--kernel_wifi_warning", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING", {wifi_warning}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarningWifiMac80211) {
-  ParserRun wifi_warning = {.expected_flags = {{"--kernel_wifi_warning"}}};
-  ParserTest<KernelParser>("TEST_WIFI_WARNING", {wifi_warning});
+  ParserRun wifi_warning = {
+      .expected_flags = {{"--kernel_wifi_warning", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_WIFI_WARNING", {wifi_warning}, &parser);
 }
 
 TEST(AnomalyDetectorTest, KernelWarningSuspend) {
   ParserRun suspend_warning = {
       .find_this = "gpu/drm/ttm",
       .replace_with = "idle",
-      .expected_flags = {{"--kernel_suspend_warning"}}};
-  ParserTest<KernelParser>("TEST_WARNING", {suspend_warning});
+      .expected_flags = {{"--kernel_suspend_warning", "--weight=10"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING", {suspend_warning}, &parser);
 }
 
 TEST(AnomalyDetectorTest, CrashReporterCrash) {
   ParserRun crash_reporter_crash = {
       .expected_flags = {{"--crash_reporter_crashed"}}};
-  ParserTest<KernelParser>("TEST_CR_CRASH", {crash_reporter_crash});
+  KernelParser parser(true);
+  ParserTest("TEST_CR_CRASH", {crash_reporter_crash}, &parser);
 }
 
 TEST(AnomalyDetectorTest, CrashReporterCrashRateLimit) {
   ParserRun crash_reporter_crash = {
       .expected_flags = {{"--crash_reporter_crashed"}}};
-  ParserTest<KernelParser>("TEST_CR_CRASH",
-                           {crash_reporter_crash, empty, empty});
+  KernelParser parser(true);
+  ParserTest("TEST_CR_CRASH", {crash_reporter_crash, empty, empty}, &parser);
 }
 
 TEST(AnomalyDetectorTest, ServiceFailure) {

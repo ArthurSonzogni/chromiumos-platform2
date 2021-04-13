@@ -221,6 +221,9 @@ constexpr LazyRE2 header = {
 
 constexpr LazyRE2 smmu_fault = {R"(Unhandled context fault: fsr=0x)"};
 
+KernelParser::KernelParser(bool testonly_send_all)
+    : testonly_send_all_(testonly_send_all) {}
+
 MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
   if (last_line_ == LineType::None) {
     if (line.find(cut_here) != std::string::npos)
@@ -257,7 +260,16 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       last_line_ = LineType::None;
       std::string text_tmp;
       text_tmp.swap(text_);
-      return CrashReport(std::move(text_tmp), {std::move(flag_)});
+
+      // Sample kernel warnings since they are too noisy and overload the crash
+      // server. (See http://b/185156234.)
+      const int kWeight = util::GetKernelWarningWeight(flag_);
+      if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
+        return base::nullopt;
+      }
+      return CrashReport(
+          std::move(text_tmp),
+          {std::move(flag_), base::StringPrintf("--weight=%d", kWeight)});
     }
     text_ += line + "\n";
   }
@@ -278,8 +290,16 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       }
       std::string ath10k_text_tmp;
       ath10k_text_tmp.swap(ath10k_text_);
-      return CrashReport(std::move(ath10k_text_tmp),
-                         {std::move("--kernel_ath10k_error")});
+
+      const std::string kFlag = "--kernel_ath10k_error";
+      const int kWeight = util::GetKernelWarningWeight(kFlag);
+      if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
+        return base::nullopt;
+      }
+
+      return CrashReport(
+          std::move(ath10k_text_tmp),
+          {std::move(kFlag), base::StringPrintf("--weight=%d", kWeight)});
     }
 
     ath10k_text_ += line + "\n";
@@ -300,8 +320,16 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       iwlwifi_text_ += line + "\n";
       std::string iwlwifi_text_tmp;
       iwlwifi_text_tmp.swap(iwlwifi_text_);
-      return CrashReport(std::move(iwlwifi_text_tmp),
-                         {std::move("--kernel_iwlwifi_error")});
+
+      const std::string kFlag = "--kernel_iwlwifi_error";
+      const int kWeight = util::GetKernelWarningWeight(kFlag);
+      if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
+        return base::nullopt;
+      }
+
+      return CrashReport(
+          std::move(iwlwifi_text_tmp),
+          {std::move(kFlag), base::StringPrintf("--weight=%d", kWeight)});
     }
     iwlwifi_text_ += line + "\n";
   } else if (iwlwifi_last_line_ == IwlwifiLineType::Lmac) {
@@ -314,8 +342,16 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       iwlwifi_last_line_ = IwlwifiLineType::None;
       std::string iwlwifi_text_tmp;
       iwlwifi_text_tmp.swap(iwlwifi_text_);
-      return CrashReport(std::move(iwlwifi_text_tmp),
-                         {std::move("--kernel_iwlwifi_error")});
+
+      const std::string kFlag = "--kernel_iwlwifi_error";
+      const int kWeight = util::GetKernelWarningWeight(kFlag);
+      if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
+        return base::nullopt;
+      }
+
+      return CrashReport(
+          std::move(iwlwifi_text_tmp),
+          {std::move(kFlag), base::StringPrintf("--weight=%d", kWeight)});
     }
   }
 

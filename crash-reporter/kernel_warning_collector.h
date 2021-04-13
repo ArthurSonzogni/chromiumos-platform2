@@ -39,7 +39,7 @@ class KernelWarningCollector : public CrashCollector {
   ~KernelWarningCollector() override;
 
   // Collects warning.
-  bool Collect(WarningType type);
+  bool Collect(int weight, WarningType type);
 
  protected:
   std::string warning_report_path_;

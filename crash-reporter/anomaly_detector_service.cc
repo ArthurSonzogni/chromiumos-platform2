@@ -76,7 +76,8 @@ Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
       std::make_unique<anomaly::SELinuxParser>(testonly_send_all);
   parsers_["init"] =
       std::make_unique<anomaly::ServiceParser>(testonly_send_all);
-  parsers_["kernel"] = std::make_unique<anomaly::KernelParser>();
+  parsers_["kernel"] =
+      std::make_unique<anomaly::KernelParser>(testonly_send_all);
   parsers_["powerd_suspend"] =
       std::make_unique<anomaly::SuspendParser>(testonly_send_all);
   parsers_["crash_reporter"] = std::make_unique<anomaly::CrashReporterParser>(
