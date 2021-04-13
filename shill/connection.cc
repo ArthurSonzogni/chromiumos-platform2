@@ -320,6 +320,13 @@ void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
 void Connection::UpdateRoutingPolicy() {
   routing_table_->FlushRules(interface_index_);
 
+  // b/180521518: IPv6 routing rules are always omitted for a Cellular
+  // connection that is not the primary physical connection. This prevents
+  // applications from accidentally using the Cellular network and causing data
+  // charges with IPv6 traffic when the primary physical connection is IPv4
+  // only.
+  bool no_ipv6 = technology_ == Technology::kCellular && !is_primary_physical_;
+
   uint32_t blackhole_offset = 0;
   if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
     blackhole_offset = 1;
@@ -329,11 +336,14 @@ void Connection::UpdateRoutingPolicy() {
                        .SetTable(blackhole_table_id_)
                        .SetUidRange({uid, uid});
       routing_table_->AddRule(interface_index_, entry);
+      if (no_ipv6) {
+        continue;
+      }
       routing_table_->AddRule(interface_index_, entry.FlipFamily());
     }
   }
 
-  AllowTrafficThrough(table_id_, priority_ + blackhole_offset);
+  AllowTrafficThrough(table_id_, priority_ + blackhole_offset, no_ipv6);
 
   // b/177620923 Add uid rules just before the default rule to route to the VPN
   // interface any untagged traffic owner by a uid routed through VPN
@@ -375,13 +385,17 @@ void Connection::UpdateRoutingPolicy() {
 }
 
 void Connection::AllowTrafficThrough(uint32_t table_id,
-                                     uint32_t base_priority) {
+                                     uint32_t base_priority,
+                                     bool no_ipv6) {
   for (const auto& uid : allowed_uids_) {
     auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                      .SetPriority(base_priority)
                      .SetTable(table_id)
                      .SetUid(uid);
     routing_table_->AddRule(interface_index_, entry);
+    if (no_ipv6) {
+      continue;
+    }
     routing_table_->AddRule(interface_index_, entry.FlipFamily());
   }
 
@@ -391,10 +405,16 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
                      .SetTable(table_id)
                      .SetIif(interface_name);
     routing_table_->AddRule(interface_index_, entry);
+    if (no_ipv6) {
+      continue;
+    }
     routing_table_->AddRule(interface_index_, entry.FlipFamily());
   }
 
   for (const auto& source_address : allowed_srcs_) {
+    if (source_address.family() == IPAddress::kFamilyIPv6 && no_ipv6)
+      continue;
+
     routing_table_->AddRule(interface_index_,
                             RoutingPolicyEntry::CreateFromSrc(source_address)
                                 .SetPriority(base_priority)
@@ -402,6 +422,9 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
   }
 
   for (const auto& dst_address : allowed_dsts_) {
+    if (dst_address.family() == IPAddress::kFamilyIPv6 && no_ipv6)
+      continue;
+
     routing_table_->AddRule(interface_index_,
                             RoutingPolicyEntry::CreateFromDst(dst_address)
                                 .SetPriority(kDstRulePriority)
@@ -416,7 +439,10 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
           .SetTable(table_id)
           .SetFwMark(GetFwmarkRoutingTag(interface_index_));
   routing_table_->AddRule(interface_index_, fwmark_routing_entry);
-  routing_table_->AddRule(interface_index_, fwmark_routing_entry.FlipFamily());
+  if (!no_ipv6) {
+    routing_table_->AddRule(interface_index_,
+                            fwmark_routing_entry.FlipFamily());
+  }
 
   for (const auto& fwmark : included_fwmarks_) {
     auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
@@ -424,6 +450,9 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
                      .SetTable(table_id)
                      .SetFwMark(fwmark);
     routing_table_->AddRule(interface_index_, entry);
+    if (no_ipv6) {
+      continue;
+    }
     routing_table_->AddRule(interface_index_, entry.FlipFamily());
   }
 
@@ -435,7 +464,9 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
           .SetPriority(base_priority)
           .SetOif(interface_name_);
   routing_table_->AddRule(interface_index_, oif_rule);
-  routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
+  if (!no_ipv6) {
+    routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
+  }
 
   if (use_if_addrs_) {
     // Select the per-device table if the outgoing packet's src address matches
@@ -444,6 +475,9 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
     // TODO(crbug.com/941597) This may need to change when NDProxy allows guests
     // to provision IPv6 addresses.
     for (const auto& address : device_info_->GetAddresses(interface_index_)) {
+      if (address.family() == IPAddress::kFamilyIPv6 && no_ipv6)
+        continue;
+
       routing_table_->AddRule(interface_index_,
                               RoutingPolicyEntry::CreateFromSrc(address)
                                   .SetTable(table_id)
@@ -455,7 +489,9 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
             .SetPriority(base_priority)
             .SetIif(interface_name_);
     routing_table_->AddRule(interface_index_, iif_rule);
-    routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
+    if (!no_ipv6) {
+      routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
+    }
   }
 }
 

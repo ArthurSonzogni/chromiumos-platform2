@@ -161,7 +161,9 @@ class Connection : public base::RefCounted<Connection> {
   // traffic matches one of the excluded destination addresses set up in
   // SetupExcludedRoutes, then no routes in the per-Device table for this
   // Connection will be used for that traffic.
-  void AllowTrafficThrough(uint32_t table_id, uint32_t base_priority);
+  void AllowTrafficThrough(uint32_t table_id,
+                           uint32_t base_priority,
+                           bool no_ipv6);
 
   // Send our DNS configuration to the resolver.
   void PushDNSConfig();
