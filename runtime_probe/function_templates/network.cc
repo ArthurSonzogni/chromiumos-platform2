@@ -4,13 +4,16 @@
 
 #include "runtime_probe/function_templates/network.h"
 
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/containers/span.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/json/json_writer.h>
 #include <base/values.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus-proxies.h>
 
@@ -63,10 +66,8 @@ base::Optional<uint8_t> GetPciRevisionIdFromConfig(base::FilePath node_path) {
   return revision_array[0];
 }
 
-}  // namespace
-
-std::vector<brillo::VariantDictionary> NetworkFunction::GetDevicesProps(
-    base::Optional<std::string> type) const {
+std::vector<brillo::VariantDictionary> GetDevicesProps(
+    base::Optional<std::string> type) {
   std::vector<brillo::VariantDictionary> devices_props{};
 
   brillo::DBusConnection dbus_connection;
@@ -94,8 +95,8 @@ std::vector<brillo::VariantDictionary> NetworkFunction::GetDevicesProps(
         std::make_unique<org::chromium::flimflam::DeviceProxy>(bus, path);
     brillo::VariantDictionary device_props;
     if (!device->GetProperties(&device_props, nullptr)) {
-      DLOG(INFO) << "Unable to get device properties of " << path.value()
-                 << ". Skipped.";
+      VLOG(2) << "Unable to get device properties of " << path.value()
+              << ". Skipped.";
       continue;
     }
     auto device_type = device_props[shill::kTypeProperty].TryGet<std::string>();
@@ -107,67 +108,7 @@ std::vector<brillo::VariantDictionary> NetworkFunction::GetDevicesProps(
   return devices_props;
 }
 
-NetworkFunction::DataType NetworkFunction::Eval() const {
-  auto json_output = InvokeHelperToJSON();
-  if (!json_output) {
-    LOG(ERROR)
-        << "Failed to invoke helper to retrieve cached network information.";
-    return {};
-  }
-
-  if (!json_output->is_list()) {
-    LOG(ERROR) << "Failed to parse output from " << GetFunctionName()
-               << "::EvalInHelper.";
-    return {};
-  }
-
-  return DataType(json_output->TakeList());
-}
-
-int NetworkFunction::EvalInHelper(std::string* output) const {
-  const auto devices_props = GetDevicesProps(GetNetworkType());
-  base::Value result(base::Value::Type::LIST);
-
-  for (const auto& device_props : devices_props) {
-    base::FilePath node_path(
-        kNetworkDirPath +
-        device_props.at(shill::kInterfaceProperty).TryGet<std::string>());
-    std::string device_type =
-        device_props.at(shill::kTypeProperty).TryGet<std::string>();
-
-    DLOG(INFO) << "Processing the node \"" << node_path.value() << "\".";
-
-    // Get type specific fields and their values.
-    auto node_res = EvalInHelperByPath(node_path);
-    if (!node_res)
-      continue;
-
-    // Report the absolute path we probe the reported info from.
-    DLOG_IF(INFO, node_res->FindStringKey("path"))
-        << "Attribute \"path\" already existed. Overrided.";
-    node_res->SetStringKey("path", node_path.value());
-
-    DLOG_IF(INFO, node_res->FindStringKey("type"))
-        << "Attribute \"type\" already existed. Overrided.";
-    // Align with the category name.
-    if (device_type == shill::kTypeWifi) {
-      node_res->SetStringKey("type", kTypeWireless);
-    } else {
-      node_res->SetStringKey("type", device_type);
-    }
-
-    result.Append(std::move(*node_res));
-  }
-  if (!base::JSONWriter::Write(result, output)) {
-    LOG(ERROR) << "Failed to serialize network probed result to json string.";
-    return -1;
-  }
-
-  return 0;
-}
-
-base::Optional<base::Value> NetworkFunction::EvalInHelperByPath(
-    const base::FilePath& node_path) const {
+base::Optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
   const auto dev_path = node_path.Append("device");
   const auto dev_subsystem_path = dev_path.Append("subsystem");
   base::FilePath dev_subsystem_link_path;
@@ -216,6 +157,46 @@ base::Optional<base::Value> NetworkFunction::EvalInHelperByPath(
   res->SetStringKey("bus_type", bus_type);
 
   return res;
+}
+
+}  // namespace
+
+NetworkFunction::DataType NetworkFunction::EvalImpl() const {
+  const auto devices_props = GetDevicesProps(GetNetworkType());
+  NetworkFunction::DataType result{};
+
+  for (const auto& device_props : devices_props) {
+    base::FilePath node_path(
+        kNetworkDirPath +
+        device_props.at(shill::kInterfaceProperty).TryGet<std::string>());
+    std::string device_type =
+        device_props.at(shill::kTypeProperty).TryGet<std::string>();
+
+    VLOG(2) << "Processing the node \"" << node_path.value() << "\".";
+
+    // Get type specific fields and their values.
+    auto node_res = GetNetworkData(node_path);
+    if (!node_res)
+      continue;
+
+    // Report the absolute path we probe the reported info from.
+    VLOG_IF(2, node_res->FindStringKey("path"))
+        << "Attribute \"path\" already existed. Overrided.";
+    node_res->SetStringKey("path", node_path.value());
+
+    VLOG_IF(2, node_res->FindStringKey("type"))
+        << "Attribute \"type\" already existed. Overrided.";
+    // Align with the category name.
+    if (device_type == shill::kTypeWifi) {
+      node_res->SetStringKey("type", kTypeWireless);
+    } else {
+      node_res->SetStringKey("type", device_type);
+    }
+
+    result.push_back(std::move(*node_res));
+  }
+
+  return result;
 }
 
 }  // namespace runtime_probe

@@ -5,40 +5,22 @@
 #ifndef RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
 #define RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
 
-#include <memory>
 #include <string>
-#include <vector>
 
-#include <base/files/file_path.h>
 #include <base/optional.h>
-#include <base/values.h>
-#include <brillo/variant_dictionary.h>
 
 #include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
 
-class NetworkFunction : public ProbeFunction {
- public:
-  DataType Eval() const final;
-
-  int EvalInHelper(std::string* output) const override;
-
+class NetworkFunction : public PrivilegedProbeFunction {
  protected:
   NetworkFunction() = default;
 
   virtual base::Optional<std::string> GetNetworkType() const = 0;
 
-  // Evals the network indicated by |node_path| in runtime_probe_helper.
-  // Returns a dictionary type Value with device attributes of |node_path|,
-  // which must contain at least the "bus_type" key. On error, it returns
-  // base::nullopt.
-  base::Optional<base::Value> EvalInHelperByPath(
-      const base::FilePath& node_path) const;
-
-  // Get paths of all physical network.
-  std::vector<brillo::VariantDictionary> GetDevicesProps(
-      base::Optional<std::string> type = base::nullopt) const;
+ private:
+  DataType EvalImpl() const final;
 };
 
 }  // namespace runtime_probe
