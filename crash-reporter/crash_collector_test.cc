@@ -925,6 +925,7 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
       "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
       "CHROMEOS_RELEASE_NAME=Chromium OS\n"
       "CHROMEOS_RELEASE_CHROME_MILESTONE=82\n"
+      "CHROMEOS_RELEASE_TRACK=testimage-channel\n"
       "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
   ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
   const base::Time kFakeOsTime = GetOsTimeForTest();
@@ -956,6 +957,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_collector=mock\n"
       "foo=bar\n"
       "weird__key___=weird\\nvalue\n"
+      "upload_var_channel=test\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -980,6 +982,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_collector=mock\n"
       "foo=bar\n"
       "weird__key___=weird\\nvalue\n"
+      "upload_var_channel=test\n"
       "upload_var_in_progress_integration_test=some.Test\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
@@ -1005,6 +1008,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_collector=mock\n"
       "foo=bar\n"
       "weird__key___=weird\\nvalue\n"
+      "upload_var_channel=test\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "ver=6727.0.2015_01_26_0853\n"
@@ -1041,6 +1045,7 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
       "CHROMEOS_RELEASE_NAME=Chromium OS\n"
       "CHROMEOS_RELEASE_CHROME_MILESTONE=82\n"
+      "CHROMEOS_RELEASE_TRACK=beta-channel\n"
       "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
   ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
   base::Time os_time = base::Time::Now() - base::TimeDelta::FromDays(123);
@@ -1081,6 +1086,7 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "sig=crash_reporter-user-collection_unsupported-32bit-core-file\n"
       "error_type=unsupported-32bit-core-file\n"
       "upload_file_pslog=%s\n"
+      "upload_var_channel=beta\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=crash_reporter_failure\n"

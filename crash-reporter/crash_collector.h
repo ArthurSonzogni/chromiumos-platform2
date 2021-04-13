@@ -377,6 +377,9 @@ class CrashCollector {
   // Returns the OS description written to the metadata file.
   std::string GetOsDescription() const;
 
+  // Returns the channel name written to the metadata file.
+  std::string GetChannel() const;
+
   // Returns the product version written to the metadata file.
   virtual std::string GetProductVersion() const;
 

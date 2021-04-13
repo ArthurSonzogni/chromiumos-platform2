@@ -59,6 +59,7 @@ const char kShellPath[] = "/bin/sh";
 const char kCollectorNameKey[] = "collector";
 const char kCrashLoopModeKey[] = "crash_loop_mode";
 const char kEarlyCrashKey[] = "is_early_boot";
+const char kChannelKey[] = "channel";
 
 // Key of the lsb-release entry containing the OS version.
 const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
@@ -68,6 +69,9 @@ const char kLsbOsMilestoneKey[] = "CHROMEOS_RELEASE_CHROME_MILESTONE";
 
 // Key of the lsb-release entry containing the OS description.
 const char kLsbOsDescriptionKey[] = "CHROMEOS_RELEASE_DESCRIPTION";
+
+// Key of the lsb-release entry containing the channel.
+const char kLsbChannelKey[] = "CHROMEOS_RELEASE_TRACK";
 
 #if !USE_KVM_GUEST
 // Directory mode of the user crash spool directory.
@@ -1203,6 +1207,21 @@ std::string CrashCollector::GetOsDescription() const {
   return GetLsbReleaseValue(kLsbOsDescriptionKey);
 }
 
+std::string CrashCollector::GetChannel() const {
+  // gives a string with "-channel" suffix, e.g. "testimage-channel",
+  // "stable-channel", "beta-channel", "dev-channel", "canary-channel".
+  std::string channel = GetLsbReleaseValue(kLsbChannelKey);
+
+  // strip the "-channel" suffix.
+  channel = channel.substr(0, channel.find("-"));
+
+  if (channel == "testimage") {
+    return "test";
+  }
+
+  return channel;
+}
+
 std::string CrashCollector::GetProductVersion() const {
   return GetOsVersion();
 }
@@ -1274,6 +1293,12 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
     os_timestamp_str =
         StringPrintf("os_millis=%" PRId64 "\n",
                      (os_timestamp - base::Time::UnixEpoch()).InMilliseconds());
+  }
+
+  // Populate the channel (if not already populated--chrome will first attempt
+  // to populate this).
+  if (extra_metadata_.find("upload_var_channel") == std::string::npos) {
+    AddCrashMetaUploadData(kChannelKey, GetChannel());
   }
 
   std::string lsb_release_info = StringPrintf(
