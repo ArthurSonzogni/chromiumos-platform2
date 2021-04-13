@@ -14,6 +14,8 @@ namespace cryptohome {
 namespace {
 
 constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
+constexpr int kScalarSizeInBytes = 32;
+constexpr int kFieldElementSizeInBytes = 32;
 
 // Creates secure blob in a uncompressed point format (see ANSI X9.62
 // standard), but not on a curve.
@@ -105,6 +107,11 @@ class EllipticCurveTest : public testing::Test {
   ScopedBN_CTX context_;
   base::Optional<EllipticCurve> ec_;
 };
+
+TEST_F(EllipticCurveTest, ScalarAndFieldSizeInBytes) {
+  EXPECT_EQ(ec_->ScalarSizeInBytes(), kScalarSizeInBytes);
+  EXPECT_EQ(ec_->FieldElementSizeInBytes(), kFieldElementSizeInBytes);
+}
 
 TEST_F(EllipticCurveTest, PointAtInfinity) {
   crypto::ScopedEC_POINT point = ec_->PointAtInfinityForTesting();
@@ -291,6 +298,38 @@ TEST_F(EllipticCurveTest, MultiplyWithInvalidPoint) {
   crypto::ScopedEC_POINT result =
       ec_->Multiply(*point, *scalar, context_.get());
   EXPECT_FALSE(result);
+}
+
+TEST_F(EllipticCurveTest, GenerateKey) {
+  crypto::ScopedEC_KEY key = ec_->GenerateKey(context_.get());
+  ASSERT_TRUE(key);
+  const BIGNUM* private_key = EC_KEY_get0_private_key(key.get());
+  ASSERT_TRUE(private_key);
+  const EC_POINT* public_key = EC_KEY_get0_public_key(key.get());
+  ASSERT_TRUE(public_key);
+
+  // Validate that private_key * G = public_key.
+  crypto::ScopedEC_POINT expected_public_key =
+      ec_->MultiplyWithGenerator(*private_key, context_.get());
+  EXPECT_TRUE(ec_->AreEqual(*expected_public_key, *public_key, context_.get()));
+}
+
+TEST_F(EllipticCurveTest, GenerateKeysAsSecureBlobs) {
+  brillo::SecureBlob public_blob;
+  brillo::SecureBlob private_blob;
+  ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(&public_blob, &private_blob,
+                                             context_.get()));
+
+  crypto::ScopedEC_POINT public_key =
+      ec_->SecureBlobToPoint(public_blob, context_.get());
+  ASSERT_TRUE(public_key);
+  crypto::ScopedBIGNUM private_key = SecureBlobToBigNum(private_blob);
+  ASSERT_TRUE(private_key);
+
+  // Validate that private_key * G = public_key.
+  crypto::ScopedEC_POINT expected_public_key =
+      ec_->MultiplyWithGenerator(*private_key, context_.get());
+  EXPECT_TRUE(ec_->AreEqual(*expected_public_key, *public_key, context_.get()));
 }
 
 }  // namespace cryptohome

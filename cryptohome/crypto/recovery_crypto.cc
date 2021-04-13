@@ -89,11 +89,13 @@ bool RecoveryCryptoImpl::GenerateShares(
     LOG(ERROR) << "Failed to perform MultiplyWithGenerator operation";
     return false;
   }
-  if (!BigNumToSecureBlob(*mediator_share_bn, mediator_share)) {
+  if (!BigNumToSecureBlob(*mediator_share_bn, ec_.ScalarSizeInBytes(),
+                          mediator_share)) {
     LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
     return false;
   }
-  if (!BigNumToSecureBlob(*destination_share_bn, destination_share)) {
+  if (!BigNumToSecureBlob(*destination_share_bn, ec_.ScalarSizeInBytes(),
+                          destination_share)) {
     LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
     return false;
   }

@@ -142,6 +142,7 @@ pkg_config("libcrosplatform_dependent_config") {
 static_library("libcrosplatform") {
   sources = [
     "../crypto/big_num_util.cc",
+    "../crypto/ecdh_hkdf.cc",
     "../crypto/elliptic_curve.cc",
     "../crypto/error_util.cc",
     "../crypto/hkdf.cc",

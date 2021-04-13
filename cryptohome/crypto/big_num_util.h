@@ -29,11 +29,15 @@ crypto::ScopedBIGNUM BigNumFromValue(BN_ULONG value);
 // The input SecureBlob is expected to be in big-endian encoding.
 crypto::ScopedBIGNUM SecureBlobToBigNum(const brillo::SecureBlob& blob);
 
-// Converts BIGNUM to SecureBlob. Returns false if error occurred, otherwise
-// stores resulting blob in `result`. Stores empty SecureBlob if `bn` number
-// was zero.
-// The resulting SecureBlob is encoded in big-endian form.
-bool BigNumToSecureBlob(const BIGNUM& bn, brillo::SecureBlob* result);
+// Converts BIGNUM to SecureBlob padded to a given `result_len`. Returns false
+// if error occurred, otherwise stores resulting blob in `result`. The resulting
+// SecureBlob is encoded in big-endian form.
+// This is the only method that should be used for converting BIGNUMs to
+// SecureBlobs, as it is not advised to create variable length SecureBlobs for
+// security reasons.
+bool BigNumToSecureBlob(const BIGNUM& bn,
+                        int result_len,
+                        brillo::SecureBlob* result);
 
 }  // namespace cryptohome
 

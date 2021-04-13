@@ -64,7 +64,7 @@ TEST(RecoveryCryptoTest, RecoverDestinationFromInvalidInput) {
   crypto::ScopedBIGNUM scalar = BigNumFromValue(123u);
   ASSERT_TRUE(scalar);
   brillo::SecureBlob scalar_blob;
-  ASSERT_TRUE(BigNumToSecureBlob(*scalar, &scalar_blob));
+  ASSERT_TRUE(BigNumToSecureBlob(*scalar, dealer_pub_key.size(), &scalar_blob));
 
   brillo::SecureBlob publisher_pub_key;
   brillo::SecureBlob publisher_dh;

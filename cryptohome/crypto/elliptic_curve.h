@@ -42,6 +42,17 @@ class EllipticCurve final {
   // Returns true if point is on a curve and finite (not at infinity).
   bool IsPointValidAndFinite(const EC_POINT& point, BN_CTX* context) const;
 
+  // Returns scalar size in bytes of a curve order.
+  int ScalarSizeInBytes() const;
+
+  // Returns field element (affine coordinate) size in bytes.
+  int FieldElementSizeInBytes() const;
+
+  // Returns affine X coordinate of a given `point` or nullptr if error
+  // occurred.
+  crypto::ScopedBIGNUM GetAffineCoordinateX(const EC_POINT& point,
+                                            BN_CTX* context) const;
+
   // Generates random non-zero scalar of the elliptic curve order. Returns
   // nullptr if error occurred.
   crypto::ScopedBIGNUM RandomNonZeroScalar(BN_CTX* context) const;
@@ -92,6 +103,18 @@ class EllipticCurve final {
   bool PointToSecureBlob(const EC_POINT& point,
                          brillo::SecureBlob* result,
                          BN_CTX* context) const;
+
+  // Generates EC_KEY. This method should be preferred over generating private
+  // and public key separately, that is, private key using `RandomNonZeroScalar`
+  // and public key by multiplying private key with generator, but the result
+  // should be equivalent. Returns nullptr if error occurred.
+  crypto::ScopedEC_KEY GenerateKey(BN_CTX* context) const;
+
+  // Generates pair EC_KEY and converts a pair of public and  them to secure
+  // blobs, Returns false if error occurred.
+  bool GenerateKeysAsSecureBlobs(brillo::SecureBlob* public_key,
+                                 brillo::SecureBlob* private_key,
+                                 BN_CTX* context) const;
 
   // Returns curve order. This should be used only for testing.
   const BIGNUM* GetOrderForTesting() const { return order_.get(); }

@@ -88,6 +88,31 @@ bool EllipticCurve::IsPointValidAndFinite(const EC_POINT& point,
   return IsPointValid(point, context) && !IsPointAtInfinity(point);
 }
 
+int EllipticCurve::ScalarSizeInBytes() const {
+  return BN_num_bytes(order_.get());
+}
+
+int EllipticCurve::FieldElementSizeInBytes() const {
+  unsigned int degree_bits = EC_GROUP_get_degree(group_.get());
+  return (degree_bits + 7) >> 3;
+}
+
+crypto::ScopedBIGNUM EllipticCurve::GetAffineCoordinateX(
+    const EC_POINT& point, BN_CTX* context) const {
+  if (!IsPointValidAndFinite(point, context)) {
+    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob: input point is "
+                  "invalid or infinite";
+    return nullptr;
+  }
+  crypto::ScopedBIGNUM x(BN_secure_new());
+  if (EC_POINT_get_affine_coordinates(group_.get(), &point, x.get(),
+                                      /*y=*/nullptr, context) != 1) {
+    LOG(ERROR) << "Failed to get affine X coordinate: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  return x;
+}
+
 crypto::ScopedBIGNUM EllipticCurve::RandomNonZeroScalar(BN_CTX* context) const {
   crypto::ScopedBIGNUM secret(BN_secure_new());
   if (!secret) {
@@ -255,6 +280,44 @@ bool EllipticCurve::PointToSecureBlob(const EC_POINT& point,
     return false;
   }
   result->assign(buf.get(), buf.get() + buf_len);
+  return true;
+}
+
+crypto::ScopedEC_Key EllipticCurve::GenerateKey(BN_CTX* context) const {
+  crypto::ScopedEC_Key key(EC_KEY_new());
+  if (!key) {
+    LOG(ERROR) << "Failed to allocate EC_KEY structure: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  if (EC_KEY_set_group(key.get(), group_.get()) != 1) {
+    LOG(ERROR) << "Failed to set EC group: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  if (EC_KEY_generate_key(key.get()) != 1) {
+    LOG(ERROR) << "Failed to generate EC key: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  return key;
+}
+
+bool EllipticCurve::GenerateKeysAsSecureBlobs(brillo::SecureBlob* public_key,
+                                              brillo::SecureBlob* private_key,
+                                              BN_CTX* context) const {
+  crypto::ScopedEC_Key key = GenerateKey(context);
+  if (!key) {
+    LOG(ERROR) << "Failed to generate EC_KEY";
+    return false;
+  }
+  if (!PointToSecureBlob(*EC_KEY_get0_public_key(key.get()), public_key,
+                         context)) {
+    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+    return false;
+  }
+  if (!BigNumToSecureBlob(*EC_KEY_get0_private_key(key.get()),
+                          ScalarSizeInBytes(), private_key)) {
+    LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
+    return false;
+  }
   return true;
 }
 
