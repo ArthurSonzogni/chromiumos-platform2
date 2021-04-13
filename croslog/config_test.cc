@@ -7,9 +7,10 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
-#include <brillo/flag_helper.h>
+#include "croslog/test_util.h"
 
 namespace croslog {
 
@@ -109,6 +110,42 @@ TEST_F(ParseCommandLineTest, BootModeWithSpecifiedID) {
   // |boot| has a value of the specified BOOT ID.
   EXPECT_TRUE(config.boot.has_value());
   EXPECT_EQ("BOOTID", *(config.boot));
+}
+
+TEST_F(ParseCommandLineTest, ParseUntil) {
+  {
+    Config config;
+    std::vector<const char*> args = {kCrosLogPath, "--until=2020-10-12"};
+    EXPECT_TRUE(config.ParseCommandLineArgs(args.size(), args.data()));
+    EXPECT_FALSE(config.until.is_null());
+    EXPECT_EQ(config.until, TimeFromExploded(2020, 10, 12, 0, 0, 0));
+  }
+
+  {
+    Config config;
+    std::vector<const char*> args = {kCrosLogPath, "--until=20201012"};
+    EXPECT_TRUE(config.ParseCommandLineArgs(args.size(), args.data()));
+    EXPECT_FALSE(config.until.is_null());
+    EXPECT_EQ(config.until, TimeFromExploded(2020, 10, 12, 0, 0, 0));
+  }
+}
+
+TEST_F(ParseCommandLineTest, ParseSince) {
+  {
+    Config config;
+    std::vector<const char*> args = {kCrosLogPath, "--since=2020-10-12"};
+    EXPECT_TRUE(config.ParseCommandLineArgs(args.size(), args.data()));
+    EXPECT_FALSE(config.since.is_null());
+    EXPECT_EQ(config.since, TimeFromExploded(2020, 10, 12, 0, 0, 0));
+  }
+
+  {
+    Config config;
+    std::vector<const char*> args = {kCrosLogPath, "--since=20201012"};
+    EXPECT_TRUE(config.ParseCommandLineArgs(args.size(), args.data()));
+    EXPECT_FALSE(config.since.is_null());
+    EXPECT_EQ(config.since, TimeFromExploded(2020, 10, 12, 0, 0, 0));
+  }
 }
 
 }  // namespace croslog

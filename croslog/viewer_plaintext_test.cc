@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "croslog/cursor_util.h"
+#include "croslog/test_util.h"
 
 namespace croslog {
 
@@ -90,6 +91,36 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntry) {
     EXPECT_FALSE(v.ShouldFilterOutEntry(e3));
     EXPECT_FALSE(v.ShouldFilterOutEntry(e4));
     EXPECT_TRUE(v.ShouldFilterOutEntry(e5));
+  }
+}
+
+TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithSinceAndUntil) {
+  {
+    Config c;
+    c.since = TimeFromExploded(2020, 12, 10, 11, 12, 13);
+
+    LogEntry e1 = GenerateLogEntry(c.since - base::TimeDelta::FromSeconds(2));
+    LogEntry e2 = GenerateLogEntry(c.since + base::TimeDelta::FromSeconds(0));
+    LogEntry e3 = GenerateLogEntry(c.since + base::TimeDelta::FromSeconds(2));
+
+    ViewerPlaintext v(c);
+    EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
+    EXPECT_FALSE(v.ShouldFilterOutEntry(e2));
+    EXPECT_FALSE(v.ShouldFilterOutEntry(e3));
+  }
+
+  {
+    Config c;
+    c.until = TimeFromExploded(2020, 12, 10, 11, 12, 13);
+
+    LogEntry e1 = GenerateLogEntry(c.until - base::TimeDelta::FromSeconds(2));
+    LogEntry e2 = GenerateLogEntry(c.until + base::TimeDelta::FromSeconds(0));
+    LogEntry e3 = GenerateLogEntry(c.until + base::TimeDelta::FromSeconds(2));
+
+    ViewerPlaintext v(c);
+    EXPECT_FALSE(v.ShouldFilterOutEntry(e1));
+    EXPECT_FALSE(v.ShouldFilterOutEntry(e2));
+    EXPECT_TRUE(v.ShouldFilterOutEntry(e3));
   }
 }
 

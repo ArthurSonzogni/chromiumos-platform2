@@ -127,6 +127,12 @@ bool ViewerPlaintext::ShouldFilterOutEntry(const LogEntry& e) {
     }
   }
 
+  if (!config_.since.is_null() && e.time() < config_.since)
+    return true;
+
+  if (!config_.until.is_null() && e.time() > config_.until)
+    return true;
+
   const std::string& tag = e.tag();
   if (!config_.identifier.empty() && config_.identifier != tag)
     return true;

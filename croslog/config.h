@@ -9,6 +9,7 @@
 
 #include <base/command_line.h>
 #include <base/optional.h>
+#include <base/time/time.h>
 
 #include "croslog/severity.h"
 
@@ -50,6 +51,10 @@ struct Config {
   bool show_help = false;
   // Flag to follow appended contents.
   bool follow = false;
+  // Time to show entries not older than (in UTC).
+  base::Time since;
+  // Time to show entries not newer than (in UTC).
+  base::Time until;
 };
 
 }  // namespace croslog
