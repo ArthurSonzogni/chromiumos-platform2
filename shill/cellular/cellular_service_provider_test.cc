@@ -291,4 +291,25 @@ TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {
   EXPECT_EQ(1u, GetProviderServices().size());
 }
 
+TEST_F(CellularServiceProviderTest, OnServiceUnloaded) {
+  CellularRefPtr device = CreateDeviceWithEid("imsi1", "iccid1", kEid1);
+  std::string identifier = device->GetStorageIdentifier();
+
+  SetupCellularStore(identifier, "imsi1", "iccid1", kEid1);
+  SetupCellularStore(identifier, "imsi2", "iccid2", kEid1);
+
+  provider()->LoadServicesForSecondarySim(kEid1, "iccid1", "imsi1",
+                                          device.get());
+  const std::vector<CellularServiceRefPtr>& services = GetProviderServices();
+  EXPECT_EQ(2u, services.size());
+
+  for (const auto& service : services) {
+    if (service->iccid() == "iccid2") {
+      service->Unload();
+      break;
+    }
+  }
+  EXPECT_EQ(1u, GetProviderServices().size());
+}
+
 }  // namespace shill

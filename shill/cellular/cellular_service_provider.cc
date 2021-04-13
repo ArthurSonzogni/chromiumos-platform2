@@ -289,6 +289,20 @@ CellularServiceRefPtr CellularServiceProvider::FindService(
   return nullptr;
 }
 
+bool CellularServiceProvider::OnServiceUnloaded(
+    const CellularServiceRefPtr& service) {
+  SLOG(this, 1) << __func__ << ": " << service->iccid();
+  const CellularRefPtr device = service->cellular();
+  if (device && device->iccid() == service->iccid()) {
+    LOG(ERROR) << "Service with active ICCID unloaded: " << service->iccid();
+    return false;
+  }
+  auto iter = std::find(services_.begin(), services_.end(), service);
+  if (iter != services_.end())
+    services_.erase(iter);
+  return true;
+}
+
 void CellularServiceProvider::AddService(CellularServiceRefPtr service) {
   SLOG(this, 1) << __func__ << " with ICCID: " << service->iccid();
 

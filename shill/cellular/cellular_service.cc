@@ -17,7 +17,9 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular.h"
+#include "shill/cellular/cellular_service_provider.h"
 #include "shill/control_interface.h"
+#include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 
@@ -275,6 +277,11 @@ void CellularService::MigrateDeprecatedStorage(StoreInterface* storage) {
     if (group != id)
       storage->DeleteGroup(group);
   }
+}
+
+bool CellularService::Unload() {
+  Service::Unload();
+  return manager()->cellular_service_provider()->OnServiceUnloaded(this);
 }
 
 bool CellularService::Save(StoreInterface* storage) {
