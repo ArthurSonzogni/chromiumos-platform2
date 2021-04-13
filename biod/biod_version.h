@@ -6,15 +6,12 @@
 #define BIOD_BIOD_VERSION_H_
 
 #include <base/logging.h>
-
-#ifndef VCSID
-#define VCSID "<not set>"
-#endif
+#include <brillo/vcsid.h>
 
 namespace biod {
 
 static inline void LogVersion() {
-  LOG(INFO) << "vcsid " << VCSID;
+  LOG(INFO) << "vcsid " << brillo::kShortVCSID.value_or("<UNSET>");
 }
 
 }  // namespace biod
