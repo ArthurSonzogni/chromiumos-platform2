@@ -23,6 +23,36 @@ namespace {
 constexpr char kSysfsDmiPath[] = "/sys/firmware/dmi/entries";
 constexpr auto kMemoryType = 17;
 
+// Refer to SMBIOS specification.
+/*
+https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_3.3.0.pdf
+*/
+struct DmiMemoryRaw {
+  // Header
+  uint8_t type;
+  uint8_t length;
+  uint16_t handle;
+
+  // Memory attributes
+  uint8_t pad_1[8];       // skipped values
+  uint16_t size;          // bit15: 0=MiB, 1=KiB
+  uint8_t pad_2[2];       // skipped values
+  uint8_t locator;        // string
+  uint8_t pad_3[4];       // skipped values
+  uint16_t speed;         // in MHz
+  uint8_t manufacturer;   // string
+  uint8_t serial_number;  // string
+  uint8_t asset_tag;      // string
+  uint8_t part_number;    // string
+} __attribute__((packed));
+
+struct DmiMemory {
+  uint16_t size;
+  uint16_t speed;
+  std::string locator;
+  std::string part_number;
+};
+
 uint16_t MemorySize(uint16_t size) {
   // bit 15: 0=MB, 1=KB
   if (size & (1UL << 15)) {
@@ -55,48 +85,8 @@ std::unique_ptr<std::string> SmbiosString(const std::vector<uint8_t>& blob,
   return nullptr;
 }
 
-base::Value GetMemoryInfo() {
-  base::Value results(base::Value::Type::LIST);
-
-  const base::FilePath dmi_dirname(kSysfsDmiPath);
-  for (int entry = 0;; ++entry) {
-    const base::FilePath dmi_basename(
-        base::StringPrintf("%d-%d", kMemoryType, entry));
-    auto dmi_path = dmi_dirname.Append(dmi_basename);
-    if (!base::DirectoryExists(dmi_path))
-      break;
-    base::Value info(base::Value::Type::DICTIONARY);
-    std::string raw_bytes;
-    if (!base::ReadFileToString(dmi_path.Append("raw"), &raw_bytes)) {
-      LOG(ERROR) << "Failed to read file in sysfs: " << dmi_path.value();
-      continue;
-    }
-
-    auto dmi_memory = DmiMemory::From(
-        std::vector<uint8_t>(raw_bytes.begin(), raw_bytes.end()));
-    if (!dmi_memory) {
-      LOG(ERROR) << "Failed to parse DMI raw data: " << dmi_path.value();
-      continue;
-    }
-
-    // The field "slot" denotes to the entry number instead of the physical slot
-    // number, which refers to mosys' output. To be compatible with current
-    // HWID, we still preserve this field.
-    info.SetIntKey("slot", entry);
-    info.SetStringKey("path", dmi_path.value());
-    info.SetIntKey("size", dmi_memory->size);
-    info.SetIntKey("speed", dmi_memory->speed);
-    info.SetStringKey("locator", dmi_memory->locator);
-    info.SetStringKey("part", dmi_memory->part_number);
-    results.Append(std::move(info));
-  }
-
-  return results;
-}
-
-}  // namespace
-
-std::unique_ptr<DmiMemory> DmiMemory::From(const std::vector<uint8_t>& blob) {
+std::unique_ptr<DmiMemory> GetDmiMemoryFromBlobData(
+    const std::vector<uint8_t>& blob) {
   if (blob.size() < sizeof(DmiMemoryRaw))
     return nullptr;
 
@@ -123,27 +113,49 @@ std::unique_ptr<DmiMemory> DmiMemory::From(const std::vector<uint8_t>& blob) {
   return dmi_memory;
 }
 
-MemoryFunction::DataType MemoryFunction::Eval() const {
-  auto json_output = InvokeHelperToJSON();
-  if (!json_output) {
-    LOG(ERROR) << "Failed to invoke helper to retrieve memory results.";
-    return {};
-  }
-  if (!json_output->is_list()) {
-    LOG(ERROR) << "Failed to parse json output as list.";
-    return {};
+MemoryFunction::DataType GetMemoryInfo() {
+  MemoryFunction::DataType results{};
+
+  const base::FilePath dmi_dirname(kSysfsDmiPath);
+  for (int entry = 0;; ++entry) {
+    const base::FilePath dmi_basename(
+        base::StringPrintf("%d-%d", kMemoryType, entry));
+    auto dmi_path = dmi_dirname.Append(dmi_basename);
+    if (!base::DirectoryExists(dmi_path))
+      break;
+    base::Value info(base::Value::Type::DICTIONARY);
+    std::string raw_bytes;
+    if (!base::ReadFileToString(dmi_path.Append("raw"), &raw_bytes)) {
+      LOG(ERROR) << "Failed to read file in sysfs: " << dmi_path.value();
+      continue;
+    }
+
+    auto dmi_memory = GetDmiMemoryFromBlobData(
+        std::vector<uint8_t>(raw_bytes.begin(), raw_bytes.end()));
+    if (!dmi_memory) {
+      LOG(ERROR) << "Failed to parse DMI raw data: " << dmi_path.value();
+      continue;
+    }
+
+    // The field "slot" denotes to the entry number instead of the physical slot
+    // number, which refers to mosys' output. To be compatible with current
+    // HWID, we still preserve this field.
+    info.SetIntKey("slot", entry);
+    info.SetStringKey("path", dmi_path.value());
+    info.SetIntKey("size", dmi_memory->size);
+    info.SetIntKey("speed", dmi_memory->speed);
+    info.SetStringKey("locator", dmi_memory->locator);
+    info.SetStringKey("part", dmi_memory->part_number);
+    results.push_back(std::move(info));
   }
 
-  return DataType(json_output->TakeList());
+  return results;
 }
 
-int MemoryFunction::EvalInHelper(std::string* output) const {
-  auto results = GetMemoryInfo();
-  if (!base::JSONWriter::Write(results, output)) {
-    LOG(ERROR) << "Failed to serialize memory probed result to json string.";
-    return -1;
-  }
-  return 0;
+}  // namespace
+
+MemoryFunction::DataType MemoryFunction::EvalImpl() const {
+  return GetMemoryInfo();
 }
 
 }  // namespace runtime_probe
