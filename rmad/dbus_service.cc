@@ -30,12 +30,6 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       nullptr, bus, dbus::ObjectPath(kRmadServicePath));
 }
 
-DBusService::~DBusService() {
-  if (bus_) {
-    bus_->ShutdownAndBlock();
-  }
-}
-
 int DBusService::OnInit() {
   LOG(INFO) << "Starting DBus service";
   const int exit_code = DBusServiceDaemon::OnInit();

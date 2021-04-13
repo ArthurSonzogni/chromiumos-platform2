@@ -25,7 +25,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   DBusService(const DBusService&) = delete;
   DBusService& operator=(const DBusService&) = delete;
 
-  ~DBusService() override;
+  ~DBusService() override = default;
 
  protected:
   // brillo::DBusServiceDaemon overrides.
