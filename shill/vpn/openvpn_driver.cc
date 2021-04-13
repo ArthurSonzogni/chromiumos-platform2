@@ -1042,6 +1042,21 @@ void OpenVPNDriver::OnDefaultPhysicalServiceEvent(
   if (!event_handler_)
     return;
 
+  // When this happens, it means the service is connecting but the management
+  // server and the OpenVPN client have not been started yet. We don't need to
+  // do anything in this case:
+  // 1) For the service-down event, a new started client will be automatically
+  //    on hold and we will check if the default service is connected before
+  //    releasing the hold (see InitManagementChannelOptions()), and then the
+  //    following service-up event will release the hold.
+  // 2) For the other two events, it will just set up the VPN connection on the
+  //    new physical service.
+  if (!management_server_->IsStarted()) {
+    LOG(INFO) << "Default physical service event comes before management "
+                 "server starts.";
+    return;
+  }
+
   switch (event) {
     case kDefaultPhysicalServiceUp:
       management_server_->ReleaseHold();

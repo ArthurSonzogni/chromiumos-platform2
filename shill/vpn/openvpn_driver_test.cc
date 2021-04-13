@@ -1220,23 +1220,33 @@ TEST_F(OpenVPNDriverTest, GetCommandLineArgs) {
 
 TEST_F(OpenVPNDriverTest, OnDefaultPhysicalServiceEvent) {
   SetEventHandler(&event_handler_);
+  EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(true));
 
   // Switch from Online service -> no service.  VPN should be put on hold.
+  EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(true));
   EXPECT_CALL(*management_server_, Hold());
   driver_->OnDefaultPhysicalServiceEvent(
       VPNDriver::kDefaultPhysicalServiceDown);
   Mock::VerifyAndClearExpectations(management_server_);
 
   // Switch from no service -> Online.  VPN should release the hold.
+  EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(true));
   EXPECT_CALL(*management_server_, ReleaseHold());
   driver_->OnDefaultPhysicalServiceEvent(VPNDriver::kDefaultPhysicalServiceUp);
   Mock::VerifyAndClearExpectations(management_server_);
 
   // Switch from Online service -> another Online service.  VPN should restart
   // immediately.
+  EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(true));
   EXPECT_CALL(*management_server_, Restart());
   driver_->OnDefaultPhysicalServiceEvent(
       VPNDriver::kDefaultPhysicalServiceChanged);
+
+  // Do nothing when management server is not started.
+  EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(false));
+  driver_->OnDefaultPhysicalServiceEvent(
+      VPNDriver::kDefaultPhysicalServiceDown);
+  Mock::VerifyAndClearExpectations(management_server_);
 }
 
 TEST_F(OpenVPNDriverTest, GetReconnectTimeout) {

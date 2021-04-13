@@ -13,6 +13,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/data_types.h"
+#include "shill/mockable.h"
 
 namespace shill {
 
@@ -56,6 +57,9 @@ class OpenVPNManagementServer {
 
   // OpenVPN client state.
   const std::string& state() const { return state_; }
+
+  // If Start() was called and no Stop() after that.
+  mockable bool IsStarted() const { return sockets_ != nullptr; }
 
  private:
   friend class OpenVPNDriverTest;
@@ -136,8 +140,6 @@ class OpenVPNManagementServer {
   // sent over the management interface quoted (i.e., whitespace is not
   // escaped).
   static std::string EscapeToQuote(const std::string& str);
-
-  bool IsStarted() const { return sockets_; }
 
   OpenVPNDriver* driver_;
 

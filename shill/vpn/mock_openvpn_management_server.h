@@ -31,6 +31,7 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
   MOCK_METHOD(void, ReleaseHold, (), (override));
   MOCK_METHOD(void, Hold, (), (override));
   MOCK_METHOD(void, Restart, (), (override));
+  MOCK_METHOD(bool, IsStarted, (), (const, override));
 };
 
 }  // namespace shill

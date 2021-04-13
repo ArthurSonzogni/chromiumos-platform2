@@ -433,6 +433,10 @@ string OpenVPNManagementServer::EscapeToQuote(const string& str) {
 
 void OpenVPNManagementServer::Send(const string& data) {
   SLOG(this, 2) << __func__;
+  if (!sockets_) {
+    LOG(DFATAL) << "Send() is called but sockets_ is nullptr";
+    return;
+  }
   ssize_t len =
       sockets_->Send(connected_socket_, data.data(), data.size(), MSG_NOSIGNAL);
   PLOG_IF(ERROR, len < 0 || static_cast<size_t>(len) != data.size())
