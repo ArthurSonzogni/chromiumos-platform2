@@ -1251,7 +1251,7 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
         }
         return fd;
       }
-    } else if (errno != ENOENT) {
+    } else if (errno != EACCES && errno != EBUSY && errno != ENOENT) {
       break;
     }
     base::PlatformThread::Sleep(
