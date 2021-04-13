@@ -25,7 +25,7 @@ namespace runtime_probe {
 //   key: The key of saved output. Output will be saved in string.
 //
 // More details can be found under command "ectool i2cread help"
-class EctoolI2Cread : public ProbeFunction {
+class EctoolI2Cread final : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("ectool_i2cread");
 
@@ -46,15 +46,16 @@ class EctoolI2Cread : public ProbeFunction {
     PARSE_END();
   }
 
-  DataType Eval() const override;
-  int EvalInHelper(std::string*) const override;
-
  private:
+  DataType EvalImpl() const override;
+
   int addr_;
   std::string key_;
   int offset_;
   int port_;
   int size_;
+
+  bool GetEctoolOutput(std::string* output) const;
 };
 
 }  // namespace runtime_probe
