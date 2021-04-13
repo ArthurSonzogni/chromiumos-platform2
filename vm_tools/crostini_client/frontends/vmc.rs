@@ -182,6 +182,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.optflag("", "enable-gpu", "when starting the vm, enable gpu support");
         opts.optflag(
             "",
+            "enable-vulkan",
+            "when starting the vm, enable vulkan support (implies --enable-gpu)",
+        );
+        opts.optflag(
+            "",
             "software-tpm",
             "provide software-based virtual Trusted Platform Module",
         );
@@ -252,8 +257,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let vm_name = &matches.free[0];
         let user_id_hash = get_user_hash(self.environ)?;
+
+        let vulkan = matches.opt_present("enable-vulkan");
+        let gpu = vulkan || matches.opt_present("enable-gpu");
         let features = VmFeatures {
-            gpu: matches.opt_present("enable-gpu"),
+            gpu: gpu,
+            vulkan: vulkan,
             software_tpm: matches.opt_present("software-tpm"),
             audio_capture: matches.opt_present("enable-audio-capture"),
             run_as_untrusted: matches.opt_present("untrusted"),
@@ -788,7 +797,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] <name> |
+   [ start [--enable-gpu] [--enable-vulkan] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] <name> |
      stop <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
@@ -931,6 +940,8 @@ mod tests {
             &["vmc", "start", "termina"],
             &["vmc", "start", "--enable-gpu", "termina"],
             &["vmc", "start", "termina", "--enable-gpu"],
+            &["vmc", "start", "termina", "--enable-vulkan"],
+            &["vmc", "start", "termina", "--enable-gpu", "--enable-vulkan"],
             &["vmc", "start", "termina", "--software-tpm"],
             &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
             &["vmc", "start", "termina", "--enable-audio-capture"],

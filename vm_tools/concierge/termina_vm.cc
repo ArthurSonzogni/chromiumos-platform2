@@ -216,9 +216,10 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     vm_builder.EnableWaylandDmaBuf(true /* enable */);
 
   if (features_.gpu) {
-    std::string gpu_arg = "--gpu";
+    std::string gpu_arg = "--gpu=vulkan=";
+    gpu_arg += features_.vulkan ? "true" : "false";
     if (!gpu_cache_path_.empty()) {
-      gpu_arg += "=cache-path=" + gpu_cache_path_.value();
+      gpu_arg += ",=cache-path=" + gpu_cache_path_.value();
       gpu_arg += ",cache-size=";
       gpu_arg += kGpuCacheSizeString;
     }

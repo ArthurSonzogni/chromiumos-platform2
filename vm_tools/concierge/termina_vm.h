@@ -36,6 +36,7 @@ namespace concierge {
 struct VmFeatures {
   // Enable GPU in the started VM.
   bool gpu;
+  bool vulkan;
 
   // Provide software-based virtual Trusted Platform Module to the VM.
   bool software_tpm;

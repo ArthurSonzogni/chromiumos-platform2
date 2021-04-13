@@ -168,6 +168,9 @@ message StartVmRequest {
   // Kernel cmdline parameters that will be passed to crosvm.
   repeated string kernel_params = 17;
 
+  // Enable Vulkan in the started Vm.
+  bool enable_vulkan = 18;
+
   enum FdType {
     // Kernel image.
     KERNEL = 0;

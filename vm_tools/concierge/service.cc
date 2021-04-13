@@ -1299,6 +1299,13 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     gpu_cache_path = PrepareVmGpuCachePath(request.owner_id(), request.name());
   }
 
+  if (request.enable_vulkan() && !request.enable_gpu()) {
+    LOG(ERROR) << "Vulkan enabled without GPU";
+    response.set_failure_reason("Vulkan enabled without GPU");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Allocate resources for the VM.
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   if (vsock_cid == 0) {
@@ -1346,6 +1353,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // Start the VM and build the response.
   VmFeatures features{
       .gpu = request.enable_gpu(),
+      .vulkan = request.enable_vulkan(),
       .software_tpm = request.software_tpm(),
       .audio_capture = request.enable_audio_capture(),
   };
