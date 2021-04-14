@@ -17,6 +17,7 @@ namespace {
 
 constexpr char kRmadUser[] = "rmad";
 constexpr char kRmadGroup[] = "rmad";
+constexpr char kSeccompFilterPath[] = "/usr/share/policy/rmad-seccomp.policy";
 
 }  // namespace
 
@@ -57,6 +58,9 @@ void EnterMinijail() {
   } else {
     LOG(INFO) << "Hardware write protection on.";
   }
+
+  minijail_use_seccomp_filter(j.get());
+  minijail_parse_seccomp_filters(j.get(), kSeccompFilterPath);
 
   minijail_enter(j.get());
 }
