@@ -86,6 +86,13 @@ MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
   if (!RE2::FullMatch(line, *service_failure, &service_name, &exit_status))
     return base::nullopt;
 
+  if (service_name == "cros-camera") {
+    // cros-camera uses non-zero exit status to indicate transient failures and
+    // to request that the service be re-started. This is 'nominal' and should
+    // not be reported. (It's also flooding our servers.)
+    return base::nullopt;
+  }
+
   // We only want to report 2% of service failures due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetServiceFailureWeight()) != 0) {

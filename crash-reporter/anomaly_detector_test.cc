@@ -441,6 +441,14 @@ TEST(AnomalyDetectorTest, ServiceFailureArc) {
   ParserTest("TEST_SERVICE_FAILURE", {service_failure}, &parser);
 }
 
+TEST(AnomalyDetectorTest, ServiceFailureCamera) {
+  ParserRun service_failure = {.find_this = "crash-crash",
+                               .replace_with = "cros-camera",
+                               .expected_size = 0};
+  ServiceParser parser(true);
+  ParserTest("TEST_SERVICE_FAILURE", {service_failure}, &parser);
+}
+
 TEST(AnomalyDetectorTest, SELinuxViolation) {
   ParserRun selinux_violation = {
       .expected_text =
