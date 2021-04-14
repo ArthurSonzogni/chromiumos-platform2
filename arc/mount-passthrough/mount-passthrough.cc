@@ -19,7 +19,9 @@
 #include <fcntl.h>
 #include <fuse/fuse.h>
 #include <fuse/fuse_common.h>
+#include <fuse/fuse_lowlevel.h>
 #include <linux/limits.h>
+#include <signal.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -515,6 +517,42 @@ int main(int argc, char** argv) {
   FusePrivateData private_data;
   private_data.android_app_access_type = FLAGS_android_app_access_type;
   private_data.force_group_permission = FLAGS_force_group_permission;
-  return fuse_main(fuse_argc, const_cast<char**>(fuse_argv), &passthrough_ops,
-                   &private_data);
+
+  // The code below does the same thing as fuse_main() except that it ignores
+  // signals during shutdown to perform clean shutdown. b/183343552
+  // TODO(hashimoto): Stop using deprecated libfuse functions b/185322557.
+  char* mountpoint = nullptr;
+  int multithreaded = 0;
+  struct fuse* fuse = fuse_setup(fuse_argc, const_cast<char**>(fuse_argv),
+                                 &passthrough_ops, sizeof(passthrough_ops),
+                                 &mountpoint, &multithreaded, &private_data);
+  if (fuse == nullptr)
+    return 1;
+
+  int res = 0;
+  if (multithreaded)
+    res = fuse_loop_mt(fuse);
+  else
+    res = fuse_loop(fuse);
+
+  // The code below does the same thing fuse_teardown() except that it ignores
+  // signals instead of calling fuse_remove_signal_handlers().
+
+  // Ignore signals after this point. We're already shutting down.
+  struct sigaction sa = {};
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sa.sa_handler = SIG_IGN;
+  sigaction(SIGHUP, &sa, nullptr);
+  sigaction(SIGINT, &sa, nullptr);
+  sigaction(SIGTERM, &sa, nullptr);
+  sigaction(SIGPIPE, &sa, nullptr);
+
+  struct fuse_session* se = fuse_get_session(fuse);
+  struct fuse_chan* ch = fuse_session_next_chan(se, nullptr);
+  fuse_unmount(mountpoint, ch);
+  fuse_destroy(fuse);
+  free(mountpoint);
+
+  return res == -1 ? 1 : 0;
 }
