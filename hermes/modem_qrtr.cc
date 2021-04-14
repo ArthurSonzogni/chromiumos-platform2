@@ -35,12 +35,13 @@ constexpr int kEidLen = 16;
 constexpr char bcd_chars[] = "0123456789\0\0\0\0\0\0";
 
 // A profile enable/disable results in an automatic refresh.
-// Put Hermes to sleep during this refresh. If the refresh
+// Block QMI messages during this refresh. If the refresh
 // takes any longer, Hermes will retry channel acquisition
 // after kInitRetryDelay
-constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(2);
+constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(3);
 
 constexpr auto kInitRetryDelay = base::TimeDelta::FromSeconds(10);
+constexpr int kMaxRetries = 5;
 
 bool CheckMessageSuccess(UimCmd cmd, const uim_qmi_result& qmi_result) {
   if (qmi_result.result == 0) {
@@ -90,6 +91,7 @@ ModemQrtr::ModemQrtr(std::unique_ptr<SocketInterface> socket,
                      Logger* logger,
                      Executor* executor)
     : qmi_disabled_(false),
+      retry_count_(0),
       extended_apdu_supported_(false),
       current_transaction_id_(static_cast<uint16_t>(-1)),
       channel_(kInvalidChannel),
@@ -200,6 +202,7 @@ bool ModemQrtr::IsSimValidAfterDisable() {
 void ModemQrtr::Initialize(EuiccManagerInterface* euicc_manager) {
   LOG(INFO) << __func__;
   CHECK(current_state_ == State::kUninitialized);
+  retry_initialization_callback_.Reset();
   euicc_manager_ = euicc_manager;
   if (!socket_->StartService(QmiCmdInterface::Service::kDms, 1, 0)) {
     LOG(ERROR) << "Failed starting DMS service during ModemQrtr initialization";
@@ -233,26 +236,18 @@ void ModemQrtr::ReacquireChannel() {
 void ModemQrtr::RetryInitialization() {
   LOG(INFO) << "Reprobing for eSIM in " << kInitRetryDelay.InSeconds()
             << " seconds";
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      FROM_HERE,
-      base::Bind(&ModemQrtr::Initialize, base::Unretained(this),
-                 euicc_manager_),
-      kInitRetryDelay);
-}
-
-void ModemQrtr::FinalizeInitialization() {
-  LOG(INFO) << __func__;
-  if (current_state_ != State::kLogicalChannelOpened) {
-    VLOG(1) << "Could not open logical channel to eSIM";
-    Shutdown();
-    RetryInitialization();
+  if (retry_count_ > kMaxRetries) {
+    LOG(INFO) << __func__ << ": Max retry count(" << kMaxRetries
+              << ") exceeded, will not retry initialization.";
+    retry_count_ = 0;
     return;
   }
-  LOG(INFO) << "ModemQrtr initialization successful. eSIM found.";
-  current_state_.Transition(State::kSendApduReady);
-  // TODO(crbug.com/1117582) Set this based on whether or not Extended Length
-  // APDU is supported.
-  extended_apdu_supported_ = false;
+  retry_initialization_callback_.Reset();
+  retry_initialization_callback_ = base::Bind(
+      &ModemQrtr::Initialize, base::Unretained(this), euicc_manager_);
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, retry_initialization_callback_, kInitRetryDelay);
+  retry_count_++;
 }
 
 void ModemQrtr::Shutdown() {
@@ -280,7 +275,8 @@ uint16_t ModemQrtr::AllocateId() {
 /////////////////////////////////////
 
 void ModemQrtr::TransmitFromQueue() {
-  if (tx_queue_.empty() || pending_response_type_ || qmi_disabled_) {
+  if (tx_queue_.empty() || pending_response_type_ || qmi_disabled_ ||
+      retry_initialization_callback_) {
     return;
   }
 
@@ -723,13 +719,29 @@ void ModemQrtr::ReceiveQmiReset(const qrtr_packet& packet) {
 }
 
 void ModemQrtr::ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet) {
+  LOG(INFO) << __func__;
   ParseQmiOpenLogicalChannel(packet);
-  if (!current_state_.IsInitialized()) {
-    FinalizeInitialization();
+
+  if (current_state_ != State::kLogicalChannelOpened &&
+      current_state_ != State::kSendApduReady) {
+    LOG(ERROR) << "Could not open logical channel to eSIM";
+    Shutdown();
+    RetryInitialization();
+    // We tried to open a channel but failed. This could be because the
+    // eUICC was still booting up while we tried to open the channel. We will
+    // retry opening the channel immediately after initialization succeeds.
+    tx_queue_.push_front(
+        {std::unique_ptr<TxInfo>(), AllocateId(),
+         std::make_unique<UimCmd>(UimCmd::QmiType::kOpenLogicalChannel)});
+    tx_queue_.push_front({std::unique_ptr<TxInfo>(), AllocateId(),
+                          std::make_unique<UimCmd>(UimCmd::QmiType::kReset)});
+    return;
   }
+  current_state_.Transition(State::kSendApduReady);
 }
 
 void ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
+  LOG(INFO) << __func__;
   UimCmd cmd(UimCmd::QmiType::kOpenLogicalChannel);
   if (current_state_ != State::kLogicalChannelPending) {
     LOG(ERROR) << "Received unexpected QMI UIM response: " << cmd.ToString()
@@ -746,10 +758,10 @@ void ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
   }
 
   if (resp.result.result != 0) {
-    VLOG(1) << cmd.ToString()
-            << " Could not open channel to eSIM. This is expected if the "
-               "active sim slot is not an eSIM. QMI response contained error: "
-            << resp.result.error;
+    LOG(ERROR)
+        << cmd.ToString()
+        << " Could not open channel to eSIM. QMI response contained error: "
+        << resp.result.error;
     return;
   }
 

@@ -68,8 +68,10 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
   lpa::util::EuiccLog* logger() override { return logger_; }
 
  private:
-  // Delay between SwitchSlot and the next QMI message
-  static constexpr auto kSwitchSlotDelay = base::TimeDelta::FromSeconds(1);
+  // Delay between SwitchSlot and the next QMI message. Allows the modem to
+  // power on the new slot, and for the eUICC to boot. If this delay is
+  // insufficient, we retry after kInitRetryDelay
+  static constexpr auto kSwitchSlotDelay = base::TimeDelta::FromSeconds(3);
 
   struct TxElement {
     std::unique_ptr<TxInfo> info_;
@@ -82,7 +84,6 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
             Executor* executor);
   void InitializeUim();
   void RetryInitialization();
-  void FinalizeInitialization();
   void Shutdown();
   uint16_t AllocateId();
 
@@ -220,12 +221,13 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
 
   State current_state_;
   bool qmi_disabled_;
-
+  base::RepeatingClosure retry_initialization_callback_;
+  int retry_count_;
   // Indicates that a qmi message has been sent and that a response is expected
   // Set for all known message types except QMI_RESET
   std::unique_ptr<QmiCmdInterface> pending_response_type_;
 
-  bool extended_apdu_supported_;
+  bool extended_apdu_supported_;  // There is no plan to support these.
   uint16_t current_transaction_id_;
 
   // Logical Channel that will be used to communicate with the chip, returned
