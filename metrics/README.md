@@ -125,6 +125,25 @@ backing files being in /var/lib/metrics.)
 The [memd](./memd/) subdirectory contains a daemon that collects data at high
 frequency during episodes of heavy memory pressure.
 
+## vmlog
+
+[vmlog_writer](./vmlog_writer.cc) writes `/var/log/vmlog` files. It is a
+space-delimited format. In order to parse, use the the first line to obtain the
+list of items, because the number of columns depends on number of CPU cores.
+
+-   time: current time
+-   From /proc/vmstat
+    -   pgmajfault: major faults
+    -   pgmajfault_f: major faults served from disk
+    -   pgmajfault_a: major faults served from zram
+    -   pswpin: number of swap in (pages).
+    -   pswpout: number of swap out (pages).
+-   From /proc/stat
+    -   cpuusage: all cpu usage ticks from `cpu` line excluding idle and iowait.
+-   gpufreq: GPU frequency; how it's obtained depends on device.
+-   From /proc/cpuinfo
+    -   cpufreqN: frequency of core in Hz.
+
 ## Further Information
 
 See
