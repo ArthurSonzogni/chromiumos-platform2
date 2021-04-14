@@ -11,8 +11,10 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/strings/strcat.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
+#include <metrics/structured/structured_events.h>
 
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
@@ -56,12 +58,15 @@ void Observer::SetMetricsLibrary(
 }
 
 void Observer::RecordHwVerificationReport(const HwVerificationReport& report) {
+  auto sm_verification_report =
+      metrics::structured::events::hardware_verifier::HwVerificationReport();
   {
     auto key = base::StrCat({kMetricVerifierReportPrefix, "IsCompliant"});
     LOG(INFO) << key << ": " << report.is_compliant();
     if (metrics_) {
       metrics_->SendBoolToUMA(key, report.is_compliant());
     }
+    sm_verification_report.SetIsCompliant(report.is_compliant());
   }
 
   for (auto i = 0; i < report.found_component_infos_size(); i++) {
@@ -79,6 +84,28 @@ void Observer::RecordHwVerificationReport(const HwVerificationReport& report) {
       metrics_->SendEnumToUMA(uma_key, qualification_status,
                               QualificationStatus_ARRAYSIZE);
     }
+
+    if (info.component_category() ==
+        runtime_probe::ProbeRequest_SupportCategory_display_panel) {
+      sm_verification_report.SetQualificationStatusDisplayPanel(
+          qualification_status);
+    }
+  }
+  sm_verification_report.Record();
+
+  for (const auto& device : report.generic_device_info().display_panel()) {
+    runtime_probe::Edid::Vendor vendor;
+    if (!runtime_probe::Edid::Vendor_Parse(
+            base::StringPrintf("VENDOR_%s", device.vendor().c_str()),
+            &vendor)) {
+      VLOG(3) << "Unknown EDID vendor : " << device.vendor();
+    }
+    metrics::structured::events::hardware_verifier::ComponentInfo()
+        .SetDisplayPanelVendor(vendor)
+        .SetDisplayPanelProductId(device.product_id())
+        .SetDisplayPanelHeight(device.height())
+        .SetDisplayPanelWidth(device.width())
+        .Record();
   }
 }
 

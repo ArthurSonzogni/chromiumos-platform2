@@ -171,6 +171,53 @@
 
 </project>
 
+<project name="HardwareVerifier">
+  <owner>kevinptt@chromium.org</owner>
+  <id>per-project</id>
+  <summary>
+    Project for hardware_verifier to record HardwareVerifier metrics.
+    hardware_verifier is run once per boot.
+  </summary>
+
+  <event name="HwVerificationReport">
+    <summary>
+      Record a verification report once hardware_verifier runs.  The event will
+      be sent once per run.
+    </summary>
+    <metric name="IsCompliant" type="int">
+      <summary>
+        The qualification status of components that are probed by
+        hardware_verifier.
+      </summary>
+    </metric>
+    <metric name="QualificationStatusDisplayPanel" type="int">
+      <summary>The qualification status of display_panel components.</summary>
+    </metric>
+  </event>
+  <event name="ComponentInfo">
+    <summary>
+      Record a hardware component on devices probed by hardware_verifier.
+      The event will be sent several times per run, depending on how many
+      hardware components are probed.  Since we only record display currently,
+      there are usually 1~2 events.  If we extend structured metrics to more
+      hardware categories, e.g. battery, memory, storage, network, it would be
+      about 10 events per run.
+    </summary>
+    <metric name="DisplayPanelVendor" type="int">
+      <summary>The vendor of the display panel.</summary>
+    </metric>
+    <metric name="DisplayPanelProductId" type="int">
+      <summary>The product ID of the display panel.</summary>
+    </metric>
+    <metric name="DisplayPanelHeight" type="int">
+      <summary>The height of the display panel.</summary>
+    </metric>
+    <metric name="DisplayPanelWidth" type="int">
+      <summary>The width of the display panel.</summary>
+    </metric>
+  </event>
+</project>
+
 <project name="TestProjectOne">
   <owner>tby@chromium.org</owner>
   <id>none</id>
