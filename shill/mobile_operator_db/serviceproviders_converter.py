@@ -48,8 +48,8 @@ class ServiceProvidersConverter(object):
         self._gsm_nodes_by_mccmnc = {}
         self._mcc_mnc_by_mccmnc = {}
 
-        # Book-keeping to sanity check the total number of providers converted,
-        # and detailed information about the conversion.
+        # Book-keeping to coherence check the total number of providers
+        # converted, and detailed information about the conversion.
         self._xml_cdma_nodes = 0
         self._xml_gsm_nodes = 0
         self._protobuf_mnos_dumped = 0
@@ -108,7 +108,7 @@ class ServiceProvidersConverter(object):
         result = (lhs == rhs)
         logger = logging.info if result else logging.error
         message = 'PASS' if result else 'FAIL'
-        logger('Sanity check: (%s) == (%s) (%d == %d) **%s**',
+        logger('Quick check: (%s) == (%s) (%d == %d) **%s**',
                lhs_name, rhs_name, lhs, rhs, message)
         return result
 

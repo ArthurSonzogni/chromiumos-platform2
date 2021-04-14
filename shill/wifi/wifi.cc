@@ -1157,7 +1157,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss) {
                   << " is not part of pending service "
                   << pending_service_->log_name();
 
-    // Sanity check: if we didn't roam onto |pending_service_|, we
+    // Quick check: if we didn't roam onto |pending_service_|, we
     // should still be on |current_service_|.
     if (service.get() != current_service_.get()) {
       LOG(WARNING) << "WiFi " << link_name() << " new current Endpoint "
@@ -1190,8 +1190,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss) {
   }
 
   // |pending_service_| was nullptr, so we weren't attempting to connect
-  // to a new Service. Sanity check that we're still on
-  // |current_service_|.
+  // to a new Service. Quick check that we're still on |current_service_|.
   if (service.get() != current_service_.get()) {
     LOG(WARNING) << "WiFi " << link_name() << " new current Endpoint "
                  << endpoint->bssid_string()

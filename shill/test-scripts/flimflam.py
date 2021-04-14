@@ -224,7 +224,7 @@ class FlimFlam(object):
         while not connect_success:
             if service_type == 'wifi':
                 try:
-                    # Sanity check to make sure the caller hasn't provided
+                    # Coherence check to make sure the caller hasn't provided
                     # both a service and a service type. At which point its
                     # unclear what they actually want to do, so err on the
                     # side of caution and except out.
@@ -276,7 +276,7 @@ class FlimFlam(object):
 
                 # While service can be caller provided, it is also set by the
                 # GetService call above. If service was not caller provided we
-                # need to reset it to None so we don't fail the sanity check
+                # need to reset it to None so we don't fail the coherence check
                 # above.
                 if service_type != '':
                     service = None

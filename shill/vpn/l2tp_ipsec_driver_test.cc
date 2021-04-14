@@ -534,7 +534,7 @@ TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
-  // Sanity test property store initialization.
+  // Quick test property store initialization.
   PropertyStore store;
   driver_->InitPropertyStore(&store);
   const std::string kUser = "joe";

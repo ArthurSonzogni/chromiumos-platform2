@@ -377,7 +377,8 @@ TEST_F(ProfileTest, InitStorage) {
   EXPECT_FALSE(ProfileInitStorage(id, Profile::kCreateNew, false,
                                   Error::kAlreadyExists));
 
-  // As a sanity check, ensure "create or open" works for both profile-exists...
+  // As an initial check, ensure "create or open" works for both
+  // profile-exists.
   EXPECT_TRUE(ProfileInitStorage(id, Profile::kCreateOrOpenExisting, false,
                                  Error::kSuccess));
 

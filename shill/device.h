@@ -89,7 +89,7 @@ class Device : public base::RefCounted<Device> {
                          bool persist,
                          Error* error,
                          const ResultCallback& callback);
-  // Similar to SetEnabledChecked, but without sanity checking, and
+  // Similar to SetEnabledChecked, but without coherence checking, and
   // without saving the new value of |enable| to the profile. If you
   // are sane (i.e. not Cellular), you should use
   // SetEnabledChecked instead.

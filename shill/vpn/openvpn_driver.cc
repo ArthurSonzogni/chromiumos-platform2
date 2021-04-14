@@ -429,7 +429,7 @@ void OpenVPNDriver::ParseIPConfiguration(
     return;
 
   // Ignore the route_vpn_gateway parameter as VPNs don't need gateway IPs.
-  // This guarantees that we will pass the various sanity checks in
+  // This guarantees that we will pass the various coherence checks in
   // connection.cc.
   properties->gateway = properties->address;
 

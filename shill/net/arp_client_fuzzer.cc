@@ -40,7 +40,7 @@ class ArpClientFuzz {
     ArpPacket reply;
     ByteString sender;
     if (client.ReceivePacket(&reply, &sender)) {
-      // If we think we parsed a real packet, might as well do some sanity
+      // If we think we parsed a real packet, might as well do some coherence
       // checks.
       CHECK(reply.local_ip_address().IsValid());
       CHECK(reply.remote_ip_address().IsValid());

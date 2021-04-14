@@ -530,7 +530,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
           string country(it + 2, it + 4);
           // ISO 3166 alpha-2 codes must be ASCII. There are probably other
           // restrictions we should honor too, but this is at least a minimum
-          // sanity check.
+          // coherence check.
           if (base::IsStringASCII(country)) {
             found_country = true;
             *country_code = country;

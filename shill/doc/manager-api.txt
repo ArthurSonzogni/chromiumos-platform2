@@ -438,7 +438,7 @@ Properties 	object ActiveProfile [readonly]
 		string CheckPortalList [readwrite]
 
 			The list of technologies for which "captive portal checking"--really
-			just connectivity sanity checks--is enabled.  This is a
+			just connectivity quick checks--is enabled.  This is a
 			comma-separated string; e.g. "wifi,cellular,vpn".
 
 		array{string} ClaimedDevices [readonly]

@@ -1148,7 +1148,7 @@ TEST_F(OpenVPNDriverTest, OnReconnectingTLSError) {
 }
 
 TEST_F(OpenVPNDriverTest, InitPropertyStore) {
-  // Sanity test property store initialization.
+  // Quick test property store initialization.
   PropertyStore store;
   driver_->InitPropertyStore(&store);
   const std::string kUser = "joe";
