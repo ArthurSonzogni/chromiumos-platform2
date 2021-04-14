@@ -13,7 +13,7 @@ metrics itself.
 [TOC]
 
 
-# The Metrics Library: libmetrics
+## The Metrics Library: libmetrics
 
 libmetrics implements the basic C and C++ API for metrics collection. All
 metrics collection is funneled through this library. The easiest and
@@ -49,9 +49,9 @@ UMA. In order to use the library in a module, you need to do the following:
   playing music on each device and each day of use.  Please see the
   CumulativeMetrics section below.
 
-## How metrics are actually sent
+### How metrics are actually sent
 
-libmetrics always writes histogram data to /var/lib/metrics/uma-events using a
+libmetrics always writes histogram data to `/var/lib/metrics/uma-events` using a
 custom format. flock() is used to avoid races.
 
 *** note
@@ -66,27 +66,27 @@ be taken to not to update UMAs in performance-critical sections.
 ***
 
 On most boards, the uma-events file is processed by Chromium's
-chromeos::ExternalMetrics class. chromeos::ExternalMetrics periodically flock's
-the file, reads all the metrics in it, and truncates the file. The
-chromeos::ExternalMetrics sends the metrics from the file into Chrome's UMA
+`chromeos::ExternalMetrics` class. `chromeos::ExternalMetrics` periodically
+flock's the file, reads all the metrics in it, and truncates the file. The
+`chromeos::ExternalMetrics` sends the metrics from the file into Chrome's UMA
 histogram collection system, after which they are treated like any other Chrome
 UMA. In particular, Chrome will check consent before uploading the histograms.
 
 However, on the few boards that do not run a Chrome browser, uploading is
-handled by the UploadService inside metrics_daemon. The UploadService
-is only instatiated if --uploader is passed to metric_daemon. Similar to Chrome,
-the UploadService will periodically lock-read-truncate-unlock the uma-events
+handled by the UploadService inside metrics_daemon. The UploadService is only
+instatiated if `--uploader` is passed to `metric_daemon`. Similar to Chrome, the
+UploadService will periodically lock-read-truncate-unlock the uma-events
 file. If we have user permission to upload stats, the UploadService will then
 send the metrics after unlocking the file. Here, user permission is controlled
-by the device policy's metrics_enabled field. (If the metrics_enabled field is
-not set, this falls back to enabling stats if the device is enterprise enrolled;
-if that isn't the case, the existence of the
-"/home/chronos/Consent To Send Stats" file is used.)
+by the device policy's `metrics_enabled` field. (If the `metrics_enabled` field
+is not set, this falls back to enabling stats if the device is enterprise
+enrolled; if that isn't the case, the existence of the "/home/chronos/Consent To
+Send Stats" file is used.)
 
-# The Metrics Client: metrics_client
+## The Metrics Client: metrics_client
 
-metrics_client is a command-line utility for sending histogram samples and user
-actions.  It is installed under /usr/bin on the target platform and uses
+`metrics_client` is a command-line utility for sending histogram samples and
+user actions.  It is installed under /usr/bin on the target platform and uses
 libmetrics.  It is typically used for generating metrics from shell scripts.
 
 For usage information and command-line options, run `metrics_client` on the
@@ -94,7 +94,7 @@ target platform or look for `Usage:` in
 [metrics_client.cc](./metrics_client.cc).
 
 
-# The Metrics Daemon: metrics_daemon
+## The Metrics Daemon: metrics_daemon
 
 metrics_daemon is a daemon that runs in the background on the target platform
 and is intended for passive or ongoing metrics collection, or metrics collection
@@ -109,7 +109,7 @@ communicate in some alternative way with the metrics daemon. Then the metrics
 daemon needs to monitor for the relevant events and take appropriate action --
 for example, aggregate data and send the histogram samples.
 
-# Cumulative Metrics
+## Cumulative Metrics
 
 The CumulativeMetrics class in libmetrics helps keep track of quantities across
 boot sessions, so that the quantities can be accumulated over stretches of time
@@ -120,12 +120,12 @@ device.  These "backing files" are typically placed in
 /var/lib/<daemon-name>/metrics.  (The metrics daemon is an exception, with its
 backing files being in /var/lib/metrics.)
 
-# Memory Daemon
+## Memory Daemon
 
 The [memd](./memd/) subdirectory contains a daemon that collects data at high
 frequency during episodes of heavy memory pressure.
 
-# Further Information
+## Further Information
 
 See
 
@@ -136,7 +136,7 @@ histograms.  The rest of this README is a super-short synopsis of that
 document, and with some luck it won't be too out of date.
 
 
-# Synopsis: Histogram Naming Convention
+## Synopsis: Histogram Naming Convention
 
 Use TrackerArea.MetricName. For example:
 
@@ -144,7 +144,7 @@ Use TrackerArea.MetricName. For example:
 * Network.TimeToDrop
 
 
-# Synopsis: Server Side
+## Synopsis: Server Side
 
 If the histogram data is visible in `chrome://histograms`, it will be sent by an
 official Chromium build to UMA, assuming the user has opted into metrics
@@ -161,9 +161,9 @@ include data for older dates. If past data needs to be displayed, manual
 server-side intervention is required. In other words, one should assume that
 field data collection starts only after the histogram XML has been updated.
 
-# Synopsis: FAQ
+## Synopsis: FAQ
 
-## What should my histogram's |min| and |max| values be set at?
+### What should my histogram's |min| and |max| values be set at?
 
 You should set the values to a range that covers the vast majority of samples
 that would appear in the field.  Values below |min| are collected in the
@@ -171,7 +171,7 @@ that would appear in the field.  Values below |min| are collected in the
 reported mean of the data is precise, i.e. it does not depend on range and
 number of buckets.
 
-## How many buckets should I use in my histogram?
+### How many buckets should I use in my histogram?
 
 You should allocate as many buckets as necessary to perform proper analysis on
 the collected data.  Most data is fairly noisy: 50 buckets are plenty, 100
@@ -179,7 +179,7 @@ buckets are probably overkill.  Also consider that the memory allocated in
 Chromium for each histogram is proportional to the number of buckets, so don't
 waste it.
 
-## When should I use an enumeration (linear) histogram vs. a regular (exponential) histogram?
+### When should I use an enumeration (linear) histogram vs. a regular (exponential) histogram?
 
 Enumeration histograms should really be used only for sampling enumerated
 events and, in some cases, percentages. Normally, you should use a regular
