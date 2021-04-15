@@ -5,13 +5,10 @@
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/vcsid.h>
 #include <sysexits.h>
 
 #include "u2fd/u2f_daemon.h"
-
-#ifndef VCSID
-#define VCSID "<unknown>"
-#endif
 
 namespace {
 
@@ -41,7 +38,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_verbose)
     logging::SetMinLogLevel(-1);
 
-  LOG(INFO) << "Daemon version " << VCSID;
+  LOG(INFO) << "Daemon version " << brillo::kShortVCSID.value_or("<unknown>");
 
   bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
 
