@@ -27,6 +27,7 @@
 #include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
+#include <brillo/vcsid.h>
 #include <cros_config/cros_config.h>
 #include <metrics/metrics_library.h>
 #if USE_IIOSERVICE
@@ -72,10 +73,6 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/user_proximity_watcher.h"
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
-
-#ifndef VCSID
-#define VCSID "<not set>"
-#endif
 
 namespace power_manager {
 
@@ -378,7 +375,7 @@ int main(int argc, char* argv[]) {
   logging_settings.log_file_path = log_file.value().c_str();
   logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
   logging::InitLogging(logging_settings);
-  LOG(INFO) << "vcsid " << VCSID;
+  LOG(INFO) << "vcsid " << brillo::kShortVCSID.value_or("<not set>");
 
   // Make it easier to tell if the system just booted, which is useful to know
   // when reading logs from bug reports.
