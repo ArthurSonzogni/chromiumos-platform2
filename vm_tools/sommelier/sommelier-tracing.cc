@@ -75,6 +75,7 @@ void dump_trace(const char* trace_filename) {
   close(fd);
 }
 
+// Returns NULL if atom is not recognized.
 static const char* xcb_atom_to_string(uint32_t atom) {
   switch (atom) {
     case XCB_ATOM_NONE:
@@ -216,7 +217,7 @@ static const char* xcb_atom_to_string(uint32_t atom) {
     case XCB_ATOM_WM_TRANSIENT_FOR:
       return "XCB_ATOM_WM_TRANSIENT_FOR";
     default:
-      return "<unknown>";
+      return NULL;
   }
 }
 
@@ -229,7 +230,7 @@ void perfetto_annotate_xcb_atom(const perfetto::EventContext& event,
   if (atom) {
     dbg->set_string_value(atom, strlen(atom));
   } else {
-    static const std::string unknown("<unknown>");
+    std::string unknown("<unknown atom #" + std::to_string(atom_int) + ">");
     dbg->set_string_value(unknown);
   }
 }
