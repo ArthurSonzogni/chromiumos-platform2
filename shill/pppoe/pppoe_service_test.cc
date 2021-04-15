@@ -27,8 +27,6 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
-using std::map;
-using std::string;
 using testing::_;
 using testing::Invoke;
 using testing::Mock;
@@ -102,7 +100,7 @@ TEST_F(PPPoEServiceTest, LogName) {
 TEST_F(PPPoEServiceTest, AuthenticationFailure) {
   EXPECT_CALL(*ethernet_, link_up()).WillRepeatedly(Return(true));
   FakeConnectionSuccess();
-  map<string, string> empty_dict;
+  std::map<std::string, std::string> empty_dict;
   service_->Notify(kPPPReasonAuthenticating, empty_dict);
 
   auto previous_state = service_->state();
@@ -126,7 +124,7 @@ TEST_F(PPPoEServiceTest, AuthenticationFailure) {
 TEST_F(PPPoEServiceTest, DisconnectBeforeConnect) {
   EXPECT_CALL(*ethernet_, link_up()).WillRepeatedly(Return(true));
   FakeConnectionSuccess();
-  map<string, string> empty_dict;
+  std::map<std::string, std::string> empty_dict;
   service_->Notify(kPPPReasonAuthenticating, empty_dict);
   service_->Notify(kPPPReasonAuthenticated, empty_dict);
 
@@ -147,7 +145,7 @@ TEST_F(PPPoEServiceTest, ConnectFailsWhenEthernetLinkDown) {
 
 TEST_F(PPPoEServiceTest, OnPPPConnected) {
   static const char kLinkName[] = "ppp0";
-  map<string, string> params = {{kPPPInterfaceName, kLinkName}};
+  std::map<std::string, std::string> params = {{kPPPInterfaceName, kLinkName}};
 
   EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName))).WillOnce(Return(0));
   EXPECT_CALL(device_info_, RegisterDevice(_));
@@ -187,11 +185,11 @@ TEST_F(PPPoEServiceTest, Connect) {
   EXPECT_CALL(device_info_, RegisterDevice(LinkNamed(kLinkName)));
 
   FakeConnectionSuccess();
-  map<string, string> empty_dict;
+  std::map<std::string, std::string> empty_dict;
   service_->Notify(kPPPReasonAuthenticating, empty_dict);
   service_->Notify(kPPPReasonAuthenticated, empty_dict);
 
-  map<string, string> connect_dict = {
+  std::map<std::string, std::string> connect_dict = {
       {kPPPInterfaceName, kLinkName},
   };
   service_->Notify(kPPPReasonConnect, connect_dict);

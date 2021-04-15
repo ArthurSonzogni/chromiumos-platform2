@@ -26,10 +26,6 @@
 #include "shill/process_manager.h"
 #include "shill/store_interface.h"
 
-using base::StringPrintf;
-using std::map;
-using std::string;
-
 namespace shill {
 
 namespace {
@@ -72,8 +68,8 @@ void PPPoEService::OnConnect(Error* error) {
   if (!ethernet()->link_up()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
-        StringPrintf("PPPoE Service %s does not have Ethernet link.",
-                     log_name().c_str()));
+        base::StringPrintf("PPPoE Service %s does not have Ethernet link.",
+                           log_name().c_str()));
     return;
   }
 
@@ -96,7 +92,8 @@ void PPPoEService::OnConnect(Error* error) {
   if (pppd_ == nullptr) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInternalError,
-        StringPrintf("PPPoE service %s can't start pppd.", log_name().c_str()));
+        base::StringPrintf("PPPoE service %s can't start pppd.",
+                           log_name().c_str()));
     return;
   }
 
@@ -123,7 +120,7 @@ bool PPPoEService::Load(const StoreInterface* storage) {
     return false;
   }
 
-  const string id = GetStorageIdentifier();
+  const auto id = GetStorageIdentifier();
   storage->GetString(id, kPPPoEUsernameProperty, &username_);
   storage->GetString(id, kPPPoEPasswordProperty, &password_);
   storage->GetInt(id, kPPPoELCPEchoIntervalProperty, &lcp_echo_interval_);
@@ -138,7 +135,7 @@ bool PPPoEService::Save(StoreInterface* storage) {
     return false;
   }
 
-  const string id = GetStorageIdentifier();
+  const auto id = GetStorageIdentifier();
   storage->SetString(id, kPPPoEUsernameProperty, username_);
   storage->SetString(id, kPPPoEPasswordProperty, password_);
   storage->SetInt(id, kPPPoELCPEchoIntervalProperty, lcp_echo_interval_);
@@ -159,14 +156,14 @@ const RpcIdentifier& PPPoEService::GetInnerDeviceRpcIdentifier() const {
   return ppp_device_ ? ppp_device_->GetRpcIdentifier() : null_identifier;
 }
 
-void PPPoEService::GetLogin(string* user, string* password) {
+void PPPoEService::GetLogin(std::string* user, std::string* password) {
   CHECK(user && password);
   *user = username_;
   *password = password_;
 }
 
-void PPPoEService::Notify(const string& reason,
-                          const map<string, string>& dict) {
+void PPPoEService::Notify(const std::string& reason,
+                          const std::map<std::string, std::string>& dict) {
   if (reason == kPPPReasonAuthenticating) {
     OnPPPAuthenticating();
   } else if (reason == kPPPReasonAuthenticated) {
@@ -188,8 +185,9 @@ void PPPoEService::OnPPPAuthenticated() {
   authenticating_ = false;
 }
 
-void PPPoEService::OnPPPConnected(const map<string, string>& params) {
-  const string interface_name = PPPDevice::GetInterfaceName(params);
+void PPPoEService::OnPPPConnected(
+    const std::map<std::string, std::string>& params) {
+  const auto interface_name = PPPDevice::GetInterfaceName(params);
 
   DeviceInfo* device_info = manager()->device_info();
   const int interface_index = device_info->GetIndex(interface_name);
