@@ -4,17 +4,14 @@
 
 #include "runtime_probe/functions/edid.h"
 
-#include <base/files/file_enumerator.h>
-#include <base/files/file_util.h>
-#include <base/json/json_reader.h>
-#include <base/json/json_writer.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
-#include <base/values.h>
 #include <pcrecpp.h>
 
 #include <numeric>
 #include <utility>
+
+#include <base/files/file_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/values.h>
 
 #include "runtime_probe/utils/edid.h"
 #include "runtime_probe/utils/file_utils.h"
@@ -22,84 +19,9 @@
 namespace runtime_probe {
 
 namespace {
-constexpr char kSysfsDrmPath[] = "/sys/class/drm/*";
-}  // namespace
+constexpr auto kSysfsEdidPath = "/sys/class/drm/*/edid";
 
-std::unique_ptr<EdidFunction> EdidFunction::FromKwargsValue(
-    const base::Value& dict_value) {
-  PARSE_BEGIN(EdidFunction);
-  PARSE_ARGUMENT(dir_path, {kSysfsDrmPath});
-  PARSE_END();
-}
-
-EdidFunction::DataType EdidFunction::Eval() const {
-  auto json_output = InvokeHelperToJSON();
-  if (!json_output) {
-    LOG(ERROR) << "Failed to invoke helper to retrieve edid results.";
-    return {};
-  }
-  if (!json_output->is_list()) {
-    LOG(ERROR) << "Failed to parse json output as list.";
-    return {};
-  }
-
-  return DataType(json_output->TakeList());
-}
-
-int EdidFunction::EvalInHelper(std::string* output) const {
-  base::Value result(base::Value::Type::LIST);
-
-  // Store paths which have been evaluated.
-  base::Value evaluated_path(base::Value::Type::DICTIONARY);
-  for (const auto& dir_path : dir_path_) {
-    for (const auto& edid_path : GetEdidPaths(base::FilePath(dir_path))) {
-      if (evaluated_path.FindKey(edid_path.value()))
-        continue;
-
-      auto node_res = EvalInHelperByPath(edid_path);
-      if (node_res.DictEmpty()) {
-        evaluated_path.SetBoolKey(edid_path.value(), false);
-        continue;
-      }
-      evaluated_path.SetBoolKey(edid_path.value(), true);
-      result.Append(std::move(node_res));
-    }
-  }
-
-  if (!base::JSONWriter::Write(result, output)) {
-    LOG(ERROR) << "Failed to serialize edid probed result to json string";
-    return -1;
-  }
-  return 0;
-}
-
-std::vector<base::FilePath> EdidFunction::GetEdidPaths(
-    const base::FilePath& glob_path) const {
-  std::vector<base::FilePath> edid_list;
-
-  const auto glob_root = glob_path.DirName();
-  const auto glob_pattern = glob_path.BaseName();
-
-  base::FileEnumerator drm_it(glob_root, false,
-                              base::FileEnumerator::FileType::DIRECTORIES,
-                              glob_pattern.value());
-
-  while (true) {
-    const auto drm_path = drm_it.Next();
-    if (drm_path.empty())
-      break;
-
-    const auto edid_path = drm_path.Append("edid");
-    if (base::PathExists(edid_path)) {
-      edid_list.push_back(edid_path);
-    }
-  }
-
-  return edid_list;
-}
-
-base::Value EdidFunction::EvalInHelperByPath(
-    const base::FilePath& edid_path) const {
+base::Value ProbeEdidPath(const base::FilePath& edid_path) {
   VLOG(2) << "Processing the node \"" << edid_path.value() << "\"";
 
   std::string raw_bytes;
@@ -121,6 +43,31 @@ base::Value EdidFunction::EvalInHelperByPath(
   res.SetIntKey("height", edid->height);
   res.SetStringKey("path", edid_path.value());
   return res;
+}
+
+}  // namespace
+
+std::unique_ptr<EdidFunction> EdidFunction::FromKwargsValue(
+    const base::Value& dict_value) {
+  PARSE_BEGIN(EdidFunction);
+  PARSE_ARGUMENT(edid_patterns, {kSysfsEdidPath});
+  PARSE_END();
+}
+
+EdidFunction::DataType EdidFunction::EvalImpl() const {
+  DataType result{};
+
+  for (const auto& edid_pattern : edid_patterns_) {
+    for (const auto& edid_path : Glob(edid_pattern)) {
+      auto node_res = ProbeEdidPath(edid_path);
+      if (node_res.DictEmpty())
+        continue;
+
+      result.push_back(std::move(node_res));
+    }
+  }
+
+  return result;
 }
 
 }  // namespace runtime_probe

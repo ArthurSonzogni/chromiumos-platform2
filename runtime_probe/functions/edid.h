@@ -17,27 +17,20 @@ namespace runtime_probe {
 
 // Parse EDID files from DRM devices in sysfs.
 //
-// @param dir_path a list of paths to be evaluated. (Default:
-// {"/sys/class/drm/<wildcard>"})
-class EdidFunction : public ProbeFunction {
+// @param edid_patterns a list of paths to be evaluated. (Default:
+// {"/sys/class/drm/*/edid"})
+class EdidFunction final : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("edid");
 
   static std::unique_ptr<EdidFunction> FromKwargsValue(
       const base::Value& dict_value);
 
-  DataType Eval() const override;
-
-  int EvalInHelper(std::string* output) const override;
-
  private:
-  // The path of target sysfs device, the last component can contain '*'.
-  std::vector<std::string> dir_path_;
+  DataType EvalImpl() const override;
 
-  std::vector<base::FilePath> GetEdidPaths(
-      const base::FilePath& glob_path) const;
-
-  base::Value EvalInHelperByPath(const base::FilePath& node_path) const;
+  // The path of target edid files, can contain wildcard.
+  std::vector<std::string> edid_patterns_;
 };
 
 }  // namespace runtime_probe
