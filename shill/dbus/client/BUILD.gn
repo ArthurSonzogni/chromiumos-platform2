@@ -17,6 +17,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libshill-client",
+    "libshill-net",
   ]
 }
 
@@ -40,6 +41,7 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libshill-client-test",
+      "libshill-net",
     ]
   }
 

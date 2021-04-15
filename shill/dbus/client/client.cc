@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
+#include <shill/net/ip_address.h>
 
 using org::chromium::flimflam::DeviceProxy;
 using org::chromium::flimflam::DeviceProxyInterface;
@@ -592,44 +593,19 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
-    // Detects the type of IPConfig. For ipv4 and ipv6 configurations, there
-    // should be at most one non-empty entry for each type.
-    std::string method = brillo::GetVariantValueOrDefault<std::string>(
-        properties, kMethodProperty);
-    if (method.empty()) {
-      LOG(WARNING) << "Empty property [" << kMethodProperty << "] in IPConfig ["
-                   << path.value() << "] on device [" << device_path << "]";
-      continue;
-    }
-
-    // TODO(garrick): Replace use of method property with prefix length
-    // inspection.
-    const bool is_ipv4_type =
-        (method == shill::kTypeIPv4 || method == shill::kTypeDHCP ||
-         method == shill::kTypeBOOTP || method == shill::kTypeZeroConf);
-    const bool is_ipv6_type = (method == shill::kTypeIPv6);
-    if (!is_ipv4_type && !is_ipv6_type) {
-      LOG(WARNING) << "Unknown type [" << method << "] in IPConfig ["
-                   << path.value() << "] on device [" << device_path << "]";
-      continue;
-    }
-
-    // While multiple IPv6 addresses are valid, we expect shill to provide at
-    // most one for now.
-    // TODO(garrick): Support multiple IPv6 configurations.
-    if ((is_ipv4_type && !ipconfig.ipv4_address.empty()) ||
-        (is_ipv6_type && !ipconfig.ipv6_address.empty())) {
-      LOG(WARNING) << "Duplicate [" << method << "] IPConfig found"
-                   << " on device [" << device_path << "]";
-      continue;
-    }
-
     std::string addr = brillo::GetVariantValueOrDefault<std::string>(
         properties, kAddressProperty);
     if (addr.empty()) {
       LOG(WARNING) << "Empty property [" << kAddressProperty
                    << "] in IPConfig [" << path.value() << "] on device ["
                    << device_path << "]";
+      continue;
+    }
+
+    const IPAddress ip_addr(addr);
+    if (ip_addr.family() == IPAddress::kFamilyUnknown) {
+      LOG(WARNING) << "Invalid address [" << addr << "] in IPConfig ["
+                   << path.value() << "] on device [" << device_path << "]";
       continue;
     }
 
@@ -651,6 +627,18 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
+    // While multiple IPv6 addresses are valid, we expect shill to provide at
+    // most one for now.
+    // TODO(garrick): Support multiple IPv6 configurations.
+    if ((ip_addr.family() == IPAddress::kFamilyIPv4 &&
+         !ipconfig.ipv4_address.empty()) ||
+        (ip_addr.family() == IPAddress::kFamilyIPv6 &&
+         !ipconfig.ipv6_address.empty())) {
+      LOG(WARNING) << "Duplicate [" << ip_addr.family() << "] IPConfig found"
+                   << " on device [" << device_path << "]";
+      continue;
+    }
+
     // TODO(garrick): Accommodate missing name servers.
     auto ns = brillo::GetVariantValueOrDefault<std::vector<std::string>>(
         properties, kNameServersProperty);
@@ -661,7 +649,7 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
-    if (is_ipv4_type) {
+    if (ip_addr.family() == IPAddress::kFamilyIPv4) {
       ipconfig.ipv4_prefix_length = len;
       ipconfig.ipv4_address = addr;
       ipconfig.ipv4_gateway = gw;
