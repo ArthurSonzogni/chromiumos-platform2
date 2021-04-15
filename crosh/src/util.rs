@@ -30,10 +30,16 @@ const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 static INCLUDE_DEV: AtomicBool = AtomicBool::new(false);
 static INCLUDE_USB: AtomicBool = AtomicBool::new(false);
 
+#[derive(Debug)]
 pub enum Error {
+    DbusChromeFeaturesService(dbus::Error, String),
+    DbusConnection(dbus::Error),
+    DbusGetUserIdHash(chromeos::Error),
     NoMatchFound,
     WrappedError(String),
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl Display for Error {
     #[remain::check]
@@ -42,6 +48,11 @@ impl Display for Error {
 
         #[sorted]
         match self {
+            DbusChromeFeaturesService(err, m) => write!(f, "failed to call '{}': {}", m, err),
+            DbusConnection(err) => write!(f, "failed to connect to D-Bus: {}", err),
+            DbusGetUserIdHash(err) => {
+                write!(f, "failed to get user-id hash over to D-Bus: {:?}", err)
+            }
             NoMatchFound => write!(f, "No match found."),
             WrappedError(err) => write!(f, "{}", err),
         }
@@ -56,13 +67,14 @@ impl<T: error::Error> From<T> for Error {
 
 // Return the user ID hash from the environment. If it is not available, fetch it from session
 // manager and set the environment variable.
-pub fn get_user_id_hash() -> Result<String, ()> {
+pub fn get_user_id_hash() -> Result<String> {
     if let Ok(lookup) = env::var(CROS_USER_ID_HASH) {
         return Ok(lookup);
     }
 
     let user_id_hash = chromeos::get_user_id_hash().map_err(|err| {
         error!("ERROR: D-Bus call failed: {}", err);
+        Error::DbusGetUserIdHash(err)
     })?;
 
     env::set_var(CROS_USER_ID_HASH, &user_id_hash);
@@ -70,24 +82,23 @@ pub fn get_user_id_hash() -> Result<String, ()> {
 }
 
 // Return the output file path for the given output type in user's Downloads directory.
-pub fn generate_output_file_path(output_type: &str, file_extension: &str) -> Result<String, ()> {
+pub fn generate_output_file_path(output_type: &str, file_extension: &str) -> Result<String> {
     let date = Local::now();
     let formatted_date = date.format("%Y-%m-%d_%H.%M.%S");
     let user_id_hash = get_user_id_hash()?;
     let random_string: String = thread_rng().sample_iter(&Alphanumeric).take(6).collect();
-    let result = format!(
+    Ok(format!(
         "/home/user/{}/Downloads/{}_{}_{}.{}",
         user_id_hash, output_type, formatted_date, random_string, file_extension
-    )
-    .to_string();
-    return Ok(result);
+    ))
 }
 
-pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool, ()> {
+pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool> {
     let user_id_hash = get_user_id_hash()?;
 
     let connection = Connection::new_system().map_err(|err| {
         error!("ERROR: Failed to get D-Bus connection: {}", err);
+        Error::DbusConnection(err)
     })?;
 
     let proxy = connection.with_proxy(
@@ -104,12 +115,13 @@ pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool, ()> {
         )
         .map_err(|err| {
             error!("ERROR: D-Bus method call failed: {}", err);
+            Error::DbusChromeFeaturesService(err, method_name.to_string())
         })?;
 
     Ok(reply)
 }
 
-pub fn is_removable() -> Result<bool, Error> {
+pub fn is_removable() -> Result<bool> {
     let dev = root_dev()?;
     let groups = Regex::new(r#"/dev/([^/]+?)p?[0-9]+$"#)?
         .captures(&dev)
@@ -139,7 +151,7 @@ pub fn usb_commands_included() -> bool {
     INCLUDE_USB.load(Ordering::Acquire)
 }
 
-/// Safety:
+/// # Safety
 /// handler needs to be async safe.
 pub unsafe fn set_signal_handlers(signums: &[c_int], handler: extern "C" fn(c_int)) {
     for signum in signums {
@@ -157,7 +169,7 @@ pub fn clear_signal_handlers(signums: &[c_int]) {
     }
 }
 
-fn root_dev() -> Result<String, Error> {
+fn root_dev() -> Result<String> {
     let mut child = Command::new("rootdev")
         .arg("-s")
         .stdin(Stdio::null())
