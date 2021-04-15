@@ -4,7 +4,9 @@
 
 #include "biod/updater/update_utils.h"
 
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -12,10 +14,10 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/optional.h>
+#include <brillo/vcsid.h>
 #include <cros_config/cros_config_interface.h>
 
 #include "biod/biod_config.h"
-#include "biod/biod_version.h"
 
 namespace {
 
@@ -31,10 +33,8 @@ namespace updater {
 constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
 
 std::string UpdaterVersion() {
-  const char* ver = VCSID;
-  static_assert(sizeof(ver) > 0,
-                "The updater requires VCSID for to work properly.");
-  return std::string(ver);
+  CHECK(brillo::kVCSID) << "The updater requires VCSID to function properly.";
+  return std::string(*brillo::kVCSID);
 }
 
 bool UpdateDisallowed() {
