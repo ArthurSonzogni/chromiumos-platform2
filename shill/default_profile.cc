@@ -21,9 +21,6 @@
 namespace shill {
 
 namespace {
-// OfflineMode was removed in crrev.com/c/2202196.
-// This was left here to remove OfflineMode entries from profiles.
-const char kStorageOfflineMode[] = "OfflineMode";
 // ConnectionIdSalt was removed in crrev.com/c/2814180.
 // This was left here to remove ConnectionIdSalt entries from profiles.
 const char kStorageConnectionIdSaltDeprecated[] = "ConnectionIdSalt";
@@ -157,8 +154,6 @@ bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
 }
 
 bool DefaultProfile::Save() {
-  // OfflineMode was removed in crrev.com/c/2202196.
-  storage()->DeleteKey(kStorageId, kStorageOfflineMode);
   // ConnectionIdSalt was removed in crrev.com/c/2814180.
   storage()->DeleteKey(kStorageId, kStorageConnectionIdSaltDeprecated);
 
