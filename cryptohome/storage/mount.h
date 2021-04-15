@@ -362,15 +362,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // This closure will be run in UnmountCryptohome().
   base::OnceClosure mount_cleanup_;
 
-  FRIEND_TEST(MountTest, NamespaceCreationPass);
-  FRIEND_TEST(MountTest, NamespaceCreationFail);
-  FRIEND_TEST(MountTest, RememberMountOrderingTest);
-  FRIEND_TEST(MountTest, CreateCryptohomeTest);
-  FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
   FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
-  FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloads);
-  FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists);
-  FRIEND_TEST(EphemeralNoUserSystemTest, MountGuestUserDir);
 };
 
 }  // namespace cryptohome
