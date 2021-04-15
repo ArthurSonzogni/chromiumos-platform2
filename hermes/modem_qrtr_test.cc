@@ -321,7 +321,7 @@ class ModemQrtrTest : public testing::Test {
   // Set's up expectations for messages that go out when a slot switch happens
   void InitSlot(uint8_t physical_slot) {
     {
-      ::testing::InSequence dummy;
+      ::testing::InSequence in_seq;
 
       EXPECT_SEND(*socket_, kQrtrGetSlotsReq);
       // Slot 2 is the active slot after test initialization. If slot 1 is
@@ -399,7 +399,7 @@ class ModemQrtrTest : public testing::Test {
                      kQrtrGetSerialNumbersResp.end(), kDmsPort);
 
     {
-      ::testing::InSequence dummy;
+      ::testing::InSequence in_seq;
       // Expect RESET and GET_SLOTS request after
       // receiving UIM NEW_SERVER.
       EXPECT_SEND(*socket_, kQrtrResetReq);
@@ -475,7 +475,7 @@ TEST_F(ModemQrtrTest, SendTwoApdus) {
   InitSlot(2);
   auto v = std::vector<uint8_t>();
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence in_seq;
 
     EXPECT_SEND(*socket_, CreateQrtrFromApdu(kGetChallengeApdu.begin(),
                                              kGetChallengeApdu.end()));
