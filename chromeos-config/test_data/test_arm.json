@@ -11,7 +11,7 @@
         "name": "some",
         "ui": {
           "help-content-id": "some",
-          "serialized-ash-flags": "--device-help-content-id=some\u0000"
+          "serialized-ash-switches": "--device-help-content-id=some\u0000"
         },
         "wallpaper": "some-wallpaper"
       },
@@ -26,7 +26,7 @@
         "name": "whitelabel",
         "ui": {
           "help-content-id": "whitelabel1",
-          "serialized-ash-flags": "--device-help-content-id=whitelabel1\u0000"
+          "serialized-ash-switches": "--device-help-content-id=whitelabel1\u0000"
         },
         "wallpaper": "whitelabel1-wallpaper"
       },
@@ -41,7 +41,7 @@
         "name": "whitelabel",
         "ui": {
           "help-content-id": "whitelabel2",
-          "serialized-ash-flags": "--device-help-content-id=whitelabel2\u0000"
+          "serialized-ash-switches": "--device-help-content-id=whitelabel2\u0000"
         },
         "wallpaper": "whitelabel2-wallpaper"
       },
@@ -56,7 +56,7 @@
         "name": "whitelabel",
         "ui": {
           "help-content-id": "whitelabel",
-          "serialized-ash-flags": "--device-help-content-id=whitelabel\u0000"
+          "serialized-ash-switches": "--device-help-content-id=whitelabel\u0000"
         },
         "wallpaper": "whitelabel-default-wallpaper"
       },
@@ -72,7 +72,7 @@
         "name": "another1",
         "ui": {
           "help-content-id": "another1",
-          "serialized-ash-flags": "--device-help-content-id=another1\u0000"
+          "serialized-ash-switches": "--device-help-content-id=another1\u0000"
         }
       },
       {
@@ -87,7 +87,7 @@
         "name": "another2",
         "ui": {
           "help-content-id": "another2",
-          "serialized-ash-flags": "--device-help-content-id=another2\u0000"
+          "serialized-ash-switches": "--device-help-content-id=another2\u0000"
         }
       }
     ]

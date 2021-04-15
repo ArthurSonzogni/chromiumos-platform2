@@ -90,11 +90,11 @@ class ChromeSetupTest : public ::testing::Test {
   brillo::FakeCrosConfig cros_config_;
 };
 
-TEST_F(ChromeSetupTest, TestSerializedAshFlags) {
+TEST_F(ChromeSetupTest, TestSerializedAshSwitches) {
   using std::string_literals::operator""s;
-  cros_config_.SetString("/ui", "serialized-ash-flags",
+  cros_config_.SetString("/ui", "serialized-ash-switches",
                          "--foo\0--bar-baz=bam\0--bip\0"s);
-  login_manager::AddSerializedAshFlags(&builder_, &cros_config_);
+  login_manager::AddSerializedAshSwitches(&builder_, &cros_config_);
   auto argv = builder_.arguments();
   EXPECT_THAT(argv,
               testing::UnorderedElementsAre("--foo", "--bar-baz=bam", "--bip"));

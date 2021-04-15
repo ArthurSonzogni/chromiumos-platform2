@@ -42,7 +42,7 @@ using chromeos::ui::util::EnsureDirectoryExists;
 namespace login_manager {
 
 constexpr char kUiPath[] = "/ui";
-constexpr char kSerializedAshFlagsProperty[] = "serialized-ash-flags";
+constexpr char kSerializedAshSwitchesProperty[] = "serialized-ash-switches";
 
 const char kWallpaperProperty[] = "wallpaper";
 
@@ -626,18 +626,18 @@ void SetUpSchedulerFlags(ChromiumCommandBuilder* builder,
   }
 }
 
-void AddSerializedAshFlags(ChromiumCommandBuilder* builder,
-                           brillo::CrosConfigInterface* cros_config) {
+void AddSerializedAshSwitches(ChromiumCommandBuilder* builder,
+                              brillo::CrosConfigInterface* cros_config) {
   using std::string_literals::operator""s;
-  std::string serialized_ash_flags;
+  std::string serialized_ash_switches;
 
-  if (!cros_config->GetString(kUiPath, kSerializedAshFlagsProperty,
-                              &serialized_ash_flags)) {
+  if (!cros_config->GetString(kUiPath, kSerializedAshSwitchesProperty,
+                              &serialized_ash_switches)) {
     return;
   }
 
   for (const auto& flag :
-       base::SplitString(serialized_ash_flags, "\0"s, base::KEEP_WHITESPACE,
+       base::SplitString(serialized_ash_switches, "\0"s, base::KEEP_WHITESPACE,
                          base::SPLIT_WANT_NONEMPTY)) {
     builder->AddArg(flag);
   }
@@ -862,7 +862,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   // app_shell, content_shell, etc.) rather than just to Chrome belong in the
   // ChromiumCommandBuilder class instead.
   CreateDirectories(&builder);
-  AddSerializedAshFlags(&builder, cros_config);
+  AddSerializedAshSwitches(&builder, cros_config);
   AddSystemFlags(&builder, cros_config);
   AddUiFlags(&builder, cros_config);
   AddArcFlags(&builder, &disallowed_prefixes, cros_config);

@@ -373,10 +373,10 @@ const struct config_map *cros_config_get_config_map(int *num_entries) {
   return ClangFormat(file_format % (',\n'.join(structs), len(structs)))
 
 
-def _GenerateInferredAshFlags(device_config):
-  """Generate runtime-packed ash flags into a single device config.
+def _GenerateInferredAshSwitches(device_config):
+  """Generate runtime-packed ash switches into a single device config.
 
-  Chrome flags are packed into /ui:serialized-ash-flags in the
+  Chrome switches are packed into /ui:serialized-ash-switches in the
   resultant runtime-only configuration, as a string of null-terminated
   strings.
 
@@ -384,30 +384,30 @@ def _GenerateInferredAshFlags(device_config):
     device_config: transformed configuration for a single device.
 
   Returns:
-    Config for a single device with /ui:serialized-ash-flags added.
+    Config for a single device with /ui:serialized-ash-switches added.
   """
   ui_config = device_config.get('ui', {})
-  ash_flags = set()
-  ash_flags |= set(ui_config.get('extra-ash-flags', []))
+  ash_switches = set()
+  ash_switches |= set(ui_config.get('extra-ash-flags', []))
 
   help_content_id = ui_config.get('help-content-id')
   if help_content_id:
-    ash_flags.add('--device-help-content-id=%s' % help_content_id)
+    ash_switches.add('--device-help-content-id=%s' % help_content_id)
 
   extra_web_apps_dir = ui_config.get('apps', {}).get('extra-web-apps-dir')
   if extra_web_apps_dir:
-    ash_flags.add('--extra-web-apps-dir=%s' % extra_web_apps_dir)
+    ash_switches.add('--extra-web-apps-dir=%s' % extra_web_apps_dir)
 
-  if not ash_flags:
+  if not ash_switches:
     return device_config
 
-  serialized_ash_flags = ''
-  for flag in sorted(ash_flags):
-    serialized_ash_flags += '%s\0' % flag
+  serialized_ash_switches = ''
+  for flag in sorted(ash_switches):
+    serialized_ash_switches += '%s\0' % flag
 
   device_config = copy.deepcopy(device_config)
   device_config.setdefault('ui', {})
-  device_config['ui']['serialized-ash-flags'] = serialized_ash_flags
+  device_config['ui']['serialized-ash-switches'] = serialized_ash_switches
   return device_config
 
 
@@ -435,7 +435,7 @@ def _GenerateInferredElements(json_config):
       ui_elements['help-content-id'] = (
           customization_id or whitelabel_tag or model_name)
     config['ui'] = ui_elements
-    config = _GenerateInferredAshFlags(config)
+    config = _GenerateInferredAshSwitches(config)
     configs.append(config)
   return {CHROMEOS: {CONFIGS: configs}}
 

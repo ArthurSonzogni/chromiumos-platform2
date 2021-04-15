@@ -105,11 +105,11 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
 void SetUpSchedulerFlags(chromeos::ui::ChromiumCommandBuilder* builder,
                          brillo::CrosConfigInterface* cros_config);
 
-// Add flags pertinent to the Ash window manager generated at
+// Add switches pertinent to the Ash window manager generated at
 // build-time by cros_config_schema.  These are stored in
 // /ui:serialized-ash-flags, an implicitly generated element.
-void AddSerializedAshFlags(chromeos::ui::ChromiumCommandBuilder* builder,
-                           brillo::CrosConfigInterface* cros_config);
+void AddSerializedAshSwitches(chromeos::ui::ChromiumCommandBuilder* builder,
+                              brillo::CrosConfigInterface* cros_config);
 
 // Add flags to specify the wallpaper to use. This is called by
 // PerformChromeSetup and only present in the header for testing.
