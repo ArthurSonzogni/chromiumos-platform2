@@ -76,6 +76,9 @@ enum DerivationType : int {
   kDerivationTypeNumBuckets  // Must be the last entry.
 };
 
+// This enum lists the cryptohome phases, used for reporting purposes.
+enum CryptohomePhase { kCreated, kMounted };
+
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum CryptohomeError {
@@ -460,9 +463,14 @@ void OverrideMetricsLibraryForTesting(MetricsLibraryInterface* lib);
 // used with OverrideMetricsLibraryForTesting().
 void ClearMetricsLibraryForTesting();
 
-// The |derivation_type| value is reported to
-// "Cryptohome.WrappingKeyDerivation.Mount" histogram.
-void ReportWrappingKeyDerivationType(DerivationType derivation_type);
+// The |derivation_type| value is reported to the
+// "Cryptohome.WrappingKeyDerivation.[Create]/[Mount]" histograms.
+// Reported to:
+// *.Create - when the cryptohome is being created &
+//            when the new wrapping keys are generated for the cryptohome
+// *.Mount  - when the cryptohome is being mounted
+void ReportWrappingKeyDerivationType(DerivationType derivation_type,
+                                     CryptohomePhase crypto_phase);
 
 // The |error| value is reported to the "Cryptohome.Errors" enum histogram.
 void ReportCryptohomeError(CryptohomeError error);

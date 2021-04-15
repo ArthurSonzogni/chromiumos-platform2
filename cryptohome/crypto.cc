@@ -514,7 +514,8 @@ bool Crypto::DecryptVaultKeyset(VaultKeyset* vault_keyset,
   bool unwrapping_succeeded =
       UnwrapVaultKeyset(serialized, vkk_data, vault_keyset, error);
   if (unwrapping_succeeded) {
-    ReportWrappingKeyDerivationType(auth_block->derivation_type());
+    ReportWrappingKeyDerivationType(auth_block->derivation_type(),
+                                    CryptohomePhase::kMounted);
   }
 
   return unwrapping_succeeded;
@@ -551,14 +552,24 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
   }
   *out_state = auth_state.value();
 
+  bool wrapping_succeeded;
   bool is_scrypt_wrapped = auth_state->has_libscrypt_compat_state() ||
                            auth_state->has_challenge_credential_state();
   if (is_scrypt_wrapped) {
-    return WrapScryptVaultKeyset(vault_keyset, key_blobs, wrapped);
+    wrapping_succeeded =
+        WrapScryptVaultKeyset(vault_keyset, key_blobs, wrapped);
+  } else {
+    wrapping_succeeded = WrapVaultKeysetWithAesDeprecated(
+        vault_keyset, key_blobs, store_reset_seed, wrapped);
   }
 
-  return WrapVaultKeysetWithAesDeprecated(vault_keyset, key_blobs,
-                                          store_reset_seed, wrapped);
+  // Report wrapping key type to UMA
+  if (wrapping_succeeded) {
+    ReportWrappingKeyDerivationType(auth_block->derivation_type(),
+                                    CryptohomePhase::kCreated);
+  }
+
+  return wrapping_succeeded;
 }
 
 bool Crypto::EncryptWithTpm(const SecureBlob& data,
