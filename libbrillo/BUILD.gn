@@ -501,6 +501,8 @@ if (use.test) {
       "brillo/unittest_utils.cc",
       "brillo/url_utils_test.cc",
       "brillo/value_conversion_test.cc",
+      "brillo/vcsid_set_test.cc",
+      "brillo/vcsid_unset_test.cc",
       "testrunner.cc",
     ]
     if (use.dbus) {
