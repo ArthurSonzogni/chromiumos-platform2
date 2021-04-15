@@ -19,6 +19,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/agetty                    u:object_r:cros_agetty_exec:s0
 /sbin/audispd                   u:object_r:cros_audispd_exec:s0
 /sbin/auditd                    u:object_r:cros_auditd_exec:s0
+/sbin/blockdev                  u:object_r:cros_blockdev_exec:s0
 /sbin/capsh                     u:object_r:cros_capsh_exec:s0
 /sbin/chromeos_startup          u:object_r:chromeos_startup_script_exec:s0
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
@@ -27,8 +28,11 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/dhcpcd                    u:object_r:cros_dhcpcd_exec:s0
 /sbin/frecon                    u:object_r:frecon_exec:s0
 /sbin/hwclock                   u:object_r:cros_hwclock_exec:s0
+/sbin/initctl                   u:object_r:cros_initctl_exec:s0
 /sbin/insmod                    u:object_r:cros_modprobe_exec:s0
+/sbin/losetup                   u:object_r:cros_losetup_exec:s0
 /sbin/minijail0                 u:object_r:cros_minijail_exec:s0
+/sbin/mke2fs                    u:object_r:cros_mke2fs_exec:s0
 /sbin/modprobe                  u:object_r:cros_modprobe_exec:s0
 /sbin/restorecon                u:object_r:cros_restorecon_exec:s0
 /sbin/rmmod                     u:object_r:cros_modprobe_exec:s0
@@ -42,8 +46,15 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /bin/bash                       u:object_r:sh_exec:s0
 /bin/brltty                     u:object_r:cros_brltty_exec:s0
 /bin/dash                       u:object_r:sh_exec:s0
+/bin/grep                       u:object_r:cros_grep_exec:s0
 /bin/kmod                       u:object_r:cros_modprobe_exec:s0
+/bin/lsblk                      u:object_r:cros_lsblk_exec:s0
+/bin/mount                      u:object_r:cros_mount_exec:s0
+/bin/mountpoint                 u:object_r:cros_mountpoint_exec:s0
+/bin/sed                        u:object_r:cros_sed_exec:s0
 /bin/sh                         u:object_r:sh_exec:s0
+/bin/udevadm                    u:object_r:cros_udevadm_exec:s0
+/bin/umount                     u:object_r:cros_umount_exec:s0
 
 # USR_BIN_START_HERE
 /usr/bin/anomaly_detector       u:object_r:cros_anomaly_detector_exec:s0
@@ -56,6 +67,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/arcvm_server_proxy     u:object_r:cros_arcvm_server_proxy_exec:s0
 /usr/bin/biod                   u:object_r:cros_biod_exec:s0
 /usr/bin/btdispatch             u:object_r:cros_btdispatch_exec:s0
+/usr/bin/cgpt                   u:object_r:cros_cgpt_exec:s0
 /usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
 /usr/bin/chunneld               u:object_r:cros_chunneld_exec:s0
 /usr/bin/core_collector[0-9]*   u:object_r:cros_core_collector_exec:s0
@@ -64,6 +76,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/cros_camera_algo       u:object_r:cros_camera_algo_exec:s0
 /usr/bin/cros_camera_service    u:object_r:cros_camera_service_exec:s0
 /usr/bin/cros_healthd           u:object_r:cros_healthd_exec:s0
+/usr/bin/cros_installer         u:object_r:cros_installer_exec:s0
+/usr/bin/crossystem             u:object_r:cros_crossystem_exec:s0
 /usr/bin/cups_proxy             u:object_r:cros_cups_proxy_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
@@ -71,6 +85,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/esif_ufd               u:object_r:cros_esif_ufd_exec:s0
 /usr/bin/find                   u:object_r:cros_system_file:s0
 /usr/bin/gdbus                  u:object_r:cros_gdbus_exec:s0
+/usr/bin/getopt                 u:object_r:cros_getopt_exec:s0
 /usr/bin/hermes                 u:object_r:cros_hermes_exec:s0
 /usr/bin/hotlined               u:object_r:cros_hotlined_exec:s0
 /usr/bin/hotlog                 u:object_r:cros_hotlog_exec:s0
@@ -78,6 +93,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/ippusb_bridge          u:object_r:cros_ippusb_bridge_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
 /usr/bin/lorgnette              u:object_r:cros_lorgnette_exec:s0
+/usr/bin/mawk                   u:object_r:cros_mawk_exec:s0
 /usr/bin/memd                   u:object_r:cros_memd_exec:s0
 /usr/bin/metrics_client         u:object_r:cros_metrics_client_exec:s0
 /usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
@@ -97,6 +113,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/qrtr-ns                u:object_r:cros_qrtr_ns_exec:s0
 /usr/bin/resourced              u:object_r:cros_resourced_exec:s0
 /usr/bin/rmtfs                  u:object_r:cros_rmtfs_exec:s0
+/usr/bin/rootdev                u:object_r:cros_rootdev_exec:s0
 /usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/seneschal              u:object_r:cros_seneschal_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
@@ -134,6 +151,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/cecservice            u:object_r:cros_cecservice_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
+/usr/sbin/chromeos-install      u:object_r:cros_chromeos_install_exec:s0
+/usr/sbin/chromeos-postinst     u:object_r:cros_chromeos_postinst_exec:s0
 /usr/sbin/chromeos-trim         u:object_r:cros_chromeos_trim_exec:s0
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0
 /usr/sbin/cros-machine-id-regen u:object_r:cros_machine_id_regen_exec:s0
@@ -146,12 +165,15 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/dlcservice            u:object_r:cros_dlcservice_exec:s0
 /usr/sbin/huddly-monitor         u:object_r:cros_huddly_monitor_exec:s0
 /usr/sbin/imageloader           u:object_r:cros_imageloader_exec:s0
+/usr/sbin/is_running_from_installer u:object_r:cros_is_running_from_installer_exec:s0
 /usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
 /usr/sbin/mimo-monitor          u:object_r:cros_mimo_monitor_exec:s0
 /usr/sbin/mtpd                  u:object_r:cros_mtpd_exec:s0
 /usr/sbin/oobe_config_restore   u:object_r:cros_oobe_config_restore_exec:s0
+/usr/sbin/os_install_service    u:object_r:cros_os_install_service_exec:s0
 /usr/sbin/p2p-http-server       u:object_r:cros_p2p_http_server_exec:s0
 /usr/sbin/p2p-server            u:object_r:cros_p2p_server_exec:s0
+/usr/sbin/parted                u:object_r:cros_parted_exec:s0
 /usr/sbin/pca_agentd            u:object_r:cros_pca_agentd_exec:s0
 /usr/sbin/pciguard              u:object_r:cros_pciguard_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
@@ -165,6 +187,12 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/usbguard-daemon       u:object_r:cros_usbguard_exec:s0
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
 # USR_SBIN_END_HERE
+
+# These executables are installed in dev/test builds. Give them an
+# explicit label (rather than cros_unconfined_exec) so that
+# chromeos-install is allowed to write them when creating the stateful
+# partition.
+/usr/local/bin/[^/]+            u:object_r:cros_dev_image_exec:s0
 
 /usr/local/bin/recover_duts     u:object_r:cros_recover_duts_script:s0
 
@@ -238,6 +266,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/log/net.log                u:object_r:cros_net_log:s0
 /var/log/powerd.out             u:object_r:cros_powerd_log:s0
+/var/log/os_install_service(/.*)? u:object_r:cros_var_log_os_install_service:s0
 /var/log/recover_duts(/.*)?     u:object_r:cros_var_log_recover_duts:s0
 /var/log/secure                 u:object_r:cros_secure_log:s0
 /var/log/session_manager        u:object_r:cros_var_log_session_manager:s0

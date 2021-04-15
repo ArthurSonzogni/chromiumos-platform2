@@ -1,0 +1,17 @@
+type cros_os_install_service, domain, chromeos_domain;
+
+domain_auto_trans_nnp(minijail, cros_os_install_service_exec, cros_os_install_service);
+
+log_writer(cros_os_install_service);
+cros_dbus_client(cros_os_install_service);
+
+allow cros_os_install_service proc_cmdline:file r_file_perms;
+
+allow cros_os_install_service minijail:fifo_file r_file_perms;
+allow cros_os_install_service minijail:fd use;
+
+filetrans_pattern(cros_os_install_service, cros_var_log_os_install_service, cros_var_log_os_install_service, file);
+allow cros_os_install_service cros_var_log_os_install_service:file rw_file_perms;
+
+# Allow running chromeos-install
+allow cros_os_install_service sh_exec:file rx_file_perms;
