@@ -25,7 +25,6 @@
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_service.h"
 
-using std::string;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
@@ -48,7 +47,7 @@ class VPNProviderTest : public testing::Test {
   static const char kHost[];
   static const char kName[];
 
-  string GetServiceFriendlyName(const ServiceRefPtr& service) {
+  std::string GetServiceFriendlyName(const ServiceRefPtr& service) {
     return service->friendly_name();
   }
 
@@ -78,7 +77,7 @@ const char VPNProviderTest::kName[] = "vpn-name";
 TEST_F(VPNProviderTest, GetServiceNoType) {
   KeyValueStore args;
   Error e;
-  args.Set<string>(kTypeProperty, kTypeVPN);
+  args.Set<std::string>(kTypeProperty, kTypeVPN);
   ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
@@ -87,10 +86,10 @@ TEST_F(VPNProviderTest, GetServiceNoType) {
 TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
   KeyValueStore args;
   Error e;
-  args.Set<string>(kTypeProperty, kTypeVPN);
-  args.Set<string>(kProviderTypeProperty, "unknown-vpn-type");
-  args.Set<string>(kProviderHostProperty, kHost);
-  args.Set<string>(kNameProperty, kName);
+  args.Set<std::string>(kTypeProperty, kTypeVPN);
+  args.Set<std::string>(kProviderTypeProperty, "unknown-vpn-type");
+  args.Set<std::string>(kProviderHostProperty, kHost);
+  args.Set<std::string>(kNameProperty, kName);
   ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
@@ -98,10 +97,10 @@ TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
 
 TEST_F(VPNProviderTest, GetService) {
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeVPN);
-  args.Set<string>(kProviderTypeProperty, kProviderOpenVpn);
-  args.Set<string>(kProviderHostProperty, kHost);
-  args.Set<string>(kNameProperty, kName);
+  args.Set<std::string>(kTypeProperty, kTypeVPN);
+  args.Set<std::string>(kProviderTypeProperty, kProviderOpenVpn);
+  args.Set<std::string>(kProviderHostProperty, kHost);
+  args.Set<std::string>(kNameProperty, kName);
 
   {
     Error error;
@@ -226,8 +225,8 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
       .WillOnce(Return(true));
   provider_.CreateServicesFromProfile(profile);
 
-  GetServiceAt(0)->driver()->args()->Set<string>(kProviderHostProperty,
-                                                 "1.2.3.4");
+  GetServiceAt(0)->driver()->args()->Set<std::string>(kProviderHostProperty,
+                                                      "1.2.3.4");
   // Calling this again should not create any more services (checked by the
   // Times(1) above).
   provider_.CreateServicesFromProfile(profile);
@@ -271,7 +270,7 @@ TEST_F(VPNProviderTest, CreateArcService) {
       provider_.CreateService(kProviderArcVpn, kName, kStorageID, &error);
   ASSERT_NE(nullptr, service);
   ASSERT_TRUE(service->driver());
-  service->driver()->args()->Set<string>(kProviderHostProperty, kHost);
+  service->driver()->args()->Set<std::string>(kProviderHostProperty, kHost);
 
   EXPECT_EQ(kProviderArcVpn, service->driver()->GetProviderType());
   EXPECT_EQ(kName, GetServiceFriendlyName(service));

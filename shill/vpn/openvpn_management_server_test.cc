@@ -20,8 +20,6 @@
 #include "shill/vpn/mock_openvpn_driver.h"
 
 using base::Bind;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Assign;
 using testing::InSequence;
@@ -58,39 +56,39 @@ class OpenVPNManagementServerTest : public testing::Test {
     SetSockets();
   }
 
-  void ExpectSend(const string& value) {
+  void ExpectSend(const std::string& value) {
     EXPECT_CALL(sockets_,
                 Send(kConnectedSocket, VoidStringEq(value), value.size(), _))
         .WillOnce(Return(value.size()));
   }
 
   void ExpectOTPStaticChallengeResponse() {
-    driver_.args()->Set<string>(kOpenVPNUserProperty, "jojo");
-    driver_.args()->Set<string>(kOpenVPNPasswordProperty, "yoyo");
-    driver_.args()->Set<string>(kOpenVPNOTPProperty, "123456");
+    driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
+    driver_.args()->Set<std::string>(kOpenVPNPasswordProperty, "yoyo");
+    driver_.args()->Set<std::string>(kOpenVPNOTPProperty, "123456");
     SetConnectedSocket();
     ExpectSend("username \"Auth\" \"jojo\"\n");
     ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
   }
 
   void ExpectTokenStaticChallengeResponse() {
-    driver_.args()->Set<string>(kOpenVPNUserProperty, "jojo");
-    driver_.args()->Set<string>(kOpenVPNTokenProperty, "toto");
+    driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
+    driver_.args()->Set<std::string>(kOpenVPNTokenProperty, "toto");
     SetConnectedSocket();
     ExpectSend("username \"Auth\" \"jojo\"\n");
     ExpectSend("password \"Auth\" \"toto\"\n");
   }
 
   void ExpectAuthenticationResponse() {
-    driver_.args()->Set<string>(kOpenVPNUserProperty, "jojo");
-    driver_.args()->Set<string>(kOpenVPNPasswordProperty, "yoyo");
+    driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
+    driver_.args()->Set<std::string>(kOpenVPNPasswordProperty, "yoyo");
     SetConnectedSocket();
     ExpectSend("username \"Auth\" \"jojo\"\n");
     ExpectSend("password \"Auth\" \"yoyo\"\n");
   }
 
   void ExpectPinResponse() {
-    driver_.args()->Set<string>(kOpenVPNPinProperty, "987654");
+    driver_.args()->Set<std::string>(kOpenVPNPinProperty, "987654");
     SetConnectedSocket();
     ExpectSend("password \"User-Specific TPM Token FOO\" \"987654\"\n");
   }
@@ -105,50 +103,50 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend("signal SIGUSR1\n");
   }
 
-  InputData CreateInputDataFromString(const string& str) {
+  InputData CreateInputDataFromString(const std::string& str) {
     InputData data(
         reinterpret_cast<unsigned char*>(const_cast<char*>(str.data())),
         str.size());
     return data;
   }
 
-  void SendSignal(const string& signal) { server_.SendSignal(signal); }
+  void SendSignal(const std::string& signal) { server_.SendSignal(signal); }
 
   void OnInput(InputData* data) { server_.OnInput(data); }
 
-  void ProcessMessage(const string& message) {
+  void ProcessMessage(const std::string& message) {
     server_.ProcessMessage(message);
   }
 
-  bool ProcessSuccessMessage(const string& message) {
+  bool ProcessSuccessMessage(const std::string& message) {
     return server_.ProcessSuccessMessage(message);
   }
 
-  bool ProcessStateMessage(const string& message) {
+  bool ProcessStateMessage(const std::string& message) {
     return server_.ProcessStateMessage(message);
   }
 
-  bool ProcessAuthTokenMessage(const string& message) {
+  bool ProcessAuthTokenMessage(const std::string& message) {
     return server_.ProcessAuthTokenMessage(message);
   }
 
   bool GetHoldWaiting() { return server_.hold_waiting_; }
 
-  static string ParseSubstring(const string& message,
-                               const string& start,
-                               const string& end) {
+  static std::string ParseSubstring(const std::string& message,
+                                    const std::string& start,
+                                    const std::string& end) {
     return OpenVPNManagementServer::ParseSubstring(message, start, end);
   }
 
-  static string ParsePasswordTag(const string& message) {
+  static std::string ParsePasswordTag(const std::string& message) {
     return OpenVPNManagementServer::ParsePasswordTag(message);
   }
 
-  static string ParsePasswordFailedReason(const string& message) {
+  static std::string ParsePasswordFailedReason(const std::string& message) {
     return OpenVPNManagementServer::ParsePasswordFailedReason(message);
   }
 
-  void SetClientState(const string& state) { server_.state_ = state; }
+  void SetClientState(const std::string& state) { server_.state_ = state; }
 
   MockControl control_;
   MockEventDispatcher dispatcher_;
@@ -190,9 +188,9 @@ TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
 }
 
 TEST_F(OpenVPNManagementServerTest, Start) {
-  const string kStaticChallenge = "static-challenge";
-  driver_.args()->Set<string>(kOpenVPNStaticChallengeProperty,
-                              kStaticChallenge);
+  const std::string kStaticChallenge = "static-challenge";
+  driver_.args()->Set<std::string>(kOpenVPNStaticChallengeProperty,
+                                   kStaticChallenge);
   const int kSocket = 123;
   EXPECT_CALL(sockets_, Socket(AF_INET, _, IPPROTO_TCP))
       .WillOnce(Return(kSocket));
@@ -202,12 +200,12 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   EXPECT_CALL(io_handler_factory_,
               CreateIOReadyHandler(kSocket, IOHandler::kModeInput, _))
       .WillOnce(ReturnNew<IOHandler>());
-  vector<vector<string>> options;
+  std::vector<std::vector<std::string>> options;
   EXPECT_TRUE(server_.Start(&sockets_, &options));
   EXPECT_EQ(&sockets_, server_.sockets_);
   EXPECT_EQ(kSocket, server_.socket_);
   EXPECT_NE(nullptr, server_.ready_handler_);
-  vector<vector<string>> expected_options{
+  std::vector<std::vector<std::string>> expected_options{
       {"management", "127.0.0.1", "0"},
       {"management-client"},
       {"management-hold"},
@@ -262,12 +260,12 @@ TEST_F(OpenVPNManagementServerTest, OnReady) {
 
 TEST_F(OpenVPNManagementServerTest, OnInput) {
   {
-    string s;
+    std::string s;
     InputData data = CreateInputDataFromString(s);
     OnInput(&data);
   }
   {
-    string s =
+    std::string s =
         "foo\n"
         ">INFO:...\n"
         ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
@@ -290,7 +288,7 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
 }
 
 TEST_F(OpenVPNManagementServerTest, OnInputStop) {
-  string s =
+  std::string s =
       ">PASSWORD:Verification Failed: .\n"
       ">STATE:123,RECONNECTING,detail,...,...";
   InputData data = CreateInputDataFromString(s);
@@ -344,7 +342,7 @@ TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
   ExpectOTPStaticChallengeResponse();
   EXPECT_TRUE(server_.ProcessNeedPasswordMessage(
       ">PASSWORD:Need 'Auth' SC:user/password/otp"));
-  EXPECT_FALSE(driver_.args()->Contains<string>(kOpenVPNOTPProperty));
+  EXPECT_FALSE(driver_.args()->Contains<std::string>(kOpenVPNOTPProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth) {
@@ -396,25 +394,25 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
                                    Service::kErrorDetailsNone))
       .Times(4);
   server_.PerformStaticChallenge("Auth");
-  driver_.args()->Set<string>(kOpenVPNUserProperty, "jojo");
+  driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
   server_.PerformStaticChallenge("Auth");
-  driver_.args()->Set<string>(kOpenVPNPasswordProperty, "yoyo");
+  driver_.args()->Set<std::string>(kOpenVPNPasswordProperty, "yoyo");
   server_.PerformStaticChallenge("Auth");
   driver_.args()->Clear();
-  driver_.args()->Set<string>(kOpenVPNTokenProperty, "toto");
+  driver_.args()->Set<std::string>(kOpenVPNTokenProperty, "toto");
   server_.PerformStaticChallenge("Auth");
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeOTP) {
   ExpectOTPStaticChallengeResponse();
   server_.PerformStaticChallenge("Auth");
-  EXPECT_FALSE(driver_.args()->Contains<string>(kOpenVPNOTPProperty));
+  EXPECT_FALSE(driver_.args()->Contains<std::string>(kOpenVPNOTPProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeToken) {
   ExpectTokenStaticChallengeResponse();
   server_.PerformStaticChallenge("Auth");
-  EXPECT_FALSE(driver_.args()->Contains<string>(kOpenVPNTokenProperty));
+  EXPECT_FALSE(driver_.args()->Contains<std::string>(kOpenVPNTokenProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
@@ -422,7 +420,7 @@ TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
                                    Service::kErrorDetailsNone))
       .Times(2);
   server_.PerformAuthentication("Auth");
-  driver_.args()->Set<string>(kOpenVPNUserProperty, "jojo");
+  driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
   server_.PerformAuthentication("Auth");
 }
 

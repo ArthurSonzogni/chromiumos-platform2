@@ -26,7 +26,6 @@
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
 
-using std::string;
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
@@ -164,7 +163,7 @@ TEST_F(VPNServiceTest, Disconnect) {
 TEST_F(VPNServiceTest, CreateStorageIdentifierNoHost) {
   KeyValueStore args;
   Error error;
-  args.Set<string>(kNameProperty, "vpn-name");
+  args.Set<std::string>(kNameProperty, "vpn-name");
   EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
   EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
@@ -172,7 +171,7 @@ TEST_F(VPNServiceTest, CreateStorageIdentifierNoHost) {
 TEST_F(VPNServiceTest, CreateStorageIdentifierNoName) {
   KeyValueStore args;
   Error error;
-  args.Set<string>(kProviderHostProperty, "10.8.0.1");
+  args.Set<std::string>(kProviderHostProperty, "10.8.0.1");
   EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
@@ -180,8 +179,8 @@ TEST_F(VPNServiceTest, CreateStorageIdentifierNoName) {
 TEST_F(VPNServiceTest, CreateStorageIdentifier) {
   KeyValueStore args;
   Error error;
-  args.Set<string>(kNameProperty, "vpn-name");
-  args.Set<string>(kProviderHostProperty, "10.8.0.1");
+  args.Set<std::string>(kNameProperty, "vpn-name");
+  args.Set<std::string>(kProviderHostProperty, "10.8.0.1");
   EXPECT_EQ("vpn_10_8_0_1_vpn_name",
             VPNService::CreateStorageIdentifier(args, &error));
   EXPECT_TRUE(error.IsSuccess());
@@ -194,8 +193,8 @@ TEST_F(VPNServiceTest, GetStorageIdentifier) {
 }
 
 TEST_F(VPNServiceTest, IsAlwaysOnVpn) {
-  const string kPackage = "com.foo.vpn";
-  const string kOtherPackage = "com.bar.vpn";
+  const std::string kPackage = "com.foo.vpn";
+  const std::string kOtherPackage = "com.bar.vpn";
   EXPECT_FALSE(service_->IsAlwaysOnVpn(kPackage));
 
   EXPECT_CALL(*driver_, GetHost()).WillRepeatedly(Return(kPackage));
@@ -322,11 +321,11 @@ TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
 }
 
 TEST_F(VPNServiceTest, SetNameProperty) {
-  const string kHost = "1.2.3.4";
-  driver_->args()->Set<string>(kProviderHostProperty, kHost);
-  string kOldId = service_->GetStorageIdentifier();
+  const std::string kHost = "1.2.3.4";
+  driver_->args()->Set<std::string>(kProviderHostProperty, kHost);
+  std::string kOldId = service_->GetStorageIdentifier();
   Error error;
-  const string kName = "New Name";
+  const std::string kName = "New Name";
   scoped_refptr<MockProfile> profile(new MockProfile(&manager_));
   EXPECT_CALL(*profile, DeleteEntry(kOldId, _));
   EXPECT_CALL(*profile, UpdateService(_));
@@ -341,10 +340,10 @@ TEST_F(VPNServiceTest, PropertyChanges) {
   TestCommonPropertyChanges(service_, GetAdaptor());
   TestAutoConnectPropertyChange(service_, GetAdaptor());
 
-  const string kHost = "1.2.3.4";
+  const std::string kHost = "1.2.3.4";
   scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(&manager_));
   service_->set_profile(profile);
-  driver_->args()->Set<string>(kProviderHostProperty, kHost);
+  driver_->args()->Set<std::string>(kProviderHostProperty, kHost);
   TestNamePropertyChange(service_, GetAdaptor());
 }
 
@@ -413,8 +412,8 @@ TEST_F(VPNServiceTest, GetTethering) {
 
   const char kTethering[] = "moon unit";
   EXPECT_CALL(*lower_connection, tethering())
-      .WillOnce(ReturnRefOfCopy(string(kTethering)))
-      .WillOnce(ReturnRefOfCopy(string()));
+      .WillOnce(ReturnRefOfCopy(std::string(kTethering)))
+      .WillOnce(ReturnRefOfCopy(std::string()));
 
   {
     EXPECT_CALL(manager_, GetPrimaryPhysicalService())

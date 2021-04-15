@@ -30,10 +30,6 @@
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
 
-using base::FilePath;
-using std::map;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Mock;
 using testing::NiceMock;
@@ -89,50 +85,53 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   static const char kInterfaceName[];
   static const int kInterfaceIndex;
 
-  void SetArg(const string& arg, const string& value) {
-    driver_->args()->Set<string>(arg, value);
+  void SetArg(const std::string& arg, const std::string& value) {
+    driver_->args()->Set<std::string>(arg, value);
   }
 
-  void SetArgArray(const string& arg, const vector<string>& value) {
+  void SetArgArray(const std::string& arg,
+                   const std::vector<std::string>& value) {
     driver_->args()->Set<Strings>(arg, value);
   }
 
   KeyValueStore* GetArgs() { return driver_->args(); }
 
-  string GetProviderType() { return driver_->GetProviderType(); }
+  std::string GetProviderType() { return driver_->GetProviderType(); }
 
   void SetEventHandler(VPNDriver::EventHandler* handler) {
     driver_->event_handler_ = handler;
   }
 
-  bool IsPSKFileCleared(const FilePath& psk_file_path) const {
+  bool IsPSKFileCleared(const base::FilePath& psk_file_path) const {
     return !base::PathExists(psk_file_path) && GetPSKFile().empty();
   }
 
   bool IsXauthCredentialsFileCleared(
-      const FilePath& xauth_credentials_file_path) const {
+      const base::FilePath& xauth_credentials_file_path) const {
     return !base::PathExists(xauth_credentials_file_path) &&
            GetXauthCredentialsFile().empty();
   }
 
   // Used to assert that a flag appears in the options.
-  void ExpectInFlags(const vector<string>& options,
-                     const string& flag,
-                     const string& value);
+  void ExpectInFlags(const std::vector<std::string>& options,
+                     const std::string& flag,
+                     const std::string& value);
 
-  FilePath SetupPSKFile();
-  FilePath SetupXauthCredentialsFile();
+  base::FilePath SetupPSKFile();
+  base::FilePath SetupXauthCredentialsFile();
 
-  FilePath GetPSKFile() const { return driver_->psk_file_; }
-  FilePath GetXauthCredentialsFile() const {
+  base::FilePath GetPSKFile() const { return driver_->psk_file_; }
+  base::FilePath GetXauthCredentialsFile() const {
     return driver_->xauth_credentials_file_;
   }
 
-  void InvokeNotify(const string& reason, const map<string, string>& dict) {
+  void InvokeNotify(const std::string& reason,
+                    const std::map<std::string, std::string>& dict) {
     driver_->Notify(reason, dict);
   }
 
-  void FakeUpConnect(FilePath* psk_file, FilePath* xauth_credentials_file) {
+  void FakeUpConnect(base::FilePath* psk_file,
+                     base::FilePath* xauth_credentials_file) {
     *psk_file = SetupPSKFile();
     *xauth_credentials_file = SetupXauthCredentialsFile();
     SetEventHandler(&event_handler_);
@@ -160,8 +159,9 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   }
 
   // Inherited from RpcTaskDelegate.
-  void GetLogin(string* user, string* password) override;
-  void Notify(const string& reason, const map<string, string>& dict) override;
+  void GetLogin(std::string* user, std::string* password) override;
+  void Notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict) override;
 
   base::ScopedTempDir temp_dir_;
   MockControl control_;
@@ -179,20 +179,23 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
 const char L2TPIPSecDriverTest::kInterfaceName[] = "ppp0";
 const int L2TPIPSecDriverTest::kInterfaceIndex = 123;
 
-void L2TPIPSecDriverTest::GetLogin(string* /*user*/, string* /*password*/) {}
+void L2TPIPSecDriverTest::GetLogin(std::string* /*user*/,
+                                   std::string* /*password*/) {}
 
-void L2TPIPSecDriverTest::Notify(const string& /*reason*/,
-                                 const map<string, string>& /*dict*/) {}
+void L2TPIPSecDriverTest::Notify(
+    const std::string& /*reason*/,
+    const std::map<std::string, std::string>& /*dict*/) {}
 
-void L2TPIPSecDriverTest::ExpectInFlags(const vector<string>& options,
-                                        const string& flag,
-                                        const string& value) {
-  string flag_value = base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
+void L2TPIPSecDriverTest::ExpectInFlags(const std::vector<std::string>& options,
+                                        const std::string& flag,
+                                        const std::string& value) {
+  const auto flag_value =
+      base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
   EXPECT_TRUE(base::Contains(options, flag_value));
 }
 
-FilePath L2TPIPSecDriverTest::SetupPSKFile() {
-  FilePath psk_file;
+base::FilePath L2TPIPSecDriverTest::SetupPSKFile() {
+  base::FilePath psk_file;
   EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &psk_file));
   EXPECT_FALSE(psk_file.empty());
   EXPECT_TRUE(base::PathExists(psk_file));
@@ -200,8 +203,8 @@ FilePath L2TPIPSecDriverTest::SetupPSKFile() {
   return psk_file;
 }
 
-FilePath L2TPIPSecDriverTest::SetupXauthCredentialsFile() {
-  FilePath xauth_credentials_file;
+base::FilePath L2TPIPSecDriverTest::SetupXauthCredentialsFile() {
+  base::FilePath xauth_credentials_file;
   EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.GetPath(),
                                              &xauth_credentials_file));
   EXPECT_FALSE(xauth_credentials_file.empty());
@@ -217,8 +220,8 @@ TEST_F(L2TPIPSecDriverTest, GetProviderType) {
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->Cleanup();  // Ensure no crash.
 
-  FilePath psk_file;
-  FilePath xauth_credentials_file;
+  base::FilePath psk_file;
+  base::FilePath xauth_credentials_file;
   FakeUpConnect(&psk_file, &xauth_credentials_file);
   driver_->external_task_.reset(new MockExternalTask(
       &control_, &process_manager_, weak_factory_.GetWeakPtr(),
@@ -238,8 +241,8 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
 }
 
 TEST_F(L2TPIPSecDriverTest, DeleteTemporaryFiles) {
-  FilePath psk_file = SetupPSKFile();
-  FilePath xauth_credentials_file = SetupXauthCredentialsFile();
+  base::FilePath psk_file = SetupPSKFile();
+  base::FilePath xauth_credentials_file = SetupXauthCredentialsFile();
   driver_->DeleteTemporaryFiles();
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
@@ -247,7 +250,7 @@ TEST_F(L2TPIPSecDriverTest, DeleteTemporaryFiles) {
 
 TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
   Error error;
-  vector<string> options;
+  std::vector<std::string> options;
   EXPECT_FALSE(driver_->InitOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_TRUE(options.empty());
@@ -258,9 +261,9 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
   static const char kPSK[] = "foobar";
   static const char kXauthUser[] = "silly";
   static const char kXauthPassword[] = "rabbit";
-  const vector<string> kCaCertPEM{"Insert PEM encoded data here"};
+  const std::vector<std::string> kCaCertPEM{"Insert PEM encoded data here"};
   static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
-  FilePath pem_cert(kPEMCertfile);
+  base::FilePath pem_cert(kPEMCertfile);
 
   SetArg(kProviderHostProperty, kHost);
   SetArg(kL2tpIpsecPskProperty, kPSK);
@@ -270,14 +273,14 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
 
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(pem_cert));
-  const FilePath temp_dir(temp_dir_.GetPath());
+  const base::FilePath temp_dir(temp_dir_.GetPath());
   // Once each for PSK and Xauth options.
   EXPECT_CALL(manager_, run_path())
       .WillOnce(ReturnRef(temp_dir))
       .WillOnce(ReturnRef(temp_dir));
 
   Error error;
-  vector<string> options;
+  std::vector<std::string> options;
   EXPECT_TRUE(driver_->InitOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
 
@@ -292,10 +295,10 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
 
 TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
   Error error;
-  vector<string> options;
+  std::vector<std::string> options;
   static const char kPSK[] = "foobar";
-  const FilePath bad_dir("/non/existent/directory");
-  const FilePath temp_dir(temp_dir_.GetPath());
+  const base::FilePath bad_dir("/non/existent/directory");
+  const base::FilePath temp_dir(temp_dir_.GetPath());
   EXPECT_CALL(manager_, run_path())
       .WillOnce(ReturnRef(bad_dir))
       .WillOnce(ReturnRef(temp_dir));
@@ -315,7 +318,7 @@ TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
   ASSERT_FALSE(driver_->psk_file_.empty());
   ExpectInFlags(options, "--psk_file", driver_->psk_file_.value());
   EXPECT_TRUE(error.IsSuccess());
-  string contents;
+  std::string contents;
   EXPECT_TRUE(base::ReadFileToString(driver_->psk_file_, &contents));
   EXPECT_EQ(kPSK, contents);
   struct stat buf;
@@ -324,16 +327,16 @@ TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPEMOptions) {
-  const vector<string> kCaCertPEM{"Insert PEM encoded data here"};
+  const std::vector<std::string> kCaCertPEM{"Insert PEM encoded data here"};
   static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
-  FilePath empty_cert;
-  FilePath pem_cert(kPEMCertfile);
+  base::FilePath empty_cert;
+  base::FilePath pem_cert(kPEMCertfile);
   SetArgArray(kL2tpIpsecCaCertPemProperty, kCaCertPEM);
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(empty_cert))
       .WillOnce(Return(pem_cert));
 
-  vector<string> options;
+  std::vector<std::string> options;
   driver_->InitPEMOptions(&options);
   EXPECT_TRUE(options.empty());
   driver_->InitPEMOptions(&options);
@@ -341,7 +344,7 @@ TEST_F(L2TPIPSecDriverTest, InitPEMOptions) {
 }
 
 TEST_F(L2TPIPSecDriverTest, InitXauthOptions) {
-  vector<string> options;
+  std::vector<std::string> options;
   EXPECT_CALL(manager_, run_path()).Times(0);
   {
     Error error;
@@ -371,8 +374,8 @@ TEST_F(L2TPIPSecDriverTest, InitXauthOptions) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   SetArg(kL2tpIpsecXauthUserProperty, kUser);
-  const FilePath bad_dir("/non/existent/directory");
-  const FilePath temp_dir(temp_dir_.GetPath());
+  const base::FilePath bad_dir("/non/existent/directory");
+  const base::FilePath temp_dir(temp_dir_.GetPath());
   EXPECT_CALL(manager_, run_path())
       .WillOnce(ReturnRef(bad_dir))
       .WillOnce(ReturnRef(temp_dir));
@@ -392,10 +395,10 @@ TEST_F(L2TPIPSecDriverTest, InitXauthOptions) {
   ASSERT_FALSE(driver_->xauth_credentials_file_.empty());
   ExpectInFlags(options, "--xauth_credentials_file",
                 driver_->xauth_credentials_file_.value());
-  string contents;
+  std::string contents;
   EXPECT_TRUE(
       base::ReadFileToString(driver_->xauth_credentials_file_, &contents));
-  string expected_contents(string(kUser) + "\n" + kPassword + "\n");
+  std::string expected_contents(std::string(kUser) + "\n" + kPassword + "\n");
   EXPECT_EQ(expected_contents, contents);
   struct stat buf;
   ASSERT_EQ(0, stat(driver_->xauth_credentials_file_.value().c_str(), &buf));
@@ -410,7 +413,7 @@ TEST_F(L2TPIPSecDriverTest, AppendValueOption) {
   static const char kProperty2[] = "L2TPIPSec.SomeProperty2";
   static const char kValue2[] = "some-property-value2";
 
-  vector<string> options;
+  std::vector<std::string> options;
   EXPECT_FALSE(driver_->AppendValueOption("L2TPIPSec.UnknownProperty", kOption,
                                           &options));
   EXPECT_TRUE(options.empty());
@@ -436,7 +439,7 @@ TEST_F(L2TPIPSecDriverTest, AppendFlag) {
   static const char kFalseOption2[] = "--nol2tpipsec-option2";
   static const char kProperty2[] = "L2TPIPSec.SomeProperty2";
 
-  vector<string> options;
+  std::vector<std::string> options;
   EXPECT_FALSE(driver_->AppendFlag("L2TPIPSec.UnknownProperty", kTrueOption,
                                    kFalseOption, &options));
   EXPECT_TRUE(options.empty());
@@ -460,7 +463,7 @@ TEST_F(L2TPIPSecDriverTest, AppendFlag) {
 TEST_F(L2TPIPSecDriverTest, GetLogin) {
   static const char kUser[] = "joesmith";
   static const char kPassword[] = "random-password";
-  string user, password;
+  std::string user, password;
   SetArg(kL2tpIpsecUserProperty, kUser);
   driver_->GetLogin(&user, &password);
   EXPECT_TRUE(user.empty());
@@ -534,11 +537,11 @@ TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
   // Sanity test property store initialization.
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  const string kUser = "joe";
+  const std::string kUser = "joe";
   Error error;
   EXPECT_TRUE(store.SetStringProperty(kL2tpIpsecUserProperty, kUser, &error));
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kUser, GetArgs()->Lookup<string>(kL2tpIpsecUserProperty, ""));
+  EXPECT_EQ(kUser, GetArgs()->Lookup<std::string>(kL2tpIpsecUserProperty, ""));
 }
 
 TEST_F(L2TPIPSecDriverTest, GetProvider) {
@@ -572,14 +575,15 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
     EXPECT_FALSE(props.Lookup<bool>(kPassphraseRequiredProperty, true));
     EXPECT_FALSE(props.Lookup<bool>(kL2tpIpsecPskRequiredProperty, true));
-    EXPECT_FALSE(props.Contains<string>(kL2tpIpsecPasswordProperty));
+    EXPECT_FALSE(props.Contains<std::string>(kL2tpIpsecPasswordProperty));
   }
 }
 
 TEST_F(L2TPIPSecDriverTest, Notify) {
-  map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
-  FilePath psk_file;
-  FilePath xauth_credentials_file;
+  std::map<std::string, std::string> config{
+      {kPPPInterfaceName, kInterfaceName}};
+  base::FilePath psk_file;
+  base::FilePath xauth_credentials_file;
   FakeUpConnect(&psk_file, &xauth_credentials_file);
 
   // Make sure that a notification of an intermediate state doesn't cause
@@ -603,9 +607,10 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 }
 
 TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
-  map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
-  FilePath psk_file;
-  FilePath xauth_credentials_file;
+  std::map<std::string, std::string> config{
+      {kPPPInterfaceName, kInterfaceName}};
+  base::FilePath psk_file;
+  base::FilePath xauth_credentials_file;
   FakeUpConnect(&psk_file, &xauth_credentials_file);
   DeviceInfo::LinkReadyCallback link_ready_callback;
   EXPECT_CALL(event_handler_, OnDriverConnected(_, _)).Times(0);
@@ -623,7 +628,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithoutDeviceInfoReady) {
 }
 
 TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
-  map<string, string> dict;
+  std::map<std::string, std::string> dict;
   SetEventHandler(&event_handler_);
   base::Callback<void(pid_t, int)> death_callback;
   MockExternalTask* local_external_task = new MockExternalTask(

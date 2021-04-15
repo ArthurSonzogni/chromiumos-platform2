@@ -32,18 +32,11 @@
 #include "shill/vpn/openvpn_management_server.h"
 #include "shill/vpn/vpn_service.h"
 
-using base::FilePath;
-using base::SplitString;
-using base::Unretained;
-using std::map;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const OpenVPNDriver*) {
+static std::string ObjectID(const OpenVPNDriver*) {
   return "(openvpn_driver)";
 }
 }  // namespace Logging
@@ -166,7 +159,7 @@ OpenVPNDriver::~OpenVPNDriver() {
 }
 
 void OpenVPNDriver::FailService(Service::ConnectFailure failure,
-                                const string& error_details) {
+                                const std::string& error_details) {
   SLOG(this, 2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {
@@ -208,17 +201,17 @@ void OpenVPNDriver::Cleanup() {
 }
 
 // static
-string OpenVPNDriver::JoinOptions(const vector<vector<string>>& options,
-                                  char separator) {
-  vector<string> option_strings;
+std::string OpenVPNDriver::JoinOptions(
+    const std::vector<std::vector<std::string>>& options, char separator) {
+  std::vector<std::string> option_strings;
   for (const auto& option : options) {
-    vector<string> quoted_option;
+    std::vector<std::string> quoted_option;
     for (const auto& argument : option) {
-      if (argument.find(' ') != string::npos ||
-          argument.find('\t') != string::npos ||
-          argument.find('"') != string::npos ||
-          argument.find(separator) != string::npos) {
-        string quoted_argument(argument);
+      if (argument.find(' ') != std::string::npos ||
+          argument.find('\t') != std::string::npos ||
+          argument.find('"') != std::string::npos ||
+          argument.find(separator) != std::string::npos) {
+        std::string quoted_argument(argument);
         const char separator_chars[] = {separator, '\0'};
         base::ReplaceChars(argument, separator_chars, " ", &quoted_argument);
         base::ReplaceChars(quoted_argument, "\\", "\\\\", &quoted_argument);
@@ -230,11 +223,12 @@ string OpenVPNDriver::JoinOptions(const vector<vector<string>>& options,
     }
     option_strings.push_back(base::JoinString(quoted_option, " "));
   }
-  return base::JoinString(option_strings, string{separator});
+  return base::JoinString(option_strings, std::string{separator});
 }
 
-bool OpenVPNDriver::WriteConfigFile(const vector<vector<string>>& options,
-                                    FilePath* config_file) {
+bool OpenVPNDriver::WriteConfigFile(
+    const std::vector<std::vector<std::string>>& options,
+    base::FilePath* config_file) {
   if (!base::DirectoryExists(openvpn_config_directory_)) {
     if (!base::CreateDirectory(openvpn_config_directory_)) {
       LOG(ERROR) << "Unable to create configuration directory  "
@@ -256,7 +250,7 @@ bool OpenVPNDriver::WriteConfigFile(const vector<vector<string>>& options,
     }
   }
 
-  string contents = JoinOptions(options, '\n');
+  std::string contents = JoinOptions(options, '\n');
   contents.push_back('\n');
   if (!base::CreateTemporaryFileInDir(openvpn_config_directory_, config_file) ||
       base::WriteFile(*config_file, contents.data(), contents.size()) !=
@@ -273,7 +267,7 @@ bool OpenVPNDriver::WriteConfigFile(const vector<vector<string>>& options,
 bool OpenVPNDriver::SpawnOpenVPN() {
   SLOG(this, 2) << __func__ << "(" << interface_name_ << ")";
 
-  vector<vector<string>> options;
+  std::vector<std::vector<std::string>> options;
   Error error;
   pid_t openvpn_pid;
   InitOptions(&options, &error);
@@ -289,13 +283,13 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   // (crbug.com/246263).
   CHECK(!pid_);
 
-  vector<string> args = GetCommandLineArgs();
+  const std::vector<std::string> args = GetCommandLineArgs();
   LOG(INFO) << "OpenVPN command line args: " << base::JoinString(args, " ");
 
   // OpenSSL compatibility settings.
   // TODO(crbug.com/1047146): Drop these stop-gaps after addressing the
   // underlying problems described in the bug.
-  const map<string, string> kEnv = {
+  const std::map<std::string, std::string> kEnv = {
       {"OPENSSL_CONF", "/etc/ssl/openssl.cnf.compat"},
       {"OPENSSL_CHROMIUM_SKIP_TRUSTED_PURPOSE_CHECK", "1"},
       {"OPENSSL_CHROMIUM_GENERATE_METRICS", "1"},
@@ -323,12 +317,12 @@ void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
-void OpenVPNDriver::GetLogin(string* /*user*/, string* /*password*/) {
+void OpenVPNDriver::GetLogin(std::string* /*user*/, std::string* /*password*/) {
   NOTREACHED();
 }
 
-void OpenVPNDriver::Notify(const string& reason,
-                           const map<string, string>& dict) {
+void OpenVPNDriver::Notify(const std::string& reason,
+                           const std::map<std::string, std::string>& dict) {
   LOG(INFO) << "IP configuration received: " << reason;
   // We only registered "--up" script so this should be the only
   // reason we get notified here. Note that "--up-restart" is set
@@ -352,7 +346,7 @@ IPConfig::Properties OpenVPNDriver::GetIPProperties() const {
 }
 
 void OpenVPNDriver::ParseIPConfiguration(
-    const map<string, string>& configuration,
+    const std::map<std::string, std::string>& configuration,
     IPConfig::Properties* properties) const {
   ForeignOptions foreign_options;
   RouteOptions routes;
@@ -364,8 +358,8 @@ void OpenVPNDriver::ParseIPConfiguration(
         IPAddress::GetMaxPrefixLength(properties->address_family);
   }
   for (const auto& configuration_map : configuration) {
-    const string& key = configuration_map.first;
-    const string& value = configuration_map.second;
+    const std::string& key = configuration_map.first;
+    const std::string& value = configuration_map.second;
     SLOG(this, 2) << "Processing: " << key << " -> " << value;
     if (base::LowerCaseEqualsASCII(key, kOpenVPNIfconfigLocal)) {
       properties->address = value;
@@ -406,7 +400,7 @@ void OpenVPNDriver::ParseIPConfiguration(
       }
     } else if (base::StartsWith(key, kOpenVPNForeignOptionPrefix,
                                 base::CompareCase::INSENSITIVE_ASCII)) {
-      const string suffix = key.substr(strlen(kOpenVPNForeignOptionPrefix));
+      const auto suffix = key.substr(strlen(kOpenVPNForeignOptionPrefix));
       int order = 0;
       if (base::StringToInt(suffix, &order)) {
         foreign_options[order] = value;
@@ -440,7 +434,7 @@ void OpenVPNDriver::ParseIPConfiguration(
   properties->gateway = properties->address;
 
   if (redirect_gateway &&
-      const_args()->Contains<string>(kOpenVPNIgnoreDefaultRouteProperty)) {
+      const_args()->Contains<std::string>(kOpenVPNIgnoreDefaultRouteProperty)) {
     LOG(INFO) << "Ignoring default route parameter as requested by "
               << "configuration.";
     redirect_gateway = false;
@@ -452,8 +446,8 @@ void OpenVPNDriver::ParseIPConfiguration(
 // static
 void OpenVPNDriver::ParseForeignOptions(const ForeignOptions& options,
                                         IPConfig::Properties* properties) {
-  vector<string> domain_search;
-  vector<string> dns_servers;
+  std::vector<std::string> domain_search;
+  std::vector<std::string> dns_servers;
   for (const auto& option_map : options) {
     ParseForeignOption(option_map.second, &domain_search, &dns_servers);
   }
@@ -470,12 +464,12 @@ void OpenVPNDriver::ParseForeignOptions(const ForeignOptions& options,
 }
 
 // static
-void OpenVPNDriver::ParseForeignOption(const string& option,
-                                       vector<string>* domain_search,
-                                       vector<string>* dns_servers) {
+void OpenVPNDriver::ParseForeignOption(const std::string& option,
+                                       std::vector<std::string>* domain_search,
+                                       std::vector<std::string>* dns_servers) {
   SLOG(nullptr, 2) << __func__ << "(" << option << ")";
-  vector<string> tokens =
-      SplitString(option, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  const auto tokens = base::SplitString(option, " ", base::TRIM_WHITESPACE,
+                                        base::SPLIT_WANT_ALL);
   if (tokens.size() != 3 ||
       !base::LowerCaseEqualsASCII(tokens[0], "dhcp-option")) {
     return;
@@ -488,8 +482,8 @@ void OpenVPNDriver::ParseForeignOption(const string& option,
 }
 
 // static
-IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(const string& prefix,
-                                                    const string& key,
+IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(const std::string& prefix,
+                                                    const std::string& key,
                                                     RouteOptions* routes) {
   int order = 0;
   if (!base::StartsWith(key, prefix, base::CompareCase::INSENSITIVE_ASCII) ||
@@ -500,8 +494,8 @@ IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(const string& prefix,
 }
 
 // static
-void OpenVPNDriver::ParseRouteOption(const string& key,
-                                     const string& value,
+void OpenVPNDriver::ParseRouteOption(const std::string& key,
+                                     const std::string& value,
                                      RouteOptions* routes) {
   // IPv4 uses route_{network,netmask,gateway}_<index>
   // IPv6 uses route_ipv6_{network,gateway}_<index>
@@ -528,7 +522,7 @@ void OpenVPNDriver::ParseRouteOption(const string& key,
 // static
 void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
                               IPConfig::Properties* properties) {
-  vector<IPConfig::Route> new_routes;
+  std::vector<IPConfig::Route> new_routes;
   int32_t max_prefix =
       IPAddress::GetMaxPrefixLength(properties->address_family);
   if (!properties->peer_address.empty()) {
@@ -577,11 +571,11 @@ void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
 }
 
 // static
-bool OpenVPNDriver::SplitPortFromHost(const string& host,
-                                      string* name,
-                                      string* port) {
-  vector<string> tokens =
-      SplitString(host, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+bool OpenVPNDriver::SplitPortFromHost(const std::string& host,
+                                      std::string* name,
+                                      std::string* port) {
+  const auto tokens =
+      base::SplitString(host, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   int port_number = 0;
   if (tokens.size() != 2 || tokens[0].empty() || tokens[1].empty() ||
       !base::IsAsciiDigit(tokens[1][0]) ||
@@ -622,8 +616,9 @@ void OpenVPNDriver::OnLinkReady(const std::string& link_name,
   }
 }
 
-void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
-  string vpnhost = args()->Lookup<string>(kProviderHostProperty, "");
+void OpenVPNDriver::InitOptions(std::vector<std::vector<std::string>>* options,
+                                Error* error) {
+  const auto vpnhost = args()->Lookup<std::string>(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "VPN host not specified.");
@@ -633,9 +628,9 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   AppendOption("tls-client", options);
 
   AppendRemoteOption(vpnhost, options);
-  if (args()->Contains<vector<string>>(kOpenVPNExtraHostsProperty)) {
+  if (args()->Contains<std::vector<std::string>>(kOpenVPNExtraHostsProperty)) {
     for (const auto& host :
-         args()->Get<vector<string>>(kOpenVPNExtraHostsProperty)) {
+         args()->Get<std::vector<std::string>>(kOpenVPNExtraHostsProperty)) {
       AppendRemoteOption(host, options);
     }
   }
@@ -660,8 +655,8 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   AppendValueOption(kOpenVPNPortProperty, "port", options);
   AppendValueOption(kOpenVPNTLSAuthProperty, "tls-auth", options);
   {
-    string contents =
-        args()->Lookup<string>(kOpenVPNTLSAuthContentsProperty, "");
+    const auto contents =
+        args()->Lookup<std::string>(kOpenVPNTLSAuthContentsProperty, "");
     if (!contents.empty()) {
       if (!base::CreateTemporaryFile(&tls_auth_file_) ||
           base::WriteFile(tls_auth_file_, contents.data(), contents.size()) !=
@@ -674,12 +669,14 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
     }
   }
 
-  if (args()->Contains<string>(kOpenVPNTLSVersionMinProperty)) {
+  if (args()->Contains<std::string>(kOpenVPNTLSVersionMinProperty)) {
     AppendOption("tls-version-min",
-                 args()->Get<string>(kOpenVPNTLSVersionMinProperty), options);
+                 args()->Get<std::string>(kOpenVPNTLSVersionMinProperty),
+                 options);
   }
 
-  string tls_remote = args()->Lookup<string>(kOpenVPNTLSRemoteProperty, "");
+  const auto tls_remote =
+      args()->Lookup<std::string>(kOpenVPNTLSRemoteProperty, "");
   if (!tls_remote.empty()) {
     AppendOption("verify-x509-name", tls_remote, "name-prefix", options);
   }
@@ -718,8 +715,8 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   InitPKCS11Options(options);
 
   // TLS support.
-  string remote_cert_tls =
-      args()->Lookup<string>(kOpenVPNRemoteCertTLSProperty, "");
+  auto remote_cert_tls =
+      args()->Lookup<std::string>(kOpenVPNRemoteCertTLSProperty, "");
   if (remote_cert_tls.empty()) {
     remote_cert_tls = "server";
   }
@@ -756,11 +753,12 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   AppendOption("group", "openvpn", options);
 }
 
-bool OpenVPNDriver::InitCAOptions(vector<vector<string>>* options,
-                                  Error* error) {
-  vector<string> ca_cert_pem;
-  if (args()->Contains<vector<string>>(kOpenVPNCaCertPemProperty)) {
-    ca_cert_pem = args()->Get<vector<string>>(kOpenVPNCaCertPemProperty);
+bool OpenVPNDriver::InitCAOptions(
+    std::vector<std::vector<std::string>>* options, Error* error) {
+  std::vector<std::string> ca_cert_pem;
+  if (args()->Contains<std::vector<std::string>>(kOpenVPNCaCertPemProperty)) {
+    ca_cert_pem =
+        args()->Get<std::vector<std::string>>(kOpenVPNCaCertPemProperty);
   }
   if (ca_cert_pem.empty()) {
     // Use default CAs if no CA certificate is provided.
@@ -768,7 +766,8 @@ bool OpenVPNDriver::InitCAOptions(vector<vector<string>>* options,
     return true;
   }
 
-  FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_cert_pem);
+  const base::FilePath certfile =
+      certificate_file_->CreatePEMFromStrings(ca_cert_pem);
   if (certfile.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Unable to extract PEM CA certificates.");
@@ -781,10 +780,11 @@ bool OpenVPNDriver::InitCAOptions(vector<vector<string>>* options,
 void OpenVPNDriver::InitCertificateVerifyOptions(
     std::vector<std::vector<std::string>>* options) {
   AppendValueOption(kOpenVPNVerifyHashProperty, "verify-hash", options);
-  string x509_name = args()->Lookup<string>(kOpenVPNVerifyX509NameProperty, "");
+  const auto x509_name =
+      args()->Lookup<std::string>(kOpenVPNVerifyX509NameProperty, "");
   if (!x509_name.empty()) {
-    string x509_type =
-        args()->Lookup<string>(kOpenVPNVerifyX509TypeProperty, "");
+    const auto x509_type =
+        args()->Lookup<std::string>(kOpenVPNVerifyX509TypeProperty, "");
     if (x509_type.empty()) {
       AppendOption("verify-x509-name", x509_name, options);
     } else {
@@ -793,21 +793,22 @@ void OpenVPNDriver::InitCertificateVerifyOptions(
   }
 }
 
-bool OpenVPNDriver::InitExtraCertOptions(vector<vector<string>>* options,
-                                         Error* error) {
-  if (!args()->Contains<vector<string>>(kOpenVPNExtraCertPemProperty)) {
+bool OpenVPNDriver::InitExtraCertOptions(
+    std::vector<std::vector<std::string>>* options, Error* error) {
+  if (!args()->Contains<std::vector<std::string>>(
+          kOpenVPNExtraCertPemProperty)) {
     // It's okay for this parameter to be unspecified.
     return true;
   }
 
-  vector<string> extra_certs =
-      args()->Get<vector<string>>(kOpenVPNExtraCertPemProperty);
+  const auto extra_certs =
+      args()->Get<std::vector<std::string>>(kOpenVPNExtraCertPemProperty);
   if (extra_certs.empty()) {
     // It's okay for this parameter to be empty.
     return true;
   }
 
-  FilePath certfile =
+  const base::FilePath certfile =
       extra_certificates_file_->CreatePEMFromStrings(extra_certs);
   if (certfile.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -819,27 +820,30 @@ bool OpenVPNDriver::InitExtraCertOptions(vector<vector<string>>* options,
   return true;
 }
 
-void OpenVPNDriver::InitPKCS11Options(vector<vector<string>>* options) {
-  string id = args()->Lookup<string>(kOpenVPNClientCertIdProperty, "");
+void OpenVPNDriver::InitPKCS11Options(
+    std::vector<std::vector<std::string>>* options) {
+  const auto id =
+      args()->Lookup<std::string>(kOpenVPNClientCertIdProperty, "");
   if (!id.empty()) {
     AppendOption("pkcs11-providers", kDefaultPKCS11Provider, options);
     AppendOption("pkcs11-id", id, options);
   }
 }
 
-void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>>* options) {
+void OpenVPNDriver::InitClientAuthOptions(
+    std::vector<std::vector<std::string>>* options) {
   // If the AuthUserPass property is set, or the User property is non-empty, or
   // a client cert was not provided, specify user-password client
   // authentication.
-  if (args()->Contains<string>(kOpenVPNAuthUserPassProperty) ||
-      !args()->Lookup<string>(kOpenVPNUserProperty, "").empty() ||
-      args()->Lookup<string>(kOpenVPNClientCertIdProperty, "").empty()) {
+  if (args()->Contains<std::string>(kOpenVPNAuthUserPassProperty) ||
+      !args()->Lookup<std::string>(kOpenVPNUserProperty, "").empty() ||
+      args()->Lookup<std::string>(kOpenVPNClientCertIdProperty, "").empty()) {
     AppendOption("auth-user-pass", options);
   }
 }
 
 bool OpenVPNDriver::InitManagementChannelOptions(
-    vector<vector<string>>* options, Error* error) {
+    std::vector<std::vector<std::string>>* options, Error* error) {
   if (!management_server_->Start(&sockets_, options)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Unable to setup management channel.");
@@ -855,10 +859,11 @@ bool OpenVPNDriver::InitManagementChannelOptions(
   return true;
 }
 
-void OpenVPNDriver::InitLoggingOptions(vector<vector<string>>* options) {
+void OpenVPNDriver::InitLoggingOptions(
+    std::vector<std::vector<std::string>>* options) {
   AppendOption("syslog", options);
 
-  string verb = args()->Lookup<string>(kOpenVPNVerbProperty, "");
+  const auto verb = args()->Lookup<std::string>(kOpenVPNVerbProperty, "");
   if (!verb.empty()) {
     AppendOption("verb", verb, options);
     return;
@@ -886,27 +891,29 @@ void OpenVPNDriver::InitLoggingOptions(vector<vector<string>>* options) {
   }
 }
 
-void OpenVPNDriver::AppendOption(const string& option,
-                                 vector<vector<string>>* options) {
-  options->push_back(vector<string>{option});
+void OpenVPNDriver::AppendOption(
+    const std::string& option, std::vector<std::vector<std::string>>* options) {
+  options->push_back({option});
 }
 
-void OpenVPNDriver::AppendOption(const string& option,
-                                 const string& value,
-                                 vector<vector<string>>* options) {
-  options->push_back(vector<string>{option, value});
+void OpenVPNDriver::AppendOption(
+    const std::string& option,
+    const std::string& value,
+    std::vector<std::vector<std::string>>* options) {
+  options->push_back({option, value});
 }
 
-void OpenVPNDriver::AppendOption(const string& option,
-                                 const string& value0,
-                                 const string& value1,
-                                 vector<vector<string>>* options) {
-  options->push_back(vector<string>{option, value0, value1});
+void OpenVPNDriver::AppendOption(
+    const std::string& option,
+    const std::string& value0,
+    const std::string& value1,
+    std::vector<std::vector<std::string>>* options) {
+  options->push_back({option, value0, value1});
 }
 
-void OpenVPNDriver::AppendRemoteOption(const string& host,
-                                       vector<vector<string>>* options) {
-  string host_name, host_port;
+void OpenVPNDriver::AppendRemoteOption(
+    const std::string& host, std::vector<std::vector<std::string>>* options) {
+  std::string host_name, host_port;
   if (SplitPortFromHost(host, &host_name, &host_port)) {
     DCHECK(!host_name.empty());
     DCHECK(!host_port.empty());
@@ -916,10 +923,11 @@ void OpenVPNDriver::AppendRemoteOption(const string& host,
   }
 }
 
-bool OpenVPNDriver::AppendValueOption(const string& property,
-                                      const string& option,
-                                      vector<vector<string>>* options) {
-  string value = args()->Lookup<string>(property, "");
+bool OpenVPNDriver::AppendValueOption(
+    const std::string& property,
+    const std::string& option,
+    std::vector<std::vector<std::string>>* options) {
+  const auto value = args()->Lookup<std::string>(property, "");
   if (!value.empty()) {
     AppendOption(option, value, options);
     return true;
@@ -928,15 +936,14 @@ bool OpenVPNDriver::AppendValueOption(const string& property,
 }
 
 bool OpenVPNDriver::AppendDelimitedValueOption(
-    const string& property,
-    const string& option,
+    const std::string& property,
+    const std::string& option,
     char delimiter,
-    vector<vector<string>>* options) {
-  string value = args()->Lookup<string>(property, "");
+    std::vector<std::vector<std::string>>* options) {
+  const auto value = args()->Lookup<std::string>(property, "");
   if (!value.empty()) {
-    vector<string> parts =
-        SplitString(value, std::string{delimiter}, base::TRIM_WHITESPACE,
-                    base::SPLIT_WANT_ALL);
+    auto parts = base::SplitString(value, std::string{delimiter},
+                                   base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     parts.insert(parts.begin(), option);
     options->push_back(parts);
     return true;
@@ -944,10 +951,10 @@ bool OpenVPNDriver::AppendDelimitedValueOption(
   return false;
 }
 
-bool OpenVPNDriver::AppendFlag(const string& property,
-                               const string& option,
-                               vector<vector<string>>* options) {
-  if (args()->Contains<string>(property)) {
+bool OpenVPNDriver::AppendFlag(const std::string& property,
+                               const std::string& option,
+                               std::vector<std::vector<std::string>>* options) {
+  if (args()->Contains<std::string>(property)) {
     AppendOption(option, options);
     return true;
   }
@@ -990,7 +997,7 @@ base::TimeDelta OpenVPNDriver::GetReconnectTimeout(ReconnectReason reason) {
   }
 }
 
-string OpenVPNDriver::GetProviderType() const {
+std::string OpenVPNDriver::GetProviderType() const {
   return kProviderOpenVpn;
 }
 
@@ -999,30 +1006,29 @@ KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.Set<bool>(
       kPassphraseRequiredProperty,
-      args()->Lookup<string>(kOpenVPNPasswordProperty, "").empty() &&
-          args()->Lookup<string>(kOpenVPNTokenProperty, "").empty());
+      args()->Lookup<std::string>(kOpenVPNPasswordProperty, "").empty() &&
+          args()->Lookup<std::string>(kOpenVPNTokenProperty, "").empty());
   return props;
 }
 
-vector<string> OpenVPNDriver::GetCommandLineArgs() {
+std::vector<std::string> OpenVPNDriver::GetCommandLineArgs() {
   SLOG(this, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
-  vector<string> args =
-      vector<string>{"--config", openvpn_config_file_.value()};
-  string contents;
+  std::vector<std::string> args = {"--config", openvpn_config_file_.value()};
+  std::string contents;
   if (!base::ReadFileToString(lsb_release_file_, &contents)) {
     LOG(ERROR) << "Unable to read the lsb-release file: "
                << lsb_release_file_.value();
     return args;
   }
-  vector<string> lines =
-      SplitString(contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  const auto lines = base::SplitString(contents, "\n", base::TRIM_WHITESPACE,
+                                       base::SPLIT_WANT_ALL);
   for (const auto& line : lines) {
     const size_t assign = line.find('=');
-    if (assign == string::npos) {
+    if (assign == std::string::npos) {
       continue;
     }
-    const string key = line.substr(0, assign);
-    const string value = line.substr(assign + 1);
+    const auto key = line.substr(0, assign);
+    const auto value = line.substr(assign + 1);
     if (key == kChromeOSReleaseName) {
       args.push_back("--setenv");
       args.push_back("UV_PLAT");
@@ -1085,8 +1091,10 @@ void OpenVPNDriver::ReportConnectionMetrics() {
                            Metrics::kVpnDriverOpenVpn,
                            Metrics::kMetricVpnDriverMax);
 
-  if (args()->Contains<vector<string>>(kOpenVPNCaCertPemProperty) &&
-      !args()->Get<vector<string>>(kOpenVPNCaCertPemProperty).empty()) {
+  if (args()->Contains<std::vector<std::string>>(kOpenVPNCaCertPemProperty) &&
+      !args()
+           ->Get<std::vector<std::string>>(kOpenVPNCaCertPemProperty)
+           .empty()) {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
@@ -1099,29 +1107,29 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->Lookup<string>(kOpenVPNTokenProperty, "") != "") {
+  if (args()->Lookup<std::string>(kOpenVPNTokenProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->Lookup<string>(kOpenVPNOTPProperty, "") != "") {
+  if (args()->Lookup<std::string>(kOpenVPNOTPProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->Lookup<string>(kOpenVPNAuthUserPassProperty, "") != "" ||
-      args()->Lookup<string>(kOpenVPNUserProperty, "") != "") {
+  if (args()->Lookup<std::string>(kOpenVPNAuthUserPassProperty, "") != "" ||
+      args()->Lookup<std::string>(kOpenVPNUserProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->Lookup<string>(kOpenVPNClientCertIdProperty, "") != "") {
+  if (args()->Lookup<std::string>(kOpenVPNClientCertIdProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,

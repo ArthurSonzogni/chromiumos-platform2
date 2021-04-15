@@ -27,13 +27,11 @@
 #include "shill/vpn/vpn_service.h"
 #include "shill/vpn/wireguard_driver.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const VPNProvider* v) {
+static std::string ObjectID(const VPNProvider* v) {
   return "(vpn_provider)";
 }
 }  // namespace Logging
@@ -45,19 +43,19 @@ namespace {
 // these arguments are not available, |error| is populated and False is
 // returned.
 bool GetServiceParametersFromArgs(const KeyValueStore& args,
-                                  string* type_ptr,
-                                  string* name_ptr,
-                                  string* host_ptr,
+                                  std::string* type_ptr,
+                                  std::string* name_ptr,
+                                  std::string* host_ptr,
                                   Error* error) {
   SLOG(nullptr, 2) << __func__;
-  string type = args.Lookup<string>(kProviderTypeProperty, "");
+  const auto type = args.Lookup<std::string>(kProviderTypeProperty, "");
   if (type.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           "Missing VPN type property.");
     return false;
   }
 
-  string host = args.Lookup<string>(kProviderHostProperty, "");
+  const auto host = args.Lookup<std::string>(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           "Missing VPN host property.");
@@ -66,7 +64,7 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
 
   *type_ptr = type;
   *host_ptr = host;
-  *name_ptr = args.Lookup<string>(kNameProperty, "");
+  *name_ptr = args.Lookup<std::string>(kNameProperty, "");
 
   return true;
 }
@@ -76,12 +74,12 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
 // these arguments are not available, |error| is populated and False is
 // returned.
 bool GetServiceParametersFromStorage(const StoreInterface* storage,
-                                     const string& entry_name,
-                                     string* vpn_type_ptr,
-                                     string* name_ptr,
-                                     string* host_ptr,
+                                     const std::string& entry_name,
+                                     std::string* vpn_type_ptr,
+                                     std::string* name_ptr,
+                                     std::string* host_ptr,
                                      Error* error) {
-  string service_type;
+  std::string service_type;
   if (!storage->GetString(entry_name, kTypeProperty, &service_type) ||
       service_type != kTypeVPN) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -126,15 +124,15 @@ void VPNProvider::Stop() {}
 
 ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
   SLOG(this, 2) << __func__;
-  string type;
-  string name;
-  string host;
+  std::string type;
+  std::string name;
+  std::string host;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
     return nullptr;
   }
 
-  string storage_id = VPNService::CreateStorageIdentifier(args, error);
+  const auto storage_id = VPNService::CreateStorageIdentifier(args, error);
   if (storage_id.empty()) {
     return nullptr;
   }
@@ -150,9 +148,9 @@ ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
 ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
                                               Error* error) const {
   SLOG(this, 2) << __func__;
-  string type;
-  string name;
-  string host;
+  std::string type;
+  std::string name;
+  std::string host;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
     return nullptr;
@@ -178,11 +176,11 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
   SLOG(this, 2) << __func__;
   const StoreInterface* storage = profile->GetConstStorage();
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeVPN);
+  args.Set<std::string>(kTypeProperty, kTypeVPN);
   for (const auto& group : storage->GetGroupsWithProperties(args)) {
-    string type;
-    string name;
-    string host;
+    std::string type;
+    std::string name;
+    std::string host;
     if (!GetServiceParametersFromStorage(storage, group, &type, &name, &host,
                                          nullptr)) {
       continue;
@@ -211,9 +209,9 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
   }
 }
 
-VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
-                                                 const string& name,
-                                                 const string& storage_id,
+VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
+                                                 const std::string& name,
+                                                 const std::string& storage_id,
                                                  Error* error) {
   SLOG(this, 2) << __func__ << " type " << type << " name " << name
                 << " storage id " << storage_id;
@@ -255,9 +253,9 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
 #endif  // DISABLE_VPN
 }
 
-VPNServiceRefPtr VPNProvider::CreateService(const string& type,
-                                            const string& name,
-                                            const string& storage_id,
+VPNServiceRefPtr VPNProvider::CreateService(const std::string& type,
+                                            const std::string& name,
+                                            const std::string& storage_id,
                                             Error* error) {
   VPNServiceRefPtr service = CreateServiceInner(type, name, storage_id, error);
   if (service) {
@@ -268,9 +266,9 @@ VPNServiceRefPtr VPNProvider::CreateService(const string& type,
   return service;
 }
 
-VPNServiceRefPtr VPNProvider::FindService(const string& type,
-                                          const string& name,
-                                          const string& host) const {
+VPNServiceRefPtr VPNProvider::FindService(const std::string& type,
+                                          const std::string& name,
+                                          const std::string& host) const {
   for (const auto& service : services_) {
     if (type == service->driver()->GetProviderType() &&
         name == service->friendly_name() &&
@@ -283,15 +281,16 @@ VPNServiceRefPtr VPNProvider::FindService(const string& type,
 
 ServiceRefPtr VPNProvider::CreateTemporaryService(const KeyValueStore& args,
                                                   Error* error) {
-  string type;
-  string name;
-  string host;
+  std::string type;
+  std::string name;
+  std::string host;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
     return nullptr;
   }
 
-  string storage_id = VPNService::CreateStorageIdentifier(args, error);
+  const std::string storage_id =
+      VPNService::CreateStorageIdentifier(args, error);
   if (storage_id.empty()) {
     return nullptr;
   }
@@ -301,9 +300,9 @@ ServiceRefPtr VPNProvider::CreateTemporaryService(const KeyValueStore& args,
 
 ServiceRefPtr VPNProvider::CreateTemporaryServiceFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
-  string type;
-  string name;
-  string host;
+  std::string type;
+  std::string name;
+  std::string host;
   if (!GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
                                        &type, &name, &host, error)) {
     return nullptr;

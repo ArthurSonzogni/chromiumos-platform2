@@ -46,17 +46,11 @@
 #include "shill/scope_logger.h"
 #include "shill/vpn/vpn_service.h"
 
-using base::Bind;
-using base::FilePath;
-using std::map;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const L2TPIPSecDriver*) {
+static std::string ObjectID(const L2TPIPSecDriver*) {
   return "(l2tp_ipsec_driver)";
 }
 }  // namespace Logging
@@ -166,7 +160,7 @@ void L2TPIPSecDriver::OnConnectTimeout() {
   FailService(Service::kFailureConnect);
 }
 
-string L2TPIPSecDriver::GetProviderType() const {
+std::string L2TPIPSecDriver::GetProviderType() const {
   return kProviderL2tpIpsec;
 }
 
@@ -219,10 +213,11 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   auto external_task_local = std::make_unique<ExternalTask>(
       control_interface(), process_manager(), weak_factory_.GetWeakPtr(),
-      Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied, weak_factory_.GetWeakPtr()));
+      base::Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
+                 weak_factory_.GetWeakPtr()));
 
-  vector<string> options;
-  map<string, string> environment;  // No env vars passed.
+  std::vector<std::string> options;
+  std::map<std::string, std::string> environment;  // No env vars passed.
   if (!InitOptions(&options, error)) {
     return false;
   }
@@ -233,7 +228,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
                      CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                      CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID) |
                      CAP_TO_MASK(CAP_KILL);
-  if (!external_task_local->StartInMinijail(FilePath(kL2TPIPSecVPNPath),
+  if (!external_task_local->StartInMinijail(base::FilePath(kL2TPIPSecVPNPath),
                                             &options, "shill", "shill", capmask,
                                             true, true, error)) {
     return false;
@@ -242,8 +237,9 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   return true;
 }
 
-bool L2TPIPSecDriver::InitOptions(vector<string>* options, Error* error) {
-  string vpnhost = args()->Lookup<string>(kProviderHostProperty, "");
+bool L2TPIPSecDriver::InitOptions(std::vector<std::string>* options,
+                                  Error* error) {
+  const auto vpnhost = args()->Lookup<std::string>(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "VPN host not specified.");
@@ -298,8 +294,9 @@ bool L2TPIPSecDriver::InitOptions(vector<string>* options, Error* error) {
   return true;
 }
 
-bool L2TPIPSecDriver::InitPSKOptions(vector<string>* options, Error* error) {
-  string psk = args()->Lookup<string>(kL2tpIpsecPskProperty, "");
+bool L2TPIPSecDriver::InitPSKOptions(std::vector<std::string>* options,
+                                     Error* error) {
+  const auto psk = args()->Lookup<std::string>(kL2tpIpsecPskProperty, "");
   if (!psk.empty()) {
     if (!base::CreateTemporaryFileInDir(manager()->run_path(), &psk_file_) ||
         chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
@@ -315,15 +312,15 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string>* options, Error* error) {
   return true;
 }
 
-bool L2TPIPSecDriver::InitPEMOptions(vector<string>* options) {
-  vector<string> ca_certs;
+bool L2TPIPSecDriver::InitPEMOptions(std::vector<std::string>* options) {
+  std::vector<std::string> ca_certs;
   if (args()->Contains<Strings>(kL2tpIpsecCaCertPemProperty)) {
     ca_certs = args()->Get<Strings>(kL2tpIpsecCaCertPemProperty);
   }
   if (ca_certs.empty()) {
     return false;
   }
-  FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_certs);
+  base::FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_certs);
   if (certfile.empty()) {
     LOG(ERROR) << "Unable to extract certificates from PEM string.";
     return false;
@@ -333,9 +330,12 @@ bool L2TPIPSecDriver::InitPEMOptions(vector<string>* options) {
   return true;
 }
 
-bool L2TPIPSecDriver::InitXauthOptions(vector<string>* options, Error* error) {
-  string user = args()->Lookup<string>(kL2tpIpsecXauthUserProperty, "");
-  string password = args()->Lookup<string>(kL2tpIpsecXauthPasswordProperty, "");
+bool L2TPIPSecDriver::InitXauthOptions(std::vector<std::string>* options,
+                                       Error* error) {
+  const auto user =
+      args()->Lookup<std::string>(kL2tpIpsecXauthUserProperty, "");
+  const auto password =
+      args()->Lookup<std::string>(kL2tpIpsecXauthPasswordProperty, "");
   if (user.empty() && password.empty()) {
     // Xauth credentials not configured.
     return true;
@@ -345,7 +345,7 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string>* options, Error* error) {
                           "XAUTH credentials are partially configured.");
     return false;
   }
-  string xauth_credentials = user + "\n" + password + "\n";
+  const std::string xauth_credentials = user + "\n" + password + "\n";
   if (!base::CreateTemporaryFileInDir(manager()->run_path(),
                                       &xauth_credentials_file_) ||
       chmod(xauth_credentials_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
@@ -361,10 +361,10 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string>* options, Error* error) {
   return true;
 }
 
-bool L2TPIPSecDriver::AppendValueOption(const string& property,
-                                        const string& option,
-                                        vector<string>* options) {
-  string value = args()->Lookup<string>(property, "");
+bool L2TPIPSecDriver::AppendValueOption(const std::string& property,
+                                        const std::string& option,
+                                        std::vector<std::string>* options) {
+  const auto value = args()->Lookup<std::string>(property, "");
   if (!value.empty()) {
     options->push_back(
         base::StringPrintf("%s=%s", option.c_str(), value.c_str()));
@@ -373,11 +373,11 @@ bool L2TPIPSecDriver::AppendValueOption(const string& property,
   return false;
 }
 
-bool L2TPIPSecDriver::AppendFlag(const string& property,
-                                 const string& true_option,
-                                 const string& false_option,
-                                 vector<string>* options) {
-  string value = args()->Lookup<string>(property, "");
+bool L2TPIPSecDriver::AppendFlag(const std::string& property,
+                                 const std::string& true_option,
+                                 const std::string& false_option,
+                                 std::vector<std::string>* options) {
+  const auto value = args()->Lookup<std::string>(property, "");
   if (!value.empty()) {
     options->push_back(value == "true" ? true_option : false_option);
     return true;
@@ -390,15 +390,16 @@ void L2TPIPSecDriver::OnL2TPIPSecVPNDied(pid_t /*pid*/, int status) {
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
-void L2TPIPSecDriver::GetLogin(string* user, string* password) {
+void L2TPIPSecDriver::GetLogin(std::string* user, std::string* password) {
   LOG(INFO) << "Login requested.";
-  string user_property = args()->Lookup<string>(kL2tpIpsecUserProperty, "");
+  const auto user_property =
+      args()->Lookup<std::string>(kL2tpIpsecUserProperty, "");
   if (user_property.empty()) {
     LOG(ERROR) << "User not set.";
     return;
   }
-  string password_property =
-      args()->Lookup<string>(kL2tpIpsecPasswordProperty, "");
+  const auto password_property =
+      args()->Lookup<std::string>(kL2tpIpsecPasswordProperty, "");
   if (password_property.empty()) {
     LOG(ERROR) << "Password not set.";
     return;
@@ -407,8 +408,8 @@ void L2TPIPSecDriver::GetLogin(string* user, string* password) {
   *password = password_property;
 }
 
-void L2TPIPSecDriver::Notify(const string& reason,
-                             const map<string, string>& dict) {
+void L2TPIPSecDriver::Notify(const std::string& reason,
+                             const std::map<std::string, std::string>& dict) {
   LOG(INFO) << "IP configuration received: " << reason;
 
   if (reason == kPPPReasonAuthenticating || reason == kPPPReasonAuthenticated) {
@@ -469,9 +470,9 @@ void L2TPIPSecDriver::OnLinkReady(const std::string& link_name,
 }
 
 bool L2TPIPSecDriver::IsPskRequired() const {
-  return const_args()->Lookup<string>(kL2tpIpsecPskProperty, "").empty() &&
+  return const_args()->Lookup<std::string>(kL2tpIpsecPskProperty, "").empty() &&
          const_args()
-             ->Lookup<string>(kL2tpIpsecClientCertIdProperty, "")
+             ->Lookup<std::string>(kL2tpIpsecClientCertIdProperty, "")
              .empty();
 }
 
@@ -480,7 +481,7 @@ KeyValueStore L2TPIPSecDriver::GetProvider(Error* error) {
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.Set<bool>(
       kPassphraseRequiredProperty,
-      args()->Lookup<string>(kL2tpIpsecPasswordProperty, "").empty());
+      args()->Lookup<std::string>(kL2tpIpsecPasswordProperty, "").empty());
   props.Set<bool>(kL2tpIpsecPskRequiredProperty, IsPskRequired());
   return props;
 }
@@ -501,7 +502,7 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
     has_remote_authentication = true;
   }
-  if (args()->Lookup<string>(kL2tpIpsecPskProperty, "") != "") {
+  if (args()->Lookup<std::string>(kL2tpIpsecPskProperty, "") != "") {
     metrics()->SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
                              Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
                              Metrics::kMetricVpnRemoteAuthenticationTypeMax);
@@ -515,14 +516,14 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->Lookup<string>(kL2tpIpsecClientCertIdProperty, "") != "") {
+  if (args()->Lookup<std::string>(kL2tpIpsecClientCertIdProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->Lookup<string>(kL2tpIpsecPasswordProperty, "") != "") {
+  if (args()->Lookup<std::string>(kL2tpIpsecPasswordProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,

@@ -23,19 +23,11 @@
 #include "shill/net/sockets.h"
 #include "shill/vpn/openvpn_driver.h"
 
-using base::Bind;
-using base::NumberToString;
-using base::SplitString;
-using base::StringPrintf;
-using base::Unretained;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const OpenVPNManagementServer* o) {
+static std::string ObjectID(const OpenVPNManagementServer* o) {
   return "(openvpn_driver)";
 }
 }  // namespace Logging
@@ -61,8 +53,8 @@ OpenVPNManagementServer::~OpenVPNManagementServer() {
   OpenVPNManagementServer::Stop();
 }
 
-bool OpenVPNManagementServer::Start(Sockets* sockets,
-                                    vector<vector<string>>* options) {
+bool OpenVPNManagementServer::Start(
+    Sockets* sockets, std::vector<std::vector<std::string>>* options) {
   SLOG(this, 2) << __func__;
   if (IsStarted()) {
     return true;
@@ -95,11 +87,11 @@ bool OpenVPNManagementServer::Start(Sockets* sockets,
   socket_ = socket;
   ready_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
       socket, IOHandler::kModeInput,
-      Bind(&OpenVPNManagementServer::OnReady, Unretained(this))));
+      base::Bind(&OpenVPNManagementServer::OnReady, base::Unretained(this))));
 
   // Append openvpn management API options.
   driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
-                        NumberToString(ntohs(addr.sin_port)), options);
+                        base::NumberToString(ntohs(addr.sin_port)), options);
   driver_->AppendOption("management-client", options);
   driver_->AppendOption("management-hold", options);
   hold_release_ = false;
@@ -163,16 +155,17 @@ void OpenVPNManagementServer::OnReady(int fd) {
   ready_handler_.reset();
   input_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       connected_socket_,
-      Bind(&OpenVPNManagementServer::OnInput, Unretained(this)),
-      Bind(&OpenVPNManagementServer::OnInputError, Unretained(this))));
+      base::Bind(&OpenVPNManagementServer::OnInput, base::Unretained(this)),
+      base::Bind(&OpenVPNManagementServer::OnInputError,
+                 base::Unretained(this))));
   SendState("on");
 }
 
 void OpenVPNManagementServer::OnInput(InputData* data) {
   SLOG(this, 2) << __func__ << "(" << data->len << ")";
-  vector<string> messages =
-      SplitString(string(reinterpret_cast<const char*>(data->buf), data->len),
-                  "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  const std::vector<std::string> messages = base::SplitString(
+      std::string(reinterpret_cast<const char*>(data->buf), data->len), "\n",
+      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const auto& message : messages) {
     if (!IsStarted()) {
       break;
@@ -186,7 +179,7 @@ void OpenVPNManagementServer::OnInputError(const std::string& error_msg) {
   driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
 }
 
-void OpenVPNManagementServer::ProcessMessage(const string& message) {
+void OpenVPNManagementServer::ProcessMessage(const std::string& message) {
   SLOG(this, 2) << __func__ << "(" << message << ")";
   if (message.empty()) {
     return;
@@ -199,7 +192,7 @@ void OpenVPNManagementServer::ProcessMessage(const string& message) {
   }
 }
 
-bool OpenVPNManagementServer::ProcessInfoMessage(const string& message) {
+bool OpenVPNManagementServer::ProcessInfoMessage(const std::string& message) {
   if (!base::StartsWith(message, ">INFO:", base::CompareCase::SENSITIVE)) {
     return false;
   }
@@ -208,15 +201,15 @@ bool OpenVPNManagementServer::ProcessInfoMessage(const string& message) {
 }
 
 bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
-    const string& message) {
+    const std::string& message) {
   if (!base::StartsWith(message, ">PASSWORD:Need ",
                         base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << "Processing need-password message.";
-  string tag = ParsePasswordTag(message);
+  const std::string tag = ParsePasswordTag(message);
   if (tag == kPasswordTagAuth) {
-    if (message.find("SC:") != string::npos) {
+    if (message.find("SC:") != std::string::npos) {
       PerformStaticChallenge(tag);
     } else {
       PerformAuthentication(tag);
@@ -232,42 +225,46 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
 }
 
 // static
-string OpenVPNManagementServer::ParseSubstring(const string& message,
-                                               const string& start,
-                                               const string& end) {
+std::string OpenVPNManagementServer::ParseSubstring(const std::string& message,
+                                                    const std::string& start,
+                                                    const std::string& end) {
   SLOG(VPN, nullptr, 2) << __func__ << "(" << message << ", " << start << ", "
                         << end << ")";
   DCHECK(!start.empty() && !end.empty());
   size_t start_pos = message.find(start);
-  if (start_pos == string::npos) {
-    return string();
+  if (start_pos == std::string::npos) {
+    return std::string();
   }
   size_t end_pos = message.find(end, start_pos + start.size());
-  if (end_pos == string::npos) {
-    return string();
+  if (end_pos == std::string::npos) {
+    return std::string();
   }
   return message.substr(start_pos + start.size(),
                         end_pos - start_pos - start.size());
 }
 
 // static
-string OpenVPNManagementServer::ParsePasswordTag(const string& message) {
+std::string OpenVPNManagementServer::ParsePasswordTag(
+    const std::string& message) {
   return ParseSubstring(message, "'", "'");
 }
 
 // static
-string OpenVPNManagementServer::ParsePasswordFailedReason(
-    const string& message) {
+std::string OpenVPNManagementServer::ParsePasswordFailedReason(
+    const std::string& message) {
   return ParseSubstring(message, "['", "']");
 }
 
-void OpenVPNManagementServer::PerformStaticChallenge(const string& tag) {
+void OpenVPNManagementServer::PerformStaticChallenge(const std::string& tag) {
   LOG(INFO) << "Perform static challenge: " << tag;
-  string user = driver_->args()->Lookup<string>(kOpenVPNUserProperty, "");
-  string password =
-      driver_->args()->Lookup<string>(kOpenVPNPasswordProperty, "");
-  string otp = driver_->args()->Lookup<string>(kOpenVPNOTPProperty, "");
-  string token = driver_->args()->Lookup<string>(kOpenVPNTokenProperty, "");
+  const auto user =
+      driver_->args()->Lookup<std::string>(kOpenVPNUserProperty, "");
+  const auto password =
+      driver_->args()->Lookup<std::string>(kOpenVPNPasswordProperty, "");
+  const auto otp =
+      driver_->args()->Lookup<std::string>(kOpenVPNOTPProperty, "");
+  const auto token =
+      driver_->args()->Lookup<std::string>(kOpenVPNTokenProperty, "");
   if (user.empty() || (token.empty() && (password.empty() || otp.empty()))) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
@@ -278,16 +275,16 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string& tag) {
     return;
   }
 
-  string password_encoded;
+  std::string password_encoded;
   if (!token.empty()) {
     password_encoded = token;
     // Don't reuse token.
     driver_->args()->Remove(kOpenVPNTokenProperty);
   } else {
-    string b64_password(brillo::data_encoding::Base64Encode(password));
-    string b64_otp(brillo::data_encoding::Base64Encode(otp));
-    password_encoded =
-        StringPrintf("SCRV1:%s:%s", b64_password.c_str(), b64_otp.c_str());
+    std::string b64_password(brillo::data_encoding::Base64Encode(password));
+    std::string b64_otp(brillo::data_encoding::Base64Encode(otp));
+    password_encoded = base::StringPrintf("SCRV1:%s:%s", b64_password.c_str(),
+                                          b64_otp.c_str());
     // Don't reuse OTP.
     driver_->args()->Remove(kOpenVPNOTPProperty);
   }
@@ -295,11 +292,12 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string& tag) {
   SendPassword(tag, password_encoded);
 }
 
-void OpenVPNManagementServer::PerformAuthentication(const string& tag) {
+void OpenVPNManagementServer::PerformAuthentication(const std::string& tag) {
   LOG(INFO) << "Perform authentication: " << tag;
-  string user = driver_->args()->Lookup<string>(kOpenVPNUserProperty, "");
-  string password =
-      driver_->args()->Lookup<string>(kOpenVPNPasswordProperty, "");
+  const auto user =
+      driver_->args()->Lookup<std::string>(kOpenVPNUserProperty, "");
+  const auto password =
+      driver_->args()->Lookup<std::string>(kOpenVPNPasswordProperty, "");
   if (user.empty() || password.empty()) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
@@ -311,9 +309,10 @@ void OpenVPNManagementServer::PerformAuthentication(const string& tag) {
   SendPassword(tag, password);
 }
 
-void OpenVPNManagementServer::SupplyTPMToken(const string& tag) {
+void OpenVPNManagementServer::SupplyTPMToken(const std::string& tag) {
   SLOG(this, 2) << __func__ << "(" << tag << ")";
-  string pin = driver_->args()->Lookup<string>(kOpenVPNPinProperty, "");
+  const auto pin =
+      driver_->args()->Lookup<std::string>(kOpenVPNPinProperty, "");
   if (pin.empty()) {
     NOTIMPLEMENTED() << ": Missing PIN.";
     driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
@@ -323,13 +322,13 @@ void OpenVPNManagementServer::SupplyTPMToken(const string& tag) {
 }
 
 bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
-    const string& message) {
+    const std::string& message) {
   if (!base::StartsWith(message, ">PASSWORD:Verification Failed:",
                         base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << message;
-  string reason;
+  std::string reason;
   if (ParsePasswordTag(message) == kPasswordTagAuth) {
     reason = ParsePasswordFailedReason(message);
   }
@@ -337,7 +336,8 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
   return true;
 }
 
-bool OpenVPNManagementServer::ProcessAuthTokenMessage(const string& message) {
+bool OpenVPNManagementServer::ProcessAuthTokenMessage(
+    const std::string& message) {
   if (!base::StartsWith(
           message, ">PASSWORD:Auth-Token:", base::CompareCase::SENSITIVE)) {
     return false;
@@ -356,12 +356,12 @@ bool OpenVPNManagementServer::ProcessAuthTokenMessage(const string& message) {
 // <detail> is a free-form string giving details about the state change
 // <local-ip> is a dotted-quad for the local IPv4 address (when available)
 // <remote-ip> is a dotted-quad for the remote IPv4 address (when available)
-bool OpenVPNManagementServer::ProcessStateMessage(const string& message) {
+bool OpenVPNManagementServer::ProcessStateMessage(const std::string& message) {
   if (!base::StartsWith(message, ">STATE:", base::CompareCase::SENSITIVE)) {
     return false;
   }
-  vector<string> details =
-      SplitString(message, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  auto details = base::SplitString(message, ",", base::TRIM_WHITESPACE,
+                                   base::SPLIT_WANT_ALL);
   if (details.size() > 1) {
     std::string new_state = details[1];
     std::string reason;
@@ -398,7 +398,7 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string& message) {
   return true;
 }
 
-bool OpenVPNManagementServer::ProcessHoldMessage(const string& message) {
+bool OpenVPNManagementServer::ProcessHoldMessage(const std::string& message) {
   if (!base::StartsWith(message, ">HOLD:Waiting for hold release",
                         base::CompareCase::SENSITIVE)) {
     return false;
@@ -411,7 +411,8 @@ bool OpenVPNManagementServer::ProcessHoldMessage(const string& message) {
   return true;
 }
 
-bool OpenVPNManagementServer::ProcessSuccessMessage(const string& message) {
+bool OpenVPNManagementServer::ProcessSuccessMessage(
+    const std::string& message) {
   if (!base::StartsWith(message, "SUCCESS: ", base::CompareCase::SENSITIVE)) {
     return false;
   }
@@ -420,8 +421,8 @@ bool OpenVPNManagementServer::ProcessSuccessMessage(const string& message) {
 }
 
 // static
-string OpenVPNManagementServer::EscapeToQuote(const string& str) {
-  string escaped;
+std::string OpenVPNManagementServer::EscapeToQuote(const std::string& str) {
+  std::string escaped;
   for (auto ch : str) {
     if (ch == '\\' || ch == '"') {
       escaped += '\\';
@@ -431,7 +432,7 @@ string OpenVPNManagementServer::EscapeToQuote(const string& str) {
   return escaped;
 }
 
-void OpenVPNManagementServer::Send(const string& data) {
+void OpenVPNManagementServer::Send(const std::string& data) {
   SLOG(this, 2) << __func__;
   if (!sockets_) {
     LOG(DFATAL) << "Send() is called but sockets_ is nullptr";
@@ -443,28 +444,30 @@ void OpenVPNManagementServer::Send(const string& data) {
       << "Send failed.";
 }
 
-void OpenVPNManagementServer::SendState(const string& state) {
+void OpenVPNManagementServer::SendState(const std::string& state) {
   SLOG(this, 2) << __func__ << "(" << state << ")";
-  Send(StringPrintf("state %s\n", state.c_str()));
+  Send(base::StringPrintf("state %s\n", state.c_str()));
 }
 
-void OpenVPNManagementServer::SendUsername(const string& tag,
-                                           const string& username) {
+void OpenVPNManagementServer::SendUsername(const std::string& tag,
+                                           const std::string& username) {
   SLOG(this, 2) << __func__;
-  Send(StringPrintf("username \"%s\" \"%s\"\n", EscapeToQuote(tag).c_str(),
-                    EscapeToQuote(username).c_str()));
+  Send(base::StringPrintf("username \"%s\" \"%s\"\n",
+                          EscapeToQuote(tag).c_str(),
+                          EscapeToQuote(username).c_str()));
 }
 
-void OpenVPNManagementServer::SendPassword(const string& tag,
-                                           const string& password) {
+void OpenVPNManagementServer::SendPassword(const std::string& tag,
+                                           const std::string& password) {
   SLOG(this, 2) << __func__;
-  Send(StringPrintf("password \"%s\" \"%s\"\n", EscapeToQuote(tag).c_str(),
-                    EscapeToQuote(password).c_str()));
+  Send(base::StringPrintf("password \"%s\" \"%s\"\n",
+                          EscapeToQuote(tag).c_str(),
+                          EscapeToQuote(password).c_str()));
 }
 
-void OpenVPNManagementServer::SendSignal(const string& signal) {
+void OpenVPNManagementServer::SendSignal(const std::string& signal) {
   SLOG(this, 2) << __func__ << "(" << signal << ")";
-  Send(StringPrintf("signal %s\n", signal.c_str()));
+  Send(base::StringPrintf("signal %s\n", signal.c_str()));
 }
 
 void OpenVPNManagementServer::SendHoldRelease() {

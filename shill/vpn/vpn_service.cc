@@ -26,14 +26,11 @@
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_provider.h"
 
-using base::StringPrintf;
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const VPNService* s) {
+static std::string ObjectID(const VPNService* s) {
   return s->log_name();
 }
 }  // namespace Logging
@@ -56,7 +53,7 @@ VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
   set_save_credentials(false);
   mutable_store()->RegisterDerivedString(
       kPhysicalTechnologyProperty,
-      StringAccessor(new CustomAccessor<VPNService, string>(
+      StringAccessor(new CustomAccessor<VPNService, std::string>(
           this, &VPNService::GetPhysicalTechnologyProperty, nullptr)));
   this->manager()->AddDefaultServiceObserver(this);
 }
@@ -156,37 +153,37 @@ void VPNService::ConfigureDevice() {
   device_->UpdateIPConfig(driver_->GetIPProperties());
 }
 
-string VPNService::GetStorageIdentifier() const {
+std::string VPNService::GetStorageIdentifier() const {
   return storage_id_;
 }
 
-bool VPNService::IsAlwaysOnVpn(const string& package) const {
+bool VPNService::IsAlwaysOnVpn(const std::string& package) const {
   // For ArcVPN connections, the driver host is set to the package name of the
   // Android app that is creating the VPN connection.
-  return driver_->GetProviderType() == string(kProviderArcVpn) &&
+  return driver_->GetProviderType() == std::string(kProviderArcVpn) &&
          driver_->GetHost() == package;
 }
 
 // static
-string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
-                                           Error* error) {
-  string host = args.Lookup<string>(kProviderHostProperty, "");
+std::string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
+                                                Error* error) {
+  const auto host = args.Lookup<std::string>(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
                           "Missing VPN host.");
     return "";
   }
-  string name = args.Lookup<string>(kNameProperty, "");
+  const auto name = args.Lookup<std::string>(kNameProperty, "");
   if (name.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           "Missing VPN name.");
     return "";
   }
   return SanitizeStorageIdentifier(
-      StringPrintf("vpn_%s_%s", host.c_str(), name.c_str()));
+      base::StringPrintf("vpn_%s_%s", host.c_str(), name.c_str()));
 }
 
-string VPNService::GetPhysicalTechnologyProperty(Error* error) {
+std::string VPNService::GetPhysicalTechnologyProperty(Error* error) {
   ConnectionConstRefPtr underlying_connection = GetUnderlyingConnection();
   if (!underlying_connection) {
     error->Populate(Error::kOperationFailed);
@@ -223,7 +220,7 @@ bool VPNService::Load(const StoreInterface* storage) {
 void VPNService::MigrateDeprecatedStorage(StoreInterface* storage) {
   Service::MigrateDeprecatedStorage(storage);
 
-  const string id = GetStorageIdentifier();
+  const std::string id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
   driver_->MigrateDeprecatedStorage(storage, id);
 }
@@ -279,9 +276,9 @@ bool VPNService::IsAutoConnectable(const char** reason) const {
   return true;
 }
 
-string VPNService::GetTethering(Error* error) const {
+std::string VPNService::GetTethering(Error* error) const {
   ConnectionConstRefPtr underlying_connection = GetUnderlyingConnection();
-  string tethering;
+  std::string tethering;
   if (underlying_connection) {
     tethering = underlying_connection->tethering();
     if (!tethering.empty()) {
@@ -298,19 +295,19 @@ string VPNService::GetTethering(Error* error) const {
   return "";
 }
 
-bool VPNService::SetNameProperty(const string& name, Error* error) {
+bool VPNService::SetNameProperty(const std::string& name, Error* error) {
   if (name == friendly_name()) {
     return false;
   }
   LOG(INFO) << "SetNameProperty called for: " << log_name();
 
   KeyValueStore* args = driver_->args();
-  args->Set<string>(kNameProperty, name);
-  string new_storage_id = CreateStorageIdentifier(*args, error);
+  args->Set<std::string>(kNameProperty, name);
+  const auto new_storage_id = CreateStorageIdentifier(*args, error);
   if (new_storage_id.empty()) {
     return false;
   }
-  string old_storage_id = storage_id_;
+  auto old_storage_id = storage_id_;
   DCHECK_NE(old_storage_id, new_storage_id);
 
   SetFriendlyName(name);
