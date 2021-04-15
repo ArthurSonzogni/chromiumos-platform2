@@ -93,7 +93,7 @@ MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
     return base::nullopt;
   }
 
-  // We only want to report 2% of service failures due to noise.
+  // We only want to report a limited number of service failures due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetServiceFailureWeight()) != 0) {
     return base::nullopt;

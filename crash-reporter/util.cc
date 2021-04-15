@@ -531,7 +531,7 @@ int GetSelinuxWeight() {
 }
 
 int GetServiceFailureWeight() {
-  return 50;
+  return 1000;
 }
 
 int GetSuspendFailureWeight() {
