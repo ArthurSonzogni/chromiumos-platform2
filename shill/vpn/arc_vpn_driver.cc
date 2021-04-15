@@ -31,9 +31,7 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 }  // namespace Logging
 
 const VPNDriver::Property ArcVpnDriver::kProperties[] = {
-    {kProviderHostProperty, 0},
-    {kProviderTypeProperty, 0},
-    {kArcVpnTunnelChromeProperty, 0}};
+    {kProviderHostProperty, 0}, {kProviderTypeProperty, 0}};
 
 ArcVpnDriver::ArcVpnDriver(Manager* manager,
                            net_base::ProcessManager* process_manager)

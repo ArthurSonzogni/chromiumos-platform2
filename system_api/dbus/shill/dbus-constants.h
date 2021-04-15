@@ -277,9 +277,6 @@ constexpr char kProviderProperty[] = "Provider";
 constexpr char kProviderHostProperty[] = "Provider.Host";
 constexpr char kProviderTypeProperty[] = "Provider.Type";
 
-// ArcVpn Service property names.
-constexpr char kArcVpnTunnelChromeProperty[] = "ArcVpn.TunnelChrome";
-
 // IKEv2 VPN Service property names.
 constexpr char kIKEv2AuthenticationTypeProperty[] = "IKEv2.AuthenticationType";
 constexpr char kIKEv2CaCertPemProperty[] = "IKEv2.CACertPEM";

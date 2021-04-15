@@ -5,6 +5,7 @@
 #include "shill/vpn/arc_vpn_driver.h"
 
 #include <memory>
+#include <string>
 
 #include <base/functional/bind.h>
 #include <base/memory/ptr_util.h>
@@ -56,14 +57,12 @@ class ArcVpnDriverTest : public testing::Test {
     device_ = nullptr;
   }
 
-  void LoadPropertiesFromStore(bool tunnel_chrome) {
+  void LoadPropertiesFromStore() {
     const std::string kProviderHostValue = "arcvpn";
     const std::string kProviderTypeValue = "arcvpn";
 
     store_.SetString(kStorageId, kProviderHostProperty, kProviderHostValue);
     store_.SetString(kStorageId, kProviderTypeProperty, kProviderTypeValue);
-    store_.SetString(kStorageId, kArcVpnTunnelChromeProperty,
-                     tunnel_chrome ? "true" : "false");
     driver_->Load(&store_, kStorageId);
   }
 
@@ -85,7 +84,7 @@ TEST_F(ArcVpnDriverTest, VPNType) {
 }
 
 TEST_F(ArcVpnDriverTest, ConnectAsync) {
-  LoadPropertiesFromStore(true);
+  LoadPropertiesFromStore();
   EXPECT_CALL(*device_info(), GetIndex(_)).WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(event_handler_,
               OnDriverConnected(std::string(VPNProvider::kArcBridgeIfName),

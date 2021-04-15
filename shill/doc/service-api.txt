@@ -222,23 +222,7 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string ArcVpn.TunnelChrome [writeonly]
-
-			(VPN services of type arcvpn only) Specify whether
-			the service should tunnel Chrome traffic.  This
-			is used to implement the
-			VpnService.Builder.addAllowedApplication() and
-			VpnService.Builder.addDisallowedApplication() APIs.
-			If "true", the service will configure routes and
-			DNS settings for Chrome OS.  If "false", the service
-			will not configure routes or DNS settings, but it
-			will still be set as the default service and the
-			Chrome UI will display it as a connected VPN.
-
-			The current value of this property is readable
-			in the "Provider" property of this service.
-
-		boolean AutoConnect [readwrite]
+Properties	boolean AutoConnect [readwrite]
 
 			If set to true, this service will auto-connect
 			when no other connection is available.  If multiple
