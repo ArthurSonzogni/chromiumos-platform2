@@ -32,7 +32,10 @@ int main(int argc, char** argv) {
   const std::string command_line =
       base::CommandLine::ForCurrentProcess()->GetCommandLineString();
   LOG(INFO) << "Starting " << command_line;
-  arc::ArcSetup(arc::Mode::PREPARE_HOST_GENERATED_DIR, base::FilePath()).Run();
+  arc::ArcSetup(arc::Mode::PREPARE_HOST_GENERATED_DIR,
+                base::FilePath(USE_ARCVM ? arc::kVmConfigJson
+                                         : arc::kContainerConfigJson))
+      .Run();
   LOG(INFO) << command_line << " took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
   return 0;

@@ -48,6 +48,9 @@ constexpr char kAbilist64PropertyExpected[] = "x86_64";
 constexpr char kAbilist64PropertyReplacement[] = "x86_64,arm64-v8a";
 constexpr char kDalvikVmIsaArm64[] = "ro.dalvik.vm.isa.arm64=x86_64";
 
+// Prefix of Android property to enable debugging features.
+constexpr char kDebuggablePropertyPrefix[] = "ro.debuggable=";
+
 // Maximum length of an Android property value.
 constexpr int kAndroidMaxPropertyLength = 91;
 
@@ -162,6 +165,7 @@ bool ExpandPropertyContents(const std::string& content,
                             bool filter_non_ro_props,
                             bool add_native_bridge_64bit_support,
                             bool append_dalvik_isa,
+                            bool debuggable,
                             const std::string& partition_name) {
   const std::vector<std::string> lines = base::SplitString(
       content, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
@@ -253,6 +257,15 @@ bool ExpandPropertyContents(const std::string& content,
       }
     }
 
+    {
+      // Replace ro.debuggable value with |debuggable| flag.
+      const std::string prefix(kDebuggablePropertyPrefix);
+      std::string value;
+      if (FindProperty(prefix, &value, line)) {
+        line = prefix + (debuggable ? "1" : "0");
+      }
+    }
+
     std::string truncated;
     if (!TruncateAndroidProperty(line, &truncated)) {
       LOG(ERROR) << "Unable to truncate property: " << line;
@@ -286,6 +299,7 @@ bool ExpandPropertyFile(const base::FilePath& input,
                         bool append,
                         bool add_native_bridge_64bit_support,
                         bool append_dalvik_isa,
+                        bool debuggable,
                         const std::string& partition_name) {
   std::string content;
   std::string expanded;
@@ -296,7 +310,7 @@ bool ExpandPropertyFile(const base::FilePath& input,
   if (!ExpandPropertyContents(content, config, &expanded,
                               /*filter_non_ro_props=*/append,
                               add_native_bridge_64bit_support,
-                              append_dalvik_isa, partition_name)) {
+                              append_dalvik_isa, debuggable, partition_name)) {
     return false;
   }
   if (append && base::PathExists(output)) {
@@ -317,11 +331,12 @@ bool ExpandPropertyFile(const base::FilePath& input,
 
 bool ExpandPropertyContentsForTesting(const std::string& content,
                                       brillo::CrosConfigInterface* config,
+                                      bool debuggable,
                                       std::string* expanded_content) {
   return ExpandPropertyContents(content, config, expanded_content,
                                 /*filter_non_ro_props=*/true,
                                 /*add_native_bridge_64bit_support=*/false,
-                                false, std::string());
+                                false, debuggable, std::string());
 }
 
 bool TruncateAndroidPropertyForTesting(const std::string& line,
@@ -334,13 +349,14 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
                                   brillo::CrosConfigInterface* config) {
   return ExpandPropertyFile(input, output, config, /*append=*/false,
                             /*add_native_bridge_64bit_support=*/false, false,
-                            std::string());
+                            /*debuggable=*/false, std::string());
 }
 
 bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
-                         bool add_native_bridge_64bit_support) {
+                         bool add_native_bridge_64bit_support,
+                         bool debuggable) {
   brillo::CrosConfig config;
   if (single_file)
     base::DeleteFile(dest_path);
@@ -374,7 +390,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
             source_file, single_file ? dest_path : dest_path.Append(file),
             &config,
             /*append=*/single_file, add_native_bridge_64bit_support,
-            append_dalvik_isa, partition_name)) {
+            append_dalvik_isa, debuggable, partition_name)) {
       LOG(ERROR) << "Failed to expand " << source_file;
       return false;
     }

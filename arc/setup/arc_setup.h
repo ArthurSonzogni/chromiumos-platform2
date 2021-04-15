@@ -34,6 +34,10 @@ namespace arc {
 struct ArcPaths;
 class ArcSetupMetrics;
 
+static constexpr char kContainerConfigJson[] =
+    "/usr/share/arc-setup/config.json";
+static constexpr char kVmConfigJson[] = "/usr/share/arcvm/config.json";
+
 // This MUST be in sync with 'enum BootType' in metrics.mojom.
 // Note: This enum has to be in sync with Android's arc-boot-type-detector.
 enum class ArcBootType {

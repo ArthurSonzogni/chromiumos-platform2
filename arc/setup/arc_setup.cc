@@ -611,8 +611,7 @@ ArcSetup::ArcSetup(Mode mode, const base::FilePath& config_json)
       arc_mounter_(GetDefaultMounter()),
       arc_paths_(ArcPaths::Create(mode_, config_)),
       arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {
-  CHECK(mode == Mode::PREPARE_HOST_GENERATED_DIR ||
-        mode == Mode::APPLY_PER_BOARD_CONFIG || mode == Mode::CREATE_DATA ||
+  CHECK(mode == Mode::APPLY_PER_BOARD_CONFIG || mode == Mode::CREATE_DATA ||
         mode == Mode::REMOVE_DATA || mode == Mode::REMOVE_STALE_DATA ||
         mode == Mode::HANDLE_UPGRADE || !config_json.empty());
 }
@@ -1111,6 +1110,7 @@ bool ArcSetup::InstallLinksToHostSideCode() {
 
 void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
+  // TODO(b/185548303): Remove ro.boot.debuggable.
   const bool is_debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
   const bool disable_system_default_app =
       config_.GetBoolOrDie("DISABLE_SYSTEM_DEFAULT_APP");
@@ -1232,6 +1232,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.dev_mode=%d "
       "androidboot.disable_runas=%d "
       "androidboot.host_is_in_vm=%d "
+      // TODO(b/185548303): Remove ro.boot.debuggable.
       "androidboot.debuggable=%d "
       "androidboot.lcd_density=%d "
       "androidboot.native_bridge=%s "
@@ -2271,6 +2272,8 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
   const bool add_native_bridge_64bit_support =
       config_.GetBoolOrDie("ADD_NATIVE_BRIDGE_64BIT_SUPPORT");
   const bool is_arcvm = config_.GetBoolOrDie("IS_ARCVM");
+  const bool debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
+  LOG(INFO) << "Debuggable is " << debuggable;
 
   const base::FilePath property_files_source_dir(
       base::FilePath(is_arcvm ? kPropertyFilesPathVm : kPropertyFilesPath));
@@ -2281,7 +2284,7 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
 
   EXIT_IF(!ExpandPropertyFiles(
       property_files_source_dir, property_files_dest_path,
-      /*single_file=*/is_arcvm, add_native_bridge_64bit_support));
+      /*single_file=*/is_arcvm, add_native_bridge_64bit_support, debuggable));
 
   if (!is_arcvm)
     return;

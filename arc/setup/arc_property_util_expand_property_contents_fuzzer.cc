@@ -64,7 +64,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }
 
   std::string expanded_content;
-  arc::ExpandPropertyContentsForTesting(content, &config, &expanded_content);
+  arc::ExpandPropertyContentsForTesting(content, &config, false,
+                                        &expanded_content);
 
   return 0;
 }

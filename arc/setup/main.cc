@@ -23,8 +23,6 @@
 
 namespace {
 
-constexpr char kConfigJson[] = "/usr/share/arc-setup/config.json";
-
 arc::Mode GetMode(const std::string& mode) {
   static constexpr std::pair<const char*, arc::Mode> kModeNameMapping[] = {
       {"setup", arc::Mode::SETUP},
@@ -69,7 +67,8 @@ int main(int argc, char** argv) {
       base::CommandLine::ForCurrentProcess()->GetCommandLineString();
   LOG(INFO) << "Starting " << command_line;
   {
-    arc::ArcSetup setup(GetMode(FLAGS_mode), base::FilePath(kConfigJson));
+    arc::ArcSetup setup(GetMode(FLAGS_mode),
+                        base::FilePath(arc::kContainerConfigJson));
     setup.Run();
   }
   LOG(INFO) << command_line << " took "

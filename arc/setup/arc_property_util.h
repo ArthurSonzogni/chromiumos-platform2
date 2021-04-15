@@ -26,6 +26,7 @@ namespace arc {
 // properties were not found.
 bool ExpandPropertyContentsForTesting(const std::string& content,
                                       brillo::CrosConfigInterface* config,
+                                      bool debuggable,
                                       std::string* expanded_content);
 
 // Truncates the value side of an Android key=val property line, including
@@ -45,11 +46,13 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
 // success. When |single_file| is true, only one file (|dest_path| itself) is
 // written. All expanded properties are included in the single file.
 // When |add_native_bridge_64_bit_support| is true, add / modify some properties
-// related to supported CPU ABIs.
+// related to supported CPU ABIs. |debuggable| is used to populate ro.debuggable
+// property.
 bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
-                         bool add_native_bridge_64bit_support);
+                         bool add_native_bridge_64bit_support,
+                         bool debuggable);
 
 }  // namespace arc
 
