@@ -5,6 +5,8 @@
 #ifndef RUNTIME_PROBE_UTILS_FILE_UTILS_H_
 #define RUNTIME_PROBE_UTILS_FILE_UTILS_H_
 
+#include <memory>
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -26,6 +28,12 @@ base::Optional<base::Value> MapFilesToDict(
     const base::FilePath& dir_path,
     const std::vector<KeyType>& keys,
     const std::vector<KeyType>& optional_keys);
+
+// Returns list of files which match the pattern. The pattern can contains unix
+// path wildcard. For example: "/a/*/b/*.txt". The path without wildcard only
+// matches itself, for example: "/a/b/" => ["/a/b"].
+std::vector<base::FilePath> Glob(const base::FilePath& pattern);
+std::vector<base::FilePath> Glob(const std::string& pattern);
 
 }  // namespace runtime_probe
 

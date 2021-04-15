@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <string>
 #include <tuple>
 #include <utility>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 
@@ -40,6 +42,41 @@ string GetFileName(const string& key) {
 
 string GetFileName(const pair<string, string>& key) {
   return key.second;
+}
+
+bool HasPathWildcard(const string& path) {
+  const std::string wildcard = "*?[";
+  for (const auto& c : path) {
+    if (wildcard.find(c) != string::npos)
+      return true;
+  }
+  return false;
+}
+
+std::vector<base::FilePath> GlobInternal(
+    const base::FilePath& root,
+    const std::vector<std::string>& patterns,
+    int idx) {
+  if (idx == patterns.size()) {
+    if (PathExists(root))
+      return {root};
+    return {};
+  }
+  const auto& pattern = patterns[idx];
+  if (!HasPathWildcard(pattern)) {
+    return GlobInternal(root.Append(pattern), patterns, idx + 1);
+  }
+  std::vector<base::FilePath> res;
+  base::FileEnumerator it(root, false,
+                          base::FileEnumerator::SHOW_SYM_LINKS |
+                              base::FileEnumerator::FILES |
+                              base::FileEnumerator::DIRECTORIES,
+                          pattern);
+  for (auto path = it.Next(); !path.empty(); path = it.Next()) {
+    auto sub_res = GlobInternal(path, patterns, idx + 1);
+    std::move(sub_res.begin(), sub_res.end(), std::back_inserter(res));
+  }
+  return res;
 }
 
 }  // namespace
@@ -108,5 +145,15 @@ template base::Optional<Value> MapFilesToDict<pair<string, string>>(
     const FilePath& dir_path,
     const vector<pair<string, string>>& keys,
     const vector<pair<string, string>>& optional_keys);
+
+std::vector<base::FilePath> Glob(const base::FilePath& pattern) {
+  std::vector<std::string> components;
+  pattern.GetComponents(&components);
+  return GlobInternal(base::FilePath(components[0]), components, 1);
+}
+
+std::vector<base::FilePath> Glob(const std::string& pattern) {
+  return Glob(base::FilePath(pattern));
+}
 
 }  // namespace runtime_probe
