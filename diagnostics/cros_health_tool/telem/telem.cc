@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -173,8 +174,62 @@ std::string PortalStateToString(PortalState state) {
   }
 }
 
+void OutputCSVLine(const std::vector<std::string>& datas,
+                   const std::string separator = ",") {
+  bool is_first = true;
+  for (const auto& data : datas) {
+    if (!is_first) {
+      std::cout << separator;
+    }
+    is_first = false;
+    std::cout << data;
+  }
+  std::cout << std::endl;
+}
+
+void OutputCSV(const std::vector<std::string>& headers,
+               const std::vector<std::vector<std::string>>& values) {
+  OutputCSVLine(headers);
+  for (const auto& value : values) {
+    OutputCSVLine(value);
+  }
+}
+
+void OutputTableLine(const std::string& header,
+                     const std::string& value,
+                     const size_t max_len_header) {
+  std::cout << header << std::string(max_len_header - header.length(), ' ')
+            << " : " << value << std::endl;
+}
+
+void OutputTable(const std::vector<std::string>& headers,
+                 const std::vector<std::vector<std::string>>& values) {
+  size_t max_len_header = 0;
+  for (const auto& header : headers) {
+    max_len_header = std::max(max_len_header, header.length());
+  }
+
+  for (const auto& value : values) {
+    for (auto i = 0; i < headers.size(); i++) {
+      OutputTableLine(headers[i], value[i], max_len_header);
+    }
+    std::cout << std::endl;
+  }
+}
+
+void OutputData(const std::vector<std::string>& headers,
+                const std::vector<std::vector<std::string>>& values,
+                const bool beauty) {
+  if (!beauty) {
+    OutputCSV(headers, values);
+  } else {
+    OutputTable(headers, values);
+  }
+}
+
 void DisplayProcessInfo(
-    const chromeos::cros_healthd::mojom::ProcessResultPtr& process_result) {
+    const chromeos::cros_healthd::mojom::ProcessResultPtr& process_result,
+    const bool beauty) {
   if (process_result.is_null())
     return;
 
@@ -185,31 +240,51 @@ void DisplayProcessInfo(
 
   const auto& process = process_result->get_process_info();
 
-  std::cout << "command,user_id,priority,nice,uptime_ticks,state,total_memory_"
-               "kib,resident_memory_kib,free_memory_kib,bytes_read,bytes_"
-               "written,read_system_calls,write_system_calls,physical_bytes_"
-               "read,physical_bytes_written,cancelled_bytes_written"
-            << std::endl;
+  const std::vector<std::string> headers = {"command",
+                                            "user_id",
+                                            "priority",
+                                            "nice",
+                                            "uptime_ticks",
+                                            "state",
+                                            "total_memory_kib",
+                                            "resident_memory_kib",
+                                            "free_memory_kib",
+                                            "bytes_read",
+                                            "bytes_written",
+                                            "read_system_calls",
+                                            "write_system_calls",
+                                            "physical_bytes_read",
+                                            "physical_bytes_written",
+                                            "cancelled_bytes_written"};
 
   // The int8_t fields need to be cast to a larger int type, otherwise they will
   // be treated as chars and display garbage. Also, wrap the command in quotes,
   // because the command-line options included in the command sometimes have
   // their own commas.
-  std::cout << "\"" << process->command << "\"," << process->user_id << ","
-            << static_cast<int>(process->priority) << ","
-            << static_cast<int>(process->nice) << "," << process->uptime_ticks
-            << "," << ProcessStateToString(process->state) << ","
-            << process->total_memory_kib << "," << process->resident_memory_kib
-            << "," << process->free_memory_kib << "," << process->bytes_read
-            << "," << process->bytes_written << ","
-            << process->read_system_calls << "," << process->write_system_calls
-            << "," << process->physical_bytes_read << ","
-            << process->physical_bytes_written << ","
-            << process->cancelled_bytes_written << std::endl;
+  const std::vector<std::vector<std::string>> values = {
+      {"\"" + static_cast<std::string>(process->command) + "\"",
+       std::to_string(process->user_id),
+       std::to_string(static_cast<int>(process->priority)),
+       std::to_string(static_cast<int>(process->nice)),
+       std::to_string(process->uptime_ticks),
+       static_cast<std::string>(ProcessStateToString(process->state)),
+       std::to_string(process->total_memory_kib),
+       std::to_string(process->resident_memory_kib),
+       std::to_string(process->free_memory_kib),
+       std::to_string(process->bytes_read),
+       std::to_string(process->bytes_written),
+       std::to_string(process->read_system_calls),
+       std::to_string(process->write_system_calls),
+       std::to_string(process->physical_bytes_read),
+       std::to_string(process->physical_bytes_written),
+       std::to_string(process->cancelled_bytes_written)}};
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayBatteryInfo(
-    const chromeos::cros_healthd::mojom::BatteryResultPtr& battery_result) {
+    const chromeos::cros_healthd::mojom::BatteryResultPtr& battery_result,
+    const bool beauty) {
   if (battery_result->is_error()) {
     DisplayError(battery_result->get_error());
     return;
@@ -221,11 +296,14 @@ void DisplayBatteryInfo(
     return;
   }
 
-  std::cout << "charge_full,charge_full_design,cycle_count,serial_number,"
-               "vendor(manufacturer),voltage_now,voltage_min_design,"
-               "manufacture_date_smart,temperature_smart,model_name,charge_now,"
-               "current_now,technology,status"
-            << std::endl;
+  const std::vector<std::string> headers = {
+      "charge_full",          "charge_full_design",
+      "cycle_count",          "serial_number",
+      "vendor(manufacturer)", "voltage_now",
+      "voltage_min_design",   "manufacture_date_smart",
+      "temperature_smart",    "model_name",
+      "charge_now",           "current_now",
+      "technology",           "status"};
 
   std::string manufacture_date_smart =
       battery->manufacture_date.value_or(kNotApplicableString);
@@ -234,60 +312,86 @@ void DisplayBatteryInfo(
           ? std::to_string(battery->temperature->value)
           : kNotApplicableString;
 
-  std::cout << battery->charge_full << "," << battery->charge_full_design << ","
-            << battery->cycle_count << "," << battery->serial_number << ","
-            << battery->vendor << "," << battery->voltage_now << ","
-            << battery->voltage_min_design << "," << manufacture_date_smart
-            << "," << temperature_smart << "," << battery->model_name << ","
-            << battery->charge_now << "," << battery->current_now << ","
-            << battery->technology << "," << battery->status << std::endl;
+  const std::vector<std::vector<std::string>> values = {
+      {std::to_string(battery->charge_full),
+       std::to_string(battery->charge_full_design),
+       std::to_string(battery->cycle_count), battery->serial_number,
+       battery->vendor, std::to_string(battery->voltage_now),
+       std::to_string(battery->voltage_min_design), manufacture_date_smart,
+       temperature_smart, battery->model_name,
+       std::to_string(battery->charge_now),
+       std::to_string(battery->current_now), battery->technology,
+       battery->status}};
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayBlockDeviceInfo(
     const chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr&
-        block_device_result) {
+        block_device_result,
+    const bool beauty) {
   if (block_device_result->is_error()) {
     DisplayError(block_device_result->get_error());
     return;
   }
 
+  const std::vector<std::string> headers = {
+      "path",
+      "size",
+      "type",
+      "manfid",
+      "name",
+      "serial",
+      "bytes_read_since_last_boot",
+      "bytes_written_since_last_boot",
+      "read_time_seconds_since_last_boot",
+      "write_time_seconds_since_last_boot",
+      "io_time_seconds_since_last_boot",
+      "discard_time_seconds_since_last_boot"};
+
   const auto& block_devices = block_device_result->get_block_device_info();
-  std::cout << "path,size,type,manfid,name,serial,bytes_read_since_last_boot,"
-               "bytes_written_since_last_boot,read_time_seconds_since_last_"
-               "boot,write_time_seconds_since_last_boot,io_time_seconds_since_"
-               "last_boot,discard_time_seconds_since_last_boot"
-            << std::endl;
+  std::vector<std::vector<std::string>> values;
   for (const auto& device : block_devices) {
     std::string discard_time =
         !device->discard_time_seconds_since_last_boot.is_null()
             ? std::to_string(
                   device->discard_time_seconds_since_last_boot->value)
             : kNotApplicableString;
-    std::cout << device->path << "," << device->size << "," << device->type
-              << "," << device->manufacturer_id << "," << device->name << ","
-              << device->serial << "," << device->bytes_read_since_last_boot
-              << "," << device->bytes_written_since_last_boot << ","
-              << device->read_time_seconds_since_last_boot << ","
-              << device->write_time_seconds_since_last_boot << ","
-              << device->io_time_seconds_since_last_boot << "," << discard_time
-              << std::endl;
+    values.push_back(
+        {device->path, std::to_string(device->size), device->type,
+         std::to_string(device->manufacturer_id), device->name,
+         std::to_string(device->serial),
+         std::to_string(device->bytes_read_since_last_boot),
+         std::to_string(device->bytes_written_since_last_boot),
+         std::to_string(device->read_time_seconds_since_last_boot),
+         std::to_string(device->write_time_seconds_since_last_boot),
+         std::to_string(device->io_time_seconds_since_last_boot),
+         discard_time});
   }
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayBluetoothInfo(
-    const chromeos::cros_healthd::mojom::BluetoothResultPtr& bluetooth_result) {
+    const chromeos::cros_healthd::mojom::BluetoothResultPtr& bluetooth_result,
+    const bool beauty) {
   if (bluetooth_result->is_error()) {
     DisplayError(bluetooth_result->get_error());
     return;
   }
 
+  const std::vector<std::string> headers = {"name", "address", "powered",
+                                            "num_connected_devices"};
+
   const auto& adapters = bluetooth_result->get_bluetooth_adapter_info();
-  std::cout << "name,address,powered,num_connected_devices" << std::endl;
+  std::vector<std::vector<std::string>> values;
   for (const auto& adapter : adapters) {
-    std::cout << adapter->name << "," << adapter->address << ","
-              << (adapter->powered ? "true" : "false") << ","
-              << adapter->num_connected_devices << std::endl;
+    values.push_back({adapter->name, adapter->address,
+                      (adapter->powered ? "true" : "false"),
+                      std::to_string(adapter->num_connected_devices)});
   }
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayCpuInfo(
@@ -371,51 +475,62 @@ void DisplayCpuInfo(
 }
 
 void DisplayFanInfo(
-    const chromeos::cros_healthd::mojom::FanResultPtr& fan_result) {
+    const chromeos::cros_healthd::mojom::FanResultPtr& fan_result,
+    const bool beauty) {
   if (fan_result->is_error()) {
     DisplayError(fan_result->get_error());
     return;
   }
 
+  const std::vector<std::string> headers = {"speed_rpm"};
+
   const auto& fans = fan_result->get_fan_info();
-  std::cout << "speed_rpm" << std::endl;
+  std::vector<std::vector<std::string>> values;
   for (const auto& fan : fans) {
-    std::cout << fan->speed_rpm << std::endl;
+    values.push_back({std::to_string(fan->speed_rpm)});
   }
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayNetworkInfo(
-    const chromeos::cros_healthd::mojom::NetworkResultPtr& network_result) {
+    const chromeos::cros_healthd::mojom::NetworkResultPtr& network_result,
+    const bool beauty) {
   if (network_result->is_error()) {
     DisplayError(network_result->get_error());
     return;
   }
 
   const auto& network_health = network_result->get_network_health();
-  std::cout << "type,state,portal_state,guid,name,signal_strength,mac_address,"
-               "ipv4_address,ipv6_addresses"
-            << std::endl;
+  const std::vector<std::string> headers = {
+      "type",        "state",        "portal_state",
+      "guid",        "name",         "signal_strength",
+      "mac_address", "ipv4_address", "ipv6_addresses"};
+
+  std::vector<std::vector<std::string>> values;
   for (const auto& network : network_health->networks) {
     auto signal_strength = network->signal_strength
                                ? std::to_string(network->signal_strength->value)
                                : kNotApplicableString;
-    std::cout << NetworkTypeToString(network->type) << ","
-              << NetworkStateToString(network->state) << ","
-              << PortalStateToString(network->portal_state) << ","
-              << network->guid.value_or(kNotApplicableString) << ","
-              << network->name.value_or(kNotApplicableString) << ","
-              << signal_strength << ","
-              << network->mac_address.value_or(kNotApplicableString) << ","
-              << network->ipv4_address.value_or(kNotApplicableString) << ","
-              << (network->ipv6_addresses.size()
-                      ? base::JoinString(network->ipv6_addresses, ":")
-                      : kNotApplicableString)
-              << std::endl;
+    values.push_back({NetworkTypeToString(network->type),
+                      NetworkStateToString(network->state),
+                      PortalStateToString(network->portal_state),
+                      network->guid.value_or(kNotApplicableString),
+                      network->name.value_or(kNotApplicableString),
+                      signal_strength,
+                      network->mac_address.value_or(kNotApplicableString),
+                      network->ipv4_address.value_or(kNotApplicableString),
+                      (network->ipv6_addresses.size()
+                           ? base::JoinString(network->ipv6_addresses, ":")
+                           : kNotApplicableString)});
   }
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayTimezoneInfo(
-    const chromeos::cros_healthd::mojom::TimezoneResultPtr& timezone_result) {
+    const chromeos::cros_healthd::mojom::TimezoneResultPtr& timezone_result,
+    const bool beauty) {
   if (timezone_result->is_error()) {
     DisplayError(timezone_result->get_error());
     return;
@@ -425,44 +540,62 @@ void DisplayTimezoneInfo(
   // Replace commas in POSIX timezone before printing CSVs.
   std::string csv_posix_timezone;
   base::ReplaceChars(timezone->posix, ",", " ", &csv_posix_timezone);
-  std::cout << "posix_timezone,timezone_region" << std::endl;
-  std::cout << csv_posix_timezone << "," << timezone->region << std::endl;
+
+  const std::vector<std::string> headers = {"posix_timezone",
+                                            "timezone_region"};
+  const std::vector<std::vector<std::string>> values = {
+      {csv_posix_timezone, timezone->region}};
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayMemoryInfo(
-    const chromeos::cros_healthd::mojom::MemoryResultPtr& memory_result) {
+    const chromeos::cros_healthd::mojom::MemoryResultPtr& memory_result,
+    const bool beauty) {
   if (memory_result->is_error()) {
     DisplayError(memory_result->get_error());
     return;
   }
 
   const auto& memory = memory_result->get_memory_info();
-  std::cout << "total_memory_kib,free_memory_kib,available_memory_kib,"
-               "page_faults_since_last_boot"
-            << std::endl;
-  std::cout << memory->total_memory_kib << "," << memory->free_memory_kib << ","
-            << memory->available_memory_kib << ","
-            << memory->page_faults_since_last_boot << std::endl;
+  const std::vector<std::string> headers = {
+      "total_memory_kib", "free_memory_kib", "available_memory_kib",
+      "page_faults_since_last_boot"};
+  const std::vector<std::vector<std::string>> values = {
+      {std::to_string(memory->total_memory_kib),
+       std::to_string(memory->free_memory_kib),
+       std::to_string(memory->available_memory_kib),
+       std::to_string(memory->page_faults_since_last_boot)}};
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayBacklightInfo(
-    const chromeos::cros_healthd::mojom::BacklightResultPtr& backlight_result) {
+    const chromeos::cros_healthd::mojom::BacklightResultPtr& backlight_result,
+    const bool beauty) {
   if (backlight_result->is_error()) {
     DisplayError(backlight_result->get_error());
     return;
   }
 
+  const std::vector<std::string> headers = {"path", "max_brightness",
+                                            "brightness"};
+
   const auto& backlights = backlight_result->get_backlight_info();
-  std::cout << "path,max_brightness,brightness" << std::endl;
+  std::vector<std::vector<std::string>> values;
   for (const auto& backlight : backlights) {
-    std::cout << backlight->path.c_str() << "," << backlight->max_brightness
-              << "," << backlight->brightness << std::endl;
+    values.push_back({backlight->path,
+                      std::to_string(backlight->max_brightness),
+                      std::to_string(backlight->brightness)});
   }
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplayStatefulPartitionInfo(
     const chromeos::cros_healthd::mojom::StatefulPartitionResultPtr&
-        stateful_partition_result) {
+        stateful_partition_result,
+    const bool beauty) {
   if (stateful_partition_result->is_error()) {
     DisplayError(stateful_partition_result->get_error());
     return;
@@ -470,26 +603,33 @@ void DisplayStatefulPartitionInfo(
 
   const auto& stateful_partition_info =
       stateful_partition_result->get_partition_info();
-  std::cout << "available_space,total_space,filesystem,mount_source"
-            << std::endl;
-  std::cout << stateful_partition_info->available_space << ","
-            << stateful_partition_info->total_space << ","
-            << stateful_partition_info->filesystem << ","
-            << stateful_partition_info->mount_source << std::endl;
+  const std::vector<std::string> headers = {"available_space", "total_space",
+                                            "filesystem", "mount_source"};
+  const std::vector<std::vector<std::string>> values = {
+      {std::to_string(stateful_partition_info->available_space),
+       std::to_string(stateful_partition_info->total_space),
+       stateful_partition_info->filesystem,
+       stateful_partition_info->mount_source}};
+
+  OutputData(headers, values, beauty);
 }
 
 void DisplaySystemInfo(
-    const chromeos::cros_healthd::mojom::SystemResultPtr& system_result) {
+    const chromeos::cros_healthd::mojom::SystemResultPtr& system_result,
+    const bool beauty) {
   if (system_result->is_error()) {
     DisplayError(system_result->get_error());
     return;
   }
 
   const auto& system_info = system_result->get_system_info();
-  std::cout << "first_power_date,manufacture_date,product_sku_number,"
-            << "product_serial_number,marketing_name,bios_version,board_name,"
-            << "board_version,chassis_type,product_name,os_version,os_channel"
-            << std::endl;
+  const std::vector<std::string> headers = {
+      "first_power_date",   "manufacture_date",
+      "product_sku_number", "product_serial_number",
+      "marketing_name",     "bios_version",
+      "board_name",         "board_version",
+      "chassis_type",       "product_name",
+      "os_version",         "os_channel"};
   std::string chassis_type =
       !system_info->chassis_type.is_null()
           ? std::to_string(system_info->chassis_type->value)
@@ -507,33 +647,31 @@ void DisplaySystemInfo(
   std::string marketing_name = system_info->marketing_name;
   base::ReplaceSubstringsAfterOffset(&marketing_name, 0, ", ", "/");
 
-  std::cout << system_info->first_power_date.value_or(kNotApplicableString)
-            << ","
-            << system_info->manufacture_date.value_or(kNotApplicableString)
-            << ","
-            << system_info->product_sku_number.value_or(kNotApplicableString)
-            << ","
-            << system_info->product_serial_number.value_or(kNotApplicableString)
-            << "," << marketing_name << ","
-            << system_info->bios_version.value_or(kNotApplicableString) << ","
-            << system_info->board_name.value_or(kNotApplicableString) << ","
-            << system_info->board_version.value_or(kNotApplicableString) << ","
-            << chassis_type << ","
-            << system_info->product_name.value_or(kNotApplicableString) << ","
-            << os_version << ',' << system_info->os_version->release_channel
-            << std::endl;
+  const std::vector<std::vector<std::string>> values = {
+      {system_info->first_power_date.value_or(kNotApplicableString),
+       system_info->manufacture_date.value_or(kNotApplicableString),
+       system_info->product_sku_number.value_or(kNotApplicableString),
+       system_info->product_serial_number.value_or(kNotApplicableString),
+       marketing_name, system_info->bios_version.value_or(kNotApplicableString),
+       system_info->board_name.value_or(kNotApplicableString),
+       system_info->board_version.value_or(kNotApplicableString), chassis_type,
+       system_info->product_name.value_or(kNotApplicableString), os_version,
+       system_info->os_version->release_channel}};
+
+  OutputData(headers, values, beauty);
 }
 
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(
-    const chromeos::cros_healthd::mojom::TelemetryInfoPtr& info) {
+    const chromeos::cros_healthd::mojom::TelemetryInfoPtr& info,
+    const bool beauty) {
   const auto& battery_result = info->battery_result;
   if (battery_result)
-    DisplayBatteryInfo(battery_result);
+    DisplayBatteryInfo(battery_result, beauty);
 
   const auto& block_device_result = info->block_device_result;
   if (block_device_result)
-    DisplayBlockDeviceInfo(block_device_result);
+    DisplayBlockDeviceInfo(block_device_result, beauty);
 
   const auto& cpu_result = info->cpu_result;
   if (cpu_result)
@@ -541,35 +679,35 @@ void DisplayTelemetryInfo(
 
   const auto& timezone_result = info->timezone_result;
   if (timezone_result)
-    DisplayTimezoneInfo(timezone_result);
+    DisplayTimezoneInfo(timezone_result, beauty);
 
   const auto& memory_result = info->memory_result;
   if (memory_result)
-    DisplayMemoryInfo(memory_result);
+    DisplayMemoryInfo(memory_result, beauty);
 
   const auto& backlight_result = info->backlight_result;
   if (backlight_result)
-    DisplayBacklightInfo(backlight_result);
+    DisplayBacklightInfo(backlight_result, beauty);
 
   const auto& fan_result = info->fan_result;
   if (fan_result)
-    DisplayFanInfo(fan_result);
+    DisplayFanInfo(fan_result, beauty);
 
   const auto& stateful_partition_result = info->stateful_partition_result;
   if (stateful_partition_result)
-    DisplayStatefulPartitionInfo(stateful_partition_result);
+    DisplayStatefulPartitionInfo(stateful_partition_result, beauty);
 
   const auto& bluetooth_result = info->bluetooth_result;
   if (bluetooth_result)
-    DisplayBluetoothInfo(bluetooth_result);
+    DisplayBluetoothInfo(bluetooth_result, beauty);
 
   const auto& system_result = info->system_result;
   if (system_result)
-    DisplaySystemInfo(system_result);
+    DisplaySystemInfo(system_result, beauty);
 
   const auto& network_result = info->network_result;
   if (network_result)
-    DisplayNetworkInfo(network_result);
+    DisplayNetworkInfo(network_result, beauty);
 }
 
 // Create a stringified list of the category names for use in help.
@@ -595,6 +733,7 @@ int telem_main(int argc, char** argv) {
   std::string category_help = GetCategoryHelp();
   DEFINE_string(category, "", category_help.c_str());
   DEFINE_uint32(process, 0, "Process ID to probe.");
+  DEFINE_bool(beauty, false, "Display info with beautiful format.");
   brillo::FlagHelper::Init(argc, argv, "telem - Device telemetry tool.");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
@@ -620,7 +759,8 @@ int telem_main(int argc, char** argv) {
   // Probe a process, if requested.
   if (FLAGS_process != 0) {
     DisplayProcessInfo(
-        adapter->GetProcessInfo(static_cast<pid_t>(FLAGS_process)));
+        adapter->GetProcessInfo(static_cast<pid_t>(FLAGS_process)),
+        FLAGS_beauty);
   }
 
   // Probe category info, if requested.
@@ -648,7 +788,7 @@ int telem_main(int argc, char** argv) {
       return EXIT_FAILURE;
     }
 
-    DisplayTelemetryInfo(result);
+    DisplayTelemetryInfo(result, FLAGS_beauty);
   }
 
   return EXIT_SUCCESS;
