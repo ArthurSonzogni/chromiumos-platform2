@@ -20,10 +20,6 @@
 #include "shill/property_store_test.h"
 #include "shill/testing.h"
 
-using base::Bind;
-using base::Unretained;
-using std::string;
-using std::unique_ptr;
 using testing::_;
 using testing::AnyNumber;
 using testing::ByMove;
@@ -83,12 +79,13 @@ class DHCPConfigTest : public PropertyStoreTest {
 
   void StopInstance() { config_->Stop("In test"); }
 
-  TestDHCPConfigRefPtr CreateMockMinijailConfig(const string& lease_suffix);
+  TestDHCPConfigRefPtr CreateMockMinijailConfig(
+      const std::string& lease_suffix);
 
  protected:
   static const int kPID;
 
-  unique_ptr<MockDHCPProxy> proxy_;
+  std::unique_ptr<MockDHCPProxy> proxy_;
   MockProcessManager process_manager_;
   TestDHCPConfigRefPtr config_;
   MockDHCPProvider provider_;
@@ -97,7 +94,7 @@ class DHCPConfigTest : public PropertyStoreTest {
 const int DHCPConfigTest::kPID = 123456;
 
 TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
-    const string& lease_suffix) {
+    const std::string& lease_suffix) {
   TestDHCPConfigRefPtr config(
       new TestDHCPConfig(control_interface(), dispatcher(), &provider_,
                          kDeviceName, kDhcpMethod, lease_suffix));
@@ -134,9 +131,9 @@ MATCHER_P(IsDHCPCDArgs, has_lease_suffix, "") {
 
   int end_offset = 2;
 
-  string device_arg = has_lease_suffix
-                          ? string(kDeviceName) + "=" + string(kLeaseFileSuffix)
-                          : kDeviceName;
+  std::string device_arg = has_lease_suffix ? std::string(kDeviceName) + "=" +
+                                                  std::string(kLeaseFileSuffix)
+                                            : kDeviceName;
   return arg[end_offset] == device_arg;
 }
 
@@ -155,10 +152,10 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
  public:
   void SetUp() override {
     DHCPConfigTest::SetUp();
-    config_->RegisterUpdateCallback(
-        Bind(&DHCPConfigCallbackTest::SuccessCallback, Unretained(this)));
-    config_->RegisterFailureCallback(
-        Bind(&DHCPConfigCallbackTest::FailureCallback, Unretained(this)));
+    config_->RegisterUpdateCallback(base::Bind(
+        &DHCPConfigCallbackTest::SuccessCallback, base::Unretained(this)));
+    config_->RegisterFailureCallback(base::Bind(
+        &DHCPConfigCallbackTest::FailureCallback, base::Unretained(this)));
     ip_config_ = config_;
   }
 

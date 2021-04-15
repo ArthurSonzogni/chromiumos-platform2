@@ -13,8 +13,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 
-using base::FilePath;
-using base::ScopedTempDir;
 using testing::_;
 using testing::StrictMock;
 using testing::Test;
@@ -61,8 +59,8 @@ TEST_F(DHCPProviderTest, CreateIPv4Config) {
 }
 
 TEST_F(DHCPProviderTest, DestroyLease) {
-  ScopedTempDir temp_dir;
-  FilePath lease_file;
+  base::ScopedTempDir temp_dir;
+  base::FilePath lease_file;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
   provider_->root_ = temp_dir.GetPath();
   lease_file = provider_->root_.Append(

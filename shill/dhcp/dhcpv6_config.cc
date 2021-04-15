@@ -14,14 +14,11 @@
 #include "shill/logging.h"
 #include "shill/net/ip_address.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DHCPv6Config* d) {
+static std::string ObjectID(const DHCPv6Config* d) {
   if (d == nullptr)
     return "(DHCPv6_config)";
   else
@@ -65,8 +62,8 @@ const char DHCPv6Config::kType[] = "dhcp6";
 DHCPv6Config::DHCPv6Config(ControlInterface* control_interface,
                            EventDispatcher* dispatcher,
                            DHCPProvider* provider,
-                           const string& device_name,
-                           const string& lease_file_suffix)
+                           const std::string& device_name,
+                           const std::string& lease_file_suffix)
     : DHCPConfig(control_interface,
                  dispatcher,
                  provider,
@@ -80,7 +77,7 @@ DHCPv6Config::~DHCPv6Config() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 }
 
-void DHCPv6Config::ProcessEventSignal(const string& reason,
+void DHCPv6Config::ProcessEventSignal(const std::string& reason,
                                       const KeyValueStore& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
@@ -103,7 +100,7 @@ void DHCPv6Config::ProcessEventSignal(const string& reason,
   DHCPConfig::UpdateProperties(properties_, true);
 }
 
-void DHCPv6Config::ProcessStatusChangeSignal(const string& status) {
+void DHCPv6Config::ProcessStatusChangeSignal(const std::string& status) {
   SLOG(this, 2) << __func__ << ": " << status;
   // TODO(zqiu): metric reporting for status.
 }
@@ -123,9 +120,9 @@ void DHCPv6Config::CleanupClientState() {
   properties_ = IPConfig::Properties();
 }
 
-vector<string> DHCPv6Config::GetFlags() {
+std::vector<std::string> DHCPv6Config::GetFlags() {
   // Get default flags first.
-  vector<string> flags = DHCPConfig::GetFlags();
+  std::vector<std::string> flags = DHCPConfig::GetFlags();
 
   flags.push_back("-6");  // IPv6 only.
   flags.push_back("-a");  // Request ia_na and ia_pd.
@@ -147,16 +144,16 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
   // This is the number of addresses and prefixes we currently export from
   // dhcpcd.  Note that dhcpcd's numbering starts from 1.
   for (int i = 1; i < 4; ++i) {
-    const std::string prefix_key =
+    const auto prefix_key =
         base::StringPrintf("%s%d", kConfigurationKeyDelegatedPrefix, i);
-    const std::string prefix_length_key =
+    const auto prefix_length_key =
         base::StringPrintf("%s%d", kConfigurationKeyDelegatedPrefixLength, i);
-    const std::string prefix_lease_time_key = base::StringPrintf(
+    const auto prefix_lease_time_key = base::StringPrintf(
         "%s%d", kConfigurationKeyDelegatedPrefixLeaseTime, i);
-    const std::string prefix_preferred_lease_time_key = base::StringPrintf(
+    const auto prefix_preferred_lease_time_key = base::StringPrintf(
         "%s%d", kConfigurationKeyDelegatedPrefixPreferredLeaseTime, i);
 
-    if (configuration.Contains<string>(prefix_key) &&
+    if (configuration.Contains<std::string>(prefix_key) &&
         configuration.Contains<uint32_t>(prefix_length_key) &&
         configuration.Contains<uint32_t>(prefix_lease_time_key) &&
         configuration.Contains<uint32_t>(prefix_preferred_lease_time_key)) {
@@ -164,7 +161,7 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
       uint32_t preferred_lease_time =
           configuration.Get<uint32_t>(prefix_preferred_lease_time_key);
       properties_.dhcpv6_delegated_prefixes.push_back({
-          {kDhcpv6AddressProperty, configuration.Get<string>(prefix_key)},
+          {kDhcpv6AddressProperty, configuration.Get<std::string>(prefix_key)},
           {kDhcpv6LengthProperty,
            base::NumberToString(
                configuration.Get<uint32_t>(prefix_length_key))},
@@ -176,21 +173,21 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
       UpdateLeaseTime(lease_time);
     }
 
-    const std::string address_key =
+    const auto address_key =
         base::StringPrintf("%s%d", kConfigurationKeyIPAddress, i);
-    const std::string address_lease_time_key =
+    const auto address_lease_time_key =
         base::StringPrintf("%s%d", kConfigurationKeyIPAddressLeaseTime, i);
-    const std::string address_preferred_lease_time_key = base::StringPrintf(
+    const auto address_preferred_lease_time_key = base::StringPrintf(
         "%s%d", kConfigurationKeyIPAddressPreferredLeaseTime, i);
 
-    if (configuration.Contains<string>(address_key) &&
+    if (configuration.Contains<std::string>(address_key) &&
         configuration.Contains<uint32_t>(address_lease_time_key) &&
         configuration.Contains<uint32_t>(address_preferred_lease_time_key)) {
       uint32_t lease_time = configuration.Get<uint32_t>(address_lease_time_key);
       uint32_t preferred_lease_time =
           configuration.Get<uint32_t>(address_preferred_lease_time_key);
       properties_.dhcpv6_addresses.push_back({
-          {kDhcpv6AddressProperty, configuration.Get<string>(address_key)},
+          {kDhcpv6AddressProperty, configuration.Get<std::string>(address_key)},
           {kDhcpv6LengthProperty, "128"},  // IPv6 addresses are 128 bits long.
           {kDhcpv6LeaseDurationSecondsProperty,
            base::NumberToString(lease_time)},

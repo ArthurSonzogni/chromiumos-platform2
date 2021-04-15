@@ -18,14 +18,11 @@
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DHCPv4Config* d) {
+static std::string ObjectID(const DHCPv4Config* d) {
   if (d == nullptr)
     return "(DHCPv4_config)";
   else
@@ -83,8 +80,8 @@ const char DHCPv4Config::kType[] = "dhcp";
 DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
                            EventDispatcher* dispatcher,
                            DHCPProvider* provider,
-                           const string& device_name,
-                           const string& lease_file_suffix,
+                           const std::string& device_name,
+                           const std::string& lease_file_suffix,
                            bool arp_gateway,
                            const DhcpProperties& dhcp_props,
                            Metrics* metrics)
@@ -107,7 +104,7 @@ DHCPv4Config::~DHCPv4Config() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 }
 
-void DHCPv4Config::ProcessEventSignal(const string& reason,
+void DHCPv4Config::ProcessEventSignal(const std::string& reason,
                                       const KeyValueStore& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
@@ -149,7 +146,7 @@ void DHCPv4Config::ProcessEventSignal(const string& reason,
   }
 }
 
-void DHCPv4Config::ProcessStatusChangeSignal(const string& status) {
+void DHCPv4Config::ProcessStatusChangeSignal(const std::string& status) {
   SLOG(this, 2) << __func__ << ": " << status;
 
   if (status == kStatusArpGateway) {
@@ -216,9 +213,9 @@ bool DHCPv4Config::ShouldKeepLeaseOnDisconnect() {
   return arp_gateway_;
 }
 
-vector<string> DHCPv4Config::GetFlags() {
+std::vector<std::string> DHCPv4Config::GetFlags() {
   // Get default flags first.
-  vector<string> flags = DHCPConfig::GetFlags();
+  auto flags = DHCPConfig::GetFlags();
 
   flags.push_back("-4");  // IPv4 only.
 
@@ -240,7 +237,7 @@ vector<string> DHCPv4Config::GetFlags() {
 }
 
 // static
-string DHCPv4Config::GetIPv4AddressString(unsigned int address) {
+std::string DHCPv4Config::GetIPv4AddressString(unsigned int address) {
   char str[INET_ADDRSTRLEN];
   if (inet_ntop(AF_INET, &address, str, base::size(str))) {
     return str;
@@ -251,13 +248,13 @@ string DHCPv4Config::GetIPv4AddressString(unsigned int address) {
 
 // static
 bool DHCPv4Config::ParseClasslessStaticRoutes(
-    const string& classless_routes, IPConfig::Properties* properties) {
+    const std::string& classless_routes, IPConfig::Properties* properties) {
   if (classless_routes.empty()) {
     // It is not an error for this string to be empty.
     return true;
   }
 
-  vector<string> route_strings = base::SplitString(
+  const auto route_strings = base::SplitString(
       classless_routes, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (route_strings.size() % 2) {
     LOG(ERROR) << "In " << __func__ << ": Size of route_strings array "
@@ -265,14 +262,14 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     return false;
   }
 
-  vector<IPConfig::Route> routes;
-  vector<IPAddress> destinations;
-  vector<string>::iterator route_iterator = route_strings.begin();
+  std::vector<IPConfig::Route> routes;
+  std::vector<IPAddress> destinations;
+  auto route_iterator = route_strings.begin();
   // Classless routes are a space-delimited array of
   // "destination/prefix gateway" values.  As such, we iterate twice
   // for each pass of the loop below.
   while (route_iterator != route_strings.end()) {
-    const string& destination_as_string(*route_iterator);
+    const auto& destination_as_string = *route_iterator;
     route_iterator++;
     IPAddress destination(IPAddress::kFamilyIPv4);
     if (!destination.SetAddressAndPrefixFromString(destination_as_string)) {
@@ -282,7 +279,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     }
 
     CHECK(route_iterator != route_strings.end());
-    const string& gateway_as_string(*route_iterator);
+    const auto& gateway_as_string = *route_iterator;
     route_iterator++;
     IPAddress gateway(IPAddress::kFamilyIPv4);
     if (!gateway.SetAddressFromString(gateway_as_string)) {
@@ -323,10 +320,10 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
   SLOG(nullptr, 2) << __func__;
   properties->method = kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;
-  string classless_static_routes;
+  std::string classless_static_routes;
   bool default_gateway_parse_error = false;
   for (const auto& it : configuration.properties()) {
-    const string& key = it.first;
+    const auto& key = it.first;
     const brillo::Any& value = it.second;
     SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
@@ -343,7 +340,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
         return false;
       }
     } else if (key == kConfigurationKeyRouters) {
-      vector<uint32_t> routers = value.Get<vector<uint32_t>>();
+      const auto& routers = value.Get<std::vector<uint32_t>>();
       if (routers.empty()) {
         LOG(ERROR) << "No routers provided.";
         default_gateway_parse_error = true;
@@ -355,21 +352,20 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
         }
       }
     } else if (key == kConfigurationKeyDNS) {
-      vector<uint32_t> servers = value.Get<vector<uint32_t>>();
-      for (vector<unsigned int>::const_iterator it = servers.begin();
-           it != servers.end(); ++it) {
-        string server = GetIPv4AddressString(*it);
+      const auto& servers = value.Get<std::vector<uint32_t>>();
+      for (auto it = servers.begin(); it != servers.end(); ++it) {
+        std::string server = GetIPv4AddressString(*it);
         if (server.empty()) {
           return false;
         }
-        properties->dns_servers.push_back(server);
+        properties->dns_servers.push_back(std::move(server));
       }
     } else if (key == kConfigurationKeyDomainName) {
-      properties->domain_name = value.Get<string>();
+      properties->domain_name = value.Get<std::string>();
     } else if (key == kConfigurationKeyHostname) {
-      properties->accepted_hostname = value.Get<string>();
+      properties->accepted_hostname = value.Get<std::string>();
     } else if (key == kConfigurationKeyDomainSearch) {
-      properties->domain_search = value.Get<vector<string>>();
+      properties->domain_search = value.Get<std::vector<std::string>>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.Get<uint16_t>();
       metrics_->SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, mtu);
@@ -377,11 +373,11 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
         properties->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
-      classless_static_routes = value.Get<string>();
+      classless_static_routes = value.Get<std::string>();
     } else if (key == kConfigurationKeyVendorEncapsulatedOptions) {
       properties->vendor_encapsulated_options = value.Get<ByteArray>();
     } else if (key == kConfigurationKeyWebProxyAutoDiscoveryUrl) {
-      properties->web_proxy_auto_discovery = value.Get<string>();
+      properties->web_proxy_auto_discovery = value.Get<std::string>();
     } else if (key == kConfigurationKeyLeaseTime) {
       properties->lease_duration_seconds = value.Get<uint32_t>();
     } else if (key == kConfigurationKeyiSNSOptionData) {

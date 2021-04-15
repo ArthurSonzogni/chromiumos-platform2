@@ -23,13 +23,11 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DHCPProvider* d) {
+static std::string ObjectID(const DHCPProvider* d) {
   return "(dhcp_provider)";
 }
 }  // namespace Logging
@@ -82,8 +80,8 @@ void DHCPProvider::Stop() {
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
-    const string& device_name,
-    const string& lease_file_suffix,
+    const std::string& device_name,
+    const std::string& lease_file_suffix,
     bool arp_gateway,
     const DhcpProperties& dhcp_props) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
@@ -93,7 +91,7 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
 
 #ifndef DISABLE_DHCPV6
 DHCPConfigRefPtr DHCPProvider::CreateIPv6Config(
-    const string& device_name, const string& lease_file_suffix) {
+    const std::string& device_name, const std::string& lease_file_suffix) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
   return new DHCPv6Config(control_interface_, dispatcher_, this, device_name,
                           lease_file_suffix);
@@ -132,7 +130,7 @@ bool DHCPProvider::IsRecentlyUnbound(int pid) {
   return base::Contains(recently_unbound_pids_, pid);
 }
 
-void DHCPProvider::DestroyLease(const string& name) {
+void DHCPProvider::DestroyLease(const std::string& name) {
   SLOG(this, 2) << __func__ << " name: " << name;
   base::DeleteFile(
       root_.Append(base::StringPrintf(kDHCPCDPathFormatLease, name.c_str())));

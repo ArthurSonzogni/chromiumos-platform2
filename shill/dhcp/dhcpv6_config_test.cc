@@ -22,11 +22,6 @@
 #include "shill/property_store_test.h"
 #include "shill/testing.h"
 
-using base::Bind;
-using base::FilePath;
-using base::ScopedTempDir;
-using base::Unretained;
-using std::string;
 using testing::_;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
@@ -60,8 +55,8 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
 
   void StopInstance() { config_->Stop("In test"); }
 
-  DHCPv6ConfigRefPtr CreateMockMinijailConfig(const string& lease_suffix);
-  DHCPv6ConfigRefPtr CreateRunningConfig(const string& lease_suffix);
+  DHCPv6ConfigRefPtr CreateMockMinijailConfig(const std::string& lease_suffix);
+  DHCPv6ConfigRefPtr CreateRunningConfig(const std::string& lease_suffix);
   void StopRunningConfigAndExpect(DHCPv6ConfigRefPtr config,
                                   bool lease_file_exists);
 
@@ -69,9 +64,9 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
   static const int kPID;
   static const unsigned int kTag;
 
-  FilePath lease_file_;
-  FilePath pid_file_;
-  ScopedTempDir temp_dir_;
+  base::FilePath lease_file_;
+  base::FilePath pid_file_;
+  base::ScopedTempDir temp_dir_;
   std::unique_ptr<MockDHCPProxy> proxy_;
   MockProcessManager process_manager_;
   MockDHCPProvider provider_;
@@ -82,7 +77,7 @@ const int DHCPv6ConfigTest::kPID = 123456;
 const unsigned int DHCPv6ConfigTest::kTag = 77;
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
-    const string& lease_suffix) {
+    const std::string& lease_suffix) {
   DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(), dispatcher(),
                                              &provider_, kDeviceName,
                                              lease_suffix));
@@ -92,7 +87,7 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
 }
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateRunningConfig(
-    const string& lease_suffix) {
+    const std::string& lease_suffix) {
   DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(), dispatcher(),
                                              &provider_, kDeviceName,
                                              lease_suffix));
@@ -106,10 +101,10 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateRunningConfig(
 
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
   config->root_ = temp_dir_.GetPath();
-  FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd");
+  base::FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd");
   EXPECT_TRUE(base::CreateDirectory(varrun));
   pid_file_ = varrun.Append(base::StringPrintf("dhcpcd-%s-6.pid", kDeviceName));
-  FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
+  base::FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
   EXPECT_TRUE(base::CreateDirectory(varlib));
   lease_file_ =
       varlib.Append(base::StringPrintf("dhcpcd-%s.lease6", kDeviceName));
@@ -148,15 +143,15 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
   const std::string kOne = "1";
 
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
-                   kConfigIPAddress);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                        kConfigIPAddress);
   conf.Set<uint32_t>(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
                      kConfigIPAddressLeaseTime);
   conf.Set<uint32_t>(
       DHCPv6Config::kConfigurationKeyIPAddressPreferredLeaseTime + kOne,
       kConfigIPAddressPreferredLeaseTime);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kConfigDelegatedPrefix);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                        kConfigDelegatedPrefix);
   conf.Set<uint32_t>(
       DHCPv6Config::kConfigurationKeyDelegatedPrefixLength + kOne,
       kConfigDelegatedPrefixLength);
@@ -169,7 +164,7 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
   conf.Set<Strings>(DHCPv6Config::kConfigurationKeyDNS, {kConfigNameServer});
   conf.Set<Strings>(DHCPv6Config::kConfigurationKeyDomainSearch,
                     {kConfigDomainSearch});
-  conf.Set<string>("UnknownKey", "UnknownValue");
+  conf.Set<std::string>("UnknownKey", "UnknownValue");
 
   ASSERT_TRUE(config_->ParseConfiguration(conf));
   const Stringmaps kAddresses = {{
@@ -207,9 +202,9 @@ MATCHER_P(IsDHCPCDv6Args, has_lease_suffix, "") {
 
   int end_offset = 4;
 
-  string device_arg = has_lease_suffix
-                          ? string(kDeviceName) + "=" + string(kLeaseFileSuffix)
-                          : kDeviceName;
+  std::string device_arg = has_lease_suffix ? std::string(kDeviceName) + "=" +
+                                                  std::string(kLeaseFileSuffix)
+                                            : kDeviceName;
   return arg[end_offset] == device_arg;
 }
 
@@ -227,10 +222,10 @@ class DHCPv6ConfigCallbackTest : public DHCPv6ConfigTest {
  public:
   void SetUp() override {
     DHCPv6ConfigTest::SetUp();
-    config_->RegisterUpdateCallback(
-        Bind(&DHCPv6ConfigCallbackTest::SuccessCallback, Unretained(this)));
-    config_->RegisterFailureCallback(
-        Bind(&DHCPv6ConfigCallbackTest::FailureCallback, Unretained(this)));
+    config_->RegisterUpdateCallback(base::Bind(
+        &DHCPv6ConfigCallbackTest::SuccessCallback, base::Unretained(this)));
+    config_->RegisterFailureCallback(base::Bind(
+        &DHCPv6ConfigCallbackTest::FailureCallback, base::Unretained(this)));
     ip_config_ = config_;
   }
 
@@ -250,9 +245,9 @@ class DHCPv6ConfigCallbackTest : public DHCPv6ConfigTest {
 
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalFail) {
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
-                   kDelegatedPrefix);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
+                        kDelegatedPrefix);
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->ProcessEventSignal(DHCPv6Config::kReasonFail, conf);
@@ -266,8 +261,8 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
        {DHCPv6Config::kReasonBound, DHCPv6Config::kReasonRebind,
         DHCPv6Config::kReasonReboot, DHCPv6Config::kReasonRenew}) {
     KeyValueStore conf;
-    conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
-                     kIPAddress);
+    conf.Set<std::string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                          kIPAddress);
     const uint32_t kLeaseTime = 1;
     conf.Set<uint32_t>(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
                        kLeaseTime);
@@ -279,7 +274,7 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
     EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true));
     EXPECT_CALL(*this, FailureCallback(_)).Times(0);
     config_->ProcessEventSignal(reason, conf);
-    string failure_message = string(reason) + " failed";
+    std::string failure_message = std::string(reason) + " failed";
     EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
     ASSERT_EQ(1, config_->properties().dhcpv6_addresses.size());
     auto it =
@@ -293,9 +288,10 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
 TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringFailureCallback) {
   const std::string kOne = "1";
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kDelegatedPrefix);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                        kIPAddress);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                        kDelegatedPrefix);
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
@@ -308,9 +304,10 @@ TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringFailureCallback) {
 TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringSuccessCallback) {
   const std::string kOne = "1";
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kDelegatedPrefix);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                        kIPAddress);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                        kDelegatedPrefix);
   const uint32_t kLeaseTime = 1;
   conf.Set<uint32_t>(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime,
                      kLeaseTime);
@@ -328,9 +325,10 @@ TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringSuccessCallback) {
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalUnknown) {
   const std::string kOne = "1";
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kDelegatedPrefix);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                        kIPAddress);
+  conf.Set<std::string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                        kDelegatedPrefix);
   static const char kReasonUnknown[] = "UNKNOWN_REASON";
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);

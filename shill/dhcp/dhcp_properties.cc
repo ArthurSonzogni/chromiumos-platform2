@@ -19,13 +19,11 @@
 #include "shill/property_store.h"
 #include "shill/store_interface.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DhcpProperties* d) {
+static std::string ObjectID(const DhcpProperties* d) {
   return "(dhcp_properties)";
 }
 }  // namespace Logging
@@ -54,34 +52,37 @@ void DhcpProperties::InitPropertyStore(PropertyStore* store) {
   for (const auto& name : kPropertyNames) {
     store->RegisterDerivedString(
         GetFullPropertyName(name),
-        StringAccessor(new CustomMappedAccessor<DhcpProperties, string, size_t>(
-            this, &DhcpProperties::ClearMappedStringProperty,
-            &DhcpProperties::GetMappedStringProperty,
-            &DhcpProperties::SetMappedStringProperty, i)));
+        StringAccessor(
+            new CustomMappedAccessor<DhcpProperties, std::string, size_t>(
+                this, &DhcpProperties::ClearMappedStringProperty,
+                &DhcpProperties::GetMappedStringProperty,
+                &DhcpProperties::SetMappedStringProperty, i)));
     ++i;
   }
 }
 
-void DhcpProperties::Load(const StoreInterface* storage, const string& id) {
+void DhcpProperties::Load(const StoreInterface* storage,
+                          const std::string& id) {
   SLOG(this, 2) << __func__;
   properties_.Clear();
   for (const auto& name : kPropertyNames) {
-    string property_value;
+    std::string property_value;
     if (storage->GetString(id, GetFullPropertyName(name), &property_value)) {
-      properties_.Set<string>(name, property_value);
+      properties_.Set<std::string>(name, property_value);
       SLOG(this, 3) << "found DhcpProperty: setting " << name;
     }
   }
 }
 
-void DhcpProperties::Save(StoreInterface* storage, const string& id) const {
+void DhcpProperties::Save(StoreInterface* storage,
+                          const std::string& id) const {
   SLOG(this, 2) << __func__;
   for (const auto& name : kPropertyNames) {
-    string property_value;
+    std::string property_value;
     if (properties_.ContainsVariant(name)) {
       // The property is in the property store and it may have a setting or be
       // set to an empty string.  This setting should be saved to the profile.
-      property_value = properties_.Get<string>(name);
+      property_value = properties_.Get<std::string>(name);
       storage->SetString(id, GetFullPropertyName(name), property_value);
       SLOG(this, 3) << "saved " << GetFullPropertyName(name);
     } else {
@@ -98,17 +99,17 @@ DhcpProperties DhcpProperties::Combine(const DhcpProperties& base,
   DhcpProperties to_return(base.manager_);
   to_return.properties_ = base.properties_;
   for (const auto& it : to_merge.properties_.properties()) {
-    const string& name = it.first;
+    const auto& name = it.first;
     const brillo::Any& value = it.second;
     to_return.properties_.SetVariant(name, value);
   }
   return to_return;
 }
 
-bool DhcpProperties::GetValueForProperty(const string& name,
-                                         string* value) const {
-  if (properties_.Contains<string>(name)) {
-    *value = properties_.Get<string>(name);
+bool DhcpProperties::GetValueForProperty(const std::string& name,
+                                         std::string* value) const {
+  if (properties_.Contains<std::string>(name)) {
+    *value = properties_.Get<std::string>(name);
     return true;
   }
   return false;
@@ -117,36 +118,36 @@ bool DhcpProperties::GetValueForProperty(const string& name,
 void DhcpProperties::ClearMappedStringProperty(const size_t& index,
                                                Error* error) {
   CHECK(index < base::size(kPropertyNames));
-  if (properties_.Contains<string>(kPropertyNames[index])) {
+  if (properties_.Contains<std::string>(kPropertyNames[index])) {
     properties_.Remove(kPropertyNames[index]);
   } else {
     error->Populate(Error::kNotFound, "Property is not set");
   }
 }
 
-string DhcpProperties::GetMappedStringProperty(const size_t& index,
-                                               Error* error) {
+std::string DhcpProperties::GetMappedStringProperty(const size_t& index,
+                                                    Error* error) {
   CHECK(index < base::size(kPropertyNames));
   const std::string& key = kPropertyNames[index];
   SLOG(this, 3) << __func__ << ": " << key;
-  if (properties_.Contains<string>(key)) {
-    return properties_.Get<string>(key);
+  if (properties_.Contains<std::string>(key)) {
+    return properties_.Get<std::string>(key);
   }
   error->Populate(Error::kNotFound, "Property is not set");
-  return string();
+  return std::string();
 }
 
 bool DhcpProperties::SetMappedStringProperty(const size_t& index,
-                                             const string& value,
+                                             const std::string& value,
                                              Error* error) {
   CHECK(index < base::size(kPropertyNames));
   const std::string& key = kPropertyNames[index];
   SLOG(this, 3) << __func__ << ": " << key << " = " << value;
-  if (properties_.Contains<string>(key) &&
-      properties_.Get<string>(key) == value) {
+  if (properties_.Contains<std::string>(key) &&
+      properties_.Get<std::string>(key) == value) {
     return false;
   }
-  properties_.Set<string>(key, value);
+  properties_.Set<std::string>(key, value);
   if (manager_)
     manager_->OnDhcpPropertyChanged(kPropertyPrefix + key, value);
   return true;

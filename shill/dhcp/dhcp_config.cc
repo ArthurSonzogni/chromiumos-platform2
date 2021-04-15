@@ -4,8 +4,6 @@
 
 #include "shill/dhcp/dhcp_config.h"
 
-#include <vector>
-
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -23,14 +21,11 @@
 #include "shill/net/ip_address.h"
 #include "shill/process_manager.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DHCPConfig* d) {
+static std::string ObjectID(const DHCPConfig* d) {
   if (d == nullptr)
     return "(dhcp_config)";
   else
@@ -50,9 +45,9 @@ constexpr char kDHCPCDGroup[] = "dhcp";
 DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        EventDispatcher* dispatcher,
                        DHCPProvider* provider,
-                       const string& device_name,
-                       const string& type,
-                       const string& lease_file_suffix)
+                       const std::string& device_name,
+                       const std::string& type,
+                       const std::string& lease_file_suffix)
     : IPConfig(control_interface, device_name, type),
       control_interface_(control_interface),
       provider_(provider),
@@ -129,7 +124,7 @@ bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
   return true;
 }
 
-void DHCPConfig::InitProxy(const string& service) {
+void DHCPConfig::InitProxy(const std::string& service) {
   if (!proxy_) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_ = control_interface_->CreateDHCPProxy(service);
@@ -164,8 +159,8 @@ bool DHCPConfig::Start() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 
   // Setup program arguments.
-  vector<string> args = GetFlags();
-  string interface_arg(device_name());
+  auto args = GetFlags();
+  std::string interface_arg(device_name());
   if (lease_file_suffix_ != device_name()) {
     interface_arg = base::StringPrintf("%s=%s", device_name().c_str(),
                                        lease_file_suffix_.c_str());
@@ -242,8 +237,8 @@ void DHCPConfig::CleanupClientState() {
   is_lease_active_ = false;
 }
 
-vector<string> DHCPConfig::GetFlags() {
-  vector<string> flags;
+std::vector<std::string> DHCPConfig::GetFlags() {
+  std::vector<std::string> flags;
   flags.push_back("-B");  // Run in foreground.
   flags.push_back("-q");  // Only warnings+errors to stderr.
   return flags;

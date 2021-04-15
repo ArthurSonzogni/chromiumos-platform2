@@ -23,11 +23,6 @@
 #include "shill/property_store_test.h"
 #include "shill/testing.h"
 
-using base::Bind;
-using base::FilePath;
-using base::ScopedTempDir;
-using base::Unretained;
-using std::string;
 using testing::_;
 using testing::DoAll;
 using testing::InvokeWithoutArgs;
@@ -70,13 +65,13 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
 
   void StopInstance() { config_->Stop("In test"); }
 
-  DHCPv4ConfigRefPtr CreateMockMinijailConfig(const string& hostname,
-                                              const string& vendorclass,
-                                              const string& lease_suffix,
+  DHCPv4ConfigRefPtr CreateMockMinijailConfig(const std::string& hostname,
+                                              const std::string& vendorclass,
+                                              const std::string& lease_suffix,
                                               bool arp_gateway);
-  DHCPv4ConfigRefPtr CreateRunningConfig(const string& hostname,
-                                         const string& vendorclass,
-                                         const string& lease_suffix,
+  DHCPv4ConfigRefPtr CreateRunningConfig(const std::string& hostname,
+                                         const std::string& vendorclass,
+                                         const std::string& lease_suffix,
                                          bool arp_gateway);
   void StopRunningConfigAndExpect(DHCPv4ConfigRefPtr config,
                                   bool lease_file_exists);
@@ -84,9 +79,9 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
  protected:
   static const int kPID;
 
-  FilePath lease_file_;
-  FilePath pid_file_;
-  ScopedTempDir temp_dir_;
+  base::FilePath lease_file_;
+  base::FilePath pid_file_;
+  base::ScopedTempDir temp_dir_;
   std::unique_ptr<MockDHCPProxy> proxy_;
   MockProcessManager process_manager_;
   MockDHCPProvider provider_;
@@ -97,9 +92,9 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
 const int DHCPv4ConfigTest::kPID = 123456;
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
-    const string& hostname,
-    const string& vendorclass,
-    const string& lease_suffix,
+    const std::string& hostname,
+    const std::string& vendorclass,
+    const std::string& lease_suffix,
     bool arp_gateway) {
   FakeStore storage;
   DhcpProperties dhcp_props(/*manager=*/nullptr);
@@ -117,9 +112,9 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
 }
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
-    const string& hostname,
-    const string& vendorclass,
-    const string& lease_suffix,
+    const std::string& hostname,
+    const std::string& vendorclass,
+    const std::string& lease_suffix,
     bool arp_gateway) {
   FakeStore storage;
   DhcpProperties dhcp_props(/*manager=*/nullptr);
@@ -143,10 +138,10 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
 
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
   config->root_ = temp_dir_.GetPath();
-  FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd");
+  base::FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd");
   EXPECT_TRUE(base::CreateDirectory(varrun));
   pid_file_ = varrun.Append(base::StringPrintf("dhcpcd-%s-4.pid", kDeviceName));
-  FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
+  base::FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
   EXPECT_TRUE(base::CreateDirectory(varlib));
   lease_file_ =
       varlib.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
@@ -177,13 +172,13 @@ TEST_F(DHCPv4ConfigTest, GetIPv4AddressString) {
 }
 
 TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
-  const string kDefaultAddress = "0.0.0.0";
-  const string kDefaultDestination = kDefaultAddress + "/0";
-  const string kRouter0 = "10.0.0.254";
-  const string kAddress1 = "192.168.1.0";
-  const string kDestination1 = kAddress1 + "/24";
+  const std::string kDefaultAddress = "0.0.0.0";
+  const std::string kDefaultDestination = kDefaultAddress + "/0";
+  const std::string kRouter0 = "10.0.0.254";
+  const std::string kAddress1 = "192.168.1.0";
+  const std::string kDestination1 = kAddress1 + "/24";
   // Last gateway missing, leaving an odd number of parameters.
-  const string kBrokenClasslessRoutes0 =
+  const std::string kBrokenClasslessRoutes0 =
       kDefaultDestination + " " + kRouter0 + " " + kDestination1;
   IPConfig::Properties properties;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
@@ -194,8 +189,8 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
 
   // Gateway argument for the second route is malformed, but we were able
   // to salvage a default gateway.
-  const string kBrokenRouter1 = "10.0.0";
-  const string kBrokenClasslessRoutes1 =
+  const std::string kBrokenRouter1 = "10.0.0";
+  const std::string kBrokenClasslessRoutes1 =
       kBrokenClasslessRoutes0 + " " + kBrokenRouter1;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
                                                         &properties));
@@ -203,10 +198,10 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_TRUE(properties.included_dsts.empty());
   EXPECT_EQ(kRouter0, properties.gateway);
 
-  const string kRouter1 = "10.0.0.253";
-  const string kRouter2 = "10.0.0.252";
-  const string kClasslessRoutes0 = kDefaultDestination + " " + kRouter2 + " " +
-                                   kDestination1 + " " + kRouter1;
+  const std::string kRouter1 = "10.0.0.253";
+  const std::string kRouter2 = "10.0.0.252";
+  const std::string kClasslessRoutes0 = kDefaultDestination + " " + kRouter2 +
+                                        " " + kDestination1 + " " + kRouter1;
   EXPECT_TRUE(
       DHCPv4Config::ParseClasslessStaticRoutes(kClasslessRoutes0, &properties));
   // The old default route is preserved.
@@ -244,12 +239,13 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
                                   {0x02040608, 0x03050709});
   conf.Set<std::vector<uint32_t>>(DHCPv4Config::kConfigurationKeyDNS,
                                   {0x09070503, 0x08060402});
-  conf.Set<string>(DHCPv4Config::kConfigurationKeyDomainName, "domain-name");
+  conf.Set<std::string>(DHCPv4Config::kConfigurationKeyDomainName,
+                        "domain-name");
   conf.Set<Strings>(DHCPv4Config::kConfigurationKeyDomainSearch,
                     {"foo.com", "bar.com"});
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 600);
-  conf.Set<string>(DHCPv4Config::kConfigurationKeyHostname, "hostname");
-  conf.Set<string>("UnknownKey", "UnknownValue");
+  conf.Set<std::string>(DHCPv4Config::kConfigurationKeyHostname, "hostname");
+  conf.Set<std::string>("UnknownKey", "UnknownValue");
 
   ByteArray isns_data{0x1, 0x2, 0x3, 0x4};
   conf.Set<std::vector<uint8_t>>(DHCPv4Config::kConfigurationKeyiSNSOptionData,
@@ -341,9 +337,9 @@ MATCHER_P4(IsDHCPCDArgs,
     end_offset += 2;
   }
 
-  string device_arg = has_lease_suffix
-                          ? string(kDeviceName) + "=" + string(kLeaseFileSuffix)
-                          : kDeviceName;
+  std::string device_arg = has_lease_suffix ? std::string(kDeviceName) + "=" +
+                                                  std::string(kLeaseFileSuffix)
+                                            : kDeviceName;
   return arg[end_offset] == device_arg;
 }
 
@@ -426,10 +422,10 @@ class DHCPv4ConfigCallbackTest : public DHCPv4ConfigTest {
  public:
   void SetUp() override {
     DHCPv4ConfigTest::SetUp();
-    config_->RegisterUpdateCallback(
-        Bind(&DHCPv4ConfigCallbackTest::SuccessCallback, Unretained(this)));
-    config_->RegisterFailureCallback(
-        Bind(&DHCPv4ConfigCallbackTest::FailureCallback, Unretained(this)));
+    config_->RegisterUpdateCallback(base::Bind(
+        &DHCPv4ConfigCallbackTest::SuccessCallback, base::Unretained(this)));
+    config_->RegisterFailureCallback(base::Bind(
+        &DHCPv4ConfigCallbackTest::FailureCallback, base::Unretained(this)));
     ip_config_ = config_;
   }
 
@@ -474,8 +470,9 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalSuccess) {
       EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true));
       EXPECT_CALL(*this, FailureCallback(_)).Times(0);
       config_->ProcessEventSignal(reason, conf);
-      string failure_message = string(reason) + " failed with lease time " +
-                               (lease_time_given ? "given" : "not given");
+      std::string failure_message = std::string(reason) +
+                                    " failed with lease time " +
+                                    (lease_time_given ? "given" : "not given");
       EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
       EXPECT_EQ(base::StringPrintf("%d.0.0.0", address_octet),
                 config_->properties().address)

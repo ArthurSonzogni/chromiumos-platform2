@@ -4,18 +4,16 @@
 
 #include "shill/dhcp/mock_dhcp_config.h"
 
-using std::string;
-
 namespace shill {
 
 MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
-                               const string& device_name)
+                               const std::string& device_name)
     : DHCPConfig(control_interface,
                  nullptr,
                  nullptr,
                  device_name,
-                 string(),
-                 string()) {}
+                 std::string(),
+                 std::string()) {}
 
 MockDHCPConfig::~MockDHCPConfig() = default;
 
