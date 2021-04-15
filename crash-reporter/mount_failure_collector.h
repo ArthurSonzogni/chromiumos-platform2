@@ -23,7 +23,8 @@ enum class StorageDeviceType {
 // the stateful and encrypted stateful partition are supported.
 class MountFailureCollector : public CrashCollector {
  public:
-  explicit MountFailureCollector(StorageDeviceType device_type);
+  explicit MountFailureCollector(StorageDeviceType device_type,
+                                 bool testonly_send_all);
   MountFailureCollector(const MountFailureCollector&) = delete;
   MountFailureCollector& operator=(const MountFailureCollector&) = delete;
 
@@ -36,6 +37,7 @@ class MountFailureCollector : public CrashCollector {
 
  private:
   StorageDeviceType device_type_;
+  const bool testonly_send_all_;
 };
 
 #endif  // CRASH_REPORTER_MOUNT_FAILURE_COLLECTOR_H_

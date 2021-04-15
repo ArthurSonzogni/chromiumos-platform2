@@ -137,6 +137,9 @@ int GetSuspendFailureWeight();
 // We'll only collect 1.0/GetKernelWarningWeight(flag) of the failures.
 int GetKernelWarningWeight(const std::string& flag);
 
+// Return the weight for stateful umount failures.
+int GetUmountStatefulFailureWeight();
+
 // Read the content binding to fd to stream.
 bool ReadFdToStream(unsigned int fd, std::stringstream* stream);
 

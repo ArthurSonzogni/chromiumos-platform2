@@ -251,6 +251,9 @@ int main(int argc, char* argv[]) {
   DEFINE_string(mount_device, "",
                 "Device that failed to mount. Used with --mount_failure and "
                 "--umount_failure");
+  DEFINE_bool(testonly_send_all, false,
+              "Ignore sampling for this crash and send it regardless. "
+              "(This flag is ignored except during crash tests)");
   DEFINE_bool(ephemeral_collect, false,
               "Move crash reports to more persistent storage if available "
               "(tmpfs -> reboot vault) or (tmpfs/reboot vault -> encstateful)");
@@ -363,6 +366,15 @@ int main(int argc, char* argv[]) {
     CHECK(util::IsTestImage()) << "--always_allow_feedback is only for tests";
     LOG(INFO) << "--always_allow_feedback set; skipping consent check";
     always_allow_feedback = true;
+  }
+
+  bool testonly_send_all = false;
+  if (FLAGS_testonly_send_all) {
+    if (util::IsCrashTestInProgress()) {
+      testonly_send_all = true;
+    } else {
+      LOG(ERROR) << "Ignoring --testonly_send_all since this is not a test";
+    }
   }
 
   // Make it possible to test what happens when we crash while handling a crash.
@@ -539,7 +551,8 @@ int main(int argc, char* argv[]) {
   });
 
   MountFailureCollector mount_failure_collector(
-      MountFailureCollector::ValidateStorageDeviceType(FLAGS_mount_device));
+      MountFailureCollector::ValidateStorageDeviceType(FLAGS_mount_device),
+      testonly_send_all);
   collectors.push_back({
       .collector = &mount_failure_collector,
       .handlers = {{

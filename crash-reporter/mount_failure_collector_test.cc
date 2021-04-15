@@ -14,6 +14,9 @@
 
 namespace {
 
+using ::testing::HasSubstr;
+using ::testing::Not;
+
 // Dummy log config file name.
 const char kLogConfigFileName[] = "log_config_file";
 
@@ -44,7 +47,8 @@ void Initialize(MountFailureCollector* collector,
 }  // namespace
 
 TEST(MountFailureCollectorTest, TestStatefulMountFailure) {
-  MountFailureCollector collector(StorageDeviceType::kStateful);
+  MountFailureCollector collector(StorageDeviceType::kStateful,
+                                  /*testonly_send_all=*/false);
   base::ScopedTempDir tmp_dir;
   base::FilePath report_path;
   std::string report_contents;
@@ -65,7 +69,8 @@ TEST(MountFailureCollectorTest, TestStatefulMountFailure) {
 }
 
 TEST(MountFailureCollectorTest, TestEncryptedStatefulMountFailure) {
-  MountFailureCollector collector(StorageDeviceType::kEncryptedStateful);
+  MountFailureCollector collector(StorageDeviceType::kEncryptedStateful,
+                                  /*testonly_send_all=*/false);
   base::ScopedTempDir tmp_dir;
   base::FilePath report_path;
   std::string report_contents;
@@ -75,18 +80,24 @@ TEST(MountFailureCollectorTest, TestEncryptedStatefulMountFailure) {
   EXPECT_TRUE(collector.Collect(true /* is_mount_failure */));
 
   // Check report collection.
+  base::FilePath meta_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "mount_failure_encstateful.*.meta", NULL));
+      tmp_dir.GetPath(), "mount_failure_encstateful.*.meta", &meta_path));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       tmp_dir.GetPath(), "mount_failure_encstateful.*.log", &report_path));
 
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
   EXPECT_EQ("encstateful\ndmesg\nramoops\nmount-encrypted\n", report_contents);
+  // Check meta contents do *not* include weight
+  std::string meta_contents;
+  ASSERT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
+  EXPECT_THAT(meta_contents, Not(HasSubstr("upload_var_weight=")));
 }
 
 TEST(MountFailureCollectorTest, TestUmountFailure) {
-  MountFailureCollector collector(StorageDeviceType::kStateful);
+  MountFailureCollector collector(StorageDeviceType::kStateful,
+                                  /*testonly_send_all=*/true);
   base::ScopedTempDir tmp_dir;
   base::FilePath report_path;
   std::string report_contents;
@@ -96,18 +107,24 @@ TEST(MountFailureCollectorTest, TestUmountFailure) {
   EXPECT_TRUE(collector.Collect(false /* is_mount_failure */));
 
   // Check report collection.
+  base::FilePath meta_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "umount_failure_stateful.*.meta", NULL));
+      tmp_dir.GetPath(), "umount_failure_stateful.*.meta", &meta_path));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       tmp_dir.GetPath(), "umount_failure_stateful.*.log", &report_path));
 
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
   EXPECT_EQ("umount_failure_state\numount-encrypted-logs\n", report_contents);
+  // Check meta contents
+  std::string meta_contents;
+  ASSERT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
+  EXPECT_THAT(meta_contents, HasSubstr("upload_var_weight=10\n"));
 }
 
 TEST(MountFailureCollectorTest, TestCryptohomeMountFailure) {
-  MountFailureCollector collector(StorageDeviceType::kCryptohome);
+  MountFailureCollector collector(StorageDeviceType::kCryptohome,
+                                  /*testonly_send_all=*/false);
   base::ScopedTempDir tmp_dir;
   base::FilePath report_path;
   std::string report_contents;
@@ -128,7 +145,8 @@ TEST(MountFailureCollectorTest, TestCryptohomeMountFailure) {
 }
 
 TEST(MountFailureCollectorTest, TestCryptohomeUmountFailure) {
-  MountFailureCollector collector(StorageDeviceType::kCryptohome);
+  MountFailureCollector collector(StorageDeviceType::kCryptohome,
+                                  /*testonly_send_all=*/false);
   base::ScopedTempDir tmp_dir;
   base::FilePath report_path;
   std::string report_contents;

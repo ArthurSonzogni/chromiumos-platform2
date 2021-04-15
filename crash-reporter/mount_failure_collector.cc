@@ -9,6 +9,8 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/rand_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -44,8 +46,11 @@ std::vector<std::string> ConstructLoggingCommands(StorageDeviceType device_type,
 
 }  // namespace
 
-MountFailureCollector::MountFailureCollector(StorageDeviceType device_type)
-    : CrashCollector("mount_failure_collector"), device_type_(device_type) {}
+MountFailureCollector::MountFailureCollector(StorageDeviceType device_type,
+                                             bool testonly_send_all)
+    : CrashCollector("mount_failure_collector"),
+      device_type_(device_type),
+      testonly_send_all_(testonly_send_all) {}
 
 // static
 StorageDeviceType MountFailureCollector::ValidateStorageDeviceType(
@@ -79,6 +84,19 @@ bool MountFailureCollector::Collect(bool is_mount_failure) {
   if (device_type_ == StorageDeviceType::kInvalidDevice) {
     LOG(ERROR) << "Invalid storage device.";
     return true;
+  }
+
+  if (device_type_ == StorageDeviceType::kStateful && !is_mount_failure) {
+    // Sample umount_failure_stateful crashes, as they're a significant source
+    // of noise.
+    if (!testonly_send_all_ &&
+        base::RandGenerator(util::GetUmountStatefulFailureWeight()) != 0) {
+      LOG(INFO) << "Skipping umount failure";
+      return true;
+    }
+    AddCrashMetaUploadData(
+        "weight",
+        base::StringPrintf("%d", util::GetUmountStatefulFailureWeight()));
   }
 
   std::string device_label = StorageDeviceTypeToString(device_type_);
