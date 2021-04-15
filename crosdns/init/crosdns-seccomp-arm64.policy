@@ -18,6 +18,7 @@ geteuid: 1
 sendmsg: 1
 brk: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 getgid: 1
 fstat: 1
