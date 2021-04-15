@@ -8,7 +8,7 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <chaps/pkcs11/pkcs11t.h>
+#include <chaps/pkcs11/cryptoki.h>
 #include <chaps/proto_bindings/key_permissions.pb.h>
 #include <chromeos/constants/pkcs11_custom_attributes.h>
 #include <crypto/scoped_openssl_types.h>
