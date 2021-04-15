@@ -61,6 +61,7 @@ pub trait Procedure {
 }
 
 /// The server-side implementation of a Procedure. Define this trait for use with RpcDispatcher.
+#[allow(clippy::result_unit_err)]
 pub trait MessageHandler: Procedure + Clone {
     fn handle_message(&self, request: Self::Request) -> StdResult<Self::Response, ()>;
 }

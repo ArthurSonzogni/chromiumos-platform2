@@ -68,7 +68,7 @@ pub fn initialize_common_arguments(
     let help_option = HelpOption::new(&mut opts);
     let url_option = TransportTypeOption::default(&mut opts);
 
-    let matches = help_option.parse_and_check_self(&opts, &args[..], get_name_and_version_string);
+    let matches = help_option.parse_and_check_self(&opts, args, get_name_and_version_string);
 
     if let Some(value) = url_option
         .from_matches(&matches)

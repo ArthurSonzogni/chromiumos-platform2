@@ -78,7 +78,7 @@ pub fn read_message<R: Read, D: DeserializeOwned>(r: &mut R) -> Result<D> {
     let mut ser_message = vec![0; message_size as usize];
     r.read_exact(&mut ser_message).map_err(Error::Read)?;
 
-    Ok(flexbuffers::from_slice(&ser_message).map_err(Error::Deserialize)?)
+    flexbuffers::from_slice(&ser_message).map_err(Error::Deserialize)
 }
 
 // Writes the given message to the given Write. First writes the length of the

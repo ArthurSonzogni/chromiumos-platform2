@@ -163,9 +163,9 @@ fn store<S: Storable>(val: &dyn Any) -> Result<Vec<u8>> {
     }
 }
 
-impl Into<Vec<u8>> for StorableMember {
-    fn into(self) -> Vec<u8> {
-        match self {
+impl From<StorableMember> for Vec<u8> {
+    fn from(s: StorableMember) -> Vec<u8> {
+        match s {
             StorableMember::Deserialized {
                 value,
                 store,

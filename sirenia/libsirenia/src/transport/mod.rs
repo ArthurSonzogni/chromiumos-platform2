@@ -236,18 +236,24 @@ pub struct Transport {
     pub id: TransportType,
 }
 
-impl Into<Transport>
-    for (
+impl
+    From<(
         Box<dyn TransportRead>,
         Box<dyn TransportWrite>,
         TransportType,
-    )
+    )> for Transport
 {
-    fn into(self) -> Transport {
+    fn from(
+        v: (
+            Box<dyn TransportRead>,
+            Box<dyn TransportWrite>,
+            TransportType,
+        ),
+    ) -> Transport {
         Transport {
-            r: self.0,
-            w: self.1,
-            id: self.2,
+            r: v.0,
+            w: v.1,
+            id: v.2,
         }
     }
 }
