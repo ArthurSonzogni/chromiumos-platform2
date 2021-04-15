@@ -12,6 +12,7 @@ pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "perfetto",
   ]
 }
 
@@ -23,10 +24,6 @@ config("target_defaults") {
 static_library("libperfetto_simple_producer") {
   sources = [ "my_app_tracing_categories.cc" ]
   configs += [ ":target_defaults" ]
-  libs = [
-    "pthread",
-    "perfetto_sdk",
-  ]
 }
 
 executable("perfetto_simple_producer") {
