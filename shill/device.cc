@@ -1508,7 +1508,7 @@ void Device::set_mac_address(const std::string& mac_address) {
 }
 
 bool Device::StartLinkMonitor() {
-  if (!manager_->IsTechnologyLinkMonitorEnabled(technology())) {
+  if (technology() != Technology::kWifi) {
     SLOG(this, 2) << "Device " << link_name()
                   << ": Link Monitoring is disabled.";
     return false;
@@ -1520,7 +1520,14 @@ bool Device::StartLinkMonitor() {
     return false;
   }
 
-  if (selected_service_ && selected_service_->link_monitor_disabled()) {
+  if (!selected_service_) {
+    SLOG(this, 2)
+        << "Device " << link_name()
+        << ": Link Monitoring is disabled due to empty selected service";
+    return false;
+  }
+
+  if (selected_service_->link_monitor_disabled()) {
     SLOG(this, 2) << "Device " << link_name()
                   << ": Link Monitoring is disabled for the selected service";
     return false;

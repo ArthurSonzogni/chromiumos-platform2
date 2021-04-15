@@ -111,7 +111,6 @@ const char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";
 const char kArpGatewayProperty[] = "ArpGateway";
 const char kCheckPortalListProperty[] = "CheckPortalList";
 const char kIgnoredDNSSearchPathsProperty[] = "IgnoredDNSSearchPaths";
-const char kLinkMonitorTechnologiesProperty[] = "LinkMonitorTechnologies";
 const char kNoAutoConnectTechnologiesProperty[] = "NoAutoConnectTechnologies";
 const char kProhibitedTechnologiesProperty[] = "ProhibitedTechnologies";
 

@@ -371,6 +371,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Config);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
+  FRIEND_TEST(DeviceTest, LinkMonitor);
   FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, OnDHCPv6ConfigExpired);

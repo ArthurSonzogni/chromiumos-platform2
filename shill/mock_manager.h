@@ -98,10 +98,6 @@ class MockManager : public Manager {
               (const, override));
   MOCK_METHOD(bool, IsTechnologyConnected, (Technology), (const, override));
   MOCK_METHOD(bool,
-              IsTechnologyLinkMonitorEnabled,
-              (Technology),
-              (const, override));
-  MOCK_METHOD(bool,
               IsTechnologyAutoConnectDisabled,
               (Technology),
               (const, override));

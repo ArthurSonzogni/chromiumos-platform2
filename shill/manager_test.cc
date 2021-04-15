@@ -31,7 +31,6 @@
 #include "shill/fake_store.h"
 #include "shill/geolocation_info.h"
 #include "shill/key_value_store.h"
-#include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
@@ -3135,14 +3134,6 @@ TEST_F(ManagerTest, StartupPortalList) {
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kPPP));
 }
 
-TEST_F(ManagerTest, LinkMonitorEnabled) {
-  const string kEnabledTechnologies("wifi,vpn");
-  manager()->props_.link_monitor_technologies = kEnabledTechnologies;
-  EXPECT_TRUE(manager()->IsTechnologyLinkMonitorEnabled(Technology::kWifi));
-  EXPECT_FALSE(
-      manager()->IsTechnologyLinkMonitorEnabled(Technology::kCellular));
-}
-
 TEST_F(ManagerTest, IsTechnologyAutoConnectDisabled) {
   const string kNoAutoConnectTechnologies("wifi,cellular");
   manager()->props_.no_auto_connect_technologies = kNoAutoConnectTechnologies;
@@ -3678,8 +3669,6 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
             manager->props_.check_portal_list);
   EXPECT_EQ(Resolver::kDefaultIgnoredSearchList,
             manager->props_.ignored_dns_search_paths);
-  EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
-            manager->props_.link_monitor_technologies);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager->props_.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager->props_.portal_https_url);
   EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,

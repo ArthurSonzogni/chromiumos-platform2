@@ -279,8 +279,6 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
                             &Manager::GetIgnoredDNSSearchPaths,
                             &Manager::SetIgnoredDNSSearchPaths);
-  store_.RegisterString(kLinkMonitorTechnologiesProperty,
-                        &props_.link_monitor_technologies);
   store_.RegisterString(kNoAutoConnectTechnologiesProperty,
                         &props_.no_auto_connect_technologies);
   store_.RegisterConstString(kPortalHttpUrlProperty, &props_.portal_http_url);
@@ -1068,10 +1066,6 @@ bool Manager::IsProfileBefore(const ProfileRefPtr& a,
 
 bool Manager::IsServiceEphemeral(const ServiceConstRefPtr& service) const {
   return service->profile() == ephemeral_profile_;
-}
-
-bool Manager::IsTechnologyLinkMonitorEnabled(Technology technology) const {
-  return IsTechnologyInList(props_.link_monitor_technologies, technology);
 }
 
 bool Manager::IsTechnologyAutoConnectDisabled(Technology technology) const {

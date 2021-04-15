@@ -24,6 +24,10 @@ namespace {
 // ConnectionIdSalt was removed in crrev.com/c/2814180.
 // This was left here to remove ConnectionIdSalt entries from profiles.
 const char kStorageConnectionIdSaltDeprecated[] = "ConnectionIdSalt";
+// LinkMonitorTechnologies was removed in crrev.com/c/2827849.
+// This was left here to remove ConnectionIdSalt entries from profiles.
+const char kStorageLinkMonitorTechnologiesDeprecated[] =
+    "LinkMonitorTechnologies";
 }  // namespace
 
 // static
@@ -35,9 +39,6 @@ const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
 // static
 const char DefaultProfile::kStorageIgnoredDNSSearchPaths[] =
     "IgnoredDNSSearchPaths";
-// static
-const char DefaultProfile::kStorageLinkMonitorTechnologies[] =
-    "LinkMonitorTechnologies";
 // static
 const char DefaultProfile::kStorageName[] = "Name";
 // static
@@ -65,8 +66,6 @@ DefaultProfile::DefaultProfile(Manager* manager,
                              &manager_props.check_portal_list);
   store->RegisterConstString(kIgnoredDNSSearchPathsProperty,
                              &manager_props.ignored_dns_search_paths);
-  store->RegisterConstString(kLinkMonitorTechnologiesProperty,
-                             &manager_props.link_monitor_technologies);
   store->RegisterConstString(kNoAutoConnectTechnologiesProperty,
                              &manager_props.no_auto_connect_technologies);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
@@ -106,11 +105,6 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
                             &manager_props->ignored_dns_search_paths)) {
     manager_props->ignored_dns_search_paths =
         Resolver::kDefaultIgnoredSearchList;
-  }
-  if (!storage()->GetString(kStorageId, kStorageLinkMonitorTechnologies,
-                            &manager_props->link_monitor_technologies)) {
-    manager_props->link_monitor_technologies =
-        LinkMonitor::kDefaultLinkMonitorTechnologies;
   }
   if (!storage()->GetString(kStorageId, kStorageNoAutoConnectTechnologies,
                             &manager_props->no_auto_connect_technologies)) {
@@ -156,6 +150,8 @@ bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
 bool DefaultProfile::Save() {
   // ConnectionIdSalt was removed in crrev.com/c/2814180.
   storage()->DeleteKey(kStorageId, kStorageConnectionIdSaltDeprecated);
+  // LinkMonitorTechnologies was removed in crrev.com/c/2827849.
+  storage()->DeleteKey(kStorageId, kStorageLinkMonitorTechnologiesDeprecated);
 
   storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
@@ -163,8 +159,6 @@ bool DefaultProfile::Save() {
                        props_.check_portal_list);
   storage()->SetString(kStorageId, kStorageIgnoredDNSSearchPaths,
                        props_.ignored_dns_search_paths);
-  storage()->SetString(kStorageId, kStorageLinkMonitorTechnologies,
-                       props_.link_monitor_technologies);
   storage()->SetString(kStorageId, kStorageNoAutoConnectTechnologies,
                        props_.no_auto_connect_technologies);
   storage()->SetString(kStorageId, kStorageProhibitedTechnologies,

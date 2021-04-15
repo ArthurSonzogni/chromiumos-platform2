@@ -1064,11 +1064,9 @@ TEST_F(DeviceTest, LinkMonitor) {
   MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
   SetLinkMonitor(link_monitor);  // Passes ownership.
   EXPECT_CALL(*link_monitor, Start()).Times(0);
-  EXPECT_CALL(*manager(),
-              IsTechnologyLinkMonitorEnabled(Technology(Technology::kUnknown)))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
   EXPECT_FALSE(StartLinkMonitor());
+
+  device_->technology_ = Technology::kWifi;
 
   EXPECT_CALL(*link_monitor, Start()).Times(0);
   EXPECT_CALL(*connection, IsIPv6())
@@ -1450,8 +1448,6 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
   EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
-  EXPECT_CALL(*manager(), IsTechnologyLinkMonitorEnabled(_))
-      .WillRepeatedly(Return(false));
   device_->OnIPv6AddressChanged(&address2);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);

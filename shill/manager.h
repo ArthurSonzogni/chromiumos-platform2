@@ -80,9 +80,6 @@ class Manager {
     // Whether to ARP for the default gateway in the DHCP client after
     // acquiring a lease.
     bool arp_gateway;
-    // Comma-separated list of technologies for which link-monitoring is
-    // enabled.
-    std::string link_monitor_technologies;
     // Comma-separated list of technologies for which auto-connect is disabled.
     std::string no_auto_connect_technologies;
     // Comma-separated list of technologies that should never be enabled.
@@ -328,9 +325,6 @@ class Manager {
 
   // Return whether a Technology has any connected Services.
   virtual bool IsTechnologyConnected(Technology technology) const;
-
-  // Return whether a technology is enabled for link monitoring.
-  virtual bool IsTechnologyLinkMonitorEnabled(Technology technology) const;
 
   // Return whether the Wake on LAN feature is enabled.
   virtual bool IsWakeOnLanEnabled() const { return is_wake_on_lan_enabled_; }

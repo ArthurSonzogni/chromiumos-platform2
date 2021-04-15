@@ -517,12 +517,6 @@ Properties 	object ActiveProfile [readonly]
 			is updated (while connecting to a network, or when a DHCP lease is
 			renewed).
 
-		string LinkMonitorTechnologies [readwrite]
-
-			The list of technologies for which the Link Monitor will be
-			enabled. The Link monitor periodically checks for connectivity to
-			the default gateway using ARP requests.
-
 		string NoAutoConnectTechnologies [readwrite]
 
 			The list of technologies for which auto-connect is disabled. This is

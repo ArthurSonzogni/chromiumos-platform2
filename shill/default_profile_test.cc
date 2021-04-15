@@ -16,7 +16,6 @@
 
 #include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/fake_store.h"
-#include "shill/link_monitor.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -128,8 +127,6 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
             manager_props.check_portal_list);
   EXPECT_EQ(Resolver::kDefaultIgnoredSearchList,
             manager_props.ignored_dns_search_paths);
-  EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
-            manager_props.link_monitor_technologies);
   EXPECT_EQ("", manager_props.no_auto_connect_technologies);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager_props.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager_props.portal_https_url);
@@ -153,10 +150,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageIgnoredDNSSearchPaths,
                      ignored_paths);
-  const string link_monitor_technologies("ethernet,wifi");
-  storage->SetString(DefaultProfile::kStorageId,
-                     DefaultProfile::kStorageLinkMonitorTechnologies,
-                     link_monitor_technologies);
   const string no_auto_connect_technologies("wifi,cellular");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageNoAutoConnectTechnologies,
@@ -180,7 +173,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_FALSE(manager_props.arp_gateway);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
   EXPECT_EQ(ignored_paths, manager_props.ignored_dns_search_paths);
-  EXPECT_EQ(link_monitor_technologies, manager_props.link_monitor_technologies);
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);

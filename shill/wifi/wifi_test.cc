@@ -2800,6 +2800,9 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   StartWiFi();
   MockWiFiServiceRefPtr service(
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
+  // TODO(b/147256664): Avoid creating a new link monitor instance. Can be
+  // removed after removing shill:LinkMonitor.
+  EXPECT_CALL(*service, link_monitor_disabled()).WillRepeatedly(Return(true));
   Mock::VerifyAndClearExpectations(dhcp_config_.get());
   EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   // Simulate a rekeying event from the AP.  These show as transitions from
