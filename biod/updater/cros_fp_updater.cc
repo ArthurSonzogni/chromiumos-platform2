@@ -27,7 +27,6 @@
 
 #include "biod/biod_config.h"
 #include "biod/biod_system.h"
-#include "biod/biod_version.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
 #include "biod/updater/update_reason.h"
