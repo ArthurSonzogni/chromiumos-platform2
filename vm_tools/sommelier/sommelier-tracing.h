@@ -20,6 +20,7 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category("sync").SetDescription("Events for Wayland sync points"),
     perfetto::Category("x11wm").SetDescription(
         "Events for X11 window management"),
+    perfetto::Category("gaming").SetDescription("Events for Gaming"),
     perfetto::Category("other").SetDescription("Uncategorized Wayland calls."));
 
 void perfetto_annotate_xcb_atom(const perfetto::EventContext& event,

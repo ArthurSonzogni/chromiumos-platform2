@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"          // NOLINT(build/include_directory)
+#include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -63,6 +64,7 @@ const uint32_t kStadiaVersion = 0x111;
 
 static void sl_internal_gamepad_removed(void* data,
                                         struct zcr_gamepad_v2* gamepad) {
+  TRACE_EVENT("gaming", "sl_internal_gamepad_removed");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
   assert(host_gamepad->state == kStatePending ||
@@ -100,6 +102,7 @@ static void sl_internal_gamepad_axis(void* data,
                                      uint32_t time,
                                      uint32_t axis,
                                      wl_fixed_t value) {
+  TRACE_EVENT("gaming", "sl_internal_gamepad_axis");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
   if (host_gamepad->state != kStateActivated)
@@ -118,6 +121,7 @@ static void sl_internal_gamepad_button(void* data,
                                        uint32_t button,
                                        uint32_t state,
                                        wl_fixed_t analog) {
+  TRACE_EVENT("gaming", "sl_internal_gamepad_button");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
   if (host_gamepad->state != kStateActivated)
@@ -134,6 +138,7 @@ static void sl_internal_gamepad_button(void* data,
 static void sl_internal_gamepad_frame(void* data,
                                       struct zcr_gamepad_v2* gamepad,
                                       uint32_t time) {
+  TRACE_EVENT("gaming", "sl_internal_gamepad_frame");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
   if (host_gamepad->state != kStateActivated)
@@ -151,6 +156,7 @@ static void sl_internal_gamepad_axis_added(void* data,
                                            int32_t flat,
                                            int32_t fuzz,
                                            int32_t resolution) {
+  TRACE_EVENT("gaming", "sl_internal_gamepad_axis_added");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
   struct input_absinfo info = {.value = 0,  // Does this matter?
                                .minimum = min_value,
@@ -173,6 +179,7 @@ static void sl_internal_gamepad_axis_added(void* data,
 
 static void sl_internal_gamepad_activated(void* data,
                                           struct zcr_gamepad_v2* gamepad) {
+  TRACE_EVENT("gaming", "sl_internal_gamepad_activated");
   struct sl_host_gamepad* host_gamepad = (struct sl_host_gamepad*)data;
 
   if (host_gamepad->state != kStatePending) {
@@ -200,6 +207,7 @@ static void sl_internal_gamepad_vibrator_added(
     void* data,
     struct zcr_gamepad_v2* gamepad,
     struct zcr_gamepad_vibrator_v2* vibrator) {
+  TRACE_EVENT("gaming", "sl_internal_gamepad_vibrator_added");
   // TODO(kenalba): add vibration logic
 }
 
@@ -218,6 +226,8 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
     uint32_t vendor_id,
     uint32_t product_id,
     uint32_t version) {
+  TRACE_EVENT("gaming",
+              "sl_internal_gaming_seat_gamepad_added_with_device_info");
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_host_gamepad* host_gamepad =
       static_cast<sl_host_gamepad*>(malloc(sizeof(struct sl_host_gamepad)));
@@ -271,6 +281,7 @@ static void sl_internal_gaming_seat_gamepad_added(
     void* data,
     struct zcr_gaming_seat_v2* gaming_seat,
     struct zcr_gamepad_v2* gamepad) {
+  TRACE_EVENT("gaming", "sl_internal_gaming_seat_gamepad_added");
   fprintf(stderr,
           "error: sl_internal_gaming_seat_gamepad_added unimplemented\n");
 }
@@ -282,6 +293,7 @@ static const struct zcr_gaming_seat_v2_listener
 
 void sl_gaming_seat_add_listener(struct sl_context* ctx) {
   if (ctx->gaming_input_manager && ctx->gaming_input_manager->internal) {
+    TRACE_EVENT("gaming", "sl_gaming_seat_add_listener");
     // TODO(kenalba): does gaming_seat need to persist in ctx?
     struct zcr_gaming_seat_v2* gaming_seat =
         zcr_gaming_input_v2_get_gaming_seat(ctx->gaming_input_manager->internal,
