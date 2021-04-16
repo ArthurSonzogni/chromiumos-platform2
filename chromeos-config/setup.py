@@ -22,10 +22,12 @@ setup(
     ]},
     entry_points={
         'console_scripts': [
-            'cros_config_host = cros_config_host.cros_config_host:main',
-            'cros_config_schema = cros_config_host.cros_config_schema:main',
-            'cros_config_test_schema = \
-                cros_config_host.cros_config_test_schema:main',
+            '{0} = cros_config_host.{0}:main'.format(script)
+            for script in (
+                'cros_config_host',
+                'cros_config_schema',
+                'cros_config_test_schema'
+            )
         ],
     },
     description='Access to the master configuration from the host',

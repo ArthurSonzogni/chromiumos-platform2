@@ -327,8 +327,8 @@ class CrosConfigBaseImpl(object):
     result['ListModels'] = self.GetModelList()
     result['GetFirmwareUris'] = self.GetFirmwareUris()
     result['GetTouchFirmwareFiles'] = self.GetTouchFirmwareFiles()
-    result['GetDetachableBaseFirmwareFiles'] = \
-      self.GetDetachableBaseFirmwareFiles()
+    result['GetDetachableBaseFirmwareFiles'] = (
+        self.GetDetachableBaseFirmwareFiles())
     result['GetArcFiles'] = self.GetArcFiles()
     result['GetAudioFiles'] = self.GetAudioFiles()
     bluetooth_files = self.GetBluetoothFiles()
@@ -339,10 +339,10 @@ class CrosConfigBaseImpl(object):
     result['GetIntelWifiSarFiles'] = self.GetIntelWifiSarFiles()
     result['GetFirmwareInfo'] = self.GetFirmwareInfo()
     for target in ['coreboot', 'ec']:
-      result['GetFirmwareBuildTargets_%s' % target] = \
-        self.GetFirmwareBuildTargets(target)
-    result['GetFirmwareBuildCombinations'] = \
-      self.GetFirmwareBuildCombinations(['coreboot', 'ec'])
+      result['GetFirmwareBuildTargets_%s' % target] = (
+        self.GetFirmwareBuildTargets(target))
+    result['GetFirmwareBuildCombinations'] = (
+      self.GetFirmwareBuildCombinations(['coreboot', 'ec']))
     result['GetWallpaperFiles'] = self.GetWallpaperFiles()
     result['GetAutobrightnessFiles'] = self.GetAutobrightnessFiles()
 

@@ -494,8 +494,7 @@ chromeos:
     self.assertIn('Whitelabel configs can only', str(ctx.exception))
 
   def testHardwarePropertiesInvalid(self):
-    config = \
-"""
+    config = """
 chromeos:
   devices:
     - $name: 'bad_device'
@@ -521,8 +520,7 @@ chromeos:
       self.fail('ValidationError not raised')
 
   def testHardwarePropertiesBoolean(self):
-    config = \
-"""
+    config = """
 chromeos:
   devices:
     - $name: 'good_device'
@@ -713,8 +711,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
                  '-o test_data/test_build.json '
                  '-g test_data')
 
-    expected_json_file = \
-            os.path.join(this_dir, '../test_data/test_build.json')
+    expected_json_file = os.path.join(this_dir, '../test_data/test_build.json')
     self.assertFileEqual(expected_json_file, json_output, regen_cmd)
 
     expected_c_file = os.path.join(this_dir, '../test_data/test.c')
@@ -753,8 +750,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
                  '-o test_data/test_arm.json '
                  '-g test_data')
 
-    expected_json_file = \
-            os.path.join(this_dir, '../test_data/test_arm.json')
+    expected_json_file = os.path.join(this_dir, '../test_data/test_arm.json')
     self.assertFileEqual(expected_json_file, json_output, regen_cmd)
 
     expected_c_file = os.path.join(this_dir, '../test_data/test_arm.c')
