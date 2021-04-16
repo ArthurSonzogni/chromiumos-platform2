@@ -6,17 +6,16 @@
 
 #include "shill/net/rtnl_handler.h"
 
-using base::Callback;
-
 namespace shill {
 
-RTNLListener::RTNLListener(int listen_flags,
-                           const Callback<void(const RTNLMessage&)>& callback)
+RTNLListener::RTNLListener(
+    int listen_flags, const base::Callback<void(const RTNLMessage&)>& callback)
     : RTNLListener{listen_flags, callback, RTNLHandler::GetInstance()} {}
 
-RTNLListener::RTNLListener(int listen_flags,
-                           const Callback<void(const RTNLMessage&)>& callback,
-                           RTNLHandler* rtnl_handler)
+RTNLListener::RTNLListener(
+    int listen_flags,
+    const base::Callback<void(const RTNLMessage&)>& callback,
+    RTNLHandler* rtnl_handler)
     : listen_flags_(listen_flags),
       callback_(callback),
       rtnl_handler_(rtnl_handler) {

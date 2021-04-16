@@ -18,7 +18,6 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
 
-using std::string;
 using testing::Test;
 
 namespace shill {
@@ -716,10 +715,10 @@ TEST_F(RTNLMessageTest, NewLinkWlan0) {
                 RTNLMessage::kModeAdd, kNewLinkMessageWlan0InterfaceIndex,
                 kNewLinkMessageWlan0InterfaceFlags,
                 kNewLinkMessageWlan0InterfaceFlagsChange,
-                ByteString(string(kNewLinkMessageWlan0MacAddress), false),
-                string(kNewLinkMessageWlan0InterfaceName),
+                ByteString(std::string(kNewLinkMessageWlan0MacAddress), false),
+                std::string(kNewLinkMessageWlan0InterfaceName),
                 kNewLinkMessageWlan0MTU,
-                ByteString(string(kNewLinkMessageWlan0Qdisc), true),
+                ByteString(std::string(kNewLinkMessageWlan0Qdisc), true),
                 kNewLinkMessageWlan0OperState);
 }
 
@@ -732,7 +731,7 @@ TEST_F(RTNLMessageTest, NewLinkIfb1) {
   EXPECT_EQ(RTNLMessage::kModeAdd, msg.mode());
   EXPECT_EQ(kNewLinkMessageIbf1InterfaceIndex, msg.interface_index());
 
-  ByteString name(string(kNewLinkMessageIbf1InterfaceName), true);
+  ByteString name(std::string(kNewLinkMessageIbf1InterfaceName), true);
   EXPECT_TRUE(msg.HasAttribute(IFLA_IFNAME));
   EXPECT_EQ(name.GetLength(), msg.GetAttribute(IFLA_IFNAME).GetLength());
   EXPECT_TRUE(msg.GetAttribute(IFLA_IFNAME).Equals(name));
@@ -746,9 +745,10 @@ TEST_F(RTNLMessageTest, DelLinkEth0) {
                 RTNLMessage::kModeDelete, kDelLinkMessageEth0InterfaceIndex,
                 kDelLinkMessageEth0InterfaceFlags,
                 kDelLinkMessageEth0InterfaceFlagsChange,
-                ByteString(string(kDelLinkMessageEth0MacAddress), false),
-                string(kDelLinkMessageEth0InterfacName), kDelLinkMessageEth0MTU,
-                ByteString(string(kDelLinkMessageEth0Qdisc), true),
+                ByteString(std::string(kDelLinkMessageEth0MacAddress), false),
+                std::string(kDelLinkMessageEth0InterfacName),
+                kDelLinkMessageEth0MTU,
+                ByteString(std::string(kDelLinkMessageEth0Qdisc), true),
                 kDelLinkMessageEth0OperState);
 }
 

@@ -8,10 +8,6 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
-#include <list>
-#include <map>
-#include <queue>
-
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
@@ -19,16 +15,10 @@
 
 #include "shill/logging.h"
 #include "shill/net/attribute_list.h"
-#include "shill/net/generic_netlink_message.h"
 #include "shill/net/io_handler.h"
-#include "shill/net/netlink_message.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
-
-using base::Bind;
-using std::string;
 
 namespace shill {
 
@@ -202,7 +192,7 @@ void NetlinkManager::Reset(bool full) {
 
 void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
   uint16_t family_id;
-  string family_name;
+  std::string family_name;
 
   if (!message.const_attributes()->GetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
                                                         &family_id)) {
@@ -227,7 +217,7 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
     for (int i = 1;
          multicast_groups->ConstGetNestedAttributeList(i, &current_group);
          ++i) {
-      string group_name;
+      std::string group_name;
       uint32_t group_id;
       if (!current_group->GetStringAttributeValue(CTRL_ATTR_MCAST_GRP_NAME,
                                                   &group_name)) {
@@ -290,7 +280,7 @@ bool NetlinkManager::Init() {
   // statically-known message type.
   message_factory_.AddFactoryMethod(
       ControlNetlinkMessage::kMessageType,
-      Bind(&ControlNetlinkMessage::CreateMessage));
+      base::Bind(&ControlNetlinkMessage::CreateMessage));
   if (!sock_) {
     sock_.reset(new NetlinkSocket);
     if (!sock_) {
@@ -310,9 +300,10 @@ void NetlinkManager::Start() {
   // IO handler will be installed to the current message loop.
   dispatcher_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       file_descriptor(),
-      Bind(&NetlinkManager::OnRawNlMessageReceived,
-           weak_ptr_factory_.GetWeakPtr()),
-      Bind(&NetlinkManager::OnReadError, weak_ptr_factory_.GetWeakPtr())));
+      base::Bind(&NetlinkManager::OnRawNlMessageReceived,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&NetlinkManager::OnReadError,
+                 weak_ptr_factory_.GetWeakPtr())));
 }
 
 int NetlinkManager::file_descriptor() const {
@@ -320,7 +311,7 @@ int NetlinkManager::file_descriptor() const {
 }
 
 uint16_t NetlinkManager::GetFamily(
-    const string& name,
+    const std::string& name,
     const NetlinkMessageFactory::FactoryMethod& message_factory) {
   MessageType& message_type = message_types_[name];
   if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
@@ -336,11 +327,11 @@ uint16_t NetlinkManager::GetFamily(
     LOG(ERROR) << "Couldn't set string attribute";
     return false;
   }
-  SendControlMessage(
-      &msg,
-      Bind(&NetlinkManager::OnNewFamilyMessage, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+  SendControlMessage(&msg,
+                     base::Bind(&NetlinkManager::OnNewFamilyMessage,
+                                weak_ptr_factory_.GetWeakPtr()),
+                     base::Bind(&NetlinkManager::OnAckDoNothing),
+                     base::Bind(&NetlinkManager::OnNetlinkMessageError));
 
   // Wait for a response.  The code absolutely needs family_ids for its
   // message types so we do a synchronous wait.  It's OK to do this because
@@ -552,7 +543,7 @@ bool NetlinkManager::SendMessageInternal(
     SLOG(this, 5) << "Waiting for replies to NL dump message "
                   << pending_message.sequence_number;
     dump_pending_ = true;
-    pending_dump_timeout_callback_.Reset(Bind(
+    pending_dump_timeout_callback_.Reset(base::Bind(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
@@ -626,8 +617,8 @@ uint32_t NetlinkManager::GetSequenceNumber() {
                : NetlinkMessage::kBroadcastSequenceNumber;
 }
 
-bool NetlinkManager::SubscribeToEvents(const string& family_id,
-                                       const string& group_name) {
+bool NetlinkManager::SubscribeToEvents(const std::string& family_id,
+                                       const std::string& group_name) {
   if (!base::Contains(message_types_, family_id)) {
     LOG(ERROR) << "Family '" << family_id << "' doesn't exist";
     return false;
@@ -812,7 +803,7 @@ void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
   }
 }
 
-void NetlinkManager::OnReadError(const string& error_msg) {
+void NetlinkManager::OnReadError(const std::string& error_msg) {
   // TODO(wdg): When netlink_manager is used for scan, et al., this should
   // either be LOG(FATAL) or the code should properly deal with errors,
   // e.g., dropped messages due to the socket buffer being full.
@@ -824,8 +815,8 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
   SLOG(this, 3) << "Resending NL dump message " << PendingDumpSequenceNumber()
                 << " after " << kNlMessageRetryDelayMilliseconds << " ms";
   resend_dump_message_callback_.Reset(
-      Bind(&NetlinkManager::ResendPendingDumpMessage,
-           weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&NetlinkManager::ResendPendingDumpMessage,
+                 weak_ptr_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
       base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));

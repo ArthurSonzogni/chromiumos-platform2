@@ -17,8 +17,6 @@
 #include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
 
-using std::min;
-using std::string;
 using testing::_;
 using testing::Invoke;
 using testing::Return;
@@ -70,7 +68,7 @@ class FakeSocketRead {
     if (!buf) {
       return -1;
     }
-    int read_bytes = min(len, next_read_string_.GetLength());
+    int read_bytes = std::min(len, next_read_string_.GetLength());
     memcpy(buf, next_read_string_.GetConstData(), read_bytes);
     next_read_string_.Clear();
     return read_bytes;
@@ -131,7 +129,7 @@ TEST_F(NetlinkSocketTest, SendMessageTest) {
   SetUp();
   InitializeSocket(kFakeFd);
 
-  string message_string("This text is really arbitrary");
+  std::string message_string = "This text is really arbitrary";
   ByteString message(message_string.c_str(), message_string.size());
 
   // Good Send.
@@ -175,8 +173,8 @@ TEST_F(NetlinkSocketTest, GoodRecvMessageTest) {
   InitializeSocket(kFakeFd);
 
   ByteString message;
-  static const string next_read_string(
-      "Random text may include things like 'freaking fracking foo'.");
+  static const std::string next_read_string =
+      "Random text may include things like 'freaking fracking foo'.";
   static const size_t read_size = next_read_string.size();
   ByteString expected_results(next_read_string.c_str(), read_size);
   FakeSocketRead fake_socket_read(expected_results);

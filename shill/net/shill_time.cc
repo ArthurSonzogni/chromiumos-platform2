@@ -4,13 +4,8 @@
 
 #include "shill/net/shill_time.h"
 
-#include <string.h>
-#include <time.h>
-
 #include <base/format_macros.h>
 #include <base/strings/stringprintf.h>
-
-using std::string;
 
 namespace shill {
 
@@ -80,7 +75,7 @@ Timestamp Time::GetNow() {
   struct timeval now_boottime = {};
   struct timeval now_wall_clock = {};
   struct tm local_time = {};
-  string wall_clock_string;
+  std::string wall_clock_string;
 
   GetTimeMonotonic(&now_monotonic);
   GetTimeBoottime(&now_boottime);
@@ -92,7 +87,7 @@ Timestamp Time::GetNow() {
 }
 
 // static
-string Time::FormatTime(const struct tm& date_time, suseconds_t usec) {
+std::string Time::FormatTime(const struct tm& date_time, suseconds_t usec) {
   char date_time_string[64];
   size_t date_time_length;
   date_time_length = strftime(date_time_string, sizeof(date_time_string),
@@ -100,7 +95,7 @@ string Time::FormatTime(const struct tm& date_time, suseconds_t usec) {
 
   // Stitch in the microseconds, to provider finer resolution than
   // strftime allows.
-  string full_string = "<unknown>";
+  std::string full_string = "<unknown>";
   char* split_pos = static_cast<char*>(
       memchr(date_time_string, ' ', sizeof(date_time_string)));
   if (date_time_length && date_time_length < sizeof(date_time_string) &&

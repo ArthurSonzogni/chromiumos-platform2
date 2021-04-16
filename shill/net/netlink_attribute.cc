@@ -7,10 +7,7 @@
 #include <linux/genetlink.h>
 
 #include <cctype>
-#include <memory>
-#include <string>
 
-#include <base/callback.h>
 #include <base/check.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
@@ -19,14 +16,7 @@
 #include "shill/logging.h"
 #include "shill/net/attribute_list.h"
 #include "shill/net/control_netlink_attribute.h"
-#include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_attribute.h"
-
-using std::string;
-using std::unique_ptr;
-
-using base::StringAppendF;
-using base::StringPrintf;
 
 namespace shill {
 
@@ -271,12 +261,12 @@ bool NetlinkAttribute::SetFlagValue(bool value) {
   return false;
 }
 
-bool NetlinkAttribute::GetStringValue(string* value) const {
+bool NetlinkAttribute::GetStringValue(std::string* value) const {
   LOG(ERROR) << "Attribute is not of type 'String'";
   return false;
 }
 
-bool NetlinkAttribute::SetStringValue(const string& value) {
+bool NetlinkAttribute::SetStringValue(const std::string& value) {
   LOG(ERROR) << "Attribute is not of type 'String'";
   return false;
 }
@@ -308,37 +298,37 @@ bool NetlinkAttribute::SetRawValue(const ByteString new_value) {
 }
 
 void NetlinkAttribute::Print(int log_level, int indent) const {
-  string attribute_value;
+  std::string attribute_value;
   SLOG(this, log_level) << HeaderToPrint(indent) << " "
                         << (ToString(&attribute_value) ? attribute_value
                                                        : "<DOES NOT EXIST>");
 }
 
-string NetlinkAttribute::RawToString() const {
-  string output = " === RAW: ";
+std::string NetlinkAttribute::RawToString() const {
+  std::string output = " === RAW: ";
 
   if (!has_a_value_) {
-    StringAppendF(&output, "(empty)");
+    base::StringAppendF(&output, "(empty)");
     return output;
   }
 
   uint16_t length = data_.GetLength();
   const uint8_t* const_data = data_.GetConstData();
 
-  StringAppendF(&output, "len=%u", length);
+  base::StringAppendF(&output, "len=%u", length);
   output.append(" DATA: ");
   for (int i = 0; i < length; ++i) {
-    StringAppendF(&output, "[%d]=%02x ", i, *(const_data) + i);
+    base::StringAppendF(&output, "[%d]=%02x ", i, *(const_data) + i);
   }
   output.append(" ==== ");
   return output;
 }
 
-string NetlinkAttribute::HeaderToPrint(int indent) const {
+std::string NetlinkAttribute::HeaderToPrint(int indent) const {
   static const int kSpacesPerIndent = 2;
-  return StringPrintf("%*s%s(%d) %s %s=", indent * kSpacesPerIndent, "",
-                      id_string(), id(), datatype_string(),
-                      ((has_a_value()) ? "" : "UNINITIALIZED "));
+  return base::StringPrintf("%*s%s(%d) %s %s=", indent * kSpacesPerIndent, "",
+                            id_string(), id(), datatype_string(),
+                            ((has_a_value()) ? "" : "UNINITIALIZED "));
 }
 
 ByteString NetlinkAttribute::EncodeGeneric(const unsigned char* data,
@@ -395,7 +385,7 @@ bool NetlinkU8Attribute::SetU8Value(uint8_t new_value) {
   return true;
 }
 
-bool NetlinkU8Attribute::ToString(string* output) const {
+bool NetlinkU8Attribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -403,7 +393,7 @@ bool NetlinkU8Attribute::ToString(string* output) const {
   uint8_t value;
   if (!GetU8Value(&value))
     return false;
-  *output = StringPrintf("%u", value);
+  *output = base::StringPrintf("%u", value);
   return true;
 }
 
@@ -449,7 +439,7 @@ bool NetlinkU16Attribute::SetU16Value(uint16_t new_value) {
   return true;
 }
 
-bool NetlinkU16Attribute::ToString(string* output) const {
+bool NetlinkU16Attribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -457,7 +447,7 @@ bool NetlinkU16Attribute::ToString(string* output) const {
   uint16_t value;
   if (!GetU16Value(&value))
     return false;
-  *output = StringPrintf("%u", value);
+  *output = base::StringPrintf("%u", value);
   return true;
 }
 
@@ -503,7 +493,7 @@ bool NetlinkU32Attribute::SetU32Value(uint32_t new_value) {
   return true;
 }
 
-bool NetlinkU32Attribute::ToString(string* output) const {
+bool NetlinkU32Attribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -511,7 +501,7 @@ bool NetlinkU32Attribute::ToString(string* output) const {
   uint32_t value;
   if (!GetU32Value(&value))
     return false;
-  *output = StringPrintf("%" PRIu32, value);
+  *output = base::StringPrintf("%" PRIu32, value);
   return true;
 }
 
@@ -556,7 +546,7 @@ bool NetlinkU64Attribute::SetU64Value(uint64_t new_value) {
   return true;
 }
 
-bool NetlinkU64Attribute::ToString(string* output) const {
+bool NetlinkU64Attribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -564,7 +554,7 @@ bool NetlinkU64Attribute::ToString(string* output) const {
   uint64_t value;
   if (!GetU64Value(&value))
     return false;
-  *output = StringPrintf("%" PRIu64, value);
+  *output = base::StringPrintf("%" PRIu64, value);
   return true;
 }
 
@@ -599,7 +589,7 @@ bool NetlinkFlagAttribute::SetFlagValue(bool new_value) {
   return true;
 }
 
-bool NetlinkFlagAttribute::ToString(string* output) const {
+bool NetlinkFlagAttribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -607,7 +597,7 @@ bool NetlinkFlagAttribute::ToString(string* output) const {
   bool value;
   if (!GetFlagValue(&value))
     return false;
-  *output = StringPrintf("%s", value ? "true" : "false");
+  *output = base::StringPrintf("%s", value ? "true" : "false");
   return true;
 }
 
@@ -642,14 +632,14 @@ bool NetlinkStringAttribute::InitFromValue(const ByteString& input) {
       SetStringValue(string_ptr);
     } else {
       SLOG(this, 1) << "String is unterminated.";
-      SetStringValue(string(string_ptr, input.GetLength()));
+      SetStringValue(std::string(string_ptr, input.GetLength()));
     }
   }
 
   return NetlinkAttribute::InitFromValue(input);
 }
 
-bool NetlinkStringAttribute::GetStringValue(string* output) const {
+bool NetlinkStringAttribute::GetStringValue(std::string* output) const {
   if (!has_a_value_) {
     SLOG(this, 7) << "String attribute " << id_string()
                   << " hasn't been set to any value.";
@@ -661,22 +651,22 @@ bool NetlinkStringAttribute::GetStringValue(string* output) const {
   return true;
 }
 
-bool NetlinkStringAttribute::SetStringValue(const string& new_value) {
+bool NetlinkStringAttribute::SetStringValue(const std::string& new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;
 }
 
-bool NetlinkStringAttribute::ToString(string* output) const {
+bool NetlinkStringAttribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
   }
-  string value;
+  std::string value;
   if (!GetStringValue(&value))
     return false;
 
-  *output = StringPrintf("'%s'", value.c_str());
+  *output = base::StringPrintf("'%s'", value.c_str());
   return true;
 }
 
@@ -688,16 +678,16 @@ ByteString NetlinkStringAttribute::Encode() const {
 
 // SSID attribute.
 
-bool NetlinkSsidAttribute::ToString(string* output) const {
+bool NetlinkSsidAttribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
   }
-  string value;
+  std::string value;
   if (!GetStringValue(&value))
     return false;
 
-  string temp;
+  std::string temp;
   for (const auto& chr : value) {
     // Replace '[' and ']' (in addition to non-printable characters) so that
     // it's easy to match the right substring through a non-greedy regex.
@@ -707,7 +697,7 @@ bool NetlinkSsidAttribute::ToString(string* output) const {
       temp += chr;
     }
   }
-  *output = StringPrintf("[SSID=%s]", temp.c_str());
+  *output = base::StringPrintf("[SSID=%s]", temp.c_str());
 
   return true;
 }
@@ -750,7 +740,7 @@ void NetlinkNestedAttribute::Print(int log_level, int indent) const {
   value_->Print(log_level, indent + 1);
 }
 
-bool NetlinkNestedAttribute::ToString(string* output) const {
+bool NetlinkNestedAttribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -829,8 +819,8 @@ bool NetlinkNestedAttribute::AddAttributeToNestedArray(
     const AttributeListRefPtr& list,
     int id,
     const ByteString& value) {
-  string attribute_name =
-      StringPrintf("%s_%d", array_template.attribute_name.c_str(), id);
+  auto attribute_name =
+      base::StringPrintf("%s_%d", array_template.attribute_name.c_str(), id);
   return AddAttributeToNestedInner(array_template, attribute_name, list, id,
                                    value);
 }
@@ -854,7 +844,7 @@ bool NetlinkNestedAttribute::AddAttributeToNestedMap(
 // static
 bool NetlinkNestedAttribute::AddAttributeToNestedInner(
     const NetlinkNestedAttribute::NestedData& nested_template,
-    const string& attribute_name,
+    const std::string& attribute_name,
     const AttributeListRefPtr& list,
     int id,
     const ByteString& value) {
@@ -927,7 +917,7 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
 NetlinkNestedAttribute::NestedData::NestedData()
     : type(kTypeRaw), attribute_name("<UNKNOWN>"), is_array(false) {}
 NetlinkNestedAttribute::NestedData::NestedData(NetlinkAttribute::Type type_arg,
-                                               string attribute_name_arg,
+                                               std::string attribute_name_arg,
                                                bool is_array_arg)
     : type(type_arg),
       attribute_name(attribute_name_arg),
@@ -935,7 +925,7 @@ NetlinkNestedAttribute::NestedData::NestedData(NetlinkAttribute::Type type_arg,
 
 NetlinkNestedAttribute::NestedData::NestedData(
     NetlinkAttribute::Type type_arg,
-    string attribute_name_arg,
+    std::string attribute_name_arg,
     bool is_array_arg,
     const AttributeParser& parse_attribute_arg)
     : type(type_arg),
@@ -975,7 +965,7 @@ bool NetlinkRawAttribute::SetRawValue(const ByteString new_value) {
   return true;
 }
 
-bool NetlinkRawAttribute::ToString(string* output) const {
+bool NetlinkRawAttribute::ToString(std::string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -988,9 +978,9 @@ bool NetlinkRawAttribute::ToString(string* output) const {
   int total_bytes = data_.GetLength();
   const uint8_t* const_data = data_.GetConstData();
 
-  *output = StringPrintf("%d bytes:", total_bytes);
+  *output = base::StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
-    StringAppendF(output, " %02x", const_data[i]);
+    base::StringAppendF(output, " %02x", const_data[i]);
   }
   return true;
 }
@@ -1002,7 +992,7 @@ ByteString NetlinkRawAttribute::Encode() const {
 
 NetlinkAttributeGeneric::NetlinkAttributeGeneric(int id)
     : NetlinkRawAttribute(id, "unused-string") {
-  StringAppendF(&id_string_, "<UNKNOWN ATTRIBUTE %d>", id);
+  base::StringAppendF(&id_string_, "<UNKNOWN ATTRIBUTE %d>", id);
 }
 
 const char* NetlinkAttributeGeneric::id_string() const {

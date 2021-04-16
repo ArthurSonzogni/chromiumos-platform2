@@ -4,7 +4,6 @@
 
 #include "shill/net/generic_netlink_message.h"
 
-#include <memory>
 #include <string>
 
 #include <base/bind.h>
@@ -14,9 +13,6 @@
 #include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
-
-using base::Bind;
-using base::StringPrintf;
 
 namespace shill {
 
@@ -96,7 +92,7 @@ bool GenericNetlinkMessage::InitAndStripHeader(NetlinkPacket* packet) {
 void GenericNetlinkMessage::Print(int header_log_level,
                                   int detail_log_level) const {
   SLOG(this, header_log_level)
-      << StringPrintf("Message %s (%d)", command_string(), command());
+      << base::StringPrintf("Message %s (%d)", command_string(), command());
   attributes_->Print(detail_log_level, 1);
 }
 
@@ -116,7 +112,7 @@ bool ControlNetlinkMessage::InitFromPacket(
   }
 
   return packet->ConsumeAttributes(
-      Bind(&NetlinkAttribute::NewControlAttributeFromId), attributes_);
+      base::Bind(&NetlinkAttribute::NewControlAttributeFromId), attributes_);
 }
 
 // Specific Control types.

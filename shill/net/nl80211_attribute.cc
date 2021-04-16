@@ -4,19 +4,12 @@
 
 #include "shill/net/nl80211_attribute.h"
 
-#include <string>
-
 #include <base/bind.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/ieee80211.h"
-#include "shill/net/netlink_message.h"
-
-using base::Bind;
-using base::StringPrintf;
-using std::string;
 
 namespace shill {
 
@@ -85,7 +78,7 @@ Nl80211AttributeBss::Nl80211AttributeBss()
   nested_template_.insert(AttrDataPair(
       NL80211_BSS_INFORMATION_ELEMENTS,
       NestedData(kTypeRaw, "NL80211_BSS_INFORMATION_ELEMENTS", false,
-                 Bind(&Nl80211AttributeBss::ParseInformationElements))));
+                 base::Bind(&Nl80211AttributeBss::ParseInformationElements))));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_SIGNAL_MBM,
                    NestedData(kTypeU32, "NL80211_BSS_SIGNAL_MBM", false)));
@@ -102,7 +95,7 @@ Nl80211AttributeBss::Nl80211AttributeBss()
 bool Nl80211AttributeBss::ParseInformationElements(
     AttributeList* attribute_list,
     size_t id,
-    const string& attribute_name,
+    const std::string& attribute_name,
     ByteString data) {
   if (!attribute_list) {
     LOG(ERROR) << "NULL |attribute_list| parameter";
@@ -138,8 +131,8 @@ bool Nl80211AttributeBss::ParseInformationElements(
           ie_attribute->SetStringAttributeValue(type, "");
         } else {
           ie_attribute->SetStringAttributeValue(
-              type,
-              string(reinterpret_cast<const char*>(payload), payload_bytes));
+              type, std::string(reinterpret_cast<const char*>(payload),
+                                payload_bytes));
         }
         break;
       }
@@ -155,7 +148,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
         }
         // Extract each rate, add it to the list.
         for (size_t i = 0; i < payload_bytes; ++i) {
-          string rate_name = StringPrintf("Rate-%zu", i);
+          std::string rate_name = base::StringPrintf("Rate-%zu", i);
           rates_attribute->CreateU8Attribute(i, rate_name.c_str());
           rates_attribute->SetU8AttributeValue(i, payload[i]);
         }
@@ -196,8 +189,8 @@ bool Nl80211AttributeBss::ParseInformationElements(
           ie_attribute->SetStringAttributeValue(type, "");
         } else {
           ie_attribute->SetStringAttributeValue(
-              type,
-              string(reinterpret_cast<const char*>(payload), payload_bytes));
+              type, std::string(reinterpret_cast<const char*>(payload),
+                                payload_bytes));
         }
         break;
       }
@@ -482,16 +475,16 @@ bool Nl80211AttributeMac::ToString(std::string* value) const {
 }
 
 // static
-string Nl80211AttributeMac::StringFromMacAddress(const uint8_t* arg) {
-  string output;
+std::string Nl80211AttributeMac::StringFromMacAddress(const uint8_t* arg) {
+  std::string output;
 
   if (!arg) {
     static const char kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
     output = kBogusMacAddress;
     LOG(ERROR) << "|arg| parameter is NULL.";
   } else {
-    output = StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", arg[0], arg[1],
-                          arg[2], arg[3], arg[4], arg[5]);
+    output = base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", arg[0], arg[1],
+                                arg[2], arg[3], arg[4], arg[5]);
   }
   return output;
 }

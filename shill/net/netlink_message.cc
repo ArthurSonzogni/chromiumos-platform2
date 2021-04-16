@@ -7,9 +7,6 @@
 #include <limits.h>
 
 #include <algorithm>
-#include <map>
-#include <memory>
-#include <string>
 
 #include <base/format_macros.h>
 #include <base/logging.h>
@@ -18,9 +15,6 @@
 
 #include "shill/logging.h"
 #include "shill/net/netlink_packet.h"
-
-using base::StringAppendF;
-using base::StringPrintf;
 
 namespace shill {
 
@@ -124,11 +118,11 @@ void NetlinkMessage::PrintPacket(int log_level, const NetlinkPacket& packet) {
 // static
 void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
   const unsigned char* buf = reinterpret_cast<const unsigned char*>(header);
-  SLOG(nullptr, log_level) << StringPrintf(
+  SLOG(nullptr, log_level) << base::StringPrintf(
       "len:          %02x %02x %02x %02x = %u bytes", buf[0], buf[1], buf[2],
       buf[3], header->nlmsg_len);
 
-  SLOG(nullptr, log_level) << StringPrintf(
+  SLOG(nullptr, log_level) << base::StringPrintf(
       "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s", buf[4],
       buf[5], buf[6], buf[7], header->nlmsg_type,
       ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
@@ -137,10 +131,10 @@ void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
       ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
       ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
 
-  SLOG(nullptr, log_level) << StringPrintf(
+  SLOG(nullptr, log_level) << base::StringPrintf(
       "sequence:     %02x %02x %02x %02x = %u", buf[8], buf[9], buf[10],
       buf[11], header->nlmsg_seq);
-  SLOG(nullptr, log_level) << StringPrintf(
+  SLOG(nullptr, log_level) << base::StringPrintf(
       "pid:          %02x %02x %02x %02x = %u", buf[12], buf[13], buf[14],
       buf[15], header->nlmsg_pid);
 }
@@ -153,7 +147,7 @@ void NetlinkMessage::PrintPayload(int log_level,
     std::string output;
     size_t bytes_this_row = std::min(num_bytes, static_cast<size_t>(32));
     for (size_t i = 0; i < bytes_this_row; ++i) {
-      StringAppendF(&output, " %02x", *buf++);
+      base::StringAppendF(&output, " %02x", *buf++);
     }
     SLOG(nullptr, log_level) << output;
     num_bytes -= bytes_this_row;
@@ -186,10 +180,10 @@ ByteString ErrorAckMessage::Encode(uint32_t sequence_number) {
 std::string ErrorAckMessage::ToString() const {
   std::string output;
   if (error()) {
-    StringAppendF(&output, "NETLINK_ERROR 0x%" PRIx32 ": %s", -error_,
-                  strerror(-error_));
+    base::StringAppendF(&output, "NETLINK_ERROR 0x%" PRIx32 ": %s", -error_,
+                        strerror(-error_));
   } else {
-    StringAppendF(&output, "ACK");
+    base::StringAppendF(&output, "ACK");
   }
   return output;
 }
@@ -250,9 +244,9 @@ void UnknownMessage::Print(int header_log_level,
   int total_bytes = message_body_.GetLength();
   const uint8_t* const_data = message_body_.GetConstData();
 
-  std::string output = StringPrintf("%d bytes:", total_bytes);
+  std::string output = base::StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
-    StringAppendF(&output, " %02x", const_data[i]);
+    base::StringAppendF(&output, " %02x", const_data[i]);
   }
   SLOG(this, header_log_level) << output;
 }

@@ -24,10 +24,6 @@
 #include "shill/net/mock_sockets.h"
 #include "shill/net/rtnl_message.h"
 
-using base::Bind;
-using base::Callback;
-using base::Unretained;
-using std::string;
 using testing::_;
 using testing::A;
 using testing::AtLeast;
@@ -67,7 +63,8 @@ class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
       : sockets_(new StrictMock<MockSockets>()),
-        callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))) {}
+        callback_(base::Bind(&RTNLHandlerTest::HandlerCallback,
+                             base::Unretained(this))) {}
 
   void SetUp() override {
     RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
@@ -141,7 +138,7 @@ class RTNLHandlerTest : public Test {
 
   MockSockets* sockets_;
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
-  Callback<void(const RTNLMessage&)> callback_;
+  base::Callback<void(const RTNLMessage&)> callback_;
 
  private:
   base::test::TaskEnvironment task_environment_{
@@ -174,7 +171,7 @@ void RTNLHandlerTest::AddLink() {
   RTNLMessage message(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, 0, 0, 0,
                       kTestDeviceIndex, IPAddress::kFamilyIPv4);
   message.SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
-                       ByteString(string(kTestDeviceName), true));
+                       ByteString(std::string(kTestDeviceName), true));
   ByteString b(message.Encode());
   InputData data(b.GetData(), b.GetLength());
   RTNLHandler::GetInstance()->ParseRTNL(&data);
@@ -227,7 +224,7 @@ TEST_F(RTNLHandlerTest, GetInterfaceName) {
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex(""));
   {
     struct ifreq ifr;
-    string name(sizeof(ifr.ifr_name), 'x');
+    std::string name(sizeof(ifr.ifr_name), 'x');
     EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex(name));
   }
 

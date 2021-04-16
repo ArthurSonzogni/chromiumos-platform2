@@ -4,6 +4,7 @@
 
 #include "shill/net/event_history.h"
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
@@ -14,9 +15,6 @@
 #include "shill/net/mock_time.h"
 #include "shill/net/shill_time.h"
 
-using std::deque;
-using std::string;
-using std::vector;
 using ::testing::Return;
 
 namespace shill {
@@ -47,7 +45,7 @@ class EventHistoryTest : public ::testing::Test {
 
   bool GetMaxEventsSpecified() { return event_history_->max_events_specified_; }
 
-  deque<Timestamp>* GetEvents() { return &event_history_->events_; }
+  std::deque<Timestamp>* GetEvents() { return &event_history_->events_; }
 
   void RecordEvent(Timestamp now) {
     EXPECT_CALL(time_, GetNow()).WillOnce(Return(now));
@@ -68,13 +66,13 @@ class EventHistoryTest : public ::testing::Test {
     event_history_->RecordEventAndExpireEventsBefore(seconds_ago, clock_type);
   }
 
-  vector<string> ExtractWallClockToStrings() {
+  std::vector<std::string> ExtractWallClockToStrings() {
     return event_history_->ExtractWallClockToStrings();
   }
 
   Timestamp GetTimestamp(int monotonic_seconds,
                          int boottime_seconds,
-                         const string& wall_clock) {
+                         const std::string& wall_clock) {
     struct timeval monotonic = {.tv_sec = monotonic_seconds, .tv_usec = 0};
     struct timeval boottime = {.tv_sec = boottime_seconds, .tv_usec = 0};
     return Timestamp(monotonic, boottime, wall_clock);
@@ -233,7 +231,7 @@ TEST_F(EventHistoryTest, ConvertTimestampsToStrings) {
     RecordEvent(kValues[i]);
   }
 
-  vector<string> strings = ExtractWallClockToStrings();
+  std::vector<std::string> strings = ExtractWallClockToStrings();
   EXPECT_GT(base::size(kValues), 0);
   ASSERT_EQ(base::size(kValues), strings.size());
   for (size_t i = 0; i < base::size(kValues); i++) {

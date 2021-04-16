@@ -15,7 +15,6 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
 
-using std::string;
 using testing::Test;
 
 namespace shill {
@@ -37,9 +36,9 @@ const unsigned char kV6Address2[] = {0x19, 0x80, 0x00, 0x00, 0x10, 0x00, 0x1b,
 class IPAddressTest : public Test {
  protected:
   void TestAddress(IPAddress::Family family,
-                   const string& good_string,
+                   const std::string& good_string,
                    const ByteString& good_bytes,
-                   const string& bad_string,
+                   const std::string& bad_string,
                    const ByteString& bad_bytes) {
     IPAddress good_addr(family);
 
@@ -50,7 +49,7 @@ class IPAddressTest : public Test {
     EXPECT_EQ(0, memcmp(good_addr.GetConstData(), good_bytes.GetConstData(),
                         good_bytes.GetLength()));
     EXPECT_TRUE(good_addr.address().Equals(good_bytes));
-    string address_string;
+    std::string address_string;
     EXPECT_TRUE(good_addr.IntoString(&address_string));
     EXPECT_EQ(good_string, address_string);
 
@@ -158,8 +157,8 @@ TEST_F(IPAddressTest, IPv6) {
 
 TEST_F(IPAddressTest, SetAddressAndPrefixFromString) {
   IPAddress address(IPAddress::kFamilyIPv4);
-  const string kString1(kV4String1);
-  const string kString2(kV4String2);
+  const std::string kString1(kV4String1);
+  const std::string kString2(kV4String2);
   EXPECT_FALSE(address.SetAddressAndPrefixFromString(""));
   EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1));
   EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/"));
@@ -178,7 +177,7 @@ TEST_F(IPAddressTest, SetAddressAndPrefixFromString) {
 }
 
 TEST_F(IPAddressTest, HasSameAddressAs) {
-  const string kString1(kV4String1);
+  const std::string kString1(kV4String1);
   IPAddress address0(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address0.SetAddressAndPrefixFromString(kString1 + "/0"));
   IPAddress address1(IPAddress::kFamilyIPv4);
@@ -196,13 +195,13 @@ struct PrefixMapping {
   PrefixMapping() : family(IPAddress::kFamilyUnknown), prefix(0) {}
   PrefixMapping(IPAddress::Family family_in,
                 size_t prefix_in,
-                const string& expected_address_in)
+                const std::string& expected_address_in)
       : family(family_in),
         prefix(prefix_in),
         expected_address(expected_address_in) {}
   IPAddress::Family family;
   size_t prefix;
-  string expected_address;
+  std::string expected_address;
 };
 
 class IPAddressPrefixMappingTest
@@ -261,20 +260,20 @@ INSTANTIATE_TEST_SUITE_P(
 struct BitOperationMapping {
   BitOperationMapping() : family(IPAddress::kFamilyUnknown) {}
   BitOperationMapping(IPAddress::Family family_in,
-                      const string& address_a_in,
-                      const string& address_b_in,
-                      const string& expected_anded_in,
-                      const string& expected_orred_in)
+                      const std::string& address_a_in,
+                      const std::string& address_b_in,
+                      const std::string& expected_anded_in,
+                      const std::string& expected_orred_in)
       : family(family_in),
         address_a(address_a_in),
         address_b(address_b_in),
         expected_anded(expected_anded_in),
         expected_orred(expected_orred_in) {}
   IPAddress::Family family;
-  string address_a;
-  string address_b;
-  string expected_anded;
-  string expected_orred;
+  std::string address_a;
+  std::string address_b;
+  std::string expected_anded;
+  std::string expected_orred;
 };
 
 class IPAddressBitOperationMappingTest
@@ -330,20 +329,20 @@ INSTANTIATE_TEST_SUITE_P(
 struct NetworkPartMapping {
   NetworkPartMapping() : family(IPAddress::kFamilyUnknown) {}
   NetworkPartMapping(IPAddress::Family family_in,
-                     const string& address_in,
+                     const std::string& address_in,
                      size_t prefix_in,
-                     const string& expected_network_in,
-                     const string& expected_broadcast_in)
+                     const std::string& expected_network_in,
+                     const std::string& expected_broadcast_in)
       : family(family_in),
         address(address_in),
         prefix(prefix_in),
         expected_network(expected_network_in),
         expected_broadcast(expected_broadcast_in) {}
   IPAddress::Family family;
-  string address;
+  std::string address;
   size_t prefix;
-  string expected_network;
-  string expected_broadcast;
+  std::string expected_network;
+  std::string expected_broadcast;
 };
 
 class IPAddressNetworkPartMappingTest
@@ -410,13 +409,13 @@ INSTANTIATE_TEST_SUITE_P(
 struct MinPrefixLengthMapping {
   MinPrefixLengthMapping() : family(IPAddress::kFamilyUnknown) {}
   MinPrefixLengthMapping(IPAddress::Family family_in,
-                         const string& address_in,
+                         const std::string& address_in,
                          size_t expected_min_prefix_in)
       : family(family_in),
         address(address_in),
         expected_min_prefix(expected_min_prefix_in) {}
   IPAddress::Family family;
-  string address;
+  std::string address;
   size_t expected_min_prefix;
 };
 
@@ -441,9 +440,9 @@ INSTANTIATE_TEST_SUITE_P(
         MinPrefixLengthMapping(IPAddress::kFamilyIPv4, "10.10.10.10", 8)));
 
 struct CanReachAddressMapping {
-  CanReachAddressMapping(const string& address_a_in,
+  CanReachAddressMapping(const std::string& address_a_in,
                          size_t prefix_a_in,
-                         const string& address_b_in,
+                         const std::string& address_b_in,
                          size_t prefix_b_in,
                          bool expected_result_in)
       : address_a(address_a_in),
@@ -451,9 +450,9 @@ struct CanReachAddressMapping {
         address_b(address_b_in),
         prefix_b(prefix_b_in),
         expected_result(expected_result_in) {}
-  string address_a;
+  std::string address_a;
   size_t prefix_a;
-  string address_b;
+  std::string address_b;
   size_t prefix_b;
   size_t expected_result;
 };

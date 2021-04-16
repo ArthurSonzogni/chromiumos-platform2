@@ -155,7 +155,6 @@ class SHILL_EXPORT NetlinkManager {
    private:
     NetlinkAuxilliaryMessageHandler error_handler_;
     struct timeval delete_after_;
-
   };
 
   // Encapsulates all the different things we know about a specific message

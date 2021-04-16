@@ -5,15 +5,10 @@
 #include "shill/net/byte_string.h"
 
 #include <netinet/in.h>
-#include <string.h>
 
 #include <algorithm>
 
 #include <base/strings/string_number_conversions.h>
-
-using std::min;
-using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -54,8 +49,8 @@ ByteString ByteString::CreateFromNetUInt32(uint32_t val) {
 }
 
 // static
-ByteString ByteString::CreateFromHexString(const string& hex_string) {
-  vector<uint8_t> bytes;
+ByteString ByteString::CreateFromHexString(const std::string& hex_string) {
+  std::vector<uint8_t> bytes;
   if (!base::HexStringToBytes(hex_string, &bytes)) {
     return ByteString();
   }
@@ -165,7 +160,7 @@ void ByteString::Resize(int size) {
   data_.resize(size, 0);
 }
 
-string ByteString::HexEncode() const {
+std::string ByteString::HexEncode() const {
   return base::HexEncode(GetConstData(), GetLength());
 }
 
@@ -179,7 +174,7 @@ bool ByteString::CopyData(size_t size, void* output) const {
 
 // static
 bool ByteString::IsLessThan(const ByteString& lhs, const ByteString& rhs) {
-  size_t byte_count = min(lhs.GetLength(), rhs.GetLength());
+  size_t byte_count = std::min(lhs.GetLength(), rhs.GetLength());
   int result = memcmp(lhs.GetConstData(), rhs.GetConstData(), byte_count);
   if (result == 0) {
     return lhs.GetLength() < rhs.GetLength();

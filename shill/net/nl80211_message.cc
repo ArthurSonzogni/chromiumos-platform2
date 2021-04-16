@@ -26,8 +26,6 @@
 
 #include <iomanip>
 #include <limits>
-#include <memory>
-#include <string>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -39,10 +37,6 @@
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_attribute.h"  // For Nl80211AttributeMac
-
-using base::Bind;
-using base::StringAppendF;
-using std::string;
 
 namespace shill {
 
@@ -76,7 +70,8 @@ bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
   }
 
   return packet->ConsumeAttributes(
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context), attributes_);
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context),
+      attributes_);
 }
 
 Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
@@ -142,39 +137,45 @@ std::string Nl80211Frame::ToString() const {
   if (frame_.GetLength() < sizeof(IEEE_80211::ieee80211_frame().hdr)) {
     output.append("[invalid frame: ");
   } else {
-    StringAppendF(&output, "%s -> %s", mac_from_.c_str(), mac_to_.c_str());
+    base::StringAppendF(&output, "%s -> %s", mac_from_.c_str(),
+                        mac_to_.c_str());
 
     switch (frame_type_) {
       case kAssocResponseFrameType:
-        StringAppendF(&output, "; AssocResponse status: %u: %s", status_,
-                      IEEE_80211::StatusToString(
-                          static_cast<IEEE_80211::WiFiStatusCode>(status_))
-                          .c_str());
+        base::StringAppendF(
+            &output, "; AssocResponse status: %u: %s", status_,
+            IEEE_80211::StatusToString(
+                static_cast<IEEE_80211::WiFiStatusCode>(status_))
+                .c_str());
         break;
       case kReassocResponseFrameType:
-        StringAppendF(&output, "; ReassocResponse status: %u: %s", status_,
-                      IEEE_80211::StatusToString(
-                          static_cast<IEEE_80211::WiFiStatusCode>(status_))
-                          .c_str());
+        base::StringAppendF(
+            &output, "; ReassocResponse status: %u: %s", status_,
+            IEEE_80211::StatusToString(
+                static_cast<IEEE_80211::WiFiStatusCode>(status_))
+                .c_str());
         break;
       case kAuthFrameType:
-        StringAppendF(&output, "; Auth status: %u: %s", status_,
-                      IEEE_80211::StatusToString(
-                          static_cast<IEEE_80211::WiFiStatusCode>(status_))
-                          .c_str());
+        base::StringAppendF(
+            &output, "; Auth status: %u: %s", status_,
+            IEEE_80211::StatusToString(
+                static_cast<IEEE_80211::WiFiStatusCode>(status_))
+                .c_str());
         break;
 
       case kDisassocFrameType:
-        StringAppendF(&output, "; Disassoc reason %u: %s", reason_,
-                      IEEE_80211::ReasonToString(
-                          static_cast<IEEE_80211::WiFiReasonCode>(reason_))
-                          .c_str());
+        base::StringAppendF(
+            &output, "; Disassoc reason %u: %s", reason_,
+            IEEE_80211::ReasonToString(
+                static_cast<IEEE_80211::WiFiReasonCode>(reason_))
+                .c_str());
         break;
       case kDeauthFrameType:
-        StringAppendF(&output, "; Deauth reason %u: %s", reason_,
-                      IEEE_80211::ReasonToString(
-                          static_cast<IEEE_80211::WiFiReasonCode>(reason_))
-                          .c_str());
+        base::StringAppendF(
+            &output, "; Deauth reason %u: %s", reason_,
+            IEEE_80211::ReasonToString(
+                static_cast<IEEE_80211::WiFiReasonCode>(reason_))
+                .c_str());
         break;
 
       default:
@@ -185,7 +186,7 @@ std::string Nl80211Frame::ToString() const {
 
   const unsigned char* frame = frame_.GetConstData();
   for (size_t i = 0; i < frame_.GetLength(); ++i) {
-    StringAppendF(&output, "%02x, ", frame[i]);
+    base::StringAppendF(&output, "%02x, ", frame[i]);
   }
   output.append("]");
 
@@ -239,8 +240,9 @@ const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
 
 GetRegMessage::GetRegMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_WIPHY, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                               NetlinkMessage::MessageContext()));
+      NL80211_ATTR_WIPHY,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t GetStationMessage::kCommand = NL80211_CMD_GET_STATION;
@@ -249,11 +251,12 @@ const char GetStationMessage::kCommandString[] = "NL80211_CMD_GET_STATION";
 GetStationMessage::GetStationMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                             NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                   NetlinkMessage::MessageContext()));
 }
 
 const uint8_t SetWakeOnPacketConnMessage::kCommand = NL80211_CMD_SET_WOWLAN;
@@ -269,8 +272,9 @@ const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
 
 GetWiphyMessage::GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
@@ -308,14 +312,16 @@ const char ProbeMeshLinkMessage::kCommandString[] =
 ProbeMeshLinkMessage::ProbeMeshLinkMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                             NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                   NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_FRAME, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                               NetlinkMessage::MessageContext()));
+      NL80211_ATTR_FRAME,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t RegBeaconHintMessage::kCommand = NL80211_CMD_REG_BEACON_HINT;
@@ -328,8 +334,9 @@ const char RegChangeMessage::kCommandString[] = "NL80211_CMD_REG_CHANGE";
 RegChangeMessage::RegChangeMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t RemainOnChannelMessage::kCommand = NL80211_CMD_REMAIN_ON_CHANNEL;
@@ -347,8 +354,9 @@ const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
 
 GetScanMessage::GetScanMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
@@ -357,8 +365,9 @@ const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 TriggerScanMessage::TriggerScanMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t UnprotDeauthenticateMessage::kCommand =
@@ -378,15 +387,17 @@ const char WiphyRegChangeMessage::kCommandString[] =
 WiphyRegChangeMessage::WiphyRegChangeMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 GetInterfaceMessage::GetInterfaceMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t GetInterfaceMessage::kCommand = NL80211_CMD_GET_INTERFACE;
@@ -401,8 +412,9 @@ const char GetSurveyMessage::kCommandString[] = "NL80211_CMD_GET_SURVEY";
 GetSurveyMessage::GetSurveyMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
   AddFlag(NLM_F_DUMP);
 }
 
@@ -416,11 +428,12 @@ const char GetMeshPathInfoMessage::kCommandString[] = "NL80211_CMD_GET_MPATH";
 GetMeshPathInfoMessage::GetMeshPathInfoMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                             NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                   NetlinkMessage::MessageContext()));
 }
 
 const uint8_t GetMeshProxyPathMessage::kCommand = NL80211_CMD_GET_MPP;
@@ -429,11 +442,12 @@ const char GetMeshProxyPathMessage::kCommandString[] = "NL80211_CMD_GET_MPP";
 GetMeshProxyPathMessage::GetMeshProxyPathMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                                 NetlinkMessage::MessageContext()));
+      NL80211_ATTR_IFINDEX,
+      base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                 NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
-                             NetlinkMessage::MessageContext()));
+      NL80211_ATTR_MAC, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                   NetlinkMessage::MessageContext()));
 }
 
 // static

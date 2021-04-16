@@ -5,11 +5,8 @@
 #include "shill/net/ip_address.h"
 
 #include <arpa/inet.h>
-#include <netinet/in.h>
 
 #include <limits>
-#include <string>
-#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -17,11 +14,6 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
-
-#include "shill/net/byte_string.h"
-
-using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -121,7 +113,8 @@ size_t IPAddress::GetMinPrefixLength() const {
 }
 
 // static
-size_t IPAddress::GetPrefixLengthFromMask(Family family, const string& mask) {
+size_t IPAddress::GetPrefixLengthFromMask(Family family,
+                                          const std::string& mask) {
   switch (family) {
     case kFamilyIPv4: {
       in_addr_t mask_val = inet_network(mask.c_str());
@@ -166,7 +159,7 @@ IPAddress IPAddress::GetAddressMaskFromPrefix(Family family, size_t prefix) {
 }
 
 // static
-string IPAddress::GetAddressFamilyName(Family family) {
+std::string IPAddress::GetAddressFamilyName(Family family) {
   switch (family) {
     case kFamilyIPv4:
       return kFamilyNameIPv4;
@@ -177,7 +170,7 @@ string IPAddress::GetAddressFamilyName(Family family) {
   }
 }
 
-bool IPAddress::SetAddressFromString(const string& address_string) {
+bool IPAddress::SetAddressFromString(const std::string& address_string) {
   size_t address_length = GetAddressLength(family_);
 
   if (!address_length) {
@@ -192,8 +185,9 @@ bool IPAddress::SetAddressFromString(const string& address_string) {
   return true;
 }
 
-bool IPAddress::SetAddressAndPrefixFromString(const string& address_string) {
-  vector<string> address_parts = base::SplitString(
+bool IPAddress::SetAddressAndPrefixFromString(
+    const std::string& address_string) {
+  const auto address_parts = base::SplitString(
       address_string, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (address_parts.size() != 2) {
     LOG(ERROR) << "Cannot split address " << address_string;
@@ -217,7 +211,7 @@ void IPAddress::SetAddressToDefault() {
   address_ = ByteString(GetAddressLength(family_));
 }
 
-bool IPAddress::IntoString(string* address_string) const {
+bool IPAddress::IntoString(std::string* address_string) const {
   // Noting that INET6_ADDRSTRLEN > INET_ADDRSTRLEN
   char address_buf[INET6_ADDRSTRLEN];
   if (GetLength() != GetAddressLength(family_) ||
@@ -228,8 +222,8 @@ bool IPAddress::IntoString(string* address_string) const {
   return true;
 }
 
-string IPAddress::ToString() const {
-  string out("<unknown>");
+std::string IPAddress::ToString() const {
+  std::string out = "<unknown>";
   IntoString(&out);
   return out;
 }

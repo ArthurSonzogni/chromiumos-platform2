@@ -29,10 +29,6 @@
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 
-using base::Bind;
-using std::map;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::Mock;
@@ -106,13 +102,14 @@ class NetlinkManagerTest : public Test {
     netlink_manager_->message_types_[kFamilyMarxString].family_id =
         kFamilyMarxNumber;
     netlink_manager_->message_types_[kFamilyMarxString].groups =
-        map<string, uint32_t>{{kGroupGrouchoString, kGroupGrouchoNumber},
-                              {kGroupHarpoString, kGroupHarpoNumber},
-                              {kGroupChicoString, kGroupChicoNumber},
-                              {kGroupZeppoString, kGroupZeppoNumber},
-                              {kGroupGummoString, kGroupGummoNumber}};
+        std::map<std::string, uint32_t>{
+            {kGroupGrouchoString, kGroupGrouchoNumber},
+            {kGroupHarpoString, kGroupHarpoNumber},
+            {kGroupChicoString, kGroupChicoNumber},
+            {kGroupZeppoString, kGroupZeppoNumber},
+            {kGroupGummoString, kGroupGummoNumber}};
     netlink_manager_->message_factory_.AddFactoryMethod(
-        kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
+        kNl80211FamilyId, base::Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     netlink_socket_->sockets_.reset(sockets_);       // Passes ownership.
     netlink_manager_->sock_.reset(netlink_socket_);  // Passes ownership.
@@ -328,7 +325,7 @@ TEST_F(NetlinkManagerTest, SubscribeToEvents) {
 
 TEST_F(NetlinkManagerTest, GetFamily) {
   const uint16_t kSampleMessageType = 42;
-  const string kSampleMessageName("SampleMessageName");
+  const std::string kSampleMessageName = "SampleMessageName";
   const uint32_t kRandomSequenceNumber = 3;
 
   NewFamilyMessage new_family_message;
@@ -357,7 +354,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
   Reset();
 
   const uint16_t kSampleMessageType = 42;
-  const string kSampleMessageName("SampleMessageName");
+  const std::string kSampleMessageName = "SampleMessageName";
   const uint32_t kRandomSequenceNumber = 3;
 
   NewFamilyMessage new_family_message;
@@ -407,7 +404,7 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
           Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage));
   NetlinkMessageFactory::FactoryMethod null_factory;
 
-  const string kSampleMessageName("SampleMessageName");
+  const std::string kSampleMessageName = "SampleMessageName";
   EXPECT_EQ(NetlinkMessage::kIllegalMessageType,
             netlink_manager_->GetFamily(kSampleMessageName, null_factory));
   netlink_manager_->time_ = old_time;
@@ -1071,9 +1068,10 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
   MockHandlerNetlink message_handler;
   netlink_manager_->AddBroadcastHandler(message_handler.on_netlink_message());
 
-  vector<unsigned char> bad_len_message{0x01};  // len should be 32-bits
-  vector<unsigned char> bad_hdr_message{0x04, 0x00, 0x00, 0x00};  // only len
-  vector<unsigned char> bad_body_message{
+  std::vector<unsigned char> bad_len_message{0x01};  // len should be 32-bits
+  std::vector<unsigned char> bad_hdr_message{0x04, 0x00, 0x00,
+                                             0x00};  // only len
+  std::vector<unsigned char> bad_body_message{
       0x30, 0x00, 0x00, 0x00,  // length
       0x00, 0x00,              // type
       0x00, 0x00,              // flags
@@ -1089,7 +1087,7 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
     Mock::VerifyAndClearExpectations(&message_handler);
   }
 
-  vector<unsigned char> good_message{
+  std::vector<unsigned char> good_message{
       0x14, 0x00, 0x00, 0x00,  // length
       0x00, 0x00,              // type
       0x00, 0x00,              // flags
@@ -1101,8 +1099,8 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
   for (auto bad_msg : {bad_len_message, bad_hdr_message, bad_body_message}) {
     // A good message followed by a bad message. This should yield one call
     // to |message_handler|, and one error message.
-    vector<unsigned char> two_messages(good_message.begin(),
-                                       good_message.end());
+    std::vector<unsigned char> two_messages(good_message.begin(),
+                                            good_message.end());
     two_messages.insert(two_messages.end(), bad_msg.begin(), bad_msg.end());
     EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(1);
     InputData data(two_messages.data(), two_messages.size());

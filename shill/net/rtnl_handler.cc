@@ -32,13 +32,7 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/netlink_fd.h"
-#include "shill/net/rtnl_listener.h"
-#include "shill/net/rtnl_message.h"
 #include "shill/net/sockets.h"
-
-using base::Bind;
-using base::Unretained;
-using std::string;
 
 namespace shill {
 
@@ -103,8 +97,8 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
   SetReceiverBufferSize(kReceiveBufferBytes);
 
   rtnl_handler_.reset(io_handler_factory_->CreateIOInputHandler(
-      rtnl_socket_, Bind(&RTNLHandler::ParseRTNL, Unretained(this)),
-      Bind(&RTNLHandler::OnReadError, Unretained(this))));
+      rtnl_socket_, base::Bind(&RTNLHandler::ParseRTNL, base::Unretained(this)),
+      base::Bind(&RTNLHandler::OnReadError, base::Unretained(this))));
 
   NextRequest(last_dump_sequence_);
   SLOG(this, 2) << "RTNLHandler started";
@@ -441,7 +435,7 @@ bool RTNLHandler::RemoveInterface(int interface_index) {
   return SendMessage(std::move(msg), nullptr);
 }
 
-int RTNLHandler::GetInterfaceIndex(const string& interface_name) {
+int RTNLHandler::GetInterfaceIndex(const std::string& interface_name) {
   if (interface_name.empty()) {
     LOG(ERROR) << "Empty interface name -- unable to obtain index.";
     return -1;
@@ -515,7 +509,7 @@ bool RTNLHandler::SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
   return true;
 }
 
-void RTNLHandler::OnReadError(const string& error_msg) {
+void RTNLHandler::OnReadError(const std::string& error_msg) {
   LOG(FATAL) << "RTNL Socket read returns error: " << error_msg;
 }
 

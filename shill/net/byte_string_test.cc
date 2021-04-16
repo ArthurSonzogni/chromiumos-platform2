@@ -12,7 +12,6 @@
 
 #include <gtest/gtest.h>
 
-using std::string;
 using testing::Test;
 
 namespace shill {
@@ -93,11 +92,11 @@ TEST_F(ByteStringTest, NonEmpty) {
 }
 
 TEST_F(ByteStringTest, CopyTerminator) {
-  ByteString bs4(string(kTest4), false);
+  ByteString bs4(std::string(kTest4), false);
   EXPECT_EQ(strlen(kTest4), bs4.GetLength());
   EXPECT_EQ(0, memcmp(kTest4, bs4.GetData(), bs4.GetLength()));
 
-  ByteString bs5(string(kTest4), true);
+  ByteString bs5(std::string(kTest4), true);
   EXPECT_EQ(strlen(kTest4) + 1, bs5.GetLength());
   EXPECT_EQ(0, memcmp(kTest4, bs5.GetData(), bs5.GetLength()));
 }

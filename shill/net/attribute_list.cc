@@ -8,17 +8,12 @@
 #include <linux/nl80211.h>
 
 #include <iomanip>
-#include <memory>
-#include <string>
 
 #include <base/logging.h>
 #include <base/stl_util.h>
 
 #include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"
-#include "shill/net/netlink_message.h"
-
-using std::string;
 
 namespace shill {
 
@@ -265,7 +260,7 @@ bool AttributeList::IsFlagAttributeTrue(int id) const {
 
 // String Attribute.
 
-bool AttributeList::GetStringAttributeValue(int id, string* value) const {
+bool AttributeList::GetStringAttributeValue(int id, std::string* value) const {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -290,7 +285,7 @@ bool AttributeList::CreateSsidAttribute(int id, const char* id_string) {
   return true;
 }
 
-bool AttributeList::SetStringAttributeValue(int id, const string& value) {
+bool AttributeList::SetStringAttributeValue(int id, const std::string& value) {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute)
     return false;

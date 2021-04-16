@@ -23,10 +23,6 @@
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 
-using base::Bind;
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using testing::_;
 using testing::Test;
 
@@ -280,8 +276,8 @@ const unsigned char kNL80211_CMD_UNKNOWN[] = {
 class NetlinkMessageTest : public Test {
  public:
   NetlinkMessageTest() {
-    message_factory_.AddFactoryMethod(kNl80211FamilyId,
-                                      Bind(&Nl80211Message::CreateMessage));
+    message_factory_.AddFactoryMethod(
+        kNl80211FamilyId, base::Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
   }
 
@@ -289,7 +285,7 @@ class NetlinkMessageTest : public Test {
   // Helper function to provide an array of scan frequencies from a message's
   // NL80211_ATTR_SCAN_FREQUENCIES attribute.
   static bool GetScanFrequenciesFromMessage(const Nl80211Message& message,
-                                            vector<uint32_t>* value) {
+                                            std::vector<uint32_t>* value) {
     if (!value) {
       LOG(ERROR) << "Null |value| parameter";
       return false;
@@ -317,7 +313,7 @@ class NetlinkMessageTest : public Test {
   // Helper function to provide an array of SSIDs from a message's
   // NL80211_ATTR_SCAN_SSIDS attribute.
   static bool GetScanSsidsFromMessage(const Nl80211Message& message,
-                                      vector<string>* value) {
+                                      std::vector<std::string>* value) {
     if (!value) {
       LOG(ERROR) << "Null |value| parameter";
       return false;
@@ -339,7 +335,8 @@ class NetlinkMessageTest : public Test {
         if (bytes.IsEmpty()) {
           value->push_back("");
         } else {
-          value->push_back(string(bytes.GetConstCString(), bytes.GetLength()));
+          value->push_back(
+              std::string(bytes.GetConstCString(), bytes.GetLength()));
         }
       }
     }
@@ -352,13 +349,14 @@ class NetlinkMessageTest : public Test {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
   NetlinkPacket trigger_scan_packet(kNL80211_CMD_TRIGGER_SCAN,
                                     sizeof(kNL80211_CMD_TRIGGER_SCAN));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &trigger_scan_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&trigger_scan_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
 
   EXPECT_EQ(NL80211_CMD_TRIGGER_SCAN, message->command());
@@ -379,11 +377,11 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
 
   // Make sure the scan frequencies in the attribute are the ones we expect.
   {
-    vector<uint32_t> list;
+    std::vector<uint32_t> list;
     EXPECT_TRUE(GetScanFrequenciesFromMessage(*message, &list));
     EXPECT_EQ(list.size(), base::size(kScanFrequencyTrigger));
     int i = 0;
-    vector<uint32_t>::const_iterator j = list.begin();
+    auto j = list.begin();
     while (j != list.end()) {
       EXPECT_EQ(kScanFrequencyTrigger[i], *j);
       ++i;
@@ -392,7 +390,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
   }
 
   {
-    vector<string> ssids;
+    std::vector<std::string> ssids;
     EXPECT_TRUE(GetScanSsidsFromMessage(*message, &ssids));
     EXPECT_EQ(1, ssids.size());
     EXPECT_EQ(0, ssids[0].compare(""));  // Expect a single, empty SSID.
@@ -405,13 +403,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
   NetlinkPacket new_scan_results_packet(kNL80211_CMD_NEW_SCAN_RESULTS,
                                         sizeof(kNL80211_CMD_NEW_SCAN_RESULTS));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &new_scan_results_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&new_scan_results_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
 
   EXPECT_EQ(NL80211_CMD_NEW_SCAN_RESULTS, message->command());
@@ -432,11 +431,11 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
 
   // Make sure the scan frequencies in the attribute are the ones we expect.
   {
-    vector<uint32_t> list;
+    std::vector<uint32_t> list;
     EXPECT_TRUE(GetScanFrequenciesFromMessage(*message, &list));
     EXPECT_EQ(base::size(kScanFrequencyResults), list.size());
     int i = 0;
-    vector<uint32_t>::const_iterator j = list.begin();
+    auto j = list.begin();
     while (j != list.end()) {
       EXPECT_EQ(kScanFrequencyResults[i], *j);
       ++i;
@@ -445,7 +444,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
   }
 
   {
-    vector<string> ssids;
+    std::vector<std::string> ssids;
     EXPECT_TRUE(GetScanSsidsFromMessage(*message, &ssids));
     EXPECT_EQ(1, ssids.size());
     EXPECT_EQ(0, ssids[0].compare(""));  // Expect a single, empty SSID.
@@ -458,13 +457,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
   NetlinkPacket netlink_packet(kNL80211_CMD_NEW_STATION,
                                sizeof(kNL80211_CMD_NEW_STATION));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_NEW_STATION, message->command());
 
@@ -476,7 +476,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
   }
 
   {
-    string value;
+    std::string value;
     EXPECT_TRUE(message->const_attributes()->GetAttributeAsString(
         NL80211_ATTR_MAC, &value));
     EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
@@ -499,13 +499,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_AUTHENTICATE,
                                sizeof(kNL80211_CMD_AUTHENTICATE));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_AUTHENTICATE, message->command());
 
@@ -539,13 +540,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_ASSOCIATE,
                                sizeof(kNL80211_CMD_ASSOCIATE));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_ASSOCIATE, message->command());
 
@@ -579,13 +581,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
   NetlinkPacket netlink_packet(kNL80211_CMD_CONNECT,
                                sizeof(kNL80211_CMD_CONNECT));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_CONNECT, message->command());
 
@@ -604,7 +607,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
   }
 
   {
-    string value;
+    std::string value;
     EXPECT_TRUE(message->const_attributes()->GetAttributeAsString(
         NL80211_ATTR_MAC, &value));
     EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
@@ -677,13 +680,14 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_DEAUTHENTICATE,
                                sizeof(kNL80211_CMD_DEAUTHENTICATE));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_DEAUTHENTICATE, message->command());
 
@@ -717,13 +721,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT) {
   NetlinkPacket netlink_packet(kNL80211_CMD_DISCONNECT,
                                sizeof(kNL80211_CMD_DISCONNECT));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_DISCONNECT, message->command());
 
@@ -755,13 +760,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
   NetlinkPacket netlink_packet(kNL80211_CMD_NOTIFY_CQM,
                                sizeof(kNL80211_CMD_NOTIFY_CQM));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_NOTIFY_CQM, message->command());
 
@@ -780,7 +786,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
   }
 
   {
-    string value;
+    std::string value;
     EXPECT_TRUE(message->const_attributes()->GetAttributeAsString(
         NL80211_ATTR_MAC, &value));
     EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
@@ -803,13 +809,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_DISASSOCIATE,
                                sizeof(kNL80211_CMD_DISASSOCIATE));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_DISASSOCIATE, message->command());
 
@@ -845,12 +852,13 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_UNKNOWN) {
   NetlinkPacket netlink_packet(kNL80211_CMD_UNKNOWN,
                                sizeof(kNL80211_CMD_UNKNOWN));
-  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      &netlink_packet, NetlinkMessage::MessageContext()));
+  std::unique_ptr<NetlinkMessage> netlink_message(
+      message_factory_.CreateMessage(&netlink_packet,
+                                     NetlinkMessage::MessageContext()));
   ASSERT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  unique_ptr<Nl80211Message> message(
+  std::unique_ptr<Nl80211Message> message(
       static_cast<Nl80211Message*>(netlink_message.release()));
   EXPECT_EQ(kCmdNL80211_CMD_UNKNOWN, message->command());
 }
