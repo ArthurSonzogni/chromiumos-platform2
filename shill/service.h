@@ -625,9 +625,22 @@ class Service : public base::RefCounted<Service> {
   // the snapshots as well in one atomic step.
   mockable void RefreshTrafficCounters(
       const std::vector<patchpanel::TrafficCounter>& counters);
+  // Resets traffic counters for |this|.
+  mockable void ResetTrafficCounters(Error* error);
 
   void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
   bool unreliable() const { return unreliable_; }
+
+  TrafficCounterMap& current_traffic_counters() {
+    return current_traffic_counters_;
+  }
+  TrafficCounterMap& traffic_counter_snapshot() {
+    return traffic_counter_snapshot_;
+  }
+
+  // The components of this array are rx_bytes, tx_bytes, rx_packets, tx_packets
+  // in that order.
+  static const size_t kTrafficCounterArraySize;
 
  protected:
   friend class base::RefCounted<Service>;
@@ -832,10 +845,6 @@ class Service : public base::RefCounted<Service> {
   static const int kReportMisconnectsThreshold;
   static const int kMaxDisconnectEventHistory;
   static const int kMaxMisconnectEventHistory;
-
-  // The components of this array are rx_bytes, tx_bytes, rx_packets, tx_packets
-  // in that order.
-  static const size_t kTrafficCounterArraySize;
 
   bool GetAutoConnect(Error* error);
 

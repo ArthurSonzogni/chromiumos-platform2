@@ -1355,6 +1355,11 @@ void Service::RefreshTrafficCounters(
   SaveToProfile();
 }
 
+void Service::ResetTrafficCounters(Error* /*error*/) {
+  current_traffic_counters_.clear();
+  SaveToProfile();
+}
+
 // static
 std::string Service::GetCurrentTrafficCounterKey(
     patchpanel::TrafficCounter::Source source, std::string suffix) {

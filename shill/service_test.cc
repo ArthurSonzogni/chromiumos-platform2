@@ -63,6 +63,7 @@ using testing::Values;
 namespace {
 const char kConnectDisconnectReason[] = "RPC";
 const char kGUID[] = "guid";
+const char kDeviceName[] = "testdevice";
 }  // namespace
 
 namespace shill {
@@ -197,6 +198,21 @@ class ServiceTest : public PropertyStoreTest {
         base::TimeDelta::FromMilliseconds(1));
     run_loop.Run();
     return service_->GetTimeSinceFailed();
+  }
+
+  patchpanel::TrafficCounter CreateCounter(
+      const std::valarray<uint64_t>& vals,
+      patchpanel::TrafficCounter::Source source,
+      const std::string& device_name) {
+    EXPECT_EQ(4, vals.size());
+    patchpanel::TrafficCounter counter;
+    counter.set_rx_bytes(vals[0]);
+    counter.set_tx_bytes(vals[1]);
+    counter.set_rx_packets(vals[2]);
+    counter.set_tx_packets(vals[3]);
+    counter.set_source(source);
+    counter.set_device(device_name);
+    return counter;
   }
 
   NiceMock<MockManager> mock_manager_;
@@ -2318,6 +2334,101 @@ TEST_F(ServiceTest, TrafficCounters) {
     EXPECT_EQ(
         service_
             ->current_traffic_counters_[patchpanel::TrafficCounter::USER][i],
+        user_counters_diff[i]);
+  }
+}
+
+TEST_F(ServiceTest, ResetTrafficCounters) {
+  auto source0 = patchpanel::TrafficCounter::CHROME;
+  auto source1 = patchpanel::TrafficCounter::USER;
+
+  // Initialize the Service's traffic counter snapshot.
+  std::valarray<uint64_t> init_counter_arr0{10, 20, 30, 40};
+  std::valarray<uint64_t> init_counter_arr1{50, 60, 70, 80};
+  patchpanel::TrafficCounter init_counter0 =
+      CreateCounter(init_counter_arr0, source0, kDeviceName);
+  patchpanel::TrafficCounter init_counter1 =
+      CreateCounter(init_counter_arr1, source1, kDeviceName);
+  service_->InitializeTrafficCounterSnapshot({init_counter0, init_counter1});
+
+  // Refresh traffic counters, updating the traffic counter snapshot and current
+  // traffic counters.
+  std::valarray<uint64_t> counter_arr0{100, 200, 300, 400};
+  std::valarray<uint64_t> counter_arr1{500, 600, 700, 800};
+  patchpanel::TrafficCounter counter0 =
+      CreateCounter(counter_arr0, source0, kDeviceName);
+  patchpanel::TrafficCounter counter1 =
+      CreateCounter(counter_arr1, source1, kDeviceName);
+  service_->RefreshTrafficCounters({counter0, counter1});
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
+  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
+    EXPECT_EQ(
+        service_
+            ->traffic_counter_snapshot()[patchpanel::TrafficCounter::CHROME][i],
+        counter_arr0[i]);
+    EXPECT_EQ(
+        service_
+            ->traffic_counter_snapshot()[patchpanel::TrafficCounter::USER][i],
+        counter_arr1[i]);
+  }
+  EXPECT_EQ(service_->current_traffic_counters().size(), 2);
+  std::vector<uint64_t> chrome_counters_diff{90, 180, 270, 360};
+  std::vector<uint64_t> user_counters_diff{450, 540, 630, 720};
+  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
+    EXPECT_EQ(
+        service_
+            ->current_traffic_counters()[patchpanel::TrafficCounter::CHROME][i],
+        chrome_counters_diff[i]);
+    EXPECT_EQ(
+        service_
+            ->current_traffic_counters()[patchpanel::TrafficCounter::USER][i],
+        user_counters_diff[i]);
+  }
+
+  // Reset the traffic counters.
+  service_->ResetTrafficCounters(/*error=*/nullptr);
+  EXPECT_EQ(service_->current_traffic_counters().size(), 0);
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
+  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
+    EXPECT_EQ(
+        service_
+            ->traffic_counter_snapshot()[patchpanel::TrafficCounter::CHROME][i],
+        counter_arr0[i]);
+    EXPECT_EQ(
+        service_
+            ->traffic_counter_snapshot()[patchpanel::TrafficCounter::USER][i],
+        counter_arr1[i]);
+  }
+
+  // Refresh traffic counters, updating the traffic counter snapshot and current
+  // traffic counters.
+  counter_arr0 = {1000, 2000, 3000, 4000};
+  counter_arr1 = {5000, 6000, 7000, 8000};
+  counter0 = CreateCounter(counter_arr0, source0, kDeviceName);
+  counter1 = CreateCounter(counter_arr1, source1, kDeviceName);
+  service_->RefreshTrafficCounters({counter0, counter1});
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
+  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
+    EXPECT_EQ(
+        service_
+            ->traffic_counter_snapshot()[patchpanel::TrafficCounter::CHROME][i],
+        counter_arr0[i]);
+    EXPECT_EQ(
+        service_
+            ->traffic_counter_snapshot()[patchpanel::TrafficCounter::USER][i],
+        counter_arr1[i]);
+  }
+  EXPECT_EQ(service_->current_traffic_counters().size(), 2);
+  chrome_counters_diff = {900, 1800, 2700, 3600};
+  user_counters_diff = {4500, 5400, 6300, 7200};
+  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
+    EXPECT_EQ(
+        service_
+            ->current_traffic_counters()[patchpanel::TrafficCounter::CHROME][i],
+        chrome_counters_diff[i]);
+    EXPECT_EQ(
+        service_
+            ->current_traffic_counters()[patchpanel::TrafficCounter::USER][i],
         user_counters_diff[i]);
   }
 }

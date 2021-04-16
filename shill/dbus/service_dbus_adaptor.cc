@@ -201,4 +201,10 @@ bool ServiceDBusAdaptor::GetWiFiPassphrase(brillo::ErrorPtr* error,
   return true;
 }
 
+bool ServiceDBusAdaptor::ResetTrafficCounters(brillo::ErrorPtr* error) {
+  SLOG(this, 2) << __func__;
+  service_->ResetTrafficCounters(nullptr);
+  return true;
+}
+
 }  // namespace shill

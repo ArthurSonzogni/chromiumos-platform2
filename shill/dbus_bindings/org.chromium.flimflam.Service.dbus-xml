@@ -33,6 +33,7 @@
 		<method name="GetWiFiPassphrase">
 			<arg type="s" direction="out"/>
 		</method>
+		<method name="ResetTrafficCounters"/>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>
