@@ -413,10 +413,6 @@ def GetParser(description):
   subparsers.add_parser(
       'write-target-dirs',
       help='Writes out a list of target directories for each PropFile element')
-  # Parser: write-phandle-properties
-  subparsers.add_parser(
-      'write-phandle-properties',
-      help='Writes out a list of properties which are used as phandles')
   # Parser: get-firmware-build-combinations
   build_combination_parser = subparsers.add_parser(
       'get-firmware-build-combinations',
