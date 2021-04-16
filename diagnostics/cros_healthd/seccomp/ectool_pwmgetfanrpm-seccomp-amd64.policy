@@ -16,6 +16,8 @@ set_robust_list: 1
 rt_sigprocmask: 1
 write: 1
 exit_group: 1
+sched_getattr: 1
+sched_setattr: 1
 
 # The following are syscalls enabled by -L in minijail.
 connect: 1

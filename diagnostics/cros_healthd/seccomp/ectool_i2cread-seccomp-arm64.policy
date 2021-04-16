@@ -15,3 +15,5 @@ restart_syscall: 1
 rt_sigreturn: 1
 uname: 1
 write: 1
+sched_getattr: 1
+sched_setattr: 1

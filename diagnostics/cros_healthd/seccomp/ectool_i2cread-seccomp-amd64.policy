@@ -39,6 +39,8 @@ close: 1
 exit_group: 1
 stat: 1
 access: 1
+sched_getattr: 1
+sched_setattr: 1
 
 # The following are syscalls enabled by -L in minijail.
 connect: 1
