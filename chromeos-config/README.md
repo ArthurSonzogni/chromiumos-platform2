@@ -762,6 +762,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | apps | [apps](#apps) |  | False |  | False |  |
 | extra-ash-flags | array - string |  | False |  | True | Switches passed to the Ash window manager and system UI. Each entry should be a string of the form --<key>=<value>, or --<key> for boolean switches. If this property is not set, flags will be determined by other cros_config properties. Serialized to a null byte separated string when written to configfs.img |
+| handwriting-recognition-web-platform-api | boolean |  | False |  | False | Whether the handwriting recognition web platform API is supported. |
 | help-content-id | string |  | False |  | False | Identifier passed to the Showoff app to identify any device-specific help content to be displayed. |
 | power-button | [power-button](#power_button) |  | False |  | False |  |
 | side-volume-button | [side-volume-button](#side_volume_button) |  | False |  | False | Defines the position of the side volume button. `region` indicates whether the button is at the side of the "screen" or "keyboard" of the device. `side` indicates which edge the button is anchored to while the device in landscape primary screen orientation. It can be "left", "right", "top", "bottom". |

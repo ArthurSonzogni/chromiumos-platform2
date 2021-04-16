@@ -817,6 +817,10 @@ properties:
                       property is not set, flags will be determined by other
                       cros_config properties. Serialized to a null byte
                       separated string when written to configfs.img
+                handwriting-recognition-web-platform-api:
+                  description: Whether the handwriting recognition web platform API
+                    is supported.
+                  type: boolean
                 help-content-id:
                   description: Identifier passed to the Showoff app to identify
                     any device-specific help content to be displayed.
