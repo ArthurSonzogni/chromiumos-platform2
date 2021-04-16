@@ -39,9 +39,9 @@ class SequenceFunction : public ProbeFunction {
     PARSE_END();
   }
 
-  DataType Eval() const override;
-
  private:
+  DataType EvalImpl() const override;
+
   std::vector<std::unique_ptr<ProbeFunction>> functions_;
 
   FRIEND_TEST(SequenceFunctionTest, TestEvalFailTooManyResults);

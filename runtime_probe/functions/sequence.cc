@@ -8,7 +8,7 @@
 
 namespace runtime_probe {
 
-SequenceFunction::DataType SequenceFunction::Eval() const {
+SequenceFunction::DataType SequenceFunction::EvalImpl() const {
   base::Value result(base::Value::Type::DICTIONARY);
 
   for (const auto& func : functions_) {

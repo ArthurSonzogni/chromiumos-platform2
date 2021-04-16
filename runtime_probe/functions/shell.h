@@ -39,15 +39,15 @@ class ShellFunction : public ProbeFunction {
     PARSE_END();
   }
 
-  // Override `Eval` function, which should return a list of Value.
-  DataType Eval() const override {
+ private:
+  // Override `EvalImpl` function, which should return a list of Value.
+  DataType EvalImpl() const override {
     VLOG(1) << "command: " << command_;
     // TODO(stimim): implement this
 
     return DataType{};
   }
 
- private:
   // Declare function arguments
   std::string command_;
   std::string key_;

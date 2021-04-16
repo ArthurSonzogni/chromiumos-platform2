@@ -72,10 +72,10 @@ class SysfsFunction : public ProbeFunction {
   static std::unique_ptr<SysfsFunction> FromKwargsValue(
       const base::Value& dict_value);
 
-  // Override `Eval` function, which should return a list of Value.
-  DataType Eval() const override;
-
  private:
+  // Override `EvalImpl` function, which should return a list of Value.
+  DataType EvalImpl() const override;
+
   // Declare function arguments
 
   // The path of target sysfs folder, the last component can contain '*'.
