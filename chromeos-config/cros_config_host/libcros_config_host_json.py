@@ -2,7 +2,7 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-"""Crome OS Configuration access library.
+"""Chrome OS Configuration access library.
 
 Provides build-time access to the model configuration on the host. It is used
 for reading from the model configuration. Consider using cros_config_host.py

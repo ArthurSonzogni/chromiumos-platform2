@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Libary to provide access to the Chrome OS model configuration in YAML / JSON
+// Library to provide access to the Chrome OS model configuration in YAML / JSON
 // format
 
 #include "chromeos-config/libcros_config/cros_config_json.h"
