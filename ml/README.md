@@ -15,9 +15,6 @@ your model from Chromium using the client library provided at
 [//chromeos/services/machine_learning/public/cpp/]. See [this
 doc](docs/publish_and_use_model.md) for more detailed instructions.
 
-Optional: Later, if you find a need for it, you can [add your model to the ML
-Service internals page](docs/add_model_to_internals.md).
-
 Note: The sandboxed process hosting TFLite models is currently shared between
 all users of ML Service. If this isn't acceptable from a security perspective
 for your model, follow [this bug](http://crbug.com/933017) about switching ML
