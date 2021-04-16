@@ -44,8 +44,7 @@ class SchemaTests(unittest.TestCase):
             output_lines,
             readme_schema_lines,
             'Schema does not match README.\n'
-            'Please run: python3 -m cros_config_host.generate_schema_doc '
-            '-o README.md')
+            'Please run ./regen.sh in the chromeos-config directory.')
 
     os.remove(output)
 

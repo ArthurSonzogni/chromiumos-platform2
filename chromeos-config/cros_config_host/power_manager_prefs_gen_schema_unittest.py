@@ -26,12 +26,8 @@ class MainTest(cros_test_lib.TempDirTestCase):
     changed = subprocess.run(  # pylint: disable=subprocess-run-check
         ['diff', SCHEMA_FILE, output_file]).returncode != 0
 
-    regen_cmd = ('To regenerate the schema, run:\n'
-                 '\tpython3 -m cros_config_host.power_manager_prefs_gen_schema '
-                 '-o %s ' % SCHEMA_FILE)
-
     if changed:
-      print(regen_cmd)
+      print('Please run ./regen.sh in the chromeos-config directory')
       self.fail('Powerd prefs schema does not match C++ prefs source.')
 
 

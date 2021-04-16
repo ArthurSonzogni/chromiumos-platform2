@@ -665,7 +665,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
       schema_contents = schema_stream.read()
       return libcros_schema.LoadYaml(schema_contents)
 
-  def assertFileEqual(self, file_expected, file_actual, regen_cmd=''):
+  def assertFileEqual(self, file_expected, file_actual):
     self.assertTrue(os.path.isfile(file_expected),
                     'Expected file does not exist at path: {}'
                     .format(file_expected))
@@ -673,6 +673,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
     self.assertTrue(os.path.isfile(file_actual),
                     'Actual file does not exist at path: {}'
                     .format(file_actual))
+
+    regen_message = 'Please run ./regen.sh in the chromeos-config directory.'
 
     with open(file_expected, 'r') as expected, open(file_actual, 'r') as actual:
       for line_num, (line_expected, line_actual) in \
@@ -684,7 +686,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
             'Path of expected output file: {3}\n'
             'Path of actual output file: {4}\n'
             '{5}').format(line_num, repr(line_expected), repr(line_actual),
-                          file_expected, file_actual, regen_cmd))
+                          file_expected, file_actual, regen_message))
 
   def assertMultilineStringEqual(self, str_expected, str_actual):
     expected = str_expected.strip().split('\n')
@@ -705,17 +707,12 @@ class MainTests(cros_test_lib.TempDirTestCase):
         os.path.join(this_dir, '../test_data/test.yaml'),
         json_output,
         gen_c_output_dir=self.tempdir)
-    regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
-                 '-c test_data/test.yaml '
-                 '-o test_data/test_build.json '
-                 '-g test_data')
 
     expected_json_file = os.path.join(this_dir, '../test_data/test_build.json')
-    self.assertFileEqual(expected_json_file, json_output, regen_cmd)
+    self.assertFileEqual(expected_json_file, json_output)
 
     expected_c_file = os.path.join(this_dir, '../test_data/test.c')
-    self.assertFileEqual(expected_c_file, c_output, regen_cmd)
+    self.assertFileEqual(expected_c_file, c_output)
 
   def testMainWithExampleWithoutBuild(self):
     output = os.path.join(self.tempdir, 'output')
@@ -725,14 +722,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
         output,
         filter_build_details=True)
 
-    regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
-                 '-f True '
-                 '-c test_data/test.yaml '
-                 '-o test_data/test.json')
-
     expected_file = os.path.join(this_dir, '../test_data/test.json')
-    self.assertFileEqual(expected_file, output, regen_cmd)
+    self.assertFileEqual(expected_file, output)
 
   def testMainArmExample(self):
     json_output = os.path.join(self.tempdir, 'output.json')
@@ -743,18 +734,12 @@ class MainTests(cros_test_lib.TempDirTestCase):
         json_output,
         filter_build_details=True,
         gen_c_output_dir=self.tempdir)
-    regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
-                 '-f True '
-                 '-c test_data/test_arm.yaml '
-                 '-o test_data/test_arm.json '
-                 '-g test_data')
 
     expected_json_file = os.path.join(this_dir, '../test_data/test_arm.json')
-    self.assertFileEqual(expected_json_file, json_output, regen_cmd)
+    self.assertFileEqual(expected_json_file, json_output)
 
     expected_c_file = os.path.join(this_dir, '../test_data/test_arm.c')
-    self.assertFileEqual(expected_c_file, c_output, regen_cmd)
+    self.assertFileEqual(expected_c_file, c_output)
 
   def testMainImportExample(self):
     output = os.path.join(self.tempdir, 'output')
@@ -762,12 +747,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
         None,
         os.path.join(this_dir, '../test_data/test_import.yaml'),
         output)
-    regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
-                 '-c test_data/test_import.yaml '
-                 '-o test_data/test_import.json')
     expected_file = os.path.join(this_dir, '../test_data/test_import.json')
-    self.assertFileEqual(expected_file, output, regen_cmd)
+    self.assertFileEqual(expected_file, output)
 
   def testMainMergeExample(self):
     output = os.path.join(self.tempdir, 'output')
@@ -778,13 +759,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
         output,
         configs=[os.path.join(base_path, 'test_merge_base.yaml'),
                  os.path.join(base_path, 'test_merge_overlay.yaml')])
-    regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
-                 '-o test_data/test_merge.json '
-                 '-m test_data/test_merge_base.yaml '
-                 'test_data/test_merge_overlay.yaml')
     expected_file = os.path.join(this_dir, '../test_data/test_merge.json')
-    self.assertFileEqual(expected_file, output, regen_cmd)
+    self.assertFileEqual(expected_file, output)
 
   def testClangFormat(self):
     test_input = 'int main(int argc, char **argv) { return 0; }'
