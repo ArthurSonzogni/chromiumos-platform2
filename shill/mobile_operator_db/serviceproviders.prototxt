@@ -7381,6 +7381,7 @@ mno {
         name : "SPモード"
       }
       authentication : CHAP
+      ip_type: IPV4V6
       is_attach_apn : true
     }
     mobile_apn {
