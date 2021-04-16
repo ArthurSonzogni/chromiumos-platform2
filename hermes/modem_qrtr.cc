@@ -608,6 +608,8 @@ void ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
                << " status_len:" << resp.status_len
                << " eid_info_len:" << resp.eid_info_len;
   }
+
+  bool euicc_found = false;
   for (uint8_t i = 0; i < min_len; ++i) {
     bool is_present = (resp.status[i].physical_card_status ==
                        uim_physical_slot_status::kCardPresent);
@@ -632,6 +634,7 @@ void ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
       continue;
     }
 
+    euicc_found = true;
     std::string eid;
     if (resp.eid_info[i].eid_len != kEidLen)
       LOG(ERROR) << "Expected eid_len=" << kEidLen << ", eid_len is "
@@ -650,6 +653,12 @@ void ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
         i + 1, is_active
                    ? EuiccSlotInfo(resp.status[i].logical_slot, std::move(eid))
                    : EuiccSlotInfo(std::move(eid)));
+  }
+
+  if (!euicc_found) {
+    LOG(ERROR) << "Expected to find an eSIM, retrying ...";
+    Shutdown();
+    RetryInitialization();
   }
 }
 
