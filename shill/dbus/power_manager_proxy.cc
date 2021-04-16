@@ -7,15 +7,11 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/message_lite.h>
 
 #include "power_manager/proto_bindings/suspend.pb.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-
-using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -23,10 +19,10 @@ namespace {
 
 // Serializes |protobuf| to |out| and returns true on success.
 bool SerializeProtocolBuffer(const google::protobuf::MessageLite& protobuf,
-                             vector<uint8_t>* out) {
+                             std::vector<uint8_t>* out) {
   CHECK(out);
   out->clear();
-  string serialized_protobuf;
+  std::string serialized_protobuf;
   if (!protobuf.SerializeToString(&serialized_protobuf))
     return false;
   out->assign(serialized_protobuf.begin(), serialized_protobuf.end());
@@ -35,7 +31,7 @@ bool SerializeProtocolBuffer(const google::protobuf::MessageLite& protobuf,
 
 // Deserializes |serialized_protobuf| to |protobuf_out| and returns true on
 // success.
-bool DeserializeProtocolBuffer(const vector<uint8_t>& serialized_protobuf,
+bool DeserializeProtocolBuffer(const std::vector<uint8_t>& serialized_protobuf,
                                google::protobuf::MessageLite* protobuf_out) {
   CHECK(protobuf_out);
   if (serialized_protobuf.empty())
@@ -82,7 +78,7 @@ PowerManagerProxy::PowerManagerProxy(
 PowerManagerProxy::~PowerManagerProxy() = default;
 
 bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
-                                             const string& description,
+                                             const std::string& description,
                                              int* delay_id_out) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
@@ -109,7 +105,7 @@ bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
 }
 
 bool PowerManagerProxy::RegisterDarkSuspendDelay(base::TimeDelta timeout,
-                                                 const string& description,
+                                                 const std::string& description,
                                                  int* delay_id_out) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
@@ -135,7 +131,8 @@ bool PowerManagerProxy::ReportDarkSuspendReadiness(int delay_id,
   return ReportSuspendReadinessInternal(true, delay_id, suspend_id);
 }
 
-bool PowerManagerProxy::RecordDarkResumeWakeReason(const string& wake_reason) {
+bool PowerManagerProxy::RecordDarkResumeWakeReason(
+    const std::string& wake_reason) {
   LOG(INFO) << __func__;
 
   if (!service_available_) {
@@ -145,7 +142,7 @@ bool PowerManagerProxy::RecordDarkResumeWakeReason(const string& wake_reason) {
 
   power_manager::DarkResumeWakeReason proto;
   proto.set_wake_reason(wake_reason);
-  vector<uint8_t> serialized_proto;
+  std::vector<uint8_t> serialized_proto;
   CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
 
   brillo::ErrorPtr error;
@@ -177,21 +174,22 @@ bool PowerManagerProxy::ChangeRegDomain(
   return true;
 }
 
-bool PowerManagerProxy::RegisterSuspendDelayInternal(bool is_dark,
-                                                     base::TimeDelta timeout,
-                                                     const string& description,
-                                                     int* delay_id_out) {
-  const string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
+bool PowerManagerProxy::RegisterSuspendDelayInternal(
+    bool is_dark,
+    base::TimeDelta timeout,
+    const std::string& description,
+    int* delay_id_out) {
+  const std::string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
   LOG(INFO) << __func__ << "(" << timeout.InMilliseconds() << ", "
             << is_dark_arg << ")";
 
   power_manager::RegisterSuspendDelayRequest request_proto;
   request_proto.set_timeout(timeout.ToInternalValue());
   request_proto.set_description(description);
-  vector<uint8_t> serialized_request;
+  std::vector<uint8_t> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
-  vector<uint8_t> serialized_reply;
+  std::vector<uint8_t> serialized_reply;
   brillo::ErrorPtr error;
   if (is_dark) {
     proxy_->RegisterDarkSuspendDelay(serialized_request, &serialized_reply,
@@ -217,12 +215,12 @@ bool PowerManagerProxy::RegisterSuspendDelayInternal(bool is_dark,
 
 bool PowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,
                                                        int delay_id) {
-  const string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
+  const std::string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
   LOG(INFO) << __func__ << "(" << delay_id << ", " << is_dark_arg << ")";
 
   power_manager::UnregisterSuspendDelayRequest request_proto;
   request_proto.set_delay_id(delay_id);
-  vector<uint8_t> serialized_request;
+  std::vector<uint8_t> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
   brillo::ErrorPtr error;
@@ -242,14 +240,14 @@ bool PowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,
 bool PowerManagerProxy::ReportSuspendReadinessInternal(bool is_dark,
                                                        int delay_id,
                                                        int suspend_id) {
-  const string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
+  const std::string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
   LOG(INFO) << __func__ << "(" << delay_id << ", " << suspend_id << ", "
             << is_dark_arg << ")";
 
   power_manager::SuspendReadinessInfo proto;
   proto.set_delay_id(delay_id);
   proto.set_suspend_id(suspend_id);
-  vector<uint8_t> serialized_proto;
+  std::vector<uint8_t> serialized_proto;
   CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
 
   brillo::ErrorPtr error;
@@ -267,7 +265,7 @@ bool PowerManagerProxy::ReportSuspendReadinessInternal(bool is_dark,
 }
 
 void PowerManagerProxy::SuspendImminent(
-    const vector<uint8_t>& serialized_proto) {
+    const std::vector<uint8_t>& serialized_proto) {
   LOG(INFO) << __func__;
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
@@ -277,7 +275,8 @@ void PowerManagerProxy::SuspendImminent(
   delegate_->OnSuspendImminent(proto.suspend_id());
 }
 
-void PowerManagerProxy::SuspendDone(const vector<uint8_t>& serialized_proto) {
+void PowerManagerProxy::SuspendDone(
+    const std::vector<uint8_t>& serialized_proto) {
   LOG(INFO) << __func__;
   power_manager::SuspendDone proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
@@ -291,7 +290,7 @@ void PowerManagerProxy::SuspendDone(const vector<uint8_t>& serialized_proto) {
 }
 
 void PowerManagerProxy::DarkSuspendImminent(
-    const vector<uint8_t>& serialized_proto) {
+    const std::vector<uint8_t>& serialized_proto) {
   LOG(INFO) << __func__;
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
@@ -333,8 +332,8 @@ void PowerManagerProxy::OnServiceAvailable(bool available) {
   service_available_ = true;
 }
 
-void PowerManagerProxy::OnServiceOwnerChanged(const string& old_owner,
-                                              const string& new_owner) {
+void PowerManagerProxy::OnServiceOwnerChanged(const std::string& old_owner,
+                                              const std::string& new_owner) {
   LOG(INFO) << __func__ << " old: " << old_owner << " new: " << new_owner;
 
   if (new_owner.empty()) {
@@ -354,8 +353,8 @@ void PowerManagerProxy::OnServiceOwnerChanged(const string& old_owner,
   }
 }
 
-void PowerManagerProxy::OnSignalConnected(const string& interface_name,
-                                          const string& signal_name,
+void PowerManagerProxy::OnSignalConnected(const std::string& interface_name,
+                                          const std::string& signal_name,
                                           bool success) {
   LOG(INFO) << __func__ << " interface: " << interface_name
             << " signal: " << signal_name << "success: " << success;

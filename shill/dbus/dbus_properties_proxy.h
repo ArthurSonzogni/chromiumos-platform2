@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
+#include "cellular/dbus-proxies.h"
 #include <base/callback.h>
 #include <brillo/any.h>
 
-#include "cellular/dbus-proxies.h"
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 

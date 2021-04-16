@@ -9,13 +9,11 @@
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -24,7 +22,7 @@ namespace mm1 {
 
 ModemProxy::ModemProxy(const scoped_refptr<dbus::Bus>& bus,
                        const RpcIdentifier& path,
-                       const string& service)
+                       const std::string& service)
     : proxy_(
           new org::freedesktop::ModemManager1::ModemProxy(bus, service, path)) {
   // Register signal handlers.
@@ -210,7 +208,7 @@ void ModemProxy::OnCreateBearerFailure(const RpcIdentifierCallback& callback,
 }
 
 void ModemProxy::OnCommandSuccess(const StringCallback& callback,
-                                  const string& response) {
+                                  const std::string& response) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << response;
   callback.Run(response, Error());
 }
@@ -224,13 +222,13 @@ void ModemProxy::OnCommandFailure(const StringCallback& callback,
 }
 
 void ModemProxy::OnOperationSuccess(const ResultCallback& callback,
-                                    const string& operation) {
+                                    const std::string& operation) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   callback.Run(Error());
 }
 
 void ModemProxy::OnOperationFailure(const ResultCallback& callback,
-                                    const string& operation,
+                                    const std::string& operation,
                                     brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;
@@ -238,8 +236,8 @@ void ModemProxy::OnOperationFailure(const ResultCallback& callback,
   callback.Run(error);
 }
 
-void ModemProxy::OnSignalConnected(const string& interface_name,
-                                   const string& signal_name,
+void ModemProxy::OnSignalConnected(const std::string& interface_name,
+                                   const std::string& signal_name,
                                    bool success) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << "interface: " << interface_name

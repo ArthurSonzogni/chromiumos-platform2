@@ -4,9 +4,7 @@
 
 #include "shill/dbus/manager_dbus_adaptor.h"
 
-#include <string>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -22,14 +20,11 @@
 #include "shill/manager.h"
 #include "shill/property_store.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const ManagerDBusAdaptor* m) {
+static std::string ObjectID(const ManagerDBusAdaptor* m) {
   return m->GetRpcIdentifier().value();
 }
 }  // namespace Logging
@@ -57,34 +52,35 @@ void ManagerDBusAdaptor::RegisterAsync(
   dbus_object()->RegisterAsync(completion_callback);
 }
 
-void ManagerDBusAdaptor::EmitBoolChanged(const string& name, bool value) {
+void ManagerDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ManagerDBusAdaptor::EmitUintChanged(const string& name, uint32_t value) {
+void ManagerDBusAdaptor::EmitUintChanged(const std::string& name,
+                                         uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ManagerDBusAdaptor::EmitIntChanged(const string& name, int value) {
+void ManagerDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ManagerDBusAdaptor::EmitStringChanged(const string& name,
-                                           const string& value) {
+void ManagerDBusAdaptor::EmitStringChanged(const std::string& name,
+                                           const std::string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ManagerDBusAdaptor::EmitStringsChanged(const string& name,
-                                            const vector<string>& value) {
+void ManagerDBusAdaptor::EmitStringsChanged(
+    const std::string& name, const std::vector<std::string>& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ManagerDBusAdaptor::EmitKeyValueStoreChanged(const string& name,
+void ManagerDBusAdaptor::EmitKeyValueStoreChanged(const std::string& name,
                                                   const KeyValueStore& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   brillo::VariantDictionary dict =
@@ -92,14 +88,14 @@ void ManagerDBusAdaptor::EmitKeyValueStoreChanged(const string& name,
   SendPropertyChangedSignal(name, brillo::Any(dict));
 }
 
-void ManagerDBusAdaptor::EmitRpcIdentifierChanged(const string& name,
+void ManagerDBusAdaptor::EmitRpcIdentifierChanged(const std::string& name,
                                                   const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
-    const string& name, const RpcIdentifiers& value) {
+    const std::string& name, const RpcIdentifiers& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
@@ -111,25 +107,26 @@ bool ManagerDBusAdaptor::GetProperties(brillo::ErrorPtr* error,
 }
 
 bool ManagerDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
-                                     const string& name,
+                                     const std::string& name,
                                      const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   return DBusAdaptor::SetProperty(manager_->mutable_store(), name, value,
                                   error);
 }
 
-bool ManagerDBusAdaptor::GetState(brillo::ErrorPtr* /*error*/, string* state) {
+bool ManagerDBusAdaptor::GetState(brillo::ErrorPtr* /*error*/,
+                                  std::string* state) {
   SLOG(this, 2) << __func__;
   *state = manager_->CalculateState(nullptr);
   return true;
 }
 
 bool ManagerDBusAdaptor::CreateProfile(brillo::ErrorPtr* error,
-                                       const string& name,
+                                       const std::string& name,
                                        dbus::ObjectPath* profile_path) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
-  string path;
+  std::string path;
   manager_->CreateProfile(name, &path, &e);
   if (e.ToChromeosError(error)) {
     return false;
@@ -139,7 +136,7 @@ bool ManagerDBusAdaptor::CreateProfile(brillo::ErrorPtr* error,
 }
 
 bool ManagerDBusAdaptor::RemoveProfile(brillo::ErrorPtr* error,
-                                       const string& name) {
+                                       const std::string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   manager_->RemoveProfile(name, &e);
@@ -147,11 +144,11 @@ bool ManagerDBusAdaptor::RemoveProfile(brillo::ErrorPtr* error,
 }
 
 bool ManagerDBusAdaptor::PushProfile(brillo::ErrorPtr* error,
-                                     const string& name,
+                                     const std::string& name,
                                      dbus::ObjectPath* profile_path) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
-  string path;
+  std::string path;
   manager_->PushProfile(name, &path, &e);
   if (e.ToChromeosError(error)) {
     return false;
@@ -161,12 +158,12 @@ bool ManagerDBusAdaptor::PushProfile(brillo::ErrorPtr* error,
 }
 
 bool ManagerDBusAdaptor::InsertUserProfile(brillo::ErrorPtr* error,
-                                           const string& name,
-                                           const string& user_hash,
+                                           const std::string& name,
+                                           const std::string& user_hash,
                                            dbus::ObjectPath* profile_path) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
-  string path;
+  std::string path;
   manager_->InsertUserProfile(name, user_hash, &path, &e);
   if (e.ToChromeosError(error)) {
     return false;
@@ -176,7 +173,7 @@ bool ManagerDBusAdaptor::InsertUserProfile(brillo::ErrorPtr* error,
 }
 
 bool ManagerDBusAdaptor::PopProfile(brillo::ErrorPtr* error,
-                                    const string& name) {
+                                    const std::string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   manager_->PopProfile(name, &e);
@@ -205,7 +202,7 @@ bool ManagerDBusAdaptor::RecheckPortal(brillo::ErrorPtr* error) {
 }
 
 bool ManagerDBusAdaptor::RequestScan(brillo::ErrorPtr* error,
-                                     const string& technology) {  // NOLINT
+                                     const std::string& technology) {  // NOLINT
   SLOG(this, 2) << __func__ << ": " << technology;
   Error e;
   manager_->RequestScan(technology, &e);
@@ -225,7 +222,7 @@ void ManagerDBusAdaptor::SetNetworkThrottlingStatus(
 }
 
 void ManagerDBusAdaptor::EnableTechnology(DBusMethodResponsePtr<> response,
-                                          const string& technology_name) {
+                                          const std::string& technology_name) {
   SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
@@ -235,7 +232,7 @@ void ManagerDBusAdaptor::EnableTechnology(DBusMethodResponsePtr<> response,
 }
 
 void ManagerDBusAdaptor::DisableTechnology(DBusMethodResponsePtr<> response,
-                                           const string& technology_name) {
+                                           const std::string& technology_name) {
   SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
@@ -333,14 +330,14 @@ bool ManagerDBusAdaptor::SetDebugLevel(brillo::ErrorPtr* /*error*/,
 }
 
 bool ManagerDBusAdaptor::GetServiceOrder(brillo::ErrorPtr* /*error*/,
-                                         string* order) {
+                                         std::string* order) {
   SLOG(this, 2) << __func__;
   *order = manager_->GetTechnologyOrder();
   return true;
 }
 
 bool ManagerDBusAdaptor::SetServiceOrder(brillo::ErrorPtr* error,
-                                         const string& order) {
+                                         const std::string& order) {
   SLOG(this, 2) << __func__ << ": " << order;
   Error e;
   manager_->SetTechnologyOrder(order, &e);
@@ -348,21 +345,21 @@ bool ManagerDBusAdaptor::SetServiceOrder(brillo::ErrorPtr* error,
 }
 
 bool ManagerDBusAdaptor::GetDebugTags(brillo::ErrorPtr* /*error*/,
-                                      string* tags) {
+                                      std::string* tags) {
   SLOG(this, 2) << __func__;
   *tags = ScopeLogger::GetInstance()->GetEnabledScopeNames();
   return true;
 }
 
 bool ManagerDBusAdaptor::SetDebugTags(brillo::ErrorPtr* /*error*/,
-                                      const string& tags) {
+                                      const std::string& tags) {
   SLOG(this, 2) << __func__ << ": " << tags;
   ScopeLogger::GetInstance()->EnableScopesByName(tags);
   return true;
 }
 
 bool ManagerDBusAdaptor::ListDebugTags(brillo::ErrorPtr* /*error*/,
-                                       string* tags) {
+                                       std::string* tags) {
   SLOG(this, 2) << __func__;
   *tags = ScopeLogger::GetInstance()->GetAllScopeNames();
   return true;
@@ -393,14 +390,14 @@ bool ManagerDBusAdaptor::CreateConnectivityReport(brillo::ErrorPtr* error) {
 
 bool ManagerDBusAdaptor::ClaimInterface(brillo::ErrorPtr* error,
                                         dbus::Message* message,
-                                        const string& claimer_name,
-                                        const string& interface_name) {
+                                        const std::string& claimer_name,
+                                        const std::string& interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
   // Empty claimer name is used to indicate default claimer.
   // TODO(samueltan): update this API or make a new API to use a flag to
   // indicate default claimer instead (b/27924738).
-  string claimer = (claimer_name == "" ? "" : message->GetSender());
+  std::string claimer = (claimer_name == "" ? "" : message->GetSender());
   manager_->ClaimDevice(claimer, interface_name, &e);
   if (e.IsSuccess() && claimer_name != "") {
     // Only setup watcher for non-default claimer.
@@ -415,8 +412,8 @@ bool ManagerDBusAdaptor::ClaimInterface(brillo::ErrorPtr* error,
 
 bool ManagerDBusAdaptor::ReleaseInterface(brillo::ErrorPtr* error,
                                           dbus::Message* message,
-                                          const string& claimer_name,
-                                          const string& interface_name) {
+                                          const std::string& claimer_name,
+                                          const std::string& interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
   bool claimer_removed;

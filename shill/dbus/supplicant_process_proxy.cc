@@ -4,19 +4,14 @@
 
 #include "shill/dbus/supplicant_process_proxy.h"
 
-#include <string>
-
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/supplicant/wpa_supplicant.h"
-
-using std::string;
 
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -165,7 +160,7 @@ bool SupplicantProcessProxy::SetDebugLevel(const std::string& level) {
   return true;
 }
 
-bool SupplicantProcessProxy::GetDebugLevel(string* level) {
+bool SupplicantProcessProxy::GetDebugLevel(std::string* level) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__;
   if (!service_available_) {
     LOG(ERROR) << "Supplicant process not present";
@@ -219,8 +214,8 @@ void SupplicantProcessProxy::OnServiceAvailable(bool available) {
   service_available_ = available;
 }
 
-void SupplicantProcessProxy::OnServiceOwnerChanged(const string& old_owner,
-                                                   const string& new_owner) {
+void SupplicantProcessProxy::OnServiceOwnerChanged(
+    const std::string& old_owner, const std::string& new_owner) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2)
       << __func__ << "old: " << old_owner << " new: " << new_owner;
   if (new_owner.empty()) {
@@ -236,9 +231,10 @@ void SupplicantProcessProxy::OnPropertyChanged(
       << __func__ << ": " << property_name;
 }
 
-void SupplicantProcessProxy::OnSignalConnected(const string& interface_name,
-                                               const string& signal_name,
-                                               bool success) {
+void SupplicantProcessProxy::OnSignalConnected(
+    const std::string& interface_name,
+    const std::string& signal_name,
+    bool success) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2)
       << __func__ << "interface: " << interface_name
       << " signal: " << signal_name << "success: " << success;

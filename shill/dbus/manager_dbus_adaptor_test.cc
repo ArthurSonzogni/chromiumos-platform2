@@ -21,9 +21,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/test_event_dispatcher.h"
 
-using dbus::MockBus;
-using dbus::Response;
-using std::string;
 using testing::_;
 using testing::ByMove;
 using testing::Invoke;
@@ -37,8 +34,8 @@ namespace shill {
 class ManagerDBusAdaptorTest : public Test {
  public:
   ManagerDBusAdaptorTest()
-      : adaptor_bus_(new MockBus(dbus::Bus::Options())),
-        proxy_bus_(new MockBus(dbus::Bus::Options())),
+      : adaptor_bus_(new dbus::MockBus(dbus::Bus::Options())),
+        proxy_bus_(new dbus::MockBus(dbus::Bus::Options())),
         manager_(&control_interface_, &dispatcher_, &metrics_),
         manager_adaptor_(adaptor_bus_, proxy_bus_, &manager_) {}
 
@@ -52,8 +49,8 @@ class ManagerDBusAdaptorTest : public Test {
   void TearDown() override {}
 
  protected:
-  scoped_refptr<MockBus> adaptor_bus_;
-  scoped_refptr<MockBus> proxy_bus_;
+  scoped_refptr<dbus::MockBus> adaptor_bus_;
+  scoped_refptr<dbus::MockBus> proxy_bus_;
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
@@ -72,10 +69,10 @@ void SetErrorTypeFailure(Error* error) {
 
 TEST_F(ManagerDBusAdaptorTest, ClaimInterface) {
   brillo::ErrorPtr error;
-  string kDefaultClaimerName = "";
-  string kNonDefaultClaimerName = "test_claimer";
-  string kInterfaceName = "test_interface";
-  std::unique_ptr<Response> message(Response::CreateEmpty());
+  std::string kDefaultClaimerName = "";
+  std::string kNonDefaultClaimerName = "test_claimer";
+  std::string kInterfaceName = "test_interface";
+  std::unique_ptr<dbus::Response> message(dbus::Response::CreateEmpty());
 
   // Watcher for device claimer is not created when we fail to claim the device.
   EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
@@ -112,9 +109,9 @@ TEST_F(ManagerDBusAdaptorTest, ClaimInterface) {
 
 TEST_F(ManagerDBusAdaptorTest, ReleaseInterface) {
   brillo::ErrorPtr error;
-  string kClaimerName = "test_claimer";
-  string kInterfaceName = "test_interface";
-  std::unique_ptr<Response> message(Response::CreateEmpty());
+  std::string kClaimerName = "test_claimer";
+  std::string kInterfaceName = "test_interface";
+  std::unique_ptr<dbus::Response> message(dbus::Response::CreateEmpty());
 
   // Setup watcher for device claimer.
   manager_adaptor_.watcher_for_device_claimer_.reset(

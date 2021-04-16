@@ -4,7 +4,6 @@
 
 #include "shill/dbus/supplicant_interface_proxy.h"
 
-#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -14,13 +13,11 @@
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -178,8 +175,8 @@ bool SupplicantInterfaceProxy::FlushBSS(const uint32_t& age) {
 }
 
 bool SupplicantInterfaceProxy::NetworkReply(const RpcIdentifier& network,
-                                            const string& field,
-                                            const string& value) {
+                                            const std::string& field,
+                                            const std::string& value) {
   SLOG(&interface_proxy_->GetObjectPath(), 2)
       << __func__ << " network: " << network.value() << " field: " << field
       << " value: " << value;
@@ -192,7 +189,7 @@ bool SupplicantInterfaceProxy::NetworkReply(const RpcIdentifier& network,
   return true;
 }
 
-bool SupplicantInterfaceProxy::Roam(const string& addr) {
+bool SupplicantInterfaceProxy::Roam(const std::string& addr) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
   if (!interface_proxy_->Roam(addr, &error)) {
@@ -346,12 +343,12 @@ bool SupplicantInterfaceProxy::SetScan(bool enable) {
   return true;
 }
 
-void SupplicantInterfaceProxy::BlobAdded(const string& /*blobname*/) {
+void SupplicantInterfaceProxy::BlobAdded(const std::string& /*blobname*/) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   // XXX
 }
 
-void SupplicantInterfaceProxy::BlobRemoved(const string& /*blobname*/) {
+void SupplicantInterfaceProxy::BlobRemoved(const std::string& /*blobname*/) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   // XXX
 }
@@ -370,8 +367,8 @@ void SupplicantInterfaceProxy::Certification(
   delegate_->Certification(store);
 }
 
-void SupplicantInterfaceProxy::EAP(const string& status,
-                                   const string& parameter) {
+void SupplicantInterfaceProxy::EAP(const std::string& status,
+                                   const std::string& parameter) {
   SLOG(&interface_proxy_->GetObjectPath(), 2)
       << __func__ << ": status " << status << ", parameter " << parameter;
   delegate_->EAPEvent(status, parameter);
@@ -420,9 +417,10 @@ void SupplicantInterfaceProxy::OnPropertyChanged(
       << __func__ << ": " << property_name;
 }
 
-void SupplicantInterfaceProxy::OnSignalConnected(const string& interface_name,
-                                                 const string& signal_name,
-                                                 bool success) {
+void SupplicantInterfaceProxy::OnSignalConnected(
+    const std::string& interface_name,
+    const std::string& signal_name,
+    bool success) {
   SLOG(&interface_proxy_->GetObjectPath(), 2)
       << __func__ << "interface: " << interface_name
       << " signal: " << signal_name << "success: " << success;

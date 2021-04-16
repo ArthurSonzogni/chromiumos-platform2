@@ -8,14 +8,11 @@
 #include "shill/logging.h"
 #include "shill/rpc_task.h"
 
-using std::map;
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const RpcTaskDBusAdaptor* r) {
+static std::string ObjectID(const RpcTaskDBusAdaptor* r) {
   return r->GetRpcIdentifier().value();
 }
 }  // namespace Logging
@@ -48,16 +45,17 @@ const RpcIdentifier& RpcTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
 }
 
 bool RpcTaskDBusAdaptor::getsec(brillo::ErrorPtr* /*error*/,
-                                string* user,
-                                string* password) {
+                                std::string* user,
+                                std::string* password) {
   SLOG(this, 2) << __func__ << ": " << user;
   task_->GetLogin(user, password);
   return true;
 }
 
-bool RpcTaskDBusAdaptor::notify(brillo::ErrorPtr* /*error*/,
-                                const string& reason,
-                                const map<string, string>& dict) {
+bool RpcTaskDBusAdaptor::notify(
+    brillo::ErrorPtr* /*error*/,
+    const std::string& reason,
+    const std::map<std::string, std::string>& dict) {
   SLOG(this, 2) << __func__ << ": " << reason;
   task_->Notify(reason, dict);
   return true;

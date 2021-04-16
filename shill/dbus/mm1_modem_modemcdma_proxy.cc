@@ -7,13 +7,11 @@
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -22,7 +20,7 @@ namespace mm1 {
 
 ModemModemCdmaProxy::ModemModemCdmaProxy(const scoped_refptr<dbus::Bus>& bus,
                                          const RpcIdentifier& path,
-                                         const string& service)
+                                         const std::string& service)
     : proxy_(new org::freedesktop::ModemManager1::Modem::ModemCdmaProxy(
           bus, service, path)) {
   // Register signal handlers.
@@ -80,13 +78,13 @@ void ModemModemCdmaProxy::ActivationStateChanged(
 }
 
 void ModemModemCdmaProxy::OnOperationSuccess(const ResultCallback& callback,
-                                             const string& operation) {
+                                             const std::string& operation) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   callback.Run(Error());
 }
 
 void ModemModemCdmaProxy::OnOperationFailure(const ResultCallback& callback,
-                                             const string& operation,
+                                             const std::string& operation,
                                              brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;
@@ -94,8 +92,8 @@ void ModemModemCdmaProxy::OnOperationFailure(const ResultCallback& callback,
   callback.Run(Error());
 }
 
-void ModemModemCdmaProxy::OnSignalConnected(const string& interface_name,
-                                            const string& signal_name,
+void ModemModemCdmaProxy::OnSignalConnected(const std::string& interface_name,
+                                            const std::string& signal_name,
                                             bool success) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << "interface: " << interface_name

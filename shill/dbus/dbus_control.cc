@@ -48,9 +48,6 @@
 
 #include "shill/manager.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using std::string;
-
 namespace shill {
 
 // static.
@@ -83,7 +80,8 @@ const RpcIdentifier& DBusControl::NullRpcIdentifier() {
 void DBusControl::RegisterManagerObject(
     Manager* manager, const base::Closure& registration_done_callback) {
   registration_done_callback_ = registration_done_callback;
-  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  scoped_refptr<brillo::dbus_utils::AsyncEventSequencer> sequencer(
+      new brillo::dbus_utils::AsyncEventSequencer());
   manager->RegisterAsync(base::Bind(
       &DBusControl::OnDBusServiceRegistered, base::Unretained(this),
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true)));
@@ -198,7 +196,7 @@ std::unique_ptr<DHCPCDListenerInterface> DBusControl::CreateDHCPCDListener(
 }
 
 std::unique_ptr<DHCPProxyInterface> DBusControl::CreateDHCPProxy(
-    const string& service) {
+    const std::string& service) {
   return std::make_unique<DHCPCDProxy>(proxy_bus_, service);
 }
 
@@ -208,14 +206,14 @@ std::unique_ptr<UpstartProxyInterface> DBusControl::CreateUpstartProxy() {
 
 #if !defined(DISABLE_CELLULAR)
 std::unique_ptr<DBusPropertiesProxy> DBusControl::CreateDBusPropertiesProxy(
-    const RpcIdentifier& path, const string& service) {
+    const RpcIdentifier& path, const std::string& service) {
   return std::make_unique<DBusPropertiesProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<DBusObjectManagerProxyInterface>
 DBusControl::CreateDBusObjectManagerProxy(
     const RpcIdentifier& path,
-    const string& service,
+    const std::string& service,
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
   return std::make_unique<DBusObjectManagerProxy>(
@@ -225,47 +223,47 @@ DBusControl::CreateDBusObjectManagerProxy(
 
 // Proxies for ModemManager1 interfaces
 std::unique_ptr<mm1::Mm1ProxyInterface> DBusControl::CreateMM1Proxy(
-    const string& service) {
+    const std::string& service) {
   return std::make_unique<mm1::Mm1Proxy>(proxy_bus_, service);
 }
 
 std::unique_ptr<mm1::ModemLocationProxyInterface>
 DBusControl::CreateMM1ModemLocationProxy(const RpcIdentifier& path,
-                                         const string& service) {
+                                         const std::string& service) {
   return std::make_unique<mm1::ModemLocationProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemModem3gppProxyInterface>
 DBusControl::CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
-                                          const string& service) {
+                                          const std::string& service) {
   return std::make_unique<mm1::ModemModem3gppProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
 DBusControl::CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
-                                          const string& service) {
+                                          const std::string& service) {
   return std::make_unique<mm1::ModemModemCdmaProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemProxyInterface> DBusControl::CreateMM1ModemProxy(
-    const RpcIdentifier& path, const string& service) {
+    const RpcIdentifier& path, const std::string& service) {
   return std::make_unique<mm1::ModemProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemSignalProxyInterface>
 DBusControl::CreateMM1ModemSignalProxy(const RpcIdentifier& path,
-                                       const string& service) {
+                                       const std::string& service) {
   return std::make_unique<mm1::ModemSignalProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemSimpleProxyInterface>
 DBusControl::CreateMM1ModemSimpleProxy(const RpcIdentifier& path,
-                                       const string& service) {
+                                       const std::string& service) {
   return std::make_unique<mm1::ModemSimpleProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::SimProxyInterface> DBusControl::CreateMM1SimProxy(
-    const RpcIdentifier& path, const string& service) {
+    const RpcIdentifier& path, const std::string& service) {
   return std::make_unique<mm1::SimProxy>(proxy_bus_, path, service);
 }
 #endif  // DISABLE_CELLULAR

@@ -14,12 +14,9 @@
 
 namespace shill {
 
-using std::string;
-using std::vector;
-
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -41,7 +38,7 @@ void RunErrorCallback(const base::Callback<void(const Error&)>& error_callback,
 
 DBusPropertiesProxy::DBusPropertiesProxy(const scoped_refptr<dbus::Bus>& bus,
                                          const RpcIdentifier& path,
-                                         const string& service)
+                                         const std::string& service)
     : proxy_(new org::freedesktop::DBus::PropertiesProxy(
           bus, service, dbus::ObjectPath(path))) {}
 
@@ -64,7 +61,7 @@ FakePropertiesProxy* DBusPropertiesProxy::GetFakePropertiesProxyForTesting() {
   return static_cast<FakePropertiesProxy*>(proxy_.get());
 }
 
-KeyValueStore DBusPropertiesProxy::GetAll(const string& interface_name) {
+KeyValueStore DBusPropertiesProxy::GetAll(const std::string& interface_name) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface_name << ")";
   brillo::VariantDictionary properties_dict;
   brillo::ErrorPtr error;
@@ -88,8 +85,8 @@ void DBusPropertiesProxy::GetAllAsync(
                       base::Bind(RunErrorCallback, error_callback));
 }
 
-brillo::Any DBusPropertiesProxy::Get(const string& interface_name,
-                                     const string& property) {
+brillo::Any DBusPropertiesProxy::Get(const std::string& interface_name,
+                                     const std::string& property) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << "(" << interface_name << ", " << property << ")";
   brillo::Any value;
@@ -136,7 +133,7 @@ void DBusPropertiesProxy::SetModemManagerPropertiesChangedCallback(
 }
 
 void DBusPropertiesProxy::MmPropertiesChanged(
-    const string& interface, const brillo::VariantDictionary& properties) {
+    const std::string& interface, const brillo::VariantDictionary& properties) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface << ")";
   KeyValueStore properties_store =
       KeyValueStore::ConvertFromVariantDictionary(properties);
@@ -144,17 +141,17 @@ void DBusPropertiesProxy::MmPropertiesChanged(
 }
 
 void DBusPropertiesProxy::PropertiesChanged(
-    const string& interface,
+    const std::string& interface,
     const brillo::VariantDictionary& changed_properties,
-    const vector<string>& /*invalidated_properties*/) {
+    const std::vector<std::string>& /*invalidated_properties*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface << ")";
   KeyValueStore properties_store =
       KeyValueStore::ConvertFromVariantDictionary(changed_properties);
   properties_changed_callback_.Run(interface, properties_store);
 }
 
-void DBusPropertiesProxy::OnSignalConnected(const string& interface_name,
-                                            const string& signal_name,
+void DBusPropertiesProxy::OnSignalConnected(const std::string& interface_name,
+                                            const std::string& signal_name,
                                             bool success) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << "interface: " << interface_name

@@ -10,14 +10,11 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const DeviceDBusAdaptor* d) {
+static std::string ObjectID(const DeviceDBusAdaptor* d) {
   return d->GetRpcIdentifier().value() + " (" + d->device()->UniqueName() + ")";
 }
 }  // namespace Logging
@@ -44,51 +41,53 @@ const RpcIdentifier& DeviceDBusAdaptor::GetRpcIdentifier() const {
   return dbus_path();
 }
 
-void DeviceDBusAdaptor::EmitBoolChanged(const string& name, bool value) {
+void DeviceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitUintChanged(const string& name, uint32_t value) {
+void DeviceDBusAdaptor::EmitUintChanged(const std::string& name,
+                                        uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitUint16Changed(const string& name, uint16_t value) {
+void DeviceDBusAdaptor::EmitUint16Changed(const std::string& name,
+                                          uint16_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitIntChanged(const string& name, int value) {
+void DeviceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitStringChanged(const string& name,
-                                          const string& value) {
+void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
+                                          const std::string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitStringmapChanged(const string& name,
+void DeviceDBusAdaptor::EmitStringmapChanged(const std::string& name,
                                              const Stringmap& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitStringmapsChanged(const string& name,
+void DeviceDBusAdaptor::EmitStringmapsChanged(const std::string& name,
                                               const Stringmaps& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitStringsChanged(const string& name,
+void DeviceDBusAdaptor::EmitStringsChanged(const std::string& name,
                                            const Strings& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const string& name,
+void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const std::string& name,
                                                  const KeyValueStore& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   brillo::VariantDictionary dict =
@@ -96,7 +95,7 @@ void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const string& name,
   SendPropertyChangedSignal(name, brillo::Any(dict));
 }
 
-void DeviceDBusAdaptor::EmitKeyValueStoresChanged(const string& name,
+void DeviceDBusAdaptor::EmitKeyValueStoresChanged(const std::string& name,
                                                   const KeyValueStores& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   std::vector<brillo::VariantDictionary> dicts;
@@ -115,9 +114,9 @@ void DeviceDBusAdaptor::EmitRpcIdentifierChanged(const std::string& name,
 }
 
 void DeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
-    const string& name, const RpcIdentifiers& value) {
+    const std::string& name, const RpcIdentifiers& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  vector<dbus::ObjectPath> paths;
+  std::vector<dbus::ObjectPath> paths;
   for (const auto& element : value) {
     paths.push_back(dbus::ObjectPath(element));
   }
@@ -132,14 +131,14 @@ bool DeviceDBusAdaptor::GetProperties(
 }
 
 bool DeviceDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
-                                    const string& name,
+                                    const std::string& name,
                                     const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   return DBusAdaptor::SetProperty(device_->mutable_store(), name, value, error);
 }
 
 bool DeviceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
-                                      const string& name) {
+                                      const std::string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   return DBusAdaptor::ClearProperty(device_->mutable_store(), name, error);
 }
@@ -161,7 +160,7 @@ void DeviceDBusAdaptor::Disable(DBusMethodResponsePtr<> response) {
 }
 
 void DeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
-                                 const string& network_id) {
+                                 const std::string& network_id) {
   SLOG(this, 2) << __func__ << ": " << network_id;
   Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
@@ -170,7 +169,7 @@ void DeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
 }
 
 void DeviceDBusAdaptor::RequirePin(DBusMethodResponsePtr<> response,
-                                   const string& pin,
+                                   const std::string& pin,
                                    bool require) {
   SLOG(this, 2) << __func__;
 
@@ -181,7 +180,7 @@ void DeviceDBusAdaptor::RequirePin(DBusMethodResponsePtr<> response,
 }
 
 void DeviceDBusAdaptor::EnterPin(DBusMethodResponsePtr<> response,
-                                 const string& pin) {
+                                 const std::string& pin) {
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);
@@ -191,8 +190,8 @@ void DeviceDBusAdaptor::EnterPin(DBusMethodResponsePtr<> response,
 }
 
 void DeviceDBusAdaptor::UnblockPin(DBusMethodResponsePtr<> response,
-                                   const string& unblock_code,
-                                   const string& pin) {
+                                   const std::string& unblock_code,
+                                   const std::string& pin) {
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);
@@ -202,8 +201,8 @@ void DeviceDBusAdaptor::UnblockPin(DBusMethodResponsePtr<> response,
 }
 
 void DeviceDBusAdaptor::ChangePin(DBusMethodResponsePtr<> response,
-                                  const string& old_pin,
-                                  const string& new_pin) {
+                                  const std::string& old_pin,
+                                  const std::string& new_pin) {
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);
@@ -229,9 +228,9 @@ bool DeviceDBusAdaptor::RenewDHCPLease(brillo::ErrorPtr* error) {
 }
 
 bool DeviceDBusAdaptor::PerformTDLSOperation(brillo::ErrorPtr* error,
-                                             const string& operation,
-                                             const string& peer,
-                                             string* out_state) {
+                                             const std::string& operation,
+                                             const std::string& peer,
+                                             std::string* out_state) {
   SLOG(this, 2) << __func__;
 
   Error e;
@@ -253,8 +252,8 @@ bool DeviceDBusAdaptor::RequestRoam(brillo::ErrorPtr* error,
   return !e.ToChromeosError(error);
 }
 
-bool DeviceDBusAdaptor::AddWakeOnPacketConnection(brillo::ErrorPtr* error,
-                                                  const string& ip_endpoint) {
+bool DeviceDBusAdaptor::AddWakeOnPacketConnection(
+    brillo::ErrorPtr* error, const std::string& ip_endpoint) {
   SLOG(this, 2) << __func__;
 
   Error e;
@@ -272,7 +271,7 @@ bool DeviceDBusAdaptor::AddWakeOnPacketOfTypes(
 }
 
 bool DeviceDBusAdaptor::RemoveWakeOnPacketConnection(
-    brillo::ErrorPtr* error, const string& ip_endpoint) {
+    brillo::ErrorPtr* error, const std::string& ip_endpoint) {
   SLOG(this, 2) << __func__;
 
   Error e;

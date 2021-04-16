@@ -8,13 +8,11 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -85,8 +83,8 @@ void DBusObjectManagerProxy::OnServiceAvailable(bool available) {
   service_available_ = available;
 }
 
-void DBusObjectManagerProxy::OnServiceOwnerChanged(const string& old_owner,
-                                                   const string& new_owner) {
+void DBusObjectManagerProxy::OnServiceOwnerChanged(
+    const std::string& old_owner, const std::string& new_owner) {
   LOG(INFO) << __func__ << " old: " << old_owner << " new: " << new_owner;
   if (new_owner.empty()) {
     OnServiceAvailable(false);
@@ -95,9 +93,10 @@ void DBusObjectManagerProxy::OnServiceOwnerChanged(const string& old_owner,
   }
 }
 
-void DBusObjectManagerProxy::OnSignalConnected(const string& interface_name,
-                                               const string& signal_name,
-                                               bool success) {
+void DBusObjectManagerProxy::OnSignalConnected(
+    const std::string& interface_name,
+    const std::string& signal_name,
+    bool success) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << "interface: " << interface_name
       << " signal: " << signal_name << "success: " << success;

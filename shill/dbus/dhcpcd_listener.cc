@@ -4,8 +4,6 @@
 
 #include "shill/dbus/dhcpcd_listener.h"
 
-#include <string.h>
-
 #include <memory>
 
 #include <base/bind.h>
@@ -20,13 +18,11 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DHCPCDListener* d) {
+static std::string ObjectID(const DHCPCDListener* d) {
   return "(dhcpcd_listener)";
 }
 }  // namespace Logging
@@ -100,14 +96,14 @@ DBusHandlerResult DHCPCDListener::HandleMessage(DBusConnection* connection,
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
 
-  string sender = signal->GetSender();
-  string member_name = signal->GetMember();
+  const auto sender = signal->GetSender();
+  const auto member_name = signal->GetMember();
   dbus::MessageReader reader(signal.get());
   if (member_name == kSignalEvent) {
     uint32_t pid;
-    string reason;
+    std::string reason;
     brillo::VariantDictionary configurations;
-    // ExtracMessageParameters will log the error if it failed.
+    // ExtractMessageParameters will log the error if it failed.
     if (brillo::dbus_utils::ExtractMessageParameters(
             &reader, nullptr, &pid, &reason, &configurations)) {
       dispatcher_->PostTask(
@@ -117,8 +113,8 @@ DBusHandlerResult DHCPCDListener::HandleMessage(DBusConnection* connection,
     }
   } else if (member_name == kSignalStatusChanged) {
     uint32_t pid;
-    string status;
-    // ExtracMessageParameters will log the error if it failed.
+    std::string status;
+    // ExtractMessageParameters will log the error if it failed.
     if (brillo::dbus_utils::ExtractMessageParameters(&reader, nullptr, &pid,
                                                      &status)) {
       dispatcher_->PostTask(
@@ -134,9 +130,9 @@ DBusHandlerResult DHCPCDListener::HandleMessage(DBusConnection* connection,
 }
 
 void DHCPCDListener::EventSignal(
-    const string& sender,
+    const std::string& sender,
     uint32_t pid,
-    const string& reason,
+    const std::string& reason,
     const brillo::VariantDictionary& configuration) {
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config) {
@@ -155,9 +151,9 @@ void DHCPCDListener::EventSignal(
   config->ProcessEventSignal(reason, configuration_store);
 }
 
-void DHCPCDListener::StatusChangedSignal(const string& sender,
+void DHCPCDListener::StatusChangedSignal(const std::string& sender,
                                          uint32_t pid,
-                                         const string& status) {
+                                         const std::string& status) {
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {

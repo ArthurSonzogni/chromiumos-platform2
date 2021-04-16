@@ -4,8 +4,6 @@
 
 #include "shill/dbus/service_dbus_adaptor.h"
 
-#include <map>
-#include <string>
 #include <utility>
 
 #include <base/strings/string_number_conversions.h>
@@ -13,10 +11,6 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/service.h"
-
-using std::map;
-using std::string;
-using std::vector;
 
 namespace {
 const char kDBusRpcReasonString[] = "D-Bus RPC";
@@ -26,7 +20,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const ServiceDBusAdaptor* s) {
+static std::string ObjectID(const ServiceDBusAdaptor* s) {
   return s->GetRpcIdentifier().value() + " (" + s->service()->log_name() + ")";
 }
 }  // namespace Logging
@@ -49,50 +43,53 @@ ServiceDBusAdaptor::~ServiceDBusAdaptor() {
   service_ = nullptr;
 }
 
-void ServiceDBusAdaptor::EmitBoolChanged(const string& name, bool value) {
+void ServiceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitUint8Changed(const string& name, uint8_t value) {
+void ServiceDBusAdaptor::EmitUint8Changed(const std::string& name,
+                                          uint8_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitUint16Changed(const string& name, uint16_t value) {
+void ServiceDBusAdaptor::EmitUint16Changed(const std::string& name,
+                                           uint16_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitUint16sChanged(const string& name,
+void ServiceDBusAdaptor::EmitUint16sChanged(const std::string& name,
                                             const Uint16s& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitUintChanged(const string& name, uint32_t value) {
+void ServiceDBusAdaptor::EmitUintChanged(const std::string& name,
+                                         uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitIntChanged(const string& name, int value) {
+void ServiceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitRpcIdentifierChanged(const string& name,
+void ServiceDBusAdaptor::EmitRpcIdentifierChanged(const std::string& name,
                                                   const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitStringChanged(const string& name,
-                                           const string& value) {
+void ServiceDBusAdaptor::EmitStringChanged(const std::string& name,
+                                           const std::string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ServiceDBusAdaptor::EmitStringmapChanged(const string& name,
+void ServiceDBusAdaptor::EmitStringmapChanged(const std::string& name,
                                               const Stringmap& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
@@ -105,7 +102,7 @@ bool ServiceDBusAdaptor::GetProperties(brillo::ErrorPtr* error,
 }
 
 bool ServiceDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
-                                     const string& name,
+                                     const std::string& name,
                                      const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   return DBusAdaptor::SetProperty(service_->mutable_store(), name, value,
@@ -122,7 +119,7 @@ bool ServiceDBusAdaptor::SetProperties(brillo::ErrorPtr* error,
 }
 
 bool ServiceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
-                                       const string& name) {
+                                       const std::string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   bool status =
       DBusAdaptor::ClearProperty(service_->mutable_store(), name, error);
@@ -133,8 +130,8 @@ bool ServiceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
 }
 
 bool ServiceDBusAdaptor::ClearProperties(brillo::ErrorPtr* /*error*/,
-                                         const vector<string>& names,
-                                         vector<bool>* results) {
+                                         const std::vector<std::string>& names,
+                                         std::vector<bool>* results) {
   SLOG(this, 2) << __func__;
   for (const auto& name : names) {
     results->push_back(ClearProperty(nullptr, name));
@@ -164,7 +161,7 @@ bool ServiceDBusAdaptor::Remove(brillo::ErrorPtr* error) {
 }
 
 bool ServiceDBusAdaptor::ActivateCellularModem(brillo::ErrorPtr* error,
-                                               const string& carrier) {
+                                               const std::string& carrier) {
   SLOG(this, 2) << __func__;
   Error e;
   Error::PopulateAndLog(FROM_HERE, &e, Error::kNotSupported,
@@ -180,10 +177,10 @@ bool ServiceDBusAdaptor::CompleteCellularActivation(brillo::ErrorPtr* error) {
 }
 
 bool ServiceDBusAdaptor::GetLoadableProfileEntries(
-    brillo::ErrorPtr* /*error*/, map<dbus::ObjectPath, string>* entries) {
+    brillo::ErrorPtr* /*error*/,
+    std::map<dbus::ObjectPath, std::string>* entries) {
   SLOG(this, 2) << __func__;
-  map<RpcIdentifier, string> profile_entry_strings =
-      service_->GetLoadableProfileEntries();
+  const auto profile_entry_strings = service_->GetLoadableProfileEntries();
   for (const auto& entry : profile_entry_strings) {
     (*entries)[dbus::ObjectPath(entry.first)] = entry.second;
   }
@@ -195,7 +192,7 @@ bool ServiceDBusAdaptor::GetWiFiPassphrase(brillo::ErrorPtr* error,
   SLOG(this, 2) << __func__;
 
   Error e;
-  std::string passphrase = service_->GetWiFiPassphrase(&e);
+  const auto passphrase = service_->GetWiFiPassphrase(&e);
   if (!e.IsSuccess()) {
     return !e.ToChromeosError(error);
   }

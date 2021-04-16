@@ -7,15 +7,12 @@
 
 #include <string>
 
-#include <dbus/dbus.h>
-
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
-
-#include <brillo/variant_dictionary.h>
 
 #include "shill/dhcp/dhcpcd_listener_interface.h"
 

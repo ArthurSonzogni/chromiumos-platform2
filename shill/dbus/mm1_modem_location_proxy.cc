@@ -9,13 +9,11 @@
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -24,7 +22,7 @@ namespace mm1 {
 
 ModemLocationProxy::ModemLocationProxy(const scoped_refptr<dbus::Bus>& bus,
                                        const RpcIdentifier& path,
-                                       const string& service)
+                                       const std::string& service)
     : proxy_(new org::freedesktop::ModemManager1::Modem::LocationProxy(
           bus, service, path)) {}
 

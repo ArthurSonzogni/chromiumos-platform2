@@ -4,21 +4,17 @@
 
 #include "shill/dbus/supplicant_network_proxy.h"
 
-#include <string>
-
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 
 #include "shill/logging.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging

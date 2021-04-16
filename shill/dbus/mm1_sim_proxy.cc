@@ -7,13 +7,11 @@
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) {
+static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
@@ -22,13 +20,13 @@ namespace mm1 {
 
 SimProxy::SimProxy(const scoped_refptr<dbus::Bus>& bus,
                    const RpcIdentifier& path,
-                   const string& service)
+                   const std::string& service)
     : proxy_(
           new org::freedesktop::ModemManager1::SimProxy(bus, service, path)) {}
 
 SimProxy::~SimProxy() = default;
 
-void SimProxy::SendPin(const string& pin,
+void SimProxy::SendPin(const std::string& pin,
                        Error* error,
                        const ResultCallback& callback,
                        int timeout) {
@@ -43,8 +41,8 @@ void SimProxy::SendPin(const string& pin,
       timeout);
 }
 
-void SimProxy::SendPuk(const string& puk,
-                       const string& pin,
+void SimProxy::SendPuk(const std::string& puk,
+                       const std::string& pin,
                        Error* error,
                        const ResultCallback& callback,
                        int timeout) {
@@ -59,7 +57,7 @@ void SimProxy::SendPuk(const string& puk,
       timeout);
 }
 
-void SimProxy::EnablePin(const string& pin,
+void SimProxy::EnablePin(const std::string& pin,
                          const bool enabled,
                          Error* error,
                          const ResultCallback& callback,
@@ -75,8 +73,8 @@ void SimProxy::EnablePin(const string& pin,
       timeout);
 }
 
-void SimProxy::ChangePin(const string& old_pin,
-                         const string& new_pin,
+void SimProxy::ChangePin(const std::string& old_pin,
+                         const std::string& new_pin,
                          Error* error,
                          const ResultCallback& callback,
                          int timeout) {
@@ -92,13 +90,13 @@ void SimProxy::ChangePin(const string& old_pin,
 }
 
 void SimProxy::OnOperationSuccess(const ResultCallback& callback,
-                                  const string& operation) {
+                                  const std::string& operation) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   callback.Run(Error());
 }
 
 void SimProxy::OnOperationFailure(const ResultCallback& callback,
-                                  const string& operation,
+                                  const std::string& operation,
                                   brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;

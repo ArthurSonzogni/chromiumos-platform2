@@ -8,12 +8,11 @@
 
 #include "shill/logging.h"
 
-using std::string;
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DHCPCDProxy* d) {
+static std::string ObjectID(const DHCPCDProxy* d) {
   return "(dhcpcd_proxy)";
 }
 }  // namespace Logging
@@ -30,7 +29,7 @@ DHCPCDProxy::~DHCPCDProxy() {
   dhcpcd_proxy_->ReleaseObjectProxy(base::DoNothing());
 }
 
-void DHCPCDProxy::Rebind(const string& interface) {
+void DHCPCDProxy::Rebind(const std::string& interface) {
   SLOG(DBus, nullptr, 2) << __func__;
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Rebind(interface, &error)) {
@@ -38,7 +37,7 @@ void DHCPCDProxy::Rebind(const string& interface) {
   }
 }
 
-void DHCPCDProxy::Release(const string& interface) {
+void DHCPCDProxy::Release(const std::string& interface) {
   SLOG(DBus, nullptr, 2) << __func__;
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Release(interface, &error)) {
@@ -47,8 +46,8 @@ void DHCPCDProxy::Release(const string& interface) {
 }
 
 void DHCPCDProxy::LogDBusError(const brillo::ErrorPtr& error,
-                               const string& method,
-                               const string& interface) {
+                               const std::string& method,
+                               const std::string& interface) {
   if (error->GetCode() == DBUS_ERROR_SERVICE_UNKNOWN ||
       error->GetCode() == DBUS_ERROR_NO_REPLY) {
     LOG(INFO) << method << ": dhcpcd daemon appears to have exited.";
