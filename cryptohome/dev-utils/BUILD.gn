@@ -5,7 +5,26 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":cryptohome-tpm-live-test" ]
+  deps = [
+    ":cryptohome-test-tool",
+    ":cryptohome-tpm-live-test",
+  ]
+}
+
+pkg_config("cryptohome-test-tool_config") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+executable("cryptohome-test-tool") {
+  sources = [ "../cryptohome-test-tool.cc" ]
+  configs += [
+    ":cryptohome-test-tool_config",
+    "//cryptohome/libs:target_defaults",
+  ]
+  deps = [ "//cryptohome/libs:libcrosplatform" ]
 }
 
 pkg_config("cryptohome-tpm-live-test_config") {
