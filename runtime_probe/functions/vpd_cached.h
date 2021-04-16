@@ -7,9 +7,7 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
-#include <base/files/file_path.h>
 #include <base/values.h>
 
 #include "runtime_probe/probe_function.h"
@@ -25,7 +23,7 @@ namespace runtime_probe {
 // In this first implementation, only one argument will be taken, that is the
 // key in the RO_VPD area to read.
 
-class VPDCached : public ProbeFunction {
+class VPDCached : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("vpd_cached");
 
@@ -37,11 +35,9 @@ class VPDCached : public ProbeFunction {
   static std::unique_ptr<VPDCached> FromKwargsValue(
       const base::Value& dict_value);
 
-  DataType Eval() const override;
-
-  int EvalInHelper(std::string* output) const override;
-
  private:
+  DataType EvalImpl() const override;
+
   std::string vpd_name_;
 };
 

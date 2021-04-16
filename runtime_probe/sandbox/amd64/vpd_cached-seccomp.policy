@@ -6,12 +6,12 @@ access: 1
 arch_prctl: 1
 brk: 1
 close: 1
-connect: 1
 exit: 1
 exit_group: 1
 fstat: 1
 gettid: 1
 lseek: 1
+lstat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
@@ -23,10 +23,8 @@ restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
-sendto: 1
 set_robust_list: 1
 set_tid_address: 1
-socket: arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0 || arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
 stat: 1
 write: 1
 
