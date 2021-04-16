@@ -230,6 +230,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool SupportsWPA3() const;
 
+  // Inherited from Device.
+  void OnNeighborReachabilityEvent(
+      const IPAddress& ip_address,
+      patchpanel::NeighborReachabilityEventSignal::Role role,
+      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
+      override;
+
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
   enum ScanState {

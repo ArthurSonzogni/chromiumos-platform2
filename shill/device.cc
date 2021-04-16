@@ -844,11 +844,11 @@ void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
                         AsWeakPtr(), traffic_counter_callback_id_));
 }
 
-void Device::OnNeighborLinkFailure(
+void Device::OnNeighborReachabilityEvent(
     const IPAddress& ip_address,
-    patchpanel::NeighborReachabilityEventSignal::Role role) {
-  metrics()->NotifyNeighborLinkMonitorFailure(technology_, ip_address.family(),
-                                              role);
+    patchpanel::NeighborReachabilityEventSignal::Role role,
+    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+  // Does nothing in the general case.
 }
 
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {

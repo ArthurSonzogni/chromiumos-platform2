@@ -3416,4 +3416,16 @@ bool WiFi::SupportsWPA3() const {
 #endif
 }
 
+void WiFi::OnNeighborReachabilityEvent(
+    const IPAddress& ip_address,
+    patchpanel::NeighborReachabilityEventSignal::Role role,
+    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+  using EventSignal = patchpanel::NeighborReachabilityEventSignal;
+  if (event_type == EventSignal::REACHABLE) {
+    return;
+  }
+  metrics()->NotifyNeighborLinkMonitorFailure(Technology::kWifi,
+                                              ip_address.family(), role);
+}
+
 }  // namespace shill

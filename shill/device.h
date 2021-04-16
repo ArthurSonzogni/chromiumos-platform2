@@ -346,11 +346,12 @@ class Device : public base::RefCounted<Device> {
   // the active connection with the right setting.
   mockable void UpdateBlackholeUserTraffic();
 
-  // Responds to a neighbor failure event from patchpanel. Currently it will
-  // only send the UMA metrics about the type of the detected failure.
-  mockable void OnNeighborLinkFailure(
+  // Responds to a neighbor reachability event from patchpanel. The base class
+  // does nothing here so the derived class doesn't need to call this.
+  virtual void OnNeighborReachabilityEvent(
       const IPAddress& ip_address,
-      patchpanel::NeighborReachabilityEventSignal::Role role);
+      patchpanel::NeighborReachabilityEventSignal::Role role,
+      patchpanel::NeighborReachabilityEventSignal::EventType event_type);
 
  protected:
   friend class base::RefCounted<Device>;

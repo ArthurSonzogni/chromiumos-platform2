@@ -1503,10 +1503,9 @@ void DeviceInfo::OnNeighborReachabilityEvent(
 
   switch (signal.type()) {
     case SignalProto::FAILED:
-      device->OnNeighborLinkFailure(address, signal.role());
-      return;
     case SignalProto::REACHABLE:
-      // Currently shill does not need this signal.
+      device->OnNeighborReachabilityEvent(address, signal.role(),
+                                          signal.type());
       return;
     default:
       LOG(ERROR) << "Invalid NeighborRecabilityEvent type " << signal.type();

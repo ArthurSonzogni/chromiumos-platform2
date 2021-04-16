@@ -73,9 +73,10 @@ class MockDevice : public Device {
   MOCK_METHOD(const ConnectionRefPtr&, connection, (), (const, override));
   MOCK_METHOD(void, UpdateBlackholeUserTraffic, (), (override));
   MOCK_METHOD(void,
-              OnNeighborLinkFailure,
+              OnNeighborReachabilityEvent,
               (const IPAddress&,
-               patchpanel::NeighborReachabilityEventSignal::Role),
+               patchpanel::NeighborReachabilityEventSignal::Role,
+               patchpanel::NeighborReachabilityEventSignal::EventType),
               (override));
 };
 
