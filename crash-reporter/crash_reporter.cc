@@ -325,9 +325,6 @@ int main(int argc, char* argv[]) {
   DEFINE_string(arc_cpu_abi, "", "Metadata for ARC crashes");
   DEFINE_string(arc_fingerprint, "", "Metadata for ARC crashes");
   DEFINE_int64(arc_uptime, 0, "Uptime of ARC instance in milliseconds");
-
-  // TODO(hashimoto): Remove this switch after fixing chrome.
-  DEFINE_bool(arc_is_arcvm, false, "Is ARCVM");
 #endif
 #if USE_ARCVM
   DEFINE_bool(arc_native, false, "ARC Native Crash");
