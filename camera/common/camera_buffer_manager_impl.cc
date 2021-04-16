@@ -75,6 +75,11 @@ CameraBufferManager* CameraBufferManager::GetInstance() {
 }
 
 // static
+bool CameraBufferManager::IsValidBuffer(buffer_handle_t buffer) {
+  return !!camera_buffer_handle_t::FromBufferHandle(buffer);
+}
+
+// static
 uint32_t CameraBufferManager::GetWidth(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {

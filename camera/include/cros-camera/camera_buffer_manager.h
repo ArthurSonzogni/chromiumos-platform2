@@ -205,6 +205,15 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   //    The corresponding DRM format; 0 if no DRM format could be resolved to.
   virtual uint32_t ResolveDrmFormat(uint32_t hal_format, uint32_t usage) = 0;
 
+  // Checks if |buffer| is a valid camera buffer handle.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to be verified.
+  //
+  // Returns:
+  //    true if a buffer is valid, or false otherwise.
+  static bool IsValidBuffer(buffer_handle_t buffer);
+
   // Get the width of the buffer handle.
   //
   // Args:

@@ -733,6 +733,17 @@ TEST_F(CameraBufferManagerImplTest, GetPlaneSizeTest) {
   EXPECT_EQ(CameraBufferManagerImpl::GetPlaneSize(yuv420_handle, 3), 0);
 }
 
+TEST_F(CameraBufferManagerImplTest, IsValidBufferTest) {
+  EXPECT_FALSE(CameraBufferManagerImpl::IsValidBuffer(nullptr));
+
+  auto cbh = std::make_unique<camera_buffer_handle_t>();
+  buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(cbh.get());
+  EXPECT_TRUE(CameraBufferManagerImpl::IsValidBuffer(handle));
+
+  cbh->magic = ~cbh->magic;
+  EXPECT_FALSE(CameraBufferManagerImpl::IsValidBuffer(handle));
+}
+
 TEST_F(CameraBufferManagerImplTest, DeregisterTest) {
   // Create two dummy buffers.
   const int kBufferWidth = 1280, kBufferHeight = 720;
