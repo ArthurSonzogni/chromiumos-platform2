@@ -30,5 +30,5 @@ setup(
             )
         ],
     },
-    description='Access to the master configuration from the host',
+    description='Access to the model configuration from the host',
 )

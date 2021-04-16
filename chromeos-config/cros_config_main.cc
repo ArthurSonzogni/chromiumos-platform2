@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Command-line utility to access to the Chrome OS master configuration.
+// Command-line utility to access to the Chrome OS model configuration.
 
 #include <iostream>
 #include <string>

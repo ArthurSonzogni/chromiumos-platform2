@@ -4,8 +4,8 @@
 # found in the LICENSE file.
 """Crome OS Configuration access library.
 
-Provides build-time access to the master configuration on the host. It is used
-for reading from the master configuration. Consider using cros_config_host.py
+Provides build-time access to the model configuration on the host. It is used
+for reading from the model configuration. Consider using cros_config_host.py
 for CLI access to this library.
 """
 

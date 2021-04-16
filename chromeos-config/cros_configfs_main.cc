@@ -113,7 +113,7 @@ static int PrintUsage(const std::string& progname,
     usagestring.description = subcommand.description;
   }
 
-  std::cerr << "ChromeOS Master Configuration: Filesytem Manager" << std::endl
+  std::cerr << "ChromeOS Model Configuration: Filesytem Manager" << std::endl
             << std::endl
             << "Usage:" << std::endl;
   for (auto& usagestring : usagestrings) {

@@ -1,7 +1,7 @@
-# Chrome OS Configuration -- Master Chrome OS Configuration tools / library
+# Chrome OS Model Configuration tools / library
 
 This is the homepage/documentation for chromeos-config which provides access to
-the master configuration for Chrome OS.
+the model configuration for Chrome OS.
 
 [TOC]
 

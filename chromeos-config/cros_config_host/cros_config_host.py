@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""A command-line utility to access the Chrome OS master configuration.
+"""A command-line utility to access the Chrome OS model configuration.
 
 Cros config is broken into two tools, cros_config and cros_config_host. This is
 the latter; it is the build side version of cros_config. It is used by the build
@@ -316,7 +316,7 @@ def GetParser(description):
   """
   parser = argparse.ArgumentParser(description)
   parser.add_argument('-c', '--config',
-                      help='Override the master config file path. Use - for '
+                      help='Override the model config file path. Use - for '
                            'stdin.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on. Defaults to '

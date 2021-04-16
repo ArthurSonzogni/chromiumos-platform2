@@ -17,7 +17,7 @@ YAML_FILE = '../test_data/test.yaml'
 
 
 class CrosConfigHostTest(unittest.TestCase):
-  """Tests for master configuration in yaml format"""
+  """Tests for model configuration in yaml format"""
   def setUp(self):
     self.conf_file = os.path.join(os.path.dirname(__file__), YAML_FILE)
 

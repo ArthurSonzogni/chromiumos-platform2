@@ -22,7 +22,7 @@ class FilePath;
 
 namespace brillo {
 
-// JSON implementation of master configuration
+// JSON implementation of model configuration
 class CrosConfigJson : public CrosConfigImpl {
  public:
   static constexpr char kRootName[] = "chromeos";

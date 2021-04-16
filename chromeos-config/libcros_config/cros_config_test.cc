@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // Tests for the CrosConfig library, which provides access to the
-// Chrome OS master configuration.
+// Chrome OS model configuration.
 
 #include <cstdlib>
 #include <string>

@@ -4,8 +4,8 @@
 # found in the LICENSE file.
 """Chrome OS Configuration access library.
 
-Provides build-time access to the master configuration on the host. It is used
-for reading from the master configuration. Consider using cros_config_host.py
+Provides build-time access to the model configuration on the host. It is used
+for reading from the model configuration. Consider using cros_config_host.py
 for CLI access to this library.
 """
 
@@ -35,7 +35,7 @@ def CrosConfig(fname=None, model_filter_regex=None):
   """
   if not fname:
     if 'SYSROOT' not in os.environ:
-      raise ValueError('No master configuration is available outside the '
+      raise ValueError('No model configuration is available outside the '
                        'ebuild environemnt. You must specify one')
     fname = os.path.join(
         os.environ['SYSROOT'],

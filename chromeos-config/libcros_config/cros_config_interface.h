@@ -12,7 +12,7 @@
 
 namespace brillo {
 
-// Interface definition for accessing the Chrome OS master configuration.
+// Interface definition for accessing the Chrome OS model configuration.
 class CrosConfigInterface {
  public:
   CrosConfigInterface() {}

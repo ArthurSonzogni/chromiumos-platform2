@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Library providing access to the master configuration from the host"""
+"""Library providing access to the model configuration from the host"""
 
 import sys
 import os
