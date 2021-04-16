@@ -18,14 +18,10 @@
 namespace rmad {
 
 namespace {
+
 const base::FilePath kDefaultJsonStoreFilePath("/var/lib/rmad/state");
 constexpr char kRmadStateHistory[] = "state_history";
 const RmadState::StateCase kInitialState = RmadState::kWelcome;
-
-bool RoVerificationKeyPressed() {
-  // TODO(b/181000999): Send a D-Bus query to tpm_managerd when API is ready.
-  return false;
-}
 
 }  // namespace
 
@@ -90,7 +86,7 @@ void RmadInterfaceImpl::Initialize() {
       // TODO(gavindodd): Set to an error state or send a signal to Chrome that
       // the RMA was reset so a message can be displayed.
     }
-  } else if (RoVerificationKeyPressed()) {
+  } else if (cr50_utils_.RoVerificationKeyPressed()) {
     current_state_ = kInitialState;
     state_history_.push_back(current_state_);
     if (!StoreStateHistory()) {

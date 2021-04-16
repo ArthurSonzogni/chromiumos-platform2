@@ -40,16 +40,21 @@ static_library("libjson_store") {
 }
 
 static_library("libcrossystem_utils") {
-  configs += [ ":target_defaults" ]
   sources = [
     "utils/crossystem_utils.cc",
     "utils/crossystem_utils_impl.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("libvpd_utils") {
-  configs += [ ":target_defaults" ]
   sources = [ "utils/vpd_utils_impl.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+static_library("libcr50_utils") {
+  sources = [ "utils/cr50_utils_impl.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("libstate_handler") {
@@ -71,6 +76,7 @@ static_library("librmad_interface") {
   sources = [ "rmad_interface_impl.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":libcr50_utils",
     ":libjson_store",
     ":libstate_handler",
   ]

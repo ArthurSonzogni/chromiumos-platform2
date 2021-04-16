@@ -13,6 +13,7 @@
 #include <base/memory/scoped_refptr.h>
 
 #include "rmad/state_handler/state_handler_manager.h"
+#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {
@@ -45,6 +46,9 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadState::StateCase current_state_;
   std::vector<RmadState::StateCase> state_history_;
   bool allow_abort_;
+
+  // Utilities
+  Cr50UtilsImpl cr50_utils_;
 };
 
 }  // namespace rmad
