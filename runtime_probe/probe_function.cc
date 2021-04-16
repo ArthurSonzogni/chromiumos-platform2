@@ -54,11 +54,8 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
     return nullptr;
   }
 
-  std::unique_ptr<ProbeFunction> ret_value =
-      registered_functions_[function_name](kwargs);
-  ret_value->raw_value_ = dv.Clone();
-
-  return ret_value;
+  return static_cast<std::unique_ptr<ProbeFunction>>(
+      registered_functions_[function_name](kwargs));
 }
 
 bool ProbeFunction::InvokeHelper(std::string* result) const {

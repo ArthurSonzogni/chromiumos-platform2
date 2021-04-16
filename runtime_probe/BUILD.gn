@@ -102,6 +102,7 @@ if (use.test) {
       "functions/sysfs_test.cc",
       "probe_config_loader_impl_test.cc",
       "probe_config_test.cc",
+      "probe_function_argument_test.cc",
       "probe_result_checker_test.cc",
       "probe_statement_test.cc",
     ]

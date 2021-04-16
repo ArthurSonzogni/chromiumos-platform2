@@ -37,23 +37,13 @@ class EctoolI2Cread : public ProbeFunction {
   //   otherwise.
   static std::unique_ptr<EctoolI2Cread> FromKwargsValue(
       const base::Value& dict_value) {
-    if (dict_value.DictSize() != 5) {
-      LOG(ERROR) << function_name << " expect 5 arguments.";
-      return nullptr;
-    }
-
-    auto instance = std::make_unique<EctoolI2Cread>();
-    bool result = true;
-
-    result &= PARSE_ARGUMENT(size);
-    result &= PARSE_ARGUMENT(port);
-    result &= PARSE_ARGUMENT(addr);
-    result &= PARSE_ARGUMENT(offset);
-    result &= PARSE_ARGUMENT(key);
-
-    if (result)
-      return instance;
-    return nullptr;
+    PARSE_BEGIN(EctoolI2Cread);
+    PARSE_ARGUMENT(size);
+    PARSE_ARGUMENT(port);
+    PARSE_ARGUMENT(addr);
+    PARSE_ARGUMENT(offset);
+    PARSE_ARGUMENT(key);
+    PARSE_END();
   }
 
   DataType Eval() const override;

@@ -32,20 +32,11 @@ class ShellFunction : public ProbeFunction {
   //   otherwise.
   static std::unique_ptr<ShellFunction> FromKwargsValue(
       const base::Value& dict_value) {
-    // Create an instance of ShellFunction.
-    // **NOTE: The name should always be "instance" for PARSE_ARGUMENT to work**
-    auto instance = std::make_unique<ShellFunction>();
-
-    bool result = true;
-
-    result &= PARSE_ARGUMENT(command);
-    result &= PARSE_ARGUMENT(key, std::string{"shell_raw"});
-    result &= PARSE_ARGUMENT(split_line, false);
-
-    if (result)
-      return instance;
-    // Otherwise, return nullptr.
-    return nullptr;
+    PARSE_BEGIN(ShellFunction);
+    PARSE_ARGUMENT(command);
+    PARSE_ARGUMENT(key, std::string{"shell_raw"});
+    PARSE_ARGUMENT(split_line, false);
+    PARSE_END();
   }
 
   // Override `Eval` function, which should return a list of Value.

@@ -27,17 +27,9 @@ constexpr char kSysfsDrmPath[] = "/sys/class/drm/*";
 
 std::unique_ptr<EdidFunction> EdidFunction::FromKwargsValue(
     const base::Value& dict_value) {
-  if (dict_value.DictSize() != 0)
-    return nullptr;
-
-  auto instance = std::make_unique<EdidFunction>();
-  bool result = true;
-
-  result &= PARSE_ARGUMENT(dir_path, {kSysfsDrmPath});
-
-  if (!result)
-    return nullptr;
-  return instance;
+  PARSE_BEGIN(EdidFunction);
+  PARSE_ARGUMENT(dir_path, {kSysfsDrmPath});
+  PARSE_END();
 }
 
 EdidFunction::DataType EdidFunction::Eval() const {

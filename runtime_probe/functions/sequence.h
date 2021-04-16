@@ -34,15 +34,9 @@ class SequenceFunction : public ProbeFunction {
 
   static std::unique_ptr<SequenceFunction> FromKwargsValue(
       const base::Value& dict_value) {
-    auto instance = std::make_unique<SequenceFunction>();
-
-    bool result = true;
-
-    result &= PARSE_ARGUMENT(functions);
-
-    if (result)
-      return instance;
-    return nullptr;
+    PARSE_BEGIN(SequenceFunction);
+    PARSE_ARGUMENT(functions);
+    PARSE_END();
   }
 
   DataType Eval() const override;

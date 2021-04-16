@@ -6,11 +6,12 @@
 #define RUNTIME_PROBE_PROBE_FUNCTION_ARGUMENT_H_
 
 #include <memory>
+#include <set>
+#include <string>
 #include <vector>
 
-#include "base/values.h"
-
 #include <base/check.h>
+#include <base/values.h>
 
 namespace runtime_probe {
 
@@ -76,12 +77,49 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
     const base::Value& dict_value,
     const std::vector<std::unique_ptr<ProbeFunction>>&& default_value) = delete;
 
-// We assume that |function_name|, |instance|, |dict_value| are available in the
-// scope this macro is called.  See `functions/shell.h` about how this macro is
-// used.
-#define PARSE_ARGUMENT(member_name, ...)                                \
-  ParseArgument(function_name, #member_name, &instance->member_name##_, \
-                dict_value, ##__VA_ARGS__)
+// These macros are for argument parsing.
+//
+//  1. Due to the template declaration, the type of default value and member
+//  must match exactly.  That is, the default value of a double argument
+//  must be double (3.0 instead of 3).  And default value of string argument
+//  must be std::string{...}.
+//
+//  2. Due to the behavior of "&=", all parser will be executed even if some
+//  of them failed.
+//
+// See `functions/shell.h` for example usage.
+
+// Assumes that |dict_value| and |function_name| are in the scope. Define
+// |instance|, |keys| and |result| into the scope.
+#define PARSE_BEGIN(type)                                            \
+  auto instance = std::unique_ptr<type>(new type());                 \
+  instance->raw_value_ = base::Value(base::Value::Type::DICTIONARY); \
+  instance->raw_value_->SetKey(function_name, dict_value.Clone());   \
+  std::set<std::string> keys;                                        \
+  bool result = true
+
+// Parses each argument one by one. Stores the value into |instance->arg_name_|.
+// If fail, sets |result| to false. Assumes that PARSE_BEGIN is called before
+// this.
+#define PARSE_ARGUMENT(member_name, ...)                                    \
+  result &=                                                                 \
+      ParseArgument(function_name, #member_name, &instance->member_name##_, \
+                    dict_value, ##__VA_ARGS__);                             \
+  keys.insert(#member_name)
+
+// Checks |result| and returns |instance| or nullptr. Assumes that PARSE_BEGIN
+// is called before this.
+#define PARSE_END()                                                 \
+  if (!result)                                                      \
+    return nullptr;                                                 \
+  for (const auto kv : dict_value.DictItems()) {                    \
+    if (keys.find(kv.first) == keys.end()) {                        \
+      LOG(ERROR) << function_name << " doesn't have \"" << kv.first \
+                 << "\" argument.";                                 \
+      return nullptr;                                               \
+    }                                                               \
+  }                                                                 \
+  return instance
 
 }  // namespace runtime_probe
 

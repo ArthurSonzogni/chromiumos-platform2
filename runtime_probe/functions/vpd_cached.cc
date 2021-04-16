@@ -14,19 +14,9 @@ namespace runtime_probe {
 
 std::unique_ptr<VPDCached> VPDCached::FromKwargsValue(
     const base::Value& dict_value) {
-  if (dict_value.DictSize() != 1) {
-    LOG(ERROR) << function_name << " expect 1 arguments.";
-    return nullptr;
-  }
-
-  auto instance = std::make_unique<VPDCached>();
-  bool result = true;
-
-  result &= PARSE_ARGUMENT(vpd_name);
-
-  if (result)
-    return instance;
-  return nullptr;
+  PARSE_BEGIN(VPDCached);
+  PARSE_ARGUMENT(vpd_name);
+  PARSE_END();
 }
 
 VPDCached::DataType VPDCached::Eval() const {

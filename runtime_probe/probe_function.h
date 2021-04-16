@@ -82,12 +82,11 @@ class ProbeFunction {
   // A pre-defined factory function creating a probe function with empty
   // argument.
   template <typename T>
-  static std::unique_ptr<T> FromEmptyKwargsValue(const base::Value& dv) {
-    if (dv.DictSize() != 0) {
-      LOG(ERROR) << T::function_name << " does not take any arguement";
-      return nullptr;
-    }
-    return std::make_unique<T>();
+  static std::unique_ptr<T> FromEmptyKwargsValue(
+      const base::Value& dict_value) {
+    const auto& function_name = T::function_name;
+    PARSE_BEGIN(T);
+    PARSE_END();
   }
 
   // Evaluates this probe function. Returns a list of base::Value. For the probe
@@ -135,14 +134,15 @@ class ProbeFunction {
  protected:
   ProbeFunction() = default;
 
+  // The value to describe this probe function. Set by |FromKwargsValue|.
+  base::Optional<base::Value> raw_value_;
+
  private:
   // Implement this method to provide the probing. The output should be a list
   // of base::Value.
   //
   // TODO(chungsheng): Remove the default implementation after refactoring.
   virtual DataType EvalImpl() const { return {}; }
-
-  base::Optional<base::Value> raw_value_;
 
   // Each probe function must define their own args type.
 };
