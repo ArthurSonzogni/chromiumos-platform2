@@ -5,23 +5,19 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_USB_CAMERA_H_
 #define RUNTIME_PROBE_FUNCTIONS_USB_CAMERA_H_
 
-#include <memory>
-#include <string>
-
 #include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
 
-class UsbCameraFunction : public ProbeFunction {
+class UsbCameraFunction final : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("usb_camera");
 
   static constexpr auto FromKwargsValue =
       FromEmptyKwargsValue<UsbCameraFunction>;
 
-  DataType Eval() const override;
-
-  int EvalInHelper(std::string*) const override;
+ private:
+  DataType EvalImpl() const override;
 };
 
 }  // namespace runtime_probe

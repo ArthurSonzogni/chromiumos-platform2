@@ -4,41 +4,37 @@
 
 #include "runtime_probe/functions/usb_camera.h"
 
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
-
 #include <fcntl.h>
 #include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include <base/files/file_enumerator.h>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/values.h>
+
+#include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
 
 namespace {
 constexpr char kDevVideoPath[] = "/dev/video*";
+constexpr char kSysVideoPath[] = "/sys/class/video4linux";
 
-struct FieldType {
-  std::string key_name;
-  std::string file_name;
-  bool always_upper_case;
-};
-const std::vector<FieldType> kRequiredFields{
-    {"usb_vendor_id", "idVendor", false},
-    {"usb_product_id", "idProduct", false}};
-const std::vector<FieldType> kOptionalFields{
-    {"usb_manufacturer", "manufacturer", false},
-    {"usb_product", "product", false},
-    {"usb_bcd_device", "bcdDevice", false},
-    {"usb_removable", "removable", true}};
+using FieldsType = std::vector<std::pair<std::string, std::string>>;
+
+const FieldsType kRequiredFields{{"usb_vendor_id", "idVendor"},
+                                 {"usb_product_id", "idProduct"}};
+const FieldsType kOptionalFields{{"usb_manufacturer", "manufacturer"},
+                                 {"usb_product", "product"},
+                                 {"usb_bcd_device", "bcdDevice"},
+                                 {"usb_removable", "removable"}};
 
 bool IsCaptureDevice(const base::FilePath& path) {
   int32_t fd = open(path.value().c_str(), O_RDONLY);
@@ -63,42 +59,29 @@ bool IsCaptureDevice(const base::FilePath& path) {
          !(mask & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE));
 }
 
-bool ReadSysfs(const base::FilePath& path,
-               const FieldType& field,
-               std::string* content) {
-  base::FilePath field_path(base::StringPrintf(
-      "/sys/class/video4linux/%s/device/../%s", path.BaseName().value().c_str(),
-      field.file_name.c_str()));
-  base::FilePath normalized_path;
-  if (!base::NormalizeFilePath(field_path, &normalized_path)) {
-    return false;
-  }
-  if (!base::ReadFileToString(normalized_path, content)) {
-    LOG(ERROR) << "Failed to read the file " << normalized_path;
-    return false;
-  }
-  base::TrimString(*content, " \n", content);
-  if (field.always_upper_case) {
-    *content = base::ToUpperASCII(*content);
-  }
-  return true;
-}
-
 bool ReadUsbSysfs(const base::FilePath& path, base::Value* res) {
-  std::string content;
-  for (const auto& field : kRequiredFields) {
-    if (!ReadSysfs(path, field, &content)) {
-      LOG(ERROR) << "Failed to read the required field " << field.key_name;
-      return false;
-    }
-    res->SetStringKey(field.key_name, content);
+  const auto device_name = path.BaseName();
+  // The path "/sys/class/video4linux/*/device" is a symbolic link. Get the real
+  // absolute path before |MapFilesToDict|.
+  const auto device_path =
+      base::FilePath(kSysVideoPath).Append(device_name).Append("device/..");
+  const auto sysfs_dir_path = base::MakeAbsoluteFilePath(device_path);
+  if (sysfs_dir_path.empty()) {
+    LOG(ERROR) << "Failed to get absolute file path from: " << device_path;
+    return false;
   }
-  for (const auto& field : kOptionalFields) {
-    std::string content;
-    if (ReadSysfs(path, field, &content)) {
-      res->SetStringKey(field.key_name, content);
-    }
+  auto result =
+      MapFilesToDict(sysfs_dir_path, kRequiredFields, kOptionalFields);
+  if (!result) {
+    LOG(ERROR) << "Failed to read files from: " << sysfs_dir_path;
+    return false;
   }
+
+  auto* removable = result->FindStringKey("usb_removable");
+  if (removable) {
+    *removable = base::ToUpperASCII(*removable);
+  }
+  res->MergeDictionary(&*result);
   return true;
 }
 
@@ -108,44 +91,19 @@ bool ExploreAsUsbCamera(const base::FilePath& path, base::Value* res) {
 
 }  // namespace
 
-UsbCameraFunction::DataType UsbCameraFunction::Eval() const {
-  auto json_output = InvokeHelperToJSON();
-  if (!json_output) {
-    LOG(ERROR) << "Failed to invoke helper to retrieve usb camera results.";
-    return {};
-  }
-  if (!json_output->is_list()) {
-    LOG(ERROR) << "Failed to parse json output as list.";
-    return {};
-  }
+UsbCameraFunction::DataType UsbCameraFunction::EvalImpl() const {
+  UsbCameraFunction::DataType result{};
 
-  return DataType(json_output->TakeList());
-}
-
-int UsbCameraFunction::EvalInHelper(std::string* output) const {
-  base::Value result(base::Value::Type::LIST);
-
-  base::FilePath glob_path = base::FilePath(kDevVideoPath);
-  const auto glob_root = glob_path.DirName();
-  const auto glob_pattern = glob_path.BaseName();
-  base::FileEnumerator path_it(glob_root, false,
-                               base::FileEnumerator::FileType::FILES,
-                               glob_pattern.value());
-  for (auto video_path = path_it.Next(); !video_path.empty();
-       video_path = path_it.Next()) {
+  for (const auto& video_path : Glob(kDevVideoPath)) {
     base::Value res(base::Value::Type::DICTIONARY);
     res.SetStringKey("path", video_path.value());
     if (ExploreAsUsbCamera(video_path, &res)) {
       res.SetStringKey("bus_type", "usb");
-      result.Append(std::move(res));
+      result.push_back(std::move(res));
     }
   }
 
-  if (!base::JSONWriter::Write(result, output)) {
-    LOG(ERROR) << "Failed to serialize usb camera result to json string";
-    return -1;
-  }
-  return 0;
+  return result;
 }
 
 }  // namespace runtime_probe
