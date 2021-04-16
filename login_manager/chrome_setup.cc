@@ -135,6 +135,21 @@ void SetUpAutoNightLightFlag(ChromiumCommandBuilder* builder,
   builder->AddFeatureEnableOverride("AutoNightLight");
 }
 
+// Enables the "HandwritingRecognitionWebPlatformApi" Blink feature flag if
+// "handwriting-web-platform-api" is set to "true" in cros_config.
+void SetUpHandwritingRecognitionWebPlatformApiFlag(
+    ChromiumCommandBuilder* builder, brillo::CrosConfigInterface* cros_config) {
+  std::string handwriting_recognition_web_platform_api_str;
+  if (!cros_config ||
+      !cros_config->GetString("/ui", "handwriting-recognition-web-platform-api",
+                              &handwriting_recognition_web_platform_api_str) ||
+      handwriting_recognition_web_platform_api_str != "true") {
+    return;
+  }
+
+  builder->AddFeatureEnableOverride("HandwritingRecognitionWebPlatformApi");
+}
+
 // Called by AddUiFlags() to take a wallpaper flag type ("default" or "guest"
 // or "child") and file type (e.g. "child", "default", "oem", "guest") and
 // add the corresponding flags to |builder| if the files exist. Returns false
@@ -567,6 +582,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpAutoNightLightFlag(builder, cros_config);
   SetUpAllowAmbientEQFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
+  SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
