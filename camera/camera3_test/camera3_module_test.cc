@@ -605,7 +605,11 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
       cmd_line->GetSwitchValuePath("camera_hal_path");
   auto num_built_in_cams = GetNumberOfBuiltInCameras();
   if (num_built_in_cams.has_value()) {
-    if (camera_hal_path.value().find("usb") != std::string::npos) {
+    if (camera_hal_path.empty()) {
+      ASSERT_EQ(cam_module_.GetNumberOfCameras(),
+                num_built_in_cams->usb + num_built_in_cams->mipi)
+          << "Incorrect number of cameras";
+    } else if (camera_hal_path.value().find("usb") != std::string::npos) {
       ASSERT_EQ(cam_module_.GetNumberOfCameras(), num_built_in_cams->usb)
           << "Incorrect number of cameras";
     } else {
