@@ -52,6 +52,7 @@ bool CheckMessageSuccess(UimCmd cmd, const uim_qmi_result& qmi_result) {
              << " response contained error: " << qmi_result.error;
   return false;
 }
+constexpr uint16_t kErrorNoEffect = 26;
 
 }  // namespace
 
@@ -673,7 +674,8 @@ void ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
     return;
   }
 
-  if (!CheckMessageSuccess(cmd, resp.result)) {
+  if (!CheckMessageSuccess(cmd, resp.result) &&
+      resp.result.error != kErrorNoEffect) {
     return;
   }
 
