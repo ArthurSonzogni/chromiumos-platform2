@@ -14,11 +14,12 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   explicit WelcomeScreenStateHandler(scoped_refptr<JsonStore> json_store);
   ~WelcomeScreenStateHandler() override = default;
 
-  ASSIGN_STATE(RMAD_STATE_WELCOME_SCREEN);
-
+  ASSIGN_STATE(RmadState::StateCase::kWelcome);
   SET_ALLOW_ABORT;
 
-  bool GetNextState(RmadState* next_state) const override;
+  RmadState::StateCase GetNextStateCase() const override;
+  RmadErrorCode UpdateState(const RmadState& state) override;
+  RmadErrorCode ResetState() override;
 };
 
 }  // namespace rmad

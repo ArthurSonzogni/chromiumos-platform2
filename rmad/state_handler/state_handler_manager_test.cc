@@ -16,10 +16,9 @@
 namespace rmad {
 
 using testing::_;
-using testing::DoAll;
-using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::StrictMock;
 
 class StateHandlerManagerTest : public testing::Test {
  public:
@@ -28,13 +27,16 @@ class StateHandlerManagerTest : public testing::Test {
     state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   }
 
-  scoped_refptr<BaseStateHandler> CreateMockStateHandler(RmadState state,
-                                                         RmadState next_state) {
+  scoped_refptr<BaseStateHandler> CreateMockStateHandler(
+      RmadState::StateCase state,
+      RmadState::StateCase next_state,
+      RmadErrorCode update_error = RMAD_ERROR_OK) {
     auto handler =
-        base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store_);
-    ON_CALL(*handler, GetState()).WillByDefault(Return(state));
-    ON_CALL(*handler, GetNextState(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(next_state), Return(true)));
+        base::MakeRefCounted<StrictMock<MockStateHandler>>(json_store_);
+    EXPECT_CALL(*handler, GetStateCase()).WillRepeatedly(Return(state));
+    EXPECT_CALL(*handler, GetNextStateCase())
+        .WillRepeatedly(Return(next_state));
+
     return handler;
   }
 
@@ -44,31 +46,31 @@ class StateHandlerManagerTest : public testing::Test {
 };
 
 TEST_F(StateHandlerManagerTest, GetStateHandler) {
-  auto handler1 =
-      CreateMockStateHandler(RMAD_STATE_RMA_NOT_REQUIRED, RMAD_STATE_UNKNOWN);
+  auto handler1 = CreateMockStateHandler(RmadState::kSelectNetwork,
+                                         RmadState::kUpdateChrome);
   auto handler2 =
-      CreateMockStateHandler(RMAD_STATE_WELCOME_SCREEN, RMAD_STATE_UNKNOWN);
+      CreateMockStateHandler(RmadState::kWelcome, RmadState::STATE_NOT_SET);
   state_handler_manager_->RegisterStateHandler(handler1);
   state_handler_manager_->RegisterStateHandler(handler2);
 
   scoped_refptr<BaseStateHandler> nonexistent_handler =
-      state_handler_manager_->GetStateHandler(RMAD_STATE_UNKNOWN);
+      state_handler_manager_->GetStateHandler(RmadState::STATE_NOT_SET);
   EXPECT_FALSE(nonexistent_handler.get());
 
   scoped_refptr<BaseStateHandler> retrieve_handler =
-      state_handler_manager_->GetStateHandler(RMAD_STATE_WELCOME_SCREEN);
+      state_handler_manager_->GetStateHandler(RmadState::kWelcome);
   EXPECT_TRUE(retrieve_handler.get());
-  EXPECT_EQ(RMAD_STATE_WELCOME_SCREEN, retrieve_handler->GetState());
-  RmadState next_state;
-  EXPECT_EQ(true, retrieve_handler->GetNextState(&next_state));
-  EXPECT_EQ(RMAD_STATE_UNKNOWN, next_state);
+  EXPECT_EQ(RmadState::kWelcome, retrieve_handler->GetStateCase());
+  EXPECT_EQ(RmadState::STATE_NOT_SET, retrieve_handler->GetNextStateCase());
 }
 
 TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {
+  RmadState welcome_proto;
+  welcome_proto.set_allocated_welcome(new WelcomeState());
   auto handler1 =
-      CreateMockStateHandler(RMAD_STATE_RMA_NOT_REQUIRED, RMAD_STATE_UNKNOWN);
-  auto handler2 = CreateMockStateHandler(RMAD_STATE_RMA_NOT_REQUIRED,
-                                         RMAD_STATE_WELCOME_SCREEN);
+      CreateMockStateHandler(RmadState::kWelcome, RmadState::STATE_NOT_SET);
+  auto handler2 =
+      CreateMockStateHandler(RmadState::kWelcome, RmadState::kSelectNetwork);
   state_handler_manager_->RegisterStateHandler(handler1);
   EXPECT_DEATH(state_handler_manager_->RegisterStateHandler(handler2),
                "Registered handlers should have unique RmadStates.");

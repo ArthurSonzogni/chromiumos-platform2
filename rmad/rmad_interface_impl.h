@@ -8,6 +8,7 @@
 #include "rmad/rmad_interface.h"
 
 #include <memory>
+#include <vector>
 
 #include <base/memory/scoped_refptr.h>
 
@@ -28,19 +29,21 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   ~RmadInterfaceImpl() override = default;
 
-  void GetCurrentState(const GetCurrentStateRequest& request,
-                       const GetCurrentStateCallback& callback) override;
-  void TransitionState(const TransitionStateRequest& request,
-                       const TransitionStateCallback& callback) override;
+  void GetCurrentState(const GetStateCallback& callback) override;
+  void TransitionNextState(const TransitionNextStateRequest& request,
+                           const GetStateCallback& callback) override;
+  void TransitionPreviousState(const GetStateCallback& callback) override;
   void AbortRma(const AbortRmaRequest& request,
                 const AbortRmaCallback& callback) override;
 
  private:
   void InitializeState();
+  bool StoreStateHistory();
 
   scoped_refptr<JsonStore> json_store_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
-  RmadState current_state_;
+  RmadState::StateCase current_state_;
+  std::vector<RmadState::StateCase> state_history_;
 };
 
 }  // namespace rmad

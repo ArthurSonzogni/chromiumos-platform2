@@ -59,6 +59,46 @@ struct JsonStore::ReadResult {
   JsonStore::ReadError read_error;
 };
 
+bool JsonStore::GetValueInternal(const base::Value* data, bool* result) {
+  if (!data || !data->is_bool()) {
+    return false;
+  }
+  if (result) {
+    *result = data->GetBool();
+  }
+  return true;
+}
+
+bool JsonStore::GetValueInternal(const base::Value* data, int* result) {
+  if (!data || !data->is_int()) {
+    return false;
+  }
+  if (result) {
+    *result = data->GetInt();
+  }
+  return true;
+}
+
+bool JsonStore::GetValueInternal(const base::Value* data, double* result) {
+  if (!data || !data->is_double()) {
+    return false;
+  }
+  if (result) {
+    *result = data->GetDouble();
+  }
+  return true;
+}
+
+bool JsonStore::GetValueInternal(const base::Value* data, std::string* result) {
+  if (!data || !data->is_string()) {
+    return false;
+  }
+  if (result) {
+    *result = data->GetString();
+  }
+  return true;
+}
+
 JsonStore::JsonStore(const base::FilePath& file_path)
     : file_path_(file_path),
       data_(base::Value::Type::DICTIONARY),

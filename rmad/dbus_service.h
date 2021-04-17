@@ -36,17 +36,18 @@ class DBusService : public brillo::DBusServiceDaemon {
  private:
   friend class DBusServiceTest;
 
+  using GetStateResponse =
+      brillo::dbus_utils::DBusMethodResponse<const GetStateReply&>;
   // Handler for GetCurrentState D-Bus call.
-  using GetCurrentStateResponse =
-      brillo::dbus_utils::DBusMethodResponse<const GetCurrentStateReply&>;
-  void HandleGetCurrentState(std::unique_ptr<GetCurrentStateResponse> response,
-                             const GetCurrentStateRequest& request);
+  void HandleGetCurrentState(std::unique_ptr<GetStateResponse> response);
 
-  // Handler for TransitionState D-Bus call.
-  using TransitionStateResponse =
-      brillo::dbus_utils::DBusMethodResponse<const TransitionStateReply&>;
-  void HandleTransitionState(std::unique_ptr<TransitionStateResponse> response,
-                             const TransitionStateRequest& request);
+  // Handler for TransitionNextState D-Bus call.
+  void HandleTransitionNextState(std::unique_ptr<GetStateResponse> response,
+                                 const TransitionNextStateRequest& request);
+
+  // Handler for TransitionPreviousState D-Bus call.
+  void HandleTransitionPreviousState(
+      std::unique_ptr<GetStateResponse> response);
 
   // Handler for AbortRma D-Bus call.
   using AbortRmaResponse =

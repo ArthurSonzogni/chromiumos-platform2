@@ -23,10 +23,12 @@ class StateHandlerManager {
   void RegisterStateHandler(scoped_refptr<BaseStateHandler> handler);
   void InitializeStateHandlers();
 
-  scoped_refptr<BaseStateHandler> GetStateHandler(RmadState state) const;
+  scoped_refptr<BaseStateHandler> GetStateHandler(
+      RmadState::StateCase state) const;
 
- protected:
-  std::map<RmadState, scoped_refptr<BaseStateHandler>> state_handler_map_;
+ private:
+  std::map<RmadState::StateCase, scoped_refptr<BaseStateHandler>>
+      state_handler_map_;
   scoped_refptr<JsonStore> json_store_;
 };
 

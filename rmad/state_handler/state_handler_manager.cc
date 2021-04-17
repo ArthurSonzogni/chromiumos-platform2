@@ -18,19 +18,24 @@ StateHandlerManager::StateHandlerManager(scoped_refptr<JsonStore> json_store)
 
 void StateHandlerManager::RegisterStateHandler(
     scoped_refptr<BaseStateHandler> handler) {
-  RmadState state = handler->GetState();
+  RmadState::StateCase state = handler->GetStateCase();
   auto res = state_handler_map_.insert(std::make_pair(state, handler));
-  // Check if there are StateId collision.
+  // Check if there are StateId collisions.
   DCHECK(res.second) << "Registered handlers should have unique RmadStates.";
 }
 
 void StateHandlerManager::InitializeStateHandlers() {
+  // TODO(gavindodd): Some form of validation of state loaded from the store is
+  // needed. e.g. RMA abortable state must match what is expected by the
+  // current position in the state flow, but depends on some state in the
+  // history.
+  // Maybe initializing states in history order would help?
   RegisterStateHandler(
       base::MakeRefCounted<WelcomeScreenStateHandler>(json_store_));
 }
 
 scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(
-    RmadState state) const {
+    RmadState::StateCase state) const {
   auto it = state_handler_map_.find(state);
   if (it == state_handler_map_.end()) {
     // Unregistered RmadState, return an empty pointer.

@@ -57,6 +57,15 @@ class DBusServiceTest : public testing::Test {
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
   }
 
+  template <typename ReplyProtobufType>
+  void ExecuteMethod(const std::string& method_name, ReplyProtobufType* reply) {
+    std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name);
+    auto response = brillo::dbus_utils::testing::CallMethod(
+        *dbus_service_->dbus_object_, call.get());
+    dbus::MessageReader reader(response.get());
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+  }
+
  protected:
   std::unique_ptr<dbus::MethodCall> CreateMethodCall(
       const std::string& method_name) {
@@ -75,37 +84,54 @@ class DBusServiceTest : public testing::Test {
 TEST_F(DBusServiceTest, GetCurrentState) {
   RegisterDBusObjectAsync();
 
-  EXPECT_CALL(mock_rmad_service_, GetCurrentState(_, _))
-      .WillOnce(
-          Invoke([](const GetCurrentStateRequest& request,
-                    const RmadInterface::GetCurrentStateCallback& callback) {
-            GetCurrentStateReply reply;
-            reply.set_state(RMAD_STATE_RMA_NOT_REQUIRED);
-            callback.Run(reply);
-          }));
+  EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
+      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
+        GetStateReply reply;
+        reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+        callback.Run(reply);
+      }));
 
-  GetCurrentStateRequest request;
-  GetCurrentStateReply reply;
-  ExecuteMethod(kGetCurrentStateMethod, request, &reply);
-  EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
+  GetStateReply reply;
+  ExecuteMethod(kGetCurrentStateMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
+  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
 }
 
-TEST_F(DBusServiceTest, TransitionState) {
+TEST_F(DBusServiceTest, TransitionNextState) {
   RegisterDBusObjectAsync();
 
-  EXPECT_CALL(mock_rmad_service_, TransitionState(_, _))
-      .WillOnce(
-          Invoke([](const TransitionStateRequest& request,
-                    const RmadInterface::TransitionStateCallback& callback) {
-            TransitionStateReply reply;
-            reply.set_state(RMAD_STATE_RMA_NOT_REQUIRED);
-            callback.Run(reply);
-          }));
+  EXPECT_CALL(mock_rmad_service_, TransitionNextState(_, _))
+      .WillOnce(Invoke([](const TransitionNextStateRequest& request,
+                          const RmadInterface::GetStateCallback& callback) {
+        GetStateReply reply;
+        reply.set_error(RMAD_ERROR_OK);
+        RmadState* state = new RmadState();
+        state->set_allocated_welcome(new WelcomeState());
+        reply.set_allocated_state(state);
+        callback.Run(reply);
+      }));
 
-  TransitionStateRequest request;
-  TransitionStateReply reply;
-  ExecuteMethod(kTransitionStateMethod, request, &reply);
-  EXPECT_EQ(RMAD_STATE_RMA_NOT_REQUIRED, reply.state());
+  TransitionNextStateRequest request;
+  GetStateReply reply;
+  ExecuteMethod(kTransitionNextStateMethod, request, &reply);
+  EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+  EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+}
+
+TEST_F(DBusServiceTest, TransitionPreviousState) {
+  RegisterDBusObjectAsync();
+
+  EXPECT_CALL(mock_rmad_service_, TransitionPreviousState(_))
+      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
+        GetStateReply reply;
+        reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
+        callback.Run(reply);
+      }));
+
+  GetStateReply reply;
+  ExecuteMethod(kTransitionPreviousStateMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
+  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
 }
 
 TEST_F(DBusServiceTest, AbortRma) {

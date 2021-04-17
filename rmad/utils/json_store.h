@@ -7,6 +7,8 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
@@ -29,6 +31,67 @@ class JsonStore : public base::RefCounted<JsonStore> {
   };
 
   explicit JsonStore(const base::FilePath& file_path);
+
+  // Set a (key, value) pair to the dictionary for types supported by
+  // base::Value (bool, int, double, string).
+  // Return true if there's no update or the updated data is successfully
+  // written to the file, false if the update cannot be written to the file.
+  template <typename T>
+  bool SetValue(const std::string& key, const T& value) {
+    return SetValue(key, base::Value(value));
+  }
+
+  // Set a (key, list of values) pair to the dictionary for a lists of types
+  // supported by base::Value.
+  // Return true if there's no update or the updated data is successfully
+  // written to the file, false if the update cannot be written to the file.
+  template <typename T>
+  bool SetValue(const std::string& key, const std::vector<T>& values) {
+    std::vector<base::Value> list;
+    for (auto value : values) {
+      list.push_back(base::Value(value));
+    }
+    return SetValue(key, base::Value(list));
+  }
+
+  // Get the value associated to the key, and copy to `value` for types
+  // supported by base::Value.
+  // If value is null then just the existence and type of the key value is
+  // checked.
+  // If the key is not found, `value` is not modified by the function. Return
+  // true if the key is found in the dictionary, false if the key is not found.
+  template <typename T>
+  bool GetValue(const std::string& key, T* result) const {
+    DCHECK(data_.is_dict());
+    return GetValueInternal(data_.FindKey(key), result);
+  }
+
+  // Get the list of values associated to the key, and copy to `values` for
+  // lists of types supported by base::Value.
+  // If values is null then just the existence and type of the key value is
+  // checked.
+  // If the key is not found, `value` is not modified by the function. Return
+  // true if the key is found in the dictionary, false if the key is not found.
+  template <typename T>
+  bool GetValue(const std::string& key, std::vector<T>* results) const {
+    DCHECK(data_.is_dict());
+    const base::Value* list = data_.FindKey(key);
+    if (!list || !list->is_list()) {
+      return false;
+    }
+    std::vector<T> r;
+    for (auto& data : list->GetList()) {
+      if (T result; GetValueInternal(&data, &result)) {
+        r.push_back(result);
+      } else {
+        return false;
+      }
+    }
+    if (results) {
+      *results = std::move(r);
+    }
+    return true;
+  }
 
   // Set a (key, value) pair to the dictionary. Return true if there's no
   // update or the updated data is successfully written to the file, false if
@@ -56,6 +119,9 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // Get read status of the file.
   ReadError GetReadError() const { return read_error_; }
 
+  // Return true if the file existed when read was attempted.
+  bool Exists() const { return read_error_ != READ_ERROR_NO_SUCH_FILE; }
+
   // Return true if the file cannot be written, such as access denied, or the
   // file already exists but contains invalid JSON format.
   bool ReadOnly() const { return read_only_; }
@@ -68,6 +134,11 @@ class JsonStore : public base::RefCounted<JsonStore> {
 
   // Read result returned from internal read tasks.
   struct ReadResult;
+
+  static bool GetValueInternal(const base::Value* data, bool* result);
+  static bool GetValueInternal(const base::Value* data, int* result);
+  static bool GetValueInternal(const base::Value* data, double* result);
+  static bool GetValueInternal(const base::Value* data, std::string* result);
 
   void InitFromFile();
   std::unique_ptr<JsonStore::ReadResult> ReadFromFile();

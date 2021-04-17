@@ -12,7 +12,8 @@ const char kRmadServiceName[] = "org.chromium.Rmad";
 
 // Methods
 const char kGetCurrentStateMethod[] = "GetCurrentState";
-const char kTransitionStateMethod[] = "TransitionState";
+const char kTransitionNextStateMethod[] = "TransitionNextState";
+const char kTransitionPreviousStateMethod[] = "TransitionPreviousState";
 const char kAbortRmaMethod[] = "AbortRma";
 
 }  // namespace rmad

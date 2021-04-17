@@ -37,6 +37,8 @@ const char kExistingKey[] = "trigger";
 const bool kExistingValue = true;
 const char kNewKey[] = "NewKey";
 const int kNewValue = 10;
+const char kNewStringValue[] = "value";
+const char kNotStringValue[] = "not value";
 
 class JsonStoreTest : public testing::Test {
  public:
@@ -147,6 +149,101 @@ TEST_F(JsonStoreTest, StoreValue) {
   auto json_store_new = base::MakeRefCounted<JsonStore>(input_file);
   EXPECT_TRUE(json_store_new->GetValue(kNewKey, &value));
   EXPECT_EQ(value, base::Value(kNewValue));
+}
+
+TEST_F(JsonStoreTest, SetValue_Template) {
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(input_file);
+  int value = kNewValue - 1;
+  // Add new key.
+  EXPECT_FALSE(json_store->GetValue(kNewKey, &value));
+  EXPECT_EQ(value, kNewValue - 1);
+  EXPECT_TRUE(json_store->SetValue(kNewKey, kNewValue));
+  EXPECT_TRUE(json_store->GetValue(kNewKey, &value));
+  EXPECT_EQ(value, kNewValue);
+  // Overwrite existing key.
+  bool bool_value = !kExistingValue;
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &bool_value));
+  EXPECT_EQ(bool_value, kExistingValue);
+  EXPECT_NE(kExistingValue, kNewValue);
+  EXPECT_TRUE(json_store->SetValue(kExistingKey, kNewValue));
+  bool_value = !kExistingValue;
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &bool_value));
+  EXPECT_EQ(bool_value, !kExistingValue);
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &value));
+  EXPECT_EQ(value, kNewValue);
+}
+
+TEST_F(JsonStoreTest, GetValue_TemplateWrongType) {
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(input_file);
+  std::string value = "hello";
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &value));
+  EXPECT_EQ(value, "hello");
+}
+
+TEST_F(JsonStoreTest, GetValue_TemplateChangeType) {
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(input_file);
+  bool bool_value = !kExistingValue;
+  std::string string_value = kNotStringValue;
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &bool_value));
+  EXPECT_EQ(bool_value, kExistingValue);
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &string_value));
+  EXPECT_EQ(string_value, kNotStringValue);
+  EXPECT_TRUE(json_store->SetValue(kExistingKey, kNewStringValue));
+  bool_value = !kExistingValue;
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &bool_value));
+  EXPECT_EQ(bool_value, !kExistingValue);
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &string_value));
+  EXPECT_EQ(string_value, kNewStringValue);
+}
+
+// TODO(gavindodd): Test the template list interface.
+TEST_F(JsonStoreTest, SetValue_TemplateList) {
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(input_file);
+  std::vector<double> values = {0.12, 34.5, 678.9};
+  // Add new key.
+  EXPECT_FALSE(json_store->GetValue(kNewKey, &values));
+  EXPECT_EQ(values.size(), 3);
+  EXPECT_EQ(values[0], 0.12);
+  EXPECT_EQ(values[1], 34.5);
+  EXPECT_EQ(values[2], 678.9);
+  EXPECT_TRUE(json_store->SetValue(kNewKey, values));
+  values.clear();
+  EXPECT_TRUE(json_store->GetValue(kNewKey, &values));
+  EXPECT_EQ(values.size(), 3);
+  EXPECT_EQ(values[0], 0.12);
+  EXPECT_EQ(values[1], 34.5);
+  EXPECT_EQ(values[2], 678.9);
+  // Overwrite existing key.
+  bool bool_value = !kExistingValue;
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &bool_value));
+  EXPECT_EQ(bool_value, kExistingValue);
+  values = {987.6, 5.43, 2.1};
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &values));
+  EXPECT_EQ(values.size(), 3);
+  EXPECT_EQ(values[0], 987.6);
+  EXPECT_EQ(values[1], 5.43);
+  EXPECT_EQ(values[2], 2.1);
+  EXPECT_TRUE(json_store->SetValue(kExistingKey, values));
+  values.clear();
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &values));
+  EXPECT_EQ(values.size(), 3);
+  EXPECT_EQ(values[0], 987.6);
+  EXPECT_EQ(values[1], 5.43);
+  EXPECT_EQ(values[2], 2.1);
+  // Confirm the new key was not modified.
+  EXPECT_TRUE(json_store->GetValue(kNewKey, &values));
+  EXPECT_EQ(values.size(), 3);
+  EXPECT_EQ(values[0], 0.12);
+  EXPECT_EQ(values[1], 34.5);
+  EXPECT_EQ(values[2], 678.9);
 }
 
 }  // namespace rmad

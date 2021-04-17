@@ -16,13 +16,14 @@ class MockRmadInterface : public RmadInterface {
   MockRmadInterface() = default;
   virtual ~MockRmadInterface() = default;
 
+  MOCK_METHOD(void, GetCurrentState, (const GetStateCallback&), (override));
   MOCK_METHOD(void,
-              GetCurrentState,
-              (const GetCurrentStateRequest&, const GetCurrentStateCallback&),
+              TransitionNextState,
+              (const TransitionNextStateRequest&, const GetStateCallback&),
               (override));
   MOCK_METHOD(void,
-              TransitionState,
-              (const TransitionStateRequest&, const TransitionStateCallback&),
+              TransitionPreviousState,
+              (const GetStateCallback&),
               (override));
   MOCK_METHOD(void,
               AbortRma,

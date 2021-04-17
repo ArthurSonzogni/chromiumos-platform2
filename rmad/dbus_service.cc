@@ -48,9 +48,12 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   dbus_interface->AddMethodHandler(kGetCurrentStateMethod,
                                    base::Unretained(this),
                                    &DBusService::HandleGetCurrentState);
-  dbus_interface->AddMethodHandler(kTransitionStateMethod,
+  dbus_interface->AddMethodHandler(kTransitionNextStateMethod,
                                    base::Unretained(this),
-                                   &DBusService::HandleTransitionState);
+                                   &DBusService::HandleTransitionNextState);
+  dbus_interface->AddMethodHandler(kTransitionPreviousStateMethod,
+                                   base::Unretained(this),
+                                   &DBusService::HandleTransitionPreviousState);
   dbus_interface->AddMethodHandler(kAbortRmaMethod, base::Unretained(this),
                                    &DBusService::HandleAbortRma);
 
@@ -59,27 +62,33 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 }
 
 void DBusService::HandleGetCurrentState(
-    std::unique_ptr<GetCurrentStateResponse> response,
-    const GetCurrentStateRequest& request) {
+    std::unique_ptr<GetStateResponse> response) {
   // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-  using SharedResponsePointer = std::shared_ptr<GetCurrentStateResponse>;
-  rmad_interface_->GetCurrentState(
-      request, base::Bind(&DBusService::ReplyAndQuit<GetCurrentStateResponse,
-                                                     GetCurrentStateReply>,
-                          base::Unretained(this),
-                          SharedResponsePointer(std::move(response))));
+  using SharedResponsePointer = std::shared_ptr<GetStateResponse>;
+  rmad_interface_->GetCurrentState(base::Bind(
+      &DBusService::ReplyAndQuit<GetStateResponse, GetStateReply>,
+      base::Unretained(this), SharedResponsePointer(std::move(response))));
 }
 
-void DBusService::HandleTransitionState(
-    std::unique_ptr<TransitionStateResponse> response,
-    const TransitionStateRequest& request) {
+void DBusService::HandleTransitionNextState(
+    std::unique_ptr<GetStateResponse> response,
+    const TransitionNextStateRequest& request) {
   // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-  using SharedResponsePointer = std::shared_ptr<TransitionStateResponse>;
-  rmad_interface_->TransitionState(
-      request, base::Bind(&DBusService::ReplyAndQuit<TransitionStateResponse,
-                                                     TransitionStateReply>,
-                          base::Unretained(this),
-                          SharedResponsePointer(std::move(response))));
+  using SharedResponsePointer = std::shared_ptr<GetStateResponse>;
+  rmad_interface_->TransitionNextState(
+      request,
+      base::Bind(&DBusService::ReplyAndQuit<GetStateResponse, GetStateReply>,
+                 base::Unretained(this),
+                 SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleTransitionPreviousState(
+    std::unique_ptr<GetStateResponse> response) {
+  // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
+  using SharedResponsePointer = std::shared_ptr<GetStateResponse>;
+  rmad_interface_->TransitionPreviousState(base::Bind(
+      &DBusService::ReplyAndQuit<GetStateResponse, GetStateReply>,
+      base::Unretained(this), SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleAbortRma(std::unique_ptr<AbortRmaResponse> response,

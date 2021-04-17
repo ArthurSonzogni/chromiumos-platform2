@@ -17,10 +17,10 @@
 
 namespace rmad {
 
-const base::FilePath kDefaultJsonStoreFilePath("/var/lib/rmad/state");
-constexpr char kRmadCurrentState[] = "current_state";
-
 namespace {
+const base::FilePath kDefaultJsonStoreFilePath("/var/lib/rmad/state");
+constexpr char kRmadStateHistory[] = "state_history";
+const RmadState::StateCase kInitialState = RmadState::kWelcome;
 
 bool RoVerificationKeyPressed() {
   // TODO(b/181000999): Send a D-Bus query to tpm_managerd when API is ready.
@@ -45,52 +45,135 @@ RmadInterfaceImpl::RmadInterfaceImpl(
   InitializeState();
 }
 
+bool RmadInterfaceImpl::StoreStateHistory() {
+  std::vector<int> state_history;
+  for (auto s : state_history_) {
+    state_history.push_back(RmadState::StateCase(s));
+  }
+  return json_store_->SetValue(kRmadStateHistory, state_history);
+}
+
 void RmadInterfaceImpl::InitializeState() {
-  if (const base::Value * value;
-      json_store_->GetValue(kRmadCurrentState, &value)) {
-    if (!value->is_string() ||
-        !RmadState_Parse(value->GetString(), &current_state_)) {
-      // State string in json_store_ is invalid.
-      current_state_ = RMAD_STATE_UNKNOWN;
+  // Initialize state
+  state_history_.clear();
+  if (json_store_->GetReadError() != JsonStore::READ_ERROR_NO_SUCH_FILE) {
+    if (std::vector<int> state_history;
+        json_store_->GetReadError() == JsonStore::READ_ERROR_NONE &&
+        json_store_->GetValue(kRmadStateHistory, &state_history) &&
+        state_history.size()) {
+      for (int state : state_history) {
+        // Reject any state that does not have a handler.
+        if (RmadState::StateCase s = RmadState::StateCase(state);
+            state_handler_manager_->GetStateHandler(s)) {
+          state_history_.push_back(s);
+        } else {
+          LOG(ERROR) << "Missing handler for state " << state << ".";
+        }
+      }
+    }
+    if (state_history_.size() > 0) {
+      current_state_ = state_history_.back();
+    } else {
+      LOG(WARNING) << "Could not read state history from json store, reset to "
+                      "initial state.";
+      // TODO(gavindodd): Reset the json store so it is not read only.
+      current_state_ = kInitialState;
+      state_history_.push_back(current_state_);
+      StoreStateHistory();
+      // TODO(gavindodd): Set to an error state or send a signal to Chrome that
+      // the RMA was reset so a message can be displayed.
     }
   } else if (RoVerificationKeyPressed()) {
-    current_state_ = RMAD_STATE_WELCOME_SCREEN;
-    if (!json_store_->SetValue(kRmadCurrentState,
-                               base::Value(RmadState_Name(current_state_)))) {
-      current_state_ = RMAD_STATE_UNKNOWN;
+    current_state_ = kInitialState;
+    state_history_.push_back(current_state_);
+    if (!StoreStateHistory()) {
+      LOG(ERROR) << "Could not store initial state";
+      // TODO(gavindodd): Set to an error state or send a signal to Chrome that
+      // the json store failed so a message can be displayed.
     }
   } else {
-    current_state_ = RMAD_STATE_RMA_NOT_REQUIRED;
+    // Not in RMA.
+    current_state_ = RmadState::STATE_NOT_SET;
   }
 }
 
-void RmadInterfaceImpl::GetCurrentState(
-    const GetCurrentStateRequest& request,
-    const GetCurrentStateCallback& callback) {
-  GetCurrentStateReply reply;
-  reply.set_state(current_state_);
+void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
+  GetStateReply reply;
+  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
+  if (state_handler) {
+    reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
+    reply.set_allocated_state(new RmadState(state_handler->GetState()));
+  } else {
+    reply.set_error(RmadErrorCode::RMAD_ERROR_RMA_NOT_REQUIRED);
+  }
+  // TODO(chenghan): Set |can_go_back|.
   callback.Run(reply);
 }
 
-void RmadInterfaceImpl::TransitionState(
-    const TransitionStateRequest& request,
-    const TransitionStateCallback& callback) {
-  TransitionStateReply reply;
+void RmadInterfaceImpl::TransitionNextState(
+    const TransitionNextStateRequest& request,
+    const GetStateCallback& callback) {
+  // TODO(chenghan): Add error replies when failed to get `state_handler`, or
+  //                 failed to write `json_store_`.
   auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
+  GetStateReply reply;
 
-  if (RmadState next_state;
-      state_handler && state_handler->GetNextState(&next_state)) {
-    std::string next_state_name = RmadState_Name(next_state);
-    DLOG(INFO) << "TransitionState: Transition to " << next_state_name << ".";
-    current_state_ = next_state;
-    DCHECK(
-        json_store_->SetValue(kRmadCurrentState, base::Value(next_state_name)));
+  if (state_handler) {
+    const RmadState& state = request.state();
+    RmadErrorCode error = state_handler->UpdateState(state);
+    reply.set_error(error);
+    if (error != RMAD_ERROR_OK) {
+      // TODO(gavindodd): Error handling
+    } else {
+      RmadState::StateCase next = state_handler->GetNextStateCase();
+      if (next != current_state_) {
+        state_handler = state_handler_manager_->GetStateHandler(next);
+        CHECK(state_handler)
+            << "No registered state handler for state " << next;
+        current_state_ = next;
+        state_history_.push_back(current_state_);
+        StoreStateHistory();
+      } else {
+        // TODO(gavindodd): Set an error code? Could this error be fatal?
+        LOG(ERROR) << "Could not transition from state " << current_state_;
+      }
+    }
+    reply.set_allocated_state(new RmadState(state_handler->GetState()));
+    // TODO(gavindodd): Set can go back by inspecting stack?
+    // Add a 'repeatable' flag on state handlers?
+    reply.set_can_go_back(state_history_.size() > 1);
   } else {
-    DLOG(INFO) << "TransitionState: Failed to get next state.";
-    reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
+    // TODO(gavindodd): This is a pretty bad error. What next?
+    reply.set_error(RmadErrorCode::RMAD_ERROR_REQUEST_INVALID);
   }
+  // TODO(chenghan): Set |can_go_back|.
 
-  reply.set_state(current_state_);
+  callback.Run(reply);
+}
+
+void RmadInterfaceImpl::TransitionPreviousState(
+    const GetStateCallback& callback) {
+  GetStateReply reply;
+  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
+  CHECK(state_handler);
+  // TODO(gavindodd): Add check that previous state is repeatable.
+  if (state_history_.size() > 1) {
+    // Clear data from current state.
+    state_handler->ResetState();
+    // Remove current state from stack.
+    state_history_.pop_back();
+    StoreStateHistory();
+    // Get new state.
+    current_state_ = state_history_.back();
+    // Update the state handler for the new state.
+    state_handler = state_handler_manager_->GetStateHandler(current_state_);
+    CHECK(state_handler);
+    reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
+  } else {
+    reply.set_error(RmadErrorCode::RMAD_ERROR_TRANSITION_FAILED);
+  }
+  // In all cases fetch whatever the current state is.
+  reply.set_allocated_state(new RmadState(state_handler->GetState()));
   callback.Run(reply);
 }
 
@@ -102,7 +185,8 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaRequest& request,
   if (state_handler && state_handler->IsAllowAbort()) {
     DLOG(INFO) << "AbortRma: Abort allowed.";
     json_store_->Clear();
-    current_state_ = RMAD_STATE_RMA_NOT_REQUIRED;
+    current_state_ = RmadState::STATE_NOT_SET;
+    reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
   } else {
     DLOG(INFO) << "AbortRma: Failed to abort.";
     reply.set_error(RMAD_ERROR_ABORT_FAILED);
