@@ -1,0 +1,35 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":hps" ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libchrome",
+    "libusb-1.0",
+  ]
+}
+
+executable("hps") {
+  sources = [
+    "cmd.cpp",
+    "download.cpp",
+    "main.cpp",
+    "readtest.cpp",
+    "status.cpp",
+  ]
+
+  configs += [ ":target_defaults" ]
+
+  libs = [ "ftdi1" ]
+
+  deps = [
+    "//hps/lib:fakedev",
+    "//hps/lib:hpslib",
+  ]
+}
