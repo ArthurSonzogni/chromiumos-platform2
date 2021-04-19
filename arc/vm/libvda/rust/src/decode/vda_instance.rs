@@ -25,30 +25,48 @@ pub struct Capabilities {
     pub output_formats: Vec<PixelFormat>,
 }
 
-/// Represents a libvda instance.
-pub struct VdaInstance {
-    // `raw_ptr` must be a valid pointer obtained from `decode_bindings::initialize`.
-    raw_ptr: *mut c_void,
-    caps: Capabilities,
+// An active connection to the VDA, which closes automatically as it is dropped.
+pub struct VdaConnection {
+    // `conn_ptr` must be a valid pointer obtained from `decode_bindings::initialize`.
+    conn_ptr: *mut c_void,
 }
 
-impl VdaInstance {
-    /// Creates VdaInstance. `typ` specifies which backend will be used.
-    pub fn new(typ: VdaImplType) -> Result<Self> {
+impl VdaConnection {
+    fn new(typ: VdaImplType) -> Result<Self> {
         let impl_type = match typ {
             VdaImplType::Fake => bindings::vda_impl_type_FAKE,
             VdaImplType::Gavda => bindings::vda_impl_type_GAVDA,
         };
 
         // Safe because libvda's API is called properly.
-        let raw_ptr = unsafe { bindings::initialize(impl_type) };
-        if raw_ptr.is_null() {
-            return Err(Error::InstanceInitFailure);
+        match unsafe { bindings::initialize(impl_type) } {
+            ptr if ptr.is_null() => Err(Error::InstanceInitFailure),
+            conn_ptr => Ok(VdaConnection { conn_ptr }),
         }
+    }
+}
+
+impl Drop for VdaConnection {
+    fn drop(&mut self) {
+        // Safe because libvda's API is called properly.
+        unsafe { bindings::deinitialize(self.conn_ptr) }
+    }
+}
+
+/// Represents a libvda instance.
+pub struct VdaInstance {
+    connection: VdaConnection,
+    caps: Capabilities,
+}
+
+impl VdaInstance {
+    /// Creates VdaInstance. `typ` specifies which backend will be used.
+    pub fn new(typ: VdaImplType) -> Result<Self> {
+        let connection = VdaConnection::new(typ)?;
 
         // Get available input/output formats.
-        // Safe because libvda's API is called properly.
-        let vda_cap_ptr = unsafe { bindings::get_vda_capabilities(raw_ptr) };
+        // Safe because `conn_ptr` is valid and `get_vda_capabilities()` won't invalidate it.
+        let vda_cap_ptr = unsafe { bindings::get_vda_capabilities(connection.conn_ptr) };
         if vda_cap_ptr.is_null() {
             return Err(Error::GetCapabilitiesFailure);
         }
@@ -67,7 +85,7 @@ impl VdaInstance {
         };
 
         Ok(VdaInstance {
-            raw_ptr,
+            connection,
             caps: Capabilities {
                 input_formats,
                 output_formats,
@@ -82,15 +100,11 @@ impl VdaInstance {
 
     /// Opens a new `Session` for a given `Profile`.
     pub fn open_session(&self, profile: Profile) -> Result<Session> {
-        // Safe because `self.raw_ptr` is a non-NULL pointer obtained from `bindings::initialize`
-        // in `VdaInstance::new`.
-        unsafe { Session::new(self.raw_ptr, profile).ok_or(Error::SessionInitFailure(profile)) }
-    }
-}
-
-impl Drop for VdaInstance {
-    fn drop(&mut self) {
-        // Safe because libvda's API is called properly.
-        unsafe { bindings::deinitialize(self.raw_ptr) }
+        // Safe because `connection` is properly initialized and thus its `conn_ptr` is
+        // non-NULL.
+        unsafe {
+            Session::new(self.connection.conn_ptr, profile)
+                .ok_or(Error::SessionInitFailure(profile))
+        }
     }
 }
