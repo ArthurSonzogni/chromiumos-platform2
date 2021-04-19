@@ -7,20 +7,30 @@ the usefulness of crash reports and minimizing collection of any & all PII data.
 For more background details, see the [original design doc](docs/design.md).
 This document focuses on the current state of the project.
 
-Most bugs/features can be found via [component:Internals>CrashReporting
-OS=Chrome](https://bugs.chromium.org/p/chromium/issues/list?q=component:Internals>CrashReporting+OS=Chrome).
+Most bugs/features can be found via [component:OS>Systems>CrashReporting
+](https://bugs.chromium.org/p/chromium/issues/list?q=component:OS>Systems>CrashReporting).
+We're in the process of migrating to buganizer:
+[ChromeOS > Data > Engineering > Crash Reporting
+](https://issuetracker.google.com/issues?q=status:open%20componentid:1032705)
 
 [TOC]
 
 ## Data Consent
 
 No crashes get collected without explicit consent from the device owner.
-This is normally part of the OOBE setup flow.
-Consent is handled by the device owner and covers all users of that device.
-If no consent has been granted, then generally collectors will exit rather
-than do any further processing.
+This is normally part of the OOBE setup flow (but can also be controlled via OS
+Settings).
 
-However, even if consent has been granted, there is one notable scenario where
+Consent is controlled by the device owner and covers all users of that device.
+If no consent has been granted, then `crash_reporter`  will generally exit
+rather than doing any further processing (e.g. running collectors).
+
+The only case where we `crash_reporter` collects crashes even without consent is
+for early crashes that occur before stateful partitions are mounted (because we
+cannot check consent then). `crash_sender` still checks consent before it
+uploads crashes.
+
+Even if consent has been granted, there is one notable scenario where
 crash reports are still not uploaded -- guest mode.
 While system crashes are still collected (as they shouldn't have any user PII
 in them), browser and user crashes are not uploaded.
@@ -34,9 +44,6 @@ informal profile, they are all automatically throw away on log out.
 ***
 
 If consent is later revoked, we do not upload any crashes that had been queued.
-
-For headless systems, the consent setting can be managed via [metrics_client]'s
-`-C` and `-D` options.
 
 ## Life Cycle
 
@@ -57,28 +64,30 @@ For example, if the system had rebooted due to a kernel panic, or some firmware
 (like the [EC]) had crashed.
 This also includes crashes that occurred during early boot before persistent
 storage was available: such crashes are stored into `/run/crash_reporter/crash`
+(or sometimes `/mnt/stateful_partition/reboot_vault/crash`)
 and collected into `/var/spool/crash` once boot completes.
 
-We background the [anomaly_detector] to monitor for system "anomalies" for
-which a notification mechanism is not available.
-This daemon operates by monitoring syslog messages via [inotify].
+We run the [anomaly_detector] in the background to monitor for system
+"anomalies" for which a notification mechanism is not available.
+This daemon operates by monitoring syslog messages at a predefined interval.
 Depending on the anomaly, it generates crashes and D-Bus signals.
 
-We also background the [crash_sender] service to periodically upload crashes.
-See [Uploading Crashes] for more details.
+We also run the [crash_sender] service in the background to periodically upload
+crashes.  See [Uploading Crashes] for more details.
 
 At this point, if no crashes occur, nothing ever happens!
 And of course, since we never have bugs, that's precisely what happens!
 
 If a userland crash occurs that would trigger a coredump, the kernel will
-execute [crash_reporter] directly and pass in the coredump and some metadata.
-We process it directly and queue the report in the right crash directory.
+execute [crash_reporter] directly (via `/proc/sys/kernel/core_pattern`) and pass
+in the coredump and some metadata.  We process it directly and queue the report
+in the right crash directory.
 The exact processing steps depend on the specific collector involved, so see
 the [Collectors] section for more details.
 See [Crash Report Storage] for more details on queuing.
 
 If a Chrome (browser) process crashes, [crash_reporter] will be called by the
-kernel, but we actually ignore things at that point.
+kernel, but we actually ignore that invocation.
 Instead, Chrome itself will take care of processing that crash report before
 calling [crash_reporter] with the final crash report for queuing.
 
@@ -89,8 +98,8 @@ file to trigger [crash_reporter] based on those.
 
 Each collector has a `xxx_collector.cc` and `xxx_collector.h` module.
 
-The standalone programs (e.g. [crash_reporter] and [crash_sender]) have their
-own modules.
+The standalone programs (e.g. [crash_reporter], [crash_sender], and
+[anomaly_detector]) have their own modules.
 
 All unittests are named `xxx_test.cc` and contain tests for the corresponding
 `xxx.cc` files.
@@ -109,7 +118,10 @@ More details on each can be found in the sections below.
 
 * [anomaly-detector.conf]: Background daemon that monitors logs for anomalies.
 * [crash-boot-collect.conf]: One-off collection at boot time.
-* [crash-reporter.conf]: One-off early boot initialization.
+* [crash-reporter.conf]: One-off boot initialization (after stateful is
+    mounted).
+* [crash-reporter-early-init.conf]: One-off early boot initialization
+  (before stateful is mounted).
 * [crash-sender.conf]: Background daemon for uploading reports.
 
 ## Initialization
@@ -122,11 +134,10 @@ Currently we initialize during `boot-services` and after `syslog`.
 This is because the [crash_reporter] code will use syslog for output/errors of
 its own, even during early init.
 
-This means any userland crashes that occur before this point will be lost.
-Some non-exhaustive but significant highlights:
-* All code in `chromeos_startup`.
-* The syslog daemon.
-* Any other `boot-services` that run in parallel (e.g. `dbus`).
+For any userland crashes that occur before this point, the
+[crash-reporter-early-init.conf] script helps us collect these. It runs
+after pre-startup, and saves crashes into temporary directories. We then collect
+these with [crash-boot-collect.conf] after the stateful partition is available.
 
 The init step itself should be fairly quick as it only initializes internal
 state paths (e.g. under `/run` and `/var`), and it configures the various
@@ -135,13 +146,6 @@ Most notably, this is responsible for writing `/proc/sys/kernel/core_pattern`
 which tells the kernel to execute us whenever a crash is detected.
 
 For more details, see the [core(5)] man page.
-
-*** aside
-We could improve early boot collection by writing a standalone & simple
-collector that doesn't use syslog and saves basic report to `/run`.
-This would be active until we do the full init step described here.
-The reports would then be collected by the [crash-boot-collect.conf] step.
-***
 
 ## Crash Report Storage
 
@@ -157,8 +161,14 @@ We store reports in a couple of different places.
     instead of `/home/chronos/<user_hash>/crash/`. This avoids having crashes
     become inaccessible if a test logs the user out.
     ***
+*   `/run/daemon-store/crash/<user_hash>`: Some crashes from the `chronos` user
+    are sent here.  In the long term. All `chronos` user crashes should go here
+    when the user is logged in.
 *   `/mnt/stateful_partition/unencrypted/preserve/crash`: Crashes found early in
-    the boot process (before `/var/spool/crash` is available) are stored here.
+    the boot process (before `/var/spool/crash` is available) are stored here if
+    we wish to preserve them across clobbers.
+*   `/run/crash_reporter/crash`: Crashes found early in the boot process (before
+    `/var/spool/crash` is available) are stored here.
 *   `/home/root/<user_hash>/crash-reporter/`: User-specific queued reports.
     Used when invoked as root (e.g. by the kernel to handle crashes for
     processes that were running as `chronos`).
@@ -173,11 +183,11 @@ The [crash_sender] program will also delete reports after it uploads them.
 
 These directories are only read by the [crash_sender] program for uploading,
 and by feedback reports.
-Test frameworks (e.g. autotest, tast) also offload crash reports, but we don't
-need to provide special consideration for those.
+Test frameworks (e.g. autotest, tast) also offload crash reports, and the
+[crash_serializer] binary helps them do so.
 
 We enforce a limit of about 32 crashes per spool directory.
-This is to avoid filling up the underlying storage especially if a daemon
+This is to avoid filling up the underlying storage, especially if a daemon
 goes into a crash loop and generates a lot of crashes quickly.
 
 ## Collectors
@@ -259,7 +269,6 @@ Here are just some of the files involved:
 
 *** aside
 Our management of `uploads.log` lags behind other platforms.
-Once [crash_sender] is converted to C++, we can re-evaluate improving this.
 See https://crbug.com/275910 for more details.
 ***
 
@@ -269,7 +278,8 @@ At runtime, there are a few different ways one can trigger uploading.
 Since [crash_sender] has internal locking, you don't have to worry about any of
 these methods clobbering or racing with any other crash component.
 * People can run [crash_sender] directly as root (when in developer mode). You
-  may need to pass `--dev`.
+  may need to pass `--dev`. (This will upload crashes to crash-staging, rather
+  than crash.)
 * [crosh] has a `upload_crashes` command to trigger immediately.
 * The `chrome://crashes` page has a "Start Uploading" link.
 
@@ -503,6 +513,7 @@ Check out the their [docs][1] for more details (especially on minidumps).
 [crash-reporter.conf]: ./init/crash-reporter.conf
 [crash_sender]: ./crash_sender.cc
 [crash-sender.conf]: ./init/crash-sender.conf
+[crash_serializer]: ./crash_serializer.cc
 [init/]: ./init/
 [kernel_warning_collector]: ../kernel_warning_collector.cc
 [udev rules]: ./99-crash-reporter.rules

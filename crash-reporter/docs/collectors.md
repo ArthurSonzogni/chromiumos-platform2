@@ -42,12 +42,6 @@ The dump collected might be referred to as `bertdump`.
     `/sys/firmware/acpi/tables/data/BERT`.
 *   During boot, if a BERT report exists, read them and create a report.
 
-## ephemeral_crash_collector
-
-This is a meta crash collector: it collects already collected ephemeral crashes
-into persistent storage. This is useful for handling crash reports in
-situations where we may not have access to persistent storage (eg. early boot).
-
 ## ec_collector
 
 This collects [EC] (Chrome OS Embedded Controller) failures.
@@ -61,6 +55,12 @@ The program name is `embedded-controller` and might be referred to as `eccrash`.
 *   During boot, if that file exists, we read it and create a report.
 
 [cros_ec_debugfs.c]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/chromeos-4.14/drivers/platform/chrome/cros_ec_debugfs.c
+
+## ephemeral_crash_collector
+
+This is a meta crash collector: it collects already collected ephemeral crashes
+into persistent storage. This is useful for handling crash reports in
+situations where we may not have access to persistent storage (eg. early boot).
 
 ## kernel_collector
 
@@ -191,9 +191,9 @@ The browser will hand us the minidump directly, so we only attach system
 metadata and queue it.
 
 crash_reporter will be called by the kernel for Chrome crashes like any other
-[user_collector] crash, but we actually ignore these crashes.
+[user_collector] crash, but we actually ignore these invocations.
 Chrome is supposed to catch the crash in its parent process and handle it
-itself; it links in [Google Breakpad] directly to do so.
+itself; it links in [Google Breakpad] or [crashpad] directly to do so.
 This is because Chrome is better suited to know what memory regions to ignore
 (e.g. large heaps or file memory maps or graphics buffers), as well as what
 metadata to attach (e.g. the last URL visited, whether the process was a
@@ -210,6 +210,14 @@ uploading immediately, lacks delays/rate limiting, it tries only once, and if it
 fails at all, it throws away the report entirely.
 By queueing the report with crash-reporter, it avoids all those problems.
 ***
+
+## mount_failure_collector
+
+Collects information on failures to mount or unmount partitions. This is invoked
+via [chromeos_startup] or [chromeos_shutdown] when the umount/mount operation
+fails.
+
+TODO(sarthakkukreti): Expand on this section
 
 ## udev_collector
 
@@ -272,15 +280,22 @@ existing spool directories.
 # Anomaly Detectors
 
 The [anomaly_detector] service is spawned early during boot via
-[anomaly-detector.conf].  It runs a lexer on the syslog stream, and tries to
+[anomaly-detector.conf].  It monitors various syslog files and tries to
 match a set of regexes. A match triggers a collection or a D-Bus signal,
 depending on the regex.
 
+A number of anomalies are sampled -- that is, we do not upload a report every
+time the anomaly occurs, but instead only 1 in every N times, where N is a value
+specific to that kind of crash. In this case, we generally also attach a
+"weight" field (with value N) to the crash report to indicate to the crash
+server that that report should count as N reports. This sampling is necessary in
+order to minimize load on the server and keep our total daily reports under 10
+million.
+
 *   Collection:
 
-    *   The matching lines are saved to a temp file under `/tmp`.
-    *   [crash_reporter] is invoked for a specific collector.
-    *   The temp file is read via stdin.
+    *   [crash_reporter] is invoked for a specific collector, and is fed
+    relevant lines via stdin.
 
 *   Signal:
 
@@ -297,31 +312,23 @@ As a special case, only the first instance of each kernel warning is collected
 during a session (from boot to shutdown or crash).  A count of each warning is
 reported separately via a sparse UMA histogram.
 
-## kernel_warning_collector
+## crash_reporter_failure_collector
 
-Collects WARN() messages from anywhere in the depths of the kernel.
-Could be drivers, subsystems, or core logic.
+Collects log messages indicating that crash reporter itself crashed. Anomaly
+detector will invoke this collector at most once an hour, to prevent crash loops
+in crash reporter from generating an infinite set of calls to crash reporter.
 
-The program name is `kernel-warning` or `kernel-xxx-warning` (where `xxx` is a
-common subsystem/area) and might be referred to as `kcrash`.
+## generic_failure_collector
 
-*   Whenever the kernel uses `WARN()` or `WARN_ON(...)` or any similar helper,
-    it generates a standard log message including stack traces.
-*   By default, `kernel-warning` is used everywhere, but the location of drivers
-    in the backtrace are used to further refine the name.
-*   The stack signature uses the same algorithm as the [kernel_collector].
+Responsible for collecting information on suspend failures and
+service failures. The architecture is generic and adapatable: It allows
+arbitrary weights, log names for [crash_reporter_logs.conf], etc.
 
-## selinux_violation_collector
+You can use this with any anomaly that can be passed to crash_reporter as a
+single line, optionally with additional data collected via
+[crash_reporter_logs.conf].
 
-Collects [SELinux] policy violations.
-
-The program name is `selinux-violation`.
-
-*   Lines from the audit subsystem are processed.
-*   Fields from each line are extracted (such as `name=` and `scontext=`) and
-    used to create the magic signature.
-
-## service_failure_collector
+### service failures
 
 Collects warnings from the init (e.g. Upstart) for non-ARC services that failed
 to startup or exited unexpectedly at runtime.
@@ -336,14 +343,53 @@ The program name is `service-failure`.
 *   All non-normal exits are recorded this way.
 *   The signature is constructed from the exit status and service name.
 
-## arc_service_failure_collector
+### arc service failures
 
-Similar to the above "service failure collector" except that it collects ARC
+Similar to the above "service failures" except that it collects ARC
 services failures. ARC services are services with names started with "arc-".
-A separate ARC services specific collector is created because the ARC services
-system log messages are kept in a separate file /var/log/arc.log.
+Separate ARC services logic is needed because the ARC services system log
+messages are kept in a separate file /var/log/arc.log.
 
 The program name is `arc-service-failure`.
+
+### suspend failures
+
+When the system fails to suspend, we generate a report along with some log
+information on why the suspend failure happened.
+
+TODO(dbasehore): Expand on this section
+
+## kernel_warning_collector
+
+Collects WARN() messages from anywhere in the depths of the kernel.
+Could be drivers, subsystems, or core logic.
+
+The program name is `kernel-warning` or `kernel-xxx-warning` (where `xxx` is a
+common subsystem/area) and might be referred to as `kcrash`.
+
+*   Whenever the kernel uses `WARN()` or `WARN_ON(...)` or any similar helper,
+    it generates a standard log message including stack traces.
+*   By default, `kernel-warning` is used everywhere, but the location of drivers
+    in the backtrace are used to further refine the name.
+*   The stack signature uses the same algorithm as the [kernel_collector].
+
+## missed_crash_collector
+
+Invoked via [crash_reporter_parser]. collects log information when the kernel
+invokes [crash_reporter] for a chrome crash, but then chrome does not invoke
+crash_reporter within a reasonable timeframe (currently, 60 seconds).
+Includes chrome logs and syslogs.
+
+## selinux_violation_collector
+
+Collects [SELinux] policy violations.
+
+The program name is `selinux-violation`.
+
+*   Lines from the audit subsystem are processed.
+*   Fields from each line are extracted (such as `name=` and `scontext=`) and
+    used to create the magic signature.
+
 
 ## Out-Of-Memory kill signal (OOM kill)
 
@@ -358,6 +404,7 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [BERT]: https://www.uefi.org/sites/default/files/resources/ACPI%206_2_A_Sept29.pdf
 [EC]: https://chromium.googlesource.com/chromiumos/platform/ec
 [Google Breakpad]: https://chromium.googlesource.com/breakpad/breakpad
+[crashpad]: https://chromium.googlesource.com/crashpad/crashpad
 [memd]: ../../metrics/memd/
 [mosys]: https://chromium.googlesource.com/chromiumos/platform/mosys/
 [pstore]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v4.17/Documentation/admin-guide/ramoops.rst
@@ -371,12 +418,14 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [arcvm_native_collector]: ../arcvm_native_collector.cc
 [bert_collector]: ../bert_collector.cc
 [chrome_collector]: ../chrome_collector.cc
+[chromeos_startup]: ../../init/chromeos_startup
 [chromeos_shutdown]: ../../init/chromeos_shutdown
 [core_collector]: ../core-collector/
 [crash-boot-collect.conf]: ../init/crash-boot-collect.conf
 [crash_collector.cc]: ../crash_collector.cc
 [crash_reporter]: ../crash_reporter.cc
 [crash_reporter_logs.conf]: ../crash_reporter_logs.conf
+[crash_reporter-parser]: ../crash_reporter_parser.cc
 [crash_sender]: ../crash_sender.cc
 [ec_collector]: ../ec_collector.cc
 [kernel_collector]: ../kernel_collector.cc
