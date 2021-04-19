@@ -208,6 +208,14 @@ class Region(object):
     return dict((k, getattr(self, k)) for k in self.FIELDS)
 
 KML = Region.KeyboardMechanicalLayout
+PSEUDOLOCALE_REGIONS_LIST = [
+    Region(
+        'ar.xb', 'xkb:us::eng', 'America/Los_Angeles', 'ar-XB', KML.ANSI,
+        'Pseudolocale (RTL)'),
+    Region(
+        'en.xa', 'xkb:us::eng', 'America/Los_Angeles', 'en-XA', KML.ANSI,
+        'Pseudolocale (long strings)'),
+]
 REGIONS_LIST = [
     Region(
         'au', 'xkb:us::eng', 'Australia/Sydney', 'en-AU', KML.ANSI,
@@ -1154,17 +1162,20 @@ def ConsolidateRegions(regions):
   return region_dict
 
 
-def BuildRegionsDict(include_all=False):
+def BuildRegionsDict(include_all=False, include_pseudolocales=False):
   """Builds a dictionary mapping from code to :py:class:`regions.Region` object.
+
+  ``include_pseudolocales`` should never be true for production builds.
 
   The regions include:
 
   * :py:data:`regions.REGIONS_LIST`
   * :py:data:`regions_overlay.REGIONS_LIST`
   * Only if ``include_all`` is true:
-
     * :py:data:`regions.UNCONFIRMED_REGIONS_LIST`
     * :py:data:`regions.INCOMPLETE_REGIONS_LIST`
+  * Only if ``include_pseudolocales`` is true:
+    * :py:data:`regions.PSEUDOLOCALE_REGIONS_LIST`
 
   A region may only appear in one of the above lists, or this function
   will (deliberately) fail.
@@ -1174,6 +1185,8 @@ def BuildRegionsDict(include_all=False):
     known_codes = [r.region_code for r in regions]
     regions += [r for r in UNCONFIRMED_REGIONS_LIST if r.region_code not in
                 known_codes]
+  if include_pseudolocales:
+    regions += PSEUDOLOCALE_REGIONS_LIST
 
   # Build dictionary of region code to list of regions with that
   # region code.  Check manually for duplicates, since the region may
@@ -1198,6 +1211,8 @@ def main(args=None, out=None):
                       help='Include unconfirmed and incomplete regions')
   parser.add_argument('--notes', action='store_true',
                       help='Include notes in output')
+  parser.add_argument('--include_pseudolocales', action='store_true',
+                       help='Include pseudolocales in output')
   parser.add_argument('--output', default=None,
                       help='Specify output file')
   parser.add_argument('--overlay', default=None,
@@ -1217,7 +1232,7 @@ def main(args=None, out=None):
     for r in UNCONFIRMED_REGIONS_LIST:
       r.confirmed = False
 
-  regions_dict = BuildRegionsDict(args.all)
+  regions_dict = BuildRegionsDict(args.all, args.include_pseudolocales)
 
   if out is None:
     if args.output is None:
