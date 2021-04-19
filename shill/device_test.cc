@@ -1669,7 +1669,7 @@ class DevicePortalDetectionTest : public DeviceTest {
   DevicePortalDetectionTest()
       : connection_(new StrictMock<MockConnection>(&device_info_)),
         service_(new StrictMock<MockService>(manager())),
-        portal_detector_(new StrictMock<MockPortalDetector>(connection_)) {}
+        portal_detector_(new StrictMock<MockPortalDetector>()) {}
   ~DevicePortalDetectionTest() override = default;
   void SetUp() override {
     DeviceTest::SetUp();
@@ -1742,6 +1742,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   const IPAddress ip_addr = IPAddress("1.2.3.4");
   const string http_portal_url, https_portal_url;
   const vector<string> fallback_urls;
+  const vector<string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -1752,6 +1753,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_FALSE(StartPortalDetection());
 }
@@ -2023,15 +2026,23 @@ TEST_F(DevicePortalDetectionTest, PortalIntervalIsZero) {
 TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   int portal_check_interval = 3;
   device_->portal_check_interval_seconds_ = portal_check_interval;
-  const string kPortalCheckHttpUrl("http://portal");
-  const string kPortalCheckHttpsUrl("https://portal");
+  const std::string kInterfaceName = "int0";
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
+  const std::vector<std::string> kDNSServers = {"8.8.8.8", "8.8.4.4"};
+  const std::string kPortalCheckHttpUrl("http://portal");
+  const std::string kPortalCheckHttpsUrl("https://portal");
   const vector<string> kPortalCheckFallbackHttpUrls(
       {"http://fallback", "http://other"});
   PortalDetector::Properties props = PortalDetector::Properties(
       kPortalCheckHttpUrl, kPortalCheckHttpsUrl, kPortalCheckFallbackHttpUrls);
+  EXPECT_CALL(*connection_, IsDefault()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
+  EXPECT_CALL(*connection_, interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
   for (int i = 0; i < 10; i++) {
     EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
-    EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(true));
     EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
         .WillOnce(ReturnRef(kPortalCheckHttpUrl));
     EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -2041,7 +2052,8 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
     EXPECT_CALL(*portal_detector_, AdjustStartDelay(portal_check_interval))
         .WillOnce(Return(portal_check_interval));
     EXPECT_CALL(*portal_detector_,
-                StartAfterDelay(props, portal_check_interval))
+                StartAfterDelay(props, kInterfaceName, ip_addr, kDNSServers,
+                                portal_check_interval))
         .WillOnce(Return(true));
     EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
     SetServiceConnectedState(Service::kStateNoConnectivity);

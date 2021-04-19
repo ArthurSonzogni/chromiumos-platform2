@@ -1403,10 +1403,12 @@ bool Device::StartPortalDetection() {
   }
 
   portal_detector_.reset(
-      new PortalDetector(connection_, dispatcher(), metrics(),
+      new PortalDetector(dispatcher(), metrics(),
                          Bind(&Device::PortalDetectorCallback, AsWeakPtr())));
   PortalDetector::Properties props = manager_->GetPortalCheckProperties();
-  if (!portal_detector_->StartAfterDelay(props, 0)) {
+  if (!portal_detector_->StartAfterDelay(props, connection_->interface_name(),
+                                         connection_->local(),
+                                         connection_->dns_servers(), 0)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
                << props.http_url_string << " or " << props.https_url_string;
@@ -1456,9 +1458,11 @@ bool Device::StartConnectivityTest() {
   LOG(INFO) << "Device " << link_name() << " starting connectivity test.";
 
   connection_tester_.reset(
-      new PortalDetector(connection_, dispatcher(), metrics(),
+      new PortalDetector(dispatcher(), metrics(),
                          Bind(&Device::ConnectionTesterCallback, AsWeakPtr())));
-  connection_tester_->StartAfterDelay(PortalDetector::Properties(), 0);
+  connection_tester_->StartAfterDelay(
+      PortalDetector::Properties(), connection_->interface_name(),
+      connection_->local(), connection_->dns_servers(), 0);
   return true;
 }
 
@@ -1590,7 +1594,9 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     PortalDetector::Properties props = manager_->GetPortalCheckProperties();
     int start_delay =
         portal_detector_->AdjustStartDelay(portal_check_interval_seconds_);
-    if (!portal_detector_->StartAfterDelay(props, start_delay)) {
+    if (!portal_detector_->StartAfterDelay(
+            props, connection_->interface_name(), connection_->local(),
+            connection_->dns_servers(), start_delay)) {
       LOG(ERROR) << "Device " << link_name()
                  << ": Portal detection failed to restart: likely bad URL: "
                  << props.http_url_string << " or " << props.https_url_string;

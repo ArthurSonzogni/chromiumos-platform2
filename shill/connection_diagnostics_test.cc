@@ -159,7 +159,7 @@ class ConnectionDiagnosticsTest : public Test {
                                 &metrics_,
                                 &device_info_,
                                 callback_target_.result_callback()),
-        portal_detector_(new NiceMock<MockPortalDetector>(connection_)) {
+        portal_detector_(new NiceMock<MockPortalDetector>()) {
     connection_diagnostics_.io_handler_factory_ = &io_handler_factory_;
   }
 
@@ -284,7 +284,9 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypePortalDetection,
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(*portal_detector_, StartAfterDelay(props, 0))
+    EXPECT_CALL(*portal_detector_,
+                StartAfterDelay(props, interface_name_, local_ip_address_,
+                                dns_servers_, 0))
         .WillOnce(Return(true));
     EXPECT_FALSE(connection_diagnostics_.running());
     EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());

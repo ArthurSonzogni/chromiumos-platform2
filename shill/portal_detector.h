@@ -20,9 +20,9 @@
 
 #include "shill/http_request.h"
 #include "shill/http_url.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
-#include "shill/refptr_types.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -127,8 +127,7 @@ class PortalDetector {
   static const int kMaxPortalCheckIntervalSeconds;
   static const char kDefaultCheckPortalList[];
 
-  PortalDetector(ConnectionRefPtr connection,
-                 EventDispatcher* dispatcher,
+  PortalDetector(EventDispatcher* dispatcher,
                  Metrics* metrics,
                  base::Callback<void(const Result&)> callback);
   PortalDetector(const PortalDetector&) = delete;
@@ -162,7 +161,11 @@ class PortalDetector {
   // As each attempt completes the callback handed to the constructor will
   // be called.
   // TODO(b/184036481): Change |delay_seconds| type to base::TimeDelay.
-  virtual bool StartAfterDelay(const Properties& props, int delay_seconds);
+  virtual bool StartAfterDelay(const Properties& props,
+                               const std::string& ifname,
+                               const IPAddress& src_address,
+                               const std::vector<std::string>& dns_list,
+                               int delay_seconds);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.
@@ -177,6 +180,9 @@ class PortalDetector {
   // |delay| and the elapsed time so that the retry starts |delay| seconds after
   // the previous attempt.
   virtual int AdjustStartDelay(int init_delay_seconds);
+
+  // Return |logging_tag_| appended with the |attempt_count_|.
+  std::string LoggingTag() const;
 
  private:
   friend class PortalDetectorTest;
@@ -228,13 +234,9 @@ class PortalDetector {
   // Method to return if the connection is being actively tested.
   virtual bool IsActive();
 
-  // Return |logging_tag_| appended with the |attempt_count_|.
-  std::string LoggingTag() const;
-
   std::string logging_tag_;
   int attempt_count_;
   struct timeval attempt_start_time_;
-  ConnectionRefPtr connection_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;

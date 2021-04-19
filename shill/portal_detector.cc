@@ -14,12 +14,10 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/connection.h"
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/ip_address.h"
 
 using base::Bind;
 using base::Callback;
@@ -38,8 +36,8 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPortal;
-static string ObjectID(const Connection* c) {
-  return c->interface_name();
+static string ObjectID(const PortalDetector* pd) {
+  return pd->LoggingTag();
 }
 }  // namespace Logging
 
@@ -57,13 +55,11 @@ const std::vector<string> PortalDetector::kDefaultFallbackHttpUrls{
     "http://connectivitycheck.gstatic.com/generate_204",
 };
 
-PortalDetector::PortalDetector(ConnectionRefPtr connection,
-                               EventDispatcher* dispatcher,
+PortalDetector::PortalDetector(EventDispatcher* dispatcher,
                                Metrics* metrics,
                                base::Callback<void(const Result&)> callback)
     : attempt_count_(0),
       attempt_start_time_((struct timeval){0}),
-      connection_(connection),
       dispatcher_(dispatcher),
       metrics_(metrics),
       weak_ptr_factory_(this),
@@ -84,11 +80,14 @@ const string PortalDetector::PickHttpProbeUrl(const Properties& props) {
 }
 
 bool PortalDetector::StartAfterDelay(const PortalDetector::Properties& props,
+                                     const std::string& ifname,
+                                     const IPAddress& src_address,
+                                     const std::vector<std::string>& dns_list,
                                      int delay_seconds) {
-  SLOG(connection_.get(), 3) << "In " << __func__;
+  logging_tag_ =
+      ifname + " " + IPAddress::GetAddressFamilyName(src_address.family());
 
-  logging_tag_ = connection_->interface_name() + " " +
-                 IPAddress::GetAddressFamilyName(connection_->local().family());
+  SLOG(this, 3) << "In " << __func__;
 
   // This step is rerun on each attempt, but trying it here will allow
   // Start() to abort on any obviously malformed URL strings.
@@ -111,17 +110,14 @@ bool PortalDetector::StartAfterDelay(const PortalDetector::Properties& props,
   if (http_request_ || https_request_) {
     CleanupTrial();
   } else {
-    const std::string& iface = connection_->interface_name();
-    const IPAddress& src_address = connection_->local();
-    const std::vector<std::string>& dns_list = connection_->dns_servers();
     http_request_ =
         std::make_unique<HttpRequest>(dispatcher_, LoggingTag() + " HTTP probe",
-                                      iface, src_address, dns_list);
+                                      ifname, src_address, dns_list);
     // For non-default URLs, allow for secure communication with both Google and
     // non-Google servers.
     bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
     https_request_ = std::make_unique<HttpRequest>(
-        dispatcher_, LoggingTag() + " HTTPS probe", iface, src_address,
+        dispatcher_, LoggingTag() + " HTTPS probe", ifname, src_address,
         dns_list, allow_non_google_https);
   }
   trial_.Reset(
@@ -210,7 +206,7 @@ void PortalDetector::CleanupTrial() {
 }
 
 void PortalDetector::Stop() {
-  SLOG(connection_.get(), 3) << "In " << __func__;
+  SLOG(this, 3) << "In " << __func__;
 
   attempt_count_ = 0;
   if (!http_request_ && !https_request_)
@@ -312,8 +308,8 @@ int PortalDetector::AdjustStartDelay(int init_delay_seconds) {
     struct timeval now, elapsed_time;
     time_->GetTimeMonotonic(&now);
     timersub(&now, &attempt_start_time_, &elapsed_time);
-    SLOG(connection_.get(), 4) << "Elapsed time from previous attempt is "
-                               << elapsed_time.tv_sec << " seconds.";
+    SLOG(this, 4) << "Elapsed time from previous attempt is "
+                  << elapsed_time.tv_sec << " seconds.";
     if (elapsed_time.tv_sec < init_delay_seconds) {
       next_attempt_delay_seconds = init_delay_seconds - elapsed_time.tv_sec;
     }
@@ -321,9 +317,8 @@ int PortalDetector::AdjustStartDelay(int init_delay_seconds) {
     LOG(FATAL) << "AdjustStartDelay in PortalDetector called without "
                   "previous attempts";
   }
-  SLOG(connection_.get(), 3)
-      << "Adjusting trial start delay from " << init_delay_seconds
-      << " seconds to " << next_attempt_delay_seconds << " seconds.";
+  SLOG(this, 3) << "Adjusting trial start delay from " << init_delay_seconds
+                << " seconds to " << next_attempt_delay_seconds << " seconds.";
   return next_attempt_delay_seconds;
 }
 

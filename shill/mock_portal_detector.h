@@ -5,18 +5,21 @@
 #ifndef SHILL_MOCK_PORTAL_DETECTOR_H_
 #define SHILL_MOCK_PORTAL_DETECTOR_H_
 
+#include "shill/portal_detector.h"
+
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "shill/portal_detector.h"
+#include "shill/net/ip_address.h"
 
 namespace shill {
 
 class MockPortalDetector : public PortalDetector {
  public:
-  explicit MockPortalDetector(ConnectionRefPtr connection);
+  MockPortalDetector();
   MockPortalDetector(const MockPortalDetector&) = delete;
   MockPortalDetector& operator=(const MockPortalDetector&) = delete;
 
@@ -24,7 +27,11 @@ class MockPortalDetector : public PortalDetector {
 
   MOCK_METHOD(bool,
               StartAfterDelay,
-              (const PortalDetector::Properties&, int),
+              (const PortalDetector::Properties&,
+               const std::string& ifname,
+               const IPAddress&,
+               const std::vector<std::string>&,
+               int),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsInProgress, (), (override));

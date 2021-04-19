@@ -15,11 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_connection.h"
-#include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_time.h"
 
@@ -91,17 +87,11 @@ MATCHER_P(IsResult, result, "") {
 class PortalDetectorTest : public Test {
  public:
   PortalDetectorTest()
-      : manager_(&control_, &dispatcher_, nullptr),
-        device_info_(new NiceMock<MockDeviceInfo>(&manager_)),
-        connection_(new StrictMock<MockConnection>(device_info_.get())),
-        transport_(std::make_shared<brillo::http::MockTransport>()),
+      : transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
-        portal_detector_(
-            new PortalDetector(connection_.get(),
-                               &dispatcher_,
-                               &metrics_,
-                               callback_target_.result_callback())),
+        portal_detector_(new PortalDetector(
+            &dispatcher_, &metrics_, callback_target_.result_callback())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2),
         http_request_(nullptr),
@@ -110,15 +100,9 @@ class PortalDetectorTest : public Test {
   }
 
   void SetUp() override {
-    EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(kIpAddress));
-    EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
-    EXPECT_CALL(*connection_, interface_name())
-        .WillRepeatedly(ReturnRef(interface_name_));
     portal_detector_->time_ = &time_;
     EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(Invoke(this, &PortalDetectorTest::GetTimeMonotonic));
-    EXPECT_CALL(*connection_, dns_servers())
-        .WillRepeatedly(ReturnRef(dns_servers_));
     EXPECT_EQ(nullptr, portal_detector_->http_request_);
   }
 
@@ -165,7 +149,8 @@ class PortalDetectorTest : public Test {
   }
 
   bool StartPortalRequest(const PortalDetector::Properties& props, int delay) {
-    bool ret = portal_detector_->StartAfterDelay(props, delay);
+    bool ret = portal_detector_->StartAfterDelay(
+        props, kInterfaceName, kIpAddress, {kDNSServer0, kDNSServer1}, delay);
     if (ret) {
       AssignHttpRequest();
     }
@@ -230,10 +215,6 @@ class PortalDetectorTest : public Test {
   }
 
   StrictMock<MockEventDispatcher> dispatcher_;
-  MockControl control_;
-  MockManager manager_;
-  std::unique_ptr<MockDeviceInfo> device_info_;
-  scoped_refptr<MockConnection> connection_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
   NiceMock<MockMetrics> metrics_;
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
@@ -349,7 +330,8 @@ TEST_F(PortalDetectorTest, StartRepeated) {
   EXPECT_CALL(*http_request(), Stop());
   EXPECT_CALL(*https_request(), Stop());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 10 * 1000)).Times(1);
-  EXPECT_TRUE(portal_detector()->StartAfterDelay(props, 10));
+  EXPECT_TRUE(portal_detector()->StartAfterDelay(
+      props, kInterfaceName, kIpAddress, {kDNSServer0, kDNSServer1}, 10));
 }
 
 TEST_F(PortalDetectorTest, AttemptCount) {
@@ -378,7 +360,8 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   for (int i = 0; i < 3; i++) {
     int delay = portal_detector()->AdjustStartDelay(init_delay);
     EXPECT_EQ(delay, init_delay);
-    portal_detector()->StartAfterDelay(props, delay);
+    portal_detector()->StartAfterDelay(props, kInterfaceName, kIpAddress,
+                                       {kDNSServer0, kDNSServer1}, delay);
     EXPECT_NE(portal_detector()->http_url_string_, kHttpUrl);
     AdvanceTime(delay * 1000);
     portal_detector()->CompleteTrial(result);

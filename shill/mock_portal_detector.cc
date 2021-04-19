@@ -4,13 +4,10 @@
 
 #include "shill/mock_portal_detector.h"
 
-#include "shill/connection.h"
-
 namespace shill {
 
-MockPortalDetector::MockPortalDetector(ConnectionRefPtr connection)
-    : PortalDetector(connection,
-                     nullptr,
+MockPortalDetector::MockPortalDetector()
+    : PortalDetector(nullptr,
                      nullptr,
                      base::Callback<void(const PortalDetector::Result&)>()) {}
 

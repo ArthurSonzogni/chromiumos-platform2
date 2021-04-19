@@ -141,7 +141,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       device_info_(device_info),
       dns_client_factory_(DnsClientFactory::GetInstance()),
       portal_detector_(new PortalDetector(
-          connection_,
           dispatcher_,
           metrics_,
           Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
@@ -173,7 +172,9 @@ bool ConnectionDiagnostics::Start(const PortalDetector::Properties& props) {
     return false;
   }
 
-  if (!portal_detector_->StartAfterDelay(props, 0)) {
+  if (!portal_detector_->StartAfterDelay(props, connection_->interface_name(),
+                                         connection_->local(),
+                                         connection_->dns_servers(), 0)) {
     Stop();
     return false;
   }
