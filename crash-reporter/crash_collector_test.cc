@@ -570,7 +570,7 @@ TEST_F(CrashCollectorTest, StripEmailAddresses) {
 
 TEST_F(CrashCollectorTest, StripSerialNumbers) {
   // Test calling StripSensitiveData w/ some actual lines from a real crash;
-  // included two MAC addresses (though replaced them with some bogusness).
+  // included two serial numbers (though replaced them with some bogusness).
   const std::string kCrashWithUsbSerialNumbers =
       "[ 1.974401] usb 1-7: new high-speed USB device number 4 using xhci_hcd\n"
       "[ 2.159587] usb 1-7: New USB device found, idVendor=2232, "
