@@ -56,6 +56,22 @@ _mojo_output_base = "${root_gen_dir}/include"
 _mojom_bindings_generator_wrapper =
     "${platform2_root}/common-mk/mojom_bindings_generator_wrapper.py"
 
+# Should be kept in sync with the templates (module*.tmpl) listed here:
+# src/aosp/external/libchrome/mojo/public/tools/bindings/generators/cpp_templates/
+_mojom_bindings_suffixes = [
+  "-forward.h",
+  "-import-headers.h",
+  "-params-data.h",
+  "-shared-internal.h",
+  "-shared-message-ids.h",
+  "-shared.cc",
+  "-shared.h",
+  "-test-utils.cc",
+  "-test-utils.h",
+  ".cc",
+  ".h",
+]
+
 # Generates C++ mojo bindings source code and headers.
 template("generate_mojom_bindings_gen") {
   forward_variables_from(invoker,
@@ -168,14 +184,9 @@ template("generate_mojom_bindings_gen") {
       filename = get_path_info("$source", "file")
       dirname = get_path_info("$source", "gen_dir")
       relative_dir = rebase_path(dirname, target_gen_dir)
-      outputs += [
-        "${mojo_output_dir}/${relative_dir}/${filename}-internal.h",
-        "${mojo_output_dir}/${relative_dir}/${filename}-shared.cc",
-        "${mojo_output_dir}/${relative_dir}/${filename}-shared.h",
-        "${mojo_output_dir}/${relative_dir}/${filename}.cc",
-        "${mojo_output_dir}/${relative_dir}/${filename}.h",
-        "${mojo_output_dir}/${relative_dir}/${filename}-shared-message-ids.h",
-      ]
+      foreach(suffix, _mojom_bindings_suffixes) {
+        outputs += [ "${mojo_output_dir}/${relative_dir}/${filename}${suffix}" ]
+      }
       filelist += [ rebase_path("$source") ]
     }
 
