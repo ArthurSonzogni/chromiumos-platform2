@@ -20,7 +20,7 @@ pub struct Session<'a> {
     // Pipe file to be notified decode session events.
     pipe: File,
     vda_ptr: *mut c_void,
-    raw_ptr: *mut bindings::vda_session_info_t,
+    session_ptr: *mut bindings::vda_session_info_t,
     // `phantom` gurantees that `Session` won't outlive the lifetime of `VdaInstance` that owns
     // `vda_ptr`.
     phantom: PhantomData<&'a VdaInstance>,
@@ -34,22 +34,22 @@ impl<'a> Session<'a> {
     pub(crate) unsafe fn new(vda_ptr: *mut c_void, profile: Profile) -> Option<Self> {
         // `init_decode_session` is safe if `vda_ptr` is a non-NULL pointer from
         // `bindings::initialize`.
-        let raw_ptr: *mut bindings::vda_session_info_t =
+        let session_ptr: *mut bindings::vda_session_info_t =
             bindings::init_decode_session(vda_ptr, profile.to_raw_profile());
 
-        if raw_ptr.is_null() {
+        if session_ptr.is_null() {
             return None;
         }
 
-        // Dereferencing `raw_ptr` is safe because it is a valid pointer to a FD provided by libvda.
-        // We need to dup() the `event_pipe_fd` because File object close() the FD while libvda also
-        // close() it when `close_decode_session` is called.
-        let pipe = File::from_raw_fd(libc::dup((*raw_ptr).event_pipe_fd));
+        // Dereferencing `session_ptr` is safe because it is a valid pointer to a FD provided by
+        // libvda. We need to dup() the `event_pipe_fd` because File object close() the FD while
+        // libvda also close() it when `close_decode_session` is called.
+        let pipe = File::from_raw_fd(libc::dup((*session_ptr).event_pipe_fd));
 
         Some(Session {
             pipe,
             vda_ptr,
-            raw_ptr,
+            session_ptr,
             phantom: PhantomData,
         })
     }
@@ -85,9 +85,15 @@ impl<'a> Session<'a> {
         offset: u32,
         bytes_used: u32,
     ) -> Result<()> {
-        // Safe because `raw_ptr` is valid and a libvda's API is called properly.
+        // Safe because `session_ptr` is valid and a libvda's API is called properly.
         let r = unsafe {
-            bindings::vda_decode((*self.raw_ptr).ctx, bitstream_id, fd, offset, bytes_used)
+            bindings::vda_decode(
+                (*self.session_ptr).ctx,
+                bitstream_id,
+                fd,
+                offset,
+                bytes_used,
+            )
         };
         Response::new(r).into()
     }
@@ -97,9 +103,9 @@ impl<'a> Session<'a> {
     /// This function must be called after `Event::ProvidePictureBuffers` are notified.
     /// After calling this function, `user_output_buffer` must be called `num_output_buffers` times.
     pub fn set_output_buffer_count(&self, num_output_buffers: usize) -> Result<()> {
-        // Safe because `raw_ptr` is valid and a libvda's API is called properly.
+        // Safe because `session_ptr` is valid and a libvda's API is called properly.
         let r = unsafe {
-            bindings::vda_set_output_buffer_count((*self.raw_ptr).ctx, num_output_buffers)
+            bindings::vda_set_output_buffer_count((*self.session_ptr).ctx, num_output_buffers)
         };
         Response::new(r).into()
     }
@@ -123,10 +129,10 @@ impl<'a> Session<'a> {
     ) -> Result<()> {
         let mut planes: Vec<_> = planes.iter().map(FramePlane::to_raw_frame_plane).collect();
 
-        // Safe because `raw_ptr` is valid and a libvda's API is called properly.
+        // Safe because `session_ptr` is valid and a libvda's API is called properly.
         let r = unsafe {
             bindings::vda_use_output_buffer(
-                (*self.raw_ptr).ctx,
+                (*self.session_ptr).ctx,
                 picture_buffer_id,
                 format.to_raw_pixel_format(),
                 output_buffer,
@@ -142,9 +148,10 @@ impl<'a> Session<'a> {
     ///
     /// `picture_buffer_id` must be a value for which `use_output_buffer` has been called already.
     pub fn reuse_output_buffer(&self, picture_buffer_id: i32) -> Result<()> {
-        // Safe because `raw_ptr` is valid and a libvda's API is called properly.
-        let r =
-            unsafe { bindings::vda_reuse_output_buffer((*self.raw_ptr).ctx, picture_buffer_id) };
+        // Safe because `session_ptr` is valid and a libvda's API is called properly.
+        let r = unsafe {
+            bindings::vda_reuse_output_buffer((*self.session_ptr).ctx, picture_buffer_id)
+        };
         Response::new(r).into()
     }
 
@@ -152,8 +159,8 @@ impl<'a> Session<'a> {
     ///
     /// When this operation has completed, `Event::FlushResponse` will be notified.
     pub fn flush(&self) -> Result<()> {
-        // Safe because `raw_ptr` is valid and a libvda's API is called properly.
-        let r = unsafe { bindings::vda_flush((*self.raw_ptr).ctx) };
+        // Safe because `session_ptr` is valid and a libvda's API is called properly.
+        let r = unsafe { bindings::vda_flush((*self.session_ptr).ctx) };
         Response::new(r).into()
     }
 
@@ -161,19 +168,19 @@ impl<'a> Session<'a> {
     ///
     /// When this operation has completed, Event::ResetResponse will be notified.
     pub fn reset(&self) -> Result<()> {
-        // Safe because `raw_ptr` is valid and a libvda's API is called properly.
-        let r = unsafe { bindings::vda_reset((*self.raw_ptr).ctx) };
+        // Safe because `session_ptr` is valid and a libvda's API is called properly.
+        let r = unsafe { bindings::vda_reset((*self.session_ptr).ctx) };
         Response::new(r).into()
     }
 }
 
 impl<'a> Drop for Session<'a> {
     fn drop(&mut self) {
-        // Safe because `vda_ptr` and `raw_ptr` are unchanged from the time `new` was called.
+        // Safe because `vda_ptr` and `session_ptr` are unchanged from the time `new` was called.
         // Also, `vda_ptr` is valid because `phantom` guranteed that `VdaInstance` owning `vda_ptr`
         // is not dropped yet.
         unsafe {
-            bindings::close_decode_session(self.vda_ptr, self.raw_ptr);
+            bindings::close_decode_session(self.vda_ptr, self.session_ptr);
         }
     }
 }
