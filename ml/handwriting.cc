@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/native_library.h>
+#include <base/optional.h>
 
 namespace ml {
 namespace {
@@ -47,11 +48,48 @@ HandwritingRecognizerModelPaths GetModelPaths(
   return paths;
 }
 
-}  // namespace
+class HandwritingLibraryImpl : public HandwritingLibrary {
+ public:
+  HandwritingLibraryImpl();
+  ~HandwritingLibraryImpl() override = default;
 
-constexpr char HandwritingLibrary::kHandwritingDefaultModelDir[];
+  Status GetStatus() const override;
+  HandwritingRecognizer CreateHandwritingRecognizer() const override;
+  bool LoadHandwritingRecognizer(HandwritingRecognizer recognizer,
+                                 const std::string& language) const override;
+  bool RecognizeHandwriting(
+      HandwritingRecognizer recognizer,
+      const chrome_knowledge::HandwritingRecognizerRequest& request,
+      chrome_knowledge::HandwritingRecognizerResult* result) const override;
 
-HandwritingLibrary::HandwritingLibrary(const std::string& model_path)
+  void DestroyHandwritingRecognizer(
+      HandwritingRecognizer recognizer) const override;
+
+ private:
+  friend class base::NoDestructor<HandwritingLibraryImpl>;
+  FRIEND_TEST(HandwritingLibraryTest, CanLoadLibrary);
+
+  // Initialize the handwriting library.
+  explicit HandwritingLibraryImpl(const std::string& root_path);
+  HandwritingLibraryImpl(const HandwritingLibraryImpl&) = delete;
+  HandwritingLibraryImpl& operator=(const HandwritingLibraryImpl&) = delete;
+
+  base::Optional<base::ScopedNativeLibrary> library_;
+  Status status_;
+  const base::FilePath model_path_;
+
+  // Store the interface function pointers.
+  // TODO(honglinyu) as pointed out by cjmcdonald@, we should group the pointers
+  // into a single `HandwritingInterface` struct and make it optional, i.e.,
+  // declaring something like |base::Optional<HandwritingInterface> interface_|.
+  CreateHandwritingRecognizerFn create_handwriting_recognizer_;
+  LoadHandwritingRecognizerFn load_handwriting_recognizer_;
+  RecognizeHandwritingFn recognize_handwriting_;
+  DeleteHandwritingResultDataFn delete_handwriting_result_data_;
+  DestroyHandwritingRecognizerFn destroy_handwriting_recognizer_;
+};
+
+HandwritingLibraryImpl::HandwritingLibraryImpl(const std::string& model_path)
     : status_(Status::kUninitialized),
       model_path_(model_path),
       create_handwriting_recognizer_(nullptr),
@@ -100,23 +138,18 @@ HandwritingLibrary::HandwritingLibrary(const std::string& model_path)
   status_ = Status::kOk;
 }
 
-HandwritingLibrary::Status HandwritingLibrary::GetStatus() const {
+HandwritingLibrary::Status HandwritingLibraryImpl::GetStatus() const {
   return status_;
 }
 
-HandwritingLibrary* HandwritingLibrary::GetInstance(
-    const std::string& model_path) {
-  static base::NoDestructor<HandwritingLibrary> instance(model_path);
-  return instance.get();
-}
-
 // Proxy functions to the library function pointers.
-HandwritingRecognizer HandwritingLibrary::CreateHandwritingRecognizer() const {
+HandwritingRecognizer HandwritingLibraryImpl::CreateHandwritingRecognizer()
+    const {
   DCHECK(status_ == Status::kOk);
   return (*create_handwriting_recognizer_)();
 }
 
-bool HandwritingLibrary::LoadHandwritingRecognizer(
+bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
     HandwritingRecognizer const recognizer, const std::string& language) const {
   DCHECK(status_ == Status::kOk);
 
@@ -131,7 +164,7 @@ bool HandwritingLibrary::LoadHandwritingRecognizer(
                                          paths_pb.size());
 }
 
-bool HandwritingLibrary::RecognizeHandwriting(
+bool HandwritingLibraryImpl::RecognizeHandwriting(
     HandwritingRecognizer const recognizer,
     const chrome_knowledge::HandwritingRecognizerRequest& request,
     chrome_knowledge::HandwritingRecognizerResult* const result) const {
@@ -153,10 +186,30 @@ bool HandwritingLibrary::RecognizeHandwriting(
   return recognize_result;
 }
 
-void HandwritingLibrary::DestroyHandwritingRecognizer(
+void HandwritingLibraryImpl::DestroyHandwritingRecognizer(
     HandwritingRecognizer const recognizer) const {
   DCHECK(status_ == Status::kOk);
   (*destroy_handwriting_recognizer_)(recognizer);
+}
+
+static HandwritingLibrary* g_fake_handwriting_library = nullptr;
+
+}  // namespace
+
+constexpr char HandwritingLibrary::kHandwritingDefaultModelDir[];
+
+HandwritingLibrary* HandwritingLibrary::GetInstance(
+    const std::string& model_path) {
+  if (g_fake_handwriting_library) {
+    return g_fake_handwriting_library;
+  }
+  static base::NoDestructor<HandwritingLibraryImpl> instance(model_path);
+  return instance.get();
+}
+
+void HandwritingLibrary::UseFakeHandwritingLibraryForTesting(
+    HandwritingLibrary* const fake_handwriting_library) {
+  g_fake_handwriting_library = fake_handwriting_library;
 }
 
 }  // namespace ml

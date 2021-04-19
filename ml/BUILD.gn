@@ -21,6 +21,7 @@ group("all") {
     deps += [
       ":ml_service_impl_fuzzer",
       ":ml_service_load_flatbuffer_fuzzer",
+      ":web_platform_handwriting_fuzzer",
     ]
   }
   if (use.ml_benchmark_drivers) {
@@ -140,8 +141,6 @@ static_library("ml_common") {
   all_dependent_configs = [ ":ml_common_pkg_deps" ]
   defines = [
     "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
-    "USE_ONDEVICE_HANDWRITING=${use.ondevice_handwriting}",
-    "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",
     "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     "TC3_VOCAB_ANNOTATOR_IMPL",
   ]
@@ -160,6 +159,22 @@ static_library("ml_common") {
     deps += [ ":ml_soda_proto" ]
   } else {
     sources += [ "soda_recognizer_impl_fake.cc" ]
+  }
+
+  # Enables handwriting for all boards in fuzzer, including those don't support
+  # ondevice handwriting, because we want to do fuzzer test on all the boards.
+  # This is safe because fuzzer uses a fake handwriting backend which doesn't
+  # really dlopen the library.
+  if (use.fuzzer) {
+    defines += [
+      "USE_ONDEVICE_HANDWRITING=true",
+      "USE_ONDEVICE_HANDWRITING_DLC=true",
+    ]
+  } else {
+    defines += [
+      "USE_ONDEVICE_HANDWRITING=${use.ondevice_handwriting}",
+      "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",
+    ]
   }
 }
 
@@ -281,5 +296,32 @@ if (use.fuzzer) {
     sources = [ "fuzzers/ml_service_load_flatbuffer_fuzzer.cc" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [ ":ml_common" ]
+  }
+
+  proto_library("web_platform_handwriting_fuzz_container_proto") {
+    proto_in_dir = "./proto/"
+    proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/libhandwriting/proto" ]
+    proto_out_dir = "chrome/knowledge/handwriting/"
+    sources =
+        [ "${proto_in_dir}/web_platform_handwriting_fuzz_container.proto" ]
+  }
+
+  executable("web_platform_handwriting_fuzzer") {
+    sources = [
+      "fuzzers/handwriting_fake.cc",
+      "fuzzers/web_platform_handwriting_fuzzer.cc",
+    ]
+    configs += [ "//common-mk/common_fuzzer" ]
+
+    # Enables handwriting for all boards in fuzzer.
+    defines = [
+      "USE_ONDEVICE_HANDWRITING=true",
+      "USE_ONDEVICE_HANDWRITING_DLC=true",
+    ]
+    pkg_deps = [ "libprotobuf-mutator" ]
+    deps = [
+      ":ml_common",
+      ":web_platform_handwriting_fuzz_container_proto",
+    ]
   }
 }
