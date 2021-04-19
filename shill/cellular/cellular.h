@@ -468,6 +468,7 @@ class Cellular : public Device,
   void SetModemState(ModemState modem_state_state);
   void SetCapabilityState(CapabilityState capability_state);
   void SetScanning(bool scanning);
+  void SetScanningProperty(bool scanning);
 
   void OnEnabled();
   void OnConnecting();
@@ -562,8 +563,10 @@ class Cellular : public Device,
   void OnPPPAuthenticating();
   void OnPPPConnected(const std::map<std::string, std::string>& params);
 
+  void SetPendingConnect(const std::string& iccid);
   void ConnectToPending();
   void ConnectToPendingAfterDelay();
+  void ConnectToPendingFailed(Service::ConnectFailure failure);
   void UpdateScanning();
   void GetLocationCallback(const std::string& gpp_lac_ci_string,
                            const Error& error);
@@ -678,11 +681,13 @@ class Cellular : public Device,
 
   std::unique_ptr<NetlinkSockDiag> socket_destroyer_;
 
-  // Used to keep scanning=true while the Modem is restarting so that tests and
-  // the UI will not attempt to Enable or Connect while in that state.
+  // Used to keep scanning=true while the Modem is restarting.
   // TODO(b/177588333): Make Modem and/or the MM dbus API more robust.
-  base::CancelableClosure scanning_timeout_callback_;
+  base::CancelableClosure scanning_clear_callback_;
 
+  // If a Connect request occurs while the Modem is busy, do not connect
+  // immediately, instead set |connect_pending_iccid_|. The connect will occur
+  // after a delay once Scanning is set to false.
   std::string connect_pending_iccid_;
   base::CancelableClosure connect_pending_callback_;
 
