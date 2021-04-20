@@ -747,19 +747,18 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_FALSE(device_->enabled_);
   EXPECT_FALSE(device_->enabled_pending_);
   device_->enabled_persistent_ = false;
-  EXPECT_CALL(*manager(), UpdateDevice(_));
   Error error;
   device_->SetEnabledPersistent(true, &error, ResultCallback());
   EXPECT_TRUE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
 
-  // Enable while already enabled.
+  // Enable while already enabled (but not persisted).
   error.Populate(Error::kOperationInitiated);
   device_->enabled_persistent_ = false;
   device_->enabled_pending_ = true;
   device_->enabled_ = true;
   device_->SetEnabledPersistent(true, &error, ResultCallback());
-  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
   EXPECT_TRUE(device_->enabled_);
   EXPECT_TRUE(error.IsSuccess());
@@ -768,12 +767,12 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = false;
   device_->SetEnabledPersistent(true, &error, ResultCallback());
-  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_persistent_);
   EXPECT_FALSE(device_->enabled_pending_);
   EXPECT_TRUE(device_->enabled_);
   EXPECT_EQ(Error::kOperationFailed, error.type());
 
-  // Disable while already disabled.
+  // Disable while already disabled (persisted).
   error.Populate(Error::kOperationInitiated);
   device_->enabled_ = false;
   device_->SetEnabledPersistent(false, &error, ResultCallback());
@@ -790,6 +789,17 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_TRUE(device_->enabled_pending_);
   EXPECT_FALSE(device_->enabled_);
   EXPECT_EQ(Error::kOperationFailed, error.type());
+
+  // Disable while already disabled (but not persisted).
+  error.Reset();
+  device_->enabled_persistent_ = true;
+  device_->enabled_pending_ = false;
+  device_->enabled_ = false;
+  device_->SetEnabledPersistent(false, &error, ResultCallback());
+  EXPECT_FALSE(device_->enabled_persistent_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(DeviceTest, Start) {

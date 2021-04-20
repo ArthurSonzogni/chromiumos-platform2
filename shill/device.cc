@@ -1610,6 +1610,12 @@ void Device::SetEnabledChecked(bool enable,
     }
     SLOG(this, 1) << "Already in desired enable state.";
     error->Reset();
+    // We can already be in the right state, but it may not be persisted.
+    // Check and flush that too.
+    if (persist && enabled_persistent_ != enable) {
+      enabled_persistent_ = enable;
+      manager_->UpdateDevice(this);
+    }
     return;
   }
 
