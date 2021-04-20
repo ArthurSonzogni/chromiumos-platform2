@@ -42,6 +42,7 @@ constexpr ManufacturerBackend manufacturers[] = {
     // to match this if no other manufacturer matched.
     {"hp", kAirscanHp, kIppUsbHp},
     {"hewlett[- ]?packard", kAirscanHp, kIppUsbHp},
+    {"DavieV", kTest, kTest},
 };
 
 DocumentScanSaneBackend GuessManufacturer(DocumentScanSaneBackend base_type,
