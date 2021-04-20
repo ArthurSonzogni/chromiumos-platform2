@@ -68,19 +68,14 @@ if (use.test) {
       "zsl_helper.cc",
       "zsl_helper_test.cc",
     ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     include_dirs = [
       "//camera",
       "//camera/include",
     ]
-    deps = [ "//camera/common:libcros_camera_mojom" ]
-    pkg_deps = [
-      "gbm",
-      "libchrome",
-      "libcros_camera_android_deps",
-      "libdrm",
-      "libmojo",
-      "libsync",
-    ]
+    pkg_deps = [ "gbm" ]
   }
 }
