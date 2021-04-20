@@ -20,7 +20,7 @@ use std::result::Result as StdResult;
 use getopts::Options;
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::communication::persistence::{Cronista, CronistaClient, Status};
-use libsirenia::communication::{StorageRPC, StorageRPCServer};
+use libsirenia::communication::{StorageRpc, StorageRpcServer};
 use libsirenia::linux::events::{AddEventSourceMutator, EventMultiplexer, Mutator};
 use libsirenia::linux::syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH};
 use libsirenia::rpc::{ConnectionHandler, RpcDispatcher, TransportServer};
@@ -69,18 +69,18 @@ pub enum Error {
 pub type Result<T> = StdResult<T, Error>;
 
 /* Holds the trichechus-relevant information for a TEEApp. */
-struct TEEApp {
+struct TeeApp {
     _sandbox: Sandbox,
     app_info: AppManifestEntry,
 }
 
 #[derive(Clone)]
-struct TEEAppHandler {
+struct TeeAppHandler {
     state: Rc<RefCell<TrichechusState>>,
-    tee_app: Rc<RefCell<TEEApp>>,
+    tee_app: Rc<RefCell<TeeApp>>,
 }
 
-impl StorageRPC for TEEAppHandler {
+impl StorageRpc for TeeAppHandler {
     type Error = ();
 
     fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
@@ -165,7 +165,7 @@ impl StorageRPC for TEEAppHandler {
 struct TrichechusState {
     expected_port: u32,
     pending_apps: HashMap<TransportType, String>,
-    running_apps: HashMap<TransportType, Rc<RefCell<TEEApp>>>,
+    running_apps: HashMap<TransportType, Rc<RefCell<TeeApp>>>,
     log_queue: VecDeque<Vec<u8>>,
     persistence_uri: TransportType,
     persistence: Option<CronistaClient>,
@@ -273,8 +273,8 @@ impl DugongConnectionHandler {
             Ok((app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
                 trichechus_state.running_apps.insert(id, tee_app.clone());
-                let storage_server: Box<dyn StorageRPCServer> =
-                    Box::new(TEEAppHandler { state, tee_app });
+                let storage_server: Box<dyn StorageRpcServer> =
+                    Box::new(TeeAppHandler { state, tee_app });
                 Some(Box::new(AddEventSourceMutator(Some(Box::new(
                     RpcDispatcher::new(storage_server, transport),
                 )))))
@@ -323,7 +323,7 @@ fn spawn_tee_app(
     app_manifest: &AppManifest,
     app_id: &str,
     transport: Transport,
-) -> Result<(TEEApp, Transport)> {
+) -> Result<(TeeApp, Transport)> {
     let app_info = app_manifest
         .get_app_manifest_entry(app_id)
         .map_err(Error::AppManifest)?;
@@ -350,7 +350,7 @@ fn spawn_tee_app(
         .map_err(Error::RunSandbox)?;
 
     Ok((
-        TEEApp {
+        TeeApp {
             _sandbox: sandbox,
             app_info: app_info.to_owned(),
         },

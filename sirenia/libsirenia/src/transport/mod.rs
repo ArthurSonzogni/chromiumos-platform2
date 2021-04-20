@@ -51,7 +51,7 @@ pub enum Error {
     /// Got an unknown transport type.
     UnknownTransportType,
     /// Failed to parse URI.
-    URIParse,
+    UriParse,
     /// Failed to clone a fd.
     Clone(io::Error),
     /// Error creating a socket.
@@ -83,7 +83,7 @@ impl Display for Error {
             },
             VSocketAddrParse(_) => write!(f, "failed to parse the vsock socket address"),
             UnknownTransportType => write!(f, "got an unrecognized transport type"),
-            URIParse => write!(f, "failed to parse the URI"),
+            UriParse => write!(f, "failed to parse the URI"),
             Clone(e) => write!(f, "failed to clone fd: {}", e),
             Socket(e) => write!(f, "failed to create socket: {}", e),
             Bind(e) => write!(f, "failed to bind: {}", e),
@@ -131,7 +131,7 @@ pub enum TransportType {
 impl TransportType {
     pub fn try_into_client(&self, bind_port: Option<u32>) -> Result<Box<dyn ClientTransport>> {
         match self {
-            TransportType::IpConnection(url) => Ok(Box::new(IPClientTransport::new(
+            TransportType::IpConnection(url) => Ok(Box::new(IpClientTransport::new(
                 &url,
                 bind_port.unwrap_or(0) as u16,
             )?)),
@@ -200,7 +200,7 @@ impl FromStr for TransportType {
 
     fn from_str(value: &str) -> Result<Self> {
         if value.is_empty() {
-            return Err(Error::URIParse);
+            return Err(Error::UriParse);
         }
         let parts: Vec<&str> = value.split("://").collect();
         match parts.len() {
@@ -211,7 +211,7 @@ impl FromStr for TransportType {
             },
             // TODO: Should this still be the default?
             1 => parse_ip_connection(value),
-            _ => Err(Error::URIParse),
+            _ => Err(Error::UriParse),
         }
     }
 }
@@ -221,7 +221,7 @@ impl TryInto<Box<dyn ServerTransport>> for &TransportType {
 
     fn try_into(self) -> Result<Box<dyn ServerTransport>> {
         match self {
-            TransportType::IpConnection(url) => Ok(Box::new(IPServerTransport::new(&url)?)),
+            TransportType::IpConnection(url) => Ok(Box::new(IpServerTransport::new(&url)?)),
             TransportType::VsockConnection(url) => Ok(Box::new(VsockServerTransport::new(&url)?)),
             _ => Err(Error::UnknownTransportType),
         }
@@ -314,13 +314,13 @@ pub trait ClientTransport {
 pub const LOOPBACK_DEFAULT: &str = "127.0.0.1:5552";
 
 /// A transport method that listens for incoming IP connections.
-pub struct IPServerTransport(TcpListener);
+pub struct IpServerTransport(TcpListener);
 
-impl IPServerTransport {
+impl IpServerTransport {
     /// `addr` - The address to bind to.
     pub fn new<T: ToSocketAddrs>(addr: T) -> Result<Self> {
         let listener = TcpListener::bind(addr).map_err(Error::Bind)?;
-        Ok(IPServerTransport(listener))
+        Ok(IpServerTransport(listener))
     }
 
     pub fn local_addr(&self) -> Result<SocketAddr> {
@@ -328,13 +328,13 @@ impl IPServerTransport {
     }
 }
 
-impl AsRawFd for IPServerTransport {
+impl AsRawFd for IpServerTransport {
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }
 }
 
-impl ServerTransport for IPServerTransport {
+impl ServerTransport for IpServerTransport {
     fn bound_to(&self) -> Result<TransportType> {
         self.local_addr().map(TransportType::from)
     }
@@ -346,13 +346,13 @@ impl ServerTransport for IPServerTransport {
 }
 
 /// A transport method that connects over IP.
-pub struct IPClientTransport {
+pub struct IpClientTransport {
     addr: SocketAddr,
     sock: Option<TcpSocket>,
     bind_port: u16,
 }
 
-impl IPClientTransport {
+impl IpClientTransport {
     pub fn new<T: ToSocketAddrs>(to_addrs: T, bind_port: u16) -> Result<Self> {
         let addr = to_addrs
             .to_socket_addrs()
@@ -360,7 +360,7 @@ impl IPClientTransport {
             .next()
             .ok_or(Error::SocketAddrParse(None))?;
 
-        Ok(IPClientTransport {
+        Ok(IpClientTransport {
             addr,
             sock: None,
             bind_port,
@@ -368,7 +368,7 @@ impl IPClientTransport {
     }
 }
 
-impl ClientTransport for IPClientTransport {
+impl ClientTransport for IpClientTransport {
     fn bind(&mut self) -> Result<TransportType> {
         let ver = InetVersion::from_sockaddr(&self.addr);
         let mut sock = TcpSocket::new(ver).map_err(Error::Socket)?;
@@ -674,11 +674,11 @@ pub mod tests {
     const CLIENT_SEND: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
     const SERVER_SEND: [u8; 5] = [11, 12, 13, 14, 15];
 
-    fn get_ip_transport() -> Result<(IPServerTransport, IPClientTransport)> {
+    fn get_ip_transport() -> Result<(IpServerTransport, IpClientTransport)> {
         const BIND_ADDRESS: &str = "127.0.0.1:0";
-        let server = IPServerTransport::new(BIND_ADDRESS)?;
+        let server = IpServerTransport::new(BIND_ADDRESS)?;
         // Bind to an ephemeral port (denoted by port 0).
-        let client = IPClientTransport::new(&server.local_addr()?, 0)?;
+        let client = IpClientTransport::new(&server.local_addr()?, 0)?;
         Ok((server, client))
     }
 
@@ -823,7 +823,7 @@ pub mod tests {
         let value = "";
         let act_result = TransportType::from_str(&value);
         match &act_result {
-            Err(Error::URIParse) => (),
+            Err(Error::UriParse) => (),
             _ => panic!("Got unexpected result: {:?}", &act_result),
         }
     }

@@ -199,7 +199,7 @@ mod test {
 
     use serde::Deserialize;
 
-    use crate::transport::{ClientTransport, IPClientTransport};
+    use crate::transport::{ClientTransport, IpClientTransport};
 
     #[derive(Serialize, Deserialize)]
     enum Request {
@@ -245,7 +245,7 @@ mod test {
             panic!();
         };
 
-        let mut client_transport = IPClientTransport::new(server_addr, 0).unwrap();
+        let mut client_transport = IpClientTransport::new(server_addr, 0).unwrap();
         let handle = spawn(move || {
             // Queue the client RPC:
             let mut connection = client_transport.connect().unwrap();

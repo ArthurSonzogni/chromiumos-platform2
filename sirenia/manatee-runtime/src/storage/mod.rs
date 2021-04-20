@@ -10,13 +10,13 @@ use std::sync::{Arc, Once};
 use sync::Mutex;
 
 use libsirenia::communication::persistence::Status;
-use libsirenia::communication::{StorageRPC, StorageRPCClient};
+use libsirenia::communication::{StorageRpc, StorageRpcClient};
 use libsirenia::storage::{to_read_data_error, to_write_data_error, Error, Result, Storage};
 use libsirenia::transport::{create_transport_from_default_fds, Transport};
 
 /// Holds the rpc client for the specific instance of the TEE App.
 pub struct TrichechusStorage {
-    rpc: Arc<Mutex<StorageRPCClient>>,
+    rpc: Arc<Mutex<StorageRpcClient>>,
 }
 
 impl TrichechusStorage {
@@ -29,10 +29,10 @@ impl TrichechusStorage {
      */
     pub fn new() -> Self {
         static INIT: Once = Once::new();
-        static mut RPC: Option<Arc<Mutex<StorageRPCClient>>> = None;
+        static mut RPC: Option<Arc<Mutex<StorageRpcClient>>> = None;
         // Safe because it is protected by Once
         INIT.call_once(|| unsafe {
-            let transport = Some(Arc::new(Mutex::new(StorageRPCClient::new(
+            let transport = Some(Arc::new(Mutex::new(StorageRpcClient::new(
                 create_transport_from_default_fds().unwrap(),
             ))));
             RPC = transport;
@@ -54,7 +54,7 @@ impl Default for TrichechusStorage {
 impl From<Transport> for TrichechusStorage {
     fn from(transport: Transport) -> Self {
         TrichechusStorage {
-            rpc: Arc::new(Mutex::new(StorageRPCClient::new(transport))),
+            rpc: Arc::new(Mutex::new(StorageRpcClient::new(transport))),
         }
     }
 }
@@ -85,7 +85,7 @@ impl Storage for TrichechusStorage {
 pub mod tests {
     use super::*;
 
-    use libsirenia::communication::StorageRPCServer;
+    use libsirenia::communication::StorageRpcServer;
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::rc::Rc;
@@ -101,11 +101,11 @@ pub mod tests {
     const TEST_ID: &str = "id";
 
     #[derive(Clone)]
-    struct StorageRPCServerImpl {
+    struct StorageRpcServerImpl {
         map: Rc<RefCell<HashMap<String, Vec<u8>>>>,
     }
 
-    impl StorageRPC for StorageRPCServerImpl {
+    impl StorageRpc for StorageRpcServerImpl {
         type Error = ();
 
         // TODO: Want to return nested Result - but Error needs to be serializable first
@@ -130,10 +130,10 @@ pub mod tests {
             .to_string()
     }
 
-    fn setup() -> (RpcDispatcher<Box<dyn StorageRPCServer>>, TrichechusStorage) {
+    fn setup() -> (RpcDispatcher<Box<dyn StorageRpcServer>>, TrichechusStorage) {
         let (server_transport, client_transport) = create_transport_from_pipes().unwrap();
 
-        let handler: Box<dyn StorageRPCServer> = Box::new(StorageRPCServerImpl {
+        let handler: Box<dyn StorageRpcServer> = Box::new(StorageRpcServerImpl {
             map: Rc::new(RefCell::new(HashMap::new())),
         });
         let dispatcher = RpcDispatcher::new(handler, server_transport);

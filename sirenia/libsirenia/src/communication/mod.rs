@@ -53,7 +53,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 /// Definition for storage rpc needed both by manatee_runtime and sirenia
 #[sirenia_rpc]
-pub trait StorageRPC {
+pub trait StorageRpc {
     type Error;
 
     fn read_data(&self, id: String) -> StdResult<(persistence::Status, Vec<u8>), Self::Error>;
