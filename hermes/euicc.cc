@@ -288,7 +288,6 @@ void Euicc::OnInstalledProfilesReceived(
     return;
   }
   installed_profiles_.clear();
-  UpdateInstalledProfilesProperty();
   for (const auto& info : profile_infos) {
     auto profile = Profile::Create(info, physical_slot_, slot_info_.eid());
     if (profile) {
