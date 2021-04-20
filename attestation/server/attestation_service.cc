@@ -206,6 +206,10 @@ const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
      "90D64FB352E3D34E05AB53BD4E01EFE3EF56F6DBE315B76A31B0100BF7096093"},
 };
 
+// Default D-Bus call timeout.
+constexpr base::TimeDelta kPcaAgentDBusTimeout =
+    base::TimeDelta::FromMinutes(2);
+
 // Returns a human-readable description for a known 3-byte |mode|.
 std::string GetDescriptionForMode(const char* mode) {
   return base::StringPrintf(
@@ -2435,7 +2439,8 @@ void AttestationService::SendEnrollRequest(
   auto on_error =
       base::Bind(&AttestationService::HandlePcaAgentEnrollRequestError,
                  GetWeakPtr(), data);
-  pca_agent_proxy_->EnrollAsync(pca_request, on_success, on_error);
+  pca_agent_proxy_->EnrollAsync(pca_request, on_success, on_error,
+                                kPcaAgentDBusTimeout.InMilliseconds());
 }
 
 void AttestationService::HandlePcaAgentEnrollRequestError(
@@ -2857,7 +2862,8 @@ void AttestationService::SendGetCertificateRequest(
   auto on_error =
       base::Bind(&AttestationService::HandlePcaAgentGetCertificateRequestError,
                  GetWeakPtr(), data);
-  pca_agent_proxy_->GetCertificateAsync(pca_request, on_success, on_error);
+  pca_agent_proxy_->GetCertificateAsync(pca_request, on_success, on_error,
+                                        kPcaAgentDBusTimeout.InMilliseconds());
 }
 
 void AttestationService::HandlePcaAgentGetCertificateRequestError(
