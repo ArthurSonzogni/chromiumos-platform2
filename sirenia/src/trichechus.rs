@@ -18,7 +18,6 @@ use std::rc::Rc;
 use std::result::Result as StdResult;
 
 use getopts::Options;
-use libchromeos::vsock::SocketAddr as VSocketAddr;
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::communication::persistence::{Cronista, CronistaClient, Status};
 use libsirenia::communication::{StorageRPC, StorageRPCServer};
@@ -36,6 +35,7 @@ use sirenia::app_info::{self, AppManifest, AppManifestEntry, SandboxType};
 use sirenia::build_info::BUILD_TIMESTAMP;
 use sirenia::cli::initialize_common_arguments;
 use sirenia::communication::{AppInfo, Trichechus, TrichechusServer};
+use sys_util::vsock::SocketAddr as VSocketAddr;
 use sys_util::{self, error, getpid, getsid, info, setsid, syslog};
 use thiserror::Error as ThisError;
 

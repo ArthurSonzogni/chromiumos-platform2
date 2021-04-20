@@ -8,13 +8,15 @@ use std::os::raw::c_uint;
 use std::result::Result as StdResult;
 
 use getopts::{Matches, Options};
-use libchromeos::vsock::{SocketAddr, VsockCid};
 use libsirenia::cli::{self, TransportTypeOption};
 use libsirenia::communication::persistence::{Cronista, CronistaServer, Scope, Status};
 use libsirenia::linux::events::EventMultiplexer;
 use libsirenia::rpc::{register_server, Error as RpcError};
 use libsirenia::transport::TransportType;
-use sys_util::{self, error, info};
+use sys_util::{
+    self, error, info,
+    vsock::{SocketAddr, VsockCid},
+};
 use thiserror::Error as ThisError;
 
 use crate::storage::{self, is_unwritten_id};

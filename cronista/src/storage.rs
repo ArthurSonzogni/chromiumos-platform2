@@ -9,8 +9,8 @@ use std::io::Error as IoError;
 use std::path::{Path, PathBuf};
 
 use libchromeos::chromeos::{self, get_daemonstore_path};
-use libchromeos::scoped_path::get_temp_path;
 use libsirenia::storage::{self, FileStorage, Storage};
+use sys_util::scoped_path::get_temp_path;
 use thiserror::Error as ThisError;
 
 // Export this so dependencies don't need to explicitly depend on libsirenia.
@@ -40,7 +40,10 @@ pub enum Error {
 
 impl Error {
     pub fn is_unwritten_id(&self) -> bool {
-        matches!(self, Error::DomainNotExist(_) | Error::ReadData(storage::Error::IdNotFound(_)))
+        matches!(
+            self,
+            Error::DomainNotExist(_) | Error::ReadData(storage::Error::IdNotFound(_))
+        )
     }
 }
 
@@ -118,10 +121,10 @@ mod test {
     use super::*;
 
     use std::fs::File;
+    use std::io::Write;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use libchromeos::scoped_path::ScopedPath;
-    use std::io::Write;
+    use sys_util::scoped_path::ScopedPath;
 
     const TEST_DOMAIN: &str = "DOMAIN";
 

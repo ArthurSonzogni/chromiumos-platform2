@@ -24,8 +24,8 @@ use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::str::FromStr;
 
 use core::mem::replace;
-use libchromeos::net::{InetVersion, TcpSocket};
-use libchromeos::vsock::{
+use sys_util::net::{InetVersion, TcpSocket};
+use sys_util::vsock::{
     AddrParseError, SocketAddr as VSocketAddr, ToSocketAddr, VsockCid, VsockListener, VsockSocket,
     VsockStream, VMADDR_PORT_ANY,
 };
@@ -666,9 +666,10 @@ pub fn get_test_vsock_uri() -> String {
 pub mod tests {
     use super::*;
 
-    use libchromeos::vsock::{VsockCid, VMADDR_PORT_ANY};
     use std::net::{IpAddr, Ipv4Addr};
     use std::thread::spawn;
+
+    use sys_util::vsock::{VsockCid, VMADDR_PORT_ANY};
 
     const CLIENT_SEND: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
     const SERVER_SEND: [u8; 5] = [11, 12, 13, 14, 15];

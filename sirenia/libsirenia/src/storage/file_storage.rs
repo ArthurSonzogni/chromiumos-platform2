@@ -85,7 +85,7 @@ mod test {
     use std::fs::create_dir;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use libchromeos::scoped_path::{get_temp_path, ScopedPath};
+    use sys_util::scoped_path::{get_temp_path, ScopedPath};
 
     const VALID_TEST_ID: &str = "Test Data";
 

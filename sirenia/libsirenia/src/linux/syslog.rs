@@ -13,8 +13,7 @@ use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use libchromeos::scoped_path::get_temp_path;
-use sys_util::{self, getpid, gettid, handle_eintr};
+use sys_util::{self, getpid, gettid, handle_eintr, scoped_path::get_temp_path};
 
 use super::events::{EventSource, Mutator, RemoveFdMutator};
 
@@ -113,7 +112,7 @@ pub(crate) mod tests {
     use std::sync::{Arc, Barrier};
     use std::thread::spawn;
 
-    use libchromeos::scoped_path::ScopedPath;
+    use sys_util::scoped_path::ScopedPath;
 
     use super::super::events::EventMultiplexer;
 

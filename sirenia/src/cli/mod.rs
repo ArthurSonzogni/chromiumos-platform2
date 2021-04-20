@@ -8,9 +8,9 @@
 use std::env::current_exe;
 
 use getopts::{self, Matches, Options};
-use libchromeos::vsock::{SocketAddr as VSocketAddr, VsockCid};
 use libsirenia::cli::{self, HelpOption, TransportTypeOption};
 use libsirenia::transport::{TransportType, DEFAULT_SERVER_PORT};
+use sys_util::vsock::{SocketAddr as VSocketAddr, VsockCid};
 use thiserror::Error as ThisError;
 
 use super::build_info::BUILD_TIMESTAMP;
