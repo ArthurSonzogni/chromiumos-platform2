@@ -11,7 +11,7 @@
 #include <brillo/secure_blob.h>
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
-#include <chaps/pkcs11/pkcs11t.h>
+#include <chaps/pkcs11/cryptoki.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
