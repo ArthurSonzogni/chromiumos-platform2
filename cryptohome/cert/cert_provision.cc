@@ -69,6 +69,7 @@ namespace {
     case ENTERPRISE_ENROLLMENT_CERTIFICATE:
     case XTS_CERTIFICATE:
     case ENTERPRISE_VTPM_EK_CERTIFICATE:
+    case SOFT_BIND_CERTIFICATE:
       return static_cast<::attestation::CertificateProfile>(p);
   }
   LOG(DFATAL) << "Unknown value of profile: " << p;

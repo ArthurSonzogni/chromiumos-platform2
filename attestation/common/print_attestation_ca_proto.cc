@@ -54,6 +54,9 @@ std::string GetProtoDebugStringWithIndent(CertificateProfile value,
   if (value == ENTERPRISE_VTPM_EK_CERTIFICATE) {
     return "ENTERPRISE_VTPM_EK_CERTIFICATE";
   }
+  if (value == SOFT_BIND_CERTIFICATE) {
+    return "SOFT_BIND_CERTIFICATE";
+  }
   return "<unknown>";
 }
 

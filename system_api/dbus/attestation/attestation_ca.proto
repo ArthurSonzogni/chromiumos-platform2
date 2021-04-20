@@ -51,6 +51,11 @@ enum CertificateProfile {
   // An EK certificate for vTPM
   //   CN=CROS VTPM PRD EK ROOT CA
   ENTERPRISE_VTPM_EK_CERTIFICATE = 9;
+
+  // A local authority certificate for binding software keys.
+  //   CN=Local Authority
+  //   O=Chrome Device Soft Bind
+  SOFT_BIND_CERTIFICATE = 10;
 }
 
 enum TpmVersion {
