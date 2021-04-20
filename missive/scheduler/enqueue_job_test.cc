@@ -66,9 +66,7 @@ class EnqueueJobTest : public ::testing::Test {
  protected:
   void SetUp() override {
     response_ = std::make_unique<
-        brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>(
-        &method_call_);
-    ASSERT_FALSE(response_->IsResponseSent());
+        brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>();
 
     record_.set_data("TEST_VALUE");
     record_.set_destination(Destination::UPLOAD_EVENTS);

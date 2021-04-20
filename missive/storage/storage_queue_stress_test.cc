@@ -162,8 +162,12 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   }
 
   void ResetTestStorageQueue() {
+    // Let everything ongoing to finish.
     task_environment_.RunUntilIdle();
     storage_queue_.reset();
+    // StorageQueue is destructed on a thread,
+    // so we need to wait for it to destruct.
+    task_environment_.RunUntilIdle();
   }
 
   QueueOptions BuildStorageQueueOptionsImmediate() const {
@@ -178,10 +182,6 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
 
   QueueOptions BuildStorageQueueOptionsOnlyManual() const {
     return BuildStorageQueueOptionsPeriodic(base::TimeDelta::Max());
-  }
-
-  StatusOr<std::unique_ptr<UploaderInterface>> BuildTestUploader() {
-    return std::make_unique<TestUploadClient>(&last_record_digest_map_);
   }
 
   void AsyncStartTestUploader(

@@ -34,9 +34,6 @@ Status EnqueueJob::EnqueueResponseDelegate::Cancel(Status status) {
 }
 
 Status EnqueueJob::EnqueueResponseDelegate::SendResponse(Status status) {
-  if (response_->IsResponseSent()) {
-    return Status(error::INTERNAL, "Response has already been sent");
-  }
   EnqueueRecordResponse response_body;
   status.SaveTo(response_body.mutable_status());
   response_->Return(response_body);

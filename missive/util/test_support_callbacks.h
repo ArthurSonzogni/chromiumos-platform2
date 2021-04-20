@@ -98,15 +98,18 @@ class TestMultiEvent {
 // Usage (in tests only):
 //
 //  TestCallbackWaiter waiter;
+//  ... do something
+//  waiter.Wait();
 //
-//  waiter.Attach();   // if more than one Signal is expected.
+//  or, with multithreadeded activity:
 //
-//  start asynchronous work passing |&waiter| as a parameter.
-//  waiter.Signal();   // once work is done.
+//  TestCallbackWaiter waiter;
+//  waiter.Attach(N);  // N - is a number of asynchronous actions
+//  ...
+//  waiter.Wait();
 //
-//  waiter.Wait();  // in the main thread of the test.
-//                  // When passed, all async work is done.
-//
+//  And  in each of N actions: waiter.Signal(); when done
+
 class TestCallbackWaiter {
  public:
   TestCallbackWaiter();
@@ -138,6 +141,22 @@ class TestCallbackWaiter {
  private:
   std::atomic<size_t> counter_{1};  // Owned by constructor.
   base::RunLoop run_loop_;
+};
+
+// RAAI wrapper for TestCallbackWaiter.
+//
+// Usage:
+// {
+//   TestCallbackAutoWaiter waiter;  // Implicitly Attach(1);
+//   ...
+//   Launch async activity, which will eventually do waiter.Signal();
+//   ...
+// }   // Here the waiter will automatically wait.
+
+class TestCallbackAutoWaiter : public TestCallbackWaiter {
+ public:
+  TestCallbackAutoWaiter();
+  ~TestCallbackAutoWaiter();
 };
 
 }  // namespace test

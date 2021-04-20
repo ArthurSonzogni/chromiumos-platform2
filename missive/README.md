@@ -35,3 +35,35 @@ were written.
 
 * [Daemon Design](go/cros-reporting-daemon)
 * [Messaging Layer](go/chrome-reporting-messaging-layer)
+
+## Updating From Chromium
+
+### General Guidelines
+
+The code in the following folders originally comes from
+chromium://components/reporting:
+
+- encryption
+- proto
+- storage
+- util
+
+When importing updates from the chromium code you will encounter the following
+issues:
+
+1. #include statements in chromium for //base need to be converted as follows:
+   #include "base/example.h" -> #include <base/example.h>
+2. Protobuf include directory can be converted from chromium as follows:
+   "third_party/protobuf/src/google/protobuf/..." -> <google/protobuf/...>
+3. ChromeOS doesn't need to worry about worrying on multiple operating systems,
+   so doesn't require FILE_PATH_LITERAL, base::FilePath::CharType, or
+   base::FilePath::StringType. It can be assumed that these are simple char or
+   std::strings.
+4. base::DoNothing() comes from <base/bind_helpers.h> rather than
+   "base/callback_helpers.h"
+
+### Specific Files
+
+- chromium://components/reporting/util/status.proto has been moved to
+  .../missive/proto/status.proto. This is due to difficulties in including
+  protos within protos on ChromeOS.
