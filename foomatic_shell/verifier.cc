@@ -160,7 +160,7 @@ bool Verifier::VerifyGs(const std::vector<StringAtom>& parameters) {
       safer = true;
       continue;
     }
-    if (param == "-sOutputFile=-") {
+    if (param == "-sOutputFile=-" || param == "-sOutputFile=%stdout") {
       output_file = true;
       continue;
     }
