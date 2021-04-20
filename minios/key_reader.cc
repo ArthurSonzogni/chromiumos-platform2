@@ -19,7 +19,7 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 
-namespace key_reader {
+namespace minios {
 
 namespace {
 constexpr char kDevInputEvent[] = "/dev/input";
@@ -249,8 +249,7 @@ bool KeyReader::GetChar(const struct input_event& ev, bool* tab_toggle) {
 
     if (sym == XKB_KEY_BackSpace && !user_input_.empty()) {
       user_input_.pop_back();
-    } else if (isprint(buff[0]) &&
-               user_input_.size() < key_reader::kMaxInputLength) {
+    } else if (isprint(buff[0]) && user_input_.size() < kMaxInputLength) {
       // Only printable ASCII characters stored in output.
       user_input_.push_back(buff[0]);
     }
@@ -265,7 +264,7 @@ bool KeyReader::GetChar(const struct input_event& ev, bool* tab_toggle) {
   } else if (ev.value == 2) {
     // Long press or repeating key event.
     if (sym == XKB_KEY_BackSpace && !user_input_.empty() &&
-        ++backspace_counter_ >= key_reader::kBackspaceSensitivity) {
+        ++backspace_counter_ >= kBackspaceSensitivity) {
       // Remove characters until empty.
       user_input_.pop_back();
       backspace_counter_ = 0;
@@ -305,4 +304,4 @@ std::string KeyReader::GetUserInputForTest() {
   return user_input_;
 }
 
-}  // namespace key_reader
+}  // namespace minios

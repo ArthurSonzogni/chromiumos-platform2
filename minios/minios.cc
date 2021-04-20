@@ -20,11 +20,10 @@ MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                std::shared_ptr<NetworkManagerInterface> network_manager)
     : update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
-      screens_(screens::Screens(
-          &process_manager_,
-          std::make_unique<RecoveryInstaller>(&process_manager_),
-          network_manager_,
-          update_engine_proxy_)) {
+      screens_(Screens(&process_manager_,
+                       std::make_unique<RecoveryInstaller>(&process_manager_),
+                       network_manager_,
+                       update_engine_proxy_)) {
   update_engine_proxy_->SetDelegate(&screens_);
   update_engine_proxy_->Init();
   network_manager_->AddObserver(&screens_);

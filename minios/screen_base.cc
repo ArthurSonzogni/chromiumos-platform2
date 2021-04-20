@@ -11,7 +11,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-namespace screens {
+namespace minios {
 
 // Colors
 const char kMenuBlack[] = "0x202124";
@@ -349,4 +349,4 @@ void ScreenBase::GetFreconConstants() {
     }
   }
 }
-}  // namespace screens
+}  // namespace minios

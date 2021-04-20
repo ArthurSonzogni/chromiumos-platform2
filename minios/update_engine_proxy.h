@@ -13,6 +13,8 @@
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
+namespace minios {
+
 class UpdateEngineProxy {
  public:
   UpdateEngineProxy(
@@ -56,5 +58,7 @@ class UpdateEngineProxy {
   UpdaterDelegate* delegate_;
   base::WeakPtrFactory<UpdateEngineProxy> weak_ptr_factory_;
 };
+
+}  // namespace minios
 
 #endif  // MINIOS_UPDATE_ENGINE_PROXY_H_

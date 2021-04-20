@@ -15,7 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <xkbcommon/xkbcommon.h>
 
-namespace key_reader {
+namespace minios {
 
 constexpr int kMaxInputLength = 64;
 
@@ -137,6 +137,6 @@ class KeyReader {
   struct xkb_state* state_{nullptr};
 };
 
-}  // namespace key_reader
+}  // namespace minios
 
 #endif  // MINIOS_KEY_READER_H_

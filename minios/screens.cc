@@ -14,7 +14,7 @@
 
 #include "minios/minios.h"
 
-namespace screens {
+namespace minios {
 
 const char kScreens[] = "etc/screens";
 
@@ -284,8 +284,8 @@ void Screens::GetPassword() {
         << "Could not find xkb layout for given region. Defaulting to US.";
     keyboard_layout = "us";
   }
-  key_reader::KeyReader password_key_reader =
-      key_reader::KeyReader(/*include_usb=*/true, keyboard_layout);
+  KeyReader password_key_reader =
+      KeyReader(/*include_usb=*/true, keyboard_layout);
   password_key_reader.InputSetUp();
 
   constexpr int kBtnY = kTitleY + 58 + kBtnYStep * 2;
@@ -874,4 +874,4 @@ void Screens::UpdateNetworkList() {
   chosen_network_.clear();
 }
 
-}  // namespace screens
+}  // namespace minios

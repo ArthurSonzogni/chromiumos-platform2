@@ -12,7 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 
-namespace screens {
+namespace minios {
 
 // Colors
 extern const char kMenuBlack[];
@@ -143,6 +143,6 @@ class ScreenBase {
   int frecon_scale_factor_{1};
 };
 
-}  // namespace screens
+}  // namespace minios
 
 #endif  // MINIOS_SCREEN_BASE_H_

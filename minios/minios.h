@@ -40,7 +40,7 @@ class MiniOs : public MiniOsInterface {
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 
   ProcessManager process_manager_;
-  screens::Screens screens_;
+  Screens screens_;
 };
 
 }  // namespace minios

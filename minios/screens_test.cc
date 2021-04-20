@@ -14,7 +14,7 @@
 
 using testing::_;
 
-namespace screens {
+namespace minios {
 
 namespace {
 
@@ -496,8 +496,8 @@ TEST_F(ScreensTest, MapRegionToKeyboard) {
 
 class MockScreens : public Screens {
  public:
-  MockScreens(
-      std::unique_ptr<minios::MockRecoveryInstaller> mock_recovery_installer)
+  explicit MockScreens(
+      std::unique_ptr<MockRecoveryInstaller> mock_recovery_installer)
       : Screens(nullptr, std::move(mock_recovery_installer), nullptr, nullptr) {
   }
   MOCK_METHOD(bool,
@@ -533,8 +533,7 @@ class MockScreens : public Screens {
 class ScreensTestMocks : public ::testing::Test {
  public:
   ScreensTestMocks()
-      : mock_recovery_installer_(
-            std::make_unique<minios::MockRecoveryInstaller>()),
+      : mock_recovery_installer_(std::make_unique<MockRecoveryInstaller>()),
         mock_recovery_installer_ptr_(mock_recovery_installer_.get()),
         mock_screens_(MockScreens(std::move(mock_recovery_installer_))) {}
   void SetUp() override {
@@ -548,8 +547,8 @@ class ScreensTestMocks : public ::testing::Test {
 
  protected:
   base::FilePath screens_path_;
-  std::unique_ptr<minios::MockRecoveryInstaller> mock_recovery_installer_;
-  minios::MockRecoveryInstaller* mock_recovery_installer_ptr_;
+  std::unique_ptr<MockRecoveryInstaller> mock_recovery_installer_;
+  MockRecoveryInstaller* mock_recovery_installer_ptr_;
   MockScreens mock_screens_;
 };
 
@@ -1007,4 +1006,4 @@ TEST_F(ScreensTestMocks, RepartitionDiskFailed) {
   mock_screens_.OnConnect("test-ssid", nullptr);
 }
 
-}  // namespace screens
+}  // namespace minios

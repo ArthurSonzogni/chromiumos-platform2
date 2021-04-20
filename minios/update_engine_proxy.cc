@@ -6,8 +6,12 @@
 
 #include <brillo/message_loops/message_loop.h>
 
+namespace minios {
+
+namespace {
 // Delay reboot after showing screen so user knows recovery has completed.
 constexpr int kTimeTillReboot = 10;
+}  // namespace
 
 void UpdateEngineProxy::Init() {
   update_engine_proxy_.get()->RegisterStatusUpdateAdvancedSignalHandler(
@@ -50,3 +54,5 @@ void UpdateEngineProxy::Reboot() {
                << " ErrorMessage=" << error->GetMessage();
   }
 }
+
+}  // namespace minios

@@ -20,7 +20,7 @@
 #include "minios/screen_base.h"
 #include "minios/update_engine_proxy.h"
 
-namespace screens {
+namespace minios {
 
 extern const char kScreens[];
 
@@ -63,14 +63,14 @@ enum class ScreenType {
 // ScreenBase.
 
 class Screens : public ScreenBase,
-                public key_reader::KeyReader::Delegate,
+                public KeyReader::Delegate,
                 public UpdateEngineProxy::UpdaterDelegate,
-                public minios::NetworkManagerInterface::Observer {
+                public NetworkManagerInterface::Observer {
  public:
   explicit Screens(
       ProcessManagerInterface* process_manager,
-      std::unique_ptr<minios::RecoveryInstallerInterface> recovery_installer,
-      std::shared_ptr<minios::NetworkManagerInterface> network_manager,
+      std::unique_ptr<RecoveryInstallerInterface> recovery_installer,
+      std::shared_ptr<NetworkManagerInterface> network_manager,
       std::shared_ptr<UpdateEngineProxy> update_engine_proxy)
       : process_manager_(process_manager),
         recovery_installer_(std::move(recovery_installer)),
@@ -258,12 +258,11 @@ class Screens : public ScreenBase,
 
   ProcessManagerInterface* process_manager_;
 
-  std::unique_ptr<minios::RecoveryInstallerInterface> recovery_installer_;
+  std::unique_ptr<RecoveryInstallerInterface> recovery_installer_;
 
-  key_reader::KeyReader key_reader_ =
-      key_reader::KeyReader(/*include_usb=*/true);
+  KeyReader key_reader_ = KeyReader(/*include_usb=*/true);
 
-  std::shared_ptr<minios::NetworkManagerInterface> network_manager_;
+  std::shared_ptr<NetworkManagerInterface> network_manager_;
 
   std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
 
@@ -330,6 +329,6 @@ class Screens : public ScreenBase,
       update_engine::Operation::IDLE};
 };
 
-}  // namespace screens
+}  // namespace minios
 
 #endif  // MINIOS_SCREENS_H_

@@ -9,13 +9,15 @@
 
 using testing::_;
 
+namespace minios {
+
 class KeyReaderTest : public ::testing::Test {
  public:
   void SetUp() override { ev_.value = 0; }
   struct input_event ev_;
 };
 
-class MockKeyReader : public key_reader::KeyReader {
+class MockKeyReader : public KeyReader {
  public:
   MockKeyReader() : KeyReader(true) {}
   explicit MockKeyReader(bool include_usb) : KeyReader(include_usb) {}
@@ -28,7 +30,7 @@ class MockKeyReader : public key_reader::KeyReader {
 };
 
 TEST_F(KeyReaderTest, BasicKeyTest) {
-  key_reader::KeyReader key_reader(true, "us");
+  KeyReader key_reader(true, "us");
   EXPECT_TRUE(key_reader.SetKeyboardContext());
   // Test Basic Numbers.
   ev_.code = 2;
@@ -73,7 +75,7 @@ TEST_F(KeyReaderTest, BasicKeyTest) {
 }
 
 TEST_F(KeyReaderTest, PrintableKeyTest) {
-  key_reader::KeyReader key_reader(true, "us");
+  KeyReader key_reader(true, "us");
   EXPECT_TRUE(key_reader.SetKeyboardContext());
 
   ev_.code = 2;
@@ -121,22 +123,22 @@ TEST_F(KeyReaderTest, PrintableKeyTest) {
 }
 
 TEST_F(KeyReaderTest, InputLengthTest) {
-  key_reader::KeyReader key_reader(true, "us");
+  KeyReader key_reader(true, "us");
   EXPECT_TRUE(key_reader.SetKeyboardContext());
 
   // Add max input chars.
   ev_.code = 52;
-  for (int i = 0; i < key_reader::kMaxInputLength; i++) {
+  for (int i = 0; i < kMaxInputLength; i++) {
     key_reader.GetCharForTest(ev_);
   }
 
-  EXPECT_EQ(std::string(key_reader::kMaxInputLength, '.'),
+  EXPECT_EQ(std::string(kMaxInputLength, '.'),
             key_reader.GetUserInputForTest());
 
   // Cannot add past kMaxInputLength.
   ev_.code = 3;
   key_reader.GetCharForTest(ev_);
-  EXPECT_EQ(std::string(key_reader::kMaxInputLength, '.'),
+  EXPECT_EQ(std::string(kMaxInputLength, '.'),
             key_reader.GetUserInputForTest());
 
   // Test backspace. individual key press.
@@ -145,14 +147,13 @@ TEST_F(KeyReaderTest, InputLengthTest) {
     key_reader.GetCharForTest(ev_);
   }
 
-  EXPECT_EQ(std::string(key_reader::kMaxInputLength - 20, '.'),
+  EXPECT_EQ(std::string(kMaxInputLength - 20, '.'),
             key_reader.GetUserInputForTest());
 
   // Back space repeated keypress.
   // Stop deleting when string empty.
   ev_.value = 2;
-  int remaining_chars =
-      key_reader::kBackspaceSensitivity * (key_reader::kMaxInputLength - 20);
+  int remaining_chars = kBackspaceSensitivity * (kMaxInputLength - 20);
   for (int i = 0; i < remaining_chars + 2; i++) {
     key_reader.GetCharForTest(ev_);
   }
@@ -161,7 +162,7 @@ TEST_F(KeyReaderTest, InputLengthTest) {
 }
 
 TEST_F(KeyReaderTest, ReturnKeyTest) {
-  key_reader::KeyReader key_reader(true, "us");
+  KeyReader key_reader(true, "us");
   EXPECT_TRUE(key_reader.SetKeyboardContext());
 
   // Return key press should return true.
@@ -181,7 +182,7 @@ TEST_F(KeyReaderTest, ReturnKeyTest) {
 }
 
 TEST_F(KeyReaderTest, FrenchKeyTest) {
-  key_reader::KeyReader key_reader(true, "fr");
+  KeyReader key_reader(true, "fr");
   EXPECT_TRUE(key_reader.SetKeyboardContext());
 
   ev_.code = 16;
@@ -241,7 +242,7 @@ TEST_F(KeyReaderTest, FrenchKeyTest) {
 }
 
 TEST_F(KeyReaderTest, JapaneseKeyTest) {
-  key_reader::KeyReader key_reader(true, "jp");
+  KeyReader key_reader(true, "jp");
   EXPECT_TRUE(key_reader.SetKeyboardContext());
 
   ev_.code = 16;
@@ -415,3 +416,5 @@ TEST_F(KeyReaderTest, InitEpollFailure) {
   EXPECT_CALL(key_reader, EpollCreate(_)).WillOnce(testing::Return(false));
   EXPECT_FALSE(key_reader.Init({103, 108, 28}));
 }
+
+}  // namespace minios
