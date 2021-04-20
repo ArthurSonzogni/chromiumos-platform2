@@ -511,10 +511,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     return static_cast<MockCellularService*>(device_->service_.get());
   }
 
-  void set_enabled_persistent(bool new_value) {
-    device_->enabled_persistent_ = new_value;
-  }
-
   void SetCapability3gppActiveBearer(std::unique_ptr<CellularBearer> bearer) {
     GetCapability3gpp()->active_bearer_ = std::move(bearer);
   }
@@ -1906,7 +1902,8 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantDisabled) {
 
   // Initial state.
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
-  set_enabled_persistent(false);
+  Error error;
+  device_->SetEnabledPersistent(false, &error, ResultCallback());
   EXPECT_FALSE(device_->enabled_pending());
   EXPECT_FALSE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::State::kDisabled, device_->state());
