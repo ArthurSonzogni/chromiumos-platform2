@@ -40,6 +40,8 @@ constexpr char kDefaultIfname[] = "vmtap%d";
 constexpr char kTunDev[] = "/dev/net/tun";
 constexpr char kArcAddr[] = "100.115.92.2";
 constexpr char kLocalhostAddr[] = "127.0.0.1";
+constexpr char kDefaultDnsPort[] = "53";
+constexpr char kChronosUid[] = "chronos";
 constexpr uint16_t kAdbServerPort = 5555;
 
 // Constants used for dropping locally originated traffic bound to an incorrect
@@ -54,6 +56,11 @@ constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
 constexpr char kRedirectDnsChain[] = "redirect_dns";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
+constexpr char kSkipApplyVpnMarkChain[] = "skip_apply_vpn_mark";
+constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
+constexpr char kRedirectArcDnsChain[] = "redirect_arc_dns";
+constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
+constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
 
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
@@ -230,6 +237,64 @@ void Datapath::Start() {
   if (!ModifyFwmarkDefaultLocalSourceTag("-A", TrafficSource::SYSTEM))
     LOG(ERROR) << "Failed to set up rule tagging traffic with default source";
 
+  // Sets up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
+  // tagging applied through "apply_vpn_mark" chain. This is used to protect
+  // DNS traffic that should go to the DNS proxy.
+  if (!AddChain(IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain))
+    LOG(ERROR) << "Failed to set up " << kSkipApplyVpnMarkChain
+               << " mangle chain";
+
+  // Sets up nat chains used to redirect DNS traffic when DNS proxy is up.
+  if (!AddChain(IpFamily::Dual, "nat", kRedirectDefaultDnsChain))
+    LOG(ERROR) << "Failed to set up " << kRedirectDefaultDnsChain
+               << " nat chain";
+
+  // Sets up nat chains used to redirect ARC DNS traffic when DNS proxy is up.
+  if (!AddChain(IpFamily::Dual, "nat", kRedirectArcDnsChain))
+    LOG(ERROR) << "Failed to set up " << kRedirectArcDnsChain << " nat chain";
+
+  // Sets up nat chains used to redirect Chrome DNS traffic directly to the
+  // set up name servers, skipping DNS proxy.
+  if (!AddChain(IpFamily::Dual, "nat", kRedirectChromeDnsChain))
+    LOG(ERROR) << "Failed to set up " << kRedirectChromeDnsChain
+               << " nat chain";
+
+  // Sets up nat chains used to redirect user DNS traffic when DNS proxy is up.
+  if (!AddChain(IpFamily::Dual, "nat", kRedirectUserDnsChain))
+    LOG(ERROR) << "Failed to set up " << kRedirectUserDnsChain << " nat chain";
+
+  if (!ModifyJumpRule(IpFamily::Dual, "nat", "-I", "PREROUTING",
+                      kRedirectDefaultDnsChain, "" /*iif*/, "" /*oif*/,
+                      false /*log_failures*/)) {
+    LOG(ERROR) << "Failed to add jump rule for single-networked guests' DNS "
+                  "redirection";
+  }
+
+  if (!ModifyJumpRule(IpFamily::Dual, "nat", "-I", "PREROUTING",
+                      kRedirectArcDnsChain, "" /*iif*/, "" /*oif*/,
+                      false /*log_failures*/)) {
+    LOG(ERROR) << "Failed to add jump rule for ARC DNS redirection";
+  }
+
+  if (!ModifyRedirectDnsJumpRule(IpFamily::Dual, "-A", "OUTPUT",
+                                 "" /* ifname */, kRedirectChromeDnsChain)) {
+    LOG(ERROR) << "Failed to add jump rule for chrome DNS redirection";
+  }
+
+  if (!ModifyRedirectDnsJumpRule(IpFamily::Dual, "-A", "OUTPUT",
+                                 "" /* ifname */, kRedirectUserDnsChain,
+                                 kFwmarkRouteOnVpn, kFwmarkVpnMask,
+                                 true /* redirect_on_mark */)) {
+    LOG(ERROR) << "Failed to add jump rule for user DNS redirection";
+  }
+
+  // All local outgoing DNS traffic eligible to VPN routing should skip the VPN
+  // routing chain and instead go through DNS proxy.
+  if (!ModifyFwmarkSkipVpnJumpRule("OUTPUT", "-A", kChronosUid)) {
+    LOG(ERROR) << "Failed to add jump rule to skip VPN mark chain in mangle "
+               << "OUTPUT chain";
+  }
+
   // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
   // traffic that should be routed through a VPN.
   if (!AddChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain))
@@ -282,6 +347,14 @@ void Datapath::ResetIptables() {
   ModifyJumpRule(IpFamily::IPv4, "filter", "-D", "OUTPUT",
                  kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
+  ModifyJumpRule(IpFamily::Dual, "nat", "-D", "PREROUTING",
+                 kRedirectDefaultDnsChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
+  ModifyJumpRule(IpFamily::Dual, "nat", "-D", "PREROUTING",
+                 kRedirectArcDnsChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
+  ModifyFwmarkSkipVpnJumpRule("OUTPUT", "-D", kChronosUid);
+
   std::vector<std::string> vpn_chains = {kVpnAcceptChain, kVpnLockdownChain};
   for (const auto& chain : vpn_chains) {
     ModifyJumpRule(IpFamily::Dual, "filter", "-D", "OUTPUT", chain, "" /*iif*/,
@@ -310,11 +383,16 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "mangle", "PREROUTING", false},
       {IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain, true},
       {IpFamily::Dual, "mangle", kApplyVpnMarkChain, true},
+      {IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain, true},
       {IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain, true},
       {IpFamily::Dual, "filter", kVpnAcceptChain, true},
       {IpFamily::Dual, "filter", kVpnLockdownChain, true},
+      {IpFamily::Dual, "nat", "OUTPUT", false},
       {IpFamily::IPv4, "nat", "POSTROUTING", false},
-      {IpFamily::IPv4, "nat", "OUTPUT", false},
+      {IpFamily::Dual, "nat", kRedirectDefaultDnsChain, true},
+      {IpFamily::Dual, "nat", kRedirectArcDnsChain, true},
+      {IpFamily::Dual, "nat", kRedirectChromeDnsChain, true},
+      {IpFamily::Dual, "nat", kRedirectUserDnsChain, true},
       {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
   };
   for (const auto& op : resetOps) {
@@ -689,6 +767,207 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
   NetnsDeleteName(nsinfo.netns_name);
 }
 
+bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
+                                       const DnsRedirectionRule& rule,
+                                       const std::string& op) {
+  // Validate nameservers.
+  for (const auto& nameserver : rule.nameservers) {
+    sa_family_t sa_family = GetIpFamily(rule.proxy_address);
+    switch (sa_family) {
+      case AF_INET:
+        if (family != IpFamily::IPv4) {
+          LOG(ERROR) << "Invalid nameserver IPv4 address '" << nameserver
+                     << "'";
+          return false;
+        }
+        break;
+      case AF_INET6:
+        if (family != IpFamily::IPv6) {
+          LOG(ERROR) << "Invalid nameserver IPv6 address '" << nameserver
+                     << "'";
+          return false;
+        }
+        break;
+      default:
+        LOG(ERROR) << "Invalid IP family " << family;
+        return false;
+    }
+  }
+
+  bool success = true;
+  for (const auto& protocol : {"udp", "tcp"}) {
+    for (int i = 0; i < rule.nameservers.size(); i++) {
+      std::vector<std::string> args{
+          op,
+          kRedirectChromeDnsChain,
+          "-p",
+      };
+      args.push_back(protocol);
+      args.push_back("--dport");  // input destination port
+      args.push_back(kDefaultDnsPort);
+      args.push_back("-m");
+      args.push_back("owner");
+      args.push_back("--uid-owner");
+      args.push_back(kChronosUid);
+
+      // If there are multiple destination IPs, forward to them in a round robin
+      // fashion with statistics module.
+      if (rule.nameservers.size() > 1) {
+        args.push_back("-m");
+        args.push_back("statistic");
+        args.push_back("--mode");
+        args.push_back("nth");
+        args.push_back("--every");
+        args.push_back(std::to_string(rule.nameservers.size()));
+        args.push_back("--packet");
+        args.push_back(std::to_string(i));
+      }
+      args.push_back("-j");
+      args.push_back("DNAT");
+      args.push_back("--to-destination");  // new output destination ip:port
+      args.push_back(rule.nameservers[i] + ":" + kDefaultDnsPort);
+      args.push_back("-w");  // Wait for xtables lock.
+      if (!ModifyIptables(family, "nat", args)) {
+        success = false;
+      }
+    }
+    if (!ModifyIptables(family, "nat",
+                        {op, "POSTROUTING", "-p", protocol, "--dport",
+                         kDefaultDnsPort, "-m", "owner", "--uid-owner",
+                         kChronosUid, "-j", "MASQUERADE", "-w"})) {
+      success = false;
+    }
+  }
+  return success;
+}
+
+bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
+                                  const DnsRedirectionRule& rule,
+                                  const std::string& op,
+                                  const std::string& ifname,
+                                  const std::string& chain) {
+  bool success = true;
+  for (const auto& protocol : {"udp", "tcp"}) {
+    std::vector<std::string> args = {op, chain};
+    if (!ifname.empty()) {
+      args.insert(args.end(), {"-i", ifname});
+    }
+    args.push_back("-p");
+    args.push_back(protocol);
+    args.push_back("--dport");
+    args.push_back(kDefaultDnsPort);
+    args.push_back("-j");
+    args.push_back("DNAT");
+    args.push_back("--to-destination");
+    args.push_back(rule.proxy_address);
+    args.push_back("-w");
+    if (!ModifyIptables(family, "nat", args)) {
+      success = false;
+    }
+  }
+  return success;
+}
+
+bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
+  IpFamily family;
+  sa_family_t sa_family = GetIpFamily(rule.proxy_address);
+  switch (sa_family) {
+    case AF_INET:
+      family = IpFamily::IPv4;
+      break;
+    case AF_INET6:
+      family = IpFamily::IPv6;
+      break;
+    default:
+      LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
+      return false;
+  }
+
+  switch (rule.type) {
+    case patchpanel::SetDnsRedirectionRuleRequest::DEFAULT: {
+      if (!ModifyDnsProxyDNAT(family, rule, "-I", rule.input_ifname,
+                              kRedirectDefaultDnsChain)) {
+        LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
+        return false;
+      }
+      return true;
+    }
+    case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
+      if (!ModifyDnsProxyDNAT(family, rule, "-I", rule.input_ifname,
+                              kRedirectArcDnsChain)) {
+        LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
+        return false;
+      }
+      return true;
+    }
+    case patchpanel::SetDnsRedirectionRuleRequest::USER: {
+      // Start protecting DNS traffic from VPN fwmark tagging.
+      if (!ModifyDnsRedirectionSkipVpnRule(family, "-A")) {
+        LOG(ERROR) << "Failed to add VPN skip rule for DNS proxy";
+        return false;
+      }
+
+      // Add DNS redirect rules for chrome traffic.
+      if (!ModifyChromeDnsRedirect(family, rule, "-I")) {
+        LOG(ERROR) << "Failed to add chrome DNS DNAT rule";
+        return false;
+      }
+
+      // Add DNS redirect rule for user traffic.
+      if (!ModifyDnsProxyDNAT(family, rule, "-A", "" /* ifname */,
+                              kRedirectUserDnsChain)) {
+        LOG(ERROR) << "Failed to add user DNS DNAT rule";
+        return false;
+      }
+      return true;
+    }
+    default:
+      LOG(ERROR) << "Invalid DNS proxy type " << rule;
+      return false;
+  }
+}
+
+void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
+  IpFamily family;
+  sa_family_t sa_family = GetIpFamily(rule.proxy_address);
+  switch (sa_family) {
+    case AF_INET:
+      family = IpFamily::IPv4;
+      break;
+    case AF_INET6:
+      family = IpFamily::IPv6;
+      break;
+    default:
+      LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
+      return;
+  }
+
+  // Whenever the client that requested the rule closes the fd, the requested
+  // rule will be deleted. There is a delay between fd closing time and rule
+  // removal time. This prevents deletion of the rules by flushing the chains.
+  switch (rule.type) {
+    case patchpanel::SetDnsRedirectionRuleRequest::DEFAULT: {
+      ModifyDnsProxyDNAT(family, rule, "-D", rule.input_ifname,
+                         kRedirectDefaultDnsChain);
+      break;
+    }
+    case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
+      ModifyDnsProxyDNAT(family, rule, "-D", rule.input_ifname,
+                         kRedirectArcDnsChain);
+      break;
+    }
+    case patchpanel::SetDnsRedirectionRuleRequest::USER: {
+      ModifyChromeDnsRedirect(family, rule, "-D");
+      ModifyDnsProxyDNAT(family, rule, "-D", "" /* ifname */,
+                         kRedirectUserDnsChain);
+      ModifyDnsRedirectionSkipVpnRule(family, "-D");
+      break;
+    }
+    default:
+      LOG(ERROR) << "Invalid DNS proxy type " << rule;
+  }
+}
+
 void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                                   const std::string& int_ifname,
                                   uint32_t int_ipv4_addr,
@@ -761,6 +1040,16 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
             {"-A", subchain, "-s", IPv4AddressToString(peer_ipv4_addr), "-d",
              IPv4AddressToString(int_ipv4_addr), "-j", "ACCEPT", "-w"}) != 0)
       LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
+
+    // The jump rule below should not be applied for traffic from a
+    // ConnectNamespace traffic that needs DNS to go to the VPN
+    // (ConnectNamespace of the DNS default instance).
+    if (route_on_vpn && peer_ipv4_addr == 0 &&
+        !ModifyJumpRule(IpFamily::Dual, "mangle", "-A", subchain,
+                        kSkipApplyVpnMarkChain, "" /*iif*/, "" /*oif*/)) {
+      LOG(ERROR) << "Failed to add jump rule to DNS proxy VPN chain for "
+                 << int_ifname;
+    }
 
     // Forwarded traffic from downstream virtual devices routed to the system
     // default network is eligible to be routed through a VPN if |route_on_vpn|
@@ -865,22 +1154,50 @@ bool Datapath::ModifyRedirectDnsDNATRule(const std::string& op,
                                    "--to-destination",
                                    dns_ipv4_addr,
                                    "-w"};
-  return process_runner_->iptables("nat", args) == 0;
+  return ModifyIptables(IpFamily::IPv4, "nat", args);
 }
 
-bool Datapath::ModifyRedirectDnsJumpRule(const std::string& op) {
-  std::vector<std::string> args = {
-      op,
-      "OUTPUT",
-      "-m",
-      "mark",
-      "!",
-      "--mark",
-      kFwmarkRouteOnVpn.ToString() + "/" + kFwmarkVpnMask.ToString(),
-      "-j",
-      kRedirectDnsChain,
-      "-w"};
-  return process_runner_->iptables("nat", args) == 0;
+bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
+                                         const std::string& op,
+                                         const std::string& chain,
+                                         const std::string& ifname,
+                                         const std::string& target_chain,
+                                         Fwmark mark,
+                                         Fwmark mask,
+                                         bool redirect_on_mark) {
+  std::vector<std::string> args = {op, chain};
+  if (!ifname.empty()) {
+    args.insert(args.end(), {"-i", ifname});
+  }
+  if (mark.Value() != 0 && mask.Value() != 0) {
+    args.insert(args.end(), {"-m", "mark"});
+    if (!redirect_on_mark) {
+      args.push_back("!");
+    }
+    args.insert(args.end(),
+                {"--mark", mark.ToString() + "/" + mask.ToString()});
+  }
+  args.insert(args.end(), {"-j", target_chain, "-w"});
+  return ModifyIptables(family, "nat", args);
+}
+
+bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
+                                               const std::string& op) {
+  bool success = true;
+  for (const auto& protocol : {"udp", "tcp"}) {
+    std::vector<std::string> args = {op, kSkipApplyVpnMarkChain};
+    args.push_back("-p");
+    args.push_back(protocol);
+    args.push_back("--dport");
+    args.push_back(kDefaultDnsPort);
+    args.push_back("-j");
+    args.push_back("ACCEPT");
+    args.push_back("-w");
+    if (!ModifyIptables(family, "mangle", args)) {
+      success = false;
+    }
+  }
+  return success;
 }
 
 bool Datapath::MaskInterfaceFlags(const std::string& ifname,
@@ -1026,7 +1343,9 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   if (vpn_ifname != kArcBridge)
     StartRoutingDevice(vpn_ifname, kArcBridge, 0 /*no inbound DNAT */,
                        TrafficSource::ARC, true /* route_on_vpn */);
-  if (!ModifyRedirectDnsJumpRule("-A"))
+  if (!ModifyRedirectDnsJumpRule(
+          IpFamily::IPv4, "-A", "OUTPUT", "" /* ifname */, kRedirectDnsChain,
+          kFwmarkRouteOnVpn, kFwmarkVpnMask, false /* redirect_on_mark */))
     LOG(ERROR) << "Failed to set jump rule to " << kRedirectDnsChain;
 
   // All traffic with the VPN routing tag are explicitly accepted in the filter
@@ -1053,7 +1372,9 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "POSTROUTING", "MASQUERADE",
                       "" /*iif*/, vpn_ifname))
     LOG(ERROR) << "Could not stop SNAT for traffic outgoing " << vpn_ifname;
-  if (!ModifyRedirectDnsJumpRule("-D"))
+  if (!ModifyRedirectDnsJumpRule(
+          IpFamily::IPv4, "-D", "OUTPUT", "" /* ifname */, kRedirectDnsChain,
+          kFwmarkRouteOnVpn, kFwmarkVpnMask, false /* redirect_on_mark */))
     LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
 }
 
@@ -1235,6 +1556,21 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
     args.push_back(mark.ToString() + "/" + mask.ToString());
   }
   args.insert(args.end(), {"-j", kApplyVpnMarkChain, "-w"});
+  return ModifyIptables(IpFamily::Dual, "mangle", args);
+}
+
+bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
+                                           const std::string& op,
+                                           const std::string& uid) {
+  std::vector<std::string> args = {op, chain};
+  if (!uid.empty()) {
+    args.push_back("-m");
+    args.push_back("owner");
+    args.push_back("!");
+    args.push_back("--uid-owner");
+    args.push_back(uid);
+  }
+  args.insert(args.end(), {"-j", kSkipApplyVpnMarkChain, "-w"});
   return ModifyIptables(IpFamily::Dual, "mangle", args);
 }
 
@@ -1449,6 +1785,22 @@ std::ostream& operator<<(std::ostream& stream,
          << ", host_ifname: " << nsinfo.host_ifname
          << ", peer_ifname: " << nsinfo.peer_ifname
          << ", peer_subnet: " << nsinfo.peer_subnet->ToCidrString() << '}';
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule) {
+  stream << "{ type: "
+         << SetDnsRedirectionRuleRequest::RuleType_Name(rule.type);
+  if (!rule.input_ifname.empty()) {
+    stream << ", input_ifname: " << rule.input_ifname;
+  }
+  if (!rule.proxy_address.empty()) {
+    stream << ", proxy_address: " << rule.proxy_address;
+  }
+  if (!rule.nameservers.empty()) {
+    stream << ", nameserver(s): " << base::JoinString(rule.nameservers, ",");
+  }
+  stream << " }";
   return stream;
 }
 

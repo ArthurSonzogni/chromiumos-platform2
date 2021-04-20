@@ -21,6 +21,7 @@
 #include "patchpanel/firewall.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/minijailed_process_runner.h"
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include "patchpanel/routing_service.h"
 #include "patchpanel/subnet.h"
 
@@ -58,8 +59,17 @@ struct ConnectedNamespace {
   MacAddress peer_mac_addr;
 };
 
+struct DnsRedirectionRule {
+  patchpanel::SetDnsRedirectionRuleRequest::RuleType type;
+  std::string input_ifname;
+  std::string proxy_address;
+  std::vector<std::string> nameservers;
+};
+
 std::ostream& operator<<(std::ostream& stream,
                          const ConnectedNamespace& nsinfo);
+
+std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule);
 
 // Simple enum of bitmasks used for specifying a set of IP family values.
 enum IpFamily {
@@ -170,6 +180,11 @@ class Datapath {
   // route set inside the |nsinfo.netns_name| by patchpanel is not destroyed and
   // it is assumed the client will teardown the namespace.
   void StopRoutingNamespace(const ConnectedNamespace& nsinfo);
+
+  // Start or stop DNS traffic redirection to DNS proxy. The rules created
+  // depend on the type requested.
+  bool StartDnsRedirection(const DnsRedirectionRule& rule);
+  void StopDnsRedirection(const DnsRedirectionRule& rule);
 
   // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
   // virtual device |int_ifname| associated to |source|. if |ext_ifname| is
@@ -333,11 +348,29 @@ class Datapath {
                           const std::string& ipv4_addr);
   void RemoveInboundIPv4DNAT(const std::string& ifname,
                              const std::string& ipv4_addr);
+  bool ModifyChromeDnsRedirect(IpFamily family,
+                               const DnsRedirectionRule& rule,
+                               const std::string& op);
   bool ModifyRedirectDnsDNATRule(const std::string& op,
                                  const std::string& protocol,
                                  const std::string& ifname,
                                  const std::string& dns_ipv4_addr);
-  bool ModifyRedirectDnsJumpRule(const std::string& op);
+  bool ModifyRedirectDnsJumpRule(IpFamily family,
+                                 const std::string& op,
+                                 const std::string& chain,
+                                 const std::string& ifname,
+                                 const std::string& target_chain,
+                                 Fwmark mark = {},
+                                 Fwmark mask = {},
+                                 bool redirect_on_mark = false);
+  bool ModifyDnsRedirectionSkipVpnRule(IpFamily family, const std::string& op);
+
+  // Create (or delete) DNAT rules for redirecting DNS queries to a DNS proxy.
+  bool ModifyDnsProxyDNAT(IpFamily family,
+                          const DnsRedirectionRule& rule,
+                          const std::string& op,
+                          const std::string& ifname,
+                          const std::string& chain);
 
   bool ModifyConnmarkSet(IpFamily family,
                          const std::string& chain,
@@ -389,6 +422,9 @@ class Datapath {
                                const std::string& op,
                                Fwmark mark,
                                Fwmark mask);
+  bool ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
+                                   const std::string& op,
+                                   const std::string& uid);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
   // Uses if_nametoindex to return the interface index of |ifname|. If |ifname|
   // does not exist anymore, looks up the cache |if_nametoindex_|. It is

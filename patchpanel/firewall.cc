@@ -21,6 +21,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/minijail/minijail.h>
 
+#include "patchpanel/net_util.h"
+
 namespace {
 
 // Interface names must be shorter than 'IFNAMSIZ' chars.
@@ -158,8 +160,7 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
                                   const std::string& dst_ip,
                                   uint16_t dst_port,
                                   const std::string& operation) {
-  struct in_addr addr;
-  if (!input_ip.empty() && inet_pton(AF_INET, input_ip.c_str(), &addr) != 1) {
+  if (!input_ip.empty() && GetIpFamily(input_ip) != AF_INET) {
     LOG(ERROR) << "Invalid input IPv4 address '" << input_ip << "'";
     return false;
   }
@@ -174,7 +175,7 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
     return false;
   }
 
-  if (inet_pton(AF_INET, dst_ip.c_str(), &addr) != 1) {
+  if (GetIpFamily(dst_ip) != AF_INET) {
     LOG(ERROR) << "Invalid destination IPv4 address '" << dst_ip << "'";
     return false;
   }
@@ -226,8 +227,7 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
     return false;
   }
 
-  struct in_addr addr;
-  if (inet_pton(AF_INET, dst_ip.c_str(), &addr) != 1) {
+  if (GetIpFamily(dst_ip) != AF_INET) {
     LOG(ERROR) << "Invalid IPv4 destination address '" << dst_ip << "'";
     return false;
   }

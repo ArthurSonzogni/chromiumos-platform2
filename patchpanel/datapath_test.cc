@@ -220,12 +220,18 @@ TEST(DatapathTest, Start) {
       {Dual, "mangle -F OUTPUT -w"},
       {Dual, "mangle -F POSTROUTING -w"},
       {Dual, "mangle -F PREROUTING -w"},
+      {Dual,
+       "mangle -D OUTPUT -m owner ! --uid-owner chronos -j skip_apply_vpn_mark "
+       "-w"},
       {Dual, "mangle -L apply_local_source_mark -w"},
       {Dual, "mangle -F apply_local_source_mark -w"},
       {Dual, "mangle -X apply_local_source_mark -w"},
       {Dual, "mangle -L apply_vpn_mark -w"},
       {Dual, "mangle -F apply_vpn_mark -w"},
       {Dual, "mangle -X apply_vpn_mark -w"},
+      {Dual, "mangle -L skip_apply_vpn_mark -w"},
+      {Dual, "mangle -F skip_apply_vpn_mark -w"},
+      {Dual, "mangle -X skip_apply_vpn_mark -w"},
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
@@ -235,11 +241,25 @@ TEST(DatapathTest, Start) {
       {Dual, "filter -L vpn_lockdown -w"},
       {Dual, "filter -F vpn_lockdown -w"},
       {Dual, "filter -X vpn_lockdown -w"},
+      {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
+      {Dual, "nat -D PREROUTING -j redirect_arc_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
+      {Dual, "nat -L redirect_default_dns -w"},
+      {Dual, "nat -F redirect_default_dns -w"},
+      {Dual, "nat -X redirect_default_dns -w"},
+      {Dual, "nat -L redirect_arc_dns -w"},
+      {Dual, "nat -F redirect_arc_dns -w"},
+      {Dual, "nat -X redirect_arc_dns -w"},
+      {Dual, "nat -L redirect_chrome_dns -w"},
+      {Dual, "nat -F redirect_chrome_dns -w"},
+      {Dual, "nat -X redirect_chrome_dns -w"},
+      {Dual, "nat -L redirect_user_dns -w"},
+      {Dual, "nat -F redirect_user_dns -w"},
+      {Dual, "nat -X redirect_user_dns -w"},
       {IPv4, "nat -F POSTROUTING -w"},
-      {IPv4, "nat -F OUTPUT -w"},
+      {Dual, "nat -F OUTPUT -w"},
       // Asserts for SNAT rules of traffic forwarded from downstream interfaces.
       {IPv4,
        "filter -A FORWARD -m mark --mark 0x00000001/0x00000001 -m state "
@@ -339,6 +359,21 @@ TEST(DatapathTest, Start) {
       {Dual, "filter -N vpn_accept -w"},
       {Dual, "filter -I OUTPUT -j vpn_accept -w"},
       {Dual, "filter -I FORWARD -j vpn_accept -w"},
+      // Asserts for DNS proxy rules
+      {Dual, "mangle -N skip_apply_vpn_mark -w"},
+      {Dual,
+       "mangle -A OUTPUT -m owner ! --uid-owner chronos -j skip_apply_vpn_mark "
+       "-w"},
+      {Dual, "nat -N redirect_default_dns -w"},
+      {Dual, "nat -N redirect_arc_dns -w"},
+      {Dual, "nat -N redirect_chrome_dns -w"},
+      {Dual, "nat -N redirect_user_dns -w"},
+      {Dual, "nat -I PREROUTING -j redirect_default_dns -w"},
+      {Dual, "nat -I PREROUTING -j redirect_arc_dns -w"},
+      {Dual, "nat -A OUTPUT -j redirect_chrome_dns -w"},
+      {Dual,
+       "nat -A OUTPUT -m mark --mark 0x00008000/0x0000c000 -j "
+       "redirect_user_dns -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(runner, c.first, c.second);
@@ -368,12 +403,18 @@ TEST(DatapathTest, Stop) {
       {Dual, "mangle -F OUTPUT -w"},
       {Dual, "mangle -F POSTROUTING -w"},
       {Dual, "mangle -F PREROUTING -w"},
+      {Dual,
+       "mangle -D OUTPUT -m owner ! --uid-owner chronos -j skip_apply_vpn_mark "
+       "-w"},
       {Dual, "mangle -L apply_local_source_mark -w"},
       {Dual, "mangle -F apply_local_source_mark -w"},
       {Dual, "mangle -X apply_local_source_mark -w"},
       {Dual, "mangle -L apply_vpn_mark -w"},
       {Dual, "mangle -F apply_vpn_mark -w"},
       {Dual, "mangle -X apply_vpn_mark -w"},
+      {Dual, "mangle -L skip_apply_vpn_mark -w"},
+      {Dual, "mangle -F skip_apply_vpn_mark -w"},
+      {Dual, "mangle -X skip_apply_vpn_mark -w"},
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
@@ -383,11 +424,25 @@ TEST(DatapathTest, Stop) {
       {Dual, "filter -L vpn_lockdown -w"},
       {Dual, "filter -F vpn_lockdown -w"},
       {Dual, "filter -X vpn_lockdown -w"},
+      {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
+      {Dual, "nat -D PREROUTING -j redirect_arc_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
+      {Dual, "nat -L redirect_default_dns -w"},
+      {Dual, "nat -F redirect_default_dns -w"},
+      {Dual, "nat -X redirect_default_dns -w"},
+      {Dual, "nat -L redirect_arc_dns -w"},
+      {Dual, "nat -F redirect_arc_dns -w"},
+      {Dual, "nat -X redirect_arc_dns -w"},
+      {Dual, "nat -L redirect_chrome_dns -w"},
+      {Dual, "nat -F redirect_chrome_dns -w"},
+      {Dual, "nat -X redirect_chrome_dns -w"},
+      {Dual, "nat -L redirect_user_dns -w"},
+      {Dual, "nat -F redirect_user_dns -w"},
+      {Dual, "nat -X redirect_user_dns -w"},
       {IPv4, "nat -F POSTROUTING -w"},
-      {IPv4, "nat -F OUTPUT -w"},
+      {Dual, "nat -F OUTPUT -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(runner, c.first, c.second);
@@ -736,6 +791,8 @@ TEST(DatapathTest, StartRoutingDevice_CrosVM) {
   Verify_iptables(runner, Dual,
                   "mangle -A PREROUTING_vmtap0 -j CONNMARK --restore-mark "
                   "--mask 0xffff0000 -w");
+  Verify_iptables(runner, Dual,
+                  "mangle -A PREROUTING_vmtap0 -j skip_apply_vpn_mark -w");
   Verify_iptables(runner, Dual,
                   "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
@@ -1196,6 +1253,210 @@ TEST(DatapathTest, SetConntrackHelpers) {
   Datapath datapath(&runner, &firewall);
   datapath.SetConntrackHelpers(true);
   datapath.SetConntrackHelpers(false);
+}
+
+TEST(DatapathTest, StartDnsRedirection_Default) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+
+  DnsRedirectionRule rule = {};
+  rule.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
+  rule.input_ifname = "vmtap0";
+  rule.proxy_address = "100.115.92.130";
+  Datapath datapath(&runner, &firewall);
+  datapath.StartDnsRedirection(rule);
+}
+
+TEST(DatapathTest, StartDnsRedirection_Arc) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+
+  DnsRedirectionRule rule = {};
+  rule.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
+  rule.input_ifname = "arc_eth0";
+  rule.proxy_address = "100.115.92.130";
+  Datapath datapath(&runner, &firewall);
+  datapath.StartDnsRedirection(rule);
+}
+
+TEST(DatapathTest, StartDnsRedirection_User) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(
+      runner, IPv4,
+      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "0 -j DNAT --to-destination 8.8.8.8:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "1 -j DNAT --to-destination 8.4.8.4:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "2 -j DNAT --to-destination 1.1.1.1:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "0 -j DNAT --to-destination 8.8.8.8:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "1 -j DNAT --to-destination 8.4.8.4:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "2 -j DNAT --to-destination 1.1.1.1:53 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I POSTROUTING -p udp --dport 53 -m owner --uid-owner "
+                  "chronos -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -I POSTROUTING -p tcp --dport 53 -m owner --uid-owner "
+                  "chronos -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
+                  "--to-destination 100.115.92.130 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -A redirect_user_dns -p tcp --dport 53 -j DNAT "
+                  "--to-destination 100.115.92.130 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "mangle -A skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
+  Verify_iptables(
+      runner, IPv4,
+      "mangle -A skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
+
+  DnsRedirectionRule rule = {};
+  rule.type = patchpanel::SetDnsRedirectionRuleRequest::USER;
+  rule.input_ifname = "";
+  rule.proxy_address = "100.115.92.130";
+  rule.nameservers.emplace_back("8.8.8.8");
+  rule.nameservers.emplace_back("8.4.8.4");
+  rule.nameservers.emplace_back("1.1.1.1");
+  Datapath datapath(&runner, &firewall);
+  datapath.StartDnsRedirection(rule);
+}
+
+TEST(DatapathTest, StopDnsRedirection_Default) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+
+  DnsRedirectionRule rule = {};
+  rule.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
+  rule.input_ifname = "vmtap0";
+  rule.proxy_address = "100.115.92.130";
+  Datapath datapath(&runner, &firewall);
+  datapath.StopDnsRedirection(rule);
+}
+
+TEST(DatapathTest, StopDnsRedirection_Arc) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
+                  "DNAT --to-destination 100.115.92.130 -w");
+
+  DnsRedirectionRule rule = {};
+  rule.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
+  rule.input_ifname = "arc_eth0";
+  rule.proxy_address = "100.115.92.130";
+  Datapath datapath(&runner, &firewall);
+  datapath.StopDnsRedirection(rule);
+}
+
+TEST(DatapathTest, StopDnsRedirection_User) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(
+      runner, IPv4,
+      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "0 -j DNAT --to-destination 8.8.8.8:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "1 -j DNAT --to-destination 8.4.8.4:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "2 -j DNAT --to-destination 1.1.1.1:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "0 -j DNAT --to-destination 8.8.8.8:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "1 -j DNAT --to-destination 8.4.8.4:53 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
+      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
+      "2 -j DNAT --to-destination 1.1.1.1:53 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D POSTROUTING -p udp --dport 53 -m owner --uid-owner "
+                  "chronos -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D POSTROUTING -p tcp --dport 53 -m owner --uid-owner "
+                  "chronos -j MASQUERADE -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
+                  "--to-destination 100.115.92.130 -w");
+  Verify_iptables(runner, IPv4,
+                  "nat -D redirect_user_dns -p tcp --dport 53 -j DNAT "
+                  "--to-destination 100.115.92.130 -w");
+  Verify_iptables(
+      runner, IPv4,
+      "mangle -D skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
+  Verify_iptables(
+      runner, IPv4,
+      "mangle -D skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
+
+  DnsRedirectionRule rule = {};
+  rule.type = patchpanel::SetDnsRedirectionRuleRequest::USER;
+  rule.input_ifname = "";
+  rule.proxy_address = "100.115.92.130";
+  rule.nameservers.emplace_back("8.8.8.8");
+  rule.nameservers.emplace_back("8.4.8.4");
+  rule.nameservers.emplace_back("1.1.1.1");
+  Datapath datapath(&runner, &firewall);
+  datapath.StopDnsRedirection(rule);
 }
 
 }  // namespace patchpanel

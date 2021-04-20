@@ -140,6 +140,10 @@ BRILLO_EXPORT uint16_t Icmpv6Checksum(const ip6_hdr* ip6,
 // TODO(hugobenichi): Move to NetUtil, pending crosreview.com/2738499.
 BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);
 
+// Returns the IP family from the string |ip_address|. If |ip_address| is
+// invalid, returns AF_UNSPEC (0).
+BRILLO_EXPORT sa_family_t GetIpFamily(const std::string& ip_address);
+
 }  // namespace patchpanel
 
 #endif  // PATCHPANEL_NET_UTIL_H_
