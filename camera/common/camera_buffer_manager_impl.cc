@@ -62,6 +62,33 @@ uint32_t GetGbmUseFlags(uint32_t hal_format, uint32_t usage) {
   return flags;
 }
 
+bool IsMatchingFormat(int32_t hal_pixel_format, uint32_t drm_format) {
+  switch (hal_pixel_format) {
+    case HAL_PIXEL_FORMAT_RGBA_8888:
+      return drm_format == DRM_FORMAT_ABGR8888;
+    case HAL_PIXEL_FORMAT_RGBX_8888:
+      return drm_format == DRM_FORMAT_XBGR8888;
+    case HAL_PIXEL_FORMAT_BGRA_8888:
+      return drm_format == DRM_FORMAT_ARGB8888;
+    case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+      return drm_format == DRM_FORMAT_NV21;
+    case HAL_PIXEL_FORMAT_YCbCr_422_I:
+      return drm_format == DRM_FORMAT_YUYV;
+    case HAL_PIXEL_FORMAT_BLOB:
+      return drm_format == DRM_FORMAT_R8;
+    case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
+      // We can't really check implementation defined formats.
+      return true;
+    case HAL_PIXEL_FORMAT_YCbCr_420_888:
+      return (drm_format == DRM_FORMAT_YUV420 ||
+              drm_format == DRM_FORMAT_YVU420 ||
+              drm_format == DRM_FORMAT_NV21 || drm_format == DRM_FORMAT_NV12);
+    case HAL_PIXEL_FORMAT_YV12:
+      return drm_format == DRM_FORMAT_YVU420;
+  }
+  return false;
+}
+
 }  // namespace
 
 // static
@@ -76,7 +103,17 @@ CameraBufferManager* CameraBufferManager::GetInstance() {
 
 // static
 bool CameraBufferManager::IsValidBuffer(buffer_handle_t buffer) {
-  return !!camera_buffer_handle_t::FromBufferHandle(buffer);
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return false;
+  }
+  if (!IsMatchingFormat(handle->hal_pixel_format, handle->drm_format)) {
+    LOGF(ERROR) << "HAL pixel format " << handle->hal_pixel_format
+                << " does not match DRM format "
+                << FormatToString(handle->drm_format);
+    return false;
+  }
+  return true;
 }
 
 // static

@@ -734,9 +734,10 @@ TEST_F(CameraBufferManagerImplTest, GetPlaneSizeTest) {
 }
 
 TEST_F(CameraBufferManagerImplTest, IsValidBufferTest) {
+  const int kBufferWidth = 1280, kBufferHeight = 720;
   EXPECT_FALSE(CameraBufferManagerImpl::IsValidBuffer(nullptr));
-
-  auto cbh = std::make_unique<camera_buffer_handle_t>();
+  auto cbh = CreateBuffer(2, DRM_FORMAT_NV12, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                          kBufferWidth, kBufferHeight);
   buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(cbh.get());
   EXPECT_TRUE(CameraBufferManagerImpl::IsValidBuffer(handle));
 
