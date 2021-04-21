@@ -18,6 +18,7 @@
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
@@ -2013,18 +2014,38 @@ TEST_F(DevicePortalDetectionTest, NotDefault) {
   ExpectPortalDetectorReset();
 }
 
-TEST_F(DevicePortalDetectionTest, PortalIntervalIsZero) {
+TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
+  const std::string ifname = "int0";
+  const IPAddress ip_addr = IPAddress("1.2.3.4");
+  const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
+  const std::string http_probe_url = "http://portalcheck.com";
+  const std::string https_probe_url = "https://portalcheck.com";
+  const std::vector<std::string> fallback_probe_url = {
+      "http://fallbackcheck.com"};
+  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  PortalDetector::Properties props = PortalDetector::Properties(
+      http_probe_url, https_probe_url, fallback_probe_url);
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(true));
-  device_->portal_check_interval_seconds_ = 0;
+  EXPECT_CALL(*connection_, interface_name()).WillRepeatedly(ReturnRef(ifname));
+  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
+  EXPECT_CALL(*connection_, dns_servers()).WillRepeatedly(ReturnRef(dns_list));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillOnce(ReturnRef(http_probe_url));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillOnce(ReturnRef(https_probe_url));
+  EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
+      .WillOnce(ReturnRef(fallback_probe_url));
+  EXPECT_CALL(*portal_detector_, GetNextAttemptDelay())
+      .WillOnce(Return(attempt_delay));
+  EXPECT_CALL(*portal_detector_,
+              Start(props, ifname, ip_addr, dns_list, attempt_delay))
+      .WillOnce(Return(true));
   SetServiceConnectedState(Service::kStateNoConnectivity);
-  ExpectPortalDetectorReset();
 }
 
 TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
-  int portal_check_interval = 3;
-  device_->portal_check_interval_seconds_ = portal_check_interval;
   const std::string kInterfaceName = "int0";
   const IPAddress ip_addr = IPAddress("1.2.3.4");
   const std::vector<std::string> kDNSServers = {"8.8.8.8", "8.8.4.4"};
@@ -2032,6 +2053,7 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   const std::string kPortalCheckHttpsUrl("https://portal");
   const vector<string> kPortalCheckFallbackHttpUrls(
       {"http://fallback", "http://other"});
+  auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
   PortalDetector::Properties props = PortalDetector::Properties(
       kPortalCheckHttpUrl, kPortalCheckHttpsUrl, kPortalCheckFallbackHttpUrls);
   EXPECT_CALL(*connection_, IsDefault()).WillRepeatedly(Return(true));
@@ -2048,17 +2070,14 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
         .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
     EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
         .WillRepeatedly(ReturnRef(kPortalCheckFallbackHttpUrls));
-    EXPECT_CALL(*portal_detector_, AdjustStartDelay(portal_check_interval))
-        .WillOnce(Return(portal_check_interval));
-    EXPECT_CALL(*portal_detector_,
-                StartAfterDelay(props, kInterfaceName, ip_addr, kDNSServers,
-                                portal_check_interval))
+    EXPECT_CALL(*portal_detector_, GetNextAttemptDelay())
+        .WillOnce(Return(attempt_delay));
+    EXPECT_CALL(*portal_detector_, Start(props, kInterfaceName, ip_addr,
+                                         kDNSServers, attempt_delay))
         .WillOnce(Return(true));
     EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
     SetServiceConnectedState(Service::kStateNoConnectivity);
-    portal_check_interval =
-        std::min(portal_check_interval * 2,
-                 PortalDetector::kMaxPortalCheckIntervalSeconds);
+    attempt_delay += base::TimeDelta::FromMilliseconds(5678);
   }
   ExpectPortalDetectorSet();
 }

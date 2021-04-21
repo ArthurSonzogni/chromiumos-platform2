@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/net/ip_address.h"
@@ -26,16 +27,16 @@ class MockPortalDetector : public PortalDetector {
   ~MockPortalDetector() override;
 
   MOCK_METHOD(bool,
-              StartAfterDelay,
+              Start,
               (const PortalDetector::Properties&,
                const std::string& ifname,
                const IPAddress&,
                const std::vector<std::string>&,
-               int),
+               base::TimeDelta),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsInProgress, (), (override));
-  MOCK_METHOD(int, AdjustStartDelay, (int), (override));
+  MOCK_METHOD(base::TimeDelta, GetNextAttemptDelay, (), (override));
 };
 
 }  // namespace shill

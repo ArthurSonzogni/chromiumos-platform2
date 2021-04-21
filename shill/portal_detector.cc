@@ -30,6 +30,14 @@ const char kLinuxUserAgent[] =
 const brillo::http::HeaderList kHeaders{
     {brillo::http::request_header::kUserAgent, kLinuxUserAgent},
 };
+
+// Base time interval between two portal detection attempts. Should be doubled
+// at every new attempt.
+constexpr base::TimeDelta kPortalCheckInterval =
+    base::TimeDelta::FromSeconds(3);
+// Max time interval between two portal detection attempts.
+constexpr base::TimeDelta kMaxPortalCheckInterval =
+    base::TimeDelta::FromMinutes(5);
 }  // namespace
 
 namespace shill {
@@ -41,8 +49,6 @@ static string ObjectID(const PortalDetector* pd) {
 }
 }  // namespace Logging
 
-const int PortalDetector::kInitialCheckIntervalSeconds = 3;
-const int PortalDetector::kMaxPortalCheckIntervalSeconds = 5 * 60;
 const char PortalDetector::kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
 
 const char PortalDetector::kDefaultHttpUrl[] =
@@ -59,12 +65,11 @@ PortalDetector::PortalDetector(EventDispatcher* dispatcher,
                                Metrics* metrics,
                                base::Callback<void(const Result&)> callback)
     : attempt_count_(0),
-      attempt_start_time_((struct timeval){0}),
+      last_attempt_start_time_(),
       dispatcher_(dispatcher),
       metrics_(metrics),
       weak_ptr_factory_(this),
       portal_result_callback_(callback),
-      time_(Time::GetInstance()),
       is_active_(false) {}
 
 PortalDetector::~PortalDetector() {
@@ -79,11 +84,11 @@ const string PortalDetector::PickHttpProbeUrl(const Properties& props) {
       0, props.fallback_http_url_strings.size() - 1)];
 }
 
-bool PortalDetector::StartAfterDelay(const PortalDetector::Properties& props,
-                                     const std::string& ifname,
-                                     const IPAddress& src_address,
-                                     const std::vector<std::string>& dns_list,
-                                     int delay_seconds) {
+bool PortalDetector::Start(const PortalDetector::Properties& props,
+                           const std::string& ifname,
+                           const IPAddress& src_address,
+                           const std::vector<std::string>& dns_list,
+                           base::TimeDelta delay) {
   logging_tag_ =
       ifname + " " + IPAddress::GetAddressFamilyName(src_address.family());
 
@@ -123,11 +128,12 @@ bool PortalDetector::StartAfterDelay(const PortalDetector::Properties& props,
   trial_.Reset(
       Bind(&PortalDetector::StartTrialTask, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(),
-                               delay_seconds * 1000);
-  // The attempt_start_time_ is calculated based on the current time and
-  // |delay_seconds|.  This is used to determine if a portal detection attempt
-  // is in progress.
-  UpdateAttemptTime(delay_seconds);
+                               delay.InMilliseconds());
+  // |last_attempt_start_time_| is calculated based on the current time and
+  // |delay|.  This is used to determine when to schedule the next portal
+  // detection attempt after this one.
+  last_attempt_start_time_ = base::Time::NowFromSystemTime() + delay;
+
   return true;
 }
 
@@ -296,30 +302,21 @@ bool PortalDetector::IsInProgress() {
   return is_active_;
 }
 
-void PortalDetector::UpdateAttemptTime(int delay_seconds) {
-  time_->GetTimeMonotonic(&attempt_start_time_);
-  struct timeval delay_timeval = {delay_seconds, 0};
-  timeradd(&attempt_start_time_, &delay_timeval, &attempt_start_time_);
-}
+base::TimeDelta PortalDetector::GetNextAttemptDelay() {
+  if (attempt_count_ == 0)
+    return base::TimeDelta();
 
-int PortalDetector::AdjustStartDelay(int init_delay_seconds) {
-  int next_attempt_delay_seconds = 0;
-  if (attempt_count_ > 0) {
-    struct timeval now, elapsed_time;
-    time_->GetTimeMonotonic(&now);
-    timersub(&now, &attempt_start_time_, &elapsed_time);
-    SLOG(this, 4) << "Elapsed time from previous attempt is "
-                  << elapsed_time.tv_sec << " seconds.";
-    if (elapsed_time.tv_sec < init_delay_seconds) {
-      next_attempt_delay_seconds = init_delay_seconds - elapsed_time.tv_sec;
-    }
-  } else {
-    LOG(FATAL) << "AdjustStartDelay in PortalDetector called without "
-                  "previous attempts";
-  }
-  SLOG(this, 3) << "Adjusting trial start delay from " << init_delay_seconds
-                << " seconds to " << next_attempt_delay_seconds << " seconds.";
-  return next_attempt_delay_seconds;
+  base::TimeDelta next_interval =
+      kPortalCheckInterval * (1 << (attempt_count_ - 1));
+  if (next_interval > kMaxPortalCheckInterval)
+    next_interval = kMaxPortalCheckInterval;
+
+  const auto next_attempt = last_attempt_start_time_ + next_interval;
+  const auto now = base::Time::NowFromSystemTime();
+  if (next_attempt < now)
+    return base::TimeDelta();
+
+  return next_attempt - now;
 }
 
 // static

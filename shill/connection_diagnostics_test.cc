@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/time/time.h>
 #include <gtest/gtest.h>
 
 #include "shill/arp_client_test_helper.h"
@@ -285,8 +286,8 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
     EXPECT_CALL(*portal_detector_,
-                StartAfterDelay(props, interface_name_, local_ip_address_,
-                                dns_servers_, 0))
+                Start(props, interface_name_, local_ip_address_, dns_servers_,
+                      base::TimeDelta()))
         .WillOnce(Return(true));
     EXPECT_FALSE(connection_diagnostics_.running());
     EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());

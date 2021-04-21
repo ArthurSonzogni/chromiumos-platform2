@@ -119,7 +119,6 @@ Device::Device(Manager* manager,
       manager_(manager),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
-      portal_check_interval_seconds_(0),
       receive_byte_offset_(0),
       transmit_byte_offset_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
@@ -1405,17 +1404,15 @@ bool Device::StartPortalDetection() {
       new PortalDetector(dispatcher(), metrics(),
                          Bind(&Device::PortalDetectorCallback, AsWeakPtr())));
   PortalDetector::Properties props = manager_->GetPortalCheckProperties();
-  if (!portal_detector_->StartAfterDelay(props, connection_->interface_name(),
-                                         connection_->local(),
-                                         connection_->dns_servers(), 0)) {
+  if (!portal_detector_->Start(props, connection_->interface_name(),
+                               connection_->local(),
+                               connection_->dns_servers())) {
     LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
                << props.http_url_string << " or " << props.https_url_string;
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
-
-  portal_check_interval_seconds_ = PortalDetector::kInitialCheckIntervalSeconds;
 
   SLOG(this, 2) << "Device " << link_name()
                 << ": Portal detection has started.";
@@ -1424,7 +1421,6 @@ bool Device::StartPortalDetection() {
 
 void Device::StopPortalDetection() {
   SLOG(this, 2) << "Device " << link_name() << ": Portal detection stopping.";
-  portal_check_interval_seconds_ = 0;
   portal_detector_.reset();
 }
 
@@ -1459,9 +1455,9 @@ bool Device::StartConnectivityTest() {
   connection_tester_.reset(
       new PortalDetector(dispatcher(), metrics(),
                          Bind(&Device::ConnectionTesterCallback, AsWeakPtr())));
-  connection_tester_->StartAfterDelay(
-      PortalDetector::Properties(), connection_->interface_name(),
-      connection_->local(), connection_->dns_servers(), 0);
+  connection_tester_->Start(PortalDetector::Properties(),
+                            connection_->interface_name(), connection_->local(),
+                            connection_->dns_servers());
   return true;
 }
 
@@ -1587,15 +1583,13 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
                 << GetSelectedServiceRpcIdentifier(nullptr).value()
                 << " State: " << static_cast<int>(state);
 
-  if (Service::IsPortalledState(state) && connection_->IsDefault() &&
-      portal_check_interval_seconds_ != 0) {
+  if (Service::IsPortalledState(state) && connection_->IsDefault()) {
     CHECK(portal_detector_.get());
     PortalDetector::Properties props = manager_->GetPortalCheckProperties();
-    int start_delay =
-        portal_detector_->AdjustStartDelay(portal_check_interval_seconds_);
-    if (!portal_detector_->StartAfterDelay(
-            props, connection_->interface_name(), connection_->local(),
-            connection_->dns_servers(), start_delay)) {
+    const auto next_delay = portal_detector_->GetNextAttemptDelay();
+    if (!portal_detector_->Start(props, connection_->interface_name(),
+                                 connection_->local(),
+                                 connection_->dns_servers(), next_delay)) {
       LOG(ERROR) << "Device " << link_name()
                  << ": Portal detection failed to restart: likely bad URL: "
                  << props.http_url_string << " or " << props.https_url_string;
@@ -1603,11 +1597,8 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
       StopPortalDetection();
       return;
     }
-
-    portal_check_interval_seconds_ =
-        std::min(portal_check_interval_seconds_ * 2,
-                 PortalDetector::kMaxPortalCheckIntervalSeconds);
-    SLOG(this, 2) << "Device " << link_name() << ": Portal detection retrying.";
+    LOG(INFO) << "Device " << link_name() << ": Portal detection retrying in "
+              << next_delay;
   } else {
     SLOG(this, 2) << "Device " << link_name() << ": Portal will not retry.";
     StopPortalDetection();

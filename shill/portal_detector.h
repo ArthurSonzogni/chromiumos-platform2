@@ -15,13 +15,13 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/http_request.h"
 #include "shill/http_url.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
 #include "shill/service.h"
 
@@ -29,7 +29,6 @@ namespace shill {
 
 class EventDispatcher;
 class Metrics;
-class Time;
 
 // The PortalDetector class implements the portal detection
 // facility in shill, which is responsible for checking to see
@@ -123,8 +122,6 @@ class PortalDetector {
   static const char kDefaultHttpUrl[];
   static const char kDefaultHttpsUrl[];
   static const std::vector<std::string> kDefaultFallbackHttpUrls;
-  static const int kInitialCheckIntervalSeconds;
-  static const int kMaxPortalCheckIntervalSeconds;
   static const char kDefaultCheckPortalList[];
 
   PortalDetector(EventDispatcher* dispatcher,
@@ -160,12 +157,11 @@ class PortalDetector {
   //
   // As each attempt completes the callback handed to the constructor will
   // be called.
-  // TODO(b/184036481): Change |delay_seconds| type to base::TimeDelay.
-  virtual bool StartAfterDelay(const Properties& props,
-                               const std::string& ifname,
-                               const IPAddress& src_address,
-                               const std::vector<std::string>& dns_list,
-                               int delay_seconds);
+  virtual bool Start(const Properties& props,
+                     const std::string& ifname,
+                     const IPAddress& src_address,
+                     const std::vector<std::string>& dns_list,
+                     base::TimeDelta delay = kZeroTimeDelta);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.
@@ -174,12 +170,9 @@ class PortalDetector {
   // Returns whether portal request is "in progress".
   virtual bool IsInProgress();
 
-  // Method used to adjust the start delay in the event of a retry.
-  // Calculates the elapsed time between the most recent attempt and the point
-  // the retry is scheduled.  Adjusts the delay to the difference between
-  // |delay| and the elapsed time so that the retry starts |delay| seconds after
-  // the previous attempt.
-  virtual int AdjustStartDelay(int init_delay_seconds);
+  // Returns the time delay for scheduling the next portal detection attempt
+  // with Start().
+  virtual base::TimeDelta GetNextAttemptDelay();
 
   // Return |logging_tag_| appended with the |attempt_count_|.
   std::string LoggingTag() const;
@@ -196,14 +189,12 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, InvalidURL);
   FRIEND_TEST(PortalDetectorTest, IsActive);
 
+  static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
+
   // Picks the HTTP probe URL based on |attempt_count_|. Returns kDefaultHttpUrl
   // if this is the first attempt. Otherwise, randomly returns an element of
   // kDefaultFallbackHttpUrls.
   const std::string PickHttpProbeUrl(const Properties& props);
-
-  // Internal method to update the start time of the next event.  This is used
-  // to keep attempts spaced by the right duration in the event of a retry.
-  void UpdateAttemptTime(int delay_seconds);
 
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.
@@ -236,12 +227,11 @@ class PortalDetector {
 
   std::string logging_tag_;
   int attempt_count_;
-  struct timeval attempt_start_time_;
+  base::Time last_attempt_start_time_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
   base::Callback<void(const Result&)> portal_result_callback_;
-  Time* time_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
   std::unique_ptr<Result> result_;

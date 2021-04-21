@@ -814,8 +814,6 @@ class Device : public base::RefCounted<Device> {
   std::vector<std::string> config_dns_servers_;
   Technology technology_;
 
-  int portal_check_interval_seconds_;
-
   // Keep track of the offset between the interface-reported byte counters
   // and our persisted value.
   uint64_t receive_byte_offset_;

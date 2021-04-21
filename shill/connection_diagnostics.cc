@@ -172,9 +172,9 @@ bool ConnectionDiagnostics::Start(const PortalDetector::Properties& props) {
     return false;
   }
 
-  if (!portal_detector_->StartAfterDelay(props, connection_->interface_name(),
-                                         connection_->local(),
-                                         connection_->dns_servers(), 0)) {
+  if (!portal_detector_->Start(props, connection_->interface_name(),
+                               connection_->local(),
+                               connection_->dns_servers())) {
     Stop();
     return false;
   }
