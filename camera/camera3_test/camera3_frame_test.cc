@@ -1394,14 +1394,6 @@ TEST_P(Camera3InvalidBufferTest, NullBufferHandle) {
   RunInvalidBufferTest(&handle);
 }
 
-TEST_P(Camera3InvalidBufferTest, InvalidBufferHandle) {
-  // Make an invalid buffer handle with a wrong magic number.
-  auto cbh = std::make_unique<camera_buffer_handle_t>();
-  cbh->magic = ~cbh->magic;
-  buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(cbh.get());
-  RunInvalidBufferTest(&handle);
-}
-
 // Test parameters:
 // - Camera ID, frame format, resolution width, resolution height
 class Camera3FrameContentTest
