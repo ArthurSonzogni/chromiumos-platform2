@@ -15,7 +15,6 @@ group("all") {
     ":mobile_operator_db",
     ":mobile_operator_db-db",
     ":mobile_operator_db-protos",
-    ":netfilter-queue-helper",
     ":openvpn-script",
     ":shill",
     ":shill-chromeos-dbus-adaptors",
@@ -453,24 +452,6 @@ executable("shill") {
   deps = [ ":libshill" ]
 }
 
-pkg_config("netfilter-queue-helper_config") {
-  pkg_deps = [
-    "libnetfilter_queue",
-    "libnfnetlink",
-  ]
-}
-
-executable("netfilter-queue-helper") {
-  sources = [
-    "shims/netfilter_queue_helper.cc",
-    "shims/netfilter_queue_processor.cc",
-  ]
-  configs += [
-    ":netfilter-queue-helper_config",
-    ":target_defaults",
-  ]
-}
-
 pkg_config("openvpn-script_config") {
   pkg_deps = [ "libshill-client" ]
 }
@@ -554,8 +535,6 @@ if (use.test) {
     pkg_deps = [
       "libchrome-test",
       "libminijail",
-      "libnetfilter_queue",
-      "libnfnetlink",
     ]
     if (use.cellular) {
       pkg_deps += [ "ModemManager" ]
@@ -664,8 +643,6 @@ if (use.test) {
       "service_property_change_test.cc",
       "service_test.cc",
       "service_under_test.cc",
-      "shims/netfilter_queue_processor.cc",
-      "shims/netfilter_queue_processor_test.cc",
       "socket_info_reader_test.cc",
       "socket_info_test.cc",
       "static_ip_parameters_test.cc",
