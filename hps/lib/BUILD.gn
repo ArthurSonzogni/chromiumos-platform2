@@ -25,6 +25,8 @@ static_library("hpslib") {
     "i2c.h",
   ]
 
+  configs += [ ":target_defaults" ]
+
   deps = [ ":dev" ]
 }
 

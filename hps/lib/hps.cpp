@@ -8,7 +8,8 @@
 
 #include <vector>
 
-#include <unistd.h>
+#include <base/threading/thread.h>
+#include <base/time/time.h>
 
 #include "hps/lib/hps.h"
 
@@ -52,7 +53,7 @@ int HPS::Download(int bank, uint32_t address, std::ifstream& source) {
       if (tout >= kTimeoutMs) {
         return bytes;
       }
-      usleep(kPollMs * 1000);
+      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kPollMs));
       tout += kPollMs;
     }
     /*

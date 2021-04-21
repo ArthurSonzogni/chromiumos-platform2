@@ -10,8 +10,10 @@
 #include <iostream>
 #include <vector>
 
-#include <unistd.h>
 #include <libusb-1.0/libusb.h>
+
+#include <base/threading/thread.h>
+#include <base/time/time.h>
 
 #include "hps/lib/ftdi.h"
 
@@ -141,7 +143,7 @@ bool Ftdi::Init() {
   if (this->check(ftdi_set_bitmode(&this->context_, 0xFF, BITMODE_MPSSE) < 0,
                   "mode MPSSE"))
     return false;
-  usleep(50 * 1000);
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(50));
   std::vector<uint8_t> rdq;
   // Flush any data in the queue.
   this->ft_get(&rdq);
@@ -168,12 +170,12 @@ bool Ftdi::Init() {
   tx.push_back(kClockDivisor >> 8);
   if (this->check(this->ft_put(tx) != tx.size(), "MPSEE clock setting"))
     return false;
-  usleep(20 * 1000);
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(20));
   tx.clear();
   tx.push_back(0x85);  // Turn off loopback.
   if (this->check(this->ft_put(tx) != tx.size(), "loopback disable"))
     return false;
-  usleep(20 * 1000);
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(20));
   if (kDebug)
     this->dump();
   return true;
@@ -268,7 +270,7 @@ bool Ftdi::ft_read(size_t count, std::vector<uint8_t>* input) {
     } else {
       // No data available, sleep for a while
       // and try again.
-      usleep(1000);  // Sleep for 1 ms
+      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(1));
       if (--timeout <= 0) {
         std::cerr << "Rd timeout" << std::endl;
         return false;
@@ -359,7 +361,7 @@ void Ftdi::i2c_reset() {
   std::vector<uint8_t> b;
   i2c_stop(&b);
   this->ft_put(b);
-  usleep(kResetDelay * 1000);
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kResetDelay));
 }
 
 // Check and print error message.
