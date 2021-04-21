@@ -118,6 +118,16 @@ class BRILLO_EXPORT Client {
   // already implements VPN lockdown.
   virtual bool SetVpnLockdown(bool enable) = 0;
 
+  // Sends a SetDnsRedirectionRuleRequest to modify iptables rules for DNS
+  // proxy. This should only be called by 'dns-proxy'. If successful, it returns
+  // a ScopedFD. The rules lifetime is tied to the file descriptor. This returns
+  // an invalid file descriptor upon failure.
+  virtual base::ScopedFD RedirectDns(
+      patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
+      const std::string& input_ifname,
+      const std::string& proxy_address,
+      const std::vector<std::string>& nameservers) = 0;
+
   // Obtains a list of NetworkDevices currently managed by patchpanel.
   virtual std::vector<NetworkDevice> GetDevices() = 0;
 

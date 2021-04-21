@@ -71,6 +71,12 @@ class BRILLO_EXPORT FakeClient : public Client {
 
   bool SetVpnLockdown(bool enable) override;
 
+  base::ScopedFD RedirectDns(
+      patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
+      const std::string& input_ifname,
+      const std::string& proxy_address,
+      const std::vector<std::string>& nameservers) override;
+
   std::vector<NetworkDevice> GetDevices() override;
 
   void RegisterNetworkDeviceChangedSignalHandler(

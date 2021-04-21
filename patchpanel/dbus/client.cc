@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/strings/string_util.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
@@ -40,6 +41,27 @@ std::ostream& operator<<(std::ostream& stream,
   }
   if (request.dst_port() != 0) {
     stream << ", destination port: " << request.dst_port();
+  }
+  stream << " }";
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const SetDnsRedirectionRuleRequest& request) {
+  stream << "{ proxy type: "
+         << SetDnsRedirectionRuleRequest::RuleType_Name(request.type());
+  if (!request.input_ifname().empty()) {
+    stream << ", input interface name: " << request.input_ifname();
+  }
+  if (!request.proxy_address().empty()) {
+    stream << ", proxy IPv4 address: " << request.proxy_address();
+  }
+  if (!request.nameservers().empty()) {
+    std::vector<std::string> nameservers;
+    for (const auto& ns : request.nameservers()) {
+      nameservers.emplace_back(ns);
+    }
+    stream << ", nameserver(s): " << base::JoinString(nameservers, ",");
   }
   stream << " }";
   return stream;
@@ -159,6 +181,12 @@ class ClientImpl : public Client {
                       uint32_t dst_port) override;
 
   bool SetVpnLockdown(bool enable) override;
+
+  base::ScopedFD RedirectDns(
+      patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
+      const std::string& input_ifname,
+      const std::string& proxy_address,
+      const std::vector<std::string>& nameservers) override;
 
   std::vector<NetworkDevice> GetDevices() override;
 
@@ -701,6 +729,68 @@ bool ClientImpl::SetVpnLockdown(bool enable) {
   }
 
   return true;
+}
+
+base::ScopedFD ClientImpl::RedirectDns(
+    patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
+    const std::string& input_ifname,
+    const std::string& proxy_address,
+    const std::vector<std::string>& nameservers) {
+  dbus::MethodCall method_call(kPatchPanelInterface,
+                               kSetDnsRedirectionRuleMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  SetDnsRedirectionRuleRequest request;
+  SetDnsRedirectionRuleResponse response;
+
+  request.set_type(type);
+  request.set_input_ifname(input_ifname);
+  request.set_proxy_address(proxy_address);
+  for (const auto& nameserver : nameservers) {
+    request.add_nameservers(nameserver);
+  }
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode SetDnsRedirectionRuleRequest proto "
+               << request;
+    return {};
+  }
+
+  // Prepare an fd pair and append one fd directly after the serialized request.
+  int pipe_fds[2] = {-1, -1};
+  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
+    PLOG(ERROR) << "Failed to create a pair of fds with pipe2() of request "
+                << request;
+    return {};
+  }
+  base::ScopedFD fd_local(pipe_fds[0]);
+  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopeFD to
+  // make sure the original fd is closed eventually.
+  base::ScopedFD fd_remote(pipe_fds[1]);
+  writer.AppendFileDescriptor(pipe_fds[1]);
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethod(
+          bus_, proxy_, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send SetDnsRedirectionRuleRequest message to "
+                  "patchpanel service "
+               << request;
+    return {};
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse SetDnsRedirectionRuleResponse proto "
+               << request;
+    return {};
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "SetDnsRedirectionRuleRequest failed " << request;
+    return {};
+  }
+  return fd_local;
 }
 
 std::vector<NetworkDevice> ClientImpl::GetDevices() {

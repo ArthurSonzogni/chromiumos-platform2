@@ -102,6 +102,14 @@ bool FakeClient::SetVpnLockdown(bool enable) {
   return true;
 }
 
+base::ScopedFD FakeClient::RedirectDns(
+    patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
+    const std::string& input_ifname,
+    const std::string& proxy_address,
+    const std::vector<std::string>& nameservers) {
+  return {};
+}
+
 std::vector<NetworkDevice> FakeClient::GetDevices() {
   return {};
 }
