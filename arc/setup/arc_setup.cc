@@ -1245,7 +1245,9 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "%s" /* Disable download provider */
       "androidboot.disable_system_default_app=%d "
       "%s" /* PAI Generation */
-      "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
+      "androidboot.boottime_offset=%" PRId64
+      " " /* in nanoseconds */
+      "androidboot.iioservice_present=%d\n",
       is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
       chromeos_channel.c_str(),
@@ -1254,7 +1256,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       GetDisableMediaStoreMaintenance(disable_media_store_maintenance).c_str(),
       GetDisableDownloadProvider(disable_download_provider).c_str(),
       disable_system_default_app, GetGeneratePaiParam(arc_generate_pai).c_str(),
-      ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
+      ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
+      USE_IIOSERVICE);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }
