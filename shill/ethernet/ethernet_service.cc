@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <string>
-
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -23,8 +21,6 @@
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/store_interface.h"
-
-using std::string;
 
 namespace shill {
 
@@ -83,7 +79,7 @@ RpcIdentifier EthernetService::GetDeviceRpcId(Error* error) const {
   return props_.ethernet_->GetRpcIdentifier();
 }
 
-string EthernetService::GetStorageIdentifier() const {
+std::string EthernetService::GetStorageIdentifier() const {
   if (!props_.ethernet_ || !props_.storage_id_.empty()) {
     return props_.storage_id_;
   }
@@ -133,7 +129,7 @@ void EthernetService::OnVisibilityChanged() {
   NotifyIfVisibilityChanged();
 }
 
-string EthernetService::GetTethering(Error* /*error*/) const {
+std::string EthernetService::GetTethering(Error* /*error*/) const {
   return props_.ethernet_ && props_.ethernet_->IsConnectedViaTether()
              ? kTetheringConfirmedState
              : kTetheringNotDetectedState;

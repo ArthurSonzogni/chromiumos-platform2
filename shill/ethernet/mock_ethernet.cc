@@ -4,15 +4,11 @@
 
 #include "shill/ethernet/mock_ethernet.h"
 
-#include <string>
-
 namespace shill {
 
-using std::string;
-
 MockEthernet::MockEthernet(Manager* manager,
-                           const string& link_name,
-                           const string& address,
+                           const std::string& link_name,
+                           const std::string& address,
                            int interface_index)
     : Ethernet(manager, link_name, address, interface_index) {}
 

@@ -4,8 +4,6 @@
 
 #include "shill/ethernet/ethernet_eap_service.h"
 
-#include <string>
-
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
@@ -13,8 +11,6 @@
 #include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/manager.h"
 #include "shill/technology.h"
-
-using std::string;
 
 namespace shill {
 
@@ -27,7 +23,7 @@ EthernetEapService::EthernetEapService(Manager* manager)
 
 EthernetEapService::~EthernetEapService() = default;
 
-string EthernetEapService::GetStorageIdentifier() const {
+std::string EthernetEapService::GetStorageIdentifier() const {
   return base::StringPrintf("%s_all", technology().GetName().c_str());
 }
 

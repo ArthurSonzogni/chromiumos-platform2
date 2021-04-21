@@ -4,17 +4,13 @@
 
 #include "shill/ethernet/ethernet_temporary_service.h"
 
-#include <string>
-
 #include "shill/dbus/dbus_control.h"
 #include "shill/manager.h"
-
-using std::string;
 
 namespace shill {
 
 EthernetTemporaryService::EthernetTemporaryService(
-    Manager* manager, const string& storage_identifier)
+    Manager* manager, const std::string& storage_identifier)
     : Service(manager, Technology::kEthernet),
       storage_identifier_(storage_identifier) {
   friendly_name_ = "Ethernet";
@@ -26,7 +22,7 @@ RpcIdentifier EthernetTemporaryService::GetDeviceRpcId(Error* /*error*/) const {
   return DBusControl::NullRpcIdentifier();
 }
 
-string EthernetTemporaryService::GetStorageIdentifier() const {
+std::string EthernetTemporaryService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 

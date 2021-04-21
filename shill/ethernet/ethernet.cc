@@ -55,13 +55,11 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #endif  // DISABLE_WIRED_8021X
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static string ObjectID(const Ethernet* e) {
+static std::string ObjectID(const Ethernet* e) {
   return e->GetRpcIdentifier().value();
 }
 }  // namespace Logging
@@ -107,7 +105,7 @@ constexpr std::array<const char*, 6> kFeaturesToDisable = {
 // external PCI devices (because this needs BIOS/firmware changes). However
 // any platforms that support external PCI devices (i.e. thunderbolt / USB4)
 // shall be able to (since those shall be new platforms hence forward).
-static bool IsExternalPciDev(const string& ifname) {
+static bool IsExternalPciDev(const std::string& ifname) {
   auto device_id = DeviceId::CreateFromSysfs(base::FilePath(
       base::StringPrintf("/sys/class/net/%s/device", ifname.c_str())));
 
@@ -119,8 +117,8 @@ static bool IsExternalPciDev(const string& ifname) {
 }  // namespace
 
 Ethernet::Ethernet(Manager* manager,
-                   const string& link_name,
-                   const string& mac_address,
+                   const std::string& link_name,
+                   const std::string& mac_address,
                    int interface_index)
     : Device(manager,
              link_name,
@@ -251,7 +249,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
 }
 
 bool Ethernet::Load(const StoreInterface* storage) {
-  const string id = GetStorageIdentifier();
+  const std::string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
     SLOG(this, 2) << "Device is not available in the persistent store: " << id;
     return false;
@@ -270,7 +268,7 @@ bool Ethernet::Load(const StoreInterface* storage) {
 }
 
 bool Ethernet::Save(StoreInterface* storage) {
-  const string id = GetStorageIdentifier();
+  const std::string id = GetStorageIdentifier();
   storage->SetBool(id, kPPPoEProperty, GetPPPoEMode(nullptr));
   return Device::Save(storage);
 }
@@ -315,7 +313,7 @@ EthernetProvider* Ethernet::GetProvider() {
 
 #if !defined(DISABLE_WIRED_8021X)
 void Ethernet::TryEapAuthentication() {
-  try_eap_authentication_callback_.Reset(Bind(
+  try_eap_authentication_callback_.Reset(base::Bind(
       &Ethernet::TryEapAuthenticationTask, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostTask(FROM_HERE,
                          try_eap_authentication_callback_.callback());
@@ -331,30 +329,32 @@ void Ethernet::BSSRemoved(const RpcIdentifier& path) {
 }
 
 void Ethernet::Certification(const KeyValueStore& properties) {
-  string subject;
+  std::string subject;
   uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
     dispatcher()->PostTask(
-        FROM_HERE, Bind(&Ethernet::CertificationTask,
-                        weak_ptr_factory_.GetWeakPtr(), subject, depth));
+        FROM_HERE, base::Bind(&Ethernet::CertificationTask,
+                              weak_ptr_factory_.GetWeakPtr(), subject, depth));
   }
 }
 
-void Ethernet::EAPEvent(const string& status, const string& parameter) {
+void Ethernet::EAPEvent(const std::string& status,
+                        const std::string& parameter) {
   dispatcher()->PostTask(
-      FROM_HERE, Bind(&Ethernet::EAPEventTask, weak_ptr_factory_.GetWeakPtr(),
-                      status, parameter));
+      FROM_HERE, base::Bind(&Ethernet::EAPEventTask,
+                            weak_ptr_factory_.GetWeakPtr(), status, parameter));
 }
 
 void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
-  if (!properties.Contains<string>(WPASupplicant::kInterfacePropertyState)) {
+  if (!properties.Contains<std::string>(
+          WPASupplicant::kInterfacePropertyState)) {
     return;
   }
   dispatcher()->PostTask(
       FROM_HERE,
-      Bind(&Ethernet::SupplicantStateChangedTask,
-           weak_ptr_factory_.GetWeakPtr(),
-           properties.Get<string>(WPASupplicant::kInterfacePropertyState)));
+      base::Bind(
+          &Ethernet::SupplicantStateChangedTask, weak_ptr_factory_.GetWeakPtr(),
+          properties.Get<std::string>(WPASupplicant::kInterfacePropertyState)));
 }
 
 void Ethernet::ScanDone(const bool& /*success*/) {
@@ -391,12 +391,13 @@ bool Ethernet::StartSupplicant() {
 
   RpcIdentifier interface_path;
   KeyValueStore create_interface_args;
-  create_interface_args.Set<string>(WPASupplicant::kInterfacePropertyName,
-                                    link_name());
-  create_interface_args.Set<string>(WPASupplicant::kInterfacePropertyDriver,
-                                    WPASupplicant::kDriverWired);
-  create_interface_args.Set<string>(WPASupplicant::kInterfacePropertyConfigFile,
-                                    WPASupplicant::kSupplicantConfPath);
+  create_interface_args.Set<std::string>(WPASupplicant::kInterfacePropertyName,
+                                         link_name());
+  create_interface_args.Set<std::string>(
+      WPASupplicant::kInterfacePropertyDriver, WPASupplicant::kDriverWired);
+  create_interface_args.Set<std::string>(
+      WPASupplicant::kInterfacePropertyConfigFile,
+      WPASupplicant::kSupplicantConfPath);
   if (!supplicant_process_proxy()->CreateInterface(create_interface_args,
                                                    &interface_path)) {
     // Interface might've already been created, try to retrieve it.
@@ -418,8 +419,8 @@ bool Ethernet::StartEapAuthentication() {
   KeyValueStore params;
   GetEapService()->eap()->PopulateSupplicantProperties(&certificate_file_,
                                                        &params);
-  params.Set<string>(WPASupplicant::kNetworkPropertyEapKeyManagement,
-                     WPASupplicant::kKeyManagementIeee8021X);
+  params.Set<std::string>(WPASupplicant::kNetworkPropertyEapKeyManagement,
+                          WPASupplicant::kKeyManagementIeee8021X);
   params.Set<uint32_t>(WPASupplicant::kNetworkPropertyEapolFlags, 0);
   params.Set<uint32_t>(WPASupplicant::kNetworkPropertyScanSSID, 0);
 
@@ -479,13 +480,14 @@ void Ethernet::SetIsEapAuthenticated(bool is_eap_authenticated) {
                              is_eap_authenticated_);
 }
 
-void Ethernet::CertificationTask(const string& subject, uint32_t depth) {
+void Ethernet::CertificationTask(const std::string& subject, uint32_t depth) {
   CHECK(service_) << "Ethernet " << link_name() << " " << __func__
                   << " with no service.";
   service_->AddEAPCertification(subject, depth);
 }
 
-void Ethernet::EAPEventTask(const string& status, const string& parameter) {
+void Ethernet::EAPEventTask(const std::string& status,
+                            const std::string& parameter) {
   LOG(INFO) << "In " << __func__ << " with status " << status << ", parameter "
             << parameter;
   Service::ConnectFailure failure = Service::kFailureNone;
@@ -498,7 +500,7 @@ void Ethernet::EAPEventTask(const string& status, const string& parameter) {
   }
 }
 
-void Ethernet::SupplicantStateChangedTask(const string& state) {
+void Ethernet::SupplicantStateChangedTask(const std::string& state) {
   LOG(INFO) << "Supplicant state changed to " << state;
 }
 
@@ -669,7 +671,7 @@ bool Ethernet::DisableOffloadFeatures() {
                                             kFeaturesToDisable.end());
 
   for (i = 0; i < num_features && !features_to_disable.empty(); i++) {
-    string feature = gstrings_buf->features[i];
+    std::string feature = gstrings_buf->features[i];
     if (features_to_disable.find(feature) == features_to_disable.end())
       continue;
 

@@ -44,9 +44,6 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #endif  // DISABLE_WIRED_8021X
 
-using std::pair;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::ByMove;
@@ -68,8 +65,8 @@ namespace shill {
 class TestEthernet : public Ethernet {
  public:
   TestEthernet(Manager* manager,
-               const string& link_name,
-               const string& mac_address,
+               const std::string& link_name,
+               const std::string& mac_address,
                int interface_index)
       : Ethernet(manager, link_name, mac_address, interface_index) {}
 
@@ -219,7 +216,7 @@ class EthernetTest : public testing::Test {
     EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
   }
   void TriggerOnEapDetected() { ethernet_->OnEapDetected(); }
-  void TriggerCertification(const string& subject, uint32_t depth) {
+  void TriggerCertification(const std::string& subject, uint32_t depth) {
     ethernet_->CertificationTask(subject, depth);
   }
   void TriggerTryEapAuthentication() { ethernet_->TryEapAuthenticationTask(); }
@@ -567,7 +564,7 @@ TEST_F(EthernetTest, StopSupplicant) {
 
 TEST_F(EthernetTest, Certification) {
   StartEthernet();
-  const string kSubjectName("subject-name");
+  const std::string kSubjectName("subject-name");
   const uint32_t kDepth = 123;
   // Should not crash due to no service_.
   TriggerCertification(kSubjectName, kDepth);
@@ -600,7 +597,7 @@ TEST_F(EthernetTest, TogglePPPoE) {
   EXPECT_CALL(manager_, DeregisterService(TechnologyEq(Technology::kPPPoE)));
   EXPECT_CALL(ethernet_provider_, RegisterService(_));
 
-  const vector<pair<bool, Technology>> transitions = {
+  const std::vector<std::pair<bool, Technology>> transitions = {
       {false, Technology::kEthernet},
       {true, Technology::kPPPoE},
       {false, Technology::kEthernet},

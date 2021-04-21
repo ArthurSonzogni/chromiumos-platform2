@@ -4,8 +4,6 @@
 
 #include "shill/ethernet/ethernet_provider.h"
 
-#include <string>
-
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/ethernet/ethernet_temporary_service.h"
 #include "shill/logging.h"
@@ -15,13 +13,11 @@
 #include <base/check.h>
 #include <base/check_op.h>
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static string ObjectID(const EthernetProvider* e) {
+static std::string ObjectID(const EthernetProvider* e) {
   return "(ethernet_provider)";
 }
 }  // namespace Logging
@@ -38,7 +34,7 @@ void EthernetProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
 
 ServiceRefPtr EthernetProvider::FindSimilarService(const KeyValueStore& args,
                                                    Error* error) const {
-  CHECK_EQ(kTypeEthernet, args.Lookup<string>(kTypeProperty, ""))
+  CHECK_EQ(kTypeEthernet, args.Lookup<std::string>(kTypeProperty, ""))
       << "Service type must be Ethernet!";
   ServiceRefPtr service = manager_->GetFirstEthernetService();
   if (service) {

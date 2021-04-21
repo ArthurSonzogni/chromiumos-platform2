@@ -6,27 +6,23 @@
 
 #include <unistd.h>
 
-#include <string>
-
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static string ObjectID(const VirtioEthernet* v) {
+static std::string ObjectID(const VirtioEthernet* v) {
   return v->GetRpcIdentifier().value();
 }
 }  // namespace Logging
 
 VirtioEthernet::VirtioEthernet(Manager* manager,
-                               const string& link_name,
-                               const string& address,
+                               const std::string& link_name,
+                               const std::string& address,
                                int interface_index)
     : Ethernet(manager, link_name, address, interface_index) {
   SLOG(this, 2) << "VirtioEthernet device " << link_name << " initialized.";
