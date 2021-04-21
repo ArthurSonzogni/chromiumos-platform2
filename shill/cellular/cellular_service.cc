@@ -343,9 +343,10 @@ string CellularService::GetActivationTypeString() const {
 }
 
 void CellularService::SetActivationState(const string& state) {
-  if (state == activation_state_) {
+  if (state == activation_state_)
     return;
-  }
+
+  SLOG(this, 2) << __func__ << ": " << state;
 
   // If AutoConnect has not been explicitly set by the client, set it to true
   // when the service becomes activated.

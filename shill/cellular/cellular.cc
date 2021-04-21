@@ -1007,10 +1007,11 @@ void Cellular::DestroyCapability() {
   DisconnectCleanup();
 
   // |service_| holds a pointer to |this|. We need to disassociate it here so
-  // that this will be destroyed if the interface is removed. It will be
-  // re-associated if the Modem + Capability is restored (e.g. after Inhibit).
-  if (service_)
+  // that |this| will be destroyed if the interface is removed.
+  if (service_) {
     service_->SetDevice(nullptr);
+    service_ = nullptr;
+  }
 
   capability_.reset();
   SetModemState(kModemStateUnknown);
