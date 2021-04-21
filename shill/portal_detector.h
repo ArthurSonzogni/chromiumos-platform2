@@ -185,9 +185,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, RequestSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
-  FRIEND_TEST(PortalDetectorTest, RequestFail);
-  FRIEND_TEST(PortalDetectorTest, InvalidURL);
-  FRIEND_TEST(PortalDetectorTest, IsActive);
+  FRIEND_TEST(PortalDetectorTest, IsInProgress);
 
   static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
 
@@ -221,9 +219,6 @@ class PortalDetector {
   // Internal method used to cancel the timeout timer and stop an active
   // HttpRequest.
   void CleanupTrial();
-
-  // Method to return if the connection is being actively tested.
-  virtual bool IsActive();
 
   std::string logging_tag_;
   int attempt_count_;

@@ -179,10 +179,6 @@ void PortalDetector::StartTrialTask() {
   is_active_ = true;
 }
 
-bool PortalDetector::IsActive() {
-  return is_active_;
-}
-
 void PortalDetector::CompleteTrial(Result result) {
   LOG(INFO) << LoggingTag()
             << ": Trial completed. HTTP probe: phase=" << result.http_phase

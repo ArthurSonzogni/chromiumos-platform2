@@ -213,30 +213,30 @@ TEST_F(PortalDetectorTest, Constructor) {
 }
 
 TEST_F(PortalDetectorTest, InvalidURL) {
-  EXPECT_FALSE(portal_detector()->IsActive());
+  EXPECT_FALSE(portal_detector()->IsInProgress());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
   PortalDetector::Properties props =
       PortalDetector::Properties(kBadURL, kHttpsUrl, kFallbackHttpUrls);
   EXPECT_FALSE(StartPortalRequest(props));
   ExpectReset();
 
-  EXPECT_FALSE(portal_detector()->IsActive());
+  EXPECT_FALSE(portal_detector()->IsInProgress());
 }
 
-TEST_F(PortalDetectorTest, IsActive) {
+TEST_F(PortalDetectorTest, IsInProgress) {
   // Before the trial is started, should not be active.
-  EXPECT_FALSE(portal_detector()->IsActive());
+  EXPECT_FALSE(portal_detector()->IsInProgress());
 
-  // Once the trial is started, IsActive should return true.
+  // Once the trial is started, IsInProgress should return true.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   EXPECT_TRUE(StartPortalRequest(props));
 
   StartTrialTask();
-  EXPECT_TRUE(portal_detector()->IsActive());
+  EXPECT_TRUE(portal_detector()->IsInProgress());
 
-  // Finish the trial, IsActive should return false.
+  // Finish the trial, IsInProgress should return false.
   EXPECT_CALL(*http_request(), Stop()).Times(1);
   EXPECT_CALL(*https_request(), Stop()).Times(1);
   PortalDetector::Result result;
@@ -245,7 +245,7 @@ TEST_F(PortalDetectorTest, IsActive) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   portal_detector()->CompleteTrial(result);
-  EXPECT_FALSE(portal_detector()->IsActive());
+  EXPECT_FALSE(portal_detector()->IsInProgress());
 }
 
 TEST_F(PortalDetectorTest, StartAttemptFailed) {
