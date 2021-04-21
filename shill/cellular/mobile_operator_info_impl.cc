@@ -269,13 +269,14 @@ void MobileOperatorInfoImpl::UpdateIMSI(const string& imsi) {
     return;
   }
 
+  SLOG(this, 1) << __func__ << ": " << imsi;
   user_imsi_ = imsi;
 
   if (!user_mccmnc_.empty()) {
+    SLOG(this, 2) << __func__ << ": MCCMNC=" << user_mccmnc_;
     if (!base::StartsWith(imsi, user_mccmnc_,
                           base::CompareCase::INSENSITIVE_ASCII)) {
-      LOG(WARNING) << "MCCMNC [" << user_mccmnc_ << "] is not a substring of "
-                   << "the IMSI [" << imsi << "].";
+      LOG(WARNING) << "MCCMNC is not a substring of the IMSI.";
     }
   } else {
     // Attempt to determine the MNO from IMSI since MCCMNC is absent.

@@ -276,7 +276,7 @@ bool CellularCapability3gpp::SetPrimarySimSlotForIccid(
     SetPrimarySimSlot(properties.slot);
     return true;
   }
-  LOG(ERROR) << "No slot found for ICCID: " << iccid;
+  LOG(ERROR) << "No slot found for ICCID.";
   return false;
 }
 

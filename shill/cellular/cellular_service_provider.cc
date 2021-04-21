@@ -294,7 +294,7 @@ bool CellularServiceProvider::OnServiceUnloaded(
   SLOG(this, 1) << __func__ << ": " << service->iccid();
   const CellularRefPtr device = service->cellular();
   if (device && device->iccid() == service->iccid()) {
-    LOG(ERROR) << "Service with active ICCID unloaded: " << service->iccid();
+    LOG(ERROR) << "Service with active ICCID unloaded.";
     return false;
   }
   auto iter = std::find(services_.begin(), services_.end(), service);

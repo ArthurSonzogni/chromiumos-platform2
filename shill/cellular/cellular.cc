@@ -939,7 +939,7 @@ void Cellular::CreateServices() {
 
   SLOG(this, 2) << __func__;
   if (service_ && service_->iccid() == iccid_) {
-    LOG(ERROR) << "Service already exists for: " << iccid_;
+    LOG(ERROR) << "Service already exists for ICCID.";
     return;
   }
 
@@ -1038,7 +1038,7 @@ bool Cellular::GetConnectable(CellularService* service) const {
 }
 
 void Cellular::Connect(CellularService* service, Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(this, 1) << __func__;
   CHECK(service);
 
   if (!capability_) {
@@ -1048,15 +1048,15 @@ void Cellular::Connect(CellularService* service, Error* error) {
   }
 
   if (inhibited_) {
-    LOG(INFO) << "Cellular is Inhibited. Pending Connect to: "
-              << service->iccid();
+    SLOG(this, 1) << "Cellular is Inhibited. Pending Connect to: "
+                  << service->iccid();
     SetPendingConnect(service->iccid());
     return;
   }
 
   if (scanning_) {
-    LOG(INFO) << "Cellular is Scanning. Pending Connect to: "
-              << service->iccid();
+    SLOG(this, 1) << "Cellular is Scanning. Pending Connect to: "
+                  << service->iccid();
     SetPendingConnect(service->iccid());
     return;
   }
@@ -1756,7 +1756,7 @@ void Cellular::ConnectToPending() {
     return;
   }
 
-  LOG(INFO) << __func__ << ": " << connect_pending_iccid_;
+  SLOG(this, 1) << __func__ << ": " << connect_pending_iccid_;
   connect_pending_callback_.Reset(Bind(&Cellular::ConnectToPendingAfterDelay,
                                        weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_pending_callback_.callback(),
@@ -1764,27 +1764,27 @@ void Cellular::ConnectToPending() {
 }
 
 void Cellular::ConnectToPendingAfterDelay() {
-  LOG(INFO) << __func__ << ": " << connect_pending_iccid_;
+  SLOG(this, 1) << __func__ << ": " << connect_pending_iccid_;
 
   // Clear pending connect request regardless of whether a service is found.
   std::string pending_iccid = connect_pending_iccid_;
   connect_pending_iccid_.clear();
 
   if (pending_iccid != iccid_) {
-    LOG(ERROR) << __func__ << " Pending ICCID: " << pending_iccid
-               << " != ICCID: " << iccid_;
+    SLOG(this, 1) << __func__ << " Pending ICCID: " << pending_iccid
+                  << " != ICCID: " << iccid_;
     return;
   }
   if (service_ && service_->iccid() != iccid_) {
-    LOG(ERROR) << __func__ << " Pending ICCID: " << pending_iccid
-               << " != Service ICCID: " << service_->iccid();
+    SLOG(this, 1) << __func__ << " Pending ICCID: " << pending_iccid
+                  << " != Service ICCID: " << service_->iccid();
     return;
   }
 
   CellularServiceRefPtr service =
       manager()->cellular_service_provider()->FindService(iccid_);
   if (!service) {
-    LOG(WARNING) << "No matching service for connect to: " << iccid_;
+    LOG(WARNING) << "No matching service for connect to.";
     return;
   }
 
@@ -2038,9 +2038,8 @@ void Cellular::SetImei(const string& imei) {
 }
 
 void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
-  // TODO(stevenjb): Change to SLOG once b/172064665 is thoroughly vetted.
-  LOG(INFO) << __func__ << " EID= " << sim_properties.eid
-            << " ICCID= " << sim_properties.iccid;
+  SLOG(this, 1) << __func__ << " EID= " << sim_properties.eid
+                << " ICCID= " << sim_properties.iccid;
 
   home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
   home_provider_info()->UpdateOperatorName(sim_properties.spn);
