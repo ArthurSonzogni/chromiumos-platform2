@@ -27,21 +27,52 @@ namespace {
 constexpr int kReadFileMaxSize = 1024;
 
 // Get string to be used as key name in |MapFilesToDict|.
-string GetKeyName(const string& key) {
+const string& GetKeyName(const string& key) {
   return key;
 }
 
-string GetKeyName(const pair<string, string>& key) {
+const string& GetKeyName(const pair<string, string>& key) {
   return key.first;
 }
 
 // Get string to be used as file name in |MapFilesToDict|.
-string GetFileName(const string& key) {
+const string& GetFileName(const string& key) {
   return key;
 }
 
-string GetFileName(const pair<string, string>& key) {
+const string& GetFileName(const pair<string, string>& key) {
   return key.second;
+}
+
+bool ReadFile(const base::FilePath& dir_path,
+              const string& file_name,
+              string* out) {
+  if (base::FilePath{file_name}.IsAbsolute()) {
+    LOG(ERROR) << "file_name " << file_name << " is absolute";
+    return false;
+  }
+  const auto file_path = dir_path.Append(file_name);
+  if (!base::PathExists(file_path))
+    return false;
+  if (!ReadFileToStringWithMaxSize(file_path, out, kReadFileMaxSize)) {
+    LOG(ERROR) << file_path.value() << " exists, but we can't read it";
+    return false;
+  }
+  TrimWhitespaceASCII(*out, TRIM_ALL, out);
+  return true;
+}
+
+template <typename KeyType>
+bool ReadFileToDict(const FilePath& dir_path,
+                    const KeyType& key,
+                    Value* result) {
+  const string& file_name = GetFileName(key);
+  string content;
+  if (!ReadFile(dir_path, file_name, &content))
+    return false;
+  const string& key_name = GetKeyName(key);
+  result->SetStringKey(key_name, content);
+  return true;
 }
 
 bool HasPathWildcard(const string& path) {
@@ -87,51 +118,18 @@ template <typename KeyType>
 base::Optional<Value> MapFilesToDict(const FilePath& dir_path,
                                      const vector<KeyType>& keys,
                                      const vector<KeyType>& optional_keys) {
-  Value ret(Value::Type::DICTIONARY);
+  Value result(Value::Type::DICTIONARY);
 
   for (const auto& key : keys) {
-    string file_name = GetFileName(key);
-    if (base::FilePath{file_name}.IsAbsolute()) {
-      LOG(ERROR) << "file_name " << file_name << " is absolute";
+    if (!ReadFileToDict(dir_path, key, &result)) {
+      LOG(ERROR) << "file: \"" << GetFileName(key) << "\" is required.";
       return base::nullopt;
     }
-    string key_name = GetKeyName(key);
-    const auto file_path = dir_path.Append(file_name);
-    string content;
-
-    // missing file
-    if (!base::PathExists(file_path)) {
-      LOG(ERROR) << file_path.value() << " doesn't exist";
-      return base::nullopt;
-    }
-
-    // File exists, but somehow we can't read it.
-    if (!ReadFileToStringWithMaxSize(file_path, &content, kReadFileMaxSize)) {
-      LOG(ERROR) << file_path.value() << " exists, but we can't read it";
-      return base::nullopt;
-    }
-
-    ret.SetStringKey(key_name, TrimWhitespaceASCII(content, TRIM_ALL));
   }
-
   for (const auto& key : optional_keys) {
-    string file_name = GetFileName(key);
-    if (base::FilePath{file_name}.IsAbsolute()) {
-      LOG(ERROR) << "file_name " << file_name << " is absolute";
-      return base::nullopt;
-    }
-    string key_name = GetKeyName(key);
-    const auto file_path = dir_path.Append(file_name);
-    string content;
-
-    if (!base::PathExists(file_path))
-      continue;
-
-    if (ReadFileToStringWithMaxSize(file_path, &content, kReadFileMaxSize))
-      ret.SetStringKey(key_name, TrimWhitespaceASCII(content, TRIM_ALL));
+    ReadFileToDict(dir_path, key, &result);
   }
-
-  return ret;
+  return result;
 }
 
 // Explicit template instantiation
