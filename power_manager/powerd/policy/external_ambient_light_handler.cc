@@ -51,9 +51,5 @@ void ExternalAmbientLightHandler::SetBrightnessPercentForAmbientLight(
 void ExternalAmbientLightHandler::OnColorTemperatureChanged(
     int color_temperature) {}
 
-system::DisplayInfo ExternalAmbientLightHandler::GetDisplayInfo() const {
-  return display_info_;
-}
-
 }  // namespace policy
 }  // namespace power_manager

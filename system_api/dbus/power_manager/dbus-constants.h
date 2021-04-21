@@ -54,6 +54,10 @@ const char kChangeWifiRegDomainMethod[] = "ChangeWifiRegDomain";
 const char kRefreshBluetoothBatteryMethod[] = "RefreshBluetoothBattery";
 const char kRefreshAllPeripheralBatteryMethod[] = "RefreshAllPeripheralBattery";
 const char kGetThermalStateMethod[] = "GetThermalState";
+const char kSetExternalDisplayALSBrightnessMethod[] =
+    "SetExternalDisplayALSBrightness";
+const char kGetExternalDisplayALSBrightnessMethod[] =
+    "GetExternalDisplayALSBrightness";
 
 // Signals emitted by powerd.
 const char kScreenBrightnessChangedSignal[] = "ScreenBrightnessChanged";

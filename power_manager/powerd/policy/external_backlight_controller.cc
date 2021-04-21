@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstdlib>
 #include <iterator>
 #include <memory>
 #include <set>
@@ -28,6 +29,7 @@
 
 #include <base/check.h>
 #include <base/notreached.h>
+#include <dbus/message.h>
 
 namespace power_manager {
 namespace policy {
@@ -73,6 +75,7 @@ void ExternalBacklightController::Init(
   external_ambient_light_sensor_factory_ =
       external_ambient_light_sensor_factory;
   if (ambient_light_sensor_watcher_) {
+    external_display_als_brightness_enabled_ = true;
     CHECK(prefs_->GetString(kExternalBacklightAlsStepsPref,
                             &external_backlight_als_steps_))
         << "Failed to read pref " << kExternalBacklightAlsStepsPref;
@@ -85,20 +88,34 @@ void ExternalBacklightController::Init(
 
   RegisterSetBrightnessHandler(
       dbus_wrapper_, kSetScreenBrightnessMethod,
-      base::Bind(&ExternalBacklightController::HandleSetBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &ExternalBacklightController::HandleSetBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterIncreaseBrightnessHandler(
       dbus_wrapper_, kIncreaseScreenBrightnessMethod,
-      base::Bind(&ExternalBacklightController::HandleIncreaseBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &ExternalBacklightController::HandleIncreaseBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterDecreaseBrightnessHandler(
       dbus_wrapper_, kDecreaseScreenBrightnessMethod,
-      base::Bind(&ExternalBacklightController::HandleDecreaseBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &ExternalBacklightController::HandleDecreaseBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterGetBrightnessHandler(
       dbus_wrapper_, kGetScreenBrightnessPercentMethod,
-      base::Bind(&ExternalBacklightController::HandleGetBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &ExternalBacklightController::HandleGetBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->ExportMethod(
+      kSetExternalDisplayALSBrightnessMethod,
+      base::BindRepeating(&ExternalBacklightController::
+                              HandleSetExternalDisplayALSBrightnessRequest,
+                          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->ExportMethod(
+      kGetExternalDisplayALSBrightnessMethod,
+      base::BindRepeating(&ExternalBacklightController::
+                              HandleGetExternalDisplayALSBrightnessRequest,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   UpdateDisplays(display_watcher_->GetDisplays());
   if (ambient_light_sensor_watcher_) {
@@ -121,8 +138,10 @@ void ExternalBacklightController::RemoveObserver(
 }
 
 void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {
-  for (auto& [path, handler] : external_ambient_light_sensors_) {
-    handler->HandlePowerSourceChange(source);
+  for (auto& [path, pair] : external_als_displays_) {
+    if (pair.second) {
+      pair.second->HandlePowerSourceChange(source);
+    }
   }
 }
 
@@ -181,8 +200,10 @@ void ExternalBacklightController::SetSuspended(bool suspended) {
   UpdateScreenPowerState(BacklightBrightnessChange_Cause_OTHER);
 
   if (!suspended) {
-    for (auto& [path, handler] : external_ambient_light_sensors_) {
-      handler->HandleResume();
+    for (auto& [path, pair] : external_als_displays_) {
+      if (pair.second) {
+        pair.second->HandleResume();
+      }
     }
   }
 }
@@ -195,7 +216,9 @@ void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
 }
 
 bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
-  return false;
+  bool success = false;
+  HandleGetBrightnessRequest(percent, &success);
+  return success;
 }
 
 void ExternalBacklightController::SetForcedOff(bool forced_off) {
@@ -265,11 +288,34 @@ void ExternalBacklightController::HandleSetBrightnessRequest(
   // are buggy and DDC/CI is racy if the user is simultaneously adjusting the
   // brightness using physical buttons. Instead, we only support increasing and
   // decreasing the brightness.
+
+  // However, exceptions are made for external displays with ambient light
+  // sensors. Only allow setting the brightness on external displays with
+  // ambient light sensors, and only if ALS-based brightness is disabled.
+  if (ambient_light_sensor_watcher_ &&
+      !external_display_als_brightness_enabled_) {
+    for (auto& [path, pair] : external_als_displays_) {
+      SetBrightnessPercentForAmbientLight(pair.first, percent);
+    }
+    external_display_with_ambient_light_sensor_brightness_ = percent;
+    ++num_brightness_adjustments_in_session_;
+  }
 }
 
 void ExternalBacklightController::HandleGetBrightnessRequest(
     double* percent_out, bool* success_out) {
   // See HandleSetBrightnessRequest.
+
+  // However, exceptions are made for external displays with ambient light
+  // sensors. Only allow getting the brightness for external displays with
+  // ambient light sensors, and only if ALS-based brightness is disabled.
+  if (ambient_light_sensor_watcher_ &&
+      !external_display_als_brightness_enabled_) {
+    *percent_out = external_display_with_ambient_light_sensor_brightness_;
+    *success_out = true;
+    return;
+  }
+
   *success_out = false;
 }
 
@@ -326,6 +372,10 @@ void ExternalBacklightController::AdjustBrightnessByPercent(
        it != external_displays_.end(); ++it) {
     it->second->AdjustBrightnessByPercent(percent_offset);
   }
+  if (ambient_light_sensor_watcher_ &&
+      !external_display_als_brightness_enabled_) {
+    external_display_with_ambient_light_sensor_brightness_ += percent_offset;
+  }
 }
 
 int ExternalBacklightController::CalculateAssociationScore(
@@ -344,7 +394,7 @@ int ExternalBacklightController::CalculateAssociationScore(
 }
 
 void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
-  ExternalAmbientLightSensorMap updated_ambient_light_sensors;
+  ExternalAmbientLightSensorDisplayMap updated_ambient_light_sensors;
   for (const auto& als_info : external_ambient_light_sensors_info_) {
     int highest_score = 0;
     system::DisplayInfo best_matching_display;
@@ -357,14 +407,28 @@ void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
       }
     }
     if (highest_score >= kMinimumAssociationScore) {
-      auto existing_als_it =
-          external_ambient_light_sensors_.find(als_info.iio_path);
-      if (existing_als_it != external_ambient_light_sensors_.end()) {
+      // If ALS-based brightness is disabled, add the match but with a null
+      // ExternalAmbientLightHandler.
+      if (!external_display_als_brightness_enabled_) {
         updated_ambient_light_sensors.emplace(
-            als_info.iio_path, std::move(existing_als_it->second));
+            als_info.iio_path, std::make_pair(best_matching_display, nullptr));
         continue;
       }
 
+      // If ALS-based brightness is enabled, and a match already exists,
+      // preserve it.
+      auto existing_als_it = external_als_displays_.find(als_info.iio_path);
+      if (existing_als_it != external_als_displays_.end() &&
+          existing_als_it->second.second) {
+        updated_ambient_light_sensors.emplace(
+            als_info.iio_path,
+            std::make_pair(existing_als_it->second.first,
+                           std::move(existing_als_it->second.second)));
+        continue;
+      }
+
+      // If ALS-based brightness is enabled, and no match already exists, create
+      // a new one.
       auto sensor =
           external_ambient_light_sensor_factory_->CreateSensor(als_info.device);
       auto handler = std::make_unique<ExternalAmbientLightHandler>(
@@ -372,15 +436,16 @@ void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
       handler->Init(external_backlight_als_steps_,
                     kExternalAmbientLightHandlerInitialBrightness,
                     kExternalAmbientLightHandlerSmoothingConstant);
-      updated_ambient_light_sensors.emplace(als_info.iio_path,
-                                            std::move(handler));
+      updated_ambient_light_sensors.emplace(
+          als_info.iio_path,
+          std::make_pair(best_matching_display, std::move(handler)));
 
       LOG(INFO) << "Matched ALS (" << als_info.iio_path.value()
                 << ") with display (" << best_matching_display.sys_path.value()
                 << ") with score " << highest_score;
     }
   }
-  external_ambient_light_sensors_.swap(updated_ambient_light_sensors);
+  external_als_displays_.swap(updated_ambient_light_sensors);
 }
 
 void ExternalBacklightController::SetBrightnessPercentForAmbientLight(
@@ -395,10 +460,52 @@ std::vector<std::pair<base::FilePath, system::DisplayInfo>>
 ExternalBacklightController::
     GetAmbientLightSensorAndDisplayMatchesForTesting() {
   std::vector<std::pair<base::FilePath, system::DisplayInfo>> matches;
-  for (const auto& [path, handler] : external_ambient_light_sensors_) {
-    matches.push_back(std::make_pair(path, handler->GetDisplayInfo()));
+  for (const auto& [path, pair] : external_als_displays_) {
+    matches.push_back(std::make_pair(path, pair.first));
   }
   return matches;
+}
+
+void ExternalBacklightController::HandleSetExternalDisplayALSBrightnessRequest(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  bool enabled = external_display_als_brightness_enabled_;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopBool(&enabled)) {
+    LOG(ERROR) << "Unable to read " << kSetExternalDisplayALSBrightnessMethod
+               << " args";
+    return;
+  }
+
+  if (enabled != external_display_als_brightness_enabled_ &&
+      ambient_light_sensor_watcher_) {
+    external_display_als_brightness_enabled_ = enabled;
+    MatchAmbientLightSensorsToDisplays();
+    if (!enabled) {
+      // Set displays that had ALS-based brightness enabled back to the
+      // brightness percentage they had before.
+      for (auto& [path, pair] : external_als_displays_) {
+        SetBrightnessPercentForAmbientLight(
+            pair.first, external_display_with_ambient_light_sensor_brightness_);
+      }
+    }
+  }
+
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  std::move(response_sender).Run(std::move(response));
+}
+
+void ExternalBacklightController::HandleGetExternalDisplayALSBrightnessRequest(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  bool enabled =
+      external_display_als_brightness_enabled_ && ambient_light_sensor_watcher_;
+
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter(response.get()).AppendBool(enabled);
+  std::move(response_sender).Run(std::move(response));
 }
 
 }  // namespace policy

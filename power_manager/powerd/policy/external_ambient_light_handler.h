@@ -65,8 +65,6 @@ class ExternalAmbientLightHandler : public AmbientLightHandler::Delegate {
       AmbientLightHandler::BrightnessChangeCause cause) override;
   void OnColorTemperatureChanged(int color_temperature) override;
 
-  system::DisplayInfo GetDisplayInfo() const;
-
  private:
   std::unique_ptr<system::AmbientLightSensorInterface> sensor_;
   const system::DisplayInfo display_info_;

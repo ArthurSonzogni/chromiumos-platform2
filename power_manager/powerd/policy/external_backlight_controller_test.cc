@@ -80,6 +80,24 @@ class ExternalBacklightControllerTest : public ::testing::Test {
     ambient_light_sensor_watcher_.RemoveSensor(als);
   }
 
+  void CallSetExternalDisplayALSBrightness(bool enabled) {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kSetExternalDisplayALSBrightnessMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendBool(enabled);
+    ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
+  }
+
+  void CallGetExternalDisplayALSBrightness(bool* enabled) {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kGetExternalDisplayALSBrightnessMethod);
+    dbus::MessageWriter writer(&method_call);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_.CallExportedMethodSync(&method_call);
+    ASSERT_TRUE(response.get());
+    ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(enabled));
+  }
+
   std::string default_als_steps_ = "5.0 -1 600\n100.0 500 -1";
 
   FakePrefs prefs_;
@@ -108,6 +126,30 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
 
   controller_.HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());
+
+  // If ALS-based brightness is disabled, the brightness of external displays
+  // with an ambient light sensor can be adjusted with an absolute request or a
+  // relative request.
+  bool enabled = false;
+  CallGetExternalDisplayALSBrightness(&enabled);
+  EXPECT_TRUE(enabled);
+  CallSetExternalDisplayALSBrightness(false);
+  CallGetExternalDisplayALSBrightness(&enabled);
+  EXPECT_FALSE(enabled);
+  test::CallSetScreenBrightness(
+      &dbus_wrapper_, 42.0, SetBacklightBrightnessRequest_Transition_INSTANT,
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  EXPECT_EQ(1, controller_.GetNumUserAdjustments());
+  EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
+  EXPECT_EQ(42.0, percent);
+  test::CallIncreaseScreenBrightness(&dbus_wrapper_);
+  EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
+  EXPECT_EQ(47.0, percent);
+  EXPECT_EQ(2, controller_.GetNumUserAdjustments());
+  test::CallDecreaseScreenBrightness(&dbus_wrapper_, true /* allow_off */);
+  EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
+  EXPECT_EQ(42.0, percent);
+  EXPECT_EQ(3, controller_.GetNumUserAdjustments());
 }
 
 TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {

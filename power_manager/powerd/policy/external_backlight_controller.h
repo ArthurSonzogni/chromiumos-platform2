@@ -14,6 +14,7 @@
 #include <base/compiler_specific.h>
 #include <base/macros.h>
 #include <base/observer_list.h>
+#include <dbus/exported_object.h>
 
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/external_ambient_light_handler.h"
@@ -141,6 +142,13 @@ class ExternalBacklightController
   // external display.
   void MatchAmbientLightSensorsToDisplays();
 
+  void HandleSetExternalDisplayALSBrightnessRequest(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void HandleGetExternalDisplayALSBrightnessRequest(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
   // These pointers aren't owned by this class.
   PrefsInterface* prefs_ = nullptr;
   system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher_ =
@@ -169,15 +177,26 @@ class ExternalBacklightController
       ExternalDisplayMap;
   ExternalDisplayMap external_displays_;
 
-  // Map from IIO device directories to ExternalAmbientLightHandler for reading
-  // the corresponding ALS and adjusting the display brightness.
-  typedef std::map<base::FilePath, std::unique_ptr<ExternalAmbientLightHandler>>
-      ExternalAmbientLightSensorMap;
-  ExternalAmbientLightSensorMap external_ambient_light_sensors_;
+  // Map from IIO device directories to DisplayInfo and
+  // ExternalAmbientLightHandler for reading the corresponding ALS and adjusting
+  // the display brightness. The ExternalAmbientLightHandler pointer will be
+  // null if ALS-based brightness control is disabled.
+  typedef std::map<base::FilePath,
+                   std::pair<system::DisplayInfo,
+                             std::unique_ptr<ExternalAmbientLightHandler>>>
+      ExternalAmbientLightSensorDisplayMap;
+  ExternalAmbientLightSensorDisplayMap external_als_displays_;
 
   // Vector of currently connected external ambient light sensors.
   std::vector<system::AmbientLightSensorInfo>
       external_ambient_light_sensors_info_;
+
+  // Whether or not ALS-based brightness adjustment is enabled for external
+  // displays with ambient light sensors.
+  bool external_display_als_brightness_enabled_ = false;
+  // For external displays with ambient light sensors, the brightness percentage
+  // to use when ALS-based brightness is disabled.
+  double external_display_with_ambient_light_sensor_brightness_ = 100.0;
 
   // Number of times the user has requested that the brightness be changed in
   // the current session.
