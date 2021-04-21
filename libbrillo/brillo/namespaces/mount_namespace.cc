@@ -66,14 +66,7 @@ bool MountNamespace::Create() {
     std::string proc_ns_path = base::StringPrintf("/proc/%d/ns/mnt", pid);
     bool mount_success = true;
     base::ReadFromFD(fd_unshared[0], &byte, 1);
-    if (platform_->Mount(proc_ns_path, ns_path_.value(), "", MS_BIND) == 0) {
-      // If the bind mount succeeds, attempt to remount it ro+noexec.
-      if (platform_->Mount(proc_ns_path, ns_path_.value(), "",
-                           MS_REMOUNT | MS_RDONLY | MS_NOEXEC) != 0) {
-        PLOG(ERROR) << "Mount(" << proc_ns_path << ", " << ns_path_.value()
-                    << ", MS_REMOUNT | MS_RDONLY | MS_NOEXEC) failed";
-      }
-    } else {
+    if (platform_->Mount(proc_ns_path, ns_path_.value(), "", MS_BIND) != 0) {
       PLOG(ERROR) << "Mount(" << proc_ns_path << ", " << ns_path_.value()
                   << ", MS_BIND) failed";
       mount_success = false;
