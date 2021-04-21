@@ -131,7 +131,7 @@ class KeyValueStore {
 
   template <typename T,
             typename brillo::EnableIfIsOneOfNonArithmetic<T, KeyValueTypes> = 0>
-  const T& Lookup(const std::string& name, const T& default_value) const {
+  T Lookup(const std::string& name, const T& default_value) const {
     const auto it(properties_.find(name));
     if (it == properties_.end()) {
       return default_value;
