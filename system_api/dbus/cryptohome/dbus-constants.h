@@ -235,6 +235,7 @@ const char kCryptohomeEndFingerprintAuthSession[] = "EndFingerprintAuthSession";
 const char kCryptohomeGetWebAuthnSecret[] = "GetWebAuthnSecret";
 const char kCryptohomeStartAuthSession[] = "StartAuthSession";
 const char kCryptohomeAuthenticateAuthSession[] = "AuthenticateAuthSession";
+const char kCryptohomeAddCredentials[] = "AddCredentials";
 
 // Signals of the |kCryptohomeInterface| interface:
 const char kSignalAsyncCallStatus[] = "AsyncCallStatus";
