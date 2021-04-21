@@ -10,10 +10,16 @@ use memory::{
 
 #[test]
 fn test_parse_file_to_u64() {
-    assert_eq!(parse_file_to_u64("123".as_bytes()).unwrap(), 123);
-    assert_eq!(parse_file_to_u64("456\n789".as_bytes()).unwrap(), 456);
-    assert!(parse_file_to_u64("".as_bytes()).is_err());
-    assert!(parse_file_to_u64("abc".as_bytes()).is_err());
+    assert_eq!(
+        parse_file_to_u64("123".to_string().as_bytes()).unwrap(),
+        123
+    );
+    assert_eq!(
+        parse_file_to_u64("456\n789".to_string().as_bytes()).unwrap(),
+        456
+    );
+    assert!(parse_file_to_u64("".to_string().as_bytes()).is_err());
+    assert!(parse_file_to_u64("abc".to_string().as_bytes()).is_err());
 }
 
 #[test]
@@ -167,12 +173,12 @@ fn test_calculate_available_memory_kb() {
 
 #[test]
 fn test_parse_margins() {
-    assert!(parse_margins("".as_bytes()).is_err());
-    assert!(parse_margins("123 4a6".as_bytes()).is_err());
-    assert!(parse_margins("123.2 412.3".as_bytes()).is_err());
-    assert!(parse_margins("123".as_bytes()).is_err());
+    assert!(parse_margins("".to_string().as_bytes()).is_err());
+    assert!(parse_margins("123 4a6".to_string().as_bytes()).is_err());
+    assert!(parse_margins("123.2 412.3".to_string().as_bytes()).is_err());
+    assert!(parse_margins("123".to_string().as_bytes()).is_err());
 
-    let margins = parse_margins("123 456".as_bytes()).unwrap();
+    let margins = parse_margins("123 456".to_string().as_bytes()).unwrap();
     assert_eq!(margins.len(), 2);
     assert_eq!(margins[0], 123);
     assert_eq!(margins[1], 456);
