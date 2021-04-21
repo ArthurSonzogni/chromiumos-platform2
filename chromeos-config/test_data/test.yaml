@@ -226,6 +226,7 @@ chromeos:
                 ec: "another"
                 depthcharge: "another"
                 libpayload: "another"
+                zephyr-ec: "some/{{$name}}"
               firmware-config: 0xFFFFFFFF
             ui:
               <<: *ui_common

@@ -181,7 +181,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
     # Unspecified targets should be represented as None.
     expected = OrderedDict(
-        [('another', [None]),
+        [('another', ['some/another']),
          ('some', [None]),
          ('some2', ['experimental/some2'])])
     result = config.GetFirmwareBuildCombinations(['zephyr-ec'])

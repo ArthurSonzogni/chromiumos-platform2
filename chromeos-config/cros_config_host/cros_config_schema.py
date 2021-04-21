@@ -114,6 +114,15 @@ def ParseArgs(argv):
       type=bool,
       default=False,
       help='Filter build specific elements from the output JSON')
+  # TODO(b:185470553): this argument is being used to support the
+  # Zephyr builders for proof-of-concept devices (devices which
+  # normally target a CrOS EC), and can be removed once those builders
+  # are no longer needed.
+  parser.add_argument(
+      '--zephyr-ec-configs-only',
+      action='store_true',
+      help=('Remove any configuration which does not specify '
+            '/firmware/build-targets:zephyr-ec'))
   return parser.parse_args(argv)
 
 
@@ -477,6 +486,24 @@ def _FilterBuildElements(config, path, build_only_elements):
     config.pop(key)
 
 
+def FilterNonZephyrDevices(config):
+  """Remove any devices which do not specify a Zephyr EC build target.
+
+  Args:
+    config: JSON-serialized configuration.
+
+  Returns:
+    JSON-serialized configuration, potentially with some configs gone.
+  """
+  json_config = json.loads(config)
+  new_device_configs = []
+  for device_config in json_config[CHROMEOS][CONFIGS]:
+    build_targets = device_config.get('firmware', {}).get('build-targets', {})
+    if 'zephyr-ec' in build_targets:
+      new_device_configs.append(device_config)
+  return libcros_schema.FormatJson({CHROMEOS: {CONFIGS: new_device_configs}})
+
+
 @functools.lru_cache()
 def GetValidSchemaProperties(
     schema=os.path.join(this_dir, 'cros_config_schema.yaml')):
@@ -794,7 +821,8 @@ def Main(schema,
          filter_build_details=False,
          gen_c_output_dir=None,
          configfs_output=None,
-         configs=None):
+         configs=None,
+         zephyr_ec_configs_only=False):
   """Transforms and validates a cros config file for use on the system
 
   Applies consistent transforms to covert a source YAML configuration into
@@ -811,6 +839,8 @@ def Main(schema,
     gen_c_output_dir: Output directory for generated C config files.
     configfs_output: Output path to generated SquashFS for ConfigFS.
     configs: List of source config files that will be transformed/verified.
+    zephyr_ec_configs_only: True if device configs which do not
+      contain /firmware/build-targets:zephyr-ec should be removed.
   """
   # TODO(shapiroc): Remove this once we no longer need backwards compatibility
   # for single config parameters.
@@ -826,6 +856,8 @@ def Main(schema,
   schema_attrs = libcros_schema.GetSchemaPropertyAttrs(
       libcros_schema.LoadYaml(schema_contents))
 
+  if zephyr_ec_configs_only:
+    json_transform = FilterNonZephyrDevices(json_transform)
   if filter_build_details:
     build_only_elements = []
     for path in schema_attrs:
@@ -857,7 +889,8 @@ def main(argv=None):
     argv = sys.argv[1:]
   opts = ParseArgs(argv)
   Main(opts.schema, opts.config, opts.output, opts.filter,
-       opts.generated_c_output_directory, opts.configfs_output, opts.configs)
+       opts.generated_c_output_directory, opts.configfs_output, opts.configs,
+       opts.zephyr_ec_configs_only)
 
 if __name__ == '__main__':
   sys.exit(main(sys.argv[1:]))
