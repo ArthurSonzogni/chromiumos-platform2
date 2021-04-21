@@ -65,12 +65,6 @@ extern "C" {
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
-using base::Bind;
-using base::Unretained;
-using std::map;
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
@@ -258,8 +252,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
                             const KeyValueStoreCallback& callback,
                             int timeout) {
     KeyValueStore props;
-    props.Set<string>("carrier", kTestCarrier);
-    props.Set<string>("unknown-property", "irrelevant-value");
+    props.Set<std::string>("carrier", kTestCarrier);
+    props.Set<std::string>("unknown-property", "irrelevant-value");
     callback.Run(props, Error());
   }
   void InvokeConnect(const KeyValueStore& props,
@@ -376,9 +370,9 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   }
 
   void VerifyOperatorMap(const Stringmap& operator_map,
-                         const string& code,
-                         const string& name,
-                         const string& country) {
+                         const std::string& code,
+                         const std::string& name,
+                         const std::string& country) {
     Stringmap::const_iterator it;
     Stringmap::const_iterator endit = operator_map.end();
 
@@ -407,13 +401,13 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   void CallStartModemCallback(const Error& error) {
     device_->StartModemCallback(
-        Bind(&CellularTest::TestCallback, Unretained(this)), error);
+        base::Bind(&CellularTest::TestCallback, base::Unretained(this)), error);
     dispatcher_.DispatchPendingEvents();
   }
 
   void CallStopModemCallback(const Error& error) {
     device_->StopModemCallback(
-        Bind(&CellularTest::TestCallback, Unretained(this)), error);
+        base::Bind(&CellularTest::TestCallback, base::Unretained(this)), error);
   }
 
   void CallSetPrimarySimProperties(const Cellular::SimProperties& properties) {
@@ -448,12 +442,12 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   static const int kStrength;
 
   // Must be std::string so that we can safely ReturnRef.
-  const string kHomeProviderCode;
-  const string kHomeProviderCountry;
-  const string kHomeProviderName;
-  const string kServingOperatorCode;
-  const string kServingOperatorCountry;
-  const string kServingOperatorName;
+  const std::string kHomeProviderCode;
+  const std::string kHomeProviderCountry;
+  const std::string kHomeProviderName;
+  const std::string kServingOperatorCode;
+  const std::string kServingOperatorCountry;
+  const std::string kServingOperatorName;
 
   class TestControl : public MockControl {
    public:
@@ -509,14 +503,16 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     }
 
     std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
-        const RpcIdentifier& /*path*/, const string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       if (!test_->mm1_simple_proxy_)
         test_->mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
       return std::move(test_->mm1_simple_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSignalProxyInterface> CreateMM1ModemSignalProxy(
-        const RpcIdentifier& /*path*/, const string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       if (!test_->mm1_signal_proxy_)
         test_->mm1_signal_proxy_.reset(new mm1::MockModemSignalProxy());
       return std::move(test_->mm1_signal_proxy_);
@@ -551,7 +547,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->enabled_persistent_ = new_value;
   }
 
-  void SetCapability3gppActiveBearer(unique_ptr<CellularBearer> bearer) {
+  void SetCapability3gppActiveBearer(std::unique_ptr<CellularBearer> bearer) {
     GetCapability3gpp()->active_bearer_ = std::move(bearer);
   }
 
@@ -579,14 +575,14 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
   bool create_gsm_card_proxy_from_factory_;
-  unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
-  unique_ptr<mm1::MockMm1Proxy> mm1_proxy_;
-  unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
-  unique_ptr<mm1::MockModemModemCdmaProxy> mm1_modem_cdma_proxy_;
-  unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
-  unique_ptr<mm1::MockModemProxy> mm1_modem_proxy_;
-  unique_ptr<mm1::MockModemSignalProxy> mm1_signal_proxy_;
-  unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
+  std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
+  std::unique_ptr<mm1::MockMm1Proxy> mm1_proxy_;
+  std::unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
+  std::unique_ptr<mm1::MockModemModemCdmaProxy> mm1_modem_cdma_proxy_;
+  std::unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
+  std::unique_ptr<mm1::MockModemProxy> mm1_modem_proxy_;
+  std::unique_ptr<mm1::MockModemSignalProxy> mm1_signal_proxy_;
+  std::unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
   MockMobileOperatorInfo* mock_home_provider_info_;
   MockMobileOperatorInfo* mock_serving_operator_info_;
   CellularRefPtr device_;
@@ -687,7 +683,8 @@ TEST_P(CellularTest, StartCdmaRegister) {
   ExpectCdmaStartModem(kNetworkTechnology1Xrtt);
   EXPECT_CALL(*cdma_proxy_, MEID()).WillOnce(Return(kMEID));
   Error error;
-  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
+  device_->Start(
+      &error, base::Bind(&CellularTest::TestCallback, base::Unretained(this)));
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kMEID, device_->meid());
   EXPECT_EQ(kTestCarrier, device_->carrier());
@@ -737,7 +734,8 @@ TEST_P(CellularTest, StartGsmRegister) {
   AllowCreateGsmCardProxyFromFactory();
 
   Error error;
-  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
+  device_->Start(
+      &error, base::Bind(&CellularTest::TestCallback, base::Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kIMEI, device_->imei());
@@ -763,7 +761,8 @@ TEST_P(CellularTest, StartConnected) {
   device_->set_meid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   Error error;
-  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
+  device_->Start(
+      &error, base::Bind(&CellularTest::TestCallback, base::Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
@@ -784,7 +783,8 @@ TEST_P(CellularTest, StartLinked) {
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(manager_, UpdateService(_)).Times(3);
   Error error;
-  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
+  device_->Start(
+      &error, base::Bind(&CellularTest::TestCallback, base::Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateLinked, device_->state_);
@@ -1559,8 +1559,8 @@ TEST_P(CellularTest, StartPPPAfterEthernetUp) {
 
 TEST_P(CellularTest, GetLogin) {
   // Doesn't crash when there is no service.
-  string username_to_pppd;
-  string password_to_pppd;
+  std::string username_to_pppd;
+  std::string password_to_pppd;
   EXPECT_FALSE(device_->service());
   device_->GetLogin(&username_to_pppd, &password_to_pppd);
 
@@ -1582,17 +1582,17 @@ TEST_P(CellularTest, Notify) {
   SetMockService();
   StartPPP(kPID);
 
-  const map<string, string> kEmptyArgs;
+  const std::map<std::string, std::string> kEmptyArgs;
   device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
   EXPECT_TRUE(device_->is_ppp_authenticating_);
   device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
   EXPECT_FALSE(device_->is_ppp_authenticating_);
 
   // Normal connect.
-  const string kInterfaceName("fake-device");
+  const std::string kInterfaceName("fake-device");
   const int kInterfaceIndex = 1;
   scoped_refptr<MockPPPDevice> ppp_device;
-  map<string, string> ppp_config;
+  std::map<std::string, std::string> ppp_config;
   ppp_device = new MockPPPDevice(&manager_, kInterfaceName, kInterfaceIndex);
   ppp_config[kPPPInterfaceName] = kInterfaceName;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
@@ -1624,10 +1624,10 @@ TEST_P(CellularTest, Notify) {
   // Re-connect on new network device: if we still have the PPPDevice
   // from a prior connect, this new connect should DTRT. This is
   // probably an unlikely case.
-  const string kInterfaceName2("fake-device2");
+  const std::string kInterfaceName2("fake-device2");
   const int kInterfaceIndex2 = 2;
   scoped_refptr<MockPPPDevice> ppp_device2;
-  map<string, string> ppp_config2;
+  std::map<std::string, std::string> ppp_config2;
   ppp_device2 = new MockPPPDevice(&manager_, kInterfaceName2, kInterfaceIndex2);
   ppp_config2[kPPPInterfaceName] = kInterfaceName2;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName2))
@@ -1667,7 +1667,7 @@ TEST_P(CellularTest, PPPConnectionFailedBeforeAuth) {
   // disconnects before authenticating (as opposed to the Notify test,
   // where pppd disconnects after connecting).
   const int kPID = 52;
-  const map<string, string> kEmptyArgs;
+  const std::map<std::string, std::string> kEmptyArgs;
   MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
@@ -1691,7 +1691,7 @@ TEST_P(CellularTest, PPPConnectionFailedDuringAuth) {
   // disconnects during authentication (as opposed to the Notify test,
   // where pppd disconnects after connecting).
   const int kPID = 52;
-  const map<string, string> kEmptyArgs;
+  const std::map<std::string, std::string> kEmptyArgs;
   MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
@@ -1719,7 +1719,7 @@ TEST_P(CellularTest, PPPConnectionFailedAfterAuth) {
   // opposed to the Notify test, where pppd disconnects after
   // connecting).
   const int kPID = 52;
-  const map<string, string> kEmptyArgs;
+  const std::map<std::string, std::string> kEmptyArgs;
   MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
@@ -1745,7 +1745,7 @@ TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
   // connecting (as opposed to the Notify test, where pppd disconnects normally
   // after connecting).
   const int kPID = 52;
-  const map<string, string> kEmptyArgs;
+  const std::map<std::string, std::string> kEmptyArgs;
   MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
@@ -2262,7 +2262,8 @@ TEST_P(CellularTest, EstablishLinkStatic) {
   ipconfig_properties->address = kAddress;
   ipconfig_properties->gateway = kGateway;
   ipconfig_properties->subnet_prefix = kSubnetPrefix;
-  ipconfig_properties->dns_servers = vector<string>{kDNS[0], kDNS[1], kDNS[2]};
+  ipconfig_properties->dns_servers =
+      std::vector<std::string>{kDNS[0], kDNS[1], kDNS[2]};
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
@@ -2299,11 +2300,11 @@ TEST_P(CellularTest, GetGeolocationObjects) {
   static const Cellular::LocationInfo kBadLocations[] = {{"wat", "", "", ""},
                                                          {"", "", "", ""}};
 
-  vector<GeolocationInfo> objects;
+  std::vector<GeolocationInfo> objects;
 
   for (const auto& location : kGoodLocations) {
-    string raw_location = location.mcc + "," + location.mnc + "," +
-                          location.lac + "," + location.ci;
+    std::string raw_location = location.mcc + "," + location.mnc + "," +
+                               location.lac + "," + location.ci;
     Error error;
 
     GeolocationInfo expected_info;
@@ -2320,8 +2321,8 @@ TEST_P(CellularTest, GetGeolocationObjects) {
   }
 
   for (const auto& location : kBadLocations) {
-    string raw_location = location.mcc + "," + location.mnc + "," +
-                          location.lac + "," + location.ci;
+    std::string raw_location = location.mcc + "," + location.mnc + "," +
+                               location.lac + "," + location.ci;
     Error error;
     GeolocationInfo empty_info;
 

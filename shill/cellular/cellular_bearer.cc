@@ -14,14 +14,11 @@
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/logging.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const CellularBearer* c) {
+static std::string ObjectID(const CellularBearer* c) {
   return "(cellular_bearer)";
 }
 }  // namespace Logging
@@ -54,7 +51,7 @@ IPConfig::Method ConvertMMBearerIPConfigMethod(uint32_t method) {
 
 CellularBearer::CellularBearer(ControlInterface* control_interface,
                                const RpcIdentifier& dbus_path,
-                               const string& dbus_service)
+                               const std::string& dbus_service)
     : control_interface_(control_interface),
       dbus_path_(dbus_path),
       dbus_service_(dbus_service) {
@@ -105,8 +102,8 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   if (*ipconfig_method != IPConfig::kMethodStatic)
     return;
 
-  if (!properties.Contains<string>(kPropertyAddress) ||
-      !properties.Contains<string>(kPropertyGateway)) {
+  if (!properties.Contains<std::string>(kPropertyAddress) ||
+      !properties.Contains<std::string>(kPropertyGateway)) {
     SLOG(this, 2) << "Bearer '" << dbus_path_.value()
                   << "' static IP configuration does not specify valid "
                      "address/gateway information.";
@@ -116,8 +113,10 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   ipconfig_properties->reset(new IPConfig::Properties);
   (*ipconfig_properties)->address_family = address_family;
-  (*ipconfig_properties)->address = properties.Get<string>(kPropertyAddress);
-  (*ipconfig_properties)->gateway = properties.Get<string>(kPropertyGateway);
+  (*ipconfig_properties)->address =
+      properties.Get<std::string>(kPropertyAddress);
+  (*ipconfig_properties)->gateway =
+      properties.Get<std::string>(kPropertyGateway);
 
   // Set method string for kMethodStatic
   if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
@@ -134,17 +133,17 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   }
   (*ipconfig_properties)->subnet_prefix = prefix;
 
-  if (properties.Contains<string>(kPropertyDNS1)) {
+  if (properties.Contains<std::string>(kPropertyDNS1)) {
     (*ipconfig_properties)
-        ->dns_servers.push_back(properties.Get<string>(kPropertyDNS1));
+        ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS1));
   }
-  if (properties.Contains<string>(kPropertyDNS2)) {
+  if (properties.Contains<std::string>(kPropertyDNS2)) {
     (*ipconfig_properties)
-        ->dns_servers.push_back(properties.Get<string>(kPropertyDNS2));
+        ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS2));
   }
-  if (properties.Contains<string>(kPropertyDNS3)) {
+  if (properties.Contains<std::string>(kPropertyDNS3)) {
     (*ipconfig_properties)
-        ->dns_servers.push_back(properties.Get<string>(kPropertyDNS3));
+        ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS3));
   }
   if (properties.Contains<uint32_t>(kPropertyMtu)) {
     uint32_t mtu = properties.Get<uint32_t>(kPropertyMtu);
@@ -178,7 +177,7 @@ void CellularBearer::UpdateProperties() {
 }
 
 void CellularBearer::OnPropertiesChanged(
-    const string& interface, const KeyValueStore& changed_properties) {
+    const std::string& interface, const KeyValueStore& changed_properties) {
   SLOG(this, 3) << __func__ << ": path=" << dbus_path_.value()
                 << ", interface=" << interface;
 
@@ -189,9 +188,9 @@ void CellularBearer::OnPropertiesChanged(
     connected_ = changed_properties.Get<bool>(MM_BEARER_PROPERTY_CONNECTED);
   }
 
-  if (changed_properties.Contains<string>(MM_BEARER_PROPERTY_INTERFACE)) {
+  if (changed_properties.Contains<std::string>(MM_BEARER_PROPERTY_INTERFACE)) {
     data_interface_ =
-        changed_properties.Get<string>(MM_BEARER_PROPERTY_INTERFACE);
+        changed_properties.Get<std::string>(MM_BEARER_PROPERTY_INTERFACE);
   }
 
   if (changed_properties.Contains<KeyValueStore>(

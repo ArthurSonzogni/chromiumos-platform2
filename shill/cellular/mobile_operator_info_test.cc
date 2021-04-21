@@ -20,12 +20,6 @@
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
 
-using base::FilePath;
-using shill::mobile_operator_db::MobileOperatorDB;
-using std::map;
-using std::set;
-using std::string;
-using std::vector;
 using testing::Mock;
 using testing::Test;
 using testing::Values;
@@ -58,10 +52,10 @@ enum EventCheckingPolicy {
   kEventCheckingPolicyNonStrict
 };
 
-FilePath GetTestProtoPath(const string& file) {
+base::FilePath GetTestProtoPath(const std::string& file) {
   const char* out_dir = getenv("OUT");
   CHECK_NE(out_dir, nullptr);
-  return FilePath(out_dir).Append(file);
+  return base::FilePath(out_dir).Append(file);
 }
 
 }  // namespace
@@ -83,9 +77,9 @@ class MobileOperatorInfoInitTest : public Test {
       delete;
 
  protected:
-  bool SetUpDatabase(const vector<string>& files) {
+  bool SetUpDatabase(const std::vector<std::string>& files) {
     operator_info_->ClearDatabasePaths();
-    for (const string& file : files) {
+    for (const auto& file : files) {
       operator_info_->AddDatabasePath(GetTestProtoPath(file));
     }
     return operator_info_->Init();
@@ -96,7 +90,7 @@ class MobileOperatorInfoInitTest : public Test {
     EXPECT_EQ(0, operator_info_impl_->database()->mvno_size());
   }
 
-  const MobileOperatorDB* GetDatabase() {
+  const shill::mobile_operator_db::MobileOperatorDB* GetDatabase() {
     return operator_info_impl_->database();
   }
 
@@ -178,13 +172,13 @@ class MobileOperatorInfoMainTest
  protected:
   // ///////////////////////////////////////////////////////////////////////////
   // Helper functions.
-  void VerifyMNOWithUUID(const string& uuid) {
+  void VerifyMNOWithUUID(const std::string& uuid) {
     EXPECT_TRUE(operator_info_->IsMobileNetworkOperatorKnown());
     EXPECT_FALSE(operator_info_->IsMobileVirtualNetworkOperatorKnown());
     EXPECT_EQ(uuid, operator_info_->uuid());
   }
 
-  void VerifyMVNOWithUUID(const string& uuid) {
+  void VerifyMVNOWithUUID(const std::string& uuid) {
     EXPECT_TRUE(operator_info_->IsMobileNetworkOperatorKnown());
     EXPECT_TRUE(operator_info_->IsMobileVirtualNetworkOperatorKnown());
     EXPECT_EQ(uuid, operator_info_->uuid());
@@ -1113,8 +1107,8 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     EXPECT_EQ(activation_code_, operator_info_->activation_code());
 
     EXPECT_EQ(mccmnc_list_.size(), operator_info_->mccmnc_list().size());
-    set<string> mccmnc_set(operator_info_->mccmnc_list().begin(),
-                           operator_info_->mccmnc_list().end());
+    std::set<std::string> mccmnc_set(operator_info_->mccmnc_list().begin(),
+                                     operator_info_->mccmnc_list().end());
     for (const auto& mccmnc : mccmnc_list_) {
       EXPECT_TRUE(mccmnc_set.find(mccmnc) != mccmnc_set.end());
     }
@@ -1129,7 +1123,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
 
     // This comparison breaks if two apns have the same |apn| field.
     EXPECT_EQ(apn_list_.size(), operator_info_->apn_list().size());
-    map<string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
+    std::map<std::string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
     for (const auto& apn_node : operator_info_->apn_list()) {
       mobile_apns[apn_node->apn] = apn_node.get();
     }
@@ -1146,7 +1140,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
 
     EXPECT_EQ(olp_list_.size(), operator_info_->olp_list().size());
     // This comparison breaks if two OLPs have the same |url|.
-    map<string, MobileOperatorInfo::OnlinePortal> olps;
+    std::map<std::string, MobileOperatorInfo::OnlinePortal> olps;
     for (const auto& olp : operator_info_->olp_list()) {
       olps[olp.url] = olp;
     }
@@ -1158,8 +1152,8 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     }
 
     EXPECT_EQ(sid_list_.size(), operator_info_->sid_list().size());
-    set<string> sid_set(operator_info_->sid_list().begin(),
-                        operator_info_->sid_list().end());
+    std::set<std::string> sid_set(operator_info_->sid_list().begin(),
+                                  operator_info_->sid_list().end());
     for (const auto& sid : sid_list_) {
       EXPECT_TRUE(sid_set.find(sid) != sid_set.end());
     }
@@ -1175,10 +1169,12 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   void VerifyUserData() { EXPECT_EQ(sid_, operator_info_->sid()); }
 
   void VerifyNameListsMatch(
-      const vector<MobileOperatorInfo::LocalizedName>& operator_name_list_lhs,
-      const vector<MobileOperatorInfo::LocalizedName>& operator_name_list_rhs) {
+      const std::vector<MobileOperatorInfo::LocalizedName>&
+          operator_name_list_lhs,
+      const std::vector<MobileOperatorInfo::LocalizedName>&
+          operator_name_list_rhs) {
     // This comparison breaks if two localized names have the same |name|.
-    map<string, MobileOperatorInfo::LocalizedName> localized_names;
+    std::map<std::string, MobileOperatorInfo::LocalizedName> localized_names;
     for (const auto& localized_name : operator_name_list_rhs) {
       localized_names[localized_name.name] = localized_name;
     }
@@ -1234,18 +1230,18 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   }
 
   // Data to be verified against the database.
-  string country_;
+  std::string country_;
   bool requires_roaming_;
   int32_t mtu_;
-  string activation_code_;
-  vector<string> mccmnc_list_;
-  vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
+  std::string activation_code_;
+  std::vector<std::string> mccmnc_list_;
+  std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list_;
-  vector<MobileOperatorInfo::OnlinePortal> olp_list_;
-  vector<string> sid_list_;
+  std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
+  std::vector<std::string> sid_list_;
 
   // Extra data to be verified only against user updates.
-  string sid_;
+  std::string sid_;
 };
 
 TEST_P(MobileOperatorInfoDataTest, MNODetailedInformation) {
@@ -1305,11 +1301,11 @@ TEST_P(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   // - match MVNO.
   // - send updates to properties and verify events are raised and values of
   //   updated properties override the ones provided by the database.
-  string imsi{"2009991234512345"};
-  string iccid{"200999123456789"};
-  string olp_url{"url@url.com"};
-  string olp_method{"POST"};
-  string olp_post_data{"data"};
+  std::string imsi{"2009991234512345"};
+  std::string iccid{"200999123456789"};
+  std::string olp_url{"url@url.com"};
+  std::string olp_method{"POST"};
+  std::string olp_post_data{"data"};
 
   // Determine MVNO.
   ExpectEventCount(2);
@@ -1341,12 +1337,12 @@ TEST_P(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
   // - Then identify an MNO and MVNO.
   // - verify that all the earlier updates are cached, and override the MVNO
   //   information.
-  string imsi{"2009991234512345"};
-  string iccid{"200999123456789"};
-  string sid{"200999"};
-  string olp_url{"url@url.com"};
-  string olp_method{"POST"};
-  string olp_post_data{"data"};
+  std::string imsi{"2009991234512345"};
+  std::string iccid{"200999123456789"};
+  std::string sid{"200999"};
+  std::string olp_url{"url@url.com"};
+  std::string olp_method{"POST"};
+  std::string olp_post_data{"data"};
 
   // Send updates.
   ExpectEventCount(0);
@@ -1614,7 +1610,8 @@ TEST_P(MobileOperatorInfoObserverTest, LateObserver) {
 }
 
 class MobileOperatorInfoOverrideTest
-    : public ::testing::TestWithParam<vector<std::pair<string, string>>> {
+    : public ::testing::TestWithParam<
+          std::vector<std::pair<std::string, std::string>>> {
  public:
   MobileOperatorInfoOverrideTest()
       : operator_info_impl_(new MobileOperatorInfoImpl(
@@ -1626,11 +1623,11 @@ class MobileOperatorInfoOverrideTest
   void SetUp() override { EXPECT_TRUE(operator_info_impl_->Init()); }
 
  protected:
-  void VerifyAPNForMCCMNC(const string& mccmnc, const string& apn) {
+  void VerifyAPNForMCCMNC(const std::string& mccmnc, const std::string& apn) {
     UpdateMCCMNC(mccmnc);
     EXPECT_TRUE(operator_info_impl_->IsMobileNetworkOperatorKnown());
     EXPECT_FALSE(operator_info_impl_->IsMobileVirtualNetworkOperatorKnown());
-    map<string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
+    std::map<std::string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
 
     bool found_apn = false;
     for (const auto& apn_node : operator_info_impl_->apn_list()) {
@@ -1642,7 +1639,7 @@ class MobileOperatorInfoOverrideTest
     ASSERT_TRUE(found_apn);
   }
 
-  void UpdateMCCMNC(const string& mccmnc) {
+  void UpdateMCCMNC(const std::string& mccmnc) {
     operator_info_impl_->UpdateMCCMNC(mccmnc);
   }
 
@@ -1671,7 +1668,7 @@ INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoObserverTestInstance,
                          MobileOperatorInfoObserverTest,
                          Values(kEventCheckingPolicyStrict));
 
-vector<std::pair<string, string>> kMccmncApnPairs = {
+std::vector<std::pair<std::string, std::string>> kMccmncApnPairs = {
     {"00", "zeroes_override"}, {"00", "twosies_override"},
     {"01", "zeros_default"},   {"01", "onesies_default"},
     {"02", "zeroes_override"}, {"02", "twosies_override"}};

@@ -22,27 +22,11 @@
 #include "shill/logging.h"
 #include "shill/protobuf_lite_streams.h"
 
-using base::Bind;
-using base::FilePath;
-using base::PathExists;
-using google::protobuf::RepeatedPtrField;
-using google::protobuf::io::CopyingInputStreamAdaptor;
-using shill::mobile_operator_db::Data;
-using shill::mobile_operator_db::Filter;
-using shill::mobile_operator_db::FilterRange;
-using shill::mobile_operator_db::LocalizedName;
-using shill::mobile_operator_db::MobileAPN;
-using shill::mobile_operator_db::MobileNetworkOperator;
-using shill::mobile_operator_db::MobileOperatorDB;
-using shill::mobile_operator_db::MobileVirtualNetworkOperator;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const MobileOperatorInfoImpl* m) {
+static std::string ObjectID(const MobileOperatorInfoImpl* m) {
   return "(mobile_operator_info_impl)";
 }
 }  // namespace Logging
@@ -58,14 +42,15 @@ const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
 namespace {
 
 // Wrap some low level functions from the GNU regex librarly.
-string GetRegError(int code, const regex_t* compiled) {
+std::string GetRegError(int code, const regex_t* compiled) {
   size_t length = regerror(code, compiled, nullptr, 0);
-  vector<char> buffer(length);
+  std::vector<char> buffer(length);
   DCHECK_EQ(length, regerror(code, compiled, buffer.data(), length));
   return buffer.data();
 }
 
-string GetApnAuthentication(const MobileAPN& apn) {
+std::string GetApnAuthentication(
+    const shill::mobile_operator_db::MobileAPN& apn) {
   if (apn.has_authentication()) {
     switch (apn.authentication()) {
       case mobile_operator_db::MobileAPN_Authentication_PAP:
@@ -76,10 +61,11 @@ string GetApnAuthentication(const MobileAPN& apn) {
         break;
     }
   }
-  return string();
+  return std::string();
 }
 
-base::Optional<string> GetIpType(const MobileAPN& apn) {
+base::Optional<std::string> GetIpType(
+    const shill::mobile_operator_db::MobileAPN& apn) {
   if (!apn.has_ip_type()) {
     return kApnIpTypeV4;
   }
@@ -100,10 +86,11 @@ base::Optional<string> GetIpType(const MobileAPN& apn) {
 
 }  // namespace
 
-MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
-                                               const string& info_owner,
-                                               const FilePath& default_db_path,
-                                               const FilePath& override_db_path)
+MobileOperatorInfoImpl::MobileOperatorInfoImpl(
+    EventDispatcher* dispatcher,
+    const std::string& info_owner,
+    const base::FilePath& default_db_path,
+    const base::FilePath& override_db_path)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
       operator_code_type_(OperatorCodeType::kUnknown),
@@ -114,14 +101,14 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
   // Overrides need to be installed before defaults
-  if (PathExists(override_db_path)) {
+  if (base::PathExists(override_db_path)) {
     AddDatabasePath(override_db_path);
   }
   AddDatabasePath(default_db_path);
 }
 
 MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
-                                               const string& info_owner)
+                                               const std::string& info_owner)
     : MobileOperatorInfoImpl::MobileOperatorInfoImpl(
           dispatcher,
           info_owner,
@@ -134,18 +121,20 @@ void MobileOperatorInfoImpl::ClearDatabasePaths() {
   database_paths_.clear();
 }
 
-void MobileOperatorInfoImpl::AddDatabasePath(const FilePath& absolute_path) {
+void MobileOperatorInfoImpl::AddDatabasePath(
+    const base::FilePath& absolute_path) {
   database_paths_.push_back(absolute_path);
 }
 
 bool MobileOperatorInfoImpl::Init() {
   // |database_| is guaranteed to be set once |Init| is called.
-  database_.reset(new MobileOperatorDB());
+  database_.reset(new shill::mobile_operator_db::MobileOperatorDB());
 
   bool found_databases = false;
   for (const auto& database_path : database_paths_) {
     const char* database_path_cstr = database_path.value().c_str();
-    std::unique_ptr<CopyingInputStreamAdaptor> database_stream;
+    std::unique_ptr<google::protobuf::io::CopyingInputStreamAdaptor>
+        database_stream;
     database_stream.reset(protobuf_lite_file_input_stream(database_path_cstr));
     if (!database_stream) {
       LOG(ERROR) << "Failed to read mobile operator database: "
@@ -153,7 +142,7 @@ bool MobileOperatorInfoImpl::Init() {
       continue;
     }
 
-    MobileOperatorDB database;
+    shill::mobile_operator_db::MobileOperatorDB database;
     if (!database.ParseFromZeroCopyStream(database_stream.get())) {
       LOG(ERROR) << "Could not parse mobile operator database: "
                  << database_path_cstr;
@@ -198,43 +187,43 @@ bool MobileOperatorInfoImpl::IsMobileVirtualNetworkOperatorKnown() const {
 
 // ///////////////////////////////////////////////////////////////////////////
 // Getters.
-const string& MobileOperatorInfoImpl::info_owner() const {
+const std::string& MobileOperatorInfoImpl::info_owner() const {
   return info_owner_;
 }
 
-const string& MobileOperatorInfoImpl::uuid() const {
+const std::string& MobileOperatorInfoImpl::uuid() const {
   return uuid_;
 }
 
-const string& MobileOperatorInfoImpl::operator_name() const {
+const std::string& MobileOperatorInfoImpl::operator_name() const {
   return operator_name_;
 }
 
-const string& MobileOperatorInfoImpl::country() const {
+const std::string& MobileOperatorInfoImpl::country() const {
   return country_;
 }
 
-const string& MobileOperatorInfoImpl::mccmnc() const {
+const std::string& MobileOperatorInfoImpl::mccmnc() const {
   return mccmnc_;
 }
 
-const string& MobileOperatorInfoImpl::MobileOperatorInfoImpl::sid() const {
+const std::string& MobileOperatorInfoImpl::MobileOperatorInfoImpl::sid() const {
   return sid_;
 }
 
-const string& MobileOperatorInfoImpl::nid() const {
+const std::string& MobileOperatorInfoImpl::nid() const {
   return (user_nid_ == "") ? nid_ : user_nid_;
 }
 
-const vector<string>& MobileOperatorInfoImpl::mccmnc_list() const {
+const std::vector<std::string>& MobileOperatorInfoImpl::mccmnc_list() const {
   return mccmnc_list_;
 }
 
-const vector<string>& MobileOperatorInfoImpl::sid_list() const {
+const std::vector<std::string>& MobileOperatorInfoImpl::sid_list() const {
   return sid_list_;
 }
 
-const vector<MobileOperatorInfo::LocalizedName>&
+const std::vector<MobileOperatorInfo::LocalizedName>&
 MobileOperatorInfoImpl::operator_name_list() const {
   return operator_name_list_;
 }
@@ -244,12 +233,12 @@ MobileOperatorInfoImpl::apn_list() const {
   return apn_list_;
 }
 
-const vector<MobileOperatorInfo::OnlinePortal>&
+const std::vector<MobileOperatorInfo::OnlinePortal>&
 MobileOperatorInfoImpl::olp_list() const {
   return olp_list_;
 }
 
-const string& MobileOperatorInfoImpl::activation_code() const {
+const std::string& MobileOperatorInfoImpl::activation_code() const {
   return activation_code_;
 }
 
@@ -263,7 +252,7 @@ int32_t MobileOperatorInfoImpl::mtu() const {
 
 // ///////////////////////////////////////////////////////////////////////////
 // Functions used to notify this object of operator data changes.
-void MobileOperatorInfoImpl::UpdateIMSI(const string& imsi) {
+void MobileOperatorInfoImpl::UpdateIMSI(const std::string& imsi) {
   bool operator_changed = false;
   if (user_imsi_ == imsi) {
     return;
@@ -296,7 +285,7 @@ void MobileOperatorInfoImpl::UpdateIMSI(const string& imsi) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateICCID(const string& iccid) {
+void MobileOperatorInfoImpl::UpdateICCID(const std::string& iccid) {
   if (user_iccid_ == iccid) {
     return;
   }
@@ -309,7 +298,7 @@ void MobileOperatorInfoImpl::UpdateICCID(const string& iccid) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateMCCMNC(const string& mccmnc) {
+void MobileOperatorInfoImpl::UpdateMCCMNC(const std::string& mccmnc) {
   if (user_mccmnc_ == mccmnc) {
     return;
   }
@@ -329,7 +318,7 @@ void MobileOperatorInfoImpl::UpdateMCCMNC(const string& mccmnc) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateSID(const string& sid) {
+void MobileOperatorInfoImpl::UpdateSID(const std::string& sid) {
   if (user_sid_ == sid) {
     return;
   }
@@ -349,7 +338,7 @@ void MobileOperatorInfoImpl::UpdateSID(const string& sid) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateNID(const string& nid) {
+void MobileOperatorInfoImpl::UpdateNID(const std::string& nid) {
   if (user_nid_ == nid) {
     return;
   }
@@ -360,7 +349,8 @@ void MobileOperatorInfoImpl::UpdateNID(const string& nid) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateOperatorName(const string& operator_name) {
+void MobileOperatorInfoImpl::UpdateOperatorName(
+    const std::string& operator_name) {
   bool operator_changed = false;
   if (user_operator_name_ == operator_name) {
     return;
@@ -394,9 +384,9 @@ void MobileOperatorInfoImpl::UpdateOperatorName(const string& operator_name) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateOnlinePortal(const string& url,
-                                                const string& method,
-                                                const string& post_data) {
+void MobileOperatorInfoImpl::UpdateOnlinePortal(const std::string& url,
+                                                const std::string& method,
+                                                const std::string& post_data) {
   if (!user_olp_empty_ && user_olp_.url == url && user_olp_.method == method &&
       user_olp_.post_data == post_data) {
     return;
@@ -448,24 +438,23 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
   sid_to_mnos_.clear();
   name_to_mnos_.clear();
 
-  const RepeatedPtrField<MobileNetworkOperator>& mnos = database_->mno();
+  const auto& mnos = database_->mno();
   for (const auto& mno : mnos) {
     // MobileNetworkOperator::data is a required field.
     DCHECK(mno.has_data());
-    const Data& data = mno.data();
+    const auto& data = mno.data();
 
-    const RepeatedPtrField<string>& mccmncs = data.mccmnc();
+    const auto& mccmncs = data.mccmnc();
     for (const auto& mccmnc : mccmncs) {
       InsertIntoStringToMNOListMap(&mccmnc_to_mnos_, mccmnc, &mno);
     }
 
-    const RepeatedPtrField<string>& sids = data.sid();
+    const auto& sids = data.sid();
     for (const auto& sid : sids) {
       InsertIntoStringToMNOListMap(&sid_to_mnos_, sid, &mno);
     }
 
-    const RepeatedPtrField<LocalizedName>& localized_names =
-        data.localized_name();
+    const auto& localized_names = data.localized_name();
     for (const auto& localized_name : localized_names) {
       // LocalizedName::name is a required field.
       DCHECK(localized_name.has_name());
@@ -480,12 +469,13 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
 // |value|s, and two copies will get stored.
 void MobileOperatorInfoImpl::InsertIntoStringToMNOListMap(
     StringToMNOListMap* table,
-    const string& key,
-    const MobileNetworkOperator* value) {
+    const std::string& key,
+    const shill::mobile_operator_db::MobileNetworkOperator* value) {
   (*table)[key].push_back(value);
 }
 
-bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(const string& mccmnc) {
+bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(
+    const std::string& mccmnc) {
   // First check that we haven't determined candidates using SID.
   if (operator_code_type_ == OperatorCodeType::kSID) {
     LOG(WARNING) << "SID update will be overridden by the MCCMNC update for "
@@ -508,7 +498,7 @@ bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(const string& mccmnc) {
   return true;
 }
 
-bool MobileOperatorInfoImpl::AppendToCandidatesBySID(const string& sid) {
+bool MobileOperatorInfoImpl::AppendToCandidatesBySID(const std::string& sid) {
   // First check that we haven't determined candidates using MCCMNC.
   if (operator_code_type_ == OperatorCodeType::kMCCMNC) {
     LOG(WARNING) << "MCCMNC update will be overriden by the SID update for "
@@ -531,7 +521,7 @@ bool MobileOperatorInfoImpl::AppendToCandidatesBySID(const string& sid) {
   return true;
 }
 
-string MobileOperatorInfoImpl::OperatorCodeString() const {
+std::string MobileOperatorInfoImpl::OperatorCodeString() const {
   switch (operator_code_type_) {
     case OperatorCodeType::kMCCMNC:
       return "MCCMNC";
@@ -544,7 +534,7 @@ string MobileOperatorInfoImpl::OperatorCodeString() const {
 
 bool MobileOperatorInfoImpl::UpdateMNO() {
   SLOG(this, 3) << __func__;
-  const MobileNetworkOperator* candidate = nullptr;
+  const shill::mobile_operator_db::MobileNetworkOperator* candidate = nullptr;
 
   // The only way |operator_code_type_| can be |OperatorCodeType::kUnknown| is
   // that we haven't received any operator_code updates yet.
@@ -579,7 +569,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
         }
       }
       if (!found_match) {
-        const string& operator_code =
+        const std::string& operator_code =
             (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_
                                                                : user_sid_;
         SLOG(this, 1) << "MNO determined by " << OperatorCodeString() << " ["
@@ -604,7 +594,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
       }
     }
     if (candidate == nullptr) {
-      const string& operator_code =
+      const std::string& operator_code =
           (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_
                                                              : user_sid_;
       SLOG(this, 1) << "MNOs suggested by " << OperatorCodeString() << " ["
@@ -645,7 +635,8 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
 bool MobileOperatorInfoImpl::UpdateMVNO() {
   SLOG(this, 3) << __func__;
 
-  vector<const MobileVirtualNetworkOperator*> candidate_mvnos;
+  std::vector<const shill::mobile_operator_db::MobileVirtualNetworkOperator*>
+      candidate_mvnos;
   for (const auto& mvno : database_->mvno()) {
     candidate_mvnos.push_back(&mvno);
   }
@@ -682,8 +673,10 @@ bool MobileOperatorInfoImpl::UpdateMVNO() {
   return false;
 }
 
-const MobileNetworkOperator* MobileOperatorInfoImpl::PickOneFromDuplicates(
-    const vector<const MobileNetworkOperator*>& duplicates) const {
+const shill::mobile_operator_db::MobileNetworkOperator*
+MobileOperatorInfoImpl::PickOneFromDuplicates(
+    const std::vector<const shill::mobile_operator_db::MobileNetworkOperator*>&
+        duplicates) const {
   if (duplicates.empty())
     return nullptr;
 
@@ -698,9 +691,10 @@ const MobileNetworkOperator* MobileOperatorInfoImpl::PickOneFromDuplicates(
   return duplicates[0];
 }
 
-bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
+bool MobileOperatorInfoImpl::FilterMatches(
+    const shill::mobile_operator_db::Filter& filter) {
   DCHECK(filter.has_regex() || filter.range_size());
-  string to_match;
+  std::string to_match;
   switch (filter.type()) {
     case mobile_operator_db::Filter_Type_IMSI:
       to_match = user_imsi_;
@@ -751,7 +745,7 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
   // Must use GNU regex implementation, since C++11 implementation is
   // incomplete.
   regex_t filter_regex;
-  string filter_regex_str = filter.regex();
+  std::string filter_regex_str = filter.regex();
 
   // |regexec| matches the given regular expression to a substring of the
   // given query string. Ensure that |filter_regex_str| uses anchors to
@@ -775,7 +769,7 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
 
   int regexec_error = regexec(&filter_regex, to_match.c_str(), 0, nullptr, 0);
   if (regexec_error) {
-    string error_string;
+    std::string error_string;
     error_string = GetRegError(regcomp_error, &filter_regex);
     SLOG(this, 2) << "Could not match string " << to_match << " "
                   << "against regexp " << filter.regex() << ". "
@@ -826,7 +820,8 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   mtu_ = IPConfig::kUndefinedMTU;
 }
 
-void MobileOperatorInfoImpl::ReloadData(const Data& data) {
+void MobileOperatorInfoImpl::ReloadData(
+    const shill::mobile_operator_db::Data& data) {
   SLOG(this, 3) << __func__;
   // |uuid_| is *always* overwritten. An MNO and MVNO should not share the
   // |uuid_|.
@@ -885,7 +880,7 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
       apn->authentication = GetApnAuthentication(apn_data);
       apn->is_attach_apn =
           apn_data.has_is_attach_apn() ? apn_data.is_attach_apn() : false;
-      base::Optional<string> ip_type = GetIpType(apn_data);
+      base::Optional<std::string> ip_type = GetIpType(apn_data);
       if (!ip_type.has_value()) {
         LOG(INFO) << "Unknown IP type for APN \"" << apn_data.apn() << "\"";
         continue;
@@ -1007,8 +1002,8 @@ void MobileOperatorInfoImpl::PostNotifyOperatorChanged() {
   SLOG(this, 3) << __func__;
   // If there was an outstanding task, it will get replaced.
   notify_operator_changed_task_.Reset(
-      Bind(&MobileOperatorInfoImpl::NotifyOperatorChanged,
-           weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&MobileOperatorInfoImpl::NotifyOperatorChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostTask(FROM_HERE, notify_operator_changed_task_.callback());
 }
 
@@ -1022,8 +1017,9 @@ bool MobileOperatorInfoImpl::ShouldNotifyPropertyUpdate() const {
          IsMobileVirtualNetworkOperatorKnown();
 }
 
-string MobileOperatorInfoImpl::NormalizeOperatorName(const string& name) const {
-  string result = base::ToLowerASCII(name);
+std::string MobileOperatorInfoImpl::NormalizeOperatorName(
+    const std::string& name) const {
+  auto result = base::ToLowerASCII(name);
   base::RemoveChars(result, base::kWhitespaceASCII, &result);
   return result;
 }

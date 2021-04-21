@@ -11,14 +11,11 @@
 #include "shill/logging.h"
 #include "shill/store_interface.h"
 
-using base::FilePath;
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const PendingActivationStore* p) {
+static std::string ObjectID(const PendingActivationStore* p) {
   return "(pending_activation_store)";
 }
 }  // namespace Logging
@@ -38,7 +35,7 @@ PendingActivationStore::~PendingActivationStore() {
 
 namespace {
 
-string StateToString(PendingActivationStore::State state) {
+std::string StateToString(PendingActivationStore::State state) {
   switch (state) {
     case PendingActivationStore::kStateUnknown:
       return "Unknown";
@@ -51,9 +48,9 @@ string StateToString(PendingActivationStore::State state) {
   }
 }
 
-string FormattedIdentifier(PendingActivationStore::IdentifierType type,
-                           const string& identifier) {
-  string label;
+std::string FormattedIdentifier(PendingActivationStore::IdentifierType type,
+                                const std::string& identifier) {
+  std::string label;
   switch (type) {
     case PendingActivationStore::kIdentifierICCID:
       label = "ICCID";
@@ -70,7 +67,8 @@ string FormattedIdentifier(PendingActivationStore::IdentifierType type,
 }  // namespace
 
 // static
-string PendingActivationStore::IdentifierTypeToGroupId(IdentifierType type) {
+std::string PendingActivationStore::IdentifierTypeToGroupId(
+    IdentifierType type) {
   switch (type) {
     case kIdentifierICCID:
       return kIccidGroupId;
@@ -82,7 +80,7 @@ string PendingActivationStore::IdentifierTypeToGroupId(IdentifierType type) {
   }
 }
 
-bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
+bool PendingActivationStore::InitStorage(const base::FilePath& storage_path) {
   // Close the current file.
   if (storage_) {
     storage_->Flush();
@@ -92,7 +90,7 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
     LOG(ERROR) << "Empty storage directory path provided.";
     return false;
   }
-  FilePath path = storage_path.Append(kStorageFileName);
+  base::FilePath path = storage_path.Append(kStorageFileName);
   std::unique_ptr<StoreInterface> storage = CreateStore(path);
   bool already_exists = !storage->IsEmpty();
   if (!storage->Open()) {
@@ -108,8 +106,8 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
 }
 
 PendingActivationStore::State PendingActivationStore::GetActivationState(
-    IdentifierType type, const string& identifier) const {
-  string formatted_identifier = FormattedIdentifier(type, identifier);
+    IdentifierType type, const std::string& identifier) const {
+  std::string formatted_identifier = FormattedIdentifier(type, identifier);
   SLOG(this, 2) << __func__ << ": " << formatted_identifier;
   if (!storage_) {
     LOG(ERROR) << "Underlying storage not initialized.";
@@ -129,7 +127,7 @@ PendingActivationStore::State PendingActivationStore::GetActivationState(
 }
 
 bool PendingActivationStore::SetActivationState(IdentifierType type,
-                                                const string& identifier,
+                                                const std::string& identifier,
                                                 State state) {
   SLOG(this, 2) << __func__ << ": State=" << StateToString(state) << ", "
                 << FormattedIdentifier(type, identifier);

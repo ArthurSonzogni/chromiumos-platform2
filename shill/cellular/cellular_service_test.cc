@@ -20,7 +20,6 @@
 #include "shill/mock_profile.h"
 #include "shill/service_property_change_test.h"
 
-using std::string;
 using testing::_;
 using testing::AnyNumber;
 using testing::Mock;
@@ -74,7 +73,7 @@ class CellularServiceTest : public testing::Test {
  protected:
   static const char kAddress[];
 
-  string GetFriendlyName() const { return service_->friendly_name(); }
+  std::string GetFriendlyName() const { return service_->friendly_name(); }
   bool IsAutoConnectable(const char** reason) const {
     return service_->IsAutoConnectable(reason);
   }
@@ -355,10 +354,10 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
 }
 
 TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
-  const string kDefaultUser;
-  const string kDefaultPass;
-  const string kNewUser("new-username");
-  const string kNewPass("new-password");
+  const std::string kDefaultUser;
+  const std::string kDefaultPass;
+  const std::string kNewUser("new-username");
+  const std::string kNewPass("new-password");
   for (const auto change_username : {false, true}) {
     for (const auto change_password : {false, true}) {
       service_->ppp_username_ = kDefaultUser;
@@ -389,8 +388,8 @@ TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
 // with a matching ICCID but an arbitrary storage id and ensures that the older
 // storage_identifer_ value is set.
 TEST_F(CellularServiceTest, LoadFromProfileMatchingIccid) {
-  string initial_storage_id = storage_id_;
-  string matching_storage_id = "another-storage-id";
+  std::string initial_storage_id = storage_id_;
+  std::string matching_storage_id = "another-storage-id";
   storage_.DeleteGroup(initial_storage_id);
   storage_.SetString(matching_storage_id, CellularService::kStorageType,
                      kTypeCellular);
@@ -404,9 +403,9 @@ TEST_F(CellularServiceTest, LoadFromProfileMatchingIccid) {
 }
 
 TEST_F(CellularServiceTest, LoadFromFirstOfMultipleMatchingProfiles) {
-  string initial_storage_id = storage_id_;
-  string matching_storage_ids[] = {"another-storage-id1", "another-storage-id2",
-                                   "another-storage-id3"};
+  std::string initial_storage_id = storage_id_;
+  std::string matching_storage_ids[] = {
+      "another-storage-id1", "another-storage-id2", "another-storage-id3"};
   storage_.DeleteGroup(initial_storage_id);
   for (auto& matching_storage_id : matching_storage_ids) {
     storage_.SetString(matching_storage_id, CellularService::kStorageType,
@@ -522,7 +521,7 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   service_->SetActivationState(kActivationStateNotActivated);
   Mock::VerifyAndClearExpectations(adaptor_);
 
-  string network_technology = service_->network_technology();
+  std::string network_technology = service_->network_technology();
   EXPECT_CALL(*adaptor_, EmitStringChanged(kNetworkTechnologyProperty, _));
   service_->SetNetworkTechnology(network_technology + "and some new stuff");
   Mock::VerifyAndClearExpectations(adaptor_);
@@ -534,7 +533,7 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   service_->NotifySubscriptionStateChanged(SubscriptionState::kProvisioned);
   Mock::VerifyAndClearExpectations(adaptor_);
 
-  string roaming_state = service_->roaming_state();
+  std::string roaming_state = service_->roaming_state();
   EXPECT_CALL(*adaptor_, EmitStringChanged(kRoamingStateProperty, _));
   service_->SetRoamingState(roaming_state + "and some new stuff");
   Mock::VerifyAndClearExpectations(adaptor_);

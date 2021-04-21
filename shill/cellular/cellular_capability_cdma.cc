@@ -18,21 +18,18 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const CellularCapabilityCdma* c) {
+static std::string ObjectID(const CellularCapabilityCdma* c) {
   return c->cellular()->GetRpcIdentifier().value();
 }
 }  // namespace Logging
 
 namespace {
 
-string GetActivationStateString(uint32_t state) {
+std::string GetActivationStateString(uint32_t state) {
   switch (state) {
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
       return kActivationStateActivated;
@@ -47,7 +44,7 @@ string GetActivationStateString(uint32_t state) {
   }
 }
 
-string GetActivationErrorString(uint32_t error) {
+std::string GetActivationErrorString(uint32_t error) {
   switch (error) {
     case MM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
       return kErrorNeedEvdo;
@@ -207,7 +204,7 @@ void CellularCapabilityCdma::OnServiceCreated() {
 }
 
 void CellularCapabilityCdma::UpdateServiceActivationStateProperty() {
-  string activation_state;
+  std::string activation_state;
   if (IsActivating())
     activation_state = kActivationStateActivating;
   else if (IsServiceActivationRequired())
@@ -226,8 +223,7 @@ void CellularCapabilityCdma::UpdateServiceOLP() {
     return;
   }
 
-  const vector<MobileOperatorInfo::OnlinePortal>& olp_list =
-      cellular()->serving_operator_info()->olp_list();
+  const auto& olp_list = cellular()->serving_operator_info()->olp_list();
   if (olp_list.empty()) {
     return;
   }
@@ -235,7 +231,7 @@ void CellularCapabilityCdma::UpdateServiceOLP() {
   if (olp_list.size() > 1) {
     SLOG(this, 1) << "Found multiple online portals. Choosing the first.";
   }
-  string post_data = olp_list[0].post_data;
+  std::string post_data = olp_list[0].post_data;
   base::ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}",
                                      cellular()->esn());
   base::ReplaceSubstringsAfterOffset(
@@ -266,11 +262,11 @@ void CellularCapabilityCdma::OnActivationStateChangedSignal(
 
   activation_state_ = static_cast<MMModemCdmaActivationState>(activation_state);
 
-  string value;
-  if (status_changes.Contains<string>("mdn"))
-    cellular()->set_mdn(status_changes.Get<string>("mdn"));
-  if (status_changes.Contains<string>("min"))
-    cellular()->set_min(status_changes.Get<string>("min"));
+  std::string value;
+  if (status_changes.Contains<std::string>("mdn"))
+    cellular()->set_mdn(status_changes.Get<std::string>("mdn"));
+  if (status_changes.Contains<std::string>("min"))
+    cellular()->set_min(status_changes.Get<std::string>("min"));
   SLOG(this, 2) << "Activation state: "
                 << GetActivationStateString(activation_state_);
 
@@ -314,7 +310,7 @@ void CellularCapabilityCdma::HandleNewActivationStatus(uint32_t error) {
   UpdateServiceOLP();
 }
 
-void CellularCapabilityCdma::RegisterOnNetwork(const string& network_id,
+void CellularCapabilityCdma::RegisterOnNetwork(const std::string& network_id,
                                                Error* error,
                                                const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
@@ -347,28 +343,28 @@ void CellularCapabilityCdma::SetupConnectProperties(KeyValueStore* properties) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityCdma::RequirePin(const string& pin,
+void CellularCapabilityCdma::RequirePin(const std::string& pin,
                                         bool require,
                                         Error* error,
                                         const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityCdma::EnterPin(const string& pin,
+void CellularCapabilityCdma::EnterPin(const std::string& pin,
                                       Error* error,
                                       const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityCdma::UnblockPin(const string& unblock_code,
-                                        const string& pin,
+void CellularCapabilityCdma::UnblockPin(const std::string& unblock_code,
+                                        const std::string& pin,
                                         Error* error,
                                         const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityCdma::ChangePin(const string& old_pin,
-                                       const string& new_pin,
+void CellularCapabilityCdma::ChangePin(const std::string& old_pin,
+                                       const std::string& new_pin,
                                        Error* error,
                                        const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
@@ -384,7 +380,7 @@ void CellularCapabilityCdma::Scan(Error* error,
   OnUnsupportedOperation(__func__, error);
 }
 
-string CellularCapabilityCdma::GetRoamingStateString() const {
+std::string CellularCapabilityCdma::GetRoamingStateString() const {
   uint32_t state = cdma_evdo_registration_state_;
   if (state == MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     state = cdma_1x_registration_state_;
@@ -404,7 +400,7 @@ string CellularCapabilityCdma::GetRoamingStateString() const {
 }
 
 void CellularCapabilityCdma::OnPropertiesChanged(
-    const string& interface, const KeyValueStore& changed_properties) {
+    const std::string& interface, const KeyValueStore& changed_properties) {
   SLOG(this, 2) << __func__ << "(" << interface << ")";
   if (interface == MM_DBUS_INTERFACE_MODEM_MODEMCDMA) {
     OnModemCdmaPropertiesChanged(changed_properties);
@@ -416,14 +412,14 @@ void CellularCapabilityCdma::OnPropertiesChanged(
 void CellularCapabilityCdma::OnModemCdmaPropertiesChanged(
     const KeyValueStore& properties) {
   SLOG(this, 2) << __func__;
-  string str_value;
-  if (properties.Contains<string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID)) {
+  std::string str_value;
+  if (properties.Contains<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID)) {
     cellular()->set_meid(
-        properties.Get<string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID));
+        properties.Get<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID));
   }
-  if (properties.Contains<string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN)) {
+  if (properties.Contains<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN)) {
     cellular()->set_esn(
-        properties.Get<string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN));
+        properties.Get<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN));
   }
 
   uint32_t sid = sid_;

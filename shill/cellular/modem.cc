@@ -20,16 +20,11 @@
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
 
-using base::Bind;
-using base::Unretained;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kModem;
-static string ObjectID(const Modem* m) {
+static std::string ObjectID(const Modem* m) {
   return m->path().value().c_str();
 }
 }  // namespace Logging
@@ -40,7 +35,7 @@ const char Modem::kFakeDevAddress[] = "000000000000";
 const int Modem::kFakeDevInterfaceIndex = -1;
 size_t Modem::fake_dev_serial_ = 0;
 
-Modem::Modem(const string& service,
+Modem::Modem(const std::string& service,
              const RpcIdentifier& path,
              ModemInfo* modem_info)
     : service_(service),
@@ -89,10 +84,10 @@ void Modem::CreateDeviceMM1(const InterfaceToProperties& properties) {
   dbus_properties_proxy_ =
       modem_info_->control_interface()->CreateDBusPropertiesProxy(path(),
                                                                   service());
-  dbus_properties_proxy_->SetModemManagerPropertiesChangedCallback(
-      Bind(&Modem::OnModemManagerPropertiesChanged, Unretained(this)));
+  dbus_properties_proxy_->SetModemManagerPropertiesChangedCallback(base::Bind(
+      &Modem::OnModemManagerPropertiesChanged, base::Unretained(this)));
   dbus_properties_proxy_->SetPropertiesChangedCallback(
-      Bind(&Modem::OnPropertiesChanged, Unretained(this)));
+      base::Bind(&Modem::OnPropertiesChanged, base::Unretained(this)));
 
   uint32_t capabilities = std::numeric_limits<uint32_t>::max();
   InterfaceToProperties::const_iterator it =
@@ -121,7 +116,7 @@ void Modem::CreateDeviceMM1(const InterfaceToProperties& properties) {
   CreateDeviceFromModemProperties(properties);
 }
 
-void Modem::OnDeviceInfoAvailable(const string& link_name) {
+void Modem::OnDeviceInfoAvailable(const std::string& link_name) {
   SLOG(this, 1) << __func__ << ": " << link_name
                 << " pending: " << has_pending_device_info_;
   if (has_pending_device_info_ && link_name_ == link_name) {
@@ -133,19 +128,20 @@ void Modem::OnDeviceInfoAvailable(const string& link_name) {
   }
 }
 
-string Modem::GetModemInterface() const {
-  return string(MM_DBUS_INTERFACE_MODEM);
+std::string Modem::GetModemInterface() const {
+  return std::string(MM_DBUS_INTERFACE_MODEM);
 }
 
-bool Modem::GetLinkName(const KeyValueStore& modem_props, string* name) const {
+bool Modem::GetLinkName(const KeyValueStore& modem_props,
+                        std::string* name) const {
   if (!modem_props.ContainsVariant(MM_MODEM_PROPERTY_PORTS)) {
     LOG(ERROR) << "Device missing property: " << MM_MODEM_PROPERTY_PORTS;
     return false;
   }
 
   auto ports = modem_props.GetVariant(MM_MODEM_PROPERTY_PORTS)
-                   .Get<std::vector<std::tuple<string, uint32_t>>>();
-  string net_port;
+                   .Get<std::vector<std::tuple<std::string, uint32_t>>>();
+  std::string net_port;
   for (const auto& port_pair : ports) {
     if (std::get<1>(port_pair) == MM_MODEM_PORT_TYPE_NET) {
       net_port = std::get<0>(port_pair);
@@ -176,7 +172,7 @@ void Modem::CreateDeviceFromModemProperties(
     return;
   }
 
-  string mac_address;
+  std::string mac_address;
   int interface_index = -1;
   if (GetLinkName(properties_it->second, &link_name_)) {
     GetDeviceParams(&mac_address, &interface_index);
@@ -222,7 +218,7 @@ void Modem::CreateDeviceFromModemProperties(
                 << " Enabled: " << device_->enabled();
 }
 
-bool Modem::GetDeviceParams(string* mac_address, int* interface_index) {
+bool Modem::GetDeviceParams(std::string* mac_address, int* interface_index) {
   // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
   // address below.
   *interface_index = rtnl_handler_->GetInterfaceIndex(link_name_);
@@ -240,7 +236,7 @@ bool Modem::GetDeviceParams(string* mac_address, int* interface_index) {
   return true;
 }
 
-void Modem::OnPropertiesChanged(const string& interface,
+void Modem::OnPropertiesChanged(const std::string& interface,
                                 const KeyValueStore& changed_properties) {
   SLOG(this, 3) << __func__;
   if (device_) {
@@ -248,7 +244,7 @@ void Modem::OnPropertiesChanged(const string& interface,
   }
 }
 
-void Modem::OnModemManagerPropertiesChanged(const string& interface,
+void Modem::OnModemManagerPropertiesChanged(const std::string& interface,
                                             const KeyValueStore& properties) {
   SLOG(this, 3) << __func__;
   OnPropertiesChanged(interface, properties);

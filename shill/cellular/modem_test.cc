@@ -30,7 +30,6 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/test_event_dispatcher.h"
 
-using std::string;
 using testing::_;
 using testing::AnyNumber;
 using testing::ByMove;
@@ -232,7 +231,7 @@ TEST_F(ModemTest, CreateDevicePPP) {
 }
 
 TEST_F(ModemTest, GetDeviceParams) {
-  string mac_address;
+  std::string mac_address;
   int interface_index = 2;
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-1));
   EXPECT_CALL(device_info_, GetMacAddress(_, _))

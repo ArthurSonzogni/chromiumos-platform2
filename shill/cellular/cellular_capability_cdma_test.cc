@@ -35,9 +35,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/test_event_dispatcher.h"
 
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using testing::_;
 using testing::Mock;
 using testing::NiceMock;
@@ -175,12 +172,12 @@ class CellularCapabilityCdmaTest : public testing::Test {
   NiceMock<DeviceMockAdaptor>* device_adaptor_;
   MockModemInfo modem_info_;
   // TODO(armansito): Remove |modem_3gpp_proxy_| after refactor.
-  unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
-  unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
-  unique_ptr<mm1::MockModemProxy> modem_proxy_;
-  unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
-  unique_ptr<mm1::MockSimProxy> sim_proxy_;
-  unique_ptr<DBusPropertiesProxy> properties_proxy_;
+  std::unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
+  std::unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
+  std::unique_ptr<mm1::MockModemProxy> modem_proxy_;
+  std::unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
+  std::unique_ptr<mm1::MockSimProxy> sim_proxy_;
+  std::unique_ptr<DBusPropertiesProxy> properties_proxy_;
   CellularRefPtr cellular_;
   MockCellularService* service_;
 
@@ -208,8 +205,9 @@ class CellularCapabilityCdmaMainTest : public CellularCapabilityCdmaTest {
 TEST_F(CellularCapabilityCdmaMainTest, PropertiesChanged) {
   // Set up mock modem CDMA properties.
   KeyValueStore modem_cdma_properties;
-  modem_cdma_properties.Set<string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID, kMeid);
-  modem_cdma_properties.Set<string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN, kEsn);
+  modem_cdma_properties.Set<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID,
+                                         kMeid);
+  modem_cdma_properties.Set<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN, kEsn);
 
   EXPECT_TRUE(cellular_->meid().empty());
   EXPECT_TRUE(cellular_->esn().empty());
@@ -259,9 +257,9 @@ TEST_F(CellularCapabilityCdmaMainTest, OnCdmaRegistrationChanged) {
 TEST_F(CellularCapabilityCdmaMainTest, UpdateServiceOLP) {
   const MobileOperatorInfo::OnlinePortal kOlp{
       "http://testurl", "POST", "esn=${esn}&mdn=${mdn}&meid=${meid}"};
-  const vector<MobileOperatorInfo::OnlinePortal> kOlpList{kOlp};
-  const string kUuidVzw = "c83d6597-dc91-4d48-a3a7-d86b80123751";
-  const string kUuidFoo = "foo";
+  const std::vector<MobileOperatorInfo::OnlinePortal> kOlpList{kOlp};
+  const std::string kUuidVzw = "c83d6597-dc91-4d48-a3a7-d86b80123751";
+  const std::string kUuidFoo = "foo";
 
   SetMockMobileOperatorInfoObjects();
   cellular_->set_esn("0");
@@ -298,7 +296,7 @@ TEST_F(CellularCapabilityCdmaMainTest, UpdateServiceOLP) {
 }
 
 TEST_F(CellularCapabilityCdmaMainTest, ActivateAutomatic) {
-  const string activation_code{"1234"};
+  const std::string activation_code{"1234"};
   SetMockMobileOperatorInfoObjects();
 
   mm1::MockModemModemCdmaProxy* cdma_proxy = modem_cdma_proxy_.get();
@@ -352,8 +350,8 @@ TEST_F(CellularCapabilityCdmaMainTest, ActivateAutomatic) {
 }
 
 TEST_F(CellularCapabilityCdmaMainTest, IsServiceActivationRequired) {
-  const vector<MobileOperatorInfo::OnlinePortal> empty_list;
-  const vector<MobileOperatorInfo::OnlinePortal> olp_list{
+  const std::vector<MobileOperatorInfo::OnlinePortal> empty_list;
+  const std::vector<MobileOperatorInfo::OnlinePortal> olp_list{
       {"some@url", "some_method", "some_post_data"}};
   SetMockMobileOperatorInfoObjects();
 
@@ -386,7 +384,7 @@ TEST_F(CellularCapabilityCdmaMainTest, IsServiceActivationRequired) {
 }
 
 TEST_F(CellularCapabilityCdmaMainTest, UpdateServiceActivationStateProperty) {
-  const vector<MobileOperatorInfo::OnlinePortal> olp_list{
+  const std::vector<MobileOperatorInfo::OnlinePortal> olp_list{
       {"some@url", "some_method", "some_post_data"}};
   SetMockMobileOperatorInfoObjects();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())

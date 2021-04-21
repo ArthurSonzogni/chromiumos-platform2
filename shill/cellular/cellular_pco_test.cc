@@ -8,9 +8,6 @@
 
 #include <gtest/gtest.h>
 
-using std::tuple;
-using std::vector;
-
 namespace shill {
 
 class CellularPcoInvalidRawDataTest
@@ -26,16 +23,16 @@ INSTANTIATE_TEST_SUITE_P(
     CellularPcoInvalidRawDataTest,
     testing::Values(
         // Less than 3 octets:
-        vector<uint8_t>({}),
-        vector<uint8_t>({0x27}),
-        vector<uint8_t>({0x27, 0x00}),
+        std::vector<uint8_t>({}),
+        std::vector<uint8_t>({0x27}),
+        std::vector<uint8_t>({0x27, 0x00}),
         // Invalid PCO content length:
-        vector<uint8_t>({0x27, 0x00, 0x00}),
-        vector<uint8_t>({0x27, 0x02, 0x00}),
+        std::vector<uint8_t>({0x27, 0x00, 0x00}),
+        std::vector<uint8_t>({0x27, 0x02, 0x00}),
         // Invalid PCO IEI:
-        vector<uint8_t>({0x26, 0x01, 0x00}),
+        std::vector<uint8_t>({0x26, 0x01, 0x00}),
         // More than 253 octets:
-        vector<uint8_t>({
+        std::vector<uint8_t>({
             // clang-format off
             0x27, 0xFC, 0x00, 0xFF, 0x00, 0xF8, 0x00, 0x01,
             0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
@@ -72,10 +69,10 @@ INSTANTIATE_TEST_SUITE_P(
             // clang-format on
         }),
         // Incomplete element
-        vector<uint8_t>({0x26, 0x01, 0x00, 0xFF}),
-        vector<uint8_t>({0x26, 0x01, 0x00, 0xFF, 0x00}),
-        vector<uint8_t>({0x26, 0x01, 0x00, 0xFF, 0x00, 0x01}),
-        vector<uint8_t>({0x26, 0x01, 0x00, 0xFF, 0x00, 0x02, 0x00})));
+        std::vector<uint8_t>({0x26, 0x01, 0x00, 0xFF}),
+        std::vector<uint8_t>({0x26, 0x01, 0x00, 0xFF, 0x00}),
+        std::vector<uint8_t>({0x26, 0x01, 0x00, 0xFF, 0x00, 0x01}),
+        std::vector<uint8_t>({0x26, 0x01, 0x00, 0xFF, 0x00, 0x02, 0x00})));
 
 using CellularPcoValidRawDataTestParams =
     std::tuple<std::vector<uint8_t>,                // raw data
@@ -102,31 +99,32 @@ INSTANTIATE_TEST_SUITE_P(
     CellularPcoValidRawDataTest,
     testing::Values(
         // No element
-        make_tuple(vector<uint8_t>({0x27, 0x01, 0x00}),
-                   vector<CellularPco::Element>()),
+        make_tuple(std::vector<uint8_t>({0x27, 0x01, 0x00}),
+                   std::vector<CellularPco::Element>()),
         // Element with no content
-        make_tuple(vector<uint8_t>({0x27, 0x04, 0x00, 0xAA, 0xBB, 0x00}),
-                   vector<CellularPco::Element>({CellularPco::Element(0xAABB,
-                                                                      {})})),
+        make_tuple(std::vector<uint8_t>({0x27, 0x04, 0x00, 0xAA, 0xBB, 0x00}),
+                   std::vector<CellularPco::Element>(
+                       {CellularPco::Element(0xAABB, {})})),
         // Element with content of 1 octet
-        make_tuple(vector<uint8_t>({0x27, 0x05, 0x00, 0xAA, 0xBB, 0x01, 0x22}),
-                   vector<CellularPco::Element>(
-                       {CellularPco::Element(0xAABB, {0x22})})),
+        make_tuple(
+            std::vector<uint8_t>({0x27, 0x05, 0x00, 0xAA, 0xBB, 0x01, 0x22}),
+            std::vector<CellularPco::Element>({CellularPco::Element(0xAABB,
+                                                                    {0x22})})),
         // Multiple elements
-        make_tuple(vector<uint8_t>({
+        make_tuple(std::vector<uint8_t>({
                        // clang-format off
                        0x27, 0x0D, 0x00, 0xAA, 0xBB, 0x01, 0x22, 0xCC,
                        0xDD, 0x00, 0xEE, 0xFF, 0x02, 0x33, 0x44
                        // clang-format on
                    }),
-                   vector<CellularPco::Element>({
+                   std::vector<CellularPco::Element>({
                        CellularPco::Element(0xAABB, {0x22}),
                        CellularPco::Element(0xCCDD, {}),
                        CellularPco::Element(0xEEFF, {0x33, 0x44}),
                    })),
         // Element with content of the maximum length
         make_tuple(
-            vector<uint8_t>({
+            std::vector<uint8_t>({
                 // clang-format off
                 0x27, 0xFB, 0x00, 0xFF, 0x00, 0xF7, 0x00, 0x01,
                 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
@@ -162,7 +160,7 @@ INSTANTIATE_TEST_SUITE_P(
                 0xF2, 0xF3, 0xF4, 0xF5, 0xF6
                 // clang-format on
             }),
-            vector<CellularPco::Element>({CellularPco::Element(
+            std::vector<CellularPco::Element>({CellularPco::Element(
                 0xFF00,
                 {
                     // clang-format off
@@ -201,7 +199,7 @@ INSTANTIATE_TEST_SUITE_P(
                 })}))));
 
 TEST(CellularPcoTest, FindNotExistentElement) {
-  vector<uint8_t> raw_data = {
+  std::vector<uint8_t> raw_data = {
       // clang-format off
       0x27, 0x0D, 0x00, 0xAA, 0xBB, 0x01, 0x22, 0xCC,
       0xDD, 0x00, 0xEE, 0xFF, 0x02, 0x33, 0x44

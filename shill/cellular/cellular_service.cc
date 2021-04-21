@@ -4,8 +4,6 @@
 
 #include "shill/cellular/cellular_service.h"
 
-#include <string>
-
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/notreached.h>
@@ -23,14 +21,11 @@
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 
-using std::set;
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const CellularService* c) {
+static std::string ObjectID(const CellularService* c) {
   return c->log_name();
 }
 }  // namespace Logging
@@ -63,8 +58,8 @@ const char kApnVersionProperty[] = "version";
 const int kCurrentApnCacheVersion = 2;
 
 bool GetNonEmptyField(const Stringmap& stringmap,
-                      const string& fieldname,
-                      string* value) {
+                      const std::string& fieldname,
+                      std::string* value) {
   Stringmap::const_iterator it = stringmap.find(fieldname);
   if (it != stringmap.end() && !it->second.empty()) {
     *value = it->second;
@@ -168,13 +163,14 @@ void CellularService::CompleteCellularActivation(Error* error) {
   cellular_->CompleteActivation(error);
 }
 
-string CellularService::GetStorageIdentifier() const {
+std::string CellularService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 
-string CellularService::GetLoadableStorageIdentifier(
+std::string CellularService::GetLoadableStorageIdentifier(
     const StoreInterface& storage) const {
-  set<string> groups = storage.GetGroupsWithProperties(GetStorageProperties());
+  std::set<std::string> groups =
+      storage.GetGroupsWithProperties(GetStorageProperties());
   if (groups.empty()) {
     LOG(WARNING) << "Configuration for service " << log_name()
                  << " is not available in the persistent store";
@@ -194,8 +190,8 @@ string CellularService::GetLoadableStorageIdentifier(
     return *iter;
 
   // If an entry with a non-empty IMSI exists, use that.
-  for (const string& group : groups) {
-    string imsi;
+  for (const std::string& group : groups) {
+    std::string imsi;
     storage.GetString(group, kStorageImsi, &imsi);
     if (!imsi.empty())
       return group;
@@ -209,7 +205,7 @@ bool CellularService::IsLoadableFrom(const StoreInterface& storage) const {
 }
 
 bool CellularService::Load(const StoreInterface* storage) {
-  string id = GetLoadableStorageIdentifier(*storage);
+  std::string id = GetLoadableStorageIdentifier(*storage);
   if (id.empty()) {
     LOG(WARNING) << "No service with matching properties found";
     return false;
@@ -252,8 +248,8 @@ bool CellularService::Load(const StoreInterface* storage) {
   LoadApn(storage, id, kStorageAPN, apn_list, &apn_info_);
   LoadApn(storage, id, kStorageLastGoodAPN, apn_list, &last_good_apn_info_);
 
-  const string old_username = ppp_username_;
-  const string old_password = ppp_password_;
+  const std::string old_username = ppp_username_;
+  const std::string old_password = ppp_password_;
   storage->GetString(id, kStoragePPPUsername, &ppp_username_);
   storage->GetString(id, kStoragePPPPassword, &ppp_password_);
   if (IsFailed() && failure() == kFailurePPPAuth &&
@@ -273,7 +269,7 @@ bool CellularService::Save(StoreInterface* storage) {
   if (!Service::Save(storage))
     return false;
 
-  const string id = GetStorageIdentifier();
+  const std::string id = GetStorageIdentifier();
   SaveStringOrClear(storage, id, kStorageIccid, iccid_);
   SaveStringOrClear(storage, id, kStorageImsi, imsi_);
   SaveStringOrClear(storage, id, kStorageSimCardId, GetSimCardId());
@@ -305,7 +301,7 @@ void CellularService::SetActivationType(ActivationType type) {
                                GetActivationTypeString());
 }
 
-string CellularService::GetActivationTypeString() const {
+std::string CellularService::GetActivationTypeString() const {
   switch (activation_type_) {
     case kActivationTypeNonCellular:
       return shill::kActivationTypeNonCellular;
@@ -323,7 +319,7 @@ string CellularService::GetActivationTypeString() const {
   }
 }
 
-void CellularService::SetActivationState(const string& state) {
+void CellularService::SetActivationState(const std::string& state) {
   if (state == activation_state_)
     return;
 
@@ -338,9 +334,9 @@ void CellularService::SetActivationState(const string& state) {
   adaptor()->EmitStringChanged(kActivationStateProperty, state);
 }
 
-void CellularService::SetOLP(const string& url,
-                             const string& method,
-                             const string& post_data) {
+void CellularService::SetOLP(const std::string& url,
+                             const std::string& method,
+                             const std::string& post_data) {
   Stringmap olp;
   olp[kPaymentPortalURL] = url;
   olp[kPaymentPortalMethod] = method;
@@ -355,7 +351,7 @@ void CellularService::SetOLP(const string& url,
   adaptor()->EmitStringmapChanged(kPaymentPortalProperty, olp);
 }
 
-void CellularService::SetUsageURL(const string& url) {
+void CellularService::SetUsageURL(const std::string& url) {
   if (url == usage_url_) {
     return;
   }
@@ -371,7 +367,7 @@ void CellularService::SetServingOperator(const Stringmap& serving_operator) {
   adaptor()->EmitStringmapChanged(kServingOperatorProperty, serving_operator_);
 }
 
-void CellularService::SetNetworkTechnology(const string& technology) {
+void CellularService::SetNetworkTechnology(const std::string& technology) {
   if (technology == network_technology_) {
     return;
   }
@@ -381,7 +377,7 @@ void CellularService::SetNetworkTechnology(const string& technology) {
   adaptor()->EmitStringChanged(kNetworkTechnologyProperty, technology);
 }
 
-void CellularService::SetRoamingState(const string& state) {
+void CellularService::SetRoamingState(const std::string& state) {
   if (state == roaming_state_) {
     return;
   }
@@ -521,16 +517,16 @@ RpcIdentifier CellularService::GetDeviceRpcId(Error* error) const {
 }
 
 void CellularService::HelpRegisterDerivedString(
-    const string& name,
-    string (CellularService::*get)(Error* error),
-    bool (CellularService::*set)(const string& value, Error* error)) {
+    const std::string& name,
+    std::string (CellularService::*get)(Error* error),
+    bool (CellularService::*set)(const std::string& value, Error* error)) {
   mutable_store()->RegisterDerivedString(
-      name, StringAccessor(
-                new CustomAccessor<CellularService, string>(this, get, set)));
+      name, StringAccessor(new CustomAccessor<CellularService, std::string>(
+                this, get, set)));
 }
 
 void CellularService::HelpRegisterDerivedStringmap(
-    const string& name,
+    const std::string& name,
     Stringmap (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const Stringmap& value, Error* error)) {
   mutable_store()->RegisterDerivedStringmap(
@@ -539,7 +535,7 @@ void CellularService::HelpRegisterDerivedStringmap(
 }
 
 void CellularService::HelpRegisterDerivedBool(
-    const string& name,
+    const std::string& name,
     bool (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const bool&, Error*)) {
   mutable_store()->RegisterDerivedBool(
@@ -547,17 +543,17 @@ void CellularService::HelpRegisterDerivedBool(
       BoolAccessor(new CustomAccessor<CellularService, bool>(this, get, set)));
 }
 
-set<string> CellularService::GetStorageGroupsWithProperty(
+std::set<std::string> CellularService::GetStorageGroupsWithProperty(
     const StoreInterface& storage,
     const std::string& key,
     const std::string& value) const {
   KeyValueStore properties;
-  properties.Set<string>(kStorageType, kTypeCellular);
-  properties.Set<string>(key, value);
+  properties.Set<std::string>(kStorageType, kTypeCellular);
+  properties.Set<std::string>(key, value);
   return storage.GetGroupsWithProperties(properties);
 }
 
-string CellularService::CalculateActivationType(Error* error) {
+std::string CellularService::CalculateActivationType(Error* error) {
   return GetActivationTypeString();
 }
 
@@ -568,7 +564,7 @@ Stringmap CellularService::GetApn(Error* /*error*/) {
 bool CellularService::SetApn(const Stringmap& value, Error* error) {
   // Only copy in the fields we care about, and validate the contents.
   // If the "apn" field is missing or empty, the APN is cleared.
-  string new_apn;
+  std::string new_apn;
   Stringmap new_apn_info;
   if (GetNonEmptyField(value, kApnProperty, &new_apn)) {
     new_apn_info[kApnProperty] = new_apn;
@@ -578,7 +574,7 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
 
     // If this is a user-entered APN, the one or more of the following
     // details should exist, even if they are empty.
-    string str;
+    std::string str;
     if (GetNonEmptyField(value, kApnUsernameProperty, &str))
       new_apn_info[kApnUsernameProperty] = str;
     if (GetNonEmptyField(value, kApnPasswordProperty, &str))
@@ -615,8 +611,8 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
 }
 
 void CellularService::LoadApn(const StoreInterface* storage,
-                              const string& storage_group,
-                              const string& keytag,
+                              const std::string& storage_group,
+                              const std::string& keytag,
                               const Stringmaps& apn_list,
                               Stringmap* apn_info) {
   if (keytag == kStorageLastGoodAPN) {
@@ -643,11 +639,11 @@ void CellularService::LoadApn(const StoreInterface* storage,
 }
 
 bool CellularService::LoadApnField(const StoreInterface* storage,
-                                   const string& storage_group,
-                                   const string& keytag,
-                                   const string& apntag,
+                                   const std::string& storage_group,
+                                   const std::string& keytag,
+                                   const std::string& apntag,
                                    Stringmap* apn_info) {
-  string value;
+  std::string value;
   if (storage->GetString(storage_group, keytag + "." + apntag, &value) &&
       !value.empty()) {
     (*apn_info)[apntag] = value;
@@ -657,9 +653,9 @@ bool CellularService::LoadApnField(const StoreInterface* storage,
 }
 
 void CellularService::SaveApn(StoreInterface* storage,
-                              const string& storage_group,
+                              const std::string& storage_group,
                               const Stringmap* apn_info,
-                              const string& keytag) {
+                              const std::string& keytag) {
   SaveApnField(storage, storage_group, apn_info, keytag, kApnProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnUsernameProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnPasswordProperty);
@@ -671,12 +667,12 @@ void CellularService::SaveApn(StoreInterface* storage,
 }
 
 void CellularService::SaveApnField(StoreInterface* storage,
-                                   const string& storage_group,
+                                   const std::string& storage_group,
                                    const Stringmap* apn_info,
-                                   const string& keytag,
-                                   const string& apntag) {
-  const string key = keytag + "." + apntag;
-  string str;
+                                   const std::string& keytag,
+                                   const std::string& apntag) {
+  const std::string key = keytag + "." + apntag;
+  std::string str;
   if (apn_info && GetNonEmptyField(*apn_info, apntag, &str))
     storage->SetString(storage_group, key, str);
   else
@@ -686,7 +682,7 @@ void CellularService::SaveApnField(StoreInterface* storage,
 void CellularService::FetchDetailsFromApnList(const Stringmaps& apn_list,
                                               Stringmap* apn_info) {
   DCHECK(apn_info);
-  string apn;
+  std::string apn;
   for (const Stringmap& list_apn_info : apn_list) {
     if (GetNonEmptyField(list_apn_info, kApnProperty, &apn) &&
         (*apn_info)[kApnProperty] == apn) {
@@ -698,8 +694,8 @@ void CellularService::FetchDetailsFromApnList(const Stringmaps& apn_list,
 
 KeyValueStore CellularService::GetStorageProperties() const {
   KeyValueStore properties;
-  properties.Set<string>(kStorageType, kTypeCellular);
-  properties.Set<string>(kStorageIccid, iccid_);
+  properties.Set<std::string>(kStorageType, kTypeCellular);
+  properties.Set<std::string>(kStorageIccid, iccid_);
   return properties;
 }
 std::string CellularService::GetDefaultStorageIdentifier() const {

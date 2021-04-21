@@ -8,10 +8,8 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
-#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -57,16 +55,11 @@
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 
-using base::Bind;
-using std::map;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const Cellular* c) {
+static std::string ObjectID(const Cellular* c) {
   return c->GetRpcIdentifier().value();
 }
 }  // namespace Logging
@@ -150,7 +143,7 @@ const int64_t Cellular::kModemResetTimeoutMilliseconds = 1 * 1000;
 const int64_t Cellular::kPollLocationIntervalMilliseconds = 5 * 60 * 1000;
 
 // static
-string Cellular::GetStateString(State state) {
+std::string Cellular::GetStateString(State state) {
   switch (state) {
     case kStateDisabled:
       return "CellularStateDisabled";
@@ -169,7 +162,7 @@ string Cellular::GetStateString(State state) {
 }
 
 // static
-string Cellular::GetModemStateString(ModemState modem_state) {
+std::string Cellular::GetModemStateString(ModemState modem_state) {
   switch (modem_state) {
     case kModemStateFailed:
       return "ModemStateFailed";
@@ -204,7 +197,8 @@ string Cellular::GetModemStateString(ModemState modem_state) {
 }
 
 // static
-string Cellular::GetCapabilityStateString(CapabilityState capability_state) {
+std::string Cellular::GetCapabilityStateString(
+    CapabilityState capability_state) {
   switch (capability_state) {
     case CapabilityState::kCellularStopped:
       return "CellularStopped";
@@ -222,11 +216,11 @@ string Cellular::GetCapabilityStateString(CapabilityState capability_state) {
 }
 
 Cellular::Cellular(ModemInfo* modem_info,
-                   const string& link_name,
-                   const string& address,
+                   const std::string& link_name,
+                   const std::string& address,
                    int interface_index,
                    Type type,
-                   const string& service,
+                   const std::string& service,
                    const RpcIdentifier& path)
     : Device(modem_info->manager(),
              link_name,
@@ -281,7 +275,7 @@ Cellular::~Cellular() {
   SLOG(this, 1) << "~Cellular() " << this->link_name();
 }
 
-string Cellular::GetEquipmentIdentifier() const {
+std::string Cellular::GetEquipmentIdentifier() const {
   // 3GPP devices are uniquely identified by IMEI, which has 15 decimal digits.
   if (!imei_.empty())
     return imei_;
@@ -305,12 +299,12 @@ string Cellular::GetEquipmentIdentifier() const {
   return mac_address();
 }
 
-string Cellular::GetStorageIdentifier() const {
+std::string Cellular::GetStorageIdentifier() const {
   return "device_" + GetEquipmentIdentifier();
 }
 
 bool Cellular::Load(const StoreInterface* storage) {
-  const string id = GetStorageIdentifier();
+  const std::string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
     LOG(WARNING) << "Device is not available in the persistent store: " << id;
     return false;
@@ -321,17 +315,17 @@ bool Cellular::Load(const StoreInterface* storage) {
 }
 
 bool Cellular::Save(StoreInterface* storage) {
-  const string id = GetStorageIdentifier();
+  const std::string id = GetStorageIdentifier();
   storage->SetBool(id, kAllowRoaming, allow_roaming_);
   storage->SetBool(id, kUseAttachApn, use_attach_apn_);
   return Device::Save(storage);
 }
 
-string Cellular::GetTechnologyFamily(Error* error) {
+std::string Cellular::GetTechnologyFamily(Error* error) {
   return capability_ ? capability_->GetTypeString() : "";
 }
 
-string Cellular::GetDeviceId(Error* error) {
+std::string Cellular::GetDeviceId(Error* error) {
   return device_id_ ? device_id_->AsString() : "";
 }
 
@@ -388,7 +382,7 @@ void Cellular::SetCapabilityState(CapabilityState capability_state) {
   UpdateScanning();
 }
 
-void Cellular::HelpRegisterDerivedBool(const string& name,
+void Cellular::HelpRegisterDerivedBool(const std::string& name,
                                        bool (Cellular::*get)(Error* error),
                                        bool (Cellular::*set)(const bool& value,
                                                              Error* error)) {
@@ -396,11 +390,11 @@ void Cellular::HelpRegisterDerivedBool(const string& name,
       name, BoolAccessor(new CustomAccessor<Cellular, bool>(this, get, set)));
 }
 
-void Cellular::HelpRegisterConstDerivedString(const string& name,
-                                              string (Cellular::*get)(Error*)) {
+void Cellular::HelpRegisterConstDerivedString(
+    const std::string& name, std::string (Cellular::*get)(Error*)) {
   mutable_store()->RegisterDerivedString(
-      name,
-      StringAccessor(new CustomAccessor<Cellular, string>(this, get, nullptr)));
+      name, StringAccessor(
+                new CustomAccessor<Cellular, std::string>(this, get, nullptr)));
 }
 
 void Cellular::Start(Error* error,
@@ -567,7 +561,7 @@ void Cellular::CompleteActivation(Error* error) {
     capability_->CompleteActivation(error);
 }
 
-void Cellular::RegisterOnNetwork(const string& network_id,
+void Cellular::RegisterOnNetwork(const std::string& network_id,
                                  Error* error,
                                  const ResultCallback& callback) {
   if (!capability_)
@@ -575,7 +569,7 @@ void Cellular::RegisterOnNetwork(const string& network_id,
   capability_->RegisterOnNetwork(network_id, error, callback);
 }
 
-void Cellular::RequirePin(const string& pin,
+void Cellular::RequirePin(const std::string& pin,
                           bool require,
                           Error* error,
                           const ResultCallback& callback) {
@@ -585,7 +579,7 @@ void Cellular::RequirePin(const string& pin,
   capability_->RequirePin(pin, require, error, callback);
 }
 
-void Cellular::EnterPin(const string& pin,
+void Cellular::EnterPin(const std::string& pin,
                         Error* error,
                         const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
@@ -594,8 +588,8 @@ void Cellular::EnterPin(const string& pin,
   capability_->EnterPin(pin, error, callback);
 }
 
-void Cellular::UnblockPin(const string& unblock_code,
-                          const string& pin,
+void Cellular::UnblockPin(const std::string& unblock_code,
+                          const std::string& pin,
                           Error* error,
                           const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
@@ -604,8 +598,8 @@ void Cellular::UnblockPin(const string& unblock_code,
   capability_->UnblockPin(unblock_code, pin, error, callback);
 }
 
-void Cellular::ChangePin(const string& old_pin,
-                         const string& new_pin,
+void Cellular::ChangePin(const std::string& old_pin,
+                         const std::string& new_pin,
                          Error* error,
                          const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
@@ -746,7 +740,7 @@ void Cellular::OnAfterResume() {
     SetState(kStateDisabled);
 
     Error error;
-    SetEnabledUnchecked(true, &error, Bind(LogRestartModemResult));
+    SetEnabledUnchecked(true, &error, base::Bind(LogRestartModemResult));
     if (error.IsSuccess()) {
       LOG(INFO) << "Modem restart completed immediately.";
     } else if (error.IsOngoing()) {
@@ -773,8 +767,8 @@ void Cellular::ReAttach() {
 
   Error error;
   SetEnabledNonPersistent(false, &error,
-                          Bind(&Cellular::ReAttachOnDetachComplete,
-                               weak_ptr_factory_.GetWeakPtr()));
+                          base::Bind(&Cellular::ReAttachOnDetachComplete,
+                                     weak_ptr_factory_.GetWeakPtr()));
   if (error.IsFailure() && error.type() != Error::kInProgress)
     LOG(WARNING) << __func__ << " Detaching the modem failed: " << error;
 }
@@ -782,12 +776,12 @@ void Cellular::ReAttach() {
 void Cellular::ReAttachOnDetachComplete(const Error&) {
   Error error;
   SLOG(this, 2) << __func__;
-  SetEnabledUnchecked(true, &error, Bind(LogRestartModemResult));
+  SetEnabledUnchecked(true, &error, base::Bind(LogRestartModemResult));
   if (error.IsFailure() && !error.IsOngoing())
     LOG(WARNING) << "Modem restart completed immediately.";
 }
 
-void Cellular::Scan(Error* error, const string& /*reason*/) {
+void Cellular::Scan(Error* error, const std::string& /*reason*/) {
   SLOG(this, 2) << "Scanning started";
   CHECK(error);
   if (proposed_scan_in_progress_) {
@@ -800,7 +794,7 @@ void Cellular::Scan(Error* error, const string& /*reason*/) {
     return;
 
   ResultStringmapsCallback cb =
-      Bind(&Cellular::OnScanReply, weak_ptr_factory_.GetWeakPtr());
+      base::Bind(&Cellular::OnScanReply, weak_ptr_factory_.GetWeakPtr());
   capability_->Scan(error, cb);
   // An immediate failure in |cabapility_->Scan(...)| is indicated through the
   // |error| argument.
@@ -829,11 +823,11 @@ void Cellular::OnScanReply(const Stringmaps& found_networks,
 
 // Called from an asyc D-Bus function
 // Relies on location handler to fetch relevant value from map
-void Cellular::GetLocationCallback(const string& gpp_lac_ci_string,
+void Cellular::GetLocationCallback(const std::string& gpp_lac_ci_string,
                                    const Error& error) {
   // Expects string of form "MCC,MNC,LAC,CI"
   SLOG(this, 2) << __func__ << ": " << gpp_lac_ci_string;
-  vector<string> location_vec = SplitString(
+  std::vector<std::string> location_vec = SplitString(
       gpp_lac_ci_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (location_vec.size() < 4) {
     LOG(ERROR) << "Unable to parse location string " << gpp_lac_ci_string;
@@ -860,8 +854,8 @@ void Cellular::PollLocationTask() {
 void Cellular::PollLocation() {
   if (!capability_)
     return;
-  StringCallback cb =
-      Bind(&Cellular::GetLocationCallback, weak_ptr_factory_.GetWeakPtr());
+  StringCallback cb = base::Bind(&Cellular::GetLocationCallback,
+                                 weak_ptr_factory_.GetWeakPtr());
   capability_->GetLocation(cb);
 }
 
@@ -1115,8 +1109,9 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
   KeyValueStore properties;
   capability_->SetupConnectProperties(&properties);
-  ResultCallback cb = Bind(&Cellular::OnConnectReply,
-                           weak_ptr_factory_.GetWeakPtr(), service->iccid());
+  ResultCallback cb =
+      base::Bind(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
+                 service->iccid());
   OnConnecting();
   capability_->Connect(properties, error, cb);
   if (!error->IsSuccess())
@@ -1144,7 +1139,7 @@ void Cellular::OnEnabled() {
   SLOG(this, 1) << __func__;
   manager()->AddTerminationAction(
       link_name(),
-      Bind(&Cellular::StartTermination, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&Cellular::StartTermination, weak_ptr_factory_.GetWeakPtr()));
   if (!enabled() && !enabled_pending()) {
     LOG(WARNING) << "OnEnabled called while not enabling, setting enabled.";
     SetEnabled(true);
@@ -1190,7 +1185,7 @@ void Cellular::Disconnect(Error* error, const char* reason) {
   StopPPP();
   explicit_disconnect_ = true;
   ResultCallback cb =
-      Bind(&Cellular::OnDisconnectReply, weak_ptr_factory_.GetWeakPtr());
+      base::Bind(&Cellular::OnDisconnectReply, weak_ptr_factory_.GetWeakPtr());
   capability_->Disconnect(error, cb);
 }
 
@@ -1315,7 +1310,7 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
-void Cellular::OnPropertiesChanged(const string& interface,
+void Cellular::OnPropertiesChanged(const std::string& interface,
                                    const KeyValueStore& changed_properties) {
   CHECK(capability_);
   capability_->OnPropertiesChanged(interface, changed_properties);
@@ -1547,8 +1542,8 @@ void Cellular::SetSimPresent(bool sim_present) {
 
 void Cellular::StartTermination() {
   SLOG(this, 2) << __func__;
-  OnBeforeSuspend(
-      Bind(&Cellular::OnTerminationCompleted, weak_ptr_factory_.GetWeakPtr()));
+  OnBeforeSuspend(base::Bind(&Cellular::OnTerminationCompleted,
+                             weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::OnTerminationCompleted(const Error& error) {
@@ -1575,7 +1570,7 @@ void Cellular::LogRestartModemResult(const Error& error) {
   }
 }
 
-void Cellular::StartPPP(const string& serial_device) {
+void Cellular::StartPPP(const std::string& serial_device) {
   SLOG(PPP, this, 2) << __func__ << " on " << serial_device;
   // Detach any SelectedService from this device. It will be grafted onto
   // the PPPDevice after PPP is up (in Cellular::Notify).
@@ -1596,7 +1591,7 @@ void Cellular::StartPPP(const string& serial_device) {
   }
 
   PPPDaemon::DeathCallback death_callback(
-      Bind(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
 
   PPPDaemon::Options options;
   options.no_detach = true;
@@ -1626,7 +1621,7 @@ void Cellular::StopPPP() {
 }
 
 // called by |ppp_task_|
-void Cellular::GetLogin(string* user, string* password) {
+void Cellular::GetLogin(std::string* user, std::string* password) {
   SLOG(PPP, this, 2) << __func__;
   if (!service()) {
     LOG(ERROR) << __func__ << " with no service ";
@@ -1639,7 +1634,8 @@ void Cellular::GetLogin(string* user, string* password) {
 }
 
 // Called by |ppp_task_|.
-void Cellular::Notify(const string& reason, const map<string, string>& dict) {
+void Cellular::Notify(const std::string& reason,
+                      const std::map<std::string, std::string>& dict) {
   SLOG(PPP, this, 2) << __func__ << " " << reason << " on " << link_name();
 
   if (reason == kPPPReasonAuthenticating) {
@@ -1665,9 +1661,10 @@ void Cellular::OnPPPAuthenticating() {
   is_ppp_authenticating_ = true;
 }
 
-void Cellular::OnPPPConnected(const map<string, string>& params) {
+void Cellular::OnPPPConnected(
+    const std::map<std::string, std::string>& params) {
   SLOG(PPP, this, 2) << __func__;
-  string interface_name = PPPDevice::GetInterfaceName(params);
+  std::string interface_name = PPPDevice::GetInterfaceName(params);
   DeviceInfo* device_info = manager()->device_info();
   int interface_index = device_info->GetIndex(interface_name);
   if (interface_index < 0) {
@@ -1756,8 +1753,8 @@ void Cellular::ConnectToPending() {
     if (!connect_cancel_callback_.IsCancelled())
       return;
     LOG(WARNING) << __func__ << ": Waiting for Modem registration.";
-    connect_cancel_callback_.Reset(Bind(&Cellular::ConnectToPendingCancel,
-                                        weak_ptr_factory_.GetWeakPtr()));
+    connect_cancel_callback_.Reset(base::Bind(&Cellular::ConnectToPendingCancel,
+                                              weak_ptr_factory_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   connect_cancel_callback_.callback(),
                                   kPendingConnectCancelMilliseconds);
@@ -1777,8 +1774,8 @@ void Cellular::ConnectToPending() {
 
   SLOG(this, 1) << __func__ << ": " << connect_pending_iccid_;
   connect_cancel_callback_.Cancel();
-  connect_pending_callback_.Reset(Bind(&Cellular::ConnectToPendingAfterDelay,
-                                       weak_ptr_factory_.GetWeakPtr()));
+  connect_pending_callback_.Reset(base::Bind(
+      &Cellular::ConnectToPendingAfterDelay, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_pending_callback_.callback(),
                                 kPendingConnectDelayMilliseconds);
 }
@@ -2015,7 +2012,7 @@ void Cellular::SetScanningSupported(bool scanning_supported) {
   adaptor()->EmitBoolChanged(kSupportNetworkScanProperty, scanning_supported_);
 }
 
-void Cellular::set_equipment_id(const string& equipment_id) {
+void Cellular::set_equipment_id(const std::string& equipment_id) {
   if (equipment_id_ == equipment_id)
     return;
 
@@ -2023,7 +2020,7 @@ void Cellular::set_equipment_id(const string& equipment_id) {
   adaptor()->EmitStringChanged(kEquipmentIdProperty, equipment_id_);
 }
 
-void Cellular::set_esn(const string& esn) {
+void Cellular::set_esn(const std::string& esn) {
   if (esn_ == esn)
     return;
 
@@ -2031,7 +2028,7 @@ void Cellular::set_esn(const string& esn) {
   adaptor()->EmitStringChanged(kEsnProperty, esn_);
 }
 
-void Cellular::set_firmware_revision(const string& firmware_revision) {
+void Cellular::set_firmware_revision(const std::string& firmware_revision) {
   if (firmware_revision_ == firmware_revision)
     return;
 
@@ -2039,7 +2036,7 @@ void Cellular::set_firmware_revision(const string& firmware_revision) {
   adaptor()->EmitStringChanged(kFirmwareRevisionProperty, firmware_revision_);
 }
 
-void Cellular::set_hardware_revision(const string& hardware_revision) {
+void Cellular::set_hardware_revision(const std::string& hardware_revision) {
   if (hardware_revision_ == hardware_revision)
     return;
 
@@ -2051,7 +2048,7 @@ void Cellular::set_device_id(std::unique_ptr<DeviceId> device_id) {
   device_id_ = std::move(device_id);
 }
 
-void Cellular::SetImei(const string& imei) {
+void Cellular::SetImei(const std::string& imei) {
   if (imei_ == imei)
     return;
 
@@ -2126,7 +2123,7 @@ void Cellular::SetSimSlotProperties(
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
 }
 
-void Cellular::set_mdn(const string& mdn) {
+void Cellular::set_mdn(const std::string& mdn) {
   if (mdn_ == mdn)
     return;
 
@@ -2134,7 +2131,7 @@ void Cellular::set_mdn(const string& mdn) {
   adaptor()->EmitStringChanged(kMdnProperty, mdn_);
 }
 
-void Cellular::set_meid(const string& meid) {
+void Cellular::set_meid(const std::string& meid) {
   if (meid_ == meid)
     return;
 
@@ -2142,7 +2139,7 @@ void Cellular::set_meid(const string& meid) {
   adaptor()->EmitStringChanged(kMeidProperty, meid_);
 }
 
-void Cellular::set_min(const string& min) {
+void Cellular::set_min(const std::string& min) {
   if (min_ == min)
     return;
 
@@ -2150,7 +2147,7 @@ void Cellular::set_min(const string& min) {
   adaptor()->EmitStringChanged(kMinProperty, min_);
 }
 
-void Cellular::set_manufacturer(const string& manufacturer) {
+void Cellular::set_manufacturer(const std::string& manufacturer) {
   if (manufacturer_ == manufacturer)
     return;
 
@@ -2158,7 +2155,7 @@ void Cellular::set_manufacturer(const string& manufacturer) {
   adaptor()->EmitStringChanged(kManufacturerProperty, manufacturer_);
 }
 
-void Cellular::set_model_id(const string& model_id) {
+void Cellular::set_model_id(const std::string& model_id) {
   if (model_id_ == model_id)
     return;
 
@@ -2166,7 +2163,7 @@ void Cellular::set_model_id(const string& model_id) {
   adaptor()->EmitStringChanged(kModelIdProperty, model_id_);
 }
 
-void Cellular::set_mm_plugin(const string& mm_plugin) {
+void Cellular::set_mm_plugin(const std::string& mm_plugin) {
   mm_plugin_ = mm_plugin;
 }
 
@@ -2187,7 +2184,7 @@ void Cellular::StartLocationPolling() {
   SLOG(this, 2) << __func__ << ": "
                 << "Starting location polling tasks.";
   poll_location_task_.Reset(
-      Bind(&Cellular::PollLocationTask, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&Cellular::PollLocationTask, weak_ptr_factory_.GetWeakPtr()));
 
   // Schedule an immediate task
   dispatcher()->PostTask(FROM_HERE, poll_location_task_.callback());
@@ -2221,8 +2218,8 @@ void Cellular::SetScanning(bool scanning) {
     if (!scanning_clear_callback_.IsCancelled())
       return;
     SLOG(this, 2) << __func__ << ": Delaying clear";
-    scanning_clear_callback_.Reset(Bind(&Cellular::SetScanningProperty,
-                                        weak_ptr_factory_.GetWeakPtr(), false));
+    scanning_clear_callback_.Reset(base::Bind(
+        &Cellular::SetScanningProperty, weak_ptr_factory_.GetWeakPtr(), false));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   scanning_clear_callback_.callback(),
                                   kModemResetTimeoutMilliseconds);
@@ -2243,7 +2240,7 @@ void Cellular::SetScanningProperty(bool scanning) {
     ConnectToPending();
 }
 
-void Cellular::set_selected_network(const string& selected_network) {
+void Cellular::set_selected_network(const std::string& selected_network) {
   if (selected_network_ == selected_network)
     return;
 
@@ -2356,7 +2353,7 @@ void Cellular::UpdateServingOperator(
   service()->SetServingOperator(serving_operator);
 
   // Set friendly name of service.
-  string service_name;
+  std::string service_name;
   if (service()->roaming_state() == kRoamingStateHome && home_provider_info &&
       !home_provider_info->operator_name().empty()) {
     // Home and serving operators are the same. Use the name of the home
@@ -2383,11 +2380,11 @@ void Cellular::UpdateServingOperator(
   service()->SetFriendlyName(service_name);
 }
 
-vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
-  const string& mcc = location_info_.mcc;
-  const string& mnc = location_info_.mnc;
-  const string& lac = location_info_.lac;
-  const string& cid = location_info_.ci;
+std::vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
+  const std::string& mcc = location_info_.mcc;
+  const std::string& mnc = location_info_.mnc;
+  const std::string& lac = location_info_.lac;
+  const std::string& cid = location_info_.ci;
 
   GeolocationInfo geolocation_info;
 

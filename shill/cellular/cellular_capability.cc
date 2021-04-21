@@ -15,8 +15,6 @@
 #include "shill/cellular/modem_info.h"
 #include "shill/error.h"
 
-using std::string;
-
 namespace shill {
 
 // All timeout values are in milliseconds
@@ -59,7 +57,7 @@ CellularCapability::~CellularCapability() = default;
 
 void CellularCapability::OnUnsupportedOperation(const char* operation,
                                                 Error* error) {
-  string message("The ");
+  std::string message("The ");
   message.append(operation).append(" operation is not supported.");
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported, message);
 }
