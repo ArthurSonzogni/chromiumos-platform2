@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_KEYSET_MANAGEMENT_H_
 #define CRYPTOHOME_KEYSET_MANAGEMENT_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -43,6 +44,14 @@ class KeysetManagement {
   // Returns true on success, false if no keysets are found.
   virtual bool GetVaultKeysetLabels(const std::string& obfuscated_username,
                                     std::vector<std::string>* labels) const;
+
+  // Outputs a map of present keysets by label and the associate key data for a
+  // given obfuscated username. There is no guarantee the keysets are valid nor
+  // is the ordering guaranteed. Returns true on success, false if no keysets
+  // are found.
+  virtual bool GetVaultKeysetLabelsAndData(
+      const std::string& obfuscated_username,
+      std::map<std::string, KeyData>* key_label_data) const;
 
   // Returns a VaultKeyset that matches the given obfuscated username and the
   // key label. If the label is empty or if no matching keyset is found, NULL

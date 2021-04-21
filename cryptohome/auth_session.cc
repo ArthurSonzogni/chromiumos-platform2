@@ -44,6 +44,9 @@ AuthSession::AuthSession(
       FROM_HERE, kAuthSessionTimeoutInMinutes,
       base::Bind(&AuthSession::AuthSessionTimedOut, base::Unretained(this)));
   user_exists_ = keyset_management_->UserExists(SanitizeUserName(username_));
+  if (user_exists_)
+    keyset_management_->GetVaultKeysetLabelsAndData(SanitizeUserName(username_),
+                                                    &key_label_data_);
 }
 
 AuthSession::~AuthSession() = default;

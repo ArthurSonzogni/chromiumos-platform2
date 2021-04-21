@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_SESSION_H_
 #define CRYPTOHOME_AUTH_SESSION_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -93,6 +94,12 @@ class AuthSession final {
   // Returns the key data with which this AuthSession is authenticated with.
   cryptohome::KeyData current_key_data() { return current_key_data_; }
 
+  // Returns the map of Key label and KeyData that will be used as a result of
+  // StartAuthSession request.
+  const std::map<std::string, cryptohome::KeyData>& key_label_data() {
+    return key_label_data_;
+  }
+
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
@@ -144,9 +151,12 @@ class AuthSession final {
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
   KeysetManagement* keyset_management_;
-
+  // Bool that determines some state with AuthSession especially with adding
+  // credentials.
   bool user_exists_;
-
+  // Map to store the label and public KeyData.
+  // TODO(crbug.com/1171024): Change this to AuthFactor
+  std::map<std::string, cryptohome::KeyData> key_label_data_;
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
 };

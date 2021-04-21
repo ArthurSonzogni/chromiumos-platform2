@@ -3080,6 +3080,10 @@ bool UserDataAuth::StartAuthSession(
   }
   reply.set_auth_session_id(serialized_string.value());
   reply.set_user_exists(auth_session->user_exists());
+  google::protobuf::Map<std::string, cryptohome::KeyData> proto_key_map(
+      auth_session->key_label_data().begin(),
+      auth_session->key_label_data().end());
+  *(reply.mutable_key_label_data()) = proto_key_map;
   auth_sessions_[auth_session->token()] = std::move(auth_session);
   std::move(on_done).Run(reply);
 

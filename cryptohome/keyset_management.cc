@@ -191,6 +191,49 @@ bool KeysetManagement::GetVaultKeysets(const std::string& obfuscated,
   return keysets->size() != 0;
 }
 
+bool KeysetManagement::GetVaultKeysetLabelsAndData(
+    const std::string& obfuscated_username,
+    std::map<std::string, KeyData>* key_label_data) const {
+  CHECK(key_label_data);
+  base::FilePath user_dir = ShadowRoot().Append(obfuscated_username);
+
+  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
+      user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
+  base::FilePath next_path;
+  while (!(next_path = file_enumerator->Next()).empty()) {
+    base::FilePath file_name = next_path.BaseName();
+    // Scan for key files.
+    if (file_name.RemoveFinalExtension().value() != kKeyFile) {
+      continue;
+    }
+    int index = 0;
+    std::string index_str = file_name.FinalExtension();
+    // StringToInt will only return true for a perfect conversion.
+    if (!base::StringToInt(&index_str[1], &index)) {
+      continue;
+    }
+    if (index < 0 || index >= kKeyFileMax) {
+      LOG(ERROR) << "Invalid key file range: " << index;
+      continue;
+    }
+    // Now parse the keyset to get its label and keydata or skip it. The
+    // VaultKeyset will not be decrypted during this step.
+    std::unique_ptr<VaultKeyset> vk =
+        LoadVaultKeysetForUser(obfuscated_username, index);
+    if (!vk) {
+      continue;
+    }
+    if (key_label_data->find(vk->GetLabel()) != key_label_data->end()) {
+      // This is a confirmation check, we do not expect to hit this.
+      LOG(INFO) << "Found a duplicate label, skipping it: " << vk->GetLabel();
+      continue;
+    }
+    key_label_data->insert({vk->GetLabel(), vk->GetKeyData()});
+  }
+
+  return (key_label_data->size() > 0);
+}
+
 bool KeysetManagement::GetVaultKeysetLabels(
     const std::string& obfuscated_username,
     std::vector<std::string>* labels) const {

@@ -3359,6 +3359,7 @@ void LegacyCryptohomeInterfaceAdaptor::StartAuthSessionOnStarted(
   cryptohome::StartAuthSessionReply* result_extension =
       result.MutableExtension(cryptohome::StartAuthSessionReply::reply);
   result_extension->set_auth_session_id(reply.auth_session_id());
+  *(result_extension->mutable_key_label_data()) = reply.key_label_data();
   ClearErrorIfNotSet(&result);
   response->Return(result);
 }
