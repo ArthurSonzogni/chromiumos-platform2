@@ -33,7 +33,7 @@ int download(hps::HPS* hps, int argc, char* argv[]) {
     return 1;
   }
   auto size = file.tellg();
-  file.seekg(0, std::ios::beg);
+  file.seekg(0);
 
   std::cout << "Downloading " << argv[2] << " (" << size;
   std::cout << " bytes) to bank " << bank << std::endl;

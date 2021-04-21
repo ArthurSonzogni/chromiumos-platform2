@@ -8,40 +8,35 @@
 #ifndef HPS_LIB_FAKE_DEV_H_
 #define HPS_LIB_FAKE_DEV_H_
 
+#include <memory>
 #include <vector>
-
-#include <base/synchronization/lock.h>
 
 #include "hps/lib/dev.h"
 #include "hps/lib/hps_reg.h"
 
 namespace hps {
 
+class DevImpl;
+
 class FakeDev : public DevInterface {
  public:
-  FakeDev() {
-    for (int i = 0; i < HpsReg::kNumRegs; i++) {
-      this->regs_[i] = 0;
-    }
-    regs_[HpsReg::kMagic] = kHpsMagic;
-    regs_[HpsReg::kBankReady] = 0x0001;
-  }
-  virtual ~FakeDev() {}
+  FakeDev();
+  ~FakeDev();
   // Device interface
   bool read(uint8_t cmd, std::vector<uint8_t>* data) override;
   bool write(uint8_t cmd, const std::vector<uint8_t>& data) override;
-  // Control methods for fake.
-  void SetReg(int reg, uint16_t value) {
-    if (reg < 0 || reg > HpsReg::kMax) {
-      return;
-    }
-    base::AutoLock l(this->lock_);
-    this->regs_[reg] = value;
-  }
-
+  // Flags for controlling behaviour.
+  enum Flags {
+    kBootFault = 1 << 0,
+    kApplNotVerified = 1 << 1,
+    kSpiNotVerified = 1 << 2,
+    kWpOff = 1 << 3,
+  };
+  void Start(uint flags);
+  // TODO(amcrae): Add an interface to retrieve memory data written
+  // to the device.
  private:
-  base::Lock lock_;
-  uint16_t regs_[HpsReg::kNumRegs];
+  std::unique_ptr<DevImpl> device_;
 };
 
 }  // namespace hps

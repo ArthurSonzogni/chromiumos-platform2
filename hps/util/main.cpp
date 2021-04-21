@@ -72,7 +72,10 @@ int main(int argc, char* argv[]) {
     }
     dev.reset(ftdi);
   } else if (use_fake) {
-    dev.reset(new hps::FakeDev);
+    // The fake has to be started.
+    auto fd = new hps::FakeDev;
+    fd->Start(0);
+    dev.reset(fd);
   } else {
     auto i2c = new hps::I2CDev(bus, addr);
     if (i2c->Open() < 0) {

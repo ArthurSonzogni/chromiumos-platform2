@@ -67,8 +67,8 @@ int HPS::Download(int bank, uint32_t address, std::ifstream& source) {
     buf[1] = address >> 16;
     buf[2] = address >> 8;
     buf[3] = address;
-    rd = source.readsome(reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
-                         kBlock);
+    source.read(reinterpret_cast<char*>(&buf[sizeof(uint32_t)]), kBlock);
+    rd = source.gcount();
     if (rd > 0) {
       buf.resize(rd + sizeof(uint32_t));
       if (!this->device_->write(I2cMemWrite(bank), buf)) {
