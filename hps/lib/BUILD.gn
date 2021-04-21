@@ -23,6 +23,8 @@ static_library("hpslib") {
     "hps.h",
     "i2c.cpp",
     "i2c.h",
+    "retry.cpp",
+    "retry.h",
   ]
 
   configs += [ ":target_defaults" ]

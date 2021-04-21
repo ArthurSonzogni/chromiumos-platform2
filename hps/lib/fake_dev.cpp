@@ -301,6 +301,9 @@ void DevImpl::writeRegActual(int reg, uint16_t value) {
 // TODO(amcrae): Store the memory written for each bank so
 // it can be checked against what was requested to be written.
 uint16_t DevImpl::writeMemActual(int bank, const std::vector<uint8_t>& mem) {
+  if (this->flags_ & FakeDev::Flags::kMemFail) {
+    return 0;
+  }
   switch (this->stage_) {
     case Stage::kStage0:
       // Stage1 allows the MCU flash.

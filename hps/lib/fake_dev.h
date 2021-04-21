@@ -31,6 +31,7 @@ class FakeDev : public DevInterface {
     kApplNotVerified = 1 << 1,
     kSpiNotVerified = 1 << 2,
     kWpOff = 1 << 3,
+    kMemFail = 1 << 4,
   };
   void Start(uint flags);
   // TODO(amcrae): Add an interface to retrieve memory data written
