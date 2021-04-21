@@ -4,8 +4,6 @@
 
 #include "shill/portal_detector.h"
 
-#include <string>
-
 #include <base/bind.h>
 #include <base/rand_util.h>
 #include <base/strings/pattern.h>
@@ -18,10 +16,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-
-using base::Bind;
-using base::Callback;
-using std::string;
 
 namespace {
 const char kLinuxUserAgent[] =
@@ -44,7 +38,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPortal;
-static string ObjectID(const PortalDetector* pd) {
+static std::string ObjectID(const PortalDetector* pd) {
   return pd->LoggingTag();
 }
 }  // namespace Logging
@@ -55,7 +49,7 @@ const char PortalDetector::kDefaultHttpUrl[] =
     "http://www.gstatic.com/generate_204";
 const char PortalDetector::kDefaultHttpsUrl[] =
     "https://www.google.com/generate_204";
-const std::vector<string> PortalDetector::kDefaultFallbackHttpUrls{
+const std::vector<std::string> PortalDetector::kDefaultFallbackHttpUrls{
     "http://www.google.com/gen_204",
     "http://play.googleapis.com/generate_204",
     "http://connectivitycheck.gstatic.com/generate_204",
@@ -76,7 +70,7 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-const string PortalDetector::PickHttpProbeUrl(const Properties& props) {
+const std::string PortalDetector::PickHttpProbeUrl(const Properties& props) {
   if (attempt_count_ == 0 || props.fallback_http_url_strings.empty()) {
     return props.http_url_string;
   }
@@ -125,8 +119,8 @@ bool PortalDetector::Start(const PortalDetector::Properties& props,
         dispatcher_, LoggingTag() + " HTTPS probe", ifname, src_address,
         dns_list, allow_non_google_https);
   }
-  trial_.Reset(
-      Bind(&PortalDetector::StartTrialTask, weak_ptr_factory_.GetWeakPtr()));
+  trial_.Reset(base::Bind(&PortalDetector::StartTrialTask,
+                          weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(),
                                delay.InMilliseconds());
   // |last_attempt_start_time_| is calculated based on the current time and
@@ -141,11 +135,11 @@ void PortalDetector::StartTrialTask() {
   LOG(INFO) << LoggingTag() << ": Starting trial";
   base::Callback<void(std::shared_ptr<brillo::http::Response>)>
       http_request_success_callback(
-          Bind(&PortalDetector::HttpRequestSuccessCallback,
-               weak_ptr_factory_.GetWeakPtr()));
+          base::Bind(&PortalDetector::HttpRequestSuccessCallback,
+                     weak_ptr_factory_.GetWeakPtr()));
   base::Callback<void(HttpRequest::Result)> http_request_error_callback(
-      Bind(&PortalDetector::HttpRequestErrorCallback,
-           weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&PortalDetector::HttpRequestErrorCallback,
+                 weak_ptr_factory_.GetWeakPtr()));
   HttpRequest::Result http_result = http_request_->Start(
       http_url_string_, kHeaders, http_request_success_callback,
       http_request_error_callback);
@@ -167,11 +161,11 @@ void PortalDetector::StartTrialTask() {
 
   base::Callback<void(std::shared_ptr<brillo::http::Response>)>
       https_request_success_callback(
-          Bind(&PortalDetector::HttpsRequestSuccessCallback,
-               weak_ptr_factory_.GetWeakPtr()));
+          base::Bind(&PortalDetector::HttpsRequestSuccessCallback,
+                     weak_ptr_factory_.GetWeakPtr()));
   base::Callback<void(HttpRequest::Result)> https_request_error_callback(
-      Bind(&PortalDetector::HttpsRequestErrorCallback,
-           weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&PortalDetector::HttpsRequestErrorCallback,
+                 weak_ptr_factory_.GetWeakPtr()));
   HttpRequest::Result https_result = https_request_->Start(
       https_url_string_, kHeaders, https_request_success_callback,
       https_request_error_callback);
@@ -234,7 +228,7 @@ void PortalDetector::HttpRequestSuccessCallback(
     result_->http_status = Status::kSuccess;
   } else if (status_code == brillo::http::status_code::Redirect) {
     result_->http_status = Status::kRedirect;
-    string redirect_url_string =
+    std::string redirect_url_string =
         response->GetHeader(brillo::http::response_header::kLocation);
     if (redirect_url_string.empty()) {
       LOG(ERROR) << LoggingTag() << ": No Location field in redirect header.";
@@ -320,7 +314,7 @@ base::TimeDelta PortalDetector::GetNextAttemptDelay() {
 }
 
 // static
-const string PortalDetector::PhaseToString(Phase phase) {
+const std::string PortalDetector::PhaseToString(Phase phase) {
   switch (phase) {
     case Phase::kConnection:
       return kPortalDetectionPhaseConnection;
@@ -337,7 +331,7 @@ const string PortalDetector::PhaseToString(Phase phase) {
 }
 
 // static
-const string PortalDetector::StatusToString(Status status) {
+const std::string PortalDetector::StatusToString(Status status) {
   switch (status) {
     case Status::kSuccess:
       return kPortalDetectionStatusSuccess;

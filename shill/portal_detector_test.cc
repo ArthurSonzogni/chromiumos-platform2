@@ -19,11 +19,6 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
 
-using base::Bind;
-using base::Callback;
-using base::Unretained;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Mock;
 using testing::NiceMock;
@@ -40,7 +35,7 @@ const char kLoggingTag[] = "int0 IPv4 attempt=1 HTTP probe";
 const char kInterfaceName[] = "int0";
 const char kHttpUrl[] = "http://www.chromium.org";
 const char kHttpsUrl[] = "https://www.google.com";
-const vector<string> kFallbackHttpUrls{
+const std::vector<std::string> kFallbackHttpUrls{
     "http://www.google.com/gen_204",
     "http://play.googleapis.com/generate_204",
 };
@@ -120,17 +115,17 @@ class PortalDetectorTest : public Test {
   class CallbackTarget {
    public:
     CallbackTarget()
-        : result_callback_(
-              Bind(&CallbackTarget::ResultCallback, Unretained(this))) {}
+        : result_callback_(base::Bind(&CallbackTarget::ResultCallback,
+                                      base::Unretained(this))) {}
 
     MOCK_METHOD(void, ResultCallback, (const PortalDetector::Result&));
 
-    Callback<void(const PortalDetector::Result&)>& result_callback() {
+    base::Callback<void(const PortalDetector::Result&)>& result_callback() {
       return result_callback_;
     }
 
    private:
-    Callback<void(const PortalDetector::Result&)> result_callback_;
+    base::Callback<void(const PortalDetector::Result&)> result_callback_;
   };
 
   void AssignHttpRequest() {
@@ -204,8 +199,8 @@ class PortalDetectorTest : public Test {
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   CallbackTarget callback_target_;
   std::unique_ptr<PortalDetector> portal_detector_;
-  const string interface_name_;
-  vector<string> dns_servers_;
+  const std::string interface_name_;
+  std::vector<std::string> dns_servers_;
   MockHttpRequest* http_request_;
   MockHttpRequest* https_request_;
 };
