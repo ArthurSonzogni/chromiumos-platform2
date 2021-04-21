@@ -436,3 +436,41 @@ message NeighborReachabilityEventSignal {
 
   EventType type = 4;
 }
+
+// Request to start DNS traffic redirection when DNS proxy is running. The rules
+// created depend on the type requested. The client must append a valid file
+// descriptor immediately after the serialized SetDnsRedirectionRuleRequest
+// proto. This file descriptor must remain valid for as long as the DNS traffic
+// need to be redirected. Invalidating the file descriptor explicitly by closing
+// it or implicitly when the client exits will trigger the teardown of the
+// redirection rules.
+message SetDnsRedirectionRuleRequest {
+  enum RuleType {
+    INVALID_RULE_TYPE = 0;
+    // Rules for traffic from guests that track the default network (e.g.
+    // Crostini, PluginVMs).
+    DEFAULT = 1;
+    // Rules for traffic from ARC interfaces (e.g. arc_eth0, arc_wlan0).
+    ARC = 2;
+    // Rule for traffic associated with user traffic (e.g. chronos, cups).
+    USER = 3;
+  }
+
+  RuleType type = 1;
+
+  // Identifies from which network interface the traffic originates.
+  // This field is required for ARC and DEFAULT type.
+  string input_ifname = 2;
+
+  // The IP address of the proxy. This field is required for ARC and
+  // USER type.
+  string proxy_address = 3;
+
+  // Nameservers are only necessary for Chrome redirect (USER type).
+  repeated string nameservers = 4;
+}
+
+// Response to a SetDnsRedirectionRuleRequest.
+message SetDnsRedirectionRuleResponse {
+  bool success = 1;
+}
