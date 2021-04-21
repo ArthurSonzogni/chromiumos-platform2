@@ -7,9 +7,6 @@
 #include <cstdlib>
 #include <unistd.h>
 
-using std::map;
-using std::string;
-
 namespace shill {
 
 namespace shims {
@@ -24,7 +21,7 @@ Environment* Environment::GetInstance() {
   return instance.get();
 }
 
-bool Environment::GetVariable(const string& name, string* value) {
+bool Environment::GetVariable(const std::string& name, std::string* value) {
   char* v = getenv(name.c_str());
   if (v) {
     *value = v;
@@ -33,12 +30,12 @@ bool Environment::GetVariable(const string& name, string* value) {
   return false;
 }
 
-map<string, string> Environment::AsMap() {
-  map<string, string> env;
+std::map<std::string, std::string> Environment::AsMap() {
+  std::map<std::string, std::string> env;
   for (char** var = environ; var && *var; var++) {
-    string v = *var;
+    std::string v = *var;
     size_t assign = v.find('=');
-    if (assign != string::npos) {
+    if (assign != std::string::npos) {
       env[v.substr(0, assign)] = v.substr(assign + 1);
     }
   }

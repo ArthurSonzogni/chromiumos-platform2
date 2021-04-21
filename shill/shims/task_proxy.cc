@@ -6,21 +6,19 @@
 
 #include <base/logging.h>
 
-using std::map;
-using std::string;
-
 namespace shill {
 
 namespace shims {
 
 TaskProxy::TaskProxy(scoped_refptr<dbus::Bus> bus,
-                     const string& path,
-                     const string& service)
+                     const std::string& path,
+                     const std::string& service)
     : proxy_(bus, dbus::ObjectPath(path)) {}
 
 TaskProxy::~TaskProxy() = default;
 
-void TaskProxy::Notify(const string& reason, const map<string, string>& dict) {
+void TaskProxy::Notify(const std::string& reason,
+                       const std::map<std::string, std::string>& dict) {
   LOG(INFO) << __func__ << "(" << reason << ", argcount: " << dict.size()
             << ")";
   brillo::ErrorPtr error;
@@ -30,7 +28,7 @@ void TaskProxy::Notify(const string& reason, const map<string, string>& dict) {
   }
 }
 
-bool TaskProxy::GetSecret(string* username, string* password) {
+bool TaskProxy::GetSecret(std::string* username, std::string* password) {
   LOG(INFO) << __func__;
   brillo::ErrorPtr error;
   if (!proxy_.getsec(username, password, &error)) {

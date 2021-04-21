@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdlib>
+#include <map>
 #include <string>
 
 #include <base/at_exit.h>
@@ -16,17 +17,14 @@
 #include "shill/shims/environment.h"
 #include "shill/shims/task_proxy.h"
 
-using shill::shims::Environment;
-using std::map;
-using std::string;
-
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
-  Environment* environment = Environment::GetInstance();
-  string service, path, reason;
+  shill::shims::Environment* environment =
+      shill::shims::Environment::GetInstance();
+  std::string service, path, reason;
   if (!environment->GetVariable(shill::kRpcTaskServiceVariable, &service) ||
       !environment->GetVariable(shill::kRpcTaskPathVariable, &path) ||
       !environment->GetVariable("script_type", &reason)) {
@@ -41,7 +39,7 @@ int main(int argc, char** argv) {
   CHECK(bus->Connect());
 
   shill::shims::TaskProxy proxy(bus, path, service);
-  map<string, string> env = environment->AsMap();
+  std::map<std::string, std::string> env = environment->AsMap();
   proxy.Notify(reason, env);
   if (bus) {
     bus->ShutdownAndBlock();

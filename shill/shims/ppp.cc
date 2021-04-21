@@ -41,9 +41,6 @@ extern "C" {
 #include "shill/shims/environment.h"
 #include "shill/shims/task_proxy.h"
 
-using std::map;
-using std::string;
-
 namespace shill {
 
 namespace shims {
@@ -70,7 +67,7 @@ void PPP::Init() {
   LOG(INFO) << "PPP started.";
 }
 
-bool PPP::GetSecret(string* username, string* password) {
+bool PPP::GetSecret(std::string* username, std::string* password) {
   LOG(INFO) << __func__;
   if (!CreateProxy()) {
     return false;
@@ -83,7 +80,7 @@ bool PPP::GetSecret(string* username, string* password) {
 void PPP::OnAuthenticateStart() {
   LOG(INFO) << __func__;
   if (CreateProxy()) {
-    map<string, string> details;
+    std::map<std::string, std::string> details;
     proxy_->Notify(kPPPReasonAuthenticating, details);
     DestroyProxy();
   }
@@ -92,19 +89,19 @@ void PPP::OnAuthenticateStart() {
 void PPP::OnAuthenticateDone() {
   LOG(INFO) << __func__;
   if (CreateProxy()) {
-    map<string, string> details;
+    std::map<std::string, std::string> details;
     proxy_->Notify(kPPPReasonAuthenticated, details);
     DestroyProxy();
   }
 }
 
-void PPP::OnConnect(const string& ifname) {
+void PPP::OnConnect(const std::string& ifname) {
   LOG(INFO) << __func__ << "(" << ifname << ")";
   if (!ipcp_gotoptions[0].ouraddr) {
     LOG(ERROR) << "ouraddr not set.";
     return;
   }
-  map<string, string> dict;
+  std::map<std::string, std::string> dict;
   dict[kPPPInterfaceName] = ifname;
   dict[kPPPInternalIP4Address] = ConvertIPToText(&ipcp_gotoptions[0].ouraddr);
   dict[kPPPExternalIP4Address] = ConvertIPToText(&ipcp_hisoptions[0].hisaddr);
@@ -120,7 +117,7 @@ void PPP::OnConnect(const string& ifname) {
   if (lcp_gotoptions[0].mru) {
     dict[kPPPMRU] = base::NumberToString(lcp_gotoptions[0].mru);
   }
-  string lns_address;
+  std::string lns_address;
   if (Environment::GetInstance()->GetVariable("LNS_ADDRESS", &lns_address)) {
     // Really an L2TP/IPSec option rather than a PPP one. But oh well.
     dict[kPPPLNSAddress] = lns_address;
@@ -134,7 +131,7 @@ void PPP::OnConnect(const string& ifname) {
 void PPP::OnDisconnect() {
   LOG(INFO) << __func__;
   if (CreateProxy()) {
-    map<string, string> dict;
+    std::map<std::string, std::string> dict;
     proxy_->Notify(kPPPReasonDisconnect, dict);
     DestroyProxy();
   }
@@ -142,7 +139,7 @@ void PPP::OnDisconnect() {
 
 bool PPP::CreateProxy() {
   Environment* environment = Environment::GetInstance();
-  string service, path;
+  std::string service, path;
   if (!environment->GetVariable(kRpcTaskServiceVariable, &service) ||
       !environment->GetVariable(kRpcTaskPathVariable, &path)) {
     LOG(ERROR) << "Environment variables not available.";
@@ -169,7 +166,7 @@ void PPP::DestroyProxy() {
 }
 
 // static
-string PPP::ConvertIPToText(const void* addr) {
+std::string PPP::ConvertIPToText(const void* addr) {
   char text[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, addr, text, INET_ADDRSTRLEN);
   return text;
