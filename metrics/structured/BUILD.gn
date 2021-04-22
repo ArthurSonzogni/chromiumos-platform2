@@ -67,5 +67,6 @@ shared_library("libstructuredmetrics") {
   deps = [
     ":gen_structured_events",
     ":storage",
+    "//metrics:libmetrics",
   ]
 }
