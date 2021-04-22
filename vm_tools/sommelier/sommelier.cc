@@ -533,10 +533,6 @@ int sl_process_pending_configure_acks(struct sl_window* window,
   if (!window->pending_config.serial)
     return 0;
 
-  // Do not commit/ack if there is nothing to change.
-  if (!window->pending_config.mask && window->pending_config.states_length == 0)
-    return 0;
-
   if (window->managed && host_surface) {
     uint32_t width = window->width + window->border_width * 2;
     uint32_t height = window->height + window->border_width * 2;
