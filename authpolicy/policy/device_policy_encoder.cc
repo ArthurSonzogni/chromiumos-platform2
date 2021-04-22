@@ -370,6 +370,12 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
         static_cast<em::DeviceKerberosEncryptionTypesProto_Types>(
             value.value()));
   }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceDebugPacketCaptureAllowed)) {
+    policy->mutable_device_debug_packet_capture_allowed()->set_allowed(
+        value.value());
+  }
 }
 
 void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
@@ -1114,6 +1120,12 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
           EncodeBoolean(key::kDeviceAllowMGSToStoreDisplayProperties)) {
     policy->mutable_device_allow_mgs_to_store_display_properties()->set_value(
         value.value());
+  }
+
+  if (base::Optional<std::vector<std::string>> values =
+          EncodeStringList(key::kDeviceAllowedBluetoothServices)) {
+    *policy->mutable_device_allowed_bluetooth_services()
+         ->mutable_allowlist() = {values.value().begin(), values.value().end()};
   }
 }
 

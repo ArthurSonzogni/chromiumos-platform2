@@ -179,6 +179,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_ALL,
             policy.device_kerberos_encryption_types().types());
 
+  EncodeBoolean(&policy, key::kDeviceDebugPacketCaptureAllowed, kBool);
+  EXPECT_EQ(kBool, policy.device_debug_packet_capture_allowed().allowed());
+
   //
   // Auto update policies.
   //
@@ -741,6 +744,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceAllowMGSToStoreDisplayProperties, kBool);
   EXPECT_EQ(kBool,
             policy.device_allow_mgs_to_store_display_properties().value());
+
+  EncodeStringList(&policy, key::kDeviceAllowedBluetoothServices, kStringList);
+  EXPECT_EQ(kStringList,
+            ToVector(policy.device_allowed_bluetooth_services().allowlist()));
 
   //
   // Check whether all device policies have been handled.
