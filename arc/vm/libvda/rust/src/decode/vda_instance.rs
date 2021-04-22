@@ -5,7 +5,7 @@
 //! This module provides type safe interfaces for each operation exposed by Chrome's
 //! VideoDecodeAccelerator.
 
-use std::os::raw::c_void;
+use std::{os::raw::c_void, rc::Rc};
 
 use super::bindings;
 use super::format::*;
@@ -44,6 +44,12 @@ impl VdaConnection {
             conn_ptr => Ok(VdaConnection { conn_ptr }),
         }
     }
+
+    // Returns the raw pointer to the VDA connection instance that can be passed
+    // to bindings functions that require it.
+    pub(super) fn conn_ptr(&self) -> *mut c_void {
+        self.conn_ptr
+    }
 }
 
 impl Drop for VdaConnection {
@@ -55,7 +61,7 @@ impl Drop for VdaConnection {
 
 /// Represents a libvda instance.
 pub struct VdaInstance {
-    connection: VdaConnection,
+    connection: Rc<VdaConnection>,
     caps: Capabilities,
 }
 
@@ -85,7 +91,7 @@ impl VdaInstance {
         };
 
         Ok(VdaInstance {
-            connection,
+            connection: Rc::new(connection),
             caps: Capabilities {
                 input_formats,
                 output_formats,
@@ -100,11 +106,6 @@ impl VdaInstance {
 
     /// Opens a new `Session` for a given `Profile`.
     pub fn open_session(&self, profile: Profile) -> Result<Session> {
-        // Safe because `connection` is properly initialized and thus its `conn_ptr` is
-        // non-NULL.
-        unsafe {
-            Session::new(self.connection.conn_ptr, profile)
-                .ok_or(Error::SessionInitFailure(profile))
-        }
+        Session::new(&self.connection, profile).ok_or(Error::SessionInitFailure(profile))
     }
 }

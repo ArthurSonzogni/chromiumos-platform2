@@ -26,8 +26,6 @@ fn test_initialize_decode_session() {
     let _session = instance
         .open_session(Profile::VP8)
         .expect("failed to open a session for VP8");
-    // `drop(instance)` here must cause a compile error because `_session` must be dropped in
-    // advance.
 }
 
 #[test]

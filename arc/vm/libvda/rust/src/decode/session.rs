@@ -2,40 +2,32 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::fs::File;
 use std::io::Read;
-use std::marker::PhantomData;
 use std::mem;
-use std::os::raw::c_void;
 use std::os::unix::io::FromRawFd;
+use std::{fs::File, rc::Rc};
 
-use super::bindings;
 use super::event::*;
-use super::vda_instance::VdaInstance;
+use super::{bindings, VdaConnection};
 use crate::error::*;
 use crate::format::{BufferFd, FramePlane, PixelFormat, Profile};
 
 /// Represents a decode session.
-pub struct Session<'a> {
+pub struct Session {
+    // Ensures the VDA connection remains open for as long as there are active sessions.
+    connection: Rc<VdaConnection>,
     // Pipe file to be notified decode session events.
     pipe: File,
-    vda_ptr: *mut c_void,
     session_ptr: *mut bindings::vda_session_info_t,
-    // `phantom` gurantees that `Session` won't outlive the lifetime of `VdaInstance` that owns
-    // `vda_ptr`.
-    phantom: PhantomData<&'a VdaInstance>,
 }
 
-impl<'a> Session<'a> {
+impl Session {
     /// Creates a new `Session`.
-    ///
-    /// This function is safe if `vda_ptr` is a non-NULL pointer obtained from
-    /// `bindings::initialize`.
-    pub(crate) unsafe fn new(vda_ptr: *mut c_void, profile: Profile) -> Option<Self> {
-        // `init_decode_session` is safe if `vda_ptr` is a non-NULL pointer from
-        // `bindings::initialize`.
-        let session_ptr: *mut bindings::vda_session_info_t =
-            bindings::init_decode_session(vda_ptr, profile.to_raw_profile());
+    pub(super) fn new(connection: &Rc<VdaConnection>, profile: Profile) -> Option<Self> {
+        // Safe because `conn_ptr()` is valid and won't be invalidated by `init_decode_session()`.
+        let session_ptr: *mut bindings::vda_session_info_t = unsafe {
+            bindings::init_decode_session(connection.conn_ptr(), profile.to_raw_profile())
+        };
 
         if session_ptr.is_null() {
             return None;
@@ -44,13 +36,12 @@ impl<'a> Session<'a> {
         // Dereferencing `session_ptr` is safe because it is a valid pointer to a FD provided by
         // libvda. We need to dup() the `event_pipe_fd` because File object close() the FD while
         // libvda also close() it when `close_decode_session` is called.
-        let pipe = File::from_raw_fd(libc::dup((*session_ptr).event_pipe_fd));
+        let pipe = unsafe { File::from_raw_fd(libc::dup((*session_ptr).event_pipe_fd)) };
 
         Some(Session {
+            connection: Rc::clone(connection),
             pipe,
-            vda_ptr,
             session_ptr,
-            phantom: PhantomData,
         })
     }
 
@@ -174,13 +165,13 @@ impl<'a> Session<'a> {
     }
 }
 
-impl<'a> Drop for Session<'a> {
+impl Drop for Session {
     fn drop(&mut self) {
-        // Safe because `vda_ptr` and `session_ptr` are unchanged from the time `new` was called.
-        // Also, `vda_ptr` is valid because `phantom` guranteed that `VdaInstance` owning `vda_ptr`
-        // is not dropped yet.
+        // Safe because `session_ptr` is unchanged from the time `new` was called, and
+        // `connection` also guarantees that the pointer returned by `conn_ptr()` is a valid
+        // connection to a VDA instance.
         unsafe {
-            bindings::close_decode_session(self.vda_ptr, self.session_ptr);
+            bindings::close_decode_session(self.connection.conn_ptr(), self.session_ptr);
         }
     }
 }
