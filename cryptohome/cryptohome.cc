@@ -17,7 +17,12 @@
 #include <string>
 #include <vector>
 
+// We need to include this file early because there's a clash between the
+// glib-dbus and libbrillo dbus.
+#include <brillo/dbus/dbus_object.h>  // NOLINT(build/include_alpha)
+
 #include <attestation/proto_bindings/interface.pb.h>
+#include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -33,7 +38,10 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/crypto.h"
@@ -48,6 +56,9 @@
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/UserDataAuth.pb.h"
 #include "cryptohome/vault_keyset.pb.h"
+#include "dbus_adaptors/org.chromium.CryptohomeInterface.h"  // NOLINT(build/include_alpha)
+#include "user_data_auth/dbus-proxies.h"
+// The dbus_adaptor and proxy include must happen after the protobuf include
 
 #include "bindings/cryptohome.dbusclient.h"
 
@@ -786,6 +797,22 @@ int main(int argc, char** argv) {
                             cryptohome::kCryptohomeInterface);
   DCHECK(proxy.gproxy()) << "Failed to acquire proxy";
   dbus_g_proxy_set_default_timeout(proxy.gproxy(), kDefaultTimeoutMs);
+
+  // Setup libbrillo dbus.
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> brillo_dbus =
+      base::MakeRefCounted<dbus::Bus>(options);
+  bool return_result = brillo_dbus->Connect();
+  DCHECK(return_result) << "Failed to connect to system bus through libbrillo";
+  org::chromium::AttestationProxy attestation_proxy(brillo_dbus);
+  org::chromium::TpmManagerProxy tpm_ownership_proxy(brillo_dbus);
+  org::chromium::TpmNvramProxy tpm_nvram_proxy(brillo_dbus);
+  org::chromium::UserDataAuthInterfaceProxy userdataauth_proxy(brillo_dbus);
+  org::chromium::CryptohomePkcs11InterfaceProxy pkcs11_proxy(brillo_dbus);
+  org::chromium::InstallAttributesInterfaceProxy install_attributes_proxy(
+      brillo_dbus);
+  org::chromium::CryptohomeMiscInterfaceProxy misc_proxy(brillo_dbus);
 
   cryptohome::Platform platform;
 
