@@ -1134,37 +1134,23 @@ int main(int argc, char** argv) {
         StringPrintf("Enter the old password for <%s>", account_id.c_str()),
         &old_password);
 
-    cryptohome::AccountIdentifier account;
-    cryptohome::AuthorizationRequest auth_request;
-    cryptohome::MigrateKeyRequest migrate_request;
-    account.set_account_id(account_id);
-    auth_request.mutable_key()->set_secret(old_password);
-    migrate_request.set_secret(password);
+    user_data_auth::MigrateKeyRequest req;
+    req.mutable_account_id()->set_account_id(account_id);
+    req.mutable_authorization_request()->mutable_key()->set_secret(
+        old_password);
+    req.set_secret(password);
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(account));
-    brillo::glib::ScopedArray auth_request_ary(
-        GArrayFromProtoBuf(auth_request));
-    brillo::glib::ScopedArray migrate_request_ary(
-        GArrayFromProtoBuf(migrate_request));
-
-    if (!account_ary.get() || !auth_request_ary.get() ||
-        !migrate_request_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::MigrateKeyReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.MigrateKey(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("MigrateKeyEx call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_migrate_key_ex(
-            proxy.gproxy(), account_ary.get(), auth_request_ary.get(),
-            migrate_request_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("MigrateKeyEx call failed: %s", error->message);
-      return 1;
-    }
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key migration failed.\n");
       return reply.error();
     }
@@ -1174,17 +1160,17 @@ int main(int argc, char** argv) {
     std::string new_password;
     GetPassword(proxy, cl, switches::kNewPasswordSwitch,
                 "Enter the new password", &new_password);
-    cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+
+    user_data_auth::AddKeyRequest req;
+    if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
+    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+                            req.mutable_authorization_request()))
       return 1;
 
-    cryptohome::AddKeyRequest key_req;
-    key_req.set_clobber_if_exists(cl->HasSwitch(switches::kForceSwitch));
+    req.set_clobber_if_exists(cl->HasSwitch(switches::kForceSwitch));
 
-    cryptohome::Key* key = key_req.mutable_key();
+    cryptohome::Key* key = req.mutable_key();
     key->set_secret(new_password);
     cryptohome::KeyData* data = key->mutable_data();
     data->set_label(cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
@@ -1201,39 +1187,16 @@ int main(int argc, char** argv) {
 
     // TODO(wad) Add a privileges cl interface
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::AddKeyReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.AddKey(req, &reply, &error, timeout_ms) || error) {
+      printf("AddKeyEx call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call = org_chromium_CryptohomeInterface_add_key_ex_async(
-          proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-          &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call AddKeyEx async.\n");
-        return 1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      GArray* out_reply = NULL;
-      if (!org_chromium_CryptohomeInterface_add_key_ex(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &out_reply, &brillo::Resetter(&error).lvalue())) {
-        printf("AddKeyEx call failed: %s", error->message);
-        return 1;
-      }
-      ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    }
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key addition failed.\n");
       return reply.error();
     }
