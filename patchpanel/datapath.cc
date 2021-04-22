@@ -673,7 +673,8 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 
   StartRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
                      nsinfo.peer_subnet->AddressAtOffset(0), nsinfo.source,
-                     nsinfo.route_on_vpn);
+                     nsinfo.route_on_vpn,
+                     nsinfo.peer_subnet->AddressAtOffset(1));
   return true;
 }
 
@@ -692,7 +693,8 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                                   const std::string& int_ifname,
                                   uint32_t int_ipv4_addr,
                                   TrafficSource source,
-                                  bool route_on_vpn) {
+                                  bool route_on_vpn,
+                                  uint32_t peer_ipv4_addr) {
   if (source == TrafficSource::ARC && !ext_ifname.empty() &&
       int_ipv4_addr != 0 &&
       !AddInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr)))
@@ -748,6 +750,17 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     if (!ModifyConnmarkRestore(IpFamily::Dual, subchain, "-A", "" /*iif*/,
                                kFwmarkRoutingMask))
       LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
+
+    // Explicitly bypass VPN fwmark tagging rules on returning traffic of a
+    // connected namespace. This allows the return traffic to reach the local
+    // source. Connected namespace device can be identified by checking if the
+    // value of |peer_ipv4_addr| not equal to 0.
+    if (route_on_vpn && peer_ipv4_addr != 0 &&
+        process_runner_->iptables(
+            "mangle",
+            {"-A", subchain, "-s", IPv4AddressToString(peer_ipv4_addr), "-d",
+             IPv4AddressToString(int_ipv4_addr), "-j", "ACCEPT", "-w"}) != 0)
+      LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
 
     // Forwarded traffic from downstream virtual devices routed to the system
     // default network is eligible to be routed through a VPN if |route_on_vpn|

@@ -178,11 +178,18 @@ class Datapath {
   // priority logical network when |route_on_vpn| is true. If |ext_ifname| is
   // defined, the device is routed to |ext_ifname| and |route_on_vpn| is
   // ignored.
+  // If the device is associated to a connected namespace and a VPN is
+  // connected, an additional IPv4 VPN fwmark tagging bypass rule is needed
+  // to allow return traffic to reach to the IPv4 local source. |peer_ipv4_addr|
+  // is the address of the interface inside the connected namespace needed to
+  // create this rule. If |peer_ipv4_addr| is 0, no additional rule will be
+  // added.
   virtual void StartRoutingDevice(const std::string& ext_ifname,
                                   const std::string& int_ifname,
                                   uint32_t int_ipv4_addr,
                                   TrafficSource source,
-                                  bool route_on_vpn);
+                                  bool route_on_vpn,
+                                  uint32_t peer_ipv4_addr = 0);
 
   // Removes IPv4 iptables, IP forwarding, and traffic marking for the given
   // virtual device |int_ifname|.

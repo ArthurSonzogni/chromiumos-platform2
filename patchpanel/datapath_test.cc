@@ -605,6 +605,9 @@ TEST(DatapathTest, StartRoutingNamespace) {
   Verify_iptables(runner, Dual,
                   "mangle -A PREROUTING_arc_ns0 -j CONNMARK "
                   "--restore-mark --mask 0xffff0000 -w");
+  Verify_iptables(runner, IPv4,
+                  "mangle -A PREROUTING_arc_ns0 -s 100.115.92.130 -d "
+                  "100.115.92.129 -j ACCEPT -w");
   Verify_iptables(runner, Dual,
                   "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
 
