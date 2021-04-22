@@ -999,110 +999,55 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_LIST_KEYS_EX],
                      action.c_str())) {
-    cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    user_data_auth::ListKeysRequest req;
+    if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    cryptohome::AuthorizationRequest auth;
 
-    cryptohome::ListKeysRequest list_keys_req;
-
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(list_keys_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::ListKeysReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.ListKeys(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("ListKeysEx call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call =
-          org_chromium_CryptohomeInterface_list_keys_ex_async(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call ListKeysEx async.\n");
-        return 1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      GArray* out_reply = NULL;
-      if (!org_chromium_CryptohomeInterface_list_keys_ex(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &out_reply, &brillo::Resetter(&error).lvalue())) {
-        printf("ListKeysEx call failed: %s", error->message);
-        return 1;
-      }
-      ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    }
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Failed to list keys.\n");
       return reply.error();
     }
-    if (!reply.HasExtension(cryptohome::ListKeysReply::reply)) {
-      printf("ListKeysReply missing.\n");
-      return 1;
-    }
-    cryptohome::ListKeysReply list_keys_reply =
-        reply.GetExtension(cryptohome::ListKeysReply::reply);
-    for (int i = 0; i < list_keys_reply.labels_size(); ++i) {
-      printf("Label: %s\n", list_keys_reply.labels(i).c_str());
+    for (int i = 0; i < reply.labels_size(); ++i) {
+      printf("Label: %s\n", reply.labels(i).c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
                      action.c_str())) {
-    cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    user_data_auth::CheckKeyRequest req;
+    if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    cryptohome::AuthorizationRequest auth;
     if (cl->HasSwitch(switches::kFingerprintSwitch)) {
-      auth.mutable_key()->mutable_data()->set_type(
-          cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
+      req.mutable_authorization_request()
+          ->mutable_key()
+          ->mutable_data()
+          ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
     } else if (!BuildAuthorization(cl, proxy, true /* need_password */,
-                                   &auth)) {
+                                   req.mutable_authorization_request())) {
       return 1;
     }
 
-    cryptohome::CheckKeyRequest check_req;
     // TODO(wad) Add a privileges cl interface
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(check_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::CheckKeyReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.CheckKey(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("CheckKeyEx call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call =
-          org_chromium_CryptohomeInterface_check_key_ex_async(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call CheckKeyEx async.\n");
-        return 1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      GArray* out_reply = NULL;
-      if (!org_chromium_CryptohomeInterface_check_key_ex(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &out_reply, &brillo::Resetter(&error).lvalue())) {
-        printf("CheckKeyEx call failed: %s", error->message);
-        return 1;
-      }
-      ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    }
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key authentication failed.\n");
       return reply.error();
     }
