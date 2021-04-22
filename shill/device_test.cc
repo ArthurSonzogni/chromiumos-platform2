@@ -36,7 +36,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ipconfig.h"
-#include "shill/mock_link_monitor.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"

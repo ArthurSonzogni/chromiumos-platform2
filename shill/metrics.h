@@ -172,15 +172,6 @@ class Metrics : public DefaultServiceObserver {
     kPortalResultMax
   };
 
-  enum LinkMonitorFailure {
-    kLinkMonitorMacAddressNotFound = 0,
-    kLinkMonitorClientStartFailure = 1,
-    kLinkMonitorTransmitFailure = 2,
-    kLinkMonitorFailureThresholdReached = 3,
-
-    kLinkMonitorFailureMax
-  };
-
   enum NeighborLinkMonitorFailure {
     kNeighborLinkMonitorFailureUnknown = 0,
     kNeighborIPv4GatewayFailure = 1,
@@ -708,22 +699,6 @@ class Metrics : public DefaultServiceObserver {
 
   static const char kMetricPowerManagerKey[];
 
-  // LinkMonitor statistics.
-  static const char kMetricLinkMonitorFailureSuffix[];
-  static const char kMetricLinkMonitorResponseTimeSampleSuffix[];
-  static const int kMetricLinkMonitorResponseTimeSampleMin;
-  static const int kMetricLinkMonitorResponseTimeSampleMax;
-  static const int kMetricLinkMonitorResponseTimeSampleNumBuckets;
-  static const char kMetricLinkMonitorSecondsToFailureSuffix[];
-  static const int kMetricLinkMonitorSecondsToFailureMin;
-  static const int kMetricLinkMonitorSecondsToFailureMax;
-  static const int kMetricLinkMonitorSecondsToFailureNumBuckets;
-  static const char kMetricLinkMonitorBroadcastErrorsAtFailureSuffix[];
-  static const char kMetricLinkMonitorUnicastErrorsAtFailureSuffix[];
-  static const int kMetricLinkMonitorErrorCountMin;
-  static const int kMetricLinkMonitorErrorCountMax;
-  static const int kMetricLinkMonitorErrorCountNumBuckets;
-
   // patchpanel::NeighborLinkMonitor statistics.
   static const char kMetricNeighborLinkMonitorFailureSuffix[];
 
@@ -1069,18 +1044,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object that a scan results have been received in dark resume.
   void NotifyDarkResumeScanResultsReceived();
-
-  // Notifies this object of a failure in LinkMonitor.
-  void NotifyLinkMonitorFailure(Technology technology,
-                                LinkMonitorFailure failure,
-                                int seconds_to_failure,
-                                int broadcast_error_count,
-                                int unicast_error_count);
-
-  // Notifies this object that LinkMonitor has added a response time sample
-  // for |connection| with a value of |response_time_milliseconds|.
-  void NotifyLinkMonitorResponseTimeSampleAdded(Technology technology,
-                                                int response_time_milliseconds);
 
   // Notifies this object of a failure in patchpanel::NeighborLinkMonitor.
   void NotifyNeighborLinkMonitorFailure(

@@ -41,7 +41,6 @@
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ipconfig.h"
-#include "shill/mock_link_monitor.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"

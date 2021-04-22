@@ -230,7 +230,6 @@ generate_dbus_proxies("generate_supplicant_proxies") {
 
 static_library("libshill") {
   sources = [
-    "active_link_monitor.cc",
     "certificate_file.cc",
     "connection.cc",
     "connection_diagnostics.cc",
@@ -287,11 +286,9 @@ static_library("libshill") {
     "ipconfig.cc",
     "key_file_store.cc",
     "key_value_store.cc",
-    "link_monitor.cc",
     "logging.cc",
     "manager.cc",
     "metrics.cc",
-    "passive_link_monitor.cc",
     "portal_detector.cc",
     "power_manager.cc",
     "process_manager.cc",
@@ -543,7 +540,6 @@ if (use.test) {
 
   executable("shill_unittest") {
     sources = [
-      "active_link_monitor_test.cc",
       "arp_client_test_helper.cc",
       "certificate_file_test.cc",
       "connection_diagnostics_test.cc",
@@ -589,10 +585,8 @@ if (use.test) {
       "ipconfig_test.cc",
       "key_file_store_test.cc",
       "key_value_store_test.cc",
-      "link_monitor_test.cc",
       "manager_test.cc",
       "metrics_test.cc",
-      "mock_active_link_monitor.cc",
       "mock_adaptors.cc",
       "mock_ares.cc",
       "mock_arp_client.cc",
@@ -610,12 +604,10 @@ if (use.test) {
       "mock_icmp_session.cc",
       "mock_icmp_session_factory.cc",
       "mock_ipconfig.cc",
-      "mock_link_monitor.cc",
       "mock_log.cc",
       "mock_log_test.cc",
       "mock_manager.cc",
       "mock_metrics.cc",
-      "mock_passive_link_monitor.cc",
       "mock_portal_detector.cc",
       "mock_power_manager.cc",
       "mock_power_manager_proxy.cc",
@@ -628,7 +620,6 @@ if (use.test) {
       "mock_throttler.cc",
       "mock_traffic_monitor.cc",
       "mock_virtual_device.cc",
-      "passive_link_monitor_test.cc",
       "portal_detector_test.cc",
       "power_manager_test.cc",
       "process_manager_test.cc",

@@ -16,9 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
-#include "shill/active_link_monitor.h"
 #include "shill/connection_diagnostics.h"
-#include "shill/link_monitor.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -281,29 +279,6 @@ const uint16_t Metrics::kWiFiFrequency5825 = 5825;
 
 // static
 const char Metrics::kMetricPowerManagerKey[] = "metrics";
-
-// static
-const char Metrics::kMetricLinkMonitorFailureSuffix[] = "LinkMonitorFailure";
-const char Metrics::kMetricLinkMonitorResponseTimeSampleSuffix[] =
-    "LinkMonitorResponseTimeSample";
-const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 1;
-const int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
-    ActiveLinkMonitor::kDefaultTestPeriodMilliseconds;
-const int Metrics::kMetricLinkMonitorResponseTimeSampleNumBuckets = 50;
-const char Metrics::kMetricLinkMonitorSecondsToFailureSuffix[] =
-    "LinkMonitorSecondsToFailure";
-const int Metrics::kMetricLinkMonitorSecondsToFailureMin = 1;
-const int Metrics::kMetricLinkMonitorSecondsToFailureMax = 7200;
-const int Metrics::kMetricLinkMonitorSecondsToFailureNumBuckets = 50;
-const char Metrics::kMetricLinkMonitorBroadcastErrorsAtFailureSuffix[] =
-    "LinkMonitorBroadcastErrorsAtFailure";
-const char Metrics::kMetricLinkMonitorUnicastErrorsAtFailureSuffix[] =
-    "LinkMonitorUnicastErrorsAtFailure";
-const int Metrics::kMetricLinkMonitorErrorCountMin = 1;
-const int Metrics::kMetricLinkMonitorErrorCountMax =
-    LinkMonitor::kFailureThreshold;
-const int Metrics::kMetricLinkMonitorErrorCountNumBuckets =
-    LinkMonitor::kFailureThreshold + 1;
 
 // static
 const char Metrics::kMetricNeighborLinkMonitorFailureSuffix[] =
@@ -1156,48 +1131,6 @@ void Metrics::NotifyDarkResumeInitiateScan() {
 
 void Metrics::NotifyDarkResumeScanResultsReceived() {
   --num_scan_results_expected_in_dark_resume_;
-}
-
-void Metrics::NotifyLinkMonitorFailure(Technology technology,
-                                       LinkMonitorFailure failure,
-                                       int seconds_to_failure,
-                                       int broadcast_error_count,
-                                       int unicast_error_count) {
-  string histogram =
-      GetFullMetricName(kMetricLinkMonitorFailureSuffix, technology);
-  SendEnumToUMA(histogram, failure, kLinkMonitorFailureMax);
-
-  if (failure == kLinkMonitorFailureThresholdReached) {
-    if (seconds_to_failure > kMetricLinkMonitorSecondsToFailureMax) {
-      seconds_to_failure = kMetricLinkMonitorSecondsToFailureMax;
-    }
-    histogram =
-        GetFullMetricName(kMetricLinkMonitorSecondsToFailureSuffix, technology);
-    SendToUMA(histogram, seconds_to_failure,
-              kMetricLinkMonitorSecondsToFailureMin,
-              kMetricLinkMonitorSecondsToFailureMax,
-              kMetricLinkMonitorSecondsToFailureNumBuckets);
-    histogram = GetFullMetricName(
-        kMetricLinkMonitorBroadcastErrorsAtFailureSuffix, technology);
-    SendToUMA(histogram, broadcast_error_count, kMetricLinkMonitorErrorCountMin,
-              kMetricLinkMonitorErrorCountMax,
-              kMetricLinkMonitorErrorCountNumBuckets);
-    histogram = GetFullMetricName(
-        kMetricLinkMonitorUnicastErrorsAtFailureSuffix, technology);
-    SendToUMA(histogram, unicast_error_count, kMetricLinkMonitorErrorCountMin,
-              kMetricLinkMonitorErrorCountMax,
-              kMetricLinkMonitorErrorCountNumBuckets);
-  }
-}
-
-void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
-    Technology technology, int response_time_milliseconds) {
-  string histogram =
-      GetFullMetricName(kMetricLinkMonitorResponseTimeSampleSuffix, technology);
-  SendToUMA(histogram, response_time_milliseconds,
-            kMetricLinkMonitorResponseTimeSampleMin,
-            kMetricLinkMonitorResponseTimeSampleMax,
-            kMetricLinkMonitorResponseTimeSampleNumBuckets);
 }
 
 void Metrics::NotifyNeighborLinkMonitorFailure(

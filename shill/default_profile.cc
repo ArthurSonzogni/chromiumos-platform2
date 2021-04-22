@@ -9,7 +9,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
-#include "shill/link_monitor.h"
 #include "shill/manager.h"
 #include "shill/portal_detector.h"
 #if !defined(DISABLE_WIFI)
