@@ -941,103 +941,59 @@ int main(int argc, char** argv) {
     // EndFingerprintAuthSession always succeeds.
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_KEY_EX],
                      action.c_str())) {
-    cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    user_data_auth::RemoveKeyRequest req;
+    if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    cryptohome::AuthorizationRequest auth;
-    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
+    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+                            req.mutable_authorization_request()))
       return 1;
 
-    cryptohome::RemoveKeyRequest remove_req;
-    cryptohome::KeyData* data = remove_req.mutable_key()->mutable_data();
+    cryptohome::KeyData* data = req.mutable_key()->mutable_data();
     data->set_label(cl->GetSwitchValueASCII(switches::kRemoveKeyLabelSwitch));
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(remove_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::RemoveKeyReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.RemoveKey(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("RemoveKeyEx call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call =
-          org_chromium_CryptohomeInterface_remove_key_ex_async(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call)
-        return 1;
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      GArray* out_reply = NULL;
-      if (!org_chromium_CryptohomeInterface_remove_key_ex(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &out_reply, &brillo::Resetter(&error).lvalue())) {
-        printf("RemoveKeyEx call failed: %s", error->message);
-        return 1;
-      }
-      ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    }
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key removal failed.\n");
       return reply.error();
     }
     printf("Key removed.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_KEY_DATA_EX],
                      action.c_str())) {
+    user_data_auth::GetKeyDataRequest req;
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id)) {
+    if (!BuildAccountId(cl, req.mutable_account_id())) {
       return 1;
     }
-    cryptohome::AuthorizationRequest auth;
-    cryptohome::GetKeyDataRequest key_data_req;
+    // Make sure has_authorization_request() returns true.
+    req.mutable_authorization_request();
     const std::string label =
         cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
     if (label.empty()) {
       printf("No key_label specified.\n");
       return 1;
     }
-    key_data_req.mutable_key()->mutable_data()->set_label(label);
+    req.mutable_key()->mutable_data()->set_label(label);
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_data_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::GetKeyDataReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.GetKeyData(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("GetKeyDataEx call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call =
-          org_chromium_CryptohomeInterface_get_key_data_ex_async(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call GetKeyDataEx async.\n");
-        return 1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      GArray* out_reply = NULL;
-      if (!org_chromium_CryptohomeInterface_get_key_data_ex(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &out_reply, &brillo::Resetter(&error).lvalue())) {
-        printf("GetKeyDataEx call failed: %s", error->message);
-        return 1;
-      }
-      ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    }
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Key retrieval failed.\n");
       return reply.error();
     }
