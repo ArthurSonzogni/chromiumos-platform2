@@ -62,7 +62,8 @@ filetrans_pattern(cros_init_scripts, cros_run, cras_socket, dir, "cras");
 filetrans_pattern(cros_init_scripts, cros_var_log, cros_powerd_log, file, "powerd.out");
 
 # init/anomaly_detector.conf
-filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_whitelist, dir, "whitelist");
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_devicesettings, dir, "whitelist");
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_devicesettings, dir, "devicesettings");
 
 # init/chaps.conf
 filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_chaps, dir, "chaps");

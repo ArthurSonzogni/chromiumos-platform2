@@ -9,7 +9,7 @@ allow cros_shill { cros_init_shill minijail }:fd use;
 allow cros_shill { cros_init_shill minijail }:fifo_file rw_file_perms;
 
 r_dir_file(cros_shill, cros_passwd_file);
-r_dir_file(cros_shill, cros_var_lib_whitelist);
+r_dir_file(cros_shill, cros_var_lib_devicesettings);
 
 allow cros_shill { cros_run_shill cros_var_lib_shill cros_var_cache_shill }:file create_file_perms;
 allow cros_shill { cros_run_shill cros_var_lib_shill cros_var_cache_shill }:dir create_dir_perms;

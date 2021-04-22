@@ -376,7 +376,7 @@ type cros_var_lib_trim, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ui, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_update_engine, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ureadahead, file_type, cros_file_type, cros_var_file_type;
-type cros_var_lib_whitelist, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_devicesettings, file_type, cros_file_type, cros_var_file_type;
 
 # /var/lock
 type cros_var_lock, file_type, cros_file_type, cros_var_file_type;

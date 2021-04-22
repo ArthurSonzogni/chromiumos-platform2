@@ -102,7 +102,7 @@ tmp_file(cros_crash, dir, , cros_minijail_minijail_tmp_file);
 allow cros_crash cros_crash_tmp_file:dir create_dir_perms;
 allow cros_crash cros_crash_tmp_file:{file lnk_file} create_file_perms;
 
-r_dir_file(cros_crash, cros_var_lib_whitelist);
+r_dir_file(cros_crash, cros_var_lib_devicesettings);
 r_dir_file(cros_crash, cros_passwd_file);
 
 r_dir_file(cros_crash, cros_anomaly_detector_tmp_file);

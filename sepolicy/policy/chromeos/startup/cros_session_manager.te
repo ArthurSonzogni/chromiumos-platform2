@@ -11,7 +11,8 @@ cros_net(cros_session_manager);
 cros_run_camera_creator(cros_session_manager);
 
 
-filetrans_pattern(cros_session_manager, cros_var_lib, cros_var_lib_whitelist, dir, "whitelist");
+filetrans_pattern(cros_session_manager, cros_var_lib, cros_var_lib_devicesettings, dir, "whitelist");
+filetrans_pattern(cros_session_manager, cros_var_lib, cros_var_lib_devicesettings, dir, "devicesettings");
 filetrans_pattern(cros_session_manager, cros_run, debugfs, dir, "debugfs_gpu");
 filetrans_pattern(cros_session_manager, cros_run, cros_run_session_manager, dir, "session_manager");
 
