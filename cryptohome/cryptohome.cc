@@ -1240,47 +1240,39 @@ int main(int argc, char** argv) {
     printf("Remove succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UNMOUNT],
                      action.c_str())) {
-    cryptohome::UnmountRequest request;
-    brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
-    if (!request_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::UnmountRequest req;
+
+    user_data_auth::UnmountReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.Unmount(req, &reply, &error, timeout_ms) || error) {
+      printf("Unmount call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    GArray* out_reply = nullptr;
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_unmount_ex(
-            proxy.gproxy(), request_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("Unmount call failed: %s.\n", error->message);
-      return 1;
-    }
-
-    cryptohome::BaseReply reply;
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Unmount failed.\n");
       return 1;
     }
     printf("Unmount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNTED],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean is_mounted = false;
+    user_data_auth::IsMountedRequest req;
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    if (account_id.empty()) {
-      if (!org_chromium_CryptohomeInterface_is_mounted(
-              proxy.gproxy(), &is_mounted,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("IsMounted call failed: %s.\n", error->message);
-      }
+    if (!account_id.empty()) {
+      req.set_username(account_id);
+    }
+
+    user_data_auth::IsMountedReply reply;
+    brillo::ErrorPtr error;
+    bool is_mounted = false;
+    if (!userdataauth_proxy.IsMounted(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("IsMounted call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     } else {
-      if (!org_chromium_CryptohomeInterface_is_mounted_for_user(
-              proxy.gproxy(), account_id.c_str(), &is_mounted,
-              nullptr /* OUT_is_ephemeral_mount */,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("IsMountedForUser call failed: %s.\n", error->message);
-      }
+      is_mounted = reply.is_mounted();
     }
     if (is_mounted) {
       printf("true\n");
