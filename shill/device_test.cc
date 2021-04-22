@@ -203,16 +203,6 @@ class DeviceTest : public testing::Test {
     device_->connection_ = connection;
   }
 
-  void SetLinkMonitor(LinkMonitor* link_monitor) {
-    device_->set_link_monitor(link_monitor);  // Passes ownership.
-  }
-
-  bool HasLinkMonitor() { return device_->link_monitor(); }
-
-  bool StartLinkMonitor() { return device_->StartLinkMonitor(); }
-
-  void StopLinkMonitor() { device_->StopLinkMonitor(); }
-
   MockTrafficMonitor* SetTrafficMonitor(
       std::unique_ptr<MockTrafficMonitor> traffic_monitor) {
     MockTrafficMonitor* underlying_traffic_monitor = traffic_monitor.get();
@@ -593,7 +583,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(current_time), Return(true)));
   EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
-  device_->OnLinkMonitorFailure();
+  device_->OnLinkMonitorFailure(IPAddress::kFamilyIPv4);
   EXPECT_FALSE(service->unreliable());
 
   // Another link monitor failure after 3 minutes, report signal strength.
@@ -601,7 +591,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(current_time), Return(true)));
   EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
-  device_->OnLinkMonitorFailure();
+  device_->OnLinkMonitorFailure(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(service->unreliable());
 
   // Device is connected with the reliable link callback setup, then
@@ -612,7 +602,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(current_time), Return(true)));
   EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
-  device_->OnLinkMonitorFailure();
+  device_->OnLinkMonitorFailure(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(service->unreliable());
   EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
 
@@ -623,7 +613,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(current_time), Return(true)));
   EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
-  device_->OnLinkMonitorFailure();
+  device_->OnLinkMonitorFailure(IPAddress::kFamilyIPv4);
   EXPECT_FALSE(service->unreliable());
 }
 
@@ -1015,19 +1005,6 @@ TEST_F(DeviceTest, ResumeWithoutIPConfig) {
   device_->OnAfterResume();
 }
 
-TEST_F(DeviceTest, ResumeWithLinkMonitor) {
-  MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
-  SetLinkMonitor(link_monitor);  // Passes ownership.
-  EXPECT_CALL(*link_monitor, OnAfterResume());
-  device_->OnAfterResume();
-}
-
-TEST_F(DeviceTest, ResumeWithoutLinkMonitor) {
-  // Just test that we don't crash in this case.
-  EXPECT_FALSE(HasLinkMonitor());
-  device_->OnAfterResume();
-}
-
 TEST_F(DeviceTest, ResumeWithUnreliableLink) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
@@ -1053,54 +1030,6 @@ TEST_F(DeviceTest, OnConnected) {
   service->set_unreliable(true);
   device_->OnConnected();
   EXPECT_FALSE(ReliableLinkCallbackIsCancelled());
-}
-
-TEST_F(DeviceTest, LinkMonitor) {
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  SetConnection(connection.get());
-  MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
-  SetLinkMonitor(link_monitor);  // Passes ownership.
-  EXPECT_CALL(*link_monitor, Start()).Times(0);
-  EXPECT_FALSE(StartLinkMonitor());
-
-  device_->technology_ = Technology::kWifi;
-
-  EXPECT_CALL(*link_monitor, Start()).Times(0);
-  EXPECT_CALL(*connection, IsIPv6())
-      .WillOnce(Return(true))
-      .WillRepeatedly(Return(false));
-  EXPECT_FALSE(StartLinkMonitor());
-
-  EXPECT_CALL(*link_monitor, Start()).Times(0);
-  EXPECT_CALL(*service, link_monitor_disabled())
-      .WillOnce(Return(true))
-      .WillRepeatedly(Return(false));
-  EXPECT_FALSE(StartLinkMonitor());
-
-  EXPECT_CALL(*link_monitor, Start())
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EXPECT_FALSE(StartLinkMonitor());
-  EXPECT_TRUE(StartLinkMonitor());
-}
-
-TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  SetConnection(connection.get());
-  MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
-  SetLinkMonitor(link_monitor);  // Passes ownership.
-  EXPECT_CALL(*service, state()).WillOnce(Return(Service::kStateIdle));
-  EXPECT_CALL(*service, SetState(_));
-  EXPECT_CALL(*service, SetConnection(_));
-  EXPECT_TRUE(HasLinkMonitor());
-  SelectService(nullptr);
-  EXPECT_FALSE(HasLinkMonitor());
 }
 
 TEST_F(DeviceTest, TrafficMonitor) {

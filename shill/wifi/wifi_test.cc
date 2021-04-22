@@ -34,6 +34,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -1056,16 +1057,21 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void StopReconnectTimer() { wifi_->StopReconnectTimer(); }
 
-  void SetLinkMonitor(LinkMonitor* link_monitor) {
-    wifi_->set_link_monitor(link_monitor);
-  }
-
   bool SuspectCredentials(const WiFiServiceRefPtr& service,
                           Service::ConnectFailure* failure) {
     return wifi_->SuspectCredentials(service, failure);
   }
 
-  void OnLinkMonitorFailure() { wifi_->OnLinkMonitorFailure(); }
+  void SetConnection(ConnectionRefPtr connection) {
+    wifi_->connection_ = connection;
+  }
+
+  void OnNeighborReachabilityEvent(
+      const IPAddress& ip_address,
+      patchpanel::NeighborReachabilityEventSignal::Role role,
+      patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+    wifi_->OnNeighborReachabilityEvent(ip_address, role, event_type);
+  }
 
   bool SetBgscanShortInterval(const uint16_t& interval, Error* error) {
     return wifi_->SetBgscanShortInterval(interval, error);
@@ -2800,9 +2806,6 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   StartWiFi();
   MockWiFiServiceRefPtr service(
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
-  // TODO(b/147256664): Avoid creating a new link monitor instance. Can be
-  // removed after removing shill:LinkMonitor.
-  EXPECT_CALL(*service, link_monitor_disabled()).WillRepeatedly(Return(true));
   Mock::VerifyAndClearExpectations(dhcp_config_.get());
   EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   // Simulate a rekeying event from the AP.  These show as transitions from
@@ -3005,22 +3008,48 @@ TEST_F(WiFiMainTest, NoScanOnDisconnectWithoutHidden) {
 
 TEST_F(WiFiMainTest, LinkMonitorFailure) {
   ScopedMockLog log;
-  auto link_monitor = new StrictMock<MockLinkMonitor>();
   StartWiFi();
-  SetLinkMonitor(link_monitor);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(*link_monitor, IsGatewayFound())
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
 
-  // We never had an ARP reply during this connection, so we assume
-  // the problem is gateway, rather than link.
+  // Alias for names in the signal.
+  using EventSignal = patchpanel::NeighborReachabilityEventSignal;
+
+  // Sets up Connection and IPConfig.
+  scoped_refptr<MockConnection> connection(new MockConnection(device_info()));
+  SetConnection(connection);
+  scoped_refptr<MockIPConfig> ipconfig(
+      new MockIPConfig(control_interface(), kDeviceName));
+  SetIPConfig(ipconfig);
+  const std::string kGatewayIPAddressString = "192.168.1.1";
+  IPConfig::Properties ip_props;
+  ip_props.address_family = IPAddress::kFamilyIPv4;
+  ip_props.gateway = kGatewayIPAddressString;
+  EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
+
+  const IPAddress kGatewayIPAddress(kGatewayIPAddressString);
+  const IPAddress kAnotherIPAddress("1.2.3.4");
+
+  // Sets up Service.
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  SetCurrentService(service);
+
+  // We haven't heard the gateway is reachable, so we assume the problem is
+  // gateway, rather than link.
   EXPECT_CALL(
       log, Log(logging::LOGGING_INFO, _, EndsWith("gateway was never found.")))
       .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
-  OnLinkMonitorFailure();
+  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
+                              EventSignal::FAILED);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  // Gateway has been discovered now.
+  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
+                              EventSignal::REACHABLE);
+
+  // Nothing should happen if the event is not for the current connection.
+  OnNeighborReachabilityEvent(kAnotherIPAddress, EventSignal::GATEWAY,
+                              EventSignal::FAILED);
 
   // No supplicant, so we can't Reattach.
   OnSupplicantVanish();
@@ -3028,19 +3057,19 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
               Log(logging::LOGGING_ERROR, _, EndsWith("Cannot reassociate.")))
       .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
-  OnLinkMonitorFailure();
+  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
+                              EventSignal::FAILED);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Normal case: call Reattach.
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
-  SetCurrentService(service);
   OnSupplicantAppear();
   EXPECT_CALL(log,
               Log(logging::LOGGING_INFO, _, EndsWith("Called Reattach().")))
       .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach())
       .WillOnce(Return(true));
-  OnLinkMonitorFailure();
+  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
+                              EventSignal::FAILED);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Service is unreliable, skip reassociate attempt.
@@ -3049,7 +3078,8 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
                        EndsWith("skipping reassociate attempt.")))
       .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
-  OnLinkMonitorFailure();
+  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
+                              EventSignal::FAILED);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 

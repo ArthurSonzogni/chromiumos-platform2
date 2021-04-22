@@ -457,10 +457,6 @@ void Device::OnBeforeSuspend(const ResultCallback& callback) {
 
 void Device::OnAfterResume() {
   RenewDHCPLease(false, nullptr);
-  if (link_monitor_) {
-    SLOG(this, 3) << "Informing Link Monitor of resume.";
-    link_monitor_->OnAfterResume();
-  }
   // Resume from sleep, could be in different location now.
   // Ignore previous link monitor failures.
   if (selected_service_) {
@@ -648,7 +644,6 @@ void Device::StopAllActivities() {
   StopPortalDetection();
   StopConnectivityTest();
   StopConnectionDiagnostics();
-  StopLinkMonitor();
   StopIPv6DNSServerTimer();
 }
 
@@ -1010,7 +1005,6 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   }
 
   SetHostname(ipconfig->properties().accepted_hostname);
-  StartLinkMonitor();
   StartTrafficMonitor();
 }
 
@@ -1498,57 +1492,13 @@ void Device::StopConnectivityTest() {
   connection_tester_.reset();
 }
 
-void Device::set_link_monitor(LinkMonitor* link_monitor) {
-  link_monitor_.reset(link_monitor);
-}
-
 void Device::set_mac_address(const std::string& mac_address) {
   mac_address_ = mac_address;
   adaptor_->EmitStringChanged(kAddressProperty, mac_address_);
 }
 
-bool Device::StartLinkMonitor() {
-  if (technology() != Technology::kWifi) {
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": Link Monitoring is disabled.";
-    return false;
-  }
-
-  if (connection_->IsIPv6()) {
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": Link Monitoring is disabled for IPv6-only network.";
-    return false;
-  }
-
-  if (!selected_service_) {
-    SLOG(this, 2)
-        << "Device " << link_name()
-        << ": Link Monitoring is disabled due to empty selected service";
-    return false;
-  }
-
-  if (selected_service_->link_monitor_disabled()) {
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": Link Monitoring is disabled for the selected service";
-    return false;
-  }
-
-  if (!link_monitor()) {
-    set_link_monitor(new LinkMonitor(
-        connection_, dispatcher(), metrics(), manager_->device_info(),
-        Bind(&Device::OnLinkMonitorFailure, AsWeakPtr()), base::DoNothing()));
-  }
-
-  SLOG(this, 2) << "Device " << link_name() << ": Link Monitor starting.";
-  return link_monitor_->Start();
-}
-
-void Device::StopLinkMonitor() {
-  SLOG(this, 2) << "Device " << link_name() << ": Link Monitor stopping.";
-  link_monitor_.reset();
-}
-
-void Device::OnLinkMonitorFailure() {
+void Device::OnLinkMonitorFailure(IPAddress::Family family) {
+  DCHECK_NE(family, IPAddress::kFamilyUnknown);
   SLOG(this, 2) << "Device " << link_name()
                 << ": Link Monitor indicates failure.";
   if (!selected_service_) {

@@ -155,6 +155,8 @@ WiFi::WiFi(Manager* manager,
       pending_eap_failure_(Service::kFailureNone),
       is_debugging_connection_(false),
       eap_state_handler_(new SupplicantEAPStateHandler()),
+      ipv4_gateway_found_(false),
+      ipv6_gateway_found_(false),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
@@ -2099,14 +2101,16 @@ string WiFi::LogSSID(const string& ssid) {
   return StringPrintf("[SSID=%s]", out.c_str());
 }
 
-void WiFi::OnLinkMonitorFailure() {
+void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
   // Invoke base class call first to allow it to determine the reliability of
   // the link.
-  Device::OnLinkMonitorFailure();
+  // TODO(b/147256664): Move the related logic completely into WiFi class.
+  Device::OnLinkMonitorFailure(family);
 
   // If we have never found the gateway, let's be conservative and not
   // do anything, in case this network topology does not have a gateway.
-  if (!link_monitor()->IsGatewayFound()) {
+  if ((family == IPAddress::kFamilyIPv4 && !ipv4_gateway_found_) ||
+      (family == IPAddress::kFamilyIPv6 && !ipv6_gateway_found_)) {
     LOG(INFO) << "In " << __func__ << "(): "
               << "Skipping reassociate since gateway was never found.";
     return;
@@ -2393,6 +2397,10 @@ void WiFi::OnConnected() {
     current_service_->ResetSuspectedCredentialFailures();
   }
   RequestStationInfo();
+
+  // Clears the link monitor states for the previous connection.
+  ipv4_gateway_found_ = false;
+  ipv6_gateway_found_ = false;
 }
 
 void WiFi::OnIPConfigFailure() {
@@ -3421,11 +3429,51 @@ void WiFi::OnNeighborReachabilityEvent(
     patchpanel::NeighborReachabilityEventSignal::Role role,
     patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
   using EventSignal = patchpanel::NeighborReachabilityEventSignal;
-  if (event_type == EventSignal::REACHABLE) {
+
+  if (event_type == EventSignal::FAILED) {
+    metrics()->NotifyNeighborLinkMonitorFailure(Technology::kWifi,
+                                                ip_address.family(), role);
+  }
+
+  if (selected_service() && selected_service()->link_monitor_disabled()) {
+    SLOG(this, 2) << "Device " << link_name()
+                  << ": Link Monitoring is disabled for the selected service";
     return;
   }
-  metrics()->NotifyNeighborLinkMonitorFailure(Technology::kWifi,
-                                              ip_address.family(), role);
+
+  // Checks if the signal is for the gateway of the current connection.
+  if (role == EventSignal::DNS_SERVER) {
+    return;
+  }
+  if (!connection()) {
+    SLOG(this, 2) << "Device " << link_name()
+                  << ": No active connection. Skipped.";
+    return;
+  }
+  if (!(ipconfig() &&
+        ip_address.ToString() == ipconfig()->properties().gateway) &&
+      !(ip6config() &&
+        ip_address.ToString() == ip6config()->properties().gateway)) {
+    SLOG(this, 2) << "Device " << link_name()
+                  << ": Gateway address does not match. Skipped.";
+    return;
+  }
+
+  if (event_type == EventSignal::REACHABLE) {
+    switch (ip_address.family()) {
+      case IPAddress::kFamilyIPv4:
+        ipv4_gateway_found_ = true;
+        break;
+      case IPAddress::kFamilyIPv6:
+        ipv6_gateway_found_ = true;
+        break;
+      default:
+        NOTREACHED();
+    }
+    return;
+  }
+
+  OnLinkMonitorFailure(ip_address.family());
 }
 
 }  // namespace shill

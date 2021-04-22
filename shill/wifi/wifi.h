@@ -195,7 +195,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static std::string LogSSID(const std::string& ssid);
 
   // Called by Linkmonitor (overridden from Device superclass).
-  void OnLinkMonitorFailure() override;
+  void OnLinkMonitorFailure(IPAddress::Family family) override;
 
   virtual bool IsCurrentService(const WiFiService* service) const {
     return service == current_service_.get();
@@ -295,7 +295,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
   FRIEND_TEST(WiFiMainTest, FullScanFindsNothing);    // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
-  FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);      // set_link_monitor()
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
   FRIEND_TEST(WiFiMainTest, PendingScanEvents);       // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanRejected);            // ScanState
@@ -722,6 +721,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool is_debugging_connection_;
   // Tracks the process of an EAP negotiation.
   std::unique_ptr<SupplicantEAPStateHandler> eap_state_handler_;
+
+  // If the gateway has ever been reachable for the current connection. Reset
+  // in OnConnected().
+  bool ipv4_gateway_found_;
+  bool ipv6_gateway_found_;
 
   // Properties
   std::string bgscan_method_;

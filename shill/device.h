@@ -39,7 +39,6 @@ class DHCPProvider;
 class DeviceAdaptorInterface;
 class Error;
 class EventDispatcher;
-class LinkMonitor;
 class Manager;
 class Metrics;
 class RoutingTable;
@@ -372,7 +371,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Config);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
-  FRIEND_TEST(DeviceTest, LinkMonitor);
   FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, OnDHCPv6ConfigExpired);
@@ -514,7 +512,7 @@ class Device : public base::RefCounted<Device> {
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
   // Respond to a LinkMonitor failure in a Device-specific manner.
-  virtual void OnLinkMonitorFailure();
+  virtual void OnLinkMonitorFailure(IPAddress::Family family);
 
   // Indicates if the selected service is configured with a static IP address.
   bool IsUsingStaticIP() const;
@@ -546,8 +544,6 @@ class Device : public base::RefCounted<Device> {
   bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
-  const LinkMonitor* link_monitor() const { return link_monitor_.get(); }
-  void set_link_monitor(LinkMonitor* link_monitor);
   bool fixed_ip_params() const { return fixed_ip_params_; }
 
   // Calculates the time (in seconds) till a DHCP lease is due for renewal,
@@ -715,12 +711,6 @@ class Device : public base::RefCounted<Device> {
   void ConnectionTesterCallback(const PortalDetector::Result& http_result,
                                 const PortalDetector::Result& https_result);
 
-  // Initiate link monitoring, if enabled for this device type.
-  bool StartLinkMonitor();
-
-  // Stop link monitoring if it is running.
-  void StopLinkMonitor();
-
   // Returns true if traffic monitor is enabled on this device. The default
   // implementation will return false, which can be overridden by a derived
   // class.
@@ -819,7 +809,6 @@ class Device : public base::RefCounted<Device> {
   ConnectionRefPtr connection_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
-  std::unique_ptr<LinkMonitor> link_monitor_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableClosure ipv6_dns_server_expired_callback_;
   std::unique_ptr<TrafficMonitor> traffic_monitor_;
