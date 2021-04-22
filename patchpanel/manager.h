@@ -143,12 +143,17 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<dbus::Response> OnGetTrafficCounters(
       dbus::MethodCall* method_call);
 
-  // Handles DBus requests for creating iptables rules by permission_broker.
+  // Handles DBus requests for creating iptables rules requests from
+  // permission_broker.
   std::unique_ptr<dbus::Response> OnModifyPortRule(
       dbus::MethodCall* method_call);
 
   // Handles DBus requests for starting and stopping VPN lockdown.
   std::unique_ptr<dbus::Response> OnSetVpnLockdown(
+      dbus::MethodCall* method_call);
+
+  // Handles DBus requests for creating iptables rules requests from dns-proxy.
+  std::unique_ptr<dbus::Response> OnSetDnsRedirectionRule(
       dbus::MethodCall* method_call);
 
   // Sends out DBus signal for notifying neighbor reachability event.
@@ -161,13 +166,17 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<patchpanel::ConnectNamespaceResponse> ConnectNamespace(
       base::ScopedFD client_fd,
       const patchpanel::ConnectNamespaceRequest& request);
-  void DisconnectNamespace(int client_fd);
-  // Detects if any file descriptor committed in ConnectNamespace DBus API has
-  // been invalidated by the caller. Calls DisconnectNamespace for any invalid
-  // fd found.
-  void CheckConnectedNamespaces();
+
+  // Detects if any file descriptor committed in patchpanel's DBus API has been
+  // invalidated by the caller. Calls OnLifelineFdClosed for any invalid fd
+  // found.
+  void CheckLifelineFds();
+  void OnLifelineFdClosed(int client_fd);
 
   bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request);
+
+  bool RedirectDns(base::ScopedFD client_fd,
+                   const patchpanel::SetDnsRedirectionRuleRequest& request);
 
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
@@ -223,9 +232,15 @@ class Manager final : public brillo::DBusDaemon {
   // ConnectNamespace.
   std::map<int, ConnectedNamespace> connected_namespaces_;
   int connected_namespaces_next_id_{0};
-  // epoll file descriptor for watching client fds committed with the
-  // ConnectNamespace DBus API.
-  int connected_namespaces_epollfd_;
+
+  // All rules currently created through patchpanel RedirectDns
+  // API, keyed by file descriptors committed by clients when calling the
+  // API.
+  std::map<int, DnsRedirectionRule> dns_redirection_rules_;
+
+  // epoll file descriptor for watching client fds committed through
+  // patchpanel's DBus API.
+  int lifelines_epollfd_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };

@@ -39,8 +39,8 @@ namespace {
 constexpr int kSubprocessRestartDelayMs = 900;
 
 // Time interval between epoll checks on file descriptors committed by callers
-// of ConnectNamespace DBus API.
-constexpr const base::TimeDelta kConnectNamespaceCheckInterval =
+// of patchpanel's DBus API.
+constexpr const base::TimeDelta kLifelineFdCheckInterval =
     base::TimeDelta::FromSeconds(5);
 
 // Passes |method_call| to |handler| and passes the response to
@@ -76,7 +76,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
       nd_proxy_(std::move(nd_proxy)) {
   runner_ = std::make_unique<MinijailedProcessRunner>();
   datapath_ = std::make_unique<Datapath>(runner_.get(), &firewall_);
-  connected_namespaces_epollfd_ = epoll_create(1 /* size */);
+  lifelines_epollfd_ = epoll_create(1 /* size */);
 }
 
 std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};
@@ -206,6 +206,8 @@ void Manager::InitialSetup() {
       {patchpanel::kModifyPortRuleMethod, &Manager::OnModifyPortRule},
       {patchpanel::kGetDevicesMethod, &Manager::OnGetDevices},
       {patchpanel::kSetVpnLockdown, &Manager::OnSetVpnLockdown},
+      {patchpanel::kSetDnsRedirectionRuleMethod,
+       &Manager::OnSetDnsRedirectionRule},
   };
 
   for (const auto& kv : kServiceMethods) {
@@ -267,13 +269,15 @@ void Manager::OnShutdown(int* exit_code) {
   network_monitor_svc_.reset();
   cros_svc_.reset();
   arc_svc_.reset();
-  close(connected_namespaces_epollfd_);
-  // Tear down any remaining connected namespace.
-  std::vector<int> connected_namespaces_fdkeys;
+  close(lifelines_epollfd_);
+  // Tear down any remaining active lifeline file descriptors.
+  std::vector<int> lifeline_fds;
   for (const auto& kv : connected_namespaces_)
-    connected_namespaces_fdkeys.push_back(kv.first);
-  for (const int fdkey : connected_namespaces_fdkeys)
-    DisconnectNamespace(fdkey);
+    lifeline_fds.push_back(kv.first);
+  for (const auto& kv : dns_redirection_rules_)
+    lifeline_fds.push_back(kv.first);
+  for (const int fdkey : lifeline_fds)
+    OnLifelineFdClosed(fdkey);
   if (!USE_JETSTREAM_ROUTING)
     datapath_->Stop();
 
@@ -879,21 +883,21 @@ std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
   base::ScopedFD client_fd;
   reader.PopFileDescriptor(&client_fd);
   if (!client_fd.is_valid()) {
-    LOG(ERROR) << "ConnectNamespaceRequest: invalid file descriptor";
+    LOG(ERROR) << "Invalid file descriptor";
     writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
     return dbus_response;
   }
 
   pid_t pid = request.pid();
   if (pid == 1 || pid == getpid()) {
-    LOG(ERROR) << "ConnectNamespaceRequest: privileged namespace pid " << pid;
+    LOG(ERROR) << "Privileged namespace pid " << pid;
     writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
     return dbus_response;
   }
   if (pid != ConnectedNamespace::kNewNetnsPid) {
     auto ns = ScopedNS::EnterNetworkNS(pid);
     if (!ns) {
-      LOG(ERROR) << "ConnectNamespaceRequest: invalid namespace pid " << pid;
+      LOG(ERROR) << "Invalid namespace pid " << pid;
       writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
       return dbus_response;
     }
@@ -901,8 +905,7 @@ std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
 
   const std::string& outbound_ifname = request.outbound_physical_device();
   if (!outbound_ifname.empty() && !shill_client_->has_device(outbound_ifname)) {
-    LOG(ERROR) << "ConnectNamespaceRequest: invalid outbound ifname "
-               << outbound_ifname;
+    LOG(ERROR) << "Invalid outbound ifname " << outbound_ifname;
     writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
     return dbus_response;
   }
@@ -992,6 +995,36 @@ std::unique_ptr<dbus::Response> Manager::OnSetVpnLockdown(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Manager::OnSetDnsRedirectionRule(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::SetDnsRedirectionRuleRequest request;
+  patchpanel::SetDnsRedirectionRuleResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse SetDnsRedirectionRuleRequest";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD client_fd;
+  reader.PopFileDescriptor(&client_fd);
+  if (!client_fd.is_valid()) {
+    LOG(ERROR) << "Invalid file descriptor";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  response.set_success(RedirectDns(std::move(client_fd), request));
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 void Manager::OnNeighborReachabilityEvent(
     int ifindex,
     const shill::IPAddress& ip_addr,
@@ -1039,7 +1072,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   std::unique_ptr<Subnet> subnet =
       addr_mgr_.AllocateIPv4Subnet(AddressManager::Guest::MINIJAIL_NETNS);
   if (!subnet) {
-    LOG(ERROR) << "ConnectNamespace: exhausted IPv4 subnet space";
+    LOG(ERROR) << "Exhausted IPv4 subnet space";
     return response;
   }
 
@@ -1047,7 +1080,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   // be stable and tied to the actual kernel resources used by the client.
   base::ScopedFD local_client_fd(dup(client_fd.get()));
   if (!local_client_fd.is_valid()) {
-    PLOG(ERROR) << "ConnectNamespace: failed to dup() client fd";
+    PLOG(ERROR) << "failed to dup() client fd";
     return response;
   }
 
@@ -1057,9 +1090,9 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   struct epoll_event epevent;
   epevent.events = EPOLLIN;  // EPOLLERR | EPOLLHUP are always waited for.
   epevent.data.fd = local_client_fd.get();
-  if (epoll_ctl(connected_namespaces_epollfd_, EPOLL_CTL_ADD,
-                local_client_fd.get(), &epevent) != 0) {
-    PLOG(ERROR) << "ConnectNamespace: epoll_ctl(EPOLL_CTL_ADD) failed";
+  if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_ADD, local_client_fd.get(),
+                &epevent) != 0) {
+    PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_ADD) failed";
     return response;
   }
 
@@ -1078,10 +1111,10 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   nsinfo.peer_mac_addr = addr_mgr_.GenerateMacAddress();
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
-    LOG(ERROR) << "ConnectNamespace: failed to setup datapath";
-    if (epoll_ctl(connected_namespaces_epollfd_, EPOLL_CTL_DEL,
-                  local_client_fd.get(), nullptr) != 0)
-      PLOG(ERROR) << "ConnectNamespace: epoll_ctl(EPOLL_CTL_DEL) failed";
+    LOG(ERROR) << "Failed to setup datapath";
+    if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_DEL, local_client_fd.get(),
+                  nullptr) != 0)
+      PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL) failed";
     return response;
   }
 
@@ -1100,60 +1133,63 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   // Store ConnectedNamespace
   connected_namespaces_next_id_++;
   int fdkey = local_client_fd.release();
-  connected_namespaces_.insert(std::make_pair(fdkey, std::move(nsinfo)));
+  connected_namespaces_.emplace(fdkey, std::move(nsinfo));
 
-  if (connected_namespaces_.size() == 1) {
-    LOG(INFO) << "Starting ConnectNamespace client fds monitoring";
-    CheckConnectedNamespaces();
+  if (connected_namespaces_.size() + dns_redirection_rules_.size() == 1) {
+    LOG(INFO) << "Starting client fds monitoring";
+    CheckLifelineFds();
   }
 
   return response;
 }
 
-void Manager::DisconnectNamespace(int client_fd) {
-  auto it = connected_namespaces_.find(client_fd);
-  if (it == connected_namespaces_.end()) {
-    LOG(ERROR) << "No ConnectedNamespace found for client_fd " << client_fd;
+void Manager::OnLifelineFdClosed(int client_fd) {
+  // Remove the client fd dupe from the epoll watcher and close it.
+  if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_DEL, client_fd, nullptr) != 0)
+    PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL) failed";
+  if (close(client_fd) < 0)
+    PLOG(ERROR) << "close(client_fd) failed";
+
+  auto connected_namespace_it = connected_namespaces_.find(client_fd);
+  if (connected_namespace_it != connected_namespaces_.end()) {
+    datapath_->StopRoutingNamespace(connected_namespace_it->second);
+    LOG(INFO) << "Disconnected network namespace "
+              << connected_namespace_it->second;
+    // This release the allocated IPv4 subnet.
+    connected_namespaces_.erase(connected_namespace_it);
     return;
   }
-
-  // Remove the client fd dupe from the epoll watcher and close it.
-  if (epoll_ctl(connected_namespaces_epollfd_, EPOLL_CTL_DEL, client_fd,
-                nullptr) != 0)
-    PLOG(ERROR) << "DisconnectNamespace: epoll_ctl(EPOLL_CTL_DEL) failed";
-  if (close(client_fd) < 0)
-    PLOG(ERROR) << "DisconnectNamespace: close(client_fd) failed";
-
-  datapath_->StopRoutingNamespace(it->second);
-  LOG(INFO) << "Disconnected network namespace " << it->second;
-  // This release the allocated IPv4 subnet.
-  connected_namespaces_.erase(it);
+  auto dns_redirection_it = dns_redirection_rules_.find(client_fd);
+  if (dns_redirection_it != dns_redirection_rules_.end()) {
+    datapath_->StopDnsRedirection(dns_redirection_it->second);
+    LOG(INFO) << "Stopped DNS redirection " << dns_redirection_it->second;
+    dns_redirection_rules_.erase(dns_redirection_it);
+    return;
+  }
+  LOG(ERROR) << "No client_fd found for " << client_fd;
 }
 
-// TODO(hugobenichi) Generalize this check to all resources created by
-// patchpanel on behalf of a remote client.
-void Manager::CheckConnectedNamespaces() {
+void Manager::CheckLifelineFds() {
   int max_event = 10;
   struct epoll_event epevents[max_event];
-  int nready = epoll_wait(connected_namespaces_epollfd_, epevents, max_event,
-                          0 /* do not block */);
+  int nready =
+      epoll_wait(lifelines_epollfd_, epevents, max_event, 0 /* do not block */);
   if (nready < 0)
-    PLOG(ERROR) << "CheckConnectedNamespaces: epoll_wait(0) failed";
+    PLOG(ERROR) << "epoll_wait(0) failed";
 
   for (int i = 0; i < nready; i++)
     if (epevents[i].events & (EPOLLHUP | EPOLLERR))
-      DisconnectNamespace(epevents[i].data.fd);
+      OnLifelineFdClosed(epevents[i].data.fd);
 
-  if (connected_namespaces_.empty()) {
-    LOG(INFO) << "Stopping ConnectNamespace client fds monitoring";
+  if (dns_redirection_rules_.empty() && connected_namespaces_.empty()) {
+    LOG(INFO) << "Stopping client fds monitoring";
     return;
   }
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&Manager::CheckConnectedNamespaces,
-                 weak_factory_.GetWeakPtr()),
-      kConnectNamespaceCheckInterval);
+      base::Bind(&Manager::CheckLifelineFds, weak_factory_.GetWeakPtr()),
+      kLifelineFdCheckInterval);
 }
 
 bool Manager::ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request) {
@@ -1205,6 +1241,56 @@ bool Manager::ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request) {
       LOG(ERROR) << "Unknown operation " << request.op();
       return false;
   }
+}
+
+bool Manager::RedirectDns(
+    base::ScopedFD client_fd,
+    const patchpanel::SetDnsRedirectionRuleRequest& request) {
+  // Dup the client fd into our own: this guarantees that the fd number will
+  // be stable and tied to the actual kernel resources used by the client.
+  base::ScopedFD local_client_fd(dup(client_fd.get()));
+  if (!local_client_fd.is_valid()) {
+    PLOG(ERROR) << "failed to dup() client fd";
+    return false;
+  }
+
+  // Add the duped fd to the epoll watcher.
+  // TODO(hugobenichi) Find a way to reuse base::FileDescriptorWatcher for
+  // listening to EPOLLHUP.
+  struct epoll_event epevent;
+  epevent.events = EPOLLIN;  // EPOLLERR | EPOLLHUP are always waited for.
+  epevent.data.fd = local_client_fd.get();
+  if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_ADD, local_client_fd.get(),
+                &epevent) != 0) {
+    PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_ADD) failed";
+    return false;
+  }
+
+  DnsRedirectionRule rule{.type = request.type(),
+                          .input_ifname = request.input_ifname(),
+                          .proxy_address = request.proxy_address()};
+
+  for (const auto& nameserver : request.nameservers()) {
+    rule.nameservers.emplace_back(nameserver);
+  }
+
+  if (!datapath_->StartDnsRedirection(rule)) {
+    LOG(ERROR) << "Failed to setup datapath";
+    if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_DEL, local_client_fd.get(),
+                  nullptr) != 0)
+      PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL) failed";
+    return false;
+  }
+
+  // Store DNS proxy's redirection request.
+  int fdkey = local_client_fd.release();
+  dns_redirection_rules_.emplace(fdkey, std::move(rule));
+
+  if (connected_namespaces_.size() + dns_redirection_rules_.size() == 1) {
+    LOG(INFO) << "Starting client fds monitoring";
+    CheckLifelineFds();
+  }
+  return true;
 }
 
 void Manager::SendGuestMessage(const GuestMessage& msg) {
