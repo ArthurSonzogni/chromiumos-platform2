@@ -567,6 +567,16 @@ void WiFiProvider::ReportServiceSourceMetrics() {
                        Metrics::kMetricRememberedWiFiNetworkCountMin,
                        Metrics::kMetricRememberedWiFiNetworkCountMax,
                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
+
+  for (const auto& service : services_) {
+    if (service->IsRemembered() && service->hidden_ssid()) {
+      metrics()->SendEnumToUMA(Metrics::kMetricHiddenSSIDEverConnected,
+                               service->has_ever_connected()
+                                   ? Metrics::kHiddenWiFiPreviouslyConnected
+                                   : Metrics::kHiddenWiFiNeverConnected,
+                               Metrics::kHiddenWiFiEverConnectedMax);
+    }
+  }
 }
 
 void WiFiProvider::ReportAutoConnectableServices() {

@@ -111,6 +111,13 @@ class Metrics : public DefaultServiceObserver {
     kWiFiNetworkPhyModeMax
   };
 
+  enum HiddenWiFiEverConnected {
+    kHiddenWiFiNeverConnected = 0,
+    kHiddenWiFiPreviouslyConnected = 1,
+
+    kHiddenWiFiEverConnectedMax
+  };
+
   enum EapOuterProtocol {
     kEapOuterProtocolUnknown = 0,
     kEapOuterProtocolLeap = 1,
@@ -630,6 +637,7 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricRememberedWiFiNetworkCountMax;
   static const int kMetricRememberedWiFiNetworkCountNumBuckets;
   static const char kMetricHiddenSSIDNetworkCount[];
+  static const char kMetricHiddenSSIDEverConnected[];
   static const char kMetricTimeOnlineSecondsSuffix[];
   static const int kMetricTimeOnlineSecondsMax;
   static const int kMetricTimeOnlineSecondsMin;
