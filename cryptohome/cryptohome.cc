@@ -906,48 +906,36 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_START_FINGERPRINT_AUTH_SESSION],
                      action.c_str())) {
-    cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    user_data_auth::StartFingerprintAuthSessionRequest req;
+    if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
 
-    cryptohome::StartFingerprintAuthSessionRequest req;
-
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
-    if (!account_ary.get() || !req_ary.get())
-      return 1;
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_start_fingerprint_auth_session(
-            proxy.gproxy(), account_ary.get(), req_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("StartFingerprintAuthSession call failed: %s", error->message);
+    user_data_auth::StartFingerprintAuthSessionReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.StartFingerprintAuthSession(req, &reply, &error,
+                                                        timeout_ms) ||
+        error) {
+      printf("StartFingerprintAuthSession call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Fingerprint auth session failed to start.\n");
       return reply.error();
     }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_END_FINGERPRINT_AUTH_SESSION],
                      action.c_str())) {
-    cryptohome::EndFingerprintAuthSessionRequest req;
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
-    if (!req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
-      return 1;
-    }
-
-    brillo::glib::ScopedError error;
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_end_fingerprint_auth_session(
-            proxy.gproxy(), req_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("EndFingerprintAuthSession call failed: %s", error->message);
+    user_data_auth::EndFingerprintAuthSessionRequest req;
+    user_data_auth::EndFingerprintAuthSessionReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.EndFingerprintAuthSession(req, &reply, &error,
+                                                      timeout_ms) ||
+        error) {
+      printf("EndFingerprintAuthSession call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     // EndFingerprintAuthSession always succeeds.
