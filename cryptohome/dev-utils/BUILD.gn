@@ -19,7 +19,10 @@ pkg_config("cryptohome-test-tool_config") {
 }
 
 executable("cryptohome-test-tool") {
-  sources = [ "../cryptohome-test-tool.cc" ]
+  sources = [
+    "../crypto/fake_recovery_mediator_crypto.cc",
+    "../cryptohome-test-tool.cc",
+  ]
   configs += [
     ":cryptohome-test-tool_config",
     "//cryptohome/libs:target_defaults",

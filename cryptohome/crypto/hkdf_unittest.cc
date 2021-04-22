@@ -75,4 +75,17 @@ TEST(HkdfTest, HkdfKeyLengthTooBig) {
   EXPECT_FALSE(Hkdf(kHash, key, info, salt, kKeyLen, &result));
 }
 
+// Tests Hkdf with empty info and salt. It is expected to be successful.
+TEST(HkdfTest, HkdfWithEmptyInfoAndSalt) {
+  constexpr HkdfHash kHash = HkdfHash::kSha256;
+  constexpr size_t kKeyLen = 42;
+  brillo::SecureBlob key("test_key");
+  brillo::SecureBlob salt;
+  brillo::SecureBlob info;
+  brillo::SecureBlob result;
+
+  EXPECT_TRUE(Hkdf(kHash, key, info, salt, kKeyLen, &result));
+  EXPECT_EQ(result.size(), kKeyLen);
+}
+
 }  // namespace cryptohome

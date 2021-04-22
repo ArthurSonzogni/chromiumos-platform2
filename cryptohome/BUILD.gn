@@ -437,6 +437,7 @@ if (use.test) {
       "crypto/ecdh_hkdf_unittest.cc",
       "crypto/elliptic_curve_unittest.cc",
       "crypto/error_util_unittest.cc",
+      "crypto/fake_recovery_mediator_crypto.cc",
       "crypto/hkdf_unittest.cc",
       "crypto/recovery_crypto_unittest.cc",
       "crypto_unittest.cc",

@@ -4,20 +4,32 @@
 
 #include "cryptohome/crypto/recovery_crypto.h"
 
+#include <algorithm>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/big_num_util.h"
+#include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
+#include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
 
-namespace {
+const EllipticCurve::CurveType RecoveryCrypto::kCurve =
+    EllipticCurve::CurveType::kPrime256;
 
-constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
+const HkdfHash RecoveryCrypto::kHkdfHash = HkdfHash::kSha256;
+
+// Size of public/private key for EllipticCurve::CurveType::kPrime256.
+constexpr size_t kEc256PubKeySize = 65;
+constexpr size_t kEc256PrivKeySize = 32;
+
+namespace {
 
 // Cryptographic operations for cryptohome recovery performed on CPU (software
 // emulation).
@@ -27,21 +39,31 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
   ~RecoveryCryptoImpl() override;
 
-  bool GenerateShares(brillo::SecureBlob* mediator_share,
+  bool GenerateShares(const brillo::SecureBlob& mediator_pub_key,
+                      const brillo::SecureBlob& hkdf_info,
+                      const brillo::SecureBlob& hkdf_salt,
+                      EncryptedMediatorShare* encrypted_mediator_share,
                       brillo::SecureBlob* destination_share,
                       brillo::SecureBlob* dealer_pub_key) const override;
   bool GeneratePublisherKeys(const brillo::SecureBlob& dealer_pub_key,
                              brillo::SecureBlob* publisher_pub_key,
                              brillo::SecureBlob* publisher_dh) const override;
-  bool Mediate(const brillo::SecureBlob& publisher_pub_key,
-               const brillo::SecureBlob& mediator_share,
-               brillo::SecureBlob* mediated_publisher_pub_key) const override;
   bool RecoverDestination(const brillo::SecureBlob& publisher_pub_key,
                           const brillo::SecureBlob& destination_share,
                           const brillo::SecureBlob& mediated_publisher_pub_key,
                           brillo::SecureBlob* destination_dh) const override;
 
  private:
+  // Encrypts mediator share and stores as `encrypted_ms` with
+  // embedded ephemeral public key, AES-GCM tag and iv. Returns false if error
+  // occurred.
+  bool EncryptMediatorShare(const brillo::SecureBlob& mediator_pub_key,
+                            const brillo::SecureBlob& hkdf_info,
+                            const brillo::SecureBlob& hkdf_salt,
+                            const brillo::SecureBlob& mediator_share,
+                            EncryptedMediatorShare* encrypted_ms,
+                            BN_CTX* context) const;
+
   EllipticCurve ec_;
 };
 
@@ -49,8 +71,47 @@ RecoveryCryptoImpl::RecoveryCryptoImpl(EllipticCurve ec) : ec_(std::move(ec)) {}
 
 RecoveryCryptoImpl::~RecoveryCryptoImpl() = default;
 
+bool RecoveryCryptoImpl::EncryptMediatorShare(
+    const brillo::SecureBlob& mediator_pub_key,
+    const brillo::SecureBlob& hkdf_info,
+    const brillo::SecureBlob& hkdf_salt,
+    const brillo::SecureBlob& mediator_share,
+    RecoveryCrypto::EncryptedMediatorShare* encrypted_ms,
+    BN_CTX* context) const {
+  brillo::SecureBlob ephemeral_priv_key;
+  if (!ec_.GenerateKeysAsSecureBlobs(&encrypted_ms->ephemeral_pub_key,
+                                     &ephemeral_priv_key, context)) {
+    LOG(ERROR) << "Failed to generate EC keys";
+    return false;
+  }
+
+  brillo::SecureBlob aes_gcm_key;
+  if (!GenerateEcdhHkdfSenderKey(ec_, mediator_pub_key,
+                                 encrypted_ms->ephemeral_pub_key,
+                                 ephemeral_priv_key, hkdf_info, hkdf_salt,
+                                 kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
+    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys";
+    return false;
+  }
+
+  // Dispose private key.
+  ephemeral_priv_key.clear();
+
+  if (!CryptoLib::AesGcmEncrypt(mediator_share, aes_gcm_key, &encrypted_ms->iv,
+                                &encrypted_ms->tag,
+                                &encrypted_ms->encrypted_data)) {
+    LOG(ERROR) << "Failed to perform AES-GCM encryption";
+    return false;
+  }
+
+  return true;
+}
+
 bool RecoveryCryptoImpl::GenerateShares(
-    brillo::SecureBlob* mediator_share,
+    const brillo::SecureBlob& mediator_pub_key,
+    const brillo::SecureBlob& hkdf_info,
+    const brillo::SecureBlob& hkdf_salt,
+    EncryptedMediatorShare* encrypted_mediator_share,
     brillo::SecureBlob* destination_share,
     brillo::SecureBlob* dealer_pub_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -89,8 +150,9 @@ bool RecoveryCryptoImpl::GenerateShares(
     LOG(ERROR) << "Failed to perform MultiplyWithGenerator operation";
     return false;
   }
+  brillo::SecureBlob mediator_share;
   if (!BigNumToSecureBlob(*mediator_share_bn, ec_.ScalarSizeInBytes(),
-                          mediator_share)) {
+                          &mediator_share)) {
     LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
     return false;
   }
@@ -102,6 +164,12 @@ bool RecoveryCryptoImpl::GenerateShares(
   if (!ec_.PointToSecureBlob(*dealer_pub_point, dealer_pub_key,
                              context.get())) {
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+    return false;
+  }
+  if (!EncryptMediatorShare(mediator_pub_key, hkdf_info, hkdf_salt,
+                            mediator_share, encrypted_mediator_share,
+                            context.get())) {
+    LOG(ERROR) << "Failed to encrypt mediator share";
     return false;
   }
   return true;
@@ -145,41 +213,6 @@ bool RecoveryCryptoImpl::GeneratePublisherKeys(
     return false;
   }
   if (!ec_.PointToSecureBlob(*point_dh, publisher_dh, context.get())) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
-    return false;
-  }
-  return true;
-}
-
-bool RecoveryCryptoImpl::Mediate(
-    const brillo::SecureBlob& publisher_pub_key,
-    const brillo::SecureBlob& mediator_share,
-    brillo::SecureBlob* mediated_publisher_pub_key) const {
-  ScopedBN_CTX context = CreateBigNumContext();
-  if (!context.get()) {
-    LOG(ERROR) << "Failed to allocate BN_CTX structure";
-    return false;
-  }
-  crypto::ScopedBIGNUM mediator_share_bn = SecureBlobToBigNum(mediator_share);
-  if (!mediator_share_bn) {
-    LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM";
-    return false;
-  }
-  crypto::ScopedEC_POINT publisher_pub_point =
-      ec_.SecureBlobToPoint(publisher_pub_key, context.get());
-  if (!publisher_pub_point) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
-    return false;
-  }
-  // Performs scalar multiplication of publisher_pub_key and mediator_share.
-  crypto::ScopedEC_POINT point_dh =
-      ec_.Multiply(*publisher_pub_point, *mediator_share_bn, context.get());
-  if (!point_dh) {
-    LOG(ERROR) << "Failed to perform scalar multiplication";
-    return false;
-  }
-  if (!ec_.PointToSecureBlob(*point_dh, mediated_publisher_pub_key,
-                             context.get())) {
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
     return false;
   }
@@ -234,6 +267,23 @@ bool RecoveryCryptoImpl::RecoverDestination(
   return true;
 }
 
+// Appends `src_blob` to `dst_blob`.
+void AppendToSecureBlob(const brillo::SecureBlob& src_blob,
+                        brillo::SecureBlob* dst_blob) {
+  dst_blob->insert(dst_blob->end(), src_blob.begin(), src_blob.end());
+}
+
+// Copies SecureBlob chunk of given size `chunk_size` starting at iterator `it`
+// to `dst_blob`. Returns iterator pointing to first byte after the copied
+// chunk.
+brillo::SecureBlob::const_iterator CopySecureBlobChunk(
+    const brillo::SecureBlob::const_iterator& it,
+    size_t chunk_size,
+    brillo::SecureBlob* dst_blob) {
+  dst_blob->assign(it, it + chunk_size);
+  return it + chunk_size;
+}
+
 }  // namespace
 
 std::unique_ptr<RecoveryCrypto> RecoveryCrypto::Create() {
@@ -252,5 +302,56 @@ std::unique_ptr<RecoveryCrypto> RecoveryCrypto::Create() {
 }
 
 RecoveryCrypto::~RecoveryCrypto() = default;
+
+bool RecoveryCrypto::SerializeEncryptedMediatorShareForTesting(
+    const EncryptedMediatorShare& encrypted_mediator_share,
+    brillo::SecureBlob* serialized_blob) {
+  if (encrypted_mediator_share.tag.size() != kAesGcmTagSize) {
+    LOG(ERROR) << "Invalid tag size in encrypted mediator share";
+    return false;
+  }
+  if (encrypted_mediator_share.iv.size() != kAesGcmIVSize) {
+    LOG(ERROR) << "Invalid iv size in encrypted mediator share";
+    return false;
+  }
+  if (encrypted_mediator_share.ephemeral_pub_key.size() != kEc256PubKeySize) {
+    LOG(ERROR)
+        << "Invalid ephemeral public key size in encrypted mediator share";
+    return false;
+  }
+  if (encrypted_mediator_share.encrypted_data.size() != kEc256PrivKeySize) {
+    LOG(ERROR)
+        << "Invalid ephemeral public key size in encrypted mediator share";
+    return false;
+  }
+  serialized_blob->clear();
+  serialized_blob->reserve(kAesGcmTagSize + kAesGcmIVSize + kEc256PubKeySize +
+                           kEc256PrivKeySize);
+  AppendToSecureBlob(encrypted_mediator_share.tag, serialized_blob);
+  AppendToSecureBlob(encrypted_mediator_share.iv, serialized_blob);
+  AppendToSecureBlob(encrypted_mediator_share.ephemeral_pub_key,
+                     serialized_blob);
+  AppendToSecureBlob(encrypted_mediator_share.encrypted_data, serialized_blob);
+  return true;
+}
+
+bool RecoveryCrypto::DeserializeEncryptedMediatorShareForTesting(
+    const brillo::SecureBlob& serialized_blob,
+    EncryptedMediatorShare* encrypted_mediator_share) {
+  if (serialized_blob.size() !=
+      kAesGcmTagSize + kAesGcmIVSize + kEc256PubKeySize + kEc256PrivKeySize) {
+    LOG(ERROR) << "Invalid size of serialized encrypted mediator share";
+    return false;
+  }
+  auto it = serialized_blob.begin();
+  it = CopySecureBlobChunk(it, kAesGcmTagSize, &encrypted_mediator_share->tag);
+  it = CopySecureBlobChunk(it, kAesGcmIVSize, &encrypted_mediator_share->iv);
+  it = CopySecureBlobChunk(it, kEc256PubKeySize,
+                           &encrypted_mediator_share->ephemeral_pub_key);
+  it = CopySecureBlobChunk(it, kEc256PrivKeySize,
+                           &encrypted_mediator_share->encrypted_data);
+  DCHECK(it == serialized_blob.end());
+  return true;
+}
 
 }  // namespace cryptohome

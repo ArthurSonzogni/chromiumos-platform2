@@ -9,6 +9,9 @@
 
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/ecdh_hkdf.h"
+#include "cryptohome/crypto/elliptic_curve.h"
+
 namespace cryptohome {
 
 // Cryptographic operations for cryptohome recovery.
@@ -19,14 +22,29 @@ namespace cryptohome {
 // symmetric key derived from `publisher_dh` - the result of
 // `GeneratePublisherKeys` method. The mediator is an external service that is
 // invoked during the recovery process to perform mediation of an encrypted
-// mediator share. The functionality of mediator should be implemented on the
-// server and here it is implemented for testing purposes only. The destination
-// is invoked as part of the recovery UX on the device to obtain a cryptohome
-// recovery key. The recovery key can be derived from `destination_dh` - the
-// result of `RecoverDestination` method. Note that in a successful recovery
-// `destination_dh` should be equal to `publisher_dh`.
+// mediator share. The destination is invoked as part of the recovery UX on the
+// device to obtain a cryptohome recovery key. The recovery key can be derived
+// from `destination_dh` - the result of `RecoverDestination` method. Note that
+// in a successful recovery `destination_dh` should be equal to `publisher_dh`.
 class RecoveryCrypto {
  public:
+  // Mediator share is encrypted using AES-GCM with symmetric key derived from
+  // ECDH+HKDF over mediator public key and ephemeral public key.
+  // Ephemeral public key `ephemeral_pub_key`, AES-GCM `tag` and `iv` are stored
+  // in the structure as they are necessary to perform decryption.
+  struct EncryptedMediatorShare {
+    brillo::SecureBlob tag;
+    brillo::SecureBlob iv;
+    brillo::SecureBlob ephemeral_pub_key;
+    brillo::SecureBlob encrypted_data;
+  };
+
+  // Elliptic Curve type used by the protocol.
+  static const EllipticCurve::CurveType kCurve;
+
+  // Hash used by HKDF for encrypting mediator share.
+  static const HkdfHash kHkdfHash;
+
   // Creates instance. Returns nullptr if error occurred.
   static std::unique_ptr<RecoveryCrypto> Create();
 
@@ -36,8 +54,12 @@ class RecoveryCrypto {
   // Formula:
   //   dealer_pub_key = G * (mediator_share + destination_share (mod order))
   // where G is an elliptic curve group generator.
-  // TODO(b:180716332): return encrypted `mediator_share`.
-  virtual bool GenerateShares(brillo::SecureBlob* mediator_share,
+  // Encrypts `mediator_share` to `mediator_pub_key` with `hkdf_info` and
+  // `hkdf_salt` and returns as `encrypted_mediator_share`.
+  virtual bool GenerateShares(const brillo::SecureBlob& mediator_pub_key,
+                              const brillo::SecureBlob& hkdf_info,
+                              const brillo::SecureBlob& hkdf_salt,
+                              EncryptedMediatorShare* encrypted_mediator_share,
                               brillo::SecureBlob* destination_share,
                               brillo::SecureBlob* dealer_pub_key) const = 0;
 
@@ -51,15 +73,6 @@ class RecoveryCrypto {
       brillo::SecureBlob* publisher_pub_key,
       brillo::SecureBlob* publisher_dh) const = 0;
 
-  // Performs mediation. Returns false if error occurred.
-  // Formula:
-  //   mediated_publisher_pub_key = publisher_pub_key * mediator_share
-  // TODO(b:180716332): pass encrypted `mediator_share`.
-  virtual bool Mediate(
-      const brillo::SecureBlob& publisher_pub_key,
-      const brillo::SecureBlob& mediator_share,
-      brillo::SecureBlob* mediated_publisher_pub_key) const = 0;
-
   // Recovers destination. Returns false if error occurred.
   // Formula:
   //   destination_dh = publisher_pub_key * destination_share
@@ -69,6 +82,19 @@ class RecoveryCrypto {
       const brillo::SecureBlob& destination_share,
       const brillo::SecureBlob& mediated_publisher_pub_key,
       brillo::SecureBlob* destination_dh) const = 0;
+
+  // Serialize `encrypted_mediator_share` by simply concatenating fixed-length
+  // blobs into `serialized_blob`. Returns false if error occurred.
+  static bool SerializeEncryptedMediatorShareForTesting(
+      const EncryptedMediatorShare& encrypted_mediator_share,
+      brillo::SecureBlob* serialized_blob);
+
+  // Deserialize `encrypted_mediator_share` assuming `serialized_blob` contains
+  // chunks representing encrypted mediator share fixed-length blobs. Returns
+  // false if error occurred.
+  static bool DeserializeEncryptedMediatorShareForTesting(
+      const brillo::SecureBlob& serialized_blob,
+      EncryptedMediatorShare* encrypted_mediator_share);
 };
 
 }  // namespace cryptohome
