@@ -263,8 +263,11 @@ uint16_t DevImpl::readRegActual(int reg) {
       } else {
         v |= hps::R2::kWpOn;
       }
-      if (this->stage_ != Stage::kStage0) {
-        v |= hps::R2::kApplRun;
+      if (this->stage_ == Stage::kStage1) {
+        v |= hps::R2::kStage1 | hps::R2::kSpiVerified;
+      }
+      if (this->stage_ == Stage::kAppl) {
+        v |= hps::R2::kAppl;
       }
       break;
 
@@ -284,11 +287,15 @@ void DevImpl::writeRegActual(int reg, uint16_t value) {
     case HpsReg::kSysCmd:
       if (value & hps::R3::kReset) {
         this->SetStage(Stage::kStage0);
-      }
-      if (value & hps::R3::kLaunch) {
+      } else if (value & hps::R3::kLaunch) {
         // Only valid in stage0
         if (this->stage_ == Stage::kStage0) {
           this->SetStage(Stage::kStage1);
+        }
+      } else if (value & hps::R3::kEnable) {
+        // Only valid in stage1
+        if (this->stage_ == Stage::kStage1) {
+          this->SetStage(Stage::kAppl);
         }
       }
       break;

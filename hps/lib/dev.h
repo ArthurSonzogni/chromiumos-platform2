@@ -21,6 +21,7 @@ class DevInterface {
  public:
   virtual ~DevInterface() {}
   /*
+   * TODO(amcrae): Refactor these interfaces to use a pointer and a length.
    * The size of the vector indicates the amount of data to read.
    * Returns true on successful read, false on error. The
    * size of the vector remains unchanged. In the event of an error,

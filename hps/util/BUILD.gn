@@ -18,6 +18,7 @@ pkg_config("target_defaults") {
 
 executable("hps") {
   sources = [
+    "boot.cpp",
     "cmd.cpp",
     "download.cpp",
     "main.cpp",

@@ -17,6 +17,7 @@ enum HpsReg {
   kSysCmd = 3,
   kApplVers = 4,
   kBankReady = 5,
+  kError = 6,
   kMax = 127,
   kNumRegs = kMax + 1,
 };
@@ -30,12 +31,16 @@ enum R2 {
   kWpOn = 1 << 5,
   // Unused           = 1<<6,
   // Unused           = 1<<7,
-  kApplRun = 1 << 8,
+  kStage1 = 1 << 8,        // Stage1 running
+  kAppl = 1 << 9,          // Application running
+  kSpiVerified = 1 << 10,  // SPI flash verified
+  kSpiNotVerified = 1 << 11,
 };
 
 enum R3 {
   kReset = 1 << 0,
   kLaunch = 1 << 1,
+  kEnable = 1 << 2,
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;
