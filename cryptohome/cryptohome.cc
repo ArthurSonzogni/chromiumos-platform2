@@ -809,6 +809,7 @@ int main(int argc, char** argv) {
                             cryptohome::kCryptohomeInterface);
   DCHECK(proxy.gproxy()) << "Failed to acquire proxy";
   dbus_g_proxy_set_default_timeout(proxy.gproxy(), kDefaultTimeoutMs);
+  const int timeout_ms = kDefaultTimeoutMs;
 
   // Setup libbrillo dbus.
   dbus::Bus::Options options;
@@ -830,34 +831,32 @@ int main(int argc, char** argv) {
 
   if (!strcmp(switches::kActions[switches::ACTION_MOUNT_EX], action.c_str())) {
     bool is_public_mount = cl->HasSwitch(switches::kPublicMount);
-
-    cryptohome::AccountIdentifier id;
-    cryptohome::AuthorizationRequest auth;
-    cryptohome::MountRequest mount_req;
+    user_data_auth::MountRequest req;
 
     if (cl->HasSwitch(switches::kAuthSessionId)) {
       std::string auth_session_id_hex, auth_session_id;
       if (GetAuthSessionId(cl, &auth_session_id_hex)) {
         base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
-        mount_req.set_auth_session_id(auth_session_id);
+        req.set_auth_session_id(auth_session_id);
       }
     } else {
-      if (!BuildAccountId(cl, &id))
+      if (!BuildAccountId(cl, req.mutable_account()))
         return 1;
-      if (!BuildAuthorization(cl, proxy, !is_public_mount, &auth))
+      if (!BuildAuthorization(cl, proxy, !is_public_mount,
+                              req.mutable_authorization()))
         return 1;
     }
 
-    mount_req.set_require_ephemeral(
-        cl->HasSwitch(switches::kEnsureEphemeralSwitch));
-    mount_req.set_to_migrate_from_ecryptfs(
+    req.set_require_ephemeral(cl->HasSwitch(switches::kEnsureEphemeralSwitch));
+    req.set_to_migrate_from_ecryptfs(
         cl->HasSwitch(switches::kToMigrateFromEcryptfsSwitch));
-    mount_req.set_public_mount(is_public_mount);
+    req.set_public_mount(is_public_mount);
     if (cl->HasSwitch(switches::kCreateSwitch)) {
-      cryptohome::CreateRequest* create = mount_req.mutable_create();
+      user_data_auth::CreateRequest* create = req.mutable_create();
       if (cl->HasSwitch(switches::kPublicMount)) {
         cryptohome::Key* key = create->add_keys();
-        key->mutable_data()->set_label(auth.key().data().label());
+        key->mutable_data()->set_label(
+            req.authorization().key().data().label());
       } else {
         create->set_copy_authorization_key(true);
       }
@@ -866,49 +865,25 @@ int main(int argc, char** argv) {
       }
     }
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(mount_req));
-    if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::MountReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.Mount(req, &reply, &error, timeout_ms) || error) {
+      printf("MountEx call failed: %s",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    if (cl->HasSwitch(switches::kAsyncSwitch)) {
-      ClientLoop loop;
-      loop.Initialize(&proxy);
-      DBusGProxyCall* call = org_chromium_CryptohomeInterface_mount_ex_async(
-          proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-          &ClientLoop::ParseReplyThunk, static_cast<gpointer>(&loop));
-      if (!call) {
-        printf("Failed to call MountEx async\n");
-        return 1;
-      }
-      loop.Run();
-      reply = loop.reply();
-    } else {
-      GArray* out_reply = NULL;
-      if (!org_chromium_CryptohomeInterface_mount_ex(
-              proxy.gproxy(), account_ary.get(), auth_ary.get(), req_ary.get(),
-              &out_reply, &brillo::Resetter(&error).lvalue())) {
-        printf("MountEx call failed: %s", error->message);
-        return 1;
-      }
-      ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    }
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Mount failed.\n");
       return reply.error();
     }
     printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST_EX],
                      action.c_str())) {
-    cryptohome::BaseReply reply;
-    cryptohome::MountGuestRequest request;
-    brillo::glib::ScopedError error;
-    GArray* out_reply = NULL;
+    user_data_auth::MountReply reply;
+    user_data_auth::MountRequest req;
+    brillo::ErrorPtr error;
 
     // This is for information. Do not fail if mount namespace is not ready.
     if (!cryptohome::UserSessionMountNamespaceExists()) {
@@ -916,16 +891,14 @@ int main(int argc, char** argv) {
              cryptohome::kUserSessionMountNamespacePath);
     }
 
-    brillo::glib::ScopedArray guest_request_ary(GArrayFromProtoBuf(request));
-    if (!org_chromium_CryptohomeInterface_mount_guest_ex(
-            proxy.gproxy(), guest_request_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("Mount call failed: %s.\n", error->message);
+    req.set_guest_mount(true);
+    if (!userdataauth_proxy.Mount(req, &reply, &error, timeout_ms) || error) {
+      printf("Mount call failed: %s", BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Mount failed.\n");
       return reply.error();
     }
