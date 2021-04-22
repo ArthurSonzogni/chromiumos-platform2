@@ -27,22 +27,6 @@ static std::string ObjectID(const DBusAdaptor* d) {
 }
 }  // namespace Logging
 
-namespace {
-
-template <typename T>
-void TypedMethodReplyCallback(DBusMethodResponsePtr<T> response,
-                              const Error& error,
-                              const T& returned) {
-  brillo::ErrorPtr chromeos_error;
-  if (error.ToChromeosError(&chromeos_error)) {
-    response->ReplyWithError(chromeos_error.get());
-  } else {
-    response->Return(returned);
-  }
-}
-
-}  // namespace
-
 // public static
 const char DBusAdaptor::kNullPath[] = "/";
 
@@ -106,18 +90,6 @@ ResultCallback DBusAdaptor::GetMethodReplyCallback(
                     weak_factory_.GetWeakPtr(), base::Passed(&response));
 }
 
-ResultStringCallback DBusAdaptor::GetStringMethodReplyCallback(
-    DBusMethodResponsePtr<std::string> response) {
-  return base::Bind(&DBusAdaptor::StringMethodReplyCallback,
-                    weak_factory_.GetWeakPtr(), base::Passed(&response));
-}
-
-ResultBoolCallback DBusAdaptor::GetBoolMethodReplyCallback(
-    DBusMethodResponsePtr<bool> response) {
-  return base::Bind(&DBusAdaptor::BoolMethodReplyCallback,
-                    weak_factory_.GetWeakPtr(), base::Passed(&response));
-}
-
 void DBusAdaptor::ReturnResultOrDefer(const ResultCallback& callback,
                                       const Error& error) {
   // Invoke response if command is completed synchronously (either
@@ -135,19 +107,6 @@ void DBusAdaptor::MethodReplyCallback(DBusMethodResponsePtr<> response,
   } else {
     response->Return();
   }
-}
-
-void DBusAdaptor::StringMethodReplyCallback(
-    DBusMethodResponsePtr<std::string> response,
-    const Error& error,
-    const std::string& returned) {
-  TypedMethodReplyCallback(std::move(response), error, returned);
-}
-
-void DBusAdaptor::BoolMethodReplyCallback(DBusMethodResponsePtr<bool> response,
-                                          const Error& error,
-                                          bool returned) {
-  TypedMethodReplyCallback(std::move(response), error, returned);
 }
 
 }  // namespace shill

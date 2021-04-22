@@ -46,14 +46,6 @@ class DBusAdaptor {
   // Callback to wrap around DBus method response.
   ResultCallback GetMethodReplyCallback(DBusMethodResponsePtr<> response);
 
-  // It would be nice if these two methods could be templated.  Unfortunately,
-  // attempts to do so will trigger some fairly esoteric warnings from the
-  // base library.
-  ResultStringCallback GetStringMethodReplyCallback(
-      DBusMethodResponsePtr<std::string> response);
-  ResultBoolCallback GetBoolMethodReplyCallback(
-      DBusMethodResponsePtr<bool> response);
-
   // Adaptors call this method just before returning. If |error|
   // indicates that the operation has completed, with no asynchronously
   // delivered result expected, then a DBus method reply is immediately
@@ -113,13 +105,6 @@ class DBusAdaptor {
  private:
   void MethodReplyCallback(DBusMethodResponsePtr<> response,
                            const Error& error);
-
-  void StringMethodReplyCallback(DBusMethodResponsePtr<std::string> response,
-                                 const Error& error,
-                                 const std::string& returned);
-  void BoolMethodReplyCallback(DBusMethodResponsePtr<bool> response,
-                               const Error& error,
-                               bool returned);
 
   dbus::ObjectPath dbus_path_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
