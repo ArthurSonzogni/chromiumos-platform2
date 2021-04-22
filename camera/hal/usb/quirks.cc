@@ -38,6 +38,8 @@ const QuirksMap& GetQuirksMap() {
       {{"0c45", "6a05"}, kQuirkUserSpaceTimestamp},
       // HoverCam Solo 8 Plus document camera (b/171609393)
       {{"2894", "0029"}, kQuirkReportLeastFpsRanges},
+      // LVI Camera MagniLink S (crbug.com/1197426)
+      {{"1904", "0001"}, kQuirkReportLeastFpsRanges},
   });
   return *kQuirksMap;
 }
