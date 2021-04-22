@@ -33,6 +33,10 @@
 		<method name="GetWiFiPassphrase">
 			<arg type="s" direction="out"/>
 		</method>
+		<method name="RequestTrafficCounters">
+			<arg type="aa{sv}" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 		<method name="ResetTrafficCounters"/>
 		<signal name="PropertyChanged">
 			<arg type="s"/>

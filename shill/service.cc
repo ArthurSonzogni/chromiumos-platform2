@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,7 +20,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/connection.h"
 #include "shill/dbus/dbus_control.h"
@@ -1369,6 +1372,46 @@ void Service::RefreshTrafficCounters(
     traffic_counter_snapshot_[counter.source()] = counter_array;
   }
   SaveToProfile();
+}
+
+void Service::RequestTrafficCountersCallback(
+    Error* error,
+    const ResultVariantDictionariesCallback& callback,
+    const std::vector<patchpanel::TrafficCounter>& counters) {
+  RefreshTrafficCounters(counters);
+  std::vector<brillo::VariantDictionary> traffic_counters;
+  for (const auto& [source, counters] : current_traffic_counters_) {
+    brillo::VariantDictionary dict;
+    // Select only the first two |counters| elements, corresponding to rx_bytes
+    // and tx_bytes.
+    dict.emplace("source", patchpanel::TrafficCounter::Source_Name(source));
+    dict.emplace("rx_bytes", counters[TrafficCounterVals::kRxBytes]);
+    dict.emplace("tx_bytes", counters[TrafficCounterVals::kTxBytes]);
+    traffic_counters.push_back(std::move(dict));
+  }
+  error->Populate(Error::kSuccess);
+  callback.Run(*error, std::move(traffic_counters));
+}
+
+void Service::RequestTrafficCounters(
+    Error* error, const ResultVariantDictionariesCallback& callback) {
+  DeviceRefPtr device = manager_->FindDeviceFromService(this);
+  if (!device) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        "Failed to find device from service: " + GetRpcIdentifier().value());
+    return;
+  }
+  std::set<std::string> devices{device->link_name()};
+  patchpanel::Client* client = manager_->patchpanel_client();
+  if (!client) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to get patchpanel client");
+    return;
+  }
+  client->GetTrafficCounters(
+      devices, BindOnce(&Service::RequestTrafficCountersCallback,
+                        weak_ptr_factory_.GetWeakPtr(), error, callback));
 }
 
 void Service::ResetTrafficCounters(Error* /*error*/) {

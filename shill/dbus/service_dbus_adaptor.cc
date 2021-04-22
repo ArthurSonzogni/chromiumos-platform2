@@ -201,6 +201,34 @@ bool ServiceDBusAdaptor::GetWiFiPassphrase(brillo::ErrorPtr* error,
   return true;
 }
 
+void ServiceDBusAdaptor::RequestTrafficCounters(
+    DBusMethodResponsePtr<VariantDictionaries> response) {
+  SLOG(this, 2) << __func__;
+
+  Error e(Error::kOperationInitiated);
+  ResultVariantDictionariesCallback callback =
+      base::Bind(&ServiceDBusAdaptor::VariantDictionariesMethodReplyCallback,
+                 weak_factory_.GetWeakPtr(), base::Passed(&response));
+  service_->RequestTrafficCounters(&e, callback);
+  // Invoke response if command is completed synchronously (either success or
+  // failure).
+  if (!e.IsOngoing()) {
+    callback.Run(e, std::vector<brillo::VariantDictionary>());
+  }
+}
+
+void ServiceDBusAdaptor::VariantDictionariesMethodReplyCallback(
+    DBusMethodResponsePtr<VariantDictionaries> response,
+    const Error& error,
+    const VariantDictionaries& returned) {
+  brillo::ErrorPtr chromeos_error;
+  if (error.ToChromeosError(&chromeos_error)) {
+    response->ReplyWithError(chromeos_error.get());
+  } else {
+    response->Return(returned);
+  }
+}
+
 bool ServiceDBusAdaptor::ResetTrafficCounters(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   service_->ResetTrafficCounters(/*error=*/nullptr);

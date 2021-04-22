@@ -13,6 +13,7 @@
 
 #include "dbus_bindings/org.chromium.flimflam.Service.h"
 #include "shill/adaptor_interfaces.h"
+#include "shill/data_types.h"
 #include "shill/dbus/dbus_adaptor.h"
 
 namespace shill {
@@ -76,12 +77,20 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::ServiceAdaptor,
       std::map<dbus::ObjectPath, std::string>* entries) override;
   bool GetWiFiPassphrase(brillo::ErrorPtr* error,
                          std::string* out_passphrase) override;
+  void RequestTrafficCounters(
+      DBusMethodResponsePtr<VariantDictionaries> response) override;
   bool ResetTrafficCounters(brillo::ErrorPtr* error) override;
 
   Service* service() const { return service_; }
 
  private:
+  void VariantDictionariesMethodReplyCallback(
+      DBusMethodResponsePtr<VariantDictionaries> response,
+      const Error& error,
+      const VariantDictionaries& returned);
+
   Service* service_;
+  base::WeakPtrFactory<ServiceDBusAdaptor> weak_factory_{this};
 };
 
 }  // namespace shill

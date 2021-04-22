@@ -63,6 +63,14 @@ class Service : public base::RefCounted<Service> {
   using TrafficCounterMap =
       std::map<patchpanel::TrafficCounter::Source, std::valarray<uint64_t>>;
 
+  // Enum values representing values retrieved from patchpanel.
+  enum TrafficCounterVals {
+    kRxBytes = 0,
+    kTxBytes,
+    kRxPackets,
+    kTxPackets,
+  };
+
   static const char kCheckPortalAuto[];
   static const char kCheckPortalFalse[];
   static const char kCheckPortalTrue[];
@@ -626,6 +634,10 @@ class Service : public base::RefCounted<Service> {
   // the snapshots as well in one atomic step.
   mockable void RefreshTrafficCounters(
       const std::vector<patchpanel::TrafficCounter>& counters);
+  // Requests traffic counters from patchpanel and returns the result in
+  // |callback|.
+  mockable void RequestTrafficCounters(
+      Error* error, const ResultVariantDictionariesCallback& callback);
   // Resets traffic counters for |this|.
   mockable void ResetTrafficCounters(Error* error);
 
@@ -929,6 +941,13 @@ class Service : public base::RefCounted<Service> {
   // to |source| and |suffix| (one of kStorageTrafficCounterSuffixes).
   static std::string GetCurrentTrafficCounterKey(
       patchpanel::TrafficCounter::Source source, std::string suffix);
+
+  // Refreshes and processes the traffic counters using |counters| and returns
+  // the result through |callback|.
+  void RequestTrafficCountersCallback(
+      Error* error,
+      const ResultVariantDictionariesCallback& callback,
+      const std::vector<patchpanel::TrafficCounter>& counters);
 
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;

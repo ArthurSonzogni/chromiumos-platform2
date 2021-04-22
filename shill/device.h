@@ -358,6 +358,10 @@ class Device : public base::RefCounted<Device> {
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type);
 
+  void set_selected_service_for_testing(ServiceRefPtr service) {
+    selected_service_ = service;
+  }
+
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);

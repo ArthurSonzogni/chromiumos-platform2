@@ -15,11 +15,13 @@
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/dhcp/mock_dhcp_properties.h"
+#include "shill/error.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/fake_store.h"
@@ -27,6 +29,7 @@
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
+#include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
@@ -64,6 +67,29 @@ namespace {
 const char kConnectDisconnectReason[] = "RPC";
 const char kGUID[] = "guid";
 const char kDeviceName[] = "testdevice";
+
+bool TrafficCountersMatch(
+    const std::vector<brillo::VariantDictionary>& expected_traffic_counters,
+    const std::vector<brillo::VariantDictionary>& actual_traffic_counters) {
+  for (auto& expected_dict : expected_traffic_counters) {
+    bool found = false;
+    EXPECT_EQ(expected_dict.size(), 3);
+    for (auto& actual_dict : actual_traffic_counters) {
+      EXPECT_EQ(actual_dict.size(), 3);
+      if (expected_dict.at("source") != actual_dict.at("source")) {
+        continue;
+      }
+      EXPECT_EQ(expected_dict.at("rx_bytes"), actual_dict.at("rx_bytes"));
+      EXPECT_EQ(expected_dict.at("tx_bytes"), actual_dict.at("tx_bytes"));
+      found = true;
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 namespace shill {
@@ -2336,6 +2362,80 @@ TEST_F(ServiceTest, TrafficCounters) {
             ->current_traffic_counters_[patchpanel::TrafficCounter::USER][i],
         user_counters_diff[i]);
   }
+}
+
+TEST_F(ServiceTest, RequestTrafficCounters) {
+  auto source0 = patchpanel::TrafficCounter::CHROME;
+  auto source1 = patchpanel::TrafficCounter::USER;
+
+  std::valarray<uint64_t> init_counter_arr0{0, 0, 0, 0};
+  std::valarray<uint64_t> init_counter_arr1{0, 0, 0, 0};
+  patchpanel::TrafficCounter init_counter0 =
+      CreateCounter(init_counter_arr0, source0, kDeviceName);
+  patchpanel::TrafficCounter init_counter1 =
+      CreateCounter(init_counter_arr1, source1, kDeviceName);
+
+  service_->InitializeTrafficCounterSnapshot({init_counter0, init_counter1});
+
+  std::valarray<uint64_t> counter_arr0{12, 34, 56, 78};
+  std::valarray<uint64_t> counter_arr1{90, 87, 65, 43};
+  patchpanel::TrafficCounter counter0 =
+      CreateCounter(counter_arr0, source0, kDeviceName);
+  patchpanel::TrafficCounter counter1 =
+      CreateCounter(counter_arr1, source1, kDeviceName);
+
+  std::vector<patchpanel::TrafficCounter> counters{counter0, counter1};
+
+  auto client = std::make_unique<patchpanel::FakeClient>();
+  patchpanel::FakeClient* patchpanel_client = client.get();
+  mock_manager_.set_patchpanel_client_for_testing(std::move(client));
+
+  patchpanel_client->set_stored_traffic_counters(counters);
+
+  scoped_refptr<MockDevice> mock_device =
+      new MockDevice(&mock_manager_, kDeviceName, "addr0", 0);
+  mock_device->set_selected_service_for_testing(service_);
+
+  ON_CALL(mock_manager_, FindDeviceFromService(_))
+      .WillByDefault(Return(mock_device));
+
+  // Set up expected RequestTrafficCounters result.
+  std::vector<brillo::VariantDictionary> expected_traffic_counters;
+  brillo::VariantDictionary chrome_dict;
+  chrome_dict.emplace("source", patchpanel::TrafficCounter::Source_Name(
+                                    patchpanel::TrafficCounter::CHROME));
+  chrome_dict.emplace("rx_bytes", counter_arr0[0]);
+  chrome_dict.emplace("tx_bytes", counter_arr0[1]);
+  brillo::VariantDictionary user_dict;
+  user_dict.emplace("source", patchpanel::TrafficCounter::Source_Name(
+                                  patchpanel::TrafficCounter::USER));
+  user_dict.emplace("rx_bytes", counter_arr1[0]);
+  user_dict.emplace("tx_bytes", counter_arr1[1]);
+
+  expected_traffic_counters.push_back(chrome_dict);
+  expected_traffic_counters.push_back(user_dict);
+
+  Error error;
+  bool successfully_requested_traffic_counters = false;
+  service_->RequestTrafficCounters(
+      &error,
+      base::Bind(
+          [](bool* success,
+             std::vector<brillo::VariantDictionary> expected_traffic_counters,
+             const Error& error,
+             const std::vector<brillo::VariantDictionary>&
+                 actual_traffic_counters) {
+            EXPECT_EQ(expected_traffic_counters.size(), 2);
+            EXPECT_EQ(actual_traffic_counters.size(), 2);
+            EXPECT_TRUE(TrafficCountersMatch(expected_traffic_counters,
+                                             actual_traffic_counters));
+            EXPECT_TRUE(error.IsSuccess());
+            *success = true;
+          },
+          &successfully_requested_traffic_counters,
+          std::move(expected_traffic_counters)));
+
+  EXPECT_TRUE(successfully_requested_traffic_counters);
 }
 
 TEST_F(ServiceTest, ResetTrafficCounters) {

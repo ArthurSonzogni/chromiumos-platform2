@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -185,9 +186,10 @@ class Manager {
                                            const KeyValueStore& args,
                                            Error* error);
   ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
+
   // Return the Device that has selected this Service. If no Device has selected
   // this Service or the Service pointer is null, return nullptr.
-  DeviceRefPtr FindDeviceFromService(const ServiceRefPtr& service);
+  virtual DeviceRefPtr FindDeviceFromService(const ServiceRefPtr& service);
 
   // Return the highest priority service of a physical technology type (i.e. not
   // VPN, ARC, etc), or nullptr if no such service is found.
@@ -519,6 +521,10 @@ class Manager {
     return supplicant_manager_.get();
   }
 #endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
+  void set_patchpanel_client_for_testing(
+      std::unique_ptr<patchpanel::Client> patchpanel_client) {
+    patchpanel_client_ = std::move(patchpanel_client);
+  }
   patchpanel::Client* patchpanel_client() { return patchpanel_client_.get(); }
 
   // Returns a vector of all uids whose traffic is routed through VPN

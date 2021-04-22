@@ -166,6 +166,10 @@ class MockManager : public Manager {
               (override));
   MOCK_METHOD(const ProfileRefPtr&, ActiveProfile, (), (const, override));
   MOCK_METHOD(ServiceRefPtr, GetFirstEthernetService, (), (override));
+  MOCK_METHOD(DeviceRefPtr,
+              FindDeviceFromService,
+              (const ServiceRefPtr&),
+              (override));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

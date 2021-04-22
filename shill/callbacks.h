@@ -23,6 +23,8 @@ using ResultCallback = base::Callback<void(const Error&)>;
 using ResultBoolCallback = base::Callback<void(const Error&, bool)>;
 using ResultStringCallback =
     base::Callback<void(const Error&, const std::string&)>;
+using ResultVariantDictionariesCallback =
+    base::Callback<void(const Error&, const VariantDictionaries&)>;
 using EnabledStateChangedCallback = base::Callback<void(const Error&)>;
 using KeyValueStoreCallback =
     base::Callback<void(const KeyValueStore&, const Error&)>;

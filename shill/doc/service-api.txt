@@ -186,7 +186,16 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.NotSupported
 
-		void ResetTrafficCounters()
+		array{dict} RequestTrafficCounters()
+
+			Return the current traffic counters for a Service.
+			If the Device corresponding to a Service cannot be
+			found or the Patchpanel client cannot be accessed,
+			an OperationFailed error will be returned.
+
+			Possible Errors: [service].Error.OperationFailed
+
+void ResetTrafficCounters()
 
 			Resets the current traffic counters for a Service.
 
