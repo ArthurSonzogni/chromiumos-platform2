@@ -1296,15 +1296,18 @@ int main(int argc, char** argv) {
     }
 
     if (cl->HasSwitch(switches::kUseDBus)) {
-      gchar* result;
-      brillo::glib::ScopedError error;
-      if (!org_chromium_CryptohomeInterface_get_sanitized_username(
-              proxy.gproxy(), account_id.c_str(), &result,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("GetSanitizedUserName call failed: %s.\n", error->message);
+      user_data_auth::GetSanitizedUsernameRequest req;
+      req.set_username(account_id);
+
+      user_data_auth::GetSanitizedUsernameReply reply;
+      brillo::ErrorPtr error;
+      if (!misc_proxy.GetSanitizedUsername(req, &reply, &error, timeout_ms) ||
+          error) {
+        printf("GetSanitizedUserName call failed: %s.\n",
+               BrilloErrorToString(error.get()).c_str());
         return 1;
       }
-      printf("%s\n", result);
+      printf("%s\n", reply.sanitized_username().c_str());
     } else {
       // Use libbrillo directly instead of going through dbus/cryptohome.
       if (!brillo::cryptohome::home::EnsureSystemSaltIsLoaded()) {
@@ -1494,34 +1497,19 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean result = false;
-    if (!org_chromium_CryptohomeInterface_tpm_is_enabled(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmIsEnabled call failed: %s.\n", error->message);
+    tpm_manager::GetTpmStatusRequest req;
+    tpm_manager::GetTpmStatusReply reply;
+    brillo::ErrorPtr error;
+    if (!tpm_ownership_proxy.GetTpmStatus(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("GetTpmStatus call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     } else {
-      printf("TPM Enabled: %s\n", (result ? "true" : "false"));
-    }
-    result = false;
-    if (!org_chromium_CryptohomeInterface_tpm_is_owned(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmIsOwned call failed: %s.\n", error->message);
-    } else {
-      printf("TPM Owned: %s\n", (result ? "true" : "false"));
-    }
-    if (!org_chromium_CryptohomeInterface_tpm_is_ready(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmIsReady call failed: %s.\n", error->message);
-    } else {
-      printf("TPM Ready: %s\n", (result ? "true" : "false"));
-    }
-    gchar* password;
-    if (!org_chromium_CryptohomeInterface_tpm_get_password(
-            proxy.gproxy(), &password, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmGetPassword call failed: %s.\n", error->message);
-    } else {
-      printf("TPM Password: %s\n", password);
-      g_free(password);
+      printf("TPM Enabled: %s\n", (reply.enabled() ? "true" : "false"));
+      printf("TPM Owned: %s\n", (reply.owned() ? "true" : "false"));
+      printf("TPM Ready: %s\n",
+             ((reply.enabled() && reply.owned()) ? "true" : "false"));
+      printf("TPM Password: %s\n", reply.local_data().owner_password().c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_MORE_STATUS],
                      action.c_str())) {
