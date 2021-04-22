@@ -556,13 +556,6 @@ int sl_process_pending_configure_acks(struct sl_window* window,
   return 1;
 }
 
-void sl_commit(struct sl_window* window, struct sl_host_surface* host_surface) {
-  if (sl_process_pending_configure_acks(window, host_surface)) {
-    if (host_surface)
-      wl_surface_commit(host_surface->proxy);
-  }
-}
-
 static void sl_internal_xdg_surface_configure(
     void* data, struct zxdg_surface_v6* xdg_surface, uint32_t serial) {
   TRACE_EVENT("surface", "sl_internal_xdg_surface_configure");
@@ -581,7 +574,11 @@ static void sl_internal_xdg_surface_configure(
           wl_resource_get_user_data(host_resource));
 
     sl_configure_window(window);
-    sl_commit(window, host_surface);
+
+    if (sl_process_pending_configure_acks(window, host_surface)) {
+      if (host_surface)
+        wl_surface_commit(host_surface->proxy);
+    }
   }
 }
 
@@ -937,7 +934,7 @@ void sl_window_update(struct sl_window* window) {
                              (window->y - parent->y) / ctx->scale);
   }
 
-  sl_commit(window, host_surface);
+  wl_surface_commit(host_surface->proxy);
   if (host_surface->contents_width && host_surface->contents_height)
     window->realized = 1;
 }
