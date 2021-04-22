@@ -81,6 +81,18 @@ constexpr int kWaitOwnershipTimeoutInSeconds = 100;
 // Poll once every 0.2s.
 constexpr int kWaitOwnershipPollIntervalInMs = 200;
 
+// Converts a brillo::Error* to string for printing.
+std::string BrilloErrorToString(brillo::Error* err) {
+  std::string result;
+  if (err) {
+    result = "(" + err->GetDomain() + ", " + err->GetCode() + ", " +
+             err->GetMessage() + ")";
+  } else {
+    result = "(null)";
+  }
+  return result;
+}
+
 }  // namespace
 
 namespace switches {
