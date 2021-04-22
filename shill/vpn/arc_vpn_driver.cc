@@ -82,6 +82,7 @@ IPConfig::Properties ArcVpnDriver::GetIPProperties() const {
   // IPv6 is not currently supported.  If the VPN is enabled, block all
   // IPv6 traffic so there is no "leak" past the VPN.
   ip_properties.blackhole_ipv6 = true;
+  ip_properties.method = kTypeVPN;
   return ip_properties;
 }
 

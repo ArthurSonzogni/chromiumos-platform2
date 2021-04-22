@@ -602,6 +602,7 @@ const char kTypeDHCP[] = "dhcp";
 const char kTypeBOOTP[] = "bootp";
 const char kTypeZeroConf[] = "zeroconf";
 const char kTypeDHCP6[] = "dhcp6";
+// kTypeVPN[] = "vpn" is defined above in device type session.
 
 // Flimflam error options.
 const char kErrorAaaFailed[] = "aaa-failed";

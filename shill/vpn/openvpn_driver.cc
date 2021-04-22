@@ -441,6 +441,7 @@ void OpenVPNDriver::ParseIPConfiguration(
   }
   properties->default_route = properties->blackhole_ipv6 = redirect_gateway;
   SetRoutes(routes, properties);
+  properties->method = kTypeVPN;
 }
 
 // static

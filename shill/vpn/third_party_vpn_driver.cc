@@ -413,6 +413,7 @@ void ThirdPartyVpnDriver::SetParameters(
   }
   ip_properties_.default_route = false;
   ip_properties_.blackhole_ipv6 = true;
+  ip_properties_.method = kTypeVPN;
   if (!ip_properties_set_) {
     ip_properties_set_ = true;
     metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,

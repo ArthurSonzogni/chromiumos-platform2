@@ -498,6 +498,7 @@ bool WireguardDriver::PopulateIPProperties() {
                                        /*gateway=*/"0.0.0.0"});
     }
   }
+  ip_properties_.method = kTypeVPN;
   return true;
 }
 

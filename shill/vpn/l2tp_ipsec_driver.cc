@@ -446,6 +446,8 @@ void L2TPIPSecDriver::Notify(const std::string& reason,
   // is also larger than the IPv4 minimum size.
   ip_properties_.mtu = IPConfig::kMinIPv6MTU;
 
+  ip_properties_.method = kTypeVPN;
+
   ReportConnectionMetrics();
 
   // Make sure DeviceInfo is aware of this interface before invoking the
