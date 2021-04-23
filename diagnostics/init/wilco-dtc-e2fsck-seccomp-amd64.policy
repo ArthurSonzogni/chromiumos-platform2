@@ -9,6 +9,7 @@ read: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 fstat: 1
+newfstatat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 ioctl: arg1 == FDGETPRM || arg1 == LOOP_GET_STATUS64 || arg1 == BLKGETSIZE || arg1 == BLKDISCARDZEROES || arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == BLKROGET
 rt_sigaction: 1

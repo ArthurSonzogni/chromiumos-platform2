@@ -11,6 +11,7 @@ recvmsg: 1
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 read: 1
 fstat: 1
+newfstatat: 1
 close: 1
 poll: 1
 write: 1

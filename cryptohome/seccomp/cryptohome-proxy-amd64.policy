@@ -14,6 +14,7 @@ openat: 1
 close: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 fstat: 1
+newfstatat: 1
 poll: 1
 futex: 1
 sendto: 1

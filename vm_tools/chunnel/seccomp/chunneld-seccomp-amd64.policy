@@ -22,6 +22,7 @@ mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 stat: 1
 fstat: 1
+newfstatat: 1
 futex: 1
 rt_sigaction: 1
 sendto: 1

@@ -46,6 +46,7 @@ chmod: 1
 fsync: 1
 fdatasync: 1
 fstat: 1
+newfstatat: 1
 stat: 1
 lseek: 1
 fcntl: 1

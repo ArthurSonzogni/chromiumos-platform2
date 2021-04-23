@@ -48,6 +48,7 @@ mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 # mprotect should only be allowed in READ mode.
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 munmap: 1
+newfstatat: 1
 open: 1
 openat: 1
 pipe2: 1

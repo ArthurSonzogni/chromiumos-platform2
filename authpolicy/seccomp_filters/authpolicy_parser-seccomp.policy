@@ -15,6 +15,7 @@ lseek: 1
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mremap: 1
 munmap: 1
+newfstatat: 1
 open: 1
 openat: 1
 read: 1

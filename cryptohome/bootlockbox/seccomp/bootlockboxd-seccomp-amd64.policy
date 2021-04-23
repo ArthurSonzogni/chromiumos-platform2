@@ -11,6 +11,7 @@ mprotect: arg2 == PROT_READ || arg2 == PROT_NONE || arg2 == PROT_READ|PROT_WRITE
 read: 1
 close: 1
 fstat: 1
+newfstatat: 1
 epoll_wait: 1
 poll: 1
 recvmsg: 1

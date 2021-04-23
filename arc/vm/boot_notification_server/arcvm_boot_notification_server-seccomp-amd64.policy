@@ -8,6 +8,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 read: 1
 close: 1
 fstat: 1
+newfstatat: 1
 getpid: 1
 sendto: 1
 write: 1

@@ -6,6 +6,7 @@ openat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 fstat: 1
+newfstatat: 1
 close: 1
 read: 1
 stat: 1

@@ -8,6 +8,7 @@ openat: 1
 readlinkat: 1
 sendto: 1
 fstat: 1
+newfstatat: 1
 close: 1
 access: 1
 epoll_wait: 1

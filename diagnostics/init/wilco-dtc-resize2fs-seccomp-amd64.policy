@@ -11,6 +11,7 @@ close: 1
 read: 1
 getrusage: 1
 fstat: 1
+newfstatat: 1
 write: 1
 ioctl: arg1 == FDGETPRM || arg1 == BLKGETSIZE || arg1 == LOOP_GET_STATUS64 || arg1 == BLKROGET || arg1 == BLKGETSIZE64 || arg1 == BLKDISCARDZEROES || arg1 == TCGETS
 lseek: 1
