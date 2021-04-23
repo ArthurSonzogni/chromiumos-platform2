@@ -38,7 +38,8 @@ DEFINE_boolean skip_src_removable ${FLAGS_FALSE} \
 DEFINE_boolean skip_dst_removable ${FLAGS_FALSE} \
   "Skip check to ensure destination is not removable"
 DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
-  "Skip installing the rootfs; Only set up partition table"
+  "Skip installing the rootfs; Only set up partition table and clear and \
+reinstall the stateful partition."
 DEFINE_boolean yes ${FLAGS_FALSE} \
   "Answer yes to everything"
 DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
@@ -376,7 +377,14 @@ loop_offset_setup() {
     set -- "$@" -b "${blocksize}"
   fi
 
-  LOOP_DEV=$(losetup -f "$@" --show -o $((offset * blocksize)) "${filename}")
+  local losetup_path="losetup"
+  # TODO(b/186151064): Change default from busybox losetup used in minios.
+  if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
+    losetup_path="./bin/losetup"
+  fi
+
+  LOOP_DEV=$("${losetup_path}" -f "$@" --show -o $((offset * blocksize)) \
+    "${filename}")
   if [ -z "$LOOP_DEV" ]; then
     die "No free loop device. Free up a loop device or reboot. Exiting."
   fi
@@ -1116,6 +1124,11 @@ main() {
   reload_partitions
 
   if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
+    echo "Clearing and reinstalling the stateful partition."
+    wipe_stateful
+    install_stateful
+    sync
+    cleanup
     echo "Done installing partitions."
     exit 0
   fi
