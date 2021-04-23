@@ -582,8 +582,8 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     }
     active_array_size[0] = rect.left;
     active_array_size[1] = rect.top;
-    active_array_size[2] = rect.right;
-    active_array_size[3] = rect.bottom;
+    active_array_size[2] = rect.width();
+    active_array_size[3] = rect.height();
   } else {
     active_array_size[0] = 0;
     active_array_size[1] = 0;
@@ -1309,8 +1309,8 @@ int MetadataHandler::PostHandleRequest(int frame_number,
 
   // android.scaler
   update_request(ANDROID_SCALER_CROP_REGION, std::vector<int32_t>{
-                                                 active_array_size.data.i32[0],
-                                                 active_array_size.data.i32[1],
+                                                 0,
+                                                 0,
                                                  active_array_size.data.i32[2],
                                                  active_array_size.data.i32[3],
                                              });
