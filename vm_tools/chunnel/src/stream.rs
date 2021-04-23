@@ -10,8 +10,7 @@ use std::os::unix::net::UnixStream;
 use std::result;
 
 use libc::{self, c_void, shutdown, EPIPE, SHUT_WR};
-
-use libchromeos::vsock::VsockStream;
+use sys_util::vsock::VsockStream;
 
 /// StreamSocket provides a generic abstraction around any connection-oriented stream socket.
 /// The socket will be closed when StreamSocket is dropped, but writes to the socket can also

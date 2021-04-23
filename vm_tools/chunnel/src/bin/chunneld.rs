@@ -20,9 +20,9 @@ use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection as DBusConnection;
 use dbus::{self, tree, Error as DBusError};
 use libchromeos::syslog;
-use libchromeos::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
 use log::{error, warn};
 use protobuf::{self, Message as ProtoMessage, ProtobufError};
+use sys_util::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
 use sys_util::{self, block_signal, pipe, EventFd, PollContext, PollToken};
 
 use chunnel::forwarder::ForwarderSession;

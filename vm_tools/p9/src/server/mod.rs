@@ -14,7 +14,7 @@ use std::os::unix::fs::FileExt;
 use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use std::path::Path;
 
-use libchromeos::{read_dir, syscall};
+use sys_util::{read_dir::read_dir, syscall};
 
 use crate::protocol::*;
 
@@ -507,7 +507,7 @@ impl Server {
         })
     }
 
-    #[allow(clippy::unnecessary_wraps)]
+    #[allow(clippy::unnecessary_unwrap)]
     fn flush(&mut self, _flush: &Tflush) -> io::Result<()> {
         // TODO: Since everything is synchronous we can't actually flush requests.
         Ok(())

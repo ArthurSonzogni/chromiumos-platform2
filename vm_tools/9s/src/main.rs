@@ -11,6 +11,7 @@ extern crate libchromeos;
 #[macro_use]
 extern crate log;
 extern crate p9;
+extern crate sys_util;
 
 use libc::gid_t;
 
@@ -33,7 +34,7 @@ use std::sync::Arc;
 use std::thread;
 
 use libchromeos::syslog;
-use libchromeos::vsock::*;
+use sys_util::vsock::*;
 
 const DEFAULT_BUFFER_SIZE: usize = 8192;
 
