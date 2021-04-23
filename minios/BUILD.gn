@@ -37,7 +37,9 @@ static_library("libminios") {
   sources = [
     "daemon.cc",
     "dbus_adaptors/dbus_adaptor.cc",
+    "disk_util.cc",
     "key_reader.cc",
+    "logger.cc",
     "minios.cc",
     "network_manager.cc",
     "process_manager.cc",
@@ -67,7 +69,9 @@ if (use.test) {
   executable("minios_test") {
     sources = [
       "dbus_adaptors/dbus_adaptor_test.cc",
+      "disk_util_test.cc",
       "key_reader_test.cc",
+      "logger_test.cc",
       "network_manager_test.cc",
       "screens_test.cc",
     ]
