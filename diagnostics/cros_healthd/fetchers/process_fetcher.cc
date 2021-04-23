@@ -39,7 +39,7 @@ constexpr char kProcessStatmFileRegex[] =
 // Regex used to parse procfs's uptime file.
 constexpr char kUptimeFileRegex[] = R"(([.\d]+)\s+[.\d]+)";
 // Regex used to parse the process's Uid field in the status file.
-constexpr char kUidStatusRegex[] = R"(\s*(\d+)\s+\d+\s+\d+\s+\d+)";
+constexpr char kUidStatusRegex[] = R"(Uid:\s*(\d+)\s+\d+\s+\d+\s+\d+)";
 // Regex used to parse a process's I/O file.
 constexpr char kProcessIOFileRegex[] =
     R"(rchar:\s+(\d+)\nwchar:\s+(\d+)\nsyscr:\s+(\d+)\nsyscw:\s+(\d+)\nread)"
@@ -439,25 +439,14 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
         "Failed to read " + proc_pid_dir_.Append(kProcessStatusFile).value());
   }
 
-  base::StringPairs status_key_value_pairs;
-  if (!base::SplitStringIntoKeyValuePairs(status_contents, ':', '\n',
-                                          &status_key_value_pairs)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
-        "Failed to tokenize status file: " + status_contents);
-  }
+  std::vector<std::string> status_lines = base::SplitString(
+      status_contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   bool uid_key_found = false;
   std::string uid_str;
-  for (const auto& kv_pair : status_key_value_pairs) {
-    if (kv_pair.first != "Uid")
+  for (const auto& line : status_lines) {
+    if (!RE2::FullMatch(line, kUidStatusRegex, &uid_str))
       continue;
-
-    std::string uid_value = kv_pair.second;
-    if (!RE2::FullMatch(uid_value, kUidStatusRegex, &uid_str)) {
-      return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                    "Failed to parse Uid value: " + uid_value);
-    }
 
     unsigned int user_id_uint;
     if (!base::StringToUint(uid_str, &user_id_uint)) {

@@ -121,9 +121,6 @@ constexpr char kFakeProcPidStatusContents[] =
     "Name:\tfake_exe\nState:\tS (sleeping)\nUid:\t20104 20104 20104 20104\n";
 // Data parsed from kFakeProcPidStatusContents.
 constexpr uint32_t kExpectedUid = 20104;
-// Invalid /proc/|kPid|/status contents: doesn't tokenize on ":".
-constexpr char kProcPidStatusContentsNotTokenizeable[] =
-    "Name:\tfake_exe\nState;\tS (sleeping)\nUid:\t20104 20104 20104 20104\n";
 // Invalid /proc/|kPid|/status contents: Uid key not present.
 constexpr char kProcPidStatusContentsNoUidKey[] =
     "Name:\tfake_exe\nState:\tS (sleeping)\n";
@@ -508,20 +505,6 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatusFile) {
   ASSERT_TRUE(process_result->is_error());
   EXPECT_EQ(process_result->get_error()->type,
             mojo_ipc::ErrorType::kFileReadError);
-}
-
-// Test that we handle a /proc/|kPid|/status file which doesn't tokenize.
-TEST_F(ProcessFetcherTest, NonTokenizeableProcPidStatusFile) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetProcProcessDirectoryPath(temp_dir_path(), kPid)
-          .Append(kProcessStatusFile),
-      kProcPidStatusContentsNotTokenizeable));
-
-  auto process_result = FetchProcessInfo();
-
-  ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/status file which doesn't have the Uid
