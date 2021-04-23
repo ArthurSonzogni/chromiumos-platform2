@@ -831,9 +831,16 @@ void Screens::OnConnect(const std::string& ssid, brillo::Error* error) {
   LOG(INFO) << "Successfully connected to " << ssid;
   // TODO(b/181248366): MiniOs: Stop update engine from scheduling periodic
   // update checks in recovery mode and then call update check manually.
-  display_update_engine_state_ = true;
   current_screen_ = ScreenType::kStartDownload;
   ShowNewScreen();
+
+  if (!recovery_installer_->RepartitionDisk()) {
+    LOG(ERROR) << "Could not repartition disk.";
+    ShowErrorScreen("MiniOS_general_error");
+    return;
+  }
+
+  display_update_engine_state_ = true;
 }
 
 void Screens::OnGetNetworks(const std::vector<std::string>& networks,

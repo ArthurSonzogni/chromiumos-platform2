@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "minios/mock_process_manager.h"
+#include "minios/mock_recovery_installer.h"
 #include "minios/screens.h"
 
 using testing::_;
@@ -75,7 +76,7 @@ class ScreensTest : public ::testing::Test {
   // Path to /etc/screens in test directory.
   base::FilePath screens_path_;
   MockProcessManager mock_process_manager_;
-  Screens screens_{&mock_process_manager_, nullptr, nullptr};
+  Screens screens_{&mock_process_manager_, nullptr, nullptr, nullptr};
   std::string test_root_;
 };
 
@@ -495,7 +496,10 @@ TEST_F(ScreensTest, MapRegionToKeyboard) {
 
 class MockScreens : public Screens {
  public:
-  MockScreens() : Screens(nullptr, nullptr, nullptr) {}
+  MockScreens(
+      std::unique_ptr<minios::MockRecoveryInstaller> mock_recovery_installer)
+      : Screens(nullptr, std::move(mock_recovery_installer), nullptr, nullptr) {
+  }
   MOCK_METHOD(bool,
               ShowBox,
               (int offset_x,
@@ -528,6 +532,11 @@ class MockScreens : public Screens {
 
 class ScreensTestMocks : public ::testing::Test {
  public:
+  ScreensTestMocks()
+      : mock_recovery_installer_(
+            std::make_unique<minios::MockRecoveryInstaller>()),
+        mock_recovery_installer_ptr_(mock_recovery_installer_.get()),
+        mock_screens_(MockScreens(std::move(mock_recovery_installer_))) {}
   void SetUp() override {
     base::ScopedTempDir temp_dir_;
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -539,6 +548,8 @@ class ScreensTestMocks : public ::testing::Test {
 
  protected:
   base::FilePath screens_path_;
+  std::unique_ptr<minios::MockRecoveryInstaller> mock_recovery_installer_;
+  minios::MockRecoveryInstaller* mock_recovery_installer_ptr_;
   MockScreens mock_screens_;
 };
 
@@ -794,12 +805,6 @@ TEST_F(ScreensTestMocks, ScreenFlowForwardWithNetwork) {
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(ScreenType::kPasswordScreen, mock_screens_.GetScreenForTest());
-
-  EXPECT_CALL(mock_screens_, ShowNewScreen());
-  mock_screens_.OnConnect("", nullptr);
-  // Enter finishes the flow with downloading and complete screens.
-  mock_screens_.SwitchScreen(true);
-  EXPECT_EQ(ScreenType::kStartDownload, mock_screens_.GetScreenForTest());
 }
 
 TEST_F(ScreensTestMocks, ScreenBackward) {
@@ -984,6 +989,22 @@ TEST_F(ScreensTestMocks, ErrorScreenFallBack) {
       screens_path_.Append("en-US").Append("desc_MiniOS_test_error.png"));
   EXPECT_CALL(mock_screens_, ShowInstructionsWithTitle("MiniOS_test_error"));
   mock_screens_.ShowErrorScreen("MiniOS_test_error");
+}
+
+TEST_F(ScreensTestMocks, RepartitionDisk) {
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  EXPECT_CALL(*mock_recovery_installer_ptr_, RepartitionDisk())
+      .WillOnce(testing::Return(true));
+  mock_screens_.OnConnect("test-ssid", nullptr);
+}
+
+TEST_F(ScreensTestMocks, RepartitionDiskFailed) {
+  // Show error screen on repartition failure.
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  EXPECT_CALL(*mock_recovery_installer_ptr_, RepartitionDisk())
+      .WillOnce(testing::Return(false));
+  EXPECT_CALL(mock_screens_, ShowInstructionsWithTitle("MiniOS_general_error"));
+  mock_screens_.OnConnect("test-ssid", nullptr);
 }
 
 }  // namespace screens

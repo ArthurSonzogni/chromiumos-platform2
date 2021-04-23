@@ -9,6 +9,7 @@
 #include <base/logging.h>
 
 #include "minios/process_manager.h"
+#include "minios/recovery_installer.h"
 
 namespace minios {
 
@@ -20,7 +21,10 @@ MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
     : update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
       screens_(screens::Screens(
-          &process_manager_, network_manager_, update_engine_proxy_)) {
+          &process_manager_,
+          std::make_unique<RecoveryInstaller>(&process_manager_),
+          network_manager_,
+          update_engine_proxy_)) {
   update_engine_proxy_->SetDelegate(&screens_);
   update_engine_proxy_->Init();
   network_manager_->AddObserver(&screens_);

@@ -43,6 +43,7 @@ static_library("libminios") {
     "minios.cc",
     "network_manager.cc",
     "process_manager.cc",
+    "recovery_installer.cc",
     "screen_base.cc",
     "screens.cc",
     "shill_proxy.cc",
@@ -73,6 +74,7 @@ if (use.test) {
       "key_reader_test.cc",
       "logger_test.cc",
       "network_manager_test.cc",
+      "recovery_installer_test.cc",
       "screens_test.cc",
     ]
     configs += [
