@@ -8,6 +8,8 @@
 
 #include <iomanip>
 #include <iostream>
+#include <memory>
+#include <utility>
 
 #include <string.h>
 
@@ -16,7 +18,7 @@
 
 namespace {
 
-int sendcmd(hps::HPS* hps, int argc, char* argv[]) {
+int sendcmd(std::unique_ptr<hps::HPS> hps, int argc, char* argv[]) {
   int cmd;
 
   if (argc <= 1) {

@@ -377,7 +377,7 @@ bool FakeDev::write(uint8_t cmd, const std::vector<uint8_t>& data) {
 
 // Start the fake.
 void FakeDev::Start(uint flags) {
-  this->device_.reset(new DevImpl);
+  this->device_ = std::make_unique<DevImpl>();
   this->device_->Start(flags);
 }
 

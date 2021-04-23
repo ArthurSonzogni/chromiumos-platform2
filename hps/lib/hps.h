@@ -10,6 +10,8 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <utility>
 
 #include "hps/lib/dev.h"
 
@@ -17,9 +19,10 @@ namespace hps {
 
 class HPS {
  public:
-  explicit HPS(DevInterface* dev) : device_(dev), state_(State::init) {}
+  explicit HPS(std::unique_ptr<DevInterface> dev)
+      : device_(std::move(dev)), state_(State::init) {}
   void Init();
-  DevInterface* Device() { return this->device_; }
+  DevInterface* Device() { return this->device_.get(); }
   /*
    * Per the HPS/Host I2C Interface, the bank
    * must be between 0-63 inclusive.
@@ -34,7 +37,7 @@ class HPS {
     wait_stage0,
     wait_appl,
   };
-  DevInterface* device_;
+  std::unique_ptr<DevInterface> device_;
   State state_;
 };
 

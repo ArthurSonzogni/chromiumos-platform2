@@ -8,6 +8,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <memory>
 
 #include "hps/lib/hps.h"
 #include "hps/util/command.h"
@@ -17,7 +18,7 @@ namespace {
 // No arguments, registers 0 - 4 are dumped
 // N - dump register N
 // N - M Dump registers between N and M inclusive
-int status(hps::HPS* hps, int argc, char* argv[]) {
+int status(std::unique_ptr<hps::HPS> hps, int argc, char* argv[]) {
   int start, end;
   switch (argc) {
     case 1:

@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "hps/lib/hps.h"
@@ -15,7 +16,7 @@
 
 namespace {
 
-int download(hps::HPS* hps, int argc, char* argv[]) {
+int download(std::unique_ptr<hps::HPS> hps, int argc, char* argv[]) {
   if (argc != 3) {
     std::cerr << "Arg error: ... " << argv[0] << " bank-id file" << std::endl;
     return 1;

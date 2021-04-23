@@ -8,6 +8,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <memory>
 
 #include "hps/lib/hps.h"
 #include "hps/util/command.h"
@@ -16,7 +17,7 @@ namespace {
 
 // No arguments, default to 200.
 // N - Number of iterations.
-int readtest(hps::HPS* hps, int argc, char* argv[]) {
+int readtest(std::unique_ptr<hps::HPS> hps, int argc, char* argv[]) {
   int iterations;
   switch (argc) {
     case 1:

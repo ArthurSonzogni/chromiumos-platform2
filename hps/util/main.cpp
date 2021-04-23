@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <memory>
+#include <utility>
 
 #include <getopt.h>
 #include <stdlib.h>
@@ -82,36 +83,37 @@ int main(int argc, char* argv[]) {
   }
   std::unique_ptr<hps::DevInterface> dev;
   if (use_ftdi) {
-    auto ftdi = new hps::Ftdi(addr);
+    auto ftdi = std::make_unique<hps::Ftdi>(addr);
     if (!ftdi->Init()) {
       return 1;
     }
-    dev.reset(ftdi);
+    dev = std::move(ftdi);
   } else if (use_fake) {
     // The fake has to be started.
-    auto fd = new hps::FakeDev;
+    auto fd = std::make_unique<hps::FakeDev>();
     // TODO(amcrae): Allow passing error flags.
     fd->Start(0);
-    dev.reset(fd);
+    dev = std::move(fd);
   } else {
-    auto i2c = new hps::I2CDev(bus, addr);
+    auto i2c = std::make_unique<hps::I2CDev>(bus, addr);
     if (i2c->Open() < 0) {
       return 1;
     }
-    dev.reset(i2c);
+    dev = std::move(i2c);
   }
   if (retries > 0) {
     // If retries are required, add a retry device.
     std::cout << "Enabling retries: " << retries
               << ", delay per retry: " << delay << " ms" << std::endl;
-    auto baseDevice = dev.release();
-    dev.reset(new hps::RetryDev(baseDevice, retries,
-                                base::TimeDelta::FromMilliseconds(delay)));
+    auto baseDevice = std::move(dev);
+    dev = std::make_unique<hps::RetryDev>(
+        std::move(baseDevice), retries,
+        base::TimeDelta::FromMilliseconds(delay));
   }
-  auto hps = new hps::HPS(dev.get());
+  auto hps = std::make_unique<hps::HPS>(std::move(dev));
   // Pass new argc/argv to the command for any following arguments.
   // argv[0] is command name.
   int cmd_argc = argc - optind;
   char** cmd_argv = &argv[optind];
-  return Command::Execute(cmd_argv[0], hps, cmd_argc, cmd_argv);
+  return Command::Execute(cmd_argv[0], std::move(hps), cmd_argc, cmd_argv);
 }
