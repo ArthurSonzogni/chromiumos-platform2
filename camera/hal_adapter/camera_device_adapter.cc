@@ -34,6 +34,20 @@
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
 
+namespace {
+
+void DeleteCameraMetadataEntry(camera_metadata_t* metadata, uint32_t tag) {
+  camera_metadata_entry_t entry;
+  if (find_camera_metadata_entry(metadata, tag, &entry) != 0) {
+    return;
+  }
+  if (delete_camera_metadata_entry(metadata, entry.index) != 0) {
+    LOGF(ERROR) << "Failed to delete camera metadata tag: " << tag;
+  }
+}
+
+}  // namespace
+
 namespace cros {
 
 constexpr base::TimeDelta kMonitorTimeDelta = base::TimeDelta::FromSeconds(2);
@@ -428,6 +442,11 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
   }
 
+  // If |attempt_zsl_| is true. We would add ANDROID_CONTROL_ENABLE_ZSL to the
+  // capture templates. We need to make sure it is hidden from the actual HAL.
+  if (attempt_zsl_) {
+    DeleteCameraMetadataEntry(settings.get(), ANDROID_CONTROL_ENABLE_ZSL);
+  }
   req.settings = settings.get();
 
   if (camera_metadata_inspector_) {
