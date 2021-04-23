@@ -12,17 +12,18 @@ sudo emerge hps-tool
 To run the utilities:
 
 ```bash
-hps [ -f --bus <i2c-bus> --addr <i2c-addr> ] <command> <command arguments>
+hps [ --ftdi | --test | --bus <i2c-bus> ] [ --addr <i2c-addr> ] <command> <command arguments>
 ```
-```-f``` selects a FTDI USB connection to the device, otherwise direct I2C is assumed.
-```--bus``` defines which I2C bus to use.
+```--ftdi``` selects a FTDI USB connection to the device.
+```--test``` selects an internal test device.
+```--bus``` selects direct I2C via this I2C bus.
 ```--addr``` sets the I2C peripheral address to use.
 
 The following commands are supported:
 
 ```bash
-hps -f status   # Read the common status registers and display them
-hps -f cmd <value> # Send a command to the module.
-hps -f dl <bank> file # Download the file to the bank selected
-hps -f readtest [iterations] # Read all of the registers and verify their value
+hps status   # Read the common status registers and display them
+hps cmd <value> # Send a command to the module.
+hps dl <bank> file # Download the file to the bank selected
+hps readtest [iterations] # Read all of the registers and verify their value
 ```

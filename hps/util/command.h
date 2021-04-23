@@ -15,13 +15,16 @@
 
 #include <string.h>
 
+#include <base/command_line.h>
+
 #include "hps/lib/hps.h"
 
 class Command {
  public:
   Command(const char* name,
           const char* help,
-          int (*func)(std::unique_ptr<hps::HPS>, int, char**))
+          int (*func)(std::unique_ptr<hps::HPS>,
+                      const base::CommandLine::StringVector& args))
       : name_(name), help_(help), func_(func), next_(nullptr) {
     // Add myself to the list of commands.
     this->next_ = list_;
@@ -33,11 +36,10 @@ class Command {
    */
   static int Execute(const char* cmd,
                      std::unique_ptr<hps::HPS> hps,
-                     int argc,
-                     char** argv) {
+                     const base::CommandLine::StringVector& args) {
     for (auto el = list_; el != nullptr; el = el->next_) {
       if (strcmp(el->name_, cmd) == 0) {
-        return el->func_(std::move(hps), argc, argv);
+        return el->func_(std::move(hps), args);
       }
     }
     ShowHelp();
@@ -53,7 +55,8 @@ class Command {
  private:
   const char* name_;
   const char* help_;
-  int (*func_)(std::unique_ptr<hps::HPS>, int, char**);
+  int (*func_)(std::unique_ptr<hps::HPS>,
+               const base::CommandLine::StringVector&);
   Command* next_;
   static Command* list_;  // Global head of command list.
 };

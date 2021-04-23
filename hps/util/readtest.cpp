@@ -10,6 +10,9 @@
 #include <iostream>
 #include <memory>
 
+#include <base/command_line.h>
+#include <base/strings/string_number_conversions.h>
+
 #include "hps/lib/hps.h"
 #include "hps/util/command.h"
 
@@ -17,17 +20,18 @@ namespace {
 
 // No arguments, default to 200.
 // N - Number of iterations.
-int readtest(std::unique_ptr<hps::HPS> hps, int argc, char* argv[]) {
+int readtest(std::unique_ptr<hps::HPS> hps,
+             const base::CommandLine::StringVector& args) {
   int iterations;
-  switch (argc) {
+  switch (args.size()) {
     case 1:
       iterations = 200;
       break;
 
     case 2:
-      iterations = atoi(argv[1]);
-      if (iterations < 0) {
-        std::cerr << argv[1] << ": illegal count" << std::endl;
+      iterations = 0;
+      if (!base::StringToInt(args[1], &iterations) || iterations < 0) {
+        std::cerr << args[1] << ": illegal count" << std::endl;
         return 1;
       }
       break;

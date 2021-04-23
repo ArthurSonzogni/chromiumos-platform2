@@ -14,7 +14,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <base/command_line.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
+#include <brillo/flag_helper.h>
 
 #include "hps/lib/fake_dev.h"
 #include "hps/lib/ftdi.h"
@@ -27,93 +31,54 @@
 Command* Command::list_;
 
 int main(int argc, char* argv[]) {
-  int c;
-  int bus = 2;
-  int addr = 0x30;
-  int retries = 0;
-  int delay = 10;  // In milliseconds
-  bool use_ftdi = false;
-  bool use_fake = false;
+  DEFINE_uint32(bus, 2, "I2C bus");
+  DEFINE_uint32(addr, 0x30, "I2C address of module");
+  DEFINE_uint32(retries, 0, "Max I2C retries");
+  DEFINE_uint32(retry_delay, 10, "Delay in ms between retries");
+  DEFINE_bool(ftdi, false, "Use FTDI connection");
+  DEFINE_bool(test, false, "Use internal test fake");
+  brillo::FlagHelper::Init(argc, argv, "HPS tool.");
 
-  while (true) {
-    int option_index = 0;
-    static struct option long_options[] = {
-        {"bus", required_argument, 0, 'b'},
-        {"addr", required_argument, 0, 'a'},
-        {"ftdi", no_argument, 0, 'f'},
-        {"retries", required_argument, 0, 'r'},
-        {"retry_delay", required_argument, 0, 'd'},
-        {0, 0, 0, 0}};
-    c = getopt_long(argc, argv, "a:b:r:d:ft", long_options, &option_index);
-    if (c == -1) {
-      break;
-    }
-    switch (c) {
-      case 'a':
-        addr = atoi(optarg);
-        break;
+  const logging::LoggingSettings ls;
+  logging::InitLogging(ls);
 
-      case 'b':
-        bus = atoi(optarg);
-        break;
-
-      case 'f':
-        use_ftdi = true;
-        break;
-
-      case 't':
-        use_fake = true;
-        break;
-
-      case 'r':
-        retries = atoi(optarg);
-        break;
-
-      case 'd':
-        delay = atoi(optarg);
-        break;
-
-      default:
-        return 1;
-    }
-  }
-  if (optind >= argc) {
+  auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
+  if (args.size() == 0) {
     Command::ShowHelp();
     return 1;
   }
   std::unique_ptr<hps::DevInterface> dev;
-  if (use_ftdi) {
-    auto ftdi = std::make_unique<hps::Ftdi>(addr);
+  if (FLAGS_ftdi) {
+    auto ftdi = std::make_unique<hps::Ftdi>(FLAGS_addr);
     if (!ftdi->Init()) {
       return 1;
     }
     dev = std::move(ftdi);
-  } else if (use_fake) {
+  } else if (FLAGS_test) {
     // The fake has to be started.
     auto fd = std::make_unique<hps::FakeDev>();
     // TODO(amcrae): Allow passing error flags.
     fd->Start(0);
     dev = std::move(fd);
   } else {
-    auto i2c = std::make_unique<hps::I2CDev>(bus, addr);
+    auto i2c = std::make_unique<hps::I2CDev>(FLAGS_bus, FLAGS_addr);
     if (i2c->Open() < 0) {
       return 1;
     }
     dev = std::move(i2c);
   }
-  if (retries > 0) {
+  if (FLAGS_retries > 0) {
     // If retries are required, add a retry device.
-    std::cout << "Enabling retries: " << retries
-              << ", delay per retry: " << delay << " ms" << std::endl;
+    std::cout << "Enabling retries: " << FLAGS_retries
+              << ", delay per retry: " << FLAGS_retry_delay << " ms"
+              << std::endl;
     auto baseDevice = std::move(dev);
     dev = std::make_unique<hps::RetryDev>(
-        std::move(baseDevice), retries,
-        base::TimeDelta::FromMilliseconds(delay));
+        std::move(baseDevice), FLAGS_retries,
+        base::TimeDelta::FromMilliseconds(FLAGS_retry_delay));
   }
   auto hps = std::make_unique<hps::HPS>(std::move(dev));
-  // Pass new argc/argv to the command for any following arguments.
-  // argv[0] is command name.
-  int cmd_argc = argc - optind;
-  char** cmd_argv = &argv[optind];
-  return Command::Execute(cmd_argv[0], std::move(hps), cmd_argc, cmd_argv);
+  // Pass args to the command for any following arguments.
+  // args[0] is command name.
+  return Command::Execute(args[0].c_str(), std::move(hps), args);
 }

@@ -10,6 +10,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "libbrillo",
     "libchrome",
     "libusb-1.0",
   ]

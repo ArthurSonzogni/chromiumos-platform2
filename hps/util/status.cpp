@@ -10,6 +10,9 @@
 #include <iostream>
 #include <memory>
 
+#include <base/command_line.h>
+#include <base/strings/string_number_conversions.h>
+
 #include "hps/lib/hps.h"
 #include "hps/util/command.h"
 
@@ -18,28 +21,31 @@ namespace {
 // No arguments, registers 0 - 4 are dumped
 // N - dump register N
 // N - M Dump registers between N and M inclusive
-int status(std::unique_ptr<hps::HPS> hps, int argc, char* argv[]) {
+int status(std::unique_ptr<hps::HPS> hps,
+           const base::CommandLine::StringVector& args) {
   int start, end;
-  switch (argc) {
+  switch (args.size()) {
     case 1:
       start = hps::HpsReg::kMagic;
       end = hps::HpsReg::kBankReady;
       break;
 
     case 2:
-      start = atoi(argv[1]);
-      if (start < 0 || start > hps::HpsReg::kMax) {
-        std::cerr << argv[1] << ": illegal register" << std::endl;
+      start = 0;
+      if (!base::StringToInt(args[1], &start) || start < 0 ||
+          start > hps::HpsReg::kMax) {
+        std::cerr << args[1] << ": illegal register" << std::endl;
         return 1;
       }
       end = start;
       break;
 
     case 3:
-      start = atoi(argv[1]);
-      end = atoi(argv[2]);
-      if (start < 0 || start > hps::HpsReg::kMax || end < 0 ||
-          end > hps::HpsReg::kMax || start > end) {
+      start = 0;
+      end = 0;
+      if (!base::StringToInt(args[1], &start) || start < 0 ||
+          start > hps::HpsReg::kMax || !base::StringToInt(args[2], &end) ||
+          end < 0 || end > hps::HpsReg::kMax) {
         std::cerr << "status: illegal start/end values" << std::endl;
         return 1;
       }

@@ -13,24 +13,27 @@
 
 #include <string.h>
 
+#include <base/command_line.h>
+
 #include "hps/lib/hps.h"
 #include "hps/util/command.h"
 
 namespace {
 
-int sendcmd(std::unique_ptr<hps::HPS> hps, int argc, char* argv[]) {
+int sendcmd(std::unique_ptr<hps::HPS> hps,
+            const base::CommandLine::StringVector& args) {
   int cmd;
 
-  if (argc <= 1) {
+  if (args.size() <= 1) {
     std::cerr << "Missing command ('reset' or 'launch' expected)" << std::endl;
     return 1;
   }
-  if (strcmp(argv[1], "reset") == 0) {
+  if (args[1] == "reset") {
     cmd = 1;
-  } else if (strcmp(argv[1], "launch") == 0) {
+  } else if (args[1] == "launch") {
     cmd = 2;
   } else {
-    std::cerr << argv[0] << ": Unknown command (" << argv[1] << ")"
+    std::cerr << args[0] << ": Unknown command (" << args[1] << ")"
               << std::endl;
     return 1;
   }
