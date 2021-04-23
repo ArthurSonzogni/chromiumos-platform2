@@ -244,7 +244,15 @@ void ModemQrtr::InitializeUim() {
 
 void ModemQrtr::ReacquireChannel() {
   LOG(INFO) << "Reacquiring Channel";
-  current_state_.Transition(State::kUimStarted);
+  // We should be able to transition to kUimStarted in most cases. However, if
+  // Hermes has shutdown due to an error (for e.g. if another daemon switched
+  // slots while Hermes was active), we might be in kUninitialized. In such
+  // cases, reinitialize before acquiring a channel. Ideally, we should never
+  // call ReacquireChannel while uninitialized, but still make an attempt to
+  // acquire a channel.
+  if (!current_state_.Transition(State::kUimStarted))
+    RetryInitialization();
+
   channel_ = kInvalidChannel;
   tx_queue_.push_back({std::unique_ptr<TxInfo>(), AllocateId(),
                        std::make_unique<UimCmd>(UimCmd::QmiType::kReset),
@@ -262,6 +270,11 @@ void ModemQrtr::RetryInitialization() {
     LOG(INFO) << __func__ << ": Max retry count(" << kMaxRetries
               << ") exceeded, will not retry initialization.";
     retry_count_ = 0;
+    while (!tx_queue_.empty()) {
+      std::move(tx_queue_[0].cb_).Run(kQmiMessageProcessingError);
+      tx_queue_.pop_front();
+    }
+    Shutdown();
     return;
   }
   retry_initialization_callback_.Reset();
