@@ -546,6 +546,14 @@ void TpmManagerService::ResetDictionaryAttackLockTask(
 
 void TpmManagerService::TakeOwnership(const TakeOwnershipRequest& request,
                                       const TakeOwnershipCallback& callback) {
+  if (request.is_async()) {
+    TakeOwnershipReply reply;
+    reply.set_status(STATUS_SUCCESS);
+    callback.Run(reply);
+    PostTaskToWorkerThread<TakeOwnershipReply>(
+        request, base::DoNothing(), &TpmManagerService::TakeOwnershipTask);
+    return;
+  }
   PostTaskToWorkerThread<TakeOwnershipReply>(
       request, callback, &TpmManagerService::TakeOwnershipTask);
 }

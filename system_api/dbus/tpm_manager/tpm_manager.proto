@@ -315,6 +315,9 @@ message ResetDictionaryAttackLockReply {
 }
 
 message TakeOwnershipRequest {
+  // If it is `true`, the D-Bus call returns immediately w/o waiting for the
+  // result.
+  optional bool is_async = 1;
 }
 
 message TakeOwnershipReply {
