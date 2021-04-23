@@ -7468,6 +7468,7 @@ mno {
       username : "cmn@mgx"
       password : "mgx"
       authentication : PAP
+      is_attach_apn : true
     }
   }
   mvno {
@@ -7487,7 +7488,7 @@ mno {
         }
         username : "plus"
         password : "4g"
-	is_attach_apn : true
+        is_attach_apn : true
       }
     }
   }
