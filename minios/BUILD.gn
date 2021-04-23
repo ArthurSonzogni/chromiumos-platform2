@@ -9,7 +9,6 @@ group("all") {
   deps = [
     ":minios",
     ":minios_adaptors",
-    ":minios_init",
   ]
   if (use.test) {
     deps += [ ":minios_test" ]
@@ -54,12 +53,6 @@ static_library("libminios") {
 
 executable("minios") {
   sources = [ "main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libminios" ]
-}
-
-executable("minios_init") {
-  sources = [ "init.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libminios" ]
 }
