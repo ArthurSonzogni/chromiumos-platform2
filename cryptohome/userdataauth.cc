@@ -3107,6 +3107,15 @@ bool UserDataAuth::AddCredentials(
     return false;
   }
 
+  // Additional check if the user wants to add new credentials for an existing
+  // user.
+  if (request.add_more_credentials() &&
+      !auth_sessions_[token.value()]->user_exists()) {
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+
   // Add credentials using data in AuthorizationRequest and
   // auth_session_token.
   user_data_auth::CryptohomeErrorCode error =
