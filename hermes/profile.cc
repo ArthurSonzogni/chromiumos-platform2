@@ -192,6 +192,33 @@ void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
   response->Return();
 }
 
+void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
+                     const std::string& nickname) {
+  LOG(INFO) << __func__ << " Nickname: " << nickname << " "
+            << GetObjectPathForLog(object_path_);
+  if (!context_->lpa()->IsLpaIdle()) {
+    context_->executor()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Profile::Rename, weak_factory_.GetWeakPtr(),
+                       std::move(response), nickname),
+        kLpaRetryDelay);
+    return;
+  }
+  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+  context_->lpa()->SetProfileNickname(
+      GetIccid(), nickname, context_->executor(),
+      [this, response{std::shared_ptr<DBusResponse<>>(std::move(response))}](
+          int error) {
+        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+        if (decoded_error) {
+          LOG(ERROR) << "Failed to set profile nickname: "
+                     << decoded_error->GetMessage();
+        }
+        context_->modem_control()->RestoreActiveSlot();
+        response->Return();
+      });
+}
+
 void Profile::SetProfileNickname(std::string nickname) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   if (!context_->lpa()->IsLpaIdle()) {

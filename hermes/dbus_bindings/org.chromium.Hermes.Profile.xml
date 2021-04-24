@@ -18,6 +18,17 @@
     </tp:docstring>
     <annotation name="org.chromium.DBus.Method.Kind" value="async" />
   </method>
+  <method name="Rename">
+    <tp:docstring>
+      Rename the profile.
+    </tp:docstring>
+    <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    <arg name="nickname" type="s" direction="in">
+      <tp:docstring>
+        New nickname for the profile.
+      </tp:docstring>
+    </arg>
+  </method>
   <property name="Iccid" type="s" access="read"/>
   <property name="ServiceProvider" type="s" access="read"/>
   <property name="MccMnc" type="s" access="read"/>

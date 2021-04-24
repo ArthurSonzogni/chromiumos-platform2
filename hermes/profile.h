@@ -29,6 +29,8 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   // org::chromium::Hermes::ProfileInterface overrides.
   void Enable(std::unique_ptr<DBusResponse<>> resp) override;
   void Disable(std::unique_ptr<DBusResponse<>> resp) override;
+  void Rename(std::unique_ptr<DBusResponse<>> resp,
+              const std::string& nickname) override;
 
   const dbus::ObjectPath& object_path() const { return object_path_; }
   ~Profile() override;
