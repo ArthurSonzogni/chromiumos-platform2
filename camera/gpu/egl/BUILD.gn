@@ -1,0 +1,26 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("egl_pkgconfig") {
+  pkg_deps = [
+    "egl",
+    "libcros_camera",
+    "libcros_camera_android_deps",
+  ]
+}
+
+static_library("libegl") {
+  sources = [
+    "//camera/gpu/egl/egl_context.cc",
+    "//camera/gpu/egl/egl_fence.cc",
+    "//camera/gpu/egl/egl_image.cc",
+    "//camera/gpu/egl/utils.cc",
+  ]
+  public_configs = [
+    ":egl_pkgconfig",
+    "//camera/build:cros_camera_common",
+  ]
+}
