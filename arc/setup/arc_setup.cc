@@ -1898,12 +1898,15 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       config_.GetStringOrDie("IS_DEMO_SESSION"), "--locale",
       config_.GetStringOrDie("LOCALE"), "--preferred-languages",
       config_.GetStringOrDie("PREFERRED_LANGUAGES"),
-      // Whether ARC should transition the supervision setup
+      // Whether ARC should transition the management setup
       //   "0": No transition necessary.
       //   "1": Child -> regular transition, should disable supervision.
       //   "2": Regular -> child transition, should enable supervision.
+      //   "3": Unmanaged -> managed transition, should enable management.
+      // TODO(tantoshchuk): rename command line option to
+      // "--management-transition" here and on ARC side.
       "--supervision-transition",
-      config_.GetStringOrDie("SUPERVISION_TRANSITION"),
+      config_.GetStringOrDie("MANAGEMENT_TRANSITION"),
       "--enable-adb-sideloading",
       config_.GetStringOrDie("ENABLE_ADB_SIDELOAD")};
 

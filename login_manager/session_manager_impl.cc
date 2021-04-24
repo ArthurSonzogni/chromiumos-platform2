@@ -1891,8 +1891,8 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       base::StringPrintf("CONTAINER_PID=%d", pid),
       "DEMO_SESSION_APPS_PATH=" + request.demo_session_apps_path(),
       base::StringPrintf("IS_DEMO_SESSION=%d", request.is_demo_session()),
-      base::StringPrintf("SUPERVISION_TRANSITION=%d",
-                         request.supervision_transition()),
+      base::StringPrintf("MANAGEMENT_TRANSITION=%d",
+                         request.management_transition()),
       base::StringPrintf("ENABLE_ADB_SIDELOAD=%d",
                          arc_sideload_status_->IsAdbSideloadAllowed() &&
                              is_adb_sideloading_allowed_for_request)};

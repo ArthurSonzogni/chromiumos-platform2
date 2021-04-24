@@ -686,8 +686,8 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    UpgradeContainerExpectationsBuilder& SetSupervisionTransition(int v) {
-      supervision_transition_ = v;
+    UpgradeContainerExpectationsBuilder& SetManagementTransition(int v) {
+      management_transition_ = v;
       return *this;
     }
 
@@ -701,7 +701,7 @@ class SessionManagerImplTest : public ::testing::Test,
           "CONTAINER_PID=" + std::to_string(kAndroidPid),
           "DEMO_SESSION_APPS_PATH=" + demo_session_apps_path_,
           "IS_DEMO_SESSION=" + std::to_string(is_demo_session_),
-          "SUPERVISION_TRANSITION=" + std::to_string(supervision_transition_),
+          "MANAGEMENT_TRANSITION=" + std::to_string(management_transition_),
           "ENABLE_ADB_SIDELOAD=" + std::to_string(enable_adb_sideload_),
           ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
           ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
@@ -719,7 +719,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool skip_gms_core_cache_ = false;
     std::string locale_ = kDefaultLocale;
     std::string preferred_languages_;
-    int supervision_transition_ = 0;
+    int management_transition_ = 0;
     bool enable_adb_sideload_ = false;
   };
 #endif
@@ -2600,7 +2600,7 @@ TEST_F(SessionManagerImplTest,
   EXPECT_FALSE(android_container_.running());
 }
 
-TEST_F(SessionManagerImplTest, UpgradeArcContainerWithSupervisionTransition) {
+TEST_F(SessionManagerImplTest, UpgradeArcContainerWithManagementTransition) {
   ExpectAndRunStartSession(kSaneEmail);
   SetUpArcMiniContainer();
 
@@ -2608,15 +2608,15 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithSupervisionTransition) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
                              UpgradeContainerExpectationsBuilder()
-                                 .SetSupervisionTransition(1)
+                                 .SetManagementTransition(1)
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
-  upgrade_request.set_supervision_transition(
+  upgrade_request.set_management_transition(
       login_manager::
-          UpgradeArcContainerRequest_SupervisionTransition_CHILD_TO_REGULAR);
+          UpgradeArcContainerRequest_ManagementTransition_CHILD_TO_REGULAR);
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(
