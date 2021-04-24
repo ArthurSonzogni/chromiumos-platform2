@@ -191,6 +191,12 @@ class Service final {
   // Handles a request to set the owner id of a given VM.
   std::unique_ptr<dbus::Response> SetVmId(dbus::MethodCall* method_call);
 
+  // Asynchronously handles a request to reclaim memory of a given VM.
+  void ReclaimVmMemory(dbus::MethodCall* method_call,
+                       dbus::ExportedObject::ResponseSender response_sender);
+  void OnReclaimVmMemory(dbus::ExportedObject::ResponseSender response_sender,
+                         std::unique_ptr<dbus::Response> dbus_response);
+
   // Writes DnsConfigResponse protobuf into DBus message.
   void ComposeDnsResponse(dbus::MessageWriter* writer);
 
@@ -377,6 +383,9 @@ class Service final {
   // Used to check for, and possibly enable, the conditions required for
   // untrusted VMs.
   std::unique_ptr<UntrustedVMUtils> untrusted_vm_utils_;
+
+  // Thread on which memory reclaim operations are performed.
+  base::Thread reclaim_thread_{"memory reclaim thread"};
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

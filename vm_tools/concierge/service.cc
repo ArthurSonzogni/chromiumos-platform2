@@ -217,6 +217,14 @@ void HandleSynchronousDBusMethodCall(
   std::move(response_sender).Run(std::move(response));
 }
 
+void HandleAsynchronousDBusMethodCall(
+    base::Callback<void(dbus::MethodCall*,
+                        dbus::ExportedObject::ResponseSender)> handler,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  handler.Run(method_call, std::move(response_sender));
+}
+
 // Posted to a grpc thread to startup a listener service. Puts a copy of
 // the pointer to the grpc server in |server_copy| and then signals |event|.
 // It will listen on the address specified in |listener_address|.
@@ -621,6 +629,39 @@ string RemoveCloseOnExec(int raw_fd) {
   return "";
 }
 
+// Reclaims memory of the crosvm process with |pid| by writing "shmem" to
+// /proc/<pid>/reclaim. Since this function may block 10 seconds or more, do
+// not call on the main thread.
+std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
+    pid_t pid, std::unique_ptr<dbus::Response> dbus_response) {
+  dbus::MessageWriter writer(dbus_response.get());
+  ReclaimVmMemoryResponse response;
+  response.set_success(false);
+
+  const std::string path = base::StringPrintf("/proc/%d/reclaim", pid);
+  const std::string value = "shmem";
+  base::ScopedFD fd(
+      HANDLE_EINTR(open(path.c_str(), O_WRONLY | O_CLOEXEC | O_NOFOLLOW)));
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Failed to open " << path;
+    response.set_failure_reason("Failed to open /proc filesystem");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  if (HANDLE_EINTR(write(fd.get(), value.c_str(), value.size())) !=
+      value.size()) {
+    PLOG(ERROR) << "Failed to write to " << path;
+    response.set_failure_reason("Failed to write to /proc filesystem");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  LOG(INFO) << "Successfully reclaimed VM memory. PID=" << pid;
+
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 }  // namespace
 
 bool Service::ListVmDisksInLocation(const string& cryptohome_id,
@@ -876,6 +917,13 @@ bool Service::Init() {
       {kSetVmIdMethod, &Service::SetVmId},
   };
 
+  using AsyncServiceMethod = void (Service::*)(
+      dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
+  static const std::map<const char*, AsyncServiceMethod> kAsyncServiceMethods =
+      {
+          {kReclaimVmMemoryMethod, &Service::ReclaimVmMemory},
+      };
+
   if (!AsyncNoReject(
            dbus_thread_.task_runner(),
            base::BindOnce(
@@ -889,6 +937,18 @@ bool Service::Init() {
                            base::Bind(iter.second, base::Unretained(service))));
                    if (!ret) {
                      LOG(ERROR) << "Failed to export method " << iter.first;
+                     return false;
+                   }
+                 }
+                 for (const auto& iter : kAsyncServiceMethods) {
+                   bool ret = exported_object_->ExportMethodAndBlock(
+                       kVmConciergeInterface, iter.first,
+                       base::Bind(
+                           &HandleAsynchronousDBusMethodCall,
+                           base::Bind(iter.second, base::Unretained(service))));
+                   if (!ret) {
+                     LOG(ERROR)
+                         << "Failed to export async method " << iter.first;
                      return false;
                    }
                  }
@@ -976,6 +1036,11 @@ bool Service::Init() {
                              vm_tools::kDefaultStartupListenerPort),
           &grpc_server_vm_)) {
     LOG(ERROR) << "Failed to setup/startup the VM grpc server";
+    return false;
+  }
+
+  if (!reclaim_thread_.Start()) {
+    LOG(ERROR) << "Failed to start memory reclaim thread";
     return false;
   }
 
@@ -3174,6 +3239,56 @@ std::unique_ptr<dbus::Response> Service::SetVmId(
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
+}
+
+void Service::ReclaimVmMemory(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ReclaimVmMemory request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  ReclaimVmMemoryRequest request;
+  ReclaimVmMemoryResponse response;
+  response.set_success(false);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ReclaimVmMemoryRequest from message";
+    response.set_failure_reason(
+        "Unable to parse ReclaimVmMemoryRequest from message");
+    dbus::MessageWriter writer(dbus_response.get());
+    writer.AppendProtoAsArrayOfBytes(response);
+    std::move(response_sender).Run(std::move(dbus_response));
+    return;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+    response.set_failure_reason("Requested VM does not exist");
+    dbus::MessageWriter writer(dbus_response.get());
+    writer.AppendProtoAsArrayOfBytes(response);
+    std::move(response_sender).Run(std::move(dbus_response));
+    return;
+  }
+
+  const pid_t pid = iter->second->GetInfo().pid;
+  reclaim_thread_.task_runner()->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&ReclaimVmMemoryInternal, pid, std::move(dbus_response)),
+      base::BindOnce(&Service::OnReclaimVmMemory,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     std::move(response_sender)));
+}
+
+void Service::OnReclaimVmMemory(
+    dbus::ExportedObject::ResponseSender response_sender,
+    std::unique_ptr<dbus::Response> dbus_response) {
+  DCHECK(dbus_response);
+  std::move(response_sender).Run(std::move(dbus_response));
 }
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
