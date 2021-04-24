@@ -1059,3 +1059,21 @@ message VmIdChangedSignal {
   // The virtual socket context id assigned to the VM which has changed.
   int64 cid = 4;
 }
+
+// Request to reclaim memory of a given VM.
+message ReclaimVmMemoryRequest {
+  // An identifier for this VM.
+  string name = 1;
+
+  // The current cyptohome id of this VM.
+  string owner_id = 2;
+}
+
+// Response to a ReclaimVmMemoryRequest.
+message ReclaimVmMemoryResponse {
+  // If true, the memory of the VM was successfully reclaimed.
+  bool success = 1;
+
+  // If the attempt to reclaim memory failed, the reason for failure.
+  string failure_reason = 2;
+}
