@@ -7458,6 +7458,7 @@ mno {
       password : "ym"
       authentication : CHAP
       is_attach_apn : true
+      ip_type: IPV4V6
     }
     mobile_apn {
       apn : "cmn.mgx"
