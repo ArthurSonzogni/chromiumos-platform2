@@ -507,7 +507,7 @@ impl Server {
         })
     }
 
-    #[allow(clippy::unnecessary_unwrap)]
+    #[allow(clippy::unnecessary_wraps)]
     fn flush(&mut self, _flush: &Tflush) -> io::Result<()> {
         // TODO: Since everything is synchronous we can't actually flush requests.
         Ok(())
