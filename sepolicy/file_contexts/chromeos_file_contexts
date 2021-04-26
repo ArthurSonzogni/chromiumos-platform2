@@ -76,7 +76,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/hotlog                 u:object_r:cros_hotlog_exec:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/ippusb_bridge          u:object_r:cros_ippusb_bridge_exec:s0
-/usr/bin/ippusb_manager         u:object_r:cros_ippusb_manager_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
 /usr/bin/lorgnette              u:object_r:cros_lorgnette_exec:s0
 /usr/bin/memd                   u:object_r:cros_memd_exec:s0
