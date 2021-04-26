@@ -78,6 +78,8 @@ class EcCommandAsync : public EcCommand<O, I> {
     return false;
   }
 
+  const Options& options() const { return options_; }
+
  private:
   using BaseCmd = EcCommand<O, I>;
   uint8_t async_result_action_ = 0;

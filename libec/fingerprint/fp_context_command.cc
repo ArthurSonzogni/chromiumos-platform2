@@ -54,7 +54,10 @@ std::unique_ptr<FpContextCommand_v0> FpContextCommand_v0::Create(
 }
 
 FpContextCommand_v1::FpContextCommand_v1()
-    : EcCommandAsync(EC_CMD_FP_CONTEXT, FP_CONTEXT_GET_RESULT, Options(), 1) {}
+    : EcCommandAsync(EC_CMD_FP_CONTEXT,
+                     FP_CONTEXT_GET_RESULT,
+                     {.poll_for_result_num_attempts = 70},
+                     1) {}
 
 std::unique_ptr<FpContextCommand_v1> FpContextCommand_v1::Create(
     const std::string& user_hex) {
