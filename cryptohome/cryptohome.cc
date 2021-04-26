@@ -77,17 +77,15 @@ static const char kSyslogSwitch[] = "syslog";
 static const char kAttestationServerSwitch[] = "attestation-server";
 static struct {
   const char* name;
-  const int aca_type;
+  const attestation::ACAType aca_type;
 } kAttestationServers[] = {{"default", attestation::DEFAULT_ACA},
-                           {"test", attestation::TEST_ACA},
-                           {nullptr, attestation::ACAType_ARRAYSIZE}};
+                           {"test", attestation::TEST_ACA}};
 static const char kVaServerSwitch[] = "va-server";
 static struct {
   const char* name;
-  const int va_type;
+  const attestation::VAType va_type;
 } kVaServers[] = {{"default", attestation::DEFAULT_VA},
-                  {"test", attestation::TEST_VA},
-                  {nullptr, attestation::VAType_ARRAYSIZE}};
+                  {"test", attestation::TEST_VA}};
 static const char kWaitOwnershipTimeoutSwitch[] = "wait-ownership-timeout";
 static const char kActionSwitch[] = "action";
 static const char* kActions[] = {"mount_ex",
@@ -736,42 +734,42 @@ int main(int argc, char** argv) {
   else
     brillo::InitLog(brillo::kLogToStderr);
 
-  int pca_type = attestation::ACAType_ARRAYSIZE;
+  attestation::ACAType pca_type = attestation::DEFAULT_ACA;
   if (cl->HasSwitch(switches::kAttestationServerSwitch)) {
     std::string server =
         cl->GetSwitchValueASCII(switches::kAttestationServerSwitch);
+    bool aca_valid = false;
     for (int i = 0; switches::kAttestationServers[i].name; ++i) {
       if (server == switches::kAttestationServers[i].name) {
         pca_type = switches::kAttestationServers[i].aca_type;
+        aca_valid = true;
         break;
       }
     }
-    if (pca_type == attestation::ACAType_ARRAYSIZE) {
+    if (!aca_valid) {
       printf("Invalid attestation server: %s\n", server.c_str());
       return 1;
     }
-  } else {
-    pca_type = attestation::DEFAULT_ACA;
   }
 
-  int va_type = attestation::VAType_ARRAYSIZE;
+  attestation::VAType va_type = attestation::DEFAULT_VA;
   std::string va_server(
       cl->HasSwitch(switches::kVaServerSwitch)
           ? cl->GetSwitchValueASCII(switches::kVaServerSwitch)
           : cl->GetSwitchValueASCII(switches::kAttestationServerSwitch));
   if (va_server.size()) {
+    bool va_valid = false;
     for (int i = 0; switches::kVaServers[i].name; ++i) {
       if (va_server == switches::kVaServers[i].name) {
         va_type = switches::kVaServers[i].va_type;
+        va_valid = true;
         break;
       }
     }
-    if (va_type == attestation::VAType_ARRAYSIZE) {
+    if (!va_valid) {
       printf("Invalid Verified Access server: %s\n", va_server.c_str());
       return 1;
     }
-  } else {
-    va_type = attestation::DEFAULT_VA;
   }
 
   if (IsMixingOldAndNewFileSwitches(cl)) {
