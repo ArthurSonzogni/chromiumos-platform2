@@ -18,6 +18,7 @@ ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 IMAGE_DIR = os.path.join(ROOT_DIR, 'images')
 
 BASE_TABLE = {
+    'coachz': 'zed',
     'poppy': 'hammer',
     'soraka': 'staff',
     'nocturne': 'whiskers',
@@ -67,6 +68,12 @@ elif BASE_NAME == 'moonball':
   BASE_PRODUCT_ID = 0x5044
   BASE_USB_PATH = '1-1.1'
   BASE_CONN_GPIO = 'EN_PP3300_POGO'
+  TP = '/lib/firmware/%s-touch.fw' % BASE_NAME
+elif BASE_NAME == 'zed':
+  BASE_VENDOR_ID = 0x18d1
+  BASE_PRODUCT_ID = 0x504c
+  BASE_USB_PATH = '1-1.4'
+  BASE_CONN_GPIO = 'EN_BASE'
   TP = '/lib/firmware/%s-touch.fw' % BASE_NAME
 else:
   print('Error: unknown board: %s' % BASE_NAME)
