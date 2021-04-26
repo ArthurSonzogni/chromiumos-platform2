@@ -39,13 +39,19 @@ class EntryManagerTest : public testing::Test {
 
     EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
                                         kDefaultDevpath));
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
-                                        kDefaultDevpath));
 
     bool lockscreen_is_shown = session_state == SessionState::kLockscreenShown;
     util_.SetUserDBReadOnly(lockscreen_is_shown);
 
     EXPECT_EQ(util_.GarbageCollectInternal(true /*global_only*/), 0);
+
+    // It should be fine for this to precede GarbageCollectInternal, but only
+    // if less than a second passes before the check, so that
+    // kModeSwitchThreshold does not expire the entry. This was happening
+    // during CQ unit tests, so the operation was moved here to eliminate the
+    // race even though it means less coverage.
+    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
+                                        kDefaultDevpath));
     EXPECT_TRUE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
     if (user_present) {
       EXPECT_TRUE(util_.UserDBContainsEntry(kDefaultRule));
