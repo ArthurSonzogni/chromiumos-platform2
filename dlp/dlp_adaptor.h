@@ -11,6 +11,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <leveldb/db.h>
 
+#include "dlp/dbus-proxies.h"
 #include "dlp/fanotify_watcher.h"
 #include "dlp/org.chromium.Dlp.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
@@ -51,7 +52,15 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Initializes |fanotify_watcher_| if not yet started.
   void EnsureFanotifyWatcherStarted();
 
-  bool ProcessFileOpenRequest(ino_t inode, int pid) override;
+  void ProcessFileOpenRequest(ino_t inode,
+                              int pid,
+                              base::OnceCallback<void(bool)> callback) override;
+
+  // Callbacks on DlpPolicyMatched D-Bus request.
+  void OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
+                          const std::vector<uint8_t>& response_blob);
+  void OnDlpPolicyMatchedError(base::OnceCallback<void(bool)> callback,
+                               brillo::Error* error);
 
   // Can be nullptr if failed to initialize.
   std::unique_ptr<leveldb::DB> db_;
@@ -61,6 +70,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   std::unique_ptr<FanotifyWatcher> fanotify_watcher_;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  std::unique_ptr<org::chromium::DlpFilesPolicyServiceProxy>
+      dlp_files_policy_service_;
 };
 
 }  // namespace dlp

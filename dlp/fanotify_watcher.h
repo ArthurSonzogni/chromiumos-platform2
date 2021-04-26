@@ -5,11 +5,12 @@
 #ifndef DLP_FANOTIFY_WATCHER_H_
 #define DLP_FANOTIFY_WATCHER_H_
 
-#include "dlp/fanotify_reader_thread.h"
+#include "base/callback.h"
 #include "base/files/file_path.h"
 #include "base/files/scoped_file.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/threading/sequenced_task_runner_handle.h"
+#include "dlp/fanotify_reader_thread.h"
 
 namespace dlp {
 
@@ -18,7 +19,8 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
  public:
   class Delegate {
    public:
-    virtual bool ProcessFileOpenRequest(ino_t inode, int pid) = 0;
+    virtual void ProcessFileOpenRequest(
+        ino_t inode, int pid, base::OnceCallback<void(bool)> callback) = 0;
   };
 
   explicit FanotifyWatcher(Delegate* delegate);
@@ -31,6 +33,8 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
 
  private:
   void OnFileOpenRequested(ino_t inode, int pid, base::ScopedFD fd) override;
+
+  void OnRequestProcessed(base::ScopedFD fd, bool allowed);
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   // fanotify file descriptor should be destructed before the reader thread so

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2021 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/DlpFilesPolicyService"
+    xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.DlpFilesPolicyService">
+    <method name="IsRestricted">
+      <tp:docstring>
+        Returns whether a file copy/upload from the given source to the destination should be
+        restricted according to Data Leak Prevention policy.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        Serialized IsRestrictedRequest message.
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        Serialized IsRestrictedResponse message.
+      </arg>
+    </method>
+
+    <method name="IsDlpPolicyMatched">
+      <tp:docstring>
+        Returns whether a file from the given source could be restricted by any of files
+        restrictions in Data Leak Prevention policy.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        Serialized IsDlpPolicyMatchedRequest message.
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        Serialized IsDlpPolicyMatchedResponse message.
+      </arg>
+    </method>
+  </interface>
+</node>

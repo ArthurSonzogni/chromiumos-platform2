@@ -3,12 +3,14 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":dbus_code_generator",
+    ":dbus_adaptors_generator",
+    ":dbus_proxies_generator",
     ":dlp",
   ]
   if (use.test) {
@@ -16,11 +18,18 @@ group("all") {
   }
 }
 
-# D-Bus code generator.
-generate_dbus_adaptors("dbus_code_generator") {
+# D-Bus adaptors code generator.
+generate_dbus_adaptors("dbus_adaptors_generator") {
   dbus_service_config = "dbus_bindings/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/dlp"
   sources = [ "dbus_bindings/org.chromium.Dlp.xml" ]
+}
+
+# D-Bus proxies code generator
+generate_dbus_proxies("dbus_proxies_generator") {
+  mock_output_file = "include/dlp/dbus-proxy-mocks.h"
+  proxy_output_file = "include/dlp/dbus-proxies.h"
+  sources = [ "dbus_bindings/org.chromium.DlpFilesPolicyService.xml" ]
 }
 
 pkg_config("target_defaults") {

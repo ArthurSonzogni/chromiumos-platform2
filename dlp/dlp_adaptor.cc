@@ -11,12 +11,15 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/location.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
+#include <dbus/dlp/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
 #include <session_manager/dbus-proxies.h>
 
@@ -95,6 +98,9 @@ base::FilePath GetUserDownloadsPath(const std::string& username) {
 DlpAdaptor::DlpAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
     : org::chromium::DlpAdaptor(this), dbus_object_(std::move(dbus_object)) {
+  dlp_files_policy_service_ =
+      std::make_unique<org::chromium::DlpFilesPolicyServiceProxy>(
+          dbus_object_->GetBus().get(), kDlpFilesPolicyServiceName);
   InitDatabase();
 }
 
@@ -220,10 +226,52 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
   fanotify_watcher_->AddWatch(GetUserDownloadsPath(sanitized_username));
 }
 
-bool DlpAdaptor::ProcessFileOpenRequest(ino_t inode, int pid) {
-  // TODO(poromov): Process request according to DLP rules.
+void DlpAdaptor::ProcessFileOpenRequest(
+    ino_t inode, int pid, base::OnceCallback<void(bool)> callback) {
+  const std::string inode_s = base::NumberToString(inode);
+  std::string serialized_proto;
+  const leveldb::Status get_status =
+      db_->Get(leveldb::ReadOptions(), inode_s, &serialized_proto);
+  if (!get_status.ok()) {
+    std::move(callback).Run(/*allowed=*/true);
+    return;
+  }
+  FileEntry file_entry;
+  file_entry.ParseFromString(serialized_proto);
 
-  return true;
+  // TODO(poromov): Check whether the operation was explicitly allowed.
+
+  // If the file can be restricted by any DLP rule, do not allow access there.
+  IsDlpPolicyMatchedRequest request;
+  request.set_source_url(file_entry.source_url());
+  // TODO(poromov): Use base::SplitOnceCallback once it's available.
+  base::RepeatingCallback<void(bool)> adapted_callback =
+      base::AdaptCallbackForRepeating(std::move(callback));
+  dlp_files_policy_service_->IsDlpPolicyMatchedAsync(
+      SerializeProto(request),
+      base::BindRepeating(&DlpAdaptor::OnDlpPolicyMatched,
+                          base::Unretained(this), adapted_callback),
+      base::BindRepeating(&DlpAdaptor::OnDlpPolicyMatchedError,
+                          base::Unretained(this), adapted_callback));
+}
+
+void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
+                                    const std::vector<uint8_t>& response_blob) {
+  IsDlpPolicyMatchedResponse response;
+  std::string parse_error = ParseProto(FROM_HERE, &response, response_blob);
+  if (!parse_error.empty()) {
+    LOG(ERROR) << "Failed to parse IsDlpPolicyMatched response: "
+               << parse_error;
+    std::move(callback).Run(/*allowed=*/false);
+    return;
+  }
+  std::move(callback).Run(!response.restricted());
+}
+
+void DlpAdaptor::OnDlpPolicyMatchedError(
+    base::OnceCallback<void(bool)> callback, brillo::Error* error) {
+  LOG(ERROR) << "Failed to check whether file could be restricted";
+  std::move(callback).Run(/*allowed=*/false);
 }
 
 }  // namespace dlp

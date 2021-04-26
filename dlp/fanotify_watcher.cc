@@ -48,10 +48,18 @@ void FanotifyWatcher::OnFileOpenRequested(ino_t inode,
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   CHECK(fanotify_fd_.is_valid());
 
+  delegate_->ProcessFileOpenRequest(
+      inode, pid,
+      base::BindOnce(&FanotifyWatcher::OnRequestProcessed,
+                     base::Unretained(this), std::move(fd)));
+}
+
+void FanotifyWatcher::OnRequestProcessed(base::ScopedFD fd, bool allowed) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+
   struct fanotify_response response = {};
   response.fd = fd.get();
-  response.response =
-      delegate_->ProcessFileOpenRequest(inode, pid) ? FAN_ALLOW : FAN_DENY;
+  response.response = allowed ? FAN_ALLOW : FAN_DENY;
   HANDLE_EINTR(write(fanotify_fd_.get(), &response, sizeof(response)));
 }
 
