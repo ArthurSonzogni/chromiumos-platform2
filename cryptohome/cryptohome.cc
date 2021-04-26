@@ -1541,10 +1541,14 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_TAKE_OWNERSHIP],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_tpm_can_attempt_ownership(
-            proxy.gproxy(), &brillo::Resetter(&error).lvalue())) {
-      printf("TpmCanAttemptOwnership call failed: %s.\n", error->message);
+    tpm_manager::TakeOwnershipRequest req;
+    req.set_is_async(true);
+    tpm_manager::TakeOwnershipReply reply;
+    brillo::ErrorPtr error;
+    if (!tpm_ownership_proxy.TakeOwnership(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmCanAttemptOwnership call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_CLEAR_STORED_PASSWORD],
