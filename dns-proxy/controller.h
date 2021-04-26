@@ -59,35 +59,6 @@ class Controller : public brillo::DBusDaemon {
     Proxy::Options opts;
   };
 
-  // This helper class keeps track of the dependencies for which the default
-  // network proxy is required to run - namely whenever a VPN is connected or at
-  // least one single-networked guest is running.
-  class DefaultProxyDeps {
-   public:
-    explicit DefaultProxyDeps(base::RepeatingCallback<void(bool)> eval)
-        : vpn_(false), eval_(eval) {}
-
-    void vpn_on(bool b) {
-      vpn_ = b;
-      eval();
-    }
-    void guest_up(const std::string& s) {
-      guests_.insert(s);
-      eval();
-    }
-    void guest_down(const std::string& s) {
-      guests_.erase(s);
-      eval();
-    }
-
-   private:
-    void eval() { eval_.Run(vpn_ || !guests_.empty()); }
-
-    bool vpn_{false};
-    std::set<std::string> guests_;
-    base::RepeatingCallback<void(bool)> eval_;
-  };
-
   void Setup();
   void OnPatchpanelReady(bool success);
 
@@ -115,7 +86,6 @@ class Controller : public brillo::DBusDaemon {
   const std::string progname_;
   brillo::ProcessReaper process_reaper_;
   std::set<ProxyProc> proxies_;
-  std::unique_ptr<DefaultProxyDeps> default_proxy_deps_;
 
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<patchpanel::Client> patchpanel_;

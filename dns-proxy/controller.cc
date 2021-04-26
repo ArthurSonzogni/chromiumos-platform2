@@ -26,10 +26,7 @@ constexpr char kSeccompPolicyPath[] =
 
 }  // namespace
 
-Controller::Controller(const std::string& progname) : progname_(progname) {
-  default_proxy_deps_ = std::make_unique<DefaultProxyDeps>(base::Bind(
-      &Controller::EvalDefaultProxyDeps, weak_factory_.GetWeakPtr()));
-}
+Controller::Controller(const std::string& progname) : progname_(progname) {}
 
 Controller::~Controller() {
   for (const auto& p : proxies_)
@@ -65,8 +62,6 @@ void Controller::OnShutdown(int*) {
 void Controller::Setup() {
   shill_.reset(new shill::Client(bus_));
   shill_->Init();
-  shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
-      &Controller::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
 
   patchpanel_ = patchpanel::Client::New();
   CHECK(patchpanel_) << "Failed to initialize patchpanel client";
@@ -74,6 +69,7 @@ void Controller::Setup() {
       &Controller::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
 
   RunProxy(Proxy::Type::kSystem);
+  RunProxy(Proxy::Type::kDefault);
 }
 
 void Controller::OnPatchpanelReady(bool success) {
@@ -215,21 +211,6 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
                  << ": " << error->GetMessage();
 }
 
-void Controller::EvalDefaultProxyDeps(bool has_deps) {
-  has_deps ? RunProxy(Proxy::Type::kDefault) : KillProxy(Proxy::Type::kDefault);
-}
-
-void Controller::OnDefaultDeviceChanged(
-    const shill::Client::Device* const device) {
-  // If the default service is lost, |device| will be null. In this case, we can
-  // still safely clear the VPN bit since when it reconnects, if the VPN is
-  // still up, the bit will be reset here.
-  // Note that all VPN devices now use the kVPN type (so there is no need to
-  // check kPPP or kTunnel).
-  default_proxy_deps_->vpn_on(device && device->type ==
-                                            shill::Client::Device::Type::kVPN);
-}
-
 void Controller::OnVirtualDeviceChanged(
     const patchpanel::NetworkDeviceChangedSignal& signal) {
   switch (signal.event()) {
@@ -245,32 +226,16 @@ void Controller::OnVirtualDeviceChanged(
 }
 
 void Controller::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
-  switch (device.guest_type()) {
-    case patchpanel::NetworkDevice::TERMINA_VM:
-    case patchpanel::NetworkDevice::PLUGIN_VM:
-      default_proxy_deps_->guest_up(device.ifname());
-      break;
-    case patchpanel::NetworkDevice::ARC:
-    case patchpanel::NetworkDevice::ARCVM:
-      RunProxy(Proxy::Type::kARC, device.phys_ifname());
-      break;
-    default:
-      break;
+  if (device.guest_type() == patchpanel::NetworkDevice::ARC ||
+      device.guest_type() == patchpanel::NetworkDevice::ARCVM) {
+    RunProxy(Proxy::Type::kARC, device.phys_ifname());
   }
 }
 
 void Controller::VirtualDeviceRemoved(const patchpanel::NetworkDevice& device) {
-  switch (device.guest_type()) {
-    case patchpanel::NetworkDevice::TERMINA_VM:
-    case patchpanel::NetworkDevice::PLUGIN_VM:
-      default_proxy_deps_->guest_down(device.ifname());
-      break;
-    case patchpanel::NetworkDevice::ARC:
-    case patchpanel::NetworkDevice::ARCVM:
-      KillProxy(Proxy::Type::kARC, device.phys_ifname());
-      break;
-    default:
-      break;
+  if (device.guest_type() == patchpanel::NetworkDevice::ARC ||
+      device.guest_type() == patchpanel::NetworkDevice::ARCVM) {
+    KillProxy(Proxy::Type::kARC, device.phys_ifname());
   }
 }
 
