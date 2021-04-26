@@ -470,10 +470,6 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
                                   const Error& error) {
   SLOG(this, 1) << __func__ << ": state=" << GetStateString(state_);
 
-  // If the modem restarted it is no longer Inhibited.
-  if (inhibited_)
-    SetInhibitedProperty(false);
-
   if (!error.IsSuccess()) {
     LOG(ERROR) << "StartModem failed: " << error;
     SetState(State::kEnabled);
@@ -1480,79 +1476,18 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
   }
   LOG(INFO) << __func__ << ": " << inhibited;
 
-  // Clear any pending connect when inhibiting or un-inhibiting.
+  // Clear any pending connect when inhibited changes.
   SetPendingConnect(std::string());
 
-  if (uid_.empty()) {
-    if (inhibited_) {
-      // If |uid_| is empty we are in an unexpected state.
-      Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
-                            "SetInhibited=false called with no UID set.");
-      // MM should not actually be Inhibited if |uid_| is unset.
-      SetInhibitedProperty(false);
-      return true;
-    }
-    // Request and cache the Device (uid) property before calling InhibitDevice.
-    std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy =
-        control_interface()->CreateDBusPropertiesProxy(dbus_path_,
-                                                       dbus_service_);
-    dbus_properties_proxy->GetAsync(
-        modemmanager::kModemManager1ModemInterface, MM_MODEM_PROPERTY_DEVICE,
-        base::Bind(&Cellular::SetInhibitedGetDeviceCallback,
-                   weak_ptr_factory_.GetWeakPtr(), inhibited),
-        base::Bind([](const Error& error) {
-          LOG(ERROR) << "Error getting Device property from Modem: " << error;
-        }));
-    return true;
-  }
-
-  mm1_proxy_->InhibitDevice(
-      uid_, inhibited,
-      base::Bind(&Cellular::OnInhibitDevice, weak_ptr_factory_.GetWeakPtr(),
-                 inhibited));
-  return true;
-}
-
-void Cellular::SetInhibitedGetDeviceCallback(bool inhibited,
-                                             const brillo::Any& device) {
-  SLOG(this, 2) << __func__;
-  if (device.IsEmpty()) {
-    LOG(ERROR) << "Empty Device property";
-    return;
-  }
-
-  uid_ = device.Get<std::string>();
-  mm1_proxy_->InhibitDevice(
-      uid_, inhibited,
-      base::Bind(&Cellular::OnInhibitDevice, weak_ptr_factory_.GetWeakPtr(),
-                 inhibited));
-}
-
-void Cellular::OnInhibitDevice(bool inhibited, const Error& error) {
-  if (!error.IsSuccess()) {
-    if (inhibited &&
-        error.message().find("already inhibited") != std::string::npos) {
-      // If MM returns an "already inhibited" error, Shill might have restarted
-      // or something else caused MM to become inhibited. Either way, set and
-      // emit the local inhibited state and update scanning.
-      LOG(WARNING) << __func__ << " Ignoring error: " << error;
-      SetInhibitedProperty(true);
-      return;
-    }
-    LOG(ERROR) << __func__ << " Failed: " << error;
-    return;
-  }
-  SetInhibitedProperty(inhibited);
-}
-
-void Cellular::SetInhibitedProperty(bool inhibited) {
-  LOG(INFO) << __func__ << ": " << inhibited;
   inhibited_ = inhibited;
+
   // Update and emit Scanning before Inhibited. This allows the UI to wait for
   // Scanning to be false once Inhibit changes to know when an Inhibit operation
   // completes. UpdateScanning will call ConnectToPending if Scanning is false.
   UpdateScanning();
   adaptor()->EmitBoolChanged(kInhibitedProperty, inhibited_);
+
+  return true;
 }
 
 KeyValueStore Cellular::GetSimLockStatus(Error* error) {

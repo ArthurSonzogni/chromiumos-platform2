@@ -175,6 +175,7 @@ class CellularService : public Service {
   static const char kAutoConnNotRegistered[];
   static const char kAutoConnOutOfCredits[];
   static const char kAutoConnConnectFailed[];
+  static const char kAutoConnInhibited[];
 
   void HelpRegisterDerivedString(
       const std::string& name,

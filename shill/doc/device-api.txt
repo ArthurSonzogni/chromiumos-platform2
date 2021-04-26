@@ -530,8 +530,10 @@ Properties	string Address [readonly]
 
 		bool Inhibited [readwrite]
 
-			(Cellular only) When set to true, the modem associated
-			with the device will be inhibited from active scanning.
+			(Cellular only) When set to true, Shill will not switch
+			slots or attempt to connect to Cellular. Any pending
+			Cellular connect requests will be cancelled when the
+			Inhibited state changes.
 
 		string Interface [readonly]
 
@@ -630,32 +632,28 @@ Properties	string Address [readonly]
 
 		boolean MacAddressRandomization
 
-			Deprecated;
-see MacAddressRandomizationEnabled
-    .
+			Deprecated; see MacAddressRandomizationEnabled.
 
-    boolean MacAddressRandomizationSupported[readonly]
+		boolean MacAddressRandomizationSupported[readonly]
 
-    True if the device supports randomizing its MAC address during scans
-        when not connected to any APs already
-    .
+			True if the device supports randomizing its MAC address
+			during scans when not connected to any APs already.
 
-    boolean MacAddressRandomizationEnabled
+		boolean MacAddressRandomizationEnabled
 
-        Indicates whether the device is currently configured to randomize its
-            MAC address during scans while not already connected to any APs
-    .Setting this value will configure the device to act appropriately.
+			Indicates whether the device is currently configured to
+			randomize its MAC address during scans while not already
+			connected to any APs. Setting this value will configure
+			the device to act appropriately.
 
-    This was formerly named MacAddressRandomization;
-users of shill should use this property now
-    .
+			This was formerly named MacAddressRandomization;
+			users of shill should use this property now.
 
-    Possible errors : [service]
-    .Error.NotSupported
+			Possible errors : [service].Error.NotSupported
 
-                          string Name[readonly]
+		string Name[readonly]
 
-                      Deprecated; use Interface instead.
+			Deprecated; use Interface instead.
 
 		boolean Powered [readonly]
 

@@ -42,6 +42,7 @@ const char CellularService::kAutoConnOutOfCredits[] = "service out of credits";
 const char CellularService::kAutoConnSimUnselected[] = "SIM not selected";
 const char CellularService::kAutoConnConnectFailed[] =
     "previous connect failed";
+const char CellularService::kAutoConnInhibited[] = "inhibited";
 const char CellularService::kStorageIccid[] = "Cellular.Iccid";
 const char CellularService::kStorageImsi[] = "Cellular.Imsi";
 const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
@@ -596,6 +597,10 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
   }
   if (!cellular_->StateIsRegistered()) {
     *reason = kAutoConnNotRegistered;
+    return false;
+  }
+  if (cellular_->inhibited()) {
+    *reason = kAutoConnInhibited;
     return false;
   }
   if (!cellular_->connect_pending_iccid().empty()) {
