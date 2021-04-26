@@ -22,8 +22,8 @@ class Ftdi : public DevInterface {
   explicit Ftdi(uint8_t addr) : address(addr << 1) {}
   bool Init();
   void Close();
-  bool read(uint8_t cmd, std::vector<uint8_t>* data) override;
-  bool write(uint8_t cmd, const std::vector<uint8_t>& data) override;
+  bool read(uint8_t cmd, uint8_t* data, uint lem) override;
+  bool write(uint8_t cmd, const uint8_t* data, uint lem) override;
 
  private:
   bool check(bool cond, const char* tag);

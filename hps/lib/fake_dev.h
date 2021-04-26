@@ -23,8 +23,8 @@ class FakeDev : public DevInterface {
   FakeDev();
   ~FakeDev();
   // Device interface
-  bool read(uint8_t cmd, std::vector<uint8_t>* data) override;
-  bool write(uint8_t cmd, const std::vector<uint8_t>& data) override;
+  bool read(uint8_t cmd, uint8_t* data, uint len) override;
+  bool write(uint8_t cmd, const uint8_t* data, uint len) override;
   // Flags for controlling behaviour.
   enum Flags {
     kBootFault = 1 << 0,

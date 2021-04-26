@@ -10,7 +10,6 @@
 
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include <base/time/time.h>
 
@@ -25,8 +24,8 @@ class RetryDev : public DevInterface {
            const base::TimeDelta& delay)
       : device_(std::move(dev)), retries_(retries), delay_(delay) {}
   ~RetryDev() {}
-  bool read(uint8_t cmd, std::vector<uint8_t>* data) override;
-  bool write(uint8_t cmd, const std::vector<uint8_t>& data) override;
+  bool read(uint8_t cmd, uint8_t* data, uint len) override;
+  bool write(uint8_t cmd, const uint8_t* data, uint len) override;
 
  private:
   std::unique_ptr<DevInterface> device_;

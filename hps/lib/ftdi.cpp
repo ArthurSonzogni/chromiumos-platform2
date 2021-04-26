@@ -185,8 +185,8 @@ void Ftdi::Close() {
   ftdi_deinit(&this->context_);
 }
 
-bool Ftdi::read(uint8_t cmd, std::vector<uint8_t>* data) {
-  if (data->size() == 0) {
+bool Ftdi::read(uint8_t cmd, uint8_t* data, uint len) {
+  if (len == 0) {
     return false;
   }
   std::vector<uint8_t> b;
@@ -209,8 +209,8 @@ bool Ftdi::read(uint8_t cmd, std::vector<uint8_t>* data) {
     this->i2c_reset();
     return false;
   }
-  for (size_t i = 0; i < data->size(); i++) {
-    if (!this->ft_readbyte(&(*data)[i], i == (data->size() - 1))) {
+  for (size_t i = 0; i < len; i++) {
+    if (!this->ft_readbyte(&data[i], i == (len - 1))) {
       this->i2c_reset();
       return false;
     }
@@ -218,7 +218,7 @@ bool Ftdi::read(uint8_t cmd, std::vector<uint8_t>* data) {
   return true;
 }
 
-bool Ftdi::write(uint8_t cmd, const std::vector<uint8_t>& data) {
+bool Ftdi::write(uint8_t cmd, const uint8_t* data, uint len) {
   std::vector<uint8_t> b;
   // Flush read queue.
   this->ft_get(&b);
@@ -233,9 +233,9 @@ bool Ftdi::write(uint8_t cmd, const std::vector<uint8_t>& data) {
     this->i2c_reset();
     return false;
   }
-  for (auto it = data.begin(); it != data.end(); ++it) {
+  for (int i = 0; i < len; ++i) {
     b.clear();
-    if (!this->ft_sendbyte(*it, &b)) {
+    if (!this->ft_sendbyte(data[i], &b)) {
       this->i2c_reset();
       return false;
     }

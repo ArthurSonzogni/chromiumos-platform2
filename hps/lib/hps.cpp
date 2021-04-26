@@ -242,7 +242,6 @@ bool HPS::Download(int bank, const base::FilePath& source) {
   }
   int bytes = 0;
   uint32_t address = 0;
-  std::vector<uint8_t> buf(kBlock + sizeof(uint32_t));
   int rd;
   do {
     if (!this->WaitForBankReady(bank)) {
@@ -256,7 +255,7 @@ bool HPS::Download(int bank, const base::FilePath& source) {
      *    4 bytes of address in big endian format
      *    data
      */
-    buf.resize(kBlock + sizeof(uint32_t));
+    uint8_t buf[kBlock + sizeof(uint32_t)];
     buf[0] = address >> 24;
     buf[1] = address >> 16;
     buf[2] = address >> 8;
@@ -264,8 +263,8 @@ bool HPS::Download(int bank, const base::FilePath& source) {
     rd = file.ReadAtCurrentPos(reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
                                kBlock);
     if (rd > 0) {
-      buf.resize(rd + sizeof(uint32_t));
-      if (!this->device_->write(I2cMemWrite(bank), buf)) {
+      if (!this->device_->write(I2cMemWrite(bank), buf,
+                                rd + sizeof(uint32_t))) {
         return false;
       }
       address += rd;

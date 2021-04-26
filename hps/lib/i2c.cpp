@@ -29,7 +29,7 @@ int I2CDev::Open() {
   return this->fd;
 }
 
-bool I2CDev::read(uint8_t cmd, std::vector<uint8_t>* data) {
+bool I2CDev::read(uint8_t cmd, uint8_t* data, uint len) {
   struct i2c_msg m[2];
 
   m[0].addr = this->address;
@@ -38,12 +38,12 @@ bool I2CDev::read(uint8_t cmd, std::vector<uint8_t>* data) {
   m[0].buf = &cmd;
   m[1].addr = this->address;
   m[1].flags = I2C_M_RD;
-  m[1].len = data->size();
-  m[1].buf = &(*data)[0];
+  m[1].len = len;
+  m[1].buf = data;
   return this->ioc(m, sizeof(m) / sizeof(m[0]));
 }
 
-bool I2CDev::write(uint8_t cmd, const std::vector<uint8_t>& data) {
+bool I2CDev::write(uint8_t cmd, const uint8_t* data, uint len) {
   struct i2c_msg m[2];
 
   m[0].addr = this->address;
@@ -52,8 +52,8 @@ bool I2CDev::write(uint8_t cmd, const std::vector<uint8_t>& data) {
   m[0].buf = &cmd;
   m[1].addr = this->address;
   m[1].flags = 0;
-  m[1].len = data.size();
-  m[1].buf = const_cast<uint8_t*>(&data[0]);
+  m[1].len = len;
+  m[1].buf = const_cast<uint8_t*>(data);
   return this->ioc(m, sizeof(m) / sizeof(m[0]));
 }
 

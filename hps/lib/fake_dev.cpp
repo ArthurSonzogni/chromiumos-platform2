@@ -67,7 +67,8 @@ struct Msg {
   uint16_t value;
   base::WaitableEvent* sig;
   std::atomic<uint16_t>* result;
-  std::vector<uint8_t> mem;  // Used for memory write.
+  const uint8_t* data;
+  uint length;
 };
 
 }  // namespace
@@ -97,7 +98,7 @@ class DevImpl : public base::SimpleThread {
   void writeReg(int r, uint16_t v) {
     this->send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
   }
-  bool writeMem(int base, const std::vector<uint8_t>& mem);
+  bool writeMem(int base, const uint8_t* mem, uint len);
   // Current stage of the device.
   // The stage defines the registers and status values supported.
   enum Stage {
@@ -111,7 +112,7 @@ class DevImpl : public base::SimpleThread {
   void SetStage(Stage s);
   uint16_t readRegActual(int);
   void writeRegActual(int, uint16_t);
-  uint16_t writeMemActual(int base, const std::vector<uint8_t>& mem);
+  uint16_t writeMemActual(int base, const uint8_t* mem, uint len);
   void MsgStop() { this->send(Msg(Cmd::kStop, 0, 0, nullptr, nullptr)); }
   void send(const Msg m) {
     base::AutoLock l(this->qlock_);
@@ -200,7 +201,7 @@ void DevImpl::Run() {
           break;
         case kWriteMem:
           // Memory write request.
-          m.result->store(this->writeMemActual(m.reg, m.mem));
+          m.result->store(this->writeMemActual(m.reg, m.data, m.length));
           m.sig->Signal();
           // Re-enable the bank.
           // TODO(amcrae): Add delay to simulate a flash write.
@@ -224,12 +225,13 @@ uint16_t DevImpl::readReg(int r) {
 
 // At the start of the write, clear the bank ready bit.
 // The handler will set it again once the memory write completes.
-bool DevImpl::writeMem(int base, const std::vector<uint8_t>& mem) {
+bool DevImpl::writeMem(int base, const uint8_t* mem, uint len) {
   this->bank_.fetch_and(~(1 << base));
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
   Msg m(Cmd::kWriteMem, base, 0, &ev, &res);
-  m.mem = mem;
+  m.data = mem;
+  m.length = len;
   this->send(m);
   ev.Wait();
   // Device response is 1 for OK, 0 for not OK.
@@ -307,7 +309,7 @@ void DevImpl::writeRegActual(int reg, uint16_t value) {
 // Returns 1 for OK, 0 for fault.
 // TODO(amcrae): Store the memory written for each bank so
 // it can be checked against what was requested to be written.
-uint16_t DevImpl::writeMemActual(int bank, const std::vector<uint8_t>& mem) {
+uint16_t DevImpl::writeMemActual(int bank, const uint8_t* data, uint len) {
   if (this->flags_ & FakeDev::Flags::kMemFail) {
     return 0;
   }
@@ -339,19 +341,19 @@ FakeDev::~FakeDev() {}
 /*
  * Read from registers.
  */
-bool FakeDev::read(uint8_t cmd, std::vector<uint8_t>* data) {
+bool FakeDev::read(uint8_t cmd, uint8_t* data, uint len) {
   // Clear the whole buffer.
-  for (int i = 0; i < data->size(); i++) {
-    (*data)[i] = 0;
+  for (int i = 0; i < len; i++) {
+    data[i] = 0;
   }
   if ((cmd & 0x80) != 0) {
     // Register read.
     uint16_t value = this->device_->readReg(cmd & 0x7F);
     // Store the value of the register into the buffer.
-    if (data->size() > 0) {
-      (*data)[0] = value >> 8;
-      if (data->size() > 1) {
-        (*data)[1] = value;
+    if (len > 0) {
+      data[0] = value >> 8;
+      if (len > 1) {
+        data[1] = value;
       }
     }
   }
@@ -361,20 +363,20 @@ bool FakeDev::read(uint8_t cmd, std::vector<uint8_t>* data) {
 /*
  * Write to registers or memory.
  */
-bool FakeDev::write(uint8_t cmd, const std::vector<uint8_t>& data) {
+bool FakeDev::write(uint8_t cmd, const uint8_t* data, uint len) {
   if ((cmd & 0x80) != 0) {
-    if (data.size() != 0) {
+    if (len != 0) {
       // Register write.
       int reg = cmd & 0x7F;
       uint16_t value = data[0] << 8;
-      if (data.size() > 1) {
+      if (len > 1) {
         value |= data[1];
       }
       this->device_->writeReg(reg, value);
     }
   } else if ((cmd & 0xC0) == 0) {
     // Memory write.
-    return this->device_->writeMem(cmd & 0x3F, data);
+    return this->device_->writeMem(cmd & 0x3F, data, len);
   } else {
     // Unknown command.
     return false;

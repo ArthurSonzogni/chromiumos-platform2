@@ -24,8 +24,8 @@ class I2CDev : public DevInterface {
   I2CDev(int bus, int address);
   ~I2CDev() {}
   int Open();
-  bool read(uint8_t cmd, std::vector<uint8_t>* data) override;
-  bool write(uint8_t cmd, const std::vector<uint8_t>& data) override;
+  bool read(uint8_t cmd, uint8_t* data, uint len) override;
+  bool write(uint8_t cmd, const uint8_t* data, uint len) override;
 
  private:
   bool ioc(struct i2c_msg* msg, uint count);

@@ -6,7 +6,6 @@
  * Retry device handler.
  */
 #include <iostream>
-#include <vector>
 
 #include <base/threading/thread.h>
 
@@ -14,9 +13,9 @@
 
 namespace hps {
 
-bool RetryDev::read(uint8_t cmd, std::vector<uint8_t>* data) {
+bool RetryDev::read(uint8_t cmd, uint8_t* data, uint len) {
   for (int i = 0; i < this->retries_; i++) {
-    if (device_->read(cmd, data)) {
+    if (device_->read(cmd, data, len)) {
       // Success!
       return true;
     }
@@ -25,9 +24,9 @@ bool RetryDev::read(uint8_t cmd, std::vector<uint8_t>* data) {
   return false;
 }
 
-bool RetryDev::write(uint8_t cmd, const std::vector<uint8_t>& data) {
+bool RetryDev::write(uint8_t cmd, const uint8_t* data, uint len) {
   for (int i = 0; i < this->retries_; i++) {
-    if (device_->write(cmd, data)) {
+    if (device_->write(cmd, data, len)) {
       // Success!
       return true;
     }
