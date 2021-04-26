@@ -331,23 +331,16 @@ typedef DBusGProxyCall* (*ProtoDBusAsyncMethod)(DBusGProxy*,
                                                 ProtoDBusReplyMethod,
                                                 gpointer);
 
-brillo::SecureBlob GetSystemSalt(const brillo::dbus::Proxy& proxy) {
-  brillo::glib::ScopedError error;
-  brillo::glib::ScopedArray salt;
-  if (!org_chromium_CryptohomeInterface_get_system_salt(
-          proxy.gproxy(), &brillo::Resetter(&salt).lvalue(),
-          &brillo::Resetter(&error).lvalue())) {
-    LOG(ERROR) << "GetSystemSalt failed: " << error->message;
+brillo::SecureBlob GetSystemSalt(
+    org::chromium::CryptohomeMiscInterfaceProxy* proxy) {
+  user_data_auth::GetSystemSaltRequest req;
+  user_data_auth::GetSystemSaltReply reply;
+  brillo::ErrorPtr error;
+  if (!proxy->GetSystemSalt(req, &reply, &error, kDefaultTimeoutMs) || error) {
+    LOG(ERROR) << "GetSystemSalt failed: " << BrilloErrorToString(error.get());
     return brillo::SecureBlob();
   }
-
-  brillo::SecureBlob system_salt;
-  system_salt.resize(salt->len);
-  if (system_salt.size() == salt->len) {
-    memcpy(system_salt.data(), static_cast<const void*>(salt->data), salt->len);
-  } else {
-    system_salt.clear();
-  }
+  brillo::SecureBlob system_salt(reply.salt());
   return system_salt;
 }
 
@@ -393,7 +386,7 @@ bool GetAuthSessionId(const base::CommandLine* cl,
   return true;
 }
 
-bool GetPassword(const brillo::dbus::Proxy& proxy,
+bool GetPassword(org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                  const base::CommandLine* cl,
                  const std::string& cl_switch,
                  const std::string& prompt,
@@ -540,7 +533,7 @@ bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier* id) {
 }
 
 bool BuildAuthorization(base::CommandLine* cl,
-                        const brillo::dbus::Proxy& proxy,
+                        org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                         bool need_password,
                         cryptohome::AuthorizationRequest* auth) {
   if (need_password) {
@@ -842,7 +835,7 @@ int main(int argc, char** argv) {
     } else {
       if (!BuildAccountId(cl, req.mutable_account()))
         return 1;
-      if (!BuildAuthorization(cl, proxy, !is_public_mount,
+      if (!BuildAuthorization(cl, &misc_proxy, !is_public_mount,
                               req.mutable_authorization()))
         return 1;
     }
@@ -944,7 +937,7 @@ int main(int argc, char** argv) {
     user_data_auth::RemoveKeyRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -1030,7 +1023,7 @@ int main(int argc, char** argv) {
           ->mutable_key()
           ->mutable_data()
           ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
-    } else if (!BuildAuthorization(cl, proxy, true /* need_password */,
+    } else if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
                                    req.mutable_authorization_request())) {
       return 1;
     }
@@ -1057,7 +1050,7 @@ int main(int argc, char** argv) {
     user_data_auth::AddDataRestoreKeyRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -1088,7 +1081,7 @@ int main(int argc, char** argv) {
     user_data_auth::MassRemoveKeysRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -1126,11 +1119,11 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    GetPassword(proxy, cl, switches::kPasswordSwitch,
+    GetPassword(&misc_proxy, cl, switches::kPasswordSwitch,
                 StringPrintf("Enter the password for <%s>", account_id.c_str()),
                 &password);
     GetPassword(
-        proxy, cl, switches::kOldPasswordSwitch,
+        &misc_proxy, cl, switches::kOldPasswordSwitch,
         StringPrintf("Enter the old password for <%s>", account_id.c_str()),
         &old_password);
 
@@ -1158,13 +1151,13 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY_EX],
                      action.c_str())) {
     std::string new_password;
-    GetPassword(proxy, cl, switches::kNewPasswordSwitch,
+    GetPassword(&misc_proxy, cl, switches::kNewPasswordSwitch,
                 "Enter the new password", &new_password);
 
     user_data_auth::AddKeyRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -1315,7 +1308,7 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     brillo::SecureBlob system_salt;
     if (cl->HasSwitch(switches::kUseDBus)) {
-      system_salt = GetSystemSalt(proxy);
+      system_salt = GetSystemSalt(&misc_proxy);
       if (system_salt.empty()) {
         printf("Failed to retrieve system salt\n");
       }
@@ -1344,10 +1337,10 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    FilePath vault_path =
-        FilePath("/home/.shadow")
-            .Append(SanitizeUserNameWithSalt(account_id, GetSystemSalt(proxy)))
-            .Append("master.0");
+    FilePath vault_path = FilePath("/home/.shadow")
+                              .Append(SanitizeUserNameWithSalt(
+                                  account_id, GetSystemSalt(&misc_proxy)))
+                              .Append("master.0");
     brillo::Blob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
       printf("Couldn't load keyset contents: %s.\n",
@@ -3013,7 +3006,7 @@ int main(int argc, char** argv) {
     req.set_auth_session_id(auth_session_id);
 
     if (!BuildAuthorization(
-            cl, proxy,
+            cl, &misc_proxy,
             !cl->HasSwitch(switches::kPublicMount) /* need_password */,
             req.mutable_authorization()))
       return 1;
@@ -3049,7 +3042,7 @@ int main(int argc, char** argv) {
     req.set_auth_session_id(auth_session_id);
 
     if (!BuildAuthorization(
-            cl, proxy,
+            cl, &misc_proxy,
             !cl->HasSwitch(switches::kPublicMount) /* need_password */,
             req.mutable_authorization()))
       return 1;
