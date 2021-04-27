@@ -149,6 +149,8 @@ powerd_prefs: &powerd_prefs
   set-cellular-transmit-power-for-proximity: *powerd_prefs_default
   set-cellular-transmit-power-for-activity-proximity: *powerd_prefs_default
   set-cellular-transmit-power-dpr-gpio: *powerd_prefs_default
+  use-modemmanager-for-dynamic-sar: *powerd_prefs_default
+  use-multi-power-level-dynamic-sar: *powerd_prefs_default
   enable-console-during-suspend: *powerd_prefs_default
   max-dark-suspend-delay-timeout-ms: *powerd_prefs_default
   suspend-mode:

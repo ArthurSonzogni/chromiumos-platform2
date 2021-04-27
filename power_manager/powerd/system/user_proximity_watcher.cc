@@ -179,12 +179,11 @@ void UserProximityWatcher::CompensateSensor(const SensorInfo& sensor) {
 void UserProximityWatcher::AddObserver(UserProximityObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);
-#if USE_TROGDOR_SAR_HACK
+
   // Add existing sensor to observer
   for (auto const& sensor : sensors_) {
     observer->OnNewSensor(sensor.first, sensor.second.role);
   }
-#endif  // USE_TROGDOR_SAR_HACK
 }
 
 void UserProximityWatcher::RemoveObserver(UserProximityObserver* observer) {

@@ -53,43 +53,6 @@ void RunCommand(const char* command, const char* arg, ...) {
   PCHECK(execvp(command, argv) != -1) << "execv() failed";
 }
 
-#if USE_TROGDOR_SAR_HACK
-// Runs a command with the supplied arguments as user `username`.
-// The argument list must be NULL-terminated.  This method calls exec() without
-// forking, so it will never return.
-void RunCommandAsUser(const char* username,
-                      const char* command,
-                      const char* arg,
-                      ...) {
-  char* argv[kMaxArgs + 1];
-  size_t num_args = 1;
-  uid_t uid;
-  argv[0] = const_cast<char*>(command);
-
-  va_list list;
-  va_start(list, arg);
-  while (arg) {
-    num_args++;
-    CHECK(num_args <= kMaxArgs) << "Too many arguments";
-    argv[num_args - 1] = const_cast<char*>(arg);
-    arg = va_arg(list, char*);
-  }
-  va_end(list);
-  argv[num_args] = nullptr;
-
-  DCHECK(username);
-  CHECK(brillo::userdb::GetUserInfo(username, &uid, NULL))
-      << "Error getting uid for username " << username;
-
-  // initctl commands appear to fail if the real UID isn't set correctly.
-  PCHECK(setuid(uid) == 0) << "setuid() failed";
-  PCHECK(clearenv() == 0) << "clearenv() failed";
-  PCHECK(setenv("POWERD_SETUID_HELPER", "1", 1) == 0) << "setenv() failed";
-  PCHECK(setenv("PATH", kPathEnvironment, 1) == 0) << "setenv() failed";
-  PCHECK(execvp(command, argv) != -1) << "execv() failed";
-}
-#endif
-
 int main(int argc, char* argv[]) {
   DEFINE_string(action, "",
                 "Action to perform.  Must be one of \"mosys_eventlog\", "
@@ -121,9 +84,6 @@ int main(int argc, char* argv[]) {
               "Set cellular transmit power mode to low");
   DEFINE_int64(cellular_transmit_power_gpio, -1,
                "GPIO pin to write to for changing cellular transmit power");
-#if USE_TROGDOR_SAR_HACK
-  DEFINE_int32(cellular_transmit_power_trogdor_level, 0, "QMI SAR Power level");
-#endif  // USE_TROGDOR_SAR_HACK
 
   brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
@@ -159,15 +119,6 @@ int main(int argc, char* argv[]) {
         "--gpio=" + base::NumberToString(FLAGS_cellular_transmit_power_gpio);
     RunCommand("set_cellular_transmit_power", mode.c_str(), target.c_str(),
                nullptr);
-#if USE_TROGDOR_SAR_HACK
-  } else if (FLAGS_action == "set_cellular_transmit_power_trogdor") {
-    RunCommandAsUser(
-        "modem", "/usr/bin/qmicli", "-p", "-d", "qrtr://0",
-        "--sar-rf-set-state",
-        base::NumberToString(FLAGS_cellular_transmit_power_trogdor_level)
-            .c_str(),
-        nullptr);
-#endif  // USE_TROGDOR_SAR_HACK
   } else if (FLAGS_action == "set_wifi_transmit_power") {
     const std::string tablet =
         FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";

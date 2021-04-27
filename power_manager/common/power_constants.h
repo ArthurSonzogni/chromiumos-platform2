@@ -251,6 +251,10 @@ extern const char kSetCellularTransmitPowerForActivityProximityPref[];
 // modem.
 extern const char kSetCellularTransmitPowerDprGpioPref[];
 
+// If true, use modemmanager to update dynamic sar power level in modem
+extern const char kUseModemManagerForDynamicSARPref[];
+
+extern const char kUseMultiPowerLevelDynamicSARPref[];
 // If true, enables console during suspend.
 extern const char kEnableConsoleDuringSuspendPref[];
 
@@ -352,20 +356,16 @@ enum class LidState {
 
 enum class RadioTransmitPower {
   LOW,
-#if USE_TROGDOR_SAR_HACK
   MEDIUM,
-#endif  // USE_TROGDOR_SAR_HACK
   HIGH,
   UNSPECIFIED,
 };
 
-#if USE_TROGDOR_SAR_HACK
 enum class ModemState {
   OFFLINE,
   ONLINE,
   UNKNOWN,
 };
-#endif  // USE_TROGDOR_SAR_HACK
 
 // Convertible Chromebooks may either be folded into a tablet or used as a
 // clamshell.
@@ -431,6 +431,7 @@ std::string PowerSourceToString(PowerSource source);
 std::string LidStateToString(LidState state);
 std::string TabletModeToString(TabletMode mode);
 std::string UserProximityToString(UserProximity proximity);
+std::string RadioTransmitPowerToString(RadioTransmitPower power);
 std::string SessionStateToString(SessionState state);
 std::string DisplayModeToString(DisplayMode mode);
 std::string ButtonStateToString(ButtonState state);

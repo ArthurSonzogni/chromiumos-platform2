@@ -98,6 +98,10 @@ const char kSetCellularTransmitPowerForActivityProximityPref[] =
     "set_cellular_transmit_power_for_activity_proximity";
 const char kSetCellularTransmitPowerDprGpioPref[] =
     "set_cellular_transmit_power_dpr_gpio";
+const char kUseModemManagerForDynamicSARPref[] =
+    "use_modemmanager_for_dynamic_sar";
+const char kUseMultiPowerLevelDynamicSARPref[] =
+    "use_multi_power_level_dynamic_sar";
 const char kEnableConsoleDuringSuspendPref[] = "enable_console_during_suspend";
 const char kMaxDarkSuspendDelayTimeoutMsPref[] =
     "max_dark_suspend_delay_timeout_ms";
@@ -183,6 +187,21 @@ std::string UserProximityToString(UserProximity proximity) {
   }
   NOTREACHED() << "Unhandled user proximity " << static_cast<int>(proximity);
   return base::StringPrintf("unknown (%d)", static_cast<int>(proximity));
+}
+
+std::string RadioTransmitPowerToString(RadioTransmitPower power) {
+  switch (power) {
+    case RadioTransmitPower::LOW:
+      return "low";
+    case RadioTransmitPower::MEDIUM:
+      return "medium";
+    case RadioTransmitPower::HIGH:
+      return "high";
+    case RadioTransmitPower::UNSPECIFIED:
+      return "unspecified";
+  }
+  NOTREACHED() << "Unhandled Radio transmit power " << static_cast<int>(power);
+  return base::StringPrintf("unknown (%d)", static_cast<int>(power));
 }
 
 std::string SessionStateToString(SessionState state) {

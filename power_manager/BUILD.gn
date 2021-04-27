@@ -31,6 +31,9 @@ group("all") {
   if (use.buffet) {
     deps += [ ":buffet_command_handlers" ]
   }
+  if (use.cellular) {
+    deps += [ ":generate_modemmanager_proxies" ]
+  }
   if (use.test) {
     deps += [
       ":libutil_test",
@@ -50,24 +53,41 @@ group("all") {
       ":powerd_als_fuzzer",
     ]
   }
-  if (use.trogdor_sar_hack) {
-    deps += [ ":upstart_proxies" ]
+
+  # TODO(b/188798246) Remove this once qc-netmgr is merged back into modemmanager
+  if (use.qrtr) {
+    deps += [ ":generate_upstart_proxies" ]
   }
 }
 
-if (use.trogdor_sar_hack) {
-  generate_dbus_proxies("upstart_proxies") {
+# TODO(b/188798246) Remove this once qc-netmgr is merged back into modemmanager
+if (use.qrtr) {
+  generate_dbus_proxies("generate_upstart_proxies") {
     upstart_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
     proxy_output_file = "include/upstart/dbus-proxies.h"
     sources = [ "${upstart_in_dir}/com.ubuntu.Upstart.xml" ]
   }
 }
 
+if (use.cellular) {
+  generate_dbus_proxies("generate_modemmanager_proxies") {
+    modemmanager_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
+    proxy_output_file = "include/modemmanager/dbus-proxies.h"
+    sources = [
+      "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.Sar.xml",
+      "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.xml",
+      "${modemmanager_in_dir}/org.freedesktop.ModemManager1.xml",
+      "dbus_bindings/dbus-objectmanager.dbus-xml",
+    ]
+  }
+}
+
 pkg_config("target_defaults") {
   defines = [
     "USE_BUFFET=${use.buffet}",
+    "USE_CELLULAR=${use.cellular}",
     "USE_IIOSERVICE=${use.iioservice}",
-    "USE_TROGDOR_SAR_HACK=${use.trogdor_sar_hack}",
+    "USE_QRTR=${use.qrtr}",
   ]
 
   # NOSORT
@@ -89,7 +109,9 @@ pkg_config("target_defaults") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
-  if (use.trogdor_sar_hack) {
+
+  # TODO(b/188798246) Remove this once qc-netmgr is merged back into modemmanager.
+  if (use.qrtr) {
     pkg_deps += [
       "gio-2.0",
       "gio-unix-2.0",
@@ -178,6 +200,10 @@ static_library("libsystem") {
     "//iioservice/libiioservice_ipc:libiioservice_ipc",
     "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
   ]
+  if (use.cellular) {
+    sources += [ "powerd/system/dbus_objectmanager_wrapper.cc" ]
+    deps += [ ":generate_modemmanager_proxies" ]
+  }
 }
 
 pkg_config("libsystem_stub_dependent_config") {
@@ -235,9 +261,8 @@ static_library("libpolicy") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "m" ]
-  if (use.trogdor_sar_hack) {
-    sources += [ "powerd/policy/cellular_controller_trogdor.cc" ]
-    deps = [ ":upstart_proxies" ]
+  if (use.qrtr) {
+    deps = [ ":generate_upstart_proxies" ]
   }
 }
 

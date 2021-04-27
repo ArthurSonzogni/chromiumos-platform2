@@ -5,12 +5,24 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_CELLULAR_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_CELLULAR_CONTROLLER_H_
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
-
+#if USE_CELLULAR
+#include <modemmanager/dbus-proxies.h>
+#endif
+#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
+              // into modemmanager.
+#include <upstart/dbus-proxies.h>
+#endif
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/user_proximity_handler.h"
+#if USE_CELLULAR
+#include "power_manager/powerd/system/dbus_objectmanager_wrapper.h"
+#endif
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
@@ -23,6 +35,17 @@ namespace policy {
 // CellularController initiates power-related changes to the cellular chipset.
 class CellularController : public UserProximityHandler::Delegate {
  public:
+#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
+              // into modemmanager.
+  enum class Type {
+    kQrtr,
+    kMbim,
+  };
+  struct PacketMetadata {
+    uint32_t port;
+    uint32_t node;
+  };
+#endif  // USE_QRTR
   // Performs work on behalf of CellularController.
   class Delegate {
    public:
@@ -41,11 +64,14 @@ class CellularController : public UserProximityHandler::Delegate {
   ~CellularController() override;
 
   // Ownership of raw pointers remains with the caller.
-  void Init(Delegate* delegate, PrefsInterface* prefs);
+  void Init(Delegate* delegate,
+            PrefsInterface* prefs,
+            system::DBusWrapperInterface* dbus_wrapper);
 
   // Called when the tablet mode changes.
   void HandleTabletModeChange(TabletMode mode);
-
+  // Called when the modem state changes
+  void HandleModemStateChange(ModemState state);
   // UserProximityHandler::Delegate overrides:
   void ProximitySensorDetected(UserProximity proximity) override;
   void HandleProximityChange(UserProximity proximity) override;
@@ -55,20 +81,74 @@ class CellularController : public UserProximityHandler::Delegate {
   void UpdateTransmitPower();
 
   RadioTransmitPower DetermineTransmitPower() const;
+#if USE_CELLULAR
+  void SetCellularTransmitPowerInModemManager(RadioTransmitPower power);
+  void OnModemManagerServiceAvailable(bool available);
+  void InitModemManagerSarInterface();
+
+  void ModemManagerInterfacesAdded(
+      const dbus::ObjectPath& object_path,
+      const system::DBusInterfaceToProperties& properties);
+  void ModemManagerInterfacesRemoved(
+      const dbus::ObjectPath& object_path,
+      const std::vector<std::string>& interfaces);
+
+  // DBusObjectManagerProxyDelegate method callbacks
+  void OnGetManagedObjectsReplySuccess(
+      const system::DBusObjectsWithProperties& dbus_objects_with_properties);
+
+  // Service name owner changed handler.
+  void OnServiceOwnerChanged(const std::string& old_owner,
+                             const std::string& new_owner);
+#endif        // USE_CELLULAR
+#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
+              // into modemmanager.
+  bool InitQrtrSocket();
+  void OnFileCanReadWithoutBlocking();
+  void EmitEvent(const char* event);
+  void OnDataAvailable(CellularController* cc);
+  void ProcessQrtrPacket(uint32_t node, uint32_t port, int size);
+  int Recv(void* buf, size_t size, void* metadata);
+  int Send(const void* data, size_t size, const void* metadata);
+  bool StartServiceLookup(uint32_t service,
+                          uint16_t version_major,
+                          uint16_t version_minor);
+  bool StopServiceLookup(uint32_t service,
+                         uint16_t version_major,
+                         uint16_t version_minor);
+#endif  // USE_QRTR
 
   Delegate* delegate_ = nullptr;  // Not owned.
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
 
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
   UserProximity proximity_ = UserProximity::UNKNOWN;
+  ModemState state_ = ModemState::UNKNOWN;
 
   // True if powerd has been configured to set cellular transmit power in
   // response to tablet mode or proximity changes.
   bool set_transmit_power_for_tablet_mode_ = false;
   bool set_transmit_power_for_proximity_ = false;
+  bool use_modemmanager_for_dynamic_sar_ = false;
+  bool use_multi_power_level_dynamic_sar_ = false;
+
+#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
+              // into modemmanager.
+  base::ScopedFD socket_;
+  std::vector<uint8_t> buffer_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
+  std::unique_ptr<com::ubuntu::Upstart0_6Proxy> upstart_proxy_;
+#endif  // USE_QRTR
 
   // GPIO number for the dynamic power reduction signal of a built-in cellular
   // modem.
   int64_t dpr_gpio_number_ = -1;
+#if USE_CELLULAR
+  std::unique_ptr<org::freedesktop::ModemManager1::Modem::SarProxy>
+      mm_sar_proxy_;
+  std::unique_ptr<system::DBusObjectManagerProxyInterface> mm_obj_proxy_;
+#endif  // USE_CELLULAR
+  base::WeakPtrFactory<CellularController> weak_ptr_factory_;
 };
 
 }  // namespace policy

@@ -348,7 +348,13 @@ const char kModemManager1ModemInterface[] =
 const char kModemManager1MessagingInterface[] =
     "org.freedesktop.ModemManager1.Modem.Messaging";
 const char kModemManager1SmsInterface[] = "org.freedesktop.ModemManager1.Sms";
+const char kModemManager1SarInterface[] =
+    "org.freedesktop.ModemManager1.Modem.Sar";
+
 const char kSMSAddedSignal[] = "Added";
+const char kSarEnable[] = "Enable";
+const char kSarSetPowerLevel[] = "SetPowerLevel";
+
 }  // namespace modemmanager
 
 namespace mtpd {

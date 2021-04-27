@@ -264,12 +264,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       shutdown_from_suspend_(std::make_unique<policy::ShutdownFromSuspend>()),
       suspender_(new policy::Suspender),
       wifi_controller_(std::make_unique<policy::WifiController>()),
-#if USE_TROGDOR_SAR_HACK
-      cellular_controller_(
-          std::make_unique<policy::CellularControllerTrogdor>()),
-#else   // USE_TROGDOR_SAR_HACK
       cellular_controller_(std::make_unique<policy::CellularController>()),
-#endif  // USE_TROGDOR_SAR_HACK
       metrics_collector_(new metrics::MetricsCollector),
       arc_timer_manager_(std::make_unique<system::ArcTimerManager>()),
       retry_shutdown_for_lockfile_timer_(),
@@ -440,8 +435,7 @@ void Daemon::Init() {
   }
 
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
-  cellular_controller_->Init(this, prefs_.get());
-
+  cellular_controller_->Init(this, prefs_.get(), dbus_wrapper_.get());
   peripheral_battery_watcher_ = delegate_->CreatePeripheralBatteryWatcher(
       dbus_wrapper_.get(), udev_.get());
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
@@ -861,13 +855,6 @@ void Daemon::SetWifiTransmitPower(RadioTransmitPower power,
   RunSetuidHelper("set_wifi_transmit_power", args, false);
 }
 
-#if USE_TROGDOR_SAR_HACK
-void Daemon::SetCellularTransmitPower(RadioTransmitPower power) {
-  const std::string args =
-      base::StringPrintf("--cellular_transmit_power_trogdor_level=%d", power);
-  RunSetuidHelper("set_cellular_transmit_power_trogdor", args, false);
-}
-#else   // USE_TROGDOR_SAR_HACK
 void Daemon::SetCellularTransmitPower(RadioTransmitPower power,
                                       int64_t dpr_gpio_number) {
   const bool is_power_low = (power == RadioTransmitPower::LOW);
@@ -879,7 +866,6 @@ void Daemon::SetCellularTransmitPower(RadioTransmitPower power,
             << (is_power_low ? "low" : "high");
   RunSetuidHelper("set_cellular_transmit_power", args, false);
 }
-#endif  // USE_TROGDOR_SAR_HACK
 
 void Daemon::OnAudioStateChange(bool active) {
   if (active)

@@ -10,6 +10,7 @@
 
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
 namespace power_manager {
@@ -78,23 +79,26 @@ class CellularControllerTest : public ::testing::Test {
   // Calls |controller_|'s Init() method.
   void Init(bool honor_proximity,
             bool honor_tablet_mode,
+            bool honor_multi_power_level,
             int64_t dpr_gpio_number) {
     prefs_.SetInt64(kSetCellularTransmitPowerForProximityPref, honor_proximity);
     prefs_.SetInt64(kSetCellularTransmitPowerForTabletModePref,
                     honor_tablet_mode);
+    prefs_.SetInt64(kUseMultiPowerLevelDynamicSARPref, honor_multi_power_level);
     if (dpr_gpio_number != kUnknownDprGpioNumber) {
       prefs_.SetInt64(kSetCellularTransmitPowerDprGpioPref, dpr_gpio_number);
     }
-    controller_.Init(&delegate_, &prefs_);
+    controller_.Init(&delegate_, &prefs_, &dbus_wrapper_);
   }
 
   FakePrefs prefs_;
+  system::DBusWrapperStub dbus_wrapper_;
   TestCellularControllerDelegate delegate_;
   CellularController controller_;
 };
 
 TEST_F(CellularControllerTest, LowPowerOnSensorDetect) {
-  Init(true, false, kFakeDprGpioNumber);
+  Init(true, false, false, kFakeDprGpioNumber);
   controller_.ProximitySensorDetected(UserProximity::NEAR);
   EXPECT_EQ(1, delegate_.num_set_calls());
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
@@ -102,7 +106,7 @@ TEST_F(CellularControllerTest, LowPowerOnSensorDetect) {
 }
 
 TEST_F(CellularControllerTest, PowerChangeOnProximityChange) {
-  Init(true, false, kFakeDprGpioNumber);
+  Init(true, false, false, kFakeDprGpioNumber);
   controller_.ProximitySensorDetected(UserProximity::NEAR);
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
   EXPECT_EQ(kFakeDprGpioNumber, delegate_.last_dpr_gpio_number());
@@ -117,7 +121,7 @@ TEST_F(CellularControllerTest, PowerChangeOnProximityChange) {
 }
 
 TEST_F(CellularControllerTest, ProximityIgnoredWhenOff) {
-  Init(false, false, kFakeDprGpioNumber);
+  Init(false, false, false, kFakeDprGpioNumber);
   controller_.ProximitySensorDetected(UserProximity::NEAR);
   EXPECT_EQ(0, delegate_.num_set_calls());
 
@@ -126,15 +130,15 @@ TEST_F(CellularControllerTest, ProximityIgnoredWhenOff) {
 }
 
 TEST_F(CellularControllerTest, DprGpioNumberNotSpecified) {
-  EXPECT_DEATH(Init(true, false, kUnknownDprGpioNumber), ".*");
+  EXPECT_DEATH(Init(true, false, false, kUnknownDprGpioNumber), ".*");
 }
 
 TEST_F(CellularControllerTest, DprGpioNumberInvalid) {
-  EXPECT_DEATH(Init(true, false, kInvalidDprGpioNumber), ".*");
+  EXPECT_DEATH(Init(true, false, false, kInvalidDprGpioNumber), ".*");
 }
 
 TEST_F(CellularControllerTest, TabletMode) {
-  Init(false, true, kFakeDprGpioNumber);
+  Init(false, true, false, kFakeDprGpioNumber);
 
   controller_.HandleTabletModeChange(TabletMode::ON);
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
@@ -146,7 +150,7 @@ TEST_F(CellularControllerTest, TabletMode) {
 }
 
 TEST_F(CellularControllerTest, TabletModeIgnoredWhenOff) {
-  Init(true, false, kFakeDprGpioNumber);
+  Init(true, false, false, kFakeDprGpioNumber);
   controller_.ProximitySensorDetected(UserProximity::FAR);
   EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
 
@@ -155,7 +159,7 @@ TEST_F(CellularControllerTest, TabletModeIgnoredWhenOff) {
 }
 
 TEST_F(CellularControllerTest, ProximityAndTabletMode) {
-  Init(true, true, kFakeDprGpioNumber);
+  Init(true, true, false, kFakeDprGpioNumber);
   controller_.HandleTabletModeChange(TabletMode::ON);
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
 
@@ -167,6 +171,25 @@ TEST_F(CellularControllerTest, ProximityAndTabletMode) {
 
   controller_.HandleProximityChange(UserProximity::NEAR);
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+
+  controller_.HandleProximityChange(UserProximity::FAR);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+}
+
+TEST_F(CellularControllerTest, ProximityAndTabletModeWithMultiLevel) {
+  Init(true, true, true, kFakeDprGpioNumber);
+  controller_.HandleTabletModeChange(TabletMode::ON);
+  controller_.HandleProximityChange(UserProximity::NEAR);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+
+  controller_.ProximitySensorDetected(UserProximity::FAR);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+
+  controller_.HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+
+  controller_.HandleProximityChange(UserProximity::NEAR);
+  EXPECT_EQ(RadioTransmitPower::MEDIUM, delegate_.last_transmit_power());
 
   controller_.HandleProximityChange(UserProximity::FAR);
   EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
