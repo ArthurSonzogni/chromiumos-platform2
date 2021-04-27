@@ -38,6 +38,7 @@ pkg_config("target_defaults") {
 static_library("libdnsproxy") {
   sources = [
     "ares_client.cc",
+    "chrome_features_service_client.cc",
     "controller.cc",
     "doh_curl_client.cc",
     "proxy.cc",
