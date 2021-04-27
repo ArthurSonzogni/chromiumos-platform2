@@ -1870,31 +1870,49 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
                  action.c_str())) {
+    attestation::VerifyRequest req;
+
     bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
-    brillo::glib::ScopedError error;
-    gboolean result = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_verify_attestation_data(
-            proxy.gproxy(), is_cros_core, &result,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("TpmVerifyAttestationData call failed: %s.\n", error->message);
+    req.set_cros_core(is_cros_core);
+    req.set_ek_only(false);
+
+    attestation::VerifyReply reply;
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.Verify(req, &reply, &error, timeout_ms) || error) {
+      printf("TpmVerifyAttestationData call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (result == FALSE) {
+    if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmVerifyAttestationData call failed: status %d.\n",
+             static_cast<int>(reply.status()));
+      return 1;
+    }
+    if (reply.verified()) {
       printf("TPM attestation data is not valid or is not available.\n");
       return 1;
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_VERIFY_EK],
                      action.c_str())) {
+    attestation::VerifyRequest req;
+
     bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
-    brillo::glib::ScopedError error;
-    gboolean result = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_verify_ek(
-            proxy.gproxy(), is_cros_core, &result,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("TpmVerifyEK call failed: %s.\n", error->message);
+    req.set_cros_core(is_cros_core);
+    req.set_ek_only(true);
+
+    attestation::VerifyReply reply;
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.Verify(req, &reply, &error, timeout_ms) || error) {
+      printf("TpmVerifyEK call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (result == FALSE) {
+    if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmVerifyEK call failed: status %d.\n",
+             static_cast<int>(reply.status()));
+      return 1;
+    }
+    if (reply.verified()) {
       printf("TPM endorsement key is not valid or is not available.\n");
       return 1;
     }
