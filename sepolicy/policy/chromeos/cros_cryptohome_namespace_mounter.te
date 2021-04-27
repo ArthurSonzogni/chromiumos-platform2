@@ -132,10 +132,9 @@ allow cros_cryptohome_namespace_mounter self:key {
   write
 };
 
-# Chrome OS with ARCVM doesn't undergo CTS tests. Thus remove the
-# arc_cts_fails_release macro for ARCVM devices so that
-# cros_cryptohome_namespace_mounter is not converted into a permissive domain
-# after being flipped to enforcing.
+# Remove the arc_cts_fails_release macro for ARCVM devices so that
+# cros_cryptohomed is not converted into a permissive domain after being
+# flipped to enforcing.
 is_arc_vm(`
   allow cros_cryptohome_namespace_mounter self:capability {
     dac_override

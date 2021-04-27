@@ -1,4 +1,4 @@
-type cros_cryptohomed, chromeos_domain, domain;
+type cros_cryptohomed, chromeos_domain, domain, mlstrustedsubject;
 
 permissive cros_cryptohomed;
 
@@ -38,8 +38,6 @@ create_dir_file(cros_cryptohomed, {
   cros_run_daemon_store
   cros_run_dbus
   cros_run_arcvm
-  testharness_file
-  system_data_root_file
 });
 create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
 
@@ -164,9 +162,9 @@ allow cros_cryptohomed labeledfs:filesystem {
 # TODO(b/178237004) Label the processes with specific contexts.
 allow cros_cryptohomed cros_unconfined_exec:file    x_file_perms;
 
-# Chrome OS with ARCVM doesn't undergo CTS tests. Thus remove the
-# arc_cts_fails_release macro for ARCVM devices so that cros_cryptohomed is not
-# converted into a permissive domain after being flipped to enforcing.
+# Remove the arc_cts_fails_release macro for ARCVM devices so that
+# cros_cryptohomed is not converted into a permissive domain after being
+# flipped to enforcing.
 is_arc_vm(`
   allow cros_cryptohomed self:capability {
     dac_override
@@ -177,6 +175,14 @@ is_arc_vm(`
     remount
     unmount
   };
+  # Permissions to remove ARCVM files when removing a user
+  allow cros_cryptohomed arc_files:dir { rw_dir_perms rmdir };
+  allow cros_cryptohomed arc_files:file { rw_file_perms unlink };
+  allow cros_cryptohomed arc_files:lnk_file { rw_file_perms unlink };
+  allow cros_cryptohomed {
+    system_ndebug_socket
+    system_unsolzygote_socket
+  }:sock_file { rw_file_perms unlink };
 ',`
   arc_cts_fails_release(`
     allow cros_cryptohomed self:capability {
@@ -188,6 +194,14 @@ is_arc_vm(`
       remount
       unmount
     };
+    # Permissions to remove ARC Container files when removing a user
+    allow cros_cryptohomed arc_files:dir { rw_dir_perms rmdir };
+    allow cros_cryptohomed arc_files:file { rw_file_perms unlink };
+    allow cros_cryptohomed arc_files:lnk_file { rw_file_perms unlink };
+    allow cros_cryptohomed {
+      system_ndebug_socket
+      system_unsolzygote_socket
+    }:sock_file { rw_file_perms unlink };
   ', (`cros_cryptohomed'));
 ')
 
