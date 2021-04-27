@@ -105,6 +105,7 @@ class Proxy : public brillo::DBusDaemon {
   void OnDefaultDeviceChanged(const shill::Client::Device* const device);
   void OnDeviceChanged(const shill::Client::Device* const device);
 
+  void MaybeCreateResolver();
   void UpdateNameServers(const shill::Client::IPConfig& ipconfig);
   void OnDoHProvidersChanged(const brillo::Any& value);
 
@@ -141,7 +142,8 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, SystemProxy_IgnoresVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN);
   FRIEND_TEST(ProxyTest, DefaultProxy_UsesVPN);
-  FRIEND_TEST(ProxyTest, NameServersUpdatedOnDeviceChangeEvent);
+  FRIEND_TEST(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent);
+  FRIEND_TEST(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent);
   FRIEND_TEST(ProxyTest, DeviceChangeEventIgnored);
   FRIEND_TEST(ProxyTest, BasicDoHDisable);
   FRIEND_TEST(ProxyTest, BasicDoHAlwaysOn);

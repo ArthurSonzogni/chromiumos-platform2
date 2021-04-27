@@ -262,36 +262,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
               << "]";
 
   *device_.get() = new_default_device;
-
-  if (!resolver_) {
-    resolver_ =
-        NewResolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry);
-    doh_config_.set_resolver(resolver_.get());
-
-    struct sockaddr_in addr = {0};
-    addr.sin_family = AF_INET;
-    addr.sin_port = kDefaultPort;
-    addr.sin_addr.s_addr =
-        INADDR_ANY;  // Since we're running in the private namespace.
-
-    CHECK(resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr)))
-        << opts_ << " failed to start UDP relay loop";
-    LOG_IF(DFATAL,
-           !resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)))
-        << opts_ << " failed to start TCP relay loop";
-
-    // Fetch the DoH settings.
-    brillo::ErrorPtr error;
-    brillo::VariantDictionary doh_providers;
-    if (shill_props()->Get(shill::kDNSProxyDOHProvidersProperty, &doh_providers,
-                           &error))
-      OnDoHProvidersChanged(brillo::Any(doh_providers));
-    else
-      LOG(ERROR) << opts_ << " failed to obtain DoH configuration from shill: "
-                 << error->GetMessage();
-  }
-
-  // Update the resolver with the latest DNS config.
+  MaybeCreateResolver();
   UpdateNameServers(device_->ipconfig);
 
   // For the system proxy, we have to tell shill about it. We should start
@@ -314,21 +285,82 @@ shill::Client::ManagerPropertyAccessor* Proxy::shill_props() {
 }
 
 void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
-  // Ignore if there is no tracked device or it's different.
-  if (!device || !device_ || device_->ifname != device->ifname)
+  if (!device || (device_ && device_->ifname != device->ifname))
     return;
 
-  // We don't need to worry about this here since the default proxy always/only
-  // tracks the default device and any update will be handled by
-  // OnDefaultDeviceChanged.
-  if (opts_.type == Type::kDefault)
+  switch (opts_.type) {
+    case Type::kDefault:
+      // We don't need to worry about this here since the default proxy
+      // always/only tracks the default device and any update will be handled by
+      // OnDefaultDeviceChanged.
+      return;
+
+    case Type::kSystem:
+      if (!device_ || device_->ipconfig == device->ipconfig)
+        return;
+
+      UpdateNameServers(device->ipconfig);
+      device_->ipconfig = device->ipconfig;
+      return;
+
+    case Type::kARC:
+      if (opts_.ifname != device->ifname)
+        return;
+
+      if (device->state != shill::Client::Device::ConnectionState::kOnline) {
+        if (device_) {
+          LOG(WARNING) << opts_ << " is stopping because the device ["
+                       << device->ifname << "] is offline";
+          doh_config_.clear();
+          resolver_.reset();
+          device_.reset();
+        }
+        return;
+      }
+
+      if (!device_) {
+        device_ = std::make_unique<shill::Client::Device>();
+      }
+
+      *device_.get() = *device;
+      MaybeCreateResolver();
+      UpdateNameServers(device->ipconfig);
+      break;
+
+    default:
+      NOTREACHED();
+  }
+}
+
+void Proxy::MaybeCreateResolver() {
+  if (resolver_)
     return;
 
-  if (device_->ipconfig == device->ipconfig)
-    return;
+  resolver_ =
+      NewResolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry);
+  doh_config_.set_resolver(resolver_.get());
 
-  UpdateNameServers(device->ipconfig);
-  device_->ipconfig = device->ipconfig;
+  struct sockaddr_in addr = {0};
+  addr.sin_family = AF_INET;
+  addr.sin_port = kDefaultPort;
+  addr.sin_addr.s_addr =
+      INADDR_ANY;  // Since we're running in the private namespace.
+
+  CHECK(resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr)))
+      << opts_ << " failed to start UDP relay loop";
+  LOG_IF(DFATAL,
+         !resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)))
+      << opts_ << " failed to start TCP relay loop";
+
+  // Fetch the DoH settings.
+  brillo::ErrorPtr error;
+  brillo::VariantDictionary doh_providers;
+  if (shill_props()->Get(shill::kDNSProxyDOHProvidersProperty, &doh_providers,
+                         &error))
+    OnDoHProvidersChanged(brillo::Any(doh_providers));
+  else
+    LOG(ERROR) << opts_ << " failed to obtain DoH configuration from shill: "
+               << error->GetMessage();
 }
 
 void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {

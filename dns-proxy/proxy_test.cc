@@ -453,7 +453,41 @@ TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
   EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kVPN);
 }
 
-TEST_F(ProxyTest, NameServersUpdatedOnDeviceChangeEvent) {
+TEST_F(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"},
+              PatchpanelClient(), ShillClient());
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  shill::Client::Device dev;
+  dev.ifname = "wlan0";
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
+  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  // Doesn't call listen since the resolver already exists.
+  EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
+  EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
+  EXPECT_CALL(*mock_resolver,
+              SetNameServers(
+                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+  proxy.OnDeviceChanged(&dev);
+
+  // Verify it only applies changes for the correct interface.
+  dev.ifname = "eth0";
+  dev.ipconfig.ipv4_dns_addresses = {"X", "Y", "Z"};
+  EXPECT_CALL(*mock_resolver, SetNameServers(_)).Times(0);
+  proxy.OnDeviceChanged(&dev);
+
+  dev.ifname = "wlan0";
+  dev.ipconfig.ipv4_dns_addresses = {"X", "Y", "Z"};
+  dev.ipconfig.ipv6_dns_addresses.clear();
+  EXPECT_CALL(*mock_resolver,
+              SetNameServers(ElementsAre(StrEq("X"), StrEq("Y"), StrEq("Z"))));
+  proxy.OnDeviceChanged(&dev);
+}
+
+TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient());
   proxy.device_ = std::make_unique<shill::Client::Device>();
