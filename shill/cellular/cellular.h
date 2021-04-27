@@ -567,6 +567,8 @@ class Cellular : public Device,
   void ConnectToPending();
   void ConnectToPendingAfterDelay();
   void ConnectToPendingFailed(Service::ConnectFailure failure);
+  void ConnectToPendingCancel();
+
   void UpdateScanning();
   void GetLocationCallback(const std::string& gpp_lac_ci_string,
                            const Error& error);
@@ -693,6 +695,8 @@ class Cellular : public Device,
   // after a delay once Scanning is set to false.
   std::string connect_pending_iccid_;
   base::CancelableClosure connect_pending_callback_;
+  // Used to cancel a pending connect while waiting for Modem registration.
+  base::CancelableClosure connect_cancel_callback_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 };

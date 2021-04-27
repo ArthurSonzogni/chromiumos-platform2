@@ -77,6 +77,9 @@ namespace {
 // Delay before connecting to pending connect requests. This helps prevent
 // connect failures while the Modem is still starting up.
 const int64_t kPendingConnectDelayMilliseconds = 2 * 1000;
+// Maximum time to wait for Modem registration before canceling a pending
+// connect attempt.
+const int64_t kPendingConnectCancelMilliseconds = 60 * 1000;
 
 class ApnList {
  public:
@@ -1451,6 +1454,9 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
     return false;
   }
 
+  // Clear any pending connect when inhibiting or un-inhibiting.
+  SetPendingConnect(std::string());
+
   if (!mm1_proxy_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound, "No Modem.");
     return false;
@@ -1715,6 +1721,7 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 }
 
 void Cellular::SetPendingConnect(const std::string& iccid) {
+  connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();
   connect_pending_iccid_ = iccid;
 }
@@ -1744,6 +1751,22 @@ void Cellular::ConnectToPending() {
     ConnectToPendingFailed(Service::kFailureUnknown);
     return;
   }
+  // Normally the Modem becomes Registered immediately after becoming enabled.
+  // For eSIM this is not always true so we need to wait for the Modem to
+  // become registered. However, Registration may fail (e.g. for an inactive
+  // eSIM profile), so we also need to set a timeout.
+  // TODO(b/186482862): Fix this behavior in ModemManager.
+  if (state_ == kStateEnabled && modem_state_ == kModemStateEnabled) {
+    if (!connect_cancel_callback_.IsCancelled())
+      return;
+    LOG(WARNING) << __func__ << ": Waiting for Modem registration.";
+    connect_cancel_callback_.Reset(Bind(&Cellular::ConnectToPendingCancel,
+                                        weak_ptr_factory_.GetWeakPtr()));
+    dispatcher()->PostDelayedTask(FROM_HERE,
+                                  connect_cancel_callback_.callback(),
+                                  kPendingConnectCancelMilliseconds);
+    return;
+  }
   if (!StateIsRegistered()) {
     LOG(WARNING) << __func__ << ": Cellular not registered, State: "
                  << GetStateString(state_);
@@ -1757,6 +1780,7 @@ void Cellular::ConnectToPending() {
   }
 
   SLOG(this, 1) << __func__ << ": " << connect_pending_iccid_;
+  connect_cancel_callback_.Cancel();
   connect_pending_callback_.Reset(Bind(&Cellular::ConnectToPendingAfterDelay,
                                        weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_pending_callback_.callback(),
@@ -1798,6 +1822,11 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
   if (service_ && service_->iccid() == connect_pending_iccid_)
     service_->SetFailure(failure);
   SetPendingConnect(std::string());
+}
+
+void Cellular::ConnectToPendingCancel() {
+  LOG(WARNING) << __func__;
+  ConnectToPendingFailed(Service::kFailureUnknown);
 }
 
 void Cellular::UpdateScanning() {
