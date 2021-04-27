@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -49,8 +50,6 @@ V4L2TestEnvironment* g_env;
 constexpr char kDefaultTestList[] = "default";
 constexpr char kHalv3TestList[] = "halv3";
 constexpr char kCertificationTestList[] = "certification";
-
-const float kDefaultFrameRate = 30.0;
 
 std::string GetUsbVidPid(const base::FilePath& path) {
   auto read_id = [&](const char* name) -> std::string {
@@ -163,11 +162,16 @@ bool HasFrameRate(const SupportedFormat& format, float target) {
       });
 }
 
+float GetMaxFrameRate(const SupportedFormat& format) {
+  return *std::max_element(format.frame_rates.begin(),
+                           format.frame_rates.end());
+}
+
 bool CompareFormat(const SupportedFormat& fmt1, const SupportedFormat& fmt2) {
   auto get_key = [](const SupportedFormat& fmt)
-      -> std::tuple<uint32_t, uint32_t, bool, int> {
+      -> std::tuple<uint32_t, uint32_t, float, int> {
     uint32_t area = fmt.width * fmt.height;
-    bool has_default_fps = HasFrameRate(fmt, kDefaultFrameRate);
+    float max_fps = GetMaxFrameRate(fmt);
     int fourcc = [&] {
       switch (fmt.fourcc) {
         case V4L2_PIX_FMT_YUYV:
@@ -178,7 +182,7 @@ bool CompareFormat(const SupportedFormat& fmt1, const SupportedFormat& fmt2) {
           return 0;
       }
     }();
-    return {area, fmt.width, has_default_fps, fourcc};
+    return {area, fmt.width, max_fps, fourcc};
   };
   return get_key(fmt1) > get_key(fmt2);
 }
@@ -234,8 +238,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
       // The camera modules do not support 1080p 30fps and got waived.
       // Please see http://b/142289821 and http://b/115453284 for the detail.
       if (usb_info_ == "04f2:b6b5" || usb_info_ == "0bda:5647") {
-        AddNegativeGtestFilter(
-            "V4L2Test/V4L2TestWithResolution.Resolutions/1920x1080");
+        check_1920x1080_ = false;
         AddNegativeGtestFilter("V4L2Test.CroppingResolution");
       }
     }
@@ -321,6 +324,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
 
     LOG(INFO) << "Check 1280x960: " << std::boolalpha << check_1280x960_;
     LOG(INFO) << "Check 1600x1200: " << std::boolalpha << check_1600x1200_;
+    LOG(INFO) << "Check 1920x1080: " << std::boolalpha << check_1920x1080_;
     LOG(INFO) << "Check constant framerate: " << std::boolalpha
               << check_constant_framerate_;
     LOG(INFO) << "Number of skip frames after stream on: " << skip_frames_;
@@ -332,6 +336,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
 
   bool check_1280x960_ = false;
   bool check_1600x1200_ = false;
+  bool check_1920x1080_ = true;
   bool check_constant_framerate_ = false;
   bool check_timestamps_in_order_ = true;
 
@@ -394,10 +399,12 @@ class V4L2Test : public ::testing::Test {
 
   // Find format according to width and height. If multiple formats support the
   // same resolution, choose the first one.
-  const SupportedFormat* FindFormatByResolution(uint32_t width,
-                                                uint32_t height) {
+  const SupportedFormat* FindSupportedFormat(uint32_t width,
+                                             uint32_t height,
+                                             float fps) {
     for (const auto& format : GetSupportedFormats()) {
-      if (format.width == width && format.height == height) {
+      if (format.width == width && format.height == height &&
+          HasFrameRate(format, fps)) {
         return &format;
       }
     }
@@ -428,7 +435,7 @@ class V4L2Test : public ::testing::Test {
     return max_format;
   }
 
-  const SupportedFormat* GetResolutionForCropping() {
+  const SupportedFormat* GetResolutionForCropping(float fps) {
     // FOV requirement cannot allow cropping twice. If two streams resolution
     // are 1920x1080 and 1600x1200, we need a larger resolution which aspect
     // ratio is the same as sensor aspect ratio.
@@ -443,12 +450,13 @@ class V4L2Test : public ::testing::Test {
     const float kAspectRatioMargin = 0.04;
 
     for (const auto& format : GetSupportedFormats()) {
-      if (format.width >= 1920 && format.height >= 1200) {
-        float aspect_ratio = static_cast<float>(format.width) / format.height;
-        if (abs(sensor_aspect_ratio - aspect_ratio) < kAspectRatioMargin &&
-            HasFrameRate(format, kDefaultFrameRate)) {
-          return &format;
-        }
+      if (format.width < 1920 || format.height < 1200 ||
+          !HasFrameRate(format, fps)) {
+        continue;
+      }
+      float aspect_ratio = static_cast<float>(format.width) / format.height;
+      if (std::abs(sensor_aspect_ratio - aspect_ratio) < kAspectRatioMargin) {
+        return &format;
       }
     }
     return nullptr;
@@ -496,7 +504,7 @@ class V4L2Test : public ::testing::Test {
     ASSERT_FLOAT_EQ(fps, dev_.GetFrameRate());
   }
 
-  void ExerciseResolution(uint32_t width, uint32_t height) {
+  void ExerciseFormat(uint32_t width, uint32_t height, float fps) {
     const int kMaxRetryTimes = 5;
     const auto duration = base::TimeDelta::FromSeconds(3);
 
@@ -508,26 +516,16 @@ class V4L2Test : public ::testing::Test {
       constant_framerates = {V4L2Device::DEFAULT_FRAMERATE_SETTING};
     }
 
-    const SupportedFormat* test_format = FindFormatByResolution(width, height);
+    const SupportedFormat* test_format =
+        FindSupportedFormat(width, height, fps);
     ASSERT_NE(test_format, nullptr)
-        << "Cannot find resolution " << width << "x" << height;
-
-    bool default_framerate_supported =
-        HasFrameRate(*test_format, kDefaultFrameRate);
-    EXPECT_TRUE(default_framerate_supported) << base::StringPrintf(
-        "Cannot test %g fps for %dx%d (%08X)", kDefaultFrameRate,
-        test_format->width, test_format->height, test_format->fourcc);
+        << width << "x" << height << " at " << fps << " fps is not supported";
 
     for (const auto& constant_framerate : constant_framerates) {
-      if (!default_framerate_supported &&
-          constant_framerate == V4L2Device::ENABLE_CONSTANT_FRAMERATE) {
-        continue;
-      }
-
       bool success = false;
       for (int retry_count = 0; retry_count < kMaxRetryTimes; retry_count++) {
         ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, width, height,
-                                    test_format->fourcc, kDefaultFrameRate,
+                                    test_format->fourcc, fps,
                                     constant_framerate, 0));
         ASSERT_TRUE(dev_.StartCapture());
         ASSERT_TRUE(dev_.Run(3));
@@ -540,7 +538,7 @@ class V4L2Test : public ::testing::Test {
         ASSERT_EQ(width, fmt.fmt.pix.width);
         ASSERT_EQ(height, fmt.fmt.pix.height);
         ASSERT_EQ(test_format->fourcc, fmt.fmt.pix.pixelformat);
-        ASSERT_FLOAT_EQ(kDefaultFrameRate, dev_.GetFrameRate());
+        ASSERT_FLOAT_EQ(fps, dev_.GetFrameRate());
 
         if (g_env->check_timestamps_in_order_) {
           ASSERT_TRUE(CheckTimestampsInOrder(dev_.GetFrameTimestamps()))
@@ -556,7 +554,7 @@ class V4L2Test : public ::testing::Test {
           // 1 fps buffer is because |time_to_capture| may be too short.
           // EX: 30 fps and capture 3 secs. We may get 89 frames or 91 frames.
           // The actual fps will be 29.66 or 30.33.
-          if (abs(actual_fps - kDefaultFrameRate) > 1) {
+          if (abs(actual_fps - fps) > 1) {
             LOG(WARNING) << base::StringPrintf(
                 "Capture test %dx%d (%08X) failed with fps %.2f",
                 test_format->width, test_format->height, test_format->fourcc,
@@ -564,8 +562,7 @@ class V4L2Test : public ::testing::Test {
             continue;
           }
 
-          if (!CheckConstantFramerate(dev_.GetFrameTimestamps(),
-                                      kDefaultFrameRate)) {
+          if (!CheckConstantFramerate(dev_.GetFrameTimestamps(), fps)) {
             LOG(WARNING) << base::StringPrintf(
                 "Capture test %dx%d (%08X) failed and didn't meet "
                 "constant framerate",
@@ -726,44 +723,50 @@ TEST_F(V4L2Test, FrameRate) {
 }
 
 TEST_F(V4L2Test, CroppingResolution) {
-  const SupportedFormat* cropping_resolution = GetResolutionForCropping();
-  if (cropping_resolution == nullptr) {
+  constexpr float kRequiredFpsForCropping = 30.0f;
+  const SupportedFormat* cropping_format =
+      GetResolutionForCropping(kRequiredFpsForCropping);
+  if (cropping_format == nullptr) {
     SupportedFormat max_resolution = GetMaximumResolution();
     ASSERT_TRUE(max_resolution.width < 1920 || max_resolution.height < 1200)
         << "Cannot find cropping resolution";
     return;
   }
-  ExerciseResolution(cropping_resolution->width, cropping_resolution->height);
 }
 
-// Test all required resolutions with 30 fps.
+TEST_P(V4L2TestWithResolution, Required30FpsResolution) {
+  const auto [width, height] = GetParam();
+  if (!g_env->check_1280x960_ && width == 1280 && height == 960) {
+    GTEST_SKIP() << "Skipped because check_1280x960_ is not set";
+  }
+  if (!g_env->check_1600x1200_ && width == 1600 && height == 1200) {
+    GTEST_SKIP() << "Skipped because check_1600x1200_ is not set";
+  }
+  if (!g_env->check_1920x1080_ && width == 1920 && height == 1080) {
+    GTEST_SKIP() << "Skipped because check_1920x1080_ is not set";
+  }
+  const SupportedFormat max_resolution = GetMaximumResolution();
+  if (width > max_resolution.width || height > max_resolution.height) {
+    GTEST_SKIP() << "Skipped because it's larger than maximum resolution";
+  }
+  const SupportedFormat* format = FindSupportedFormat(width, height, 30.0f);
+  EXPECT_NE(format, nullptr)
+      << width << "x" << height << " at 30 fps is not supported";
+}
+
+// Test all supported resolutions and frame rates.
 // If device supports constant framerate, the test will toggle the setting
 // and check actual fps. Otherwise, use the default setting of
 // V4L2_CID_EXPOSURE_AUTO_PRIORITY.
-TEST_P(V4L2TestWithResolution, Resolutions) {
-  uint32_t width = GetParam().first;
-  uint32_t height = GetParam().second;
-
-  // TODO(shik): Use GTEST_SKIP() after we upgrade to gtest 1.9.
-  if (width == 1280 && height == 960 && !g_env->check_1280x960_) {
-    LOG(INFO) << "Skipped because check_1280x960_ is not set";
-    return;
+TEST_F(V4L2Test, SupportedFormats) {
+  for (const SupportedFormat& format : GetSupportedFormats()) {
+    for (float fps : format.frame_rates) {
+      ExerciseFormat(format.width, format.height, fps);
+    }
   }
-  if (width == 1600 && height == 1200 && !g_env->check_1600x1200_) {
-    LOG(INFO) << "Skipped because check_1600x1200_ is not set";
-    return;
-  }
-
-  SupportedFormat max_resolution = GetMaximumResolution();
-  if (width > max_resolution.width || height > max_resolution.height) {
-    LOG(INFO) << "Skipped because it's larger than maximum resolution";
-    return;
-  }
-
-  ExerciseResolution(width, height);
 }
 
-const std::pair<uint32_t, uint32_t> kTestResolutions[] = {
+constexpr std::pair<uint32_t, uint32_t> kTestResolutions[] = {
     {320, 240},  {640, 480},   {1280, 720},
     {1280, 960}, {1600, 1200}, {1920, 1080},
 };
@@ -811,19 +814,17 @@ TEST_F(V4L2Test, MaximumSupportedResolution) {
 TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
   const SupportedFormat* test_format = FindFormatByFourcc(V4L2_PIX_FMT_MJPEG);
   if (test_format == nullptr) {
-    // TODO(shik): Use GTEST_SKIP() after we upgrade to gtest 1.9.
-    LOG(INFO) << "Skipped because the camera doesn't support MJPEG format";
-    return;
+    GTEST_SKIP() << "Skipped because the camera doesn't support MJPEG format";
   }
 
   uint32_t width = test_format->width;
   uint32_t height = test_format->height;
+  float fps = GetMaxFrameRate(*test_format);
 
   for (int i = 0; i < 20; i++) {
-    ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, width, height,
-                                V4L2_PIX_FMT_MJPEG, kDefaultFrameRate,
-                                V4L2Device::DEFAULT_FRAMERATE_SETTING,
-                                g_env->skip_frames_));
+    ASSERT_TRUE(dev_.InitDevice(
+        V4L2Device::IO_METHOD_MMAP, width, height, V4L2_PIX_FMT_MJPEG, fps,
+        V4L2Device::DEFAULT_FRAMERATE_SETTING, g_env->skip_frames_));
     ASSERT_TRUE(dev_.StartCapture());
 
     uint32_t buf_index, data_size;
