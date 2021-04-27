@@ -296,9 +296,6 @@ void U2fDaemon::RegisterDBusObjectsAsync(
 
 void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation,
                                     bool include_g2f_allowlisting_data) {
-  auto user_state = std::make_unique<u2f::UserState>(
-      sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0);
-
   std::function<void()> request_presence = [this]() {
     IgnorePowerButtonPress();
     SendWinkSignal();
