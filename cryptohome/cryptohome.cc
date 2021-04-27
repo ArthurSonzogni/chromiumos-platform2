@@ -1843,22 +1843,29 @@ int main(int argc, char** argv) {
     printf("User token looks OK!\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_PKCS11_TERMINATE],
                      action.c_str())) {
+    user_data_auth::Pkcs11TerminateRequest req;
+    user_data_auth::Pkcs11TerminateReply reply;
+
     // If no account_id is specified, proceed with the empty string.
     std::string account_id;
     GetAccountId(cl, &account_id);
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_pkcs11_terminate(
-            proxy.gproxy(), account_id.c_str(),
-            &brillo::Resetter(&error).lvalue())) {
-      printf("PKCS #11 terminate call failed: %s.\n", error->message);
+    req.set_username(account_id);
+    brillo::ErrorPtr error;
+    if (!pkcs11_proxy.Pkcs11Terminate(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("PKCS #11 terminate call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_PKCS11_RESTORE_TPM_TOKENS],
                  action.c_str())) {
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_pkcs11_restore_tpm_tokens(
-            proxy.gproxy(), &brillo::Resetter(&error).lvalue())) {
-      printf("PKCS #11 restore TPM tokens call failed: %s.\n", error->message);
+    user_data_auth::Pkcs11RestoreTpmTokensRequest req;
+    user_data_auth::Pkcs11RestoreTpmTokensReply reply;
+    brillo::ErrorPtr error;
+    if (!pkcs11_proxy.Pkcs11RestoreTpmTokens(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("PKCS #11 restore TPM tokens call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
