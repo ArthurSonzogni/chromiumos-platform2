@@ -1666,23 +1666,38 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_FINALIZE],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean result;
-    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("IsReady call failed: %s.\n", error->message);
+    // Make sure install attributes are ready.
+    user_data_auth::InstallAttributesGetStatusRequest status_req;
+    user_data_auth::InstallAttributesGetStatusReply status_reply;
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.InstallAttributesGetStatus(
+            status_req, &status_reply, &error, timeout_ms) ||
+        error) {
+      printf("InstallAttributesGetStatus call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (result == FALSE) {
-      printf("InstallAttributes is not ready.\n");
+    if (status_reply.state() ==
+            user_data_auth::InstallAttributesState::UNKNOWN ||
+        status_reply.state() ==
+            user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
+      printf("InstallAttributes() is not ready.\n");
       return 1;
     }
-    if (!org_chromium_CryptohomeInterface_install_attributes_finalize(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("Finalize() failed: %s.\n", error->message);
+
+    user_data_auth::InstallAttributesFinalizeRequest req;
+    user_data_auth::InstallAttributesFinalizeReply reply;
+    error.reset();
+    if (!install_attributes_proxy.InstallAttributesFinalize(req, &reply, &error,
+                                                            timeout_ms) ||
+        error) {
+      printf("InstallAttributesFinalize() failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    printf("InstallAttributesFinalize(): %d\n", result);
+    bool result = reply.error() ==
+                  user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+    printf("InstallAttributesFinalize(): %d\n", static_cast<int>(result));
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_COUNT],
                  action.c_str())) {
