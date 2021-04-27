@@ -30,8 +30,10 @@ constexpr char kJsonStoreFileName[] = "json_store_file";
 constexpr char kCurrentStateSetJson[] = R"({"state_history": [ 1 ]})";
 constexpr char kCurrentStateNotSetJson[] = "{}";
 constexpr char kCurrentStateInvalidStateJson[] = R"("state_history": [0])";
-constexpr char kCurrentStateWithHistoryJson[] =
+constexpr char kCurrentStateWithRepeatableHistoryJson[] =
     R"({"state_history": [ 1, 4 ]})";
+constexpr char kCurrentStateWithUnrepeatableHistoryJson[] =
+    R"({"state_history": [ 1, 4, 5 ]})";
 constexpr char kCurrentStateWithUnsupportedStateJson[] =
     R"({"state_history": [ 1, 4, 6 ]})";
 constexpr char kInvalidJson[] = R"(alfkjklsfsgdkjnbknd^^)";
@@ -42,6 +44,8 @@ class RmadInterfaceImplTest : public testing::Test {
     welcome_proto_.set_allocated_welcome(new WelcomeState());
     select_components_proto_.set_allocated_select_components(
         new ComponentsRepairState());
+    device_destination_proto_.set_allocated_device_destination(
+        new DeviceDestinationState());
   }
 
   base::FilePath CreateInputFile(std::string filename,
@@ -55,15 +59,14 @@ class RmadInterfaceImplTest : public testing::Test {
   scoped_refptr<BaseStateHandler> CreateMockHandler(
       scoped_refptr<JsonStore> json_store,
       const RmadState& state,
-      bool is_allow_abort,
+      bool is_repeatable,
       RmadState::StateCase next_state) {
     auto mock_handler =
         base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store);
     RmadState::StateCase state_case = state.state_case();
     ON_CALL(*mock_handler, GetStateCase()).WillByDefault(Return(state_case));
     ON_CALL(*mock_handler, GetState()).WillByDefault(ReturnRef(state));
-    ON_CALL(*mock_handler, IsAllowAbort())
-        .WillByDefault(Return(is_allow_abort));
+    ON_CALL(*mock_handler, IsRepeatable()).WillByDefault(Return(is_repeatable));
     ON_CALL(*mock_handler, GetNextStateCase())
         .WillByDefault(Return(next_state));
     ON_CALL(*mock_handler, UpdateState(_)).WillByDefault(Return(RMAD_ERROR_OK));
@@ -88,11 +91,14 @@ class RmadInterfaceImplTest : public testing::Test {
     // TODO(gavindodd): Work out how to create RmadState objects and have them
     // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
-    mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, false,
+    mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
                                               RmadState::kSelectComponents));
     mock_handlers.push_back(CreateMockHandler(json_store,
                                               select_components_proto_, true,
                                               RmadState::kDeviceDestination));
+    mock_handlers.push_back(CreateMockHandler(json_store,
+                                              device_destination_proto_, false,
+                                              RmadState::kWpDisableMethod));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
 
@@ -111,6 +117,7 @@ class RmadInterfaceImplTest : public testing::Test {
 
   RmadState welcome_proto_;
   RmadState select_components_proto_;
+  RmadState device_destination_proto_;
   base::ScopedTempDir temp_dir_;
 };
 
@@ -161,9 +168,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
-  base::FilePath json_store_file_path =
-      CreateInputFile(kJsonStoreFileName, kCurrentStateWithHistoryJson,
-                      std::size(kCurrentStateWithHistoryJson) - 1);
+  base::FilePath json_store_file_path = CreateInputFile(
+      kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
+      std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(json_store,
                                    CreateStateHandlerManager(json_store));
@@ -254,9 +261,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
-  base::FilePath json_store_file_path =
-      CreateInputFile(kJsonStoreFileName, kCurrentStateWithHistoryJson,
-                      std::size(kCurrentStateWithHistoryJson) - 1);
+  base::FilePath json_store_file_path = CreateInputFile(
+      kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
+      std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(json_store,
                                    CreateStateHandlerManager(json_store));
@@ -284,9 +291,9 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
-  base::FilePath json_store_file_path =
-      CreateInputFile(kJsonStoreFileName, kCurrentStateWithHistoryJson,
-                      std::size(kCurrentStateWithHistoryJson) - 1);
+  base::FilePath json_store_file_path = CreateInputFile(
+      kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
+      std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerMissingHandler(json_store));
@@ -299,6 +306,21 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma) {
+  base::FilePath json_store_file_path = CreateInputFile(
+      kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
+      std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
+
+  AbortRmaRequest request;
+  auto callback = [](const AbortRmaReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
+  };
+  rmad_interface.AbortRma(request, base::Bind(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
@@ -307,21 +329,25 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
                                    CreateStateHandlerManager(json_store));
 
   AbortRmaRequest request;
-  // RMAD_STATE_WELCOME_SCREEN doesn't allow abort.
-  auto callback1 = [](const AbortRmaReply& reply) {
-    EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
-  };
-  rmad_interface.AbortRma(request, base::Bind(callback1));
-  // Do a state transition.
-  TransitionNextStateRequest transition_request;
-  auto transition_callback = [](const GetStateReply& reply) {};
-  rmad_interface.TransitionNextState(transition_request,
-                                     base::Bind(transition_callback));
-  // RMAD_STATE_UNKNOWN allows abort.
-  auto callback2 = [](const AbortRmaReply& reply) {
+  auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
-  rmad_interface.AbortRma(request, base::Bind(callback2));
+  rmad_interface.AbortRma(request, base::Bind(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
+  base::FilePath json_store_file_path = CreateInputFile(
+      kJsonStoreFileName, kCurrentStateWithUnrepeatableHistoryJson,
+      std::size(kCurrentStateWithUnrepeatableHistoryJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(json_store,
+                                   CreateStateHandlerManager(json_store));
+
+  AbortRmaRequest request;
+  auto callback = [](const AbortRmaReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
+  };
+  rmad_interface.AbortRma(request, base::Bind(callback));
 }
 
 }  // namespace rmad

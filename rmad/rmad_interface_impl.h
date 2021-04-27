@@ -37,13 +37,14 @@ class RmadInterfaceImpl final : public RmadInterface {
                 const AbortRmaCallback& callback) override;
 
  private:
-  void InitializeState();
+  void Initialize();
   bool StoreStateHistory();
 
   scoped_refptr<JsonStore> json_store_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
   RmadState::StateCase current_state_;
   std::vector<RmadState::StateCase> state_history_;
+  bool allow_abort_;
 };
 
 }  // namespace rmad

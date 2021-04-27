@@ -33,7 +33,7 @@ RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
   json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->InitializeStateHandlers();
-  InitializeState();
+  Initialize();
 }
 
 RmadInterfaceImpl::RmadInterfaceImpl(
@@ -42,7 +42,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     : RmadInterface(),
       json_store_(json_store),
       state_handler_manager_(std::move(state_handler_manager)) {
-  InitializeState();
+  Initialize();
 }
 
 bool RmadInterfaceImpl::StoreStateHistory() {
@@ -53,9 +53,11 @@ bool RmadInterfaceImpl::StoreStateHistory() {
   return json_store_->SetValue(kRmadStateHistory, state_history);
 }
 
-void RmadInterfaceImpl::InitializeState() {
-  // Initialize state
+void RmadInterfaceImpl::Initialize() {
+  // Initialize |current state_|, |state_history_|, and |allow_abort_| flag.
+  current_state_ = RmadState::STATE_NOT_SET;
   state_history_.clear();
+  allow_abort_ = true;
   if (json_store_->GetReadError() != JsonStore::READ_ERROR_NO_SUCH_FILE) {
     if (std::vector<int> state_history;
         json_store_->GetReadError() == JsonStore::READ_ERROR_NONE &&
@@ -64,9 +66,14 @@ void RmadInterfaceImpl::InitializeState() {
       for (int state : state_history) {
         // Reject any state that does not have a handler.
         if (RmadState::StateCase s = RmadState::StateCase(state);
-            state_handler_manager_->GetStateHandler(s)) {
+            auto handler = state_handler_manager_->GetStateHandler(s)) {
           state_history_.push_back(s);
+          if (!handler->IsRepeatable()) {
+            allow_abort_ = false;
+          }
         } else {
+          // TODO(chenghan): Return to welcome screen with an error implying
+          //                 a fatal file corruption.
           LOG(ERROR) << "Missing handler for state " << state << ".";
         }
       }
@@ -91,9 +98,6 @@ void RmadInterfaceImpl::InitializeState() {
       // TODO(gavindodd): Set to an error state or send a signal to Chrome that
       // the json store failed so a message can be displayed.
     }
-  } else {
-    // Not in RMA.
-    current_state_ = RmadState::STATE_NOT_SET;
   }
 }
 
@@ -133,6 +137,9 @@ void RmadInterfaceImpl::TransitionNextState(
         current_state_ = next;
         state_history_.push_back(current_state_);
         StoreStateHistory();
+        if (!state_handler->IsRepeatable()) {
+          allow_abort_ = false;
+        }
       } else {
         // TODO(gavindodd): Set an error code? Could this error be fatal?
         LOG(ERROR) << "Could not transition from state " << current_state_;
@@ -156,19 +163,24 @@ void RmadInterfaceImpl::TransitionPreviousState(
   GetStateReply reply;
   auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
   CHECK(state_handler);
-  // TODO(gavindodd): Add check that previous state is repeatable.
   if (state_history_.size() > 1) {
-    // Clear data from current state.
-    state_handler->ResetState();
-    // Remove current state from stack.
-    state_history_.pop_back();
-    StoreStateHistory();
-    // Get new state.
-    current_state_ = state_history_.back();
-    // Update the state handler for the new state.
-    state_handler = state_handler_manager_->GetStateHandler(current_state_);
-    CHECK(state_handler);
-    reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
+    auto prev_state_handler = state_handler_manager_->GetStateHandler(
+        *std::prev(state_history_.end(), 2));
+    CHECK(prev_state_handler);
+    if (state_handler->IsRepeatable() && prev_state_handler->IsRepeatable()) {
+      // Clear data from current state.
+      state_handler->ResetState();
+      // Remove current state from stack.
+      state_history_.pop_back();
+      StoreStateHistory();
+      // Get new state.
+      current_state_ = state_history_.back();
+      // Update the state handler for the new state.
+      state_handler = prev_state_handler;
+      reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
+    } else {
+      reply.set_error(RmadErrorCode::RMAD_ERROR_TRANSITION_FAILED);
+    }
   } else {
     reply.set_error(RmadErrorCode::RMAD_ERROR_TRANSITION_FAILED);
   }
@@ -180,9 +192,8 @@ void RmadInterfaceImpl::TransitionPreviousState(
 void RmadInterfaceImpl::AbortRma(const AbortRmaRequest& request,
                                  const AbortRmaCallback& callback) {
   AbortRmaReply reply;
-  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
 
-  if (state_handler && state_handler->IsAllowAbort()) {
+  if (allow_abort_) {
     DLOG(INFO) << "AbortRma: Abort allowed.";
     json_store_->Clear();
     current_state_ = RmadState::STATE_NOT_SET;

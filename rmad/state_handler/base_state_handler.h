@@ -22,11 +22,13 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // macro ASSIGN_STATE(state).
   virtual RmadState::StateCase GetStateCase() const = 0;
 
-  // TODO(chenghan): Make this a global state so states block abort permanently.
-  // Returns whether it's allowed to abort the RMA process from the state. This
-  // is not allowed by default, and can be set as allowed by the macro
-  // SET_ALLOW_ABORT.
-  virtual bool IsAllowAbort() const { return false; }
+  // Returns whether the state is repeatable. A state is repeatable if it can be
+  // run multiple times. For instance, a state that only shows system info, or
+  // some calibration that can be done multiple times. We shouldn't visit an
+  // unrepeatable state twice, unless we restart the RMA process again. A state
+  // is unrepeatable by default, and can be set as repeatable by the macro
+  // SET_REPEATABLE.
+  virtual bool IsRepeatable() const { return false; }
 
   // Store the next RmadState in the RMA flow depending on device status and
   // user input (e.g. |json_store_| content) to |next_state|. Return true if a
@@ -54,8 +56,8 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
 #define ASSIGN_STATE(state) \
   RmadState::StateCase GetStateCase() const override { return state; }
 
-#define SET_ALLOW_ABORT \
-  bool IsAllowAbort() const override { return true; }
+#define SET_REPEATABLE \
+  bool IsRepeatable() const override { return true; }
 
 }  // namespace rmad
 
