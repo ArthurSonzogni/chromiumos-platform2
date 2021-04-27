@@ -1919,40 +1919,58 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_ATTESTATION_STATUS],
                  action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean result = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_is_attestation_prepared(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmIsAttestationPrepared call failed: %s.\n", error->message);
+    attestation::GetEnrollmentPreparationsRequest prepare_req;
+    attestation::GetEnrollmentPreparationsReply prepare_reply;
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.GetEnrollmentPreparations(
+            prepare_req, &prepare_reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmIsAttestationPrepared call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     } else {
+      bool result = false;
+      for (const auto& preparation : prepare_reply.enrollment_preparations()) {
+        if (preparation.second) {
+          result = true;
+          break;
+        }
+      }
       printf("Attestation Prepared: %s\n", (result ? "true" : "false"));
     }
-    if (!org_chromium_CryptohomeInterface_tpm_is_attestation_enrolled(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmIsAttestationEnrolled call failed: %s.\n", error->message);
+
+    attestation::GetStatusRequest req;
+    attestation::GetStatusReply reply;
+    req.set_extended_status(false);
+    error.reset();
+    if (!attestation_proxy.GetStatus(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmIsAttestationEnrolled call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+    } else if (reply.status() !=
+               attestation::AttestationStatus::STATUS_SUCCESS) {
+      printf("TpmIsAttestationEnrolled call failed: status %d.\n",
+             static_cast<int>(reply.status()));
     } else {
-      printf("Attestation Enrolled: %s\n", (result ? "true" : "false"));
+      printf("Attestation Enrolled: %s\n",
+             (reply.enrolled() ? "true" : "false"));
     }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_MORE_STATUS],
                      action.c_str())) {
-    cryptohome::AttestationGetEnrollmentPreparationsRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall(
-            cryptohome::kCryptohomeTpmAttestationGetEnrollmentPreparationsEx,
-            DBUS_METHOD(tpm_attestation_get_enrollment_preparations_ex),
-            DBUS_METHOD(tpm_attestation_get_enrollment_preparations_ex_async),
-            cl, &proxy, request, &reply, false /* print_reply */)) {
-      printf("TpmAttestationGetEnrollmentPreparationsEx call failed.\n");
-    } else if (!reply.HasExtension(
-                   cryptohome::AttestationGetEnrollmentPreparationsReply::
-                       reply)) {
-      printf("AttestationGetEnrollmentPreparationsReply missing.\n");
+    attestation::GetEnrollmentPreparationsRequest prepare_req;
+    attestation::GetEnrollmentPreparationsReply prepare_reply;
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.GetEnrollmentPreparations(
+            prepare_req, &prepare_reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmAttestationGetEnrollmentPreparationsEx call failed: %s\n",
+             BrilloErrorToString(error.get()).c_str());
+    } else if (prepare_reply.status() != attestation::STATUS_SUCCESS) {
+      printf(
+          "TpmAttestationGetEnrollmentPreparationsEx call failed: status %d\n",
+          static_cast<int>(prepare_reply.status()));
     } else {
-      cryptohome::AttestationGetEnrollmentPreparationsReply* extension =
-          reply.MutableExtension(
-              cryptohome::AttestationGetEnrollmentPreparationsReply::reply);
-      auto map = extension->enrollment_preparations();
+      auto map = prepare_reply.enrollment_preparations();
       bool prepared = false;
       for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
         prepared |= it->second;
@@ -1963,14 +1981,24 @@ int main(int argc, char** argv) {
                (it->second ? "true" : "false"));
       }
     }
+
     // TODO(crbug.com/922062): Replace with a call listing all identity certs.
-    brillo::glib::ScopedError error;
-    gboolean result = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_is_attestation_enrolled(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmIsAttestationEnrolled call failed: %s.\n", error->message);
+
+    attestation::GetStatusRequest req;
+    attestation::GetStatusReply reply;
+    req.set_extended_status(false);
+    error.reset();
+    if (!attestation_proxy.GetStatus(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmIsAttestationEnrolled call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+    } else if (reply.status() !=
+               attestation::AttestationStatus::STATUS_SUCCESS) {
+      printf("TpmIsAttestationEnrolled call failed: status %d.\n",
+             static_cast<int>(reply.status()));
     } else {
-      printf("Attestation Enrolled: %s\n", (result ? "true" : "false"));
+      printf("Attestation Enrolled: %s\n",
+             (reply.enrolled() ? "true" : "false"));
     }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_START_ENROLL],
