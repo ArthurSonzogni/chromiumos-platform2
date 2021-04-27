@@ -31,4 +31,9 @@ static_assert(std::is_standard_layout<TpmErrorData>::value);
 }
 #endif
 
+#if defined(__cplusplus)
+bool operator==(const struct TpmErrorData& a, const struct TpmErrorData& b);
+bool operator<(const struct TpmErrorData& a, const struct TpmErrorData& b);
+#endif
+
 #endif  // LIBHWSEC_FOUNDATION_TPM_ERROR_TPM_ERROR_DATA_H_
