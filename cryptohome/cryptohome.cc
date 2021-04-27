@@ -1746,24 +1746,47 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_READY],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean result;
-    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("InstallAttributesIsReady() call failed: %s.\n", error->message);
+    user_data_auth::InstallAttributesGetStatusRequest req;
+    user_data_auth::InstallAttributesGetStatusReply reply;
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.InstallAttributesGetStatus(
+            req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("InstallAttributesGetStatus() call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Call to InstallAttributesGetStatus() failed.\n");
+      return 1;
+    }
+
+    bool result =
+        (reply.state() != user_data_auth::InstallAttributesState::UNKNOWN &&
+         reply.state() !=
+             user_data_auth::InstallAttributesState::TPM_NOT_OWNED);
     printf("InstallAttributesIsReady(): %d\n", static_cast<int>(result));
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_SECURE],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean result;
-    if (!org_chromium_CryptohomeInterface_install_attributes_is_secure(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("InstallAttributesIsSecure() call failed: %s.\n", error->message);
+    user_data_auth::InstallAttributesGetStatusRequest req;
+    user_data_auth::InstallAttributesGetStatusReply reply;
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.InstallAttributesGetStatus(
+            req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("InstallAttributesGetStatus() call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Call to InstallAttributesGetStatus() failed.\n");
+      return 1;
+    }
+
+    bool result = reply.is_secure();
     printf("InstallAttributesIsSecure(): %d\n", static_cast<int>(result));
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_INVALID],
