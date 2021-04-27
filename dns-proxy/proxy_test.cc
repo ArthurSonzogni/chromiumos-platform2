@@ -31,6 +31,7 @@ constexpr int32_t kRequestMaxRetry = 1;
 using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ManagerProxyMock;
 using testing::_;
+using testing::DoAll;
 using testing::IsEmpty;
 using testing::Return;
 using testing::SetArgPointee;
