@@ -139,17 +139,15 @@ TEST_F(DBusServiceTest, TransitionPreviousState) {
 TEST_F(DBusServiceTest, AbortRma) {
   RegisterDBusObjectAsync();
 
-  EXPECT_CALL(mock_rmad_service_, AbortRma(_, _))
-      .WillOnce(Invoke([](const AbortRmaRequest& request,
-                          const RmadInterface::AbortRmaCallback& callback) {
+  EXPECT_CALL(mock_rmad_service_, AbortRma(_))
+      .WillOnce(Invoke([](const RmadInterface::AbortRmaCallback& callback) {
         AbortRmaReply reply;
         reply.set_error(RMAD_ERROR_ABORT_FAILED);
         callback.Run(reply);
       }));
 
-  AbortRmaRequest request;
   AbortRmaReply reply;
-  ExecuteMethod(kAbortRmaMethod, request, &reply);
+  ExecuteMethod(kAbortRmaMethod, &reply);
   EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
 }
 

@@ -34,8 +34,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   void TransitionNextState(const TransitionNextStateRequest& request,
                            const GetStateCallback& callback) override;
   void TransitionPreviousState(const GetStateCallback& callback) override;
-  void AbortRma(const AbortRmaRequest& request,
-                const AbortRmaCallback& callback) override;
+  void AbortRma(const AbortRmaCallback& callback) override;
 
  private:
   void Initialize();

@@ -59,8 +59,7 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
                                  &RmadInterface::TransitionPreviousState>);
   dbus_interface->AddMethodHandler(
       kAbortRmaMethod, base::Unretained(this),
-      &DBusService::HandleMethod<AbortRmaRequest, AbortRmaReply,
-                                 &RmadInterface::AbortRma>);
+      &DBusService::HandleMethod<AbortRmaReply, &RmadInterface::AbortRma>);
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));

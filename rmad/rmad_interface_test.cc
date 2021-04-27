@@ -313,11 +313,10 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   RmadInterfaceImpl rmad_interface(json_store,
                                    CreateStateHandlerManager(json_store));
 
-  AbortRmaRequest request;
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
-  rmad_interface.AbortRma(request, base::Bind(callback));
+  rmad_interface.AbortRma(base::Bind(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
@@ -328,11 +327,10 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   RmadInterfaceImpl rmad_interface(json_store,
                                    CreateStateHandlerManager(json_store));
 
-  AbortRmaRequest request;
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
-  rmad_interface.AbortRma(request, base::Bind(callback));
+  rmad_interface.AbortRma(base::Bind(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
@@ -343,11 +341,10 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
   RmadInterfaceImpl rmad_interface(json_store,
                                    CreateStateHandlerManager(json_store));
 
-  AbortRmaRequest request;
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
   };
-  rmad_interface.AbortRma(request, base::Bind(callback));
+  rmad_interface.AbortRma(base::Bind(callback));
 }
 
 }  // namespace rmad

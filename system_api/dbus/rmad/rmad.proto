@@ -291,10 +291,7 @@ message GetStateReply {
   RmadState state = 3;
 }
 
-// Request from client to abort the entire RMA process.
-message AbortRmaRequest {}
-
-// Reply from daemon.
+// Reply for AbortRma.
 message AbortRmaReply {
   RmadErrorCode error = 1;
 }

@@ -185,8 +185,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
   callback.Run(reply);
 }
 
-void RmadInterfaceImpl::AbortRma(const AbortRmaRequest& request,
-                                 const AbortRmaCallback& callback) {
+void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
   AbortRmaReply reply;
 
   if (allow_abort_) {

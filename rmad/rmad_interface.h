@@ -30,8 +30,7 @@ class RmadInterface {
 
   using AbortRmaCallback = base::Callback<void(const AbortRmaReply&)>;
   // Cancel the RMA process if possible and reboot.
-  virtual void AbortRma(const AbortRmaRequest& request,
-                        const AbortRmaCallback& callback) = 0;
+  virtual void AbortRma(const AbortRmaCallback& callback) = 0;
 };
 
 }  // namespace rmad
