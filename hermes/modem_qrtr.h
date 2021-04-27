@@ -209,7 +209,29 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
     bool operator==(Value value) const { return value_ == value; }
     bool operator!=(Value value) const { return value_ != value; }
     friend std::ostream& operator<<(std::ostream& os, const State state) {
-      os << state.value_;
+      switch (state.value_) {
+        case kUninitialized:
+          os << "Uninitialized";
+          break;
+        case kInitializeStarted:
+          os << "InitializeStarted";
+          break;
+        case kDmsStarted:
+          os << "DmsStarted";
+          break;
+        case kUimStarted:
+          os << "UimStarted";
+          break;
+        case kLogicalChannelPending:
+          os << "LogicalChannelPending";
+          break;
+        case kLogicalChannelOpened:
+          os << "LogicalChannelOpened";
+          break;
+        case kSendApduReady:
+          os << "SendApduReady";
+          break;
+      }
       return os;
     }
 
