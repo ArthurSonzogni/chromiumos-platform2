@@ -1575,28 +1575,39 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    brillo::glib::ScopedError error;
-    gboolean result;
-    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("IsReady call failed: %s.\n", error->message);
+    // Make sure install attributes are ready.
+    user_data_auth::InstallAttributesGetStatusRequest status_req;
+    user_data_auth::InstallAttributesGetStatusReply status_reply;
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.InstallAttributesGetStatus(
+            status_req, &status_reply, &error, timeout_ms) ||
+        error) {
+      printf("InstallAttributesGetStatus call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (result == FALSE) {
+    if (status_reply.state() ==
+            user_data_auth::InstallAttributesState::UNKNOWN ||
+        status_reply.state() ==
+            user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
       printf("InstallAttributes() is not ready.\n");
       return 1;
     }
 
-    brillo::glib::ScopedArray value;
-    if (!org_chromium_CryptohomeInterface_install_attributes_get(
-            proxy.gproxy(), name.c_str(), &brillo::Resetter(&value).lvalue(),
-            &result, &brillo::Resetter(&error).lvalue())) {
-      printf("Get() failed: %s.\n", error->message);
+    user_data_auth::InstallAttributesGetRequest req;
+    user_data_auth::InstallAttributesGetReply reply;
+    req.set_name(name);
+    error.reset();
+    if (!install_attributes_proxy.InstallAttributesGet(req, &reply, &error,
+                                                       timeout_ms) ||
+        error) {
+      printf("InstallAttributesGet call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    std::string value_str(value->data, value->len);
-    if (result == TRUE) {
-      printf("%s\n", value_str.c_str());
+    if (reply.error() ==
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("%s\n", reply.value().c_str());
     } else {
       return 1;
     }
@@ -1614,28 +1625,41 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    brillo::glib::ScopedError error;
-    gboolean result;
-    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("IsReady call failed: %s.\n", error->message);
+    // Make sure install attributes are ready.
+    user_data_auth::InstallAttributesGetStatusRequest status_req;
+    user_data_auth::InstallAttributesGetStatusReply status_reply;
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.InstallAttributesGetStatus(
+            status_req, &status_reply, &error, timeout_ms) ||
+        error) {
+      printf("InstallAttributesGetStatus call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    if (result == FALSE) {
+    if (status_reply.state() ==
+            user_data_auth::InstallAttributesState::UNKNOWN ||
+        status_reply.state() ==
+            user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
       printf("InstallAttributes() is not ready.\n");
       return 1;
     }
 
-    brillo::glib::ScopedArray value_ary(g_array_new(FALSE, FALSE, 1));
-    g_array_append_vals(value_ary.get(), value.c_str(), value.size() + 1);
-    if (!org_chromium_CryptohomeInterface_install_attributes_set(
-            proxy.gproxy(), name.c_str(), value_ary.get(), &result,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("Set() failed: %s.\n", error->message);
+    user_data_auth::InstallAttributesSetRequest req;
+    user_data_auth::InstallAttributesSetReply reply;
+    req.set_name(name);
+    // It is expected that a null terminator is part of the value.
+    value.push_back('\0');
+    req.set_value(value);
+    error.reset();
+    if (!install_attributes_proxy.InstallAttributesSet(req, &reply, &error,
+                                                       timeout_ms) ||
+        error) {
+      printf("InstallAttributesSet call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (result == FALSE) {
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Call to InstallAttributesSet() failed.\n");
       return 1;
     }
