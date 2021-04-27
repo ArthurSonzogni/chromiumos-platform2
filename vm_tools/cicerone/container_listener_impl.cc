@@ -475,6 +475,41 @@ grpc::Status ContainerListenerImpl::LowDiskSpaceTriggered(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::ForwardSecurityKeyMessage(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::ForwardSecurityKeyMessageRequest* request,
+    vm_tools::container::ForwardSecurityKeyMessageResponse* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+  vm_tools::sk_forwarding::ForwardSecurityKeyMessageRequest
+      security_key_message;
+  security_key_message.set_message(request->message());
+
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  vm_tools::sk_forwarding::ForwardSecurityKeyMessageResponse
+      security_key_response;
+
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::ForwardSecurityKeyMessage,
+                 service_, cid, std::move(security_key_message),
+                 &security_key_response, &event));
+  event.Wait();
+  if (security_key_response.message().empty()) {
+    LOG(ERROR)
+        << "Failure forwarding security key message from ContainerListener.";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in ForwardSecurityKeyMessage");
+  }
+
+  response->set_message(security_key_response.message());
+  return grpc::Status::OK;
+}
+
 uint32_t ContainerListenerImpl::ExtractCidFromPeerAddress(
     grpc::ServerContext* ctx) {
   uint32_t cid = 0;

@@ -1174,6 +1174,54 @@ void Service::OpenTerminal(const std::string& container_token,
   event->Signal();
 }
 
+void Service::ForwardSecurityKeyMessage(
+    const uint32_t cid,
+    vm_tools::sk_forwarding::ForwardSecurityKeyMessageRequest
+        security_key_message,
+    vm_tools::sk_forwarding::ForwardSecurityKeyMessageResponse*
+        security_key_response,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(security_key_response);
+  CHECK(event);
+  security_key_response->Clear();
+  std::string owner_id;
+  std::string vm_name;
+  VirtualMachine* vm;
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    LOG(ERROR) << "Failed to get VirtualMachine for cid: " << cid;
+    event->Signal();
+    return;
+  }
+
+  security_key_message.set_vm_name(vm_name);
+  security_key_message.set_owner_id(owner_id);
+  dbus::MethodCall method_call(
+      vm_tools::sk_forwarding::kVmSKForwardingServiceInterface,
+      vm_tools::sk_forwarding::
+          kVmSKForwardingServiceForwardSecurityKeyMessageMethod);
+  dbus::MessageWriter(&method_call)
+      .AppendProtoAsArrayOfBytes(std::move(security_key_message));
+  std::unique_ptr<dbus::Response> dbus_response =
+      vm_sk_forwarding_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to Chrome for "
+               << "ForwardSecurityKeyMessage";
+    event->Signal();
+    return;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(security_key_response)) {
+    LOG(ERROR) << "Failed to parse dbus message response for "
+               << "ForwardSecurityKeyMessage";
+    security_key_response->Clear();
+  }
+
+  event->Signal();
+}
+
 void Service::UpdateMimeTypes(const std::string& container_token,
                               vm_tools::apps::MimeTypes mime_types,
                               const uint32_t cid,
@@ -1330,6 +1378,14 @@ bool Service::Init(
   if (!concierge_service_proxy_) {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << vm_tools::concierge::kVmConciergeServiceName;
+    return false;
+  }
+  vm_sk_forwarding_service_proxy_ = bus_->GetObjectProxy(
+      vm_tools::sk_forwarding::kVmSKForwardingServiceName,
+      dbus::ObjectPath(vm_tools::sk_forwarding::kVmSKForwardingServicePath));
+  if (!vm_sk_forwarding_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << vm_tools::sk_forwarding::kVmSKForwardingServiceName;
     return false;
   }
 

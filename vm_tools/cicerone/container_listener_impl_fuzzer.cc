@@ -181,6 +181,8 @@ DEFINE_PROTO_FUZZER(
 
     SetUpMockObjectProxy(
         action, &test_framework.get_mock_vm_applications_service_proxy());
+    SetUpMockObjectProxy(
+        action, &test_framework.get_mock_vm_sk_forwarding_service_proxy());
     SetUpMockObjectProxy(action,
                          &test_framework.get_mock_url_handler_service_proxy());
     SetUpMockObjectProxy(action,
@@ -196,6 +198,7 @@ DEFINE_PROTO_FUZZER(
     vm_tools::EmptyMessage response;
     vm_tools::tremplin::EmptyMessage tremplin_response;
     vm_tools::cicerone::MetricsConsentResponse metrics_response;
+    vm_tools::container::ForwardSecurityKeyMessageResponse forward_sk_response;
 
     switch (action.input_case()) {
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
@@ -350,6 +353,13 @@ DEFINE_PROTO_FUZZER(
           kLowDiskSpaceTriggeredInfo:
         container_listener->LowDiskSpaceTriggered(
             &context, &action.low_disk_space_triggered_info(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kForwardSecurityKeyMessageRequest:
+        container_listener->ForwardSecurityKeyMessage(
+            &context, &action.forward_security_key_message_request(),
+            &forward_sk_response);
         break;
 
       default:

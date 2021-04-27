@@ -30,6 +30,7 @@
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_sk_forwarding/proto_bindings/sk_forwarding.pb.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "vm_tools/cicerone/container.h"
@@ -350,6 +351,21 @@ class Service final {
                                       std::string* owner_id_out,
                                       std::string* name_out);
 
+  // Sends a D-Bus message to Chrome to forward Security Key request to gnubbyd
+  // service. It will use |cid| to resolve the request to a VM in order to make
+  // sure request is forwarded to the extension in the VM owner's profile.
+  // |security_key_message| contains serialized message for
+  // |security_key_response| contains the gnubbyd response on the request. In
+  // case of failure |security_key_response| is empty.
+  // Signals |event| when done.
+  void ForwardSecurityKeyMessage(
+      const uint32_t cid,
+      vm_tools::sk_forwarding::ForwardSecurityKeyMessageRequest
+          security_key_message,
+      vm_tools::sk_forwarding::ForwardSecurityKeyMessageResponse*
+          security_key_response,
+      base::WaitableEvent* event);
+
  private:
   // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.
   // It will use |cid| to lookup VM and owner, and set these fields on
@@ -618,12 +634,13 @@ class Service final {
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* exported_object_;             // Owned by |bus_|.
-  dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
-  dbus::ObjectProxy* url_handler_service_proxy_;      // Owned by |bus_|.
-  dbus::ObjectProxy* chunneld_service_proxy_;         // Owned by |bus_|.
-  dbus::ObjectProxy* crosdns_service_proxy_;          // Owned by |bus_|.
-  dbus::ObjectProxy* concierge_service_proxy_;        // Owned by |bus_|.
+  dbus::ExportedObject* exported_object_;              // Owned by |bus_|.
+  dbus::ObjectProxy* vm_applications_service_proxy_;   // Owned by |bus_|.
+  dbus::ObjectProxy* url_handler_service_proxy_;       // Owned by |bus_|.
+  dbus::ObjectProxy* chunneld_service_proxy_;          // Owned by |bus_|.
+  dbus::ObjectProxy* crosdns_service_proxy_;           // Owned by |bus_|.
+  dbus::ObjectProxy* concierge_service_proxy_;         // Owned by |bus_|.
+  dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;  // Owned by |bus_|.
 
   // The ContainerListener service.
   std::unique_ptr<ContainerListenerImpl> container_listener_;

@@ -84,6 +84,11 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::LowDiskSpaceTriggeredInfo* request,
       vm_tools::EmptyMessage* response) override;
+  grpc::Status ForwardSecurityKeyMessage(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::ForwardSecurityKeyMessageRequest* request,
+      vm_tools::container::ForwardSecurityKeyMessageResponse* response)
+      override;
 
  private:
   // Returns 0 on failure, otherwise the parsed vsock cid from a

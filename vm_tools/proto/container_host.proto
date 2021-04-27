@@ -232,6 +232,31 @@ message LowDiskSpaceTriggeredInfo {
   uint64 free_bytes = 2;
 }
 
+// Request protobuf for forwarding Security Key requests to the gnubbyd
+// extension.
+message ForwardSecurityKeyMessageRequest {
+  // JSON message that will be forwarded to the Chrome Extension.
+  // It will be used by the extension to construct a request for gnubbyd.
+  // Examples of the message:
+  //   - {"type":"GNUBBY_MESSAGE",
+  //      "payload": {"type":"auth-agent@openssh.com","data":[124]}}
+  //   - {"type":"HELLO"}
+  //   - {"data": [124]}
+  string message = 1;
+}
+
+// Response for ForwardSecurityKeyMessageRequest.
+message ForwardSecurityKeyMessageResponse {
+  // JSON message that contains response from gnubbyd and additional info, if
+  // any. It will be passed to the VM as-is.
+  // Examples of the message:
+  //   - {"type":"GNUBBY_REPLY",
+  //      "payload": {"type":"auth-agent@openssh.com","data":[1,2,3,124]}}
+  //   - {"type":"HELLO", "version":"1.2.3.4"}
+  //   - {"data": [1,2,123]}
+  string message = 1;
+}
+
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
@@ -283,6 +308,10 @@ service ContainerListener {
 
   // Called by a container when free disk space inside the container is low.
   rpc LowDiskSpaceTriggered(LowDiskSpaceTriggeredInfo) returns (EmptyMessage);
+
+  // Called by a VM to forward a Security Key request to gnubbyd extension.
+  rpc ForwardSecurityKeyMessage(ForwardSecurityKeyMessageRequest)
+      returns (ForwardSecurityKeyMessageResponse);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.
