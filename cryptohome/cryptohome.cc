@@ -1797,21 +1797,20 @@ int main(int argc, char** argv) {
     // If no account_id is specified, proceed with the empty string.
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     if (!account_id.empty()) {
-      brillo::glib::ScopedError error;
-      gchar* label = NULL;
-      gchar* pin = NULL;
-      int slot = 0;
-      if (!org_chromium_CryptohomeInterface_pkcs11_get_tpm_token_info_for_user(
-              proxy.gproxy(), account_id.c_str(), &label, &pin, &slot,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("PKCS #11 info call failed: %s.\n", error->message);
+      user_data_auth::Pkcs11GetTpmTokenInfoRequest req;
+      user_data_auth::Pkcs11GetTpmTokenInfoReply reply;
+      req.set_username(account_id);
+      brillo::ErrorPtr error;
+      if (!pkcs11_proxy.Pkcs11GetTpmTokenInfo(req, &reply, &error,
+                                              timeout_ms) ||
+          error) {
+        printf("PKCS #11 info call failed: %s.\n",
+               BrilloErrorToString(error.get()).c_str());
       } else {
         printf("Token properties for %s:\n", account_id.c_str());
-        printf("Label = %s\n", label);
-        printf("Pin = %s\n", pin);
-        printf("Slot = %d\n", slot);
-        g_free(label);
-        g_free(pin);
+        printf("Label = %s\n", reply.token_info().label().c_str());
+        printf("Pin = %s\n", reply.token_info().user_pin().c_str());
+        printf("Slot = %d\n", reply.token_info().slot());
       }
     } else {
       printf("Account ID/Username not specified.\n");
@@ -1820,21 +1819,18 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_PKCS11_GET_SYSTEM_TOKEN_INFO],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gchar* label = NULL;
-    gchar* pin = NULL;
-    int slot = 0;
-    if (!org_chromium_CryptohomeInterface_pkcs11_get_tpm_token_info(
-            proxy.gproxy(), &label, &pin, &slot,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("PKCS #11 info call failed: %s.\n", error->message);
+    user_data_auth::Pkcs11GetTpmTokenInfoRequest req;
+    user_data_auth::Pkcs11GetTpmTokenInfoReply reply;
+    brillo::ErrorPtr error;
+    if (!pkcs11_proxy.Pkcs11GetTpmTokenInfo(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("PKCS #11 info call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     } else {
       printf("System token properties:\n");
-      printf("Label = %s\n", label);
-      printf("Pin = %s\n", pin);
-      printf("Slot = %d\n", slot);
-      g_free(label);
-      g_free(pin);
+      printf("Label = %s\n", reply.token_info().label().c_str());
+      printf("Pin = %s\n", reply.token_info().user_pin().c_str());
+      printf("Slot = %d\n", reply.token_info().slot());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_PKCS11_IS_USER_TOKEN_OK],
