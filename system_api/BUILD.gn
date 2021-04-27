@@ -56,6 +56,7 @@ group("all") {
     ":system_api-vm_permission_service-protos",
     ":system_api-vm_plugin_dispatcher-goprotos",
     ":system_api-vm_plugin_dispatcher-protos",
+    ":system_api-vm_sk_forwarding-protos",
   ]
 }
 
@@ -328,6 +329,13 @@ proto_library("system_api-vm_applications-protos") {
   proto_in_dir = "dbus/vm_applications"
   proto_out_dir = "include/vm_applications/proto_bindings"
   sources = [ "${proto_in_dir}/apps.proto" ]
+  standalone = true
+}
+
+proto_library("system_api-vm_sk_forwarding-protos") {
+  proto_in_dir = "dbus/vm_sk_forwarding"
+  proto_out_dir = "include/vm_sk_forwarding/proto_bindings"
+  sources = [ "${proto_in_dir}/sk_forwarding.proto" ]
   standalone = true
 }
 
