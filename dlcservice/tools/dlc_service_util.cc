@@ -125,7 +125,12 @@ class DlcServiceUtil : public brillo::Daemon {
       return EX_OK;
     }
 
-    CHECK(!FLAGS_id.empty()) << "Please specify a single DLC ID.";
+    if (FLAGS_id.empty()) {
+      LOG(ERROR) << "Please specify a single DLC ID.";
+      Quit();
+      return EX_SOFTWARE;
+    }
+
     dlc_id_ = FLAGS_id;
     omaha_url_ = FLAGS_omaha_url;
 
