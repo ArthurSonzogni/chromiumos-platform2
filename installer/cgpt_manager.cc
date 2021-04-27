@@ -74,7 +74,7 @@ bool WriteToNor(const string& data, const string& region) {
   fd.reset();
 
   std::vector<string> cmd{"/usr/sbin/flashrom", "-i", region + ":" + tmp_name,
-                          "-w", "--fast-verify"};
+                          "-w", "--noverify-all"};
   if (RunCommand(cmd) != 0) {
     warnx("Cannot write %s to %s section.\n", tmp_name, region.c_str());
     return false;

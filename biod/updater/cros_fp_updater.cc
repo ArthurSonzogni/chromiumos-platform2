@@ -137,7 +137,7 @@ bool CrosFpDeviceUpdate::Flash(const CrosFpFirmware& fw,
   LOG(INFO) << "Flashing " << image_str << " of FPMCU.";
 
   base::CommandLine cmd{base::FilePath(kFlashromPath)};
-  cmd.AppendSwitch("fast-verify");
+  cmd.AppendSwitch("noverify-all");
   cmd.AppendSwitchASCII("programmer", "ec:type=fp");
   cmd.AppendSwitchASCII("image", "EC_" + image_str);
 
