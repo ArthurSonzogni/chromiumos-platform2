@@ -43,6 +43,7 @@
 #include "crash-reporter/missed_crash_collector.h"
 #include "crash-reporter/mount_failure_collector.h"
 #include "crash-reporter/paths.h"
+#include "crash-reporter/security_anomaly_collector.h"
 #include "crash-reporter/selinux_violation_collector.h"
 #include "crash-reporter/udev_collector.h"
 #include "crash-reporter/unclean_shutdown_collector.h"
@@ -281,6 +282,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(crash_reporter_crashed, false,
               "Report crash_reporter itself crashing");
   DEFINE_string(service_failure, "", "The specific service name that failed");
+  DEFINE_bool(security_anomaly, false, "Report collected security anomaly");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   // TODO(crbug.com/1000398): Remove --chrome flag after Chrome switches from
   // breakpad to crashpad.
@@ -573,6 +575,9 @@ int main(int argc, char* argv[]) {
 
   collectors.push_back(
       VmCollector::GetHandlerInfo(FLAGS_vm_crash, FLAGS_vm_pid));
+
+  collectors.push_back(SecurityAnomalyCollector::GetHandlerInfo(
+      FLAGS_weight, FLAGS_security_anomaly));
 
   for (const CollectorInfo& collector : collectors) {
     bool ran_init = false;
