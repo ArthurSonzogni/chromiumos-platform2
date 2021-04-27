@@ -7571,6 +7571,7 @@ mno {
     mobile_apn {
       apn : "rakuten.jp"
       is_attach_apn : true
+      ip_type : IPV4V6
     }
   }
 }
