@@ -1616,7 +1616,9 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   cellular()->OnOperatorChanged();
 
   // Bail-out early if we don't want to setup the attach APN
-  if (!cellular()->use_attach_apn())
+  // or the APN parameters are not ready yet.
+  if (!cellular()->use_attach_apn() || !cellular()->service() ||
+      !cellular()->home_provider_info()->IsMobileNetworkOperatorKnown())
     return;
 
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
