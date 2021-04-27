@@ -572,6 +572,9 @@ class Cellular : public Device,
                            const Error& error);
   void PollLocationTask();
 
+  bool StateIsConnected();
+  bool StateIsRegistered();
+
   State state_ = kStateDisabled;
   ModemState modem_state_ = kModemStateUnknown;
   CapabilityState capability_state_ = CapabilityState::kCellularStopped;

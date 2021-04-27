@@ -873,8 +873,7 @@ void Cellular::HandleNewRegistrationState() {
       metrics()->NotifyCellularDeviceDrop(
           capability_->GetNetworkTechnologyString(), service_->strength());
     }
-    if (state_ == kStateLinked || state_ == kStateConnected ||
-        state_ == kStateRegistered) {
+    if (StateIsRegistered()) {
       SetState(kStateEnabled);
     }
     StopLocationPolling();
@@ -1066,7 +1065,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     // from the current Service if connected, switch to the correct SIM slot,
     // and set |connect_pending_iccid_|. The Connect will be retried after the
     // slot change completes (which may take a while).
-    if (state_ == kStateConnected || state_ == kStateLinked)
+    if (StateIsConnected())
       Disconnect(nullptr, "switching service");
     if (capability_->SetPrimarySimSlotForIccid(service->iccid())) {
       SLOG(this, 2) << "Set Pending connect: " << service->log_name();
@@ -1084,7 +1083,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (state_ == kStateConnected || state_ == kStateLinked) {
+  if (StateIsConnected()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
     return;
@@ -1147,7 +1146,7 @@ void Cellular::OnConnecting() {
 
 void Cellular::OnConnected() {
   SLOG(this, 2) << __func__;
-  if (state_ == kStateConnected || state_ == kStateLinked) {
+  if (StateIsConnected()) {
     SLOG(this, 2) << "Already connected";
     return;
   }
@@ -1166,7 +1165,7 @@ void Cellular::OnConnected() {
 
 void Cellular::Disconnect(Error* error, const char* reason) {
   SLOG(this, 2) << __func__ << ": " << reason;
-  if (state_ != kStateConnected && state_ != kStateLinked) {
+  if (!StateIsConnected()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotConnected,
                           "Not connected; request ignored.");
     return;
@@ -1563,7 +1562,7 @@ void Cellular::OnTerminationCompleted(const Error& error) {
 }
 
 bool Cellular::DisconnectCleanup() {
-  if (state_ != kStateConnected && state_ != kStateLinked)
+  if (!StateIsConnected())
     return false;
   SetState(kStateRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
@@ -1736,22 +1735,23 @@ void Cellular::ConnectToPending() {
   }
 
   if (modem_state_ == kModemStateLocked) {
-    SLOG(this, 2) << __func__ << ": Modem locked";
+    LOG(WARNING) << __func__ << ": Modem locked";
     ConnectToPendingFailed(Service::kFailureSimLocked);
     return;
   }
-  if (state_ != kStateRegistered) {
-    SLOG(this, 2) << __func__ << ": Cellular not registered";
+  if (capability_state_ != CapabilityState::kModemStarted) {
+    LOG(WARNING) << __func__ << ": Modem not started";
     ConnectToPendingFailed(Service::kFailureUnknown);
     return;
   }
-  if (capability_state_ != CapabilityState::kModemStarted) {
-    SLOG(this, 2) << __func__ << ": Modem not started";
+  if (!StateIsRegistered()) {
+    LOG(WARNING) << __func__ << ": Cellular not registered, State: "
+                 << GetStateString(state_);
     ConnectToPendingFailed(Service::kFailureUnknown);
     return;
   }
   if (modem_state_ != kModemStateRegistered) {
-    SLOG(this, 2) << __func__ << ": Modem not registered";
+    LOG(WARNING) << __func__ << ": Modem not registered";
     ConnectToPendingFailed(Service::kFailureUnknown);
     return;
   }
@@ -1789,7 +1789,8 @@ void Cellular::ConnectToPendingAfterDelay() {
   }
 
   Error error;
-  LOG(INFO) << "Pending connect to Cellular Service: " << service->log_name();
+  LOG(INFO) << "Connecting to pending Cellular Service: "
+            << service->log_name();
   service->Connect(&error, "Pending connect");
 }
 
@@ -2407,6 +2408,15 @@ void Cellular::OnOperatorChanged() {
   } else if (home_provider_known) {
     UpdateServingOperator(home_provider_info_.get(), home_provider_info_.get());
   }
+}
+
+bool Cellular::StateIsConnected() {
+  return state_ == kStateConnected || state_ == kStateLinked;
+}
+
+bool Cellular::StateIsRegistered() {
+  return state_ == kStateRegistered || state_ == kStateConnected ||
+         state_ == kStateLinked;
 }
 
 void Cellular::SetServiceForTesting(CellularServiceRefPtr service) {
