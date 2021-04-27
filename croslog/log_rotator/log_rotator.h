@@ -27,6 +27,9 @@ class LogRotator {
   // Rotate the log files. This method keeps (|max_index| + 1) files in
   // maximum, including the log file numbered |max_index|.
   void RotateLogFile(int max_index);
+  // Create the base log file with copying the permission from the previous
+  // log files. It should be called after rotation.
+  void CreateNewBaseFile(int max_index);
 
  private:
   base::FilePath base_log_path_;

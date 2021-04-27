@@ -120,6 +120,56 @@ void LogRotator::RotateLogFile(int max_index) {
   }
 
   CleanUpFiles(max_index);
+  CreateNewBaseFile(max_index);
+}
+
+void LogRotator::CreateNewBaseFile(int max_index) {
+  const base::FilePath base_file_path = GetFilePathWithIndex(0);
+  if (base::PathExists(base_file_path))
+    return;
+
+  int mode = -1;
+  uid_t uid = 0;
+  gid_t gid = 0;
+  // Traverse the log files from newer one, and retrieve the file info.
+  for (int i = 1; i < max_index; ++i) {
+    const base::FilePath previous_file_path = GetFilePathWithIndex(i);
+    if (!base::PathExists(previous_file_path))
+      continue;
+
+    base::stat_wrapper_t file_info;
+    if (base::File::Stat(previous_file_path.value().c_str(), &file_info) == 0) {
+      constexpr int kFilePermissionMask = S_IRWXU | S_IRWXG | S_IRWXO;
+      mode = file_info.st_mode & kFilePermissionMask;
+      uid = file_info.st_uid;
+      gid = file_info.st_gid;
+      break;
+    }
+  }
+
+  if (mode == -1) {
+    LOG(ERROR) << "Error on retriving the file info from old log files. New "
+                  "files are not created automatically.";
+    return;
+  }
+
+  // Create the log file.
+  base::File base_file(base_file_path,
+                       base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  if (!base_file.IsValid()) {
+    LOG(ERROR) << "Failed to create or open a new log file.";
+    return;
+  }
+
+  // Set the same permission.
+  if (HANDLE_EINTR(fchmod(base_file.GetPlatformFile(), mode)) != 0) {
+    LOG(ERROR) << "Failed to set the mode to the new log file.";
+  }
+
+  // Set the same owner.
+  if (HANDLE_EINTR(fchown(base_file.GetPlatformFile(), uid, gid)) != 0) {
+    LOG(ERROR) << "Failed to set the owner and group to the new log file.";
+  }
 }
 
 void RotateStandardLogFiles() {

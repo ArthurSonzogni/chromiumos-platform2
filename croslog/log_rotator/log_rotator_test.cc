@@ -216,7 +216,7 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     LogRotator rotator(base_file_path);
     rotator.RotateLogFile(10);
 
-    EXPECT_FALSE(base::PathExists(temp_dir.GetPath().Append("test")));
+    EXPECT_EQ("", ReadFile(base_file_path));
     EXPECT_EQ("0", ReadFile(temp_dir.GetPath().Append("test.1")));
     EXPECT_EQ("1", ReadFile(temp_dir.GetPath().Append("test.2")));
     EXPECT_EQ("2", ReadFile(temp_dir.GetPath().Append("test.3")));
@@ -251,7 +251,7 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     LogRotator rotator(base_file_path);
     rotator.RotateLogFile(3);
 
-    EXPECT_FALSE(base::PathExists(temp_dir.GetPath().Append("test")));
+    EXPECT_EQ("", ReadFile(base_file_path));
     EXPECT_EQ("0", ReadFile(temp_dir.GetPath().Append("test.1")));
     EXPECT_EQ("1", ReadFile(temp_dir.GetPath().Append("test.2")));
     EXPECT_EQ("2", ReadFile(temp_dir.GetPath().Append("test.3")));
@@ -288,7 +288,7 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     LogRotator rotator(base_file_path);
     rotator.RotateLogFile(5);
 
-    EXPECT_FALSE(base::PathExists(temp_dir.GetPath().Append("test")));
+    EXPECT_EQ("", ReadFile(base_file_path));
     EXPECT_EQ("0", ReadFile(temp_dir.GetPath().Append("test.1")));
     EXPECT_EQ("1", ReadFile(temp_dir.GetPath().Append("test.2")));
     EXPECT_EQ("2", ReadFile(temp_dir.GetPath().Append("test.3")));
@@ -296,6 +296,32 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     EXPECT_EQ("4", ReadFile(temp_dir.GetPath().Append("test.5")));
     EXPECT_FALSE(base::PathExists(temp_dir.GetPath().Append("test.6")));
     EXPECT_FALSE(base::PathExists(temp_dir.GetPath().Append("test.0")));
+  }
+}
+
+TEST_F(LogRotatorTest, RotateLogFileWithInheritingPermission) {
+  {
+    base::ScopedTempDir temp_dir;
+    EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+
+    constexpr int FILE_MODE = S_IRUSR | S_IXOTH;
+
+    base::FilePath base_file_path = temp_dir.GetPath().Append("test");
+    base::WriteFile(base_file_path, "0", 1);
+    base::SetPosixFilePermissions(base_file_path, FILE_MODE);
+
+    int mode;
+    EXPECT_TRUE(base::GetPosixFilePermissions(base_file_path, &mode));
+    EXPECT_EQ(FILE_MODE, mode);
+
+    LogRotator rotator(base_file_path);
+    rotator.RotateLogFile(2);
+
+    EXPECT_TRUE(base::GetPosixFilePermissions(base_file_path, &mode));
+    EXPECT_EQ(FILE_MODE, mode);
+    EXPECT_TRUE(base::GetPosixFilePermissions(
+        temp_dir.GetPath().Append("test.1"), &mode));
+    EXPECT_EQ(FILE_MODE, mode);
   }
 }
 
