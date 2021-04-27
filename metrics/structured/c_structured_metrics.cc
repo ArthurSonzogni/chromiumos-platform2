@@ -64,6 +64,7 @@ extern "C" void BluetoothDeviceInfoReport(int64_t system_time,
                                           const char* device_id,
                                           int device_type,
                                           int device_class,
+                                          int device_category,
                                           int vendor_id,
                                           int vendor_id_source,
                                           int product_id,
@@ -73,6 +74,7 @@ extern "C" void BluetoothDeviceInfoReport(int64_t system_time,
       .SetDeviceId(device_id)
       .SetDeviceType(device_type)
       .SetDeviceClass(device_class)
+      .SetDeviceCategory(device_category)
       .SetVendorId(vendor_id)
       .SetVendorIdSource(vendor_id_source)
       .SetProductId(product_id)

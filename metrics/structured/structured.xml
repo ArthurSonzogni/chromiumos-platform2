@@ -139,7 +139,12 @@
     </metric>
     <metric name="DeviceClass" type="int">
       <summary>
-        The bluetooth device class such as HID, Headset.
+        The major class of the BR/EDR device.
+      </summary>
+    </metric>
+    <metric name="DeviceCategory" type="int">
+      <summary>
+        The category of the BLE device.
       </summary>
     </metric>
     <metric name="VendorId" type="int">
