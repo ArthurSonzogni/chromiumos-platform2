@@ -21,7 +21,7 @@ RmadState::StateCase WelcomeScreenStateHandler::GetNextStateCase() const {
 }
 
 RmadErrorCode WelcomeScreenStateHandler::UpdateState(const RmadState& state) {
-  CHECK(state.has_welcome()) << "RmadState missing welcome state";
+  CHECK(state.has_welcome()) << "RmadState missing welcome state.";
   const WelcomeState& welcome = state.welcome();
   if (welcome.choice() == WelcomeState::RMAD_CHOICE_UNKNOWN) {
     // TODO(gavindodd): What is correct error for unset/missing fields?
@@ -39,10 +39,7 @@ RmadErrorCode WelcomeScreenStateHandler::UpdateState(const RmadState& state) {
 }
 
 RmadErrorCode WelcomeScreenStateHandler::ResetState() {
-  // TODO(gavindodd): Set state values in the WelcomeState proto and add to
-  // json_store.
-  WelcomeState* welcome = new WelcomeState;
-  state_.set_allocated_welcome(welcome);
+  state_.set_allocated_welcome(new WelcomeState);
 
   return RMAD_ERROR_OK;
 }

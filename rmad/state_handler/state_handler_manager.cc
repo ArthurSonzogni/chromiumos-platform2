@@ -9,7 +9,22 @@
 #include <base/check.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "rmad/state_handler/calibrate_components_state_handler.h"
+#include "rmad/state_handler/components_repair_state_handler.h"
+#include "rmad/state_handler/device_destination_state_handler.h"
+#include "rmad/state_handler/finalize_state_handler.h"
+#include "rmad/state_handler/provision_device_state_handler.h"
+#include "rmad/state_handler/restock_state_handler.h"
+#include "rmad/state_handler/select_network_state_handler.h"
+#include "rmad/state_handler/update_chrome_state_handler.h"
+#include "rmad/state_handler/update_device_info_state_handler.h"
+#include "rmad/state_handler/update_ro_firmware_state_handler.h"
 #include "rmad/state_handler/welcome_screen_state_handler.h"
+#include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
+#include "rmad/state_handler/write_protect_disable_method_state_handler.h"
+#include "rmad/state_handler/write_protect_disable_physical_state_handler.h"
+#include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
+#include "rmad/state_handler/write_protect_enable_physical_state_handler.h"
 
 namespace rmad {
 
@@ -20,7 +35,7 @@ void StateHandlerManager::RegisterStateHandler(
     scoped_refptr<BaseStateHandler> handler) {
   RmadState::StateCase state = handler->GetStateCase();
   auto res = state_handler_map_.insert(std::make_pair(state, handler));
-  // Check if there are StateId collisions.
+  // Check if there are StateCase collisions.
   DCHECK(res.second) << "Registered handlers should have unique RmadStates.";
 }
 
@@ -32,6 +47,37 @@ void StateHandlerManager::InitializeStateHandlers() {
   // Maybe initializing states in history order would help?
   RegisterStateHandler(
       base::MakeRefCounted<WelcomeScreenStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<SelectNetworkStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<UpdateChromeStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<ComponentsRepairStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<DeviceDestinationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
+          json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
+          json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<UpdateRoFirmwareStateHandler>(json_store_));
+  RegisterStateHandler(base::MakeRefCounted<RestockStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<UpdateDeviceInfoStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<CalibrateComponentsStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<ProvisionDeviceStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
+          json_store_));
+  RegisterStateHandler(base::MakeRefCounted<FinalizeStateHandler>(json_store_));
 }
 
 scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(
