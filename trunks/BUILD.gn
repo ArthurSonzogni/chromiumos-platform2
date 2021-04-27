@@ -203,6 +203,7 @@ static_library("trunks_test") {
     "//common-mk:nouse_thin_archive",
     ":target_defaults",
   ]
+  deps = [ ":trunks" ]
 }
 
 if (use.test) {
