@@ -31,6 +31,7 @@ class MountEntry {
 
   const base::FilePath& src() const { return src_; }
   const base::FilePath& dest() const { return dest_; }
+  const std::string& type() const { return type_; }
 
  private:
   base::FilePath src_;

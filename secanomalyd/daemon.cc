@@ -108,7 +108,21 @@ void Daemon::DoRwMountCheck() {
         }
         // If we haven't seen the mount, save it.
         wx_mounts_[e.dest()] = e;
-        VLOG(1) << "Found W+X mount at " << e.dest();
+        VLOG(1) << "Found W+X mount at '" << e.dest() << "', type " << e.type();
+
+        if (e.type() == "nsfs" || e.type() == "proc") {
+          // "nsfs" mounts happen when a namespace file in /proc/<pid>/ns/ gets
+          // bind-mounted somewhere else. These mounts can be W+X but are not
+          // concerning since they are single files and these files cannot be
+          // executed.
+          // On 3.18 kernels these mounts show up as type "proc" rather than
+          // type "nsfs".
+          // TODO(crbug.com/1204604): Remove the "proc" exception after 3.18
+          // kernels go away.
+          VLOG(1) << "Not reporting '" << e.dest() << "', mount type "
+                  << e.type();
+          continue;
+        }
 
         // Report metrics on it, if not running in dev mode.
         if (ShouldReport(dev_)) {
