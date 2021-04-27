@@ -265,8 +265,6 @@ Cellular::Cellular(Manager* manager,
                  << "IPv6 will be unavailable.";
   }
 
-  mm1_proxy_ = control_interface()->CreateMM1Proxy(dbus_service_);
-
   // Create an initial Capability.
   CreateCapability();
 

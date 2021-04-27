@@ -40,7 +40,6 @@ extern "C" {
 #include "shill/cellular/mock_mm1_modem_proxy.h"
 #include "shill/cellular/mock_mm1_modem_signal_proxy.h"
 #include "shill/cellular/mock_mm1_modem_simple_proxy.h"
-#include "shill/cellular/mock_mm1_proxy.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/dbus/dbus_properties_proxy.h"
@@ -137,7 +136,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         modem_info_(&control_interface_, &manager_),
         device_info_(&manager_),
         dhcp_config_(new MockDHCPConfig(&control_interface_, kTestDeviceName)),
-        mm1_proxy_(new mm1::MockMm1Proxy()),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr),
         profile_(new NiceMock<MockProfile>(&manager_)) {
@@ -457,12 +455,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->mm1_modem_cdma_proxy_);
     }
 
-    std::unique_ptr<mm1::Mm1ProxyInterface> CreateMM1Proxy(
-        const std::string& service) override {
-      CHECK(test_->mm1_proxy_);
-      return std::move(test_->mm1_proxy_);
-    }
-
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
         const RpcIdentifier& path, const std::string& service) override {
       if (!test_->mm1_modem_proxy_)
@@ -555,7 +547,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   bool create_gsm_card_proxy_from_factory_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
-  std::unique_ptr<mm1::MockMm1Proxy> mm1_proxy_;
   std::unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
   std::unique_ptr<mm1::MockModemModemCdmaProxy> mm1_modem_cdma_proxy_;
   std::unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
@@ -2014,8 +2005,8 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
 
   // Let the disable complete. That will trigger power-down.
   //
-  // Note that, unlike for mm1_proxy->Enable, we don't save the
-  // callback for mm1_proxy->SetPowerState. We expect the callback not
+  // Note that, unlike for mm1_modem_proxy->Enable, we don't save the
+  // callback for mm1_modem_proxy->SetPowerState. We expect the callback not
   // to be executed, as explained in the comment about having a fresh
   // proxy OnAfterResume, below.
   Error error;

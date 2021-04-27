@@ -32,7 +32,6 @@
 #include "shill/dbus/mm1_modem_proxy.h"
 #include "shill/dbus/mm1_modem_signal_proxy.h"
 #include "shill/dbus/mm1_modem_simple_proxy.h"
-#include "shill/dbus/mm1_proxy.h"
 #include "shill/dbus/mm1_sim_proxy.h"
 #endif  // DISABLE_CELLULAR
 
@@ -223,11 +222,6 @@ DBusControl::CreateDBusObjectManagerProxy(
 }
 
 // Proxies for ModemManager1 interfaces
-std::unique_ptr<mm1::Mm1ProxyInterface> DBusControl::CreateMM1Proxy(
-    const std::string& service) {
-  return std::make_unique<mm1::Mm1Proxy>(proxy_bus_, service);
-}
-
 std::unique_ptr<mm1::ModemLocationProxyInterface>
 DBusControl::CreateMM1ModemLocationProxy(const RpcIdentifier& path,
                                          const std::string& service) {

@@ -58,7 +58,6 @@ class ModemLocationProxyInterface;
 class ModemModem3gppProxyInterface;
 class ModemModemCdmaProxyInterface;
 class ModemProxyInterface;
-class Mm1ProxyInterface;
 class ModemSimpleProxyInterface;
 class ModemSignalProxyInterface;
 class SimProxyInterface;
@@ -134,10 +133,6 @@ class ControlInterface {
       const std::string& service,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;
-
-  // Proxies for ModemManager1 interfaces
-  virtual std::unique_ptr<mm1::Mm1ProxyInterface> CreateMM1Proxy(
-      const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::ModemLocationProxyInterface>
   CreateMM1ModemLocationProxy(const RpcIdentifier& path,

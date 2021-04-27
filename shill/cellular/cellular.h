@@ -16,7 +16,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
-#include "shill/cellular/mm1_proxy_interface.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
@@ -355,7 +354,6 @@ class Cellular : public Device,
   }
   void clear_found_networks_for_testing() { found_networks_.clear(); }
   CellularCapability* capability_for_testing() { return capability_.get(); }
-  mm1::Mm1ProxyInterface* mm1_proxy_for_testing() { return mm1_proxy_.get(); }
   const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
   void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
@@ -641,11 +639,7 @@ class Cellular : public Device,
   // ///////////////////////////////////////////////////////////////////////////
 
   Type type_;
-  std::unique_ptr<mm1::Mm1ProxyInterface> mm1_proxy_;
   std::unique_ptr<CellularCapability> capability_;
-
-  // The uid from the org.freedesktop.ModemManager1.Device property.
-  std::string uid_;
 
   PPPDeviceFactory* ppp_device_factory_;
 

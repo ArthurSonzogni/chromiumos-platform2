@@ -357,7 +357,6 @@ static_library("libshill") {
       "dbus/mm1_modem_proxy.cc",
       "dbus/mm1_modem_signal_proxy.cc",
       "dbus/mm1_modem_simple_proxy.cc",
-      "dbus/mm1_proxy.cc",
       "dbus/mm1_sim_proxy.cc",
       "protobuf_lite_streams.cc",
     ]
@@ -654,7 +653,6 @@ if (use.test) {
         "cellular/mock_mm1_modem_proxy.cc",
         "cellular/mock_mm1_modem_signal_proxy.cc",
         "cellular/mock_mm1_modem_simple_proxy.cc",
-        "cellular/mock_mm1_proxy.cc",
         "cellular/mock_mm1_sim_proxy.cc",
         "cellular/mock_mobile_operator_info.cc",
         "cellular/mock_modem_info.cc",
