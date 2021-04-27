@@ -31,6 +31,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/cros_ec_ioctl.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
@@ -533,11 +534,6 @@ void PowerSupply::Init(
       GetMsPref(kBatteryStabilizedAfterResumeMsPref,
                 kDefaultBatteryStabilizedAfterResumeDelayMs);
 
-  prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
-  full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
-
-  LOG(INFO) << "Using full factor of " << full_factor_;
-
   prefs_->GetDouble(kUsbMinAcWattsPref, &usb_min_ac_watts_);
 
   int64_t shutdown_time_sec = 0;
@@ -546,12 +542,23 @@ void PowerSupply::Init(
         base::TimeDelta::FromSeconds(shutdown_time_sec);
   }
 
+  if (!GetDisplayStateOfChargeFromEC(nullptr)) {
+    // Fall back to old method.
+    import_display_soc_ = false;
+    prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
+    full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
+    LOG(WARNING) << "Setting full factor in OS is deprecated.";
+    prefs_->GetDouble(kLowBatteryShutdownPercentPref,
+                      &low_battery_shutdown_percent_);
+  }
+
   // The percentage-based threshold takes precedence over the time-based
   // threshold. This behavior is duplicated in check_powerd_config.
-  if (prefs_->GetDouble(kLowBatteryShutdownPercentPref,
-                        &low_battery_shutdown_percent_)) {
+  if (low_battery_shutdown_percent_ > 0.0) {
     low_battery_shutdown_time_ = base::TimeDelta();
   }
+
+  LOG(INFO) << "Using full factor of " << full_factor_;
 
   int64_t samples = 0;
   CHECK(prefs_->GetInt64(kMaxCurrentSamplesPref, &samples));
@@ -636,6 +643,40 @@ void PowerSupply::OnUdevEvent(const UdevEvent& event) {
     PerformUpdate(UpdatePolicy::ONLY_IF_STATE_CHANGED,
                   NotifyPolicy::SYNCHRONOUSLY);
   }
+}
+
+bool PowerSupply::GetDisplayStateOfChargeFromEC(double* display_soc) {
+  struct ec_response_display_soc* r;
+
+  if (!import_display_soc_)
+    return false;
+
+  base::ScopedFD ec_fd =
+      base::ScopedFD(open(cros_ec_ioctl::kCrosEcDevNodePath, O_RDWR));
+
+  if (!ec_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << cros_ec_ioctl::kCrosEcDevNodePath;
+    return false;
+  }
+
+  cros_ec_ioctl::IoctlCommand<cros_ec_ioctl::EmptyParam,
+                              struct ec_response_display_soc>
+      cmd(EC_CMD_DISPLAY_SOC);
+
+  if (!cmd.Run(ec_fd.get())) {
+    // This is expected if EC doesn't export display SoC.
+    LOG(INFO) << "Failed to read display SoC from EC";
+    return false;
+  }
+
+  r = cmd.Resp();
+  if (display_soc != nullptr) {
+    *display_soc = r->display_soc / 10.0;
+  }
+  full_factor_ = r->full_factor / 1000.0;
+  low_battery_shutdown_percent_ = r->shutdown_soc / 10.0;
+
+  return true;
 }
 
 std::string PowerSupply::GetIdForPath(const base::FilePath& path) const {
@@ -1072,13 +1113,27 @@ void PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   DCHECK(status);
   status->battery_percentage = util::ClampPercent(
       100.0 * status->battery_charge / status->battery_charge_full);
-  status->display_battery_percentage =
-      battery_percentage_converter_->ConvertActualToDisplay(
-          status->battery_percentage);
+
+  double display_soc;
+  bool is_full;
+  if (GetDisplayStateOfChargeFromEC(&display_soc)) {
+    // New way
+    if (display_soc < 0.0 || 100.0 < display_soc) {
+      LOG(ERROR) << "Received bad value of display SoC: " << display_soc;
+      display_soc = util::ClampPercent(display_soc);
+    }
+    status->display_battery_percentage = display_soc;
+    is_full = status->display_battery_percentage >= 100.0;
+  } else {
+    // Deprecated way
+    status->display_battery_percentage =
+        battery_percentage_converter_->ConvertActualToDisplay(
+            status->battery_percentage);
+    is_full =
+        status->battery_charge >= status->battery_charge_full * full_factor_;
+  }
 
   if (status->line_power_on) {
-    const bool is_full =
-        status->battery_charge >= status->battery_charge_full * full_factor_;
     if (is_full) {
       status->battery_state = PowerSupplyProperties_BatteryState_FULL;
     } else if (status->battery_current > 0.0 &&

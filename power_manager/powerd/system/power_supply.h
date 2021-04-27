@@ -268,7 +268,6 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
    private:
     PowerSupply* power_supply_;  // weak
-
   };
 
   // Power supply subsystem for udev events.
@@ -368,6 +367,12 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
     // Post |notify_observers_task_| to call NotifyObservers() asynchronously.
     ASYNCHRONOUSLY,
   };
+
+  // Read the display SoC from the EC.
+  // If the EC doesn't export the display SoC, it returns false.
+  // It also updates full_factor_ and low_battery_shutdown_percent_ with the
+  // values retrieved from the EC.
+  bool GetDisplayStateOfChargeFromEC(double* display_soc);
 
   std::string GetIdForPath(const base::FilePath& path) const;
   base::FilePath GetPathForId(const std::string& id) const;
@@ -528,6 +533,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // The fraction of the full charge at which the battery is considered "full",
   // in the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.
   double full_factor_ = 1.0;
+
+  // Import display SoC from EC. Refer to crrev.com/c/2853269.
+  bool import_display_soc_ = true;
 
   // Amount of time to wait before updating |power_status_| again after an
   // update.
