@@ -1686,63 +1686,41 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_COUNT],
                  action.c_str())) {
-    brillo::glib::ScopedError error;
-    gint result;
-    if (!org_chromium_CryptohomeInterface_install_attributes_count(
-            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-      printf("InstallAttributesCount() call failed: %s.\n", error->message);
+    user_data_auth::InstallAttributesGetStatusRequest req;
+    user_data_auth::InstallAttributesGetStatusReply reply;
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.InstallAttributesGetStatus(
+            req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("InstallAttributesGetStatus() call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    printf("InstallAttributesCount(): %d\n", result);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Call to InstallAttributesGetStatus() failed.\n");
+      return 1;
+    }
+    printf("InstallAttributesCount(): %d\n", reply.count());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_GET_STATUS],
                      action.c_str())) {
-    user_data_auth::InstallAttributesState result =
-        user_data_auth::InstallAttributesState::UNKNOWN;
-    do {
-      brillo::glib::ScopedError error;
-      gboolean is_invalid;
-      if (!org_chromium_CryptohomeInterface_install_attributes_is_invalid(
-              proxy.gproxy(), &is_invalid,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("InstallAttributesIsInvalid() call failed: %s.\n",
-               error->message);
-        return 1;
-      }
-
-      if (is_invalid) {
-        result = user_data_auth::InstallAttributesState::INVALID;
-        break;
-      }
-
-      gboolean is_first_install;
-      if (!org_chromium_CryptohomeInterface_install_attributes_is_first_install(
-              proxy.gproxy(), &is_first_install,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("InstallAttributesIsFirstInstall() call failed: %s.\n",
-               error->message);
-        return 1;
-      }
-
-      if (is_first_install) {
-        result = user_data_auth::InstallAttributesState::FIRST_INSTALL;
-        break;
-      }
-
-      gboolean is_ready;
-      if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
-              proxy.gproxy(), &is_ready, &brillo::Resetter(&error).lvalue())) {
-        printf("InstallAttributesIsReady() call failed: %s.\n", error->message);
-        return 1;
-      }
-
-      if (is_ready) {
-        result = user_data_auth::InstallAttributesState::VALID;
-      } else {
-        result = user_data_auth::InstallAttributesState::TPM_NOT_OWNED;
-      }
-    } while (false);
-    printf("%s\n", InstallAttributesState_Name(result).c_str());
+    user_data_auth::InstallAttributesGetStatusRequest req;
+    user_data_auth::InstallAttributesGetStatusReply reply;
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.InstallAttributesGetStatus(
+            req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("InstallAttributesGetStatus() call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Call to InstallAttributesGetStatus() failed.\n");
+      return 1;
+    }
+    printf("%s\n", InstallAttributesState_Name(reply.state()).c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_READY],
                      action.c_str())) {
