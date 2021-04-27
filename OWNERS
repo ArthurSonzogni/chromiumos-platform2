@@ -1,1 +1,6 @@
-# See project subdirectories for individual OWNERS files
+# See project subdirectories for individual OWNERS files.
+
+# We don't set general owners as we don't want subdirs to inherit these.
+# Since per-file only applies to files, not dirs, this should limit only to the
+# files in the top dir.
+per-file * = file:/common-mk/OWNERS
