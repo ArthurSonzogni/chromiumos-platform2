@@ -40,6 +40,8 @@ const QuirksMap& GetQuirksMap() {
       {{"2894", "0029"}, kQuirkReportLeastFpsRanges},
       // LVI Camera MagniLink S (crbug.com/1197426)
       {{"1904", "0001"}, kQuirkReportLeastFpsRanges},
+      // Chicony/CNFKH7521003210LH (b/185993364)
+      {{"04f2", "b72f"}, kQuirkReportLeastFpsRanges},
   });
   return *kQuirksMap;
 }
