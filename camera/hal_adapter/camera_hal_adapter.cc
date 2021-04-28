@@ -289,7 +289,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
   std::vector<std::string> conflicting_devices;
   for (size_t i = 0; i < info.conflicting_devices_length; i++) {
     int conflicting_id =
-        GetExternalId(module_id, atoi(info.conflicting_devices[i]));
+        GetPublicId(module_id, atoi(info.conflicting_devices[i]));
     conflicting_devices.push_back(std::to_string(conflicting_id));
   }
   info_ptr->conflicting_devices = std::move(conflicting_devices);
@@ -450,7 +450,7 @@ void CameraHalAdapter::CameraDeviceStatusChange(
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED();
 
-  int external_camera_id = GetExternalId(aux->module_id, internal_camera_id);
+  int public_camera_id = GetPublicId(aux->module_id, internal_camera_id);
 
   LOGF(INFO) << "module_id = " << aux->module_id
              << ", internal_camera_id = " << internal_camera_id
@@ -458,37 +458,36 @@ void CameraHalAdapter::CameraDeviceStatusChange(
 
   switch (new_status) {
     case CAMERA_DEVICE_STATUS_PRESENT:
-      if (external_camera_id == -1) {
-        external_camera_id = next_external_camera_id_++;
-        camera_id_map_[external_camera_id] =
+      if (public_camera_id == -1) {
+        public_camera_id = next_external_camera_id_++;
+        camera_id_map_[public_camera_id] =
             std::make_pair(aux->module_id, internal_camera_id);
         camera_id_inverse_map_[aux->module_id][internal_camera_id] =
-            external_camera_id;
-        device_status_map_[external_camera_id] = CAMERA_DEVICE_STATUS_PRESENT;
-        default_device_status_map_[external_camera_id] =
+            public_camera_id;
+        device_status_map_[public_camera_id] = CAMERA_DEVICE_STATUS_PRESENT;
+        default_device_status_map_[public_camera_id] =
             CAMERA_DEVICE_STATUS_NOT_PRESENT;
-        torch_mode_status_map_[external_camera_id] =
+        torch_mode_status_map_[public_camera_id] =
             TORCH_MODE_STATUS_NOT_AVAILABLE;
-        default_torch_mode_status_map_[external_camera_id] =
+        default_torch_mode_status_map_[public_camera_id] =
             TORCH_MODE_STATUS_NOT_AVAILABLE;
       } else {
-        device_status_map_[external_camera_id] = CAMERA_DEVICE_STATUS_PRESENT;
+        device_status_map_[public_camera_id] = CAMERA_DEVICE_STATUS_PRESENT;
       }
-      LOGF(INFO) << "External camera plugged, external_camera_id = "
-                 << external_camera_id;
+      LOGF(INFO) << "External camera plugged, public_camera_id = "
+                 << public_camera_id;
       break;
     case CAMERA_DEVICE_STATUS_NOT_PRESENT:
-      if (external_camera_id != -1) {
-        device_status_map_[external_camera_id] =
-            CAMERA_DEVICE_STATUS_NOT_PRESENT;
-        torch_mode_status_map_[external_camera_id] =
-            default_torch_mode_status_map_[external_camera_id];
-        auto it = device_adapters_.find(external_camera_id);
+      if (public_camera_id != -1) {
+        device_status_map_[public_camera_id] = CAMERA_DEVICE_STATUS_NOT_PRESENT;
+        torch_mode_status_map_[public_camera_id] =
+            default_torch_mode_status_map_[public_camera_id];
+        auto it = device_adapters_.find(public_camera_id);
         if (it != device_adapters_.end()) {
           device_adapters_.erase(it);
         }
         LOGF(INFO) << "External camera unplugged"
-                   << ", external_camera_id = " << external_camera_id;
+                   << ", public_camera_id = " << public_camera_id;
       } else {
         LOGF(WARNING) << "Ignore nonexistent camera";
       }
@@ -501,11 +500,11 @@ void CameraHalAdapter::CameraDeviceStatusChange(
 
   base::AutoLock l(callbacks_delegates_lock_);
   for (auto& it : callbacks_delegates_) {
-    NotifyCameraDeviceStatusChange(it.second.get(), external_camera_id,
+    NotifyCameraDeviceStatusChange(it.second.get(), public_camera_id,
                                    new_status);
   }
   for (auto& it : callbacks_associated_delegates_) {
-    NotifyCameraDeviceStatusChange(it.second.get(), external_camera_id,
+    NotifyCameraDeviceStatusChange(it.second.get(), public_camera_id,
                                    new_status);
   }
 }
@@ -518,7 +517,7 @@ void CameraHalAdapter::TorchModeStatusChange(
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED();
 
-  int camera_id = GetExternalId(aux->module_id, internal_camera_id);
+  int camera_id = GetPublicId(aux->module_id, internal_camera_id);
   if (camera_id == -1) {
     LOGF(WARNING) << "Ignore nonexistent camera"
                   << ", module_id = " << aux->module_id
@@ -726,7 +725,7 @@ std::pair<camera_module_t*, int> CameraHalAdapter::GetInternalModuleAndId(
   return {camera_interfaces_[idx.first].first, idx.second};
 }
 
-int CameraHalAdapter::GetExternalId(int module_id, int camera_id) {
+int CameraHalAdapter::GetPublicId(int module_id, int camera_id) {
   if (module_id < 0 ||
       static_cast<size_t>(module_id) >= camera_id_inverse_map_.size()) {
     return -1;

@@ -115,7 +115,7 @@ class CameraHalAdapter {
       mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks);
 
  protected:
-  // Convert the unified external |camera_id| into the corresponding camera
+  // Convert the unified public |camera_id| into the corresponding camera
   // module and its internal id. Returns (nullptr, 0) if not found.
   std::pair<camera_module_t*, int> GetInternalModuleAndId(int camera_id);
 
@@ -176,8 +176,8 @@ class CameraHalAdapter {
   void SendLatestStatus(int callbacks_id);
 
   // Convert the |module_id| and its corresponding internal |camera_id| into the
-  // unified external camera id. Returns -1 if not found.
-  int GetExternalId(int module_id, int camera_id);
+  // unified public camera id. Returns -1 if not found.
+  int GetPublicId(int module_id, int camera_id);
 
   // Clean up the camera device specified by |camera_id| in |device_adapters_|.
   void CloseDevice(int32_t camera_id,
@@ -207,8 +207,8 @@ class CameraHalAdapter {
   // |num_builtin_cameras_|.
   int next_external_camera_id_;
 
-  // The mapping tables of internal/external |camera_id|.
-  // (external camera id) <=> (module id, internal camera id)
+  // The mapping tables of internal/public |camera_id|.
+  // (public camera id) <=> (module id, internal camera id)
   std::map<int, std::pair<int, int>> camera_id_map_;
   std::vector<std::map<int, int>> camera_id_inverse_map_;
 
@@ -222,7 +222,7 @@ class CameraHalAdapter {
 
   // We need to keep the status for each camera to send up-to-date information
   // for newly connected client so everyone is in sync.
-  // (external camera id) <=> (latest status)
+  // (public camera id) <=> (latest status)
   std::map<int, camera_device_status_t> device_status_map_;
   std::map<int, camera_device_status_t> default_device_status_map_;
   std::map<int, torch_mode_status_t> torch_mode_status_map_;
