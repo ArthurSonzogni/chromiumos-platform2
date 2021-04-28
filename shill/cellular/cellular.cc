@@ -1748,7 +1748,7 @@ void Cellular::ConnectToPending() {
   }
   if (capability_state_ != CapabilityState::kModemStarted) {
     LOG(WARNING) << __func__ << ": Modem not started";
-    ConnectToPendingFailed(Service::kFailureUnknown);
+    ConnectToPendingFailed(Service::kFailureNotRegistered);
     return;
   }
   // Normally the Modem becomes Registered immediately after becoming enabled.
@@ -1770,12 +1770,12 @@ void Cellular::ConnectToPending() {
   if (!StateIsRegistered()) {
     LOG(WARNING) << __func__ << ": Cellular not registered, State: "
                  << GetStateString(state_);
-    ConnectToPendingFailed(Service::kFailureUnknown);
+    ConnectToPendingFailed(Service::kFailureNotRegistered);
     return;
   }
   if (modem_state_ != kModemStateRegistered) {
     LOG(WARNING) << __func__ << ": Modem not registered";
-    ConnectToPendingFailed(Service::kFailureUnknown);
+    ConnectToPendingFailed(Service::kFailureNotRegistered);
     return;
   }
 
@@ -1826,7 +1826,7 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
 
 void Cellular::ConnectToPendingCancel() {
   LOG(WARNING) << __func__;
-  ConnectToPendingFailed(Service::kFailureUnknown);
+  ConnectToPendingFailed(Service::kFailureNotRegistered);
 }
 
 void Cellular::UpdateScanning() {

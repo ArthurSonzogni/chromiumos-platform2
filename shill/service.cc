@@ -1162,6 +1162,8 @@ const char* Service::ConnectFailureToString(const ConnectFailure& state) {
       return kErrorPppAuthFailed;
     case kFailureSimLocked:
       return kErrorSimLocked;
+    case kFailureNotRegistered:
+      return kErrorNotRegistered;
     case kFailureUnknown:
       return kErrorUnknownFailure;
     case kFailureNotAssociated:

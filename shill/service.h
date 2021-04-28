@@ -128,6 +128,7 @@ class Service : public base::RefCounted<Service> {
     kFailurePPPAuth,
     kFailurePinMissing,
     kFailureSimLocked,
+    kFailureNotRegistered,
     kFailureUnknown,
     // WiFi association failure that doesn't correspond to any other failure
     kFailureNotAssociated,

@@ -2110,6 +2110,9 @@ void Metrics::SendServiceFailure(const Service& service) {
     case Service::kFailureSimLocked:
       error = kNetworkServiceErrorSimLocked;
       break;
+    case Service::kFailureNotRegistered:
+      error = kNetworkServiceErrorNotRegistered;
+      break;
     case Service::kFailurePinMissing:
       error = kNetworkServiceErrorPinMissing;
       break;
