@@ -41,9 +41,7 @@ TEST_F(MountNamespaceTest, CreateNamespace) {
   std::unique_ptr<MountNamespace> ns =
       std::make_unique<MountNamespace>(base::FilePath(), &platform_);
   EXPECT_CALL(platform_, Fork()).WillOnce(Return(1));
-  EXPECT_CALL(platform_, Mount(_, _, _, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform_, Mount(_, _, _, _, _)).WillOnce(Return(0));
   EXPECT_CALL(platform_, Waitpid(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(0x00000000), Return(0)));
   EXPECT_TRUE(ns->Create());
@@ -54,9 +52,7 @@ TEST_F(MountNamespaceTest, CreateNamespaceFailedOnWaitpid) {
   std::unique_ptr<MountNamespace> ns =
       std::make_unique<MountNamespace>(base::FilePath(), &platform_);
   EXPECT_CALL(platform_, Fork()).WillOnce(Return(1));
-  EXPECT_CALL(platform_, Mount(_, _, _, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform_, Mount(_, _, _, _, _)).WillOnce(Return(0));
   EXPECT_CALL(platform_, Waitpid(_, _)).WillOnce(Return(-1));
   EXPECT_FALSE(ns->Create());
 }
@@ -73,9 +69,7 @@ TEST_F(MountNamespaceTest, CreateNamespaceFailedOnStatus) {
   std::unique_ptr<MountNamespace> ns =
       std::make_unique<MountNamespace>(base::FilePath(), &platform_);
   EXPECT_CALL(platform_, Fork()).WillOnce(Return(1));
-  EXPECT_CALL(platform_, Mount(_, _, _, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform_, Mount(_, _, _, _, _)).WillOnce(Return(0));
   EXPECT_CALL(platform_, Waitpid(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(0xFFFFFFFF), Return(0)));
   EXPECT_FALSE(ns->Create());
@@ -85,9 +79,7 @@ TEST_F(MountNamespaceTest, DestroyAfterUnmountFailsAndUnmountSucceeds) {
   std::unique_ptr<MountNamespace> ns =
       std::make_unique<MountNamespace>(base::FilePath(), &platform_);
   EXPECT_CALL(platform_, Fork()).WillOnce(Return(1));
-  EXPECT_CALL(platform_, Mount(_, _, _, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform_, Mount(_, _, _, _, _)).WillOnce(Return(0));
   EXPECT_CALL(platform_, Waitpid(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(0x00000000), Return(0)));
   EXPECT_TRUE(ns->Create());

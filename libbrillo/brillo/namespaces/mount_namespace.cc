@@ -66,18 +66,7 @@ bool MountNamespace::Create() {
     std::string proc_ns_path = base::StringPrintf("/proc/%d/ns/mnt", pid);
     bool mount_success = true;
     base::ReadFromFD(fd_unshared[0], &byte, 1);
-    if (platform_->Mount(proc_ns_path, ns_path_.value(), "", MS_BIND) == 0) {
-      // If the bind mount succeeds, attempt to remount it noexec.
-      // TODO(betuls): Add MS_RDONLY option after the deprecation of kernel
-      // v3.18. For now namespace can only be remounted with the MS_NOEXEC since
-      // readonly proc fs cause boot failures on boards with kernel 3.18.
-      if (platform_->Mount(proc_ns_path, ns_path_.value(), "",
-                           MS_REMOUNT | MS_NOEXEC) != 0) {
-        PLOG(ERROR) << "Mount(" << proc_ns_path << ", " << ns_path_.value()
-                    << ", MS_REMOUNT | MS_NOEXEC) failed";
-        mount_success = false;
-      }
-    } else {
+    if (platform_->Mount(proc_ns_path, ns_path_.value(), "", MS_BIND) != 0) {
       PLOG(ERROR) << "Mount(" << proc_ns_path << ", " << ns_path_.value()
                   << ", MS_BIND) failed";
       mount_success = false;
