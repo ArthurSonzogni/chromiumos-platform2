@@ -1,0 +1,49 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//camera/build/cc_embed_data.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":hdrnet_stream_manipulator_test",
+    ":libhdrnet",
+  ]
+}
+
+pkg_config("target_defaults") {
+  configs = [ "//camera/build:cros_camera_common" ]
+  pkg_deps = [
+    "libcros_camera",
+    "libcros_camera_android_deps",
+    "libsync",
+  ]
+}
+
+static_library("libhdrnet") {
+  sources = [
+    "//camera/features/hdrnet/hdrnet_config.cc",
+    "//camera/features/hdrnet/hdrnet_stream_manipulator.cc",
+  ]
+  public_configs = [ ":target_defaults" ]
+}
+
+pkg_config("test_target_defaults") {
+  configs = [ ":target_defaults" ]
+  pkg_deps = [ "libchrome-test" ]
+}
+
+executable("hdrnet_stream_manipulator_test") {
+  sources = [ "//camera/features/hdrnet/hdrnet_stream_manipulator_test.cc" ]
+  configs += [
+    ":test_target_defaults",
+    "//common-mk:test",
+  ]
+  deps = [
+    ":libhdrnet",
+
+    # TODO(jcliang): Remove dependency on image_processor in test.
+    "//camera/gpu:image_processor",
+  ]
+}

@@ -6,9 +6,14 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_COMMON_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_COMMON_H_
 
+#include <fcntl.h>
+
 #include <string>
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
 
 #define LOGF(level)                                              \
@@ -33,6 +38,14 @@
 
 inline std::string FormatToString(int32_t format) {
   return std::string(reinterpret_cast<char*>(&format), 4);
+}
+
+// Duplicate the file descriptor |fd| with O_CLOEXEC flag set.
+inline base::ScopedFD DupWithCloExec(int fd) {
+  if (fd < 0) {
+    return base::ScopedFD();
+  }
+  return base::ScopedFD(HANDLE_EINTR(fcntl(fd, F_DUPFD_CLOEXEC)));
 }
 
 #endif  // CAMERA_INCLUDE_CROS_CAMERA_COMMON_H_
