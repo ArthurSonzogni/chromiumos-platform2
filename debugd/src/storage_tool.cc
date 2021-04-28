@@ -274,37 +274,45 @@ std::string StorageTool::Nvme(const std::string& option) {
 
   process.AddArg(kNvme);
 
+  const base::FilePath rootdev =
+      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
   if (option == "identify_controller") {
     process.AddArg("id-ctrl");
     process.AddArg("--vendor-specific");
+    process.AddArg(rootdev.value());
   } else if (option == "short_self_test") {
     // Command for selftest
     process.AddArg("device-self-test");
     // Namespace of NVMe
-    process.AddArg("-n 1");
+    process.AddStringOption("-n", "1");
     // type of selftest: short
-    process.AddArg("-s 1");
+    process.AddStringOption("-s", "1");
+    process.AddArg(rootdev.value());
   } else if (option == "long_self_test") {
     // command for selftest
     process.AddArg("device-self-test");
     // Namespace of NVMe
-    process.AddArg("-n 1");
+    process.AddStringOption("-n", "1");
     // type of selftest: long
-    process.AddArg("-s 2");
+    process.AddStringOption("-s", "2");
+    process.AddArg(rootdev.value());
   } else if (option == "stop_self_test") {
     // command for selftest
     process.AddArg("device-self-test");
     // Namespace of NVMe
-    process.AddArg("-n 1");
+    process.AddStringOption("-n", "1");
     // type of selftest: abort
-    process.AddArg("-s 0xf");
+    process.AddStringOption("-s", "0xf");
+    process.AddArg(rootdev.value());
+  } else if (option == "list") {
+    // command for list all the nvme devices and their properties
+    process.AddArg("list");
+    // output format json
+    process.AddStringOption("-o", "json");
   } else {
     return "<Option not supported>";
   }
 
-  const base::FilePath rootdev =
-      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
-  process.AddArg(rootdev.value());
   process.Run();
   std::string output;
   process.GetOutput(&output);
