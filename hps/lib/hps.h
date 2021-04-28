@@ -27,7 +27,8 @@ class HPS {
         retries_(0),
         reboots_(0),
         hw_rev_(0),
-        appl_version_(0) {}
+        appl_version_(0),
+        feat_enabled_(0) {}
   // Set the application version and firmware.
   void Init(uint16_t appl_version,
             const base::FilePath& mcu,
@@ -38,6 +39,24 @@ class HPS {
    * set via Init().
    */
   bool Boot();
+  /*
+   * Enable the selected features, return false if the
+   * request fails e.g if the module is not ready.
+   * The features are represented as a bit mask of
+   * enabled features e.g bit 0 is feature 0 etc.
+   */
+  bool Enable(uint16_t features);
+  /*
+   * Return the latest result for the feature selected,
+   * where the feature ranges from 0 to 15, corresponding to
+   * the features selected in the Enable method above.
+   * Returns -1 in the event the module is unavailable, or
+   * the feature is not selected, or the result is not valid.
+   */
+  int Result(int feature);
+  /*
+   * Return the underlying access device for the module.
+   */
   DevInterface* Device() { return this->device_.get(); }
   /*
    * Download a file to the bank indicated.
@@ -73,6 +92,7 @@ class HPS {
   int reboots_;  // Count of reboots.
   uint16_t hw_rev_;
   uint16_t appl_version_;
+  uint16_t feat_enabled_;
   base::FilePath mcu_blob_;
   base::FilePath spi_blob_;
 };

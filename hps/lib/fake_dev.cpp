@@ -76,24 +76,25 @@ struct Msg {
 namespace hps {
 
 /*
- * DevImpl is an internal class that when started,
- * will spawn a thread to asynchronously
- * process register reads/writes and memory writes.
- * A separate thread is used to simulate the latency
- * and concurrency of the real device.
- * A set of flags passed at the start defines
- * behaviour of the device (such as forced errors etc.).
+ * DevImpl is an internal class that when started, will spawn a thread to
+ * asynchronously process register reads/writes and memory writes.
+ * A separate thread is used to simulate the latency and concurrency of
+ * the real device.
+ *
+ * A set of flags passed at the start defines behaviour of the device
+ * (such as forced errors etc.).
  */
 class DevImpl : public base::SimpleThread {
  public:
   DevImpl()
       : SimpleThread("fake HPS"),
         stage_(Stage::kBootFault),
-        flags_(0),
+        flags_(FakeDev::Flags::kNone),
+        feature_on_(0),
         bank_(0) {}
   virtual ~DevImpl();
   virtual void Run();
-  void Start(uint flags);
+  void Start(enum FakeDev::Flags flags);
   uint16_t readReg(int r);
   void writeReg(int r, uint16_t v) {
     this->send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
@@ -123,7 +124,8 @@ class DevImpl : public base::SimpleThread {
   base::Lock qlock_;            // Lock for queue
   base::WaitableEvent ev_;      // Signal for messages available
   Stage stage_;                 // Current stage of the device
-  uint flags_;                  // Behaviour flags.
+  enum FakeDev::Flags flags_;   // Behaviour flags.
+  uint16_t feature_on_;         // Enabled features.
   std::atomic<uint16_t> bank_;  // Current memory bank readiness
 };
 
@@ -137,7 +139,7 @@ DevImpl::~DevImpl() {
 }
 
 // Reset and start the device simulator.
-void DevImpl::Start(uint flags) {
+void DevImpl::Start(enum FakeDev::Flags flags) {
   CHECK(!SimpleThread::HasBeenStarted());
   this->flags_ = flags;
   SimpleThread::Start();
@@ -168,8 +170,9 @@ void DevImpl::Run() {
   // Check for boot fault.
   if (this->flags_ & FakeDev::Flags::kBootFault) {
     this->SetStage(Stage::kBootFault);
-  } else {
-    this->SetStage(Stage::kStage0);
+  } else if (this->flags_ & FakeDev::Flags::kSkipBoot) {
+    // Skip straight to application.
+    this->SetStage(Stage::kAppl);
   }
   for (;;) {
     // Main message loop.
@@ -277,13 +280,31 @@ uint16_t DevImpl::readRegActual(int reg) {
       v = this->bank_.load();
       break;
 
+    case HpsReg::kF1:
+      if (this->feature_on_ & hps::R7::kFeature1Enable) {
+        // Return a well known but random value.
+        // TODO(amcrae): Provide a mechanism to vary this value to
+        // test the user side detection of changes.
+        v = hps::RFeat::kValid | 42;
+      }
+      break;
+
+    case HpsReg::kF2:
+      if (this->feature_on_ & hps::R7::kFeature2Enable) {
+        // Return a less well known but random value.
+        v = hps::RFeat::kValid | 43;
+      }
+      break;
+
     default:
       break;
   }
+  VLOG(2) << "Read reg " << reg << " value " << v;
   return v;
 }
 
 void DevImpl::writeRegActual(int reg, uint16_t value) {
+  VLOG(2) << "Write reg " << reg << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
     case HpsReg::kSysCmd:
@@ -301,6 +322,12 @@ void DevImpl::writeRegActual(int reg, uint16_t value) {
         }
       }
       break;
+
+    case HpsReg::kFeatEn:
+      // Set the feature enable bit mask.
+      this->feature_on_ = value;
+      break;
+
     default:
       break;
   }
@@ -385,7 +412,7 @@ bool FakeDev::write(uint8_t cmd, const uint8_t* data, uint len) {
 }
 
 // Start the fake.
-void FakeDev::Start(uint flags) {
+void FakeDev::Start(enum Flags flags) {
   this->device_ = std::make_unique<DevImpl>();
   this->device_->Start(flags);
 }

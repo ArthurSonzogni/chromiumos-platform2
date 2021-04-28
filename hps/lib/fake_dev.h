@@ -27,13 +27,15 @@ class FakeDev : public DevInterface {
   bool write(uint8_t cmd, const uint8_t* data, uint len) override;
   // Flags for controlling behaviour.
   enum Flags {
+    kNone = 0,
     kBootFault = 1 << 0,
     kApplNotVerified = 1 << 1,
     kSpiNotVerified = 1 << 2,
     kWpOff = 1 << 3,
     kMemFail = 1 << 4,
+    kSkipBoot = 1 << 5,
   };
-  void Start(uint flags);
+  void Start(enum Flags flags);
   // TODO(amcrae): Add an interface to retrieve memory data written
   // to the device.
  private:

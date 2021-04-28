@@ -21,9 +21,11 @@ executable("hps") {
     "boot.cpp",
     "cmd.cpp",
     "download.cpp",
+    "enable.cpp",
     "main.cpp",
     "readtest.cpp",
     "status.cpp",
+    "watch.cpp",
   ]
 
   configs += [ ":target_defaults" ]

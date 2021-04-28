@@ -58,6 +58,48 @@ bool HPS::Boot() {
   }
 }
 
+bool HPS::Enable(uint16_t features) {
+  // Only 2 features available at the moment.
+  this->feat_enabled_ = features & 0x3;
+  // Check the application is enabled and running.
+  if ((this->device_->readReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
+    return false;
+  }
+  // Write the enable feature mask.
+  return this->device_->writeReg(HpsReg::kFeatEn, this->feat_enabled_);
+}
+
+int HPS::Result(int feature) {
+  // Check the application is enabled and running.
+  if ((this->device_->readReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
+    return -1;
+  }
+  // Check that feature is enabled.
+  if (((1 << feature) & this->feat_enabled_) == 0) {
+    return -1;
+  }
+  int result;
+  switch (feature) {
+    case 0:
+      result = this->device_->readReg(HpsReg::kF1);
+      break;
+    case 1:
+      result = this->device_->readReg(HpsReg::kF2);
+      break;
+    default:
+      result = -1;
+  }
+  if (result < 0) {
+    return -1;
+  }
+  // Check that valid bit is on.
+  if ((result & RFeat::kValid) == 0) {
+    return -1;
+  }
+  // Return lower 15 bits.
+  return result & 0x7FFF;
+}
+
 // Runs the state machine.
 void HPS::HandleState() {
   switch (this->state_) {

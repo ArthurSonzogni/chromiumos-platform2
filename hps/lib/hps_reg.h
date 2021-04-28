@@ -10,6 +10,7 @@
 
 namespace hps {
 
+// Register numbers for HPS module interface.
 enum HpsReg {
   kMagic = 0,
   kHwRev = 1,
@@ -18,10 +19,14 @@ enum HpsReg {
   kApplVers = 4,
   kBankReady = 5,
   kError = 6,
+  kFeatEn = 7,
+  kF1 = 8,
+  kF2 = 9,
   kMax = 127,
   kNumRegs = kMax + 1,
 };
 
+// Register 2 (RO) - System status register.
 enum R2 {
   kOK = 1 << 0,
   kFault = 1 << 1,
@@ -37,10 +42,22 @@ enum R2 {
   kSpiNotVerified = 1 << 11,
 };
 
+// Register 3 (WO) - System command register.
 enum R3 {
   kReset = 1 << 0,
   kLaunch = 1 << 1,
   kEnable = 1 << 2,
+};
+
+// Register 7 (RW) - Feature enable bit mask.
+enum R7 {
+  kFeature1Enable = 1 << 0,
+  kFeature2Enable = 1 << 1,
+};
+
+// Feature result registers (R8 & R9).
+enum RFeat {
+  kValid = 1 << 15,  // Feature result is valid.
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;

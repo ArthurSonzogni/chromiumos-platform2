@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
     // The fake has to be started.
     auto fd = std::make_unique<hps::FakeDev>();
     // TODO(amcrae): Allow passing error flags.
-    fd->Start(0);
+    fd->Start(hps::FakeDev::Flags::kSkipBoot);
     dev = std::move(fd);
   } else {
     auto i2c = std::make_unique<hps::I2CDev>(FLAGS_bus, FLAGS_addr);
