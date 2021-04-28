@@ -6,15 +6,15 @@ build = "build.rs"
 include = ["Cargo.toml", "*.rs", "src/**/*"]
 
 [dependencies]
-chrono = "~0.4.2"
-dbus = "~0.6.1"
-env_logger = { version = "^0.6", default-features = false }
-libc = "~0.2.40"
-log = "~0.4.1"
-protobuf = "^2.3"
-syslog = "~4.0.0"
-tempfile = "^3.0"
-time = "~0.1.40"
+chrono = "0.4.2"
+dbus = "0.6.1"
+env_logger = { version = "0.6", default-features = false }
+libc = "0.2.40"
+log = "0.4.1"
+protobuf = "2.3"
+syslog = "4.0.0"
+tempfile = "3.0"
+time = "0.1.40"
 
 [profile.release]
 debug = true
@@ -22,6 +22,6 @@ lto = true
 panic = 'abort'
 
 [build-dependencies]
-protoc-rust = "^2.3"
+protoc-rust = "2.3"
 
 [workspace]
