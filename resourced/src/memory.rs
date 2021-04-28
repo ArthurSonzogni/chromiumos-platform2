@@ -9,7 +9,7 @@ use std::path::Path;
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
 
-use common;
+use crate::common;
 
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
 

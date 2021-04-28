@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use common::parse_file_to_u64;
-use memory::{
+use crate::common::parse_file_to_u64;
+use crate::memory::{
     calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
     parse_psi_memory, MemInfo,
 };

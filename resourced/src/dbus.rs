@@ -5,11 +5,11 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use dbus_crate::blocking::LocalConnection;
-use dbus_crate::tree::{Factory, MTFn, MethodErr, MethodInfo, MethodResult};
+use dbus::blocking::LocalConnection;
+use dbus::tree::{Factory, MTFn, MethodErr, MethodInfo, MethodResult};
 
-use common;
-use memory;
+use crate::common;
+use crate::memory;
 
 fn get_available_memory_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     match memory::get_background_available_memory_kb() {

@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-extern crate anyhow;
-extern crate dbus as dbus_crate;
-extern crate once_cell;
-
 mod common;
 mod dbus;
 mod memory;
