@@ -77,6 +77,10 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
     std::unique_ptr<TxInfo> info_;
     uint16_t id_;
     std::unique_ptr<QmiCmdInterface> qmi_msg_;
+    // This cb_ maybe called once a response for the qmi_msg_ is received.
+    // The callback must accept an int which is the return value of the qmi
+    // operation
+    base::OnceCallback<void(int)> cb_;
   };
 
   ModemQrtr(std::unique_ptr<SocketInterface> socket,
@@ -114,19 +118,19 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
   // Dispatches to proper ReceiveQmi* method based on QMI type.
   void ProcessQmiPacket(const qrtr_packet& packet);
   // Performs decoding for UIM RESET QMI response.
-  void ReceiveQmiReset(const qrtr_packet& packet);
+  int ReceiveQmiReset(const qrtr_packet& packet);
   // Performs decoding for SWITCH_SLOT QMI response.
-  void ReceiveQmiSwitchSlot(const qrtr_packet& packet);
+  int ReceiveQmiSwitchSlot(const qrtr_packet& packet);
   // Performs decoding for GET_SLOTS QMI response.
-  void ReceiveQmiGetSlots(const qrtr_packet& packet);
+  int ReceiveQmiGetSlots(const qrtr_packet& packet);
   // Performs decoding for OPEN_LOGICAL_CHANNEL QMI response.
-  void ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet);
-  void ParseQmiOpenLogicalChannel(const qrtr_packet& packet);
+  int ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet);
+  int ParseQmiOpenLogicalChannel(const qrtr_packet& packet);
   // Performs decoding for SEND_APDU response and calls |on_recv_| with
   // appropriate parameters.
-  void ReceiveQmiSendApdu(const qrtr_packet& packet);
+  int ReceiveQmiSendApdu(const qrtr_packet& packet);
   // Performs decoding of GET_DEVICE_SERIAL_NUMBERS response. Parses the IMEI.
-  void ReceiveQmiGetSerialNumbers(const qrtr_packet& packet);
+  int ReceiveQmiGetSerialNumbers(const qrtr_packet& packet);
   void DisableQmi(base::TimeDelta duration);
   void EnableQmi();
 
@@ -149,6 +153,7 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
   };
   void SetProcedureBytes(ProcedureBytesMode procedure_bytes_mode);
   void ReacquireChannel();
+  void SendApdusResponse(ResponseCallback callback, int err);
 
   friend class ModemQrtrTest;
 
@@ -299,7 +304,7 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
   std::deque<TxElement> tx_queue_;
 
   std::map<std::pair<QmiCmdInterface::Service, uint16_t>,
-           base::Callback<void(const qrtr_packet&)>>
+           base::Callback<int(const qrtr_packet&)>>
       qmi_rx_callbacks_;
 
   // Used to send notifications about eSIM slot changes.

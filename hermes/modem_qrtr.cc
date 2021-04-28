@@ -43,6 +43,11 @@ constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(3);
 constexpr auto kInitRetryDelay = base::TimeDelta::FromSeconds(10);
 constexpr int kMaxRetries = 5;
 
+constexpr int kQmiSuccess = 0;
+// This error will be returned when a received qmi message cannot be parsed
+// or when it is received in an unexpected state.
+constexpr int kQmiMessageProcessingError = -1;
+
 bool CheckMessageSuccess(UimCmd cmd, const uim_qmi_result& qmi_result) {
   if (qmi_result.result == 0) {
     return true;
@@ -54,16 +59,17 @@ bool CheckMessageSuccess(UimCmd cmd, const uim_qmi_result& qmi_result) {
 }
 constexpr uint16_t kErrorNoEffect = 26;
 
+void PrintQmiProcessingResult(int err) {
+  VLOG(2) << "Rx QMI message processed with code:" << err;
+}
+
 }  // namespace
 
 namespace hermes {
 
 struct ApduTxInfo : public ModemQrtr::TxInfo {
-  explicit ApduTxInfo(CommandApdu apdu,
-                      ModemQrtr::ResponseCallback cb = nullptr)
-      : apdu_(std::move(apdu)), callback_(cb) {}
+  explicit ApduTxInfo(CommandApdu apdu) : apdu_(std::move(apdu)) {}
   CommandApdu apdu_;
-  ModemQrtr::ResponseCallback callback_;
 };
 
 struct SwitchSlotTxInfo : public ModemQrtr::TxInfo {
@@ -147,42 +153,55 @@ void ModemQrtr::SetActiveSlot(const uint32_t physical_slot) {
   LOG(INFO) << __func__ << "physical_slot:" << physical_slot;
   tx_queue_.push_back(
       {std::make_unique<SwitchSlotTxInfo>(physical_slot, logical_slot_),
-       AllocateId(), std::make_unique<UimCmd>(UimCmd::QmiType::kSwitchSlot)});
+       AllocateId(), std::make_unique<UimCmd>(UimCmd::QmiType::kSwitchSlot),
+       base::Bind(&PrintQmiProcessingResult)});
   ReacquireChannel();
 }
 
 void ModemQrtr::StoreAndSetActiveSlot(const uint32_t physical_slot) {
   LOG(INFO) << __func__ << "physical_slot:" << physical_slot;
   tx_queue_.push_back({std::make_unique<TxInfo>(), AllocateId(),
-                       std::make_unique<UimCmd>(UimCmd::QmiType::kGetSlots)});
+                       std::make_unique<UimCmd>(UimCmd::QmiType::kGetSlots),
+                       base::Bind(&PrintQmiProcessingResult)});
   SetActiveSlot(physical_slot);
 }
 
 void ModemQrtr::RestoreActiveSlot() {
   LOG(INFO) << __func__;
-  if (stored_active_slot_) {
-    tx_queue_.push_back(
-        {std::make_unique<SwitchSlotTxInfo>(stored_active_slot_.value(),
-                                            logical_slot_),
-         AllocateId(), std::make_unique<UimCmd>(UimCmd::QmiType::kSwitchSlot)});
-    stored_active_slot_.reset();
-  } else {
+  if (!stored_active_slot_) {
     LOG(ERROR) << "Attempted to restore active slot when none was stored";
+    return;
   }
+  tx_queue_.push_back({std::make_unique<SwitchSlotTxInfo>(
+                           stored_active_slot_.value(), logical_slot_),
+                       AllocateId(),
+                       std::make_unique<UimCmd>(UimCmd::QmiType::kSwitchSlot),
+                       base::Bind(&PrintQmiProcessingResult)});
+  stored_active_slot_.reset();
+}
+
+void ModemQrtr::SendApdusResponse(ResponseCallback callback, int err) {
+  callback(responses_, err);
+  // ResponseCallback interface does not indicate a change in ownership of
+  // |responses_|, but all callbacks should transfer ownership.
+  CHECK(responses_.empty());
 }
 
 void ModemQrtr::SendApdus(std::vector<lpa::card::Apdu> apdus,
                           ResponseCallback cb) {
+  base::OnceCallback<void(int)> callback;
+  callback = base::BindOnce(&ModemQrtr::SendApdusResponse,
+                            base::Unretained(this), std::move(cb));
   for (size_t i = 0; i < apdus.size(); ++i) {
-    ResponseCallback callback =
-        (i == apdus.size() - 1 ? std::move(cb) : nullptr);
     CommandApdu apdu(static_cast<ApduClass>(apdus[i].cla()),
                      static_cast<ApduInstruction>(apdus[i].ins()),
                      extended_apdu_supported_);
     apdu.AddData(apdus[i].data());
     tx_queue_.push_back(
-        {std::make_unique<ApduTxInfo>(std::move(apdu), std::move(callback)),
-         AllocateId(), std::make_unique<UimCmd>(UimCmd::QmiType::kSendApdu)});
+        {std::make_unique<ApduTxInfo>(std::move(apdu)), AllocateId(),
+         std::make_unique<UimCmd>(UimCmd::QmiType::kSendApdu),
+         i == apdus.size() - 1 ? std::move(callback)
+                               : base::Bind(&PrintQmiProcessingResult)});
   }
   // Begin transmitting if we are not already processing a transaction.
   if (!pending_response_type_) {
@@ -228,10 +247,12 @@ void ModemQrtr::ReacquireChannel() {
   current_state_.Transition(State::kUimStarted);
   channel_ = kInvalidChannel;
   tx_queue_.push_back({std::unique_ptr<TxInfo>(), AllocateId(),
-                       std::make_unique<UimCmd>(UimCmd::QmiType::kReset)});
+                       std::make_unique<UimCmd>(UimCmd::QmiType::kReset),
+                       base::Bind(&PrintQmiProcessingResult)});
   tx_queue_.push_back(
       {std::unique_ptr<TxInfo>(), AllocateId(),
-       std::make_unique<UimCmd>(UimCmd::QmiType::kOpenLogicalChannel)});
+       std::make_unique<UimCmd>(UimCmd::QmiType::kOpenLogicalChannel),
+       base::Bind(&PrintQmiProcessingResult)});
 }
 
 void ModemQrtr::RetryInitialization() {
@@ -304,14 +325,12 @@ void ModemQrtr::TransmitDmsCmdFromQueue() {
     default:
       LOG(ERROR) << "Unexpected QMI DMS type in ModemQrtr tx queue";
   }
-  tx_queue_.pop_front();
 }
 
 void ModemQrtr::TransmitUimCmdFromQueue() {
   auto qmi_cmd = tx_queue_[0].qmi_msg_.get();
   CHECK(qmi_cmd->service() == QmiCmdInterface::Service::kUim)
       << "Attempted to send non-UIM command in " << __func__;
-  bool should_pop = true;
   switch (qmi_cmd->qmi_type()) {
     case UimCmd::QmiType::kReset:
       uim_reset_req reset_request;
@@ -321,7 +340,6 @@ void ModemQrtr::TransmitUimCmdFromQueue() {
     case UimCmd::QmiType::kSwitchSlot:
       // Don't pop since we need to update the inactive euicc if SwitchSlot
       // succeeds
-      should_pop = false;
       TransmitQmiSwitchSlot(&tx_queue_[0]);
       break;
     case UimCmd::QmiType::kGetSlots:
@@ -334,17 +352,11 @@ void ModemQrtr::TransmitUimCmdFromQueue() {
       current_state_.Transition(State::kLogicalChannelPending);
       break;
     case UimCmd::QmiType::kSendApdu:
-      // kSendApdu element will be popped off the queue after the response
-      // has been entirely received. This occurs within
-      // |ReceiveQmiSendApdu|.
-      should_pop = false;
       TransmitQmiSendApdu(&tx_queue_[0]);
       break;
     default:
       LOG(ERROR) << "Unexpected QMI UIM type in ModemQrtr tx queue";
   }
-  if (should_pop)
-    tx_queue_.pop_front();
 }
 
 void ModemQrtr::TransmitQmiSwitchSlot(TxElement* tx_element) {
@@ -491,31 +503,33 @@ void ModemQrtr::ProcessQrtrPacket(uint32_t node, uint32_t port, int size) {
 
   switch (pkt.type) {
     case QRTR_TYPE_NEW_SERVER:
-      VLOG(2) << "Received NEW_SERVER QRTR packet";
+      LOG(INFO) << "Received NEW_SERVER QRTR packet";
       if (pkt.service == QmiCmdInterface::Service::kUim &&
           channel_ == kInvalidChannel) {
         current_state_.Transition(State::kUimStarted);
         qrtr_table_.Insert(QmiCmdInterface::Service::kUim,
                            {pkt.port, pkt.node});
-        VLOG(2) << "Stored UIM metadata";
+        VLOG(-2) << "Stored UIM metadata";
         // Request initial info about SIM slots.
         // TODO(crbug.com/1085825) Add support for getting indications so that
         // this info can get updated.
         tx_queue_.push_front(
             {std::make_unique<TxInfo>(), AllocateId(),
-             std::make_unique<UimCmd>(UimCmd::QmiType::kGetSlots)});
-        tx_queue_.push_front(
-            {std::make_unique<TxInfo>(), AllocateId(),
-             std::make_unique<UimCmd>(UimCmd::QmiType::kReset)});
+             std::make_unique<UimCmd>(UimCmd::QmiType::kGetSlots),
+             base::Bind(&PrintQmiProcessingResult)});
+        tx_queue_.push_front({std::make_unique<TxInfo>(), AllocateId(),
+                              std::make_unique<UimCmd>(UimCmd::QmiType::kReset),
+                              base::Bind(&PrintQmiProcessingResult)});
       }
       if (pkt.service == QmiCmdInterface::Service::kDms) {
         current_state_.Transition(State::kDmsStarted);
         qrtr_table_.Insert(QmiCmdInterface::Service::kDms,
                            {pkt.port, pkt.node});
         VLOG(2) << "Stored DMS metadata";
-        tx_queue_.push_front({std::make_unique<TxInfo>(), AllocateId(),
-                              std::make_unique<DmsCmd>(
-                                  DmsCmd::QmiType::kGetDeviceSerialNumbers)});
+        tx_queue_.push_front(
+            {std::make_unique<TxInfo>(), AllocateId(),
+             std::make_unique<DmsCmd>(DmsCmd::QmiType::kGetDeviceSerialNumbers),
+             base::Bind(&PrintQmiProcessingResult)});
       }
       break;
     case QRTR_TYPE_DATA:
@@ -567,7 +581,7 @@ void ModemQrtr::ProcessQmiPacket(const qrtr_packet& packet) {
     return;
   }
 
-  qmi_rx_callbacks_[{service, qmi_type}].Run(packet);
+  int err = qmi_rx_callbacks_[{service, qmi_type}].Run(packet);
 
   if (pending_response_type_->service() != service)
     LOG(ERROR) << "Received unexpected QMI response. Expected service: "
@@ -578,24 +592,37 @@ void ModemQrtr::ProcessQmiPacket(const qrtr_packet& packet) {
                << pending_response_type_->qmi_type()
                << " Actual type:" << qmi_type;
   pending_response_type_.reset();
+
+  // Most elements in the queue are simple qmi messages, which means they can
+  // popped immediately after a response. Apdu's may be sent in fragments, which
+  // means we pop them only after responses to all fragments have been received
+  // in ReceiveQmiSendApdu
+  if (service == QmiCmdInterface::kUim &&
+      qmi_type == UimCmd::QmiType::kSendApdu)
+    return;
+  // pop before running the callback since the callback might change the state
+  // of the queue.
+  auto cb_ = std::move(tx_queue_[0].cb_);
+  tx_queue_.pop_front();
+  std::move(cb_).Run(err);
 }
 
-void ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
+int ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
   UimCmd cmd(UimCmd::QmiType::kGetSlots);
   uim_get_slots_resp resp;
   unsigned int id;
   if (qmi_decode_message(&resp, &id, &packet, QMI_RESPONSE, cmd.qmi_type(),
                          uim_get_slots_resp_ei) < 0) {
     LOG(ERROR) << "Failed to decode QMI UIM response: " << cmd.ToString();
-    return;
+    return kQmiMessageProcessingError;
   } else if (!CheckMessageSuccess(cmd, resp.result)) {
-    return;
+    return resp.result.error;
   }
 
   if (!resp.status_valid || !resp.slot_info_valid) {
     LOG(ERROR) << "QMI UIM response for " << cmd.ToString()
                << " contained invalid slot info";
-    return;
+    return kQmiMessageProcessingError;
   }
 
   CHECK(euicc_manager_);
@@ -660,10 +687,13 @@ void ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
     LOG(ERROR) << "Expected to find an eSIM, retrying ...";
     Shutdown();
     RetryInitialization();
+    return kQmiMessageProcessingError;
   }
+
+  return kQmiSuccess;
 }
 
-void ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
+int ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
   UimCmd cmd(UimCmd::QmiType::kSwitchSlot);
   uim_switch_slot_resp resp;
   unsigned int id;
@@ -671,12 +701,12 @@ void ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
   if (qmi_decode_message(&resp, &id, &packet, QMI_RESPONSE, cmd.qmi_type(),
                          uim_switch_slot_resp_ei) < 0) {
     LOG(ERROR) << "Failed to decode QMI UIM response: " << cmd.ToString();
-    return;
+    return kQmiMessageProcessingError;
   }
 
   if (!CheckMessageSuccess(cmd, resp.result) &&
       resp.result.error != kErrorNoEffect) {
-    return;
+    return resp.result.error;
   }
 
   auto switch_slot_tx_info =
@@ -687,19 +717,19 @@ void ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
     euicc_manager_->OnLogicalSlotUpdated(stored_active_slot_.value(),
                                          base::nullopt);
 
-  tx_queue_.pop_front();
   // Sending QMI messages immediately after switch slot leads to QMI errors
   // since slot switching takes time. If channel reacquisition fails despite
   // this delay, we retry after kInitRetryDelay.
   DisableQmi(kSwitchSlotDelay);
+  return kQmiSuccess;
 }
 
-void ModemQrtr::ReceiveQmiGetSerialNumbers(const qrtr_packet& packet) {
+int ModemQrtr::ReceiveQmiGetSerialNumbers(const qrtr_packet& packet) {
   DmsCmd cmd(DmsCmd::QmiType::kGetDeviceSerialNumbers);
   if (current_state_ != State::kDmsStarted) {
     LOG(ERROR) << "Received unexpected QMI DMS response: " << cmd.ToString()
                << " in state " << current_state_;
-    return;
+    return kQmiMessageProcessingError;
   }
 
   dms_get_device_serial_numbers_resp resp;
@@ -722,16 +752,19 @@ void ModemQrtr::ReceiveQmiGetSerialNumbers(const qrtr_packet& packet) {
   imei_ = resp.imei;
   VLOG(2) << "IMEI: " << imei_;
   InitializeUim();
+  // We always return success since imei_ is not used by most SMDPs.
+  return kQmiSuccess;
 }
 
-void ModemQrtr::ReceiveQmiReset(const qrtr_packet& packet) {
+int ModemQrtr::ReceiveQmiReset(const qrtr_packet& packet) {
   current_state_.Transition(State::kUimStarted);
   VLOG(1) << "Ignoring received RESET packet";
+  return kQmiSuccess;
 }
 
-void ModemQrtr::ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet) {
+int ModemQrtr::ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet) {
   LOG(INFO) << __func__;
-  ParseQmiOpenLogicalChannel(packet);
+  int err = ParseQmiOpenLogicalChannel(packet);
 
   if (current_state_ != State::kLogicalChannelOpened &&
       current_state_ != State::kSendApduReady) {
@@ -743,21 +776,24 @@ void ModemQrtr::ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet) {
     // retry opening the channel immediately after initialization succeeds.
     tx_queue_.push_front(
         {std::unique_ptr<TxInfo>(), AllocateId(),
-         std::make_unique<UimCmd>(UimCmd::QmiType::kOpenLogicalChannel)});
+         std::make_unique<UimCmd>(UimCmd::QmiType::kOpenLogicalChannel),
+         base::Bind(&PrintQmiProcessingResult)});
     tx_queue_.push_front({std::unique_ptr<TxInfo>(), AllocateId(),
-                          std::make_unique<UimCmd>(UimCmd::QmiType::kReset)});
-    return;
+                          std::make_unique<UimCmd>(UimCmd::QmiType::kReset),
+                          base::Bind(&PrintQmiProcessingResult)});
+    return kQmiMessageProcessingError;
   }
   current_state_.Transition(State::kSendApduReady);
+  return err;
 }
 
-void ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
+int ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
   LOG(INFO) << __func__;
   UimCmd cmd(UimCmd::QmiType::kOpenLogicalChannel);
   if (current_state_ != State::kLogicalChannelPending) {
     LOG(ERROR) << "Received unexpected QMI UIM response: " << cmd.ToString()
                << " in state " << current_state_;
-    return;
+    return kQmiMessageProcessingError;
   }
 
   uim_open_logical_channel_resp resp;
@@ -765,7 +801,7 @@ void ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
   if (qmi_decode_message(&resp, &id, &packet, QMI_RESPONSE, cmd.qmi_type(),
                          uim_open_logical_channel_resp_ei) < 0) {
     LOG(ERROR) << "Failed to decode QMI UIM response: " << cmd.ToString();
-    return;
+    return kQmiMessageProcessingError;
   }
 
   if (resp.result.result != 0) {
@@ -773,20 +809,21 @@ void ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
         << cmd.ToString()
         << " Could not open channel to eSIM. QMI response contained error: "
         << resp.result.error;
-    return;
+    return resp.result.error;
   }
 
   if (!resp.channel_id_valid) {
     LOG(ERROR) << "QMI UIM response for " << cmd.ToString()
                << " contained an invalid channel id";
-    return;
+    return kQmiMessageProcessingError;
   }
 
   channel_ = resp.channel_id;
   current_state_.Transition(State::kLogicalChannelOpened);
+  return kQmiSuccess;
 }
 
-void ModemQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
+int ModemQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
   UimCmd cmd(UimCmd::QmiType::kSendApdu);
   CHECK(tx_queue_.size());
   // Ensure that the queued element is for a kSendApdu command
@@ -801,21 +838,15 @@ void ModemQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
   if (!qmi_decode_message(&resp, &id, &packet, QMI_RESPONSE, cmd.qmi_type(),
                           uim_send_apdu_resp_ei)) {
     LOG(ERROR) << "Failed to decode QMI UIM response: " << cmd.ToString();
-    return;
+    return kQmiMessageProcessingError;
   }
+
   if (!CheckMessageSuccess(cmd, resp.result)) {
-    if (info->callback_) {
-      info->callback_(responses_, lpa::card::EuiccCard::kSendApduError);
-      // ResponseCallback interface does not indicate a change in ownership of
-      // |responses_|, but all callbacks should transfer ownership.
-      // TODO(pholla) : Make ResponseCallback interface accept const responses_&
-      // and clear responses_.
-      CHECK(responses_.empty());
-    }
+    std::move(tx_queue_[0].cb_).Run(lpa::card::EuiccCard::kSendApduError);
     // Pop the apdu that caused the error.
     tx_queue_.pop_front();
     ReacquireChannel();
-    return;
+    return resp.result.error;
   }
 
   VLOG(2) << "Adding to payload from APDU response ("
@@ -825,30 +856,26 @@ void ModemQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
   if (payload.MorePayloadIncoming()) {
     // Make the next transmit operation be a request for more APDU data
     info->apdu_ = payload.CreateGetMoreCommand(false);
-    return;
+    return kQmiSuccess;
   } else if (info->apdu_.HasMoreFragments()) {
     // Send next fragment of APDU
     VLOG(1) << "Sending next APDU fragment...";
     TransmitFromQueue();
-    return;
+    return kQmiSuccess;
   }
 
   if (tx_queue_.empty() || static_cast<uint16_t>(id) != tx_queue_[0].id_) {
     LOG(ERROR) << "ModemQrtr received APDU from modem with unrecognized "
                << "transaction ID";
-    return;
+    return kQmiMessageProcessingError;
   }
 
   VLOG(1) << "Finished transaction " << tx_queue_[0].id_ / 2
           << " (id: " << tx_queue_[0].id_ << ")";
   responses_.push_back(payload.Release());
-  if (info->callback_) {
-    info->callback_(responses_, lpa::card::EuiccCard::kNoError);
-    // ResponseCallback interface does not indicate a change in ownership of
-    // |responses_|, but all callbacks should transfer ownership.
-    CHECK(responses_.empty());
-  }
+  std::move(tx_queue_[0].cb_).Run(lpa::card::EuiccCard::kNoError);
   tx_queue_.pop_front();
+  return kQmiSuccess;
 }
 
 void ModemQrtr::OnDataAvailable(SocketInterface* socket) {
