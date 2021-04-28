@@ -19,6 +19,10 @@ using chromeos::machine_learning::web_platform::mojom::HandwritingPredictionPtr;
 using chromeos::machine_learning::web_platform::mojom::HandwritingSegment;
 using chromeos::machine_learning::web_platform::mojom::HandwritingStrokePtr;
 
+// Used to avoid overflow in the following calculation (see
+// https://crbug.com/1203736).
+constexpr size_t kMaxInkRangeEndPoint = 1000000;
+
 }  // namespace
 
 chrome_knowledge::HandwritingRecognizerRequest
@@ -85,6 +89,10 @@ WebPlatformHandwritingPredictionsFromProto(
           segment->end_index = grapheme_begin_index;
           // For ink range.
           for (const auto& ink_range_proto : segment_proto.ink_ranges()) {
+            // Mainly to avoid overflow when plus 1 to it in the below.
+            if (ink_range_proto.end_point() > kMaxInkRangeEndPoint) {
+              return base::nullopt;
+            }
             // `ink_range->end_stroke` has to be smaller than `strokes.size()`.
             // This check is important because otherwise, the code
             // `strokes[stroke_idx]` below may crash.
