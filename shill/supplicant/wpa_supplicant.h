@@ -83,9 +83,11 @@ class WPASupplicant {
   static const char kKeyManagementFTPSK[];
   static const char kKeyManagementFTSAE[];
   static const char kKeyManagementWPAEAP[];
+  static const char kKeyManagementWPAEAPSHA256[];
   static const char kKeyManagementWPAPSK[];
   static const char kKeyManagementSAE[];
   static const char kKeyManagementIeee8021X[];
+  static const char kKeyManagementMethodPrefixEAP[];
   static const char kKeyManagementMethodSuffixEAP[];
   static const char kKeyManagementMethodSuffixPSK[];
   static const char kKeyManagementMethodSAE[];

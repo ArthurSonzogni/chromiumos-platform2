@@ -222,7 +222,15 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSN802_1x) {
   EXPECT_STREQ(kSecurity8021x,
-               ParseSecurity(MakeSecurityArgs("RSN", "something-eap")));
+               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b")));
+  EXPECT_STREQ(kSecurity8021x,
+               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b-192")));
+  EXPECT_STREQ(kSecurity8021x,
+               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap")));
+  EXPECT_STREQ(kSecurity8021x,
+               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-sha256")));
+  EXPECT_STREQ(kSecurity8021x,
+               ParseSecurity(MakeSecurityArgs("RSN", "wpa-ft-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPA802_1x) {

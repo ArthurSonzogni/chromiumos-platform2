@@ -577,7 +577,9 @@ void WiFiService::OnConnect(Error* error) {
   if (Is8021x()) {
     // If EAP key management is not set, set to a default.
     if (GetEAPKeyManagement().empty())
-      SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAEAP);
+      SetEAPKeyManagement(
+          std::string(WPASupplicant::kKeyManagementWPAEAP) + " " +
+          std::string(WPASupplicant::kKeyManagementWPAEAPSHA256));
     ClearEAPCertification();
   }
 
@@ -633,14 +635,20 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   auto key_mgmt = key_management();
   if (manager()->GetFTEnabled(nullptr)) {
     // Append the FT analog for each non-FT key management method.
+    bool ft_eap = false;
     for (const auto& mgmt :
          base::SplitString(key_mgmt, base::kWhitespaceASCII,
                            base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
       std::string ft_mgmt;
       if (mgmt == WPASupplicant::kKeyManagementWPAPSK) {
         ft_mgmt = WPASupplicant::kKeyManagementFTPSK;
-      } else if (mgmt == WPASupplicant::kKeyManagementWPAEAP) {
+      } else if (mgmt == WPASupplicant::kKeyManagementWPAEAP ||
+                 mgmt == WPASupplicant::kKeyManagementWPAEAPSHA256) {
+        // FT is already SHA256, so it matches both EAP and EAP-SHA256.
+        if (ft_eap)
+          continue;  // Already added this once.
         ft_mgmt = WPASupplicant::kKeyManagementFTEAP;
+        ft_eap = true;
       } else if (mgmt == WPASupplicant::kKeyManagementSAE) {
         ft_mgmt = WPASupplicant::kKeyManagementFTSAE;
       } else {

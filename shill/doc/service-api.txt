@@ -602,8 +602,10 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 			(WiFi only) The key management algorithm to be
 			used in 802.1x authentication.	If this property
-			is not set then "WPA-EAP" is used for the key
-			management algorithm.
+			is not set then "WPA-EAP" and "WPA-EAP-SHA256" are used
+			for the key management algorithm. Additional
+			802.11r/FT-related key management may also be enabled,
+			where applicable.
 
 			This property is included in get requests only
 			when the requester has sufficient privileges.

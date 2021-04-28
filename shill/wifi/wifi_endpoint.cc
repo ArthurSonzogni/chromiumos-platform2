@@ -437,7 +437,9 @@ void WiFiEndpoint::ParseKeyManagementMethods(
   for (const auto& method : key_management_vec) {
     if (method == WPASupplicant::kKeyManagementMethodSAE) {
       key_management_methods->insert(kKeyManagementSAE);
-    } else if (base::EndsWith(method,
+    } else if (base::StartsWith(method,
+                                WPASupplicant::kKeyManagementMethodPrefixEAP) ||
+               base::EndsWith(method,
                               WPASupplicant::kKeyManagementMethodSuffixEAP,
                               base::CompareCase::SENSITIVE)) {
       key_management_methods->insert(kKeyManagement802_1x);

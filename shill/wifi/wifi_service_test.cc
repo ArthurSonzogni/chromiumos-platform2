@@ -592,7 +592,7 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
     manager()->props_.ft_enabled = base::nullopt;
     wifi_service->Connect(nullptr, "in test");
     KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
-    std::string default_key_mgmt = "WPA-EAP FT-EAP";
+    std::string default_key_mgmt = "WPA-EAP WPA-EAP-SHA256 FT-EAP";
     EXPECT_EQ(default_key_mgmt,
               params.Get<std::string>(
                   WPASupplicant::kNetworkPropertyEapKeyManagement));
@@ -600,13 +600,14 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
     manager()->props_.ft_enabled = false;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
-    EXPECT_EQ("WPA-EAP", params.Get<std::string>(
-                             WPASupplicant::kNetworkPropertyEapKeyManagement));
+    EXPECT_EQ("WPA-EAP WPA-EAP-SHA256",
+              params.Get<std::string>(
+                  WPASupplicant::kNetworkPropertyEapKeyManagement));
 
     manager()->props_.ft_enabled = true;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
-    EXPECT_EQ("WPA-EAP FT-EAP",
+    EXPECT_EQ(default_key_mgmt,
               params.Get<std::string>(
                   WPASupplicant::kNetworkPropertyEapKeyManagement));
   }
