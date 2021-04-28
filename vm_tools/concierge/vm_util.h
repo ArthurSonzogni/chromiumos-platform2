@@ -63,6 +63,13 @@ extern const char kAndroidGidMap[];
 // reduce the actual memory footprint.
 std::string GetVmMemoryMiB();
 
+// Retrieves the physical package ID for |cpu| from the topology information in
+// sysfs.
+base::Optional<int32_t> GetCpuPackageId(int32_t cpu);
+
+// Retrieves the CPU capacity property for |cpu| from sysfs.
+base::Optional<int32_t> GetCpuCapacity(int32_t cpu);
+
 // Puts the current process in a CPU cgroup specificed by |cpu_cgroup|, and
 // then calls SetPgid(). This function can be called as brillo::ProcessImpl's
 // PreExecCallback.

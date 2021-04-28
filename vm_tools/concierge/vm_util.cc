@@ -191,6 +191,31 @@ std::string GetVmMemoryMiB() {
   return std::to_string(vm_memory_mb);
 }
 
+base::Optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {
+  std::string str;
+  int int_val;
+  if (base::ReadFileToString(filename, &str) &&
+      base::StringToInt(
+          base::TrimWhitespaceASCII(str, base::TrimPositions::TRIM_TRAILING),
+          &int_val)) {
+    return base::Optional<int32_t>(int_val);
+  }
+
+  return base::nullopt;
+}
+
+base::Optional<int32_t> GetCpuPackageId(int32_t cpu) {
+  base::FilePath topology_path(base::StringPrintf(
+      "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", cpu));
+  return ReadFileToInt32(topology_path);
+}
+
+base::Optional<int32_t> GetCpuCapacity(int32_t cpu) {
+  base::FilePath cpu_capacity_path(
+      base::StringPrintf("/sys/devices/system/cpu/cpu%d/cpu_capacity", cpu));
+  return ReadFileToInt32(cpu_capacity_path);
+}
+
 bool SetUpCrosvmProcess(const base::FilePath& cpu_cgroup) {
   // Note: This function is meant to be called after forking a process for
   // crosvm but before execve(). Since Concierge is multi-threaded, this

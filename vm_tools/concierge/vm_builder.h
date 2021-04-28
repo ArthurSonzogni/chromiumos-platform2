@@ -96,6 +96,7 @@ class VmBuilder {
   std::vector<std::string> serial_devices_;
   std::vector<std::string> wayland_sockets_;
   std::vector<std::string> shared_dirs_;
+  std::vector<std::vector<int32_t>> cpu_clusters_;
 
   base::StringPairs custom_params_;
 

@@ -1455,6 +1455,39 @@ std::unique_ptr<dbus::Response> Service::StartVm(
                           .path = std::move(image_spec.rootfs),
                           .writable = request.writable_rootfs()});
   }
+
+  // Group the CPUs by their physical package ID to determine CPU cluster
+  // layout.
+  std::vector<std::vector<std::string>> cpu_clusters;
+  std::vector<std::string> cpu_capacity;
+  for (int32_t cpu = 0; cpu < cpus; cpu++) {
+    auto physical_package_id = GetCpuPackageId(cpu);
+    if (physical_package_id) {
+      CHECK_GE(*physical_package_id, 0);
+      if (*physical_package_id + 1 > cpu_clusters.size())
+        cpu_clusters.resize(*physical_package_id + 1);
+      cpu_clusters[*physical_package_id].push_back(std::to_string(cpu));
+    }
+
+    auto capacity = GetCpuCapacity(cpu);
+    if (capacity) {
+      CHECK_GE(*capacity, 0);
+      cpu_capacity.push_back(base::StringPrintf("%d=%d", cpu, *capacity));
+    }
+  }
+
+  if (!cpu_capacity.empty()) {
+    vm_builder.AppendCustomParam("--cpu-capacity",
+                                 base::JoinString(cpu_capacity, ","));
+  }
+
+  if (!cpu_clusters.empty()) {
+    for (const auto& cluster : cpu_clusters) {
+      auto cpu_list = base::JoinString(cluster, ",");
+      vm_builder.AppendCustomParam("--cpu-cluster", cpu_list);
+    }
+  }
+
   auto vm = TerminaVm::Create(
       vsock_cid, std::move(network_client), std::move(server_proxy),
       std::move(runtime_dir), std::move(log_path), std::move(gpu_cache_path),
