@@ -155,6 +155,10 @@ class CellularCapability3gpp : public CellularCapability {
   sim_properties_for_testing() const {
     return sim_properties_;
   }
+  void set_sim_properties_for_testing(
+      const base::flat_map<RpcIdentifier, SimProperties>& sim_properties) {
+    sim_properties_ = sim_properties;
+  }
 
   // Constants used in scan results.  Make available to unit tests.
   static const char kStatusProperty[];

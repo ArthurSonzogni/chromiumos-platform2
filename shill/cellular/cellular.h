@@ -484,7 +484,7 @@ class Cellular : public Device,
 
   void SetPrimarySimProperties(const SimProperties& properties);
   void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties,
-                            size_t primary_slot);
+                            int primary_slot);
 
   // Creates or destroys services as required.
   void UpdateServices();
@@ -640,9 +640,10 @@ class Cellular : public Device,
 
   // vector of SimProperties, ordered by slot.
   std::vector<SimProperties> sim_slot_properties_;
-  size_t primary_sim_slot_ = 0u;
+  int primary_sim_slot_ = -1;
   // vector of KeyValueStore dictionaries, emitted as Device.SIMSlotInfo.
   KeyValueStores sim_slot_info_;
+  bool sim_slot_switch_allowed_ = true;
 
   // End of DBus properties.
   // ///////////////////////////////////////////////////////////////////////////
