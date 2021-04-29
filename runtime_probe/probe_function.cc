@@ -58,7 +58,7 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
       registered_functions_[function_name](kwargs));
 }
 
-bool ProbeFunction::InvokeHelper(std::string* result) const {
+bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
   std::string probe_statement_str;
   CHECK(raw_value_.has_value());
   base::JSONWriter::Write(*raw_value_, &probe_statement_str);
@@ -74,7 +74,8 @@ bool ProbeFunction::InvokeHelper(std::string* result) const {
   }
 }
 
-base::Optional<base::Value> ProbeFunction::InvokeHelperToJSON() const {
+base::Optional<base::Value> PrivilegedProbeFunction::InvokeHelperToJSON()
+    const {
   std::string raw_output;
   if (!InvokeHelper(&raw_output)) {
     return base::nullopt;

@@ -19,6 +19,7 @@ class MockProbeFunction : public ProbeFunction {
  public:
   NAME_PROBE_FUNCTION("mock_function");
   MOCK_METHOD(DataType, Eval, (), (const, override));
+  DataType EvalImpl() const override { return {}; }
 };
 
 TEST(ProbeStatementTest, TestEval) {

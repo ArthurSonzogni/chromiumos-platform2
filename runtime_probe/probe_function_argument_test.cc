@@ -18,6 +18,7 @@ class Mock1ProbeFunction : public ProbeFunction {
 
   static constexpr auto FromKwargsValue =
       FromEmptyKwargsValue<Mock1ProbeFunction>;
+  DataType EvalImpl() const override { return {}; }
 };
 
 class Mock2ProbeFunction : public ProbeFunction {
@@ -33,6 +34,7 @@ class Mock2ProbeFunction : public ProbeFunction {
     PARSE_ARGUMENT(default_int, 1);
     PARSE_END();
   }
+  DataType EvalImpl() const override { return {}; }
 
   std::string a_str_;
   int a_int_;
