@@ -167,6 +167,8 @@ static void sl_host_surface_attach(struct wl_client* client,
 
     // Allocate new output buffer.
     if (!host->current_buffer) {
+      TRACE_EVENT("surface", "sl_host_surface_attach: allocate_buffer",
+                  "dmabuf_enabled", host->ctx->channel->supports_dmabuf());
       size_t width = host_buffer->width;
       size_t height = host_buffer->height;
       uint32_t shm_format = host_buffer->shm_format;
@@ -270,6 +272,7 @@ static void sl_host_surface_attach(struct wl_client* client,
 
   // TODO(davidriley): This should be done in the commit.
   if (host_buffer && host_buffer->sync_point) {
+    TRACE_EVENT("surface", "sl_host_surface_attach: sync_point");
     host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
   }
 
@@ -467,6 +470,7 @@ static void sl_host_surface_commit(struct wl_client* client,
 
     rect = pixman_region32_rectangles(&host->current_buffer->damage, &n);
     while (n--) {
+      TRACE_EVENT("surface", "sl_host_surface_commit: memcpy_loop");
       int32_t x1, y1, x2, y2;
 
       // Enclosing rect after applying scale and offset.
@@ -553,6 +557,8 @@ static void sl_host_surface_commit(struct wl_client* client,
   // No need to defer client commits if surface has a role. E.g. is a cursor
   // or shell surface.
   if (host->has_role) {
+    TRACE_EVENT("surface", "sl_host_surface_commit: wl_surface_commit", "id",
+                window->id, "has_role", host->has_role);
     wl_surface_commit(host->proxy);
 
     // GTK determines the scale based on the output the surface has entered.
@@ -571,6 +577,8 @@ static void sl_host_surface_commit(struct wl_client* client,
       }
     }
   } else {
+    TRACE_EVENT("surface", "sl_host_surface_commit: wl_surface_commit", "id",
+                window->id, "has_role", host->has_role);
     // Commit if surface is associated with a window. Otherwise, defer
     // commit until window is created.
     wl_list_for_each(window, &host->ctx->windows, link) {
