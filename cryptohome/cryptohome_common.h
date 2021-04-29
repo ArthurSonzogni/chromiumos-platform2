@@ -33,6 +33,10 @@ static constexpr char kDataRestoreKeyLabel[] = "DataRestoreKey";
 #define CRYPTOHOME_PWNAME_BUF_LENGTH 1024
 #define CRYPTOHOME_CHAPS_KEY_LENGTH 16  // AES block size
 #define CRYPTOHOME_RESET_SEED_LENGTH 32
+// Always 32 bytes per the firmware.
+#define CRYPTOHOME_RESET_SECRET_LENGTH 32
+// UserSecretStash file system encryption keys are 512 bits.
+#define CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE 64
 
 struct VaultKeysetKeys {
   unsigned char fek[CRYPTOHOME_DEFAULT_KEY_SIZE];
