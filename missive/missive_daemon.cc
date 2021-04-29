@@ -62,10 +62,10 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
           .set_signature_verification_public_key(
               SignatureVerifier::VerificationKey()),
       base::BindRepeating(&MissiveDaemon::AsyncStartUpload,
-                          weak_factory_.GetWeakPtr()),
+                          base::Unretained(this)),
       EncryptionModule::Create(),
       base::BindOnce(&MissiveDaemon::OnStorageModuleConfigured,
-                     weak_factory_.GetWeakPtr()));
+                     base::Unretained(this)));
 }
 
 void MissiveDaemon::OnStorageModuleConfigured(
@@ -83,6 +83,7 @@ void MissiveDaemon::AsyncStartUpload(
     Priority priority,
     bool need_encryption_key,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
+  DCHECK(uploader_result_cb);
   auto upload_job_result = UploadJob::Create(
       upload_client_, need_encryption_key, std::move(uploader_result_cb));
   if (!upload_job_result.ok()) {
@@ -145,7 +146,7 @@ void MissiveDaemon::FlushPriority(
   storage_module_->Flush(
       in_request.priority(),
       base::BindOnce(&MissiveDaemon::HandleFlushResponse,
-                     weak_factory_.GetWeakPtr(), std::move(response)));
+                     base::Unretained(this), std::move(response)));
 }
 
 void MissiveDaemon::HandleFlushResponse(

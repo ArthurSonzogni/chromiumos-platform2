@@ -26,6 +26,7 @@
 
 using ::testing::_;
 using ::testing::Invoke;
+using ::testing::Return;
 using ::testing::WithArgs;
 
 namespace reporting {
@@ -42,37 +43,75 @@ class UploadClientProducer : public UploadClient {
 class TestRecordUploader {
  public:
   explicit TestRecordUploader(std::vector<EncryptedRecord> records)
-      : records_(std::move(records)) {}
+      : records_(std::move(records)),
+        sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
+            {base::TaskPriority::BEST_EFFORT})) {
+    DETACH_FROM_SEQUENCE(sequence_checker_);
+  }
 
   void StartUpload(
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_interface) {
     EXPECT_TRUE(uploader_interface.ok());
     uploader_interface_ = std::move(uploader_interface.ValueOrDie());
-    Upload(true);
+    PostNextUpload(/*next=*/true);
   }
 
  private:
   void Upload(bool send_next_record) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     if (!send_next_record || records_.empty()) {
       uploader_interface_->Completed(Status::StatusOK());
+      uploader_interface_.reset();  // Do not need it anymore.
       return;
     }
     uploader_interface_->ProcessRecord(
-        records_.front(),
-        base::BindOnce(&TestRecordUploader::Upload, base::Unretained(this)));
+        records_.front(), base::BindOnce(&TestRecordUploader::PostNextUpload,
+                                         base::Unretained(this)));
     records_.erase(records_.begin());
+  }
+
+  void PostNextUpload(bool next) {
+    sequenced_task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(&TestRecordUploader::Upload,
+                                  base::Unretained(this), next));
   }
 
   std::vector<EncryptedRecord> records_;
   std::unique_ptr<UploaderInterface> uploader_interface_;
+
+  // To protect |records_| running uploads on sequence.
+  SEQUENCE_CHECKER(sequence_checker_);
+  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
 };
 
 class UploadJobTest : public ::testing::Test {
  protected:
-  void SetUp() {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = scoped_refptr<dbus::MockBus>(new dbus::MockBus(options));
+  void SetUp() override {
+    dbus_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+
+    test::TestEvent<scoped_refptr<dbus::MockBus>> dbus_waiter;
+    dbus_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&UploadJobTest::CreateMockDBus, dbus_waiter.cb()));
+    mock_bus_ = dbus_waiter.result();
+
+    EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
+        .WillRepeatedly(Return(dbus_task_runner_.get()));
+
+    EXPECT_CALL(*mock_bus_, GetOriginTaskRunner())
+        .WillRepeatedly(Return(dbus_task_runner_.get()));
+
+    // We actually want AssertOnOriginThread and AssertOnDBusThread to work
+    // properly (actually assert they are on dbus_thread_). If the unit tests
+    // end up creating calls on the wrong thread, the unit test will just hang
+    // anyways, and it's easier to debug if we make the program crash at that
+    // point. Since these are ON_CALLs, VerifyAndClearMockExpectations doesn't
+    // clear them.
+    ON_CALL(*mock_bus_, AssertOnOriginThread())
+        .WillByDefault(Invoke(this, &UploadJobTest::AssertOnDBusThread));
+    ON_CALL(*mock_bus_, AssertOnDBusThread())
+        .WillByDefault(Invoke(this, &UploadJobTest::AssertOnDBusThread));
 
     mock_chrome_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), chromeos::kChromeReportingServiceName,
@@ -82,9 +121,27 @@ class UploadJobTest : public ::testing::Test {
         mock_bus_, mock_chrome_proxy_.get());
   }
 
+  void TearDown() override {
+    // Let everything ongoing to finish.
+    task_environment_.RunUntilIdle();
+  }
+
+  static void CreateMockDBus(
+      base::OnceCallback<void(scoped_refptr<dbus::MockBus>)> ready_cb) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    std::move(ready_cb).Run(
+        base::WrapRefCounted<dbus::MockBus>(new dbus::MockBus(options)));
+  }
+
+  void AssertOnDBusThread() {
+    ASSERT_TRUE(dbus_task_runner_->RunsTasksInCurrentSequence());
+  }
+
   base::test::TaskEnvironment task_environment_;
 
-  scoped_refptr<dbus::Bus> mock_bus_;
+  scoped_refptr<base::SequencedTaskRunner> dbus_task_runner_;
+  scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_chrome_proxy_;
   scoped_refptr<UploadClient> upload_client_;
 };
@@ -110,7 +167,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
   std::unique_ptr<dbus::Response> dbus_response = dbus::Response::CreateEmpty();
   dbus::Response* dbus_response_ptr = dbus_response.get();
   // Create a copy of the records to ensure they are passed correctly.
-  std::vector<EncryptedRecord> expected_records(records);
+  const std::vector<EncryptedRecord> expected_records(records);
   EXPECT_CALL(*mock_chrome_proxy_, DoCallMethod(_, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(
           [&expected_records, dbus_response_ptr](
@@ -154,18 +211,15 @@ TEST_F(UploadJobTest, UploadsRecords) {
       UploadJob::Create(upload_client_, false,
                         base::BindOnce(&TestRecordUploader::StartUpload,
                                        base::Unretained(&record_uploader)));
-  ASSERT_TRUE(job_result.ok());
+  ASSERT_TRUE(job_result.ok()) << job_result.status();
   std::unique_ptr<UploadJob> job = std::move(job_result.ValueOrDie());
 
-  test::TestCallbackWaiter waiter;
-  waiter.Attach();
-  job->Start(base::BindOnce(
-      [](test::TestCallbackWaiter* waiter, Status status) {
-        EXPECT_TRUE(status.ok());
-        waiter->Signal();
-      },
-      &waiter));
-  waiter.Wait();
+  test::TestEvent<Status> uploaded;
+  job->Start(uploaded.cb());
+  const Status status = uploaded.result();
+  EXPECT_OK(status) << status;
+  // Let everything finish before record_uploader destructs.
+  task_environment_.RunUntilIdle();
 }
 
 }  // namespace

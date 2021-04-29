@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -26,6 +27,7 @@
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::Invoke;
+using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::WithArgs;
 
@@ -42,10 +44,32 @@ class UploadClientProducer : public UploadClient {
 
 class UploadClientTest : public ::testing::Test {
  protected:
-  void SetUp() {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    mock_bus_ = base::WrapRefCounted<dbus::MockBus>(new dbus::MockBus(options));
+  void SetUp() override {
+    dbus_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+
+    test::TestEvent<scoped_refptr<dbus::MockBus>> dbus_waiter;
+    dbus_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&UploadClientTest::CreateMockDBus, dbus_waiter.cb()));
+    mock_bus_ = dbus_waiter.result();
+
+    EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
+        .WillRepeatedly(Return(dbus_task_runner_.get()));
+
+    EXPECT_CALL(*mock_bus_, GetOriginTaskRunner())
+        .WillRepeatedly(Return(dbus_task_runner_.get()));
+
+    // We actually want AssertOnOriginThread and AssertOnDBusThread to work
+    // properly (actually assert they are on dbus_thread_). If the unit tests
+    // end up creating calls on the wrong thread, the unit test will just hang
+    // anyways, and it's easier to debug if we make the program crash at that
+    // point. Since these are ON_CALLs, VerifyAndClearMockExpectations doesn't
+    // clear them.
+    ON_CALL(*mock_bus_, AssertOnOriginThread())
+        .WillByDefault(Invoke(this, &UploadClientTest::AssertOnDBusThread));
+    ON_CALL(*mock_bus_, AssertOnDBusThread())
+        .WillByDefault(Invoke(this, &UploadClientTest::AssertOnDBusThread));
 
     mock_chrome_proxy_ = base::WrapRefCounted(new dbus::MockObjectProxy(
         mock_bus_.get(), chromeos::kChromeReportingServiceName,
@@ -55,9 +79,27 @@ class UploadClientTest : public ::testing::Test {
         mock_bus_, mock_chrome_proxy_.get());
   }
 
+  void TearDown() override {
+    // Let everything ongoing to finish.
+    task_environment_.RunUntilIdle();
+  }
+
+  static void CreateMockDBus(
+      base::OnceCallback<void(scoped_refptr<dbus::MockBus>)> ready_cb) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    std::move(ready_cb).Run(
+        base::WrapRefCounted<dbus::MockBus>(new dbus::MockBus(options)));
+  }
+
+  void AssertOnDBusThread() {
+    ASSERT_TRUE(dbus_task_runner_->RunsTasksInCurrentSequence());
+  }
+
   base::test::TaskEnvironment task_environment_;
 
-  scoped_refptr<dbus::Bus> mock_bus_;
+  scoped_refptr<base::SequencedTaskRunner> dbus_task_runner_;
+  scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_chrome_proxy_;
   scoped_refptr<UploadClient> upload_client_;
 };
@@ -101,6 +143,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
                                               dbus::Response* response)>*
                                               // clang-format on
                                               response_cb) {
+        ASSERT_NE(call, nullptr);
         ASSERT_THAT(call->GetInterface(),
                     Eq(chromeos::kChromeReportingServiceInterface));
         ASSERT_THAT(

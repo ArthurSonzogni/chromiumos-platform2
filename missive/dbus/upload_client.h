@@ -49,6 +49,7 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
   virtual ~UploadClient();
 
   void HandleUploadEncryptedRecordResponse(
+      const std::unique_ptr<dbus::MethodCall> call,  // owned thru response.
       HandleUploadResponseCallback response_callback,
       dbus::Response* response) const;
 
@@ -57,8 +58,6 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
 
   scoped_refptr<dbus::Bus> const bus_;
   dbus::ObjectProxy* const chrome_proxy_;
-
-  base::WeakPtrFactory<UploadClient> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

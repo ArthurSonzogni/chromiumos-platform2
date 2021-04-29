@@ -37,9 +37,9 @@ UploadJob::UploadDelegate::UploadDelegate(
     : upload_client_(upload_client),
       need_encryption_key_(need_encryption_key) {}
 
+UploadJob::UploadDelegate::~UploadDelegate() = default;
 UploadJob::SetRecordsCb UploadJob::UploadDelegate::GetSetRecordsCb() {
-  return base::BindOnce(&UploadDelegate::SetRecords,
-                        weak_ptr_factory_.GetWeakPtr());
+  return base::BindOnce(&UploadDelegate::SetRecords, base::Unretained(this));
 }
 
 Status UploadJob::UploadDelegate::Complete() {
@@ -63,43 +63,25 @@ void UploadJob::UploadDelegate::SetRecords(Records records) {
 
 UploadJob::RecordProcessor::RecordProcessor(
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-    DoneCb done_cb)
+    DoneCb done_cb,
+    const base::WeakPtr<UploadJob>& job)
     : sequenced_task_runner_(sequenced_task_runner),
       done_cb_(std::move(done_cb)),
-      records_(std::make_unique<std::vector<EncryptedRecord>>()) {}
+      records_(std::make_unique<std::vector<EncryptedRecord>>()),
+      job_(job) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+  DCHECK(done_cb_);
+}
+
+UploadJob::RecordProcessor::~RecordProcessor() = default;
 
 void UploadJob::RecordProcessor::ProcessRecord(
     EncryptedRecord record, base::OnceCallback<void(bool)> processed_cb) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&RecordProcessor::ProcessRecordInternal,
-                                weak_ptr_factory_.GetWeakPtr(),
-                                std::move(record), std::move(processed_cb)));
-}
-
-void UploadJob::RecordProcessor::ProcessGap(
-    SequencingInformation start,
-    uint64_t count,
-    base::OnceCallback<void(bool)> processed_cb) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&RecordProcessor::ProcessGapInternal,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(start), count,
-                     std::move(processed_cb)));
-}
-
-void UploadJob::RecordProcessor::Completed(Status final_status) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&RecordProcessor::CompletedInternal,
-                                weak_ptr_factory_.GetWeakPtr(), final_status));
-}
-
-void UploadJob::RecordProcessor::ProcessRecordInternal(
-    EncryptedRecord record, base::OnceCallback<void(bool)> processed_cb) {
-  if (completed_) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
+  if (!job_) {
     std::move(processed_cb).Run(false);
     return;
   }
-
   size_t record_size = record.ByteSizeLong();
   // We have to allow a single record through even if it is too large.
   // Otherwise the whole system will backup.
@@ -112,11 +94,12 @@ void UploadJob::RecordProcessor::ProcessRecordInternal(
   std::move(processed_cb).Run(current_size_ < kMaxUploadSize);
 }
 
-void UploadJob::RecordProcessor::ProcessGapInternal(
+void UploadJob::RecordProcessor::ProcessGap(
     SequencingInformation start,
     uint64_t count,
     base::OnceCallback<void(bool)> processed_cb) {
-  if (completed_) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
+  if (!job_) {
     std::move(processed_cb).Run(false);
     return;
   }
@@ -130,12 +113,12 @@ void UploadJob::RecordProcessor::ProcessGapInternal(
   std::move(processed_cb).Run(current_size_ < kMaxUploadSize);
 }
 
-void UploadJob::RecordProcessor::CompletedInternal(Status final_status) {
-  if (completed_) {
+void UploadJob::RecordProcessor::Completed(Status final_status) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
+  if (!job_) {
     return;
   }
-  completed_ = true;
-
+  DCHECK(done_cb_);
   if (!final_status.ok()) {
     // Destroy the records to regain system memory now.
     records_.reset();
@@ -172,7 +155,8 @@ void UploadJob::StartImpl() {
   // base::Unretained is safe here.
   std::move(start_cb_).Run(std::make_unique<RecordProcessor>(
       base::SequencedTaskRunnerHandle::Get(),
-      base::BindOnce(&UploadJob::Done, base::Unretained(this))));
+      base::BindOnce(&UploadJob::Done, base::Unretained(this)),
+      weak_ptr_factory_.GetWeakPtr()));
 }
 
 void UploadJob::Done(StatusOr<Records> records_result) {

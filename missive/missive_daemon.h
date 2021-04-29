@@ -78,10 +78,6 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
   scoped_refptr<UploadClient> upload_client_;
   scoped_refptr<StorageModuleInterface> storage_module_;
   Scheduler scheduler_;
-
-  // Note: This should remain the last member so it'll be destroyed and
-  // invalidate its weak pointers before any other members are destroyed.
-  base::WeakPtrFactory<MissiveDaemon> weak_factory_{this};
 };
 
 }  // namespace reporting

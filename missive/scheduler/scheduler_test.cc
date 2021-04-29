@@ -249,6 +249,11 @@ class SchedulerTest : public ::testing::Test {
 
   void SetUp() override { scheduler_.AddObserver(&scheduler_observer_); }
 
+  void TearDown() override {
+    // Let everything ongoing to finish.
+    task_environment_.RunUntilIdle();
+  }
+
  protected:
   base::test::TaskEnvironment task_environment_{};
   Scheduler scheduler_;

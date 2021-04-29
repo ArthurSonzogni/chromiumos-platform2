@@ -5,6 +5,7 @@
 #include "missive/missive_daemon.h"
 
 #include <base/logging.h>
+#include <base/task/thread_pool/thread_pool_instance.h>
 
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -32,6 +33,9 @@ int main(int argc, char* argv[]) {
 
   // Override the log items set by brillo::InitLog.
   SetLogItems();
+
+  base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
+      "missive_daemon_thread_pool");
 
   LOG(INFO) << "Starting Missive Service.";
   int exit_code = reporting::MissiveDaemon().Run();

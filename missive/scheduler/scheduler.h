@@ -167,8 +167,6 @@ class Scheduler {
   scoped_refptr<SharedQueue<std::unique_ptr<Job>>> jobs_queue_;
 
   std::vector<SchedulerObserver*> observers_;
-
-  base::WeakPtrFactory<Scheduler> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/sequence_checker.h>
 #include <base/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
@@ -33,6 +34,9 @@ class UploadJob : public Scheduler::Job {
    public:
     UploadDelegate(scoped_refptr<UploadClient> upload_client,
                    bool need_encryption_key);
+    UploadDelegate(const UploadDelegate& other) = delete;
+    UploadDelegate& operator=(const UploadDelegate& other) = delete;
+    ~UploadDelegate() override;
 
     SetRecordsCb GetSetRecordsCb();
 
@@ -44,19 +48,20 @@ class UploadJob : public Scheduler::Job {
 
     void SetRecords(Records records);
 
-    scoped_refptr<UploadClient> upload_client_;
+    const scoped_refptr<UploadClient> upload_client_;
     const bool need_encryption_key_;
     Records records_;
-
-    base::WeakPtrFactory<UploadDelegate> weak_ptr_factory_{this};
   };
 
   class RecordProcessor : public UploaderInterface {
    public:
     RecordProcessor(
         scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-        DoneCb done_cb);
-    ~RecordProcessor() = default;
+        DoneCb done_cb,
+        const base::WeakPtr<UploadJob>& job);
+    RecordProcessor(const RecordProcessor& other) = delete;
+    RecordProcessor& operator=(const RecordProcessor& other) = delete;
+    ~RecordProcessor() override;
 
     void ProcessRecord(EncryptedRecord record,
                        base::OnceCallback<void(bool)> processed_cb) override;
@@ -68,24 +73,15 @@ class UploadJob : public Scheduler::Job {
     void Completed(Status final_status) override;
 
    private:
-    void ProcessRecordInternal(EncryptedRecord record,
-                               base::OnceCallback<void(bool)> processed_cb);
-
-    void ProcessGapInternal(SequencingInformation start,
-                            uint64_t count,
-                            base::OnceCallback<void(bool)> processed_cb);
-
-    void CompletedInternal(Status final_status);
-
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
     DoneCb done_cb_;
 
     Records records_;
 
     size_t current_size_{0};
-    bool completed_{false};
 
-    base::WeakPtrFactory<RecordProcessor> weak_ptr_factory_{this};
+    SEQUENCE_CHECKER(sequence_checker_);
+    const base::WeakPtr<UploadJob> job_;
   };
 
   static StatusOr<std::unique_ptr<UploadJob>> Create(
@@ -104,6 +100,9 @@ class UploadJob : public Scheduler::Job {
 
   SetRecordsCb set_records_cb_;
   UploaderInterface::UploaderInterfaceResultCb start_cb_;
+
+  std::unique_ptr<UploadDelegate> upload_delegate_;
+  base::WeakPtrFactory<UploadJob> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

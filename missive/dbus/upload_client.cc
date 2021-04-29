@@ -66,25 +66,31 @@ void UploadClient::SendEncryptedRecords(
   request.set_need_encryption_keys(need_encryption_keys);
 
   // Make the call to Chrome
-  dbus::MethodCall call(
+  auto call = std::make_unique<dbus::MethodCall>(
       chromeos::kChromeReportingServiceInterface,
       chromeos::kChromeReportingServiceUploadEncryptedRecordMethod);
-  dbus::MessageWriter writer(&call);
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    Status status(error::UNKNOWN,
-                  "MessageWriter was unable to append the request.");
-    LOG(ERROR) << status;
-    std::move(response_callback).Run(status);
-    return;
+  dbus::MethodCall* const raw_call = call.get();
+  {
+    dbus::MessageWriter writer(raw_call);
+    if (!writer.AppendProtoAsArrayOfBytes(request)) {
+      Status status(error::UNKNOWN,
+                    "MessageWriter was unable to append the request.");
+      LOG(ERROR) << status;
+      std::move(response_callback).Run(status);
+      return;
+    }
   }
-  chrome_proxy_->CallMethod(
-      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::BindOnce(&UploadClient::HandleUploadEncryptedRecordResponse,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     std::move(response_callback)));
+  bus_->GetOriginTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &dbus::ObjectProxy::CallMethod, base::Unretained(chrome_proxy_),
+          raw_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+          base::BindOnce(&UploadClient::HandleUploadEncryptedRecordResponse,
+                         this, std::move(call), std::move(response_callback))));
 }
 
 void UploadClient::HandleUploadEncryptedRecordResponse(
+    const std::unique_ptr<dbus::MethodCall> call,  // owned thru response.
     HandleUploadResponseCallback response_callback,
     dbus::Response* response) const {
   dbus::MessageReader reader(response);

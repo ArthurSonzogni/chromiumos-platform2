@@ -175,7 +175,7 @@ class Scheduler::JobSemaphore {
 
     return std::make_unique<JobBlocker>(
         sequenced_task_runner_,
-        base::BindOnce(&JobSemaphore::Release, weak_ptr_factory_.GetWeakPtr()));
+        base::BindOnce(&JobSemaphore::Release, base::Unretained(this)));
   }
 
   void UpdateTaskLimit(TaskLimit task_limit) {
@@ -197,8 +197,6 @@ class Scheduler::JobSemaphore {
 
   std::atomic<TaskLimit> task_limit_{TaskLimit::OFF};
   uint32_t running_jobs_{0};
-
-  base::WeakPtrFactory<JobSemaphore> weak_ptr_factory_{this};
 };
 
 Scheduler::Scheduler()
@@ -282,11 +280,10 @@ void Scheduler::OnJobPop(std::unique_ptr<JobBlocker> job_blocker,
         std::move(notify_observers).Run(Notification::SUCCESSFUL_COMPLETION);
       },
       sequenced_task_runner_,
-      base::BindOnce(&Scheduler::StartJobs, weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&Scheduler::NotifyObservers,
-                     weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&Scheduler::StartJobs, base::Unretained(this)),
+      base::BindOnce(&Scheduler::NotifyObservers, base::Unretained(this)));
 
-  Start<JobContext>(std::move(job_result).ValueOrDie(), std::move(job_blocker),
+  Start<JobContext>(std::move(job_result.ValueOrDie()), std::move(job_blocker),
                     std::move(completion_cb), sequenced_task_runner_);
   NotifyObservers(Notification::STARTED_JOB);
 }

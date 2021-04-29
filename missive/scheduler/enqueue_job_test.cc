@@ -76,6 +76,11 @@ class EnqueueJobTest : public ::testing::Test {
     storage_module_ = MockStorageModule::Create();
   }
 
+  void TearDown() override {
+    // Let everything ongoing to finish.
+    task_environment_.RunUntilIdle();
+  }
+
   base::test::TaskEnvironment task_environment_;
 
   dbus::MethodCall method_call_;
@@ -108,15 +113,10 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
 
   EnqueueJob job(storage_module_, request, std::move(delegate));
 
-  test::TestCallbackWaiter waiter;
-  waiter.Attach();
-  job.Start(base::BindOnce(
-      [](test::TestCallbackWaiter* waiter, Status status) {
-        EXPECT_TRUE(status.ok());
-        waiter->Signal();
-      },
-      &waiter));
-  waiter.Wait();
+  test::TestEvent<Status> enqueued;
+  job.Start(enqueued.cb());
+  const Status status = enqueued.result();
+  EXPECT_OK(status) << status;
 }
 
 TEST_F(EnqueueJobTest, CancelsSuccessfully) {
