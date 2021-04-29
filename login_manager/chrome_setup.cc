@@ -551,6 +551,11 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("WebUITabStripTabDragIntegration");
   }
 
+  // TODO(b/180138001): Remove the following flag when a proper fix for
+  // the freeze issue is found.
+  if (builder->UseFlagIsSet("set_hw_overlay_strategy_none"))
+    builder->AddArg("--enable-hardware-overlays=\"\"");
+
   SetUpAutoDimFlag(builder, cros_config);
   SetUpFormFactorFlag(builder, cros_config);
 
