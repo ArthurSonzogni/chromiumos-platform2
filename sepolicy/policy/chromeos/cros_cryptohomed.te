@@ -23,6 +23,7 @@ allow cros_cryptohomed {
 }:dir mounton;
 
 allow cros_cryptohomed cros_home_shadow_uid_root:dir relabelfrom;
+allow cros_cryptohomed cros_home_shadow_uid_user:{ dir file } relabelfrom;
 create_dir_file(cros_cryptohomed, {
   cros_downloads_file
   cros_home
@@ -30,7 +31,6 @@ create_dir_file(cros_cryptohomed, {
   cros_home_root
   cros_home_shadow
   cros_home_shadow_low_entropy_creds
-  cros_home_shadow_uid
   cros_home_shadow_uid_root
   cros_home_shadow_uid_user
   cros_home_user
@@ -41,12 +41,12 @@ create_dir_file(cros_cryptohomed, {
 });
 create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
 
-allow cros_cryptohomed {
+r_dir_file(cros_cryptohomed, {
   cros_stateful_partition
   cros_run_daemon_store
   cros_var_db
   unlabeled
-}:dir r_dir_perms;
+});
 
 # ioctl is restricted for Chrome OS domains, see chrome_os.te. Give required
 # permissions to cros_cryptohomed.
@@ -57,6 +57,10 @@ allowxperm cros_cryptohomed {
   cros_stateful_partition
   unlabeled
 }:dir ioctl cryptohome_fscrypt_ioctls;
+allowxperm cros_cryptohomed cros_home_shadow_uid:file ioctl {
+  cryptohome_fscrypt_ioctls
+  FS_IOC_FIEMAP
+};
 
 # cryptohomed creates and relabelto dirs/files in
 # daemon-store directories.
@@ -124,6 +128,7 @@ has_arc(`
     FS_IOC_FSGETXATTR
     FS_IOC_FSSETXATTR
   };
+  allow cros_cryptohomed media_rw_data_file:dir relabelfrom;
 ')
 
 r_dir_file(cros_cryptohomed {
@@ -151,6 +156,9 @@ allow cros_cryptohomed {
   cros_stateful_partition
   cgroup
 }:dir r_dir_perms;
+
+allow cros_cryptohomed device:blk_file      rw_file_perms;
+allowxperm cros_cryptohomed device:blk_file ioctl BLKSECDISCARD;
 
 # TODO(b/178237710) Label the directories and files with specific contexts.
 allow cros_cryptohomed cros_run_namespaces:dir      search;

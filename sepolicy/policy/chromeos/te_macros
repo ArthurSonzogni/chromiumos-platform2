@@ -27,15 +27,15 @@ allow $1 $2:lnk_file create_file_perms;
 # and mounton the directories of the specified type.
 define(`create_mounton_dir_file', `
 allow $1 $2:dir { create_dir_perms mounton };
-allow $1 $2:file { create_file_perms };
+allow $1 $2:file { create_file_perms mounton };
 ')
 
 # create_relabelto_dir_file(domain, type)
 # Allow the specified domain to create directories and files
 # and relabelto the directories of the specified type.
 define(`create_relabelto_dir_file', `
-allow $1 $2:dir { create_dir_perms relabelto};
-allow $1 $2:file { create_file_perms };
+allow $1 $2:dir { create_dir_perms relabelto };
+allow $1 $2:file { create_file_perms relabelto };
 ')
 
 define(`execute_file_follow_link', `
