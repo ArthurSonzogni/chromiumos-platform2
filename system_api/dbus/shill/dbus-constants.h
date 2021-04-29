@@ -45,6 +45,8 @@ const char kDisconnectFunction[] = "Disconnect";
 const char kGetLoadableProfileEntriesFunction[] = "GetLoadableProfileEntries";
 const char kGetWiFiPassphraseFunction[] = "GetWiFiPassphrase";
 const char kRemoveServiceFunction[] = "Remove";
+const char kRequestTrafficCountersFunction[] = "RequestTrafficCounters";
+const char kResetTrafficCountersFunction[] = "ResetTrafficCounters";
 const char kSetPropertiesFunction[] = "SetProperties";
 
 // IPConfig function names.
