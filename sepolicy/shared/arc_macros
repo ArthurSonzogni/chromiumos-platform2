@@ -2,7 +2,8 @@
 define(`has_arc', ifelse(arc_version, `none', $2, $1))
 define(`no_arc', has_arc(, $1))
 define(`is_arc_p', ifelse(arc_version, `p', $1, $2))
-define(`is_arc_vm', ifelse(arc_version, !`none' && !`p', $1, $2))
+define(`is_arc_vm', ifelse(arc_version, `p', $2,
+  ifelse(arc_version, `none', $2, $1)))
 define(`dev_only', ifelse(use_selinux_develop, `y', $1))
 
 divert(-1)
