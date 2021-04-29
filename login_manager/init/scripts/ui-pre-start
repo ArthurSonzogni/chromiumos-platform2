@@ -193,6 +193,11 @@ if [ -d "${CONTAINER_CGROUP_DIR}" ]; then
   fi
 fi
 
+# Enable madvise(MADV_HUGEPAGE) for VMs guest mappings
+if [ -f "/sys/kernel/mm/transparent_hugepage/shmem_enabled" ]; then
+  echo "advise" > "/sys/kernel/mm/transparent_hugepage/shmem_enabled"
+fi
+
 if crossystem "cros_debug?1"; then
   # Set up the alt-syscall kernel module (on systems with kernel 3.14 or later)
   # to allow developer mode only system calls to be exposed to Android
