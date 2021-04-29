@@ -131,5 +131,23 @@ void GetChromeProxyServersAsync(scoped_refptr<dbus::Bus> bus,
                     base::Bind(&OnResolveProxy, callback));
 }
 
+void GetChromeProxyServersWithOverrideAsync(
+    scoped_refptr<dbus::Bus> bus,
+    const std::string& url,
+    const SystemProxyOverride system_proxy_override,
+    const GetChromeProxyServersCallback& callback) {
+  dbus::ObjectProxy* proxy =
+      bus->GetObjectProxy(chromeos::kNetworkProxyServiceName,
+                          dbus::ObjectPath(chromeos::kNetworkProxyServicePath));
+  dbus::MethodCall method_call(
+      chromeos::kNetworkProxyServiceInterface,
+      chromeos::kNetworkProxyServiceResolveProxyMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(url);
+  writer.AppendInt32(system_proxy_override);
+  proxy->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                    base::Bind(&OnResolveProxy, callback));
+}
+
 }  // namespace http
 }  // namespace brillo

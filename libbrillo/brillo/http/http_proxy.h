@@ -19,6 +19,24 @@ class Bus;
 namespace brillo {
 namespace http {
 
+// Options to override the default behaviour of the proxy resolution service in
+// Chrome regarding system-proxy. System-proxy is a local daemon which does
+// proxy authentication to a remote HTTP proxy, on behalf of Chrome OS system
+// services. The default behaviour is to return the address of system-proxy as
+// the first entry in the PAC-style list of resolved proxy list only if the
+// device policy SystemProxySettings is enabled.
+enum BRILLO_EXPORT SystemProxyOverride {
+  // Default behaviour. System-proxy will be prepended to the list of returned
+  // proxies only if enabled by policy.
+  kDefault = 0,
+  // System-proxy will be prepended to the list of returned proxies only if
+  // enabled by policy or feature flag SystemProxyForSystemServices.
+  kOptIn = 1,
+  // System-proxy will not be added to the list of returned proxies, even if
+  // enabled by policy.
+  kOptOut = 2,
+};
+
 using GetChromeProxyServersCallback =
     base::Callback<void(bool success, const std::vector<std::string>& proxies)>;
 
@@ -40,6 +58,15 @@ BRILLO_EXPORT bool GetChromeProxyServers(scoped_refptr<::dbus::Bus> bus,
 BRILLO_EXPORT void GetChromeProxyServersAsync(
     scoped_refptr<::dbus::Bus> bus,
     const std::string& url,
+    const GetChromeProxyServersCallback& callback);
+
+// Async version of `GetChromeProxyServers` which allows the caller to
+// explicitly opt-in and -out of using the system-proxy daemon, which
+// authenticates the caller to a remote HTTP proxy.
+BRILLO_EXPORT void GetChromeProxyServersWithOverrideAsync(
+    scoped_refptr<::dbus::Bus> bus,
+    const std::string& url,
+    const SystemProxyOverride system_proxy_override,
     const GetChromeProxyServersCallback& callback);
 
 }  // namespace http
