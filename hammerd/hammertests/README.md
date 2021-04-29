@@ -24,6 +24,7 @@ A list of current devices with detachable base mappings is as follows:
 |Nocturne              |Whiskers
 |Krane                 |Masterball
 |Kodama                |Magnemite
+|CoachZ                |Zed
 
 
 ## ON HOST
