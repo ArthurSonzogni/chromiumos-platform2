@@ -1006,4 +1006,89 @@ TEST_F(ScreensTestMocks, RepartitionDiskFailed) {
   EXPECT_EQ(ScreenType::kGeneralError, mock_screens_.GetScreenForTest());
 }
 
+TEST_F(ScreensTestMocks, ErrorScreenIntoDebugOptionsScreen) {
+  for (const auto& screen_type :
+       {ScreenType::kDownloadError, ScreenType::kNetworkError,
+        ScreenType::kPasswordError, ScreenType::kConnectionError}) {
+    mock_screens_.SetScreenForTest(screen_type);
+    mock_screens_.SetIndexForTest(2);
+    EXPECT_CALL(mock_screens_, ShowNewScreen());
+    mock_screens_.SwitchScreen(true);
+    EXPECT_EQ(ScreenType::kDebugOptionsScreen,
+              mock_screens_.GetScreenForTest());
+  }
+}
+
+TEST_F(ScreensTestMocks, DebugOptionsScreenBackGoesToWelcome) {
+  mock_screens_.SetScreenForTest(ScreenType::kDebugOptionsScreen);
+  mock_screens_.SetIndexForTest(2);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(ScreenType::kWelcomeScreen, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, DebugOptionsScreenIntoLogScreen) {
+  mock_screens_.SetScreenForTest(ScreenType::kDebugOptionsScreen);
+  mock_screens_.SetIndexForTest(1);
+  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(ScreenType::kLogScreen, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, LogScreenNoScreenRefresh) {
+  base::ScopedTempDir tmp_dir_;
+  ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir());
+  const base::FilePath& kPath = tmp_dir_.GetPath().Append("file");
+  ASSERT_TRUE(base::WriteFile(kPath, "a\nb\nc\n"));
+  mock_screens_.log_path_ = kPath;
+
+  // No redraw as already on the correct screen.
+  mock_screens_.SetScreenForTest(ScreenType::kLogScreen);
+  mock_screens_.SetIndexForTest(1);
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(ScreenType::kLogScreen, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, LogScreenPageDownAndUps) {
+  base::ScopedTempDir tmp_dir_;
+  ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir());
+  const base::FilePath& kPath = tmp_dir_.GetPath().Append("file");
+  ASSERT_TRUE(base::WriteFile(kPath, "a\nb\nc\n"));
+  mock_screens_.log_path_ = kPath;
+  mock_screens_.log_offset_idx_ = 0;
+  mock_screens_.log_offsets_ = {0, 3, 5};
+
+  // Act of scrolling up on the log.
+  mock_screens_.SetScreenForTest(ScreenType::kLogScreen);
+  mock_screens_.SetIndexForTest(1);
+  // No redraws should be triggered.
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(ScreenType::kLogScreen, mock_screens_.GetScreenForTest());
+
+  // Act of scrolling down on the log.
+  mock_screens_.SetIndexForTest(2);
+  EXPECT_CALL(
+      mock_screens_,
+      ShowImage(screens_path_.Append("log_area_border_large.png"), _, _));
+  EXPECT_CALL(mock_screens_, ShowText("\nc", _, _, "white"));
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(ScreenType::kLogScreen, mock_screens_.GetScreenForTest());
+
+  // Act of scrolling up on the log.
+  mock_screens_.SetIndexForTest(1);
+  EXPECT_CALL(
+      mock_screens_,
+      ShowImage(screens_path_.Append("log_area_border_large.png"), _, _));
+  EXPECT_CALL(mock_screens_, ShowText("a\nb", _, _, "white"));
+  mock_screens_.SwitchScreen(true);
+  EXPECT_EQ(ScreenType::kLogScreen, mock_screens_.GetScreenForTest());
+}
+
+TEST_F(ScreensTestMocks, LogScreenNonEnter) {
+  mock_screens_.SetScreenForTest(ScreenType::kLogScreen);
+  mock_screens_.SetIndexForTest(1);
+  mock_screens_.SwitchScreen(false);
+  EXPECT_EQ(ScreenType::kLogScreen, mock_screens_.GetScreenForTest());
+}
+
 }  // namespace minios

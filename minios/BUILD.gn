@@ -46,9 +46,12 @@ static_library("libminios") {
     "recovery_installer.cc",
     "screen_base.cc",
     "screens.cc",
+    "screens/debug_options_screen.cc",
+    "screens/log_screen.cc",
     "shill_proxy.cc",
     "shill_utils.cc",
     "update_engine_proxy.cc",
+    "utils.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":minios_adaptors" ]
@@ -76,6 +79,7 @@ if (use.test) {
       "network_manager_test.cc",
       "recovery_installer_test.cc",
       "screens_test.cc",
+      "utils_test.cc",
     ]
     configs += [
       "//common-mk:test",

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <utility>
 
+#include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
@@ -41,6 +42,8 @@ constexpr int kBtnYStep = 40;
 
 // Dropdown size.
 constexpr int kNetworksPerPage = 10;
+
+constexpr char kLogPath[] = "/var/log/messages";
 }  // namespace
 
 bool Screens::Init() {
@@ -352,7 +355,12 @@ void Screens::ShowErrorScreen(std::string error_message) {
   ShowInstructionsWithTitle(error_message);
   ShowStepper({"done", "done", "stepper_error"});
   ShowLanguageMenu(index_ == 0);
-  ShowButton("btn_try_again", -100, index_ == 1, default_button_width_, false);
+  const int kYOffset = -100;
+  const int kYStep = kButtonHeight + kButtonMargin;
+  ShowButton("btn_try_again", kYOffset, index_ == 1, default_button_width_,
+             false);
+  ShowButton("btn_debug_options", kYOffset + kYStep, index_ == 2,
+             default_button_width_, false);
 }
 
 void Screens::ChangeToErrorScreen(enum ScreenType error_screen) {
@@ -652,6 +660,13 @@ void Screens::SwitchScreen(bool enter) {
   // Not switching to a different screen. Just update `current_screen_` with the
   // new index.
   if (!enter) {
+    switch (current_screen_) {
+      case ScreenType::kLogScreen:
+        UpdateLogScreenButtons();
+        return;
+      default:
+        break;
+    }
     ShowNewScreen();
     return;
   }
@@ -715,6 +730,9 @@ void Screens::SwitchScreen(bool enter) {
       if (index_ == 1) {
         // Back to beginning.
         current_screen_ = ScreenType::kWelcomeScreen;
+      } else if (index_ == 2) {
+        index_ = 1;
+        current_screen_ = ScreenType::kDebugOptionsScreen;
       }
       break;
     case ScreenType::kPasswordError:
@@ -723,6 +741,40 @@ void Screens::SwitchScreen(bool enter) {
       if (index_ == 1) {
         // Back to dropdown screen,
         current_screen_ = ScreenType::kNetworkDropDownScreen;
+      } else if (index_ == 2) {
+        index_ = 1;
+        current_screen_ = ScreenType::kDebugOptionsScreen;
+      }
+      break;
+    case ScreenType::kDebugOptionsScreen:
+      if (index_ == 1) {
+        log_path_ = base::FilePath(kLogPath);
+        log_offset_idx_ = 0;
+        log_offsets_ = {0};
+        current_screen_ = ScreenType::kLogScreen;
+      } else if (index_ == 2) {
+        // Back to beginning.
+        index_ = 1;
+        current_screen_ = ScreenType::kWelcomeScreen;
+      }
+      break;
+    case ScreenType::kLogScreen:
+      if (index_ == 1) {
+        if (log_offset_idx_ > 0) {
+          --log_offset_idx_;
+          UpdateLogArea();
+        }
+        return;
+      } else if (index_ == 2) {
+        if (log_offset_idx_ < log_offsets_.size() - 1) {
+          ++log_offset_idx_;
+          UpdateLogArea();
+        }
+        return;
+      } else if (index_ == 3) {
+        // Back to debug options screen.
+        index_ = 1;
+        current_screen_ = ScreenType::kDebugOptionsScreen;
       }
       break;
   }
@@ -767,6 +819,12 @@ void Screens::ShowNewScreen() {
       break;
     case ScreenType::kGeneralError:
       ShowErrorScreen("MiniOS_general_error");
+      break;
+    case ScreenType::kDebugOptionsScreen:
+      ShowMiniOsDebugOptionsScreen();
+      break;
+    case ScreenType::kLogScreen:
+      ShowMiniOsLogScreen();
       break;
   }
 }

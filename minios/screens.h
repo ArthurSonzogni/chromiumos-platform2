@@ -57,6 +57,8 @@ enum class ScreenType {
   kPasswordError = 9,
   kConnectionError = 10,
   kGeneralError = 11,
+  kDebugOptionsScreen = 12,
+  kLogScreen = 13,
 };
 
 // Screens contains the different MiniOs Screens as well as specific components
@@ -187,6 +189,8 @@ class Screens : public ScreenBase,
   FRIEND_TEST(ScreensTestMocks, ErrorScreenFallBack);
   FRIEND_TEST(ScreensTestMocks, RepartitionDisk);
   FRIEND_TEST(ScreensTestMocks, RepartitionDiskFailed);
+  FRIEND_TEST(ScreensTestMocks, LogScreenNoScreenRefresh);
+  FRIEND_TEST(ScreensTestMocks, LogScreenPageDownAndUps);
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items.
@@ -230,6 +234,8 @@ class Screens : public ScreenBase,
   void ShowWaitingForConnectionScreen();
   void ShowMiniOsDownloadingScreen();
   virtual void ShowMiniOsCompleteScreen();
+  void ShowMiniOsDebugOptionsScreen();
+  void ShowMiniOsLogScreen();
 
   // Checks whether the current language is read from right to left. Must be
   // updated every time the language changes.
@@ -256,6 +262,10 @@ class Screens : public ScreenBase,
 
   // Reset and show error screen.
   void ChangeToErrorScreen(enum ScreenType error_screen);
+
+  // Updates related to the log screen.
+  void UpdateLogScreenButtons();
+  void UpdateLogArea();
 
   ProcessManagerInterface* process_manager_;
 
@@ -305,11 +315,13 @@ class Screens : public ScreenBase,
       {ScreenType::kLanguageDropDownScreen, 0},
       {ScreenType::kWaitForConnection, 0},
       {ScreenType::kStartDownload, 0},
-      {ScreenType::kDownloadError, 2},
-      {ScreenType::kNetworkError, 2},
-      {ScreenType::kPasswordError, 2},
-      {ScreenType::kConnectionError, 2},
-      {ScreenType::kGeneralError, 2}};
+      {ScreenType::kDownloadError, 3},
+      {ScreenType::kNetworkError, 3},
+      {ScreenType::kPasswordError, 3},
+      {ScreenType::kConnectionError, 3},
+      {ScreenType::kGeneralError, 3},
+      {ScreenType::kDebugOptionsScreen, 3},
+      {ScreenType::kLogScreen, 4}};
 
   ScreenType current_screen_{ScreenType::kWelcomeScreen};
   // Previous screen only used when changing the language so you know what
@@ -329,6 +341,12 @@ class Screens : public ScreenBase,
   // unnecessary screen changes.
   update_engine::Operation previous_update_state_{
       update_engine::Operation::IDLE};
+
+  // Used to keep track of the log to display.
+  base::FilePath log_path_;
+  // Used to keep track of the byte offsets in the file.
+  size_t log_offset_idx_ = 0;
+  std::vector<int64_t> log_offsets_ = {0};
 };
 
 }  // namespace minios

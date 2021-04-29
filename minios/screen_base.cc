@@ -20,8 +20,19 @@ const char kMenuGrey[] = "0x3F4042";
 const char kMenuButtonFrameGrey[] = "0x9AA0A6";
 
 // Dimension Constants
-const int kMonospaceGlyphWidth = 10;
+const int kButtonHeight = 32;
+const int kButtonMargin = 8;
 const int kDefaultMessageWidth = 720;
+const int kMonospaceGlyphHeight = 20;
+const int kMonospaceGlyphWidth = 10;
+
+// Dimension Constants for Logging
+const int kLogAreaWidth = kMonospaceGlyphWidth * kLogCharPerLine;
+const int kLogAreaHeight = kMonospaceGlyphHeight * kLogLinesPerPage;
+// y-coord of the upper edge of the log area, 16px below title.
+const int kLogAreaY = 196;
+const int kLogCharPerLine = 111;
+const int kLogLinesPerPage = 20;
 
 // Frecon constants
 constexpr int kFreconScalingFactor = 1;
@@ -32,8 +43,6 @@ constexpr char kConsole0[] = "dev/pts/0";
 
 // Dimensions and spacing.
 constexpr int kDefaultButtonWidth = 80;
-constexpr int kButtonHeight = 32;
-constexpr int kMonospaceGlyphHeight = 20;
 constexpr int kNewLineChar = 10;
 
 constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
@@ -178,7 +187,7 @@ void ScreenBase::ShowProgressPercentage(double progress) {
 
 void ScreenBase::ClearMainArea() {
   constexpr int kFooterHeight = 142;
-  if (!ShowBox(0, -kFooterHeight / 2, frecon_canvas_size_ + 100,
+  if (!ShowBox(0, -kFooterHeight / 2, frecon_canvas_size_ + 200,
                (frecon_canvas_size_ - kFooterHeight), kMenuBlack))
     LOG(WARNING) << "Could not clear main area.";
 }
