@@ -30,7 +30,7 @@ allow cros_chromeos_cleanup_logs { cros_home_file_type -cros_downloads_file }:di
 
 allow cros_chromeos_cleanup_logs cros_rotate_by_cleanup_logs_file_type:file create_file_perms;
 
-neverallow cros_chromeos_cleanup_logs { cros_var_file_type -cros_rotate_by_cleanup_logs_file_type }:file create;
+neverallow cros_chromeos_cleanup_logs { cros_var_file_type -cros_rotate_by_cleanup_logs_file_type -cros_metrics_file }:file create;
 
 r_dir_file(cros_chromeos_cleanup_logs, sysfs);
 r_dir_file(cros_chromeos_cleanup_logs_exec, cros_passwd_file);
