@@ -32,6 +32,7 @@ import ebuild_function
 _IUSE = [
     'amd_oemcrypto',
     'amd64',
+    'android_vm_rvc',
     'arc_adb_sideloading',
     'arcpp',
     'arcvm',
