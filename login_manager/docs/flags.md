@@ -37,7 +37,24 @@ Configuration that is specific to the Chrome browser should instead be placed in
 [chrome_setup.cc]. This includes most flags that are implemented within Chrome's
 `//ash` and `//chrome` directories.
 
+### Translating chromeos-config to switches
+
+The preferred way to add model-specific switches to the command line
+is to use [chromeos-config] to specify the model specific
+configuration.
+
+To do so, no changes to `session_manager` are required.  Simply
+generate the corresponding switches in [cros_config_schema] (search
+for `AshSwitches`).
+
 ### Use feature-based USE flags
+
+If you need a model-specific configuration for a pre-unibuild device
+(2016 and before), or you need to apply a feature to experimental
+builds, the best way to do this is USE flags.
+
+Note: USE flags are not able to introduce model-specific switches in
+the unibuild world.
 
 If possible, introduce a new USE flag named after the feature that you're adding
 and set it in the appropriate [board overlays] rather than making
@@ -57,15 +74,6 @@ then additionally enabling the feature for `newboard` will require:
     already
 *   Updating `session_manager` to additionally check for the `newboard` USE flag
 
-### Unibuild and chromeos-config
-
-With the Unibuild project, the same system image (and hence, board) may be
-shared by multiple types of devices. Device-specific configuration is performed
-through additional files that are read by [chromeos-config]. Modifying device
-configurations is beyond the scope of this document, but see
-`SetUpWallpaperFlags` in [chrome_setup.cc] for an example of using
-`libcros_config` to perform per-device configuration.
-
 ## Making quick changes
 
 [/etc/chrome_dev.conf] can be modified on dev-mode Chrome OS systems (after
@@ -78,4 +86,5 @@ format.
 [libchromeos-use-flags]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/libchromeos-use-flags/libchromeos-use-flags-0.0.1.ebuild
 [board overlays]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD
 [chromeos-config]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/
+[cros_config_schema]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/cros_config_host/cros_config_schema.py
 [/etc/chrome_dev.conf]: ../chrome_dev.conf
