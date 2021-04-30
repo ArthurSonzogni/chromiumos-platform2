@@ -120,6 +120,13 @@ const char kCrashFormatWithJSStack[] =
     "some_file\"; filename=\"foo.txt\":15:12345\n789\n12345"
     "upload_file_js_stack\"; filename=\"stack\":20:0123456789abcdefghij"
     "value3:2:ok";
+const char kCrashFormatWithLacrosJSStack[] =
+    "value1:10:abcdefghij"
+    "value2:5:12345"
+    "some_file\"; filename=\"foo.txt\":15:12345\n789\n12345"
+    "upload_file_js_stack\"; filename=\"stack\":20:0123456789abcdefghij"
+    "prod:13:Chrome_Lacros"
+    "value3:2:ok";
 
 const char kSampleDriErrorStateEncoded[] =
     "<base64>: SXQgYXBwZWFycyB0byBiZSBzb21lIHNvcnQgb2YgZXJyb3IgZGF0YS4=";
@@ -197,6 +204,7 @@ class ChromeCollectorTest : public ::testing::Test {
         scoped_temp_dir_.GetPath().Append("crash_config");
     const char kConfigContents[] =
         "chrome=echo hello there\n"
+        "lacros_chrome=echo welcome to lacros\n"
         "jserror=echo JavaScript has nothing to do with Java\n";
     ASSERT_TRUE(test_util::CreateFile(config_file, kConfigContents));
     collector_.set_log_config_path(config_file.value());
@@ -892,4 +900,36 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScript) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
   EXPECT_THAT(meta_file_contents, HasSubstr("done=1"));
+}
+
+TEST_F(ChromeCollectorTest, HandleCrashForJavaScriptLacros) {
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath input_file = dir.Append("lacros.jsinput");
+  ASSERT_TRUE(test_util::CreateFile(input_file, kCrashFormatWithLacrosJSStack));
+  SetUpDriErrorStateToReturn(kSampleDriErrorStateEncoded);
+  SetUpLogsShort();
+
+  int input_fd = open(input_file.value().c_str(), O_RDONLY);
+  ASSERT_NE(input_fd, -1) << "open " << input_file.value() << " failed: "
+                          << logging::SystemErrorCodeToString(errno);
+  // HandleCrashThroughMemfd will close input_fd.
+  EXPECT_TRUE(collector_.HandleCrashThroughMemfd(input_fd, 123, 456, "",
+                                                 "jserror", ""));
+
+  base::FilePath output_dri_error_file;
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "jserror.*.123.i915_error_state.log.xz",
+      &output_dri_error_file));
+
+  base::FilePath output_log;
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "jserror.*.123.chrome.txt.gz", &output_log));
+  int64_t output_log_compressed_size = 0;
+  EXPECT_TRUE(base::GetFileSize(output_log, &output_log_compressed_size));
+  Decompress(output_log);
+  base::FilePath output_log_uncompressed = output_log.RemoveFinalExtension();
+  std::string output_log_contents;
+  EXPECT_TRUE(
+      base::ReadFileToString(output_log_uncompressed, &output_log_contents));
+  EXPECT_EQ(output_log_contents, "welcome to lacros\n");
 }

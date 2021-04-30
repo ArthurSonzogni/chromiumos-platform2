@@ -141,22 +141,20 @@ bool ChromeCollector::HandleCrashWithDumpData(
   }
 
   // Keyed by crash metadata key name.
-  // If we have a crashing executable, we always use the logging key "chrome"
-  // (or "lacros_chrome", if the crash is in lacros), because we treat any type
-  // of chrome binary crash the same. (In particular, we may get names that
-  // amount to "unknown" if the process disappeared before Breakpad / Crashpad
-  // could retrieve the executable name. It's probably chrome, so get the normal
-  // chrome logs.)
-  // However, JavaScript crashes with their non-exe error keys are definitely
-  // not chrome crashes and we want different logs. For example, there's no
-  // point in getting session_manager logs for a JavaScript crash.
+  // For Chrome crashes, we need to know if we're in lacros, as the paths used
+  // for logs are different (/home/chronos/user/lacros/lacros.log).
+  // For non-lacros crashes, we always use the logging key "chrome".
+  // We may get names like "unknown" if the process disappeared before Breakpad
+  // Crashpad could retrieve the executable name. It's probably chrome, so get
+  // the normal chrome logs.
+  // Non-lacros JavaScript crashes with their non-exe error keys have different
+  // logs. For example, there's no point in getting session_manager logs for a
+  // JavaScript crash.
   std::string key_for_logs;
-  if (crash_type == kExecutableCrash) {
-    if (is_lacros_crash) {
-      key_for_logs = std::string(kLacrosChromeLogKeyName);
-    } else {
-      key_for_logs = std::string(kExecLogKeyName);
-    }
+  if (is_lacros_crash) {
+    key_for_logs = std::string(kLacrosChromeLogKeyName);
+  } else if (crash_type == kExecutableCrash) {
+    key_for_logs = std::string(kExecLogKeyName);
   } else {
     key_for_logs = non_exe_error_key;
   }
