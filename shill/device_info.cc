@@ -808,8 +808,7 @@ DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
 CellularRefPtr DeviceInfo::GetCellularDevice(int interface_index,
                                              const std::string& mac_address,
                                              Modem* modem) {
-  LOG(INFO) << __func__ << " Index: " << interface_index
-            << " Address: " << mac_address;
+  LOG(INFO) << __func__ << " Index: " << interface_index;
   DeviceRefPtr device = GetDevice(interface_index);
   if (device && device->link_name() != modem->link_name()) {
     SLOG(this, 1) << "Cellular link name changed: " << modem->link_name();

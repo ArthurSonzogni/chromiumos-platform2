@@ -232,12 +232,12 @@ CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
       mobile_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
       weak_ptr_factory_(this) {
-  SLOG(this, 2) << "Cellular capability constructed: 3GPP";
+  SLOG(this, 1) << "Cellular capability constructed: 3GPP";
   mobile_operator_info_->Init();
 }
 
 CellularCapability3gpp::~CellularCapability3gpp() {
-  SLOG(this, 2) << "Cellular capability destroyed: 3GPP";
+  SLOG(this, 1) << "Cellular capability destroyed: 3GPP";
 }
 
 KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
@@ -354,6 +354,7 @@ void CellularCapability3gpp::EnableModemCompleted(
 
 void CellularCapability3gpp::StopModem(Error* error,
                                        const ResultCallback& callback) {
+  SLOG(this, 1) << __func__;
   CHECK(!callback.is_null());
   CHECK(error);
   // If there is an outstanding registration change, simply ignore it since
@@ -1446,7 +1447,7 @@ void CellularCapability3gpp::OnModemCurrentCapabilitiesChanged(
   //
   // TODO(benchan): We should consider having the modem plugins in ModemManager
   // reporting whether network scan is supported.
-  cellular()->set_scanning_supported(
+  cellular()->SetScanningSupported(
       (current_capabilities & MM_MODEM_CAPABILITY_GSM_UMTS) != 0);
 }
 

@@ -345,14 +345,16 @@ void Service::Connect(Error* error, const char* reason) {
             "Connect attempted but %s Service %s is already connected: %s",
             technology().GetName().c_str(), log_name().c_str(), reason));
     return;
-  } else if (IsConnecting()) {
+  }
+  if (IsConnecting()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInProgress,
         base::StringPrintf(
             "Connect attempted but %s Service %s already connecting: %s",
             technology().GetName().c_str(), log_name().c_str(), reason));
     return;
-  } else if (IsDisconnecting()) {
+  }
+  if (IsDisconnecting()) {
     // SetState will re-trigger a connection after this disconnection has
     // completed.
     pending_connect_task_.Reset(

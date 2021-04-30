@@ -106,6 +106,11 @@ class Cellular : public Device,
     }
   };
 
+  // Static helper for logging.
+  static std::string GetStateString(State state);
+  static std::string GetModemStateString(ModemState modem_state);
+  static std::string GetCapabilityStateString(CapabilityState capability_state);
+
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/freedesktop/ModemManager1/Modem/0"). |service| is the modem
   // mananager service name (e.g., /org/freedesktop/ModemManager1).
@@ -172,10 +177,6 @@ class Cellular : public Device,
   // Destroys |capability_|. Called when the associated Modem instance is
   // destroyed.
   void DestroyCapability();
-
-  static std::string GetStateString(State state);
-  static std::string GetModemStateString(ModemState modem_state);
-  std::string GetCapabilityStateString(CapabilityState capability_state);
 
   // Update the home provider from the information in |operator_info|. This
   // information may be from the SIM / received OTA.
@@ -330,7 +331,7 @@ class Cellular : public Device,
   // Property setters. TODO(b/176904580): Rename SetFoo and alphabetize.
   void set_home_provider(const Stringmap& home_provider);
   void set_carrier(const std::string& carrier);
-  void set_scanning_supported(bool scanning_supported);
+  void SetScanningSupported(bool scanning_supported);
   void set_equipment_id(const std::string& equipment_id);
   void set_esn(const std::string& esn);
   void set_firmware_revision(const std::string& firmware_revision);
@@ -348,7 +349,7 @@ class Cellular : public Device,
   void clear_found_networks();
   void set_found_networks(const Stringmaps& found_networks);
   void set_provider_requires_roaming(bool provider_requires_roaming);
-  void set_apn_list(const Stringmaps& apn_list);
+  void SetApnList(const Stringmaps& apn_list);
 
   // Takes ownership.
   void set_home_provider_info(MobileOperatorInfo* home_provider_info);

@@ -58,7 +58,6 @@
 #include "shill/technology.h"
 
 using base::Bind;
-using base::StringPrintf;
 using std::map;
 using std::string;
 using std::vector;
@@ -149,6 +148,78 @@ const char Cellular::kModemResetSysfsName[] =
     "/sys/class/remoteproc/remoteproc0/state";
 const int64_t Cellular::kModemResetTimeoutMilliseconds = 1 * 1000;
 const int64_t Cellular::kPollLocationIntervalMilliseconds = 5 * 60 * 1000;
+
+// static
+string Cellular::GetStateString(State state) {
+  switch (state) {
+    case kStateDisabled:
+      return "CellularStateDisabled";
+    case kStateEnabled:
+      return "CellularStateEnabled";
+    case kStateRegistered:
+      return "CellularStateRegistered";
+    case kStateConnected:
+      return "CellularStateConnected";
+    case kStateLinked:
+      return "CellularStateLinked";
+    default:
+      NOTREACHED();
+  }
+  return base::StringPrintf("CellularStateUnknown-%d", state);
+}
+
+// static
+string Cellular::GetModemStateString(ModemState modem_state) {
+  switch (modem_state) {
+    case kModemStateFailed:
+      return "ModemStateFailed";
+    case kModemStateUnknown:
+      return "ModemStateUnknown";
+    case kModemStateInitializing:
+      return "ModemStateInitializing";
+    case kModemStateLocked:
+      return "ModemStateLocked";
+    case kModemStateDisabled:
+      return "ModemStateDisabled";
+    case kModemStateDisabling:
+      return "ModemStateDisabling";
+    case kModemStateEnabling:
+      return "ModemStateEnabling";
+    case kModemStateEnabled:
+      return "ModemStateEnabled";
+    case kModemStateSearching:
+      return "ModemStateSearching";
+    case kModemStateRegistered:
+      return "ModemStateRegistered";
+    case kModemStateDisconnecting:
+      return "ModemStateDisconnecting";
+    case kModemStateConnecting:
+      return "ModemStateConnecting";
+    case kModemStateConnected:
+      return "ModemStateConnected";
+    default:
+      NOTREACHED();
+  }
+  return base::StringPrintf("ModemStateUnknown-%d", modem_state);
+}
+
+// static
+string Cellular::GetCapabilityStateString(CapabilityState capability_state) {
+  switch (capability_state) {
+    case CapabilityState::kCellularStopped:
+      return "CellularStopped";
+    case CapabilityState::kCellularStarted:
+      return "CellularStarted";
+    case CapabilityState::kModemStarting:
+      return "ModemStarting";
+    case CapabilityState::kModemStarted:
+      return "ModemStarted";
+    case CapabilityState::kModemStopping:
+      return "ModemStopping";
+  }
+  return base::StringPrintf("CellularCapabilityStateUnknown-%d",
+                            capability_state);
+}
 
 Cellular::Cellular(ModemInfo* modem_info,
                    const string& link_name,
@@ -256,76 +327,6 @@ bool Cellular::Save(StoreInterface* storage) {
   return Device::Save(storage);
 }
 
-// static
-string Cellular::GetStateString(State state) {
-  switch (state) {
-    case kStateDisabled:
-      return "CellularStateDisabled";
-    case kStateEnabled:
-      return "CellularStateEnabled";
-    case kStateRegistered:
-      return "CellularStateRegistered";
-    case kStateConnected:
-      return "CellularStateConnected";
-    case kStateLinked:
-      return "CellularStateLinked";
-    default:
-      NOTREACHED();
-  }
-  return StringPrintf("CellularStateUnknown-%d", state);
-}
-
-// static
-string Cellular::GetModemStateString(ModemState modem_state) {
-  switch (modem_state) {
-    case kModemStateFailed:
-      return "ModemStateFailed";
-    case kModemStateUnknown:
-      return "ModemStateUnknown";
-    case kModemStateInitializing:
-      return "ModemStateInitializing";
-    case kModemStateLocked:
-      return "ModemStateLocked";
-    case kModemStateDisabled:
-      return "ModemStateDisabled";
-    case kModemStateDisabling:
-      return "ModemStateDisabling";
-    case kModemStateEnabling:
-      return "ModemStateEnabling";
-    case kModemStateEnabled:
-      return "ModemStateEnabled";
-    case kModemStateSearching:
-      return "ModemStateSearching";
-    case kModemStateRegistered:
-      return "ModemStateRegistered";
-    case kModemStateDisconnecting:
-      return "ModemStateDisconnecting";
-    case kModemStateConnecting:
-      return "ModemStateConnecting";
-    case kModemStateConnected:
-      return "ModemStateConnected";
-    default:
-      NOTREACHED();
-  }
-  return StringPrintf("ModemStateUnknown-%d", modem_state);
-}
-
-string Cellular::GetCapabilityStateString(CapabilityState capability_state) {
-  switch (capability_state) {
-    case CapabilityState::kCellularStopped:
-      return "CellularStopped";
-    case CapabilityState::kCellularStarted:
-      return "CellularStarted";
-    case CapabilityState::kModemStarting:
-      return "ModemStarting";
-    case CapabilityState::kModemStarted:
-      return "ModemStarted";
-    case CapabilityState::kModemStopping:
-      return "ModemStopping";
-  }
-  return StringPrintf("CellularCapabilityStateUnknown-%d", capability_state);
-}
-
 string Cellular::GetTechnologyFamily(Error* error) {
   return capability_ ? capability_->GetTypeString() : "";
 }
@@ -360,6 +361,8 @@ bool Cellular::ShouldBringNetworkInterfaceDownAfterDisabled() const {
 }
 
 void Cellular::SetState(State state) {
+  if (state == state_)
+    return;
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_) << " -> "
                 << GetStateString(state);
   state_ = state;
@@ -367,14 +370,18 @@ void Cellular::SetState(State state) {
 }
 
 void Cellular::SetModemState(ModemState modem_state) {
-  SLOG(this, 2) << __func__ << ": " << GetModemStateString(modem_state_)
+  if (modem_state == modem_state_)
+    return;
+  SLOG(this, 1) << __func__ << ": " << GetModemStateString(modem_state_)
                 << " -> " << GetModemStateString(modem_state);
   modem_state_ = modem_state;
   UpdateScanning();
 }
 
 void Cellular::SetCapabilityState(CapabilityState capability_state) {
-  SLOG(this, 2) << __func__ << ": "
+  if (capability_state == capability_state_)
+    return;
+  SLOG(this, 1) << __func__ << ": "
                 << GetCapabilityStateString(capability_state_) << " -> "
                 << GetCapabilityStateString(capability_state);
   capability_state_ = capability_state;
@@ -682,7 +689,7 @@ void Cellular::SetServiceState(Service::ConnectState state) {
 }
 
 void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
-  SetPendingConnect(std::string());
+  ConnectToPendingFailed(Service::kFailureUnknown);
   if (ppp_device_) {
     ppp_device_->SetServiceFailure(failure_state);
   } else if (selected_service()) {
@@ -695,7 +702,7 @@ void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
 }
 
 void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
-  SetPendingConnect(std::string());
+  ConnectToPendingFailed(Service::kFailureUnknown);
   if (ppp_device_) {
     ppp_device_->SetServiceFailureSilent(failure_state);
   } else if (selected_service()) {
@@ -939,9 +946,8 @@ void Cellular::CreateServices() {
   if (service_for_testing_)
     return;
 
-  SLOG(this, 2) << __func__;
   if (service_ && service_->iccid() == iccid_) {
-    LOG(ERROR) << "Service already exists for ICCID.";
+    LOG(ERROR) << __func__ << ": Service already exists for ICCID.";
     return;
   }
 
@@ -951,7 +957,7 @@ void Cellular::CreateServices() {
   // Create or update Cellular Services for the primary SIM.
   service_ =
       manager()->cellular_service_provider()->LoadServicesForDevice(this);
-  SLOG(this, 2) << ": Service=" << service_->log_name();
+  LOG(INFO) << __func__ << ": Service=" << service_->log_name();
 
   // Create or update Cellular Services for secondary SIMs.
   UpdateSecondaryServices();
@@ -966,7 +972,7 @@ void Cellular::DestroyAllServices() {
   if (service_for_testing_)
     return;
 
-  SLOG(this, 2) << __func__;
+  LOG(INFO) << __func__;
   DropConnection();
 
   DCHECK(manager()->cellular_service_provider());
@@ -1040,8 +1046,8 @@ bool Cellular::GetConnectable(CellularService* service) const {
 }
 
 void Cellular::Connect(CellularService* service, Error* error) {
-  SLOG(this, 1) << __func__;
   CHECK(service);
+  LOG(INFO) << __func__ << ": " << service->log_name();
 
   if (!capability_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -1050,15 +1056,15 @@ void Cellular::Connect(CellularService* service, Error* error) {
   }
 
   if (inhibited_) {
-    SLOG(this, 1) << "Cellular is Inhibited. Pending Connect to: "
-                  << service->iccid();
+    LOG(INFO) << "Cellular is Inhibited. Pending Connect to: "
+              << service->log_name();
     SetPendingConnect(service->iccid());
     return;
   }
 
   if (scanning_) {
-    SLOG(this, 1) << "Cellular is Scanning. Pending Connect to: "
-                  << service->iccid();
+    LOG(INFO) << "Cellular is Scanning. Pending Connect to: "
+              << service->log_name();
     SetPendingConnect(service->iccid());
     return;
   }
@@ -1075,7 +1081,6 @@ void Cellular::Connect(CellularService* service, Error* error) {
       sim_slot_switch_allowed_ = true;
     }
     if (capability_->SetPrimarySimSlotForIccid(service->iccid())) {
-      SLOG(this, 2) << "Set Pending connect: " << service->log_name();
       SetPendingConnect(service->iccid());
     } else {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -1121,18 +1126,18 @@ void Cellular::Connect(CellularService* service, Error* error) {
   metrics()->NotifyDeviceConnectStarted(interface_index(), is_auto_connecting);
 }
 
-// Note that there's no ResultCallback argument to this,
-// since Connect() isn't yet passed one.
+// Note that there's no ResultCallback argument to this since Connect() isn't
+// yet passed one.
 void Cellular::OnConnectReply(std::string iccid, const Error& error) {
-  SLOG(this, 2) << __func__ << "(" << error << ")";
-  if (error.IsSuccess()) {
-    metrics()->NotifyDeviceConnectFinished(interface_index());
-    OnConnected();
-  } else {
+  if (!error.IsSuccess()) {
+    LOG(WARNING) << __func__ << ": Failed: " << error;
     metrics()->NotifyCellularDeviceConnectionFailure();
     if (service_ && service_->iccid() == iccid)
       service_->SetFailure(Service::kFailureConnect);
+    return;
   }
+  metrics()->NotifyDeviceConnectFinished(interface_index());
+  OnConnected();
 }
 
 void Cellular::OnEnabled() {
@@ -1152,11 +1157,11 @@ void Cellular::OnConnecting() {
 }
 
 void Cellular::OnConnected() {
-  SLOG(this, 2) << __func__;
   if (StateIsConnected()) {
-    SLOG(this, 2) << "Already connected";
+    SLOG(this, 1) << __func__ << ": Already connected";
     return;
   }
+  SLOG(this, 1) << __func__;
   SetState(kStateConnected);
   if (!service_) {
     LOG(INFO) << "Disconnecting due to no cellular service.";
@@ -1171,7 +1176,7 @@ void Cellular::OnConnected() {
 }
 
 void Cellular::Disconnect(Error* error, const char* reason) {
-  SLOG(this, 2) << __func__ << ": " << reason;
+  SLOG(this, 1) << __func__ << ": " << reason;
   if (!StateIsConnected()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotConnected,
                           "Not connected; request ignored.");
@@ -1190,18 +1195,18 @@ void Cellular::Disconnect(Error* error, const char* reason) {
 }
 
 void Cellular::OnDisconnectReply(const Error& error) {
-  SLOG(this, 2) << __func__ << "(" << error << ")";
   explicit_disconnect_ = false;
-  if (error.IsSuccess()) {
-    OnDisconnected();
-  } else {
+  if (!error.IsSuccess()) {
+    LOG(WARNING) << __func__ << ": Failed: " << error;
     metrics()->NotifyCellularDeviceDisconnectionFailure();
     OnDisconnectFailed();
+    return;
   }
+  OnDisconnected();
 }
 
 void Cellular::OnDisconnected() {
-  SLOG(this, 2) << __func__;
+  SLOG(this, 1) << __func__;
   if (!DisconnectCleanup()) {
     LOG(WARNING) << "Disconnect occurred while in state "
                  << GetStateString(state_);
@@ -1209,31 +1214,28 @@ void Cellular::OnDisconnected() {
 }
 
 void Cellular::OnDisconnectFailed() {
-  SLOG(this, 2) << __func__;
-  // If the modem is in the disconnecting state, then
-  // the disconnect should eventually succeed, so do
-  // nothing.
+  SLOG(this, 1) << __func__;
+  // If the modem is in the disconnecting state, then the disconnect should
+  // eventually succeed, so do nothing.
   if (modem_state_ == kModemStateDisconnecting) {
-    LOG(WARNING) << "Ignoring failed disconnect while modem is disconnecting.";
+    LOG(INFO) << "Ignoring failed disconnect while modem is disconnecting.";
     return;
   }
 
-  // OnDisconnectFailed got called because no bearers
-  // to disconnect were found. Which means that we shouldn't
-  // really remain in the connected/linked state if we
-  // are in one of those.
+  // OnDisconnectFailed got called because no bearers to disconnect were found.
+  // Which means that we shouldn't really remain in the connected/linked state
+  // if we are in one of those.
   if (!DisconnectCleanup()) {
     // otherwise, no-op
     LOG(WARNING) << "Ignoring failed disconnect while in state "
                  << GetStateString(state_);
   }
 
-  // TODO(armansito): In either case, shill ends up thinking
-  // that it's disconnected, while for some reason the underlying
-  // modem might still actually be connected. In that case the UI
-  // would be reflecting an incorrect state and a further connection
-  // request would fail. We should perhaps tear down the modem and
-  // restart it here.
+  // TODO(armansito): In either case, shill ends up thinking that it's
+  // disconnected, while for some reason the underlying modem might still
+  // actually be connected. In that case the UI would be reflecting an incorrect
+  // state and a further connection request would fail. We should perhaps tear
+  // down the modem and restart it here.
 }
 
 void Cellular::EstablishLink() {
@@ -1402,16 +1404,16 @@ bool Cellular::GetAllowRoaming(Error* /*error*/) {
 }
 
 bool Cellular::SetAllowRoaming(const bool& value, Error* error) {
-  SLOG(this, 2) << __func__ << "(" << allow_roaming_ << "->" << value << ")";
-  if (allow_roaming_ == value) {
+  if (allow_roaming_ == value)
     return false;
-  }
 
   if (!capability_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Modem not available.");
     return false;
   }
+
+  LOG(INFO) << __func__ << ": " << allow_roaming_ << "->" << value;
 
   allow_roaming_ = value;
   manager()->UpdateDevice(this);
@@ -1429,10 +1431,9 @@ bool Cellular::SetAllowRoaming(const bool& value, Error* error) {
 }
 
 bool Cellular::SetUseAttachApn(const bool& value, Error* error) {
-  SLOG(this, 2) << __func__ << "(" << use_attach_apn_ << "->" << value << ")";
-  if (use_attach_apn_ == value) {
+  if (use_attach_apn_ == value)
     return false;
-  }
+  LOG(INFO) << __func__ << ": " << use_attach_apn_ << "->" << value;
 
   use_attach_apn_ = value;
 
@@ -1451,12 +1452,11 @@ bool Cellular::GetInhibited(Error* error) {
 }
 
 bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
-  SLOG(this, 2) << __func__ << ": " << inhibited;
-
   if (inhibited == inhibited_) {
-    SLOG(this, 2) << __func__ << ": State already set, ignoring request.";
+    LOG(WARNING) << __func__ << ": State already set, ignoring request.";
     return false;
   }
+  LOG(INFO) << __func__ << ": " << inhibited;
 
   // Clear any pending connect when inhibiting or un-inhibiting.
   ConnectToPendingFailed(Service::kFailureDisconnect);
@@ -1611,7 +1611,7 @@ void Cellular::StartPPP(const string& serial_device) {
       control_interface(), process_manager_, weak_ptr_factory_.GetWeakPtr(),
       options, serial_device, death_callback, &error));
   if (new_ppp_task) {
-    LOG(INFO) << "Forked pppd process.";
+    SLOG(this, 1) << "Forked pppd process.";
     ppp_task_ = std::move(new_ppp_task);
   }
 }
@@ -1699,7 +1699,7 @@ void Cellular::OnPPPConnected(const map<string, string>& params) {
 }
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {
-  LOG(INFO) << __func__ << " on " << link_name();
+  SLOG(this, 1) << __func__ << " on " << link_name();
   ppp_task_.reset();
   if (is_ppp_authenticating_) {
     SetServiceFailure(Service::kFailurePPPAuth);
@@ -1711,6 +1711,8 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 }
 
 void Cellular::SetPendingConnect(const std::string& iccid) {
+  if (!iccid.empty())
+    SLOG(this, 1) << "Set Pending connect: " << iccid;
   connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();
   if (!connect_pending_iccid_.empty()) {
@@ -1727,11 +1729,11 @@ void Cellular::ConnectToPending() {
   }
 
   if (inhibited_) {
-    SLOG(this, 2) << __func__ << ": Inhibited";
+    SLOG(this, 1) << __func__ << ": Inhibited";
     return;
   }
   if (scanning_) {
-    SLOG(this, 2) << __func__ << ": Scanning";
+    SLOG(this, 1) << __func__ << ": Scanning";
     return;
   }
 
@@ -1813,8 +1815,10 @@ void Cellular::ConnectToPendingAfterDelay() {
 }
 
 void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
-  if (service_ && service_->iccid() == connect_pending_iccid_)
+  if (!connect_pending_iccid_.empty() && service_ &&
+      service_->iccid() == connect_pending_iccid_) {
     service_->SetFailure(failure);
+  }
   SetPendingConnect(std::string());
 }
 
@@ -1851,10 +1855,6 @@ void Cellular::UpdateScanning() {
       scanning = true;
       break;
   }
-  SLOG(this, 2) << __func__ << ": Capability State: "
-                << GetCapabilityStateString(capability_state_)
-                << ", Modem State: " << GetModemStateString(modem_state_)
-                << ", Scanning: " << scanning;
   SetScanning(scanning);
 }
 
@@ -1917,7 +1917,7 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
                                      const std::string& mac_address) {
   if (dbus_path_ == dbus_path)
     return;
-  SLOG(this, 1) << __func__;
+  LOG(INFO) << __func__ << " Modem Path: " << dbus_path.value();
   dbus_path_ = dbus_path;
   dbus_path_str_ = dbus_path.value();
   SetModemState(kModemStateUnknown);
@@ -2007,18 +2007,12 @@ void Cellular::set_home_provider(const Stringmap& home_provider) {
   adaptor()->EmitStringmapChanged(kHomeProviderProperty, home_provider_);
 }
 
-void Cellular::set_scanning_supported(bool scanning_supported) {
+void Cellular::SetScanningSupported(bool scanning_supported) {
   if (scanning_supported_ == scanning_supported)
     return;
 
   scanning_supported_ = scanning_supported;
-  if (adaptor())
-    adaptor()->EmitBoolChanged(kSupportNetworkScanProperty,
-                               scanning_supported_);
-  else
-    SLOG(this, 2) << "Could not emit signal for property |"
-                  << kSupportNetworkScanProperty
-                  << "| change. DBus adaptor is NULL!";
+  adaptor()->EmitBoolChanged(kSupportNetworkScanProperty, scanning_supported_);
 }
 
 void Cellular::set_equipment_id(const string& equipment_id) {
@@ -2214,6 +2208,9 @@ void Cellular::StopLocationPolling() {
 void Cellular::SetScanning(bool scanning) {
   if (scanning_ == scanning)
     return;
+  LOG(INFO) << __func__ << ": " << scanning << ". (Capability State: "
+            << GetCapabilityStateString(capability_state_)
+            << ", Modem State: " << GetModemStateString(modem_state_) << ")";
   if (scanning) {
     // Set Scanning=true immediately.
     scanning_clear_callback_.Cancel();
@@ -2278,18 +2275,11 @@ void Cellular::set_provider_requires_roaming(bool provider_requires_roaming) {
                              provider_requires_roaming_);
 }
 
-void Cellular::set_apn_list(const Stringmaps& apn_list) {
-  // There is no canonical form of a Stringmaps value.
-  // So don't check for redundant updates.
+void Cellular::SetApnList(const Stringmaps& apn_list) {
+  // There is no canonical form of a Stringmaps value, so don't check for
+  // redundant updates.
   apn_list_ = apn_list;
-  // See crbug.com/215581: Sometimes adaptor may be nullptr when |set_apn_list|
-  // is called.
-  if (adaptor())
-    adaptor()->EmitStringmapsChanged(kCellularApnListProperty, apn_list_);
-  else
-    SLOG(this, 2) << "Could not emit signal for property |"
-                  << kCellularApnListProperty
-                  << "| change. DBus adaptor is NULL!";
+  adaptor()->EmitStringmapsChanged(kCellularApnListProperty, apn_list_);
 }
 
 void Cellular::set_home_provider_info(MobileOperatorInfo* home_provider_info) {
@@ -2331,7 +2321,7 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   if (manufacturer_ != kQ6V5ModemManufacturerName)
     apn_list.AddApns(capability_->GetProfiles());
   apn_list.AddApns(operator_info->apn_list());
-  set_apn_list(apn_list.GetList());
+  SetApnList(apn_list.GetList());
 
   set_provider_requires_roaming(operator_info->requires_roaming());
 }

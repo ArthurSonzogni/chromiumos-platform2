@@ -489,7 +489,7 @@ TEST_F(CellularServiceTest, MergeDetailsFromApnList) {
   fullapn[kApnPasswordProperty] = kPassword;
   fullapn[kApnAuthenticationProperty] = kAuthentication;
   Stringmaps apn_list{fullapn};
-  device_->set_apn_list(apn_list);
+  device_->SetApnList(apn_list);
 
   // Just set an APN with only the name. Check that we are using
   // the rest of the details.

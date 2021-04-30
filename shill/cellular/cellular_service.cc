@@ -117,15 +117,15 @@ CellularService::CellularService(Manager* manager,
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
 
   storage_identifier_ = GetDefaultStorageIdentifier();
-  SLOG(this, 2) << "CellularService Created: " << log_name();
+  SLOG(this, 1) << "CellularService Created: " << log_name();
 }
 
 CellularService::~CellularService() {
-  SLOG(this, 2) << "CellularService Destroyed: " << log_name();
+  SLOG(this, 1) << "CellularService Destroyed: " << log_name();
 }
 
 void CellularService::SetDevice(Cellular* device) {
-  SLOG(this, 2) << __func__ << ": " << (device ? device->iccid() : "None");
+  SLOG(this, 1) << __func__ << ": " << (device ? device->iccid() : "None");
   cellular_ = device;
   Error ignored_error;
   adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
@@ -263,22 +263,6 @@ bool CellularService::Load(const StoreInterface* storage) {
   return true;
 }
 
-void CellularService::MigrateDeprecatedStorage(StoreInterface* storage) {
-  SLOG(this, 2) << __func__;
-
-  // Prior to M85, Cellular services used either IMSI or MEID for |id|.
-  // In M86, IMSI only was used for |id|. In M87+, ICCID is used for |id|.
-  // This removes any stale groups for consistency and debugging clarity.
-  // This migration can be removed in M91+.
-  string id = GetLoadableStorageIdentifier(*storage);
-  set<string> groups = storage->GetGroupsWithProperties(GetStorageProperties());
-  LOG(INFO) << __func__ << " ID: " << id << " Groups: " << groups.size();
-  for (const string& group : groups) {
-    if (group != id)
-      storage->DeleteGroup(group);
-  }
-}
-
 bool CellularService::Unload() {
   Service::Unload();
   return manager()->cellular_service_provider()->OnServiceUnloaded(this);
@@ -299,9 +283,6 @@ bool CellularService::Save(StoreInterface* storage) {
   SaveStringOrClear(storage, id, kStoragePPPUsername, ppp_username_);
   SaveStringOrClear(storage, id, kStoragePPPPassword, ppp_password_);
 
-  // Delete deprecated keys. TODO: Remove after M84.
-  storage->DeleteKey(id, "Cellular.Imei");
-  storage->DeleteKey(id, "Cellular.Meid");
   return true;
 }
 
@@ -475,16 +456,31 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     *reason = kAutoConnDeviceDisabled;
     return false;
   }
+  if (cellular_->service()) {
+    if (cellular_->service()->IsConnected()) {
+      *reason = kAutoConnConnected;
+      return false;
+    }
+    if (cellular_->service()->IsConnecting()) {
+      *reason = kAutoConnBusy;
+      return false;
+    }
+  }
   if (cellular_->IsActivating()) {
     *reason = kAutoConnActivating;
     return false;
   }
-  if (cellular_->state() != Cellular::kStateRegistered) {
-    *reason = kAutoConnNotRegistered;
+
+  if (!Service::IsAutoConnectable(reason)) {
     return false;
   }
+
   if (cellular_->iccid() != iccid()) {
     *reason = kAutoConnSimUnselected;
+    return false;
+  }
+  if (cellular_->state() != Cellular::kStateRegistered) {
+    *reason = kAutoConnNotRegistered;
     return false;
   }
   if (cellular_->has_pending_connect()) {
@@ -504,7 +500,7 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     *reason = kAutoConnOutOfCredits;
     return false;
   }
-  return Service::IsAutoConnectable(reason);
+  return true;
 }
 
 uint64_t CellularService::GetMaxAutoConnectCooldownTimeMilliseconds() const {

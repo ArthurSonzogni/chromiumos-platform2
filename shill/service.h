@@ -630,8 +630,6 @@ class Service : public base::RefCounted<Service> {
  protected:
   friend class base::RefCounted<Service>;
 
-  static const char kAutoConnBusy[];
-
   virtual ~Service();
 
   // Overridden by child classes to perform technology-specific connection
@@ -740,6 +738,7 @@ class Service : public base::RefCounted<Service> {
   // non PII identifiers.
   std::string log_name_;
 
+  static const char kAutoConnBusy[];
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];
   static const char kAutoConnDisconnecting[];

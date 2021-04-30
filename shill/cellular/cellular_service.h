@@ -60,7 +60,6 @@ class CellularService : public Service {
       const StoreInterface& storage) const override;
   bool IsLoadableFrom(const StoreInterface& storage) const override;
   bool Load(const StoreInterface* storage) override;
-  void MigrateDeprecatedStorage(StoreInterface* storage) override;
   bool Unload() override;
   bool Save(StoreInterface* storage) override;
   bool IsVisible() const override;
