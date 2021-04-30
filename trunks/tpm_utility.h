@@ -267,11 +267,11 @@ class TRUNKS_EXPORT TpmUtility {
       std::string* creation_blob) = 0;
 
   // This method uses the TPM to generates an ECC key of type |key_type|.
-  // |curve_id| is the TPM curve ID of EC curve used for the generating the key.
-  // |password| is the authorization value to use to authorize the generating
+  // |curve_id| is the TPM curve ID of EC curve used for generating the key.
+  // |password| is the authorization value to use to authorize the generated
   // key.
   // |policy_digest| specifies an optional policy to use to authorize the
-  // generating key.
+  // generated key.
   // |use_only_policy_authorization| specifies if we can use
   // HmacSession in addition to PolicySession to authorize use of this key.
   // |creation_pcr_indexes| allows the caller to specify a list of pcr indexes
