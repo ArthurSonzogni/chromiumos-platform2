@@ -339,6 +339,7 @@ mno {
       localized_name {
         name: "name118002"
       }
+      prioritizes_name: true
       uuid: "uuid118002"
     }
   }

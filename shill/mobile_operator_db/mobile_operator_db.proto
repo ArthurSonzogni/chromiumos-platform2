@@ -92,6 +92,9 @@ message Data {
   optional bool requires_roaming = 5 [default = false];
   repeated OnlinePortal olp = 6;
   optional int32 mtu = 7;
+  // Use the 'localized_name' above for the operator name in the UI with a
+  // higher priority than the information coming from the SIM card.
+  optional bool prioritizes_name = 8 [default = false];
 
   // ///////////////////////////////////////////////////////////////////////////
   // GSM specific properties [21 - 40]

@@ -810,6 +810,7 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   sid_list_.clear();
   HandleSIDUpdate();
   operator_name_list_.clear();
+  prioritizes_db_operator_name_ = false;
   HandleOperatorNameUpdate();
   apn_list_.clear();
   olp_list_.clear();
@@ -830,6 +831,10 @@ void MobileOperatorInfoImpl::ReloadData(
 
   if (data.has_country()) {
     country_ = data.country();
+  }
+
+  if (data.has_prioritizes_name()) {
+    prioritizes_db_operator_name_ = data.prioritizes_name();
   }
 
   if (data.localized_name_size() > 0) {
@@ -940,8 +945,10 @@ void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
       }
     }
 
-    operator_name_list_.insert(operator_name_list_.begin(),
-                               localized_names.begin(), localized_names.end());
+    operator_name_list_.insert(
+        (prioritizes_db_operator_name_ ? operator_name_list_.end()
+                                       : operator_name_list_.begin()),
+        localized_names.begin(), localized_names.end());
   }
 
   operator_name_ =

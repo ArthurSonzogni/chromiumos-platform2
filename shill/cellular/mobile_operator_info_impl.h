@@ -199,6 +199,7 @@ class MobileOperatorInfoImpl {
   std::vector<std::string> mccmnc_list_;
   std::vector<std::string> sid_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
+  bool prioritizes_db_operator_name_;
   std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;

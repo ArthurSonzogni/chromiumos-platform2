@@ -773,8 +773,11 @@ TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatch) {
   //           MVNO fails to match by fist imsi update,
   //           then MVNO matches by imsi.
   // verify: Two Observer events: MNO followed by MVNO.
-  ExpectEventCount(1);
+  //         the MVNO database operator name has higher priority
+  //         than the MNO name returned by the SIM.
+  ExpectEventCount(2);
   UpdateMCCMNC("118001");
+  UpdateOperatorName("MNO_random_name");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid118001");
 
@@ -782,11 +785,13 @@ TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatch) {
   UpdateIMSI("1180011234512345");  // No match.
   VerifyEventCount();
   VerifyMNOWithUUID("uuid118001");
+  EXPECT_EQ("MNO_random_name", operator_info_->operator_name());
 
   ExpectEventCount(1);
   UpdateIMSI("1180015432154321");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid118002");
+  EXPECT_EQ("name118002", operator_info_->operator_name());
 }
 
 TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatchByRange) {
