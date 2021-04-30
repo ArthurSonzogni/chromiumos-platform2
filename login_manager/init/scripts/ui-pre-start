@@ -111,7 +111,8 @@ fi
 # Apply Input boosting
 INPUT_BOOST=/sys/module/cpu_boost/parameters/input_boost_freq_percent
 if [ -f "${INPUT_BOOST}" ]; then
-  read_cros_config_int "/scheduler-tune" "input-boost" "0" > "${INPUT_BOOST}"
+  read_cros_config_int "/scheduler-tune" "input-boost" \
+    "$(cat "${INPUT_BOOST}")" > "${INPUT_BOOST}"
 fi
 
 # Limit non-urgent tasks to small cores
