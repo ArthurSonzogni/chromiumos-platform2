@@ -11,6 +11,9 @@
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/variant_utils.h"
 
+#include "policy/device_policy.h"
+#include "policy/libpolicy.h"
+
 namespace {
 
 const char kPacketCaptureToolErrorString[] =
@@ -51,6 +54,29 @@ bool AddValidatedStringOption(debugd::ProcessWithId* p,
   return true;
 }
 
+bool DevicePacketCaptureAllowedByPolicy(brillo::ErrorPtr* error) {
+  policy::PolicyProvider policy_provider;
+  policy_provider.Reload();
+
+  // No available policies.
+  if (!policy_provider.device_policy_is_loaded()) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "No device policy available on this device, can't check "
+                     "for packet capture policy setting.");
+    return false;
+  }
+
+  const policy::DevicePolicy* policy = &policy_provider.GetDevicePolicy();
+  bool packet_capture_allowed;
+  if (!policy->GetDeviceDebugPacketCaptureAllowed(&packet_capture_allowed)) {
+    // This means policy was not set in the device. Return true since the
+    // default value of the policy is defined as true in the policy
+    // documentation.
+    return true;
+  }
+  return packet_capture_allowed;
+}
+
 }  // namespace
 
 namespace debugd {
@@ -60,6 +86,11 @@ bool PacketCaptureTool::Start(const base::ScopedFD& status_fd,
                               const brillo::VariantDictionary& options,
                               std::string* out_id,
                               brillo::ErrorPtr* error) {
+  if (!DevicePacketCaptureAllowedByPolicy(error)) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Packet capture is not allowed by device policy.");
+    return false;
+  }
   std::string exec_path;
   if (!GetHelperPath("capture_utility.sh", &exec_path)) {
     DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,

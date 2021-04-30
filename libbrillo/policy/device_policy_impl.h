@@ -97,6 +97,7 @@ class DevicePolicyImpl : public DevicePolicy {
       base::Version* versions_out) const override;
   bool GetDeviceMarketSegment(
       DeviceMarketSegment* device_market_segment) const override;
+  bool GetDeviceDebugPacketCaptureAllowed(bool* allowed) const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(

@@ -126,6 +126,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetDeviceMarketSegment,
               (DeviceMarketSegment*),
               (const, override));
+  MOCK_METHOD(bool,
+              GetDeviceDebugPacketCaptureAllowed,
+              (bool*),
+              (const, override));
 };
 }  // namespace policy
 

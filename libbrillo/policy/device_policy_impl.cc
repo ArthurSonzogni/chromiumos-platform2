@@ -849,6 +849,20 @@ bool DevicePolicyImpl::GetDeviceMarketSegment(
   return true;
 }
 
+bool DevicePolicyImpl::GetDeviceDebugPacketCaptureAllowed(bool* allowed) const {
+  if (!device_policy_.has_device_debug_packet_capture_allowed())
+    return false;
+
+  const em::DeviceDebugPacketCaptureAllowedProto& proto =
+      device_policy_.device_debug_packet_capture_allowed();
+
+  if (!proto.has_allowed())
+    return false;
+
+  *allowed = proto.allowed();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;

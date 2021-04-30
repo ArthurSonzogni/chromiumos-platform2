@@ -280,6 +280,12 @@ class DevicePolicy {
   virtual bool GetDeviceMarketSegment(
       DeviceMarketSegment* device_market_segment) const = 0;
 
+  // Writes the value of DevicePacketCaptureAllowed policy in |allowed|. Returns
+  // true if the policy was set and a value was retrieved for it, or false if
+  // the policy was not set. |allowed| is modified only when the function
+  // returns true.
+  virtual bool GetDeviceDebugPacketCaptureAllowed(bool* allowed) const = 0;
+
  private:
   // Verifies that the policy signature is correct.
   virtual bool VerifyPolicySignature() = 0;
