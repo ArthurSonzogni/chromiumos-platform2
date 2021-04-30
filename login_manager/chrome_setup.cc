@@ -479,6 +479,9 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   else if (builder->UseFlagIsSet("ondevice_handwriting_dlc"))
     builder->AddArg("--ondevice_handwriting=use_dlc");
 
+  if (builder->UseFlagIsSet("ondevice_speech"))
+    builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
+
   SetUpSchedulerFlags(builder, cros_config);
 }
 
