@@ -1459,31 +1459,17 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
   }
 
   // Clear any pending connect when inhibiting or un-inhibiting.
-  SetPendingConnect(std::string());
+  ConnectToPendingFailed(Service::kFailureDisconnect);
 
   if (!mm1_proxy_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound, "No Modem.");
-    return false;
-  }
-
-  // When setting inhibited to true, ensure that the Modem has started.
-  // Exception : If no SIM slots are available, the modem state will be set to
-  // kModemStateFailed and the capability state will be reset to
-  // kCellularStarted. Allow inhibit in that state.
-  if (inhibited && !(capability_state_ == CapabilityState::kModemStarted ||
-                     modem_state_ == kModemStateLocked ||
-                     modem_state_ == kModemStateFailed)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
-                          "Modem not started.");
-    return false;
-  }
-
-  // When setting inhibited to false, ensure that Cellular has started but the
-  // Modem has not started.
-  if (!inhibited && capability_state_ != CapabilityState::kCellularStarted) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
-                          "Cellular capability in unexpected state.");
-    return false;
+    if (inhibited) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound, "No Modem.");
+      return false;
+    }
+    inhibited_ = inhibited;
+    adaptor()->EmitBoolChanged(kInhibitedProperty, inhibited_);
+    UpdateScanning();
+    return true;
   }
 
   if (uid_.empty()) {
@@ -1727,6 +1713,10 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 void Cellular::SetPendingConnect(const std::string& iccid) {
   connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();
+  if (!connect_pending_iccid_.empty()) {
+    SLOG(this, 1) << "Cancelling pending connect to: "
+                  << connect_pending_iccid_;
+  }
   connect_pending_iccid_ = iccid;
 }
 
