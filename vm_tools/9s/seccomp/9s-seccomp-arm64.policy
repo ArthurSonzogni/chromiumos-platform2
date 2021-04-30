@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+ppoll: 1
 read: 1
 write: 1
 statx: 1

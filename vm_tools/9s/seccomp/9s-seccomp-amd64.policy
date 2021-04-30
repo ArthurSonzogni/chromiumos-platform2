@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+poll: 1
 read: 1
 write: 1
 stat: 1
