@@ -2076,6 +2076,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "sentinel.crs.bell.ca.ioe"
       }
@@ -2200,6 +2201,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "sentinel.apn"
       }
@@ -13448,6 +13450,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "sentinel01.com.attz"
       }
@@ -13967,6 +13970,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "spl2419.i.dlsn"
       }
@@ -14068,6 +14072,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "iot.kajeet"
       }
@@ -14212,6 +14217,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "uscc05016.enterprise3.usc-cdp"
       }
@@ -14530,6 +14536,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "kajeet.gw12.vzwentp"
       }
@@ -15162,6 +15169,7 @@ mno {
       localized_name {
         name : "Kajeet"
       }
+      prioritizes_name : true
       mobile_apn {
         apn : "sentinel.vf"
       }
