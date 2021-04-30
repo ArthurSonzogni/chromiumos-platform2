@@ -199,7 +199,6 @@ const char* net_wm_state_to_string(int i) {
 #define LOCK_SUFFIX ".lock"
 #define LOCK_SUFFIXLEN 5
 
-
 #define APPLICATION_ID_FORMAT_PREFIX "org.chromium.%s"
 #define XID_APPLICATION_ID_FORMAT APPLICATION_ID_FORMAT_PREFIX ".xid.%d"
 #define WM_CLIENT_LEADER_APPLICATION_ID_FORMAT \
@@ -1151,6 +1150,10 @@ static void sl_global_destroy(struct sl_global* global) {
   free(global);
 }
 
+// Called on each "wl_registry::global" event from the host compositor,
+// giving Sommelier an opportunity to bind to the new global object
+// (so we can receive events or invoke requests on it), and/or forward the
+// wl_registry::global event on to our clients.
 static void sl_registry_handler(void* data,
                                 struct wl_registry* registry,
                                 uint32_t id,
@@ -1165,10 +1168,9 @@ static void sl_registry_handler(void* data,
     assert(compositor);
     compositor->ctx = ctx;
     compositor->id = id;
-    assert(version >= 3);
-    compositor->version = 3;
+    assert(version >= kMinHostWlCompositorVersion);
     compositor->internal = static_cast<wl_compositor*>(wl_registry_bind(
-        registry, id, &wl_compositor_interface, compositor->version));
+        registry, id, &wl_compositor_interface, kMinHostWlCompositorVersion));
     assert(!ctx->compositor);
     ctx->compositor = compositor;
     compositor->host_global = sl_compositor_global_create(ctx);
@@ -3853,6 +3855,8 @@ static void sl_print_usage() {
       "  --no-exit-with-child\t\tKeep process alive after child exists\n"
       "  --no-clipboard-manager\tDisable X11 clipboard manager\n"
       "  --frame-color=COLOR\t\tWindow frame color for X11 clients\n"
+      "  --support-damage-buffer\t"
+      "Support wl_surface::damage_buffer (experimental).\n"
       "  --virtwl-device=DEVICE\tVirtWL device to use\n"
       "  --drm-device=DEVICE\t\tDRM device to use\n"
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
@@ -3884,6 +3888,7 @@ int main(int argc, char** argv) {
   const char* clipboard_manager = getenv("SOMMELIER_CLIPBOARD_MANAGER");
   const char* frame_color = getenv("SOMMELIER_FRAME_COLOR");
   const char* dark_frame_color = getenv("SOMMELIER_DARK_FRAME_COLOR");
+  const char* support_damage_buffer = getenv("SOMMELIER_SUPPORT_DAMAGE_BUFFER");
   const char* glamor = getenv("SOMMELIER_GLAMOR");
   const char* fullscreen_mode = getenv("SOMMELIER_FULLSCREEN_MODE");
   const char* peer_cmd_prefix = getenv("SOMMELIER_PEER_CMD_PREFIX");
@@ -3969,6 +3974,8 @@ int main(int argc, char** argv) {
       frame_color = sl_arg_value(arg);
     } else if (strstr(arg, "--dark-frame-color") == arg) {
       dark_frame_color = sl_arg_value(arg);
+    } else if (strstr(arg, "--support-damage-buffer") == arg) {
+      support_damage_buffer = "1";
     } else if (strstr(arg, "--glamor") == arg) {
       glamor = "1";
     } else if (strstr(arg, "--fullscreen-mode") == arg) {
@@ -4122,7 +4129,8 @@ int main(int argc, char** argv) {
           if (strstr(arg, "--display") == arg ||
               strstr(arg, "--scale") == arg ||
               strstr(arg, "--accelerators") == arg ||
-              strstr(arg, "--drm-device") == arg) {
+              strstr(arg, "--drm-device") == arg ||
+              strstr(arg, "--support-damage-buffer") == arg) {
             args[i++] = arg;
           }
         }
@@ -4177,6 +4185,9 @@ int main(int argc, char** argv) {
     if (sscanf(dark_frame_color, "#%02x%02x%02x", &r, &g, &b) == 3)
       ctx.dark_frame_color = 0xff000000 | (r << 16) | (g << 8) | (b << 0);
   }
+
+  ctx.support_damage_buffer = support_damage_buffer != nullptr &&
+                              strcmp(support_damage_buffer, "1") == 0;
 
   if (fullscreen_mode) {
     if (strcmp(fullscreen_mode, "immersive") == 0) {

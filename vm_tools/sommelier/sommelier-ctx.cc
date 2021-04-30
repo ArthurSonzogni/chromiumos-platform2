@@ -139,6 +139,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->clipboard_manager = 0;
   ctx->frame_color = 0xffffffff;
   ctx->dark_frame_color = 0xff000000;
+  ctx->support_damage_buffer = false;
   ctx->fullscreen_mode = ZAURA_SURFACE_FULLSCREEN_MODE_IMMERSIVE;
   ctx->default_seat = NULL;
   ctx->selection_window = XCB_WINDOW_NONE;

@@ -157,6 +157,7 @@ struct sl_context {
   int clipboard_manager;
   uint32_t frame_color;
   uint32_t dark_frame_color;
+  bool support_damage_buffer;
   int fullscreen_mode;
   struct sl_host_seat* default_seat;
   xcb_window_t selection_window;
@@ -192,10 +193,13 @@ struct sl_context {
   WaylandChannel* channel;
 };
 
+// We require a host compositor supporting at least this wl_compositor version.
+constexpr uint32_t kMinHostWlCompositorVersion =
+    WL_SURFACE_SET_BUFFER_SCALE_SINCE_VERSION;
+
 struct sl_compositor {
   struct sl_context* ctx;
   uint32_t id;
-  uint32_t version;
   struct sl_global* host_global;
   struct wl_compositor* internal;
 };

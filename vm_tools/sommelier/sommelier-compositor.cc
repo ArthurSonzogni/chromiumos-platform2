@@ -47,7 +47,8 @@ struct sl_output_buffer {
   uint32_t format;
   struct wl_buffer* internal;
   struct sl_mmap* mmap;
-  struct pixman_region32 damage;
+  struct pixman_region32 surface_damage;
+  struct pixman_region32 buffer_damage;
   struct sl_host_surface* surface;
 };
 
@@ -88,7 +89,8 @@ static uint32_t sl_drm_format_for_shm_format(int format) {
 static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   wl_buffer_destroy(buffer->internal);
   sl_mmap_unref(buffer->mmap);
-  pixman_region32_fini(&buffer->damage);
+  pixman_region32_fini(&buffer->surface_damage);
+  pixman_region32_fini(&buffer->buffer_damage);
   wl_list_remove(&buffer->link);
   free(buffer);
 }
@@ -184,8 +186,10 @@ static void sl_host_surface_attach(struct wl_client* client,
       host->current_buffer->height = height;
       host->current_buffer->format = shm_format;
       host->current_buffer->surface = host;
-      pixman_region32_init_rect(&host->current_buffer->damage, 0, 0, MAX_SIZE,
-                                MAX_SIZE);
+      pixman_region32_init_rect(&host->current_buffer->surface_damage, 0, 0,
+                                MAX_SIZE, MAX_SIZE);
+      pixman_region32_init_rect(&host->current_buffer->buffer_damage, 0, 0,
+                                MAX_SIZE, MAX_SIZE);
 
       if (host->ctx->channel->supports_dmabuf()) {
         int rv;
@@ -294,6 +298,46 @@ static void sl_host_surface_attach(struct wl_client* client,
   }
 }  // NOLINT(whitespace/indent)
 
+// Return the scale and offset from surface coordinates to buffer pixel
+// coordinates, taking the viewport into account (if any).
+void compute_buffer_scale_and_offset(const sl_host_surface* host,
+                                     const sl_viewport* viewport,
+                                     double* out_scale_x,
+                                     double* out_scale_y,
+                                     wl_fixed_t* out_offset_x,
+                                     wl_fixed_t* out_offset_y) {
+  double scale_x = host->contents_scale;
+  double scale_y = host->contents_scale;
+  wl_fixed_t offset_x = 0;
+  wl_fixed_t offset_y = 0;
+  if (viewport) {
+    double contents_width = host->contents_width;
+    double contents_height = host->contents_height;
+
+    if (viewport->src_x >= 0 && viewport->src_y >= 0) {
+      offset_x = viewport->src_x;
+      offset_y = viewport->src_y;
+    }
+
+    if (viewport->dst_width > 0 && viewport->dst_height > 0) {
+      scale_x *= contents_width / viewport->dst_width;
+      scale_y *= contents_height / viewport->dst_height;
+
+      // Take source rectangle into account when both destination size and
+      // source rectangle are set. If only source rectangle is set, then
+      // it determines the surface size so it can be ignored.
+      if (viewport->src_width >= 0 && viewport->src_height >= 0) {
+        scale_x *= wl_fixed_to_double(viewport->src_width) / contents_width;
+        scale_y *= wl_fixed_to_double(viewport->src_height) / contents_height;
+      }
+    }
+  }
+  *out_scale_x = scale_x;
+  *out_scale_y = scale_y;
+  *out_offset_x = offset_x;
+  *out_offset_y = offset_y;
+}
+
 static void sl_host_surface_damage(struct wl_client* client,
                                    struct wl_resource* resource,
                                    int32_t x,
@@ -302,19 +346,19 @@ static void sl_host_surface_damage(struct wl_client* client,
                                    int32_t height) {
   TRACE_EVENT("surface", "sl_host_surface_damage", "resource_id",
               wl_resource_get_id(resource));
-  struct sl_host_surface* host =
+  const struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  double scale = host->ctx->scale;
+  const double scale = host->ctx->scale;
   struct sl_output_buffer* buffer;
   int64_t x1, y1, x2, y2;
 
   wl_list_for_each(buffer, &host->busy_buffers, link) {
-    pixman_region32_union_rect(&buffer->damage, &buffer->damage, x, y, width,
-                               height);
+    pixman_region32_union_rect(&buffer->surface_damage, &buffer->surface_damage,
+                               x, y, width, height);
   }
   wl_list_for_each(buffer, &host->released_buffers, link) {
-    pixman_region32_union_rect(&buffer->damage, &buffer->damage, x, y, width,
-                               height);
+    pixman_region32_union_rect(&buffer->surface_damage, &buffer->surface_damage,
+                               x, y, width, height);
   }
 
   x1 = x;
@@ -328,6 +372,57 @@ static void sl_host_surface_damage(struct wl_client* client,
   y1 = MAX(MIN_SIZE, y1 - 1) / scale;
   x2 = ceil(MIN(x2 + 1, MAX_SIZE) / scale);
   y2 = ceil(MIN(y2 + 1, MAX_SIZE) / scale);
+
+  wl_surface_damage(host->proxy, x1, y1, x2 - x1, y2 - y1);
+}
+
+static void sl_host_surface_damage_buffer(struct wl_client* client,
+                                          struct wl_resource* resource,
+                                          int32_t x,
+                                          int32_t y,
+                                          int32_t width,
+                                          int32_t height) {
+  TRACE_EVENT("surface", "sl_host_surface_damage_buffer", "resource_id",
+              wl_resource_get_id(resource));
+  const struct sl_host_surface* host =
+      static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
+  struct sl_output_buffer* buffer;
+
+  wl_list_for_each(buffer, &host->busy_buffers, link) {
+    pixman_region32_union_rect(&buffer->buffer_damage, &buffer->buffer_damage,
+                               x, y, width, height);
+  }
+  wl_list_for_each(buffer, &host->released_buffers, link) {
+    pixman_region32_union_rect(&buffer->buffer_damage, &buffer->buffer_damage,
+                               x, y, width, height);
+  }
+
+  // Forward wl_surface_damage() call to the host. Since the damage region is
+  // given in buffer pixel coordinates, convert to surface coordinates first.
+  // If the host supports wl_surface_damage_buffer one day, we can avoid this
+  // conversion.
+  double scale_x, scale_y;
+  wl_fixed_t offset_x, offset_y;
+  struct sl_viewport* viewport = NULL;
+  if (!wl_list_empty(&host->contents_viewport))
+    viewport = wl_container_of(host->contents_viewport.next, viewport, link);
+
+  compute_buffer_scale_and_offset(host, viewport, &scale_x, &scale_y, &offset_x,
+                                  &offset_y);
+
+  scale_x *= host->ctx->scale;
+  scale_y *= host->ctx->scale;
+  int64_t x1 = x - wl_fixed_to_int(offset_x);
+  int64_t y1 = y - wl_fixed_to_int(offset_y);
+  int64_t x2 = x1 + width;
+  int64_t y2 = y1 + height;
+
+  // Enclosing rect after scaling and outset by one pixel to account for
+  // potential filtering.
+  x1 = MAX(MIN_SIZE, x1 - 1) / scale_x;
+  y1 = MAX(MIN_SIZE, y1 - 1) / scale_y;
+  x2 = ceil(MIN(x2 + 1, MAX_SIZE) / scale_x);
+  y2 = ceil(MIN(y2 + 1, MAX_SIZE) / scale_y);
 
   wl_surface_damage(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
@@ -407,6 +502,55 @@ static void sl_host_surface_set_input_region(
                               host_region ? host_region->proxy : NULL);
 }  // NOLINT(whitespace/indent)
 
+static void copy_damaged_rect(sl_host_surface* host,
+                              pixman_box32_t* rect,
+                              double scale_x,
+                              double scale_y,
+                              double offset_x,
+                              double offset_y) {
+  uint8_t* src_addr = static_cast<uint8_t*>(host->contents_shm_mmap->addr);
+  uint8_t* dst_addr = static_cast<uint8_t*>(host->current_buffer->mmap->addr);
+  size_t* src_offset = host->contents_shm_mmap->offset;
+  size_t* dst_offset = host->current_buffer->mmap->offset;
+  size_t* src_stride = host->contents_shm_mmap->stride;
+  size_t* dst_stride = host->current_buffer->mmap->stride;
+  size_t* y_ss = host->contents_shm_mmap->y_ss;
+  size_t bpp = host->contents_shm_mmap->bpp;
+  size_t num_planes = host->contents_shm_mmap->num_planes;
+  int32_t x1, y1, x2, y2;
+
+  // Enclosing rect after applying scale and offset.
+  x1 = rect->x1 * scale_x + offset_x;
+  y1 = rect->y1 * scale_y + offset_y;
+  x2 = rect->x2 * scale_x + offset_x + 0.5;
+  y2 = rect->y2 * scale_y + offset_y + 0.5;
+
+  x1 = MAX(0, x1);
+  y1 = MAX(0, y1);
+  x2 = MIN(static_cast<int32_t>(host->contents_width), x2);
+  y2 = MIN(static_cast<int32_t>(host->contents_height), y2);
+
+  if (x1 < x2 && y1 < y2) {
+    size_t i;
+
+    for (i = 0; i < num_planes; ++i) {
+      uint8_t* src_base = src_addr + src_offset[i];
+      uint8_t* dst_base = dst_addr + dst_offset[i];
+      uint8_t* src = src_base + y1 * src_stride[i] + x1 * bpp;
+      uint8_t* dst = dst_base + y1 * dst_stride[i] + x1 * bpp;
+      int32_t width = x2 - x1;
+      int32_t height = (y2 - y1) / y_ss[i];
+      size_t bytes = width * bpp;
+
+      while (height--) {
+        memcpy(dst, src, bytes);
+        dst += dst_stride[i];
+        src += src_stride[i];
+      }
+    }
+  }
+}
+
 static void sl_host_surface_commit(struct wl_client* client,
                                    struct wl_resource* resource) {
   auto resource_id = wl_resource_get_id(resource);
@@ -423,88 +567,42 @@ static void sl_host_surface_commit(struct wl_client* client,
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
 
   if (host->contents_shm_mmap) {
-    uint8_t* src_addr = static_cast<uint8_t*>(host->contents_shm_mmap->addr);
-    uint8_t* dst_addr = static_cast<uint8_t*>(host->current_buffer->mmap->addr);
-    size_t* src_offset = host->contents_shm_mmap->offset;
-    size_t* dst_offset = host->current_buffer->mmap->offset;
-    size_t* src_stride = host->contents_shm_mmap->stride;
-    size_t* dst_stride = host->current_buffer->mmap->stride;
-    size_t* y_ss = host->contents_shm_mmap->y_ss;
-    size_t bpp = host->contents_shm_mmap->bpp;
-    size_t num_planes = host->contents_shm_mmap->num_planes;
-    double contents_scale_x = host->contents_scale;
-    double contents_scale_y = host->contents_scale;
-    double contents_offset_x = 0.0;
-    double contents_offset_y = 0.0;
-    pixman_box32_t* rect;
-    int n;
-
-    // Determine scale and offset for damage based on current viewport.
-    if (viewport) {
-      double contents_width = host->contents_width;
-      double contents_height = host->contents_height;
-
-      if (viewport->src_x >= 0 && viewport->src_y >= 0) {
-        contents_offset_x = wl_fixed_to_double(viewport->src_x);
-        contents_offset_y = wl_fixed_to_double(viewport->src_y);
-      }
-
-      if (viewport->dst_width > 0 && viewport->dst_height > 0) {
-        contents_scale_x *= contents_width / viewport->dst_width;
-        contents_scale_y *= contents_height / viewport->dst_height;
-
-        // Take source rectangle into account when both destionation size and
-        // source rectangle are set. If only source rectangle is set, then
-        // it determines the surface size so it can be ignored.
-        if (viewport->src_width >= 0 && viewport->src_height >= 0) {
-          contents_scale_x *=
-              wl_fixed_to_double(viewport->src_width) / contents_width;
-          contents_scale_y *=
-              wl_fixed_to_double(viewport->src_height) / contents_height;
-        }
-      }
-    }
+    double contents_scale_x, contents_scale_y;
+    wl_fixed_t contents_offset_x, contents_offset_y;
+    compute_buffer_scale_and_offset(host, viewport, &contents_scale_x,
+                                    &contents_scale_y, &contents_offset_x,
+                                    &contents_offset_y);
 
     if (host->current_buffer->mmap->begin_write)
       host->current_buffer->mmap->begin_write(host->current_buffer->mmap->fd,
                                               host->ctx);
 
-    rect = pixman_region32_rectangles(&host->current_buffer->damage, &n);
+    // Copy damaged regions (surface-relative coordinates).
+    int n;
+    pixman_box32_t* rect =
+        pixman_region32_rectangles(&host->current_buffer->surface_damage, &n);
     while (n--) {
-      TRACE_EVENT("surface", "sl_host_surface_commit: memcpy_loop");
-      int32_t x1, y1, x2, y2;
+      TRACE_EVENT("surface",
+                  "sl_host_surface_commit: memcpy_loop (surface damage)");
+      copy_damaged_rect(host, rect, contents_scale_x, contents_scale_y,
+                        wl_fixed_to_double(contents_offset_x),
+                        wl_fixed_to_double(contents_offset_y));
+      ++rect;
+    }
 
-      // Enclosing rect after applying scale and offset.
-      x1 = rect->x1 * contents_scale_x + contents_offset_x;
-      y1 = rect->y1 * contents_scale_y + contents_offset_y;
-      x2 = rect->x2 * contents_scale_x + contents_offset_x + 0.5;
-      y2 = rect->y2 * contents_scale_y + contents_offset_y + 0.5;
-
-      x1 = MAX(0, x1);
-      y1 = MAX(0, y1);
-      x2 = MIN(static_cast<int32_t>(host->contents_width), x2);
-      y2 = MIN(static_cast<int32_t>(host->contents_height), y2);
-
-      if (x1 < x2 && y1 < y2) {
-        size_t i;
-
-        for (i = 0; i < num_planes; ++i) {
-          uint8_t* src_base = src_addr + src_offset[i];
-          uint8_t* dst_base = dst_addr + dst_offset[i];
-          uint8_t* src = src_base + y1 * src_stride[i] + x1 * bpp;
-          uint8_t* dst = dst_base + y1 * dst_stride[i] + x1 * bpp;
-          int32_t width = x2 - x1;
-          int32_t height = (y2 - y1) / y_ss[i];
-          size_t bytes = width * bpp;
-
-          while (height--) {
-            memcpy(dst, src, bytes);
-            dst += dst_stride[i];
-            src += src_stride[i];
-          }
-        }
-      }
-
+    // Copy damaged regions (buffer-relative coordinates).
+    //
+    // In theory, if we've accumulated both surface damage and buffer damage,
+    // it might be more efficient to first transform and union the regions, so
+    // that we won't ever copy the same pixel twice.
+    // In practice, wl_surface::damage_buffer obsoletes wl_surface::damage, and
+    // it doesn't seem worthwhile to optimize for the edge case in which an app
+    // uses both in the same frame.
+    rect = pixman_region32_rectangles(&host->current_buffer->buffer_damage, &n);
+    while (n--) {
+      TRACE_EVENT("surface",
+                  "sl_host_surface_commit: memcpy_loop (buffer damage)");
+      copy_damaged_rect(host, rect, 1.0, 1.0, 0.0, 0.0);
       ++rect;
     }
 
@@ -512,7 +610,8 @@ static void sl_host_surface_commit(struct wl_client* client,
       host->current_buffer->mmap->end_write(host->current_buffer->mmap->fd,
                                             host->ctx);
 
-    pixman_region32_clear(&host->current_buffer->damage);
+    pixman_region32_clear(&host->current_buffer->surface_damage);
+    pixman_region32_clear(&host->current_buffer->buffer_damage);
 
     wl_list_remove(&host->current_buffer->link);
     wl_list_insert(&host->busy_buffers, &host->current_buffer->link);
@@ -619,15 +718,6 @@ static void sl_host_surface_set_buffer_scale(struct wl_client* client,
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
 
   host->contents_scale = scale;
-}
-
-static void sl_host_surface_damage_buffer(struct wl_client* client,
-                                          struct wl_resource* resource,
-                                          int32_t x,
-                                          int32_t y,
-                                          int32_t width,
-                                          int32_t height) {
-  assert(0);
 }
 
 static const struct wl_surface_interface sl_surface_implementation = {
@@ -846,6 +936,8 @@ static void sl_destroy_host_compositor(struct wl_resource* resource) {
   free(host);
 }
 
+// Called when a Wayland client binds to our wl_compositor global.
+// `version` is the version requested by the client.
 static void sl_bind_host_compositor(struct wl_client* client,
                                     void* data,
                                     uint32_t version,
@@ -855,19 +947,36 @@ static void sl_bind_host_compositor(struct wl_client* client,
       static_cast<sl_host_compositor*>(malloc(sizeof(*host)));
   assert(host);
   host->compositor = ctx->compositor;
-  host->resource =
-      wl_resource_create(client, &wl_compositor_interface,
-                         MIN(version, ctx->compositor->version), id);
+
+  // Create the client-facing wl_compositor resource using the requested
+  // version (or Sommelier's max supported version, whichever is lower).
+  //
+  // Sommelier requires a host compositor with wl_compositor version 3+,
+  // but exposes wl_compositor v4 to its clients (if --support-damage-buffer
+  // is passed). This is achieved by implementing wl_surface::damage_buffer (the
+  // only v4 feature) in terms of the existing wl_surface::damage request.
+  uint32_t maxSupportedVersion = ctx->support_damage_buffer
+                                     ? WL_SURFACE_DAMAGE_BUFFER_SINCE_VERSION
+                                     : kMinHostWlCompositorVersion;
+  host->resource = wl_resource_create(client, &wl_compositor_interface,
+                                      MIN(version, maxSupportedVersion), id);
   wl_resource_set_implementation(host->resource, &sl_compositor_implementation,
                                  host, sl_destroy_host_compositor);
+
+  // Forward the bind request to the host, using the host's wl_compositor
+  // version (which may be different from Sommelier's version).
   host->proxy = static_cast<wl_compositor*>(wl_registry_bind(
       wl_display_get_registry(ctx->display), ctx->compositor->id,
-      &wl_compositor_interface, ctx->compositor->version));
+      &wl_compositor_interface, kMinHostWlCompositorVersion));
   wl_compositor_set_user_data(host->proxy, host);
 }
 
 struct sl_global* sl_compositor_global_create(struct sl_context* ctx) {
-  return sl_global_create(ctx, &wl_compositor_interface,
-                          ctx->compositor->version, ctx,
+  // Compute the compositor version to advertise to clients, depending on the
+  // --support-damage-buffer flag (see explanation above).
+  int compositorVersion = ctx->support_damage_buffer
+                              ? WL_SURFACE_DAMAGE_BUFFER_SINCE_VERSION
+                              : kMinHostWlCompositorVersion;
+  return sl_global_create(ctx, &wl_compositor_interface, compositorVersion, ctx,
                           sl_bind_host_compositor);
 }
