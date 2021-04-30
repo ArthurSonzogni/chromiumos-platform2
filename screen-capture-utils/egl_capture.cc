@@ -128,7 +128,12 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
     attr_list[attrs_index++] = fb->offsets[plane];
     attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_PITCH_EXT + plane * 3;
     attr_list[attrs_index++] = fb->pitches[plane];
-    if (import_modifiers_exist) {
+
+    // If DRM_MODE_FB_MODIFIERS is not set, it means the modifiers are
+    // determined implicitly in a driver-specific manner. As such we only
+    // set the modifier if we got a framebuffer with explicit modifier and
+    // an EGL driver that supports explicit modifiers.
+    if (import_modifiers_exist && (fb->flags & DRM_MODE_FB_MODIFIERS)) {
       attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT + plane * 2;
       attr_list[attrs_index++] = fb->modifier & 0xfffffffful;
       attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT + plane * 2;
