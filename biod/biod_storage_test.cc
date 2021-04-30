@@ -385,7 +385,7 @@ class BiodStorageInvalidRecordTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath root_path_;
   base::FilePath record_name_;
-  std::unique_ptr<BiodStorage> biod_storage_;
+  std::unique_ptr<BiodStorageInterface> biod_storage_;
 };
 
 TEST_F(BiodStorageInvalidRecordTest, InvalidJSON) {
@@ -539,7 +539,7 @@ class BiodStorageMemlockTest
   base::ScopedTempDir temp_dir_;
   base::FilePath root_path_;
   base::FilePath record_name_;
-  std::unique_ptr<BiodStorage> biod_storage_;
+  std::unique_ptr<BiodStorageInterface> biod_storage_;
   struct rlimit orig_limit_;
 };
 
