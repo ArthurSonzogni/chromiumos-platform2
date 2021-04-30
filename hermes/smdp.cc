@@ -19,6 +19,10 @@
 
 namespace {
 
+constexpr auto kSmdxTimeout = base::TimeDelta::FromMinutes(3);
+constexpr auto kSendNotificationsTimeout = base::TimeDelta::FromSeconds(15);
+constexpr std::string_view kHandleNotification = "handleNotification";
+
 void OnHttpsResponse(hermes::Smdp::LpaCallback cb,
                      brillo::http::RequestID /*request_id*/,
                      std::unique_ptr<brillo::http::Response> response) {
@@ -101,6 +105,12 @@ void Smdp::SendHttps(const std::string& path,
   LOG(INFO) << __func__ << " path:" << path;
   brillo::ErrorPtr error = nullptr;
   std::string url = "https://" + smdp_addr_ + path;
+
+  if (path.find(kHandleNotification) != std::string::npos)
+    server_transport_->SetDefaultTimeout(kSendNotificationsTimeout);
+  else
+    server_transport_->SetDefaultTimeout(kSmdxTimeout);
+
   VLOG(1) << __func__ << ": sending data to " << url << ": " << request;
   brillo::http::Request http_request(url, brillo::http::request_type::kPost,
                                      server_transport_);
