@@ -500,7 +500,7 @@ void Daemon::Init() {
 
   // Enable EC to send WLC event.
   // Kernel will create udev events on WLC status change.
-  system::EnableCrosEcDeviceEvent(EC_DEVICE_EVENT_WLC);
+  system::EnableCrosEcDeviceEvent(EC_DEVICE_EVENT_WLC, true);
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();

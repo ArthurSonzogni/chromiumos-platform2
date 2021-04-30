@@ -11,10 +11,19 @@
 namespace power_manager {
 namespace system {
 
-void EnableCrosEcDeviceEvent(int event) {
+// The current implementation does read->set->write. This isn't ideal because
+// the enable mask can be modified between the read and the write by anything
+// else. This is a limitation of EC_DEVICE_EVENT_PARAM_SET_ENABLED_EVENTS.
+// We should instead make EC support EC_DEVICE_EVENT_PARAM_ENABLE_EVENTS,
+// which allows event masks to be set and unset atomically.
+void EnableCrosEcDeviceEvent(int event, bool enable) {
   const uint32_t event_mask = EC_DEVICE_EVENT_MASK(event);
   struct ec_params_device_event p;
   struct ec_response_device_event* r;
+  static bool cmd_supported = true;
+
+  if (!cmd_supported)
+    return;
 
   base::ScopedFD ec_fd =
       base::ScopedFD(open(cros_ec_ioctl::kCrosEcDevNodePath, O_RDWR));
@@ -31,18 +40,25 @@ void EnableCrosEcDeviceEvent(int event) {
   p.param = EC_DEVICE_EVENT_PARAM_GET_ENABLED_EVENTS;
   cmd.SetReq(p);
   if (!cmd.Run(ec_fd.get())) {
-    LOG(ERROR) << "Failed to get CrOS EC device event mask";
+    // Expected on boards with device event disabled. Print warning only once.
+    LOG(WARNING) << "Failed to get CrOS EC device event mask";
+    cmd_supported = false;
     return;
   }
 
   r = cmd.Resp();
 
-  /* Return if mask is already enabled. */
-  if (r->event_mask & event_mask)
+  /* Return if mask is already enabled or disabled. */
+  if (enable == !!(r->event_mask & event_mask)) {
+    LOG(INFO) << "CrOS EC device event is already "
+              << (enable ? "enabled" : "disabled") << " for " << event;
     return;
+  }
 
   p.param = EC_DEVICE_EVENT_PARAM_SET_ENABLED_EVENTS;
-  p.event_mask = r->event_mask | event_mask;
+  p.event_mask =
+      enable ? (r->event_mask | event_mask) : (r->event_mask & ~event_mask);
+
   cmd.SetReq(p);
   if (!cmd.Run(ec_fd.get())) {
     LOG(ERROR) << "Failed to set CrOS EC device event for " << event;
@@ -50,12 +66,14 @@ void EnableCrosEcDeviceEvent(int event) {
   }
 
   r = cmd.Resp();
-  if (!(r->event_mask & event_mask)) {
-    LOG(ERROR) << "Failed to enable CrOS EC device event for " << event;
+  if (enable != !!(r->event_mask & event_mask)) {
+    LOG(ERROR) << "Failed to " << (enable ? "enable" : "disable")
+               << " CrOS EC device event for " << event;
     return;
   }
 
-  LOG(INFO) << "CrOS EC device event is enabled for " << event;
+  LOG(INFO) << "CrOS EC device event is " << (enable ? "enabled" : "disabled")
+            << " for " << event;
 }
 
 }  // namespace system

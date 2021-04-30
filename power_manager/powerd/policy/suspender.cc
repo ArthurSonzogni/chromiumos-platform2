@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/ec/ec_commands.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
@@ -19,6 +20,7 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
+#include "power_manager/powerd/system/cros_ec_device_event.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
@@ -514,6 +516,9 @@ void Suspender::StartRequest() {
   wakeup_source_identifier_->PrepareForSuspendRequest();
   delegate_->SetSuspendAnnounced(true);
 
+  // Notify EC of an upcoming suspend.
+  system::EnableCrosEcDeviceEvent(EC_DEVICE_EVENT_WLC, false);
+
   SuspendImminent proto;
   proto.set_suspend_id(suspend_request_id_);
   proto.set_reason(suspend_request_reason_);
@@ -544,6 +549,10 @@ void Suspender::FinishRequest(bool success,
   delegate_->UndoPrepareToSuspend(success, initial_num_attempts_
                                                ? initial_num_attempts_
                                                : current_num_attempts_);
+
+  // Re-enable device event. If everything ran expectedly, EC should have
+  // enabled it by itself (on suspend completion). This is just for assurance.
+  system::EnableCrosEcDeviceEvent(EC_DEVICE_EVENT_WLC, true);
 
   // Only report dark resume metrics if it is actually enabled to prevent a
   // bunch of noise in the data.

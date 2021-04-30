@@ -21,12 +21,14 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/ec/ec_commands.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/cros_ec_device_event.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 
@@ -1037,6 +1039,13 @@ void StateController::UpdateSettingsAndState() {
     idle_action_performed_ = false;
   if (lid_closed_action_ != old_lid_closed_action)
     lid_closed_action_performed_ = false;
+
+  // If the lid is already closed and the action is suspend, we can proactively
+  // notify the EC of an upcoming suspend.
+  if (lid_state_ == LidState::CLOSED && !lid_closed_action_performed_ &&
+      lid_closed_action_ == Action::SUSPEND) {
+    system::EnableCrosEcDeviceEvent(EC_DEVICE_EVENT_WLC, false);
+  }
 
   // Let UpdateState() know if it may need to re-send the warning with an
   // updated time-until-idle-action.

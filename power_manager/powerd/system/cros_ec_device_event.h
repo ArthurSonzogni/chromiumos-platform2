@@ -11,7 +11,8 @@ namespace system {
 // Enable device event in CrOS EC.
 //
 // event: Device event ID. See enum ec_device_event in ec_command.h.
-void EnableCrosEcDeviceEvent(int event);
+// enable: true for enabling, false for disabling.
+void EnableCrosEcDeviceEvent(int event, bool enable);
 
 }  // namespace system
 }  // namespace power_manager
