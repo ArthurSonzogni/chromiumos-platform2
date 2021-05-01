@@ -29,6 +29,7 @@ pkg_config("target_defaults") {
 }
 
 generate_mojom_bindings("libcros_camera_mojom") {
+  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
   sources = [
     "//camera/mojo/algorithm/camera_algorithm.mojom",
     "//camera/mojo/camera3.mojom",
