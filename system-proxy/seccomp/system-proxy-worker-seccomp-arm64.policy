@@ -6,7 +6,6 @@ mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 fstat: 1
-stat: 1
 close: 1
 read: 1
 brk: 1
@@ -59,9 +58,7 @@ clone: 1
 setpriority: 1
 prctl: arg0 == PR_SET_NAME
 madvise: 1
-lstat: 1
 getrandom: 1
-getdents: 1
 getdents64: 1
 recvmsg: 1
 writev: 1
