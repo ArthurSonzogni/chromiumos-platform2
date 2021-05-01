@@ -1,6 +1,5 @@
 # See project subdirectories for individual OWNERS files.
 
 # We don't set general owners as we don't want subdirs to inherit these.
-# Since per-file only applies to files, not dirs, this should limit only to the
-# files in the top dir.
-per-file * = file:/common-mk/OWNERS
+# per-file can apply to dirs too, so we need to limit to known files.
+per-file LICENSE, OWNERS, *.* = file:/common-mk/OWNERS
