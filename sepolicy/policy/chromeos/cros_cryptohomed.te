@@ -18,6 +18,7 @@ allow cros_cryptohomed {
   cros_downloads_file
   cros_home_chronos
   cros_home_root
+  cros_home_shadow_uid_root_android
   cros_home_user
   cros_home_shadow_uid_user
 }:dir mounton;
@@ -32,6 +33,7 @@ create_dir_file(cros_cryptohomed, {
   cros_home_shadow
   cros_home_shadow_low_entropy_creds
   cros_home_shadow_uid_root
+  cros_home_shadow_uid_root_android
   cros_home_shadow_uid_user
   cros_home_user
   cros_run

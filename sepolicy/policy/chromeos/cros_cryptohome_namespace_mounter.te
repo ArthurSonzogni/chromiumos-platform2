@@ -1,4 +1,4 @@
-type cros_cryptohome_namespace_mounter, chromeos_domain, domain;
+type cros_cryptohome_namespace_mounter, chromeos_domain, domain, mlstrustedsubject;
 
 permissive cros_cryptohome_namespace_mounter;
 
@@ -20,21 +20,26 @@ create_dir_file(cros_cryptohome_namespace_mounter, {
   cros_home_shadow_low_entropy_creds
   cros_home_shadow_uid
   cros_home_shadow_uid_root
+  cros_home_shadow_uid_root_android
   cros_home_shadow_uid_user
   cros_home_user
   cros_run
   cros_run_daemon_store
   cros_run_dbus
 });
+
 allow cros_cryptohome_namespace_mounter {
   cros_downloads_file
   cros_home_user
   cros_home_chronos
   cros_home_root
   cros_home_shadow_uid
+  cros_home_shadow_uid_root
+  cros_home_shadow_uid_root_android
   cros_home_shadow_uid_user
   cros_run
-  cros_run_daemon_store }:dir mounton;
+  cros_run_daemon_store
+  system_data_file }:dir mounton;
 allow cros_cryptohome_namespace_mounter cros_home_shadow_uid:dir relabelto;
 allow cros_cryptohome_namespace_mounter cros_home_shadow_uid_root:dir relabelfrom;
 
