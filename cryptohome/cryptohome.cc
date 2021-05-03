@@ -2431,18 +2431,25 @@ int main(int argc, char** argv) {
              switches::kAttrPrefixSwitch);
       return 1;
     }
-    gboolean is_user_specific = !account_id.empty();
-    brillo::glib::ScopedError error;
-    gboolean success = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_delete_keys(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_prefix.c_str(), &success, &brillo::Resetter(&error).lvalue())) {
-      printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
-             error->message);
-      return 1;
+
+    attestation::DeleteKeysRequest req;
+    attestation::DeleteKeysReply reply;
+    req.set_key_label_match(key_prefix);
+    req.set_match_behavior(
+        attestation::DeleteKeysRequest::MATCH_BEHAVIOR_PREFIX);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
     }
-    if (!success) {
-      printf("Delete operation failed.\n");
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.DeleteKeys(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("AsyncTpmAttestationDeleteKeys call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(switches::kActions
@@ -2455,18 +2462,25 @@ int main(int argc, char** argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    gboolean is_user_specific = !account_id.empty();
-    brillo::glib::ScopedError error;
-    gboolean success = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_delete_key(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), &success, &brillo::Resetter(&error).lvalue())) {
-      printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
-             error->message);
-      return 1;
+
+    attestation::DeleteKeysRequest req;
+    attestation::DeleteKeysReply reply;
+    req.set_key_label_match(key_name);
+    req.set_match_behavior(
+        attestation::DeleteKeysRequest::MATCH_BEHAVIOR_EXACT);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
     }
-    if (!success) {
-      printf("Delete operation failed.\n");
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.DeleteKeys(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("AsyncTpmAttestationDeleteKeys call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(
