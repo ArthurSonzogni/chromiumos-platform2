@@ -2072,37 +2072,24 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_START_ENROLL],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    std::string response_data;
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      brillo::glib::ScopedArray data;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(  // NOLINT
-              proxy.gproxy(), pca_type, &brillo::Resetter(&data).lvalue(),
-              &brillo::Resetter(&error).lvalue())) {
-        printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      }
-      response_data = std::string(static_cast<char*>(data->data), data->len);
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_enroll_request(  // NOLINT
-              proxy.gproxy(), pca_type, &async_id,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("AsyncTpmAttestationCreateEnrollRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      } else {
-        client_loop.Run(async_id);
-        if (!client_loop.get_return_status()) {
-          printf("Attestation enrollment request failed.\n");
-          return 1;
-        }
-        response_data = client_loop.get_return_data();
-      }
+    attestation::CreateEnrollRequestRequest req;
+    attestation::CreateEnrollRequestReply reply;
+    req.set_aca_type(pca_type);
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.CreateEnrollRequest(req, &reply, &error,
+                                               timeout_ms) ||
+        error) {
+      printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmAttestationCreateEnrollRequest call failed: status %d\n",
+             static_cast<int>(reply.status()));
+      return 1;
     }
+
+    const std::string& response_data = reply.pca_request();
     base::WriteFile(GetOutputFile(cl), response_data.data(),
                     response_data.length());
   } else if (!strcmp(switches::kActions
@@ -2113,68 +2100,27 @@ int main(int argc, char** argv) {
       printf("Failed to read input file.\n");
       return 1;
     }
-    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
-    g_array_append_vals(data.get(), contents.data(), contents.length());
-    gboolean success = FALSE;
-    brillo::glib::ScopedError error;
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
-              proxy.gproxy(), pca_type, data.get(), &success,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("TpmAttestationEnroll call failed: %s.\n", error->message);
-        return 1;
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_enroll(
-              proxy.gproxy(), pca_type, data.get(), &async_id,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("AsyncTpmAttestationEnroll call failed: %s.\n", error->message);
-        return 1;
-      } else {
-        client_loop.Run(async_id);
-        success = client_loop.get_return_status();
-      }
-    }
-    if (!success) {
-      printf("Attestation enrollment failed.\n");
+
+    attestation::FinishEnrollRequest req;
+    attestation::FinishEnrollReply reply;
+    req.set_pca_response(contents);
+    req.set_aca_type(pca_type);
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.FinishEnroll(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmAttestationEnroll call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmAttestationEnroll call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_ATTESTATION_ENROLL],
                  action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean success = FALSE;
-    const bool forced = cl->HasSwitch(switches::kForceSwitch);
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      brillo::glib::ScopedArray data;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll_ex(
-              proxy.gproxy(), pca_type, forced, &success,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("TpmAttestationEnrollEx call failed: %s.\n", error->message);
-        return 1;
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_enroll_ex(
-              proxy.gproxy(), pca_type, forced, &async_id,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("AsyncTpmAttestationEnrollEx call failed: %s.\n",
-               error->message);
-        return 1;
-      } else {
-        client_loop.Run(async_id);
-        success = client_loop.get_return_status();
-      }
-    }
-    if (!success) {
-      printf("Attestation enrollment failed.\n");
-      return 1;
-    }
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
                      action.c_str())) {
@@ -2623,22 +2569,26 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gboolean success = FALSE;
+    attestation::ResetIdentityRequest req;
+    attestation::ResetIdentityReply reply;
+
     std::string token = cl->GetSwitchValueASCII(switches::kPasswordSwitch);
-    brillo::glib::ScopedArray reset_request;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_reset_identity(
-            proxy.gproxy(), token.c_str(),
-            &brillo::Resetter(&reset_request).lvalue(), &success,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("TpmAttestationResetIdentity call failed: %s.\n", error->message);
+    req.set_reset_token(token);
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.ResetIdentity(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmAttestationResetIdentity call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmAttestationResetIdentity call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
-    if (!success) {
-      printf("Failed to get identity reset request.\n");
-      return 1;
-    }
-    base::WriteFile(GetOutputFile(cl), reset_request->data, reset_request->len);
+
+    base::WriteFile(GetOutputFile(cl), reply.reset_request().data(),
+                    reply.reset_request().size());
   } else if (!strcmp(
                  switches::kActions
                      [switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT],
@@ -2965,18 +2915,24 @@ int main(int argc, char** argv) {
       printf("No\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_ENROLLMENT_ID],
                      action.c_str())) {
-    gboolean success = FALSE;
-    brillo::glib::ScopedArray enrollment_id;
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_enrollment_id(
-            proxy.gproxy(), cl->HasSwitch(switches::kIgnoreCache),
-            &brillo::Resetter(&enrollment_id).lvalue(), &success,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("GetEnrollmentId call failed: %s.\n", error->message);
+    attestation::GetEnrollmentIdRequest req;
+    attestation::GetEnrollmentIdReply reply;
+    req.set_ignore_cache(cl->HasSwitch(switches::kIgnoreCache));
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.GetEnrollmentId(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("GetEnrollmentId call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("GetEnrollmentId call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
-    std::string eid_str = base::ToLowerASCII(
-        base::HexEncode(enrollment_id->data, enrollment_id->len));
+
+    std::string eid_str = base::ToLowerASCII(base::HexEncode(
+        reply.enrollment_id().data(), reply.enrollment_id().size()));
     printf("%s\n", eid_str.c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_SUPPORTED_KEY_POLICIES],
