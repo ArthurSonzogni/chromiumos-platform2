@@ -26,12 +26,6 @@ option('dark_frame_color',
   description: 'dark frame color to use for Xwayland clients'
 )
 
-option('peer_cmd_prefix',
-  type: 'string',
-  value: '',
-  description: 'command-line needed to spwan non-parent sommeliers'
-)
-
 option('tracing',
   type: 'boolean',
   value: false,

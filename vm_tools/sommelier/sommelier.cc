@@ -57,9 +57,6 @@
 #ifndef XWAYLAND_GL_DRIVER_PATH
 #error XWAYLAND_GL_DRIVER_PATH must be defined
 #endif
-#ifndef PEER_CMD_PREFIX
-#error PEER_CMD_PREFIX must be defined
-#endif
 #ifndef FRAME_COLOR
 #error FRAME_COLOR must be defined
 #endif
@@ -1011,7 +1008,7 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
   host_buffer->sync_point = NULL;
 
   return host_buffer;
-}
+}  // NOLINT(whitespace/indent)
 
 static void sl_internal_data_offer_destroy(struct sl_data_offer* host) {
   TRACE_EVENT("other", "sl_internal_data_offer_destroy");
@@ -4224,9 +4221,6 @@ int main(int argc, char** argv) {
 
         close(sock_fd);
         close(lock_fd);
-
-        if (!peer_cmd_prefix)
-          peer_cmd_prefix = PEER_CMD_PREFIX;
 
         if (peer_cmd_prefix) {
           peer_cmd_prefix_str = sl_xasprintf("%s", peer_cmd_prefix);

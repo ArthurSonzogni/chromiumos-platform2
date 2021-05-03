@@ -8,18 +8,6 @@ project('sommelier', 'c', 'cpp')
 # Configuration #
 #===============#
 
-peer_cmd_prefix = get_option('peer_cmd_prefix')
-if peer_cmd_prefix == ''
-  cpu_fam = target_machine.cpu_family()
-  if cpu_fam == 'x86_64'
-    peer_cmd_prefix = '''/opt/google/cros-containers/lib/ld-linux-x86-64.so.2 --library-path /opt/google/cros-containers/lib --inhibit-rpath ""'''
-  elif cpu_fam == 'arm' or cpu_fam == 'aarch64'
-    peer_cmd_prefix = '''/opt/google/cros-containers/lib/ld-linux-armhf.so.3 --library-path /opt/google/cros-containers/lib --inhibit-rpath ""'''
-  else
-    assert(false, 'No default peer_cmd_prefix for architecture: ' + cpu_fam)
-  endif
-endif
-
 includes = []
 cpp_args = []
 
@@ -149,7 +137,6 @@ executable('sommelier',
     '-DWL_HIDE_DEPRECATED',
     '-DXWAYLAND_PATH="' + get_option('xwayland_path') + '"',
     '-DXWAYLAND_GL_DRIVER_PATH="' + get_option('xwayland_gl_driver_path') + '"',
-    '-DPEER_CMD_PREFIX="' + peer_cmd_prefix + '"',
     '-DFRAME_COLOR="' + get_option('frame_color') + '"',
     '-DDARK_FRAME_COLOR="' + get_option('dark_frame_color') + '"',
   ],

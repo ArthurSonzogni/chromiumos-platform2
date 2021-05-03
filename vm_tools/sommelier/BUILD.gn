@@ -8,15 +8,6 @@ group("all") {
   deps = [ ":sommelier" ]
 }
 
-if (!defined(peer_cmd_prefix)) {
-  if (use.amd64) {
-    peer_cmd_prefix = "\"/opt/google/cros-containers/lib/ld-linux-x86-64.so.2 --library-path /opt/google/cros-containers/lib --inhibit-rpath \\\"\\\"\""
-  }
-  if (use.arm) {
-    peer_cmd_prefix = "\"/opt/google/cros-containers/lib/ld-linux-armhf.so.3 --library-path /opt/google/cros-containers/lib --inhibit-rpath \\\"\\\"\""
-  }
-}
-
 # Set this to the Xwayland path.
 if (!defined(xwayland_path)) {
   xwayland_path = "\"/opt/google/cros-containers/bin/Xwayland\""
@@ -93,7 +84,6 @@ executable("sommelier") {
     "WL_HIDE_DEPRECATED",
     "XWAYLAND_PATH=${xwayland_path}",
     "XWAYLAND_GL_DRIVER_PATH=${xwayland_gl_driver_path}",
-    "PEER_CMD_PREFIX=${peer_cmd_prefix}",
     "FRAME_COLOR=${frame_color}",
     "DARK_FRAME_COLOR=${dark_frame_color}",
   ]
