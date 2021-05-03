@@ -2907,53 +2907,42 @@ int main(int argc, char** argv) {
     if (!BuildAccountId(cl, &id))
       return 1;
 
-    cryptohome::StartAuthSessionRequest req;
+    user_data_auth::StartAuthSessionRequest req;
+    user_data_auth::StartAuthSessionReply reply;
     unsigned int flags = 0;
     flags |= cl->HasSwitch(switches::kPublicMount)
                  ? cryptohome::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER
                  : 0;
     req.set_flags(flags);
+    *req.mutable_account_id() = id;
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
-    if (!account_ary.get() || !req_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.StartAuthSession(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("StartAuthSession call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-
-    GArray* out_reply = NULL;
-    VLOG(1) << "Attempt to start auth session.";
-    if (!org_chromium_CryptohomeInterface_start_auth_session(
-            proxy.gproxy(), account_ary.get(), req_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("Failed to call StartAuthSession.\n");
-      return 1;
-    }
-    // TODO(crbug.com/1152474): Print Auth Session token here for the developer
-    // to easily access token.
-    ParseBaseReply(out_reply, &reply, false /* print_reply */);
-    if (reply.has_error()) {
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Auth session failed to start.\n");
-      return reply.error();
+      return static_cast<int>(reply.error());
     }
-    cryptohome::StartAuthSessionReply auth_session_reply =
-        reply.GetExtension(cryptohome::StartAuthSessionReply::reply);
+
     printf("auth_session_id:%s\n",
-           base::HexEncode(auth_session_reply.auth_session_id().c_str(),
-                           auth_session_reply.auth_session_id().size())
+           base::HexEncode(reply.auth_session_id().c_str(),
+                           reply.auth_session_id().size())
                .c_str());
     printf("Auth session start succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_CREDENTIALS],
                      action.c_str())) {
+    user_data_auth::AddCredentialsRequest req;
+    user_data_auth::AddCredentialsReply reply;
+
     std::string auth_session_id_hex, auth_session_id;
     if (!GetAuthSessionId(cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
-
-    cryptohome::AddCredentialsRequest req;
     req.set_auth_session_id(auth_session_id);
 
     if (!BuildAuthorization(
@@ -2962,34 +2951,32 @@ int main(int argc, char** argv) {
             req.mutable_authorization()))
       return 1;
 
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
-    if (!req_ary.get())
-      return 1;
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_add_credentials(
-            proxy.gproxy(), req_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.AddCredentials(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("AddCredentials call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Auth session failed to add credentials.\n");
-      return reply.error();
+      return static_cast<int>(reply.error());
     }
+
     printf("Auth session added credentials successfully.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_SESSION],
                  action.c_str())) {
+    user_data_auth::AuthenticateAuthSessionRequest req;
+    user_data_auth::AuthenticateAuthSessionReply reply;
+
     std::string auth_session_id_hex, auth_session_id;
     if (!GetAuthSessionId(cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
-    cryptohome::AuthenticateAuthSessionRequest req;
     req.set_auth_session_id(auth_session_id);
 
     if (!BuildAuthorization(
@@ -2998,25 +2985,21 @@ int main(int argc, char** argv) {
             req.mutable_authorization()))
       return 1;
 
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(req));
-    if (!req_ary.get())
-      return 1;
-
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_authenticate_auth_session(
-            proxy.gproxy(), req_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.AuthenticateAuthSession(req, &reply, &error,
+                                                    timeout_ms) ||
+        error) {
+      printf("AuthenticateAuthSession call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    // TODO(crbug.com/1157622): Complete the API with actual authentication.
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Auth session failed to authenticate.\n");
-      return reply.error();
+      return static_cast<int>(reply.error());
     }
+
     printf("Auth session authentication succeeded.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
