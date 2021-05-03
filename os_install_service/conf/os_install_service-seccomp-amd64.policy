@@ -24,11 +24,13 @@ chdir: 1
 chmod: 1
 chroot: 1
 clock_getres: 1
+clock_gettime: 1
 clock_nanosleep: 1
 clone: 1
 close: 1
 connect: 1
 creat: 1
+dup: 1
 dup2: 1
 execve: 1
 exit: 1
