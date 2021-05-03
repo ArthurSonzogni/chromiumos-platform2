@@ -2360,24 +2360,30 @@ int main(int argc, char** argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    brillo::glib::ScopedArray payload;
-    gboolean is_user_specific = !account_id.empty();
-    brillo::glib::ScopedError error;
-    gboolean success = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_key_payload(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), &brillo::Resetter(&payload).lvalue(), &success,
-            &brillo::Resetter(&error).lvalue())) {
+
+    attestation::GetKeyInfoRequest req;
+    attestation::GetKeyInfoReply reply;
+    req.set_key_label(key_name);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
+    }
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.GetKeyInfo(req, &reply, &error, timeout_ms) ||
+        error) {
       printf("AsyncTpmAttestationGetKetPayload call failed: %s.\n",
-             error->message);
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("AsyncTpmAttestationGetKetPayload call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
-    if (!success) {
-      printf("AsyncTpmAttestationGetKetPayload operation failed.\n");
-      return 1;
-    }
-    base::WriteFile(GetOutputFile(cl), payload->data, payload->len);
-    base::WriteFileDescriptor(STDOUT_FILENO, payload->data, payload->len);
+
+    base::WriteFile(GetOutputFile(cl), reply.payload().data(),
+                    reply.payload().size());
+    base::WriteFileDescriptor(STDOUT_FILENO, reply.payload().data(),
+                              reply.payload().size());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_SET_KEY_PAYLOAD],
                      action.c_str())) {
@@ -2394,21 +2400,24 @@ int main(int argc, char** argv) {
              switches::kAttrValueSwitch);
       return 1;
     }
-    brillo::glib::ScopedArray payload(g_array_new(FALSE, FALSE, 1));
-    g_array_append_vals(payload.get(), value.data(), value.length());
-    gboolean is_user_specific = !account_id.empty();
-    brillo::glib::ScopedError error;
-    gboolean success = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_set_key_payload(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), payload.get(), &success,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("AsyncTpmAttestationSetKetPayload call failed: %s.\n",
-             error->message);
-      return 1;
+
+    attestation::SetKeyPayloadRequest req;
+    attestation::SetKeyPayloadReply reply;
+    req.set_key_label(key_name);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
     }
-    if (!success) {
-      printf("AsyncTpmAttestationSetKetPayload operation failed.\n");
+    *req.mutable_payload() = {value.begin(), value.end()};
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.SetKeyPayload(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("AsyncTpmAttestationSetKetPayload call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("AsyncTpmAttestationSetKetPayload call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(switches::kActions
