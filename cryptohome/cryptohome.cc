@@ -1554,10 +1554,15 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_CLEAR_STORED_PASSWORD],
                  action.c_str())) {
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_tpm_clear_stored_password(
-            proxy.gproxy(), &brillo::Resetter(&error).lvalue())) {
-      printf("TpmClearStoredPassword call failed: %s.\n", error->message);
+    tpm_manager::ClearStoredOwnerPasswordRequest req;
+    tpm_manager::ClearStoredOwnerPasswordReply reply;
+
+    brillo::ErrorPtr error;
+    if (!tpm_ownership_proxy.ClearStoredOwnerPassword(req, &reply, &error,
+                                                      timeout_ms) ||
+        error) {
+      printf("TpmClearStoredPassword call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_GET],
@@ -1772,18 +1777,19 @@ int main(int argc, char** argv) {
       timeout = timeout_in_switch;
     }
 
-    brillo::glib::ScopedError error;
     auto deadline = base::Time::Now() + base::TimeDelta::FromSeconds(timeout);
     while (base::Time::Now() < deadline) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromMilliseconds(kWaitOwnershipPollIntervalInMs));
-      gboolean is_owned = false;
-      if (!org_chromium_CryptohomeInterface_tpm_is_owned(
-              proxy.gproxy(), &is_owned, &brillo::Resetter(&error).lvalue())) {
-        printf("TpmIsOwned call failed: %s.\n", error->message);
-        return 1;
+      tpm_manager::GetTpmStatusRequest req;
+      tpm_manager::GetTpmStatusReply reply;
+      brillo::ErrorPtr error;
+      if (!tpm_ownership_proxy.GetTpmStatus(req, &reply, &error, timeout_ms) ||
+          error) {
+        printf("TpmIsOwned call failed: %s.\n",
+               BrilloErrorToString(error.get()).c_str());
       }
-      if (is_owned) {
+      if (reply.owned()) {
         // This is the condition we are waiting for.
         printf("TPM is now owned.\n");
         return 0;
