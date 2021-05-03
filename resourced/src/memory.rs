@@ -8,6 +8,7 @@ use std::path::Path;
 
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
+use sys_util::error;
 
 use crate::common;
 
@@ -222,7 +223,7 @@ fn get_memory_parameters() -> MemoryParameters {
     static RESERVED_FREE: Lazy<u64> = Lazy::new(|| match get_reserved_memory_kb() {
         Ok(reserved) => reserved,
         Err(e) => {
-            println!("get_reserved_memory_kb failed: {}", e);
+            error!("get_reserved_memory_kb failed: {}", e);
             0
         }
     });
@@ -290,9 +291,9 @@ fn get_memory_margins_kb_impl() -> (u64, u64) {
     match File::open(Path::new(margin_path)).map(BufReader::new) {
         Ok(reader) => match parse_margins(reader) {
             Ok(margins) => return (margins[0] * 1024, margins[1] * 1024),
-            Err(e) => println!("Couldn't parse {}: {}", margin_path, e),
+            Err(e) => error!("Couldn't parse {}: {}", margin_path, e),
         },
-        Err(e) => println!("Couldn't read {}: {}", margin_path, e),
+        Err(e) => error!("Couldn't read {}: {}", margin_path, e),
     }
 
     // Critical margin is 5.2% of total memory, moderate margin is 40% of total
@@ -300,7 +301,7 @@ fn get_memory_margins_kb_impl() -> (u64, u64) {
     let total_memory_kb = match get_meminfo() {
         Ok(meminfo) => meminfo.total,
         Err(e) => {
-            println!("Assume 2 GiB total memory if get_meminfo failed: {}", e);
+            error!("Assume 2 GiB total memory if get_meminfo failed: {}", e);
             2 * 1024
         }
     };

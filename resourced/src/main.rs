@@ -9,8 +9,13 @@ mod memory;
 #[cfg(test)]
 mod test;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
+use sys_util::syslog;
 
 fn main() -> Result<()> {
+    if let Err(e) = syslog::init() {
+        bail!("Failed to initiailize syslog: {}", e);
+    }
+
     dbus::start_service()
 }
