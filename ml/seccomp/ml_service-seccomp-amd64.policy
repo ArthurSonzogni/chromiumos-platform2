@@ -35,7 +35,7 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
-ioctl: 1
+ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS
 lseek: 1
 lstat: 1
 madvise: 1

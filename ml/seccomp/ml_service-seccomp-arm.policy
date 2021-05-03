@@ -37,8 +37,7 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-# TODO(https://crbug.com/1204648): We need to make this stricter.
-ioctl: 1
+ioctl: arg1 == SIOCSIFFLAGS || arg1 == TCGETS || arg1 == SIOCGIFFLAGS
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mount: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
