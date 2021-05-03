@@ -1527,16 +1527,16 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SET_CURRENT_USER_OLD],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    ClientLoop client_loop;
-    client_loop.Initialize(&proxy);
-    if (!org_chromium_CryptohomeInterface_update_current_user_activity_timestamp(  // NOLINT
-            proxy.gproxy(),
-            base::TimeDelta::FromDays(kSetCurrentUserOldOffsetInDays)
-                .InSeconds(),
-            &brillo::Resetter(&error).lvalue())) {
+    user_data_auth::UpdateCurrentUserActivityTimestampRequest req;
+    user_data_auth::UpdateCurrentUserActivityTimestampReply reply;
+    req.set_time_shift_sec(
+        base::TimeDelta::FromDays(kSetCurrentUserOldOffsetInDays).InSeconds());
+    brillo::ErrorPtr error;
+    if (!misc_proxy.UpdateCurrentUserActivityTimestamp(req, &reply, &error,
+                                                       timeout_ms) ||
+        error) {
       printf("UpdateCurrentUserActivityTimestamp call failed: %s.\n",
-             error->message);
+             BrilloErrorToString(error.get()).c_str());
     } else {
       printf(
           "Timestamp successfully updated. You may verify it with "
@@ -2956,17 +2956,17 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_HEALTH],
                      action.c_str())) {
-    cryptohome::CheckHealthRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("CheckHealth", DBUS_METHOD(check_health),
-                           DBUS_METHOD(check_health_async), cl, &proxy, request,
-                           &reply, true /* print_reply */)) {
+    user_data_auth::CheckHealthRequest req;
+    user_data_auth::CheckHealthReply reply;
+
+    brillo::ErrorPtr error;
+    if (!misc_proxy.CheckHealth(req, &reply, &error, timeout_ms) || error) {
+      printf("CheckHealth call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (!reply.HasExtension(cryptohome::CheckHealthReply::reply)) {
-      printf("CheckHealthReply missing.\n");
-      return 1;
-    }
+
+    reply.PrintDebugString();
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
