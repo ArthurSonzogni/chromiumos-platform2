@@ -51,7 +51,8 @@ message AuthBlockState {
   }
   // This is a unique AuthBlockState for backwards compatibility. libscrypt puts
   // the metadata, such as IV and salt, into the header of the encrypted
-  // buffer. Thus this is the only auth block state to pass wrapped secrets.
+  // buffer. Thus this is the only auth block state to pass wrapped secrets. See
+  // the LibScryptCompatAuthBlock header for a full explanation.
   message LibScryptCompatAuthBlockState {
     // The wrapped filesystem keys.
     optional bytes wrapped_keyset = 1;

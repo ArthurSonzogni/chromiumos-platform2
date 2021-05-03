@@ -105,7 +105,7 @@ base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
                                                   reset_seed_salt);
 
   // libscrypt is an odd case again; the AuthBlockState is only populated on the
-  // derivation flow.
+  // derivation flow. See the class header for a full explanation.
   AuthBlockState auth_state;
   auth_state.mutable_libscrypt_compat_state();
   return auth_state;

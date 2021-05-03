@@ -9,6 +9,14 @@
 
 namespace cryptohome {
 
+// AuthBlocks generally output a populated AuthBlockState in the Create()
+// method, and consume the same AuthBlockState in the Derive() method.
+// LibScryptCompat is a special case because it includes the metadata at the
+// beginning of the same buffer as the encrypted blob. Thus, Create() outputs an
+// empty AuthBlockState and the KeyBlobs struct stores the encrypted buffers,
+// which happen to have the metadata at the beginning. When Derive() is called,
+// those entire blobs are put into the AuthBlockState, so Derive() can parse the
+// metadata from there.
 class LibScryptCompatAuthBlock : public AuthBlock {
  public:
   LibScryptCompatAuthBlock();
