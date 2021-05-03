@@ -1516,14 +1516,14 @@ int main(int argc, char** argv) {
     printf("GetTpmStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    gchar* status;
-    if (!org_chromium_CryptohomeInterface_get_status_string(
-            proxy.gproxy(), &status, &brillo::Resetter(&error).lvalue())) {
-      printf("GetStatusString call failed: %s.\n", error->message);
+    user_data_auth::GetStatusStringRequest req;
+    user_data_auth::GetStatusStringReply reply;
+    brillo::ErrorPtr error;
+    if (!misc_proxy.GetStatusString(req, &reply, &error, timeout_ms) || error) {
+      printf("GetStatusString call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
     } else {
-      printf("%s\n", status);
-      g_free(status);
+      printf("%s\n", reply.status().c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SET_CURRENT_USER_OLD],
                      action.c_str())) {
@@ -2854,15 +2854,21 @@ int main(int argc, char** argv) {
     printf("Login disabled.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_RSU_DEVICE_ID],
                      action.c_str())) {
-    cryptohome::GetRsuDeviceIdRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("GetRsuDeviceId", DBUS_METHOD(get_rsu_device_id),
-                           DBUS_METHOD(get_rsu_device_id_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
+    user_data_auth::GetRsuDeviceIdRequest req;
+    user_data_auth::GetRsuDeviceIdReply reply;
+
+    brillo::ErrorPtr error;
+    if (!misc_proxy.GetRsuDeviceId(req, &reply, &error, timeout_ms) || error) {
+      printf("GetRsuDeviceId call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (!reply.HasExtension(cryptohome::GetRsuDeviceIdReply::reply)) {
-      printf("GetRsuDeviceIdReply missing.\n");
+
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("GetRsuDeviceId call failed: status %d\n",
+             static_cast<int>(reply.error()));
       return 1;
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_HEALTH],
