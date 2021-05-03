@@ -2602,33 +2602,36 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS],
                      action.c_str())) {
-    cryptohome::GetFirmwareManagementParametersRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall(
-            cryptohome::kCryptohomeGetFirmwareManagementParameters,
-            DBUS_METHOD(get_firmware_management_parameters),
-            DBUS_METHOD(get_firmware_management_parameters_async), cl, &proxy,
-            request, &reply, true /* print_reply */)) {
+    user_data_auth::GetFirmwareManagementParametersRequest req;
+    user_data_auth::GetFirmwareManagementParametersReply reply;
+
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.GetFirmwareManagementParameters(
+            req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("Failed to call GetFirmwareManagementParameters: %s\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
+    } else {
+      reply.PrintDebugString();
+      if (reply.error() !=
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+        printf("Failed to call GetFirmwareManagementParameters: status %d\n",
+               static_cast<int>(reply.error()));
+        return 1;
+      }
     }
-    if (!reply.HasExtension(
-            cryptohome::GetFirmwareManagementParametersReply::reply)) {
-      printf("GetFirmwareManagementParametersReply missing.\n");
-      return 1;
-    }
-    cryptohome::GetFirmwareManagementParametersReply get_fwmp_reply =
-        reply.GetExtension(
-            cryptohome::GetFirmwareManagementParametersReply::reply);
-    printf("flags=0x%08x\n", get_fwmp_reply.flags());
+
+    printf("flags=0x%08x\n", reply.fwmp().flags());
     brillo::Blob hash =
-        brillo::BlobFromString(get_fwmp_reply.developer_key_hash());
+        brillo::BlobFromString(reply.fwmp().developer_key_hash());
     printf("hash=%s\n", cryptohome::CryptoLib::BlobToHex(hash).c_str());
     printf("GetFirmwareManagementParameters success.\n");
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS],
                      action.c_str())) {
-    cryptohome::SetFirmwareManagementParametersRequest request;
-    cryptohome::BaseReply reply;
+    user_data_auth::SetFirmwareManagementParametersRequest req;
+    user_data_auth::SetFirmwareManagementParametersReply reply;
 
     if (cl->HasSwitch(switches::kFlagsSwitch)) {
       std::string flags_str = cl->GetSwitchValueASCII(switches::kFlagsSwitch);
@@ -2638,7 +2641,7 @@ int main(int argc, char** argv) {
         printf("Bad flags value.\n");
         return 1;
       }
-      request.set_flags(flags);
+      req.mutable_fwmp()->set_flags(flags);
     } else {
       printf("Use --flags (and optionally --developer_key_hash).\n");
       return 1;
@@ -2657,31 +2660,51 @@ int main(int argc, char** argv) {
         return 1;
       }
 
-      request.set_developer_key_hash(brillo::BlobToString(hash));
+      req.mutable_fwmp()->set_developer_key_hash(brillo::BlobToString(hash));
     }
 
-    if (!MakeProtoDBusCall(
-            cryptohome::kCryptohomeSetFirmwareManagementParameters,
-            DBUS_METHOD(set_firmware_management_parameters),
-            DBUS_METHOD(set_firmware_management_parameters_async), cl, &proxy,
-            request, &reply, true /* print_reply */)) {
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.SetFirmwareManagementParameters(
+            req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("Failed to call SetFirmwareManagementParameters: %s\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
+    } else {
+      reply.PrintDebugString();
+      if (reply.error() !=
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+        printf("Failed to call SetFirmwareManagementParameters: status %d\n",
+               static_cast<int>(reply.error()));
+        return 1;
+      }
     }
+
     printf("SetFirmwareManagementParameters success.\n");
   } else if (!strcmp(
                  switches::kActions
                      [switches::ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS],
                  action.c_str())) {
-    cryptohome::RemoveFirmwareManagementParametersRequest request;
-    cryptohome::BaseReply reply;
+    user_data_auth::RemoveFirmwareManagementParametersRequest req;
+    user_data_auth::RemoveFirmwareManagementParametersReply reply;
 
-    if (!MakeProtoDBusCall(
-            cryptohome::kCryptohomeRemoveFirmwareManagementParameters,
-            DBUS_METHOD(remove_firmware_management_parameters),
-            DBUS_METHOD(remove_firmware_management_parameters_async), cl,
-            &proxy, request, &reply, true /* print_reply */)) {
+    brillo::ErrorPtr error;
+    if (!install_attributes_proxy.RemoveFirmwareManagementParameters(
+            req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("Failed to call RemoveFirmwareManagementParameters: %s\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
+    } else {
+      reply.PrintDebugString();
+      if (reply.error() !=
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+        printf("Failed to call RemoveFirmwareManagementParameters: status %d\n",
+               static_cast<int>(reply.error()));
+        return 1;
+      }
     }
+
     printf("RemoveFirmwareManagementParameters success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_TO_DIRCRYPTO],
                      action.c_str())) {
