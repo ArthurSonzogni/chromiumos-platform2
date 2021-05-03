@@ -6,18 +6,13 @@
 #include <base/macros.h>
 #include <base/notreached.h>
 
+#include <libmems/common_types.h>
+
 #include "mems_setup/sensor_kind.h"
 
 namespace mems_setup {
 
 namespace {
-constexpr char kAccelName[] = "accel";
-constexpr char kGyroName[] = "anglvel";
-constexpr char kLightName[] = "illuminance";
-constexpr char kSyncName[] = "count";
-constexpr char kMagnName[] = "magn";
-constexpr char kLidAngleName[] = "angl";
-constexpr char kBaroName[] = "baro";
 constexpr char kOthersName[] = "";
 
 constexpr char kAccelDeviceName[] = "cros-ec-accel";
@@ -33,19 +28,19 @@ constexpr char kBaroDeviceName[] = "cros-ec-baro";
 std::string SensorKindToString(SensorKind kind) {
   switch (kind) {
     case SensorKind::ACCELEROMETER:
-      return kAccelName;
+      return libmems::kAccelName;
     case SensorKind::GYROSCOPE:
-      return kGyroName;
+      return libmems::kGyroName;
     case SensorKind::LIGHT:
-      return kLightName;
+      return libmems::kLightName;
     case SensorKind::SYNC:
-      return kSyncName;
+      return libmems::kSyncName;
     case SensorKind::MAGNETOMETER:
-      return kMagnName;
+      return libmems::kMagnName;
     case SensorKind::LID_ANGLE:
-      return kLidAngleName;
+      return libmems::kLidAngleName;
     case SensorKind::BAROMETER:
-      return kBaroName;
+      return libmems::kBaroName;
     case SensorKind::OTHERS:  // Shouldn't be used
       return kOthersName;
   }

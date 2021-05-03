@@ -34,6 +34,17 @@ constexpr char kTimestampAttr[] = "timestamp";
 
 constexpr char kSysDevString[] = "/sys/bus/iio/devices";
 
+constexpr char kAccelName[] = "accel";
+constexpr char kGyroName[] = "anglvel";
+constexpr char kLightName[] = "illuminance";
+constexpr char kSyncName[] = "count";
+constexpr char kMagnName[] = "magn";
+constexpr char kLidAngleName[] = "angl";
+constexpr char kBaroName[] = "baro";
+constexpr char kAccelUncalibName[] = "accel_uncalib";
+constexpr char kGyroUncalibName[] = "anglvel_uncalib";
+constexpr char kMagnUncalibName[] = "magn_uncalib";
+
 }  // namespace libmems
 
 #endif  // LIBMEMS_COMMON_TYPES_H_
