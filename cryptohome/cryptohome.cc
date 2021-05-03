@@ -2565,127 +2565,23 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SIGN_LOCKBOX],
                      action.c_str())) {
-    std::string data;
-    if (!base::ReadFileToString(GetInputFile(cl), &data)) {
-      printf("Failed to read input file: %s\n",
-             GetInputFile(cl).value().c_str());
-      return 1;
-    }
-
-    cryptohome::SignBootLockboxRequest request;
-    request.set_data(data);
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("SignBootLockbox", DBUS_METHOD(sign_boot_lockbox),
-                           DBUS_METHOD(sign_boot_lockbox_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
-      return 1;
-    }
-
-    if (!reply.HasExtension(cryptohome::SignBootLockboxReply::reply)) {
-      printf("SignBootLockboxReply missing.\n");
-      return 1;
-    }
-    std::string signature =
-        reply.GetExtension(cryptohome::SignBootLockboxReply::reply).signature();
-    base::WriteFile(GetOutputFile(cl).AddExtension("signature"),
-                    signature.data(), signature.size());
-    printf("SignBootLockbox success.\n");
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions[switches::ACTION_VERIFY_LOCKBOX],
                      action.c_str())) {
-    std::string data;
-    if (!base::ReadFileToString(GetInputFile(cl), &data)) {
-      printf("Failed to read input file: %s\n",
-             GetInputFile(cl).value().c_str());
-      return 1;
-    }
-    std::string signature;
-    FilePath signature_file = GetInputFile(cl).AddExtension("signature");
-    if (!base::ReadFileToString(signature_file, &signature)) {
-      printf("Failed to read input file: %s\n", signature_file.value().c_str());
-      return 1;
-    }
-
-    cryptohome::VerifyBootLockboxRequest request;
-    request.set_data(data);
-    request.set_signature(signature);
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("VerifyBootLockbox",
-                           DBUS_METHOD(verify_boot_lockbox),
-                           DBUS_METHOD(verify_boot_lockbox_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
-      return 1;
-    }
-    printf("VerifyBootLockbox success.\n");
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions[switches::ACTION_FINALIZE_LOCKBOX],
                      action.c_str())) {
-    cryptohome::FinalizeBootLockboxRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("FinalizeBootLockbox",
-                           DBUS_METHOD(finalize_boot_lockbox),
-                           DBUS_METHOD(finalize_boot_lockbox_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
-      return 1;
-    }
-    printf("FinalizeBootLockbox success.\n");
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_BOOT_ATTRIBUTE],
                      action.c_str())) {
-    std::string name;
-    if (!GetAttrName(cl, &name)) {
-      printf("No attribute name specified.\n");
-      return 1;
-    }
-
-    cryptohome::GetBootAttributeRequest request;
-    request.set_name(name);
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("GetBootAttribute", DBUS_METHOD(get_boot_attribute),
-                           DBUS_METHOD(get_boot_attribute_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
-      return 1;
-    }
-    if (!reply.HasExtension(cryptohome::GetBootAttributeReply::reply)) {
-      printf("GetBootAttributeReply missing.\n");
-      return 1;
-    }
-    std::string value =
-        reply.GetExtension(cryptohome::GetBootAttributeReply::reply).value();
-    printf("%s\n", value.c_str());
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions[switches::ACTION_SET_BOOT_ATTRIBUTE],
                      action.c_str())) {
-    std::string name;
-    if (!GetAttrName(cl, &name)) {
-      printf("No attribute name specified.\n");
-      return 1;
-    }
-    std::string value;
-    if (!GetAttrValue(cl, &value)) {
-      printf("No attribute value specified.\n");
-      return 1;
-    }
-
-    cryptohome::SetBootAttributeRequest request;
-    request.set_name(name);
-    request.set_value(value);
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("SetBootAttribute", DBUS_METHOD(set_boot_attribute),
-                           DBUS_METHOD(set_boot_attribute_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
-      return 1;
-    }
-    printf("SetBootAttribute success.\n");
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES],
                      action.c_str())) {
-    cryptohome::FlushAndSignBootAttributesRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("FlushAndSignBootAttributes",
-                           DBUS_METHOD(flush_and_sign_boot_attributes),
-                           DBUS_METHOD(flush_and_sign_boot_attributes_async),
-                           cl, &proxy, request, &reply,
-                           true /* print_reply */)) {
-      return 1;
-    }
-    printf("FlushAndSignBootAttributes success.\n");
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_LOGIN_STATUS],
                      action.c_str())) {
     cryptohome::GetLoginStatusRequest request;
@@ -2702,15 +2598,7 @@ int main(int argc, char** argv) {
     printf("GetLoginStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_INITIALIZE_CAST_KEY],
                      action.c_str())) {
-    cryptohome::InitializeCastKeyRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("InitializeCastKey",
-                           DBUS_METHOD(initialize_cast_key),
-                           DBUS_METHOD(initialize_cast_key_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
-      return 1;
-    }
-    printf("InitializeCastKey success.\n");
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS],
                      action.c_str())) {
