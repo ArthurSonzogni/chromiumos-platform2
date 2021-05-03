@@ -2719,28 +2719,25 @@ int main(int argc, char** argv) {
     if (!BuildAccountId(cl, &id))
       return 1;
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    if (!account_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::StartMigrateToDircryptoRequest req;
+    user_data_auth::StartMigrateToDircryptoReply reply;
+    *req.mutable_account_id() = id;
+    req.set_minimal_migration(cl->HasSwitch(switches::kMinimalMigration));
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.StartMigrateToDircrypto(req, &reply, &error,
+                                                    timeout_ms) ||
+        error) {
+      printf("MigrateToDircrypto call failed: %s\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.error() !=
+               user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("MigrateToDircrypto call failed: status %d\n",
+             static_cast<int>(reply.error()));
       return 1;
     }
 
-    cryptohome::MigrateToDircryptoRequest request;
-    request.set_minimal_migration(cl->HasSwitch(switches::kMinimalMigration));
-
-    brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
-    if (!request_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
-      return 1;
-    }
-
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto(
-            proxy.gproxy(), account_ary.get(), request_ary.get(),
-            &brillo::Resetter(&error).lvalue())) {
-      printf("MigrateToDircrypto call failed: %s\n", error->message);
-      return 1;
-    }
     printf("MigrateToDircrypto call succeeded.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_NEEDS_DIRCRYPTO_MIGRATION],
@@ -2751,21 +2748,25 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    if (!account_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::NeedsDircryptoMigrationRequest req;
+    user_data_auth::NeedsDircryptoMigrationReply reply;
+    *req.mutable_account_id() = id;
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.NeedsDircryptoMigration(req, &reply, &error,
+                                                    timeout_ms) ||
+        error) {
+      printf("NeedsDirCryptoMigration call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.error() !=
+               user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("NeedsDirCryptoMigration call failed: status %d\n",
+             static_cast<int>(reply.error()));
       return 1;
     }
 
-    brillo::glib::ScopedError error;
-    gboolean needs_migration = false;
-    if (!org_chromium_CryptohomeInterface_needs_dircrypto_migration(
-            proxy.gproxy(), account_ary.get(), &needs_migration,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("NeedsDirCryptoMigration call failed: %s.\n", error->message);
-      return 1;
-    }
-    if (needs_migration)
+    if (reply.needs_dircrypto_migration())
       printf("Yes\n");
     else
       printf("No\n");
@@ -2810,31 +2811,33 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_GET_ACCOUNT_DISK_USAGE],
                  action.c_str())) {
+    user_data_auth::GetAccountDiskUsageRequest req;
+    user_data_auth::GetAccountDiskUsageReply reply;
+
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
       return 1;
 
-    brillo::glib::ScopedArray id_ary(GArrayFromProtoBuf(id));
-    brillo::glib::ScopedError error;
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_get_account_disk_usage(
-            proxy.gproxy(), id_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("GetAccountDiskUsage call failed: %s", error->message);
+    *req.mutable_identifier() = id;
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.GetAccountDiskUsage(req, &reply, &error,
+                                                timeout_ms) ||
+        error) {
+      printf("GetAccountDiskUsage call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    cryptohome::BaseReply reply;
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
-      printf("GetAccountDiskUsage failed with %d.\n", reply.error());
-      return reply.error();
-    }
-    if (!reply.HasExtension(cryptohome::GetAccountDiskUsageReply::reply)) {
-      printf("GetAccountDiskUsageReply missing.\n");
+
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("GetAccountDiskUsage call failed: status %d\n",
+             static_cast<int>(reply.error()));
       return 1;
     }
-    auto ext = reply.GetExtension(cryptohome::GetAccountDiskUsageReply::reply);
-    printf("Account Disk Usage in bytes: %" PRId64 "\n", ext.size());
+
+    printf("Account Disk Usage in bytes: %" PRId64 "\n", reply.size());
     return 0;
   } else if (!strcmp(
                  switches::kActions
