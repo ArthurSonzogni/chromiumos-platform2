@@ -1198,6 +1198,7 @@ int main(int argc, char** argv) {
     printf("Key added.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
+    user_data_auth::RemoveRequest req;
     std::string account_id;
 
     if (!GetAccountId(cl, &account_id)) {
@@ -1208,27 +1209,18 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    cryptohome::AccountIdentifier identifier;
-    identifier.set_account_id(account_id);
+    req.mutable_identifier()->set_account_id(account_id);
 
-    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(identifier));
-    if (!account_ary.get()) {
-      printf("Failed to create glib ScopedArray from protobuf.\n");
+    user_data_auth::RemoveReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.Remove(req, &reply, &error, timeout_ms) || error) {
+      printf("Remove call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-
-    GArray* out_reply = nullptr;
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_remove_ex(
-            proxy.gproxy(), account_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("Remove call failed: %s.\n", error->message);
-      return 1;
-    }
-
-    cryptohome::BaseReply reply;
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
-    if (reply.has_error()) {
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printf("Remove failed.\n");
       return 1;
     }
@@ -2794,19 +2786,19 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_SUPPORTED_KEY_POLICIES],
                      action.c_str())) {
-    cryptohome::GetSupportedKeyPoliciesRequest request;
-    cryptohome::BaseReply reply;
+    user_data_auth::GetSupportedKeyPoliciesRequest req;
+    user_data_auth::GetSupportedKeyPoliciesReply reply;
 
-    if (!MakeProtoDBusCall(cryptohome::kCryptohomeGetSupportedKeyPolicies,
-                           DBUS_METHOD(get_supported_key_policies),
-                           DBUS_METHOD(get_supported_key_policies_async), cl,
-                           &proxy, request, &reply, true /* print_reply */)) {
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.GetSupportedKeyPolicies(req, &reply, &error,
+                                                    timeout_ms) ||
+        error) {
+      printf("GetSupportedKeyPolicies call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (!reply.HasExtension(cryptohome::GetSupportedKeyPoliciesReply::reply)) {
-      printf("GetSupportedKeyPoliciesReply missing.\n");
-      return 1;
-    }
+    reply.PrintDebugString();
+
     printf("GetSupportedKeyPolicies success.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_GET_ACCOUNT_DISK_USAGE],
