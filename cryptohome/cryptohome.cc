@@ -2584,17 +2584,24 @@ int main(int argc, char** argv) {
     CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_LOGIN_STATUS],
                      action.c_str())) {
-    cryptohome::GetLoginStatusRequest request;
-    cryptohome::BaseReply reply;
-    if (!MakeProtoDBusCall("GetLoginStatus", DBUS_METHOD(get_login_status),
-                           DBUS_METHOD(get_login_status_async), cl, &proxy,
-                           request, &reply, true /* print_reply */)) {
+    user_data_auth::GetLoginStatusRequest req;
+    user_data_auth::GetLoginStatusReply reply;
+
+    brillo::ErrorPtr error;
+    if (!misc_proxy.GetLoginStatus(req, &reply, &error, timeout_ms) || error) {
+      printf("Failed to call GetLoginStatus: %s\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (!reply.HasExtension(cryptohome::GetLoginStatusReply::reply)) {
-      printf("GetLoginStatusReply missing.\n");
+
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to call GetLoginStatus: status %d\n",
+             static_cast<int>(reply.error()));
       return 1;
     }
+
     printf("GetLoginStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_INITIALIZE_CAST_KEY],
                      action.c_str())) {
@@ -2833,24 +2840,31 @@ int main(int argc, char** argv) {
                  switches::kActions
                      [switches::ACTION_LOCK_TO_SINGLE_USER_MOUNT_UNTIL_REBOOT],
                  action.c_str())) {
+    user_data_auth::LockToSingleUserMountUntilRebootRequest req;
+    user_data_auth::LockToSingleUserMountUntilRebootReply reply;
+
     cryptohome::AccountIdentifier id;
     if (!BuildAccountId(cl, &id))
       return 1;
+    *req.mutable_account_id() = id;
 
-    cryptohome::LockToSingleUserMountUntilRebootRequest request;
-    request.mutable_account_id()->CopyFrom(id);
-    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(request));
-    cryptohome::BaseReply reply;
-    brillo::glib::ScopedError error;
-    GArray* out_reply = NULL;
-    if (!org_chromium_CryptohomeInterface_lock_to_single_user_mount_until_reboot(  // NOLINT
-            proxy.gproxy(), req_ary.get(), &out_reply,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("LockToSingleUserMountUntilReboot call failed: %s",
-             error->message);
+    brillo::ErrorPtr error;
+    if (!misc_proxy.LockToSingleUserMountUntilReboot(req, &reply, &error,
+                                                     timeout_ms) ||
+        error) {
+      printf("LockToSingleUserMountUntilReboot call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    ParseBaseReply(out_reply, &reply, true /* print_reply */);
+
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("LockToSingleUserMountUntilReboot call failed: status %d\n",
+             static_cast<int>(reply.error()));
+      return 1;
+    }
+
     printf("Login disabled.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_RSU_DEVICE_ID],
                      action.c_str())) {
