@@ -2276,37 +2276,42 @@ int main(int argc, char** argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    gboolean is_user_specific = !account_id.empty();
     std::string contents;
     if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
       printf("Failed to read input file: %s\n",
              GetInputFile(cl).value().c_str());
       return 1;
     }
-    brillo::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
-    g_array_append_vals(challenge.get(), contents.data(), contents.length());
-    brillo::glib::ScopedArray device_id(g_array_new(FALSE, FALSE, 1));
-    std::string device_id_str = "fake_device_id";
-    g_array_append_vals(device_id.get(), device_id_str.data(),
-                        device_id_str.length());
-    brillo::glib::ScopedError error;
-    ClientLoop client_loop;
-    client_loop.Initialize(&proxy);
-    gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_va_challenge(  // NOLINT
-            proxy.gproxy(), va_type, is_user_specific, account_id.c_str(),
-            key_name.c_str(), account_id.c_str(), device_id.get(), TRUE,
-            challenge.get(), &async_id, &brillo::Resetter(&error).lvalue())) {
+    const std::string device_id_str = "fake_device_id";
+
+    attestation::SignEnterpriseChallengeRequest req;
+    attestation::SignEnterpriseChallengeReply reply;
+    req.set_va_type(va_type);
+    req.set_key_label(key_name);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
+    }
+    req.set_domain(account_id);
+    *req.mutable_device_id() = {device_id_str.begin(), device_id_str.end()};
+    req.set_include_signed_public_key(true);
+    *req.mutable_challenge() = {contents.begin(), contents.end()};
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.SignEnterpriseChallenge(req, &reply, &error,
+                                                   timeout_ms) ||
+        error) {
       printf("AsyncTpmAttestationSignEnterpriseVaChallenge call failed: %s.\n",
-             error->message);
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf(
+          "AsyncTpmAttestationSignEnterpriseVaChallenge call failed: status "
+          "%d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
-    client_loop.Run(async_id);
-    if (!client_loop.get_return_status()) {
-      printf("Attestation challenge response failed.\n");
-      return 1;
-    }
-    std::string response_data = client_loop.get_return_data();
+
+    const std::string& response_data = reply.challenge_response();
     base::WriteFileDescriptor(STDOUT_FILENO, response_data.data(),
                               response_data.length());
   } else if (!strcmp(switches::kActions
@@ -2319,28 +2324,30 @@ int main(int argc, char** argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    gboolean is_user_specific = !account_id.empty();
     std::string contents = "challenge";
-    brillo::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
-    g_array_append_vals(challenge.get(), contents.data(), contents.length());
-    brillo::glib::ScopedError error;
-    ClientLoop client_loop;
-    client_loop.Initialize(&proxy);
-    gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_simple_challenge(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), challenge.get(), &async_id,
-            &brillo::Resetter(&error).lvalue())) {
+
+    attestation::SignSimpleChallengeRequest req;
+    attestation::SignSimpleChallengeReply reply;
+    req.set_key_label(key_name);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
+    }
+    *req.mutable_challenge() = {contents.begin(), contents.end()};
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.SignSimpleChallenge(req, &reply, &error,
+                                               timeout_ms) ||
+        error) {
       printf("AsyncTpmAttestationSignSimpleChallenge call failed: %s.\n",
-             error->message);
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("AsyncTpmAttestationSignSimpleChallenge call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
-    client_loop.Run(async_id);
-    if (!client_loop.get_return_status()) {
-      printf("Attestation challenge response failed.\n");
-      return 1;
-    }
-    std::string response_data = client_loop.get_return_data();
+
+    const std::string& response_data = reply.challenge_response();
     base::WriteFileDescriptor(STDOUT_FILENO, response_data.data(),
                               response_data.length());
   } else if (!strcmp(switches::kActions
