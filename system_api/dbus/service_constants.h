@@ -31,6 +31,7 @@
 #include "missive/dbus-constants.h"
 #include "ocr/dbus-constants.h"
 #include "oobe_config/dbus-constants.h"
+#include "os_install_service/dbus-constants.h"
 #include "patchpanel/dbus-constants.h"
 #include "permission_broker/dbus-constants.h"
 #include "power_manager/dbus-constants.h"

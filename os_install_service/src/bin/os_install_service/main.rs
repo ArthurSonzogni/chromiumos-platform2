@@ -19,11 +19,7 @@ use log::{error, info};
 
 type Result<T> = std::result::Result<T, Error>;
 
-const SERVICE_PATH: &str = "/org/chromium/OsInstallService";
-const SERVICE_NAME: &str = "org.chromium.OsInstallService";
-const INTERFACE_NAME: &str = "org.chromium.OsInstallService";
-const METHOD_START_OS_INSTALL: &str = "StartOsInstall";
-const SIGNAL_NAME: &str = "OsInstallStatusChanged";
+include!(concat!(env!("OUT_DIR"), "/dbus_constants.rs"));
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum Status {
@@ -52,12 +48,15 @@ fn create_dbus_connection(bus: BusType) -> Result<SyncConnection> {
     let replace_existing = true;
     let do_not_queue = false;
     conn.request_name(
-        SERVICE_NAME,
+        OS_INSTALL_SERVICE_SERVICE_NAME,
         allow_replacement,
         replace_existing,
         do_not_queue,
     )
-    .context(format!("failed to register service as {}", SERVICE_NAME))?;
+    .context(format!(
+        "failed to register service as {}",
+        OS_INSTALL_SERVICE_SERVICE_NAME
+    ))?;
     Ok(conn)
 }
 
@@ -84,8 +83,8 @@ fn send_signal(conn: &SyncConnection, signal: &Signal<()>, content: SignalConten
     // except log the error.
     if conn
         .send(signal.emit(
-            &SERVICE_PATH.into(),
-            &INTERFACE_NAME.into(),
+            &OS_INSTALL_SERVICE_SERVICE_PATH.into(),
+            &OS_INSTALL_SERVICE_INTERFACE.into(),
             &[content.status.as_str(), content.log.as_str()],
         ))
         .is_err()
@@ -209,7 +208,7 @@ impl Server {
         let f = Factory::new_sync::<()>();
 
         let signal = Arc::new(
-            f.signal(SIGNAL_NAME, ())
+            f.signal(SIGNAL_OS_INSTALL_STATUS_CHANGED, ())
                 .sarg::<&str, _>("status")
                 .sarg::<&str, _>("report"),
         );
@@ -239,11 +238,13 @@ impl Server {
         let tree = f
             .tree(())
             .add(
-                f.object_path(SERVICE_PATH, ()).introspectable().add(
-                    f.interface(INTERFACE_NAME, ())
-                        .add_m(method_start_os_install)
-                        .add_s(signal.clone()),
-                ),
+                f.object_path(OS_INSTALL_SERVICE_SERVICE_PATH, ())
+                    .introspectable()
+                    .add(
+                        f.interface(OS_INSTALL_SERVICE_INTERFACE, ())
+                            .add_m(method_start_os_install)
+                            .add_s(signal.clone()),
+                    ),
             )
             .add(f.object_path("/", ()).introspectable());
 
@@ -322,8 +323,8 @@ mod tests {
     }
 
     impl dbus::message::SignalArgs for SignalHappened {
-        const NAME: &'static str = SIGNAL_NAME;
-        const INTERFACE: &'static str = INTERFACE_NAME;
+        const NAME: &'static str = SIGNAL_OS_INSTALL_STATUS_CHANGED;
+        const INTERFACE: &'static str = OS_INSTALL_SERVICE_INTERFACE;
     }
 
     lazy_static::lazy_static! {
@@ -390,7 +391,11 @@ mod tests {
         // Connect to the server.
         let conn = SyncConnection::new_session()?;
         let timeout = Duration::from_millis(500);
-        let proxy = conn.with_proxy(SERVICE_NAME, SERVICE_PATH, timeout);
+        let proxy = conn.with_proxy(
+            OS_INSTALL_SERVICE_SERVICE_NAME,
+            OS_INSTALL_SERVICE_SERVICE_PATH,
+            timeout,
+        );
 
         // Set up a handler to record every time a signal comes in.
         let signals = Arc::new(Mutex::new(Vec::new()));
@@ -426,7 +431,8 @@ mod tests {
 
         // Test a failed installation.
         set_mock_install_result(Err(install::Error::NotRunningFromInstaller));
-        let status: (String,) = proxy.method_call(INTERFACE_NAME, METHOD_START_OS_INSTALL, ())?;
+        let status: (String,) =
+            proxy.method_call(OS_INSTALL_SERVICE_INTERFACE, METHOD_START_OS_INSTALL, ())?;
         assert_eq!(status.0, Status::InProgress.as_str());
         let signals = wait_for_signals(1, Duration::from_secs(1));
         check_signals(
@@ -437,11 +443,22 @@ mod tests {
 
         // Test a successful installation.
         set_mock_install_result(Ok(()));
-        let status: (String,) = proxy.method_call(INTERFACE_NAME, METHOD_START_OS_INSTALL, ())?;
+        let status: (String,) =
+            proxy.method_call(OS_INSTALL_SERVICE_INTERFACE, METHOD_START_OS_INSTALL, ())?;
         assert_eq!(status.0, Status::InProgress.as_str());
         let signals = wait_for_signals(1, Duration::from_secs(1));
         check_signals(signals, Status::Succeeded, "install succeeded");
 
         Ok(())
+    }
+
+    /// Check one of the dbus constants produced by build.rs to
+    /// validate the C++ value is correctly translated to Rust.
+    #[test]
+    fn test_dbus_constant() {
+        assert_eq!(
+            OS_INSTALL_SERVICE_INTERFACE,
+            "org.chromium.OsInstallService"
+        );
     }
 }
