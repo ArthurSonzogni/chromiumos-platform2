@@ -301,7 +301,6 @@ static const char kInputFileSwitch[] = "input";
 static const char kOutputFileSwitch[] = "output";
 static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
 static const char kCrosCoreSwitch[] = "cros_core";
-static const char kProtobufSwitch[] = "protobuf";
 static const char kFlagsSwitch[] = "flags";
 static const char kDevKeyHashSwitch[] = "developer_key_hash";
 static const char kEcryptfsSwitch[] = "ecryptfs";
@@ -2206,40 +2205,32 @@ int main(int argc, char** argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    gboolean is_user_specific = !account_id.empty();
-    brillo::glib::ScopedError error;
-    gboolean exists = FALSE;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), &exists, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmAttestationDoesKeyExist call failed: %s.\n", error->message);
-      return 1;
+
+    attestation::GetKeyInfoRequest req;
+    attestation::GetKeyInfoReply reply;
+    req.set_key_label(key_name);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
     }
-    if (!exists) {
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.GetKeyInfo(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("TpmAttestationGetCertificate call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() == attestation::STATUS_INVALID_PARAMETER) {
       printf("Key does not exist.\n");
       return 0;
-    }
-    gboolean success = FALSE;
-    brillo::glib::ScopedArray cert;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), &brillo::Resetter(&cert).lvalue(), &success,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("TpmAttestationGetCertificate call failed: %s.\n", error->message);
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmAttestationGetCertificate call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
-    brillo::glib::ScopedArray public_key;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_public_key(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), &brillo::Resetter(&public_key).lvalue(), &success,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("TpmAttestationGetPublicKey call failed: %s.\n", error->message);
-      return 1;
-    }
-    std::string cert_pem =
-        std::string(static_cast<char*>(cert->data), cert->len);
-    std::string public_key_hex =
-        base::HexEncode(public_key->data, public_key->len);
+
+    const std::string& cert_pem = reply.certificate();
+    const std::string public_key_hex =
+        base::HexEncode(reply.public_key().data(), reply.public_key().size());
     printf("Public Key:\n%s\n\nCertificate:\n%s\n", public_key_hex.c_str(),
            cert_pem.c_str());
   } else if (!strcmp(switches::kActions
@@ -2252,21 +2243,28 @@ int main(int argc, char** argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    const gboolean is_user_specific = !account_id.empty();
-    ClientLoop client_loop;
-    client_loop.Initialize(&proxy);
-    gint async_id = -1;
-    brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_register_key(
-            proxy.gproxy(), is_user_specific, account_id.c_str(),
-            key_name.c_str(), &async_id, &brillo::Resetter(&error).lvalue())) {
-      printf("TpmAttestationRegisterKey call failed: %s.\n", error->message);
-      return 1;
-    } else {
-      client_loop.Run(async_id);
-      gboolean result = client_loop.get_return_status();
-      printf("Result: %s\n", result ? "Success" : "Failure");
+
+    attestation::RegisterKeyWithChapsTokenRequest req;
+    attestation::RegisterKeyWithChapsTokenReply reply;
+    req.set_key_label(key_name);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
     }
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.RegisterKeyWithChapsToken(req, &reply, &error,
+                                                     timeout_ms) ||
+        error) {
+      printf("TpmAttestationRegisterKey call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmAttestationRegisterKey call failed: status %d\n",
+             static_cast<int>(reply.status()));
+      return 1;
+    }
+
+    printf("Result: Success\n");
   } else if (!strcmp(
                  switches::kActions
                      [switches::ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE],
