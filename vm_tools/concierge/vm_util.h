@@ -7,6 +7,7 @@
 
 #include <sys/types.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -69,6 +70,14 @@ base::Optional<int32_t> GetCpuPackageId(int32_t cpu);
 
 // Retrieves the CPU capacity property for |cpu| from sysfs.
 base::Optional<int32_t> GetCpuCapacity(int32_t cpu);
+
+// Calculate an appropriate CPU affinity setting based on the host system's
+// CPU clusters and capacity. CPUs will be grouped based on cluster if multiple
+// clusters exist, or based on groupings of equal CPU capacity if more than one
+// such grouping exists. Otherwise, |nullopt| will be returned.
+base::Optional<std::string> GetCpuAffinityFromClusters(
+    const std::vector<std::vector<std::string>>& cpu_clusters,
+    const std::map<int32_t, std::vector<std::string>>& cpu_capacity_groups);
 
 // Puts the current process in a CPU cgroup specificed by |cpu_cgroup|, and
 // then calls SetPgid(). This function can be called as brillo::ProcessImpl's

@@ -216,6 +216,41 @@ base::Optional<int32_t> GetCpuCapacity(int32_t cpu) {
   return ReadFileToInt32(cpu_capacity_path);
 }
 
+base::Optional<std::string> GetCpuAffinityFromClusters(
+    const std::vector<std::vector<std::string>>& cpu_clusters,
+    const std::map<int32_t, std::vector<std::string>>& cpu_capacity_groups) {
+  if (cpu_clusters.size() > 1) {
+    // If more than one CPU cluster exists, generate CPU affinity groups based
+    // on clusters. Each CPU from a given cluster will be pinned to the full
+    // set of cores of that cluster, allowing some scheduling flexibility
+    // while still ensuring vCPUs can only run on physical cores from the same
+    // package.
+    std::vector<std::string> cpu_affinities;
+    for (const auto& cluster : cpu_clusters) {
+      auto cpu_list = base::JoinString(cluster, ",");
+      for (const auto& cpu : cluster) {
+        cpu_affinities.push_back(
+            base::StringPrintf("%s=%s", cpu.c_str(), cpu_list.c_str()));
+      }
+    }
+    return base::JoinString(cpu_affinities, ":");
+  } else if (cpu_capacity_groups.size() > 1) {
+    // If only one cluster exists, group CPUs by capacity if there are at least
+    // two distinct CPU capacity groups.
+    std::vector<std::string> cpu_affinities;
+    for (const auto& group : cpu_capacity_groups) {
+      auto cpu_list = base::JoinString(group.second, ",");
+      for (const auto& cpu : group.second) {
+        cpu_affinities.push_back(
+            base::StringPrintf("%s=%s", cpu.c_str(), cpu_list.c_str()));
+      }
+    }
+    return base::JoinString(cpu_affinities, ":");
+  } else {
+    return base::nullopt;
+  }
+}
+
 bool SetUpCrosvmProcess(const base::FilePath& cpu_cgroup) {
   // Note: This function is meant to be called after forking a process for
   // crosvm but before execve(). Since Concierge is multi-threaded, this

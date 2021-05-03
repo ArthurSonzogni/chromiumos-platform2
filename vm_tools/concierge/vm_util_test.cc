@@ -96,5 +96,75 @@ TEST(VMUtilTest, RemoveParametersWithKeyReturnsDefaultValue) {
   EXPECT_THAT(resolved_kernel_path, "default_path");
 }
 
+TEST(VMUtilTest, GetCpuAffinityFromClustersNoGroups) {
+  std::vector<std::vector<std::string>> cpu_clusters;
+  std::map<int32_t, std::vector<std::string>> cpu_capacity_groups;
+
+  auto cpu_affinity =
+      GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
+  EXPECT_EQ(cpu_affinity, base::nullopt);
+}
+
+TEST(VMUtilTest, GetCpuAffinityFromClustersGroupSizesOne) {
+  std::vector<std::vector<std::string>> cpu_clusters;
+  std::map<int32_t, std::vector<std::string>> cpu_capacity_groups;
+
+  cpu_clusters.push_back({"0", "1", "2", "3"});
+
+  cpu_capacity_groups.insert({1024, {"0", "1", "2", "3"}});
+
+  auto cpu_affinity =
+      GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
+  EXPECT_EQ(cpu_affinity, base::nullopt);
+}
+
+TEST(VMUtilTest, GetCpuAffinityFromClustersTwoClusters) {
+  std::vector<std::vector<std::string>> cpu_clusters;
+  std::map<int32_t, std::vector<std::string>> cpu_capacity_groups;
+
+  cpu_clusters.push_back({"0", "1"});
+  cpu_clusters.push_back({"2", "3"});
+
+  cpu_capacity_groups.insert({1024, {"0", "1", "2", "3"}});
+
+  auto cpu_affinity =
+      GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
+  ASSERT_TRUE(cpu_affinity);
+  EXPECT_EQ(*cpu_affinity, "0=0,1:1=0,1:2=2,3:3=2,3");
+}
+
+TEST(VMUtilTest, GetCpuAffinityFromClustersTwoCapacityGroups) {
+  std::vector<std::vector<std::string>> cpu_clusters;
+  std::map<int32_t, std::vector<std::string>> cpu_capacity_groups;
+
+  cpu_clusters.push_back({"0", "1", "2", "3"});
+
+  cpu_capacity_groups.insert({100, {"0", "2"}});
+  cpu_capacity_groups.insert({200, {"1", "3"}});
+
+  auto cpu_affinity =
+      GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
+  ASSERT_TRUE(cpu_affinity);
+  EXPECT_EQ(*cpu_affinity, "0=0,2:2=0,2:1=1,3:3=1,3");
+}
+
+TEST(VMUtilTest, GetCpuAffinityFromClustersBothPresent) {
+  std::vector<std::vector<std::string>> cpu_clusters;
+  std::map<int32_t, std::vector<std::string>> cpu_capacity_groups;
+
+  cpu_clusters.push_back({"0", "1"});
+  cpu_clusters.push_back({"2", "3"});
+
+  cpu_capacity_groups.insert({100, {"0", "2"}});
+  cpu_capacity_groups.insert({200, {"1", "3"}});
+
+  auto cpu_affinity =
+      GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
+  ASSERT_TRUE(cpu_affinity);
+  // Clusters take precedence over capacity groups, so this matches the
+  // TwoClusters result.
+  EXPECT_EQ(*cpu_affinity, "0=0,1:1=0,1:2=2,3:3=2,3");
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

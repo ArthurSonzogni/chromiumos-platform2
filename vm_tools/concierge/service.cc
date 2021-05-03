@@ -1459,6 +1459,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // Group the CPUs by their physical package ID to determine CPU cluster
   // layout.
   std::vector<std::vector<std::string>> cpu_clusters;
+  std::map<int32_t, std::vector<std::string>> cpu_capacity_groups;
   std::vector<std::string> cpu_capacity;
   for (int32_t cpu = 0; cpu < cpus; cpu++) {
     auto physical_package_id = GetCpuPackageId(cpu);
@@ -1473,7 +1474,20 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     if (capacity) {
       CHECK_GE(*capacity, 0);
       cpu_capacity.push_back(base::StringPrintf("%d=%d", cpu, *capacity));
+      auto group = cpu_capacity_groups.find(*capacity);
+      if (group != cpu_capacity_groups.end()) {
+        group->second.push_back(std::to_string(cpu));
+      } else {
+        auto g = {std::to_string(cpu)};
+        cpu_capacity_groups.insert({*capacity, g});
+      }
     }
+  }
+
+  base::Optional<std::string> cpu_affinity =
+      GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
+  if (cpu_affinity) {
+    vm_builder.AppendCustomParam("--cpu-affinity", *cpu_affinity);
   }
 
   if (!cpu_capacity.empty()) {
