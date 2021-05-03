@@ -17,10 +17,6 @@
 #include <string>
 #include <vector>
 
-// We need to include this file early because there's a clash between the
-// glib-dbus and libbrillo dbus.
-#include <brillo/dbus/dbus_object.h>  // NOLINT(build/include_alpha)
-
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
@@ -33,7 +29,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
-#include <brillo/glib/dbus.h>
+#include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/constants/cryptohome.h>
@@ -59,8 +55,6 @@
 #include "dbus_adaptors/org.chromium.CryptohomeInterface.h"  // NOLINT(build/include_alpha)
 #include "user_data_auth/dbus-proxies.h"
 // The dbus_adaptor and proxy include must happen after the protobuf include
-
-#include "bindings/cryptohome.dbusclient.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -291,7 +285,6 @@ static const char kRemoveKeyLabelSwitch[] = "remove_key_label";
 static const char kOldPasswordSwitch[] = "old_password";
 static const char kNewPasswordSwitch[] = "new_password";
 static const char kForceSwitch[] = "force";
-static const char kAsyncSwitch[] = "async";
 static const char kCreateSwitch[] = "create";
 static const char kAttrNameSwitch[] = "name";
 static const char kAttrPrefixSwitch[] = "prefix";
@@ -316,18 +309,6 @@ static const char kMassRemoveExemptLabelsSwitch[] = "exempt_key_labels";
 static const char kUseDBus[] = "use_dbus";
 static const char kAuthSessionId[] = "auth_session_id";
 }  // namespace switches
-
-#define DBUS_METHOD(method_name) org_chromium_CryptohomeInterface_##method_name
-
-typedef void (*ProtoDBusReplyMethod)(DBusGProxy*, GArray*, GError*, gpointer);
-typedef gboolean (*ProtoDBusMethod)(DBusGProxy*,
-                                    const GArray*,
-                                    GArray**,
-                                    GError**);
-typedef DBusGProxyCall* (*ProtoDBusAsyncMethod)(DBusGProxy*,
-                                                const GArray*,
-                                                ProtoDBusReplyMethod,
-                                                gpointer);
 
 brillo::SecureBlob GetSystemSalt(
     org::chromium::CryptohomeMiscInterfaceProxy* proxy) {
@@ -507,23 +488,6 @@ bool ConfirmRemove(const std::string& user) {
   return true;
 }
 
-GArray* GArrayFromProtoBuf(const google::protobuf::MessageLite& pb) {
-  size_t len_raw = pb.ByteSizeLong();
-  if (len_raw > G_MAXUINT) {
-    printf("Protocol buffer too large.\n");
-    return NULL;
-  }
-
-  guint len = len_raw;
-  GArray* ary = g_array_sized_new(FALSE, FALSE, 1, len);
-  g_array_set_size(ary, len);
-  if (!pb.SerializeToArray(ary->data, len)) {
-    printf("Failed to serialize protocol buffer.\n");
-    return NULL;
-  }
-  return ary;
-}
-
 bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier* id) {
   std::string account_id;
   if (!GetAccountId(cl, &account_id)) {
@@ -561,170 +525,6 @@ bool BuildAuthorization(base::CommandLine* cl,
   if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
     auth->mutable_key()->mutable_data()->set_label(
         cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
-  }
-
-  return true;
-}
-
-void ParseBaseReply(GArray* reply_ary,
-                    cryptohome::BaseReply* reply,
-                    bool print_reply) {
-  if (!reply)
-    return;
-  if (!reply->ParseFromArray(reply_ary->data, reply_ary->len)) {
-    printf("Failed to parse reply.\n");
-    exit(1);
-  }
-  if (print_reply)
-    reply->PrintDebugString();
-}
-
-class ClientLoop {
- public:
-  ClientLoop()
-      : loop_(NULL),
-        async_call_id_(0),
-        return_status_(false),
-        return_code_(0) {}
-
-  virtual ~ClientLoop() {
-    if (loop_) {
-      g_main_loop_unref(loop_);
-    }
-  }
-
-  void Initialize(brillo::dbus::Proxy* proxy) {
-    dbus_g_object_register_marshaller(g_cclosure_marshal_generic, G_TYPE_NONE,
-                                      G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_INT,
-                                      G_TYPE_INVALID);
-    dbus_g_proxy_add_signal(proxy->gproxy(), "AsyncCallStatus", G_TYPE_INT,
-                            G_TYPE_BOOLEAN, G_TYPE_INT, G_TYPE_INVALID);
-    dbus_g_proxy_connect_signal(proxy->gproxy(), "AsyncCallStatus",
-                                G_CALLBACK(ClientLoop::CallbackThunk), this,
-                                NULL);
-    dbus_g_object_register_marshaller(g_cclosure_marshal_generic, G_TYPE_NONE,
-                                      G_TYPE_INT, G_TYPE_BOOLEAN,
-                                      DBUS_TYPE_G_UCHAR_ARRAY, G_TYPE_INVALID);
-    dbus_g_proxy_add_signal(proxy->gproxy(), "AsyncCallStatusWithData",
-                            G_TYPE_INT, G_TYPE_BOOLEAN, DBUS_TYPE_G_UCHAR_ARRAY,
-                            G_TYPE_INVALID);
-    dbus_g_proxy_connect_signal(proxy->gproxy(), "AsyncCallStatusWithData",
-                                G_CALLBACK(ClientLoop::CallbackDataThunk), this,
-                                NULL);
-    loop_ = g_main_loop_new(NULL, TRUE);
-  }
-
-  void Run(int async_call_id) {
-    async_call_id_ = async_call_id;
-    g_main_loop_run(loop_);
-  }
-
-  void Run() { Run(0); }
-
-  // This callback can be used with a ClientLoop instance as the |userdata| to
-  // handle an asynchronous reply which emits a serialized BaseReply.
-  static void ParseReplyThunk(DBusGProxy* proxy,
-                              GArray* data,
-                              GError* error,
-                              gpointer userdata) {
-    reinterpret_cast<ClientLoop*>(userdata)->ParseReply(data, error);
-  }
-
-  bool get_return_status() { return return_status_; }
-
-  int get_return_code() { return return_code_; }
-
-  std::string get_return_data() { return return_data_; }
-
-  cryptohome::BaseReply reply() { return reply_; }
-
- private:
-  void Callback(int async_call_id, bool return_status, int return_code) {
-    if (async_call_id == async_call_id_) {
-      return_status_ = return_status;
-      return_code_ = return_code;
-      g_main_loop_quit(loop_);
-    }
-  }
-
-  void CallbackWithData(int async_call_id, bool return_status, GArray* data) {
-    if (async_call_id == async_call_id_) {
-      return_status_ = return_status;
-      return_data_ = std::string(static_cast<char*>(data->data), data->len);
-      g_main_loop_quit(loop_);
-    }
-  }
-
-  void ParseReply(GArray* reply_ary, GError* error) {
-    if (error && error->message) {
-      printf("Call error: %s\n", error->message);
-      exit(1);
-    }
-    ParseBaseReply(reply_ary, &reply_, true /* print_reply */);
-    g_main_loop_quit(loop_);
-  }
-
-  static void CallbackThunk(DBusGProxy* proxy,
-                            int async_call_id,
-                            bool return_status,
-                            int return_code,
-                            gpointer userdata) {
-    reinterpret_cast<ClientLoop*>(userdata)->Callback(
-        async_call_id, return_status, return_code);
-  }
-
-  static void CallbackDataThunk(DBusGProxy* proxy,
-                                int async_call_id,
-                                bool return_status,
-                                GArray* data,
-                                gpointer userdata) {
-    reinterpret_cast<ClientLoop*>(userdata)->CallbackWithData(
-        async_call_id, return_status, data);
-  }
-
-  GMainLoop* loop_;
-  int async_call_id_;
-  bool return_status_;
-  int return_code_;
-  std::string return_data_;
-  cryptohome::BaseReply reply_;
-};
-
-bool MakeProtoDBusCall(const std::string& name,
-                       ProtoDBusMethod method,
-                       ProtoDBusAsyncMethod async_method,
-                       base::CommandLine* cl,
-                       brillo::dbus::Proxy* proxy,
-                       const google::protobuf::MessageLite& request,
-                       cryptohome::BaseReply* reply,
-                       bool print_reply) {
-  brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
-  if (cl->HasSwitch(switches::kAsyncSwitch)) {
-    ClientLoop loop;
-    loop.Initialize(proxy);
-    DBusGProxyCall* call = (*async_method)(proxy->gproxy(), request_ary.get(),
-                                           &ClientLoop::ParseReplyThunk,
-                                           static_cast<gpointer>(&loop));
-    if (!call) {
-      printf("Failed to call %s!\n", name.c_str());
-      return false;
-    }
-    loop.Run();
-    *reply = loop.reply();
-  } else {
-    brillo::glib::ScopedError error;
-    brillo::glib::ScopedArray reply_ary;
-    if (!(*method)(proxy->gproxy(), request_ary.get(),
-                   &brillo::Resetter(&reply_ary).lvalue(),
-                   &brillo::Resetter(&error).lvalue())) {
-      printf("Failed to call %s: %s\n", name.c_str(), error->message);
-      return false;
-    }
-    ParseBaseReply(reply_ary.get(), reply, print_reply);
-  }
-  if (reply->has_error()) {
-    printf("%s error: %d\n", name.c_str(), reply->error());
-    return false;
   }
 
   return true;
@@ -798,12 +598,6 @@ int main(int argc, char** argv) {
   }
 
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
-  brillo::dbus::BusConnection bus = brillo::dbus::GetSystemBusConnection();
-  brillo::dbus::Proxy proxy(bus, cryptohome::kCryptohomeServiceName,
-                            cryptohome::kCryptohomeServicePath,
-                            cryptohome::kCryptohomeInterface);
-  DCHECK(proxy.gproxy()) << "Failed to acquire proxy";
-  dbus_g_proxy_set_default_timeout(proxy.gproxy(), kDefaultTimeoutMs);
   const int timeout_ms = kDefaultTimeoutMs;
 
   // Setup libbrillo dbus.
