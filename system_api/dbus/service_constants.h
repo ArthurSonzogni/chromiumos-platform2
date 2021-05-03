@@ -451,6 +451,10 @@ const char kPluggedTimeProperty[] = "PluggedTime";
 const char kStableDeviceIdProperty[] = "StableDeviceId";
 const char kStableDeviceIdNewProperty[] = "StableDeviceIdNew";
 const char kMaxSupportedChannelsProperty[] = "MaxSupportedChannels";
+const char kAudioEffectProperty[] = "AudioEffect";
+enum AudioEffectType {
+  EFFECT_TYPE_NOISE_CANCELLATION = 1 << 0,
+};
 
 // Names of properties returned by
 // * method - GetNumberOfInputStreamsWithPermission and
