@@ -527,7 +527,8 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
             .settings = repeating_preview_metadata_.get(),
             .input_buffer = NULL,
             .num_output_buffers = 1,
-            .output_buffers = output_stream_buffers_[i].data()},
+            .output_buffers = output_stream_buffers_[i].data(),
+            .num_physcam_settings = 0},
         false);
     ProcessPreviewRequestOnServiceThread();
   }

@@ -39,7 +39,8 @@ int32_t Camera3FrameFixture::CreateCaptureRequest(
       .settings = &metadata,
       .input_buffer = NULL,
       .num_output_buffers = static_cast<uint32_t>(output_buffers.size()),
-      .output_buffers = output_buffers.data()};
+      .output_buffers = output_buffers.data(),
+      .num_physcam_settings = 0};
 
   // Process capture request
   int32_t ret = cam_device_.ProcessCaptureRequest(&capture_request);
@@ -836,7 +837,8 @@ TEST_P(Camera3InvalidRequestTest, NullOrUnconfiguredRequest) {
       .settings = default_settings,
       .input_buffer = NULL,
       .num_output_buffers = static_cast<uint32_t>(output_buffers.size()),
-      .output_buffers = output_buffers.data()};
+      .output_buffers = output_buffers.data(),
+      .num_physcam_settings = 0};
   EXPECT_NE(0, cam_device_.ProcessCaptureRequest(&capture_request))
       << "Capturing with stream unconfigured should fail";
 }
@@ -1378,7 +1380,8 @@ void Camera3InvalidBufferTest::RunInvalidBufferTest(buffer_handle_t* handle) {
       .settings = default_settings,
       .input_buffer = NULL,
       .num_output_buffers = static_cast<uint32_t>(stream_buffers.size()),
-      .output_buffers = stream_buffers.data()};
+      .output_buffers = stream_buffers.data(),
+      .num_physcam_settings = 0};
   int ret = cam_device_.ProcessCaptureRequest(&capture_request);
   if (ret == -EINVAL) {
     return;
@@ -1957,7 +1960,8 @@ void Camera3PortraitModeTest::TakePortraitModePictureTest(bool has_face) {
       .settings = result_metadata_.get(),
       .input_buffer = &input_buffer,
       .num_output_buffers = static_cast<uint32_t>(output_buffers.size()),
-      .output_buffers = output_buffers.data()};
+      .output_buffers = output_buffers.data(),
+      .num_physcam_settings = 0};
 
   // Process capture request
   ASSERT_EQ(0, cam_device_.ProcessCaptureRequest(&capture_request))

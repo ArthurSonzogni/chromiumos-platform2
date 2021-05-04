@@ -361,12 +361,12 @@ void Camera3ReprocessingTest::DoTemplateCapture(
   std::vector<camera3_stream_buffer_t> buffers;
   ASSERT_EQ(
       0, cam_device_.AllocateOutputBuffersByStreams({output_stream}, &buffers));
-  camera3_capture_request_t capture_request = {
-      .frame_number = UINT32_MAX,
-      .settings = metadata,
-      .input_buffer = NULL,
-      .num_output_buffers = 1,
-      .output_buffers = buffers.data()};
+  camera3_capture_request_t capture_request = {.frame_number = UINT32_MAX,
+                                               .settings = metadata,
+                                               .input_buffer = NULL,
+                                               .num_output_buffers = 1,
+                                               .output_buffers = buffers.data(),
+                                               .num_physcam_settings = 0};
 
   ASSERT_EQ(0, cam_device_.ProcessCaptureRequest(&capture_request))
       << "Reprocessing capture failed";
@@ -421,7 +421,8 @@ void Camera3ReprocessingTest::DoReprocessingCapture(
       .settings = in_metadata->get(),
       .input_buffer = &input_buffer,
       .num_output_buffers = 1,
-      .output_buffers = output_buffers.data()};
+      .output_buffers = output_buffers.data(),
+      .num_physcam_settings = 0};
 
   ASSERT_EQ(0, cam_device_.ProcessCaptureRequest(&capture_request))
       << "Reprocessing capture failed";

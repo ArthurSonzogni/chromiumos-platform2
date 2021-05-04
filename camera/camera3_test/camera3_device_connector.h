@@ -29,7 +29,8 @@ class DeviceConnector {
   virtual ~DeviceConnector() = default;
 
   // Initialize the device.
-  virtual int Initialize(const camera3_callback_ops_t* callback_ops) = 0;
+  virtual int Initialize(const camera3_callback_ops_t* callback_ops,
+                         uint32_t device_api_version) = 0;
 
   // Configure streams.
   virtual int ConfigureStreams(camera3_stream_configuration_t* stream_list) = 0;
@@ -53,7 +54,8 @@ class HalDeviceConnector final : public DeviceConnector {
   ~HalDeviceConnector();
 
   // DeviceConnector implementation.
-  int Initialize(const camera3_callback_ops_t* callback_ops) override;
+  int Initialize(const camera3_callback_ops_t* callback_ops,
+                 uint32_t device_api_version) override;
   int ConfigureStreams(camera3_stream_configuration_t* stream_list) override;
   const camera_metadata_t* ConstructDefaultRequestSettings(int type) override;
   int ProcessCaptureRequest(
@@ -62,6 +64,7 @@ class HalDeviceConnector final : public DeviceConnector {
 
  private:
   void InitializeOnThread(const camera3_callback_ops_t* callback_ops,
+                          uint32_t device_api_version,
                           int* result);
   void ConfigureStreamsOnThread(camera3_stream_configuration_t* stream_list,
                                 int* result);
@@ -72,6 +75,7 @@ class HalDeviceConnector final : public DeviceConnector {
   void CloseOnThread(int* result);
 
   camera3_device* cam_device_;
+  uint32_t device_api_version_;
 
   // This thread is needed because of the Chrome OS camera HAL adapter
   // assumption that all the camera3_device_ops functions, except dump, should
@@ -95,7 +99,8 @@ class ClientDeviceConnector final : public DeviceConnector,
   mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> GetDeviceOpsReceiver();
 
   // DeviceConnector implementation.
-  int Initialize(const camera3_callback_ops_t* callback_ops) override;
+  int Initialize(const camera3_callback_ops_t* callback_ops,
+                 uint32_t device_api_version) override;
   int ConfigureStreams(camera3_stream_configuration_t* stream_list) override;
   const camera_metadata_t* ConstructDefaultRequestSettings(int type) override;
   int ProcessCaptureRequest(
@@ -109,6 +114,7 @@ class ClientDeviceConnector final : public DeviceConnector,
   void CloseOnThread(base::OnceCallback<void(int32_t)> cb);
   void OnClosedOnThread(base::OnceCallback<void(int32_t)> cb, int32_t result);
   void InitializeOnThread(const camera3_callback_ops_t* callback_ops,
+                          uint32_t device_api_version,
                           base::OnceCallback<void(int32_t)> cb);
   void ConfigureStreamsOnThread(camera3_stream_configuration_t* stream_list,
                                 base::OnceCallback<void(int32_t)> cb);
@@ -133,6 +139,7 @@ class ClientDeviceConnector final : public DeviceConnector,
       const cros::mojom::Camera3StreamBufferPtr& buffer_ptr,
       camera3_stream_buffer_t* buffer);
 
+  uint32_t device_api_version_;
   mojo::Remote<cros::mojom::Camera3DeviceOps> dev_ops_;
   mojo::Receiver<cros::mojom::Camera3CallbackOps> mojo_callback_ops_;
   const camera3_callback_ops_t* user_callback_ops_;

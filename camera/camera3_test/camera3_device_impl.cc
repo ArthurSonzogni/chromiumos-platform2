@@ -231,6 +231,7 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
 
   camera_info cam_info;
   ASSERT_EQ(0, cam_module->GetCameraInfo(cam_id_, &cam_info));
+  device_api_version_ = cam_info.device_version;
   static_info_.reset(new Camera3Device::StaticInfo(cam_info));
   ASSERT_TRUE(static_info_->IsHardwareLevelAtLeastExternal())
       << "The device must support at least EXTERNAL hardware level";
@@ -239,7 +240,7 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
   Camera3DeviceImpl::notify = Camera3DeviceImpl::NotifyForwarder;
   Camera3DeviceImpl::process_capture_result =
       Camera3DeviceImpl::ProcessCaptureResultForwarder;
-  *result = dev_connector_->Initialize(this);
+  *result = dev_connector_->Initialize(this, cam_info.device_version);
   if (*result) {
     return;
   }
@@ -305,7 +306,7 @@ void Camera3DeviceImpl::AddStreamOnThread(int format,
   if (initialized_) {
     auto& cur_stream = cam_stream_[!cam_stream_idx_];
     // Push to the bin that is not used currently
-    camera3_stream_t stream = {};
+    cros::internal::camera3_stream_aux_t stream = {};
     stream.stream_type = type;
     stream.width = width;
     stream.height = height;
@@ -314,6 +315,10 @@ void Camera3DeviceImpl::AddStreamOnThread(int format,
         format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
       // This is a preview stream. Add the usage flag for preview.
       stream.usage |= GRALLOC_USAGE_HW_COMPOSER;
+    }
+    if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+      stream.physical_camera_id_string = "";
+      stream.physical_camera_id = stream.physical_camera_id_string.c_str();
     }
     stream.crop_rotate_scale_degrees = crop_rotate_scale_degrees;
     cur_stream.push_back(stream);
@@ -343,6 +348,9 @@ void Camera3DeviceImpl::ConfigureStreamsOnThread(
   cam_stream_config.num_streams = cam_streams.size();
   cam_stream_config.streams = cam_streams.data();
   cam_stream_config.operation_mode = CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE;
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    cam_stream_config.session_parameters = nullptr;
+  }
 
   // Configure streams now
   *result = dev_connector_->ConfigureStreams(&cam_stream_config);

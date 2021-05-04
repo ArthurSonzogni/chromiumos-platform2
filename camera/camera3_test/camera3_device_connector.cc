@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <drm_fourcc.h>
 #include <mojo/public/cpp/system/platform_handle.h>
@@ -46,24 +47,29 @@ void HalDeviceConnector::CloseOnThread(int* result) {
   }
 }
 
-int HalDeviceConnector::Initialize(const camera3_callback_ops_t* callback_ops) {
+int HalDeviceConnector::Initialize(const camera3_callback_ops_t* callback_ops,
+                                   uint32_t device_api_version) {
   if (!dev_thread_.Start()) {
     return -EINVAL;
   }
   int result = -EIO;
-  dev_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&HalDeviceConnector::InitializeOnThread,
-                            base::Unretained(this), callback_ops, &result));
+  dev_thread_.PostTaskSync(FROM_HERE,
+                           base::Bind(&HalDeviceConnector::InitializeOnThread,
+                                      base::Unretained(this), callback_ops,
+                                      device_api_version, &result));
   return result;
 }
 
 void HalDeviceConnector::InitializeOnThread(
-    const camera3_callback_ops_t* callback_ops, int* result) {
+    const camera3_callback_ops_t* callback_ops,
+    uint32_t device_api_version,
+    int* result) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   if (!cam_device_) {
     *result = -ENODEV;
     return;
   }
+  device_api_version_ = device_api_version;
   *result = cam_device_->ops->initialize(cam_device_, callback_ops);
   if (*result != 0) {
     cam_device_->common.close(&cam_device_->common);
@@ -189,15 +195,16 @@ void ClientDeviceConnector::OnClosedOnThread(
 }
 
 int ClientDeviceConnector::Initialize(
-    const camera3_callback_ops_t* callback_ops) {
+    const camera3_callback_ops_t* callback_ops, uint32_t device_api_version) {
   if (!callback_ops) {
     return -EINVAL;
   }
   auto future = cros::Future<int32_t>::Create(nullptr);
   dev_thread_.PostTaskAsync(
-      FROM_HERE, base::Bind(&ClientDeviceConnector::InitializeOnThread,
-                            base::Unretained(this), callback_ops,
-                            cros::GetFutureCallback(future)));
+      FROM_HERE,
+      base::Bind(&ClientDeviceConnector::InitializeOnThread,
+                 base::Unretained(this), callback_ops, device_api_version,
+                 cros::GetFutureCallback(future)));
   if (!future->Wait()) {
     LOGF(ERROR) << "Failed to initialize client camera device";
     return -EIO;
@@ -208,8 +215,10 @@ int ClientDeviceConnector::Initialize(
 
 void ClientDeviceConnector::InitializeOnThread(
     const camera3_callback_ops_t* callback_ops,
+    uint32_t device_api_version,
     base::OnceCallback<void(int32_t)> cb) {
   VLOGF_ENTER();
+  device_api_version_ = device_api_version;
   dev_ops_->Initialize(mojo_callback_ops_.BindNewPipeAndPassRemote(),
                        std::move(cb));
 }
@@ -255,6 +264,9 @@ void ClientDeviceConnector::ConfigureStreamsOnThread(
     stream->data_space = static_cast<uint32_t>(s->data_space);
     stream->rotation =
         static_cast<cros::mojom::Camera3StreamRotation>(s->rotation);
+    if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+      stream->physical_camera_id = s->physical_camera_id;
+    }
     cros::mojom::CropRotateScaleInfoPtr info =
         cros::mojom::CropRotateScaleInfo::New();
     info->crop_rotate_scale_degrees =
@@ -262,6 +274,10 @@ void ClientDeviceConnector::ConfigureStreamsOnThread(
             s->crop_rotate_scale_degrees);
     stream->crop_rotate_scale_info = std::move(info);
     stream_config->streams.push_back(std::move(stream));
+  }
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    stream_config->session_parameters = cros::internal::SerializeCameraMetadata(
+        stream_list->session_parameters);
   }
   dev_ops_->ConfigureStreams(
       std::move(stream_config),
@@ -362,6 +378,18 @@ void ClientDeviceConnector::ProcessCaptureRequestOnThread(
         PrepareStreamBufferPtr(capture_request->output_buffers + i);
     ASSERT_FALSE(output_buffer.is_null());
     request->output_buffers.push_back(std::move(output_buffer));
+  }
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    auto physcam_settings = std::vector<cros::mojom::Camera3PhyscamMetadataPtr>(
+        capture_request->num_physcam_settings);
+    for (uint32_t i = 0; i < capture_request->num_physcam_settings; ++i) {
+      ASSERT_TRUE(base::StringToInt(capture_request->physcam_id[i],
+                                    &physcam_settings[i]->id))
+          << "Invalid physical camera ID: " << capture_request->physcam_id[i];
+      physcam_settings[i]->metadata = cros::internal::SerializeCameraMetadata(
+          capture_request->physcam_settings[i]);
+    }
+    request->physcam_settings = std::move(physcam_settings);
   }
   dev_ops_->ProcessCaptureRequest(std::move(request), std::move(cb));
 }

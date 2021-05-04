@@ -18,6 +18,7 @@
 
 #include "camera3_test/camera3_device_connector.h"
 #include "camera3_test/camera3_device_fixture.h"
+#include "common/utils/common_types.h"
 
 namespace camera3_test {
 
@@ -180,10 +181,12 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   std::unique_ptr<DeviceConnector> dev_connector_;
 
+  uint32_t device_api_version_;
+
   std::unique_ptr<Camera3Device::StaticInfo> static_info_;
 
   // Two bins of streams for swapping while configuring new streams
-  std::vector<camera3_stream_t> cam_stream_[2];
+  std::vector<cros::internal::camera3_stream_aux_t> cam_stream_[2];
 
   // Index of active streams
   int cam_stream_idx_;
@@ -205,7 +208,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   // Store the capture output buffers with streams as the key to verify that
   // buffers of the same stream are delivered in capture order
-  std::unordered_map<const camera3_stream_t*, std::deque<buffer_handle_t>>
+  std::unordered_map<camera3_stream_t*, std::deque<buffer_handle_t>>
       stream_output_buffer_map_;
 
   class CaptureResultInfo {
