@@ -3034,15 +3034,14 @@ mno {
     uuid : "8727f2af-dc97-4efe-be27-f258ab8e076a"
     country : "de"
     localized_name {
+      # Previously E-Plus
       name : "o2 - de"
     }
     mccmnc : "26203"
     mccmnc : "26205"
     mccmnc : "26277"
     mobile_apn {
-      apn : "internet.eplus.de"
-      username : "eplus"
-      password : "internet"
+      apn : "internet"
       dns : "212.23.97.2"
       dns : "212.23.97.3"
     }
