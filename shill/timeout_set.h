@@ -45,7 +45,8 @@ class TimeoutSet {
   virtual ~TimeoutSet() { Clear(); }
 
   // Set the callback used to inform clients that some elements have timed out.
-  void SetInformCallback(base::Callback<void(std::vector<T>)> inform_callback) {
+  void SetInformCallback(
+      base::RepeatingCallback<void(std::vector<T>)> inform_callback) {
     inform_callback_ = std::move(inform_callback);
   }
 
@@ -82,7 +83,8 @@ class TimeoutSet {
   inline bool IsEmpty() const { return elements_.empty(); }
 
   // Call |apply_func| on each element that hasn't timed out.
-  void Apply(base::Callback<void(const T& element)> apply_func) {
+  void Apply(
+      const base::RepeatingCallback<void(const T& element)>& apply_func) {
     for (const auto& elem : elements_) {
       apply_func.Run(elem.element);
     }
@@ -123,7 +125,7 @@ class TimeoutSet {
         (elements_[0].deathtime - TimeNow()).InMilliseconds();
     int64_t delay = std::max(shortest_lifetime, static_cast<int64_t>(0));
     timeout_callback_.Reset(
-        base::Bind(&TimeoutSet::OnTimeout, base::Unretained(this)));
+        base::BindOnce(&TimeoutSet::OnTimeout, base::Unretained(this)));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE, timeout_callback_.callback(),
         base::TimeDelta::FromMilliseconds(delay));
@@ -132,9 +134,9 @@ class TimeoutSet {
   std::vector<TimeElement> elements_;
 
   // Executes when an element times out. Calls OnTimeout.
-  base::CancelableClosure timeout_callback_;
+  base::CancelableOnceClosure timeout_callback_;
   // Called at the end of OnTimeout to inform user of timeout.
-  base::Callback<void(std::vector<T>)> inform_callback_;
+  base::RepeatingCallback<void(std::vector<T>)> inform_callback_;
 };
 
 }  // namespace shill
