@@ -232,6 +232,7 @@ class CameraClient final : public mojom::CameraHalClient {
 
   IntOnceCallback init_callback_;
 
+  uint32_t device_api_version_;
   base::Lock camera_info_lock_;
   cros_cam_get_cam_info_cb_t cam_info_callback_ GUARDED_BY(camera_info_lock_);
   void* cam_info_context_ GUARDED_BY(camera_info_lock_);

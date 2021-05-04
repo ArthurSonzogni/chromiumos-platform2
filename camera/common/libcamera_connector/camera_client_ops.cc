@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <drm_fourcc.h>
 #include <hardware/camera3.h>
+#include <hardware/camera_common.h>
 #include <hardware/gralloc.h>
 #include <sync/sync.h>
 #include <sys/mman.h>
@@ -30,11 +31,12 @@ namespace cros {
 CameraClientOps::CameraClientOps() : camera3_callback_ops_(this) {}
 
 mojo::PendingReceiver<mojom::Camera3DeviceOps> CameraClientOps::Init(
-    CaptureResultCallback result_callback) {
+    uint32_t device_api_version, CaptureResultCallback result_callback) {
   VLOGF_ENTER();
 
   ops_runner_ = base::SequencedTaskRunnerHandle::Get();
   capturing_ = false;
+  device_api_version_ = device_api_version;
   result_callback_ = std::move(result_callback);
   frame_number_ = 0;
   return device_ops_.BindNewPipeAndPassReceiver();
@@ -232,12 +234,18 @@ void CameraClientOps::ConfigureStreams() {
   stream->data_space = 0;
   // TODO(b/151047930): Handle device rotations.
   stream->rotation = mojom::Camera3StreamRotation::CAMERA3_STREAM_ROTATION_0;
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    stream->physical_camera_id = "";
+  }
 
   mojom::Camera3StreamConfigurationPtr stream_config =
       mojom::Camera3StreamConfiguration::New();
   stream_config->streams.push_back(std::move(stream));
   stream_config->operation_mode = mojom::Camera3StreamConfigurationMode::
       CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE;
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    stream_config->session_parameters = cros::mojom::CameraMetadata::New();
+  }
 
   device_ops_->ConfigureStreamsAndGetAllocatedBuffers(
       std::move(stream_config),
@@ -324,6 +332,10 @@ void CameraClientOps::ConstructCaptureRequestOnThread() {
   auto buffer = buffer_manager_.AllocateBuffer();
   CHECK(!buffer.is_null());
   request->output_buffers.push_back(std::move(buffer));
+
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    request->physcam_settings = std::vector<mojom::Camera3PhyscamMetadataPtr>();
+  }
 
   ProcessCaptureRequest(std::move(request));
 }

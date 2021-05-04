@@ -342,6 +342,7 @@ void CameraClient::OnGotCameraInfo(int32_t camera_id,
   }
 
   LOGF(INFO) << "Gotten camera info of " << camera_id;
+  device_api_version_ = info->device_version;
 
   auto& camera_info = camera_info_map_[camera_id];
   camera_info.facing = GetCameraFacing(info);
@@ -553,6 +554,7 @@ int CameraClient::StartCaptureOnIpcThread(SessionRequest* request) {
   context_.info = std::move(request->info);
   context_.result_callback = std::move(request->result_callback);
   auto device_ops_receiver = context_.client_ops.Init(
+      device_api_version_,
       base::Bind(&CameraClient::SendCaptureResult, base::Unretained(this)));
   camera_module_->OpenDevice(
       context_.info.camera_id, std::move(device_ops_receiver),

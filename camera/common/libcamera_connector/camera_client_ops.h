@@ -60,7 +60,7 @@ class CameraClientOps : public mojom::Camera3CallbackOps {
   // bound. Subsequent calls to other member functions are expected to be run on
   // the same sequence the Init() call ran on.
   mojo::PendingReceiver<mojom::Camera3DeviceOps> Init(
-      CaptureResultCallback result_callback);
+      uint32_t device_api_version, CaptureResultCallback result_callback);
 
   // Starts the capture session.  StartCapture() initializes the device,
   // configures streams, and starts sending capture requests in a loop. Note
@@ -127,6 +127,8 @@ class CameraClientOps : public mojom::Camera3CallbackOps {
   bool capturing_;
   mojo::Remote<mojom::Camera3DeviceOps> device_ops_;
   mojo::Receiver<mojom::Camera3CallbackOps> camera3_callback_ops_;
+
+  uint32_t device_api_version_;
 
   CaptureResultCallback result_callback_;
 
