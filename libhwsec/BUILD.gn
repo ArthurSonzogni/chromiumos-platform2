@@ -31,6 +31,17 @@ static_library("overalls_library") {
   ]
 }
 
+source_set("error_library") {
+  sources = []
+  if (!use.tpm2) {
+    sources += [ "error/tpm1_error.cc" ]
+  }
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+}
+
 static_library("libhwsec_test") {
   sources = []
   if (!use.tpm2) {
@@ -52,11 +63,12 @@ config("libhwsec_tpm2_config") {
 }
 
 shared_library("libhwsec") {
+  configs += [ ":target_defaults" ]
+  deps = [ ":error_library" ]
   if (!use.tpm2) {
     all_dependent_configs = [ ":libhwsec_tpm1_config" ]
-    deps = [ ":overalls_library" ]
+    deps += [ ":overalls_library" ]
   }
-  configs += [ ":target_defaults" ]
 }
 
 if (use.test) {
