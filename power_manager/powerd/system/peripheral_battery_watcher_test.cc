@@ -385,6 +385,47 @@ TEST_F(PeripheralBatteryWatcherTest, RefreshBluetoothBattery) {
   EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
 }
 
+TEST_F(PeripheralBatteryWatcherTest, RefreshAllBatteries) {
+  std::string level = base::NumberToString(80);
+  WriteFile(peripheral_capacity_file_, level);
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  EXPECT_EQ(1, test_wrapper_.num_sent_signals());
+  PeripheralBatteryStatus proto;
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(80, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_charge_status());
+  EXPECT_EQ(PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN,
+            proto.charge_status());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_FALSE(proto.active_update());
+
+  // RefreshAllPeripheralBattery is called.
+  dbus::MethodCall method_call(kPowerManagerInterface,
+                               kRefreshAllPeripheralBatteryMethod);
+  std::unique_ptr<dbus::Response> response =
+      test_wrapper_.CallExportedMethodSync(&method_call);
+  ASSERT_TRUE(response);
+  ASSERT_EQ(dbus::Message::MESSAGE_METHOD_RETURN, response->GetMessageType());
+
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  EXPECT_EQ(2, test_wrapper_.num_sent_signals());
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(1, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+
+  EXPECT_EQ(80, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_charge_status());
+  EXPECT_EQ(PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN,
+            proto.charge_status());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_FALSE(proto.active_update());
+}
+
 TEST_F(PeripheralBatteryWatcherTest, Charger) {
   // Chargers should be reported.
   WriteFile(peripheral_charger_capacity_file_, base::NumberToString(60));

@@ -86,6 +86,9 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
 
   // Handler for a periodic event that reads the peripheral batteries'
   // level.
+  void ReadBatteryStatusesTimer();
+
+  // Perform operation to read and send status of all statuses.
   void ReadBatteryStatuses();
 
   // Detects if |device_path| in /sys/class/power_supply is a peripheral device.
@@ -134,6 +137,9 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   // TODO(b/166543531): Remove this method handler after migrating to BlueZ
   // Battery Provider API.
   void OnRefreshBluetoothBatteryMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void OnRefreshAllPeripheralBatteryMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 

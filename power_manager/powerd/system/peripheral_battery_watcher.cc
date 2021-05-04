@@ -107,12 +107,18 @@ void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper,
   udev_->AddSubsystemObserver(kUdevSubsystem, this);
 
   dbus_wrapper_ = dbus_wrapper;
-  ReadBatteryStatuses();
+  ReadBatteryStatusesTimer();
 
   dbus_wrapper->ExportMethod(
       kRefreshBluetoothBatteryMethod,
       base::BindRepeating(
           &PeripheralBatteryWatcher::OnRefreshBluetoothBatteryMethodCall,
+          weak_ptr_factory_.GetWeakPtr()));
+
+  dbus_wrapper->ExportMethod(
+      kRefreshAllPeripheralBatteryMethod,
+      base::BindRepeating(
+          &PeripheralBatteryWatcher::OnRefreshAllPeripheralBatteryMethodCall,
           weak_ptr_factory_.GetWeakPtr()));
 
   bluez_battery_provider_->Init(dbus_wrapper_->GetBus());
@@ -241,6 +247,10 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
   for (const base::FilePath& path : new_battery_list) {
     ReadBatteryStatus(path, false);
   }
+}
+
+void PeripheralBatteryWatcher::ReadBatteryStatusesTimer() {
+  ReadBatteryStatuses();
 
   poll_timer_.Start(FROM_HERE,
                     base::TimeDelta::FromMilliseconds(poll_interval_ms_), this,
@@ -320,6 +330,19 @@ void PeripheralBatteryWatcher::OnRefreshBluetoothBatteryMethodCall(
     ReadBatteryStatus(path,
                       true /* active, as bluetooth will interrogate device */);
   }
+
+  // Best effort, always return success.
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  std::move(response_sender).Run(std::move(response));
+}
+
+void PeripheralBatteryWatcher::OnRefreshAllPeripheralBatteryMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  dbus::MessageReader reader(method_call);
+
+  ReadBatteryStatuses();
 
   // Best effort, always return success.
   std::unique_ptr<dbus::Response> response =
