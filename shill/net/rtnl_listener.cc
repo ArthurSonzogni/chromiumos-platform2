@@ -9,12 +9,13 @@
 namespace shill {
 
 RTNLListener::RTNLListener(
-    int listen_flags, const base::Callback<void(const RTNLMessage&)>& callback)
+    int listen_flags,
+    const base::RepeatingCallback<void(const RTNLMessage&)>& callback)
     : RTNLListener{listen_flags, callback, RTNLHandler::GetInstance()} {}
 
 RTNLListener::RTNLListener(
     int listen_flags,
-    const base::Callback<void(const RTNLMessage&)>& callback,
+    const base::RepeatingCallback<void(const RTNLMessage&)>& callback,
     RTNLHandler* rtnl_handler)
     : listen_flags_(listen_flags),
       callback_(callback),
