@@ -320,7 +320,7 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
   // Always spawn filesystem resizer, in case growth was interrupted.
   // TODO(keescook): if already full size, don't resize.
   SpawnResizer(platform_, dmcrypt_dev_, kExt4MinBytes / kExt4BlockSize,
-               fs_size_);
+               fs_size_ / kExt4BlockSize);
 
   // Perform bind mounts.
   for (auto& bind : bind_mounts_) {
