@@ -7,6 +7,7 @@
 #include <regex>  // NOLINT(build/c++11)
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
@@ -306,6 +307,16 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
         .WillRepeatedly(Return(ArrayToSecureBlob(kUserSecret)));
   }
 
+  void ExpectGetCounter() {
+    static const std::vector<uint8_t> kSignatureCounter({42, 23, 42, 23});
+    EXPECT_CALL(mock_user_state_, GetCounter())
+        .WillOnce(Return(kSignatureCounter));
+  }
+
+  void ExpectIncrementCounter() {
+    EXPECT_CALL(mock_user_state_, IncrementCounter()).WillOnce(Return(true));
+  }
+
   void CallAndWaitForPresence(std::function<uint32_t()> fn, uint32_t* status) {
     handler_->CallAndWaitForPresence(fn, status);
   }
@@ -336,10 +347,13 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
       const std::vector<uint8_t>& credential_public_key,
       bool user_verified,
       bool include_attested_credential_data,
-      bool is_fido_u2f_attestation) {
-    return handler_->MakeAuthenticatorData(
-        kRpIdHash, credential_id, credential_public_key, user_verified,
-        include_attested_credential_data, is_fido_u2f_attestation);
+      bool is_u2f_authenticator_credential) {
+    base::Optional<std::vector<uint8_t>> authenticator_data =
+        handler_->MakeAuthenticatorData(
+            kRpIdHash, credential_id, credential_public_key, user_verified,
+            include_attested_credential_data, is_u2f_authenticator_credential);
+    DCHECK(authenticator_data);
+    return *authenticator_data;
   }
 
   // Set up an auth-time secret hash as if a user has logged in.
@@ -1034,7 +1048,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataWithAttestedCredData) {
   std::vector<uint8_t> authenticator_data =
       MakeAuthenticatorData(cred_id, cred_pubkey, /* user_verified = */ false,
                             /* include_attested_credential_data = */ true,
-                            /* is_fido_u2f_attestation = */ false);
+                            /* is_u2f_authenticator_credential = */ false);
   EXPECT_EQ(authenticator_data.size(),
             kRpIdHashBytes + kAuthenticatorDataFlagBytes +
                 kSignatureCounterBytes + kAaguidBytes +
@@ -1062,7 +1076,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataNoAttestedCredData) {
       MakeAuthenticatorData(std::vector<uint8_t>(), std::vector<uint8_t>(),
                             /* user_verified = */ false,
                             /* include_attested_credential_data = */ false,
-                            /* is_fido_u2f_attestation = */ false);
+                            /* is_u2f_authenticator_credential = */ false);
   EXPECT_EQ(
       authenticator_data.size(),
       kRpIdHashBytes + kAuthenticatorDataFlagBytes + kSignatureCounterBytes);
@@ -1077,6 +1091,25 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataNoAttestedCredData) {
   EXPECT_THAT(
       base::HexEncode(authenticator_data.data(), authenticator_data.size()),
       MatchesRegex(expected_authenticator_data_regex));
+}
+
+TEST_F(WebAuthnHandlerTestBase,
+       MakeAuthenticatorDataU2fAuthenticatorCredential) {
+  // For U2F authenticator credentials only, the counter comes from UserState.
+  ExpectGetCounter();
+  ExpectIncrementCounter();
+
+  std::vector<uint8_t> authenticator_data =
+      MakeAuthenticatorData(std::vector<uint8_t>(), std::vector<uint8_t>(),
+                            /* user_verified = */ false,
+                            /* include_attested_credential_data = */ false,
+                            /* is_u2f_authenticator_credential = */ true);
+
+  EXPECT_EQ(
+      base::HexEncode(authenticator_data),
+      base::HexEncode(kRpIdHash) +
+          std::string("01"           // Flag: user present
+                      "2A172A17"));  // kSignatureCounter in network byte order
 }
 
 TEST_F(WebAuthnHandlerTestBase, InsertAuthTimeSecretHashToCredentialId) {
@@ -1127,6 +1160,9 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   request.set_rp_id(kRpId);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
+  ExpectGetCounter();
+  ExpectIncrementCounter();
+
   // 1. LegacyCredential uses "user secret" instead of per credential secret.
   // 2. We will still check if any exclude credential matches legacy
   // credentials.
@@ -1145,10 +1181,10 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   EXPECT_CALL(*mock_webauthn_storage_, WriteRecord(_)).Times(0);
 
   const std::string expected_authenticator_data_regex =
-      base::HexEncode(kRpIdHash.data(), kRpIdHash.size()) +  // RP ID hash
+      base::HexEncode(kRpIdHash) +
       std::string(
           "41"          // Flag: user present, attested credential data included
-          "(..){4}"     // Signature counter
+          "2A172A17"    // kSignatureCounter in network byte order
           "(00){16}"    // AAGUID
           "0040"        // Credential ID length
                         // Credential ID, from kU2fGenerateResponse:
@@ -1208,6 +1244,9 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialNoPresence) {
   request.add_allowed_credential_id(credential_id);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
+  ExpectGetCounter();
+  ExpectIncrementCounter();
+
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
       .Times(2)
       .WillRepeatedly(Return(base::nullopt));
@@ -1247,6 +1286,9 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
   request.add_allowed_credential_id(credential_id);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
+  ExpectGetCounter();
+  ExpectIncrementCounter();
+
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
       .Times(2)
       .WillRepeatedly(Return(base::nullopt));
@@ -1275,13 +1317,13 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(),
                   std::string(sizeof(struct u2f_key_handle), 0xab));
-        EXPECT_THAT(
+        EXPECT_EQ(
             base::HexEncode(assertion.authenticator_data().data(),
                             assertion.authenticator_data().size()),
-            MatchesRegex(base::HexEncode(kRpIdHash.data(),
-                                         kRpIdHash.size()) +  // RP ID hash
-                         std::string("01"           // Flag: user present
-                                     "(..){4}")));  // Signature counter
+            base::HexEncode(kRpIdHash) +
+                std::string(
+                    "01"           // Flag: user present
+                    "2A172A17"));  // kSignatureCounter in network byte order
         EXPECT_EQ(util::ToVector(assertion.signature()),
                   util::SignatureToDerBytes(kU2fSignResponse.sig_r,
                                             kU2fSignResponse.sig_s));
@@ -1303,6 +1345,9 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
   const std::string credential_id(sizeof(struct u2f_key_handle), 0xab);
   request.add_allowed_credential_id(credential_id);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
+
+  ExpectGetCounter();
+  ExpectIncrementCounter();
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretByCredentialId(credential_id))
       .Times(2)
@@ -1340,13 +1385,13 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
         auto assertion = resp.assertion(0);
         EXPECT_EQ(assertion.credential_id(),
                   std::string(sizeof(struct u2f_key_handle), 0xab));
-        EXPECT_THAT(
+        EXPECT_EQ(
             base::HexEncode(assertion.authenticator_data().data(),
                             assertion.authenticator_data().size()),
-            MatchesRegex(base::HexEncode(kRpIdHash.data(),
-                                         kRpIdHash.size()) +  // RP ID hash
-                         std::string("01"           // Flag: user present
-                                     "(..){4}")));  // Signature counter
+            base::HexEncode(kRpIdHash) +
+                std::string(
+                    "01"           // Flag: user present
+                    "2A172A17"));  // kSignatureCounter in network byte order
         EXPECT_EQ(util::ToVector(assertion.signature()),
                   util::SignatureToDerBytes(kU2fSignResponse.sig_r,
                                             kU2fSignResponse.sig_s));
@@ -1552,6 +1597,9 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
   request.set_rp_id(kRpId);
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
   request.set_attestation_conveyance_preference(MakeCredentialRequest::G2F);
+
+  ExpectGetCounter();
+  ExpectIncrementCounter();
 
   // We will need user secret 3 times:
   // first time for u2f_generate (legacy credential),

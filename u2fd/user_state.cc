@@ -4,6 +4,7 @@
 
 #include "u2fd/user_state.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/bind.h>
@@ -26,6 +27,14 @@ constexpr const char kUserSecretPath[] = "/run/daemon-store/u2f/%s/secret_db";
 constexpr const char kCounterPath[] = "/run/daemon-store/u2f/%s/counter_db";
 constexpr const int kUserSecretSizeBytes = 32;
 
+// Due to b/186431345, U2F credentials were asserted by the WebAuthn platform
+// authenticator with a timestamp-based signature counter. After this was
+// rectified, the UserState signature counter needed to be bumped up to be
+// larger than the most recent timestamp counter that the WebAuthn platform
+// authenticator reported.
+constexpr uint32_t kCounterMinB186431345 =
+    1640995200;  // 2022-01-01 00:00:00 UTC
+
 void OnSignalConnected(const std::string& interface,
                        const std::string& signal,
                        bool success) {
@@ -39,7 +48,9 @@ void OnSignalConnected(const std::string& interface,
 
 UserState::UserState(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
                      uint32_t counter_min)
-    : sm_proxy_(sm_proxy), weak_ptr_factory_(this), counter_min_(counter_min) {
+    : sm_proxy_(sm_proxy),
+      weak_ptr_factory_(this),
+      counter_min_(std::max(kCounterMinB186431345, counter_min)) {
   sm_proxy_->RegisterSessionStateChangedSignalHandler(
       base::Bind(&UserState::OnSessionStateChanged,
                  weak_ptr_factory_.GetWeakPtr()),

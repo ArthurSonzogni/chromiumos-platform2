@@ -238,13 +238,13 @@ class WebAuthnHandler {
 
   // Creates and returns authenticator data. |include_attested_credential_data|
   // should be set to true for MakeCredential, false for GetAssertion.
-  std::vector<uint8_t> MakeAuthenticatorData(
+  base::Optional<std::vector<uint8_t>> MakeAuthenticatorData(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_id,
       const std::vector<uint8_t>& credential_public_key,
       bool user_verified,
       bool include_attested_credential_data,
-      bool is_fido_u2f_attestation);
+      bool is_u2f_authenticator_credential);
 
   // Appends a none attestation to |response|. Only used in MakeCredential.
   void AppendNoneAttestation(MakeCredentialResponse* response);

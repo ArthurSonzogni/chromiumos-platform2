@@ -539,14 +539,21 @@ void WebAuthnHandler::DoMakeCredential(
     return;
   }
 
-  const std::vector<uint8_t> authenticator_data = MakeAuthenticatorData(
-      rp_id_hash, credential_id,
-      EncodeCredentialPublicKeyInCBOR(credential_public_key),
-      /* user_verified = */ session.request.verification_type() ==
-          VerificationType::VERIFICATION_USER_VERIFICATION,
-      /* include_attested_credential_data = */ true,
-      /* is_fido_u2f_attestation = */ !uv_compatible);
-  AppendToString(authenticator_data, response.mutable_authenticator_data());
+  const base::Optional<std::vector<uint8_t>> authenticator_data =
+      MakeAuthenticatorData(
+          rp_id_hash, credential_id,
+          EncodeCredentialPublicKeyInCBOR(credential_public_key),
+          /* user_verified = */ session.request.verification_type() ==
+              VerificationType::VERIFICATION_USER_VERIFICATION,
+          /* include_attested_credential_data = */ true,
+          /* is_u2f_authenticator_credential = */ !uv_compatible);
+  if (!authenticator_data) {
+    LOG(ERROR) << "MakeAuthenticatorData failed";
+    response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+    session.response->Return(response);
+    return;
+  }
+  AppendToString(*authenticator_data, response.mutable_authenticator_data());
 
   // If a credential is not UV-compatible, it is a legacy U2F/G2F credential
   // and should come with U2F/G2F attestation for backward compatibility.
@@ -604,13 +611,13 @@ void WebAuthnHandler::DoMakeCredential(
 // | Attested Credential Data: | Credential ID length (L): 2 bytes
 // | (if present)              | Credential ID:            L bytes
 // |                           | Credential public key:    variable length
-std::vector<uint8_t> WebAuthnHandler::MakeAuthenticatorData(
+base::Optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& credential_id,
     const std::vector<uint8_t>& credential_public_key,
     bool user_verified,
     bool include_attested_credential_data,
-    bool is_fido_u2f_attestation) {
+    bool is_u2f_authenticator_credential) {
   std::vector<uint8_t> authenticator_data(rp_id_hash);
   uint8_t flags =
       static_cast<uint8_t>(AuthenticatorDataFlag::kTestOfUserPresence);
@@ -621,10 +628,23 @@ std::vector<uint8_t> WebAuthnHandler::MakeAuthenticatorData(
     flags |=
         static_cast<uint8_t>(AuthenticatorDataFlag::kAttestedCredentialData);
   authenticator_data.emplace_back(flags);
-  util::AppendToVector(GetTimestampSignatureCounter(), &authenticator_data);
+
+  // The U2F authenticator keeps a user-global signature counter in UserState.
+  // For platform authenticator credentials, we derive a counter from a
+  // timestamp instead.
+  if (is_u2f_authenticator_credential) {
+    base::Optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
+    if (!counter || !user_state_->IncrementCounter()) {
+      // UserState logs an error in this case.
+      return base::nullopt;
+    }
+    util::AppendToVector(*counter, &authenticator_data);
+  } else {
+    util::AppendToVector(GetTimestampSignatureCounter(), &authenticator_data);
+  }
 
   if (include_attested_credential_data) {
-    util::AppendToVector(is_fido_u2f_attestation
+    util::AppendToVector(is_u2f_authenticator_credential
                              ? std::vector<uint8_t>(kAaguid.size(), 0)
                              : kAaguid,
                          &authenticator_data);
@@ -925,21 +945,8 @@ void WebAuthnHandler::GetAssertion(
 void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
                                      PresenceRequirement presence_requirement) {
   GetAssertionResponse response;
-  const std::vector<uint8_t> rp_id_hash = util::Sha256(session.request.rp_id());
-  std::vector<uint8_t> authenticator_data = MakeAuthenticatorData(
-      rp_id_hash, std::vector<uint8_t>(), std::vector<uint8_t>(),
-      // If presence requirement is "power button" then the user was not
-      // verified. Otherwise the user was verified through UI.
-      /* user_verified = */ presence_requirement !=
-          PresenceRequirement::kPowerButton,
-      /* include_attested_credential_data = */ false,
-      // |is_fido_u2f_attestation| will be ignored because we are not including
-      // attested_credential_data.
-      /* is_fido_u2f_attestation = */ false);
-  std::vector<uint8_t> data_to_sign(authenticator_data);
-  util::AppendToVector(session.request.client_data_hash(), &data_to_sign);
-  std::vector<uint8_t> hash_to_sign = util::Sha256(data_to_sign);
 
+  bool is_u2f_authenticator_credential = false;
   base::Optional<std::vector<uint8_t>> credential_secret =
       webauthn_storage_->GetSecretByCredentialId(session.credential_id);
   if (!credential_secret) {
@@ -963,7 +970,30 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
     }
     credential_secret =
         std::vector<uint8_t>(legacy_secret->begin(), legacy_secret->end());
+    is_u2f_authenticator_credential = true;
   }
+
+  const std::vector<uint8_t> rp_id_hash = util::Sha256(session.request.rp_id());
+  const base::Optional<std::vector<uint8_t>> authenticator_data =
+      MakeAuthenticatorData(
+          rp_id_hash, std::vector<uint8_t>(), std::vector<uint8_t>(),
+          // If presence requirement is "power button" then the user was not
+          // verified. Otherwise the user was verified through UI.
+          /* user_verified = */ presence_requirement !=
+              PresenceRequirement::kPowerButton,
+          /* include_attested_credential_data = */ false,
+          is_u2f_authenticator_credential);
+  if (!authenticator_data) {
+    LOG(ERROR) << "MakeAuthenticatorData failed";
+    response.set_status(GetAssertionResponse::INTERNAL_ERROR);
+    session.response->Return(response);
+    return;
+  }
+
+  std::vector<uint8_t> data_to_sign(*authenticator_data);
+  util::AppendToVector(session.request.client_data_hash(), &data_to_sign);
+  std::vector<uint8_t> hash_to_sign = util::Sha256(data_to_sign);
+
   std::vector<uint8_t> signature;
   GetAssertionResponse::GetAssertionStatus sign_status =
       DoU2fSign(rp_id_hash, hash_to_sign, util::ToVector(session.credential_id),
@@ -972,7 +1002,8 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   if (sign_status == GetAssertionResponse::SUCCESS) {
     auto* assertion = response.add_assertion();
     assertion->set_credential_id(session.credential_id);
-    AppendToString(authenticator_data, assertion->mutable_authenticator_data());
+    AppendToString(*authenticator_data,
+                   assertion->mutable_authenticator_data());
     AppendToString(signature, assertion->mutable_signature());
   }
 
