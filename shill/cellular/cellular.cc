@@ -763,6 +763,7 @@ void Cellular::OnAfterResume() {
 }
 
 void Cellular::ReAttach() {
+  SLOG(this, 1) << __func__;
   if (!enabled() && !enabled_pending()) {
     LOG(WARNING) << __func__ << " Modem not enabled, skipped re-attach.";
     return;

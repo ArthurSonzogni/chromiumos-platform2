@@ -1616,6 +1616,7 @@ void CellularCapability3gpp::OnModem3gppPropertiesChanged(
 }
 
 void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
+  SLOG(this, 3) << __func__;
   profiles_.clear();
   for (const auto& profile : profiles) {
     auto apn_info = std::make_unique<MobileOperatorInfo::MobileAPN>();
@@ -1748,6 +1749,7 @@ void CellularCapability3gpp::OnModemStateChangedSignal(int32_t old_state,
 }
 
 void CellularCapability3gpp::OnFacilityLocksChanged(uint32_t locks) {
+  SLOG(this, 3) << __func__ << ": locks = " << locks;
   bool sim_enabled = !!(locks & MM_MODEM_3GPP_FACILITY_SIM);
   if (sim_lock_status_.enabled != sim_enabled) {
     sim_lock_status_.enabled = sim_enabled;
