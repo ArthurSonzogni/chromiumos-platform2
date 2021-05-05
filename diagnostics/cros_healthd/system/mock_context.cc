@@ -8,6 +8,7 @@
 
 #include <gmock/gmock.h>
 
+#include "cras/dbus-proxy-mocks.h"
 #include "debugd/dbus-proxy-mocks.h"
 
 namespace diagnostics {
@@ -18,6 +19,8 @@ MockContext::~MockContext() = default;
 bool MockContext::Initialize() {
   bluetooth_client_ = std::make_unique<FakeBluetoothClient>();
   cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+  cras_proxy_ = std::make_unique<
+      testing::StrictMock<org::chromium::cras::ControlProxyMock>>();
   debugd_proxy_ =
       std::make_unique<testing::StrictMock<org::chromium::debugdProxyMock>>();
   debugd_adapter_ = std::make_unique<testing::StrictMock<MockDebugdAdapter>>();
@@ -48,6 +51,12 @@ brillo::FakeCrosConfig* MockContext::fake_cros_config() const {
 org::chromium::debugdProxyMock* MockContext::mock_debugd_proxy() const {
   return static_cast<testing::StrictMock<org::chromium::debugdProxyMock>*>(
       debugd_proxy_.get());
+}
+
+org::chromium::cras::ControlProxyMock* MockContext::mock_cras_proxy() const {
+  return static_cast<
+      testing::StrictMock<org::chromium::cras::ControlProxyMock>*>(
+      cras_proxy_.get());
 }
 
 MockDebugdAdapter* MockContext::mock_debugd_adapter() const {

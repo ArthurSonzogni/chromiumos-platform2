@@ -10,6 +10,7 @@
 #include <base/test/simple_test_tick_clock.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 
+#include "cras/dbus-proxy-mocks.h"
 #include "diagnostics/common/system/fake_bluetooth_client.h"
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/common/system/mock_debugd_adapter.h"
@@ -43,6 +44,7 @@ class MockContext final : public Context {
   FakeBluetoothClient* fake_bluetooth_client() const;
   brillo::FakeCrosConfig* fake_cros_config() const;
   org::chromium::debugdProxyMock* mock_debugd_proxy() const;
+  org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
   MockDebugdAdapter* mock_debugd_adapter() const;
   FakeNetworkHealthAdapter* fake_network_health_adapter() const;
   MockNetworkDiagnosticsAdapter* network_diagnostics_adapter() const;

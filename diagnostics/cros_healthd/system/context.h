@@ -16,6 +16,7 @@
 #include <dbus/object_proxy.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
+#include "cras/dbus-proxies.h"
 #include "diagnostics/common/system/bluetooth_client.h"
 #include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/common/system/powerd_adapter.h"
@@ -64,6 +65,9 @@ class Context {
   // cros_healthd calls out to debugd when it needs to collect smart battery
   // metrics like manufacture_date_smart and temperature_smart.
   org::chromium::debugdProxyInterface* debugd_proxy() const;
+  // Use the object returned by cras_proxy() to communicate with cras daemon
+  // through dbus.
+  org::chromium::cras::ControlProxyInterface* cras_proxy() const;
   // Use the object returned by debugd_adapter() to make calls to debugd.
   // Example: cros_healthd calls out to debugd with async callbacks when it
   // needs to trigger nvme self-test or collect data like progress info.
@@ -113,6 +117,7 @@ class Context {
 
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<BluetoothClient> bluetooth_client_;
+  std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
   std::unique_ptr<NetworkHealthAdapter> network_health_adapter_;

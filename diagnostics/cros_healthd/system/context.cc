@@ -9,7 +9,9 @@
 #include <base/logging.h>
 #include <base/time/default_tick_clock.h>
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
+#include <chromeos/dbus/service_constants.h>
 
+#include "cras/dbus-proxies.h"
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/common/system/bluetooth_client_impl.h"
 #include "diagnostics/common/system/debugd_adapter_impl.h"
@@ -39,6 +41,9 @@ bool Context::Initialize() {
 
   // Initialize D-Bus clients:
   bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus_);
+  cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
+      dbus_bus_, cras::kCrasServiceName,
+      dbus::ObjectPath(cras::kCrasServicePath));
   debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(dbus_bus_);
   debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
       std::make_unique<org::chromium::debugdProxy>(dbus_bus_));
@@ -80,6 +85,10 @@ brillo::CrosConfigInterface* Context::cros_config() const {
 
 org::chromium::debugdProxyInterface* Context::debugd_proxy() const {
   return debugd_proxy_.get();
+}
+
+org::chromium::cras::ControlProxyInterface* Context::cras_proxy() const {
+  return cras_proxy_.get();
 }
 
 DebugdAdapter* Context::debugd_adapter() const {

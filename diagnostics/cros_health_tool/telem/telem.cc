@@ -62,6 +62,7 @@ constexpr std::pair<const char*,
          chromeos::cros_healthd::mojom::ProbeCategoryEnum::kBluetooth},
         {"system", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kSystem},
         {"network", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kNetwork},
+        {"audio", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kAudio},
 };
 
 std::string ProcessStateToString(
@@ -322,6 +323,29 @@ void DisplayBatteryInfo(
        std::to_string(battery->charge_now),
        std::to_string(battery->current_now), battery->technology,
        battery->status}};
+
+  OutputData(headers, values, beauty);
+}
+
+void DisplayAudioInfo(
+    const chromeos::cros_healthd::mojom::AudioResultPtr& audio_result,
+    const bool beauty) {
+  if (audio_result->is_error()) {
+    DisplayError(audio_result->get_error());
+    return;
+  }
+
+  const auto& audio = audio_result->get_audio_info();
+  if (audio.is_null()) {
+    std::cout << "Device does not have audio info" << std::endl;
+    return;
+  }
+
+  const std::vector<std::string> headers = {
+      "output_mute", "input_mute", "output_device_name", "output_volume"};
+  const std::vector<std::vector<std::string>> values = {
+      {std::to_string(audio->output_mute), std::to_string(audio->input_mute),
+       audio->output_device_name, std::to_string(audio->output_volume)}};
 
   OutputData(headers, values, beauty);
 }
@@ -708,6 +732,10 @@ void DisplayTelemetryInfo(
   const auto& network_result = info->network_result;
   if (network_result)
     DisplayNetworkInfo(network_result, beauty);
+
+  const auto& audio_result = info->audio_result;
+  if (audio_result)
+    DisplayAudioInfo(audio_result, beauty);
 }
 
 // Create a stringified list of the category names for use in help.

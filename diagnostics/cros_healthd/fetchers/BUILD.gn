@@ -30,6 +30,7 @@ source_set("libcros_healthd_fetchers") {
     "//diagnostics/mojo:cros_healthd_mojo_bindings",
   ]
   sources = [
+    "audio_fetcher.cc",
     "backlight_fetcher.cc",
     "battery_fetcher.cc",
     "bluetooth_fetcher.cc",
@@ -59,6 +60,7 @@ if (use.test) {
 
   executable("libcros_healthd_fetchers_test") {
     sources = [
+      "audio_fetcher_test.cc",
       "backlight_fetcher_test.cc",
       "battery_fetcher_test.cc",
       "bluetooth_fetcher_test.cc",

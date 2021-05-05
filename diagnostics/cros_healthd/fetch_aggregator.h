@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
 
+#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
@@ -98,6 +99,8 @@ class FetchAggregator final {
   std::unique_ptr<SystemFetcher> const system_fetcher_ = nullptr;
   // Unowned. The network fetcher should outlive this instance.
   std::unique_ptr<NetworkFetcher> const network_fetcher_ = nullptr;
+  // Unowned. The audio fetcher should outlive this instance.
+  std::unique_ptr<AudioFetcher> const audio_fetcher_ = nullptr;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<FetchAggregator> weak_factory_{this};
