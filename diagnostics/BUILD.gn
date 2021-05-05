@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":dbus-proxies",
     "//diagnostics/cros_health_tool:cros-health-tool",
     "//diagnostics/cros_healthd:cros_healthd",
     "//diagnostics/cros_healthd/routines:floating-point-accuracy",
@@ -35,4 +37,15 @@ group("all") {
       "//diagnostics/cros_healthd/fetchers:fetch_system_info_fuzzer",
     ]
   }
+}
+
+group("dbus-proxies") {
+  deps = [ ":cras-proxies" ]
+}
+
+generate_dbus_proxies("cras-proxies") {
+  sources =
+      [ "${sysroot}/usr/share/dbus-1/interfaces/org.chromium.cras.Control.xml" ]
+  proxy_output_file = "include/cras/dbus-proxies.h"
+  mock_output_file = "include/cras/dbus-proxy-mocks.h"
 }
