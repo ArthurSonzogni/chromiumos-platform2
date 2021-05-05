@@ -32,17 +32,22 @@ int perform_capture(base::StringPiece device,
   const cap_value_t requiredCaps[] = {CAP_SYS_ADMIN, CAP_SETUID, CAP_SETGID,
                                       CAP_NET_RAW};
   cap_t caps = cap_get_proc();
-  cap_clear(caps);
-  if (cap_set_flag(caps, CAP_EFFECTIVE, base::size(requiredCaps), requiredCaps,
+  if (cap_clear(caps) ||
+      cap_set_flag(caps, CAP_EFFECTIVE, base::size(requiredCaps), requiredCaps,
                    CAP_SET) ||
       cap_set_flag(caps, CAP_PERMITTED, base::size(requiredCaps), requiredCaps,
                    CAP_SET) ||
       cap_set_flag(caps, CAP_INHERITABLE, base::size(requiredCaps),
                    requiredCaps, CAP_SET)) {
-    fprintf(stderr, "Can't set flags for required capabilities.\n");
+    fprintf(
+        stderr,
+        "Can't clear capabilities and set flags for required capabilities.\n");
     return 1;
   }
-  cap_set_proc(caps);
+  if (cap_set_proc(caps)) {
+    fprintf(stderr, "Can't set capabilities.\n");
+    return 1;
+  }
 
   char buf[RECEIVE_PACKET_SIZE];
   const int promiscuous = 0;
@@ -54,7 +59,21 @@ int perform_capture(base::StringPiece device,
     return -1;
   }
 
-  pcap_dumper_t* dumper = pcap_dump_open(pcap, output_file.data());
+  int output_file_descriptor;
+  if (!base::StringToInt(output_file, &output_file_descriptor)) {
+    fprintf(stderr,
+            "Can't parse file descriptor value from the output file argument. "
+            "Make sure you pass a valid file descriptor value.\n");
+    return 1;
+  }
+  FILE* output_fp = fdopen(output_file_descriptor, "a");
+  if (output_fp == nullptr) {
+    fprintf(stderr,
+            "File pointer to the output file can't be created from given file "
+            "descriptor.\n");
+    return 1;
+  }
+  pcap_dumper_t* dumper = pcap_dump_fopen(pcap, output_fp);
   if (dumper == nullptr) {
     fprintf(stderr, "Could not open dump file.\n");
     return -1;

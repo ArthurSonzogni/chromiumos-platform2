@@ -93,9 +93,8 @@ bool PacketCaptureTool::Start(const base::ScopedFD& status_fd,
   // Pass the output fd of the pcap as a command line option to the child
   // process.
   int child_output_fd = STDERR_FILENO + 1;
-  p->AddStringOption("--output-file",
-                     base::StringPrintf("/dev/fd/%d", child_output_fd));
   p->BindFd(output_fd.get(), child_output_fd);
+  p->AddIntOption("--output-file", child_output_fd);
 
   p->BindFd(status_fd.get(), STDOUT_FILENO);
   p->BindFd(status_fd.get(), STDERR_FILENO);
