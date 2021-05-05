@@ -6,11 +6,11 @@ uma_writer(cros_tcsd);
 log_writer(cros_tcsd);
 r_dir_file(cros_tcsd, cros_passwd_file);
 
-allow cros_tcsd cros_var_lib_tpm:file create_file_perms;
-allow cros_tcsd cros_var_lib_tpm:dir create_dir_perms;
-
-allow cros_tcsd cros_run_tcsd:file create_file_perms;
-allow cros_tcsd cros_run_tcsd:dir create_dir_perms;
+create_dir_file(cros_tcsd, {
+  cros_var_lib_tpm
+  cros_var_log_tcsd
+  cros_run_tcsd
+});
 
 filetrans_pattern(cros_tcsd, cros_run_tcsd, cros_tcsd_socket, sock_file, "tcsd.socket");
 allow cros_tcsd cros_tcsd_socket:sock_file create_file_perms;
@@ -20,6 +20,7 @@ allow cros_tcsd tpm_device:chr_file rw_file_perms;
 allow cros_tcsd self:capability { chown setuid setgid };
 
 filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_tpm, dir, "tpm")
+filetrans_pattern(chromeos_domain, cros_var_log, cros_var_log_tcsd, dir, "tcsd")
 
 cros_dbus_client(cros_tcsd)
 

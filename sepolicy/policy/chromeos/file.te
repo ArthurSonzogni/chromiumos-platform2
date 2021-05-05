@@ -396,6 +396,7 @@ type cros_var_log_metrics, file_type, cros_log_type, cros_file_type, cros_var_fi
 type cros_var_log_os_install_service, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_recover_duts, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_session_manager, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_var_log_tcsd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_log_tpm_firmware_updater, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_ui, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_upstart, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;

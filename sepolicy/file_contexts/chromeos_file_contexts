@@ -278,6 +278,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/recover_duts(/.*)?     u:object_r:cros_var_log_recover_duts:s0
 /var/log/secure                 u:object_r:cros_secure_log:s0
 /var/log/session_manager        u:object_r:cros_var_log_session_manager:s0
+/var/log/tcsd(/.*)?             u:object_r:cros_var_log_tcsd:s0
 /var/log/tlsdate.log            u:object_r:cros_tlsdate_log:s0
 /var/log/tpm-firmware-updater.log u:object_r:cros_var_log_tpm_firmware_updater:s0
 /var/log/typecd.log             u:object_r:cros_typecd_log:s0
