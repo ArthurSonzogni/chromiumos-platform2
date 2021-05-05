@@ -172,13 +172,12 @@ void CellularServiceProvider::Start() {
 
 void CellularServiceProvider::Stop() {
   SLOG(this, 2) << __func__;
-  while (!services_.empty())
-    RemoveService(services_.back());
+  RemoveServices();
 }
 
 CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
     Cellular* device) {
-  SLOG(this, 2) << __func__ << ": " << device->iccid();
+  SLOG(this, 2) << __func__ << " Device ICCID: " << device->iccid();
 
   CellularServiceRefPtr active_service = LoadMatchingServicesFromProfile(
       device->eid(), device->iccid(), device->imsi(), device);
@@ -193,7 +192,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
 }
 
 void CellularServiceProvider::RemoveNonDeviceServices(Cellular* device) {
-  SLOG(this, 2) << __func__ << ": " << device->iccid();
+  SLOG(this, 2) << __func__ << " Device ICCID: " << device->iccid();
   std::vector<CellularServiceRefPtr> services_to_remove;
   for (CellularServiceRefPtr& service : services_) {
     if (!device->HasSimCardId(service->GetSimCardId()))
@@ -247,13 +246,24 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
     if (service_iccid == iccid)
       active_service = service;
   }
-  // Ensure that a Service exists for the ICCID.
-  if (!active_service) {
-    SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
-    active_service = new CellularService(manager_, imsi, iccid, eid);
+
+  if (active_service)
+    return active_service;
+
+  // If a Service was never saved, it may still exist in |services_|.
+  active_service = FindService(iccid);
+  if (active_service) {
+    SLOG(this, 2) << "Cellular service exists for ICCID: " << iccid
+                  << " (but not saved)";
     active_service->SetDevice(device);
-    AddService(active_service);
+    return active_service;
   }
+
+  // Create a Service for the ICCID.
+  SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
+  active_service = new CellularService(manager_, imsi, iccid, eid);
+  active_service->SetDevice(device);
+  AddService(active_service);
   return active_service;
 }
 
@@ -294,7 +304,7 @@ bool CellularServiceProvider::OnServiceUnloaded(
   SLOG(this, 1) << __func__ << ": " << service->iccid();
   const CellularRefPtr device = service->cellular();
   if (device && device->iccid() == service->iccid()) {
-    LOG(ERROR) << "Service with active ICCID unloaded.";
+    LOG(WARNING) << "Service with active ICCID unloaded, Service not removed.";
     return false;
   }
   auto iter = std::find(services_.begin(), services_.end(), service);
