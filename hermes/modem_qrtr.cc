@@ -178,6 +178,7 @@ void ModemQrtr::RestoreActiveSlot() {
                        std::make_unique<UimCmd>(UimCmd::QmiType::kSwitchSlot),
                        base::Bind(&PrintQmiProcessingResult)});
   stored_active_slot_.reset();
+  TransmitFromQueue();
 }
 
 void ModemQrtr::SendApdusResponse(ResponseCallback callback, int err) {
