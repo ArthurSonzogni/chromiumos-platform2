@@ -83,7 +83,7 @@ format.
 
 [chrome_setup.cc]: ../chrome_setup.cc
 [ChromiumCommandBuilder]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/libchromeos-ui/chromeos/ui/chromium_command_builder.h
-[libchromeos-use-flags]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/libchromeos-use-flags/libchromeos-use-flags-0.0.1.ebuild
+[libchromeos-use-flags]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/libchromeos-use-flags/libchromeos-use-flags-9999.ebuild
 [board overlays]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD
 [chromeos-config]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/
 [cros_config_schema]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/cros_config_host/cros_config_schema.py
