@@ -42,6 +42,9 @@ class UpdateEngineProxy {
   // Calls reboot with a delay of `kTimeTillReboot`.
   void TriggerReboot();
 
+  // Forces an interactive update.
+  virtual bool StartUpdate();
+
  private:
   // Called on receiving update engine's  'Status Update` signal.
   void OnStatusUpdateAdvancedSignal(

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
 #include "minios/draw_utils.h"
@@ -51,14 +52,15 @@ enum class ScreenType {
   kPasswordScreen = 3,
   kLanguageDropDownScreen = 4,
   kWaitForConnection = 5,
-  kStartDownload = 6,
-  kDownloadError = 7,
-  kNetworkError = 8,
-  kPasswordError = 9,
-  kConnectionError = 10,
-  kGeneralError = 11,
-  kDebugOptionsScreen = 12,
-  kLogScreen = 13,
+  kUserPermissionScreen = 6,
+  kStartDownload = 7,
+  kDownloadError = 8,
+  kNetworkError = 9,
+  kPasswordError = 10,
+  kConnectionError = 11,
+  kGeneralError = 12,
+  kDebugOptionsScreen = 13,
+  kLogScreen = 14,
 };
 
 // Screens contains the different MiniOs Screens as well as specific components
@@ -79,7 +81,8 @@ class Screens : public ScreenBase,
         recovery_installer_(std::move(recovery_installer)),
         network_manager_(network_manager),
         update_engine_proxy_(update_engine_proxy),
-        key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {
+        key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)),
+        weak_ptr_factory_(this) {
     key_reader_.SetDelegate(this);
   }
   virtual ~Screens() = default;
@@ -191,6 +194,7 @@ class Screens : public ScreenBase,
   FRIEND_TEST(ScreensTestMocks, RepartitionDiskFailed);
   FRIEND_TEST(ScreensTestMocks, LogScreenNoScreenRefresh);
   FRIEND_TEST(ScreensTestMocks, LogScreenPageDownAndUps);
+  FRIEND_TEST(ScreensTestMocks, StartUpdateFailed);
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items.
@@ -216,6 +220,10 @@ class Screens : public ScreenBase,
   // Attempts to connect, shows error screen on failure.
   void OnConnect(const std::string& ssid, brillo::Error* error) override;
 
+  // After user confirms they want to continue with recovery, begin
+  // repartitioning their disk, wiping data, and calling update engine.
+  void OnUserPermission();
+
   // Calls `GetNetworks` to update the the list of networks.
   virtual void UpdateNetworkList();
 
@@ -232,6 +240,7 @@ class Screens : public ScreenBase,
   void ShowMiniOsNetworkDropdownScreen();
   void ShowMiniOsGetPasswordScreen();
   void ShowWaitingForConnectionScreen();
+  void ShowUserPermissionScreen();
   void ShowMiniOsDownloadingScreen();
   virtual void ShowMiniOsCompleteScreen();
   void ShowMiniOsDebugOptionsScreen();
@@ -314,6 +323,7 @@ class Screens : public ScreenBase,
       {ScreenType::kPasswordScreen, 3},
       {ScreenType::kLanguageDropDownScreen, 0},
       {ScreenType::kWaitForConnection, 0},
+      {ScreenType::kUserPermissionScreen, 3},
       {ScreenType::kStartDownload, 0},
       {ScreenType::kDownloadError, 3},
       {ScreenType::kNetworkError, 3},
@@ -347,6 +357,8 @@ class Screens : public ScreenBase,
   // Used to keep track of the byte offsets in the file.
   size_t log_offset_idx_ = 0;
   std::vector<int64_t> log_offsets_ = {0};
+
+  base::WeakPtrFactory<Screens> weak_ptr_factory_;
 };
 
 }  // namespace minios

@@ -55,4 +55,15 @@ void UpdateEngineProxy::Reboot() {
   }
 }
 
+bool UpdateEngineProxy::StartUpdate() {
+  brillo::ErrorPtr error;
+  if (!update_engine_proxy_.get()->AttemptUpdate("ForcedUpdate", "", &error)) {
+    LOG(ERROR) << "Could not initiate forced update. "
+               << "ErrorCode=" << error->GetCode()
+               << " ErrorMessage=" << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
 }  // namespace minios

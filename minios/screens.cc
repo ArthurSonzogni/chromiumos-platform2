@@ -11,6 +11,7 @@
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+#include <brillo/message_loops/message_loop.h>
 #include <dbus/shill/dbus-constants.h>
 
 #include "minios/minios.h"
@@ -321,6 +322,18 @@ void Screens::ShowWaitingForConnectionScreen() {
   ShowStepper({"done", "2-done", "3-done"});
   ShowLanguageMenu(false);
   ShowInstructions("title_MiniOS_wait_for_connection");
+}
+
+void Screens::ShowUserPermissionScreen() {
+  MessageBaseScreen();
+  ShowInstructionsWithTitle("MiniOS_user_confirm");
+  ShowStepper({"done", "2-done", "3-done"});
+
+  ShowLanguageMenu(index_ == 0);
+  constexpr int kBtnY = kTitleY + 80 + kBtnYStep * 2;
+  ShowButton("btn_next", kBtnY, (index_ == 1), default_button_width_, false);
+  ShowButton("btn_back", kBtnY + kBtnYStep, (index_ == 2),
+             default_button_width_, false);
 }
 
 void Screens::ShowMiniOsDownloadingScreen() {
@@ -722,6 +735,21 @@ void Screens::SwitchScreen(bool enter) {
         return;
       }
       break;
+    case ScreenType::kUserPermissionScreen:
+      if (index_ == 1) {
+        // User has confirmed, start recovery and display Download
+        // screen while some blocking tasks run.
+        brillo::MessageLoop::current()->PostTask(
+            FROM_HERE, base::Bind(&Screens::OnUserPermission,
+                                  weak_ptr_factory_.GetWeakPtr()));
+        index_ = 0;
+        current_screen_ = ScreenType::kStartDownload;
+      } else {
+        // Permission denied, go back.
+        index_ = 1;
+        current_screen_ = ScreenType::kWelcomeScreen;
+      }
+      break;
     case ScreenType::kWaitForConnection:
     case ScreenType::kStartDownload:
       return;
@@ -801,6 +829,9 @@ void Screens::ShowNewScreen() {
       break;
     case ScreenType::kWaitForConnection:
       ShowWaitingForConnectionScreen();
+      break;
+    case ScreenType::kUserPermissionScreen:
+      ShowUserPermissionScreen();
       break;
     case ScreenType::kStartDownload:
       ShowMiniOsDownloadingScreen();
@@ -891,14 +922,21 @@ void Screens::OnConnect(const std::string& ssid, brillo::Error* error) {
     return;
   }
   LOG(INFO) << "Successfully connected to " << ssid;
-  // TODO(b/181248366): MiniOs: Stop update engine from scheduling periodic
-  // update checks in recovery mode and then call update check manually.
-  current_screen_ = ScreenType::kStartDownload;
+  index_ = 1;
+  current_screen_ = ScreenType::kUserPermissionScreen;
   ShowNewScreen();
+}
 
+void Screens::OnUserPermission() {
   if (!recovery_installer_->RepartitionDisk()) {
-    LOG(ERROR) << "Could not repartition disk.";
+    LOG(ERROR) << "Could not repartition disk. Unable to continue.";
     ChangeToErrorScreen(ScreenType::kGeneralError);
+    return;
+  }
+
+  if (!update_engine_proxy_->StartUpdate()) {
+    LOG(ERROR) << "Could not start update. Unable to continue.";
+    ChangeToErrorScreen(ScreenType::kDownloadError);
     return;
   }
 
