@@ -526,6 +526,7 @@ class Cellular : public Device,
   bool SetInhibited(const bool& inhibited, Error* error);
   void SetInhibitedGetDeviceCallback(bool inhibited, const brillo::Any& device);
   void OnInhibitDevice(bool inhibited, const Error& error);
+  void SetInhibited(bool inhibited);
   KeyValueStore GetSimLockStatus(Error* error);
   void SetSimPresent(bool sim_present);
 

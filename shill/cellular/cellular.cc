@@ -69,6 +69,7 @@ namespace {
 // Delay before connecting to pending connect requests. This helps prevent
 // connect failures while the Modem is still starting up.
 const int64_t kPendingConnectDelayMilliseconds = 2 * 1000;
+
 // Maximum time to wait for Modem registration before canceling a pending
 // connect attempt.
 const int64_t kPendingConnectCancelMilliseconds = 60 * 1000;
@@ -483,10 +484,9 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
                                   const Error& error) {
   SLOG(this, 1) << __func__ << ": state=" << GetStateString(state_);
 
-  if (inhibited_) {
-    inhibited_ = false;
-    adaptor()->EmitBoolChanged(kInhibitedProperty, inhibited_);
-  }
+  // If the modem restarted it is no longer Inhibited.
+  if (inhibited_)
+    SetInhibited(false);
 
   if (!error.IsSuccess()) {
     LOG(ERROR) << "StartModem failed: " << error;
@@ -1454,24 +1454,16 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
   LOG(INFO) << __func__ << ": " << inhibited;
 
   // Clear any pending connect when inhibiting or un-inhibiting.
-  ConnectToPendingFailed(Service::kFailureDisconnect);
-
-  if (!mm1_proxy_) {
-    if (inhibited) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound, "No Modem.");
-      return false;
-    }
-    inhibited_ = inhibited;
-    adaptor()->EmitBoolChanged(kInhibitedProperty, inhibited_);
-    UpdateScanning();
-    return true;
-  }
+  SetPendingConnect(std::string());
 
   if (uid_.empty()) {
     if (inhibited_) {
+      // If |uid_| is empty we are in an unexpected state.
       Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                             "SetInhibited=false called with no UID set.");
-      return false;
+      // MM should not actually be Inhibited if |uid_| is unset.
+      SetInhibited(false);
+      return true;
     }
     // Request and cache the Device (uid) property before calling InhibitDevice.
     std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy =
@@ -1514,7 +1506,11 @@ void Cellular::OnInhibitDevice(bool inhibited, const Error& error) {
     LOG(ERROR) << __func__ << " Failed: " << error;
     return;
   }
-  LOG(INFO) << __func__ << " Succeeded. Inhibited= " << inhibited;
+  SetInhibited(inhibited);
+}
+
+void Cellular::SetInhibited(bool inhibited) {
+  LOG(INFO) << __func__ << ": " << inhibited;
   inhibited_ = inhibited;
   // Update and emit Scanning before Inhibited. This allows the UI to wait for
   // Scanning to be false once Inhibit changes to know when an Inhibit operation
@@ -1708,14 +1704,17 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 }
 
 void Cellular::SetPendingConnect(const std::string& iccid) {
+  if (!connect_pending_iccid_.empty()) {
+    SLOG(this, 1) << "Cancelling pending connect to: "
+                  << connect_pending_iccid_;
+    if (service_ && service_->iccid() == connect_pending_iccid_)
+      service_->SetFailure(Service::kFailureDisconnect);
+  }
+
   if (!iccid.empty())
     SLOG(this, 1) << "Set Pending connect: " << iccid;
   connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();
-  if (!connect_pending_iccid_.empty()) {
-    SLOG(this, 1) << "Cancelling pending connect to: "
-                  << connect_pending_iccid_;
-  }
   connect_pending_iccid_ = iccid;
 }
 
@@ -1816,7 +1815,9 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
       service_->iccid() == connect_pending_iccid_) {
     service_->SetFailure(failure);
   }
-  SetPendingConnect(std::string());
+  connect_cancel_callback_.Cancel();
+  connect_pending_callback_.Cancel();
+  connect_pending_iccid_.clear();
 }
 
 void Cellular::ConnectToPendingCancel() {

@@ -409,7 +409,7 @@ void Service::Disconnect(Error* error, const char* reason) {
 void Service::DisconnectWithFailure(ConnectFailure failure,
                                     Error* error,
                                     const char* reason) {
-  SLOG(this, 1) << __func__ << ": " << failure;
+  SLOG(this, 1) << __func__ << ": " << ConnectFailureToString(failure);
   CHECK(reason);
   Disconnect(error, reason);
   SetFailure(failure);
@@ -623,7 +623,7 @@ void Service::SaveFailure() {
 }
 
 void Service::SetFailure(ConnectFailure failure) {
-  SLOG(this, 1) << __func__ << ": " << failure;
+  SLOG(this, 1) << __func__ << ": " << ConnectFailureToString(failure);
   failure_ = failure;
   SaveFailure();
   failed_time_ = time(nullptr);
@@ -632,7 +632,7 @@ void Service::SetFailure(ConnectFailure failure) {
 }
 
 void Service::SetFailureSilent(ConnectFailure failure) {
-  SLOG(this, 1) << __func__ << ": " << failure;
+  SLOG(this, 1) << __func__ << ": " << ConnectFailureToString(failure);
   NoteFailureEvent();
   // Note that order matters here, since SetState modifies |failure_| and
   // |failed_time_|.

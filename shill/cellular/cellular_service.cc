@@ -120,7 +120,8 @@ CellularService::~CellularService() {
 }
 
 void CellularService::SetDevice(Cellular* device) {
-  SLOG(this, 1) << __func__ << ": " << (device ? device->iccid() : "None");
+  SLOG(this, 1) << __func__ << ": " << log_name()
+                << " Device ICCID: " << (device ? device->iccid() : "None");
   cellular_ = device;
   Error ignored_error;
   adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
