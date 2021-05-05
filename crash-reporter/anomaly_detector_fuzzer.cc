@@ -26,6 +26,8 @@ class Environment {
   }
 };
 
+const size_t kArbitraryMaxSize = 16384;
+
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -52,8 +54,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   while (stream.remaining_bytes() > 1) {
     const std::string tag = stream.PickValueInArray<std::string>(journalTags);
-    const std::string message =
-        stream.ConsumeRandomLengthString(stream.remaining_bytes());
+    size_t size = stream.remaining_bytes();
+    if (size > kArbitraryMaxSize) {
+      size = kArbitraryMaxSize;
+    }
+    const std::string message = stream.ConsumeRandomLengthString(size);
     parsers[tag]->ParseLogEntry(message);
     parsers[tag]->PeriodicUpdate();
   }
