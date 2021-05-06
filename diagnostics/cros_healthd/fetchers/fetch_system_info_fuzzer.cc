@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/system/sys_info.h>
+#include <base/test/scoped_chromeos_version_info.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -52,7 +52,7 @@ void SetUpSystemFiles(const base::FilePath& root_dir,
       relative_dmi_info_path.Append(kChassisTypeFileName),
       provider->ConsumeRandomLengthString()));
   // Populate the fake lsb-release file.
-  base::SysInfo::SetChromeOSVersionInfoForTest(
+  base::test::ScopedChromeOSVersionInfo version(
       provider->ConsumeRandomLengthString(), base::Time::Now());
 }
 

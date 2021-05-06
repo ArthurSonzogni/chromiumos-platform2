@@ -9,7 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/optional.h>
-#include <base/system/sys_info.h>
+#include <base/test/scoped_chromeos_version_info.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
@@ -120,8 +120,8 @@ class SystemUtilsTest : public ::testing::Test {
         "\nCHROMEOS_RELEASE_BUILD_NUMBER=" + kFakeBuildNumber +
         "\nCHROMEOS_RELEASE_PATCH_NUMBER=" + kFakePatchNumber +
         "\nCHROMEOS_RELEASE_TRACK=" + kFakeReleaseChannel;
-    base::SysInfo::SetChromeOSVersionInfoForTest(lsb_release,
-                                                 base::Time::Now());
+    base::test::ScopedChromeOSVersionInfo version(lsb_release,
+                                                  base::Time::Now());
   }
 
   void ValidateCachedVpdInfo(
@@ -480,7 +480,7 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
 // Tests that an error is returned if there is no OS version information
 // populated in lsb-release.
 TEST_F(SystemUtilsTest, TestNoOsVersion) {
-  base::SysInfo::SetChromeOSVersionInfoForTest("", base::Time::Now());
+  base::test::ScopedChromeOSVersionInfo version("", base::Time::Now());
 
   auto system_result = FetchSystemInfo(GetTempDirPath());
   ASSERT_TRUE(system_result->is_error());
@@ -495,7 +495,7 @@ TEST_F(SystemUtilsTest, TestBadOsVersion) {
       "\nCHROMEOS_RELEASE_BUILD_NUMBER=" + kFakeBuildNumber +
       "\nCHROMEOS_RELEASE_PATCH_NUMBER=" + kFakePatchNumber +
       "\nCHROMEOS_RELEASE_TRACK=" + kFakeReleaseChannel;
-  base::SysInfo::SetChromeOSVersionInfoForTest(lsb_release, base::Time::Now());
+  base::test::ScopedChromeOSVersionInfo version(lsb_release, base::Time::Now());
 
   auto system_result = FetchSystemInfo(GetTempDirPath());
   ASSERT_TRUE(system_result->is_error());
