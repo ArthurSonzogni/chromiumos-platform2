@@ -3439,7 +3439,13 @@ void WiFi::OnNeighborReachabilityEvent(
                                                 ip_address.family(), role);
   }
 
-  if (selected_service() && selected_service()->link_monitor_disabled()) {
+  if (!selected_service()) {
+    LOG(INFO)
+        << "Device " << link_name()
+        << ": Ignored neighbor reachability event due to no selected service";
+    return;
+  }
+  if (selected_service()->link_monitor_disabled()) {
     SLOG(this, 2) << "Device " << link_name()
                   << ": Link Monitoring is disabled for the selected service";
     return;
@@ -3458,26 +3464,29 @@ void WiFi::OnNeighborReachabilityEvent(
         ip_address.ToString() == ipconfig()->properties().gateway) &&
       !(ip6config() &&
         ip_address.ToString() == ip6config()->properties().gateway)) {
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": Gateway address does not match. Skipped.";
+    LOG(INFO) << "Device " << link_name()
+              << ": Ignored neighbor reachability event since gateway address "
+                 "does not match.";
     return;
   }
 
-  if (event_type == EventSignal::REACHABLE) {
-    switch (ip_address.family()) {
-      case IPAddress::kFamilyIPv4:
+  switch (event_type) {
+    case EventSignal::REACHABLE:
+      if (ip_address.family() == IPAddress::kFamilyIPv4) {
         ipv4_gateway_found_ = true;
-        break;
-      case IPAddress::kFamilyIPv6:
+      } else if (ip_address.family() == IPAddress::kFamilyIPv6) {
         ipv6_gateway_found_ = true;
-        break;
-      default:
+      } else {
         NOTREACHED();
-    }
-    return;
+      }
+      return;
+    case EventSignal::FAILED:
+      OnLinkMonitorFailure(ip_address.family());
+      return;
+    default:
+      // Already filtered in DeviceInfo::OnPatchpanelClientReady().
+      NOTREACHED();
   }
-
-  OnLinkMonitorFailure(ip_address.family());
 }
 
 }  // namespace shill

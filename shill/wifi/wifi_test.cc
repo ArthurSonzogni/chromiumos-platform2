@@ -23,6 +23,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
@@ -665,6 +666,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void PropertiesChanged(const KeyValueStore& props) {
     wifi_->PropertiesChanged(props);
+  }
+
+  void SelectService(const WiFiServiceRefPtr& service) {
+    wifi_->SelectService(service);
   }
 
  protected:
@@ -3031,6 +3036,13 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   // Sets up Service.
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   SetCurrentService(service);
+  // Can be used to clear link status (last failure time, etc.), so that the
+  // following tests will not be affected by service->unreliable().
+  auto reset_service = [&]() {
+    SelectService(nullptr);
+    SelectService(service);
+  };
+  reset_service();
 
   // We haven't heard the gateway is reachable, so we assume the problem is
   // gateway, rather than link.
@@ -3047,10 +3059,12 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
                               EventSignal::REACHABLE);
 
   // Nothing should happen if the event is not for the current connection.
+  reset_service();
   OnNeighborReachabilityEvent(kAnotherIPAddress, EventSignal::GATEWAY,
                               EventSignal::FAILED);
 
   // No supplicant, so we can't Reattach.
+  reset_service();
   OnSupplicantVanish();
   EXPECT_CALL(log,
               Log(logging::LOGGING_ERROR, _, EndsWith("Cannot reassociate.")))
@@ -3061,6 +3075,7 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Normal case: call Reattach.
+  reset_service();
   OnSupplicantAppear();
   EXPECT_CALL(log,
               Log(logging::LOGGING_INFO, _, EndsWith("Called Reattach().")))
@@ -3072,6 +3087,7 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Service is unreliable, skip reassociate attempt.
+  reset_service();
   service->set_unreliable(true);
   EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
                        EndsWith("skipping reassociate attempt.")))
