@@ -22,17 +22,11 @@
 #include "shill/tethering.h"
 #include "shill/wifi/wifi.h"
 
-using base::StringPrintf;
-using std::map;
-using std::set;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(const WiFiEndpoint* w) {
+static std::string ObjectID(const WiFiEndpoint* w) {
   return "(wifi_endpoint)";
 }
 }  // namespace Logging
@@ -46,17 +40,19 @@ void PackSecurity(const WiFiEndpoint::SecurityFlags& flags,
   if (flags.rsn_sae)
     rsn.push_back(WPASupplicant::kKeyManagementMethodSAE);
   if (flags.rsn_8021x) {
-    rsn.push_back(string("wpa2") +
+    rsn.push_back(std::string("wpa2") +
                   WPASupplicant::kKeyManagementMethodSuffixEAP);
   }
   if (flags.rsn_psk) {
-    rsn.push_back(string("wpa2") +
+    rsn.push_back(std::string("wpa2") +
                   WPASupplicant::kKeyManagementMethodSuffixPSK);
   }
   if (flags.wpa_8021x)
-    wpa.push_back(string("wpa") + WPASupplicant::kKeyManagementMethodSuffixEAP);
+    wpa.push_back(std::string("wpa") +
+                  WPASupplicant::kKeyManagementMethodSuffixEAP);
   if (flags.wpa_psk)
-    wpa.push_back(string("wpa") + WPASupplicant::kKeyManagementMethodSuffixPSK);
+    wpa.push_back(std::string("wpa") +
+                  WPASupplicant::kKeyManagementMethodSuffixPSK);
 
   if (flags.privacy)
     args->Set<bool>(WPASupplicant::kPropertyPrivacy, true);
@@ -82,8 +78,10 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                            const RpcIdentifier& rpc_id,
                            const KeyValueStore& properties,
                            Metrics* metrics)
-    : ssid_(properties.Get<vector<uint8_t>>(WPASupplicant::kBSSPropertySSID)),
-      bssid_(properties.Get<vector<uint8_t>>(WPASupplicant::kBSSPropertyBSSID)),
+    : ssid_(properties.Get<std::vector<uint8_t>>(
+          WPASupplicant::kBSSPropertySSID)),
+      bssid_(properties.Get<std::vector<uint8_t>>(
+          WPASupplicant::kBSSPropertyBSSID)),
       ssid_hex_(base::HexEncode(ssid_.data(), ssid_.size())),
       bssid_string_(Device::MakeStringFromHardwareAddress(bssid_)),
       bssid_hex_(base::HexEncode(bssid_.data(), bssid_.size())),
@@ -113,14 +111,14 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   physical_mode_ = phy_mode;
 
   network_mode_ =
-      ParseMode(properties.Get<string>(WPASupplicant::kBSSPropertyMode));
+      ParseMode(properties.Get<std::string>(WPASupplicant::kBSSPropertyMode));
   security_mode_ = ParseSecurity(properties, &security_flags_);
   has_rsn_property_ =
       properties.Contains<KeyValueStore>(WPASupplicant::kPropertyRSN);
   has_wpa_property_ =
       properties.Contains<KeyValueStore>(WPASupplicant::kPropertyWPA);
 
-  ssid_string_ = string(ssid_.begin(), ssid_.end());
+  ssid_string_ = std::string(ssid_.begin(), ssid_.end());
   WiFi::SanitizeSSID(&ssid_string_);
 
   CheckForTetheringSignature();
@@ -149,9 +147,9 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     should_notify = true;
   }
 
-  if (properties.Contains<string>(WPASupplicant::kBSSPropertyMode)) {
-    string new_mode =
-        ParseMode(properties.Get<string>(WPASupplicant::kBSSPropertyMode));
+  if (properties.Contains<std::string>(WPASupplicant::kBSSPropertyMode)) {
+    auto new_mode =
+        ParseMode(properties.Get<std::string>(WPASupplicant::kBSSPropertyMode));
     if (!new_mode.empty() && new_mode != network_mode_) {
       network_mode_ = new_mode;
       SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
@@ -200,8 +198,8 @@ void WiFiEndpoint::UpdateSignalStrength(int16_t strength) {
   device_->NotifyEndpointChanged(this);
 }
 
-map<string, string> WiFiEndpoint::GetVendorInformation() const {
-  map<string, string> vendor_information;
+std::map<std::string, std::string> WiFiEndpoint::GetVendorInformation() const {
+  std::map<std::string, std::string> vendor_information;
   if (!vendor_information_.wps_manufacturer.empty()) {
     vendor_information[kVendorWPSManufacturerProperty] =
         vendor_information_.wps_manufacturer;
@@ -219,10 +217,10 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
         vendor_information_.wps_device_name;
   }
   if (!vendor_information_.oui_set.empty()) {
-    vector<string> oui_vector;
+    std::vector<std::string> oui_vector;
     for (auto oui : vendor_information_.oui_set) {
-      oui_vector.push_back(StringPrintf("%02x-%02x-%02x", oui >> 16,
-                                        (oui >> 8) & 0xff, oui & 0xff));
+      oui_vector.push_back(base::StringPrintf("%02x-%02x-%02x", oui >> 16,
+                                              (oui >> 8) & 0xff, oui & 0xff));
     }
     vendor_information[kVendorOUIListProperty] =
         base::JoinString(oui_vector, " ");
@@ -231,7 +229,7 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
 }
 
 // static
-uint32_t WiFiEndpoint::ModeStringToUint(const string& mode_string) {
+uint32_t WiFiEndpoint::ModeStringToUint(const std::string& mode_string) {
   if (mode_string == kModeManaged)
     return WPASupplicant::kNetworkModeInfrastructureInt;
   else
@@ -240,27 +238,27 @@ uint32_t WiFiEndpoint::ModeStringToUint(const string& mode_string) {
   return 0;
 }
 
-const vector<uint8_t>& WiFiEndpoint::ssid() const {
+const std::vector<uint8_t>& WiFiEndpoint::ssid() const {
   return ssid_;
 }
 
-const string& WiFiEndpoint::ssid_string() const {
+const std::string& WiFiEndpoint::ssid_string() const {
   return ssid_string_;
 }
 
-const string& WiFiEndpoint::ssid_hex() const {
+const std::string& WiFiEndpoint::ssid_hex() const {
   return ssid_hex_;
 }
 
-const string& WiFiEndpoint::bssid_string() const {
+const std::string& WiFiEndpoint::bssid_string() const {
   return bssid_string_;
 }
 
-const string& WiFiEndpoint::bssid_hex() const {
+const std::string& WiFiEndpoint::bssid_hex() const {
   return bssid_hex_;
 }
 
-const string& WiFiEndpoint::country_code() const {
+const std::string& WiFiEndpoint::country_code() const {
   return country_code_;
 }
 
@@ -284,11 +282,11 @@ uint16_t WiFiEndpoint::physical_mode() const {
   return physical_mode_;
 }
 
-const string& WiFiEndpoint::network_mode() const {
+const std::string& WiFiEndpoint::network_mode() const {
   return network_mode_;
 }
 
-const string& WiFiEndpoint::security_mode() const {
+const std::string& WiFiEndpoint::security_mode() const {
   return security_mode_;
 }
 
@@ -321,9 +319,9 @@ const WiFiEndpoint::HS20Information& WiFiEndpoint::hs20_information() const {
 WiFiEndpointRefPtr WiFiEndpoint::MakeOpenEndpoint(
     ControlInterface* control_interface,
     const WiFiRefPtr& wifi,
-    const string& ssid,
-    const string& bssid,
-    const string& network_mode,
+    const std::string& ssid,
+    const std::string& bssid,
+    const std::string& network_mode,
     uint16_t frequency,
     int16_t signal_dbm) {
   return MakeEndpoint(control_interface, wifi, ssid, bssid, network_mode,
@@ -334,23 +332,24 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeOpenEndpoint(
 WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
     ControlInterface* control_interface,
     const WiFiRefPtr& wifi,
-    const string& ssid,
-    const string& bssid,
-    const string& network_mode,
+    const std::string& ssid,
+    const std::string& bssid,
+    const std::string& network_mode,
     uint16_t frequency,
     int16_t signal_dbm,
     const SecurityFlags& security_flags) {
   KeyValueStore args;
 
-  args.Set<vector<uint8_t>>(WPASupplicant::kBSSPropertySSID,
-                            vector<uint8_t>(ssid.begin(), ssid.end()));
+  args.Set<std::vector<uint8_t>>(
+      WPASupplicant::kBSSPropertySSID,
+      std::vector<uint8_t>(ssid.begin(), ssid.end()));
 
-  vector<uint8_t> bssid_bytes = Device::MakeHardwareAddressFromString(bssid);
-  args.Set<vector<uint8_t>>(WPASupplicant::kBSSPropertyBSSID, bssid_bytes);
+  auto bssid_bytes = Device::MakeHardwareAddressFromString(bssid);
+  args.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyBSSID, bssid_bytes);
 
   args.Set<int16_t>(WPASupplicant::kBSSPropertySignal, signal_dbm);
   args.Set<uint16_t>(WPASupplicant::kBSSPropertyFrequency, frequency);
-  args.Set<string>(WPASupplicant::kBSSPropertyMode, network_mode);
+  args.Set<std::string>(WPASupplicant::kBSSPropertyMode, network_mode);
 
   PackSecurity(security_flags, &args);
 
@@ -362,7 +361,7 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
 }
 
 // static
-string WiFiEndpoint::ParseMode(const string& mode_string) {
+std::string WiFiEndpoint::ParseMode(const std::string& mode_string) {
   if (mode_string == WPASupplicant::kNetworkModeInfrastructure) {
     return kModeManaged;
   } else if (mode_string == WPASupplicant::kNetworkModeAdHoc ||
@@ -383,7 +382,7 @@ const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
   if (properties.Contains<KeyValueStore>(WPASupplicant::kPropertyRSN)) {
     KeyValueStore rsn_properties =
         properties.Get<KeyValueStore>(WPASupplicant::kPropertyRSN);
-    set<KeyManagement> key_management;
+    std::set<KeyManagement> key_management;
     ParseKeyManagementMethods(rsn_properties, &key_management);
     flags->rsn_8021x = base::Contains(key_management, kKeyManagement802_1x);
     flags->rsn_psk = base::Contains(key_management, kKeyManagementPSK);
@@ -393,7 +392,7 @@ const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
   if (properties.Contains<KeyValueStore>(WPASupplicant::kPropertyWPA)) {
     KeyValueStore rsn_properties =
         properties.Get<KeyValueStore>(WPASupplicant::kPropertyWPA);
-    set<KeyManagement> key_management;
+    std::set<KeyManagement> key_management;
     ParseKeyManagementMethods(rsn_properties, &key_management);
     flags->wpa_8021x = base::Contains(key_management, kKeyManagement802_1x);
     flags->wpa_psk = base::Contains(key_management, kKeyManagementPSK);
@@ -421,13 +420,13 @@ const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
 // static
 void WiFiEndpoint::ParseKeyManagementMethods(
     const KeyValueStore& security_method_properties,
-    set<KeyManagement>* key_management_methods) {
+    std::set<KeyManagement>* key_management_methods) {
   if (!security_method_properties.Contains<Strings>(
           WPASupplicant::kSecurityMethodPropertyKeyManagement)) {
     return;
   }
 
-  const vector<string> key_management_vec =
+  const std::vector<std::string> key_management_vec =
       security_method_properties.Get<Strings>(
           WPASupplicant::kSecurityMethodPropertyKeyManagement);
 
@@ -450,9 +449,10 @@ void WiFiEndpoint::ParseKeyManagementMethods(
 Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
     const KeyValueStore& properties, uint16_t frequency) {
   uint32_t max_rate = 0;
-  if (properties.Contains<vector<uint32_t>>(WPASupplicant::kBSSPropertyRates)) {
-    vector<uint32_t> rates =
-        properties.Get<vector<uint32_t>>(WPASupplicant::kBSSPropertyRates);
+  if (properties.Contains<std::vector<uint32_t>>(
+          WPASupplicant::kBSSPropertyRates)) {
+    auto rates =
+        properties.Get<std::vector<uint32_t>>(WPASupplicant::kBSSPropertyRates);
     if (!rates.empty()) {
       max_rate = rates[0];  // Rates are sorted in descending order
     }
@@ -477,15 +477,16 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
 bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
                             Metrics::WiFiNetworkPhyMode* phy_mode,
                             VendorInformation* vendor_information,
-                            string* country_code,
+                            std::string* country_code,
                             Ap80211krvSupport* krv_support,
                             HS20Information* hs20_information) {
-  if (!properties.Contains<vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs)) {
+  if (!properties.Contains<std::vector<uint8_t>>(
+          WPASupplicant::kBSSPropertyIEs)) {
     SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
     return false;
   }
-  vector<uint8_t> ies =
-      properties.Get<vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs);
+  auto ies =
+      properties.Get<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs);
 
   // Format of an information element not of type 255:
   //    1       1          1 - 252
@@ -509,7 +510,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
   bool found_mde = false;
   bool found_ft_cipher = false;
   int ie_len = 0;
-  vector<uint8_t>::iterator it;
+  std::vector<uint8_t>::iterator it;
   for (it = ies.begin();
        std::distance(it, ies.end()) > 1;  // Ensure Length field is within PDU.
        it += ie_len) {
@@ -527,7 +528,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
       case IEEE_80211::kElemIdCountry:
         // Retrieve 2-character country code from the beginning of the element.
         if (ie_len >= 4) {
-          string country(it + 2, it + 4);
+          std::string country(it + 2, it + 4);
           // ISO 3166 alpha-2 codes must be ASCII. There are probably other
           // restrictions we should honor too, but this is at least a minimum
           // coherence check.
@@ -615,8 +616,8 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
 
 // static
 void WiFiEndpoint::ParseMobilityDomainElement(
-    vector<uint8_t>::const_iterator ie,
-    vector<uint8_t>::const_iterator end,
+    std::vector<uint8_t>::const_iterator ie,
+    std::vector<uint8_t>::const_iterator end,
     Ap80211krvSupport* krv_support) {
   // Format of a Mobility Domain Element:
   //    2                1
@@ -635,8 +636,8 @@ void WiFiEndpoint::ParseMobilityDomainElement(
 
 // static
 void WiFiEndpoint::ParseExtendedCapabilities(
-    vector<uint8_t>::const_iterator ie,
-    vector<uint8_t>::const_iterator end,
+    std::vector<uint8_t>::const_iterator ie,
+    std::vector<uint8_t>::const_iterator end,
     Ap80211krvSupport* krv_support) {
   // Format of an Extended Capabilities Element:
   //        n
@@ -658,9 +659,10 @@ void WiFiEndpoint::ParseExtendedCapabilities(
 }
 
 // static
-void WiFiEndpoint::ParseWPACapabilities(vector<uint8_t>::const_iterator ie,
-                                        vector<uint8_t>::const_iterator end,
-                                        bool* found_ft_cipher) {
+void WiFiEndpoint::ParseWPACapabilities(
+    std::vector<uint8_t>::const_iterator ie,
+    std::vector<uint8_t>::const_iterator end,
+    bool* found_ft_cipher) {
   // Format of an RSN Information Element:
   //    2             4
   // +------+--------------------+
@@ -710,7 +712,7 @@ void WiFiEndpoint::ParseWPACapabilities(vector<uint8_t>::const_iterator ie,
         found_ft_cipher) {
       // Find the AuthKey Suite List and check for matches to Fast Transition
       // ciphers.
-      vector<uint32_t> akm_suite_list(cipher_count, 0);
+      std::vector<uint32_t> akm_suite_list(cipher_count, 0);
       std::memcpy(&akm_suite_list[0], &*(ie + IEEE_80211::kRSNIECipherCountLen),
                   cipher_count * IEEE_80211::kRSNIESelectorLen);
       for (uint16_t i = 0; i < cipher_count; i++) {
@@ -730,8 +732,8 @@ void WiFiEndpoint::ParseWPACapabilities(vector<uint8_t>::const_iterator ie,
 }
 
 // static
-void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
-                                 vector<uint8_t>::const_iterator end,
+void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
+                                 std::vector<uint8_t>::const_iterator end,
                                  VendorInformation* vendor_information,
                                  HS20Information* hs20_information) {
   // Format of an vendor-specific information element (with type
@@ -763,7 +765,7 @@ void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
         LOG(ERROR) << __func__ << ": WPS element extends past containing PDU.";
         break;
       }
-      string s(ie, ie + element_length);
+      std::string s(ie, ie + element_length);
       if (base::IsStringASCII(s)) {
         switch (element_type) {
           case IEEE_80211::kWPSElementManufacturer:

@@ -9,11 +9,9 @@
 
 namespace shill {
 
-using std::string;
-
 MockWiFi::MockWiFi(Manager* manager,
-                   const string& link_name,
-                   const string& address,
+                   const std::string& link_name,
+                   const std::string& address,
                    int interface_index,
                    WakeOnWiFiInterface* wake_on_wifi)
     : WiFi(manager,

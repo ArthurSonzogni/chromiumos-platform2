@@ -59,17 +59,11 @@
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
 
-using base::Bind;
-using base::StringPrintf;
-using std::map;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(const WiFi* w) {
+static std::string ObjectID(const WiFi* w) {
   return w->GetRpcIdentifier().value();
 }
 }  // namespace Logging
@@ -128,8 +122,8 @@ bool IsPrintableAsciiChar(char c) {
 }  // namespace
 
 WiFi::WiFi(Manager* manager,
-           const string& link,
-           const string& address,
+           const std::string& link,
+           const std::string& address,
            int interface_index,
            std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi)
     : Device(manager, link, address, interface_index, Technology::kWifi),
@@ -173,12 +167,13 @@ WiFi::WiFi(Manager* manager,
   scoped_supplicant_listener_.reset(
       new SupplicantManager::ScopedSupplicantListener(
           manager->supplicant_manager(),
-          Bind(&WiFi::OnSupplicantPresence, weak_ptr_factory_.GetWeakPtr())));
+          base::Bind(&WiFi::OnSupplicantPresence,
+                     weak_ptr_factory_.GetWeakPtr())));
 
   PropertyStore* store = this->mutable_store();
   store->RegisterDerivedString(
       kBgscanMethodProperty,
-      StringAccessor(new CustomAccessor<WiFi, string>(
+      StringAccessor(new CustomAccessor<WiFi, std::string>(
           this, &WiFi::GetBgscanMethod, &WiFi::SetBgscanMethod,
           &WiFi::ClearBgscanMethod)));
   HelpRegisterDerivedUint16(store, kBgscanShortIntervalProperty,
@@ -213,11 +208,11 @@ WiFi::WiFi(Manager* manager,
     wake_on_wifi_->InitPropertyStore(store);
   }
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
-      ScopeLogger::kWiFi,
-      Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
+      ScopeLogger::kWiFi, base::Bind(&WiFi::OnWiFiDebugScopeChanged,
+                                     weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
   netlink_handler_ =
-      Bind(&WiFi::HandleNetlinkBroadcast, weak_ptr_factory_.GetWeakPtr());
+      base::Bind(&WiFi::HandleNetlinkBroadcast, weak_ptr_factory_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
   SLOG(this, 2) << "WiFi device " << link_name() << " initialized.";
 }
@@ -297,7 +292,7 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 }
 
-void WiFi::Scan(Error* /*error*/, const string& reason) {
+void WiFi::Scan(Error* /*error*/, const std::string& reason) {
   if ((scan_state_ != kScanIdle) ||
       (current_service_.get() && current_service_->IsConnecting())) {
     SLOG(this, 2) << "Ignoring scan request while scanning or connecting.";
@@ -308,8 +303,8 @@ void WiFi::Scan(Error* /*error*/, const string& reason) {
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
   dispatcher()->PostTask(
-      FROM_HERE,
-      Bind(&WiFi::ScanTask, weak_ptr_factory_while_started_.GetWeakPtr()));
+      FROM_HERE, base::Bind(&WiFi::ScanTask,
+                            weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 void WiFi::AddPendingScanResult(const RpcIdentifier& path,
@@ -323,8 +318,8 @@ void WiFi::AddPendingScanResult(const RpcIdentifier& path,
 
   if (!pending_scan_results_) {
     pending_scan_results_.reset(new PendingScanResults(
-        Bind(&WiFi::PendingScanResultsHandler,
-             weak_ptr_factory_while_started_.GetWeakPtr())));
+        base::Bind(&WiFi::PendingScanResultsHandler,
+                   weak_ptr_factory_while_started_.GetWeakPtr())));
     dispatcher()->PostTask(FROM_HERE,
                            pending_scan_results_->callback.callback());
   }
@@ -347,24 +342,24 @@ void WiFi::BSSRemoved(const RpcIdentifier& path) {
 void WiFi::Certification(const KeyValueStore& properties) {
   dispatcher()->PostTask(
       FROM_HERE,
-      Bind(&WiFi::CertificationTask,
-           weak_ptr_factory_while_started_.GetWeakPtr(), properties));
+      base::Bind(&WiFi::CertificationTask,
+                 weak_ptr_factory_while_started_.GetWeakPtr(), properties));
 }
 
-void WiFi::EAPEvent(const string& status, const string& parameter) {
+void WiFi::EAPEvent(const std::string& status, const std::string& parameter) {
   dispatcher()->PostTask(
-      FROM_HERE,
-      Bind(&WiFi::EAPEventTask, weak_ptr_factory_while_started_.GetWeakPtr(),
-           status, parameter));
+      FROM_HERE, base::Bind(&WiFi::EAPEventTask,
+                            weak_ptr_factory_while_started_.GetWeakPtr(),
+                            status, parameter));
 }
 
 void WiFi::PropertiesChanged(const KeyValueStore& properties) {
   SLOG(this, 2) << __func__;
   // Called from D-Bus signal handler, but may need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(FROM_HERE,
-                         Bind(&WiFi::PropertiesChangedTask,
-                              weak_ptr_factory_.GetWeakPtr(), properties));
+  dispatcher()->PostTask(
+      FROM_HERE, base::Bind(&WiFi::PropertiesChangedTask,
+                            weak_ptr_factory_.GetWeakPtr(), properties));
 }
 
 void WiFi::ScanDone(const bool& success) {
@@ -387,11 +382,11 @@ void WiFi::ScanDone(const bool& success) {
   }
   if (success) {
     scan_failed_callback_.Cancel();
-    dispatcher()->PostTask(FROM_HERE,
-                           Bind(&WiFi::ScanDoneTask,
-                                weak_ptr_factory_while_started_.GetWeakPtr()));
+    dispatcher()->PostTask(
+        FROM_HERE, base::Bind(&WiFi::ScanDoneTask,
+                              weak_ptr_factory_while_started_.GetWeakPtr()));
   } else {
-    scan_failed_callback_.Reset(Bind(
+    scan_failed_callback_.Reset(base::Bind(
         &WiFi::ScanFailedTask, weak_ptr_factory_while_started_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE, scan_failed_callback_.callback(),
                                   kPostScanFailedDelayMilliseconds);
@@ -418,8 +413,9 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   if (pending_service_ && pending_service_ == service) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInProgress,
-        StringPrintf("%s: ignoring ConnectTo %s, which is already pending",
-                     link_name().c_str(), service->log_name().c_str()));
+        base::StringPrintf(
+            "%s: ignoring ConnectTo %s, which is already pending",
+            link_name().c_str(), service->log_name().c_str()));
     return;
   }
 
@@ -449,7 +445,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
     service_params.Set<uint32_t>(WPASupplicant::kNetworkPropertyScanSSID,
                                  scan_ssid);
-    string bgscan_string = AppendBgscan(service, &service_params);
+    std::string bgscan_string = AppendBgscan(service, &service_params);
     service_params.Set<uint32_t>(WPASupplicant::kNetworkPropertyDisableVHT,
                                  provider_->disable_vht());
     if (!supplicant_interface_proxy_->AddNetwork(service_params,
@@ -618,9 +614,9 @@ void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint) {
   provider_->OnEndpointUpdated(endpoint);
 }
 
-string WiFi::AppendBgscan(WiFiService* service,
-                          KeyValueStore* service_params) const {
-  string method = bgscan_method_;
+std::string WiFi::AppendBgscan(WiFiService* service,
+                               KeyValueStore* service_params) const {
+  std::string method = bgscan_method_;
   int short_interval = bgscan_short_interval_seconds_;
   int signal_threshold = bgscan_signal_threshold_dbm_;
   int scan_interval = kBackgroundScanIntervalSeconds;
@@ -641,21 +637,22 @@ string WiFi::AppendBgscan(WiFiService* service,
     // configured background scan interval.
     scan_interval = scan_interval_seconds_;
   }
-  string config_string;
+  std::string config_string;
   if (method != WPASupplicant::kNetworkBgscanMethodNone) {
-    config_string = StringPrintf("%s:%d:%d:%d", method.c_str(), short_interval,
-                                 signal_threshold, scan_interval);
+    config_string =
+        base::StringPrintf("%s:%d:%d:%d", method.c_str(), short_interval,
+                           signal_threshold, scan_interval);
   }
   SLOG(nullptr, 3) << "Background scan: '" << config_string << "'";
-  service_params->Set<string>(WPASupplicant::kNetworkPropertyBgscan,
-                              config_string);
+  service_params->Set<std::string>(WPASupplicant::kNetworkPropertyBgscan,
+                                   config_string);
   return config_string;
 }
 
 bool WiFi::ReconfigureBgscan(WiFiService* service) {
   SLOG(this, 3) << __func__ << " for " << service->log_name();
   KeyValueStore bgscan_params;
-  string bgscan_string = AppendBgscan(service, &bgscan_params);
+  std::string bgscan_string = AppendBgscan(service, &bgscan_params);
   if (service->bgscan_string() == bgscan_string) {
     SLOG(this, 3) << "No change in bgscan parameters.";
     return false;
@@ -689,16 +686,16 @@ bool WiFi::ReconfigureBgscanForRelevantServices() {
   return ret;
 }
 
-string WiFi::GetBgscanMethod(Error* /* error */) {
+std::string WiFi::GetBgscanMethod(Error* /* error */) {
   return bgscan_method_.empty() ? kDefaultBgscanMethod : bgscan_method_;
 }
 
-bool WiFi::SetBgscanMethod(const string& method, Error* error) {
+bool WiFi::SetBgscanMethod(const std::string& method, Error* error) {
   if (method != WPASupplicant::kNetworkBgscanMethodSimple &&
       method != WPASupplicant::kNetworkBgscanMethodLearn &&
       method != WPASupplicant::kNetworkBgscanMethodNone) {
-    const string error_message =
-        StringPrintf("Unrecognized bgscan method %s", method.c_str());
+    const auto error_message =
+        base::StringPrintf("Unrecognized bgscan method %s", method.c_str());
     LOG(WARNING) << error_message;
     error->Populate(Error::kInvalidArguments, error_message);
     return false;
@@ -895,7 +892,7 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
 
   std::string update;
   if (supplicant_disconnect_reason_ != IEEE_80211::kReasonCodeInvalid) {
-    update = StringPrintf(" from %d", supplicant_disconnect_reason_);
+    update = base::StringPrintf(" from %d", supplicant_disconnect_reason_);
   }
 
   std::string new_disconnect_description = "Success";
@@ -903,7 +900,7 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
     new_disconnect_description = IEEE_80211::ReasonToString(new_reason);
   }
 
-  LOG(INFO) << StringPrintf(
+  LOG(INFO) << base::StringPrintf(
       "WiFi %s supplicant updated DisconnectReason%s to %d (%s)",
       link_name().c_str(), update.c_str(), new_reason,
       new_disconnect_description.c_str());
@@ -915,7 +912,7 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
   metrics()->Notify80211Disconnect(by_whom, new_reason);
 }
 
-void WiFi::CurrentAuthModeChanged(const string& auth_mode) {
+void WiFi::CurrentAuthModeChanged(const std::string& auth_mode) {
   if (auth_mode != WPASupplicant::kAuthModeInactive &&
       auth_mode != WPASupplicant::kAuthModeUnknown) {
     supplicant_auth_mode_ = auth_mode;
@@ -1199,8 +1196,9 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss) {
     LOG(WARNING) << "WiFi " << link_name() << " new current Endpoint "
                  << endpoint->bssid_string()
                  << (current_service_.get()
-                         ? StringPrintf(" is not part of current service %s",
-                                        current_service_->log_name().c_str())
+                         ? base::StringPrintf(
+                               " is not part of current service %s",
+                               current_service_->log_name().c_str())
                          : " with no current service");
     // We didn't expect to be here, but let's cope as well as we
     // can. Update |current_service_| to keep it in sync with
@@ -1229,7 +1227,7 @@ RpcIdentifier WiFi::FindNetworkRpcidForService(const WiFiService* service,
                                                Error* error) {
   ReverseServiceMap::const_iterator rpcid_it = rpcid_by_service_.find(service);
   if (rpcid_it == rpcid_by_service_.end()) {
-    const string error_message = StringPrintf(
+    const auto error_message = base::StringPrintf(
         "WiFi %s cannot find supplicant network rpcid for service %s",
         link_name().c_str(), service->log_name().c_str());
     // There are contexts where this is not an error, such as when a service
@@ -1252,7 +1250,7 @@ bool WiFi::DisableNetworkForService(const WiFiService* service, Error* error) {
   }
 
   if (!DisableNetwork(rpcid)) {
-    const string error_message = StringPrintf(
+    const auto error_message = base::StringPrintf(
         "WiFi %s cannot disable network for service %s: "
         "DBus operation failed for rpcid %s.",
         link_name().c_str(), service->log_name().c_str(),
@@ -1285,7 +1283,7 @@ bool WiFi::RemoveNetworkForService(const WiFiService* service, Error* error) {
   // TODO(quiche): Reconsider giving up immediately. Maybe give
   // wpa_supplicant some time to retry, first.
   if (!RemoveNetwork(rpcid)) {
-    const string error_message = StringPrintf(
+    const auto error_message = base::StringPrintf(
         "WiFi %s cannot remove network for service %s: "
         "DBus operation failed for rpcid %s.",
         link_name().c_str(), service->log_name().c_str(),
@@ -1493,7 +1491,7 @@ void WiFi::HandleCountryChange(std::string country_code) {
     LOG(ERROR) << "Unsupported NL80211_ATTR_REG_ALPHA2 attribute: "
                << country_code;
   } else {
-    SLOG(this, 3) << StringPrintf(
+    SLOG(this, 3) << base::StringPrintf(
         "Regulatory domain change message received with alpha2 %s (metric val: "
         "%d)",
         country_code.c_str(), reg_dom_val);
@@ -1607,14 +1605,15 @@ void WiFi::CertificationTask(const KeyValueStore& properties) {
     return;
   }
 
-  string subject;
+  std::string subject;
   uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
     current_service_->AddEAPCertification(subject, depth);
   }
 }
 
-void WiFi::EAPEventTask(const string& status, const string& parameter) {
+void WiFi::EAPEventTask(const std::string& status,
+                        const std::string& parameter) {
   // Events may come immediately after Stop().
   if (!enabled()) {
     return;
@@ -1629,7 +1628,7 @@ void WiFi::EAPEventTask(const string& status, const string& parameter) {
   eap_state_handler_->ParseStatus(status, parameter, &failure);
   if (failure == Service::kFailurePinMissing) {
     // wpa_supplicant can sometimes forget the PIN on disconnect from the AP.
-    const string& pin = current_service_->eap()->pin();
+    const std::string& pin = current_service_->eap()->pin();
     Error unused_error;
     RpcIdentifier rpcid =
         FindNetworkRpcidForService(current_service_.get(), &unused_error);
@@ -1663,18 +1662,19 @@ void WiFi::PropertiesChangedTask(const KeyValueStore& properties) {
         WPASupplicant::kInterfacePropertyCurrentBSS));
   }
 
-  if (properties.Contains<string>(WPASupplicant::kInterfacePropertyState)) {
+  if (properties.Contains<std::string>(
+          WPASupplicant::kInterfacePropertyState)) {
     StateChanged(
-        properties.Get<string>(WPASupplicant::kInterfacePropertyState));
+        properties.Get<std::string>(WPASupplicant::kInterfacePropertyState));
 
     // These properties should only be updated when there is a state change.
-    if (properties.Contains<string>(
+    if (properties.Contains<std::string>(
             WPASupplicant::kInterfacePropertyCurrentAuthMode)) {
-      CurrentAuthModeChanged(properties.Get<string>(
+      CurrentAuthModeChanged(properties.Get<std::string>(
           WPASupplicant::kInterfacePropertyCurrentAuthMode));
     }
 
-    string suffix = GetSuffixFromAuthMode(supplicant_auth_mode_);
+    std::string suffix = GetSuffixFromAuthMode(supplicant_auth_mode_);
     if (!suffix.empty()) {
       if (properties.Contains<int32_t>(
               WPASupplicant::kInterfacePropertyRoamTime)) {
@@ -1734,7 +1734,7 @@ void WiFi::PropertiesChangedTask(const KeyValueStore& properties) {
   }
 }
 
-string WiFi::GetSuffixFromAuthMode(const string& auth_mode) const {
+std::string WiFi::GetSuffixFromAuthMode(const std::string& auth_mode) const {
   if (auth_mode == WPASupplicant::kAuthModeWPAPSK ||
       auth_mode == WPASupplicant::kAuthModeWPA2PSK ||
       auth_mode == WPASupplicant::kAuthModeBothPSK) {
@@ -1761,9 +1761,9 @@ void WiFi::ScanDoneTask() {
   // Post |UpdateScanStateAfterScanDone| so it runs after any pending scan
   // results have been processed.  This allows connections on new BSSes to be
   // started before we decide whether the scan was fruitful.
-  dispatcher()->PostTask(FROM_HERE,
-                         Bind(&WiFi::UpdateScanStateAfterScanDone,
-                              weak_ptr_factory_while_started_.GetWeakPtr()));
+  dispatcher()->PostTask(
+      FROM_HERE, base::Bind(&WiFi::UpdateScanStateAfterScanDone,
+                            weak_ptr_factory_while_started_.GetWeakPtr()));
   if (wake_on_wifi_ && (provider_->NumAutoConnectableServices() < 1) &&
       IsIdle()) {
     // Ensure we are also idle in case we are in the midst of connecting to
@@ -1772,10 +1772,10 @@ void WiFi::ScanDoneTask() {
     // when we query the WiFiProvider this time).
     wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
         provider_->GetSsidsConfiguredForAutoConnect(),
-        Bind(&WiFi::RemoveSupplicantNetworks,
-             weak_ptr_factory_while_started_.GetWeakPtr()),
-        Bind(&WiFi::TriggerPassiveScan,
-             weak_ptr_factory_while_started_.GetWeakPtr()));
+        base::Bind(&WiFi::RemoveSupplicantNetworks,
+                   weak_ptr_factory_while_started_.GetWeakPtr()),
+        base::Bind(&WiFi::TriggerPassiveScan,
+                   weak_ptr_factory_while_started_.GetWeakPtr()));
   }
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_);
@@ -1861,8 +1861,8 @@ void WiFi::ScanTask() {
     return;
   }
   KeyValueStore scan_args;
-  scan_args.Set<string>(WPASupplicant::kPropertyScanType,
-                        WPASupplicant::kScanTypeActive);
+  scan_args.Set<std::string>(WPASupplicant::kPropertyScanType,
+                             WPASupplicant::kScanTypeActive);
 
   ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
 
@@ -1901,7 +1901,7 @@ void WiFi::ScanTask() {
   }
 }
 
-string WiFi::GetServiceLeaseName(const WiFiService& service) {
+std::string WiFi::GetServiceLeaseName(const WiFiService& service) {
   return service.GetStorageIdentifier();
 }
 
@@ -1919,8 +1919,8 @@ void WiFi::DestroyServiceLease(const WiFiService& service) {
   DestroyIPConfigLease(GetServiceLeaseName(service));
 }
 
-void WiFi::StateChanged(const string& new_state) {
-  const string old_state = supplicant_state_;
+void WiFi::StateChanged(const std::string& new_state) {
+  const std::string old_state = supplicant_state_;
   supplicant_state_ = new_state;
   LOG(INFO) << "WiFi " << link_name() << " " << __func__ << " " << old_state
             << " -> " << new_state;
@@ -2068,7 +2068,7 @@ bool WiFi::SuspectCredentials(WiFiServiceRefPtr service,
 }
 
 // static
-bool WiFi::SanitizeSSID(string* ssid) {
+bool WiFi::SanitizeSSID(std::string* ssid) {
   CHECK(ssid);
 
   size_t ssid_len = ssid->length();
@@ -2086,8 +2086,8 @@ bool WiFi::SanitizeSSID(string* ssid) {
 }
 
 // static
-string WiFi::LogSSID(const string& ssid) {
-  string out;
+std::string WiFi::LogSSID(const std::string& ssid) {
+  std::string out;
   for (const auto& chr : ssid) {
     // Replace '[' and ']' (in addition to non-printable characters) so that
     // it's easy to match the right substring through a non-greedy regex.
@@ -2097,7 +2097,7 @@ string WiFi::LogSSID(const string& ssid) {
       out += chr;
     }
   }
-  return StringPrintf("[SSID=%s]", out.c_str());
+  return base::StringPrintf("[SSID=%s]", out.c_str());
 }
 
 void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
@@ -2155,15 +2155,15 @@ void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service) {
   RemoveNetworkForService(service.get(), &unused_error);
 }
 
-vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
-  vector<GeolocationInfo> objects;
+std::vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
+  std::vector<GeolocationInfo> objects;
   for (const auto& endpoint_entry : endpoint_by_rpcid_) {
     GeolocationInfo geoinfo;
     const WiFiEndpointRefPtr& endpoint = endpoint_entry.second;
     geoinfo[kGeoMacAddressProperty] = endpoint->bssid_string();
     geoinfo[kGeoSignalStrengthProperty] =
-        StringPrintf("%d", endpoint->signal_strength());
-    geoinfo[kGeoChannelProperty] = StringPrintf(
+        base::StringPrintf("%d", endpoint->signal_strength());
+    geoinfo[kGeoChannelProperty] = base::StringPrintf(
         "%d", Metrics::WiFiFrequencyToChannel(endpoint->frequency()));
     AddLastSeenTime(&geoinfo, endpoint->last_seen());
     objects.push_back(geoinfo);
@@ -2172,7 +2172,7 @@ vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
 }
 
 void WiFi::HelpRegisterDerivedInt32(PropertyStore* store,
-                                    const string& name,
+                                    const std::string& name,
                                     int32_t (WiFi::*get)(Error* error),
                                     bool (WiFi::*set)(const int32_t& value,
                                                       Error* error)) {
@@ -2181,7 +2181,7 @@ void WiFi::HelpRegisterDerivedInt32(PropertyStore* store,
 }
 
 void WiFi::HelpRegisterDerivedUint16(PropertyStore* store,
-                                     const string& name,
+                                     const std::string& name,
                                      uint16_t (WiFi::*get)(Error* error),
                                      bool (WiFi::*set)(const uint16_t& value,
                                                        Error* error)) {
@@ -2190,7 +2190,7 @@ void WiFi::HelpRegisterDerivedUint16(PropertyStore* store,
 }
 
 void WiFi::HelpRegisterDerivedBool(PropertyStore* store,
-                                   const string& name,
+                                   const std::string& name,
                                    bool (WiFi::*get)(Error* error),
                                    bool (WiFi::*set)(const bool& value,
                                                      Error* error)) {
@@ -2199,7 +2199,7 @@ void WiFi::HelpRegisterDerivedBool(PropertyStore* store,
 }
 
 void WiFi::HelpRegisterConstDerivedBool(PropertyStore* store,
-                                        const string& name,
+                                        const std::string& name,
                                         bool (WiFi::*get)(Error* error)) {
   store->RegisterDerivedBool(
       name, BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, nullptr)));
@@ -2232,10 +2232,10 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
-      Bind(&Device::RenewDHCPLease,
-           weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
-      Bind(&WiFi::RemoveSupplicantNetworks,
-           weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::Bind(&Device::RenewDHCPLease,
+                 weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
+      base::Bind(&WiFi::RemoveSupplicantNetworks,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
       have_dhcp_lease, time_to_next_lease_renewal);
 }
 
@@ -2254,12 +2254,12 @@ void WiFi::OnDarkResume(const ResultCallback& callback) {
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
-      Bind(&Device::RenewDHCPLease,
-           weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
-      Bind(&WiFi::InitiateScanInDarkResume,
-           weak_ptr_factory_while_started_.GetWeakPtr()),
-      Bind(&WiFi::RemoveSupplicantNetworks,
-           weak_ptr_factory_while_started_.GetWeakPtr()));
+      base::Bind(&Device::RenewDHCPLease,
+                 weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
+      base::Bind(&WiFi::InitiateScanInDarkResume,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::Bind(&WiFi::RemoveSupplicantNetworks,
+                 weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 void WiFi::OnAfterResume() {
@@ -2274,8 +2274,8 @@ void WiFi::OnAfterResume() {
   }
   dispatcher()->PostDelayedTask(
       FROM_HERE,
-      Bind(&WiFi::ReportConnectedToServiceAfterWake,
-           weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::Bind(&WiFi::ReportConnectedToServiceAfterWake,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
       kPostWakeConnectivityReportDelayMilliseconds);
   if (wake_on_wifi_) {
     wake_on_wifi_->OnAfterResume();
@@ -2367,12 +2367,12 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
     trigger_scan.attributes()->SetNestedAttributeHasAValue(
         NL80211_ATTR_SCAN_FREQUENCIES);
 
-    string attribute_name;
+    std::string attribute_name;
     int i = 0;
     for (uint32_t freq : freqs) {
       SLOG(this, 7) << __func__ << ": "
                     << "Frequency-" << i << ": " << freq;
-      attribute_name = StringPrintf("Frequency-%d", i);
+      attribute_name = base::StringPrintf("Frequency-%d", i);
       frequency_list->CreateU32Attribute(i, attribute_name.c_str());
       frequency_list->SetU32AttributeValue(i, freq);
       ++i;
@@ -2381,10 +2381,10 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
 
   netlink_manager_->SendNl80211Message(
       &trigger_scan,
-      Bind(&WiFi::OnTriggerPassiveScanResponse,
-           weak_ptr_factory_while_started_.GetWeakPtr()),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::Bind(&WiFi::OnTriggerPassiveScanResponse,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::Bind(&NetlinkManager::OnAckDoNothing),
+      base::Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnConnected() {
@@ -2424,7 +2424,8 @@ void WiFi::OnIPConfigFailure() {
   Device::OnIPConfigFailure();
 }
 
-void WiFi::AddWakeOnPacketConnection(const string& ip_endpoint, Error* error) {
+void WiFi::AddWakeOnPacketConnection(const std::string& ip_endpoint,
+                                     Error* error) {
   if (wake_on_wifi_) {
     wake_on_wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
   } else {
@@ -2443,7 +2444,7 @@ void WiFi::AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
   }
 }
 
-void WiFi::RemoveWakeOnPacketConnection(const string& ip_endpoint,
+void WiFi::RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
                                         Error* error) {
   if (wake_on_wifi_) {
     wake_on_wifi_->RemoveWakeOnPacketConnection(ip_endpoint, error);
@@ -2487,7 +2488,7 @@ void WiFi::StartScanTimer() {
     StopScanTimer();
     return;
   }
-  scan_timer_callback_.Reset(Bind(
+  scan_timer_callback_.Reset(base::Bind(
       &WiFi::ScanTimerHandler, weak_ptr_factory_while_started_.GetWeakPtr()));
   // Repeat the first few scans after disconnect relatively quickly so we
   // have reasonable trust that no APs we are looking for are present.
@@ -2533,8 +2534,8 @@ void WiFi::ScanTimerHandler() {
 
 void WiFi::StartPendingTimer() {
   pending_timeout_callback_.Reset(
-      Bind(&WiFi::PendingTimeoutHandler,
-           weak_ptr_factory_while_started_.GetWeakPtr()));
+      base::Bind(&WiFi::PendingTimeoutHandler,
+                 weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, pending_timeout_callback_.callback(),
                                 kPendingTimeoutSeconds * 1000);
 }
@@ -2621,8 +2622,8 @@ void WiFi::StartReconnectTimer() {
   }
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   reconnect_timeout_callback_.Reset(
-      Bind(&WiFi::ReconnectTimeoutHandler,
-           weak_ptr_factory_while_started_.GetWeakPtr()));
+      base::Bind(&WiFi::ReconnectTimeoutHandler,
+                 weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 reconnect_timeout_callback_.callback(),
                                 kReconnectTimeoutSeconds * 1000);
@@ -2675,7 +2676,7 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
     SLOG(this, 2) << "Supplicant process proxy not connected.";
     return;
   }
-  string current_level;
+  std::string current_level;
   if (!supplicant_process_proxy()->GetDebugLevel(&current_level)) {
     LOG(ERROR) << __func__ << ": Failed to get wpa_supplicant debug level.";
     return;
@@ -2687,8 +2688,8 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
                   << "; assuming that it is being controlled elsewhere.";
     return;
   }
-  string new_level = enabled ? WPASupplicant::kDebugLevelDebug
-                             : WPASupplicant::kDebugLevelInfo;
+  std::string new_level = enabled ? WPASupplicant::kDebugLevelDebug
+                                  : WPASupplicant::kDebugLevelInfo;
 
   if (new_level == current_level) {
     SLOG(this, 2) << "WiFi debug level is already the desired level "
@@ -2733,12 +2734,13 @@ void WiFi::ConnectToSupplicant() {
   RpcIdentifier previous_supplicant_interface_path(supplicant_interface_path_);
 
   KeyValueStore create_interface_args;
-  create_interface_args.Set<string>(WPASupplicant::kInterfacePropertyName,
-                                    link_name());
-  create_interface_args.Set<string>(WPASupplicant::kInterfacePropertyDriver,
-                                    WPASupplicant::kDriverNL80211);
-  create_interface_args.Set<string>(WPASupplicant::kInterfacePropertyConfigFile,
-                                    WPASupplicant::kSupplicantConfPath);
+  create_interface_args.Set<std::string>(WPASupplicant::kInterfacePropertyName,
+                                         link_name());
+  create_interface_args.Set<std::string>(
+      WPASupplicant::kInterfacePropertyDriver, WPASupplicant::kDriverNL80211);
+  create_interface_args.Set<std::string>(
+      WPASupplicant::kInterfacePropertyConfigFile,
+      WPASupplicant::kSupplicantConfPath);
   supplicant_connect_attempts_++;
   if (!supplicant_process_proxy()->CreateInterface(
           create_interface_args, &supplicant_interface_path_)) {
@@ -2761,7 +2763,8 @@ void WiFi::ConnectToSupplicant() {
       } else {
         dispatcher()->PostDelayedTask(
             FROM_HERE,
-            Bind(&WiFi::ConnectToSupplicant, weak_ptr_factory_.GetWeakPtr()),
+            base::Bind(&WiFi::ConnectToSupplicant,
+                       weak_ptr_factory_.GetWeakPtr()),
             kRetryCreateInterfaceIntervalSeconds * 1000);
       }
       return;
@@ -2778,7 +2781,7 @@ void WiFi::ConnectToSupplicant() {
   // tests to skip recreation (by retaining the same interface path).
   if (!supplicant_interface_proxy_ ||
       previous_supplicant_interface_path != supplicant_interface_path_) {
-    SLOG(this, 2) << StringPrintf(
+    SLOG(this, 2) << base::StringPrintf(
         "Updating interface path from \"%s\" to \"%s\"",
         previous_supplicant_interface_path.value().c_str(),
         supplicant_interface_path_.value().c_str());
@@ -2844,9 +2847,10 @@ void WiFi::GetPhyInfo() {
                                                interface_index());
   netlink_manager_->SendNl80211Message(
       &get_wiphy,
-      Bind(&WiFi::OnNewWiphy, weak_ptr_factory_while_started_.GetWeakPtr()),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::Bind(&WiFi::OnNewWiphy,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::Bind(&NetlinkManager::OnAckDoNothing),
+      base::Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
@@ -2926,9 +2930,9 @@ void WiFi::GetRegulatory() {
   }
   netlink_manager_->SendNl80211Message(
       &reg_msg,
-      Bind(&WiFi::OnGetReg, weak_ptr_factory_while_started_.GetWeakPtr()),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::Bind(&WiFi::OnGetReg, weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::Bind(&NetlinkManager::OnAckDoNothing),
+      base::Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnTriggerPassiveScanResponse(const Nl80211Message& netlink_message) {
@@ -3042,7 +3046,7 @@ void WiFi::SetScanState(ScanState new_state,
 }
 
 // static
-string WiFi::ScanStateString(ScanState state, ScanMethod method) {
+std::string WiFi::ScanStateString(ScanState state, ScanMethod method) {
   switch (state) {
     case kScanIdle:
       return "IDLE";
@@ -3161,12 +3165,12 @@ void WiFi::RequestStationInfo() {
 
   netlink_manager_->SendNl80211Message(
       &get_station,
-      Bind(&WiFi::OnReceivedStationInfo,
-           weak_ptr_factory_while_started_.GetWeakPtr()),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::Bind(&WiFi::OnReceivedStationInfo,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::Bind(&NetlinkManager::OnAckDoNothing),
+      base::Bind(&NetlinkManager::OnNetlinkMessageError));
 
-  request_station_info_callback_.Reset(Bind(
+  request_station_info_callback_.Reset(base::Bind(
       &WiFi::RequestStationInfo, weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 request_station_info_callback_.callback(),
@@ -3175,7 +3179,7 @@ void WiFi::RequestStationInfo() {
 
 // static
 bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
-                               string* out,
+                               std::string* out,
                                int* rate_out) {
   uint32_t rate = 0;      // In 100Kbps.
   uint16_t u16_rate = 0;  // In 100Kbps.
@@ -3183,9 +3187,9 @@ bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
   uint8_t nss = 0;
   bool band_flag = false;
   bool is_short_gi = false;
-  string mcs_info;
-  string nss_info;
-  string band_info;
+  std::string mcs_info;
+  std::string nss_info;
+  std::string band_info;
 
   if (rate_info->GetU16AttributeValue(NL80211_RATE_INFO_BITRATE, &u16_rate)) {
     rate = static_cast<uint32_t>(u16_rate);
@@ -3194,39 +3198,39 @@ bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
   }
 
   if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_MCS, &mcs)) {
-    mcs_info = StringPrintf(" MCS %d", mcs);
+    mcs_info = base::StringPrintf(" MCS %d", mcs);
   } else if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS, &mcs)) {
-    mcs_info = StringPrintf(" VHT-MCS %d", mcs);
+    mcs_info = base::StringPrintf(" VHT-MCS %d", mcs);
   }
 
   if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, &nss)) {
-    nss_info = StringPrintf(" VHT-NSS %d", nss);
+    nss_info = base::StringPrintf(" VHT-NSS %d", nss);
   }
 
   if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH,
                                        &band_flag) &&
       band_flag) {
-    band_info = StringPrintf(" 40MHz");
+    band_info = base::StringPrintf(" 40MHz");
   } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80_MHZ_WIDTH,
                                               &band_flag) &&
              band_flag) {
-    band_info = StringPrintf(" 80MHz");
+    band_info = base::StringPrintf(" 80MHz");
   } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80P80_MHZ_WIDTH,
                                               &band_flag) &&
              band_flag) {
-    band_info = StringPrintf(" 80+80MHz");
+    band_info = base::StringPrintf(" 80+80MHz");
   } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_160_MHZ_WIDTH,
                                               &band_flag) &&
              band_flag) {
-    band_info = StringPrintf(" 160MHz");
+    band_info = base::StringPrintf(" 160MHz");
   }
 
   rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, &is_short_gi);
 
   if (rate) {
-    *out = StringPrintf("%d.%d MBit/s%s%s%s%s", rate / 10, rate % 10,
-                        mcs_info.c_str(), band_info.c_str(),
-                        is_short_gi ? " short GI" : "", nss_info.c_str());
+    *out = base::StringPrintf("%d.%d MBit/s%s%s%s%s", rate / 10, rate % 10,
+                              mcs_info.c_str(), band_info.c_str(),
+                              is_short_gi ? " short GI" : "", nss_info.c_str());
     *rate_out = rate / 10;
     return true;
   }
@@ -3285,7 +3289,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
 
   link_statistics_.Clear();
 
-  map<int, string> u32_property_map = {
+  std::map<int, std::string> u32_property_map = {
       {NL80211_STA_INFO_INACTIVE_TIME, kInactiveTimeMillisecondsProperty},
       {NL80211_STA_INFO_RX_PACKETS, kPacketReceiveSuccessesProperty},
       {NL80211_STA_INFO_TX_FAILED, kPacketTransmitFailuresProperty},
@@ -3299,7 +3303,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
     }
   }
 
-  map<int, string> s8_property_map = {
+  std::map<int, std::string> s8_property_map = {
       {NL80211_STA_INFO_SIGNAL, kLastReceiveSignalDbmProperty},
       {NL80211_STA_INFO_SIGNAL_AVG, kAverageReceiveSignalDbmProperty}};
 
@@ -3315,10 +3319,10 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
   AttributeListConstRefPtr transmit_info;
   if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_TX_BITRATE,
                                                 &transmit_info)) {
-    string str;
+    std::string str;
     int rate;
     if (ParseStationBitrate(transmit_info, &str, &rate)) {
-      link_statistics_.Set<string>(kTransmitBitrateProperty, str);
+      link_statistics_.Set<std::string>(kTransmitBitrateProperty, str);
       metrics()->NotifyWifiTxBitrate(rate);
     }
   }
@@ -3326,10 +3330,10 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
   AttributeListConstRefPtr receive_info;
   if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_RX_BITRATE,
                                                 &receive_info)) {
-    string str;
+    std::string str;
     int rate;
     if (ParseStationBitrate(receive_info, &str, &rate)) {
-      link_statistics_.Set<string>(kReceiveBitrateProperty, str);
+      link_statistics_.Set<std::string>(kReceiveBitrateProperty, str);
     }
   }
 }
@@ -3406,9 +3410,10 @@ void WiFi::ReportConnectedToServiceAfterWake() {
 
 bool WiFi::RequestRoam(const std::string& addr, Error* error) {
   if (!supplicant_interface_proxy_->Roam(addr)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          StringPrintf("%s: requested roam to %s failed",
-                                       link_name().c_str(), addr.c_str()));
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        base::StringPrintf("%s: requested roam to %s failed",
+                           link_name().c_str(), addr.c_str()));
     return false;
   }
   return true;
