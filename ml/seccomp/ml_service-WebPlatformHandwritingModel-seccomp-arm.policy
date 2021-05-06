@@ -35,4 +35,5 @@ read: 1
 recvmsg: 1
 rt_sigprocmask: 1
 send: 1
+socket: arg0 == AF_UNIX
 write: 1
