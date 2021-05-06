@@ -441,7 +441,7 @@ const char kGetDeprioritizeBtWbsMic[] = "GetDeprioritizeBtWbsMic";
 const char kSetNoiseCancellationEnabled[] = "SetNoiseCancellationEnabled";
 const char kIsNoiseCancellationSupported[] = "IsNoiseCancellationSupported";
 
-// Names of properties returned by GetNodes()
+// Names of properties returned by GetNodes() and GetNodeInfos()
 const char kIsInputProperty[] = "IsInput";
 const char kIdProperty[] = "Id";
 const char kTypeProperty[] = "Type";
@@ -453,6 +453,7 @@ const char kStableDeviceIdProperty[] = "StableDeviceId";
 const char kStableDeviceIdNewProperty[] = "StableDeviceIdNew";
 const char kMaxSupportedChannelsProperty[] = "MaxSupportedChannels";
 const char kAudioEffectProperty[] = "AudioEffect";
+const char kNodeVolumeProperty[] = "NodeVolume";
 enum AudioEffectType {
   EFFECT_TYPE_NOISE_CANCELLATION = 1 << 0,
 };
