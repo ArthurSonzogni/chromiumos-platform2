@@ -312,3 +312,26 @@ pub fn get_memory_margins_kb() -> (u64, u64) {
     static MARGINS: Lazy<(u64, u64)> = Lazy::new(get_memory_margins_kb_impl);
     *MARGINS
 }
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum PressureLevelChrome {
+    // There is enough memory to use.
+    None = 0,
+    // Chrome is advised to free buffers that are cheap to re-allocate and not
+    // immediately needed.
+    Moderate = 1,
+    // Chrome is advised to free all possible memory.
+    Critical = 2,
+}
+
+pub fn get_memory_pressure_status_chrome() -> Result<(PressureLevelChrome, u64)> {
+    let available = get_background_available_memory_kb()?;
+    let (critical, moderate) = get_memory_margins_kb();
+    if available < critical {
+        Ok((PressureLevelChrome::Critical, critical - available))
+    } else if available < moderate {
+        Ok((PressureLevelChrome::Moderate, moderate - available))
+    } else {
+        Ok((PressureLevelChrome::None, 0))
+    }
+}

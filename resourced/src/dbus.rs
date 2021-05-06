@@ -2,14 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::thread;
 use std::time::Duration;
 
 use anyhow::Result;
 use dbus::blocking::LocalConnection;
-use dbus::tree::{Factory, MTFn, MethodErr, MethodInfo, MethodResult};
+use dbus::channel::Sender; // For LocalConnection::send()
+use dbus::tree::{Factory, MTFn, MethodErr, MethodInfo, MethodResult, Signal};
+use sys_util::error;
 
 use crate::common;
 use crate::memory;
+
+const SERVICE_NAME: &str = "org.chromium.ResourceManager";
+const PATH_NAME: &str = "/org/chromium/ResourceManager";
+const INTERFACE_NAME: &str = SERVICE_NAME;
 
 fn get_available_memory_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     match memory::get_background_available_memory_kb() {
@@ -35,8 +42,7 @@ fn get_memory_margins_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
 
 fn get_game_mode(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     match common::get_game_mode() {
-        Ok(common::GameMode::Off) => Ok(vec![m.msg.method_return().append1(0u8)]),
-        Ok(common::GameMode::Borealis) => Ok(vec![m.msg.method_return().append1(1u8)]),
+        Ok(game_mode) => Ok(vec![m.msg.method_return().append1(game_mode as u8)]),
         Err(_) => Err(MethodErr::failed("Failed to get game mode")),
     }
 }
@@ -53,20 +59,27 @@ fn set_game_mode(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     }
 }
 
-pub fn start_service() -> Result<()> {
-    let service_name = "org.chromium.ResourceManager";
-    let path_name = "/org/chromium/ResourceManager";
-    let interface_name = service_name;
-    // Let's start by starting up a connection to the system bus and request a name.
-    let c = LocalConnection::new_system()?;
-    c.request_name(service_name, false, true, false)?;
+pub struct ServiceContext {
+    connection: LocalConnection,
+}
+
+fn create_pressure_chrome_signal(f: &Factory<MTFn<()>, ()>) -> Signal<()> {
+    f.signal("MemoryPressureChrome", ())
+        .sarg::<u8, _>("pressure_level")
+        .sarg::<u64, _>("memory_delta")
+}
+
+pub fn service_init() -> Result<ServiceContext> {
+    // Starting up a connection to the system bus and request a name.
+    let conn = LocalConnection::new_system()?;
+    conn.request_name(SERVICE_NAME, false, true, false)?;
 
     let f = Factory::new_fn::<()>();
 
     // We create a tree with one object path inside and make that path introspectable.
     let tree = f.tree(()).add(
-        f.object_path(path_name, ()).introspectable().add(
-            f.interface(interface_name, ())
+        f.object_path(PATH_NAME, ()).introspectable().add(
+            f.interface(INTERFACE_NAME, ())
                 .add_m(
                     f.method("GetAvailableMemoryKB", (), get_available_memory_kb)
                         // Our method has one output argument.
@@ -91,14 +104,47 @@ pub fn start_service() -> Result<()> {
                 .add_m(
                     f.method("SetGameMode", (), set_game_mode)
                         .inarg::<u8, _>("game_mode"),
-                ),
+                )
+                .add_s(create_pressure_chrome_signal(&f)),
         ),
     );
 
-    tree.start_receive(&c);
+    tree.start_receive(&conn);
 
+    Ok(ServiceContext { connection: conn })
+}
+
+pub fn service_main_loop(context: ServiceContext) -> Result<()> {
     // Serve clients forever.
     loop {
-        c.process(Duration::from_millis(u64::MAX))?;
+        context
+            .connection
+            .process(Duration::from_millis(u64::MAX))?;
+    }
+}
+
+fn send_pressure_chrome_signal(conn: &LocalConnection, signal: &Signal<()>, level: u8, delta: u64) {
+    if conn
+        .send(
+            signal
+                .msg(&PATH_NAME.into(), &INTERFACE_NAME.into())
+                .append2(level, delta),
+        )
+        .is_err()
+    {
+        error!("Send pressure chrome signal failed.");
+    }
+}
+
+pub fn check_memory_main() -> Result<()> {
+    let signal = create_pressure_chrome_signal(&Factory::new_fn::<()>());
+    let conn = LocalConnection::new_system()?;
+    loop {
+        match memory::get_memory_pressure_status_chrome() {
+            Ok((memory::PressureLevelChrome::None, _)) => (),
+            Ok((level, delta)) => send_pressure_chrome_signal(&conn, &signal, level as u8, delta),
+            Err(e) => error!("Couldn't get memory pressure status for chrome: {}", e),
+        }
+        thread::sleep(Duration::from_secs(1));
     }
 }

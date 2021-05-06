@@ -9,6 +9,8 @@ mod memory;
 #[cfg(test)]
 mod test;
 
+use std::thread;
+
 use anyhow::{bail, Result};
 use sys_util::syslog;
 
@@ -17,5 +19,11 @@ fn main() -> Result<()> {
         bail!("Failed to initiailize syslog: {}", e);
     }
 
-    dbus::start_service()
+    // The D-Bus service should be initialized before starting the memory
+    // checking thread.
+    let context = dbus::service_init()?;
+
+    thread::spawn(dbus::check_memory_main);
+
+    dbus::service_main_loop(context)
 }
