@@ -4,11 +4,12 @@
 
 #include "shill/supplicant/wpa_supplicant.h"
 
+#include <string>
+
 #include <gtest/gtest.h>
 
 #include "shill/mock_log.h"
 
-using std::string;
 using testing::_;
 using testing::EndsWith;
 
@@ -24,7 +25,7 @@ class WPASupplicantTest : public testing::Test {
 };
 
 TEST_F(WPASupplicantTest, ExtractRemoteCertificationEmpty) {
-  string subject;
+  std::string subject;
   uint32_t depth = 0;
   ScopedMockLog log;
   EXPECT_CALL(log,
@@ -36,7 +37,7 @@ TEST_F(WPASupplicantTest, ExtractRemoteCertificationEmpty) {
 }
 
 TEST_F(WPASupplicantTest, ExtractRemoteCertificationDepthOnly) {
-  string subject;
+  std::string subject;
   const uint32_t kDepthValue = 100;
   uint32_t depth = kDepthValue - 1;
   property_map_.Set<uint32_t>(WPASupplicant::kInterfacePropertyDepth,
@@ -52,10 +53,10 @@ TEST_F(WPASupplicantTest, ExtractRemoteCertificationDepthOnly) {
 
 TEST_F(WPASupplicantTest, ExtractRemoteCertificationSubjectOnly) {
   const char kSubjectName[] = "subject-name";
-  string subject;
+  std::string subject;
   uint32_t depth = 0;
-  property_map_.Set<string>(WPASupplicant::kInterfacePropertySubject,
-                            kSubjectName);
+  property_map_.Set<std::string>(WPASupplicant::kInterfacePropertySubject,
+                                 kSubjectName);
   ScopedMockLog log;
   EXPECT_CALL(log,
               Log(logging::LOGGING_ERROR, _, EndsWith("no depth parameter.")));
@@ -67,11 +68,11 @@ TEST_F(WPASupplicantTest, ExtractRemoteCertificationSubjectOnly) {
 
 TEST_F(WPASupplicantTest, ExtractRemoteCertificationSubjectAndDepth) {
   const char kSubjectName[] = "subject-name";
-  string subject;
+  std::string subject;
   const uint32_t kDepthValue = 100;
   uint32_t depth = 0;
-  property_map_.Set<string>(WPASupplicant::kInterfacePropertySubject,
-                            kSubjectName);
+  property_map_.Set<std::string>(WPASupplicant::kInterfacePropertySubject,
+                                 kSubjectName);
   property_map_.Set<uint32_t>(WPASupplicant::kInterfacePropertyDepth,
                               kDepthValue);
   EXPECT_TRUE(WPASupplicant::ExtractRemoteCertification(property_map_, &subject,

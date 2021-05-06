@@ -18,8 +18,6 @@
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/test_event_dispatcher.h"
 
-using base::Bind;
-using base::Unretained;
 using testing::_;
 using testing::InSequence;
 using testing::NiceMock;

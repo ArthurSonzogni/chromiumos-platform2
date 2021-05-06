@@ -4,13 +4,14 @@
 
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_log.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
-using std::string;
 using testing::_;
 using testing::EndsWith;
 using testing::Mock;
@@ -31,7 +32,7 @@ class SupplicantEAPStateHandlerTest : public testing::Test {
     Mock::VerifyAndClearExpectations(&log_);
   }
 
-  const string& GetTLSError() { return handler_.tls_error_; }
+  const std::string& GetTLSError() { return handler_.tls_error_; }
 
   SupplicantEAPStateHandler handler_;
   Service::ConnectFailure failure_;
@@ -52,7 +53,7 @@ TEST_F(SupplicantEAPStateHandlerTest, AuthenticationStarting) {
 
 TEST_F(SupplicantEAPStateHandlerTest, AcceptedMethod) {
   StartEAP();
-  const string kEAPMethod("EAP-ROCHAMBEAU");
+  const std::string kEAPMethod("EAP-ROCHAMBEAU");
   EXPECT_CALL(log_, Log(logging::LOGGING_INFO, _,
                         EndsWith("accepted method " + kEAPMethod)));
   EXPECT_FALSE(handler_.ParseStatus(
@@ -124,11 +125,11 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
 
 TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
   StartEAP();
-  const string kStrangeParameter("ennui");
+  const std::string kStrangeParameter("ennui");
   EXPECT_CALL(
       log_,
       Log(logging::LOGGING_ERROR, _,
-          EndsWith(string("Unexpected ") +
+          EndsWith(std::string("Unexpected ") +
                    WPASupplicant::kEAPStatusRemoteCertificateVerification +
                    " parameter: " + kStrangeParameter)));
   EXPECT_FALSE(handler_.ParseStatus(
@@ -142,12 +143,13 @@ TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
 
 TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {
   StartEAP();
-  const string kAuthenticationParameter("nudge nudge say no more");
+  const std::string kAuthenticationParameter("nudge nudge say no more");
   EXPECT_CALL(
       log_,
       Log(logging::LOGGING_ERROR, _,
-          EndsWith(string("aborted due to missing authentication parameter: ") +
-                   kAuthenticationParameter)));
+          EndsWith(
+              std::string("aborted due to missing authentication parameter: ") +
+              kAuthenticationParameter)));
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusParameterNeeded,
                                     kAuthenticationParameter, &failure_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
