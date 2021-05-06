@@ -288,6 +288,7 @@ class CrashSenderUtilTest : public testing::Test {
   // have to spawn a separate process to hold the lock; the process holding the
   // lock is returned. It can be killed to release the lock.
   std::unique_ptr<brillo::Process> LockFile(const base::FilePath& file_name) {
+    base::Time start_time = base::Time::Now();
     auto lock_process = std::make_unique<brillo::ProcessImpl>();
     CHECK(build_directory_);
     base::FilePath lock_file_holder =
@@ -300,6 +301,9 @@ class CrashSenderUtilTest : public testing::Test {
     // subprocess fails in some way.
     base::Time stop_time = base::Time::Now() + base::TimeDelta::FromMinutes(1);
     bool success = false;
+    base::Time wait_start_time = base::Time::Now();
+    LOG(INFO) << "Took " << wait_start_time - start_time
+              << " to start subprocess";
     while (!success && base::Time::Now() < stop_time) {
       base::File lock_file(file_name, base::File::FLAG_OPEN |
                                           base::File::FLAG_READ |
@@ -320,6 +324,8 @@ class CrashSenderUtilTest : public testing::Test {
         base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(5));
       }
     }
+    LOG(INFO) << "Took " << base::Time::Now() - wait_start_time
+              << " to verify file lock";
 
     CHECK(success) << "Subprocess did not lock " << file_name.value();
     return lock_process;
@@ -2126,8 +2132,13 @@ TEST_F(CrashSenderUtilDeathTest, LockFileDiesIfFileIsLocked) {
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   Sender sender(std::move(metrics_lib_),
                 std::make_unique<test_util::AdvancingClock>(), options);
+  base::Time start_time = base::Time::Now();
   EXPECT_EXIT(sender.AcquireLockFileOrDie(), ExitedWithCode(EXIT_FAILURE),
               "Failed to acquire a lock");
+  LOG(INFO) << "AcquireLockFileOrDie took " << base::Time::Now() - start_time;
+  pid_t pid = lock_process->pid();
+  EXPECT_NE(pid, 0) << "lock_process unexpectedly exited";
+  EXPECT_TRUE(brillo::Process::ProcessExists(pid));
 }
 
 class IsNetworkOnlineTest : public CrashSenderUtilTest {
