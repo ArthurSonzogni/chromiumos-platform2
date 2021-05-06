@@ -10,7 +10,7 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/logging.h"
-#include "base/system/sys_info.h"
+#include "base/test/scoped_chromeos_version_info.h"
 #include "metrics/metrics_library_mock.h"
 #include "metrics/serialization/metric_sample.h"
 #include "metrics/uploader/metrics_log.h"
@@ -197,7 +197,7 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
       "CHROMEOS_RELEASE_BUILD_TYPE=developer build\n"
       "CHROMEOS_RELEASE_BOARD=myboard");
 
-  base::SysInfo::SetChromeOSVersionInfoForTest(content, base::Time());
+  base::test::ScopedChromeOSVersionInfo version(content, base::Time());
   metrics::MetricSample histogram =
       metrics::MetricSample::SparseHistogramSample("myhistogram", 1);
   SystemProfileCache* local_cache_ = new SystemProfileCache(true, "/");
