@@ -42,7 +42,7 @@ class RmadInterfaceImplTest : public testing::Test {
  public:
   RmadInterfaceImplTest() {
     welcome_proto_.set_allocated_welcome(new WelcomeState());
-    select_components_proto_.set_allocated_select_components(
+    components_repair_proto_.set_allocated_components_repair(
         new ComponentsRepairState());
     device_destination_proto_.set_allocated_device_destination(
         new DeviceDestinationState());
@@ -92,9 +92,9 @@ class RmadInterfaceImplTest : public testing::Test {
     // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
     mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
-                                              RmadState::kSelectComponents));
+                                              RmadState::kComponentsRepair));
     mock_handlers.push_back(CreateMockHandler(json_store,
-                                              select_components_proto_, true,
+                                              components_repair_proto_, true,
                                               RmadState::kDeviceDestination));
     mock_handlers.push_back(CreateMockHandler(json_store,
                                               device_destination_proto_, false,
@@ -108,7 +108,7 @@ class RmadInterfaceImplTest : public testing::Test {
     // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
     mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, false,
-                                              RmadState::kSelectComponents));
+                                              RmadState::kComponentsRepair));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
 
@@ -116,7 +116,7 @@ class RmadInterfaceImplTest : public testing::Test {
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
 
   RmadState welcome_proto_;
-  RmadState select_components_proto_;
+  RmadState components_repair_proto_;
   RmadState device_destination_proto_;
   base::ScopedTempDir temp_dir_;
 };
@@ -177,7 +177,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
-    EXPECT_EQ(RmadState::kSelectComponents, reply.state().state_case());
+    EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -192,7 +192,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
-    EXPECT_EQ(RmadState::kSelectComponents, reply.state().state_case());
+    EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
   };
   // TODO(gavindodd): Use mock log to check for expected error.
   rmad_interface.GetCurrentState(base::Bind(callback));
@@ -238,7 +238,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
-    EXPECT_EQ(RmadState::kSelectComponents, reply.state().state_case());
+    EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
   };
   rmad_interface.TransitionNextState(request, base::Bind(callback));
 }

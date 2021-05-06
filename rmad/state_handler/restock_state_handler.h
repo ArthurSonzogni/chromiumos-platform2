@@ -14,7 +14,7 @@ class RestockStateHandler : public BaseStateHandler {
   explicit RestockStateHandler(scoped_refptr<JsonStore> json_store);
   ~RestockStateHandler() override = default;
 
-  ASSIGN_STATE(RmadState::StateCase::kRestockState);
+  ASSIGN_STATE(RmadState::StateCase::kRestock);
   SET_REPEATABLE;
 
   RmadState::StateCase GetNextStateCase() const override;

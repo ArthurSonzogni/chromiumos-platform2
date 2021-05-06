@@ -20,7 +20,7 @@ RmadState::StateCase UpdateRoFirmwareStateHandler::GetNextStateCase() const {
       state_.update_ro_firmware().update() ==
           UpdateRoFirmwareState::RMAD_UPDATE_SKIP) {
     if (IsMotherboardRepair()) {
-      return RmadState::StateCase::kRestockState;
+      return RmadState::StateCase::kRestock;
     } else {
       return RmadState::StateCase::kUpdateDeviceInfo;
     }

@@ -14,7 +14,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   explicit ComponentsRepairStateHandler(scoped_refptr<JsonStore> json_store);
   ~ComponentsRepairStateHandler() override = default;
 
-  ASSIGN_STATE(RmadState::StateCase::kSelectComponents);
+  ASSIGN_STATE(RmadState::StateCase::kComponentsRepair);
   SET_REPEATABLE;
 
   RmadState::StateCase GetNextStateCase() const override;

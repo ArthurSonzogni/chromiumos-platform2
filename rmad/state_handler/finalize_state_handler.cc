@@ -18,8 +18,8 @@ RmadState::StateCase FinalizeStateHandler::GetNextStateCase() const {
 
 RmadErrorCode FinalizeStateHandler::UpdateState(const RmadState& state) {
   CHECK(state.has_finalize()) << "RmadState missing finalize state.";
-  const FinalizeRmaState& finalize = state.finalize();
-  if (finalize.shutdown() == FinalizeRmaState::RMAD_FINALIZE_UNKNOWN) {
+  const FinalizeState& finalize = state.finalize();
+  if (finalize.shutdown() == FinalizeState::RMAD_FINALIZE_UNKNOWN) {
     // TODO(gavindodd): What is correct error for unset/missing fields?
     return RMAD_ERROR_REQUEST_INVALID;
   }
@@ -29,7 +29,7 @@ RmadErrorCode FinalizeStateHandler::UpdateState(const RmadState& state) {
 }
 
 RmadErrorCode FinalizeStateHandler::ResetState() {
-  state_.set_allocated_finalize(new FinalizeRmaState);
+  state_.set_allocated_finalize(new FinalizeState);
 
   return RMAD_ERROR_OK;
 }

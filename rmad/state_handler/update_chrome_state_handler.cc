@@ -17,7 +17,7 @@ RmadState::StateCase UpdateChromeStateHandler::GetNextStateCase() const {
           UpdateChromeState::RMAD_UPDATE_STATE_COMPLETE ||
       state_.update_chrome().update() ==
           UpdateChromeState::RMAD_UPDATE_STATE_SKIP) {
-    return RmadState::StateCase::kSelectComponents;
+    return RmadState::StateCase::kComponentsRepair;
   }
   // Not ready to go to next state.
   return GetStateCase();

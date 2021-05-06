@@ -22,9 +22,9 @@ RmadState::StateCase ComponentsRepairStateHandler::GetNextStateCase() const {
 
 RmadErrorCode ComponentsRepairStateHandler::UpdateState(
     const RmadState& state) {
-  CHECK(state.has_select_components())
+  CHECK(state.has_components_repair())
       << "RmadState missing select component state.";
-  const ComponentsRepairState& components_repair = state.select_components();
+  const ComponentsRepairState& components_repair = state.components_repair();
   for (int i = 0; i < components_repair.components_size(); ++i) {
     if (const ComponentRepairState& component = components_repair.components(i);
         component.name() == ComponentRepairState::RMAD_COMPONENT_UNKNOWN ||
@@ -39,7 +39,7 @@ RmadErrorCode ComponentsRepairStateHandler::UpdateState(
 }
 
 RmadErrorCode ComponentsRepairStateHandler::ResetState() {
-  state_.set_allocated_select_components(new ComponentsRepairState);
+  state_.set_allocated_components_repair(new ComponentsRepairState);
 
   return RMAD_ERROR_OK;
 }

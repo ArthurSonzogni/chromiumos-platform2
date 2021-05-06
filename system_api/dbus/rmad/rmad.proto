@@ -246,7 +246,7 @@ message WriteProtectEnablePhysicalState {
 }
 
 // RMA complete. Allow tech to choose how to shut down.
-message FinalizeRmaState {
+message FinalizeState {
   enum ShutdownMethod {
     RMAD_FINALIZE_UNKNOWN = 0;
     RMAD_FINALIZE_REBOOT = 1;
@@ -263,19 +263,19 @@ message RmadState {
     WelcomeState welcome = 1;
     SelectNetworkState select_network = 2;
     UpdateChromeState update_chrome = 3;
-    ComponentsRepairState select_components = 4;
+    ComponentsRepairState components_repair = 4;
     DeviceDestinationState device_destination = 5;
     WriteProtectDisableMethodState wp_disable_method = 6;
     WriteProtectDisableRsuState wp_disable_rsu = 7;
     WriteProtectDisablePhysicalState wp_disable_physical = 8;
     WriteProtectDisableCompleteState wp_disable_complete = 9;
     UpdateRoFirmwareState update_ro_firmware = 10;
-    RestockState restock_state = 11;
+    RestockState restock = 11;
     UpdateDeviceInfoState update_device_info = 12;
     CalibrateComponentsState calibrate_components = 13;
     ProvisionDeviceState provision_device = 14;
     WriteProtectEnablePhysicalState wp_enable_physical = 15;
-    FinalizeRmaState finalize = 16;
+    FinalizeState finalize = 16;
   }
 }
 
