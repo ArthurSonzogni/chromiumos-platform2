@@ -11,6 +11,7 @@
 
 #include <unistd.h>
 
+#include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/no_destructor.h>
 #include <base/process/process_metrics.h>
@@ -27,10 +28,17 @@ namespace ml {
 class Process {
  public:
   // The type of a process.
+  // "kControlForTest" denotes the control process in unit tests (i.e. the
+  // process that runs the ml_service_test binary). "kSingleProcessForTest"
+  // means the program will not spawn worker processes and use one single
+  // process for testing.
   enum class Type {
     kUnset = 0,
     kControl = 1,
     kWorker = 2,
+    kControlForTest = 3,        // Like control process but with less strict
+                                // sandboxing for using in testing.
+    kSingleProcessForTest = 4,  // Temporary, used by old single-process tests.
   };
 
   // The exit code of a process.
@@ -85,6 +93,25 @@ class Process {
 
   const std::unordered_map<pid_t, WorkerInfo>& GetWorkerPidInfoMap();
 
+  // Sets the process type. Only used in testing.
+  void SetTypeForTesting(Type type);
+
+  // Sets the path of mlservice. Only used in testing.
+  void SetMlServicePathForTesting(const std::string& path);
+
+  // Sets the `before_exit_worker_disconnect_handler_hook`, only used in
+  // testing.
+  void SetBeforeExitWorkerDisconnectHandlerHookForTesting(
+      base::RepeatingClosure hook);
+
+  // Returns if the current process is a control process (i.e. `kControl ||
+  // kControlForTest`).
+  bool IsControlProcess();
+
+  // Returns if the current process is a worker process (i.e. that will do the
+  // actually inference work, `kWorker || kSingleProcessForTest`).
+  bool IsWorkerProcess();
+
  private:
   friend base::NoDestructor<Process>;
 
@@ -98,6 +125,10 @@ class Process {
   // Input: the file descriptor used to bootstrap Mojo connection.
   void WorkerProcessRun();
 
+  // The disconnect handler of control process for the mojo connection to the
+  // worker process.
+  void InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid);
+
   // The type of current process.
   Type process_type_;
 
@@ -105,9 +136,18 @@ class Process {
   // Only meaningful for worker process.
   int mojo_bootstrap_fd_;
 
+  // Path to the ml_service binary. Normally (and by default) it is
+  // "/usr/bin/ml_service". We may change the value here for testing.
+  std::string ml_service_path_;
+
   // The map from pid to the info of worker processes. Only meaningful for
   // control process.
   std::unordered_map<pid_t, WorkerInfo> worker_pid_info_map_;
+
+  // The function called in the `kControlForTesting` process at the last of
+  // disconnection handler of the mojo connection to the worker process, only
+  // used in testing.
+  base::RepeatingClosure before_exit_worker_disconnect_handler_hook_;
 
   // Mainly used for guarding `worker_pid_info_map_`.
   SEQUENCE_CHECKER(sequence_checker_);

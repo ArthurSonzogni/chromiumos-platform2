@@ -30,6 +30,10 @@ chromeos::machine_learning::mojom::TensorPtr NewTensor(
 // Return the model directory for tests (or die if it cannot be obtained).
 std::string GetTestModelDir();
 
+// Return the path to mlservice binary for testing  (or die if it cannot be
+// obtained). It should be stored in ${OUT}.
+std::string GetMlServicePath();
+
 }  // namespace ml
 
 #endif  // ML_TEST_UTILS_H_

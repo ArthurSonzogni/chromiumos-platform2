@@ -34,7 +34,7 @@ constexpr char kMojoBootstrapFdSwitchName[] = "mojo-bootstrap-fd";
 
 constexpr char kInternalMojoPrimordialPipeName[] = "cros_ml";
 
-constexpr char kMlServiceBinaryPath[] = "/usr/bin/ml_service";
+constexpr char kDefaultMlServiceBinaryPath[] = "/usr/bin/ml_service";
 
 constexpr uid_t kMlServiceDBusUid = 20177;
 
@@ -47,16 +47,6 @@ std::string GetArgumentForWorkerProcess(int fd) {
   return "--" + fd_argv + "=" + std::to_string(fd);
 }
 
-void InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid) {
-  Process::GetInstance()->UnregisterWorkerProcess(child_pid);
-  // Reap the worker process.
-  int status;
-  pid_t ret_pid = waitpid(child_pid, &status, 0);
-  DCHECK(ret_pid == child_pid);
-  // TODO(https://crbug.com/1202545): report WEXITSTATUS(status) to UMA.
-  DVLOG(1) << "Worker process (" << child_pid << ") exits with status "
-           << WEXITSTATUS(status);
-}
 }  // namespace
 
 // static
@@ -108,8 +98,7 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(worker_pid != nullptr);
   // Should only be called by the control process.
-  DCHECK(process_type_ == Type::kControl)
-      << "Should only be called by the control process";
+  DCHECK(IsControlProcess()) << "Should only be called by the control process";
 
   // Start the process.
   ScopedMinijail jail(minijail_new());
@@ -118,24 +107,25 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
   minijail_namespace_uts(jail.get());
   minijail_namespace_net(jail.get());
   minijail_namespace_cgroups(jail.get());
-  minijail_namespace_pids(jail.get());
-  minijail_namespace_vfs(jail.get());
 
-  std::string seccomp_policy_path = GetSeccompPolicyPath(model_name);
-  minijail_parse_seccomp_filters(jail.get(), seccomp_policy_path.c_str());
-  minijail_use_seccomp_filter(jail.get());
+  // The following sandboxing makes unit test crash so we do not use them in
+  // unit tests.
+  if (process_type_ != Type::kControlForTest) {
+    minijail_namespace_pids(jail.get());
+    minijail_namespace_vfs(jail.get());
+    std::string seccomp_policy_path = GetSeccompPolicyPath(model_name);
+    minijail_parse_seccomp_filters(jail.get(), seccomp_policy_path.c_str());
+    minijail_use_seccomp_filter(jail.get());
+  }
 
   std::string fd_argv = kMojoBootstrapFdSwitchName;
   // Use GetFD instead of TakeFD to non-destructively obtain the fd.
   fd_argv = GetArgumentForWorkerProcess(
       channel.remote_endpoint().platform_handle().GetFD().get());
-
-  std::string mlservice_binary_path(kMlServiceBinaryPath);
-
-  char* const argv[3] = {&mlservice_binary_path[0], &fd_argv[0], nullptr};
+  char* const argv[3] = {&ml_service_path_[0], &fd_argv[0], nullptr};
 
   // TODO(https://crbug.com/1202545): report the failure.
-  if (minijail_run_pid(jail.get(), kMlServiceBinaryPath, argv, worker_pid) !=
+  if (minijail_run_pid(jail.get(), &ml_service_path_[0], argv, worker_pid) !=
       0) {
     LOG(DFATAL) << "Failed to spawn worker process for " << model_name;
     return false;
@@ -162,7 +152,8 @@ Process::SendMojoInvitationAndGetRemote(pid_t worker_pid,
                                  channel.TakeLocalEndpoint());
 
   remote.set_disconnect_handler(
-      base::BindOnce(InternalPrimordialMojoPipeDisconnectHandler, worker_pid));
+      base::BindOnce(&Process::InternalPrimordialMojoPipeDisconnectHandler,
+                     base::Unretained(this), worker_pid));
 
   DCHECK(worker_pid_info_map_.find(worker_pid) == worker_pid_info_map_.end())
       << "Worker pid already exists";
@@ -186,7 +177,10 @@ void Process::UnregisterWorkerProcess(pid_t pid) {
   worker_pid_info_map_.erase(iter);
 }
 
-Process::Process() : process_type_(Type::kUnset), mojo_bootstrap_fd_(-1) {}
+Process::Process()
+    : process_type_(Type::kUnset),
+      mojo_bootstrap_fd_(-1),
+      ml_service_path_(kDefaultMlServiceBinaryPath) {}
 Process::~Process() = default;
 
 void Process::ControlProcessRun() {
@@ -207,7 +201,6 @@ void Process::WorkerProcessRun() {
   brillo::BaseMessageLoop message_loop;
   message_loop.SetAsCurrent();
   DETACH_FROM_SEQUENCE(sequence_checker_);
-
   mojo::core::Init();
   mojo::core::ScopedIPCSupport ipc_support(
       base::ThreadTaskRunnerHandle::Get(),
@@ -234,6 +227,46 @@ const std::unordered_map<pid_t, Process::WorkerInfo>&
 Process::GetWorkerPidInfoMap() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return worker_pid_info_map_;
+}
+
+void Process::SetTypeForTesting(Type type) {
+  process_type_ = type;
+}
+
+void Process::SetMlServicePathForTesting(const std::string& path) {
+  ml_service_path_ = path;
+}
+
+void Process::SetBeforeExitWorkerDisconnectHandlerHookForTesting(
+    base::RepeatingClosure hook) {
+  before_exit_worker_disconnect_handler_hook_ = std::move(hook);
+}
+
+bool Process::IsControlProcess() {
+  return process_type_ == Type::kControl ||
+         process_type_ == Type::kControlForTest;
+}
+
+bool Process::IsWorkerProcess() {
+  return process_type_ == Type::kWorker ||
+         process_type_ == Type::kSingleProcessForTest;
+}
+
+void Process::InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid) {
+  UnregisterWorkerProcess(child_pid);
+  // Reap the worker process.
+  int status;
+  pid_t ret_pid = waitpid(child_pid, &status, 0);
+  DCHECK(ret_pid == child_pid);
+  // TODO(https://crbug.com/1202545): report WEXITSTATUS(status) to UMA.
+  DVLOG(1) << "Worker process (" << child_pid << ") exits with status "
+           << WEXITSTATUS(status);
+
+  // Call the hooks used in testing.
+  if (process_type_ == Type::kControlForTest &&
+      !before_exit_worker_disconnect_handler_hook_.is_null()) {
+    before_exit_worker_disconnect_handler_hook_.Run();
+  }
 }
 
 }  // namespace ml

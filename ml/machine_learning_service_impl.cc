@@ -520,7 +520,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
 
   // If it is run in the control process, spawn a worker process and forward the
   // request to it.
-  if (Process::GetInstance()->GetType() == Process::Type::kControl) {
+  if (Process::GetInstance()->IsControlProcess()) {
     pid_t worker_pid;
     mojo::PlatformChannel channel;
     constexpr char kModelName[] = "WebPlatformHandwritingModel";
@@ -539,6 +539,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
   }
 
   // From here below is in the worker process.
+  DCHECK(Process::GetInstance()->IsWorkerProcess());
 
   // If handwriting is installed on rootfs, load it from there.
   if (is_rootfs_enabled) {

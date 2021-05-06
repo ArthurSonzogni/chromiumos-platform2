@@ -241,6 +241,7 @@ if (use.test) {
       "graph_executor_impl_test.cc",
       "handwriting_proto_mojom_conversion_test.cc",
       "handwriting_test.cc",
+      "machine_learning_service_impl_multiprocess_test.cc",
       "machine_learning_service_impl_test.cc",
       "model_impl_test.cc",
       "test_utils.cc",
@@ -262,6 +263,7 @@ if (use.test) {
       ":ml_common",
       ":ml_grammar_proto",
       ":ml_handwriting_proto",
+      ":ml_service",
       ":ml_text_suggester_proto",
       "//common-mk/testrunner:testrunner",
     ]

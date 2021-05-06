@@ -14,4 +14,10 @@ std::string GetTestModelDir() {
   return std::string(temp_dir) + "/ml_models/";
 }
 
+std::string GetMlServicePath() {
+  const char* const temp_dir = getenv("OUT");
+  CHECK_NE(temp_dir, nullptr);
+  return std::string(temp_dir) + "/ml_service";
+}
+
 }  // namespace ml

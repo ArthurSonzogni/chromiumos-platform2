@@ -30,6 +30,7 @@
 #include "ml/mojom/soda.mojom.h"
 #include "ml/mojom/text_classifier.mojom.h"
 #include "ml/mojom/text_suggester.mojom.h"
+#include "ml/process.h"
 #include "ml/tensor_view.h"
 #include "ml/test_utils.h"
 #include "ml/text_suggester_proto_mojom_conversion.h"
@@ -1296,6 +1297,10 @@ class WebPlatformHandwritingRecognizerTest : public testing::Test {
     if (!ml::HandwritingLibrary::IsHandwritingLibraryUnitTestSupported()) {
       return;
     }
+    // Sets the mlservice to single process mode for testing here.
+    Process::GetInstance()->SetTypeForTesting(
+        Process::Type::kSingleProcessForTest);
+
     // Set ml_service.
     ml_service_impl_ = std::make_unique<MachineLearningServiceImplForTesting>(
         ml_service_.BindNewPipeAndPassReceiver());
