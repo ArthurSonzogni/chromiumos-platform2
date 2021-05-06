@@ -179,3 +179,25 @@ Derive consumes an AuthBlockState instance, and generates the keys previously
 created in Create(). For example, derive will run the user’s password
 through scrypt, and then give it to the TPM to unseal the USS master
 wrapping key.
+
+## Secret Storage in Memory
+Cryptohome should store user specific secrets, such as key material derived
+from the password, in memory only when the user authenticates. As soon as
+possible key material should be overwritten in memory and deallocated.
+
+### brillo::SecureBlob
+To support this property, cryptohome uses brillo::SecureBlob instead of
+std::string or std::vector. SecureBlob uses an allocator that pins the pages to
+physical memory, and overwrites the memory on deallocation, among other
+properties.
+
+### Note on Serialization Methods
+Cryptohome must serialize objects to a byte array before encrypting them and
+persisting to storage. Many serialization libraries, such as protobuf or
+JSON parsers, will make their own heap allocations, copying class members
+to intermediate objects.  This will cancel any benefit of SecureBlob, so
+cryptohome must use a serialization library that allows a custom allocator
+to be specified. The current plan is to use Flatbuffers for future serialization
+format, such as UserSecretStash and AuthBlockState. protobuf is currently used
+for SerializedVaultKeyset and will remain in cryptohome until
+SerializedVaultKeyset is removed.
