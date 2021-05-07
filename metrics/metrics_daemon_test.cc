@@ -9,10 +9,12 @@
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -53,6 +55,19 @@ const char kFakeScalingMaxFreqPath[] = "fake-scaling-max-freq";
 const char kFakeCpuinfoMaxFreqPath[] = "fake-cpuinfo-max-freq";
 const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
 const char kMetricsFilePath[] = "/var/lib/metrics/uma-events";
+
+void PerisistentIntegerCreationCallback(const base::FilePath& path) {
+  const std::string base_name = path.BaseName().value();
+  const bool startsWithPlatform = base::StartsWith(base_name, "Platform");
+  const bool endsWithCycle = base::EndsWith(base_name, ".cycle");
+  const bool endsWithMock = base::EndsWith(base_name, ".mock");
+  CHECK(startsWithPlatform || endsWithCycle || endsWithMock)
+      << base_name
+      << " is not a valid name. If it should be, please update the "
+         "pre-start script in init/metrics_daemon.conf and "
+         "then update this test";
+}
+
 }  // namespace
 
 class MetricsDaemonTest : public testing::Test {
@@ -62,6 +77,9 @@ class MetricsDaemonTest : public testing::Test {
   base::FilePath fake_temperature_dir_;
 
   virtual void SetUp() {
+    PersistentInteger::SetCreationCallbackForTesting(
+        base::BindRepeating(&PerisistentIntegerCreationCallback));
+
     kFakeDiskStats0 = base::StringPrintf(
         kFakeDiskStatsFormat, kFakeReadSectors[0], kFakeWriteSectors[0]);
     kFakeDiskStats1 = base::StringPrintf(
@@ -106,6 +124,7 @@ class MetricsDaemonTest : public testing::Test {
     EXPECT_EQ(0, unlink(kFakeDiskStatsName));
     EXPECT_EQ(0, unlink(kFakeScalingMaxFreqPath));
     EXPECT_EQ(0, unlink(kFakeCpuinfoMaxFreqPath));
+    PersistentInteger::ClearCreationCallbackForTesting();
   }
 
   // Adds active use aggregation counters update expectations that a count no

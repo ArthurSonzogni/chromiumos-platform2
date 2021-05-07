@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <fcntl.h>
 
+#include <base/callback.h>
 #include <base/check.h>
 #include <base/files/file.h>
 #include <base/logging.h>
@@ -17,11 +18,29 @@
 
 namespace chromeos_metrics {
 
+namespace {
+
+// Returns a pointer to the creation callback. The normal "Use a 'leaked'
+// function-level static object to avoid global initialization & destruction
+// issues" trick.
+base::RepeatingCallback<void(const base::FilePath&)>* GetCreationCallback() {
+  static base::RepeatingCallback<void(const base::FilePath&)>* p =
+      new base::RepeatingCallback<void(const base::FilePath&)>;
+
+  return p;
+}
+
+}  // namespace
+
 // Static class member instantiation.
 bool PersistentInteger::testing_ = false;
 
 PersistentInteger::PersistentInteger(const base::FilePath& backing_file_path)
-    : path_(backing_file_path), synced_(false), value_(0), version_(kVersion) {}
+    : path_(backing_file_path), synced_(false), value_(0), version_(kVersion) {
+  if (!GetCreationCallback()->is_null()) {
+    GetCreationCallback()->Run(backing_file_path);
+  }
+}
 
 PersistentInteger::~PersistentInteger() {}
 
@@ -80,6 +99,18 @@ bool PersistentInteger::Read() {
   value_ = value;
   synced_ = true;
   return true;
+}
+
+// static
+void PersistentInteger::SetCreationCallbackForTesting(
+    const base::RepeatingCallback<void(const base::FilePath&)>&
+        creation_callback) {
+  *GetCreationCallback() = creation_callback;
+}
+
+// static
+void PersistentInteger::ClearCreationCallbackForTesting() {
+  GetCreationCallback()->Reset();
 }
 
 }  // namespace chromeos_metrics

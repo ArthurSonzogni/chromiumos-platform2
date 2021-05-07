@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/callback_forward.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/strings/string_piece.h>
@@ -48,6 +49,12 @@ class PersistentInteger {
   // Convenience function for v = Get, Set(max(v, x)).
   // Virtual only because of mock.
   virtual void Max(int64_t x);
+
+  // Set a callback that is called each time a PersistentInteger is created.
+  static void SetCreationCallbackForTesting(
+      const base::RepeatingCallback<void(const base::FilePath&)>&
+          creation_callback);
+  static void ClearCreationCallbackForTesting();
 
  private:
   static const int kVersion = 1001;
