@@ -25,6 +25,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libminijail",
     "re2",
     "vboot_host",
 
@@ -111,6 +112,7 @@ executable("rmad") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":libcrossystem_utils",
     ":libdbus_service",
     ":librmad_interface",
   ]
