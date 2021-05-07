@@ -92,10 +92,6 @@ constexpr char kIPFlagArpIgnoreDefault[] = "0";
 constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
 constexpr size_t kHardwareAddressLength = 6;
 
-// Maximum seconds between two link monitor failures to declare this link
-// (network) as unreliable.
-constexpr int kLinkUnreliableThresholdSeconds = 60 * 60;
-
 }  // namespace
 
 const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
@@ -124,8 +120,6 @@ Device::Device(Manager* manager,
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      time_(Time::GetInstance()),
-      last_link_monitor_failed_time_(0),
       ipv6_disabled_(false),
       is_multi_homed_(false),
       fixed_ip_params_(false),
@@ -370,6 +364,8 @@ bool Device::IsConnectedViaTether() const {
                  vendor_encapsulated_options.size());
 }
 
+void Device::OnSelectedServiceChanged(const ServiceRefPtr&) {}
+
 const RpcIdentifier& Device::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
@@ -433,13 +429,6 @@ void Device::OnBeforeSuspend(const ResultCallback& callback) {
 
 void Device::OnAfterResume() {
   RenewDHCPLease(false, nullptr);
-  // Resume from sleep, could be in different location now.
-  // Ignore previous link monitor failures.
-  if (selected_service_) {
-    selected_service_->set_unreliable(false);
-    reliable_link_callback_.Cancel();
-  }
-  last_link_monitor_failed_time_ = 0;
 }
 
 void Device::OnDarkResume(const ResultCallback& callback) {
@@ -462,9 +451,9 @@ void Device::ResetConnection() {
 
   // Refresh traffic counters before deselecting the service.
   FetchTrafficCounters(selected_service_, /*new_service=*/nullptr);
-  selected_service_->set_unreliable(false);
-  reliable_link_callback_.Cancel();
+  const ServiceRefPtr old_service = selected_service_;
   selected_service_ = nullptr;
+  OnSelectedServiceChanged(old_service);
   adaptor_->EmitRpcIdentifierChanged(kSelectedServiceProperty,
                                      GetSelectedServiceRpcIdentifier(nullptr));
 }
@@ -1158,30 +1147,7 @@ void Device::OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig) {
   UpdateIPConfigsProperty();
 }
 
-void Device::OnUnreliableLink() {
-  SLOG(this, 2) << "Device " << link_name() << ": Link is unreliable.";
-  selected_service_->set_unreliable(true);
-  reliable_link_callback_.Cancel();
-  metrics()->NotifyUnreliableLinkSignalStrength(technology_,
-                                                selected_service_->strength());
-}
-
-void Device::OnReliableLink() {
-  SLOG(this, 2) << "Device " << link_name() << ": Link is reliable.";
-  selected_service_->set_unreliable(false);
-  // TODO(zqiu): report signal strength to UMA.
-}
-
-void Device::OnConnected() {
-  if (selected_service_->unreliable()) {
-    // Post a delayed task to reset link back to reliable if no link
-    // failure is detected in the next 5 minutes.
-    reliable_link_callback_.Reset(
-        base::Bind(&Device::OnReliableLink, base::Unretained(this)));
-    dispatcher()->PostDelayedTask(FROM_HERE, reliable_link_callback_.callback(),
-                                  kLinkUnreliableThresholdSeconds * 1000);
-  }
-}
+void Device::OnConnected() {}
 
 void Device::OnConnectionUpdated() {
   if (selected_service_) {
@@ -1260,17 +1226,11 @@ void Device::SelectService(const ServiceRefPtr& service) {
     // Just in case the Device subclass has not already done so, make
     // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(nullptr);
-    // Reset link status for the previously selected service.
-    selected_service_->set_unreliable(false);
-    reliable_link_callback_.Cancel();
     StopAllActivities();
   }
 
-  // Newly selected service (network), previous failures doesn't apply
-  // anymore.
-  last_link_monitor_failed_time_ = 0;
-
   selected_service_ = service;
+  OnSelectedServiceChanged(old_service);
   FetchTrafficCounters(old_service, selected_service_);
   adaptor_->EmitRpcIdentifierChanged(kSelectedServiceProperty,
                                      GetSelectedServiceRpcIdentifier(nullptr));
@@ -1471,24 +1431,6 @@ void Device::StopConnectivityTest() {
 void Device::set_mac_address(const std::string& mac_address) {
   mac_address_ = mac_address;
   adaptor_->EmitStringChanged(kAddressProperty, mac_address_);
-}
-
-void Device::OnLinkMonitorFailure(IPAddress::Family family) {
-  DCHECK_NE(family, IPAddress::kFamilyUnknown);
-  SLOG(this, 2) << "Device " << link_name()
-                << ": Link Monitor indicates failure.";
-  if (!selected_service_) {
-    return;
-  }
-
-  time_t now;
-  time_->GetSecondsBoottime(&now);
-
-  if (last_link_monitor_failed_time_ != 0 &&
-      now - last_link_monitor_failed_time_ < kLinkUnreliableThresholdSeconds) {
-    OnUnreliableLink();
-  }
-  last_link_monitor_failed_time_ = now;
 }
 
 void Device::set_traffic_monitor_for_test(

@@ -28,6 +28,7 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -116,6 +117,13 @@ const int16_t kDefaultDisconnectDbm = 0;
 const int16_t kDefaultDisconnectThresholdDbm = -75;
 const int kInvalidMaxSSIDs = -1;
 
+// Maximum time between two link monitor failures to declare this link (network)
+// as unreliable.
+constexpr auto kLinkUnreliableThreshold = base::TimeDelta::FromMinutes(60);
+// Mark a unreliable service as reliable if no more link monitor failures in
+// the below timeout after this unreliable service became connected again.
+constexpr auto kLinkUnreliableResetTimeout = base::TimeDelta::FromMinutes(5);
+
 bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');
 }
@@ -150,6 +158,7 @@ WiFi::WiFi(Manager* manager,
       eap_state_handler_(new SupplicantEAPStateHandler()),
       ipv4_gateway_found_(false),
       ipv6_gateway_found_(false),
+      last_link_monitor_failed_time_(0),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
@@ -2100,11 +2109,32 @@ std::string WiFi::LogSSID(const std::string& ssid) {
   return base::StringPrintf("[SSID=%s]", out.c_str());
 }
 
+void WiFi::OnUnreliableLink() {
+  SLOG(this, 2) << "Device " << link_name() << ": Link is unreliable.";
+  selected_service()->set_unreliable(true);
+  reliable_link_callback_.Cancel();
+  metrics()->NotifyUnreliableLinkSignalStrength(Technology::kWifi,
+                                                selected_service()->strength());
+}
+
+void WiFi::OnReliableLink() {
+  SLOG(this, 2) << "Device " << link_name() << ": Link is reliable.";
+  selected_service()->set_unreliable(false);
+}
+
 void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
-  // Invoke base class call first to allow it to determine the reliability of
-  // the link.
-  // TODO(b/147256664): Move the related logic completely into WiFi class.
-  Device::OnLinkMonitorFailure(family);
+  SLOG(this, 2) << "Device " << link_name()
+                << ": Link Monitor indicates failure.";
+
+  // Determine the reliability of the link.
+  time_t now;
+  time_->GetSecondsBoottime(&now);
+  if (last_link_monitor_failed_time_ != 0 &&
+      now - last_link_monitor_failed_time_ <
+          kLinkUnreliableThreshold.InSeconds()) {
+    OnUnreliableLink();
+  }
+  last_link_monitor_failed_time_ = now;
 
   // If we have never found the gateway, let's be conservative and not
   // do anything, in case this network topology does not have a gateway.
@@ -2299,6 +2329,14 @@ void WiFi::OnAfterResume() {
 
   // Since we stopped the scan timer before suspending, start it again here.
   StartScanTimer();
+
+  // Resume from sleep, could be in different location now.
+  // Ignore previous link monitor failures.
+  if (selected_service()) {
+    selected_service()->set_unreliable(false);
+    reliable_link_callback_.Cancel();
+  }
+  last_link_monitor_failed_time_ = 0;
 }
 
 void WiFi::AbortScan() {
@@ -2400,6 +2438,24 @@ void WiFi::OnConnected() {
   // Clears the link monitor states for the previous connection.
   ipv4_gateway_found_ = false;
   ipv6_gateway_found_ = false;
+
+  if (selected_service()->unreliable()) {
+    // Post a delayed task to reset link back to reliable if no link failure is
+    // detected in the next 5 minutes.
+    reliable_link_callback_.Reset(
+        base::Bind(&WiFi::OnReliableLink, base::Unretained(this)));
+    dispatcher()->PostDelayedTask(FROM_HERE, reliable_link_callback_.callback(),
+                                  kLinkUnreliableResetTimeout.InMilliseconds());
+  }
+}
+
+void WiFi::OnSelectedServiceChanged(const ServiceRefPtr& old_service) {
+  // Reset link status for the previously selected service.
+  if (old_service) {
+    old_service->set_unreliable(false);
+  }
+  reliable_link_callback_.Cancel();
+  last_link_monitor_failed_time_ = 0;
 }
 
 void WiFi::OnIPConfigFailure() {

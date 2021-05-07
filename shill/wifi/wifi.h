@@ -91,6 +91,7 @@
 #include "shill/key_value_store.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
+#include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
@@ -139,6 +140,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnAfterResume() override;
   // Callback for when a service is configured with an IP.
   void OnConnected() override;
+  // Callback for when the selected service is changed.
+  void OnSelectedServiceChanged(const ServiceRefPtr& old_service) override;
   // Callback for when a service fails to configure with an IP.
   void OnIPConfigFailure() override;
 
@@ -193,9 +196,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Formats |ssid| for logging purposes, to ease scrubbing.
   static std::string LogSSID(const std::string& ssid);
-
-  // Called by Linkmonitor (overridden from Device superclass).
-  void OnLinkMonitorFailure(IPAddress::Family family) override;
 
   virtual bool IsCurrentService(const WiFiService* service) const {
     return service == current_service_.get();
@@ -639,6 +639,15 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return true;
   }
 
+  // Called when link becomes unreliable (multiple link monitor failures
+  // detected in short period of time).
+  void OnUnreliableLink();
+  // Called when link becomes reliable (no link failures in a predefined period
+  // of time).
+  void OnReliableLink();
+  // Respond to a LinkMonitor failure. Called in OnNeighborReachabilityEvent().
+  void OnLinkMonitorFailure(IPAddress::Family family);
+
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;
 
@@ -726,6 +735,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // in OnConnected().
   bool ipv4_gateway_found_;
   bool ipv6_gateway_found_;
+  // Time when link monitor last failed.
+  time_t last_link_monitor_failed_time_;
+  // Callback to invoke when link becomes reliable again after it was previously
+  // unreliable.
+  base::CancelableClosure reliable_link_callback_;
 
   // Properties
   std::string bgscan_method_;

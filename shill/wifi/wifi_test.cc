@@ -933,6 +933,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportIPv6ConfigComplete() { wifi_->OnIPv6ConfigUpdated(); }
   void ReportIPConfigFailure() { wifi_->OnIPConfigFailure(); }
   void ReportConnected() { wifi_->OnConnected(); }
+  void ReportSelectedServiceChanged(const ServiceRefPtr& old_service) {
+    wifi_->OnSelectedServiceChanged(old_service);
+  }
   void ReportLinkUp() { wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP); }
   void ScanDone(const bool& success) { wifi_->ScanDone(success); }
   void ReportScanFailed() { wifi_->ScanFailedTask(); }
@@ -1075,6 +1078,31 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
     wifi_->OnNeighborReachabilityEvent(ip_address, role, event_type);
+  }
+
+  MOCK_METHOD(void, ReliableLinkCallback, ());
+
+  void SetReliableLinkCallback() {
+    wifi_->reliable_link_callback_.Reset(base::Bind(
+        &WiFiObjectTest::ReliableLinkCallback, base::Unretained(this)));
+  }
+
+  bool ReliableLinkCallbackIsCancelled() {
+    return wifi_->reliable_link_callback_.IsCancelled();
+  }
+
+  // Used by tests for link status (L2 failure, reliability).
+  void SetupConnectionAndIPConfig(const std::string& ipv4_gateway_address) {
+    scoped_refptr<MockConnection> connection(new MockConnection(device_info()));
+    SetConnection(connection);
+    scoped_refptr<MockIPConfig> ipconfig(
+        new MockIPConfig(control_interface(), kDeviceName));
+    SetIPConfig(ipconfig);
+    // We use ReturnRef() below for this object so use `static` here.
+    static IPConfig::Properties ip_props;
+    ip_props.address_family = IPAddress::kFamilyIPv4;
+    ip_props.gateway = ipv4_gateway_address;
+    EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
   }
 
   bool SetBgscanShortInterval(const uint16_t& interval, Error* error) {
@@ -3015,21 +3043,10 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   StartWiFi();
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
 
-  // Alias for names in the signal.
   using EventSignal = patchpanel::NeighborReachabilityEventSignal;
 
-  // Sets up Connection and IPConfig.
-  scoped_refptr<MockConnection> connection(new MockConnection(device_info()));
-  SetConnection(connection);
-  scoped_refptr<MockIPConfig> ipconfig(
-      new MockIPConfig(control_interface(), kDeviceName));
-  SetIPConfig(ipconfig);
   const std::string kGatewayIPAddressString = "192.168.1.1";
-  IPConfig::Properties ip_props;
-  ip_props.address_family = IPAddress::kFamilyIPv4;
-  ip_props.gateway = kGatewayIPAddressString;
-  EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
-
+  SetupConnectionAndIPConfig(kGatewayIPAddressString);
   const IPAddress kGatewayIPAddress(kGatewayIPAddressString);
   const IPAddress kAnotherIPAddress("1.2.3.4");
 
@@ -3096,6 +3113,100 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
                               EventSignal::FAILED);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
+TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  SelectService(service);
+
+  // To make the call lines shorter.
+  using EventSignal = patchpanel::NeighborReachabilityEventSignal;
+  constexpr auto kReachable = EventSignal::REACHABLE;
+  constexpr auto kGateway = EventSignal::GATEWAY;
+  constexpr auto kFailed = EventSignal::FAILED;
+
+  // Make the object ready to respond to link monitor failures.
+  constexpr auto kGatewayIPAddressString = "192.168.0.1";
+  SetupConnectionAndIPConfig(kGatewayIPAddressString);
+  const IPAddress kGatewayIPAddress("192.168.0.1");
+  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kReachable);
+
+  time_t current_time = 1000;
+  EXPECT_CALL(time_, GetSecondsBoottime(_))
+      .WillRepeatedly([&](time_t* seconds) {
+        *seconds = current_time;
+        return true;
+      });
+
+  // Initial link monitor failure.
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  EXPECT_FALSE(service->unreliable());
+
+  // Another link monitor failure after 3 minutes, report signal strength.
+  current_time += 180;
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  EXPECT_TRUE(service->unreliable());
+
+  // Device is connected with the reliable link callback setup, then
+  // another link monitor failure after 3 minutes, which implies link is
+  // still unreliable, reliable link callback should be cancelled.
+  current_time += 180;
+  SetReliableLinkCallback();
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  EXPECT_TRUE(service->unreliable());
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
+
+  // Another link monitor failure after an hour, link is still reliable, signal
+  // strength not reported.
+  current_time += 3600;
+  service->set_unreliable(false);
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  EXPECT_FALSE(service->unreliable());
+}
+
+TEST_F(WiFiMainTest, LinkStatusResetOnSelectService) {
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  SelectService(service);
+  service->set_unreliable(true);
+  SetReliableLinkCallback();
+  EXPECT_FALSE(ReliableLinkCallbackIsCancelled());
+
+  // Service is deselected, link status of the service should be reset.
+  ReportSelectedServiceChanged(service);
+  EXPECT_FALSE(service->unreliable());
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
+}
+
+TEST_F(WiFiMainTest, LinkStatusOnConnected) {
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  SelectService(service);
+
+  // Link is reliable, no need to post delayed task to reset link status.
+  ReportConnected();
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
+
+  // Link is unreliable when connected, delayed task is posted to reset the
+  // link state.
+  service->set_unreliable(true);
+  ReportConnected();
+  EXPECT_FALSE(ReliableLinkCallbackIsCancelled());
+}
+
+TEST_F(WiFiMainTest, ResumeWithUnreliableLink) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  SelectService(service);
+  service->set_unreliable(true);
+  SetReliableLinkCallback();
+
+  // Link status should be reset upon resume.
+  OnAfterResume();
+  EXPECT_FALSE(service->unreliable());
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsOpen) {

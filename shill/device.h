@@ -25,7 +25,6 @@
 #include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/shill_time.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
@@ -157,6 +156,13 @@ class Device : public base::RefCounted<Device> {
   // Returns true if the DHCP parameters provided indicate that we are tethered
   // to a mobile device.
   mockable bool IsConnectedViaTether() const;
+
+  // Called by Device so that subclasses can run hooks on the selected service
+  // changed. This function is called after the |selected_service_| changed so
+  // the subclasses can call the getter to retrieve the new selected service.
+  // Note that the base class does nothing here so the subclasses don't need to
+  // call up to the parent.
+  virtual void OnSelectedServiceChanged(const ServiceRefPtr& old_service);
 
   // Restart the portal detection process on a connected device.  This is
   // useful if the properties on the connected service have changed in a
@@ -511,9 +517,6 @@ class Device : public base::RefCounted<Device> {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  // Respond to a LinkMonitor failure in a Device-specific manner.
-  virtual void OnLinkMonitorFailure(IPAddress::Family family);
-
   // Indicates if the selected service is configured with a static IP address.
   bool IsUsingStaticIP() const;
 
@@ -639,14 +642,6 @@ class Device : public base::RefCounted<Device> {
   // is advisory, since an "Updated" or "Failed" signal is guaranteed to
   // follow.
   void OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig);
-
-  // Called when link becomes unreliable (multiple link monitor failures
-  // detected in short period of time).
-  void OnUnreliableLink();
-
-  // Called when link becomes reliable (no link failures in a predefined period
-  // of time).
-  void OnReliableLink();
 
   // Return true if given IP configuration contain both IP address and DNS
   // servers. Hence, ready to be used for network connection.
@@ -826,13 +821,6 @@ class Device : public base::RefCounted<Device> {
   DHCPProvider* dhcp_provider_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
-
-  // Time when link monitor last failed.
-  Time* time_;
-  time_t last_link_monitor_failed_time_;
-  // Callback to invoke when link becomes reliable again after it was previously
-  // unreliable.
-  base::CancelableClosure reliable_link_callback_;
 
   std::unique_ptr<PortalDetector> connection_tester_;
 
