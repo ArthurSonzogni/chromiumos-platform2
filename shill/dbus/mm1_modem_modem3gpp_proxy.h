@@ -54,9 +54,9 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
                      brillo::Error* dbus_error);
 
   // Callbacks for SetInitialEpsBearerSettings async call.
-  void OnSetEpsBearerSuccess(const ResultCallback& callback);
-  void OnSetEpsBearerFailure(const ResultCallback& callback,
-                             brillo::Error* dbus_error);
+  void OnSetInitialEpsBearerSettingsSuccess(const ResultCallback& callback);
+  void OnSetInitialEpsBearerSettingsFailure(const ResultCallback& callback,
+                                            brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::Modem3gppProxy>
       proxy_;

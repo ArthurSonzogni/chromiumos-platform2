@@ -60,9 +60,9 @@ void ModemModem3gppProxy::SetInitialEpsBearerSettings(
       KeyValueStore::ConvertToVariantDictionary(properties);
   proxy_->SetInitialEpsBearerSettingsAsync(
       properties_dict,
-      base::Bind(&ModemModem3gppProxy::OnSetEpsBearerSuccess,
+      base::Bind(&ModemModem3gppProxy::OnSetInitialEpsBearerSettingsSuccess,
                  weak_factory_.GetWeakPtr(), callback),
-      base::Bind(&ModemModem3gppProxy::OnSetEpsBearerFailure,
+      base::Bind(&ModemModem3gppProxy::OnSetInitialEpsBearerSettingsFailure,
                  weak_factory_.GetWeakPtr(), callback),
       timeout);
 }
@@ -101,14 +101,14 @@ void ModemModem3gppProxy::OnScanFailure(const KeyValueStoresCallback& callback,
   callback.Run(std::vector<KeyValueStore>(), error);
 }
 
-void ModemModem3gppProxy::OnSetEpsBearerSuccess(
+void ModemModem3gppProxy::OnSetInitialEpsBearerSettingsSuccess(
     const ResultCallback& callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   callback.Run(Error());
 }
 
-void ModemModem3gppProxy::OnSetEpsBearerFailure(const ResultCallback& callback,
-                                                brillo::Error* dbus_error) {
+void ModemModem3gppProxy::OnSetInitialEpsBearerSettingsFailure(
+    const ResultCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
