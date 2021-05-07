@@ -15,15 +15,12 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_ppp_device.h"
 
-using std::map;
-using std::string;
-
 namespace shill {
 
 // TODO(quiche): Add test for UpdateIPConfigFromPPP. crbug.com/266404
 
 TEST(PPPDeviceTest, GetInterfaceName) {
-  map<string, string> config;
+  std::map<std::string, std::string> config;
   config[kPPPInterfaceName] = "ppp0";
   config["foo"] = "bar";
   EXPECT_EQ("ppp0", PPPDevice::GetInterfaceName(config));
@@ -35,7 +32,7 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
   MockManager manager(&control, nullptr, &metrics);
   scoped_refptr<PPPDevice> device = new PPPDevice(&manager, "test0", 0);
 
-  map<string, string> config;
+  std::map<std::string, std::string> config;
   config[kPPPInternalIP4Address] = "4.5.6.7";
   config[kPPPExternalIP4Address] = "33.44.55.66";
   config[kPPPGatewayAddress] = "192.168.1.1";

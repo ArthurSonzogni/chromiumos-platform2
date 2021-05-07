@@ -4,15 +4,15 @@
 
 #include "shill/rpc_task.h"
 
+#include <map>
+#include <string>
+
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/logging.h"
-
-using std::map;
-using std::string;
 
 namespace shill {
 
@@ -31,16 +31,17 @@ RpcTask::~RpcTask() {
   LOG(INFO) << "RpcTask " + unique_name_ + " destroyed.";
 }
 
-void RpcTask::GetLogin(string* user, string* password) const {
+void RpcTask::GetLogin(std::string* user, std::string* password) const {
   delegate_->GetLogin(user, password);
 }
 
-void RpcTask::Notify(const string& reason, const map<string, string>& dict) {
+void RpcTask::Notify(const std::string& reason,
+                     const std::map<std::string, std::string>& dict) {
   delegate_->Notify(reason, dict);
 }
 
-map<string, string> RpcTask::GetEnvironment() const {
-  map<string, string> env;
+std::map<std::string, std::string> RpcTask::GetEnvironment() const {
+  std::map<std::string, std::string> env;
   env.emplace(kRpcTaskServiceVariable,
               adaptor_->GetRpcConnectionIdentifier().value());
   env.emplace(kRpcTaskPathVariable, adaptor_->GetRpcIdentifier().value());

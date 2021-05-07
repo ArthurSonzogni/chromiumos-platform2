@@ -14,6 +14,7 @@
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
+#include <base/time/time.h>
 #include <linux/nl80211.h>
 
 #include "shill/power_manager_proxy_interface.h"

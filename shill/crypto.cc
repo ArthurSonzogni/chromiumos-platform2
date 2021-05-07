@@ -11,8 +11,6 @@
 
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace {
@@ -20,13 +18,13 @@ namespace {
 constexpr char kRot47Id[] = "rot47:";
 
 // ROT47 is self-reciprocal.
-string Rot47(std::string_view input) {
+std::string Rot47(std::string_view input) {
   const int kRotSize = 94;
   const int kRotHalf = kRotSize / 2;
   const char kRotMin = '!';
   const char kRotMax = kRotMin + kRotSize - 1;
 
-  string output;
+  std::string output;
   output.reserve(input.size());
   for (auto ch : input) {
     if (kRotMin <= ch && ch <= kRotMax) {
@@ -42,11 +40,11 @@ string Rot47(std::string_view input) {
 
 namespace Crypto {
 
-string Encrypt(const string& plaintext) {
-  return string(kRot47Id) + Rot47(plaintext);
+std::string Encrypt(const std::string& plaintext) {
+  return std::string(kRot47Id) + Rot47(plaintext);
 }
 
-base::Optional<string> Decrypt(const string& ciphertext) {
+base::Optional<std::string> Decrypt(const std::string& ciphertext) {
   if (!base::StartsWith(ciphertext, kRot47Id, base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Cannot decrypt non-ROT47 ciphertext";
     return base::nullopt;

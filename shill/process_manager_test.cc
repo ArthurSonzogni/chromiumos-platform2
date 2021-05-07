@@ -17,14 +17,6 @@
 
 #include "shill/test_event_dispatcher.h"
 
-using base::Bind;
-using base::Callback;
-using base::CancelableClosure;
-using base::Closure;
-using base::Unretained;
-using std::map;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -47,12 +39,12 @@ class ProcessManagerTest : public testing::Test {
     process_manager_->pending_termination_processes_.clear();
   }
 
-  void AddWatchedProcess(pid_t pid, const Callback<void(int)>& callback) {
+  void AddWatchedProcess(pid_t pid, const base::Callback<void(int)>& callback) {
     process_manager_->watched_processes_[pid] = std::move(callback);
   }
 
-  void AddTerminateProcess(pid_t pid,
-                           std::unique_ptr<CancelableClosure> timeout_handler) {
+  void AddTerminateProcess(
+      pid_t pid, std::unique_ptr<base::CancelableClosure> timeout_handler) {
     process_manager_->pending_termination_processes_[pid] =
         std::move(timeout_handler);
   }
@@ -83,17 +75,18 @@ class ProcessManagerTest : public testing::Test {
   class CallbackObserver {
    public:
     CallbackObserver()
-        : exited_callback_(
-              Bind(&CallbackObserver::OnProcessExited, Unretained(this))),
-          termination_timeout_callback_(Bind(
-              &CallbackObserver::OnTerminationTimeout, Unretained(this))) {}
+        : exited_callback_(base::Bind(&CallbackObserver::OnProcessExited,
+                                      base::Unretained(this))),
+          termination_timeout_callback_(
+              base::Bind(&CallbackObserver::OnTerminationTimeout,
+                         base::Unretained(this))) {}
     virtual ~CallbackObserver() = default;
 
     MOCK_METHOD(void, OnProcessExited, (int));
     MOCK_METHOD(void, OnTerminationTimeout, ());
 
-    Callback<void(int)> exited_callback_;
-    Closure termination_timeout_callback_;
+    base::Callback<void(int)> exited_callback_;
+    base::Closure termination_timeout_callback_;
   };
 
   EventDispatcherForTest dispatcher_;
@@ -102,12 +95,12 @@ class ProcessManagerTest : public testing::Test {
 };
 
 MATCHER_P2(IsProcessArgs, program, args, "") {
-  if (string(arg[0]) != program) {
+  if (std::string(arg[0]) != program) {
     return false;
   }
   int index = 1;
   for (const auto& option : args) {
-    if (string(arg[index++]) != option) {
+    if (std::string(arg[index++]) != option) {
       return false;
     }
   }
@@ -115,7 +108,7 @@ MATCHER_P2(IsProcessArgs, program, args, "") {
 }
 
 MATCHER_P(IsProcessEnv, env, "") {
-  map<string, string> actual;
+  std::map<std::string, std::string> actual;
   for (size_t i = 0; i < arg.size() - 1; ++i) {
     char* str = arg[i];
     char* eq = strchr(str, '=');
@@ -123,7 +116,8 @@ MATCHER_P(IsProcessEnv, env, "") {
       return false;
     }
 
-    if (!actual.insert(std::make_pair(string(str, eq), string(eq + 1)))
+    if (!actual
+             .insert(std::make_pair(std::string(str, eq), std::string(eq + 1)))
              .second) {
       return false;
     }
@@ -145,7 +139,7 @@ TEST_F(ProcessManagerTest, WatchedProcessExited) {
 TEST_F(ProcessManagerTest, TerminateProcessExited) {
   const pid_t kPid = 123;
   CallbackObserver observer;
-  auto timeout_handler = std::make_unique<CancelableClosure>(
+  auto timeout_handler = std::make_unique<base::CancelableClosure>(
       observer.termination_timeout_callback_);
   AddTerminateProcess(kPid, std::move(timeout_handler));
 
@@ -156,14 +150,14 @@ TEST_F(ProcessManagerTest, TerminateProcessExited) {
 
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesReturnsPidAndWatchesChild) {
-  const string kProgram = "/usr/bin/dump";
-  const vector<string> kArgs = {"-b", "-g"};
-  const map<string, string> kEnv = {
+  const std::string kProgram = "/usr/bin/dump";
+  const std::vector<std::string> kArgs = {"-b", "-g"};
+  const std::map<std::string, std::string> kEnv = {
       {"one", "1"},
       {"two", "2"},
   };
-  const string kUser = "user";
-  const string kGroup = "group";
+  const std::string kUser = "user";
+  const std::string kGroup = "group";
   const uint64_t kCapMask = 1;
   const pid_t kPid = 123;
   int stdin_fd;
@@ -188,21 +182,21 @@ TEST_F(ProcessManagerTest,
   };
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, kUser, kGroup, kCapMask,
-      false, true, Callback<void(int)>(), std_fds);
+      false, true, base::Callback<void(int)>(), std_fds);
   EXPECT_EQ(kPid, actual_pid);
   AssertNonEmptyWatchedProcesses();
 }
 
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesHandlesFailureOfDropRoot) {
-  const string kProgram = "/usr/bin/dump";
-  const vector<string> kArgs = {"-b", "-g"};
-  const map<string, string> kEnv = {
+  const std::string kProgram = "/usr/bin/dump";
+  const std::vector<std::string> kArgs = {"-b", "-g"};
+  const std::map<std::string, std::string> kEnv = {
       {"one", "1"},
       {"two", "2"},
   };
-  const string kUser = "user";
-  const string kGroup = "group";
+  const std::string kUser = "user";
+  const std::string kGroup = "group";
   const uint64_t kCapMask = 1;
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
@@ -214,21 +208,21 @@ TEST_F(ProcessManagerTest,
   struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, {}, kUser, kGroup, kCapMask,
-      false, false, Callback<void(int)>(), std_fds);
+      false, false, base::Callback<void(int)>(), std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }
 
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesHandlesFailureOfRunAndDestroy) {
-  const string kProgram = "/usr/bin/dump";
-  const vector<string> kArgs = {"-b", "-g"};
-  const map<string, string> kEnv = {
+  const std::string kProgram = "/usr/bin/dump";
+  const std::vector<std::string> kArgs = {"-b", "-g"};
+  const std::map<std::string, std::string> kEnv = {
       {"one", "1"},
       {"two", "2"},
   };
-  const string kUser = "user";
-  const string kGroup = "group";
+  const std::string kUser = "user";
+  const std::string kGroup = "group";
   const uint64_t kCapMask = 1;
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
@@ -241,7 +235,7 @@ TEST_F(ProcessManagerTest,
   struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, kUser, kGroup, kCapMask,
-      false, false, Callback<void(int)>(), std_fds);
+      false, false, base::Callback<void(int)>(), std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }

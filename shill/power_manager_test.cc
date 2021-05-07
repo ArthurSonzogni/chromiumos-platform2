@@ -19,9 +19,6 @@
 #include "shill/mock_power_manager_proxy.h"
 #include "shill/power_manager_proxy_interface.h"
 
-using base::Bind;
-using base::Unretained;
-using std::string;
 using testing::_;
 using testing::DoAll;
 using testing::IgnoreResult;
@@ -82,12 +79,12 @@ class PowerManagerTest : public Test {
         power_manager_(&control_),
         power_manager_proxy_(control_.power_manager_proxy()),
         delegate_(control_.delegate()) {
-    suspend_imminent_callback_ =
-        Bind(&PowerManagerTest::SuspendImminentAction, Unretained(this));
-    suspend_done_callback_ =
-        Bind(&PowerManagerTest::SuspendDoneAction, Unretained(this));
-    dark_suspend_imminent_callback_ =
-        Bind(&PowerManagerTest::DarkSuspendImminentAction, Unretained(this));
+    suspend_imminent_callback_ = base::Bind(
+        &PowerManagerTest::SuspendImminentAction, base::Unretained(this));
+    suspend_done_callback_ = base::Bind(&PowerManagerTest::SuspendDoneAction,
+                                        base::Unretained(this));
+    dark_suspend_imminent_callback_ = base::Bind(
+        &PowerManagerTest::DarkSuspendImminentAction, base::Unretained(this));
   }
 
   MOCK_METHOD(void, SuspendImminentAction, ());
@@ -125,7 +122,7 @@ class PowerManagerTest : public Test {
   }
 
   void AddProxyExpectationForRecordDarkResumeWakeReason(
-      const string& wake_reason, bool return_value) {
+      const std::string& wake_reason, bool return_value) {
     EXPECT_CALL(*power_manager_proxy_, RecordDarkResumeWakeReason(wake_reason))
         .WillOnce(Return(return_value));
   }
@@ -371,7 +368,7 @@ TEST_F(PowerManagerTest, ReportSuspendReadinessFailure) {
 }
 
 TEST_F(PowerManagerTest, RecordDarkResumeWakeReasonFailure) {
-  const string kWakeReason = "WiFi.Disconnect";
+  const std::string kWakeReason = "WiFi.Disconnect";
   RegisterSuspendDelays();
   EXPECT_CALL(*this, DarkSuspendImminentAction());
   OnDarkSuspendImminent(kSuspendId1);
@@ -380,7 +377,7 @@ TEST_F(PowerManagerTest, RecordDarkResumeWakeReasonFailure) {
 }
 
 TEST_F(PowerManagerTest, RecordDarkResumeWakeReasonSuccess) {
-  const string kWakeReason = "WiFi.Disconnect";
+  const std::string kWakeReason = "WiFi.Disconnect";
   RegisterSuspendDelays();
   EXPECT_CALL(*this, DarkSuspendImminentAction());
   OnDarkSuspendImminent(kSuspendId1);

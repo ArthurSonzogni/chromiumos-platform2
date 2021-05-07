@@ -42,10 +42,6 @@
 #include "shill/mock_eap_credentials.h"
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-using base::Bind;
-using base::Unretained;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
@@ -101,7 +97,7 @@ class ServiceTest : public PropertyStoreTest {
     return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
-  string GetFriendlyName() { return service_->friendly_name(); }
+  std::string GetFriendlyName() { return service_->friendly_name(); }
 
   void SetManagerRunning(bool running) { mock_manager_.running_ = running; }
 
@@ -130,7 +126,7 @@ class ServiceTest : public PropertyStoreTest {
 
   Timestamp GetTimestamp(int monotonic_seconds,
                          int boottime_seconds,
-                         const string& wall_clock) {
+                         const std::string& wall_clock) {
     struct timeval monotonic = {.tv_sec = monotonic_seconds, .tv_usec = 0};
     struct timeval boottime = {.tv_sec = boottime_seconds, .tv_usec = 0};
     return Timestamp(monotonic, boottime, wall_clock);
@@ -139,7 +135,7 @@ class ServiceTest : public PropertyStoreTest {
   void PushTimestamp(EventHistory* events,
                      int monotonic_seconds,
                      int boottime_seconds,
-                     const string& wall_clock) {
+                     const std::string& wall_clock) {
     events->RecordEventInternal(
         GetTimestamp(monotonic_seconds, boottime_seconds, wall_clock));
   }
@@ -193,9 +189,9 @@ class ServiceTest : public PropertyStoreTest {
   NiceMock<MockTime> time_;
   scoped_refptr<ServiceUnderTest> service_;
   scoped_refptr<ServiceUnderTest> service2_;
-  string storage_id_;
+  std::string storage_id_;
   MockPowerManager* power_manager_;  // Owned by |mock_manager_|.
-  vector<Technology> technology_order_for_sorting_;
+  std::vector<Technology> technology_order_for_sorting_;
 };
 
 class AllMockServiceTest : public testing::Test {
@@ -240,13 +236,13 @@ TEST_F(ServiceTest, GetProperties) {
   {
     brillo::VariantDictionary props;
     Error error;
-    string expected("true");
+    std::string expected("true");
     service_->mutable_store()->SetStringProperty(kCheckPortalProperty, expected,
                                                  &error);
     EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kCheckPortalProperty) == props.end());
-    EXPECT_TRUE(props[kCheckPortalProperty].IsTypeCompatible<string>());
-    EXPECT_EQ(props[kCheckPortalProperty].Get<string>(), expected);
+    EXPECT_TRUE(props[kCheckPortalProperty].IsTypeCompatible<std::string>());
+    EXPECT_EQ(props[kCheckPortalProperty].Get<std::string>(), expected);
   }
   {
     brillo::VariantDictionary props;
@@ -303,7 +299,7 @@ TEST_F(ServiceTest, SetProperty) {
   }
   {
     Error error;
-    const string guid("not default");
+    const std::string guid("not default");
     EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
         kGuidProperty, brillo::Any(guid), &error));
   }
@@ -313,7 +309,7 @@ TEST_F(ServiceTest, SetProperty) {
   // ServiceTest::SetUp() that fiddles with service_->eap_.
   {
     Error error;
-    string eap("eap eep eip!");
+    std::string eap("eap eep eip!");
     EXPECT_FALSE(service2_->mutable_store()->SetAnyProperty(
         kEapMethodProperty, brillo::Any(eap), &error));
     ASSERT_TRUE(error.IsFailure());
@@ -390,8 +386,8 @@ TEST_F(ServiceTest, LoadTrafficCounters) {
   FakeStore storage;
   const uint64_t kUserRxBytes = 1234;
   const uint64_t kChromeTxPackets = 9876;
-  vector<uint64_t> kUserCounters{kUserRxBytes, 0, 0, 0};
-  vector<uint64_t> kChromeCounters{0, 0, 0, kChromeTxPackets};
+  std::vector<uint64_t> kUserCounters{kUserRxBytes, 0, 0, 0};
+  std::vector<uint64_t> kChromeCounters{0, 0, 0, kChromeTxPackets};
   storage.SetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::TrafficCounter::USER,
@@ -418,10 +414,10 @@ TEST_F(ServiceTest, LoadTrafficCounters) {
 
 TEST_F(ServiceTest, Load) {
   FakeStore storage;
-  const string kCheckPortal("check-portal");
+  const std::string kCheckPortal("check-portal");
   const int kPriority = 20;
-  const string kProxyConfig("proxy-config");
-  const string kUIData("ui-data");
+  const std::string kProxyConfig("proxy-config");
+  const std::string kUIData("ui-data");
   storage.SetString(storage_id_, Service::kStorageCheckPortal, kCheckPortal);
   storage.SetString(storage_id_, Service::kStorageGUID, kGUID);
   storage.SetBool(storage_id_, Service::kStorageHasEverConnected, true);
@@ -531,7 +527,7 @@ TEST_F(ServiceTest, SaveTrafficCounters) {
   service_->current_traffic_counters_[patchpanel::TrafficCounter::VPN] =
       kVPNCounters;
   EXPECT_TRUE(service_->Save(&storage));
-  vector<uint64_t> kActualVPNCounters(Service::kTrafficCounterArraySize);
+  std::vector<uint64_t> kActualVPNCounters(Service::kTrafficCounterArraySize);
   storage.GetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::TrafficCounter::VPN,
@@ -656,7 +652,7 @@ TEST_F(ServiceTest, Unload) {
 
   service_->explicitly_disconnected_ = true;
   service_->Unload();
-  EXPECT_EQ(string(""), service_->guid_);
+  EXPECT_EQ(std::string(""), service_->guid_);
   EXPECT_FALSE(service_->explicitly_disconnected_);
   EXPECT_FALSE(service_->has_ever_connected_);
 }
@@ -684,7 +680,8 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   EXPECT_EQ(Service::kFailureNone, service_->failure());
-  const string no_error(Service::ConnectFailureToString(Service::kFailureNone));
+  const std::string no_error(
+      Service::ConnectFailureToString(Service::kFailureNone));
   EXPECT_EQ(no_error, service_->error());
 
   EXPECT_CALL(*GetAdaptor(), EmitStringChanged(kStateProperty, _)).Times(6);
@@ -706,7 +703,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_GT(service_->previous_error_serial_number_, 0);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_EQ(Service::kFailureOutOfRange, service_->failure());
-  const string out_of_range_error(
+  const std::string out_of_range_error(
       Service::ConnectFailureToString(Service::kFailureOutOfRange));
   EXPECT_EQ(out_of_range_error, service_->error());
   EXPECT_EQ(out_of_range_error, service_->previous_error_);
@@ -726,7 +723,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_GT(service_->previous_error_serial_number_, 0);
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kFailurePinMissing, service_->failure());
-  const string pin_missing_error(
+  const std::string pin_missing_error(
       Service::ConnectFailureToString(Service::kFailurePinMissing));
   EXPECT_EQ(pin_missing_error, service_->error());
   EXPECT_EQ(pin_missing_error, service_->previous_error_);
@@ -1039,7 +1036,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
 
 TEST_F(ServiceTest, ConfigureBadProperty) {
   KeyValueStore args;
-  args.Set<string>("XXXInvalid", "Value");
+  args.Set<std::string>("XXXInvalid", "Value");
   Error error;
   service_->Configure(args, &error);
   EXPECT_FALSE(error.IsSuccess());
@@ -1058,12 +1055,12 @@ TEST_F(ServiceTest, ConfigureBoolProperty) {
 }
 
 TEST_F(ServiceTest, ConfigureStringProperty) {
-  const string kGuid0 = "guid_zero";
-  const string kGuid1 = "guid_one";
+  const std::string kGuid0 = "guid_zero";
+  const std::string kGuid1 = "guid_one";
   service_->SetGuid(kGuid0, nullptr);
   ASSERT_EQ(kGuid0, service_->guid());
   KeyValueStore args;
-  args.Set<string>(kGuidProperty, kGuid1);
+  args.Set<std::string>(kGuidProperty, kGuid1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1071,8 +1068,8 @@ TEST_F(ServiceTest, ConfigureStringProperty) {
 }
 
 TEST_F(ServiceTest, ConfigureStringsProperty) {
-  const vector<string> kStrings0{"string0", "string1"};
-  const vector<string> kStrings1{"string2", "string3"};
+  const std::vector<std::string> kStrings0{"string0", "string1"};
+  const std::vector<std::string> kStrings1{"string2", "string3"};
   service_->set_strings(kStrings0);
   ASSERT_EQ(kStrings0, service_->strings());
   KeyValueStore args;
@@ -1088,15 +1085,15 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
   MockEapCredentials* eap = new NiceMock<MockEapCredentials>();
   service2_->SetEapCredentials(eap);  // Passes ownership.
 
-  const string kEAPManagement0 = "management_zero";
-  const string kEAPManagement1 = "management_one";
+  const std::string kEAPManagement0 = "management_zero";
+  const std::string kEAPManagement1 = "management_one";
   service2_->SetEAPKeyManagement(kEAPManagement0);
 
   EXPECT_CALL(*eap, key_management()).WillOnce(ReturnRef(kEAPManagement0));
   ASSERT_EQ(kEAPManagement0, service2_->GetEAPKeyManagement());
   KeyValueStore args;
   EXPECT_CALL(*eap, SetKeyManagement(kEAPManagement1, _));
-  args.Set<string>(kEapKeyMgmtProperty, kEAPManagement1);
+  args.Set<std::string>(kEapKeyMgmtProperty, kEAPManagement1);
   Error error;
   service2_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1132,7 +1129,7 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
 TEST_F(ServiceTest, ConfigureProfileProperty) {
   // Ensure that the Profile property is always ignored.
   KeyValueStore args;
-  args.Set<string>(kProfileProperty, "profile");
+  args.Set<std::string>(kProfileProperty, "profile");
   Error error;
   EXPECT_CALL(mock_manager_, SetProfileForService(_, _, _)).Times(0);
   service_->Configure(args, &error);
@@ -1157,14 +1154,14 @@ TEST_F(ServiceTest, ConfigureKeyValueStoreProperty) {
 
 TEST_F(ServiceTest, DoPropertiesMatch) {
   service_->SetAutoConnect(false);
-  const string kGUID0 = "guid_zero";
-  const string kGUID1 = "guid_one";
+  const std::string kGUID0 = "guid_zero";
+  const std::string kGUID1 = "guid_one";
   service_->SetGuid(kGUID0, nullptr);
   const uint32_t kPriority0 = 100;
   const uint32_t kPriority1 = 200;
   service_->SetPriority(kPriority0, nullptr);
-  const vector<string> kStrings0{"string0", "string1"};
-  const vector<string> kStrings1{"string2", "string3"};
+  const std::vector<std::string> kStrings0{"string0", "string1"};
+  const std::vector<std::string> kStrings1{"string2", "string3"};
   service_->set_strings(kStrings0);
   KeyValueStore key_value_store0;
   key_value_store0.Set<bool>("key0", true);
@@ -1174,7 +1171,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
 
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
+    args.Set<std::string>(kGuidProperty, kGUID0);
     args.Set<bool>(kAutoConnectProperty, false);
     args.Set<int32_t>(kPriorityProperty, kPriority0);
     args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
@@ -1184,7 +1181,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID1);
+    args.Set<std::string>(kGuidProperty, kGUID1);
     args.Set<bool>(kAutoConnectProperty, false);
     args.Set<int32_t>(kPriorityProperty, kPriority0);
     args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
@@ -1194,7 +1191,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
+    args.Set<std::string>(kGuidProperty, kGUID0);
     args.Set<bool>(kAutoConnectProperty, true);
     args.Set<int32_t>(kPriorityProperty, kPriority0);
     args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
@@ -1204,7 +1201,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
+    args.Set<std::string>(kGuidProperty, kGUID0);
     args.Set<bool>(kAutoConnectProperty, false);
     args.Set<int32_t>(kPriorityProperty, kPriority1);
     args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
@@ -1214,7 +1211,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
+    args.Set<std::string>(kGuidProperty, kGUID0);
     args.Set<bool>(kAutoConnectProperty, false);
     args.Set<int32_t>(kPriorityProperty, kPriority0);
     args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings1);
@@ -1224,7 +1221,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
+    args.Set<std::string>(kGuidProperty, kGUID0);
     args.Set<bool>(kAutoConnectProperty, false);
     args.Set<int32_t>(kPriorityProperty, kPriority0);
     args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
@@ -1377,15 +1374,16 @@ TEST_P(WriteOnlyServicePropertyTest, PropertyWriteOnly) {
   EapCredentials eap;
   eap.InitPropertyStore(service_->mutable_store());
 
-  string property(GetParam().Get<string>());
+  std::string property(GetParam().Get<std::string>());
   Error error;
   EXPECT_FALSE(service_->store().GetStringProperty(property, nullptr, &error));
   EXPECT_EQ(Error::kPermissionDenied, error.type());
 }
 
-INSTANTIATE_TEST_SUITE_P(WriteOnlyServicePropertyTestInstance,
-                         WriteOnlyServicePropertyTest,
-                         Values(brillo::Any(string(kEapPasswordProperty))));
+INSTANTIATE_TEST_SUITE_P(
+    WriteOnlyServicePropertyTestInstance,
+    WriteOnlyServicePropertyTest,
+    Values(brillo::Any(std::string(kEapPasswordProperty))));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
@@ -1499,7 +1497,7 @@ TEST_F(ServiceTest, Certification) {
   EXPECT_CALL(
       log, Log(logging::LOGGING_WARNING, _, HasSubstr("exceeds our maximum")))
       .Times(2);
-  string kSubject("foo");
+  std::string kSubject("foo");
   EXPECT_FALSE(service_->AddEAPCertification(
       kSubject, Service::kEAPMaxCertificationElements));
   EXPECT_FALSE(service_->AddEAPCertification(
@@ -1707,8 +1705,8 @@ TEST_F(ServiceTest, NoteMisconnectEventDiscardExcessive) {
 }
 
 TEST_F(ServiceTest, DiagnosticsProperties) {
-  const string kWallClock0 = "2012-12-09T12:41:22.234567-0800";
-  const string kWallClock1 = "2012-12-31T23:59:59.345678-0800";
+  const std::string kWallClock0 = "2012-12-09T12:41:22.234567-0800";
+  const std::string kWallClock1 = "2012-12-31T23:59:59.345678-0800";
   Strings values;
 
   PushTimestamp(GetDisconnects(), 0, 0, kWallClock0);
@@ -1941,14 +1939,14 @@ class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnPropertyChanged(Manager* manager)
       : ServiceUnderTest(manager) {}
-  MOCK_METHOD(void, OnPropertyChanged, (const string&), (override));
+  MOCK_METHOD(void, OnPropertyChanged, (const std::string&), (override));
 };
 
 TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
   auto service(
       base::MakeRefCounted<ServiceWithMockOnPropertyChanged>(&mock_manager_));
   KeyValueStore args;
-  args.Set<string>(kUIDataProperty, "terpsichorean ejectamenta");
+  args.Set<std::string>(kUIDataProperty, "terpsichorean ejectamenta");
   args.Set<bool>(kSaveCredentialsProperty, false);
 
   // Calling Configure with different values from before triggers a single
@@ -1986,7 +1984,7 @@ TEST_F(ServiceTest, ClearExplicitlyDisconnected) {
 }
 
 TEST_F(ServiceTest, Compare) {
-  vector<scoped_refptr<MockService>> mock_services;
+  std::vector<scoped_refptr<MockService>> mock_services;
   for (size_t i = 0; i < 11; ++i) {
     mock_services.push_back(new NiceMock<MockService>(&mock_manager_));
   }
@@ -2254,8 +2252,8 @@ TEST_F(ServiceTest, TrafficCounters) {
 
   service_->InitializeTrafficCounterSnapshot({counter0, counter1});
   EXPECT_EQ(service_->traffic_counter_snapshot_.size(), 2);
-  vector<uint64_t> chrome_counters{12, 34, 56, 78};
-  vector<uint64_t> user_counters{90, 87, 65, 43};
+  std::vector<uint64_t> chrome_counters{12, 34, 56, 78};
+  std::vector<uint64_t> user_counters{90, 87, 65, 43};
   for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
     EXPECT_EQ(
         service_
@@ -2292,8 +2290,8 @@ TEST_F(ServiceTest, TrafficCounters) {
         user_counters[i]);
   }
   EXPECT_EQ(service_->current_traffic_counters_.size(), 2);
-  vector<uint64_t> chrome_counters_diff{8, 6, 4, 2};
-  vector<uint64_t> user_counters_diff{10, 3, 15, 27};
+  std::vector<uint64_t> chrome_counters_diff{8, 6, 4, 2};
+  std::vector<uint64_t> user_counters_diff{10, 3, 15, 27};
   for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
     EXPECT_EQ(
         service_

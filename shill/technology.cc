@@ -18,13 +18,9 @@
 
 namespace shill {
 
-using std::set;
-using std::string;
-using std::vector;
-
 // static
-bool GetTechnologyVectorFromString(const string& technologies_string,
-                                   vector<Technology>* technologies_vector,
+bool GetTechnologyVectorFromString(const std::string& technologies_string,
+                                   std::vector<Technology>* technologies_vector,
                                    Error* error) {
   CHECK(technologies_vector);
   CHECK(error);
@@ -38,8 +34,8 @@ bool GetTechnologyVectorFromString(const string& technologies_string,
     return true;
   }
 
-  set<Technology> seen;
-  vector<string> technology_parts = base::SplitString(
+  std::set<Technology> seen;
+  const auto technology_parts = base::SplitString(
       technologies_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const auto& name : technology_parts) {
     Technology technology = Technology::CreateFromName(name);
@@ -63,7 +59,7 @@ bool GetTechnologyVectorFromString(const string& technologies_string,
 }
 
 // static
-Technology Technology::CreateFromName(const string& name) {
+Technology Technology::CreateFromName(const std::string& name) {
   if (name == kTypeEthernet) {
     return kEthernet;
   } else if (name == kTypeEthernetEap) {
@@ -90,16 +86,16 @@ Technology Technology::CreateFromName(const string& name) {
 }
 
 // static
-Technology Technology::CreateFromStorageGroup(const string& group) {
-  vector<string> group_parts = base::SplitString(
-      group, "_", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+Technology Technology::CreateFromStorageGroup(const std::string& group) {
+  const auto group_parts = base::SplitString(group, "_", base::TRIM_WHITESPACE,
+                                             base::SPLIT_WANT_ALL);
   if (group_parts.empty()) {
     return kUnknown;
   }
   return CreateFromName(group_parts[0]);
 }
 
-string Technology::GetName() const {
+std::string Technology::GetName() const {
   if (type_ == kEthernet) {
     return kTypeEthernet;
   } else if (type_ == kEthernetEap) {

@@ -19,7 +19,6 @@
 #include "shill/net/mock_sockets.h"
 #include "shill/vpn/mock_openvpn_driver.h"
 
-using base::Bind;
 using testing::_;
 using testing::Assign;
 using testing::InSequence;

@@ -5,7 +5,6 @@
 #include "shill/default_profile.h"
 
 #include <memory>
-#include <set>
 #include <string>
 #include <utility>
 
@@ -24,9 +23,6 @@
 #include "shill/property_store_test.h"
 #include "shill/resolver.h"
 
-using base::FilePath;
-using std::set;
-using std::string;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Return;
@@ -38,7 +34,7 @@ class DefaultProfileTest : public PropertyStoreTest {
  public:
   DefaultProfileTest()
       : profile_(new DefaultProfile(manager(),
-                                    FilePath(storage_path()),
+                                    base::FilePath(storage_path()),
                                     DefaultProfile::kDefaultId,
                                     properties_)),
         device_(new MockDevice(manager(), "null0", "addr0", 0)) {}
@@ -143,18 +139,18 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   FakeStore* storage = owned_storage.get();
   storage->SetBool(DefaultProfile::kStorageId,
                    DefaultProfile::kStorageArpGateway, false);
-  const string portal_list("technology1,technology2");
+  const std::string portal_list("technology1,technology2");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageCheckPortalList, portal_list);
-  const string ignored_paths("chromium.org,google.com");
+  const std::string ignored_paths("chromium.org,google.com");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageIgnoredDNSSearchPaths,
                      ignored_paths);
-  const string no_auto_connect_technologies("wifi,cellular");
+  const std::string no_auto_connect_technologies("wifi,cellular");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageNoAutoConnectTechnologies,
                      no_auto_connect_technologies);
-  const string prohibited_technologies("vpn,wifi");
+  const std::string prohibited_technologies("vpn,wifi");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageProhibitedTechnologies,
                      prohibited_technologies);

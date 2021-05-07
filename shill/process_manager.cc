@@ -10,6 +10,9 @@
 
 #include <memory>
 #include <utility>
+#include <map>
+#include <string>
+#include <vector>
 
 #include <base/check.h>
 #include <base/notreached.h>
@@ -17,15 +20,11 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
-using std::map;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(const ProcessManager* pm) {
+static std::string ObjectID(const ProcessManager* pm) {
   return "process_manager";
 }
 }  // namespace Logging
@@ -41,7 +40,8 @@ static const int kWaitpidPollTimesForSIGKILL = 8;
 static const unsigned int kWaitpidPollIntervalUpperBoundMilliseconds = 2000;
 static const unsigned int kWaitpidPollInitialIntervalMilliseconds = 4;
 
-bool SetupChild(const map<string, string>& env, bool terminate_with_parent) {
+bool SetupChild(const std::map<std::string, std::string>& env,
+                bool terminate_with_parent) {
   // Setup environment variables.
   clearenv();
   for (const auto& key_value : env) {
@@ -84,8 +84,8 @@ void ProcessManager::Stop() {
 pid_t ProcessManager::StartProcess(
     const base::Location& spawn_source,
     const base::FilePath& program,
-    const vector<string>& arguments,
-    const map<string, string>& environment,
+    const std::vector<std::string>& arguments,
+    const std::map<std::string, std::string>& environment,
     bool terminate_with_parent,
     const base::Callback<void(int)>& exit_callback) {
   SLOG(this, 2) << __func__ << "(" << program.value() << ")";
@@ -124,7 +124,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     const base::Location& spawn_source,
     const base::FilePath& program,
     const std::vector<std::string>& arguments,
-    const map<string, string>& environment,
+    const std::map<std::string, std::string>& environment,
     const std::string& user,
     const std::string& group,
     uint64_t capmask,
@@ -134,19 +134,19 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     struct std_file_descriptors std_fds) {
   SLOG(this, 2) << __func__ << "(" << program.value() << ")";
 
-  vector<char*> args;
+  std::vector<char*> args;
   args.push_back(const_cast<char*>(program.value().c_str()));
   for (const auto& arg : arguments) {
     args.push_back(const_cast<char*>(arg.c_str()));
   }
   args.push_back(nullptr);
 
-  vector<string> env_strings;
+  std::vector<std::string> env_strings;
   for (const auto& var : environment) {
     env_strings.push_back(
         base::StringPrintf("%s=%s", var.first.c_str(), var.second.c_str()));
   }
-  vector<char*> env;
+  std::vector<char*> env;
   for (const auto& str : env_strings) {
     env.push_back(const_cast<char*>(str.c_str()));
   }

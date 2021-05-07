@@ -15,17 +15,11 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
-using base::Bind;
-using base::Closure;
-using base::Unretained;
-using std::list;
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(const HookTable* h) {
+static std::string ObjectID(const HookTable* h) {
   return "(hook_table)";
 }
 }  // namespace Logging
@@ -33,7 +27,8 @@ static string ObjectID(const HookTable* h) {
 HookTable::HookTable(EventDispatcher* event_dispatcher)
     : event_dispatcher_(event_dispatcher) {}
 
-void HookTable::Add(const string& name, const Closure& start_callback) {
+void HookTable::Add(const std::string& name,
+                    const base::Closure& start_callback) {
   SLOG(this, 2) << __func__ << ": " << name;
   Remove(name);
   auto iter = hook_table_.find(name);
@@ -76,7 +71,8 @@ void HookTable::Run(int timeout_ms, const ResultCallback& done) {
     return;
   }
   done_callback_ = done;
-  timeout_callback_.Reset(Bind(&HookTable::ActionsTimedOut, Unretained(this)));
+  timeout_callback_.Reset(
+      base::Bind(&HookTable::ActionsTimedOut, base::Unretained(this)));
   event_dispatcher_->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
                                      timeout_ms);
 
@@ -89,7 +85,7 @@ void HookTable::Run(int timeout_ms, const ResultCallback& done) {
   // modifies |hook_table_|. It is thus not safe to iterate through
   // |hook_table_| to execute the actions. Instead, we keep a list of start
   // callback of each action and iterate through that to invoke the callback.
-  list<Closure> action_start_callbacks;
+  std::list<base::Closure> action_start_callbacks;
   for (auto& hook_entry : hook_table_) {
     HookAction* action = &hook_entry.second;
     action_start_callbacks.push_back(action->start_callback);

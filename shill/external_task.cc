@@ -4,22 +4,22 @@
 
 #include "shill/external_task.h"
 
+#include <map>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
+#include <base/files/file_path.h>
 
 #include "shill/error.h"
 #include "shill/process_manager.h"
 
 namespace shill {
-
-using base::FilePath;
-using std::map;
-using std::string;
-using std::vector;
 
 ExternalTask::ExternalTask(
     ControlInterface* control,
@@ -38,9 +38,9 @@ ExternalTask::~ExternalTask() {
   ExternalTask::Stop();
 }
 
-bool ExternalTask::Start(const FilePath& program,
-                         const vector<string>& arguments,
-                         const map<string, string>& environment,
+bool ExternalTask::Start(const base::FilePath& program,
+                         const std::vector<std::string>& arguments,
+                         const std::map<std::string, std::string>& environment,
                          bool terminate_with_parent,
                          Error* error) {
   CHECK(!pid_);
@@ -48,7 +48,7 @@ bool ExternalTask::Start(const FilePath& program,
 
   // Setup full environment variables.
   auto local_rpc_task = std::make_unique<RpcTask>(control_, this);
-  map<string, string> env = local_rpc_task->GetEnvironment();
+  auto env = local_rpc_task->GetEnvironment();
   env.insert(environment.begin(), environment.end());
 
   pid_t pid = process_manager_->StartProcess(
@@ -58,7 +58,7 @@ bool ExternalTask::Start(const FilePath& program,
   if (pid < 0) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInternalError,
-        string("Unable to spawn: ") + program.value().c_str());
+        std::string("Unable to spawn: ") + program.value().c_str());
     return false;
   }
   pid_ = pid;
@@ -66,10 +66,10 @@ bool ExternalTask::Start(const FilePath& program,
   return true;
 }
 
-bool ExternalTask::StartInMinijail(const FilePath& program,
-                                   vector<string>* arguments,
-                                   const string user,
-                                   const string group,
+bool ExternalTask::StartInMinijail(const base::FilePath& program,
+                                   std::vector<std::string>* arguments,
+                                   const std::string user,
+                                   const std::string group,
                                    uint64_t mask,
                                    bool inherit_supplementary_groups,
                                    bool close_nonstd_fds,
@@ -82,15 +82,13 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
   // Passes the connection identifiers on the command line instead of through
   // environment variables.
   auto local_rpc_task = std::make_unique<RpcTask>(control_, this);
-  map<string, string> env = local_rpc_task->GetEnvironment();
-  map<string, string>::iterator task_service_variable =
-      env.find(kRpcTaskServiceVariable);
-  map<string, string>::iterator task_path_variable =
-      env.find(kRpcTaskPathVariable);
+  const auto env = local_rpc_task->GetEnvironment();
+  const auto task_service_variable = env.find(kRpcTaskServiceVariable);
+  const auto task_path_variable = env.find(kRpcTaskPathVariable);
   // Fails without the necessary environment variables.
   if (task_service_variable == env.end() || task_path_variable == env.end()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
-                          string("Invalid environment variables for: ") +
+                          std::string("Invalid environment variables for: ") +
                               program.value().c_str());
     return false;
   }
@@ -106,9 +104,9 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
 
   if (pid < 0) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
-                          string("Unable to spawn: ") +
+                          std::string("Unable to spawn: ") +
                               program.value().c_str() +
-                              string(" in a minijail."));
+                              std::string(" in a minijail."));
     return false;
   }
   pid_ = pid;
@@ -124,12 +122,12 @@ void ExternalTask::Stop() {
   rpc_task_.reset();
 }
 
-void ExternalTask::GetLogin(string* user, string* password) {
+void ExternalTask::GetLogin(std::string* user, std::string* password) {
   return task_delegate_->GetLogin(user, password);
 }
 
-void ExternalTask::Notify(const string& event,
-                          const map<string, string>& details) {
+void ExternalTask::Notify(const std::string& event,
+                          const std::map<std::string, std::string>& details) {
   return task_delegate_->Notify(event, details);
 }
 

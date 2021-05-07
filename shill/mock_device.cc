@@ -14,12 +14,11 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 
-using std::string;
 using ::testing::DefaultValue;
 
 MockDevice::MockDevice(Manager* manager,
-                       const string& link_name,
-                       const string& address,
+                       const std::string& link_name,
+                       const std::string& address,
                        int interface_index)
     : Device(
           manager, link_name, address, interface_index, Technology::kUnknown) {

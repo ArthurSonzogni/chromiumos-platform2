@@ -22,9 +22,6 @@
 #include "shill/property_store_test.h"
 #include "shill/service_under_test.h"
 
-using base::FilePath;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::Mock;
@@ -37,7 +34,7 @@ class ProfileTest : public PropertyStoreTest {
  public:
   ProfileTest() {
     Profile::Identifier id("rather", "irrelevant");
-    profile_ = new Profile(manager(), id, FilePath(), false);
+    profile_ = new Profile(manager(), id, base::FilePath(), false);
     auto storage = std::make_unique<FakeStore>();
     storage_ = storage.get();
     profile_->SetStorageForTest(std::move(storage));
@@ -55,7 +52,7 @@ class ProfileTest : public PropertyStoreTest {
     // StoreInterface implementation.
     Error error;
     ProfileRefPtr profile(
-        new Profile(manager(), id, FilePath(storage_path()), false));
+        new Profile(manager(), id, base::FilePath(storage_path()), false));
     bool ret = profile->InitStorage(storage_option, &error);
     EXPECT_EQ(error_type, error.type());
     if (ret && save) {
@@ -74,7 +71,7 @@ TEST_F(ProfileTest, DeleteEntry) {
       control_interface(), dispatcher(), metrics());
   profile_->manager_ = manager.get();
 
-  const string kEntryName("entry_name");
+  const std::string kEntryName("entry_name");
 
   // If entry does not appear in storage, DeleteEntry() should return an error.
   {
@@ -163,11 +160,11 @@ TEST_F(ProfileTest, GetFriendlyName) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";
   Profile::Identifier id(kIdentifier);
-  ProfileRefPtr profile(new Profile(manager(), id, FilePath(), false));
+  ProfileRefPtr profile(new Profile(manager(), id, base::FilePath(), false));
   EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
   id.user = kUser;
-  profile = new Profile(manager(), id, FilePath(), false);
-  EXPECT_EQ(string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
+  profile = new Profile(manager(), id, base::FilePath(), false);
+  EXPECT_EQ(std::string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
 }
 
 TEST_F(ProfileTest, GetStoragePath) {
@@ -175,10 +172,10 @@ TEST_F(ProfileTest, GetStoragePath) {
   static const char kIdentifier[] = "someprofile";
   static const char kDirectory[] = "/a/place/for/";
   Profile::Identifier id(kIdentifier);
-  ProfileRefPtr profile(new Profile(manager(), id, FilePath(), false));
+  ProfileRefPtr profile(new Profile(manager(), id, base::FilePath(), false));
   EXPECT_TRUE(profile->persistent_profile_path_.empty());
   id.user = kUser;
-  profile = new Profile(manager(), id, FilePath(kDirectory), false);
+  profile = new Profile(manager(), id, base::FilePath(kDirectory), false);
   EXPECT_EQ("/a/place/for/chronos/someprofile.profile",
             profile->persistent_profile_path_.value());
 }
@@ -251,9 +248,9 @@ TEST_F(ProfileTest, Save) {
 TEST_F(ProfileTest, EntryEnumeration) {
   scoped_refptr<MockService> service1 = CreateMockService();
   scoped_refptr<MockService> service2 = CreateMockService();
-  string service1_storage_name =
+  std::string service1_storage_name =
       Technology(Technology::kCellular).GetName() + "_1";
-  string service2_storage_name =
+  std::string service2_storage_name =
       Technology(Technology::kCellular).GetName() + "_2";
   EXPECT_CALL(*service1, Save(_))
       .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
@@ -278,8 +275,9 @@ TEST_F(ProfileTest, EntryEnumeration) {
 }
 
 TEST_F(ProfileTest, LoadUserProfileList) {
-  FilePath list_path(FilePath(storage_path()).Append("test.profile"));
-  vector<Profile::Identifier> identifiers =
+  base::FilePath list_path(
+      base::FilePath(storage_path()).Append("test.profile"));
+  std::vector<Profile::Identifier> identifiers =
       Profile::LoadUserProfileList(list_path);
   EXPECT_TRUE(identifiers.empty());
 
@@ -288,7 +286,7 @@ TEST_F(ProfileTest, LoadUserProfileList) {
   const char kIdentifier0[] = "rattlesnake";
   const char kIdentifier1[] = "ceiling";
   const char kHash0[] = "neighbors";
-  string data(
+  std::string data(
       base::StringPrintf("\n"
                          "~userbut/nospacehere\n"
                          "defaultprofile notaccepted\n"
@@ -315,26 +313,27 @@ TEST_F(ProfileTest, SaveUserProfileList) {
   Profile::Identifier id0(kUser0, kIdentifier0);
   const char kHash0[] = "hash0";
   id0.user_hash = kHash0;
-  vector<ProfileRefPtr> profiles;
-  profiles.push_back(new Profile(manager(), id0, FilePath(), false));
+  std::vector<ProfileRefPtr> profiles;
+  profiles.push_back(new Profile(manager(), id0, base::FilePath(), false));
 
   const char kUser1[] = "user1";
   const char kIdentifier1[] = "id1";
   Profile::Identifier id1(kUser1, kIdentifier1);
   const char kHash1[] = "hash1";
   id1.user_hash = kHash1;
-  profiles.push_back(new Profile(manager(), id1, FilePath(), false));
+  profiles.push_back(new Profile(manager(), id1, base::FilePath(), false));
 
   const char kIdentifier2[] = "id2";
   Profile::Identifier id2("", kIdentifier2);
   const char kHash2[] = "hash2";
   id1.user_hash = kHash2;
-  profiles.push_back(new Profile(manager(), id2, FilePath(), false));
+  profiles.push_back(new Profile(manager(), id2, base::FilePath(), false));
 
-  FilePath list_path(FilePath(storage_path()).Append("test.profile"));
+  base::FilePath list_path(
+      base::FilePath(storage_path()).Append("test.profile"));
   EXPECT_TRUE(Profile::SaveUserProfileList(list_path, profiles));
 
-  string profile_data;
+  std::string profile_data;
   EXPECT_TRUE(base::ReadFileToString(list_path, &profile_data));
   EXPECT_EQ(base::StringPrintf("~%s/%s %s\n~%s/%s %s\n", kUser0, kIdentifier0,
                                kHash0, kUser1, kIdentifier1, kHash1),
@@ -345,7 +344,7 @@ TEST_F(ProfileTest, MatchesIdentifier) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";
   Profile::Identifier id(kUser, kIdentifier);
-  ProfileRefPtr profile(new Profile(manager(), id, FilePath(), false));
+  ProfileRefPtr profile(new Profile(manager(), id, base::FilePath(), false));
   EXPECT_TRUE(profile->MatchesIdentifier(id));
   EXPECT_FALSE(profile->MatchesIdentifier(Profile::Identifier(kUser, "")));
   EXPECT_FALSE(
@@ -393,10 +392,10 @@ TEST_F(ProfileTest, InitStorage) {
                                  Error::kSuccess));
 
   // Corrupt the profile storage.
-  FilePath final_path(
+  base::FilePath final_path(
       base::StringPrintf("%s/%s/%s.profile", storage_path().c_str(),
                          id.user.c_str(), id.identifier.c_str()));
-  string data = "]corrupt_data[";
+  std::string data = "]corrupt_data[";
   EXPECT_EQ(data.size(), base::WriteFile(final_path, data.data(), data.size()));
 
   // Then test that we fail to open this file.
@@ -420,7 +419,7 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
       control_interface(), dispatcher(), metrics());
   profile_->manager_ = manager.get();
 
-  const string kEntryName("entry_name");
+  const std::string kEntryName("entry_name");
 
   // If entry does not appear in storage, GetServiceFromEntry() should return
   // an error.

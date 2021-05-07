@@ -22,9 +22,6 @@
 #include "shill/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 
-using std::map;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Mock;
 using testing::Return;
@@ -78,10 +75,10 @@ class ExternalTaskTest : public testing::Test, public RpcTaskDelegate {
 
  protected:
   // Implements RpcTaskDelegate interface.
-  MOCK_METHOD(void, GetLogin, (string*, string*), (override));
+  MOCK_METHOD(void, GetLogin, (std::string*, std::string*), (override));
   MOCK_METHOD(void,
               Notify,
-              (const string&, (const map<string, string>&)),
+              (const std::string&, (const std::map<std::string, std::string>&)),
               (override));
 
   MOCK_METHOD(void, TaskDiedCallback, (pid_t, int));
@@ -133,10 +130,11 @@ TEST_F(ExternalTaskTest, Destructor) {
 }
 
 TEST_F(ExternalTaskTest, Start) {
-  const string kCommand = "/run/me";
-  const vector<string> kCommandOptions{"arg1", "arg2"};
-  const map<string, string> kCommandEnv{{"env1", "val1"}, {"env2", "val2"}};
-  map<string, string> expected_env;
+  const std::string kCommand = "/run/me";
+  const std::vector<std::string> kCommandOptions{"arg1", "arg2"};
+  const std::map<std::string, std::string> kCommandEnv{{"env1", "val1"},
+                                                       {"env2", "val2"}};
+  std::map<std::string, std::string> expected_env;
   expected_env.emplace(kRpcTaskServiceVariable,
                        RpcTaskMockAdaptor::kRpcConnId.value());
   expected_env.emplace(kRpcTaskPathVariable,
@@ -179,16 +177,17 @@ TEST_F(ExternalTaskTest, StopNotStarted) {
 }
 
 TEST_F(ExternalTaskTest, GetLogin) {
-  string username;
-  string password;
+  std::string username;
+  std::string password;
   EXPECT_CALL(*this, GetLogin(&username, &password));
   EXPECT_CALL(*this, Notify(_, _)).Times(0);
   external_task_->GetLogin(&username, &password);
 }
 
 TEST_F(ExternalTaskTest, Notify) {
-  const string kReason("you may already have won!");
-  const map<string, string>& kArgs{{"arg1", "val1"}, {"arg2", "val2"}};
+  const std::string kReason("you may already have won!");
+  const std::map<std::string, std::string>& kArgs{{"arg1", "val1"},
+                                                  {"arg2", "val2"}};
   EXPECT_CALL(*this, GetLogin(_, _)).Times(0);
   EXPECT_CALL(*this, Notify(kReason, kArgs));
   external_task_->Notify(kReason, kArgs);

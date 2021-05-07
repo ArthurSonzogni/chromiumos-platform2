@@ -5,6 +5,7 @@
 #include <linux/rtnetlink.h>
 #include <stdint.h>
 
+#include <string>
 #include <vector>
 
 #include <base/bind.h>
@@ -31,11 +32,6 @@
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #endif  // !defined(DISABLE_WIFI)
-
-using base::Bind;
-using base::Unretained;
-using std::string;
-using std::vector;
 
 using ::testing::_;
 using ::testing::Expectation;
@@ -172,13 +168,14 @@ TEST_F(DaemonTaskTest, QuitWithTerminationAction) {
 
   manager_->AddTerminationAction(
       "daemon test",
-      Bind(&DaemonTaskTest::TerminationAction, Unretained(this)));
+      base::Bind(&DaemonTaskTest::TerminationAction, base::Unretained(this)));
 
   // Run Daemon::Quit() after the daemon starts running.
   dispatcher_->PostTask(
       FROM_HERE,
-      Bind(IgnoreResult(&DaemonTask::Quit), Unretained(&daemon_),
-           Bind(&DaemonTaskTest::BreakTerminationLoop, Unretained(this))));
+      base::Bind(IgnoreResult(&DaemonTask::Quit), base::Unretained(&daemon_),
+                 base::Bind(&DaemonTaskTest::BreakTerminationLoop,
+                            base::Unretained(this))));
 
   RunDaemon();
   EXPECT_FALSE(daemon_.quit_result());
@@ -186,13 +183,13 @@ TEST_F(DaemonTaskTest, QuitWithTerminationAction) {
 
 TEST_F(DaemonTaskTest, QuitWithoutTerminationActions) {
   EXPECT_CALL(*this, BreakTerminationLoop()).Times(0);
-  EXPECT_TRUE(daemon_.Quit(
-      Bind(&DaemonTaskTest::BreakTerminationLoop, Unretained(this))));
+  EXPECT_TRUE(daemon_.Quit(base::Bind(&DaemonTaskTest::BreakTerminationLoop,
+                                      base::Unretained(this))));
 }
 
 TEST_F(DaemonTaskTest, ApplySettings) {
   DaemonTask::Settings settings;
-  vector<string> kEmptyStringList;
+  std::vector<std::string> kEmptyStringList;
   EXPECT_CALL(*manager_, SetBlockedDevices(kEmptyStringList));
   EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kEmptyStringList));
   EXPECT_CALL(*manager_, SetTechnologyOrder("", _));
@@ -205,10 +202,10 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   ApplySettings(settings);
   Mock::VerifyAndClearExpectations(manager_);
 
-  vector<string> kBlockedDevices = {"eth0", "eth1"};
+  std::vector<std::string> kBlockedDevices = {"eth0", "eth1"};
   settings.devices_blocked = kBlockedDevices;
   settings.default_technology_order = "wifi,ethernet";
-  vector<string> kDHCPv6EnabledDevices{"eth2", "eth3"};
+  std::vector<std::string> kDHCPv6EnabledDevices{"eth2", "eth3"};
   settings.dhcpv6_enabled_devices = kDHCPv6EnabledDevices;
   settings.ignore_unknown_ethernet = false;
   settings.portal_list = "cellular";

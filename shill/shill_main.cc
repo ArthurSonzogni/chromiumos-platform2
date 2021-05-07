@@ -24,9 +24,6 @@
 #include "shill/shill_daemon.h"
 #include "shill/technology.h"
 
-using std::string;
-using std::vector;
-
 namespace {
 
 namespace switches {
@@ -113,7 +110,7 @@ void SetupLogging(bool foreground, const char* daemon_name) {
   brillo::InitLog(log_flags);
 
   if (!foreground) {
-    vector<char*> logger_command_line;
+    std::vector<char*> logger_command_line;
     int logger_stdin_fd;
     logger_command_line.push_back(const_cast<char*>(kLoggerCommand));
     logger_command_line.push_back(const_cast<char*>("--priority"));
@@ -156,8 +153,9 @@ int main(int argc, char** argv) {
   shill::DaemonTask::Settings settings;
   if (cl->HasSwitch(switches::kTechnologyOrder)) {
     shill::Error error;
-    string order_flag = cl->GetSwitchValueASCII(switches::kTechnologyOrder);
-    vector<shill::Technology> test_order_vector;
+    std::string order_flag =
+        cl->GetSwitchValueASCII(switches::kTechnologyOrder);
+    std::vector<shill::Technology> test_order_vector;
     if (shill::GetTechnologyVectorFromString(order_flag, &test_order_vector,
                                              &error)) {
       settings.default_technology_order = order_flag;

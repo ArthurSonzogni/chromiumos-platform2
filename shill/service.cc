@@ -38,11 +38,6 @@
 #include "shill/eap_credentials.h"
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-using base::Bind;
-using std::map;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace {
@@ -86,7 +81,7 @@ static constexpr std::array<const char*,
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const Service* s) {
+static std::string ObjectID(const Service* s) {
   return s->log_name();
 }
 }  // namespace Logging
@@ -358,8 +353,8 @@ void Service::Connect(Error* error, const char* reason) {
     // SetState will re-trigger a connection after this disconnection has
     // completed.
     pending_connect_task_.Reset(
-        Bind(&Service::Connect, weak_ptr_factory_.GetWeakPtr(),
-             base::Owned(new Error()), "Triggering delayed Connect"));
+        base::Bind(&Service::Connect, weak_ptr_factory_.GetWeakPtr(),
+                   base::Owned(new Error()), "Triggering delayed Connect"));
     return;
   }
 
@@ -566,8 +561,8 @@ void Service::SetState(ConnectState state) {
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
-void Service::SetPortalDetectionFailure(const string& phase,
-                                        const string& status,
+void Service::SetPortalDetectionFailure(const std::string& phase,
+                                        const std::string& status,
                                         int status_code) {
   if (portal_detection_failure_phase_ != phase) {
     portal_detection_failure_phase_ = phase;
@@ -584,7 +579,7 @@ void Service::SetPortalDetectionFailure(const string& phase,
   }
 }
 
-void Service::SetProbeUrl(const string& probe_url_string) {
+void Service::SetProbeUrl(const std::string& probe_url_string) {
   if (probe_url_string_ == probe_url_string) {
     return;
   }
@@ -604,8 +599,8 @@ void Service::ThrottleFutureAutoConnects() {
     LOG(INFO) << "Throttling future autoconnects to " << log_name()
               << ". Next autoconnect in " << auto_connect_cooldown_milliseconds_
               << " milliseconds.";
-    reenable_auto_connect_task_.Reset(Bind(&Service::ReEnableAutoConnectTask,
-                                           weak_ptr_factory_.GetWeakPtr()));
+    reenable_auto_connect_task_.Reset(base::Bind(
+        &Service::ReEnableAutoConnectTask, weak_ptr_factory_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   reenable_auto_connect_task_.callback(),
                                   auto_connect_cooldown_milliseconds_);
@@ -651,7 +646,7 @@ const RpcIdentifier& Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-string Service::GetLoadableStorageIdentifier(
+std::string Service::GetLoadableStorageIdentifier(
     const StoreInterface& storage) const {
   return IsLoadableFrom(storage) ? GetStorageIdentifier() : "";
 }
@@ -676,7 +671,7 @@ Service::ONCSource Service::ParseONCSourceFromUIData() {
 }
 
 bool Service::Load(const StoreInterface* storage) {
-  const string id = GetStorageIdentifier();
+  const auto id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
     LOG(WARNING) << "Service is not available in the persistent store: " << id;
     return false;
@@ -758,7 +753,7 @@ bool Service::Load(const StoreInterface* storage) {
 }
 
 void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
-  const string id = GetStorageIdentifier();
+  const auto id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
 
   // Deprecated key removed in M91 by patch with Change-Id
@@ -819,7 +814,7 @@ void Service::Remove(Error* /*error*/) {
 }
 
 bool Service::Save(StoreInterface* storage) {
-  const string id = GetStorageIdentifier();
+  const auto id = GetStorageIdentifier();
 
   storage->SetString(id, kStorageType, GetTechnologyString());
 
@@ -873,7 +868,7 @@ bool Service::Save(StoreInterface* storage) {
     bool in_storage = current_traffic_counters_.find(source) !=
                       current_traffic_counters_.end();
     for (size_t i = 0; i < kTrafficCounterArraySize; i++) {
-      string key = GetCurrentTrafficCounterKey(
+      std::string key = GetCurrentTrafficCounterKey(
           source, kStorageTrafficCounterSuffixes[i]);
       if (in_storage) {
         storage->SetUint64(id, key, current_traffic_counters_[source][i]);
@@ -922,14 +917,15 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
-    } else if (it.second.IsTypeCompatible<string>()) {
+    } else if (it.second.IsTypeCompatible<std::string>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring string property: " << it.first;
         continue;
       }
       SLOG(this, 5) << "Configuring string property: " << it.first;
       Error set_error;
-      store_.SetStringProperty(it.first, it.second.Get<string>(), &set_error);
+      store_.SetStringProperty(it.first, it.second.Get<std::string>(),
+                               &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
@@ -990,12 +986,12 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
           value != it.second.Get<int32_t>()) {
         return false;
       }
-    } else if (it.second.IsTypeCompatible<string>()) {
+    } else if (it.second.IsTypeCompatible<std::string>()) {
       SLOG(this, 5) << "Checking string property: " << it.first;
       Error get_error;
-      string value;
+      std::string value;
       if (!store_.GetStringProperty(it.first, &value, &get_error) ||
-          value != it.second.Get<string>()) {
+          value != it.second.Get<std::string>()) {
         return false;
       }
     } else if (it.second.IsTypeCompatible<Strings>()) {
@@ -1066,7 +1062,7 @@ bool Service::Is8021xConnectable() const {
   return eap() && eap()->IsConnectable();
 }
 
-bool Service::AddEAPCertification(const string& name, size_t depth) {
+bool Service::AddEAPCertification(const std::string& name, size_t depth) {
   if (depth >= kEAPMaxCertificationElements) {
     LOG(WARNING) << "Ignoring certification " << name << " because depth "
                  << depth << " exceeds our maximum of "
@@ -1211,7 +1207,7 @@ const char* Service::ConnectStateToString(const ConnectState& state) {
   return "Invalid";
 }
 
-string Service::GetTechnologyString() const {
+std::string Service::GetTechnologyString() const {
   return technology().GetName();
 }
 
@@ -1333,14 +1329,14 @@ bool Service::IsMeteredByServiceProperties() const {
 }
 
 void Service::InitializeTrafficCounterSnapshot(
-    const vector<patchpanel::TrafficCounter>& counters) {
+    const std::vector<patchpanel::TrafficCounter>& counters) {
   for (const auto& counter : counters) {
     traffic_counter_snapshot_[counter.source()] = CounterToValArray(counter);
   }
 }
 
 void Service::RefreshTrafficCounters(
-    const vector<patchpanel::TrafficCounter>& counters) {
+    const std::vector<patchpanel::TrafficCounter>& counters) {
   for (const auto& counter : counters) {
     std::valarray<uint64_t> counter_array = CounterToValArray(counter);
     if (current_traffic_counters_.find(counter.source()) ==
@@ -1362,9 +1358,9 @@ void Service::RefreshTrafficCounters(
 }
 
 // static
-string Service::GetCurrentTrafficCounterKey(
-    patchpanel::TrafficCounter::Source source, string suffix) {
-  return string(kStorageCurrentTrafficCounterPrefix) +
+std::string Service::GetCurrentTrafficCounterKey(
+    patchpanel::TrafficCounter::Source source, std::string suffix) {
+  return std::string(kStorageCurrentTrafficCounterPrefix) +
          patchpanel::TrafficCounter::Source_Name(source) + suffix;
 }
 
@@ -1373,7 +1369,7 @@ std::pair<bool, const char*> Service::Compare(
     ServiceRefPtr a,
     ServiceRefPtr b,
     bool compare_connectivity_state,
-    const vector<Technology>& tech_order) {
+    const std::vector<Technology>& tech_order) {
   CHECK_EQ(a->manager(), b->manager());
   bool ret;
 
@@ -1455,7 +1451,7 @@ std::pair<bool, const char*> Service::Compare(
 }
 
 // static
-string Service::SanitizeStorageIdentifier(string identifier) {
+std::string Service::SanitizeStorageIdentifier(std::string identifier) {
   std::replace_if(
       identifier.begin(), identifier.end(),
       [](unsigned char c) { return !std::isalnum(c); }, '_');
@@ -1486,7 +1482,7 @@ void Service::SetProfile(const ProfileRefPtr& p) {
   adaptor_->EmitStringChanged(kProfileProperty, profile_rpc_id);
 }
 
-void Service::OnPropertyChanged(const string& property) {
+void Service::OnPropertyChanged(const std::string& property) {
   SLOG(this, 1) << __func__ << " " << property;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
@@ -1565,7 +1561,7 @@ void Service::SetConnectableFull(bool connectable) {
   }
 }
 
-string Service::GetStateString() const {
+std::string Service::GetStateString() const {
   // TODO(benchan): We may want to rename shill::kState* to avoid name clashing
   // with Service::kState*.
   switch (state()) {
@@ -1652,7 +1648,7 @@ bool Service::IsPortalDetectionAuto() const {
   return check_portal_ == kCheckPortalAuto;
 }
 
-void Service::HelpRegisterDerivedBool(const string& name,
+void Service::HelpRegisterDerivedBool(const std::string& name,
                                       bool (Service::*get)(Error* error),
                                       bool (Service::*set)(const bool&, Error*),
                                       void (Service::*clear)(Error*)) {
@@ -1661,7 +1657,7 @@ void Service::HelpRegisterDerivedBool(const string& name,
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set, clear)));
 }
 
-void Service::HelpRegisterDerivedInt32(const string& name,
+void Service::HelpRegisterDerivedInt32(const std::string& name,
                                        int32_t (Service::*get)(Error* error),
                                        bool (Service::*set)(const int32_t&,
                                                             Error*)) {
@@ -1670,42 +1666,42 @@ void Service::HelpRegisterDerivedInt32(const string& name,
       Int32Accessor(new CustomAccessor<Service, int32_t>(this, get, set)));
 }
 
-void Service::HelpRegisterDerivedString(const string& name,
-                                        string (Service::*get)(Error* error),
-                                        bool (Service::*set)(const string&,
-                                                             Error*)) {
+void Service::HelpRegisterDerivedString(
+    const std::string& name,
+    std::string (Service::*get)(Error* error),
+    bool (Service::*set)(const std::string&, Error*)) {
   store_.RegisterDerivedString(
       name,
-      StringAccessor(new CustomAccessor<Service, string>(this, get, set)));
+      StringAccessor(new CustomAccessor<Service, std::string>(this, get, set)));
 }
 
 void Service::HelpRegisterConstDerivedRpcIdentifier(
-    const string& name, RpcIdentifier (Service::*get)(Error*) const) {
+    const std::string& name, RpcIdentifier (Service::*get)(Error*) const) {
   store_.RegisterDerivedRpcIdentifier(
       name, RpcIdentifierAccessor(
                 new CustomReadOnlyAccessor<Service, RpcIdentifier>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedStrings(
-    const string& name, Strings (Service::*get)(Error* error) const) {
+    const std::string& name, Strings (Service::*get)(Error* error) const) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomReadOnlyAccessor<Service, Strings>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedString(
-    const string& name, string (Service::*get)(Error* error) const) {
+    const std::string& name, std::string (Service::*get)(Error* error) const) {
   store_.RegisterDerivedString(
-      name,
-      StringAccessor(new CustomReadOnlyAccessor<Service, string>(this, get)));
+      name, StringAccessor(
+                new CustomReadOnlyAccessor<Service, std::string>(this, get)));
 }
 
 // static
 void Service::LoadString(const StoreInterface* storage,
-                         const string& id,
-                         const string& key,
-                         const string& default_value,
-                         string* value) {
+                         const std::string& id,
+                         const std::string& key,
+                         const std::string& default_value,
+                         std::string* value) {
   if (!storage->GetString(id, key, value)) {
     *value = default_value;
   }
@@ -1713,9 +1709,9 @@ void Service::LoadString(const StoreInterface* storage,
 
 // static
 void Service::SaveStringOrClear(StoreInterface* storage,
-                                const string& id,
-                                const string& key,
-                                const string& value) {
+                                const std::string& id,
+                                const std::string& key,
+                                const std::string& value) {
   if (value.empty()) {
     storage->DeleteKey(id, key);
     return;
@@ -1728,19 +1724,19 @@ void Service::SetNextSerialNumberForTesting(unsigned int next_serial_number) {
   next_serial_number_ = next_serial_number;
 }
 
-map<RpcIdentifier, string> Service::GetLoadableProfileEntries() {
+std::map<RpcIdentifier, std::string> Service::GetLoadableProfileEntries() {
   return manager_->GetLoadableProfileEntriesForService(this);
 }
 
-string Service::CalculateState(Error* /*error*/) {
+std::string Service::CalculateState(Error* /*error*/) {
   return GetStateString();
 }
 
-string Service::CalculateTechnology(Error* /*error*/) {
+std::string Service::CalculateTechnology(Error* /*error*/) {
   return GetTechnologyString();
 }
 
-string Service::GetTethering(Error* error) const {
+std::string Service::GetTethering(Error* error) const {
   // The "Tethering" property isn't supported by the Service base class, and
   // therefore should not be listed in the properties returned by
   // the GetProperties() RPC method.
@@ -1748,17 +1744,17 @@ string Service::GetTethering(Error* error) const {
   return "";
 }
 
-void Service::IgnoreParameterForConfigure(const string& parameter) {
+void Service::IgnoreParameterForConfigure(const std::string& parameter) {
   parameters_ignored_for_configure_.insert(parameter);
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-const string& Service::GetEAPKeyManagement() const {
+const std::string& Service::GetEAPKeyManagement() const {
   CHECK(eap());
   return eap()->key_management();
 }
 
-void Service::SetEAPKeyManagement(const string& key_management) {
+void Service::SetEAPKeyManagement(const std::string& key_management) {
   CHECK(mutable_eap());
   mutable_eap()->SetKeyManagement(key_management, nullptr);
 }
@@ -1798,11 +1794,11 @@ void Service::ClearAutoConnect(Error* /*error*/) {
   retain_auto_connect_ = false;
 }
 
-string Service::GetCheckPortal(Error* error) {
+std::string Service::GetCheckPortal(Error* error) {
   return check_portal_;
 }
 
-bool Service::SetCheckPortal(const string& check_portal, Error* error) {
+bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
   if (check_portal != kCheckPortalFalse && check_portal != kCheckPortalTrue &&
       check_portal != kCheckPortalAuto) {
     Error::PopulateAndLog(
@@ -1818,11 +1814,11 @@ bool Service::SetCheckPortal(const string& check_portal, Error* error) {
   return true;
 }
 
-string Service::GetGuid(Error* error) {
+std::string Service::GetGuid(Error* error) {
   return guid_;
 }
 
-bool Service::SetGuid(const string& guid, Error* /*error*/) {
+bool Service::SetGuid(const std::string& guid, Error* /*error*/) {
   if (guid_ == guid) {
     return false;
   }
@@ -1843,11 +1839,11 @@ void Service::SetSecurity(CryptoAlgorithm crypto_algorithm,
   endpoint_auth_ = endpoint_auth;
 }
 
-string Service::GetNameProperty(Error* /*error*/) {
+std::string Service::GetNameProperty(Error* /*error*/) {
   return friendly_name_;
 }
 
-bool Service::SetNameProperty(const string& name, Error* error) {
+bool Service::SetNameProperty(const std::string& name, Error* error) {
   if (name != friendly_name_) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments,
@@ -1877,7 +1873,7 @@ bool Service::SetPriority(const int32_t& priority, Error* error) {
   return true;
 }
 
-string Service::GetProfileRpcId(Error* error) {
+std::string Service::GetProfileRpcId(Error* error) {
   if (!profile_) {
     // This happens in some unit tests where profile_ is not set.
     error->Populate(Error::kNotFound);
@@ -1886,7 +1882,7 @@ string Service::GetProfileRpcId(Error* error) {
   return profile_->GetRpcIdentifier().value();
 }
 
-bool Service::SetProfileRpcId(const string& profile, Error* error) {
+bool Service::SetProfileRpcId(const std::string& profile, Error* error) {
   if (profile_ && profile_->GetRpcIdentifier().value() == profile) {
     return false;
   }
@@ -1899,11 +1895,11 @@ bool Service::SetProfileRpcId(const string& profile, Error* error) {
   return (profile_ != old_profile);
 }
 
-string Service::GetProxyConfig(Error* error) {
+std::string Service::GetProxyConfig(Error* error) {
   return proxy_config_;
 }
 
-bool Service::SetProxyConfig(const string& proxy_config, Error* error) {
+bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
   if (proxy_config_ == proxy_config)
     return false;
   proxy_config_ = proxy_config;
@@ -1961,7 +1957,7 @@ std::string Service::GetONCSource(Error* error) {
   return ONCSourceMapping[toUnderlying(source_)];
 }
 
-bool Service::SetONCSource(const string& source, Error* error) {
+bool Service::SetONCSource(const std::string& source, Error* error) {
   if (ONCSourceMapping[toUnderlying(source_)] == source) {
     return false;
   }
@@ -2003,7 +1999,7 @@ void Service::SaveToProfile() {
   }
 }
 
-void Service::SetFriendlyName(const string& friendly_name) {
+void Service::SetFriendlyName(const std::string& friendly_name) {
   if (friendly_name == friendly_name_)
     return;
   friendly_name_ = friendly_name;
@@ -2018,7 +2014,7 @@ void Service::SetStrength(uint8_t strength) {
   adaptor_->EmitUint8Changed(kSignalStrengthProperty, strength);
 }
 
-void Service::SetErrorDetails(const string& details) {
+void Service::SetErrorDetails(const std::string& details) {
   if (error_details_ == details) {
     return;
   }
@@ -2027,7 +2023,7 @@ void Service::SetErrorDetails(const string& details) {
 }
 
 void Service::UpdateErrorProperty() {
-  const string error(ConnectFailureToString(failure_));
+  const std::string error(ConnectFailureToString(failure_));
   if (error == error_) {
     return;
   }

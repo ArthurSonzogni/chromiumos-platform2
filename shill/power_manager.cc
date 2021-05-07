@@ -7,16 +7,13 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <linux/nl80211.h>
 
 #include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy_interface.h"
-
-using base::Bind;
-using base::TimeDelta;
-using base::Unretained;
 
 namespace shill {
 
@@ -44,13 +41,15 @@ PowerManager::PowerManager(ControlInterface* control_interface)
 PowerManager::~PowerManager() = default;
 
 void PowerManager::Start(
-    TimeDelta suspend_delay,
+    base::TimeDelta suspend_delay,
     const SuspendImminentCallback& suspend_imminent_callback,
     const SuspendDoneCallback& suspend_done_callback,
     const DarkSuspendImminentCallback& dark_suspend_imminent_callback) {
   power_manager_proxy_ = control_interface_->CreatePowerManagerProxy(
-      this, Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
-      Bind(&PowerManager::OnPowerManagerVanished, Unretained(this)));
+      this,
+      base::Bind(&PowerManager::OnPowerManagerAppeared, base::Unretained(this)),
+      base::Bind(&PowerManager::OnPowerManagerVanished,
+                 base::Unretained(this)));
   suspend_delay_ = suspend_delay;
   suspend_imminent_callback_ = suspend_imminent_callback;
   suspend_done_callback_ = suspend_done_callback;

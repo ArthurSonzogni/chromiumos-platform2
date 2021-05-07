@@ -12,8 +12,6 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_io_handler_factory.h"
 
-using base::Bind;
-using base::Unretained;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
@@ -103,7 +101,7 @@ class IcmpSessionTest : public Test {
   bool Start(const IPAddress& destination, int interface_index) {
     return icmp_session_.Start(
         destination, interface_index,
-        Bind(&IcmpSessionTest::ResultCallback, Unretained(this)));
+        base::Bind(&IcmpSessionTest::ResultCallback, base::Unretained(this)));
   }
 
   void Stop() { icmp_session_.Stop(); }

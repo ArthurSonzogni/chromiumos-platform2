@@ -12,9 +12,6 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
-using base::Bind;
-using base::Closure;
-using base::Unretained;
 using ::testing::_;
 
 namespace shill {
@@ -46,9 +43,10 @@ class HookTableTest : public testing::Test {
 TEST_F(HookTableTest, ActionCompletes) {
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.Run(0, done_callback);
   hook_table_.ActionComplete(kName);
@@ -73,11 +71,12 @@ TEST_F(HookTableTest, ActionCompletesAndRemovesActionInDoneCallback) {
   EXPECT_CALL(*this, StartAction2())
       .WillOnce(CompleteAction(&hook_table_, kName2));
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_callback =
-      Bind(&HookTableTest::StartAction2, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
+  base::Closure start2_callback =
+      base::Bind(&HookTableTest::StartAction2, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.Add(kName2, start2_callback);
   hook_table_.Run(0, done_callback);
@@ -92,9 +91,10 @@ TEST_F(HookTableTest, ActionCompletesInline) {
   EXPECT_CALL(*this, StartAction())
       .WillOnce(CompleteAction(&hook_table_, kName));
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.Run(0, done_callback);
 
@@ -108,9 +108,10 @@ TEST_F(HookTableTest, ActionTimesOut) {
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
 
   hook_table_.Add(kName, start_callback);
   hook_table_.Run(kTimeout, done_callback);
@@ -127,7 +128,7 @@ TEST_F(HookTableTest, ActionTimesOut) {
 }
 
 TEST_F(HookTableTest, MultipleActionsAllSucceed) {
-  Closure pending_callback;
+  base::Closure pending_callback;
   const int kTimeout = 10;
   EXPECT_CALL(*this, StartAction()).Times(2);
 
@@ -136,11 +137,12 @@ TEST_F(HookTableTest, MultipleActionsAllSucceed) {
       .WillOnce(CompleteAction(&hook_table_, kName1));
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
 
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_callback =
-      Bind(&HookTableTest::StartAction2, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
+  base::Closure start2_callback =
+      base::Bind(&HookTableTest::StartAction2, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
 
   hook_table_.Add(kName1, start2_callback);
   hook_table_.Add(kName2, start_callback);
@@ -151,14 +153,15 @@ TEST_F(HookTableTest, MultipleActionsAllSucceed) {
 }
 
 TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
-  Closure pending_callback;
+  base::Closure pending_callback;
   const int kTimeout = 1;
   EXPECT_CALL(*this, StartAction()).Times(3);
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
 
   hook_table_.Add(kName1, start_callback);
   hook_table_.Add(kName2, start_callback);
@@ -180,11 +183,12 @@ TEST_F(HookTableTest, AddActionsWithSameName) {
   EXPECT_CALL(*this, StartAction()).Times(0);
   EXPECT_CALL(*this, StartAction2());
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_callback =
-      Bind(&HookTableTest::StartAction2, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
+  base::Closure start2_callback =
+      base::Bind(&HookTableTest::StartAction2, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
 
   // Adding an action with the same name kName.  New callbacks should replace
@@ -201,9 +205,10 @@ TEST_F(HookTableTest, AddActionsWithSameName) {
 TEST_F(HookTableTest, RemoveAction) {
   EXPECT_CALL(*this, StartAction()).Times(0);
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.Remove(kName);
   hook_table_.Run(0, done_callback);
@@ -211,7 +216,8 @@ TEST_F(HookTableTest, RemoveAction) {
 
 TEST_F(HookTableTest, ActionCompleteFollowedByRemove) {
   EXPECT_CALL(*this, StartAction()).Times(0);
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.ActionComplete(kName);
   hook_table_.Remove(kName);
@@ -219,7 +225,7 @@ TEST_F(HookTableTest, ActionCompleteFollowedByRemove) {
 
 TEST_F(HookTableTest, IsEmpty) {
   EXPECT_TRUE(hook_table_.IsEmpty());
-  hook_table_.Add(kName, Closure());
+  hook_table_.Add(kName, base::Closure());
   EXPECT_FALSE(hook_table_.IsEmpty());
   hook_table_.Remove(kName);
   EXPECT_TRUE(hook_table_.IsEmpty());
@@ -240,7 +246,8 @@ TEST_F(HookTableTest, RefcountedObject) {
   auto ht = std::make_unique<HookTable>(&event_dispatcher_);
   {
     scoped_refptr<SomeClass> ref_counted_object = new SomeClass();
-    Closure start_callback = Bind(&SomeClass::StartAction, ref_counted_object);
+    base::Closure start_callback =
+        base::Bind(&SomeClass::StartAction, ref_counted_object);
     ht->Add(kName, start_callback);
   }
 }
@@ -249,11 +256,12 @@ TEST_F(HookTableTest, ActionAddedBeforePreviousActionCompletes) {
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, StartAction2()).Times(0);
   EXPECT_CALL(*this, DoneAction(IsSuccess()));
-  Closure start_callback = Bind(&HookTableTest::StartAction, Unretained(this));
-  Closure start2_callback =
-      Bind(&HookTableTest::StartAction2, Unretained(this));
+  base::Closure start_callback =
+      base::Bind(&HookTableTest::StartAction, base::Unretained(this));
+  base::Closure start2_callback =
+      base::Bind(&HookTableTest::StartAction2, base::Unretained(this));
   ResultCallback done_callback =
-      Bind(&HookTableTest::DoneAction, Unretained(this));
+      base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.Run(0, done_callback);
 

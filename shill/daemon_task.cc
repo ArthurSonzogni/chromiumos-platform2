@@ -27,9 +27,6 @@
 #include "shill/net/nl80211_message.h"
 #endif  // !defined(DISABLE_WIFI)
 
-using base::Bind;
-using base::Unretained;
-
 namespace shill {
 
 namespace Logging {
@@ -76,8 +73,8 @@ void DaemonTask::ApplySettings() {
 
 bool DaemonTask::Quit(const base::Closure& completion_callback) {
   SLOG(this, 1) << "Starting termination actions.";
-  if (manager_->RunTerminationActionsAndNotifyMetrics(
-          Bind(&DaemonTask::TerminationActionsCompleted, Unretained(this)))) {
+  if (manager_->RunTerminationActionsAndNotifyMetrics(base::Bind(
+          &DaemonTask::TerminationActionsCompleted, base::Unretained(this)))) {
     SLOG(this, 1) << "Will wait for termination actions to complete";
     termination_completed_callback_ = completion_callback;
     return false;  // Note to caller: don't exit yet!
@@ -133,8 +130,8 @@ void DaemonTask::TerminationActionsCompleted(const Error& error) {
   //                     -> DeviceInfo::Stop
   //                       -> Cellular::~Cellular
   //           -> Manager::RemoveTerminationAction
-  dispatcher_->PostTask(
-      FROM_HERE, Bind(&DaemonTask::StopAndReturnToMain, Unretained(this)));
+  dispatcher_->PostTask(FROM_HERE, base::Bind(&DaemonTask::StopAndReturnToMain,
+                                              base::Unretained(this)));
 }
 
 void DaemonTask::StopAndReturnToMain() {
@@ -160,7 +157,7 @@ void DaemonTask::Start() {
     netlink_manager_->Init();
     uint16_t nl80211_family_id =
         netlink_manager_->GetFamily(Nl80211Message::kMessageTypeString,
-                                    Bind(&Nl80211Message::CreateMessage));
+                                    base::Bind(&Nl80211Message::CreateMessage));
     if (nl80211_family_id == NetlinkMessage::kIllegalMessageType) {
       LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
     }

@@ -22,8 +22,6 @@
 
 namespace shill {
 
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::Return;
@@ -48,7 +46,7 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
                             callback, error);
   }
 
-  bool CaptureArgv(const vector<string>& argv) {
+  bool CaptureArgv(const std::vector<std::string>& argv) {
     argv_ = argv;
     return true;
   }

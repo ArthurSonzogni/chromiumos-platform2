@@ -10,7 +10,6 @@
 
 #include <base/check.h>
 
-using std::string;
 using testing::_;
 using testing::AnyNumber;
 
@@ -34,7 +33,7 @@ bool ScopedMockLog::HandleLogMessages(int severity,
                                       const char* file,
                                       int line,
                                       size_t message_start,
-                                      const string& full_message) {
+                                      const std::string& full_message) {
   CHECK(instance_);
 
   // |full_message| looks like this if it came through MemoryLog:
@@ -43,9 +42,9 @@ bool ScopedMockLog::HandleLogMessages(int severity,
   // extra stuff.  |message_start| is the position where "Some message" begins.
   //
   // Note that the -1 is to remove the trailing return line.
-  const string::size_type message_length =
+  const std::string::size_type message_length =
       full_message.length() - message_start - 1;
-  const string message(full_message, message_start, message_length);
+  const std::string message(full_message, message_start, message_length);
 
   // Call Log.  Because Log is a mock method, this sets in motion the mocking
   // magic.

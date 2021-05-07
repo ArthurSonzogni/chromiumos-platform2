@@ -4,13 +4,13 @@
 
 #include "shill/resolver.h"
 
+#include <string>
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-using base::FilePath;
-using std::string;
-using std::vector;
 using testing::Test;
 
 namespace shill {
@@ -62,28 +62,29 @@ class ResolverTest : public Test {
 
   void TearDown() override {
     EXPECT_TRUE(resolver_->ClearDNS());
-    resolver_->set_path(FilePath(""));  // Don't try to save the store.
+    resolver_->set_path(base::FilePath(""));  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
     resolver_->set_ignored_search_list({});
   }
 
  protected:
-  string ReadFile();
+  std::string ReadFile();
 
   base::ScopedTempDir temp_dir_;
   Resolver* resolver_;
-  FilePath path_;
+  base::FilePath path_;
 };
 
-string ResolverTest::ReadFile() {
-  string data;
+std::string ResolverTest::ReadFile() {
+  std::string data;
   EXPECT_TRUE(base::ReadFileToString(resolver_->path_, &data));
   return data;
 }
 
 TEST_F(ResolverTest, NonEmpty) {
-  vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
-  vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
+  std::vector<std::string> dns_servers = {kNameServer0, kNameServer1,
+                                          kNameServer2};
+  std::vector<std::string> domain_search = {kSearchDomain0, kSearchDomain1};
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
@@ -91,10 +92,12 @@ TEST_F(ResolverTest, NonEmpty) {
 }
 
 TEST_F(ResolverTest, Sanitize) {
-  vector<string> dns_servers = {kNameServer0, kNameServerEvil, kNameServer1,
-                                kNameServerSubtlyEvil, kNameServer2};
-  vector<string> domain_search = {kSearchDomainEvil, kSearchDomain0,
-                                  kSearchDomain1, kSearchDomainSubtlyEvil};
+  std::vector<std::string> dns_servers = {kNameServer0, kNameServerEvil,
+                                          kNameServer1, kNameServerSubtlyEvil,
+                                          kNameServer2};
+  std::vector<std::string> domain_search = {kSearchDomainEvil, kSearchDomain0,
+                                            kSearchDomain1,
+                                            kSearchDomainSubtlyEvil};
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
@@ -102,16 +105,17 @@ TEST_F(ResolverTest, Sanitize) {
 }
 
 TEST_F(ResolverTest, Empty) {
-  vector<string> dns_servers;
-  vector<string> domain_search;
+  std::vector<std::string> dns_servers;
+  std::vector<std::string> domain_search;
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
 }
 
 TEST_F(ResolverTest, IgnoredSearchList) {
-  vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
-  vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
-  vector<string> ignored_search = {kSearchDomain0, kSearchDomain2};
+  std::vector<std::string> dns_servers = {kNameServer0, kNameServer1,
+                                          kNameServer2};
+  std::vector<std::string> domain_search = {kSearchDomain0, kSearchDomain1};
+  std::vector<std::string> ignored_search = {kSearchDomain0, kSearchDomain2};
   resolver_->set_ignored_search_list(ignored_search);
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
@@ -132,8 +136,9 @@ TEST_F(ResolverTest, ProxyClear) {
 }
 
 TEST_F(ResolverTest, ProxyToggle) {
-  vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
-  vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
+  std::vector<std::string> dns_servers = {kNameServer0, kNameServer1,
+                                          kNameServer2};
+  std::vector<std::string> domain_search = {kSearchDomain0, kSearchDomain1};
   // Connection's DNS
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));

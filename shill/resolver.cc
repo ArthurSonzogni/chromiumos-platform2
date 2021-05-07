@@ -17,14 +17,11 @@
 #include "shill/logging.h"
 #include "shill/net/ip_address.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kResolver;
-static string ObjectID(const Resolver* r) {
+static std::string ObjectID(const Resolver* r) {
   return "(resolver)";
 }
 }  // namespace Logging
@@ -65,7 +62,7 @@ bool Resolver::Emit() {
     return ClearDNS();
   }
 
-  vector<string> lines;
+  std::vector<std::string> lines;
   for (const auto& server : name_servers) {
     IPAddress addr(server);
     std::string canonical_ip;
@@ -77,7 +74,7 @@ bool Resolver::Emit() {
     }
   }
 
-  vector<string> filtered_domain_search_list;
+  std::vector<std::string> filtered_domain_search_list;
   for (const auto& domain : domain_search_list_) {
     if (base::Contains(ignored_search_list_, domain)) {
       continue;
@@ -110,7 +107,7 @@ bool Resolver::Emit() {
   // Newline at end of file
   lines.push_back("");
 
-  string contents = base::JoinString(lines, "\n");
+  const auto contents = base::JoinString(lines, "\n");
 
   SLOG(this, 2) << "Writing DNS out to " << path_.value();
   int count = base::WriteFile(path_, contents.c_str(), contents.size());

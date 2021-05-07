@@ -4,6 +4,9 @@
 
 #include "shill/ppp_device.h"
 
+#include <map>
+#include <string>
+
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -21,27 +24,25 @@ extern "C" {
 #include "shill/metrics.h"
 #include "shill/technology.h"
 
-using std::map;
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPPP;
-static string ObjectID(const PPPDevice* p) {
+static std::string ObjectID(const PPPDevice* p) {
   return p->link_name();
 }
 }  // namespace Logging
 
 PPPDevice::PPPDevice(Manager* manager,
-                     const string& link_name,
+                     const std::string& link_name,
                      int interface_index)
     : VirtualDevice(manager, link_name, interface_index, Technology::kPPP) {}
 
 PPPDevice::~PPPDevice() = default;
 
-void PPPDevice::UpdateIPConfigFromPPP(const map<string, string>& configuration,
-                                      bool blackhole_ipv6) {
+void PPPDevice::UpdateIPConfigFromPPP(
+    const std::map<std::string, std::string>& configuration,
+    bool blackhole_ipv6) {
   SLOG(this, 2) << __func__ << " on " << link_name();
   IPConfig::Properties properties = ParseIPConfiguration(configuration);
   metrics()->SendSparseToUMA(Metrics::kMetricPPPMTUValue, properties.mtu);
@@ -52,28 +53,29 @@ void PPPDevice::UpdateIPConfigFromPPP(const map<string, string>& configuration,
 
 #ifndef DISABLE_DHCPV6
 bool PPPDevice::AcquireIPv6Config() {
-  return AcquireIPv6ConfigWithLeaseName(string());
+  return AcquireIPv6ConfigWithLeaseName(std::string());
 }
 #endif
 
 // static
-string PPPDevice::GetInterfaceName(const map<string, string>& configuration) {
+std::string PPPDevice::GetInterfaceName(
+    const std::map<std::string, std::string>& configuration) {
   if (base::Contains(configuration, kPPPInterfaceName)) {
     return configuration.find(kPPPInterfaceName)->second;
   }
-  return string();
+  return std::string();
 }
 
 // static
 IPConfig::Properties PPPDevice::ParseIPConfiguration(
-    const map<string, string>& configuration) {
+    const std::map<std::string, std::string>& configuration) {
   IPConfig::Properties properties;
   properties.address_family = IPAddress::kFamilyIPv4;
   properties.subnet_prefix =
       IPAddress::GetMaxPrefixLength(properties.address_family);
   for (const auto& it : configuration) {
-    const string& key = it.first;
-    const string& value = it.second;
+    const auto& key = it.first;
+    const auto& value = it.second;
     SLOG(PPP, nullptr, 2) << "Processing: " << key << " -> " << value;
     if (key == kPPPInternalIP4Address) {
       properties.address = value;

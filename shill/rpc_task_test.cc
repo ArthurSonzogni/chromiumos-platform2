@@ -4,13 +4,13 @@
 
 #include "shill/rpc_task.h"
 
+#include <map>
+#include <string>
+
 #include <gtest/gtest.h>
 
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-
-using std::map;
-using std::string;
 
 namespace shill {
 
@@ -20,35 +20,36 @@ class RpcTaskTest : public testing::Test, public RpcTaskDelegate {
       : get_login_calls_(0), notify_calls_(0), task_(&control_, this) {}
 
   // Inherited from RpcTaskDelegate.
-  virtual void GetLogin(string* user, string* password);
-  virtual void Notify(const string& reason, const map<string, string>& dict);
+  virtual void GetLogin(std::string* user, std::string* password);
+  virtual void Notify(const std::string& reason,
+                      const std::map<std::string, std::string>& dict);
 
  protected:
   int get_login_calls_;
   int notify_calls_;
-  string* last_user_;
-  string* last_password_;
-  string last_notify_reason_;
-  map<string, string> last_notify_dict_;
+  std::string* last_user_;
+  std::string* last_password_;
+  std::string last_notify_reason_;
+  std::map<std::string, std::string> last_notify_dict_;
   MockControl control_;
   RpcTask task_;
 };
 
-void RpcTaskTest::GetLogin(string* user, string* password) {
+void RpcTaskTest::GetLogin(std::string* user, std::string* password) {
   get_login_calls_++;
   last_user_ = user;
   last_password_ = password;
 }
 
-void RpcTaskTest::Notify(const string& reason,
-                         const map<string, string>& dict) {
+void RpcTaskTest::Notify(const std::string& reason,
+                         const std::map<std::string, std::string>& dict) {
   notify_calls_++;
   last_notify_reason_ = reason;
   last_notify_dict_ = dict;
 }
 
 TEST_F(RpcTaskTest, GetEnvironment) {
-  map<string, string> env = task_.GetEnvironment();
+  std::map<std::string, std::string> env = task_.GetEnvironment();
   ASSERT_EQ(2, env.size());
   EXPECT_EQ(env[kRpcTaskServiceVariable],
             RpcTaskMockAdaptor::kRpcConnId.value());
@@ -61,7 +62,7 @@ TEST_F(RpcTaskTest, GetRpcIdentifiers) {
 }
 
 TEST_F(RpcTaskTest, GetLogin) {
-  string user, password;
+  std::string user, password;
   task_.GetLogin(&user, &password);
   EXPECT_EQ(1, get_login_calls_);
   EXPECT_EQ(&user, last_user_);
@@ -70,7 +71,7 @@ TEST_F(RpcTaskTest, GetLogin) {
 
 TEST_F(RpcTaskTest, Notify) {
   static const char kReason[] = "up";
-  map<string, string> dict;
+  std::map<std::string, std::string> dict;
   dict["foo"] = "bar";
   task_.Notify(kReason, dict);
   EXPECT_EQ(1, notify_calls_);

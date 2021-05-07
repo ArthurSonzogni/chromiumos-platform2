@@ -12,8 +12,6 @@
 
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace {
@@ -63,7 +61,7 @@ Error::Error(Type type) {
   Populate(type);
 }
 
-Error::Error(Type type, const string& message) {
+Error::Error(Type type, const std::string& message) {
   Populate(type, message);
 }
 
@@ -73,14 +71,14 @@ void Error::Populate(Type type) {
   Populate(type, GetDefaultMessage(type));
 }
 
-void Error::Populate(Type type, const string& message) {
+void Error::Populate(Type type, const std::string& message) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
 }
 
 void Error::Populate(Type type,
-                     const string& message,
+                     const std::string& message,
                      const base::Location& location) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
@@ -106,13 +104,13 @@ bool Error::ToChromeosError(brillo::ErrorPtr* error) const {
 }
 
 // static
-string Error::GetDBusResult(Type type) {
+std::string Error::GetDBusResult(Type type) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   return kInfos[type].dbus_result;
 }
 
 // static
-string Error::GetDefaultMessage(Type type) {
+std::string Error::GetDefaultMessage(Type type) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   return kInfos[type].message;
 }
@@ -121,8 +119,9 @@ string Error::GetDefaultMessage(Type type) {
 void Error::PopulateAndLog(const base::Location& from_here,
                            Error* error,
                            Type type,
-                           const string& message) {
-  string file_name = base::FilePath(from_here.file_name()).BaseName().value();
+                           const std::string& message) {
+  std::string file_name =
+      base::FilePath(from_here.file_name()).BaseName().value();
   LOG(ERROR) << "[" << file_name << "(" << from_here.line_number()
              << ")]: " << message;
   if (error) {

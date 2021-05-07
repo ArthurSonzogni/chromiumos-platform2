@@ -28,10 +28,6 @@
 #include "shill/store_interface.h"
 #include "shill/stub_storage.h"
 
-using base::FilePath;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 // static
@@ -158,7 +154,7 @@ bool Profile::RemoveStorage(Error* error) {
   return true;
 }
 
-string Profile::GetFriendlyName() const {
+std::string Profile::GetFriendlyName() const {
   return (name_.user.empty() ? "" : name_.user + "/") + name_.identifier;
 }
 
@@ -254,7 +250,7 @@ ServiceRefPtr Profile::GetServiceFromEntry(const std::string& entry_name,
   return manager_->CreateTemporaryServiceFromProfile(this, entry_name, error);
 }
 
-bool Profile::IsValidIdentifierToken(const string& token) {
+bool Profile::IsValidIdentifierToken(const std::string& token) {
   if (token.empty()) {
     return false;
   }
@@ -267,18 +263,18 @@ bool Profile::IsValidIdentifierToken(const string& token) {
 }
 
 // static
-bool Profile::ParseIdentifier(const string& raw, Identifier* parsed) {
+bool Profile::ParseIdentifier(const std::string& raw, Identifier* parsed) {
   if (raw.empty()) {
     return false;
   }
   if (raw[0] == '~') {
     // Format: "~user/identifier".
     size_t slash = raw.find('/');
-    if (slash == string::npos) {
+    if (slash == std::string::npos) {
       return false;
     }
-    string user(raw.begin() + 1, raw.begin() + slash);
-    string identifier(raw.begin() + slash + 1, raw.end());
+    std::string user(raw.begin() + 1, raw.begin() + slash);
+    std::string identifier(raw.begin() + slash + 1, raw.end());
     if (!IsValidIdentifierToken(user) || !IsValidIdentifierToken(identifier)) {
       return false;
     }
@@ -297,7 +293,7 @@ bool Profile::ParseIdentifier(const string& raw, Identifier* parsed) {
 }
 
 // static
-string Profile::IdentifierToString(const Identifier& name) {
+std::string Profile::IdentifierToString(const Identifier& name) {
   if (name.user.empty()) {
     // Format: "identifier".
     return name.identifier;
@@ -309,14 +305,15 @@ string Profile::IdentifierToString(const Identifier& name) {
 }
 
 // static
-vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath& path) {
-  vector<Identifier> profile_identifiers;
-  string profile_data;
+std::vector<Profile::Identifier> Profile::LoadUserProfileList(
+    const base::FilePath& path) {
+  std::vector<Identifier> profile_identifiers;
+  std::string profile_data;
   if (!base::ReadFileToString(path, &profile_data)) {
     return profile_identifiers;
   }
 
-  vector<string> profile_lines = base::SplitString(
+  const auto profile_lines = base::SplitString(
       profile_data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const auto& line : profile_lines) {
     if (line.empty()) {
@@ -324,18 +321,18 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath& path) {
       continue;
     }
     size_t space = line.find(' ');
-    if (space == string::npos || space == 0) {
+    if (space == std::string::npos || space == 0) {
       LOG(ERROR) << "Invalid line found in " << path.value() << ": " << line;
       continue;
     }
-    string name(line.begin(), line.begin() + space);
+    std::string name(line.begin(), line.begin() + space);
     Identifier identifier;
     if (!ParseIdentifier(name, &identifier) || identifier.user.empty()) {
       LOG(ERROR) << "Invalid profile name found in " << path.value() << ": "
                  << name;
       continue;
     }
-    identifier.user_hash = string(line.begin() + space + 1, line.end());
+    identifier.user_hash = std::string(line.begin() + space + 1, line.end());
     profile_identifiers.push_back(identifier);
   }
 
@@ -343,9 +340,9 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath& path) {
 }
 
 // static
-bool Profile::SaveUserProfileList(const FilePath& path,
-                                  const vector<ProfileRefPtr>& profiles) {
-  vector<string> lines;
+bool Profile::SaveUserProfileList(const base::FilePath& path,
+                                  const std::vector<ProfileRefPtr>& profiles) {
+  std::vector<std::string> lines;
   for (const auto& profile : profiles) {
     Identifier& id = profile->name_;
     if (id.user.empty()) {
@@ -354,7 +351,7 @@ bool Profile::SaveUserProfileList(const FilePath& path,
     lines.push_back(base::StringPrintf(
         "%s %s\n", IdentifierToString(id).c_str(), id.user_hash.c_str()));
   }
-  string content = base::JoinString(lines, "");
+  std::string content = base::JoinString(lines, "");
   size_t ret = base::WriteFile(path, content.c_str(), content.length());
   return ret == content.length();
 }
@@ -384,11 +381,11 @@ void Profile::ClearAlwaysOnVpn() {
   properties_.always_on_vpn_service.clear();
 }
 
-string Profile::DBusGetAlwaysOnVpnMode(Error* /*error*/) {
+std::string Profile::DBusGetAlwaysOnVpnMode(Error* /*error*/) {
   return properties_.always_on_vpn_mode;
 }
 
-bool Profile::DBusSetAlwaysOnVpnMode(const string& mode, Error* error) {
+bool Profile::DBusSetAlwaysOnVpnMode(const std::string& mode, Error* error) {
   if (mode != kAlwaysOnVpnModeOff && mode != kAlwaysOnVpnModeBestEffort &&
       mode != kAlwaysOnVpnModeStrict) {
     // Invalid mode
@@ -438,8 +435,8 @@ RpcIdentifiers Profile::EnumerateAvailableServices(Error* error) {
   return RpcIdentifiers();
 }
 
-vector<string> Profile::EnumerateEntries(Error* /*error*/) {
-  vector<string> service_groups;
+std::vector<std::string> Profile::EnumerateEntries(Error* /*error*/) {
+  std::vector<std::string> service_groups;
 
   // Filter this list down to only entries that correspond
   // to a technology.  (wifi_*, etc)
@@ -456,13 +453,13 @@ bool Profile::UpdateDevice(const DeviceRefPtr& device) {
 }
 
 void Profile::HelpRegisterConstDerivedRpcIdentifiers(
-    const string& name, RpcIdentifiers (Profile::*get)(Error* error)) {
+    const std::string& name, RpcIdentifiers (Profile::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifiers(
       name, RpcIdentifiersAccessor(new CustomAccessor<Profile, RpcIdentifiers>(
                 this, get, nullptr)));
 }
 
-void Profile::HelpRegisterConstDerivedStrings(const string& name,
+void Profile::HelpRegisterConstDerivedStrings(const std::string& name,
                                               Strings (Profile::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
@@ -470,7 +467,7 @@ void Profile::HelpRegisterConstDerivedStrings(const string& name,
 }
 
 void Profile::HelpRegisterDerivedRpcIdentifier(
-    const string& name,
+    const std::string& name,
     RpcIdentifier (Profile::*get)(Error*),
     bool (Profile::*set)(const RpcIdentifier&, Error*)) {
   store_.RegisterDerivedRpcIdentifier(
@@ -478,19 +475,19 @@ void Profile::HelpRegisterDerivedRpcIdentifier(
                 new CustomAccessor<Profile, RpcIdentifier>(this, get, set)));
 }
 
-void Profile::HelpRegisterDerivedString(const string& name,
-                                        string (Profile::*get)(Error* error),
-                                        bool (Profile::*set)(const string&,
-                                                             Error*)) {
+void Profile::HelpRegisterDerivedString(
+    const std::string& name,
+    std::string (Profile::*get)(Error* error),
+    bool (Profile::*set)(const std::string&, Error*)) {
   store_.RegisterDerivedString(
       name,
-      StringAccessor(new CustomAccessor<Profile, string>(this, get, set)));
+      StringAccessor(new CustomAccessor<Profile, std::string>(this, get, set)));
 }
 
 // static
-FilePath Profile::GetFinalStoragePath(const FilePath& storage_dir,
-                                      const Identifier& profile_name) {
-  FilePath base_path;
+base::FilePath Profile::GetFinalStoragePath(const base::FilePath& storage_dir,
+                                            const Identifier& profile_name) {
+  base::FilePath base_path;
   if (profile_name.user.empty()) {  // True for DefaultProfiles.
     base_path = storage_dir.Append(
         base::StringPrintf("%s.profile", profile_name.identifier.c_str()));
@@ -510,7 +507,7 @@ Metrics* Profile::metrics() const {
 }
 
 void Profile::Properties::Load(StoreInterface* storage) {
-  string value;
+  std::string value;
   if (!storage->GetString(kStorageId, kAlwaysOnVpnModeProperty,
                           &always_on_vpn_mode)) {
     always_on_vpn_mode = kAlwaysOnVpnModeOff;

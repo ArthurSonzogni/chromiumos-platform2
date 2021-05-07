@@ -9,8 +9,6 @@
 #include "shill/mock_adaptors.h"
 #include "shill/property_accessor.h"
 
-using std::string;
-
 namespace shill {
 
 // static
@@ -42,7 +40,7 @@ RpcIdentifier ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
   return kRpcId;
 }
 
-string ServiceUnderTest::GetStorageIdentifier() const {
+std::string ServiceUnderTest::GetStorageIdentifier() const {
   return kStorageId;
 }
 

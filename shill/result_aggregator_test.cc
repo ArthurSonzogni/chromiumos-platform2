@@ -15,8 +15,6 @@
 
 namespace shill {
 
-using base::Bind;
-using base::Unretained;
 using testing::_;
 using testing::StrictMock;
 
@@ -29,8 +27,8 @@ const int kTimeoutMilliseconds = 0;
 class ResultAggregatorTest : public ::testing::Test {
  public:
   ResultAggregatorTest()
-      : aggregator_(new ResultAggregator(
-            Bind(&ResultAggregatorTest::ReportResult, Unretained(this)))) {}
+      : aggregator_(new ResultAggregator(base::Bind(
+            &ResultAggregatorTest::ReportResult, base::Unretained(this)))) {}
   ~ResultAggregatorTest() override = default;
 
   void TearDown() override {
@@ -50,7 +48,7 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
 
   void InitializeResultAggregatorWithTimeout() {
     aggregator_ = new ResultAggregator(
-        Bind(&ResultAggregatorTest::ReportResult, Unretained(this)),
+        base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
         &dispatcher_, kTimeoutMilliseconds);
   }
 
@@ -124,8 +122,8 @@ TEST_F(ResultAggregatorTestWithMockDispatcher,
        TimeoutCallbackPostedOnConstruction) {
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kTimeoutMilliseconds));
   auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
-      Bind(&ResultAggregatorTest::ReportResult, Unretained(this)), &dispatcher_,
-      kTimeoutMilliseconds);
+      base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
+      &dispatcher_, kTimeoutMilliseconds);
 }
 
 TEST_F(ResultAggregatorTestWithDispatcher,
@@ -151,7 +149,7 @@ TEST_F(ResultAggregatorTestWithDispatcher,
        TimeoutCallbackNotInvokedIfAllActionsComplete) {
   {
     auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
-        Bind(&ResultAggregatorTest::ReportResult, Unretained(this)),
+        base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
         &dispatcher_, kTimeoutMilliseconds);
     // The result aggregator receives the one callback it expects, and goes
     // out of scope. At this point, it should invoke the ReportResult callback

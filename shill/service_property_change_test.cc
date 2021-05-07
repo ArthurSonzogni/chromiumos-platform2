@@ -17,7 +17,6 @@
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
-using std::string;
 using testing::_;
 using testing::Mock;
 using testing::NiceMock;
@@ -45,7 +44,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetConnectable(!connectable);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_EQ(string(), service->guid());
+  EXPECT_EQ(std::string(), service->guid());
   EXPECT_CALL(*adaptor, EmitStringChanged(kGuidProperty, _));
   service->SetGuid("some garbage", &error);
   Mock::VerifyAndClearExpectations(adaptor);
@@ -62,7 +61,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetPriority(1, &error);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_EQ(string(), service->GetProxyConfig(&error));
+  EXPECT_EQ(std::string(), service->GetProxyConfig(&error));
   EXPECT_CALL(*adaptor, EmitStringChanged(kProxyConfigProperty, _));
   service->SetProxyConfig("some garbage", &error);
   Mock::VerifyAndClearExpectations(adaptor);
@@ -72,7 +71,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetStrength(strength + 1);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_EQ(string(), service->error_details());
+  EXPECT_EQ(std::string(), service->error_details());
   EXPECT_CALL(*adaptor, EmitStringChanged(kErrorDetailsProperty, _));
   service->SetErrorDetails("some garbage");
   Mock::VerifyAndClearExpectations(adaptor);
@@ -112,7 +111,7 @@ void TestAutoConnectPropertyChange(ServiceRefPtr service,
 void TestNamePropertyChange(ServiceRefPtr service,
                             ServiceMockAdaptor* adaptor) {
   Error error;
-  string name = service->GetNameProperty(&error);
+  std::string name = service->GetNameProperty(&error);
   EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty, _));
   service->SetNameProperty(name + " and some new stuff", &error);
   Mock::VerifyAndClearExpectations(adaptor);
@@ -156,7 +155,7 @@ void TestCustomSetterNoopChange(ServiceRefPtr service,
   // SetProxyConfig
   {
     Error error;
-    static const string kProxyConfig = "some opaque blob";
+    static const std::string kProxyConfig = "some opaque blob";
     // Set to known value.
     EXPECT_TRUE(service->SetProxyConfig(kProxyConfig, &error));
     EXPECT_TRUE(error.IsSuccess());

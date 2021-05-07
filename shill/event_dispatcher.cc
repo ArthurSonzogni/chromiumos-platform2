@@ -10,10 +10,6 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
-using base::Callback;
-using base::Location;
-using base::OnceClosure;
-
 namespace shill {
 
 EventDispatcher::EventDispatcher() = default;
@@ -30,12 +26,13 @@ void EventDispatcher::DispatchPendingEvents() {
   base::RunLoop().RunUntilIdle();
 }
 
-void EventDispatcher::PostTask(const Location& location, OnceClosure task) {
+void EventDispatcher::PostTask(const base::Location& location,
+                               base::OnceClosure task) {
   PostDelayedTask(FROM_HERE, std::move(task), 0);
 }
 
-void EventDispatcher::PostDelayedTask(const Location& location,
-                                      OnceClosure task,
+void EventDispatcher::PostDelayedTask(const base::Location& location,
+                                      base::OnceClosure task,
                                       int64_t delay_ms) {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       location, std::move(task), base::TimeDelta::FromMilliseconds(delay_ms));
