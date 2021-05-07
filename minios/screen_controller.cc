@@ -9,14 +9,14 @@
 #include <base/logging.h>
 
 #include "minios/recovery_installer.h"
-#include "minios/screen_language_dropdown.h"
-#include "minios/screen_welcome.h"
 #include "minios/screens/screen_debug_options.h"
 #include "minios/screens/screen_download.h"
 #include "minios/screens/screen_error.h"
+#include "minios/screens/screen_language_dropdown.h"
 #include "minios/screens/screen_log.h"
 #include "minios/screens/screen_network.h"
 #include "minios/screens/screen_permission.h"
+#include "minios/screens/screen_welcome.h"
 #include "minios/utils.h"
 
 namespace minios {
@@ -35,23 +35,26 @@ ScreenController::ScreenController(
                     GetVpdRegion(base::FilePath("/"), process_manager_)}),
       key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {}
 
-void ScreenController::Init() {
-  CHECK(draw_utils_)
-      << "Screen drawing utility not available. Cannot continue.";
-
-  draw_utils_->Init();
+bool ScreenController::Init() {
+  if (!draw_utils_ || !draw_utils_->Init()) {
+    LOG(ERROR) << "Screen drawing utility not available. Cannot continue.";
+    return false;
+  }
   update_engine_proxy_->Init();
 
   std::vector<int> wait_keys = {kKeyUp, kKeyDown, kKeyEnter};
   if (draw_utils_->IsDetachable())
     wait_keys = {kKeyVolDown, kKeyVolUp, kKeyPower};
-  CHECK(key_reader_.Init(wait_keys))
-      << "Could not initialize key reader. Unable to continue.";
+  if (!key_reader_.Init(wait_keys)) {
+    LOG(ERROR) << "Could not initialize key reader. Unable to continue.";
+    return false;
+  }
 
   key_reader_.SetDelegate(this);
 
   current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
   current_screen_->Show();
+  return false;
 }
 
 std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(

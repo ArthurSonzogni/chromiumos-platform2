@@ -9,7 +9,8 @@
 
 #include "minios/minios_interface.h"
 #include "minios/network_manager_interface.h"
-#include "minios/screens.h"
+#include "minios/process_manager.h"
+#include "minios/screen_controller.h"
 #include "minios/update_engine_proxy.h"
 
 namespace minios {
@@ -40,7 +41,8 @@ class MiniOs : public MiniOsInterface {
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 
   ProcessManager process_manager_;
-  Screens screens_;
+  std::shared_ptr<DrawInterface> draw_utils_;
+  ScreenController screens_controller_;
 };
 
 }  // namespace minios

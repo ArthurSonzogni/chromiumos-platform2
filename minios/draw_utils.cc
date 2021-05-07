@@ -304,24 +304,6 @@ void DrawUtils::ShowStepper(const std::vector<std::string>& steps) {
   }
 }
 
-void DrawUtils::ShowCollapsedNetworkDropDown(bool is_selected) {
-  const int kOffsetY = -frecon_canvas_size_ / 2 + 350;
-  const int kBgX = -frecon_canvas_size_ / 2 + 145;
-  const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
-  const int kArrowX = -frecon_canvas_size_ / 2 + 268;
-  const int kTextX = -frecon_canvas_size_ / 2 + 100;
-
-  // Currently using language and globe icons as placeholders.
-  base::FilePath menu_background =
-      is_selected ? screens_path_.Append("language_menu_bg_focused.png")
-                  : screens_path_.Append("language_menu_bg.png");
-
-  ShowImage(menu_background, kBgX, kOffsetY);
-  ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
-  ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
-  ShowMessage("btn_MiniOS_display_options", kTextX, kOffsetY);
-}
-
 void DrawUtils::ShowLanguageDropdown(int current_index) {
   constexpr int kItemHeight = 40;
   const int kItemPerPage = (frecon_canvas_size_ - 260) / kItemHeight;

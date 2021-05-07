@@ -20,14 +20,11 @@ MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                std::shared_ptr<NetworkManagerInterface> network_manager)
     : update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
-      screens_(Screens(&process_manager_,
-                       std::make_unique<RecoveryInstaller>(&process_manager_),
-                       network_manager_,
-                       update_engine_proxy_)) {
-  update_engine_proxy_->SetDelegate(&screens_);
-  update_engine_proxy_->Init();
-  network_manager_->AddObserver(&screens_);
-}
+      draw_utils_(std::make_shared<DrawUtils>(&process_manager_)),
+      screens_controller_(ScreenController(draw_utils_,
+                                           update_engine_proxy_,
+                                           network_manager_,
+                                           &process_manager_)) {}
 
 int MiniOs::Run() {
   LOG(INFO) << "Starting miniOS.";
@@ -44,12 +41,10 @@ int MiniOs::Run() {
     return -1;
   }
   LOG(INFO) << "Started shell in the background as pid: " << shell_pid;
-
-  if (!screens_.Init()) {
+  if (!screens_controller_.Init()) {
     LOG(ERROR) << "Screens init failed. Exiting.";
     return 1;
   }
-  screens_.StartMiniOsFlow();
 
   return 0;
 }

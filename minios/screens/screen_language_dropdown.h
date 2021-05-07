@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MINIOS_SCREEN_LANGUAGE_DROPDOWN_H_
-#define MINIOS_SCREEN_LANGUAGE_DROPDOWN_H_
+#ifndef MINIOS_SCREENS_SCREEN_LANGUAGE_DROPDOWN_H_
+#define MINIOS_SCREENS_SCREEN_LANGUAGE_DROPDOWN_H_
 
 #include <memory>
 #include <string>
 
-#include "minios/screen_base.h"
+#include "minios/screens/screen_base.h"
 
 namespace minios {
 
@@ -37,4 +37,4 @@ class ScreenLanguageDropdown : public ScreenBase {
 
 }  // namespace minios
 
-#endif  // MINIOS_SCREEN_LANGUAGE_DROPDOWN_H_
+#endif  // MINIOS_SCREENS_SCREEN_LANGUAGE_DROPDOWN_H_

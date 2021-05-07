@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "minios/key_reader.h"
-#include "minios/screen_welcome.h"
+#include "minios/screens/screen_welcome.h"
 
 namespace minios {
 

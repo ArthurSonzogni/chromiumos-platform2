@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "minios/screen_base.h"
+#include "minios/screens/screen_base.h"
 
 #include "minios/key_reader.h"
 

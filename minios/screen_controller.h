@@ -32,7 +32,7 @@ class ScreenController : public ScreenControllerInterface,
   ScreenController(const ScreenController&) = delete;
   ScreenController& operator=(const ScreenController&) = delete;
 
-  void Init();
+  bool Init();
 
   // ScreenControllerInterface overrides.
   // Called by screens when the user presses the next or continue button.

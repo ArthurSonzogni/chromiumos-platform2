@@ -14,7 +14,7 @@
 
 #include "minios/key_reader.h"
 #include "minios/network_manager_interface.h"
-#include "minios/screen_base.h"
+#include "minios/screens/screen_base.h"
 
 namespace minios {
 

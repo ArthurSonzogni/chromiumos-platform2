@@ -92,12 +92,6 @@ class DrawUtils : public DrawInterface {
 
   void MessageBaseScreen() override;
 
-  // Shows network menu drop down button on the screen. Button is
-  // highlighted if it is currently selected. Selecting this button directs to
-  // the expanded network dropdown.
-  // TODO(vyshu): Remove once screen.h is deleted.
-  void ShowCollapsedNetworkDropDown(bool is_selected);
-
   void ShowLanguageDropdown(int current_index) override;
 
   int FindLocaleIndex(int current_index) override;

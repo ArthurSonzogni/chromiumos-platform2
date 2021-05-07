@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MINIOS_SCREEN_BASE_H_
-#define MINIOS_SCREEN_BASE_H_
+#ifndef MINIOS_SCREENS_SCREEN_BASE_H_
+#define MINIOS_SCREENS_SCREEN_BASE_H_
 
 #include <memory>
 
@@ -56,4 +56,4 @@ class ScreenBase : public ScreenInterface {
 
 }  // namespace minios
 
-#endif  // MINIOS_SCREEN_BASE_H_
+#endif  // MINIOS_SCREENS_SCREEN_BASE_H_

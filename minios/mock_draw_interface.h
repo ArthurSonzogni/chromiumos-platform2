@@ -57,7 +57,6 @@ class MockDrawInterface : public DrawInterface {
                bool is_text));
   MOCK_METHOD(void, ShowStepper, (const std::vector<std::string>& steps));
   MOCK_METHOD(void, MessageBaseScreen, ());
-  MOCK_METHOD(void, ShowCollapsedNetworkDropDown, (bool is_selected));
   MOCK_METHOD(void, ShowLanguageDropdown, (int current_index));
   MOCK_METHOD(int, FindLocaleIndex, (int current_index));
   MOCK_METHOD(void, ShowLanguageMenu, (bool is_selected));

@@ -9,7 +9,7 @@
 #include <string>
 
 #include "minios/recovery_installer.h"
-#include "minios/screen_base.h"
+#include "minios/screens/screen_base.h"
 #include "minios/update_engine_proxy.h"
 
 namespace minios {
