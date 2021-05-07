@@ -8,6 +8,8 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
+#include <vector>
 #include <utility>
 
 #include <base/check.h>
@@ -60,15 +62,6 @@
 #if !defined(DISABLE_WIRED_8021X)
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
 #endif  // DISABLE_WIRED_8021X
-
-using base::Bind;
-using base::FilePath;
-using base::ScopedTempDir;
-using base::Unretained;
-using std::map;
-using std::set;
-using std::string;
-using std::vector;
 
 namespace shill {
 using ::testing::_;
@@ -181,7 +174,7 @@ class ManagerTest : public PropertyStoreTest {
     return manager->ephemeral_profile_;
   }
 
-  vector<ProfileRefPtr>& GetProfiles(Manager* manager) {
+  std::vector<ProfileRefPtr>& GetProfiles(Manager* manager) {
     return manager->profiles_;
   }
 
@@ -190,15 +183,15 @@ class ManagerTest : public PropertyStoreTest {
     auto storage = std::make_unique<FakeStore>();
     if (!storage->Open())
       return nullptr;
-    Profile* profile(new Profile(manager, id, FilePath(), false));
+    Profile* profile(new Profile(manager, id, base::FilePath(), false));
     profile->SetStorageForTest(std::move(storage));
     return profile;  // Passes ownership of "profile".
   }
 
-  bool CreateBackingStoreForService(ScopedTempDir* temp_dir,
-                                    const string& user_identifier,
-                                    const string& profile_identifier,
-                                    const string& service_name) {
+  bool CreateBackingStoreForService(base::ScopedTempDir* temp_dir,
+                                    const std::string& user_identifier,
+                                    const std::string& profile_identifier,
+                                    const std::string& service_name) {
     std::unique_ptr<StoreInterface> store =
         CreateStore(Profile::GetFinalStoragePath(
             temp_dir->GetPath(),
@@ -208,9 +201,9 @@ class ManagerTest : public PropertyStoreTest {
            store->Close();
   }
 
-  Error::Type TestCreateProfile(Manager* manager, const string& name) {
+  Error::Type TestCreateProfile(Manager* manager, const std::string& name) {
     Error error;
-    string path;
+    std::string path;
     manager->CreateProfile(name, &path, &error);
     return error.type();
   }
@@ -227,24 +220,24 @@ class ManagerTest : public PropertyStoreTest {
     return error.type();
   }
 
-  Error::Type TestPopProfile(Manager* manager, const string& name) {
+  Error::Type TestPopProfile(Manager* manager, const std::string& name) {
     Error error;
     manager->PopProfile(name, &error);
     return error.type();
   }
 
-  Error::Type TestPushProfile(Manager* manager, const string& name) {
+  Error::Type TestPushProfile(Manager* manager, const std::string& name) {
     Error error;
-    string path;
+    std::string path;
     manager->PushProfile(name, &path, &error);
     return error.type();
   }
 
   Error::Type TestInsertUserProfile(Manager* manager,
-                                    const string& name,
-                                    const string& user_hash) {
+                                    const std::string& name,
+                                    const std::string& user_hash) {
     Error error;
-    string path;
+    std::string path;
     manager->InsertUserProfile(name, user_hash, &path, &error);
     return error.type();
   }
@@ -273,7 +266,9 @@ class ManagerTest : public PropertyStoreTest {
     return !manager()->sort_services_task_.IsCancelled();
   }
 
-  const vector<ServiceRefPtr>& GetServices() { return manager()->services_; }
+  const std::vector<ServiceRefPtr>& GetServices() {
+    return manager()->services_;
+  }
 
   void RefreshConnectionState() { manager()->RefreshConnectionState(); }
 
@@ -281,23 +276,23 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->GetDefaultServiceRpcIdentifier(nullptr);
   }
 
-  bool SetIgnoredDNSSearchPaths(const string& search_paths, Error* error) {
+  bool SetIgnoredDNSSearchPaths(const std::string& search_paths, Error* error) {
     return manager()->SetIgnoredDNSSearchPaths(search_paths, error);
   }
 
-  bool SetCheckPortalList(const string& check_portal_list, Error* error) {
+  bool SetCheckPortalList(const std::string& check_portal_list, Error* error) {
     return manager()->SetCheckPortalList(check_portal_list, error);
   }
 
-  bool SetPortalFallbackUrlsString(const string& urls, Error* error) {
+  bool SetPortalFallbackUrlsString(const std::string& urls, Error* error) {
     return manager()->SetPortalFallbackUrlsString(urls, error);
   }
 
-  const string& GetIgnoredDNSSearchPaths() {
+  const std::string& GetIgnoredDNSSearchPaths() {
     return manager()->props_.ignored_dns_search_paths;
   }
 
-  const vector<string>& GetPortalFallbackUrlsString() {
+  const std::vector<std::string>& GetPortalFallbackUrlsString() {
     return manager()->props_.portal_fallback_http_urls;
   }
 
@@ -373,7 +368,9 @@ class ManagerTest : public PropertyStoreTest {
     virtual ~DestinationVerificationTest() = default;
 
     MOCK_METHOD(void, ResultBoolCallbackStub, (const Error&, bool));
-    MOCK_METHOD(void, ResultStringCallbackStub, (const Error&, const string&));
+    MOCK_METHOD(void,
+                ResultStringCallbackStub,
+                (const Error&, const std::string&));
 
    private:
   };
@@ -397,8 +394,8 @@ class ManagerTest : public PropertyStoreTest {
   class ResultCallbackObserver {
    public:
     ResultCallbackObserver()
-        : result_callback_(Bind(&ResultCallbackObserver::OnResultCallback,
-                                Unretained(this))) {}
+        : result_callback_(base::Bind(&ResultCallbackObserver::OnResultCallback,
+                                      base::Unretained(this))) {}
     ResultCallbackObserver(const ResultCallbackObserver&) = delete;
     ResultCallbackObserver& operator=(const ResultCallbackObserver&) = delete;
 
@@ -434,11 +431,11 @@ class ManagerTest : public PropertyStoreTest {
     manager()->OnSuspendActionsComplete(error);
   }
 
-  vector<RpcIdentifier> EnumerateAvailableServices() {
+  std::vector<RpcIdentifier> EnumerateAvailableServices() {
     return manager()->EnumerateAvailableServices(nullptr);
   }
 
-  vector<RpcIdentifier> EnumerateWatchedServices() {
+  std::vector<RpcIdentifier> EnumerateWatchedServices() {
     return manager()->EnumerateWatchedServices(nullptr);
   }
 
@@ -459,7 +456,7 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->technology_order_;
   }
 
-  bool HasService(const Manager& manager, const string& id) {
+  bool HasService(const Manager& manager, const std::string& id) {
     for (const auto& service : manager.services_) {
       if (id == service->GetDBusObjectPathIdentifer())
         return true;
@@ -468,7 +465,7 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   std::unique_ptr<MockPowerManager> power_manager_;
-  vector<scoped_refptr<MockDevice>> mock_devices_;
+  std::vector<scoped_refptr<MockDevice>> mock_devices_;
   std::unique_ptr<MockDeviceInfo> device_info_;
 
 #if !defined(DISABLE_WIFI)
@@ -642,7 +639,7 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 
 TEST_F(ManagerTest, ServiceRegistration) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), string());
+                  storage_path(), std::string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -665,8 +662,9 @@ TEST_F(ManagerTest, ServiceRegistration) {
   manager.RegisterService(mock_service2);
 
   Error error;
-  vector<RpcIdentifier> rpc_ids = manager.EnumerateAvailableServices(&error);
-  set<RpcIdentifier> ids(rpc_ids.begin(), rpc_ids.end());
+  std::vector<RpcIdentifier> rpc_ids =
+      manager.EnumerateAvailableServices(&error);
+  std::set<RpcIdentifier> ids(rpc_ids.begin(), rpc_ids.end());
   EXPECT_EQ(2, ids.size());
   EXPECT_TRUE(base::Contains(ids, mock_service->GetRpcIdentifier()));
   EXPECT_TRUE(base::Contains(ids, mock_service2->GetRpcIdentifier()));
@@ -682,7 +680,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
 
 TEST_F(ManagerTest, RegisterKnownService) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), string());
+                  storage_path(), std::string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -703,7 +701,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
 
 TEST_F(ManagerTest, RegisterUnknownService) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), string());
+                  storage_path(), std::string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -738,13 +736,14 @@ TEST_F(ManagerTest, GetProperties) {
   {
     brillo::VariantDictionary props;
     Error error;
-    string expected("portal_list");
+    std::string expected("portal_list");
     manager()->mutable_store()->SetStringProperty(kCheckPortalListProperty,
                                                   expected, &error);
     manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kCheckPortalListProperty) == props.end());
-    EXPECT_TRUE(props[kCheckPortalListProperty].IsTypeCompatible<string>());
-    EXPECT_EQ(props[kCheckPortalListProperty].Get<string>(), expected);
+    EXPECT_TRUE(
+        props[kCheckPortalListProperty].IsTypeCompatible<std::string>());
+    EXPECT_EQ(props[kCheckPortalListProperty].Get<std::string>(), expected);
   }
   {
     brillo::VariantDictionary props;
@@ -768,10 +767,10 @@ TEST_F(ManagerTest, GetDevicesProperty) {
     Error error;
     manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kDevicesProperty) == props.end());
-    EXPECT_TRUE(
-        props[kDevicesProperty].IsTypeCompatible<vector<dbus::ObjectPath>>());
-    vector<dbus::ObjectPath> devices =
-        props[kDevicesProperty].Get<vector<dbus::ObjectPath>>();
+    EXPECT_TRUE(props[kDevicesProperty]
+                    .IsTypeCompatible<std::vector<dbus::ObjectPath>>());
+    std::vector<dbus::ObjectPath> devices =
+        props[kDevicesProperty].Get<std::vector<dbus::ObjectPath>>();
     EXPECT_EQ(2, devices.size());
   }
 }
@@ -782,18 +781,18 @@ TEST_F(ManagerTest, GetServicesProperty) {
   Error error;
   manager()->store().GetProperties(&props, &error);
   ASSERT_FALSE(props.find(kServicesProperty) == props.end());
-  EXPECT_TRUE(
-      props[kServicesProperty].IsTypeCompatible<vector<dbus::ObjectPath>>());
+  EXPECT_TRUE(props[kServicesProperty]
+                  .IsTypeCompatible<std::vector<dbus::ObjectPath>>());
 }
 
 TEST_F(ManagerTest, MoveService) {
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), string());
+                  storage_path(), std::string());
   MockServiceRefPtr s2(new MockService(&manager));
   // Inject an actual profile, backed by a fake StoreInterface
   {
     Profile::Identifier id("irrelevant");
-    ProfileRefPtr profile(new Profile(&manager, id, FilePath(), false));
+    ProfileRefPtr profile(new Profile(&manager, id, base::FilePath(), false));
     auto storage = std::make_unique<FakeStore>();
     storage->SetString(s2->GetStorageIdentifier(), "AnyKey", "AnyValue");
     profile->SetStorageForTest(std::move(storage));
@@ -883,7 +882,7 @@ TEST_F(ManagerTest, SetProfileForService) {
 }
 
 TEST_F(ManagerTest, CreateProfile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
@@ -904,7 +903,7 @@ TEST_F(ManagerTest, CreateProfile) {
   const char kProfile[] = "~user/profile";
   {
     Error error;
-    string path;
+    std::string path;
     ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
     manager.CreateProfile(kProfile, &path, &error);
     EXPECT_EQ(Error::kSuccess, error.type());
@@ -916,11 +915,11 @@ TEST_F(ManagerTest, CreateProfile) {
 }
 
 TEST_F(ManagerTest, PushPopProfile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
                   storage_path(), temp_dir.GetPath().value());
-  vector<ProfileRefPtr>& profiles = GetProfiles(&manager);
+  std::vector<ProfileRefPtr>& profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
   EXPECT_EQ(Error::kInvalidArguments, TestPushProfile(&manager, ""));
@@ -961,7 +960,7 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   // Make sure a profile name that doesn't exist fails.
   const char kProfile2Id[] = "profile2";
-  const string kProfile2 = base::StringPrintf("~user/%s", kProfile2Id);
+  const std::string kProfile2 = base::StringPrintf("~user/%s", kProfile2Id);
   EXPECT_EQ(Error::kNotFound, TestPushProfile(&manager, kProfile2));
 
   // Create a new service, with a specific storage name.
@@ -990,7 +989,7 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   // Insert another profile that should supersede ownership of the service.
   const char kProfile3Id[] = "profile3";
-  const string kProfile3 = base::StringPrintf("~user/%s", kProfile3Id);
+  const std::string kProfile3 = base::StringPrintf("~user/%s", kProfile3Id);
   ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile3Id,
                                            kServiceName));
   // We don't verify this expectation inline, since this would clear other
@@ -1094,14 +1093,14 @@ TEST_F(ManagerTest, PushPopProfile) {
 }
 
 TEST_F(ManagerTest, RemoveProfile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
                   storage_path(), temp_dir.GetPath().value());
 
   const char kProfile0[] = "profile0";
-  FilePath profile_path(Profile::GetFinalStoragePath(
-      FilePath(storage_path()), Profile::Identifier(kProfile0)));
+  base::FilePath profile_path(Profile::GetFinalStoragePath(
+      base::FilePath(storage_path()), Profile::Identifier(kProfile0)));
 
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
   ASSERT_TRUE(base::PathExists(profile_path));
@@ -1195,14 +1194,14 @@ TEST_F(ManagerTest, RemoveService) {
 }
 
 TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
                   storage_path(), temp_dir.GetPath().value());
 
   const char kProfile0[] = "profile0";
-  FilePath profile_path(Profile::GetFinalStoragePath(
-      FilePath(storage_path()), Profile::Identifier(kProfile0)));
+  base::FilePath profile_path(Profile::GetFinalStoragePath(
+      base::FilePath(storage_path()), Profile::Identifier(kProfile0)));
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
   ASSERT_TRUE(base::PathExists(profile_path));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
@@ -1219,7 +1218,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   MockServiceRefPtr s_configure_fail(new NiceMock<MockService>(manager()));
   MockServiceRefPtr s_configure_succeed(new NiceMock<MockService>(manager()));
 
-  string entry_name("entry_name");
+  std::string entry_name("entry_name");
   EXPECT_CALL(*ethernet_provider_, RefreshGenericEthernetService());
   EXPECT_CALL(*s_not_in_group, GetStorageIdentifier())
       .WillRepeatedly(Return("not_entry_name"));
@@ -1304,7 +1303,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
   MockServiceRefPtr s_will_not_remove0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr s_will_not_remove1(new NiceMock<MockService>(manager()));
 
-  string entry_name("entry_name");
+  std::string entry_name("entry_name");
   EXPECT_CALL(*s_will_remove0, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
   EXPECT_CALL(*s_will_remove1, GetStorageIdentifier())
@@ -1441,7 +1440,7 @@ TEST_F(ManagerTest, SetProperty) {
   }
   {
     Error error;
-    const string portal_list("wifi,cellular");
+    const std::string portal_list("wifi,cellular");
     EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
         kCheckPortalListProperty, brillo::Any(portal_list), &error));
   }
@@ -1528,7 +1527,7 @@ TEST_F(ManagerTest, GetServiceNoType) {
 TEST_F(ManagerTest, GetServiceUnknownType) {
   KeyValueStore args;
   Error e;
-  args.Set<string>(kTypeProperty, kTypePPPoE);
+  args.Set<std::string>(kTypeProperty, kTypePPPoE);
   manager()->GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_EQ("service type is unsupported", e.message());
@@ -1538,7 +1537,7 @@ TEST_F(ManagerTest, GetServiceEthernet) {
   KeyValueStore args;
   Error e;
   EthernetServiceRefPtr service;
-  args.Set<string>(kTypeProperty, kTypeEthernet);
+  args.Set<std::string>(kTypeProperty, kTypeEthernet);
   EXPECT_CALL(*ethernet_provider_, GetService(_, _))
       .WillRepeatedly(Return(service));
   manager()->GetService(args, &e);
@@ -1550,7 +1549,7 @@ TEST_F(ManagerTest, GetServiceEthernetEap) {
   KeyValueStore args;
   Error e;
   ServiceRefPtr service = new NiceMock<MockService>(manager());
-  args.Set<string>(kTypeProperty, kTypeEthernetEap);
+  args.Set<std::string>(kTypeProperty, kTypeEthernetEap);
   SetEapProviderService(service);
   EXPECT_EQ(service, manager()->GetService(args, &e));
   EXPECT_TRUE(e.IsSuccess());
@@ -1562,7 +1561,7 @@ TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;
   Error e;
   WiFiServiceRefPtr wifi_service;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillRepeatedly(Return(wifi_service));
   manager()->GetService(args, &e);
@@ -1573,7 +1572,7 @@ TEST_F(ManagerTest, GetServiceWifi) {
 TEST_F(ManagerTest, GetServiceVPNUnknownType) {
   KeyValueStore args;
   Error e;
-  args.Set<string>(kTypeProperty, kTypeVPN);
+  args.Set<std::string>(kTypeProperty, kTypeVPN);
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
@@ -1588,7 +1587,7 @@ TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   AdoptProfile(manager(), profile);
 
   KeyValueStore args;
-  args.Set<string>(kProfileProperty, "xxx");
+  args.Set<std::string>(kProfileProperty, "xxx");
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -1620,7 +1619,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
 
   AdoptProfile(manager(), profile);  // This is now the active profile.
 
-  const vector<uint8_t> ssid;
+  const std::vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, ssid, "", kSecurityNone, false));
 
@@ -1634,7 +1633,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
       .WillOnce(Return(true));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1658,7 +1657,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
-  const vector<uint8_t> ssid;
+  const std::vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, ssid, "", kSecurityNone, false));
 
@@ -1676,8 +1675,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
       .WillOnce(Return(true));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1697,7 +1696,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
 
   AdoptProfile(manager(), profile0);  // profile0 is now the ActiveProfile.
 
-  const vector<uint8_t> ssid;
+  const std::vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, ssid, "", kSecurityNone, false));
 
@@ -1711,8 +1710,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
   EXPECT_CALL(*profile0, AdoptService(ServiceRefPtr(service.get()))).Times(0);
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1736,7 +1735,7 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
-  const vector<uint8_t> ssid;
+  const std::vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, ssid, "", kSecurityNone, false));
 
@@ -1749,8 +1748,8 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   EXPECT_CALL(*profile1, AdoptService(_)).Times(0);
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1768,7 +1767,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, "UnknownType");
+  args.Set<std::string>(kTypeProperty, "UnknownType");
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile("", args, &error);
@@ -1779,7 +1778,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile("/profile/foo", args, &error);
@@ -1795,8 +1794,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName1.value());
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kProfileProperty, kProfileName1.value());
   Error error;
   ServiceRefPtr service = manager()->ConfigureServiceForProfile(
       kProfileName0.value(), args, &error);
@@ -1814,8 +1813,8 @@ TEST_F(ManagerTest,
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kProfileProperty, kProfileName0.value());
 
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(WiFiServiceRefPtr()));
@@ -1835,11 +1834,11 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
-      false));
+      manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
+      kSecurityNone, false));
   ServiceRefPtr mock_service_generic(mock_service.get());
   mock_service->set_profile(profile0);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
@@ -1857,7 +1856,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
   MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
-  const string kGUID = "a guid";
+  const std::string kGUID = "a guid";
   mock_service->SetGuid(kGUID, nullptr);
   manager()->RegisterService(mock_service);
   ServiceRefPtr mock_service_generic(mock_service.get());
@@ -1876,8 +1875,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
   EXPECT_CALL(*profile, AdoptService(mock_service_generic)).Times(0);
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kGuidProperty, kGUID);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kGuidProperty, kGUID);
 
   // The first attempt should fail because the service reports a technology
   // other than "WiFi".
@@ -1910,13 +1909,13 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
       AddNamedMockProfileToManager(manager(), kProfileName));
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
-      false));
+      manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
+      kSecurityNone, false));
   mock_service->set_profile(profile);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -1939,13 +1938,13 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
       AddNamedMockProfileToManager(manager(), kProfileName));
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
-      false));
+      manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
+      kSecurityNone, false));
   mock_service->set_profile(GetEphemeralProfile(manager()));
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -1970,14 +1969,14 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
-      false));
+      manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
+      kSecurityNone, false));
   manager()->RegisterService(mock_service);
   mock_service->set_profile(profile0);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2009,7 +2008,7 @@ TEST_F(ManagerTest,
 
   scoped_refptr<MockWiFiService> matching_service(
       new StrictMock<MockWiFiService>(manager(), wifi_provider_,
-                                      vector<uint8_t>(), kModeManaged,
+                                      std::vector<uint8_t>(), kModeManaged,
                                       kSecurityNone, false));
   matching_service->set_profile(profile1);
 
@@ -2019,14 +2018,14 @@ TEST_F(ManagerTest,
   // latter function can keep a DCHECK(service->HasOneRef() even in
   // unit tests.
   temp_mock_service_ = new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
-      false);
+      manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
+      kSecurityNone, false);
 
   // Only hold a pointer here so we don't affect the refcount.
   MockWiFiService* mock_service_ptr = temp_mock_service_.get();
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.Set<std::string>(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(matching_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2098,18 +2097,18 @@ TEST_F(ManagerTest, TechnologyOrder) {
                           Technology::kWifi, Technology::kCellular));
 
   SetRunning(true);
-  manager()->SetTechnologyOrder(string(kTypeEthernet) + "," + string(kTypeWifi),
-                                &error);
+  manager()->SetTechnologyOrder(
+      std::string(kTypeEthernet) + "," + std::string(kTypeWifi), &error);
   EXPECT_TRUE(IsSortServicesTaskPending());
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_EQ(manager()->GetTechnologyOrder(),
-            string(kTypeEthernet) + "," + string(kTypeWifi));
+            std::string(kTypeEthernet) + "," + std::string(kTypeWifi));
 
   manager()->SetTechnologyOrder(
-      string(kTypeEthernet) + "x," + string(kTypeWifi), &error);
+      std::string(kTypeEthernet) + "x," + std::string(kTypeWifi), &error);
   ASSERT_FALSE(error.IsSuccess());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ(string(kTypeEthernet) + "," + string(kTypeWifi),
+  EXPECT_EQ(std::string(kTypeEthernet) + "," + std::string(kTypeWifi),
             manager()->GetTechnologyOrder());
 }
 
@@ -2456,14 +2455,15 @@ TEST_F(ManagerTest, AvailableTechnologies) {
   ON_CALL(*mock_devices_[3], technology())
       .WillByDefault(Return(Technology::kWifi));
 
-  set<string> expected_technologies;
+  std::set<std::string> expected_technologies;
   expected_technologies.insert(Technology(Technology::kEthernet).GetName());
   expected_technologies.insert(Technology(Technology::kWifi).GetName());
   expected_technologies.insert(Technology(Technology::kCellular).GetName());
   Error error;
-  vector<string> technologies = manager()->AvailableTechnologies(&error);
+  std::vector<std::string> technologies =
+      manager()->AvailableTechnologies(&error);
 
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 }
 
@@ -2502,13 +2502,14 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
   mock_devices_[2]->SelectService(disconnected_service2);
   mock_devices_[3]->SelectService(connected_service2);
 
-  set<string> expected_technologies;
+  std::set<std::string> expected_technologies;
   expected_technologies.insert(Technology(Technology::kEthernet).GetName());
   expected_technologies.insert(Technology(Technology::kWifi).GetName());
   Error error;
 
-  vector<string> technologies = manager()->ConnectedTechnologies(&error);
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  std::vector<std::string> technologies =
+      manager()->ConnectedTechnologies(&error);
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 }
 
@@ -2535,7 +2536,7 @@ TEST_F(ManagerTest, DefaultTechnology) {
   manager()->RegisterService(connected_service);
   CompleteServiceSort();
   // Connected service should be brought to the front now.
-  string expected_technology = Technology(Technology::kWifi).GetName();
+  std::string expected_technology = Technology(Technology::kWifi).GetName();
   EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(expected_technology));
 }
 
@@ -2606,8 +2607,8 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
 TEST_F(ManagerTest, UpdateServiceLogging) {
   ScopedMockLog log;
   MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
-  string updated_message = base::StringPrintf("Service %s updated;",
-                                              mock_service->log_name().c_str());
+  std::string updated_message = base::StringPrintf(
+      "Service %s updated;", mock_service->log_name().c_str());
 
   // An idle service should only be logged as not online.
   {
@@ -2697,9 +2698,9 @@ TEST_F(ManagerTest, UpdateDevice) {
 }
 
 TEST_F(ManagerTest, EnumerateProfiles) {
-  vector<RpcIdentifier> profile_paths;
+  std::vector<RpcIdentifier> profile_paths;
   profile_paths.reserve(10);
-  vector<scoped_refptr<MockProfile>> profiles;
+  std::vector<scoped_refptr<MockProfile>> profiles;
   for (size_t i = 0; i < 10; i++) {
     profiles.push_back(new MockProfile(manager(), ""));
     RpcIdentifier rpcid(base::StringPrintf("/profile/%zd", i));
@@ -2710,7 +2711,8 @@ TEST_F(ManagerTest, EnumerateProfiles) {
   }
 
   Error error;
-  vector<RpcIdentifier> returned_paths = manager()->EnumerateProfiles(&error);
+  std::vector<RpcIdentifier> returned_paths =
+      manager()->EnumerateProfiles(&error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(profile_paths.size(), returned_paths.size());
   for (size_t i = 0; i < profile_paths.size(); i++) {
@@ -2730,7 +2732,7 @@ TEST_F(ManagerTest, EnumerateServiceInnerDevices) {
   EXPECT_CALL(*service2, GetInnerDeviceRpcIdentifier())
       .WillRepeatedly(ReturnRef(kNullRpcId));
   Error error;
-  EXPECT_EQ(vector<RpcIdentifier>{kDeviceRpcId},
+  EXPECT_EQ(std::vector<RpcIdentifier>{kDeviceRpcId},
             manager()->EnumerateDevices(&error));
   EXPECT_TRUE(error.IsSuccess());
 }
@@ -2854,19 +2856,19 @@ TEST_F(ManagerTest, RemoveTerminationAction) {
 
 TEST_F(ManagerTest, RunTerminationActions) {
   TerminationActionTest test_action;
-  const string kActionName = "action";
+  const std::string kActionName = "action";
 
   EXPECT_CALL(test_action, Done(_));
   manager()->RunTerminationActions(
-      Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
+      base::Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
 
   manager()->AddTerminationAction(
       TerminationActionTest::kActionName,
-      Bind(&TerminationActionTest::Action, test_action.AsWeakPtr()));
+      base::Bind(&TerminationActionTest::Action, test_action.AsWeakPtr()));
   test_action.set_manager(manager());
   EXPECT_CALL(test_action, Done(_));
   manager()->RunTerminationActions(
-      Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
+      base::Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
 }
 
 TEST_F(ManagerTest, OnSuspendImminentDevicesPresent) {
@@ -2970,8 +2972,8 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
 
-  const string kGUID0 = "GUID0";
-  const string kGUID1 = "GUID1";
+  const std::string kGUID0 = "GUID0";
+  const std::string kGUID1 = "GUID1";
 
   {
     Error error;
@@ -2981,7 +2983,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
   }
 
   KeyValueStore args;
-  args.Set<string>(kGuidProperty, kGUID1);
+  args.Set<std::string>(kGuidProperty, kGUID1);
 
   {
     Error error;
@@ -3103,14 +3105,14 @@ TEST_F(ManagerTest, RefreshConnectionState) {
 
 TEST_F(ManagerTest, StartupPortalList) {
   // Simulate loading value from the default profile.
-  const string kProfileValue("wifi,vpn");
+  const std::string kProfileValue("wifi,vpn");
   manager()->props_.check_portal_list = kProfileValue;
 
   EXPECT_EQ(kProfileValue, manager()->GetCheckPortalList(nullptr));
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
 
-  const string kStartupValue("cellular,ethernet");
+  const std::string kStartupValue("cellular,ethernet");
   manager()->SetStartupPortalList(kStartupValue);
   // Ensure profile value is not overwritten, so when we save the default
   // profile, the correct value will still be written.
@@ -3121,7 +3123,7 @@ TEST_F(ManagerTest, StartupPortalList) {
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
 
-  const string kRuntimeValue("ppp");
+  const std::string kRuntimeValue("ppp");
   // Setting a runtime value over the control API should overwrite both
   // the profile value and what we read back.
   Error error;
@@ -3135,7 +3137,7 @@ TEST_F(ManagerTest, StartupPortalList) {
 }
 
 TEST_F(ManagerTest, IsTechnologyAutoConnectDisabled) {
-  const string kNoAutoConnectTechnologies("wifi,cellular");
+  const std::string kNoAutoConnectTechnologies("wifi,cellular");
   manager()->props_.no_auto_connect_technologies = kNoAutoConnectTechnologies;
   EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWifi));
   EXPECT_TRUE(
@@ -3147,8 +3149,8 @@ TEST_F(ManagerTest, IsTechnologyAutoConnectDisabled) {
 TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   ResultCallback disable_technology_callback(
-      Bind(&DisableTechnologyReplyHandler::ReportResult,
-           disable_technology_reply_handler.AsWeakPtr()));
+      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
+                 disable_technology_reply_handler.AsWeakPtr()));
   EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(2);
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
@@ -3168,8 +3170,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
 TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   ResultCallback disable_technology_callback(
-      Bind(&DisableTechnologyReplyHandler::ReportResult,
-           disable_technology_reply_handler.AsWeakPtr()));
+      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
+                 disable_technology_reply_handler.AsWeakPtr()));
 
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
@@ -3181,32 +3183,34 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
 
-  auto setup_expectations = [](vector<scoped_refptr<MockDevice>>& mock_devices,
-                               Technology::Type type, bool enable,
-                               bool persistent) {
-    for (int i = 0; i < 3; i++) {
-      if (mock_devices[i]->technology() == type) {
-        if (persistent) {
-          EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
-              .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
-          EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
-              .Times(0);
-        } else {
-          EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
-              .Times(0);
-          EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
-              .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  auto setup_expectations =
+      [](std::vector<scoped_refptr<MockDevice>>& mock_devices,
+         Technology::Type type, bool enable, bool persistent) {
+        for (int i = 0; i < 3; i++) {
+          if (mock_devices[i]->technology() == type) {
+            if (persistent) {
+              EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
+                  .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+              EXPECT_CALL(*mock_devices[i],
+                          SetEnabledNonPersistent(enable, _, _))
+                  .Times(0);
+            } else {
+              EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
+                  .Times(0);
+              EXPECT_CALL(*mock_devices[i],
+                          SetEnabledNonPersistent(enable, _, _))
+                  .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+            }
+          } else {
+            EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
+                .Times(0);
+            EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
+                .Times(0);
+          }
         }
-      } else {
-        EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
-            .Times(0);
-        EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
-            .Times(0);
-      }
-    }
-  };
+      };
   auto clear_expectations =
-      [](vector<scoped_refptr<MockDevice>>& mock_devices) {
+      [](std::vector<scoped_refptr<MockDevice>>& mock_devices) {
         for (int i = 0; i < 3; i++) {
           Mock::VerifyAndClearExpectations(mock_devices[i].get());
         }
@@ -3237,8 +3241,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
 TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   ResultCallback disable_technology_callback(
-      Bind(&DisableTechnologyReplyHandler::ReportResult,
-           disable_technology_reply_handler.AsWeakPtr()));
+      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
+                 disable_technology_reply_handler.AsWeakPtr()));
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
@@ -3257,16 +3261,16 @@ TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
 }
 
 TEST_F(ManagerTest, IgnoredSearchList) {
-  vector<string> ignored_paths;
+  std::vector<std::string> ignored_paths;
 
-  const string kIgnored0 = "chromium.org";
+  const std::string kIgnored0 = "chromium.org";
   ignored_paths.push_back(kIgnored0);
   EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths(kIgnored0, nullptr);
   EXPECT_EQ(kIgnored0, GetIgnoredDNSSearchPaths());
 
-  const string kIgnored1 = "google.com";
-  const string kIgnoredSum = kIgnored0 + "," + kIgnored1;
+  const std::string kIgnored1 = "google.com";
+  const std::string kIgnoredSum = kIgnored0 + "," + kIgnored1;
   ignored_paths.push_back(kIgnored1);
   EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths(kIgnoredSum, nullptr);
@@ -3279,14 +3283,14 @@ TEST_F(ManagerTest, IgnoredSearchList) {
 }
 
 TEST_F(ManagerTest, PortalFallbackUrls) {
-  const string kFallback0 = "http://fallback";
-  const vector<string> kFallbackVec0 = {kFallback0};
+  const std::string kFallback0 = "http://fallback";
+  const std::vector<std::string> kFallbackVec0 = {kFallback0};
   SetPortalFallbackUrlsString(kFallback0, nullptr);
   EXPECT_EQ(kFallbackVec0, GetPortalFallbackUrlsString());
 
-  const string kFallback1 = "http://other";
-  const string kFallbackSum = kFallback0 + "," + kFallback1;
-  const vector<string> kFallbackVec1 = {kFallback0, kFallback1};
+  const std::string kFallback1 = "http://other";
+  const std::string kFallbackSum = kFallback0 + "," + kFallback1;
+  const std::vector<std::string> kFallbackVec1 = {kFallback0, kFallback1};
   SetPortalFallbackUrlsString(kFallbackSum, nullptr);
   EXPECT_EQ(kFallbackVec1, GetPortalFallbackUrlsString());
 
@@ -3580,8 +3584,8 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   EXPECT_CALL(*profile1, GetConstStorage()).WillOnce(Return(&storage1));
   EXPECT_CALL(*profile2, GetConstStorage()).WillOnce(Return(&storage2));
 
-  const string kEntry0("aluminum_crutch");
-  const string kEntry2("rehashed_faces");
+  const std::string kEntry0("aluminum_crutch");
+  const std::string kEntry2("rehashed_faces");
 
   EXPECT_CALL(*service, GetLoadableStorageIdentifier(Ref(storage0)))
       .WillOnce(Return(kEntry0));
@@ -3597,7 +3601,7 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   EXPECT_CALL(*profile1, GetRpcIdentifier()).Times(0);
   EXPECT_CALL(*profile2, GetRpcIdentifier()).WillOnce(ReturnRef(kProfileRpc2));
 
-  map<RpcIdentifier, string> entries =
+  std::map<RpcIdentifier, std::string> entries =
       manager()->GetLoadableProfileEntriesForService(service);
   EXPECT_EQ(2, entries.size());
   EXPECT_TRUE(base::Contains(entries, kProfileRpc0));
@@ -3608,7 +3612,7 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
 
 #if !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
                   storage_path(), temp_dir.GetPath().value());
@@ -3631,7 +3635,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   // times. First, create 2 user profiles...
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
-  string profile_rpc_path;
+  std::string profile_rpc_path;
   Error error;
   ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
   manager.CreateProfile(kProfile0, &profile_rpc_path, &error);
@@ -3651,7 +3655,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
 #endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   std::unique_ptr<Manager> manager;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
@@ -3675,7 +3679,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
             manager->props_.portal_fallback_http_urls);
 
   // Change one of the settings.
-  static const string kCustomCheckPortalList = "fiber0";
+  static const std::string kCustomCheckPortalList = "fiber0";
   Error error;
   manager->SetCheckPortalList(kCustomCheckPortalList, &error);
   manager->profiles_[0]->Save();
@@ -3700,7 +3704,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
 }
 
 TEST_F(ManagerTest, ProfileStackChangeLogging) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   std::unique_ptr<Manager> manager;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
@@ -3744,7 +3748,7 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
 TEST_F(ManagerTest, CustomSetterNoopChange) {
   // SetCheckPortalList
   {
-    static const string kCheckPortalList = "weird-device,weirder-device";
+    static const std::string kCheckPortalList = "weird-device,weirder-device";
     Error error;
     // Set to known value.
     EXPECT_TRUE(SetCheckPortalList(kCheckPortalList, &error));
@@ -3756,7 +3760,7 @@ TEST_F(ManagerTest, CustomSetterNoopChange) {
 
   // SetIgnoredDNSSearchPaths
   {
-    static const string kIgnoredPaths = "example.com,example.org";
+    static const std::string kIgnoredPaths = "example.com,example.org";
     Error error;
     // Set to known value.
     EXPECT_CALL(resolver_, set_ignored_search_list(_));
@@ -3790,7 +3794,7 @@ TEST_F(ManagerTest, GeoLocation) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(*device, GetGeolocationObjects())
-      .WillOnce(Return(vector<GeolocationInfo>()));
+      .WillOnce(Return(std::vector<GeolocationInfo>()));
   manager()->OnDeviceGeolocationInfoUpdated(device);
   auto location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(1, location_infos.size());
@@ -3804,7 +3808,7 @@ TEST_F(ManagerTest, GeoLocation) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(Technology::kCellular));
   EXPECT_CALL(*cellular_device, GetGeolocationObjects())
-      .WillOnce(Return(vector<GeolocationInfo>()));
+      .WillOnce(Return(std::vector<GeolocationInfo>()));
   manager()->OnDeviceGeolocationInfoUpdated(cellular_device);
   location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(2, location_infos.size());
@@ -3829,13 +3833,13 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
   EXPECT_CALL(*device_1, technology())
       .WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(*device_1, GetGeolocationObjects())
-      .WillOnce(Return(vector<GeolocationInfo>{info_1}));
+      .WillOnce(Return(std::vector<GeolocationInfo>{info_1}));
   manager()->OnDeviceGeolocationInfoUpdated(device_1);
 
   EXPECT_CALL(*device_2, technology())
       .WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(*device_2, GetGeolocationObjects())
-      .WillOnce(Return(vector<GeolocationInfo>{info_2}));
+      .WillOnce(Return(std::vector<GeolocationInfo>{info_2}));
   manager()->OnDeviceGeolocationInfoUpdated(device_2);
 
   auto location_infos = manager()->GetNetworksForGeolocation();
@@ -3855,7 +3859,7 @@ TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
 
   EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(*device, GetGeolocationObjects())
-      .WillOnce(Return(vector<GeolocationInfo>()));
+      .WillOnce(Return(std::vector<GeolocationInfo>()));
   manager()->OnDeviceGeolocationInfoUpdated(device);
 
   auto location_infos = manager()->GetNetworksForGeolocation();
@@ -3915,8 +3919,8 @@ TEST_F(ManagerTest, IsWifiIdle) {
 }
 
 TEST_F(ManagerTest, DetectMultiHomedDevices) {
-  vector<scoped_refptr<MockConnection>> mock_connections;
-  vector<ConnectionRefPtr> device_connections;
+  std::vector<scoped_refptr<MockConnection>> mock_connections;
+  std::vector<ConnectionRefPtr> device_connections;
   mock_devices_.push_back(
       new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
   mock_devices_.push_back(
@@ -4015,8 +4019,8 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   // Calls to enable a non-prohibited technology should succeed.
   DisableTechnologyReplyHandler technology_reply_handler;
   ResultCallback enable_technology_callback(
-      Bind(&DisableTechnologyReplyHandler::ReportResult,
-           technology_reply_handler.AsWeakPtr()));
+      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
+                 technology_reply_handler.AsWeakPtr()));
   EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(true, _, _))
       .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
   EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(true, _, _))
@@ -4036,11 +4040,11 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
 }
 
 TEST_F(ManagerTest, ClaimBlockedDevice) {
-  const string kClaimerName = "test_claimer";
-  const string kDeviceName = "test_device";
+  const std::string kClaimerName = "test_claimer";
+  const std::string kDeviceName = "test_device";
 
   // Set blocked devices.
-  vector<string> blocked_devices = {kDeviceName};
+  std::vector<std::string> blocked_devices = {kDeviceName};
   manager()->SetBlockedDevices(blocked_devices);
 
   Error error;
@@ -4052,11 +4056,11 @@ TEST_F(ManagerTest, ClaimBlockedDevice) {
 }
 
 TEST_F(ManagerTest, ReleaseBlockedDevice) {
-  const string kClaimerName = "test_claimer";
-  const string kDeviceName = "test_device";
+  const std::string kClaimerName = "test_claimer";
+  const std::string kDeviceName = "test_device";
 
   // Set blocked devices.
-  vector<string> blocked_devices = {kDeviceName};
+  std::vector<std::string> blocked_devices = {kDeviceName};
   manager()->SetBlockedDevices(blocked_devices);
 
   Error error;
@@ -4068,33 +4072,33 @@ TEST_F(ManagerTest, ReleaseBlockedDevice) {
 }
 
 TEST_F(ManagerTest, BlockedDeviceIsNotManaged) {
-  const string kDeviceName = "test_device";
+  const std::string kDeviceName = "test_device";
 
-  vector<string> blocked_devices = {kDeviceName};
+  std::vector<std::string> blocked_devices = {kDeviceName};
   manager()->SetBlockedDevices(blocked_devices);
   EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
 }
 
 TEST_F(ManagerTest, NonBlockedDeviceIsManaged) {
-  const string kDeviceName = "test_device";
+  const std::string kDeviceName = "test_device";
 
-  vector<string> blocked_devices = {"other_device"};
+  std::vector<std::string> blocked_devices = {"other_device"};
   manager()->SetBlockedDevices(blocked_devices);
   EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
 }
 
 TEST_F(ManagerTest, AllowedDeviceIsManaged) {
-  const string kDeviceName = "test_device";
+  const std::string kDeviceName = "test_device";
 
-  vector<string> allowed_devices = {kDeviceName};
+  std::vector<std::string> allowed_devices = {kDeviceName};
   manager()->SetAllowedDevices(allowed_devices);
   EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
 }
 
 TEST_F(ManagerTest, NonAllowedDeviceIsNotManaged) {
-  const string kDeviceName = "test_device";
+  const std::string kDeviceName = "test_device";
 
-  vector<string> allowed_devices = {"other_device"};
+  std::vector<std::string> allowed_devices = {"other_device"};
   manager()->SetAllowedDevices(allowed_devices);
   EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
 }
@@ -4125,7 +4129,7 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
   const char kEmptyDeviceNameError[] = "Empty device name";
   Error error;
   manager()->ClaimDevice(kClaimer1Name, "", &error);
-  EXPECT_EQ(string(kEmptyDeviceNameError), error.message());
+  EXPECT_EQ(std::string(kEmptyDeviceNameError), error.message());
 
   // Device claim succeed.
   error.Reset();
@@ -4138,7 +4142,7 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
   error.Reset();
   manager()->ClaimDevice(kClaimer2Name, kDeviceName, &error);
   EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ(string(kInvalidClaimerError), error.message());
+  EXPECT_EQ(std::string(kInvalidClaimerError), error.message());
 }
 
 TEST_F(ManagerTest, ClaimRegisteredDevice) {
@@ -4285,7 +4289,7 @@ TEST_F(ManagerTest, DHCPv6EnabledDevices) {
   EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("eth1"));
   EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("wlan0"));
 
-  vector<string> enabled_devices;
+  std::vector<std::string> enabled_devices;
   enabled_devices.push_back("eth0");
   manager()->SetDHCPv6EnabledDevices(enabled_devices);
   EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth0"));
@@ -4308,8 +4312,8 @@ TEST_F(ManagerTest, DHCPv6EnabledDevices) {
 TEST_F(ManagerTest, FilterPrependDNSServersByFamily) {
   const struct {
     IPAddress::Family family;
-    string prepend_value;
-    vector<string> output_list;
+    std::string prepend_value;
+    std::vector<std::string> output_list;
   } expectations[] = {
       {IPAddress::kFamilyIPv4, "", {}},
       {IPAddress::kFamilyIPv4, "8.8.8.8", {"8.8.8.8"}},
@@ -4333,7 +4337,7 @@ TEST_F(ManagerTest, FilterPrependDNSServersByFamily) {
 }
 
 TEST_F(ManagerTest, SetAlwaysOnVpnPackage) {
-  const string kPackage = "com.example.test.vpn";
+  const std::string kPackage = "com.example.test.vpn";
   EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));
 
   // If the package is not changed, return false
@@ -4352,14 +4356,14 @@ TEST_F(ManagerTest, SetAlwaysOnVpnPackage) {
 }
 
 TEST_F(ManagerTest, ShouldBlackholeUserTraffic) {
-  const string kRegistered = mock_devices_[0]->UniqueName();
-  const string kUnregistered = mock_devices_[1]->UniqueName();
+  const std::string kRegistered = mock_devices_[0]->UniqueName();
+  const std::string kUnregistered = mock_devices_[1]->UniqueName();
 
   manager()->RegisterDevice(mock_devices_[0]);
 
-  const string kOnlinePackage = "com.example.test.vpn1";
-  const string kOfflinePackage = "com.example.test.vpn2";
-  const string kOtherPackage = "com.example.test.vpn3";
+  const std::string kOnlinePackage = "com.example.test.vpn1";
+  const std::string kOfflinePackage = "com.example.test.vpn2";
+  const std::string kOtherPackage = "com.example.test.vpn3";
 
   MockServiceRefPtr online_service(new NiceMock<MockService>(manager()));
   MockServiceRefPtr offline_service(new NiceMock<MockService>(manager()));
@@ -4404,8 +4408,8 @@ TEST_F(ManagerTest, ShouldBlackholeUserTraffic) {
 TEST_F(ManagerTest, UpdateBlackholeUserTraffic) {
   manager()->RegisterDevice(mock_devices_[0]);
 
-  const string kOnlinePackage = "com.example.test.vpn1";
-  const string kOtherPackage = "com.example.test.vpn2";
+  const std::string kOnlinePackage = "com.example.test.vpn1";
+  const std::string kOtherPackage = "com.example.test.vpn2";
 
   MockServiceRefPtr service(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*service, IsOnline()).WillRepeatedly(Return(false));
@@ -4440,7 +4444,7 @@ TEST_F(ManagerTest, RefreshAllTrafficCountersTask) {
   counter0.set_source(patchpanel::TrafficCounter::VPN);
   counter1.set_device(mock_devices_[2]->link_name());
   counter1.set_source(patchpanel::TrafficCounter::UPDATE_ENGINE);
-  vector<patchpanel::TrafficCounter> counters{counter0, counter1};
+  std::vector<patchpanel::TrafficCounter> counters{counter0, counter1};
   patchpanel_client_->set_stored_traffic_counters(counters);
 
   manager()->RegisterDevice(mock_devices_[0]);
