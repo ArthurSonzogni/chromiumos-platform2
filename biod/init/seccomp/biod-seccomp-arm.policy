@@ -81,3 +81,7 @@ mkdir: 1
 # getdents64 and fdatasync are needed to write records to daemon store.
 getdents64: 1
 fdatasync: 1
+# tgkill: Used for direct abort and CHECK()/LOG(FATAL).
+tgkill: 1
+# futex: Used by CHECK()/LOG(FATAL).
+futex: 1
