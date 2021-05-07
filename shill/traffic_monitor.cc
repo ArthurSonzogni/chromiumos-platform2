@@ -6,6 +6,9 @@
 
 #include <utility>
 
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 #include <netinet/in.h>
@@ -16,15 +19,11 @@
 #include "shill/logging.h"
 #include "shill/socket_info_reader.h"
 
-using base::StringPrintf;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(const Device* d) {
+static std::string ObjectID(const Device* d) {
   return d->link_name();
 }
 }  // namespace Logging
@@ -80,21 +79,21 @@ void TrafficMonitor::ResetCongestedTxQueuesStatsWithLogging() {
 
 TrafficMonitor::IPPortToTxQueueLengthMap
 TrafficMonitor::BuildIPPortToTxQueueLength(
-    const vector<SocketInfo>& socket_infos) {
+    const std::vector<SocketInfo>& socket_infos) {
   SLOG(device_, 3) << __func__;
 
   IPPortToTxQueueLengthMap tx_queue_lengths;
-  string device_ipv4;
+  std::string device_ipv4;
   if (device_->ipconfig())
     device_ipv4 = device_->ipconfig()->properties().address;
   // NB: we may have multiple IPv6 addresses; we do a best-effort filter using
   // the preferred address, even though this is imprecise.
-  string device_ipv6;
+  std::string device_ipv6;
   if (device_->ip6config())
     device_ipv6 = device_->ip6config()->properties().address;
 
   for (const auto& info : socket_infos) {
-    string socket_ip = info.local_ip_address.ToString();
+    const auto socket_ip = info.local_ip_address.ToString();
     SLOG(device_, 4) << "SocketInfo(IP=" << socket_ip
                      << ", TX=" << info.transmit_queue_value
                      << ", State=" << info.connection_state
@@ -113,7 +112,7 @@ TrafficMonitor::BuildIPPortToTxQueueLength(
                      << info.transmit_queue_value
                      << " TimerState=" << info.timer_state;
 
-    string local_ip_port = StringPrintf(
+    const auto local_ip_port = base::StringPrintf(
         "%s:%d", info.local_ip_address.ToString().c_str(), info.local_port);
     tx_queue_lengths[local_ip_port] = info.transmit_queue_value;
   }
@@ -122,7 +121,7 @@ TrafficMonitor::BuildIPPortToTxQueueLength(
 
 bool TrafficMonitor::IsCongestedTxQueues() {
   SLOG(device_, 4) << __func__;
-  vector<SocketInfo> socket_infos;
+  std::vector<SocketInfo> socket_infos;
   if (!socket_info_reader_->LoadTcpSocketInfo(&socket_infos) ||
       socket_infos.empty()) {
     SLOG(device_, 3) << __func__ << ": Empty socket info";
@@ -171,7 +170,7 @@ void TrafficMonitor::ResetDnsFailingStatsWithLogging() {
 
 bool TrafficMonitor::IsDnsFailing() {
   SLOG(device_, 4) << __func__;
-  vector<ConnectionInfo> connection_infos;
+  std::vector<ConnectionInfo> connection_infos;
   if (!connection_info_reader_->LoadConnectionInfo(&connection_infos) ||
       connection_infos.empty()) {
     SLOG(device_, 3) << __func__ << ": Empty connection info";
@@ -189,12 +188,12 @@ bool TrafficMonitor::IsDnsFailing() {
     // |kDnsTimedOutThresholdSeconds| and |kDnsTimedOutLowerThresholdSeconds|.
     const int64_t kDnsTimedOutLowerThresholdSeconds =
         kDnsTimedOutThresholdSeconds - kSamplingIntervalMilliseconds / 1000;
-    string device_ipv4;
+    std::string device_ipv4;
     if (device_->ipconfig())
       device_ipv4 = device_->ipconfig()->properties().address;
     // NB: we may have multiple IPv6 addresses; we do a best-effort filter using
     // the preferred address, even though this is imprecise.
-    string device_ipv6;
+    std::string device_ipv6;
     if (device_->ip6config())
       device_ipv6 = device_->ip6config()->properties().address;
 

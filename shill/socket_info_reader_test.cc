@@ -4,6 +4,9 @@
 
 #include "shill/socket_info_reader.h"
 
+#include <string>
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
@@ -11,10 +14,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using base::FilePath;
-using base::ScopedTempDir;
-using std::string;
-using std::vector;
 using testing::Return;
 
 namespace shill {
@@ -56,19 +55,25 @@ class SocketInfoReaderUnderTest : public SocketInfoReader {
   // Mock out GetTcpv4SocketInfoFilePath and GetTcpv6SocketInfoFilePath to
   // use a temporary created socket info file instead of the actual path
   // in procfs (i.e. /proc/net/tcp and /proc/net/tcp6).
-  MOCK_METHOD(FilePath, GetTcpv4SocketInfoFilePath, (), (const, override));
-  MOCK_METHOD(FilePath, GetTcpv6SocketInfoFilePath, (), (const, override));
+  MOCK_METHOD(base::FilePath,
+              GetTcpv4SocketInfoFilePath,
+              (),
+              (const, override));
+  MOCK_METHOD(base::FilePath,
+              GetTcpv6SocketInfoFilePath,
+              (),
+              (const, override));
 };
 
 class SocketInfoReaderTest : public testing::Test {
  protected:
-  IPAddress StringToIPv4Address(const string& address_string) {
+  IPAddress StringToIPv4Address(const std::string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
   }
 
-  IPAddress StringToIPv6Address(const string& address_string) {
+  IPAddress StringToIPv6Address(const std::string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv6);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
@@ -76,11 +81,11 @@ class SocketInfoReaderTest : public testing::Test {
 
   void CreateSocketInfoFile(const char* const* lines,
                             size_t num_lines,
-                            const FilePath& dir_path,
-                            FilePath* file_path) {
+                            const base::FilePath& dir_path,
+                            base::FilePath* file_path) {
     ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, file_path));
     for (size_t i = 0; i < num_lines; ++i) {
-      string line = lines[i];
+      std::string line = lines[i];
       line += '\n';
       ASSERT_TRUE(base::AppendToFile(*file_path, line.data(), line.size()));
     }
@@ -101,8 +106,8 @@ class SocketInfoReaderTest : public testing::Test {
 };
 
 TEST_F(SocketInfoReaderTest, LoadTcpSocketInfo) {
-  FilePath invalid_path("/non-existent-file"), v4_path, v6_path;
-  ScopedTempDir temp_dir;
+  base::FilePath invalid_path("/non-existent-file"), v4_path, v6_path;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   CreateSocketInfoFile(kIPv4SocketInfoLines, 2, temp_dir.GetPath(), &v4_path);
   CreateSocketInfoFile(kIPv6SocketInfoLines, 2, temp_dir.GetPath(), &v6_path);
@@ -116,7 +121,7 @@ TEST_F(SocketInfoReaderTest, LoadTcpSocketInfo) {
                      StringToIPv6Address(kIPv6AddressAllZeros), 0, 10, 5,
                      SocketInfo::kTimerStateNoTimerPending);
 
-  vector<SocketInfo> info_list;
+  std::vector<SocketInfo> info_list;
   EXPECT_CALL(reader_, GetTcpv4SocketInfoFilePath())
       .WillOnce(Return(invalid_path));
   EXPECT_CALL(reader_, GetTcpv6SocketInfoFilePath())
@@ -146,13 +151,13 @@ TEST_F(SocketInfoReaderTest, LoadTcpSocketInfo) {
 }
 
 TEST_F(SocketInfoReaderTest, AppendSocketInfo) {
-  FilePath file_path("/non-existent-file");
-  vector<SocketInfo> info_list;
+  base::FilePath file_path("/non-existent-file");
+  std::vector<SocketInfo> info_list;
 
   EXPECT_FALSE(reader_.AppendSocketInfo(file_path, &info_list));
   EXPECT_TRUE(info_list.empty());
 
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   CreateSocketInfoFile(kIPv4SocketInfoLines, 1, temp_dir.GetPath(), &file_path);

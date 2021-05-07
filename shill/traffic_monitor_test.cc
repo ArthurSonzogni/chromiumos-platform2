@@ -20,11 +20,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_socket_info_reader.h"
 
-using base::Bind;
-using base::StringPrintf;
-using base::Unretained;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Mock;
 using testing::NiceMock;
@@ -61,10 +56,10 @@ class TrafficMonitorTest : public Test {
         ip6config_(new IPConfig(&control_, "netdev0")),
         mock_socket_info_reader_(new MockSocketInfoReader),
         mock_connection_info_reader_(new MockConnectionInfoReader),
-        monitor_(
-            device_.get(),
-            &dispatcher_,
-            Bind(&TrafficMonitorTest::OnNoOutgoingPackets, Unretained(this))),
+        monitor_(device_.get(),
+                 &dispatcher_,
+                 base::Bind(&TrafficMonitorTest::OnNoOutgoingPackets,
+                            base::Unretained(this))),
         local_addr_(IPAddress::kFamilyIPv4),
         local_addr6_(IPAddress::kFamilyIPv6),
         remote_addr_(IPAddress::kFamilyIPv4),
@@ -107,7 +102,7 @@ class TrafficMonitorTest : public Test {
     EXPECT_FALSE(monitor_.sample_traffic_callback_.IsCancelled());
   }
 
-  void SetupMockSocketInfos(const vector<SocketInfo>& socket_infos) {
+  void SetupMockSocketInfos(const std::vector<SocketInfo>& socket_infos) {
     mock_socket_infos_ = socket_infos;
     EXPECT_CALL(*mock_socket_info_reader_, LoadTcpSocketInfo(_))
         .WillRepeatedly(
@@ -115,25 +110,25 @@ class TrafficMonitorTest : public Test {
   }
 
   void SetupMockConnectionInfos(
-      const vector<ConnectionInfo>& connection_infos) {
+      const std::vector<ConnectionInfo>& connection_infos) {
     mock_connection_infos_ = connection_infos;
     EXPECT_CALL(*mock_connection_info_reader_, LoadConnectionInfo(_))
         .WillRepeatedly(
             Invoke(this, &TrafficMonitorTest::MockLoadConnectionInfo));
   }
 
-  bool MockLoadTcpSocketInfo(vector<SocketInfo>* info_list) {
+  bool MockLoadTcpSocketInfo(std::vector<SocketInfo>* info_list) {
     *info_list = mock_socket_infos_;
     return true;
   }
 
-  bool MockLoadConnectionInfo(vector<ConnectionInfo>* info_list) {
+  bool MockLoadConnectionInfo(std::vector<ConnectionInfo>* info_list) {
     *info_list = mock_connection_infos_;
     return true;
   }
 
-  string FormatIPPort(const IPAddress& ip, const uint16_t port) {
-    return StringPrintf("%s:%d", ip.ToString().c_str(), port);
+  std::string FormatIPPort(const IPAddress& ip, const uint16_t port) {
+    return base::StringPrintf("%s:%d", ip.ToString().c_str(), port);
   }
 
   using IPPortToTxQueueLengthMap = TrafficMonitor::IPPortToTxQueueLengthMap;
@@ -154,8 +149,8 @@ class TrafficMonitorTest : public Test {
   MockSocketInfoReader* mock_socket_info_reader_;
   MockConnectionInfoReader* mock_connection_info_reader_;
   TrafficMonitor monitor_;
-  vector<SocketInfo> mock_socket_infos_;
-  vector<ConnectionInfo> mock_connection_infos_;
+  std::vector<SocketInfo> mock_socket_infos_;
+  std::vector<ConnectionInfo> mock_connection_infos_;
   IPAddress local_addr_;
   IPAddress local_addr6_;
   IPAddress remote_addr_;
@@ -204,7 +199,7 @@ TEST_F(TrafficMonitorTest, StartAndStop) {
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -214,14 +209,15 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid) {
   IPPortToTxQueueLengthMap tx_queue_lengths =
       BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(1, tx_queue_lengths.size());
-  string ip_port = FormatIPPort(local_addr_, TrafficMonitorTest::kLocalPort1);
+  const auto ip_port =
+      FormatIPPort(local_addr_, TrafficMonitorTest::kLocalPort1);
   EXPECT_EQ(TrafficMonitorTest::kTxQueueLength1, tx_queue_lengths[ip_port]);
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidDevice) {
   IPAddress foreign_ip_addr(IPAddress::kFamilyIPv4);
   foreign_ip_addr.SetAddressFromString("192.167.1.1");
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, foreign_ip_addr,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -234,7 +230,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidDevice) {
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthZero) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort, 0, 0,
@@ -246,7 +242,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthZero) {
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidConnectionState) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateSynSent, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -259,7 +255,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidConnectionState) {
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidTimerState) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -274,7 +270,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidTimerState) {
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
   device_->set_ip6config(ip6config_);
 
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateSynSent, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -308,7 +304,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
   IPPortToTxQueueLengthMap tx_queue_lengths =
       BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(3, tx_queue_lengths.size());
-  string ip_port = FormatIPPort(local_addr_, TrafficMonitorTest::kLocalPort2);
+  std::string ip_port =
+      FormatIPPort(local_addr_, TrafficMonitorTest::kLocalPort2);
   EXPECT_EQ(kTxQueueLength2, tx_queue_lengths[ip_port]);
   ip_port = FormatIPPort(local_addr_, TrafficMonitorTest::kLocalPort3);
   EXPECT_EQ(kTxQueueLength3, tx_queue_lengths[ip_port]);
@@ -320,7 +317,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthIPv6) {
   device_->set_ip6config(ip6config_);
   device_->set_ipconfig(nullptr);
 
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr6_,
                  TrafficMonitorTest::kLocalPort1, remote_addr6_,
                  TrafficMonitorTest::kRemotePort,
@@ -330,12 +327,13 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthIPv6) {
   IPPortToTxQueueLengthMap tx_queue_lengths =
       BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(1, tx_queue_lengths.size());
-  string ip_port = FormatIPPort(local_addr6_, TrafficMonitorTest::kLocalPort1);
+  const auto ip_port =
+      FormatIPPort(local_addr6_, TrafficMonitorTest::kLocalPort1);
   EXPECT_EQ(kTxQueueLength1, tx_queue_lengths[ip_port]);
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -360,7 +358,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -386,7 +384,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -424,7 +422,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -447,7 +445,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -465,7 +463,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged) {
-  vector<SocketInfo> socket_infos = {
+  std::vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished, local_addr_,
                  TrafficMonitorTest::kLocalPort1, remote_addr_,
                  TrafficMonitorTest::kRemotePort,
@@ -488,7 +486,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOut) {
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_UDP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds - 1, true,
                      local_addr_, TrafficMonitorTest::kLocalPort1, remote_addr_,
@@ -519,7 +517,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOut) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsOutstanding) {
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_UDP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds + 1, true,
                      local_addr_, TrafficMonitorTest::kLocalPort1, remote_addr_,
@@ -536,7 +534,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsOutstanding) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsSuccessful) {
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_UDP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds - 1,
                      false, local_addr_, TrafficMonitorTest::kLocalPort1,
@@ -556,7 +554,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsSuccessfulV6) {
   device_->set_ip6config(ip6config_);
   device_->set_ipconfig(nullptr);
 
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_UDP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds - 1,
                      false, local_addr6_, TrafficMonitorTest::kLocalPort1,
@@ -573,7 +571,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsSuccessfulV6) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess) {
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_UDP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds - 1, true,
                      local_addr_, TrafficMonitorTest::kLocalPort1, remote_addr_,
@@ -604,7 +602,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidProtocol) {
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_TCP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds - 1, true,
                      local_addr_, TrafficMonitorTest::kLocalPort1, remote_addr_,
@@ -621,7 +619,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidProtocol) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidSourceIp) {
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_UDP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds - 1, true,
                      remote_addr_, TrafficMonitorTest::kLocalPort1,
@@ -638,7 +636,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidSourceIp) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow) {
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(
           IPPROTO_UDP,
           TrafficMonitorTest::kDnsTimedOutThresholdSeconds -
@@ -658,7 +656,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow) {
 
 TEST_F(TrafficMonitorTest, SampleTrafficNonDnsTimedOut) {
   const uint16_t kNonDnsPort = 54;
-  vector<ConnectionInfo> connection_infos = {
+  std::vector<ConnectionInfo> connection_infos = {
       ConnectionInfo(IPPROTO_UDP,
                      TrafficMonitorTest::kDnsTimedOutThresholdSeconds - 1, true,
                      local_addr_, TrafficMonitorTest::kLocalPort1, remote_addr_,
@@ -674,7 +672,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficNonDnsTimedOut) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsStatsReset) {
-  vector<ConnectionInfo> connection_infos;
+  std::vector<ConnectionInfo> connection_infos;
   SetupMockConnectionInfos(connection_infos);
   monitor_.accummulated_dns_failures_samples_ = 1;
   SampleTraffic();

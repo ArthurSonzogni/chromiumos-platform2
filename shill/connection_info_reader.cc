@@ -15,15 +15,11 @@
 #include "shill/file_reader.h"
 #include "shill/logging.h"
 
-using base::FilePath;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(const ConnectionInfoReader* c) {
+static std::string ObjectID(const ConnectionInfoReader* c) {
   return "(connection_info_reader)";
 }
 }  // namespace Logging
@@ -43,15 +39,15 @@ ConnectionInfoReader::ConnectionInfoReader() = default;
 
 ConnectionInfoReader::~ConnectionInfoReader() = default;
 
-FilePath ConnectionInfoReader::GetConnectionInfoFilePath() const {
-  return FilePath(kConnectionInfoFilePath);
+base::FilePath ConnectionInfoReader::GetConnectionInfoFilePath() const {
+  return base::FilePath(kConnectionInfoFilePath);
 }
 
 bool ConnectionInfoReader::LoadConnectionInfo(
-    vector<ConnectionInfo>* info_list) {
+    std::vector<ConnectionInfo>* info_list) {
   info_list->clear();
 
-  FilePath info_file_path = GetConnectionInfoFilePath();
+  const base::FilePath info_file_path = GetConnectionInfoFilePath();
   FileReader file_reader;
   if (!file_reader.Open(info_file_path)) {
     SLOG(this, 2) << __func__ << ": Failed to open '" << info_file_path.value()
@@ -59,7 +55,7 @@ bool ConnectionInfoReader::LoadConnectionInfo(
     return false;
   }
 
-  string line;
+  std::string line;
   while (file_reader.ReadLine(&line)) {
     ConnectionInfo info;
     if (ParseConnectionInfo(line, &info))
@@ -68,9 +64,9 @@ bool ConnectionInfoReader::LoadConnectionInfo(
   return true;
 }
 
-bool ConnectionInfoReader::ParseConnectionInfo(const string& input,
+bool ConnectionInfoReader::ParseConnectionInfo(const std::string& input,
                                                ConnectionInfo* info) {
-  vector<string> tokens =
+  const auto tokens =
       base::SplitString(input, base::kWhitespaceASCII, base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_NONEMPTY);
   if (tokens.size() < 10) {
@@ -146,7 +142,8 @@ bool ConnectionInfoReader::ParseConnectionInfo(const string& input,
   return true;
 }
 
-bool ConnectionInfoReader::ParseProtocol(const string& input, int* protocol) {
+bool ConnectionInfoReader::ParseProtocol(const std::string& input,
+                                         int* protocol) {
   if (!base::StringToInt(input, protocol) || *protocol < 0 ||
       *protocol >= IPPROTO_MAX) {
     return false;
@@ -155,7 +152,7 @@ bool ConnectionInfoReader::ParseProtocol(const string& input, int* protocol) {
 }
 
 bool ConnectionInfoReader::ParseTimeToExpireSeconds(
-    const string& input, int64_t* time_to_expire_seconds) {
+    const std::string& input, int64_t* time_to_expire_seconds) {
   if (!base::StringToInt64(input, time_to_expire_seconds) ||
       *time_to_expire_seconds < 0) {
     return false;
@@ -163,10 +160,10 @@ bool ConnectionInfoReader::ParseTimeToExpireSeconds(
   return true;
 }
 
-bool ConnectionInfoReader::ParseIPAddress(const string& input,
+bool ConnectionInfoReader::ParseIPAddress(const std::string& input,
                                           IPAddress* ip_address,
                                           bool* is_source) {
-  string ip_address_string;
+  std::string ip_address_string;
 
   if (base::StartsWith(input, kSourceIPAddressTag,
                        base::CompareCase::INSENSITIVE_ASCII)) {
@@ -195,11 +192,11 @@ bool ConnectionInfoReader::ParseIPAddress(const string& input,
   return false;
 }
 
-bool ConnectionInfoReader::ParsePort(const string& input,
+bool ConnectionInfoReader::ParsePort(const std::string& input,
                                      uint16_t* port,
                                      bool* is_source) {
   int result = 0;
-  string port_string;
+  std::string port_string;
 
   if (base::StartsWith(input, kSourcePortTag,
                        base::CompareCase::INSENSITIVE_ASCII)) {

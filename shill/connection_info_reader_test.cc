@@ -13,11 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using base::FilePath;
-using base::ScopedTempDir;
-using base::StringPrintf;
-using std::string;
-using std::vector;
 using testing::Return;
 
 namespace shill {
@@ -42,18 +37,18 @@ class ConnectionInfoReaderUnderTest : public ConnectionInfoReader {
   // Mock out GetConnectionInfoFilePath to use a temporary created connection
   // info file instead of the actual path in procfs (i.e.
   // /proc/net/ip_conntrack).
-  MOCK_METHOD(FilePath, GetConnectionInfoFilePath, (), (const, override));
+  MOCK_METHOD(base::FilePath, GetConnectionInfoFilePath, (), (const, override));
 };
 
 class ConnectionInfoReaderTest : public testing::Test {
  protected:
-  IPAddress StringToIPv4Address(const string& address_string) {
+  IPAddress StringToIPv4Address(const std::string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
   }
 
-  IPAddress StringToIPv6Address(const string& address_string) {
+  IPAddress StringToIPv6Address(const std::string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv6);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
@@ -61,11 +56,11 @@ class ConnectionInfoReaderTest : public testing::Test {
 
   void CreateConnectionInfoFile(const char* const* lines,
                                 size_t num_lines,
-                                const FilePath& dir_path,
-                                FilePath* file_path) {
+                                const base::FilePath& dir_path,
+                                base::FilePath* file_path) {
     ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, file_path));
     for (size_t i = 0; i < num_lines; ++i) {
-      string line = lines[i];
+      std::string line = lines[i];
       line += '\n';
       ASSERT_TRUE(base::AppendToFile(*file_path, line.data(), line.size()));
     }
@@ -94,12 +89,12 @@ class ConnectionInfoReaderTest : public testing::Test {
 };
 
 TEST_F(ConnectionInfoReaderTest, LoadConnectionInfo) {
-  vector<ConnectionInfo> info_list;
-  ScopedTempDir temp_dir;
+  std::vector<ConnectionInfo> info_list;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Loading a non-existent file should fail.
-  FilePath info_file("/non-existent-file");
+  base::FilePath info_file("/non-existent-file");
   EXPECT_CALL(reader_, GetConnectionInfoFilePath()).WillOnce(Return(info_file));
   EXPECT_FALSE(reader_.LoadConnectionInfo(&info_list));
 
@@ -154,10 +149,10 @@ TEST_F(ConnectionInfoReaderTest, ParseProtocol) {
   EXPECT_FALSE(reader_.ParseProtocol("a", &protocol));
   EXPECT_FALSE(reader_.ParseProtocol("-1", &protocol));
   EXPECT_FALSE(
-      reader_.ParseProtocol(StringPrintf("%d", IPPROTO_MAX), &protocol));
+      reader_.ParseProtocol(base::StringPrintf("%d", IPPROTO_MAX), &protocol));
 
   for (int i = 0; i < IPPROTO_MAX; ++i) {
-    EXPECT_TRUE(reader_.ParseProtocol(StringPrintf("%d", i), &protocol));
+    EXPECT_TRUE(reader_.ParseProtocol(base::StringPrintf("%d", i), &protocol));
     EXPECT_EQ(i, protocol);
   }
 }
