@@ -95,7 +95,6 @@ TerminaVm::TerminaVm(
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
     base::FilePath log_path,
-    base::FilePath gpu_cache_path,
     std::string stateful_device,
     uint64_t stateful_size,
     VmFeatures features,
@@ -110,7 +109,6 @@ TerminaVm::TerminaVm(
       stateful_size_(stateful_size),
       stateful_resize_type_(DiskResizeType::NONE),
       log_path_(std::move(log_path)),
-      gpu_cache_path_(std::move(gpu_cache_path)),
       is_termina_(is_termina) {}
 
 // For testing.
@@ -120,7 +118,6 @@ TerminaVm::TerminaVm(
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
     base::FilePath log_path,
-    base::FilePath gpu_cache_path,
     std::string stateful_device,
     uint64_t stateful_size,
     VmFeatures features,
@@ -136,7 +133,6 @@ TerminaVm::TerminaVm(
       stateful_size_(stateful_size),
       stateful_resize_type_(DiskResizeType::NONE),
       log_path_(std::move(log_path)),
-      gpu_cache_path_(std::move(gpu_cache_path)),
       is_termina_(is_termina) {
   CHECK(subnet_);
 }
@@ -151,7 +147,6 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
     base::FilePath log_path,
-    base::FilePath gpu_cache_path,
     std::string stateful_device,
     uint64_t stateful_size,
     VmFeatures features,
@@ -159,9 +154,8 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     VmBuilder vm_builder) {
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
-      std::move(runtime_dir), std::move(log_path), std::move(gpu_cache_path),
-      std::move(stateful_device), std::move(stateful_size), features,
-      is_termina));
+      std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
+      std::move(stateful_size), features, is_termina));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();
@@ -216,14 +210,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     vm_builder.EnableWaylandDmaBuf(true /* enable */);
 
   if (features_.gpu) {
-    std::string gpu_arg = "--gpu=vulkan=";
-    gpu_arg += features_.vulkan ? "true" : "false";
-    if (!gpu_cache_path_.empty()) {
-      gpu_arg += ",cache-path=" + gpu_cache_path_.value();
-      gpu_arg += ",cache-size=";
-      gpu_arg += kGpuCacheSizeString;
-    }
-    vm_builder.EnableGpu(true /* enable */, gpu_arg);
+    vm_builder.EnableGpu(true)
+        .EnableVulkan(features_.vulkan)
+        .SetGpuCacheSize(kGpuCacheSizeString);
   }
 
   if (features_.software_tpm)
@@ -937,7 +926,6 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
     base::FilePath log_path,
-    base::FilePath gpu_cache_path,
     std::string stateful_device,
     uint64_t stateful_size,
     std::string kernel_version,
@@ -949,11 +937,10 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
       .software_tpm = false,
       .audio_capture = false,
   };
-  auto vm = base::WrapUnique(
-      new TerminaVm(std::move(subnet), vsock_cid, nullptr,
-                    std::move(runtime_dir), std::move(log_path),
-                    std::move(gpu_cache_path), std::move(stateful_device),
-                    std::move(stateful_size), features, is_termina));
+  auto vm = base::WrapUnique(new TerminaVm(
+      std::move(subnet), vsock_cid, nullptr, std::move(runtime_dir),
+      std::move(log_path), std::move(stateful_device), std::move(stateful_size),
+      features, is_termina));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 

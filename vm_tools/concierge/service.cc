@@ -1422,7 +1422,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .SetInitrd(std::move(image_spec.initrd))
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
-      .EnableSmt(false /* enable */);
+      .EnableSmt(false /* enable */)
+      .SetGpuCachePath(std::move(gpu_cache_path));
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
                           .path = std::move(image_spec.rootfs),
@@ -1475,11 +1476,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     }
   }
 
-  auto vm = TerminaVm::Create(
-      vsock_cid, std::move(network_client), std::move(server_proxy),
-      std::move(runtime_dir), std::move(log_path), std::move(gpu_cache_path),
-      std::move(stateful_device), std::move(stateful_size), features,
-      request.start_termina(), std::move(vm_builder));
+  auto vm = TerminaVm::Create(vsock_cid, std::move(network_client),
+                              std::move(server_proxy), std::move(runtime_dir),
+                              std::move(log_path), std::move(stateful_device),
+                              std::move(stateful_size), features,
+                              request.start_termina(), std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

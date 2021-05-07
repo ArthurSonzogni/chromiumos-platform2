@@ -408,9 +408,8 @@ void TerminaVmTest::SetUp() {
   vm_builder.SetRootfs({.device = "/dev/vda", .path = base::FilePath("dummy")});
   vm_ = TerminaVm::CreateForTesting(
       std::move(subnet), vsock_cid, temp_dir_.GetPath(), base::FilePath(),
-      base::FilePath(), std::move(stateful_device), stateful_size,
-      kKernelVersion, std::move(stub), true /* is_termina */,
-      std::move(vm_builder));
+      std::move(stateful_device), stateful_size, kKernelVersion,
+      std::move(stub), true /* is_termina */, std::move(vm_builder));
   ASSERT_TRUE(vm_);
 }
 

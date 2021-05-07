@@ -113,13 +113,22 @@ VmBuilder& VmBuilder::AppendCustomParam(const std::string& key,
 }
 
 VmBuilder& VmBuilder::EnableGpu(bool enable) {
-  EnableGpu(enable, "");
+  enable_gpu_ = enable;
   return *this;
 }
 
-VmBuilder& VmBuilder::EnableGpu(bool enable, const std::string& gpu_arg) {
-  enable_gpu_ = enable;
-  gpu_arg_ = gpu_arg;
+VmBuilder& VmBuilder::EnableVulkan(bool enable) {
+  enable_vulkan_ = enable;
+  return *this;
+}
+
+VmBuilder& VmBuilder::SetGpuCachePath(base::FilePath gpu_cache_path) {
+  gpu_cache_path_ = std::move(gpu_cache_path);
+  return *this;
+}
+
+VmBuilder& VmBuilder::SetGpuCacheSize(std::string gpu_cache_size_str) {
+  gpu_cache_size_str_ = std::move(gpu_cache_size_str);
   return *this;
 }
 
@@ -222,10 +231,15 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     args.emplace_back("--wayland-dmabuf", "");
 
   if (enable_gpu_) {
-    if (gpu_arg_.empty())
-      args.emplace_back("--gpu", "");
-    else
-      args.emplace_back(gpu_arg_, "");
+    std::string gpu_arg = "--gpu=vulkan=";
+    gpu_arg += enable_vulkan_ ? "true" : "false";
+    if (!gpu_cache_path_.empty()) {
+      gpu_arg += ",cache-path=" + gpu_cache_path_.value();
+    }
+    if (!gpu_cache_size_str_.empty()) {
+      gpu_arg += ",cache-size=" + gpu_cache_size_str_;
+    }
+    args.emplace_back(gpu_arg, "");
   }
 
   if (enable_software_tpm_)

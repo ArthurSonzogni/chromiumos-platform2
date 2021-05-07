@@ -57,7 +57,10 @@ class VmBuilder {
                                const std::string& value);
 
   VmBuilder& EnableGpu(bool enable);
-  VmBuilder& EnableGpu(bool enable, const std::string& gpu_arg);
+  VmBuilder& EnableVulkan(bool enable);
+  VmBuilder& SetGpuCachePath(base::FilePath gpu_cache_path);
+  VmBuilder& SetGpuCacheSize(std::string gpu_cache_size_str);
+
   VmBuilder& EnableWaylandDmaBuf(bool enable);
   VmBuilder& EnableSoftwareTpm(bool enable);
   VmBuilder& EnableVideoDecoder(bool enable);
@@ -82,6 +85,10 @@ class VmBuilder {
   std::string vm_socket_path_;
 
   bool enable_gpu_ = false;
+  bool enable_vulkan_ = false;
+  base::FilePath gpu_cache_path_;
+  std::string gpu_cache_size_str_;
+
   bool enable_wayland_dma_buf_ = false;
   bool enable_software_tpm_ = false;
   bool enable_video_decoder_ = false;
@@ -99,8 +106,6 @@ class VmBuilder {
   std::vector<std::vector<int32_t>> cpu_clusters_;
 
   base::StringPairs custom_params_;
-
-  std::string gpu_arg_;
 };
 
 }  // namespace concierge

@@ -274,7 +274,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
   // Enable vulkan only in dev mode for now.
   if (is_dev_mode && USE_CROSVM_VULKAN) {
-    vm_builder.EnableGpu(true, "--gpu=vulkan=true");
+    vm_builder.EnableVulkan(true);
   }
 
   auto args = vm_builder.BuildVmArgs();
