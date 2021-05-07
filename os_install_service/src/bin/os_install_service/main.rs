@@ -31,13 +31,11 @@ enum Status {
 
 impl Status {
     fn as_str(&self) -> &str {
-        // These values must match the corresponding strings in the
-        // browser.
         match self {
-            Self::InProgress => "InProgress",
-            Self::Failed => "Failed",
-            Self::Succeeded => "Succeeded",
-            Self::NoDestinationDeviceFound => "NoDestinationDeviceFound",
+            Self::InProgress => STATUS_IN_PROGRESS,
+            Self::Failed => STATUS_FAILED,
+            Self::Succeeded => STATUS_SUCCEEDED,
+            Self::NoDestinationDeviceFound => STATUS_NO_DESTINATION_DEVICE_FOUND,
         }
     }
 }

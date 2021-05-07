@@ -15,6 +15,11 @@ const char kMethodStartOsInstall[] = "StartOsInstall";
 
 const char kSignalOsInstallStatusChanged[] = "OsInstallStatusChanged";
 
+const char kStatusInProgress[] = "InProgress";
+const char kStatusFailed[] = "Failed";
+const char kStatusSucceeded[] = "Succeeded";
+const char kStatusNoDestinationDeviceFound[] = "NoDestinationDeviceFound";
+
 }  // namespace os_install_service
 
 #endif  // SYSTEM_API_DBUS_OS_INSTALL_SERVICE_DBUS_CONSTANTS_H_
