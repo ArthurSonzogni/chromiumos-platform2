@@ -245,6 +245,7 @@ const char kL2tpIpsecPinProperty[] = "L2TPIPsec.PIN";
 const char kL2tpIpsecPskProperty[] = "L2TPIPsec.PSK";
 const char kL2tpIpsecPskRequiredProperty[] = "L2TPIPsec.PSKRequired";
 const char kL2tpIpsecTunnelGroupProperty[] = "L2TPIPsec.TunnelGroup";
+const char kL2tpIpsecUseLoginPasswordProperty[] = "L2TPIPsec.UseLoginPassword";
 const char kL2tpIpsecUserProperty[] = "L2TPIPsec.User";
 const char kL2tpIpsecXauthPasswordProperty[] = "L2TPIPsec.XauthPassword";
 const char kL2tpIpsecXauthUserProperty[] = "L2TPIPsec.XauthUser";

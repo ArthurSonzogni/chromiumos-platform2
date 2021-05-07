@@ -14,6 +14,9 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
+#include <libpasswordprovider/fake_password_provider.h>
+#include <libpasswordprovider/password.h>
+#include <libpasswordprovider/password_provider.h>
 #include <vpn-manager/service_error.h>
 
 #include "shill/ipconfig.h"
@@ -156,6 +159,26 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
             Metrics::kMetricVpnUserAuthenticationType,
             Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
             Metrics::kVpnUserAuthenticationTypeMax));
+  }
+
+  void SaveLoginPassword(const std::string& password_str) {
+    driver_->password_provider_ =
+        std::make_unique<password_provider::FakePasswordProvider>();
+
+    int fds[2];
+    base::CreateLocalNonBlockingPipe(fds);
+    base::ScopedFD read_dbus_fd(fds[0]);
+    base::ScopedFD write_scoped_fd(fds[1]);
+
+    size_t data_size = password_str.length();
+    base::WriteFileDescriptor(
+        write_scoped_fd.get(),
+        reinterpret_cast<const char*>(password_str.c_str()), data_size);
+    auto password = password_provider::Password::CreateFromFileDescriptor(
+        read_dbus_fd.get(), data_size);
+    ASSERT_TRUE(password);
+
+    driver_->password_provider_->SavePassword(*password);
   }
 
   // Inherited from RpcTaskDelegate.
@@ -465,6 +488,7 @@ TEST_F(L2TPIPSecDriverTest, GetLogin) {
   static const char kPassword[] = "random-password";
   std::string user, password;
   SetArg(kL2tpIpsecUserProperty, kUser);
+  SetArg(kL2tpIpsecUseLoginPasswordProperty, "false");
   driver_->GetLogin(&user, &password);
   EXPECT_TRUE(user.empty());
   EXPECT_TRUE(password.empty());
@@ -474,6 +498,21 @@ TEST_F(L2TPIPSecDriverTest, GetLogin) {
   EXPECT_TRUE(user.empty());
   EXPECT_TRUE(password.empty());
   SetArg(kL2tpIpsecUserProperty, kUser);
+  driver_->GetLogin(&user, &password);
+  EXPECT_EQ(kUser, user);
+  EXPECT_EQ(kPassword, password);
+}
+
+TEST_F(L2TPIPSecDriverTest, UseLoginPassword) {
+  static const char kUser[] = "joesmith";
+  static const char kPassword[] = "random-password";
+  std::string user, password;
+  SetArg(kL2tpIpsecUserProperty, kUser);
+  SetArg(kL2tpIpsecUseLoginPasswordProperty, "true");
+  driver_->GetLogin(&user, &password);
+  EXPECT_TRUE(user.empty());
+  EXPECT_TRUE(password.empty());
+  SaveLoginPassword(kPassword);
   driver_->GetLogin(&user, &password);
   EXPECT_EQ(kUser, user);
   EXPECT_EQ(kPassword, password);

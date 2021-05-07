@@ -14,6 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <libpasswordprovider/password_provider.h>
 
 #include "shill/ipconfig.h"
 #include "shill/rpc_task.h"
@@ -66,6 +67,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(L2TPIPSecDriverTest, OnConnectTimeout);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
+  FRIEND_TEST(L2TPIPSecDriverTest, UseLoginPassword);
 
   static const char kL2TPIPSecVPNPath[];
   static const Property kProperties[];
@@ -126,6 +128,8 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   std::unique_ptr<CertificateFile> certificate_file_;
   IPConfig::Properties ip_properties_;
   EventHandler* event_handler_ = nullptr;
+  std::unique_ptr<password_provider::PasswordProviderInterface>
+      password_provider_;
 
   base::WeakPtrFactory<L2TPIPSecDriver> weak_factory_{this};
 };

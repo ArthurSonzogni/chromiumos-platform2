@@ -104,6 +104,7 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
     {kL2tpIpsecPasswordProperty, Property::kCredential | Property::kWriteOnly},
     {kL2tpIpsecPinProperty, Property::kCredential},
     {kL2tpIpsecPskProperty, Property::kCredential | Property::kWriteOnly},
+    {kL2tpIpsecUseLoginPasswordProperty, 0},
     {kL2tpIpsecUserProperty, 0},
     {kProviderHostProperty, 0},
     {kProviderTypeProperty, 0},
@@ -127,7 +128,9 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
 L2TPIPSecDriver::L2TPIPSecDriver(Manager* manager,
                                  ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
-      certificate_file_(new CertificateFile()) {}
+      certificate_file_(new CertificateFile()),
+      password_provider_(
+          std::make_unique<password_provider::PasswordProvider>()) {}
 
 L2TPIPSecDriver::~L2TPIPSecDriver() {
   Cleanup();
@@ -278,6 +281,12 @@ bool L2TPIPSecDriver::InitOptions(std::vector<std::string>* options,
                     options);
   AppendFlag(kL2TPIPSecRequireChapProperty, "--require_chap",
              "--norequire_chap", options);
+  // b/187984628: When UseLoginPassword is enabled, PAP must be refused to
+  // prevent potential password leak to a malicious server.
+  if (args()->Lookup<std::string>(kL2tpIpsecUseLoginPasswordProperty, "") ==
+      "true") {
+    args()->Set<std::string>(kL2TPIPSecRefusePapProperty, "true");
+  }
   AppendFlag(kL2TPIPSecRefusePapProperty, "--refuse_pap", "--norefuse_pap",
              options);
   AppendFlag(kL2TPIPSecRequireAuthProperty, "--require_authentication",
@@ -396,6 +405,19 @@ void L2TPIPSecDriver::GetLogin(std::string* user, std::string* password) {
       args()->Lookup<std::string>(kL2tpIpsecUserProperty, "");
   if (user_property.empty()) {
     LOG(ERROR) << "User not set.";
+    return;
+  }
+  const std::string use_login_password =
+      args()->Lookup<std::string>(kL2tpIpsecUseLoginPasswordProperty, "");
+  if (use_login_password == "true") {
+    std::unique_ptr<password_provider::Password> login_password =
+        password_provider_->GetPassword();
+    if (login_password == nullptr || login_password->size() == 0) {
+      LOG(ERROR) << "Unable to retrieve user password";
+      return;
+    }
+    *user = user_property;
+    *password = std::string(login_password->GetRaw(), login_password->size());
     return;
   }
   const auto password_property =
@@ -525,7 +547,9 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->Lookup<std::string>(kL2tpIpsecPasswordProperty, "") != "") {
+  if (args()->Lookup<std::string>(kL2tpIpsecPasswordProperty, "") != "" ||
+      args()->Lookup<std::string>(kL2tpIpsecUseLoginPasswordProperty, "") ==
+          "true") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
