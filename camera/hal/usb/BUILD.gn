@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -23,11 +22,6 @@ pkg_config("target_defaults") {
     "re2",
   ]
   configs = [ "//camera/build:cros_camera_common" ]
-}
-
-generate_mojom_bindings("libcamera_hal_mojom") {
-  sources = [ "//camera/mojo/cros_camera_enum.mojom" ]
-  mojo_root = "//camera"
 }
 
 shared_library("libcamera_hal") {
@@ -51,7 +45,6 @@ shared_library("libcamera_hal") {
     "vendor_tag.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libcamera_hal_mojom" ]
 }
 
 if (use.test) {

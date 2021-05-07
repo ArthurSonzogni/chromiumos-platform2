@@ -26,7 +26,6 @@
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
 #include "hal/usb/vendor_tag.h"
-#include "mojo/cros_camera_enum.mojom.h"
 
 namespace cros {
 
