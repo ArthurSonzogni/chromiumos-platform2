@@ -21,12 +21,6 @@
 
 #include "shill/key_value_store.h"
 
-using base::FileEnumerator;
-using base::FilePath;
-using std::set;
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using testing::Test;
 
 namespace shill {
@@ -44,21 +38,21 @@ class KeyFileStoreTest : public Test {
   void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
 
  protected:
-  string ReadKeyFile();
-  void WriteKeyFile(string data);
+  std::string ReadKeyFile();
+  void WriteKeyFile(std::string data);
 
   base::ScopedTempDir temp_dir_;
-  FilePath test_file_;
-  unique_ptr<KeyFileStore> store_;
+  base::FilePath test_file_;
+  std::unique_ptr<KeyFileStore> store_;
 };
 
-string KeyFileStoreTest::ReadKeyFile() {
-  string data;
+std::string KeyFileStoreTest::ReadKeyFile() {
+  std::string data;
   EXPECT_TRUE(base::ReadFileToString(test_file_, &data));
   return data;
 }
 
-void KeyFileStoreTest::WriteKeyFile(string data) {
+void KeyFileStoreTest::WriteKeyFile(std::string data) {
   EXPECT_EQ(data.size(), base::WriteFile(test_file_, data.data(), data.size()));
 }
 
@@ -70,12 +64,13 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_TRUE(store_->key_file_);
   ASSERT_TRUE(store_->Close());
   EXPECT_FALSE(store_->key_file_);
-  FileEnumerator file_enumerator(temp_dir_.GetPath(), false /* not recursive */,
-                                 FileEnumerator::FILES);
+  base::FileEnumerator file_enumerator(temp_dir_.GetPath(),
+                                       false /* not recursive */,
+                                       base::FileEnumerator::FILES);
 
   // Verify that the file actually got written with the right name.
   EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
-  FileEnumerator::FileInfo file_info = file_enumerator.GetInfo();
+  const auto file_info = file_enumerator.GetInfo();
 
   // Verify that the profile is a regular file, readable and writeable by the
   // owner only.
@@ -109,7 +104,8 @@ TEST_F(KeyFileStoreTest, MarkAsCorrupted) {
   EXPECT_TRUE(store_->MarkAsCorrupted());
   EXPECT_TRUE(store_->IsEmpty());
   EXPECT_FALSE(base::PathExists(test_file_));
-  EXPECT_TRUE(base::PathExists(FilePath(test_file_.value() + ".corrupted")));
+  EXPECT_TRUE(
+      base::PathExists(base::FilePath(test_file_.value() + ".corrupted")));
 }
 
 TEST_F(KeyFileStoreTest, GetGroups) {
@@ -123,7 +119,7 @@ TEST_F(KeyFileStoreTest, GetGroups) {
                          kGroupA, kGroupB, kGroupC));
   EXPECT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
-  set<string> groups = store_->GetGroups();
+  std::set<std::string> groups = store_->GetGroups();
   EXPECT_EQ(3, groups.size());
   EXPECT_TRUE(base::Contains(groups, kGroupA));
   EXPECT_TRUE(base::Contains(groups, kGroupB));
@@ -151,11 +147,11 @@ TEST_F(KeyFileStoreTest, GetGroupsWithKey) {
                          kValue, kGroupC, kKeyB, kValue));
   EXPECT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
-  set<string> groups_a = store_->GetGroupsWithKey(kKeyA);
+  std::set<std::string> groups_a = store_->GetGroupsWithKey(kKeyA);
   EXPECT_EQ(2, groups_a.size());
   EXPECT_TRUE(base::Contains(groups_a, kGroupA));
   EXPECT_TRUE(base::Contains(groups_a, kGroupB));
-  set<string> groups_b = store_->GetGroupsWithKey(kKeyB);
+  std::set<std::string> groups_b = store_->GetGroupsWithKey(kKeyB);
   EXPECT_EQ(2, groups_b.size());
   EXPECT_TRUE(base::Contains(groups_b, kGroupB));
   EXPECT_TRUE(base::Contains(groups_b, kGroupC));
@@ -214,18 +210,18 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
   ASSERT_TRUE(store_->Open());
   {
     KeyValueStore args;
-    args.Set<string>(kAttributeA, kValueA_0);
+    args.Set<std::string>(kAttributeA, kValueA_0);
     args.Set<int32_t>(kAttributeB, kValueB_0);
-    set<string> results = store_->GetGroupsWithProperties(args);
+    std::set<std::string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(2, results.size());
     EXPECT_TRUE(results.find(kGroupA) != results.end());
     EXPECT_TRUE(results.find(kGroupC) != results.end());
   }
   {
     KeyValueStore args;
-    args.Set<string>(kAttributeA, kValueA_0);
+    args.Set<std::string>(kAttributeA, kValueA_0);
     args.Set<bool>(kAttributeC, kValueC_0);
-    set<string> results = store_->GetGroupsWithProperties(args);
+    std::set<std::string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(2, results.size());
     EXPECT_TRUE(results.find(kGroupA) != results.end());
     EXPECT_TRUE(results.find(kGroupB) != results.end());
@@ -233,14 +229,14 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
   {
     KeyValueStore args;
     args.Set<bool>(kAttributeC, kValueC_1);
-    set<string> results = store_->GetGroupsWithProperties(args);
+    std::set<std::string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(1, results.size());
     EXPECT_TRUE(results.find(kGroupC) != results.end());
   }
   {
     KeyValueStore args;
-    args.Set<string>(kAttributeA, kValueA_0);
-    set<string> results = store_->GetGroupsWithProperties(args);
+    args.Set<std::string>(kAttributeA, kValueA_0);
+    std::set<std::string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(3, results.size());
     EXPECT_TRUE(results.find(kGroupA) != results.end());
     EXPECT_TRUE(results.find(kGroupB) != results.end());
@@ -248,8 +244,8 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
   }
   {
     KeyValueStore args;
-    args.Set<string>(kAttributeA, kValueA_1);
-    set<string> results = store_->GetGroupsWithProperties(args);
+    args.Set<std::string>(kAttributeA, kValueA_1);
+    std::set<std::string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(0, results.size());
   }
   ASSERT_TRUE(store_->Close());
@@ -357,7 +353,7 @@ TEST_F(KeyFileStoreTest, TrimWhitespaceAroundKeyValueEquals) {
                          "%s  =  %s\n",
                          kGroup, kKey, kValue));
   ASSERT_TRUE(store_->Open());
-  string value;
+  std::string value;
   EXPECT_TRUE(store_->GetString(kGroup, kKey, &value));
   EXPECT_EQ(kValue, value);
   ASSERT_TRUE(store_->Close());
@@ -424,7 +420,7 @@ TEST_F(KeyFileStoreTest, GetString) {
                          "%s=%s\n",
                          kGroup, kKey, kValue));
   ASSERT_TRUE(store_->Open());
-  string value;
+  std::string value;
   EXPECT_TRUE(store_->GetString(kGroup, kKey, &value));
   EXPECT_EQ(kValue, value);
   EXPECT_FALSE(store_->GetString("something-else", kKey, &value));
@@ -443,7 +439,7 @@ TEST_F(KeyFileStoreTest, UnescapeInitialWhitespaceInValue) {
                          "%s=\\t\tbar\n",
                          kGroup, kKeyAlive, kKeyDead));
   ASSERT_TRUE(store_->Open());
-  string value;
+  std::string value;
   EXPECT_TRUE(store_->GetString(kGroup, kKeyAlive, &value));
   EXPECT_EQ(value, "  foo");
   EXPECT_TRUE(store_->GetString(kGroup, kKeyDead, &value));
@@ -651,7 +647,7 @@ TEST_F(KeyFileStoreTest, GetStringList) {
       kValue, kValue2, kValue3));
   ASSERT_TRUE(store_->Open());
 
-  vector<string> value;
+  std::vector<std::string> value;
 
   EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValues, &value));
   ASSERT_EQ(3, value.size());
@@ -700,7 +696,7 @@ TEST_F(KeyFileStoreTest, UnescapeSeparatorInList) {
                          "GN=Momo\\;FN=Chiyoda\\;NN=Fresh Peach;\n",
                          kGroup, kKey));
   ASSERT_TRUE(store_->Open());
-  vector<string> value;
+  std::vector<std::string> value;
   EXPECT_TRUE(store_->GetStringList(kGroup, kKey, &value));
   EXPECT_EQ(2, value.size());
   EXPECT_EQ(value[0], "GN=Yuuko;FN=Yoshida;NN=Shamiko");
@@ -771,7 +767,7 @@ TEST_F(KeyFileStoreTest, GetDeprecatedCryptedString) {
                          "%s=%s\n",
                          kGroup, kDeprecatedKey, kROT47Text));
   ASSERT_TRUE(store_->Open());
-  string value;
+  std::string value;
   EXPECT_TRUE(
       store_->GetCryptedString(kGroup, kDeprecatedKey, kPlaintextKey, &value));
   EXPECT_EQ(kPlainText, value);
@@ -795,7 +791,7 @@ TEST_F(KeyFileStoreTest, PersistAcrossClose) {
   ASSERT_TRUE(store_->Close());
   ASSERT_TRUE(store_->Open());
   ASSERT_TRUE(store_->SetString(kGroup, kKey2, kValue2));
-  string value;
+  std::string value;
   ASSERT_TRUE(store_->GetString(kGroup, kKey1, &value));
   ASSERT_EQ(kValue1, value);
   ASSERT_TRUE(store_->GetString(kGroup, kKey2, &value));
@@ -811,13 +807,13 @@ class ReadOnlyKeyFileStore : public KeyFileStore {
   bool Flush() override { return true; }
 };
 
-bool OpenCheckClose(const FilePath& path,
-                    const string& group,
-                    const string& key,
-                    const string& expected_value) {
+bool OpenCheckClose(const base::FilePath& path,
+                    const std::string& group,
+                    const std::string& key,
+                    const std::string& expected_value) {
   ReadOnlyKeyFileStore store(path);  // Don't modify file owned by caller.
   EXPECT_TRUE(store.Open());
-  string value;
+  std::string value;
   bool could_get = store.GetString(group, key, &value);
   store.Close();
   return could_get && expected_value == value;
@@ -898,7 +894,7 @@ TEST_F(KeyFileStoreTest, Combo) {
   EXPECT_TRUE(store_->ContainsGroup(kGroupC));
   EXPECT_FALSE(store_->ContainsGroup(kGroupX));
 
-  set<string> groups = store_->GetGroups();
+  std::set<std::string> groups = store_->GetGroups();
   EXPECT_EQ(3, groups.size());
   EXPECT_TRUE(base::Contains(groups, kGroupA));
   EXPECT_TRUE(base::Contains(groups, kGroupB));
@@ -906,7 +902,7 @@ TEST_F(KeyFileStoreTest, Combo) {
   EXPECT_FALSE(base::Contains(groups, kGroupX));
 
   {
-    string value;
+    std::string value;
     EXPECT_TRUE(store_->GetString(kGroupB, kKeyString, &value));
     EXPECT_EQ(kValueStringB, value);
     EXPECT_TRUE(store_->GetString(kGroupA, kKeyString, &value));
@@ -915,7 +911,7 @@ TEST_F(KeyFileStoreTest, Combo) {
     EXPECT_EQ(kValueStringC, value);
   }
   {
-    vector<string> value;
+    std::vector<std::string> value;
     EXPECT_TRUE(store_->GetStringList(kGroupB, kKeyStringList, &value));
     ASSERT_EQ(2, value.size());
     EXPECT_EQ(kValueStringA, value[0]);
@@ -960,20 +956,20 @@ TEST_F(KeyFileStoreTest, Combo) {
   EXPECT_TRUE(store_->SetInt(kGroupB, kKeyInt, kValueIntBNew));
   EXPECT_TRUE(store_->SetString(kGroupC, kKeyString, kValueStringCNew));
   store_->SetStringList(kGroupB, kKeyStringList,
-                        vector<string>(1, kValueStringB));
+                        std::vector<std::string>(1, kValueStringB));
 
   EXPECT_TRUE(store_->DeleteKey(kGroupB, kKeyString));
   EXPECT_FALSE(store_->DeleteKey(kGroupB, kKeyString));
 
   {
-    string value;
+    std::string value;
     EXPECT_FALSE(store_->GetString(kGroupB, kKeyString, &value));
     EXPECT_FALSE(store_->GetString(kGroupA, kKeyString, &value));
     EXPECT_TRUE(store_->GetString(kGroupC, kKeyString, &value));
     EXPECT_EQ(kValueStringCNew, value);
   }
   {
-    vector<string> value;
+    std::vector<std::string> value;
     EXPECT_TRUE(store_->GetStringList(kGroupB, kKeyStringList, &value));
     ASSERT_EQ(1, value.size());
     EXPECT_EQ(kValueStringB, value[0]);

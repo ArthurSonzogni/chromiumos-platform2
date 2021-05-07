@@ -4,14 +4,12 @@
 
 #include "shill/key_value_store.h"
 
+#include <string>
+
 #include <base/check.h>
 #include <base/stl_util.h>
 
 #include "shill/logging.h"
-
-using std::map;
-using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -37,21 +35,22 @@ bool KeyValueStore::operator!=(const KeyValueStore& rhs) const {
   return properties_ != rhs.properties_;
 }
 
-bool KeyValueStore::ContainsVariant(const string& name) const {
+bool KeyValueStore::ContainsVariant(const std::string& name) const {
   return base::Contains(properties_, name);
 }
 
-const brillo::Any& KeyValueStore::GetVariant(const string& name) const {
+const brillo::Any& KeyValueStore::GetVariant(const std::string& name) const {
   const auto it(properties_.find(name));
   CHECK(it != properties_.end());
   return it->second;
 }
 
-void KeyValueStore::SetVariant(const string& name, const brillo::Any& value) {
+void KeyValueStore::SetVariant(const std::string& name,
+                               const brillo::Any& value) {
   properties_[name] = value;
 }
 
-void KeyValueStore::Remove(const string& name) {
+void KeyValueStore::Remove(const std::string& name) {
   properties_.erase(name);
 }
 

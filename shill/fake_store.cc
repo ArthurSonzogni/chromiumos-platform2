@@ -5,20 +5,18 @@
 #include "shill/fake_store.h"
 
 #include <typeinfo>
+#include <set>
+#include <string>
 #include <vector>
 
 #include "shill/logging.h"
-
-using std::set;
-using std::string;
-using std::vector;
 
 namespace shill {
 
 namespace Logging {
 
 static auto kModuleLogScope = ScopeLogger::kStorage;
-static string ObjectID(const FakeStore* j) {
+static std::string ObjectID(const FakeStore* j) {
   return "(unknown)";
 }
 
@@ -67,8 +65,8 @@ bool FakeStore::MarkAsCorrupted() {
   return true;
 }
 
-set<string> FakeStore::GetGroups() const {
-  set<string> matching_groups;
+std::set<std::string> FakeStore::GetGroups() const {
+  std::set<std::string> matching_groups;
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     matching_groups.insert(group_name_and_settings.first);
   }
@@ -77,8 +75,9 @@ set<string> FakeStore::GetGroups() const {
 
 // Returns a set so that caller can easily test whether a particular group
 // is contained within this collection.
-set<string> FakeStore::GetGroupsWithKey(const string& key) const {
-  set<string> matching_groups;
+std::set<std::string> FakeStore::GetGroupsWithKey(
+    const std::string& key) const {
+  std::set<std::string> matching_groups;
   // iterate over groups, find ones with matching key
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     const auto& group_name = group_name_and_settings.first;
@@ -90,9 +89,9 @@ set<string> FakeStore::GetGroupsWithKey(const string& key) const {
   return matching_groups;
 }
 
-set<string> FakeStore::GetGroupsWithProperties(
+std::set<std::string> FakeStore::GetGroupsWithProperties(
     const KeyValueStore& properties) const {
-  set<string> matching_groups;
+  std::set<std::string> matching_groups;
   const brillo::VariantDictionary& properties_dict(properties.properties());
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     const auto& group_name = group_name_and_settings.first;
@@ -104,12 +103,12 @@ set<string> FakeStore::GetGroupsWithProperties(
   return matching_groups;
 }
 
-bool FakeStore::ContainsGroup(const string& group) const {
+bool FakeStore::ContainsGroup(const std::string& group) const {
   const auto& it = group_name_to_settings_.find(group);
   return it != group_name_to_settings_.end();
 }
 
-bool FakeStore::DeleteKey(const string& group, const string& key) {
+bool FakeStore::DeleteKey(const std::string& group, const std::string& key) {
   const auto& group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
     LOG(ERROR) << "Could not find group |" << group << "|.";
@@ -125,7 +124,7 @@ bool FakeStore::DeleteKey(const string& group, const string& key) {
   return true;
 }
 
-bool FakeStore::DeleteGroup(const string& group) {
+bool FakeStore::DeleteGroup(const std::string& group) {
   auto group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings != group_name_to_settings_.end()) {
     group_name_to_settings_.erase(group_name_and_settings);
@@ -133,74 +132,78 @@ bool FakeStore::DeleteGroup(const string& group) {
   return true;
 }
 
-bool FakeStore::SetHeader(const string& header) {
+bool FakeStore::SetHeader(const std::string& header) {
   return true;
 }
 
-bool FakeStore::GetString(const string& group,
-                          const string& key,
-                          string* value) const {
+bool FakeStore::GetString(const std::string& group,
+                          const std::string& key,
+                          std::string* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetString(const string& group,
-                          const string& key,
-                          const string& value) {
+bool FakeStore::SetString(const std::string& group,
+                          const std::string& key,
+                          const std::string& value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetBool(const string& group,
-                        const string& key,
+bool FakeStore::GetBool(const std::string& group,
+                        const std::string& key,
                         bool* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetBool(const string& group, const string& key, bool value) {
+bool FakeStore::SetBool(const std::string& group,
+                        const std::string& key,
+                        bool value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetInt(const string& group,
-                       const string& key,
+bool FakeStore::GetInt(const std::string& group,
+                       const std::string& key,
                        int* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetInt(const string& group, const string& key, int value) {
+bool FakeStore::SetInt(const std::string& group,
+                       const std::string& key,
+                       int value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetUint64(const string& group,
-                          const string& key,
+bool FakeStore::GetUint64(const std::string& group,
+                          const std::string& key,
                           uint64_t* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetUint64(const string& group,
-                          const string& key,
+bool FakeStore::SetUint64(const std::string& group,
+                          const std::string& key,
                           uint64_t value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetStringList(const string& group,
-                              const string& key,
-                              vector<string>* value) const {
+bool FakeStore::GetStringList(const std::string& group,
+                              const std::string& key,
+                              std::vector<std::string>* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetStringList(const string& group,
-                              const string& key,
-                              const vector<string>& value) {
+bool FakeStore::SetStringList(const std::string& group,
+                              const std::string& key,
+                              const std::vector<std::string>& value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetCryptedString(const string& group,
+bool FakeStore::GetCryptedString(const std::string& group,
                                  const std::string& deprecated_key,
                                  const std::string& plaintext_key,
-                                 string* value) const {
+                                 std::string* value) const {
   return GetString(group, plaintext_key, value);
 }
 
-bool FakeStore::SetCryptedString(const string& group,
+bool FakeStore::SetCryptedString(const std::string& group,
                                  const std::string& deprecated_key,
                                  const std::string& plaintext_key,
                                  const std::string& value) {
@@ -209,8 +212,8 @@ bool FakeStore::SetCryptedString(const string& group,
 
 // Private methods.
 template <typename T>
-bool FakeStore::ReadSetting(const string& group,
-                            const string& key,
+bool FakeStore::ReadSetting(const std::string& group,
+                            const std::string& key,
                             T* out) const {
   const auto& group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
@@ -243,8 +246,8 @@ bool FakeStore::ReadSetting(const string& group,
 }
 
 template <typename T>
-bool FakeStore::WriteSetting(const string& group,
-                             const string& key,
+bool FakeStore::WriteSetting(const std::string& group,
+                             const std::string& key,
                              const T& new_value) {
   if (writes_fail_)
     return false;

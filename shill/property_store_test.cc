@@ -8,6 +8,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
@@ -20,9 +21,6 @@
 #include "shill/mock_control.h"
 #include "shill/property_accessor.h"
 
-using base::Bind;
-using base::Unretained;
-using std::string;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::Values;
@@ -41,7 +39,7 @@ const brillo::Any PropertyStoreTest::kInt32V = brillo::Any(int32_t(0));
 const brillo::Any PropertyStoreTest::kKeyValueStoreV =
     brillo::Any(brillo::VariantDictionary());
 // static
-const brillo::Any PropertyStoreTest::kStringV = brillo::Any(string());
+const brillo::Any PropertyStoreTest::kStringV = brillo::Any(std::string());
 // static
 const brillo::Any PropertyStoreTest::kStringmapV = brillo::Any(Stringmap());
 // static
@@ -69,7 +67,7 @@ PropertyStoreTest::PropertyStoreTest()
                metrics(),
                run_path(),
                storage_path(),
-               string()) {}
+               std::string()) {}
 
 PropertyStoreTest::~PropertyStoreTest() = default;
 
@@ -81,7 +79,8 @@ void PropertyStoreTest::SetUp() {
 TEST_P(PropertyStoreTest, SetPropertyNonexistent) {
   // Ensure that an attempt to write unknown properties returns
   // InvalidProperty, and does not yield a PropertyChange callback.
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(store.SetAnyProperty("", GetParam(), &error));
@@ -105,13 +104,14 @@ INSTANTIATE_TEST_SUITE_P(PropertyStoreTestInstance,
 template <typename T>
 class PropertyStoreTypedTest : public PropertyStoreTest {
  protected:
-  bool SetProperty(PropertyStore* store, const string& name, Error* error);
+  bool SetProperty(PropertyStore* store, const std::string& name, Error* error);
 };
 
 TYPED_TEST_SUITE(PropertyStoreTypedTest, PropertyStoreTest::PropertyTypes);
 
 TYPED_TEST(PropertyStoreTypedTest, RegisterProperty) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -119,7 +119,8 @@ TYPED_TEST(PropertyStoreTypedTest, RegisterProperty) {
 }
 
 TYPED_TEST(PropertyStoreTypedTest, GetProperty) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -132,7 +133,8 @@ TYPED_TEST(PropertyStoreTypedTest, GetProperty) {
 }
 
 TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -141,7 +143,8 @@ TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
 }
 
 TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -156,7 +159,7 @@ TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
 
 template <>
 bool PropertyStoreTypedTest<bool>::SetProperty(PropertyStore* store,
-                                               const string& name,
+                                               const std::string& name,
                                                Error* error) {
   bool new_value = true;
   return store->SetBoolProperty(name, new_value, error);
@@ -164,7 +167,7 @@ bool PropertyStoreTypedTest<bool>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<int16_t>::SetProperty(PropertyStore* store,
-                                                  const string& name,
+                                                  const std::string& name,
                                                   Error* error) {
   int16_t new_value = 1;
   return store->SetInt16Property(name, new_value, error);
@@ -172,23 +175,23 @@ bool PropertyStoreTypedTest<int16_t>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<int32_t>::SetProperty(PropertyStore* store,
-                                                  const string& name,
+                                                  const std::string& name,
                                                   Error* error) {
   int32_t new_value = 1;
   return store->SetInt32Property(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<string>::SetProperty(PropertyStore* store,
-                                                 const string& name,
-                                                 Error* error) {
-  string new_value = "new value";
+bool PropertyStoreTypedTest<std::string>::SetProperty(PropertyStore* store,
+                                                      const std::string& name,
+                                                      Error* error) {
+  std::string new_value = "new value";
   return store->SetStringProperty(name, new_value, error);
 }
 
 template <>
 bool PropertyStoreTypedTest<Stringmap>::SetProperty(PropertyStore* store,
-                                                    const string& name,
+                                                    const std::string& name,
                                                     Error* error) {
   Stringmap new_value;
   new_value["new key"] = "new value";
@@ -197,7 +200,7 @@ bool PropertyStoreTypedTest<Stringmap>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<Stringmaps>::SetProperty(PropertyStore* store,
-                                                     const string& name,
+                                                     const std::string& name,
                                                      Error* error) {
   Stringmaps new_value(1);
   new_value[0]["new key"] = "new value";
@@ -206,7 +209,7 @@ bool PropertyStoreTypedTest<Stringmaps>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<Strings>::SetProperty(PropertyStore* store,
-                                                  const string& name,
+                                                  const std::string& name,
                                                   Error* error) {
   Strings new_value(1);
   new_value[0] = "new value";
@@ -215,7 +218,7 @@ bool PropertyStoreTypedTest<Strings>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<uint8_t>::SetProperty(PropertyStore* store,
-                                                  const string& name,
+                                                  const std::string& name,
                                                   Error* error) {
   uint8_t new_value = 1;
   return store->SetUint8Property(name, new_value, error);
@@ -223,7 +226,7 @@ bool PropertyStoreTypedTest<uint8_t>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<uint16_t>::SetProperty(PropertyStore* store,
-                                                   const string& name,
+                                                   const std::string& name,
                                                    Error* error) {
   uint16_t new_value = 1;
   return store->SetUint16Property(name, new_value, error);
@@ -231,7 +234,7 @@ bool PropertyStoreTypedTest<uint16_t>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<Uint16s>::SetProperty(PropertyStore* store,
-                                                  const string& name,
+                                                  const std::string& name,
                                                   Error* error) {
   Uint16s new_value{1};
   return store->SetUint16sProperty(name, new_value, error);
@@ -239,7 +242,7 @@ bool PropertyStoreTypedTest<Uint16s>::SetProperty(PropertyStore* store,
 
 template <>
 bool PropertyStoreTypedTest<uint32_t>::SetProperty(PropertyStore* store,
-                                                   const string& name,
+                                                   const std::string& name,
                                                    Error* error) {
   uint32_t new_value = 1;
   return store->SetUint32Property(name, new_value, error);
@@ -263,7 +266,8 @@ TEST_F(PropertyStoreTest, ClearBoolProperty) {
 }
 
 TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
 
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
@@ -274,7 +278,8 @@ TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
 // Separate from SetPropertyNonexistent, because
 // SetAnyProperty doesn't support Stringmaps.
 TEST_F(PropertyStoreTest, SetStringmapsProperty) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
 
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
@@ -286,7 +291,8 @@ TEST_F(PropertyStoreTest, SetStringmapsProperty) {
 // KeyValueStoreProperty is only defined for derived types so handle
 // this case manually here.
 TEST_F(PropertyStoreTest, KeyValueStorePropertyNonExistent) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(
@@ -295,7 +301,8 @@ TEST_F(PropertyStoreTest, KeyValueStorePropertyNonExistent) {
 }
 
 TEST_F(PropertyStoreTest, KeyValueStoreProperty) {
-  PropertyStore store(Bind(&PropertyStoreTest::TestCallback, Unretained(this)));
+  PropertyStore store(
+      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   const char kKey[] = "key";
   EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
       .WillOnce(Return(KeyValueStore()));
@@ -315,7 +322,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
   // when using Get*PropertiesIter().
   PropertyStore store;
   {
-    const string keys[] = {"boolp1", "boolp2"};
+    const std::string keys[] = {"boolp1", "boolp2"};
     bool values[] = {true, true};
     store.RegisterWriteOnlyBool(keys[0], &values[0]);
     store.RegisterBool(keys[1], &values[1]);
@@ -336,7 +343,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], test_value);
   }
   {
-    const string keys[] = {"int16p1", "int16p2"};
+    const std::string keys[] = {"int16p1", "int16p2"};
     int16_t values[] = {127, 128};
     store.RegisterWriteOnlyInt16(keys[0], &values[0]);
     store.RegisterInt16(keys[1], &values[1]);
@@ -357,7 +364,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], test_value);
   }
   {
-    const string keys[] = {"int32p1", "int32p2"};
+    const std::string keys[] = {"int32p1", "int32p2"};
     int32_t values[] = {127, 128};
     store.RegisterWriteOnlyInt32(keys[0], &values[0]);
     store.RegisterInt32(keys[1], &values[1]);
@@ -378,12 +385,13 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], test_value);
   }
   {
-    const string keys[] = {"stringp1", "stringp2"};
-    string values[] = {"noooo", "yesss"};
+    const std::string keys[] = {"stringp1", "stringp2"};
+    std::string values[] = {"noooo", "yesss"};
     store.RegisterWriteOnlyString(keys[0], &values[0]);
     store.RegisterString(keys[1], &values[1]);
 
-    ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
+    ReadablePropertyConstIterator<std::string> it =
+        store.GetStringPropertiesIter();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
     EXPECT_EQ(values[1], it.value());
@@ -393,13 +401,13 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     Error errors[2];
     EXPECT_FALSE(store.GetStringProperty(keys[0], nullptr, &errors[0]));
     EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    string test_value;
+    std::string test_value;
     EXPECT_TRUE(store.GetStringProperty(keys[1], &test_value, &errors[1]));
     EXPECT_TRUE(errors[1].IsSuccess());
     EXPECT_EQ(values[1], test_value);
   }
   {
-    const string keys[] = {"stringmapp1", "stringmapp2"};
+    const std::string keys[] = {"stringmapp1", "stringmapp2"};
     Stringmap values[2];
     values[0]["noooo"] = "yesss";
     values[1]["yesss"] = "noooo";
@@ -423,7 +431,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_TRUE(values[1] == test_value);
   }
   {
-    const string keys[] = {"stringmapsp1", "stringmapsp2"};
+    const std::string keys[] = {"stringmapsp1", "stringmapsp2"};
     Stringmaps values[2];
     Stringmap element;
     element["noooo"] = "yesss";
@@ -451,9 +459,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_TRUE(values[1] == test_value);
   }
   {
-    const string keys[] = {"stringsp1", "stringsp2"};
+    const std::string keys[] = {"stringsp1", "stringsp2"};
     Strings values[2];
-    string element;
+    std::string element;
     element = "noooo";
     values[0].push_back(element);
     element = "yesss";
@@ -478,7 +486,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_TRUE(values[1] == test_value);
   }
   {
-    const string keys[] = {"uint8p1", "uint8p2"};
+    const std::string keys[] = {"uint8p1", "uint8p2"};
     uint8_t values[] = {127, 128};
     store.RegisterWriteOnlyUint8(keys[0], &values[0]);
     store.RegisterUint8(keys[1], &values[1]);
@@ -499,7 +507,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], test_value);
   }
   {
-    const string keys[] = {"uint16p", "uint16p1"};
+    const std::string keys[] = {"uint16p", "uint16p1"};
     uint16_t values[] = {127, 128};
     store.RegisterWriteOnlyUint16(keys[0], &values[0]);
     store.RegisterUint16(keys[1], &values[1]);
@@ -528,7 +536,7 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   PropertyStore store;
   {
     // Register property value.
-    const string key = "boolp";
+    const std::string key = "boolp";
     bool value = true;
     store.RegisterBool(key, &value);
 
@@ -546,7 +554,7 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
-    const string key = "int16p";
+    const std::string key = "int16p";
     int16_t value = 127;
     store.RegisterInt16(key, &value);
 
@@ -564,7 +572,7 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
-    const string key = "int32p";
+    const std::string key = "int32p";
     int32_t value = 127;
     store.RegisterInt32(key, &value);
 
@@ -582,25 +590,25 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
-    const string key = "stringp";
-    string value = "noooo";
+    const std::string key = "stringp";
+    std::string value = "noooo";
     store.RegisterString(key, &value);
 
     // Verify property value.
-    string test_value;
+    std::string test_value;
     Error error;
     EXPECT_TRUE(store.GetStringProperty(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
     // Set property using brillo::Any variant type.
-    string new_value = "yesss";
+    std::string new_value = "yesss";
     EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetStringProperty(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
   {
     // Register property value.
-    const string key = "stringmapp";
+    const std::string key = "stringmapp";
     Stringmap value;
     value["noooo"] = "yesss";
     store.RegisterStringmap(key, &value);
@@ -620,9 +628,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
-    const string key = "stringsp";
+    const std::string key = "stringsp";
     Strings value;
-    string element;
+    std::string element;
     element = "noooo";
     value.push_back(element);
     store.RegisterStrings(key, &value);
@@ -635,7 +643,7 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     Strings new_value;
-    string new_element;
+    std::string new_element;
     new_element = "yesss";
     new_value.push_back(new_element);
     EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
@@ -644,7 +652,7 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
-    const string key = "uint8p";
+    const std::string key = "uint8p";
     uint8_t value = 127;
     store.RegisterUint8(key, &value);
 
@@ -662,7 +670,7 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
-    const string key = "uint16p";
+    const std::string key = "uint16p";
     uint16_t value = 127;
     store.RegisterUint16(key, &value);
 
@@ -680,7 +688,7 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
-    const string key = "uint32p";
+    const std::string key = "uint32p";
     uint32_t value = 127;
     store.RegisterUint32(key, &value);
 
@@ -702,9 +710,9 @@ TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStore) {
   PropertyStore store;
 
   // Register property value.
-  const string key = "key_value_store";
+  const std::string key = "key_value_store";
   const bool bool_value = true;
-  const string string_value = "string1";
+  const std::string string_value = "string1";
   KeyValueStore value;
   value.Set("bool_key", bool_value);
   value.Set("string_key", string_value);
@@ -718,7 +726,7 @@ TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStore) {
 
   // Set property using brillo::Any variant type. Note: This modifies value.
   const bool new_bool_value = false;
-  const string new_string_value = "string2";
+  const std::string new_string_value = "string2";
   brillo::VariantDictionary new_value;
   new_value["bool_key"] = new_bool_value;
   new_value["string_key"] = new_string_value;
@@ -734,9 +742,9 @@ TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStores) {
   PropertyStore store;
 
   // Register property value.
-  const string key = "key_value_stores";
+  const std::string key = "key_value_stores";
   const bool bool_value = true;
-  const string string_value = "string1";
+  const std::string string_value = "string1";
   KeyValueStores values;
   KeyValueStore value;
   value.Set("bool_key", bool_value);
@@ -753,7 +761,7 @@ TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStores) {
   // Set property using brillo::Any variant type. Note: This modifies values.
   std::vector<brillo::VariantDictionary> new_values;
   const bool new_bool_value = false;
-  const string new_string_value = "string2";
+  const std::string new_string_value = "string2";
   brillo::VariantDictionary new_value;
   new_value["bool_key"] = new_bool_value;
   new_value["string_key"] = new_string_value;
@@ -769,21 +777,21 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   PropertyStore store;
 
   // Register properties.
-  const string kBoolKey = "boolp";
-  const string kKeyValueStoreKey = "keyvaluestorep";
-  const string kKeyValueStoresKey = "keyvaluestoresp";
-  const string kInt16Key = "int16p";
-  const string kInt32Key = "int32p";
-  const string kStringKey = "stringp";
-  const string kStringsKey = "stringsp";
-  const string kStringmapKey = "stringmapp";
-  const string kUint8Key = "uint8p";
-  const string kUint16Key = "uint16p";
-  const string kUint32Key = "uint32p";
+  const std::string kBoolKey = "boolp";
+  const std::string kKeyValueStoreKey = "keyvaluestorep";
+  const std::string kKeyValueStoresKey = "keyvaluestoresp";
+  const std::string kInt16Key = "int16p";
+  const std::string kInt32Key = "int32p";
+  const std::string kStringKey = "stringp";
+  const std::string kStringsKey = "stringsp";
+  const std::string kStringmapKey = "stringmapp";
+  const std::string kUint8Key = "uint8p";
+  const std::string kUint16Key = "uint16p";
+  const std::string kUint32Key = "uint32p";
   bool bool_value = true;
   int16_t int16_value = 16;
   int32_t int32_value = 32;
-  string string_value = "string";
+  std::string string_value = "string";
   Stringmap stringmap_value;
   stringmap_value["noooo"] = "yesss";
   Strings strings_value;
@@ -828,7 +836,7 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   std::vector<brillo::VariantDictionary> new_key_value_stores_value;
   int16_t new_int16_value = 17;
   int32_t new_int32_value = 33;
-  string new_string_value = "strings";
+  std::string new_string_value = "strings";
   Stringmap new_stringmap_value;
   new_stringmap_value["yesss"] = "noooo";
   Strings new_strings_value;
@@ -871,7 +879,7 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   EXPECT_EQ(new_bool_value, result_dict[kBoolKey].Get<bool>());
   EXPECT_EQ(new_int16_value, result_dict[kInt16Key].Get<int16_t>());
   EXPECT_EQ(new_int32_value, result_dict[kInt32Key].Get<int32_t>());
-  EXPECT_EQ(new_string_value, result_dict[kStringKey].Get<string>());
+  EXPECT_EQ(new_string_value, result_dict[kStringKey].Get<std::string>());
   EXPECT_TRUE(new_stringmap_value ==
               result_dict[kStringmapKey].Get<Stringmap>());
   EXPECT_TRUE(new_strings_value == result_dict[kStringsKey].Get<Strings>());

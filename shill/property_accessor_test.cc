@@ -14,8 +14,6 @@
 
 #include "shill/error.h"
 
-using std::map;
-using std::string;
 using ::testing::Test;
 
 namespace shill {
@@ -184,14 +182,14 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
 }
 
 TEST(PropertyAccessorTest, StringCorrectness) {
-  string storage;
+  std::string storage;
   {
     Error error;
-    string orig_value = storage;
-    StringAccessor accessor(new PropertyAccessor<string>(&storage));
+    std::string orig_value = storage;
+    StringAccessor accessor(new PropertyAccessor<std::string>(&storage));
     EXPECT_EQ(storage, accessor->Get(&error));
 
-    string expected_string("what");
+    std::string expected_string("what");
     EXPECT_TRUE(accessor->Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, accessor->Get(&error));
@@ -209,10 +207,10 @@ TEST(PropertyAccessorTest, StringCorrectness) {
   }
   {
     Error error;
-    StringAccessor accessor(new ConstPropertyAccessor<string>(&storage));
+    StringAccessor accessor(new ConstPropertyAccessor<std::string>(&storage));
     EXPECT_EQ(storage, accessor->Get(&error));
 
-    string expected_string("what");
+    std::string expected_string("what");
     EXPECT_FALSE(accessor->Set(expected_string, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -223,21 +221,22 @@ TEST(PropertyAccessorTest, StringCorrectness) {
   }
   {
     Error error;
-    StringAccessor accessor(new ConstPropertyAccessor<string>(&storage));
+    StringAccessor accessor(new ConstPropertyAccessor<std::string>(&storage));
     accessor->Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
   {
     Error error;
-    StringAccessor accessor(new WriteOnlyPropertyAccessor<string>(&storage));
+    StringAccessor accessor(
+        new WriteOnlyPropertyAccessor<std::string>(&storage));
     accessor->Get(&error);
     EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kPermissionDenied, error.type());
   }
   {
     Error error;
-    string expected_string = "what";
-    WriteOnlyPropertyAccessor<string> accessor(&storage);
+    std::string expected_string = "what";
+    WriteOnlyPropertyAccessor<std::string> accessor(&storage);
     EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, *accessor.property_);
@@ -246,7 +245,7 @@ TEST(PropertyAccessorTest, StringCorrectness) {
     EXPECT_FALSE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     // As a write-only, the value can't be read.
-    EXPECT_EQ(string(), accessor.Get(&error));
+    EXPECT_EQ(std::string(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
     storage = "nooooo";
@@ -254,8 +253,8 @@ TEST(PropertyAccessorTest, StringCorrectness) {
   }
   {
     Error error;
-    string orig_value = storage = "original value";
-    WriteOnlyPropertyAccessor<string> accessor(&storage);
+    std::string orig_value = storage = "original value";
+    WriteOnlyPropertyAccessor<std::string> accessor(&storage);
     EXPECT_TRUE(accessor.Set("new value", &error));
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
@@ -354,9 +353,9 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
 
 class StringWrapper {
  public:
-  string Get(Error* /*error*/) { return value_; }
-  string ConstGet(Error* /*error*/) const { return value_; }
-  bool Set(const string& value, Error* /*error*/) {
+  std::string Get(Error* /*error*/) { return value_; }
+  std::string ConstGet(Error* /*error*/) const { return value_; }
+  bool Set(const std::string& value, Error* /*error*/) {
     if (value_ == value) {
       return false;
     }
@@ -365,7 +364,7 @@ class StringWrapper {
   }
   void Clear(Error* /*error*/) { value_.clear(); }
 
-  string value_;
+  std::string value_;
 };
 
 TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
@@ -375,13 +374,13 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     // Together, write and write-same verify that the CustomAccessor
     // template passes through the value from the called function.
     Error error;
-    const string orig_value = wrapper.value_ = "original value";
-    CustomAccessor<StringWrapper, string> accessor(
+    const std::string orig_value = wrapper.value_ = "original value";
+    CustomAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Get, &StringWrapper::Set);
     EXPECT_EQ(orig_value, accessor.Get(&error));
     EXPECT_TRUE(error.IsSuccess());
 
-    const string expected_string = "new value";
+    const std::string expected_string = "new value";
     EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, accessor.Get(&error));
@@ -399,11 +398,11 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
   {
     // Custom read-only accessor: read, write, read-updated.
     Error error;
-    CustomAccessor<StringWrapper, string> accessor(
+    CustomAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Get, nullptr);
     EXPECT_EQ(wrapper.value_, accessor.Get(&error));
 
-    const string expected_string = "what";
+    const std::string expected_string = "what";
     EXPECT_FALSE(accessor.Set(expected_string, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -415,7 +414,7 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
   {
     // Custom read-only accessor: clear.
     Error error;
-    CustomAccessor<StringWrapper, string> accessor(
+    CustomAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Get, nullptr);
     accessor.Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
@@ -423,7 +422,7 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
   {
     // Custom read-only accessor with custom clear method.
     Error error;
-    CustomAccessor<StringWrapper, string> accessor(
+    CustomAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Get, nullptr, &StringWrapper::Clear);
     wrapper.value_ = "empty this";
     accessor.Clear(&error);
@@ -437,20 +436,20 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithDefault) {
   {
     // Test reading.
     Error error;
-    const string default_value = "default value";
-    CustomWriteOnlyAccessor<StringWrapper, string> accessor(
+    const std::string default_value = "default value";
+    CustomWriteOnlyAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Set, nullptr, &default_value);
     wrapper.value_ = "can't read this";
-    EXPECT_EQ(string(), accessor.Get(&error));
+    EXPECT_EQ(std::string(), accessor.Get(&error));
     EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kPermissionDenied, error.type());
   }
   {
     // Test writing.
     Error error;
-    const string default_value = "default value";
-    const string expected_string = "what";
-    CustomWriteOnlyAccessor<StringWrapper, string> accessor(
+    const std::string default_value = "default value";
+    const std::string expected_string = "what";
+    CustomWriteOnlyAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Set, nullptr, &default_value);
     EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
@@ -464,8 +463,8 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithDefault) {
   {
     // Test clearing.
     Error error;
-    const string default_value = "default value";
-    CustomWriteOnlyAccessor<StringWrapper, string> accessor(
+    const std::string default_value = "default value";
+    CustomWriteOnlyAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Set, nullptr, &default_value);
     accessor.Set("new value", &error);
     EXPECT_EQ("new value", wrapper.value_);
@@ -480,18 +479,18 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
   {
     // Test reading.
     Error error;
-    CustomWriteOnlyAccessor<StringWrapper, string> accessor(
+    CustomWriteOnlyAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Set, &StringWrapper::Clear, nullptr);
     wrapper.value_ = "can't read this";
-    EXPECT_EQ(string(), accessor.Get(&error));
+    EXPECT_EQ(std::string(), accessor.Get(&error));
     EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kPermissionDenied, error.type());
   }
   {
     // Test writing.
     Error error;
-    const string expected_string = "what";
-    CustomWriteOnlyAccessor<StringWrapper, string> accessor(
+    const std::string expected_string = "what";
+    CustomWriteOnlyAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Set, &StringWrapper::Clear, nullptr);
     EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
@@ -505,7 +504,7 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
   {
     // Test clearing.
     Error error;
-    CustomWriteOnlyAccessor<StringWrapper, string> accessor(
+    CustomWriteOnlyAccessor<StringWrapper, std::string> accessor(
         &wrapper, &StringWrapper::Set, &StringWrapper::Clear, nullptr);
     EXPECT_TRUE(accessor.Set("new value", &error));
     EXPECT_EQ("new value", wrapper.value_);
@@ -517,9 +516,9 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
 
 TEST(PropertyAccessorTest, CustomReadOnlyAccessor) {
   StringWrapper wrapper;
-  CustomReadOnlyAccessor<StringWrapper, string> accessor(
+  CustomReadOnlyAccessor<StringWrapper, std::string> accessor(
       &wrapper, &StringWrapper::ConstGet);
-  const string orig_value = wrapper.value_ = "original value";
+  const std::string orig_value = wrapper.value_ = "original value";
   {
     // Test reading.
     Error error;
@@ -551,12 +550,12 @@ TEST(PropertyAccessorTest, CustomReadOnlyAccessor) {
 
 class StringMapWrapper {
  public:
-  void Clear(const string& key, Error* /*error*/) { value_.erase(key); }
-  string Get(const string& key, Error* /*error*/) {
+  void Clear(const std::string& key, Error* /*error*/) { value_.erase(key); }
+  std::string Get(const std::string& key, Error* /*error*/) {
     EXPECT_TRUE(base::Contains(value_, key));
     return value_[key];
   }
-  bool Set(const string& key, const string& value, Error* /*error*/) {
+  bool Set(const std::string& key, const std::string& value, Error* /*error*/) {
     if (value_[key] == value) {
       return false;
     }
@@ -564,16 +563,16 @@ class StringMapWrapper {
     return true;
   }
 
-  map<string, string> value_;
+  std::map<std::string, std::string> value_;
 };
 
 TEST(PropertyAccessorTest, CustomMappedAccessor) {
-  const string kKey = "entry_key";
-  const string kValue = "entry_value";
+  const std::string kKey = "entry_key";
+  const std::string kValue = "entry_value";
   {
     // Test reading.
     StringMapWrapper wrapper;
-    CustomMappedAccessor<StringMapWrapper, string, string> accessor(
+    CustomMappedAccessor<StringMapWrapper, std::string, std::string> accessor(
         &wrapper, &StringMapWrapper::Clear, &StringMapWrapper::Get,
         &StringMapWrapper::Set, kKey);
     wrapper.value_[kKey] = kValue;
@@ -584,7 +583,7 @@ TEST(PropertyAccessorTest, CustomMappedAccessor) {
   {
     // Test writing.
     StringMapWrapper wrapper;
-    CustomMappedAccessor<StringMapWrapper, string, string> accessor(
+    CustomMappedAccessor<StringMapWrapper, std::string, std::string> accessor(
         &wrapper, &StringMapWrapper::Clear, &StringMapWrapper::Get,
         &StringMapWrapper::Set, kKey);
     Error error;
@@ -600,7 +599,7 @@ TEST(PropertyAccessorTest, CustomMappedAccessor) {
   {
     // Test clearing.
     StringMapWrapper wrapper;
-    CustomMappedAccessor<StringMapWrapper, string, string> accessor(
+    CustomMappedAccessor<StringMapWrapper, std::string, std::string> accessor(
         &wrapper, &StringMapWrapper::Clear, &StringMapWrapper::Get,
         &StringMapWrapper::Set, kKey);
     wrapper.value_[kKey] = kValue;
