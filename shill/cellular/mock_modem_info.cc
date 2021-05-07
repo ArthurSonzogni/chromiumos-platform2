@@ -10,7 +10,8 @@ namespace shill {
 
 MockModemInfo::MockModemInfo(ControlInterface* control, Manager* manager)
     : ModemInfo(control, manager), mock_pending_activation_store_(nullptr) {
-  pending_activation_store_ = std::make_unique<MockPendingActivationStore>();
+  pending_activation_store_ =
+      std::make_unique<NiceMock<MockPendingActivationStore>>();
   mock_pending_activation_store_ =
       static_cast<MockPendingActivationStore*>(pending_activation_store_.get());
 }

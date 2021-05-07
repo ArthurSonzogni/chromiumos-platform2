@@ -141,39 +141,28 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
         modem_proxy_(new mm1::MockModemProxy()),
         modem_signal_proxy_(new NiceMock<mm1::MockModemSignalProxy>()),
         modem_simple_proxy_(new NiceMock<mm1::MockModemSimpleProxy>()),
-        capability_(nullptr),
-        device_adaptor_(nullptr),
-        cellular_(new Cellular(&modem_info_,
-                               "",
-                               "00:01:02:03:04:05",
-                               0,
-                               Cellular::kType3gpp,
-                               "",
-                               RpcIdentifier(""))),
-        service_(new MockCellularService(&manager_, cellular_)),
         profile_(new NiceMock<MockProfile>(&manager_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {
-    metrics_.RegisterDevice(cellular_->interface_index(),
-                            Technology::kCellular);
     cellular_service_provider_.set_profile_for_testing(profile_);
   }
 
-  ~CellularCapability3gppTest() override {
-    CHECK(cellular_->HasOneRef());
-    cellular_ = nullptr;
-    device_adaptor_ = nullptr;
-  }
+  ~CellularCapability3gppTest() override = default;
 
   void SetUp() override {
     EXPECT_CALL(*modem_proxy_, set_state_changed_callback(_))
         .Times(AnyNumber());
 
-    cellular_->CreateCapability(&modem_info_);
+    cellular_ = new Cellular(&modem_info_, "", "00:01:02:03:04:05", 0,
+                             Cellular::kType3gpp, "", RpcIdentifier(""));
+    service_ = new MockCellularService(&manager_, cellular_);
+    device_adaptor_ = static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     capability_ = static_cast<CellularCapability3gpp*>(
         cellular_->capability_for_testing());
-    device_adaptor_ = static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     cellular_->SetServiceForTesting(service_);
+    cellular_service_provider_.Start();
+    metrics_.RegisterDevice(cellular_->interface_index(),
+                            Technology::kCellular);
 
     EXPECT_CALL(*service_, activation_state())
         .WillRepeatedly(ReturnRef(kActivationStateUnknown));
@@ -193,10 +182,15 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void TearDown() override {
+    metrics_.DeregisterDevice(cellular_->interface_index());
     cellular_service_provider_.Stop();
+    metrics_.RegisterDevice(cellular_->interface_index(),
+                            Technology::kCellular);
     cellular_->SetServiceForTesting(nullptr);
-    cellular_->DestroyCapability();
-    capability_ = nullptr;
+    service_ = nullptr;
+    CHECK(cellular_->HasOneRef());
+    cellular_ = nullptr;
+    device_adaptor_ = nullptr;
   }
 
   void VerifyAndSetActivationExpectations() {
@@ -535,10 +529,10 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   std::unique_ptr<mm1::MockModemProxy> modem_proxy_;
   std::unique_ptr<mm1::MockModemSignalProxy> modem_signal_proxy_;
   std::unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
-  CellularCapability3gpp* capability_;  // Owned by |cellular_|.
-  DeviceMockAdaptor* device_adaptor_;   // Owned by |cellular_|.
+  CellularCapability3gpp* capability_ = nullptr;  // Owned by |cellular_|.
+  DeviceMockAdaptor* device_adaptor_ = nullptr;   // Owned by |cellular_|.
   CellularRefPtr cellular_;
-  MockCellularService* service_;  // owned by cellular_
+  MockCellularService* service_ = nullptr;  // owned by cellular_
   CellularServiceProvider cellular_service_provider_{&manager_};
   FakeStore profile_storage_;
   scoped_refptr<NiceMock<MockProfile>> profile_;

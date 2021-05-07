@@ -72,7 +72,6 @@ class TestDeviceInfo : public MockDeviceInfo {
       cellular = new Cellular(manager()->modem_info(), kLinkName, mac_address,
                               interface_index, modem->type(), modem->service(),
                               modem->path());
-      cellular->CreateCapability(manager()->modem_info());
     }
     return cellular;
   }

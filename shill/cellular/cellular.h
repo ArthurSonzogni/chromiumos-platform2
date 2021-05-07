@@ -167,15 +167,6 @@ class Cellular : public Device,
     return serving_operator_info_.get();
   }
 
-  // Creates a CellularCapability based on properties of |this| and
-  // |modem_info|. Sets |capability_| to the created capability.
-  // Called once the associated Modem instance is available.
-  void CreateCapability(ModemInfo* modem_info);
-
-  // Called from OnModemDestroyed. Public for testing.
-  // TODO(b/187879859): Make private.
-  void DestroyCapability();
-
   // Called when the associated Modem object is destroyed.
   void OnModemDestroyed();
 
@@ -461,6 +452,9 @@ class Cellular : public Device,
   // Time between asynchronous calls to ModemManager1's GetLocation()
   static const int64_t kPollLocationIntervalMilliseconds;
 
+  void CreateCapability();
+  void DestroyCapability();
+
   // TODO(b/173635024): Fix order of cellular.h and .cc methods.
   void StartModem(Error* error, const EnabledStateChangedCallback& callback);
   void StartModemCallback(const EnabledStateChangedCallback& callback,
@@ -614,6 +608,8 @@ class Cellular : public Device,
   RpcIdentifier dbus_path_;         // ModemManager.Modem
   // Used because we currently expose |dbus_path| as a string property.
   std::string dbus_path_str_;
+
+  ModemInfo* modem_info_;
 
   Stringmap home_provider_;
 

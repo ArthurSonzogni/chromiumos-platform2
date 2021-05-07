@@ -77,7 +77,6 @@ class CellularCapabilityCdmaTest : public testing::Test {
   }
 
   void SetUp() override {
-    cellular_->CreateCapability(&modem_info_);
     capability_ =
         static_cast<CellularCapabilityCdma*>(cellular_->capability_.get());
     device_adaptor_ =
@@ -87,7 +86,6 @@ class CellularCapabilityCdmaTest : public testing::Test {
 
   void TearDown() override {
     cellular_->SetServiceForTesting(nullptr);
-    cellular_->DestroyCapability();
     capability_ = nullptr;
   }
 

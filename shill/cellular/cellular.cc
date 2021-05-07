@@ -263,6 +263,7 @@ Cellular::Cellular(ModemInfo* modem_info,
       dbus_service_(service),
       dbus_path_(path),
       dbus_path_str_(path.value()),
+      modem_info_(modem_info),
       scanning_supported_(false),
       scanning_(false),
       polling_location_(false),
@@ -295,6 +296,9 @@ Cellular::Cellular(ModemInfo* modem_info,
   }
 
   mm1_proxy_ = control_interface()->CreateMM1Proxy(dbus_service_);
+
+  // Create an initial Capability from |modem_info| properties.
+  CreateCapability();
 
   SLOG(this, 1) << "Cellular() " << this->link_name();
 }
@@ -1041,10 +1045,10 @@ void Cellular::OnModemDestroyed() {
   manager()->RemoveTerminationAction(link_name());
 }
 
-void Cellular::CreateCapability(ModemInfo* modem_info) {
+void Cellular::CreateCapability() {
   SLOG(this, 1) << __func__;
   CHECK(!capability_);
-  capability_ = CellularCapability::Create(type_, this, modem_info);
+  capability_ = CellularCapability::Create(type_, this, modem_info_);
 
   home_provider_info_->AddObserver(this);
   serving_operator_info_->AddObserver(this);
@@ -2018,6 +2022,7 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
   adaptor()->EmitStringChanged(kDBusObjectProperty, dbus_path_str_);
   SetModemState(kModemStateUnknown);
   set_mac_address(mac_address);
+  CreateCapability();
 }
 
 const std::string& Cellular::GetSimCardId() const {

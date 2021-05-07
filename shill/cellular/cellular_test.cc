@@ -95,9 +95,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              3,
                              Cellular::kType3gpp,
                              "",
-                             RpcIdentifier(""))) {
-    device_->CreateCapability(&modem_info_);
-  }
+                             RpcIdentifier(""))) {}
 
   ~CellularPropertyTest() { device_ = nullptr; }
 
@@ -153,7 +151,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
                              kDBusService,
                              kDBusPath)),
         profile_(new NiceMock<MockProfile>(&manager_)) {
-    device_->CreateCapability(&modem_info_);
     cellular_service_provider_.set_profile_for_testing(profile_);
     PopulateProxies();
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);

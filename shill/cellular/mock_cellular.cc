@@ -26,9 +26,7 @@ MockCellular::MockCellular(ModemInfo* modem_info,
                interface_index,
                type,
                service,
-               path) {
-  CreateCapability(modem_info);
-}
+               path) {}
 
 MockCellular::~MockCellular() = default;
 

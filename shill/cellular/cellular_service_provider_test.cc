@@ -4,6 +4,7 @@
 
 #include "shill/cellular/cellular_service_provider.h"
 
+#include <memory>
 #include <set>
 
 #include <gtest/gtest.h>
@@ -40,22 +41,27 @@ class CellularServiceProviderTest : public testing::Test {
   CellularServiceProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         modem_info_(&control_, &manager_),
-        device_info_(&manager_),
-        profile_(new NiceMock<MockProfile>(&manager_)),
-        provider_(&manager_) {}
+        device_info_(&manager_) {}
 
   ~CellularServiceProviderTest() override = default;
 
   void SetUp() override {
-    provider_.Start();
-    provider_.set_profile_for_testing(profile_);
+    provider_ = std::make_unique<CellularServiceProvider>(&manager_);
+    provider_->Start();
+    profile_ = new NiceMock<MockProfile>(&manager_);
+    provider_->set_profile_for_testing(profile_);
     EXPECT_CALL(*profile_, GetConstStorage()).WillRepeatedly(Return(&storage_));
     EXPECT_CALL(*profile_, GetStorage()).WillRepeatedly(Return(&storage_));
     EXPECT_CALL(manager_, cellular_service_provider())
-        .WillRepeatedly(Return(&provider_));
+        .WillRepeatedly(Return(provider_.get()));
   }
 
-  void TearDown() override { provider_.Stop(); }
+  void TearDown() override {
+    provider_->Stop();
+    provider_.reset();
+    CHECK(profile_->HasOneRef());
+    profile_ = nullptr;
+  }
 
   // TODO(b/154014577): Provide eID for identifying sim cards once supported.
   CellularRefPtr CreateDevice(const std::string& imsi,
@@ -63,7 +69,6 @@ class CellularServiceProviderTest : public testing::Test {
     CellularRefPtr cellular = new Cellular(
         &modem_info_, kTestDeviceName, kTestDeviceAddress, kTestInterfaceIndex,
         Cellular::kType3gpp, kDBusService, kDBusPath);
-    cellular->CreateCapability(&modem_info_);
     if (!iccid.empty()) {
       Cellular::SimProperties sim_properties;
       sim_properties.iccid = iccid;
@@ -102,10 +107,10 @@ class CellularServiceProviderTest : public testing::Test {
   std::set<std::string> GetStorageGroups() { return storage_.GetGroups(); }
 
   const std::vector<CellularServiceRefPtr>& GetProviderServices() const {
-    return provider_.services_;
+    return provider_->services_;
   }
 
-  CellularServiceProvider* provider() { return &provider_; }
+  CellularServiceProvider* provider() { return provider_.get(); }
 
  private:
   EventDispatcherForTest dispatcher_;
@@ -116,7 +121,7 @@ class CellularServiceProviderTest : public testing::Test {
   NiceMock<MockDeviceInfo> device_info_;
   FakeStore storage_;
   scoped_refptr<NiceMock<MockProfile>> profile_;
-  CellularServiceProvider provider_;
+  std::unique_ptr<CellularServiceProvider> provider_;
 };
 
 TEST_F(CellularServiceProviderTest, LoadService) {
@@ -275,7 +280,13 @@ TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
   EXPECT_EQ(Service::kStateIdle, service1->state());
   EXPECT_EQ(0u, service1->strength());
 
-  cellular->DestroyCapability();
+  provider()->Stop();
+  cellular->SetServiceForTesting(nullptr);
+
+  service1->SetDevice(nullptr);
+  service2->SetDevice(nullptr);
+  ASSERT_TRUE(cellular->HasOneRef());
+  cellular = nullptr;
 }
 
 TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {
