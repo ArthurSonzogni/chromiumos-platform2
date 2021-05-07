@@ -17,16 +17,36 @@ using ::chromeos::machine_learning::mojom::TextSuggesterQuery;
 using ::chromeos::machine_learning::mojom::TextSuggesterQueryPtr;
 using ::chromeos::machine_learning::mojom::TextSuggesterResult;
 using ::chromeos::machine_learning::mojom::TextSuggesterResultPtr;
+using ::chromeos::machine_learning::mojom::TextSuggestionMode;
 
-TEST(TextSuggesterMojomConversionTest, QueryMojomToRequestProto) {
+TEST(TextSuggesterMojomConversionTest, CompletionQueryMojomToRequestProto) {
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are y";
+  query->suggestion_mode = TextSuggestionMode::COMPLETION;
 
   const chrome_knowledge::TextSuggesterRequest request_proto =
       TextSuggesterQueryToProto(std::move(query));
 
   EXPECT_EQ(request_proto.text(), "how are y");
   EXPECT_EQ(request_proto.next_word_candidates_size(), 0);
+  EXPECT_EQ(
+      request_proto.suggestion_mode(),
+      chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_COMPLETION);
+}
+
+TEST(TextSuggesterMojomConversionTest, PredictionQueryMojomToRequestProto) {
+  TextSuggesterQueryPtr query = TextSuggesterQuery::New();
+  query->text = "how are y";
+  query->suggestion_mode = TextSuggestionMode::PREDICTION;
+
+  const chrome_knowledge::TextSuggesterRequest request_proto =
+      TextSuggesterQueryToProto(std::move(query));
+
+  EXPECT_EQ(request_proto.text(), "how are y");
+  EXPECT_EQ(request_proto.next_word_candidates_size(), 0);
+  EXPECT_EQ(
+      request_proto.suggestion_mode(),
+      chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_PREDICTION);
 }
 
 TEST(TextSuggesterMojomConversionTest,

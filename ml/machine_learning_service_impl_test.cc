@@ -229,6 +229,7 @@ using ::chromeos::machine_learning::mojom::TextSuggesterQuery;
 using ::chromeos::machine_learning::mojom::TextSuggesterQueryPtr;
 using ::chromeos::machine_learning::mojom::TextSuggesterResult;
 using ::chromeos::machine_learning::mojom::TextSuggesterResultPtr;
+using ::chromeos::machine_learning::mojom::TextSuggestionMode;
 using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequest;
 using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequestPtr;
 
@@ -1579,8 +1580,10 @@ TEST(TextSuggesterTest, LoadModelAndInference) {
   ASSERT_TRUE(model_callback_done);
   ASSERT_TRUE(suggester.is_bound());
 
+  // TODO(crbug/1146266): Add prediction test case after next sharedlib uprev
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are y";
+  query->suggestion_mode = TextSuggestionMode::COMPLETION;
 
   NextWordCompletionCandidatePtr candidate_one =
       NextWordCompletionCandidate::New();

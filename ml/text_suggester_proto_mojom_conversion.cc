@@ -17,6 +17,21 @@ using ::chromeos::machine_learning::mojom::TextSuggesterResult;
 using ::chromeos::machine_learning::mojom::TextSuggesterResultPtr;
 using ::chromeos::machine_learning::mojom::TextSuggestionCandidate;
 using ::chromeos::machine_learning::mojom::TextSuggestionCandidatePtr;
+using ::chromeos::machine_learning::mojom::TextSuggestionMode;
+
+chrome_knowledge::RequestSuggestionMode ToRequestSuggestionMode(
+    TextSuggestionMode suggestion_mode) {
+  switch (suggestion_mode) {
+    case TextSuggestionMode::COMPLETION:
+      return chrome_knowledge::RequestSuggestionMode::
+          SUGGESTION_MODE_COMPLETION;
+    case TextSuggestionMode::PREDICTION:
+      return chrome_knowledge::RequestSuggestionMode::
+          SUGGESTION_MODE_PREDICTION;
+    default:
+      return chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_UNKNOWN;
+  }
+}
 
 }  // namespace
 
@@ -24,6 +39,8 @@ chrome_knowledge::TextSuggesterRequest TextSuggesterQueryToProto(
     TextSuggesterQueryPtr query) {
   chrome_knowledge::TextSuggesterRequest request_proto;
   request_proto.set_text(query->text);
+  request_proto.set_suggestion_mode(
+      ToRequestSuggestionMode(query->suggestion_mode));
 
   for (const auto& candidate : query->next_word_candidates) {
     chrome_knowledge::NextWordCompletionCandidate next_word_candidate;

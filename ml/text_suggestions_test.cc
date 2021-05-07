@@ -38,8 +38,11 @@ TEST(TextSuggestionsText, ExampleRequest) {
   TextSuggester const suggester = instance->CreateTextSuggester();
   instance->LoadTextSuggester(suggester);
 
+  // TODO(crbug/1146266): Add prediction test case after next sharedlib uprev
   chrome_knowledge::TextSuggesterRequest request;
   request.set_text("How are y");
+  request.set_suggestion_mode(
+      chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_COMPLETION);
 
   chrome_knowledge::NextWordCompletionCandidate* candidate =
       request.add_next_word_candidates();
