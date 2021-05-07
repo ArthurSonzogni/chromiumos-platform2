@@ -22,6 +22,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
+#include <brillo/syslog_logging.h>
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
@@ -356,6 +357,12 @@ int main(int argc, const char* argv[]) {
   DEFINE_bool(unsafe, false, "mount encrypt partition with well known secret.");
   brillo::FlagHelper::Init(argc, argv, "mount-encrypted");
 
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  logging::SetLogItems(false,   // process ID
+                       false,   // thread ID
+                       true,    // timestamp
+                       false);  // tickcount
+
   auto commandline = base::CommandLine::ForCurrentProcess();
   auto args = commandline->GetArgs();
 
@@ -366,6 +373,11 @@ int main(int argc, const char* argv[]) {
   brillo::DeviceMapper device_mapper;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
       rootdir, &platform, &device_mapper, &encrypted_container_factory);
+
+  if (!encrypted_fs) {
+    LOG(ERROR) << "Failed to create encrypted fs handler.";
+    return RESULT_FAIL_FATAL;
+  }
 
   LOG(INFO) << "Starting.";
 
