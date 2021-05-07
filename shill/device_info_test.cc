@@ -5,6 +5,9 @@
 #include "shill/device_info.h"
 
 #include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 #include <linux/if.h>
 #include <linux/if_tun.h>
@@ -50,11 +53,6 @@
 #include "shill/net/nl80211_message.h"
 #endif  // DISABLE_WIFI
 
-using base::FilePath;
-using std::set;
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::ContainerEq;
@@ -86,7 +84,7 @@ class DeviceInfoTest : public Test {
     device_info_.time_ = &time_;
     manager_.set_mock_device_info(&device_info_);
     EXPECT_CALL(manager_, FilterPrependDNSServersByFamily(_))
-        .WillRepeatedly(Return(vector<string>()));
+        .WillRepeatedly(Return(std::vector<std::string>()));
     patchpanel_client_ = new patchpanel::FakeClient();
     manager_.patchpanel_client_.reset(patchpanel_client_);
   }
@@ -97,7 +95,7 @@ class DeviceInfoTest : public Test {
     IPAddress address(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
     address.set_prefix(kTestIPAddressPrefix0);
-    vector<DeviceInfo::AddressData>& addresses =
+    std::vector<DeviceInfo::AddressData>& addresses =
         device_info_.infos_[kTestDeviceIndex].ip_addresses;
     addresses.push_back(DeviceInfo::AddressData(address, 0, RT_SCOPE_UNIVERSE));
     EXPECT_EQ(1, addresses.size());
@@ -147,19 +145,19 @@ class DeviceInfoTest : public Test {
   static const int kReceiveByteCount;
   static const int kTransmitByteCount;
 
-  unique_ptr<RTNLMessage> BuildLinkMessage(RTNLMessage::Mode mode);
-  unique_ptr<RTNLMessage> BuildLinkMessageWithInterfaceName(
+  std::unique_ptr<RTNLMessage> BuildLinkMessage(RTNLMessage::Mode mode);
+  std::unique_ptr<RTNLMessage> BuildLinkMessageWithInterfaceName(
       RTNLMessage::Mode mode,
-      const string& interface_name,
+      const std::string& interface_name,
       int interface_index = kTestDeviceIndex);
-  unique_ptr<RTNLMessage> BuildAddressMessage(RTNLMessage::Mode mode,
-                                              const IPAddress& address,
-                                              unsigned char flags,
-                                              unsigned char scope);
-  unique_ptr<RTNLMessage> BuildRdnssMessage(
+  std::unique_ptr<RTNLMessage> BuildAddressMessage(RTNLMessage::Mode mode,
+                                                   const IPAddress& address,
+                                                   unsigned char flags,
+                                                   unsigned char scope);
+  std::unique_ptr<RTNLMessage> BuildRdnssMessage(
       RTNLMessage::Mode mode,
       uint32_t lifetime,
-      const vector<IPAddress>& dns_servers);
+      const std::vector<IPAddress>& dns_servers);
   void SendMessageToDeviceInfo(const RTNLMessage& message);
 
   MockControl control_interface_;
@@ -194,8 +192,10 @@ const char DeviceInfoTest::kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
 const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
 
-unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
-    RTNLMessage::Mode mode, const string& interface_name, int interface_index) {
+std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
+    RTNLMessage::Mode mode,
+    const std::string& interface_name,
+    int interface_index) {
   auto message =
       std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink, mode, 0, 0, 0,
                                     interface_index, IPAddress::kFamilyIPv4);
@@ -206,12 +206,12 @@ unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
   return message;
 }
 
-unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessage(
+std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessage(
     RTNLMessage::Mode mode) {
   return BuildLinkMessageWithInterfaceName(mode, kTestDeviceName);
 }
 
-unique_ptr<RTNLMessage> DeviceInfoTest::BuildAddressMessage(
+std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildAddressMessage(
     RTNLMessage::Mode mode,
     const IPAddress& address,
     unsigned char flags,
@@ -225,10 +225,10 @@ unique_ptr<RTNLMessage> DeviceInfoTest::BuildAddressMessage(
   return message;
 }
 
-unique_ptr<RTNLMessage> DeviceInfoTest::BuildRdnssMessage(
+std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildRdnssMessage(
     RTNLMessage::Mode mode,
     uint32_t lifetime,
-    const vector<IPAddress>& dns_servers) {
+    const std::vector<IPAddress>& dns_servers) {
   auto message =
       std::make_unique<RTNLMessage>(RTNLMessage::kTypeRdnss, mode, 0, 0, 0,
                                     kTestDeviceIndex, IPAddress::kFamilyIPv6);
@@ -296,7 +296,7 @@ TEST_F(DeviceInfoTest, RegisterDevice) {
 }
 
 TEST_F(DeviceInfoTest, DeviceEnumeration) {
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
@@ -331,7 +331,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   scoped_refptr<MockDevice> device0(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device0;
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeDelete);
+  auto message = BuildLinkMessage(RTNLMessage::kModeDelete);
   EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
@@ -351,26 +351,27 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
 }
 
 TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
-  vector<string> technologies = device_info_.GetUninitializedTechnologies();
-  set<string> expected_technologies;
+  std::vector<std::string> technologies =
+      device_info_.GetUninitializedTechnologies();
+  std::set<std::string> expected_technologies;
 
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   device_info_.infos_[0].technology = Technology::kUnknown;
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   device_info_.infos_[1].technology = Technology::kCellular;
   technologies = device_info_.GetUninitializedTechnologies();
   expected_technologies.insert(Technology(Technology::kCellular).GetName());
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   device_info_.infos_[2].technology = Technology::kWifi;
   technologies = device_info_.GetUninitializedTechnologies();
   expected_technologies.insert(Technology(Technology::kWifi).GetName());
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   scoped_refptr<MockDevice> device(
@@ -378,18 +379,18 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
   device_info_.infos_[1].device = device;
   technologies = device_info_.GetUninitializedTechnologies();
   expected_technologies.erase(Technology(Technology::kCellular).GetName());
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   device_info_.infos_[3].technology = Technology::kCellular;
   technologies = device_info_.GetUninitializedTechnologies();
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   device_info_.infos_[3].device = device;
   device_info_.infos_[1].device = nullptr;
   technologies = device_info_.GetUninitializedTechnologies();
-  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+  EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 }
 
@@ -399,7 +400,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
       device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
 
   // No link statistics in the message.
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(
       device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
@@ -617,7 +618,7 @@ TEST_F(DeviceInfoTest, BlockedDevices) {
   // Manager is not running by default.
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(0);
   device_info_.BlockDevice(kTestDeviceName);
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -629,7 +630,7 @@ TEST_F(DeviceInfoTest, BlockDeviceWithManagerRunning) {
   SetManagerRunning(true);
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
   device_info_.BlockDevice(kTestDeviceName);
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -639,7 +640,7 @@ TEST_F(DeviceInfoTest, BlockDeviceWithManagerRunning) {
 
 TEST_F(DeviceInfoTest, RenamedBlockedDevice) {
   device_info_.BlockDevice(kTestDeviceName);
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -648,8 +649,8 @@ TEST_F(DeviceInfoTest, RenamedBlockedDevice) {
 
   // Rename the test device.
   const char kRenamedDeviceName[] = "renamed-device";
-  unique_ptr<RTNLMessage> rename_message = BuildLinkMessageWithInterfaceName(
-      RTNLMessage::kModeAdd, kRenamedDeviceName);
+  auto rename_message = BuildLinkMessageWithInterfaceName(RTNLMessage::kModeAdd,
+                                                          kRenamedDeviceName);
   EXPECT_CALL(manager_, DeregisterDevice(_));
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex));
   SendMessageToDeviceInfo(*rename_message);
@@ -667,10 +668,10 @@ TEST_F(DeviceInfoTest, RenamedBlockedDevice) {
 
 TEST_F(DeviceInfoTest, RenamedNonBlockedDevice) {
   const char kInitialDeviceName[] = "initial-device";
-  unique_ptr<RTNLMessage> initial_message = BuildLinkMessageWithInterfaceName(
+  auto initial_message = BuildLinkMessageWithInterfaceName(
       RTNLMessage::kModeAdd, kInitialDeviceName);
   SendMessageToDeviceInfo(*initial_message);
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
 
   DeviceRefPtr initial_device = device_info_.GetDevice(kTestDeviceIndex);
   ASSERT_NE(nullptr, initial_device);
@@ -682,8 +683,8 @@ TEST_F(DeviceInfoTest, RenamedNonBlockedDevice) {
   // Rename the test device.
   const char kRenamedDeviceName[] = "renamed-device";
   device_info_.BlockDevice(kRenamedDeviceName);
-  unique_ptr<RTNLMessage> rename_message = BuildLinkMessageWithInterfaceName(
-      RTNLMessage::kModeAdd, kRenamedDeviceName);
+  auto rename_message = BuildLinkMessageWithInterfaceName(RTNLMessage::kModeAdd,
+                                                          kRenamedDeviceName);
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(0);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(0);
   SendMessageToDeviceInfo(*rename_message);
@@ -698,7 +699,7 @@ TEST_F(DeviceInfoTest, RenamedNonBlockedDevice) {
 }
 
 TEST_F(DeviceInfoTest, DeviceAddressList) {
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   auto addresses = device_info_.GetAddresses(kTestDeviceIndex);
@@ -756,7 +757,7 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
 }
 
 TEST_F(DeviceInfoTest, FlushAddressList) {
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address1(IPAddress::kFamilyIPv6);
@@ -791,7 +792,7 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
 }
 
 TEST_F(DeviceInfoTest, HasOtherAddress) {
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address0(IPAddress::kFamilyIPv4);
@@ -868,17 +869,17 @@ TEST_F(DeviceInfoTest, HasSubdir) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
   EXPECT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("child1")));
-  FilePath child2 = temp_dir.GetPath().Append("child2");
+  base::FilePath child2 = temp_dir.GetPath().Append("child2");
   EXPECT_TRUE(base::CreateDirectory(child2));
-  FilePath grandchild = child2.Append("grandchild");
+  base::FilePath grandchild = child2.Append("grandchild");
   EXPECT_TRUE(base::CreateDirectory(grandchild));
   EXPECT_TRUE(base::CreateDirectory(grandchild.Append("greatgrandchild")));
   EXPECT_TRUE(
-      DeviceInfo::HasSubdir(temp_dir.GetPath(), FilePath("grandchild")));
-  EXPECT_TRUE(
-      DeviceInfo::HasSubdir(temp_dir.GetPath(), FilePath("greatgrandchild")));
+      DeviceInfo::HasSubdir(temp_dir.GetPath(), base::FilePath("grandchild")));
+  EXPECT_TRUE(DeviceInfo::HasSubdir(temp_dir.GetPath(),
+                                    base::FilePath("greatgrandchild")));
   EXPECT_FALSE(
-      DeviceInfo::HasSubdir(temp_dir.GetPath(), FilePath("nonexistent")));
+      DeviceInfo::HasSubdir(temp_dir.GetPath(), base::FilePath("nonexistent")));
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnknownDevice) {
@@ -892,7 +893,7 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnknownDevice) {
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
@@ -909,7 +910,7 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
       .WillOnce(Return(-1));
   EXPECT_CALL(*mock_sockets_, Close(kFd));
 
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
@@ -943,7 +944,7 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
       .WillOnce(DoAll(SetIfreq(ifr), Return(0)));
   EXPECT_CALL(*mock_sockets_, Close(kFd));
 
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
@@ -967,7 +968,7 @@ TEST_F(DeviceInfoTest, GetMacAddressOfPeerUnknownDevice) {
 
 TEST_F(DeviceInfoTest, GetMacAddressOfPeerBadAddress) {
   SetSockets();
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
@@ -990,7 +991,7 @@ TEST_F(DeviceInfoTest, GetMacAddressOfPeerBadAddress) {
 TEST_F(DeviceInfoTest, GetMacAddressOfPeerUnableToOpenSocket) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   IPAddress ip_address(IPAddress::kFamilyIPv4);
@@ -1006,7 +1007,7 @@ TEST_F(DeviceInfoTest, GetMacAddressOfPeerIoctlFails) {
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
   EXPECT_CALL(*mock_sockets_, Ioctl(kFd, SIOCGARP, NotNull()))
       .WillOnce(Return(-1));
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   IPAddress ip_address(IPAddress::kFamilyIPv4);
@@ -1041,7 +1042,7 @@ ACTION_P(SetArpreq, areq) {
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressOfPeer) {
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
 
@@ -1091,8 +1092,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   IPAddress ipv4_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
-  unique_ptr<RTNLMessage> message =
-      BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0);
+  auto message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0);
 
   EXPECT_CALL(*device, OnIPv6AddressChanged(_)).Times(0);
 
@@ -1166,7 +1166,7 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   scoped_refptr<MockDevice> device(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.time_ = &time_;
-  vector<IPAddress> dns_server_addresses_out;
+  std::vector<IPAddress> dns_server_addresses_out;
   uint32_t lifetime_out;
 
   // Device info entry does not exist.
@@ -1184,12 +1184,13 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
   EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
-  vector<IPAddress> dns_server_addresses_in = {ipv6_address1, ipv6_address2};
+  std::vector<IPAddress> dns_server_addresses_in = {ipv6_address1,
+                                                    ipv6_address2};
 
   // Infinite lifetime
   const uint32_t kInfiniteLifetime = 0xffffffff;
-  unique_ptr<RTNLMessage> message = BuildRdnssMessage(
-      RTNLMessage::kModeAdd, kInfiniteLifetime, dns_server_addresses_in);
+  auto message = BuildRdnssMessage(RTNLMessage::kModeAdd, kInfiniteLifetime,
+                                   dns_server_addresses_in);
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
   EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
@@ -1206,8 +1207,8 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   // Lifetime of 120, retrieve DNS server addresses after 10 seconds.
   const uint32_t kLifetime120 = 120;
   const uint32_t kElapseTime10 = 10;
-  unique_ptr<RTNLMessage> message1(BuildRdnssMessage(
-      RTNLMessage::kModeAdd, kLifetime120, dns_server_addresses_in));
+  auto message1 = BuildRdnssMessage(RTNLMessage::kModeAdd, kLifetime120,
+                                    dns_server_addresses_in);
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
   EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
@@ -1301,13 +1302,13 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   Technology GetDeviceTechnology() {
     return device_info_.GetDeviceTechnology(test_device_name_, base::nullopt);
   }
-  Technology GetDeviceTechnology(const string& kind) {
+  Technology GetDeviceTechnology(const std::string& kind) {
     return device_info_.GetDeviceTechnology(test_device_name_, kind);
   }
-  FilePath GetInfoPath(const string& name);
-  void CreateInfoFile(const string& name, const string& contents);
-  void CreateInfoSymLink(const string& name, const string& contents);
-  void SetDeviceName(const string& name) {
+  base::FilePath GetInfoPath(const std::string& name);
+  void CreateInfoFile(const std::string& name, const std::string& contents);
+  void CreateInfoSymLink(const std::string& name, const std::string& contents);
+  void SetDeviceName(const std::string& name) {
     test_device_name_ = name;
     EXPECT_TRUE(temp_dir_.Delete());  // nuke old temp dir
     SetUp();
@@ -1315,28 +1316,28 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
 
  protected:
   base::ScopedTempDir temp_dir_;
-  FilePath device_info_root_;
-  string test_device_name_;
+  base::FilePath device_info_root_;
+  std::string test_device_name_;
 };
 
-FilePath DeviceInfoTechnologyTest::GetInfoPath(const string& name) {
+base::FilePath DeviceInfoTechnologyTest::GetInfoPath(const std::string& name) {
   return device_info_root_.Append(test_device_name_).Append(name);
 }
 
-void DeviceInfoTechnologyTest::CreateInfoFile(const string& name,
-                                              const string& contents) {
-  FilePath info_path = GetInfoPath(name);
+void DeviceInfoTechnologyTest::CreateInfoFile(const std::string& name,
+                                              const std::string& contents) {
+  base::FilePath info_path = GetInfoPath(name);
   EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
-  string contents_newline(contents + "\n");
+  std::string contents_newline(contents + "\n");
   EXPECT_TRUE(base::WriteFile(info_path, contents_newline.c_str(),
                               contents_newline.size()));
 }
 
-void DeviceInfoTechnologyTest::CreateInfoSymLink(const string& name,
-                                                 const string& contents) {
-  FilePath info_path = GetInfoPath(name);
+void DeviceInfoTechnologyTest::CreateInfoSymLink(const std::string& name,
+                                                 const std::string& contents) {
+  base::FilePath info_path = GetInfoPath(name);
   EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
-  EXPECT_TRUE(base::CreateSymbolicLink(FilePath(contents), info_path));
+  EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath(contents), info_path));
 }
 
 TEST_F(DeviceInfoTechnologyTest, Unknown) {
@@ -1443,19 +1444,20 @@ TEST_F(DeviceInfoTechnologyTest, CellularQmiWwan) {
 //   /sys/devices/virtual/0/00/driver -> /drivers/cdc_ether or /drivers/cdc_ncm
 //   /sys/devices/virtual/0/01/tty [empty directory]
 TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
-  FilePath device_root(temp_dir_.GetPath().Append("sys/devices/virtual/0"));
-  FilePath device_path(device_root.Append("00"));
-  FilePath driver_symlink(device_path.Append("driver"));
+  base::FilePath device_root(
+      temp_dir_.GetPath().Append("sys/devices/virtual/0"));
+  base::FilePath device_path(device_root.Append("00"));
+  base::FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
   CreateInfoSymLink("device", device_path.value());
-  EXPECT_TRUE(
-      base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"), driver_symlink));
+  EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ether"),
+                                       driver_symlink));
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
   EXPECT_TRUE(base::DeleteFile(driver_symlink));
-  EXPECT_TRUE(
-      base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"), driver_symlink));
+  EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ncm"),
+                                       driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1465,18 +1467,18 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
 //   /sys/device_dir/0/01/tty [empty directory]
 TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
   CreateInfoSymLink("device", "../../../device_dir/0/00");
-  FilePath device_root(temp_dir_.GetPath().Append("sys/device_dir/0"));
-  FilePath device_path(device_root.Append("00"));
-  FilePath driver_symlink(device_path.Append("driver"));
+  base::FilePath device_root(temp_dir_.GetPath().Append("sys/device_dir/0"));
+  base::FilePath device_path(device_root.Append("00"));
+  base::FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
-  EXPECT_TRUE(
-      base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"), driver_symlink));
+  EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ether"),
+                                       driver_symlink));
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
   EXPECT_TRUE(base::DeleteFile(driver_symlink));
-  EXPECT_TRUE(
-      base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"), driver_symlink));
+  EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ncm"),
+                                       driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1486,18 +1488,18 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
 //   /sys/device_dir/0/01/yyy/tty [empty directory]
 TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem3) {
   CreateInfoSymLink("device", "../../../device_dir/0/00");
-  FilePath device_root(temp_dir_.GetPath().Append("sys/device_dir/0"));
-  FilePath device_path(device_root.Append("00"));
-  FilePath driver_symlink(device_path.Append("driver"));
+  base::FilePath device_root(temp_dir_.GetPath().Append("sys/device_dir/0"));
+  base::FilePath device_path(device_root.Append("00"));
+  base::FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
-  EXPECT_TRUE(
-      base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"), driver_symlink));
+  EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ether"),
+                                       driver_symlink));
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/yyy/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
   EXPECT_TRUE(base::DeleteFile(driver_symlink));
-  EXPECT_TRUE(
-      base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"), driver_symlink));
+  EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ncm"),
+                                       driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1531,7 +1533,7 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
               (override));
   MOCK_METHOD(Technology,
               GetDeviceTechnology,
-              (const string&, const base::Optional<string>& kind),
+              (const std::string&, const base::Optional<std::string>& kind),
               (override));
 };
 
@@ -1549,7 +1551,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
   }
 
   void AddDelayedDevice(Technology delayed_technology) {
-    unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
+    auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName, _))
         .WillOnce(Return(delayed_technology));
     EXPECT_CALL(

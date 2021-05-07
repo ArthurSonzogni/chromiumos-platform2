@@ -54,9 +54,6 @@
 #include "shill/tethering.h"
 #include "shill/traffic_monitor.h"
 
-using base::Callback;
-using std::string;
-using std::vector;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
@@ -239,7 +236,7 @@ class DeviceTest : public testing::Test {
     device_->ip6config_->set_properties(properties);
   }
 
-  bool SetHostname(const string& hostname) {
+  bool SetHostname(const std::string& hostname) {
     return device_->SetHostname(hostname);
   }
 
@@ -269,8 +266,8 @@ TEST_F(DeviceTest, GetProperties) {
   Error error;
   device_->store().GetProperties(&props, &error);
   ASSERT_FALSE(props.find(kNameProperty) == props.end());
-  EXPECT_TRUE(props[kNameProperty].IsTypeCompatible<string>());
-  EXPECT_EQ(props[kNameProperty].Get<string>(), string(kDeviceName));
+  EXPECT_TRUE(props[kNameProperty].IsTypeCompatible<std::string>());
+  EXPECT_EQ(props[kNameProperty].Get<std::string>(), std::string(kDeviceName));
 }
 
 // Note: there are currently no writeable Device properties that
@@ -279,14 +276,14 @@ TEST_F(DeviceTest, SetReadOnlyProperty) {
   Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-      kAddressProperty, brillo::Any(string()), &error));
+      kAddressProperty, brillo::Any(std::string()), &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(DeviceTest, ClearReadOnlyProperty) {
   Error error;
   EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-      kAddressProperty, brillo::Any(string()), &error));
+      kAddressProperty, brillo::Any(std::string()), &error));
 }
 
 TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
@@ -328,7 +325,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
   scoped_refptr<MockDHCPConfig> dhcp_config(
       new MockDHCPConfig(control_interface(), kDeviceName));
 
-  const string service_storage_id = "service_storage_id";
+  const std::string service_storage_id = "service_storage_id";
   FakeStore storage;
   storage.SetString(service_storage_id, "DHCPProperty.Hostname",
                     "name of host");
@@ -340,7 +337,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
   service->dhcp_properties_ = std::move(service_dhcp_properties);
   SelectService(service);
 
-  const string default_profile_storage_id = "default_profile_storage_id";
+  const std::string default_profile_storage_id = "default_profile_storage_id";
   FakeStore default_profile_storage;
   default_profile_storage.SetString(default_profile_storage_id,
                                     "DHCPProperty.VendorClass", "vendorclass");
@@ -503,7 +500,7 @@ TEST_F(DeviceTest, Load) {
   device_->enabled_persistent_ = false;
 
   FakeStore storage;
-  const string id = device_->GetStorageIdentifier();
+  const auto id = device_->GetStorageIdentifier();
   storage.SetBool(id, Device::kStoragePowered, true);
   EXPECT_TRUE(device_->Load(&storage));
   EXPECT_TRUE(device_->enabled_persistent());
@@ -514,7 +511,7 @@ TEST_F(DeviceTest, Save) {
 
   FakeStore storage;
   EXPECT_TRUE(device_->Save(&storage));
-  const string id = device_->GetStorageIdentifier();
+  const auto id = device_->GetStorageIdentifier();
   bool powered = false;
   EXPECT_TRUE(storage.GetBool(id, Device::kStoragePowered, &powered));
   EXPECT_TRUE(powered);
@@ -628,7 +625,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
       new MockIPConfig(control_interface(), kDeviceName);
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  service->static_ip_parameters_.args_.Set<string>(kAddressProperty, "1.1.1.1");
+  service->static_ip_parameters_.args_.Set<std::string>(kAddressProperty,
+                                                        "1.1.1.1");
   service->static_ip_parameters_.args_.Set<int32_t>(kPrefixlenProperty, 16);
   // Even though we won't call DisconnectWithFailure, we should still have
   // the service learn from the failed DHCP attempt.
@@ -662,7 +660,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
 
   OnIPConfigUpdated(ipconfig.get());
 }
@@ -692,7 +690,7 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
 
   OnIPConfigUpdated(ipconfig.get());
 }
@@ -1009,9 +1007,9 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
 }
 
 TEST_F(DeviceTest, AvailableIPConfigs) {
-  EXPECT_EQ(vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
+  EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
   device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
-  EXPECT_EQ(vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
+  EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
             device_->AvailableIPConfigs(nullptr));
   device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
 
@@ -1027,16 +1025,16 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
   EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
 
   device_->ipconfig_ = nullptr;
-  EXPECT_EQ(vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
+  EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
             device_->AvailableIPConfigs(nullptr));
 
   device_->ip6config_ = nullptr;
-  EXPECT_EQ(vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
+  EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
 }
 
 TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*manager(), FilterPrependDNSServersByFamily(_))
-      .WillRepeatedly(Return(vector<string>()));
+      .WillRepeatedly(Return(std::vector<std::string>()));
 
   // An IPv6 clear while ip6config_ is nullptr will not emit a change.
   EXPECT_CALL(*GetDeviceMockAdaptor(),
@@ -1054,7 +1052,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address0);
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
   EXPECT_EQ(kAddress0, device_->ip6config_->properties().address);
@@ -1076,7 +1074,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address1);
   EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1086,14 +1084,14 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address1);
   EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
 
   // Return the IPv6 address to nullptr.
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
-                                            vector<RpcIdentifier>()));
+                                            std::vector<RpcIdentifier>()));
   device_->OnIPv6AddressChanged(nullptr);
   EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1101,7 +1099,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
 
 TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*manager(), FilterPrependDNSServersByFamily(_))
-      .WillRepeatedly(Return(vector<string>()));
+      .WillRepeatedly(Return(std::vector<std::string>()));
 
   // With existing IPv4 connection, so no attempt to setup IPv6 connection.
   // IPv6 connection is being tested in OnIPv6ConfigurationCompleted test.
@@ -1129,8 +1127,8 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   ASSERT_TRUE(ipv6_address1.SetAddressFromString(kAddress1));
   ASSERT_TRUE(ipv6_address2.SetAddressFromString(kAddress2));
-  vector<IPAddress> dns_server_addresses = {ipv6_address1, ipv6_address2};
-  vector<string> dns_server_addresses_str = {kAddress1, kAddress2};
+  std::vector<IPAddress> dns_server_addresses = {ipv6_address1, ipv6_address2};
+  std::vector<std::string> dns_server_addresses_str = {kAddress1, kAddress2};
 
   // Add IPv6 DNS server addresses while ip6config_ is nullptr.
   EXPECT_CALL(device_info_,
@@ -1140,7 +1138,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
   EXPECT_EQ(dns_server_addresses_str,
@@ -1155,7 +1153,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6AddressChanged(&address3);
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
   EXPECT_EQ(kAddress3, device_->ip6config_->properties().address);
@@ -1180,7 +1178,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
 
   // Setting lifetime to 0 should expire and clear out the DNS server.
   const uint32_t kExpiredLifetime = 0;
-  vector<string> empty_dns_server;
+  std::vector<std::string> empty_dns_server;
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(dns_server_addresses),
@@ -1188,7 +1186,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1203,7 +1201,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(dns_server_addresses_str,
             device_->ip6config_->properties().dns_servers);
@@ -1217,7 +1215,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1226,7 +1224,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
 
 TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*manager(), FilterPrependDNSServersByFamily(_))
-      .WillRepeatedly(Return(vector<string>()));
+      .WillRepeatedly(Return(std::vector<std::string>()));
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   scoped_refptr<MockConnection> connection(
@@ -1245,7 +1243,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, SetConnection(_)).Times(0);
   device_->OnIPv6AddressChanged(&address1);
@@ -1261,7 +1259,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
   EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
   EXPECT_CALL(*metrics(), NotifyNetworkConnectionIPType(
@@ -1289,7 +1287,7 @@ TEST_F(DeviceTest, OnDHCPv6ConfigUpdated) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnDHCPv6ConfigUpdated(device_->dhcpv6_config_.get(), true);
 }
 
@@ -1304,7 +1302,7 @@ TEST_F(DeviceTest, OnDHCPv6ConfigFailed) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnDHCPv6ConfigFailed(device_->dhcpv6_config_.get());
   EXPECT_TRUE(device_->dhcpv6_config_->properties().dhcpv6_addresses.empty());
   EXPECT_TRUE(
@@ -1323,7 +1321,7 @@ TEST_F(DeviceTest, OnDHCPv6ConfigExpired) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   device_->OnDHCPv6ConfigExpired(device_->dhcpv6_config_.get());
   EXPECT_TRUE(device_->dhcpv6_config_->properties().dhcpv6_addresses.empty());
   EXPECT_TRUE(
@@ -1333,9 +1331,9 @@ TEST_F(DeviceTest, OnDHCPv6ConfigExpired) {
 
 TEST_F(DeviceTest, PrependIPv4DNSServers) {
   const struct {
-    vector<string> ipconfig_servers;
-    vector<string> prepend_servers;
-    vector<string> expected_servers;
+    std::vector<std::string> ipconfig_servers;
+    std::vector<std::string> prepend_servers;
+    std::vector<std::string> expected_servers;
   } expectations[] = {
       {{}, {"8.8.8.8"}, {"8.8.8.8"}},
       {{"8.8.8.8"}, {}, {"8.8.8.8"}},
@@ -1367,20 +1365,20 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
 }
 
 TEST_F(DeviceTest, PrependIPv6DNSServers) {
-  vector<IPAddress> dns_server_addresses = {IPAddress("2001:4860:4860::8888"),
-                                            IPAddress("2001:4860:4860::8844")};
+  std::vector<IPAddress> dns_server_addresses = {
+      IPAddress("2001:4860:4860::8888"), IPAddress("2001:4860:4860::8844")};
 
   const uint32_t kAddressLifetime = 1000;
   EXPECT_CALL(device_info_, GetIPv6DnsServerAddresses(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(dns_server_addresses),
                             SetArgPointee<2>(kAddressLifetime), Return(true)));
-  const vector<string> kOutputServers{"2001:4860:4860::8899"};
+  const std::vector<std::string> kOutputServers{"2001:4860:4860::8899"};
   EXPECT_CALL(*manager(),
               FilterPrependDNSServersByFamily(IPAddress::kFamilyIPv6))
       .WillOnce(Return(kOutputServers));
   device_->OnIPv6DnsServerAddressesChanged();
 
-  const vector<string> kExpectedServers{
+  const std::vector<std::string> kExpectedServers{
       "2001:4860:4860::8899", "2001:4860:4860::8888", "2001:4860:4860::8844"};
   EXPECT_EQ(kExpectedServers, device_->ip6config()->properties().dns_servers);
 }
@@ -1397,7 +1395,7 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
   SelectService(service);
 
   auto parameters = service->mutable_static_ip_parameters();
-  parameters->args_.Set<string>(kAddressProperty, "1.1.1.1");
+  parameters->args_.Set<std::string>(kAddressProperty, "1.1.1.1");
   parameters->args_.Set<int32_t>(kPrefixlenProperty, 16);
 
   scoped_refptr<MockConnection> connection =
@@ -1407,7 +1405,7 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
   // Ensure that in the absence of statically configured nameservers that the
   // prepend DNS servers are still prepended.
   EXPECT_CALL(*service, HasStaticNameServers()).WillOnce(Return(false));
-  const vector<string> kOutputServers{"8.8.8.8"};
+  const std::vector<std::string> kOutputServers{"8.8.8.8"};
   EXPECT_CALL(*manager(),
               FilterPrependDNSServersByFamily(IPAddress::kFamilyIPv4))
       .WillRepeatedly(Return(kOutputServers));
@@ -1416,7 +1414,7 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
 
   // Ensure that when nameservers are statically configured that the prepend DNS
   // servers are not used.
-  const vector<string> static_servers = {"4.4.4.4", "5.5.5.5"};
+  const std::vector<std::string> static_servers = {"4.4.4.4", "5.5.5.5"};
   parameters->args_.Set<Strings>(kNameServersProperty, static_servers);
   EXPECT_CALL(*service, HasStaticNameServers()).WillOnce(Return(true));
   OnIPConfigUpdated(ipconfig.get());
@@ -1438,7 +1436,7 @@ TEST_F(DeviceTest, ResolvePeerMacAddress) {
 
   // Invalid peer address (not a valid IP address nor MAC address).
   Error error;
-  string result;
+  std::string result;
   const char kInvalidPeer[] = "peer";
   EXPECT_FALSE(device_->ResolvePeerMacAddress(kInvalidPeer, &result, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -1524,7 +1522,7 @@ TEST_F(DeviceTest, FetchTrafficCounters) {
       CreateCounter(counter_arr0, source0, kDeviceName);
   patchpanel::TrafficCounter counter1 =
       CreateCounter(counter_arr1, source1, kDeviceName);
-  vector<patchpanel::TrafficCounter> counters{counter0, counter1};
+  std::vector<patchpanel::TrafficCounter> counters{counter0, counter1};
   patchpanel_client_->set_stored_traffic_counters(counters);
 
   EXPECT_EQ(nullptr, device_->selected_service_);
@@ -1638,11 +1636,11 @@ TEST_F(DevicePortalDetectionTest, TechnologyPortalDetectionDisabled) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   ExpectPortalEnabled();
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const string http_portal_url, https_portal_url;
-  const vector<string> fallback_urls;
-  const vector<string> kDNSServers;
+  const std::string http_portal_url, https_portal_url;
+  const std::vector<std::string> fallback_urls;
+  const std::vector<std::string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -1661,12 +1659,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   ExpectPortalEnabled();
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const string http_portal_url(PortalDetector::kDefaultHttpUrl);
-  const string https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const vector<string> fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
-  const vector<string> kDNSServers;
+  const std::string http_portal_url(PortalDetector::kDefaultHttpUrl);
+  const std::string https_portal_url(PortalDetector::kDefaultHttpsUrl);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -1689,12 +1688,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
   ExpectPortalEnabled();
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   const IPAddress ip_addr = IPAddress("2001:db8:0:1::1");
-  const string http_portal_url(PortalDetector::kDefaultHttpUrl);
-  const string https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const vector<string> fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
-  const vector<string> kDNSServers;
+  const std::string http_portal_url(PortalDetector::kDefaultHttpUrl);
+  const std::string https_portal_url(PortalDetector::kDefaultHttpsUrl);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -1855,9 +1855,9 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   StopPortalDetection();
 
   const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const string kPortalCheckHttpUrl("http://portal");
-  const string kPortalCheckHttpsUrl("https://portal");
-  const vector<string> kPortalCheckFallbackHttpUrls(
+  const std::string kPortalCheckHttpUrl("http://portal");
+  const std::string kPortalCheckHttpsUrl("https://portal");
+  const std::vector<std::string> kPortalCheckFallbackHttpUrls(
       {"http://fallback", "http://other"});
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillOnce(ReturnRef(kPortalCheckHttpUrl));
@@ -1865,12 +1865,12 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
       .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   EXPECT_CALL(manager_, GetPortalCheckFallbackHttpUrls())
       .WillRepeatedly(ReturnRef(kPortalCheckFallbackHttpUrls));
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
-  const vector<string> kDNSServers;
+  const std::vector<std::string> kDNSServers;
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_TRUE(RequestPortalDetection());
@@ -1878,12 +1878,12 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
 
 TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
   const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
-  const vector<string> kDNSServers;
+  const std::vector<std::string> kDNSServers;
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
 
@@ -1951,7 +1951,7 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   const std::vector<std::string> kDNSServers = {"8.8.8.8", "8.8.4.4"};
   const std::string kPortalCheckHttpUrl("http://portal");
   const std::string kPortalCheckHttpsUrl("https://portal");
-  const vector<string> kPortalCheckFallbackHttpUrls(
+  const std::vector<std::string> kPortalCheckFallbackHttpUrls(
       {"http://fallback", "http://other"});
   auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
   PortalDetector::Properties props = PortalDetector::Properties(
@@ -1993,7 +1993,7 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
@@ -2057,7 +2057,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
@@ -2085,7 +2085,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
@@ -2112,7 +2112,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
@@ -2139,7 +2139,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
-  const string kInterfaceName("int0");
+  const std::string kInterfaceName("int0");
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
@@ -2175,11 +2175,12 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
 
   ExpectPortalEnabled();
   const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const string http_portal_url(PortalDetector::kDefaultHttpUrl);
-  const string https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const vector<string> fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
-  const string kInterfaceName("int0");
-  const vector<string> kDNSServers;
+  const std::string http_portal_url(PortalDetector::kDefaultHttpUrl);
+  const std::string https_portal_url(PortalDetector::kDefaultHttpsUrl);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls);
+  const std::string kInterfaceName("int0");
+  const std::vector<std::string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
@@ -2217,7 +2218,7 @@ class DeviceByteCountTest : public DeviceTest {
   }
 
   void SetStoredByteCounts(uint64_t rx, uint64_t tx) {
-    const string id = device_->GetStorageIdentifier();
+    const std::string id = device_->GetStorageIdentifier();
     storage_.SetUint64(id, Device::kStorageReceiveByteCount, rx);
     storage_.SetUint64(id, Device::kStorageTransmitByteCount, tx);
   }
@@ -2239,7 +2240,7 @@ class DeviceByteCountTest : public DeviceTest {
   bool ExpectSavedCounts(DeviceRefPtr device,
                          int64_t expected_rx,
                          int64_t expected_tx) {
-    const string id = device_->GetStorageIdentifier();
+    const std::string id = device_->GetStorageIdentifier();
     uint64_t rx, tx;
     EXPECT_TRUE(storage_.GetUint64(id, Device::kStorageReceiveByteCount, &rx));
     EXPECT_TRUE(storage_.GetUint64(id, Device::kStorageTransmitByteCount, &tx));

@@ -12,7 +12,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 
-using std::string;
 using ::testing::_;
 using ::testing::Mock;
 
@@ -59,7 +58,7 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
   error.Reset();
   EXPECT_CALL(device_info_, BlockDevice(_)).Times(0);
   EXPECT_FALSE(device_claimer_.Claim(kTestDevice1Name, &error));
-  EXPECT_EQ(string(kDuplicateDevice1Error), error.message());
+  EXPECT_EQ(std::string(kDuplicateDevice1Error), error.message());
   Mock::VerifyAndClearExpectations(&device_info_);
 
   // Release device 1.
@@ -78,7 +77,7 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
   error.Reset();
   EXPECT_CALL(device_info_, AllowDevice(_)).Times(0);
   EXPECT_FALSE(device_claimer_.Release(kTestDevice1Name, &error));
-  EXPECT_EQ(string(kDevice1NotClaimedError), error.message());
+  EXPECT_EQ(std::string(kDevice1NotClaimedError), error.message());
   // Should still have one device claimed.
   EXPECT_TRUE(device_claimer_.DevicesClaimed());
   Mock::VerifyAndClearExpectations(&device_info_);

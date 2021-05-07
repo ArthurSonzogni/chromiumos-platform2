@@ -4,10 +4,10 @@
 
 #include "shill/device_claimer.h"
 
+#include <string>
+
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
-
-using std::string;
 
 namespace shill {
 
@@ -29,7 +29,7 @@ DeviceClaimer::~DeviceClaimer() {
   }
 }
 
-bool DeviceClaimer::Claim(const string& device_name, Error* error) {
+bool DeviceClaimer::Claim(const std::string& device_name, Error* error) {
   // Check if device is claimed already.
   if (claimed_device_names_.find(device_name) != claimed_device_names_.end()) {
     Error::PopulateAndLog(
@@ -66,7 +66,7 @@ bool DeviceClaimer::DevicesClaimed() {
   return !claimed_device_names_.empty();
 }
 
-bool DeviceClaimer::IsDeviceReleased(const string& device_name) {
+bool DeviceClaimer::IsDeviceReleased(const std::string& device_name) {
   return released_device_names_.find(device_name) !=
          released_device_names_.end();
 }
