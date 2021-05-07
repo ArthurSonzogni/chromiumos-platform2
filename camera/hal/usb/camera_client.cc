@@ -722,9 +722,9 @@ void CameraClient::RequestHandler::HandleRequest(
   }
 
   NotifyShutter(capture_result.frame_number);
-  ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
-                                             CurrentBufferTimestamp(),
-                                             detected_faces_, metadata);
+  ret = metadata_handler_->PostHandleRequest(
+      capture_result.frame_number, CurrentBufferTimestamp(),
+      stream_on_resolution_, detected_faces_, metadata);
   if (ret) {
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";

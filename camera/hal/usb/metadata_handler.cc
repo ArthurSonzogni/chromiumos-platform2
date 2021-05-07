@@ -1278,6 +1278,7 @@ int MetadataHandler::PreHandleRequest(int frame_number,
 int MetadataHandler::PostHandleRequest(
     int frame_number,
     int64_t timestamp,
+    const Size& resolution,
     const std::vector<human_sensing::CrosFace>& faces,
     android::CameraMetadata* metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -1338,17 +1339,38 @@ int MetadataHandler::PostHandleRequest(
   update_request(ANDROID_SENSOR_TIMESTAMP, timestamp);
 
   // android.statistics
-  std::vector<int32_t> face_rectangles;
-  std::vector<uint8_t> face_scores;
-  for (auto& face : faces) {
-    face_rectangles.push_back(face.bounding_box.x1);
-    face_rectangles.push_back(face.bounding_box.y1);
-    face_rectangles.push_back(face.bounding_box.x2);
-    face_rectangles.push_back(face.bounding_box.y2);
-    face_scores.push_back(face.confidence * 100);
+  if (device_info_.enable_face_detection) {
+    std::vector<int32_t> face_rectangles;
+    std::vector<uint8_t> face_scores;
+    Rect<int> roi(0, 0, resolution.width - 1, resolution.height - 1);
+    Rect<int> largest_face;
+    int largest_size = 0;
+    for (auto& face : faces) {
+      float x1 = std::max(face.bounding_box.x1, 0.0F);
+      float x2 = std::min(face.bounding_box.x2,
+                          static_cast<float>(resolution.width - 1));
+      float y1 = std::max(face.bounding_box.y1, 0.0F);
+      float y2 = std::min(face.bounding_box.y2,
+                          static_cast<float>(resolution.height - 1));
+      face_rectangles.push_back(x1);
+      face_rectangles.push_back(y1);
+      face_rectangles.push_back(x2);
+      face_rectangles.push_back(y2);
+      face_scores.push_back(face.confidence * 100);
+      int size = (x2 - x1) * (y2 - y1);
+      if (size > largest_size) {
+        largest_face = Rect<int>(x1, y1, x2, y2);
+        largest_size = size;
+        // Set ROI with largest face to trigger 3A.
+        roi = largest_face;
+      }
+    }
+    update_request(ANDROID_STATISTICS_FACE_RECTANGLES, face_rectangles);
+    update_request(ANDROID_STATISTICS_FACE_SCORES, face_scores);
+    if (device_info_.region_of_interest_supported) {
+      device_->SetRegionOfInterest(roi);
+    }
   }
-  update_request(ANDROID_STATISTICS_FACE_RECTANGLES, face_rectangles);
-  update_request(ANDROID_STATISTICS_FACE_SCORES, face_scores);
 
   update_request(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE,
                  ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF);

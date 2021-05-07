@@ -79,6 +79,7 @@ class MetadataHandler {
   // required metadata which can be gotton from 3A or image processor.
   int PostHandleRequest(int frame_number,
                         int64_t timestamp,
+                        const Size& resolution,
                         const std::vector<human_sensing::CrosFace>& faces,
                         android::CameraMetadata* metadata);
 

@@ -8,6 +8,7 @@
 #define CAMERA_INCLUDE_CROS_CAMERA_COMMON_TYPES_H_
 
 #include <cstdint>
+#include <iostream>
 #include <string>
 
 #include <base/strings/stringprintf.h>
@@ -29,8 +30,16 @@ struct Rect {
   Rect() : left(0), top(0), right(0), bottom(0) {}
   Rect(T l, T t, T r, T b) : left(l), top(t), right(r), bottom(b) {}
   bool is_valid() const { return left < right && top < bottom; }
-  T width() const { return right - left; }
-  T height() const { return bottom - top; }
+  T width() const { return right - left + 1; }
+  T height() const { return bottom - top + 1; }
+  bool operator==(const Rect& rhs) const {
+    return left == rhs.left && top == rhs.top && right == rhs.right &&
+           bottom == rhs.bottom;
+  }
+  friend std::ostream& operator<<(std::ostream& stream, const Rect& r) {
+    return stream << "(" << r.left << "," << r.top << "," << r.right << ","
+                  << r.bottom << ")";
+  }
 };
 
 struct Size {

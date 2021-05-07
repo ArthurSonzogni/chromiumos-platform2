@@ -75,6 +75,9 @@ const int ControlTypeToCid(ControlType type) {
     case kControlPan:
       return V4L2_CID_PAN_ABSOLUTE;
 
+    case kControlRegionOfInterestAuto:
+      return V4L2_CID_REGION_OF_INTEREST_AUTO;
+
     case kControlSaturation:
       return V4L2_CID_SATURATION;
 
@@ -128,6 +131,9 @@ const std::string ControlTypeToString(ControlType type) {
     case kControlPan:
       return "pan";
 
+    case kControlRegionOfInterestAuto:
+      return "region of interest auto";
+
     case kControlSaturation:
       return "saturation";
 
@@ -142,6 +148,9 @@ const std::string ControlTypeToString(ControlType type) {
 
     case kControlWhiteBalanceTemperature:
       return "white balance temperature";
+
+    case kControlPrivacy:
+      return "privacy";
 
     default:
       NOTREACHED() << "Unexpected control type " << type;
@@ -178,6 +187,9 @@ const std::string CidToString(int cid) {
     case V4L2_CID_PAN_ABSOLUTE:
       return "V4L2_CID_PAN_ABSOLUTE";
 
+    case V4L2_CID_REGION_OF_INTEREST_AUTO:
+      return "V4L2_CID_REGION_OF_INTEREST_AUTO";
+
     case V4L2_CID_SATURATION:
       return "V4L2_CID_SATURATION";
 
@@ -192,6 +204,9 @@ const std::string CidToString(int cid) {
 
     case V4L2_CID_WHITE_BALANCE_TEMPERATURE:
       return "V4L2_CID_WHITE_BALANCE_TEMPERATURE";
+
+    case V4L2_CID_PRIVACY:
+      return "V4L2_CID_PRIVACY";
 
     default:
       NOTREACHED() << "Unexpected cid " << cid;
@@ -440,6 +455,37 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     LOGF(ERROR) << "Unsupported format: width " << width << ", height "
                 << height << ", pixelformat " << pixel_format;
     return -EINVAL;
+  }
+
+  if (device_info_.enable_face_detection) {
+    // The resolution may be changed after VIDIOC_S_FMT. We need to get correct
+    // ROI regions info after it.
+    IsRegionOfInterestSupported(device_fd_.get(), &roi_control_);
+    if (roi_control_.roi_flags) {
+      if (roi_control_.roi_bounds_max.width() < width ||
+          roi_control_.roi_bounds_max.height() < height) {
+        LOGF(WARNING) << "ROI bounds max is too small"
+                      << roi_control_.roi_bounds_max;
+      }
+      // Workaround some camera module didn't report correct min bounds.
+      if (roi_control_.roi_bounds_min.width() >=
+              roi_control_.roi_bounds_max.width() ||
+          roi_control_.roi_bounds_min.height() >=
+              roi_control_.roi_bounds_max.height()) {
+        LOGF(WARNING) << "ROI bounds min is too large"
+                      << roi_control_.roi_bounds_min
+                      << ", Set it to (0, 0, 0, 0)";
+        roi_control_.roi_bounds_min.left = 0;
+        roi_control_.roi_bounds_min.top = 0;
+        roi_control_.roi_bounds_min.right = 0;
+        roi_control_.roi_bounds_min.bottom = 0;
+      }
+      VLOGF(1) << "ROI control flags:0x" << std::hex << roi_control_.roi_flags
+               << " " << std::dec << "ROI default:" << roi_control_.roi_default;
+      VLOGF(1) << "ROI bounds max:" << roi_control_.roi_bounds_max
+               << ", min:" << roi_control_.roi_bounds_min;
+      SetControlValue(kControlRegionOfInterestAuto, roi_control_.roi_flags);
+    }
   }
 
   if (CanUpdateFrameRate()) {
@@ -840,6 +886,39 @@ int V4L2CameraDevice::QueryControl(ControlType type, ControlInfo* info) {
   return QueryControl(device_fd_.get(), type, info);
 }
 
+int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
+  if (roi_control_.roi_flags == 0) {
+    return -EINVAL;
+  }
+  int width = rectangle.width();
+  int height = rectangle.height();
+  if (width < roi_control_.roi_bounds_min.width()) {
+    width = roi_control_.roi_bounds_min.width();
+  }
+  if (height < roi_control_.roi_bounds_min.height()) {
+    height = roi_control_.roi_bounds_min.height();
+  }
+  v4l2_selection current = {
+      .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+      .target = static_cast<__u32>(V4L2_SEL_TGT_ROI),
+      .r =
+          {
+              .left = static_cast<__s32>(rectangle.left),
+              .top = static_cast<__s32>(rectangle.top),
+              .width = static_cast<__u32>(width),
+              .height = static_cast<__u32>(height),
+          },
+  };
+
+  if (HANDLE_EINTR(ioctl(device_fd_.get(), VIDIOC_S_SELECTION, &current)) < 0) {
+    PLOGF(WARNING) << "Failed to set selection(" << rectangle.left << ","
+                   << rectangle.top << "," << width << "," << height << ")";
+    return -errno;
+  }
+
+  return 0;
+}
+
 // static
 const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     const std::string& device_path) {
@@ -1080,6 +1159,56 @@ std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
 }
 
 // static
+bool V4L2CameraDevice::IsRegionOfInterestSupported(int fd,
+                                                   RoiControl* roi_control) {
+  DCHECK(roi_control);
+  ControlInfo info;
+
+  roi_control->roi_flags = 0;
+
+  v4l2_selection current = {
+      .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+      .target = static_cast<__u32>(V4L2_SEL_TGT_ROI_DEFAULT),
+  };
+  if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
+    PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
+    return false;
+  }
+  roi_control->roi_default.left = current.r.left;
+  roi_control->roi_default.top = current.r.top;
+  roi_control->roi_default.right = current.r.left + current.r.width - 1;
+  roi_control->roi_default.bottom = current.r.top + current.r.height - 1;
+
+  current.target = V4L2_SEL_TGT_ROI_BOUNDS_MIN;
+  if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
+    PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
+    return false;
+  }
+  roi_control->roi_bounds_min.left = current.r.left;
+  roi_control->roi_bounds_min.top = current.r.top;
+  roi_control->roi_bounds_min.right = current.r.left + current.r.width - 1;
+  roi_control->roi_bounds_min.bottom = current.r.top + current.r.height - 1;
+
+  current.target = V4L2_SEL_TGT_ROI_BOUNDS_MAX;
+  if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
+    PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
+    return false;
+  }
+  roi_control->roi_bounds_max.left = current.r.left;
+  roi_control->roi_bounds_max.top = current.r.top;
+  roi_control->roi_bounds_max.right = current.r.left + current.r.width - 1;
+  roi_control->roi_bounds_max.bottom = current.r.top + current.r.height - 1;
+
+  if (QueryControl(fd, kControlRegionOfInterestAuto, &info) != 0) {
+    return false;
+  }
+  // enable max auto controls.
+  roi_control->roi_flags = info.range.maximum;
+
+  return true;
+}
+
+// static
 bool V4L2CameraDevice::IsCameraDevice(const std::string& device_path) {
   // RetryDeviceOpen() assumes the device is a camera and waits until the camera
   // is ready, so we use open() instead of RetryDeviceOpen() here.
@@ -1218,6 +1347,18 @@ int V4L2CameraDevice::SetControlValue(const std::string& device_path,
   }
 
   return SetControlValue(fd.get(), type, value);
+}
+
+// static
+bool V4L2CameraDevice::IsRegionOfInterestSupported(std::string device_path,
+                                                   RoiControl* roi_control) {
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  if (!fd.is_valid()) {
+    PLOGF(ERROR) << "Failed to open " << device_path;
+    return false;
+  }
+
+  return IsRegionOfInterestSupported(fd.get(), roi_control);
 }
 
 // static
@@ -1378,30 +1519,6 @@ bool V4L2CameraDevice::IsManualExposureTimeSupported(
   *exposure_time_range = info.range;
 
   return true;
-}
-
-// static
-bool V4L2CameraDevice::IsConstantFrameRateSupported(
-    const std::string& device_path) {
-  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
-  if (!fd.is_valid()) {
-    PLOGF(ERROR) << "Failed to open " << device_path;
-    return false;
-  }
-  struct v4l2_queryctrl query_ctrl;
-  query_ctrl.id = V4L2_CID_EXPOSURE_AUTO_PRIORITY;
-  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCTRL, &query_ctrl)) < 0) {
-    LOGF(WARNING) << "Failed to query V4L2_CID_EXPOSURE_AUTO_PRIORITY";
-    return false;
-  }
-  return !(query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED);
-}
-
-// static
-bool V4L2CameraDevice::IsRegionOfInterestSupported(
-    const std::string& device_path) {
-  // TODO(henryhsu): Add query when UVC and V4L2 driver support ROI.
-  return false;
 }
 
 int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {

@@ -39,6 +39,15 @@ struct ControlInfo {
   std::vector<std::string> menu_items;
 };
 
+struct RoiControl {
+  // ROI auto-controls flags. It is a bitwise flag for
+  // V4L2_CID_REGION_OF_INTEREST_AUTO which are defined in v4l2-control.h
+  uint32_t roi_flags;
+  Rect<int> roi_default;
+  Rect<int> roi_bounds_min;
+  Rect<int> roi_bounds_max;
+};
+
 enum ControlType {
   kControlAutoWhiteBalance,
   kControlBrightness,
@@ -49,6 +58,7 @@ enum ControlType {
   kControlExposureAutoPriority,  // 0 for constant frame rate
   kControlExposureTime,
   kControlPan,
+  kControlRegionOfInterestAuto,
   kControlSaturation,
   kControlSharpness,
   kControlTilt,
@@ -161,6 +171,9 @@ class V4L2CameraDevice {
   // Return 0 if get successfully. Otherwise, return |-errno|.
   int GetControlValue(ControlType type, int32_t* value);
 
+  // Sets the region of interest.
+  int SetRegionOfInterest(const Rect<int>& rectangle);
+
   // Get all supported formats of device by |device_path|. This function can be
   // called without calling Connect().
   static const SupportedFormats GetDeviceSupportedFormats(
@@ -179,10 +192,6 @@ class V4L2CameraDevice {
   // range to |exposure_time_range|.
   static bool IsManualExposureTimeSupported(const std::string& device_path,
                                             ControlRange* exposure_time_range);
-
-  static bool IsConstantFrameRateSupported(const std::string& device_path);
-
-  static bool IsRegionOfInterestSupported(const std::string& device_path);
 
   static bool IsCameraDevice(const std::string& device_path);
 
@@ -214,6 +223,10 @@ class V4L2CameraDevice {
                              ControlType type,
                              int32_t value);
 
+  // Return false if device doesn't support ROI controls.
+  static bool IsRegionOfInterestSupported(std::string device_path,
+                                          RoiControl* roi_control);
+
  private:
   static std::vector<float> GetFrameRateList(int fd,
                                              uint32_t fourcc,
@@ -231,6 +244,9 @@ class V4L2CameraDevice {
   // Return 0 if get control successfully. Otherwise, return |-errno|.
   // The returned value is stored in |value|.
   static int GetControlValue(int fd, ControlType type, int32_t* value);
+
+  // Return false if device doesn't support ROI controls.
+  static bool IsRegionOfInterestSupported(int fd, RoiControl* roi_control);
 
   // This is for suspend/resume feature. USB camera will be enumerated after
   // device resumed. But camera device may not be ready immediately.
@@ -273,6 +289,8 @@ class V4L2CameraDevice {
 
   // Current control values.
   std::map<ControlType, int32_t> control_values_;
+
+  RoiControl roi_control_;
 
   // Monitor for the status change of camera privacy switch.
   CameraPrivacySwitchMonitor* privacy_switch_monitor_;
