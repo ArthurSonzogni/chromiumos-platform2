@@ -15,6 +15,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/memory_mapped_file.h>
+#include <base/notreached.h>
 #include <tensorflow/lite/model.h>
 #include <unicode/putil.h>
 #include <unicode/udata.h>
@@ -503,6 +504,20 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
         chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>
         receiver,
     LoadWebPlatformHandwritingModelCallback callback) {
+  constexpr bool is_rootfs_enabled =
+      ml::HandwritingLibrary::IsUseLibHandwritingEnabled();
+  constexpr bool is_dlc_enabled =
+      ml::HandwritingLibrary::IsUseLibHandwritingDlcEnabled();
+
+  if (!is_rootfs_enabled && !is_dlc_enabled) {
+    // If handwriting is not on rootfs and not in DLC, this function should not
+    // be called because the client side should also be guarded by the same
+    // flags.
+    LOG(ERROR) << "Calling LoadWebPlatformHandwritingModel without Handwriting "
+                  "enabled should never happen.";
+    std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+  }
+
   // If it is run in the control process, spawn a worker process and forward the
   // request to it.
   if (Process::GetInstance()->GetType() == Process::Type::kControl) {
@@ -526,7 +541,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
   // From here below is in the worker process.
 
   // If handwriting is installed on rootfs, load it from there.
-  if (ml::HandwritingLibrary::IsUseLibHandwritingEnabled()) {
+  if (is_rootfs_enabled) {
     LoadHandwritingModelFromDir<
         chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>(
         std::move(constraint), std::move(receiver), std::move(callback),
@@ -536,7 +551,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
 
   // If handwriting is installed as DLC, get the dir and subsequently load it
   // from there.
-  if (ml::HandwritingLibrary::IsUseLibHandwritingDlcEnabled()) {
+  if (is_dlc_enabled) {
     dlcservice_client_->GetDlcRootPath(
         "libhandwriting",
         base::BindOnce(&LoadHandwritingModelFromDir<
@@ -547,11 +562,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
     return;
   }
 
-  // If handwriting is not on rootfs and not in DLC, this function should not
-  // be called.
-  LOG(ERROR) << "Calling LoadWebPlatformHandwritingModel without Handwriting "
-                "enabled should never happen.";
-  std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+  NOTREACHED();
 }
 
 }  // namespace ml
