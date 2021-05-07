@@ -2566,18 +2566,30 @@ static const uint32_t sl_incr_chunk_size = 64 * 1024;
 
 static int sl_handle_selection_fd_readable(int fd, uint32_t mask, void* data) {
   struct sl_context* ctx = static_cast<sl_context*>(data);
-  int bytes, offset, bytes_left;
-  void* p;
 
-  offset = ctx->selection_data.size;
-  if (ctx->selection_data.size < sl_incr_chunk_size)
-    p = wl_array_add(&ctx->selection_data, sl_incr_chunk_size);
-  else
-    p = reinterpret_cast<char*>(ctx->selection_data.data) +
-        ctx->selection_data.size;
-  bytes_left = ctx->selection_data.alloc - offset;
+  // When a selection starts, the wl_array in |ctx->selection_data| is
+  // initialized with a size of zero. Since we now need to actually write into
+  // it, allocate |sl_incr_chunk_size| bytes to store the selection data in. We
+  // need to buffer this much to decide between a one-shot transfer and an
+  // incremental transfer, as this decision must be made before the first
+  // response is sent.
+  if (ctx->selection_data.alloc == 0) {
+    // wl_array_add is ostensibly failable, but the only failure case comes from
+    // calling malloc, and if that fails we should just die anyway.
+    errno_assert(
+        (size_t)wl_array_add(&ctx->selection_data, sl_incr_chunk_size));
 
-  bytes = read(fd, p, bytes_left);
+    // wl_array_add increments |size| as well as |alloc|, but we don't actually
+    // want that yet. Instead we will set |size| later based on the results of
+    // the read call.
+    ctx->selection_data.size -= sl_incr_chunk_size;
+  }
+
+  int offset = ctx->selection_data.size;
+  void* p = reinterpret_cast<char*>(ctx->selection_data.data) + offset;
+  int bytes_left = ctx->selection_data.alloc - offset;
+
+  int bytes = read(fd, p, bytes_left);
   if (bytes == -1) {
     fprintf(stderr, "read error from data source: %m\n");
     sl_send_selection_notify(ctx, XCB_ATOM_NONE);
