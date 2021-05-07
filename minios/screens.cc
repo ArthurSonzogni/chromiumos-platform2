@@ -710,6 +710,7 @@ void Screens::SwitchScreen(bool enter) {
     case ScreenType::kWaitForConnection:
     case ScreenType::kStartDownload:
       return;
+    case ScreenType::kGeneralError:
     case ScreenType::kDownloadError:
       if (index_ == 1) {
         // Back to beginning.
@@ -763,6 +764,9 @@ void Screens::ShowNewScreen() {
       break;
     case ScreenType::kConnectionError:
       ShowErrorScreen("MiniOS_connection_error");
+      break;
+    case ScreenType::kGeneralError:
+      ShowErrorScreen("MiniOS_general_error");
       break;
   }
 }
@@ -836,7 +840,7 @@ void Screens::OnConnect(const std::string& ssid, brillo::Error* error) {
 
   if (!recovery_installer_->RepartitionDisk()) {
     LOG(ERROR) << "Could not repartition disk.";
-    ShowErrorScreen("MiniOS_general_error");
+    ChangeToErrorScreen(ScreenType::kGeneralError);
     return;
   }
 

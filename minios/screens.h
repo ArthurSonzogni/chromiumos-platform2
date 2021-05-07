@@ -56,6 +56,7 @@ enum class ScreenType {
   kNetworkError = 8,
   kPasswordError = 9,
   kConnectionError = 10,
+  kGeneralError = 11,
 };
 
 // Screens contains the different MiniOs Screens as well as specific components
@@ -307,7 +308,8 @@ class Screens : public ScreenBase,
       {ScreenType::kDownloadError, 2},
       {ScreenType::kNetworkError, 2},
       {ScreenType::kPasswordError, 2},
-      {ScreenType::kConnectionError, 2}};
+      {ScreenType::kConnectionError, 2},
+      {ScreenType::kGeneralError, 2}};
 
   ScreenType current_screen_{ScreenType::kWelcomeScreen};
   // Previous screen only used when changing the language so you know what

@@ -999,11 +999,11 @@ TEST_F(ScreensTestMocks, RepartitionDisk) {
 
 TEST_F(ScreensTestMocks, RepartitionDiskFailed) {
   // Show error screen on repartition failure.
-  EXPECT_CALL(mock_screens_, ShowNewScreen());
+  EXPECT_CALL(mock_screens_, ShowNewScreen()).Times(2);
   EXPECT_CALL(*mock_recovery_installer_ptr_, RepartitionDisk())
       .WillOnce(testing::Return(false));
-  EXPECT_CALL(mock_screens_, ShowInstructionsWithTitle("MiniOS_general_error"));
   mock_screens_.OnConnect("test-ssid", nullptr);
+  EXPECT_EQ(ScreenType::kGeneralError, mock_screens_.GetScreenForTest());
 }
 
 }  // namespace minios
