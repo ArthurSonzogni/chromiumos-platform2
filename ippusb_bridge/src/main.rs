@@ -10,16 +10,14 @@ mod usb_connector;
 mod util;
 
 use std::fmt;
-use std::io::{self, Read, Write};
+use std::io;
 use std::net::TcpListener;
 use std::os::raw::c_int;
 use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::net::UnixListener;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use sync::Mutex;
 use sys_util::{error, info, register_signal_handler, syslog, EventFd, PollContext, PollToken};
 use tiny_http::{ClientConnection, Stream};
 
@@ -27,7 +25,6 @@ use crate::arguments::Args;
 use crate::http::handle_request;
 use crate::listeners::{Accept, ScopedUnixListener};
 use crate::usb_connector::{UnplugDetector, UsbConnector};
-use crate::util::ConnectionTracker;
 
 #[derive(Debug)]
 pub enum Error {
@@ -103,20 +100,6 @@ struct Daemon {
     shutdown: EventFd,
     listener: Box<dyn Accept>,
     usb: UsbConnector,
-    keep_alive_socket: Option<ScopedUnixListener>,
-
-    /// The last time a keep-alive message was received.
-    last_keep_alive: Arc<Mutex<Instant>>,
-
-    /// Responsible for tracking the number of active clients, and waking the poll loop when the
-    /// number of clients changes from zero to non-zero, or from non-zero to zero.
-    connection_tracker: Arc<Mutex<ConnectionTracker>>,
-
-    /// True if Daemon currently has no clients connected.
-    idle: bool,
-
-    /// The last time Daemon had clients connected.
-    last_activity_time: Instant,
 }
 
 // Trivially allows a `RawFd` to be passed as a `&AsRawFd`.  Needed because
@@ -135,20 +118,12 @@ impl Daemon {
         shutdown: EventFd,
         listener: Box<dyn Accept>,
         usb: UsbConnector,
-        keep_alive_socket: Option<ScopedUnixListener>,
     ) -> Result<Self> {
         Ok(Self {
             verbose_log,
             shutdown,
             listener,
             usb,
-            keep_alive_socket,
-            last_keep_alive: Arc::new(Mutex::new(Instant::now())),
-            connection_tracker: Arc::new(Mutex::new(
-                ConnectionTracker::new().map_err(Error::EventFd)?,
-            )),
-            idle: true,
-            last_activity_time: Instant::now(),
         })
     }
 
@@ -157,8 +132,6 @@ impl Daemon {
         enum Token {
             Shutdown,
             ClientConnection,
-            KeepAliveConnection,
-            IdleStateChanged,
         }
 
         let listener_fd = WrapFd(self.listener.as_raw_fd());
@@ -168,26 +141,8 @@ impl Daemon {
         ])
         .map_err(Error::SysUtil)?;
 
-        if let Some(socket) = self.keep_alive_socket.as_ref() {
-            poll_ctx
-                .add(socket, Token::KeepAliveConnection)
-                .map_err(Error::SysUtil)?;
-
-            poll_ctx
-                .add(
-                    self.connection_tracker.lock().event_fd(),
-                    Token::IdleStateChanged,
-                )
-                .map_err(Error::SysUtil)?;
-        }
-
         'poll: loop {
-            // poll_timeout will return None if our timeout has elapsed.
-            let timeout = match self.poll_timeout() {
-                Some(timeout) => timeout,
-                None => break 'poll,
-            };
-
+            let timeout = Duration::new(i64::MAX as u64, 0);
             let events = poll_ctx.wait_timeout(timeout).map_err(Error::PollEvents)?;
             for event in &events {
                 match event.token() {
@@ -196,99 +151,17 @@ impl Daemon {
                         Ok(stream) => self.handle_connection(stream),
                         Err(err) => error!("Failed to accept connection: {}", err),
                     },
-                    Token::KeepAliveConnection => {
-                        let socket = self.keep_alive_socket.as_ref().unwrap();
-                        match UnixListener::accept(socket) {
-                            Ok((stream, _)) => self.handle_keep_alive(stream),
-                            Err(err) => error!("Failed to accept keep-alive connection: {}", err),
-                        }
-                    }
-                    Token::IdleStateChanged => self.update_idle_state(),
                 }
             }
         }
         Ok(())
     }
 
-    /// Handles updating self.idle and self.last_activity_time when we receive
-    /// an IdleStateChanged event from the connection_tracker.
-    fn update_idle_state(&mut self) {
-        let connection_tracker = self.connection_tracker.lock();
-        self.idle = connection_tracker.active_connections() == 0;
-        // Clear the event from the EventFd.
-        if let Err(e) = connection_tracker.event_fd().read() {
-            error!("Failed to read from ConnectionTracker event fd: {}", e);
-        }
-        if self.idle {
-            self.last_activity_time = Instant::now();
-        }
-    }
-
-    /// Calculates the poll timeout to use based on
-    /// * If timeouts are enabled (only true if a keep-alive socket was provided)
-    /// * The number of connected clients
-    /// * The last time a client was connected
-    /// * The last time a keep-alive was received.
-    ///
-    /// If we've exceeded our activity timeout, returns None, indicating that the
-    /// poll loop should shut down.
-    fn poll_timeout(&self) -> Option<Duration> {
-        let activity_timeout = Duration::from_secs(30);
-        // If we have a keep-alive socket, the poll loop's behavior changes from running
-        // indefinitely to shutting down after the activity_timeout.
-        //
-        // If any clients are connected, we consider ippusb_bridge to be active. Once all
-        // clients have disconnected, we record the time in last_activity_time. We also record
-        // the last time that a keep-alive was received as last_keep_alive.
-        if self.idle && self.keep_alive_socket.is_some() {
-            let last_keep_alive = self.last_keep_alive.lock();
-            let elapsed = std::cmp::max(*last_keep_alive, self.last_activity_time).elapsed();
-
-            // If the later of last_keep_alive and last_activity_time is greater
-            // than or equal to activity_timeout, we shut down.
-            if elapsed >= activity_timeout {
-                SHUTDOWN.store(true, Ordering::Relaxed);
-                None
-            } else {
-                Some(activity_timeout - elapsed)
-            }
-        } else {
-            // Use an infinite timeout, because either we aren't using a keep-alive connection,
-            // or there are currently active client connections. Once the last client leaves,
-            // we'll get an IdleStateChanged event and can switch to a finite timeout.
-            Some(Duration::new(i64::MAX as u64, 0))
-        }
-    }
-
-    fn handle_keep_alive(&mut self, mut stream: UnixStream) {
-        let thread_last_keep_alive = self.last_keep_alive.clone();
-        std::thread::spawn(move || {
-            let mut buf = [0u8; 12];
-            match stream.read_exact(&mut buf) {
-                Ok(()) if &buf == b"\x0bkeep-alive\0" => {
-                    info!("Got keep alive message");
-                    *thread_last_keep_alive.lock() = Instant::now();
-                    if let Err(e) = stream.write_all(b"\x04ack\0") {
-                        error!("Failed to send keep-alive ack: {}", e);
-                    }
-                }
-                Ok(()) => {
-                    error!("Unexpected message on keep-alive socket: {:?}", &buf);
-                }
-                Err(e) => {
-                    error!("Failed to read from keep-alive socket: {}", e);
-                }
-            }
-        });
-    }
-
     fn handle_connection(&mut self, stream: Stream) {
         let connection = ClientConnection::new(stream);
         let mut thread_usb = self.usb.clone();
-        let thread_connection_tracker = self.connection_tracker.clone();
         let verbose = self.verbose_log;
         std::thread::spawn(move || {
-            thread_connection_tracker.lock().client_connected();
             for request in connection {
                 let usb_conn = match thread_usb.get_connection() {
                     Ok(c) => c,
@@ -302,7 +175,6 @@ impl Daemon {
                     error!("Handling request failed: {}", e);
                 }
             }
-            thread_connection_tracker.lock().client_disconnected();
         });
     }
 }
@@ -321,16 +193,6 @@ fn run() -> Result<()> {
 
     // Safe because the syscall doesn't touch any memory and always succeeds.
     unsafe { libc::umask(0o117) };
-
-    let keep_alive_socket = args
-        .keep_alive
-        .map(|keep_alive_path| {
-            info!("Polling for keep-alive on {}", keep_alive_path.display());
-            let keep_alive_listener =
-                UnixListener::bind(keep_alive_path).map_err(Error::CreateSocket)?;
-            Ok(ScopedUnixListener(keep_alive_listener))
-        })
-        .transpose()?;
 
     let listener: Box<dyn Accept> = if let Some(unix_socket_path) = args.unix_socket {
         info!("Listening on {}", unix_socket_path.display());
@@ -353,13 +215,7 @@ fn run() -> Result<()> {
         args.upstart_mode,
     );
 
-    let mut daemon = Daemon::new(
-        args.verbose_log,
-        shutdown_fd,
-        listener,
-        usb,
-        keep_alive_socket,
-    )?;
+    let mut daemon = Daemon::new(args.verbose_log, shutdown_fd, listener, usb)?;
     daemon.run()?;
 
     info!("Shutting down.");

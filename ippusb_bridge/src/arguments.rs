@@ -38,7 +38,6 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, PartialEq)]
 pub struct Args {
     pub bus_device: Option<(u8, u8)>,
-    pub keep_alive: Option<PathBuf>,
     pub unix_socket: Option<PathBuf>,
     pub upstart_mode: bool,
     pub verbose_log: bool,
@@ -100,14 +99,12 @@ impl Args {
             })
             .transpose()?;
 
-        let keep_alive = matches.opt_str("keep-alive").map(PathBuf::from);
         let unix_socket = matches.opt_str("unix-socket").map(PathBuf::from);
         let verbose_log = matches.opt_present("v");
         let upstart_mode = matches.opt_present("upstart");
 
         Ok(Some(Args {
             bus_device,
-            keep_alive,
             unix_socket,
             upstart_mode,
             verbose_log,
@@ -148,21 +145,6 @@ mod tests {
         assert!(Args::parse(&["ippusb-bridge", "--bus-device", "a:14"]).is_err());
         assert!(Args::parse(&["ippusb-bridge", "--bus-device", "256:7"]).is_err());
         assert!(Args::parse(&["ippusb-bridge", "--bus-device", "91:256"]).is_err());
-    }
-
-    #[test]
-    fn keep_alive() {
-        let args = Args::parse(&["ippusb-bridge", "--keep-alive=/tmp/keepalive.sock"])
-            .expect("Valid keep-alive format should be properly parsed.")
-            .expect("Options struct should be returned");
-        assert_eq!(args.keep_alive, Some(PathBuf::from("/tmp/keepalive.sock")));
-
-        let args = Args::parse(&["ippusb-bridge", "--keep-alive", "/tmp/keepalive.sock"])
-            .expect("Valid keep-alive format should be properly parsed.")
-            .expect("Options struct should be returned");
-        assert_eq!(args.keep_alive, Some(PathBuf::from("/tmp/keepalive.sock")));
-
-        assert!(Args::parse(&["ippusb-bridge", "--keep-alive"]).is_err());
     }
 
     #[test]
