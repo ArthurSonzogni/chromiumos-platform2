@@ -5,6 +5,8 @@
 #include "shill/http_request.h"
 
 #include <curl/curl.h>
+
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -20,11 +22,6 @@
 #include "shill/logging.h"
 #include "shill/net/sockets.h"
 
-using base::Bind;
-using base::Callback;
-using base::StringToInt;
-using std::string;
-
 namespace {
 
 // The curl error domain for http requests
@@ -36,7 +33,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kHTTP;
-static string ObjectID(const HttpRequest* r) {
+static std::string ObjectID(const HttpRequest* r) {
   return r->interface_name();
 }
 }  // namespace Logging
@@ -53,12 +50,12 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
       interface_name_(interface_name),
       ip_family_(src_address.family()),
       weak_ptr_factory_(this),
-      dns_client_callback_(
-          Bind(&HttpRequest::GetDNSResult, weak_ptr_factory_.GetWeakPtr())),
-      success_callback_(
-          Bind(&HttpRequest::SuccessCallback, weak_ptr_factory_.GetWeakPtr())),
-      error_callback_(
-          Bind(&HttpRequest::ErrorCallback, weak_ptr_factory_.GetWeakPtr())),
+      dns_client_callback_(base::Bind(&HttpRequest::GetDNSResult,
+                                      weak_ptr_factory_.GetWeakPtr())),
+      success_callback_(base::Bind(&HttpRequest::SuccessCallback,
+                                   weak_ptr_factory_.GetWeakPtr())),
+      error_callback_(base::Bind(&HttpRequest::ErrorCallback,
+                                 weak_ptr_factory_.GetWeakPtr())),
       dns_client_(new DnsClient(ip_family_,
                                 interface_name_,
                                 dns_list,
@@ -84,11 +81,11 @@ HttpRequest::~HttpRequest() {
 }
 
 HttpRequest::Result HttpRequest::Start(
-    const string& url_string,
+    const std::string& url_string,
     const brillo::http::HeaderList& headers,
-    const Callback<void(std::shared_ptr<brillo::http::Response>)>&
+    const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
         request_success_callback,
-    const Callback<void(Result)>& request_error_callback) {
+    const base::Callback<void(Result)>& request_error_callback) {
   SLOG(this, 3) << "In " << __func__;
 
   DCHECK(!is_running_);
@@ -145,7 +142,7 @@ void HttpRequest::SuccessCallback(
     return;
   }
 
-  Callback<void(std::shared_ptr<brillo::http::Response>)>
+  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
       request_success_callback = request_success_callback_;
   Stop();
 
@@ -169,7 +166,7 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
     SendStatus(kResultUnknown);
     return;
   }
-  if (!StringToInt(error->GetCode(), &error_code)) {
+  if (!base::StringToInt(error->GetCode(), &error_code)) {
     LOG(ERROR) << logging_tag_ << ": Unable to convert error code "
                << error->GetCode() << " to Int";
     SendStatus(kResultUnknown);
@@ -227,7 +224,7 @@ void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
     return;
   }
 
-  string addr_string;
+  std::string addr_string;
   if (!address.IntoString(&addr_string)) {
     SendStatus(kResultDNSFailure);
     return;
@@ -244,7 +241,7 @@ void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
 
 void HttpRequest::SendStatus(Result result) {
   // Save copies on the stack, since Stop() will remove them.
-  Callback<void(Result)> request_error_callback = request_error_callback_;
+  base::Callback<void(Result)> request_error_callback = request_error_callback_;
   Stop();
 
   // Call the callback last, since it may delete us and |this| may no longer

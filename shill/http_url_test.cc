@@ -4,21 +4,21 @@
 
 #include "shill/http_url.h"
 
-#include <gtest/gtest.h>
+#include <string>
 
-using std::string;
+#include <gtest/gtest.h>
 
 namespace shill {
 
 struct StringAndResult {
-  explicit StringAndResult(const string& in_url_string)
+  explicit StringAndResult(const std::string& in_url_string)
       : url_string(in_url_string), result(false) {}
 
-  StringAndResult(const string& in_url_string,
+  StringAndResult(const std::string& in_url_string,
                   HttpUrl::Protocol in_protocol,
-                  const string& in_host,
+                  const std::string& in_host,
                   int in_port,
-                  const string& in_path)
+                  const std::string& in_path)
       : url_string(in_url_string),
         result(true),
         protocol(in_protocol),
@@ -26,12 +26,12 @@ struct StringAndResult {
         port(in_port),
         path(in_path) {}
 
-  string url_string;
+  std::string url_string;
   bool result;
   HttpUrl::Protocol protocol;
-  string host;
+  std::string host;
   int port;
-  string path;
+  std::string path;
 };
 
 class HttpUrlParseTest : public testing::TestWithParam<StringAndResult> {

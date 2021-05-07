@@ -30,12 +30,6 @@
 #include "shill/net/mock_sockets.h"
 #include "shill/test_event_dispatcher.h"
 
-using base::Bind;
-using base::Callback;
-using base::NumberToString;
-using base::Unretained;
-using std::string;
-using std::vector;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
@@ -94,29 +88,32 @@ class HttpRequestTest : public Test {
   class CallbackTarget {
    public:
     CallbackTarget()
-        : request_success_callback_(Bind(
-              &CallbackTarget::RequestSuccessCallTarget, Unretained(this))),
-          request_error_callback_(Bind(&CallbackTarget::RequestErrorCallTarget,
-                                       Unretained(this))) {}
+        : request_success_callback_(
+              base::Bind(&CallbackTarget::RequestSuccessCallTarget,
+                         base::Unretained(this))),
+          request_error_callback_(
+              base::Bind(&CallbackTarget::RequestErrorCallTarget,
+                         base::Unretained(this))) {}
 
     MOCK_METHOD(void,
                 RequestSuccessCallTarget,
                 (std::shared_ptr<brillo::http::Response>));
     MOCK_METHOD(void, RequestErrorCallTarget, (HttpRequest::Result));
 
-    const Callback<void(std::shared_ptr<brillo::http::Response>)>&
+    const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
     request_success_callback() const {
       return request_success_callback_;
     }
 
-    const Callback<void(HttpRequest::Result)>& request_error_callback() const {
+    const base::Callback<void(HttpRequest::Result)>& request_error_callback()
+        const {
       return request_error_callback_;
     }
 
    private:
-    Callback<void(std::shared_ptr<brillo::http::Response>)>
+    base::Callback<void(std::shared_ptr<brillo::http::Response>)>
         request_success_callback_;
-    Callback<void(HttpRequest::Result)> request_error_callback_;
+    base::Callback<void(HttpRequest::Result)> request_error_callback_;
   };
 
   void SetUp() override {
@@ -152,7 +149,7 @@ class HttpRequestTest : public Test {
     EXPECT_FALSE(request_->is_running_);
   }
   void ExpectStop() { EXPECT_CALL(*dns_client_, Stop()).Times(AtLeast(1)); }
-  void ExpectDNSRequest(const string& host, bool return_value) {
+  void ExpectDNSRequest(const std::string& host, bool return_value) {
     EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
         .WillOnce(Return(return_value));
   }
@@ -175,12 +172,12 @@ class HttpRequestTest : public Test {
 
     EXPECT_EQ(expected_response_, response->ExtractDataAsString());
   }
-  void ExpectRequestSuccessCallback(const string& resp_data) {
+  void ExpectRequestSuccessCallback(const std::string& resp_data) {
     expected_response_ = resp_data;
     EXPECT_CALL(target_, RequestSuccessCallTarget(_))
         .WillOnce(Invoke(this, &HttpRequestTest::InvokeResultVerify));
   }
-  void GetDNSResultFailure(const string& error_msg) {
+  void GetDNSResultFailure(const std::string& error_msg) {
     Error error(Error::kOperationFailed, error_msg);
     IPAddress address(IPAddress::kFamilyUnknown);
     request_->GetDNSResult(error, address);
@@ -189,17 +186,19 @@ class HttpRequestTest : public Test {
     Error error;
     request_->GetDNSResult(error, address);
   }
-  HttpRequest::Result StartRequest(const string& url) {
+  HttpRequest::Result StartRequest(const std::string& url) {
     return request_->Start(url, {}, target_.request_success_callback(),
                            target_.request_error_callback());
   }
-  void ExpectCreateConnection(const string& url) {
+  void ExpectCreateConnection(const std::string& url) {
     EXPECT_CALL(
         *transport_,
         CreateConnection(url, brillo::http::request_type::kGet, _, "", "", _))
         .WillOnce(Return(brillo_connection_));
   }
-  void ExpectResolveHostToIp(const string& host, int port, const string& path) {
+  void ExpectResolveHostToIp(const std::string& host,
+                             int port,
+                             const std::string& path) {
     EXPECT_CALL(*transport_, ResolveHostToIp(host, port, path));
   }
   void FinishRequestAsyncSuccess(
@@ -226,11 +225,11 @@ class HttpRequestTest : public Test {
       const brillo::http::ErrorCallback& error_callback) {
     brillo::ErrorPtr error;
     brillo::Error::AddTo(&error, FROM_HERE, "curl_easy_error",
-                         NumberToString(CURLE_COULDNT_CONNECT), "");
+                         base::NumberToString(CURLE_COULDNT_CONNECT), "");
     // request_id_ has not yet been set. Pass -1 to match default value.
     error_callback.Run(-1, error.get());
   }
-  void ExpectFinishRequestAsyncSuccess(const string& resp_data) {
+  void ExpectFinishRequestAsyncSuccess(const std::string& resp_data) {
     resp_data_ = resp_data;
     EXPECT_CALL(*brillo_connection_, FinishRequestAsync(_, _))
         .WillOnce(DoAll(WithArg<0>(Invoke(
@@ -245,8 +244,8 @@ class HttpRequestTest : public Test {
   }
 
  private:
-  const string interface_name_;
-  vector<string> dns_list_;
+  const std::string interface_name_;
+  std::vector<std::string> dns_list_;
   // Owned by the HttpRequest, but tracked here for EXPECT().
   StrictMock<MockDnsClient>* dns_client_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
@@ -257,8 +256,8 @@ class HttpRequestTest : public Test {
   std::unique_ptr<MockDeviceInfo> device_info_;
   std::unique_ptr<HttpRequest> request_;
   StrictMock<CallbackTarget> target_;
-  string expected_response_;
-  string resp_data_;
+  std::string expected_response_;
+  std::string resp_data_;
 };
 
 TEST_F(HttpRequestTest, Constructor) {
@@ -266,7 +265,7 @@ TEST_F(HttpRequestTest, Constructor) {
 }
 
 TEST_F(HttpRequestTest, NumericRequestSuccess) {
-  const string resp{"Sample response."};
+  const std::string resp{"Sample response."};
   ExpectRequestSuccessCallback(resp);
 
   ExpectCreateConnection(kNumericURL);
@@ -291,7 +290,7 @@ TEST_F(HttpRequestTest, RequestFail) {
 TEST_F(HttpRequestTest, TextRequestSuccess) {
   ExpectDNSRequest(kTextSiteName, true);
 
-  const string resp{"Sample response."};
+  const std::string resp{"Sample response."};
   ExpectRequestSuccessCallback(resp);
   HttpUrl url;
   EXPECT_TRUE(url.ParseFromString(kTextURL));
@@ -328,7 +327,7 @@ TEST_F(HttpRequestTest, FailDNSTimeout) {
   EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
   ExpectRequestErrorCallback(HttpRequest::kResultDNSTimeout);
   ExpectStop();
-  const string error(DnsClient::kErrorTimedOut);
+  const std::string error(DnsClient::kErrorTimedOut);
   GetDNSResultFailure(error);
   ExpectReset();
 }

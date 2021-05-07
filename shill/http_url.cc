@@ -10,9 +10,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace {
@@ -31,12 +28,12 @@ HttpUrl::HttpUrl() : port_(kDefaultHttpPort), protocol_(Protocol::kHttp) {}
 
 HttpUrl::~HttpUrl() = default;
 
-bool HttpUrl::ParseFromString(const string& url_string) {
+bool HttpUrl::ParseFromString(const std::string& url_string) {
   Protocol protocol = Protocol::kUnknown;
   size_t host_start = 0;
   int port = 0;
-  const string http_url_prefix(kPrefixHttp);
-  const string https_url_prefix(kPrefixHttps);
+  const std::string http_url_prefix(kPrefixHttp);
+  const std::string https_url_prefix(kPrefixHttps);
   if (url_string.substr(0, http_url_prefix.length()) == http_url_prefix) {
     host_start = http_url_prefix.length();
     port = kDefaultHttpPort;
@@ -51,10 +48,10 @@ bool HttpUrl::ParseFromString(const string& url_string) {
   }
 
   size_t host_end = url_string.find_first_of(kDelimiters, host_start);
-  if (host_end == string::npos) {
+  if (host_end == std::string::npos) {
     host_end = url_string.length();
   }
-  vector<string> host_parts = base::SplitString(
+  const auto host_parts = base::SplitString(
       url_string.substr(host_start, host_end - host_start),
       std::string{kPortSeparator}, base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 

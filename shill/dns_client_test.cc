@@ -23,10 +23,6 @@
 #include "shill/net/mock_time.h"
 #include "shill/testing.h"
 
-using base::Bind;
-using base::Unretained;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Not;
@@ -103,7 +99,8 @@ class DnsClientTest : public Test {
 
   void CallCompletion() { dns_client_->HandleCompletion(); }
 
-  void CreateClient(const vector<string>& dns_servers, int timeout_ms) {
+  void CreateClient(const std::vector<std::string>& dns_servers,
+                    int timeout_ms) {
     dns_client_.reset(new DnsClient(IPAddress::kFamilyIPv4, kNetworkInterface,
                                     dns_servers, timeout_ms, &dispatcher_,
                                     callback_target_.callback()));
@@ -125,8 +122,8 @@ class DnsClientTest : public Test {
     EXPECT_CALL(ares_, Timeout(_, _, _)).WillRepeatedly(ReturnArg<1>());
   }
 
-  void SetupRequest(const string& name, const string& server) {
-    vector<string> dns_servers = {server};
+  void SetupRequest(const std::string& name, const std::string& server) {
+    std::vector<std::string> dns_servers = {server};
     CreateClient(dns_servers, kAresTimeoutMS);
     // These expectations are fulfilled when dns_client_->Start() is called.
     EXPECT_CALL(ares_, InitOptions(_, _, _))
@@ -193,7 +190,8 @@ class DnsClientTest : public Test {
   class DnsCallbackTarget {
    public:
     DnsCallbackTarget()
-        : callback_(Bind(&DnsCallbackTarget::CallTarget, Unretained(this))) {}
+        : callback_(base::Bind(&DnsCallbackTarget::CallTarget,
+                               base::Unretained(this))) {}
 
     MOCK_METHOD(void, CallTarget, (const Error&, const IPAddress&));
 
@@ -206,7 +204,7 @@ class DnsClientTest : public Test {
   MockIOHandlerFactory io_handler_factory_;
   std::unique_ptr<DnsClient> dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
-  string queued_request_;
+  std::string queued_request_;
   StrictMock<DnsCallbackTarget> callback_target_;
   StrictMock<MockAres> ares_;
   StrictMock<MockTime> time_;
@@ -225,14 +223,14 @@ class SentinelIOHandler : public IOHandler {
 };
 
 TEST_F(DnsClientTest, Constructor) {
-  vector<string> dns_servers = {kGoodServer};
+  std::vector<std::string> dns_servers = {kGoodServer};
   CreateClient({kGoodServer}, kAresTimeoutMS);
   ExpectReset();
 }
 
 // Correctly handles empty server addresses.
 TEST_F(DnsClientTest, ServerJoin) {
-  vector<string> dns_servers = {"", kGoodServer, "", ""};
+  std::vector<std::string> dns_servers = {"", kGoodServer, "", ""};
   CreateClient(dns_servers, kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _))
       .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
@@ -255,7 +253,7 @@ TEST_F(DnsClientTest, ServerJoin) {
 
 // Receive error because no DNS servers were specified.
 TEST_F(DnsClientTest, NoServers) {
-  CreateClient(vector<string>(), kAresTimeoutMS);
+  CreateClient(std::vector<std::string>(), kAresTimeoutMS);
   Error error;
   EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -263,7 +261,7 @@ TEST_F(DnsClientTest, NoServers) {
 
 // Setup error because SetServersCsv failed due to invalid DNS servers.
 TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
-  vector<string> dns_servers = {kBadServer};
+  std::vector<std::string> dns_servers = {kBadServer};
   CreateClient(dns_servers, kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _)).WillOnce(Return(ARES_SUCCESS));
   EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kBadServer)))
@@ -275,7 +273,7 @@ TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
 
 // Setup error because InitOptions failed.
 TEST_F(DnsClientTest, InitOptionsFailure) {
-  vector<string> dns_servers = {kGoodServer};
+  std::vector<std::string> dns_servers = {kGoodServer};
   CreateClient(dns_servers, kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _)).WillOnce(Return(ARES_EBADFLAGS));
   Error error;
@@ -346,7 +344,7 @@ TEST_F(DnsClientTest, TimeoutFirstRefresh) {
   ExpectPostCompletionTask();
   ASSERT_FALSE(dns_client_->Start(kGoodName, &error));
   EXPECT_EQ(Error::kOperationTimeout, error.type());
-  EXPECT_EQ(string(DnsClient::kErrorTimedOut), error.message());
+  EXPECT_EQ(std::string(DnsClient::kErrorTimedOut), error.message());
   ExpectReset();
 }
 

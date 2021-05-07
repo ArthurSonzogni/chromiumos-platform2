@@ -32,11 +32,6 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/routing_table_entry.h"
 
-using base::Bind;
-using base::Callback;
-using base::Unretained;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
@@ -59,7 +54,7 @@ const std::vector<std::string> kIPv6DnsList{
 };
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
 constexpr const char kHttpsUrl[] = "https://www.google.com/generate_204";
-const vector<string> kFallbackHttpUrls{
+const std::vector<std::string> kFallbackHttpUrls{
     "http://www.google.com/gen_204",
     "http://play.googleapis.com/generate_204",
 };
@@ -72,8 +67,8 @@ const shill::IPAddress kIPv6ServerAddress("fe80::1aa9:5ff:7ebf:14c5");
 const shill::IPAddress kIPv4GatewayAddress("192.168.1.1");
 const shill::IPAddress kIPv6GatewayAddress("fee2::11b2:53f:13be:125e");
 const shill::IPAddress kIPv4ZeroAddress("0.0.0.0");
-const vector<base::TimeDelta> kEmptyResult;
-const vector<base::TimeDelta> kNonEmptyResult{
+const std::vector<base::TimeDelta> kEmptyResult;
+const std::vector<base::TimeDelta> kNonEmptyResult{
     base::TimeDelta::FromMilliseconds(10)};
 constexpr const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00,
                                              0x00, 0x00, 0x00};
@@ -155,7 +150,7 @@ class ConnectionDiagnosticsTest : public Test {
       : ip_address_(kIPv4DeviceAddress),
         gateway_(kIPv4GatewayAddress),
         dns_list_(kIPv4DnsList),
-        local_mac_address_(string(kDeviceMacAddressASCIIString), false),
+        local_mac_address_(std::string(kDeviceMacAddressASCIIString), false),
         manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
         connection_diagnostics_(kInterfaceName,
@@ -202,20 +197,23 @@ class ConnectionDiagnosticsTest : public Test {
   class CallbackTarget {
    public:
     CallbackTarget()
-        : result_callback_(
-              Bind(&CallbackTarget::ResultCallback, Unretained(this))) {}
+        : result_callback_(base::Bind(&CallbackTarget::ResultCallback,
+                                      base::Unretained(this))) {}
 
     MOCK_METHOD(void,
                 ResultCallback,
-                (const string&, const vector<ConnectionDiagnostics::Event>&));
+                (const std::string&,
+                 const std::vector<ConnectionDiagnostics::Event>&));
 
-    Callback<void(const string&, const vector<ConnectionDiagnostics::Event>&)>&
+    base::Callback<void(const std::string&,
+                        const std::vector<ConnectionDiagnostics::Event>&)>&
     result_callback() {
       return result_callback_;
     }
 
    private:
-    Callback<void(const string&, const vector<ConnectionDiagnostics::Event>&)>
+    base::Callback<void(const std::string&,
+                        const std::vector<ConnectionDiagnostics::Event>&)>
         result_callback_;
   };
 
@@ -429,7 +427,7 @@ class ConnectionDiagnosticsTest : public Test {
                                 const IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultSuccess);
-    const string& issue =
+    const auto& issue =
         ping_event_type == ConnectionDiagnostics::kTypePingGateway
             ? ConnectionDiagnostics::kIssueGatewayUpstream
             : ConnectionDiagnostics::kIssueHTTPBrokenPortal;
@@ -539,9 +537,9 @@ class ConnectionDiagnosticsTest : public Test {
     msg.set_neighbor_status(
         RTNLMessage::NeighborStatus(NUD_REACHABLE, 0, NDA_DST));
     msg.SetAttribute(NDA_DST, address_queried.address());
-    const string& issue =
-        is_gateway ? ConnectionDiagnostics::kIssueGatewayNotResponding
-                   : ConnectionDiagnostics::kIssueServerNotResponding;
+    const auto& issue = is_gateway
+                            ? ConnectionDiagnostics::kIssueGatewayNotResponding
+                            : ConnectionDiagnostics::kIssueServerNotResponding;
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
     EXPECT_CALL(callback_target(),
                 ResultCallback(issue, IsEventList(expected_events_)));
@@ -586,7 +584,7 @@ class ConnectionDiagnosticsTest : public Test {
     // connection, directed at our local IP address and local MAC address.
     client_test_helper_->GeneratePacket(
         ARPOP_REPLY, ip_address_,
-        ByteString(string(kArpReplySenderMacAddressASCIIString), false),
+        ByteString(std::string(kArpReplySenderMacAddressASCIIString), false),
         ip_address_, local_mac_address_);
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
                               ConnectionDiagnostics::kIssueIPCollision));
@@ -614,9 +612,9 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypePortalDetection, diag_phase,
                      diag_result);
     if (diag_phase == ConnectionDiagnostics::kPhasePortalDetectionEndContent) {
-      const string& issue = diag_result == ConnectionDiagnostics::kResultSuccess
-                                ? ConnectionDiagnostics::kIssueNone
-                                : ConnectionDiagnostics::kIssueCaptivePortal;
+      const auto& issue = diag_result == ConnectionDiagnostics::kResultSuccess
+                              ? ConnectionDiagnostics::kIssueNone
+                              : ConnectionDiagnostics::kIssueCaptivePortal;
       EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
       EXPECT_CALL(callback_target(),
                   ResultCallback(issue, IsEventList(expected_events_)));
@@ -645,7 +643,8 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   // |expected_issue| only used if |is_success| is false.
-  void ExpectPingDNSSeversStart(bool is_success, const string& expected_issue) {
+  void ExpectPingDNSSeversStart(bool is_success,
+                                const std::string& expected_issue) {
     AddExpectedEvent(ConnectionDiagnostics::kTypePingDNSServers,
                      ConnectionDiagnostics::kPhaseStart,
                      is_success ? ConnectionDiagnostics::kResultSuccess
@@ -767,7 +766,7 @@ class ConnectionDiagnosticsTest : public Test {
                                                   IsSameIPAddress(address), _))
         .WillOnce(Return(success));
     if (success) {
-      const string& issue =
+      const auto& issue =
           is_gateway ? ConnectionDiagnostics::kIssueGatewayNotResponding
                      : ConnectionDiagnostics::kIssueServerNotResponding;
       EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
@@ -780,7 +779,7 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.FindArpTableEntry(address);
   }
 
-  void ExpectCheckIPCollisionEndFailure(const string& expected_issue) {
+  void ExpectCheckIPCollisionEndFailure(const std::string& expected_issue) {
     AddExpectedEvent(ConnectionDiagnostics::kTypeIPCollisionCheck,
                      ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
@@ -796,7 +795,7 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeNeighborTableLookup,
                      ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
-    string issue;
+    std::string issue;
     if (is_timeout) {
       issue = is_gateway ? ConnectionDiagnostics::kIssueGatewayNoNeighborEntry
                          : ConnectionDiagnostics::kIssueServerNoNeighborEntry;
@@ -845,7 +844,7 @@ class ConnectionDiagnosticsTest : public Test {
 
   // For each test, all events we expect to appear in the final result are
   // accumulated in this vector.
-  vector<ConnectionDiagnostics::Event> expected_events_;
+  std::vector<ConnectionDiagnostics::Event> expected_events_;
 };
 
 TEST_F(ConnectionDiagnosticsTest, DoesPreviousEventMatch) {
@@ -902,7 +901,7 @@ TEST_F(ConnectionDiagnosticsTest, StartWhileRunning) {
 }
 
 TEST_F(ConnectionDiagnosticsTest, StartWithBadURL) {
-  const string kBadURL("http://www.foo.com:x");  // Colon but no port
+  const std::string kBadURL("http://www.foo.com:x");  // Colon but no port
   // IcmpSession::Stop will be called once when the bad URL is rejected.
   ExpectIcmpSessionStop();
   PortalDetector::Properties props =

@@ -29,15 +29,11 @@
 #include "shill/net/shill_time.h"
 #include "shill/shill_ares.h"
 
-using base::Bind;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDNS;
-static string ObjectID(const DnsClient* d) {
+static std::string ObjectID(const DnsClient* d) {
   return d->interface_name();
 }
 }  // namespace Logging
@@ -46,8 +42,9 @@ namespace {
 
 using IOHandlerMap = std::map<ares_socket_t, std::unique_ptr<IOHandler>>;
 
-vector<string> FilterEmptyIPs(const vector<string>& dns_servers) {
-  vector<string> results;
+std::vector<std::string> FilterEmptyIPs(
+    const std::vector<std::string>& dns_servers) {
+  std::vector<std::string> results;
   for (const auto& ip : dns_servers) {
     if (!ip.empty()) {
       results.push_back(ip);
@@ -80,8 +77,8 @@ struct DnsClientState {
 };
 
 DnsClient::DnsClient(IPAddress::Family family,
-                     const string& interface_name,
-                     const vector<string>& dns_servers,
+                     const std::string& interface_name,
+                     const std::vector<std::string>& dns_servers,
                      int timeout_ms,
                      EventDispatcher* dispatcher,
                      const ClientCallback& callback)
@@ -101,7 +98,7 @@ DnsClient::~DnsClient() {
   Stop();
 }
 
-bool DnsClient::Start(const string& hostname, Error* error) {
+bool DnsClient::Start(const std::string& hostname, Error* error) {
   if (running_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           "Only one DNS request is allowed at a time");
@@ -136,7 +133,7 @@ bool DnsClient::Start(const string& hostname, Error* error) {
     //
     // Alternatively, we can use ares_set_servers instead, where we would
     // explicitly construct a link list of ares_addr_node.
-    string server_addresses = base::JoinString(dns_servers_, ",");
+    const auto server_addresses = base::JoinString(dns_servers_, ",");
     status = ares_->SetServersCsv(resolver_state_->channel,
                                   server_addresses.c_str());
     if (status != ARES_SUCCESS) {
@@ -231,8 +228,8 @@ void DnsClient::ReceiveDnsReply(int status, struct hostent* hostent) {
   SLOG(this, 3) << "In " << __func__;
   running_ = false;
   timeout_closure_.Cancel();
-  dispatcher_->PostTask(FROM_HERE, Bind(&DnsClient::HandleCompletion,
-                                        weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostTask(FROM_HERE, base::Bind(&DnsClient::HandleCompletion,
+                                              weak_ptr_factory_.GetWeakPtr()));
 
   if (status == ARES_SUCCESS && hostent != nullptr &&
       hostent->h_addrtype == address_.family() &&
@@ -306,9 +303,9 @@ bool DnsClient::RefreshHandles() {
       ares_->GetSock(resolver_state_->channel, sockets, ARES_GETSOCK_MAXNUM);
 
   base::Callback<void(int)> read_callback(
-      Bind(&DnsClient::HandleDnsRead, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&DnsClient::HandleDnsRead, weak_ptr_factory_.GetWeakPtr()));
   base::Callback<void(int)> write_callback(
-      Bind(&DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
       if (base::Contains(old_read, sockets[i])) {
@@ -360,8 +357,9 @@ bool DnsClient::RefreshHandles() {
     //    in the posted task.
     running_ = false;
     error_.Populate(Error::kOperationTimeout, kErrorTimedOut);
-    dispatcher_->PostTask(FROM_HERE, Bind(&DnsClient::HandleCompletion,
-                                          weak_ptr_factory_.GetWeakPtr()));
+    dispatcher_->PostTask(FROM_HERE,
+                          base::Bind(&DnsClient::HandleCompletion,
+                                     weak_ptr_factory_.GetWeakPtr()));
     return false;
   } else {
     struct timeval max, ret_tv;
@@ -369,7 +367,7 @@ bool DnsClient::RefreshHandles() {
     struct timeval* tv =
         ares_->Timeout(resolver_state_->channel, &max, &ret_tv);
     timeout_closure_.Reset(
-        Bind(&DnsClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
+        base::Bind(&DnsClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
     dispatcher_->PostDelayedTask(FROM_HERE, timeout_closure_.callback(),
                                  tv->tv_sec * 1000 + tv->tv_usec / 1000);
   }
