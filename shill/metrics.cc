@@ -19,13 +19,11 @@
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kMetrics;
-static string ObjectID(const Metrics* m) {
+static std::string ObjectID(const Metrics* m) {
   return "(metrics)";
 }
 }  // namespace Logging
@@ -573,7 +571,7 @@ Metrics::WiFiFrequencyRange Metrics::WiFiChannelToFrequencyRange(
 
 // static
 Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
-    const string& security) {
+    const std::string& security) {
   if (security == kSecurityNone) {
     return kWiFiSecurityNone;
   } else if (security == kSecurityWep) {
@@ -595,7 +593,7 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
 
 // static
 Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
-    const string& outer) {
+    const std::string& outer) {
   if (outer == kEapMethodPEAP) {
     return kEapOuterProtocolPeap;
   } else if (outer == kEapMethodTLS) {
@@ -611,7 +609,7 @@ Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
 
 // static
 Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
-    const string& inner) {
+    const std::string& inner) {
   if (inner.empty()) {
     return kEapInnerProtocolNone;
   } else if (inner == kEapPhase2AuthPEAPMD5) {
@@ -785,7 +783,7 @@ void Metrics::DeregisterService(const Service& service) {
 }
 
 void Metrics::AddServiceStateTransitionTimer(const Service& service,
-                                             const string& histogram_name,
+                                             const std::string& histogram_name,
                                              Service::ConnectState start_state,
                                              Service::ConnectState stop_state) {
   SLOG(this, 2) << __func__ << ": adding " << histogram_name << " for "
@@ -877,8 +875,8 @@ void Metrics::OnDefaultLogicalServiceChanged(
                                           : Technology(Technology::kUnknown);
   if (technology != last_default_technology_) {
     if (last_default_technology_ != Technology::kUnknown) {
-      string histogram = GetFullMetricName(kMetricTimeOnlineSecondsSuffix,
-                                           last_default_technology_);
+      const auto histogram = GetFullMetricName(kMetricTimeOnlineSecondsSuffix,
+                                               last_default_technology_);
       time_online_timer_->GetElapsedTime(&elapsed_seconds);
       SendToUMA(histogram, elapsed_seconds.InSeconds(),
                 kMetricTimeOnlineSecondsMin, kMetricTimeOnlineSecondsMax,
@@ -941,15 +939,15 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
   service.SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
 }
 
-string Metrics::GetFullMetricName(const char* metric_suffix,
-                                  Technology technology_id) {
-  string technology = technology_id.GetName();
+std::string Metrics::GetFullMetricName(const char* metric_suffix,
+                                       Technology technology_id) {
+  std::string technology = technology_id.GetName();
   technology[0] = base::ToUpperASCII(technology[0]);
   return base::StringPrintf("%s.%s.%s", kMetricPrefix, technology.c_str(),
                             metric_suffix);
 }
 
-string Metrics::GetSuspendDurationMetricNameFromStatus(
+std::string Metrics::GetSuspendDurationMetricNameFromStatus(
     WiFiConnectionStatusAfterWake status) {
   switch (status) {
     case kWiFiConnectionStatusAfterWakeWoWOnConnected:
@@ -974,7 +972,7 @@ string Metrics::GetSuspendDurationMetricNameFromStatus(
 
 void Metrics::NotifyServiceDisconnect(const Service& service) {
   Technology technology = service.technology();
-  string histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
+  const auto histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
   SendToUMA(histogram, service.explicitly_disconnected(), kMetricDisconnectMin,
             kMetricDisconnectMax, kMetricDisconnectNumBuckets);
 }
@@ -984,7 +982,7 @@ void Metrics::NotifySignalAtDisconnect(const Service& service,
   // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
   // seem to handle negative values well.  Now everything's positive.
   Technology technology = service.technology();
-  string histogram =
+  const auto histogram =
       GetFullMetricName(kMetricSignalAtDisconnectSuffix, technology);
   SendToUMA(histogram, -signal_strength, kMetricSignalAtDisconnectMin,
             kMetricSignalAtDisconnectMax, kMetricSignalAtDisconnectNumBuckets);
@@ -1014,7 +1012,7 @@ void Metrics::NotifyConnectedToServiceAfterWake(
 
 void Metrics::NotifySuspendDurationAfterWake(
     WiFiConnectionStatusAfterWake status, int seconds_in_suspend) {
-  string metric = GetSuspendDurationMetricNameFromStatus(status);
+  const auto metric = GetSuspendDurationMetricNameFromStatus(status);
 
   if (!metric.empty()) {
     SendToUMA(metric, seconds_in_suspend, kSuspendDurationMin,
@@ -1038,7 +1036,7 @@ void Metrics::NotifyTerminationActionsCompleted(bool success) {
   base::TimeDelta elapsed_time;
   time_termination_actions_timer->GetElapsedTime(&elapsed_time);
   time_termination_actions_timer->Reset();
-  string time_metric, result_metric;
+  std::string time_metric, result_metric;
   time_metric = kMetricTerminationActionTimeTaken;
   result_metric = kMetricTerminationActionResult;
 
@@ -1070,7 +1068,7 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   base::TimeDelta elapsed_time;
   time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
   time_suspend_actions_timer->Reset();
-  string time_metric, result_metric;
+  std::string time_metric, result_metric;
   time_metric = kMetricSuspendActionTimeTaken;
   result_metric = kMetricSuspendActionResult;
 
@@ -1137,7 +1135,7 @@ void Metrics::NotifyNeighborLinkMonitorFailure(
     Technology technology,
     IPAddress::Family family,
     patchpanel::NeighborReachabilityEventSignal::Role role) {
-  string histogram =
+  const auto histogram =
       GetFullMetricName(kMetricNeighborLinkMonitorFailureSuffix, technology);
   NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
@@ -1250,8 +1248,8 @@ void Metrics::NotifyAp80211vBSSTransitionSupport(
 #if !defined(DISABLE_WIFI)
 void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                     IEEE_80211::WiFiReasonCode reason) {
-  string metric_disconnect_reason;
-  string metric_disconnect_type;
+  std::string metric_disconnect_reason;
+  std::string metric_disconnect_type;
   WiFiReasonType type;
 
   if (by_whom == kDisconnectedByAp) {
@@ -1310,7 +1308,7 @@ void Metrics::RegisterDevice(int interface_index, Technology technology) {
 
   auto device_metrics = std::make_unique<DeviceMetrics>();
   device_metrics->technology = technology;
-  string histogram =
+  auto histogram =
       GetFullMetricName(kMetricTimeToInitializeMillisecondsSuffix, technology);
   device_metrics->initialization_timer.reset(
       new chromeos_metrics::TimerReporter(
@@ -1514,7 +1512,7 @@ void Metrics::Notify3GPPRegistrationDelayedDropCanceled() {
                 kCellular3GPPRegistrationDelayedDropMax);
 }
 
-void Metrics::NotifyCellularDeviceDrop(const string& network_technology,
+void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
                                        uint16_t signal_strength) {
   SLOG(this, 2) << __func__ << ": " << network_technology << ", "
                 << signal_strength;
@@ -1590,13 +1588,13 @@ void Metrics::NotifyWifiTxBitrate(int bitrate) {
             kMetricWifiTxBitrateMax, kMetricWifiTxBitrateNumBuckets);
 }
 
-void Metrics::NotifyUserInitiatedConnectionResult(const string& name,
+void Metrics::NotifyUserInitiatedConnectionResult(const std::string& name,
                                                   int result) {
   SendEnumToUMA(name, result, kUserInitiatedConnectionResultMax);
 }
 
 void Metrics::NotifyUserInitiatedConnectionFailureReason(
-    const string& name, const Service::ConnectFailure failure) {
+    const std::string& name, const Service::ConnectFailure failure) {
   UserInitiatedConnectionFailureReason reason;
   switch (failure) {
     case Service::kFailureNone:
@@ -1650,7 +1648,7 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
 
 void Metrics::NotifyNetworkProblemDetected(Technology technology_id,
                                            int reason) {
-  string histogram =
+  const auto histogram =
       GetFullMetricName(kMetricNetworkProblemDetectedSuffix, technology_id);
   SendEnumToUMA(histogram, reason, kNetworkProblemMax);
 }
@@ -1665,14 +1663,14 @@ void Metrics::NotifyDhcpClientStatus(DhcpClientStatus status) {
 
 void Metrics::NotifyNetworkConnectionIPType(Technology technology_id,
                                             NetworkConnectionIPType type) {
-  string histogram =
+  const auto histogram =
       GetFullMetricName(kMetricNetworkConnectionIPTypeSuffix, technology_id);
   SendEnumToUMA(histogram, type, kNetworkConnectionIPTypeMax);
 }
 
 void Metrics::NotifyIPv6ConnectivityStatus(Technology technology_id,
                                            bool status) {
-  string histogram =
+  const auto histogram =
       GetFullMetricName(kMetricIPv6ConnectivityStatusSuffix, technology_id);
   IPv6ConnectivityStatus ipv6_status =
       status ? kIPv6ConnectivityStatusYes : kIPv6ConnectivityStatusNo;
@@ -1681,7 +1679,7 @@ void Metrics::NotifyIPv6ConnectivityStatus(Technology technology_id,
 
 void Metrics::NotifyDevicePresenceStatus(Technology technology_id,
                                          bool status) {
-  string histogram =
+  const auto histogram =
       GetFullMetricName(kMetricDevicePresenceStatusSuffix, technology_id);
   DevicePresenceStatus presence =
       status ? kDevicePresenceStatusYes : kDevicePresenceStatusNo;
@@ -1709,25 +1707,25 @@ void Metrics::NotifyDeviceRemovedEvent(Technology technology_id) {
 
 void Metrics::NotifyUnreliableLinkSignalStrength(Technology technology_id,
                                                  int signal_strength) {
-  string histogram = GetFullMetricName(
+  const auto histogram = GetFullMetricName(
       kMetricUnreliableLinkSignalStrengthSuffix, technology_id);
   SendToUMA(histogram, signal_strength, kMetricServiceSignalStrengthMin,
             kMetricServiceSignalStrengthMax,
             kMetricServiceSignalStrengthNumBuckets);
 }
 
-bool Metrics::SendEnumToUMA(const string& name, int sample, int max) {
+bool Metrics::SendEnumToUMA(const std::string& name, int sample, int max) {
   SLOG(this, 5) << "Sending enum " << name << " with value " << sample << ".";
   return library_->SendEnumToUMA(name, sample, max);
 }
 
 bool Metrics::SendToUMA(
-    const string& name, int sample, int min, int max, int num_buckets) {
+    const std::string& name, int sample, int min, int max, int num_buckets) {
   SLOG(this, 5) << "Sending metric " << name << " with value " << sample << ".";
   return library_->SendToUMA(name, sample, min, max, num_buckets);
 }
 
-bool Metrics::SendSparseToUMA(const string& name, int sample) {
+bool Metrics::SendSparseToUMA(const std::string& name, int sample) {
   SLOG(this, 5) << "Sending sparse metric " << name << " with value " << sample
                 << ".";
   return library_->SendSparseToUMA(name, sample);
@@ -1804,7 +1802,7 @@ void Metrics::NotifyBeforeSuspendActions(bool is_connected,
   }
 }
 
-void Metrics::NotifyConnectionDiagnosticsIssue(const string& issue) {
+void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {
   ConnectionDiagnosticsIssue issue_enum;
   if (issue == ConnectionDiagnostics::kIssueIPCollision) {
     issue_enum = kConnectionDiagnosticsIssueIPCollision;
@@ -1929,7 +1927,7 @@ int Metrics::GetRegulatoryDomainValue(std::string country_code) {
 
 void Metrics::InitializeCommonServiceMetrics(const Service& service) {
   Technology technology = service.technology();
-  string histogram =
+  auto histogram =
       GetFullMetricName(kMetricTimeToConfigMillisecondsSuffix, technology);
   AddServiceStateTransitionTimer(service, histogram, Service::kStateConfiguring,
                                  Service::kStateConnected);
@@ -2060,7 +2058,7 @@ void Metrics::SendServiceFailure(const Service& service) {
       break;
   }
 
-  string histogram =
+  const auto histogram =
       GetFullMetricName(kMetricNetworkServiceErrorSuffix, service.technology());
 
   // Publish technology specific connection failure metrics. This will

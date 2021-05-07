@@ -24,8 +24,6 @@
 #include "shill/wifi/mock_wifi_service.h"
 #endif  // DISABLE_WIFI
 
-using std::string;
-
 using testing::_;
 using testing::DoAll;
 using testing::Ge;
@@ -682,7 +680,7 @@ TEST_F(MetricsTest, Logging) {
   ScopeLogger::GetInstance()->EnableScopesByName("+metrics");
   ScopeLogger::GetInstance()->set_verbose_level(-kVerboseLevel5);
 
-  const string kEnumName("fake-enum");
+  const std::string kEnumName("fake-enum");
   const int kEnumValue = 1;
   const int kEnumMax = 12;
   EXPECT_CALL(log, Log(kVerboseLevel5, _,
@@ -690,7 +688,7 @@ TEST_F(MetricsTest, Logging) {
   EXPECT_CALL(library_, SendEnumToUMA(kEnumName, kEnumValue, kEnumMax));
   metrics_.SendEnumToUMA(kEnumName, kEnumValue, kEnumMax);
 
-  const string kMetricName("fake-metric");
+  const std::string kMetricName("fake-metric");
   const int kMetricValue = 2;
   const int kHistogramMin = 0;
   const int kHistogramMax = 100;
@@ -1017,7 +1015,7 @@ TEST_F(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume) {
 }
 
 TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
-  const string& issue = ConnectionDiagnostics::kIssueIPCollision;
+  const std::string& issue = ConnectionDiagnostics::kIssueIPCollision;
   EXPECT_CALL(library_,
               SendEnumToUMA(Metrics::kMetricConnectionDiagnosticsIssue,
                             Metrics::kConnectionDiagnosticsIssueIPCollision,
@@ -1026,7 +1024,7 @@ TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
 }
 
 TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
-  const string& invalid_issue = "Invalid issue string.";
+  const std::string& invalid_issue = "Invalid issue string.";
   EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(0);
   metrics_.NotifyConnectionDiagnosticsIssue(invalid_issue);
 }
