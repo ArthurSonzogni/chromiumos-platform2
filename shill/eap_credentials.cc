@@ -30,10 +30,6 @@
 #include "shill/store_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
-using base::FilePath;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace {
@@ -73,7 +69,7 @@ const char kStorageDeprecatedEapPassword[] = "EAP.Password";
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const EapCredentials* e) {
+static std::string ObjectID(const EapCredentials* e) {
   return "(eap_credentials)";
 }
 }  // namespace Logging
@@ -115,9 +111,10 @@ EapCredentials::~EapCredentials() = default;
 // static
 void EapCredentials::PopulateSupplicantProperties(
     CertificateFile* certificate_file, KeyValueStore* params) const {
-  string ca_cert;
+  std::string ca_cert;
   if (!ca_cert_pem_.empty()) {
-    FilePath certfile = certificate_file->CreatePEMFromStrings(ca_cert_pem_);
+    base::FilePath certfile =
+        certificate_file->CreatePEMFromStrings(ca_cert_pem_);
     if (certfile.empty()) {
       LOG(ERROR) << "Unable to extract PEM certificate.";
     } else {
@@ -127,7 +124,7 @@ void EapCredentials::PopulateSupplicantProperties(
 
   std::string updated_inner_eap = AddAdditionalInnerEapParams(inner_eap_);
   using KeyVal = std::pair<const char*, const char*>;
-  vector<KeyVal> propertyvals = {
+  std::vector<KeyVal> propertyvals = {
       // Authentication properties.
       KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
              anonymous_identity_.c_str()),
@@ -142,7 +139,7 @@ void EapCredentials::PopulateSupplicantProperties(
       KeyVal(WPASupplicant::kNetworkPropertyEapSubjectMatch,
              subject_match_.c_str()),
   };
-  base::Optional<string> altsubject_match =
+  base::Optional<std::string> altsubject_match =
       TranslateSubjectAlternativeNameMatch(
           subject_alternative_name_match_list_);
   if (altsubject_match.has_value()) {
@@ -186,12 +183,13 @@ void EapCredentials::PopulateSupplicantProperties(
   }
 
   if (tls_version_max_ == kEapTLSVersion1p0) {
-    params->Set<string>(WPASupplicant::kNetworkPropertyEapOuterEap,
-                        string(WPASupplicant::kFlagDisableEapTLS1p1) + " " +
-                            string(WPASupplicant::kFlagDisableEapTLS1p2));
+    params->Set<std::string>(
+        WPASupplicant::kNetworkPropertyEapOuterEap,
+        std::string(WPASupplicant::kFlagDisableEapTLS1p1) + " " +
+            std::string(WPASupplicant::kFlagDisableEapTLS1p2));
   } else if (tls_version_max_ == kEapTLSVersion1p1) {
-    params->Set<string>(WPASupplicant::kNetworkPropertyEapOuterEap,
-                        WPASupplicant::kFlagDisableEapTLS1p2);
+    params->Set<std::string>(WPASupplicant::kNetworkPropertyEapOuterEap,
+                             WPASupplicant::kFlagDisableEapTLS1p2);
   }
 
   if (use_login_password_) {
@@ -200,19 +198,20 @@ void EapCredentials::PopulateSupplicantProperties(
     if (password == nullptr || password->size() == 0) {
       LOG(WARNING) << "Unable to retrieve user password";
     } else {
-      params->Set<string>(WPASupplicant::kNetworkPropertyEapCaPassword,
-                          std::string(password->GetRaw(), password->size()));
+      params->Set<std::string>(
+          WPASupplicant::kNetworkPropertyEapCaPassword,
+          std::string(password->GetRaw(), password->size()));
     }
   } else {
     if (!password_.empty()) {
-      params->Set<string>(WPASupplicant::kNetworkPropertyEapCaPassword,
-                          password_);
+      params->Set<std::string>(WPASupplicant::kNetworkPropertyEapCaPassword,
+                               password_);
     }
   }
 
   for (const auto& keyval : propertyvals) {
     if (strlen(keyval.second) > 0) {
-      params->Set<string>(keyval.first, keyval.second);
+      params->Set<std::string>(keyval.first, keyval.second);
     }
   }
 }
@@ -247,7 +246,7 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
 }
 
 // static
-bool EapCredentials::IsEapAuthenticationProperty(const string property) {
+bool EapCredentials::IsEapAuthenticationProperty(const std::string property) {
   return property == kEapAnonymousIdentityProperty ||
          property == kEapCertIdProperty || property == kEapIdentityProperty ||
          property == kEapKeyIdProperty || property == kEapKeyMgmtProperty ||
@@ -303,7 +302,8 @@ bool EapCredentials::IsConnectableUsingPassphrase() const {
   return !identity_.empty() && !password_.empty();
 }
 
-void EapCredentials::Load(const StoreInterface* storage, const string& id) {
+void EapCredentials::Load(const StoreInterface* storage,
+                          const std::string& id) {
   // Authentication properties.
   storage->GetCryptedString(id, kStorageDeprecatedEapAnonymousIdentity,
                             kStorageCredentialEapAnonymousIdentity,
@@ -312,7 +312,7 @@ void EapCredentials::Load(const StoreInterface* storage, const string& id) {
   storage->GetCryptedString(id, kStorageDeprecatedEapIdentity,
                             kStorageCredentialEapIdentity, &identity_);
   storage->GetString(id, kStorageEapKeyID, &key_id_);
-  string key_management;
+  std::string key_management;
   storage->GetString(id, kStorageEapKeyManagement, &key_management);
   SetKeyManagement(key_management, nullptr);
   storage->GetCryptedString(id, kStorageDeprecatedEapPassword,
@@ -335,7 +335,7 @@ void EapCredentials::Load(const StoreInterface* storage, const string& id) {
 }
 
 void EapCredentials::MigrateDeprecatedStorage(StoreInterface* storage,
-                                              const string& id) const {
+                                              const std::string& id) const {
   // Note that if we found any of these keys, then we already know that
   // save_credentials was true during the last Save, and therefore can set the
   // new (key, plaintext_value).
@@ -371,7 +371,7 @@ void EapCredentials::OutputConnectionMetrics(Metrics* metrics,
 }
 
 void EapCredentials::Save(StoreInterface* storage,
-                          const string& id,
+                          const std::string& id,
                           bool save_credentials) const {
   // Authentication properties.
   Service::SaveStringOrClear(storage, id,
@@ -433,7 +433,8 @@ void EapCredentials::Reset() {
   use_proactive_key_caching_ = false;
 }
 
-bool EapCredentials::SetEapPassword(const string& password, Error* /*error*/) {
+bool EapCredentials::SetEapPassword(const std::string& password,
+                                    Error* /*error*/) {
   if (use_login_password_) {
     LOG(WARNING) << "Setting EAP password for configuration requiring the "
                     "user's login password";
@@ -447,7 +448,7 @@ bool EapCredentials::SetEapPassword(const string& password, Error* /*error*/) {
   return true;
 }
 
-string EapCredentials::GetKeyManagement(Error* /*error*/) {
+std::string EapCredentials::GetKeyManagement(Error* /*error*/) {
   return key_management_;
 }
 
@@ -471,23 +472,24 @@ bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
 
 void EapCredentials::HelpRegisterDerivedString(
     PropertyStore* store,
-    const string& name,
-    string (EapCredentials::*get)(Error* error),
-    bool (EapCredentials::*set)(const string&, Error*)) {
+    const std::string& name,
+    std::string (EapCredentials::*get)(Error* error),
+    bool (EapCredentials::*set)(const std::string&, Error*)) {
   store->RegisterDerivedString(
-      name, StringAccessor(
-                new CustomAccessor<EapCredentials, string>(this, get, set)));
+      name, StringAccessor(new CustomAccessor<EapCredentials, std::string>(
+                this, get, set)));
 }
 
 void EapCredentials::HelpRegisterWriteOnlyDerivedString(
     PropertyStore* store,
-    const string& name,
-    bool (EapCredentials::*set)(const string&, Error*),
+    const std::string& name,
+    bool (EapCredentials::*set)(const std::string&, Error*),
     void (EapCredentials::*clear)(Error* error),
-    const string* default_value) {
+    const std::string* default_value) {
   store->RegisterDerivedString(
-      name, StringAccessor(new CustomWriteOnlyAccessor<EapCredentials, string>(
-                this, set, clear, default_value)));
+      name,
+      StringAccessor(new CustomWriteOnlyAccessor<EapCredentials, std::string>(
+          this, set, clear, default_value)));
 }
 
 // static
@@ -499,9 +501,10 @@ bool EapCredentials::ValidSubjectAlternativeNameMatchType(
 }
 
 // static
-base::Optional<string> EapCredentials::TranslateSubjectAlternativeNameMatch(
-    const vector<string>& subject_alternative_name_match_list) {
-  vector<string> entries;
+base::Optional<std::string>
+EapCredentials::TranslateSubjectAlternativeNameMatch(
+    const std::vector<std::string>& subject_alternative_name_match_list) {
+  std::vector<std::string> entries;
   for (const auto& subject_alternative_name_match :
        subject_alternative_name_match_list) {
     auto json_value = base::JSONReader::ReadAndReturnValueWithError(
@@ -536,7 +539,7 @@ base::Optional<string> EapCredentials::TranslateSubjectAlternativeNameMatch(
                  << " of a subject alternative name match.";
       return base::nullopt;
     }
-    string translated_entry = *type + ":" + *value;
+    std::string translated_entry = *type + ":" + *value;
     entries.push_back(translated_entry);
   }
   return base::JoinString(entries, ";");

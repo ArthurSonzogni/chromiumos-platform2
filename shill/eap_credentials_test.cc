@@ -6,6 +6,9 @@
 
 #include "shill/eap_credentials.h"
 
+#include <string>
+#include <vector>
+
 #include <base/optional.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -23,9 +26,6 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 
-using base::FilePath;
-using std::string;
-using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
@@ -45,28 +45,33 @@ class EapCredentialsTest : public testing::Test {
     eap_.PopulateSupplicantProperties(&certificate_file_, &params_);
   }
 
-  void SetAnonymousIdentity(const string& anonymous_identity) {
+  void SetAnonymousIdentity(const std::string& anonymous_identity) {
     eap_.anonymous_identity_ = anonymous_identity;
   }
-  void SetCACertPEM(const vector<string>& ca_cert_pem) {
+  void SetCACertPEM(const std::vector<std::string>& ca_cert_pem) {
     eap_.ca_cert_pem_ = ca_cert_pem;
   }
-  void SetCertId(const string& cert_id) { eap_.cert_id_ = cert_id; }
-  void SetCACertId(const string& ca_cert_id) { eap_.ca_cert_id_ = ca_cert_id; }
-  void SetEap(const string& eap) { eap_.eap_ = eap; }
-  void SetIdentity(const string& identity) { eap_.identity_ = identity; }
-  void SetInnerEap(const string& inner_eap) { eap_.inner_eap_ = inner_eap; }
-  void SetTLSVersionMax(const string& tls_version_max) {
+  void SetCertId(const std::string& cert_id) { eap_.cert_id_ = cert_id; }
+  void SetCACertId(const std::string& ca_cert_id) {
+    eap_.ca_cert_id_ = ca_cert_id;
+  }
+  void SetEap(const std::string& eap) { eap_.eap_ = eap; }
+  void SetIdentity(const std::string& identity) { eap_.identity_ = identity; }
+  void SetInnerEap(const std::string& inner_eap) {
+    eap_.inner_eap_ = inner_eap;
+  }
+  void SetTLSVersionMax(const std::string& tls_version_max) {
     eap_.tls_version_max_ = tls_version_max;
   }
-  void SetKeyId(const string& key_id) { eap_.key_id_ = key_id; }
-  const string& GetPassword() { return eap_.password_; }
-  void SetPassword(const string& password) { eap_.password_ = password; }
-  void SetPin(const string& pin) { eap_.pin_ = pin; }
+  void SetKeyId(const std::string& key_id) { eap_.key_id_ = key_id; }
+  const std::string& GetPassword() { return eap_.password_; }
+  void SetPassword(const std::string& password) { eap_.password_ = password; }
+  void SetPin(const std::string& pin) { eap_.pin_ = pin; }
   void SetUseProactiveKeyCaching(bool use_proactive_key_caching) {
     eap_.use_proactive_key_caching_ = use_proactive_key_caching;
   }
-  void SetSubjectAlternativeNameMatch(vector<string> altsubject_match_list) {
+  void SetSubjectAlternativeNameMatch(
+      std::vector<std::string> altsubject_match_list) {
     eap_.subject_alternative_name_match_list_ = altsubject_match_list;
   }
   void SetUseSystemCAs(bool use_system_cas) {
@@ -88,12 +93,12 @@ class EapCredentialsTest : public testing::Test {
            eap_.use_login_password_ == false;
   }
 
-  const string& GetKeyManagement() { return eap_.key_management_; }
-  bool SetEapPassword(const string& password, Error* error) {
+  const std::string& GetKeyManagement() { return eap_.key_management_; }
+  bool SetEapPassword(const std::string& password, Error* error) {
     return eap_.SetEapPassword(password, error);
   }
 
-  void SaveLoginPassword(const string& password_str) {
+  void SaveLoginPassword(const std::string& password_str) {
     eap_.password_provider_ =
         std::make_unique<password_provider::FakePasswordProvider>();
 
@@ -111,7 +116,7 @@ class EapCredentialsTest : public testing::Test {
 TEST_F(EapCredentialsTest, PropertyStore) {
   PropertyStore store;
   eap_.InitPropertyStore(&store);
-  const string kIdentity("Cross-Eyed Mary");
+  const std::string kIdentity("Cross-Eyed Mary");
   Error error;
   EXPECT_TRUE(store.SetStringProperty(kEapIdentityProperty, kIdentity, &error));
   EXPECT_EQ(kIdentity, eap_.identity());
@@ -214,14 +219,14 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
 
 TEST_F(EapCredentialsTest, LoadAndSave) {
   FakeStore store;
-  const string kId("storage-id");
-  const string kIdentity("Purple Onion");
+  const std::string kId("storage-id");
+  const std::string kIdentity("Purple Onion");
   store.SetCryptedString(kId, /*deprecated_key=*/"",
                          EapCredentials::kStorageCredentialEapIdentity,
                          kIdentity);
-  const string kManagement("Shave and a Haircut");
+  const std::string kManagement("Shave and a Haircut");
   store.SetString(kId, EapCredentials::kStorageEapKeyManagement, kManagement);
-  const string kPassword("Two Bits");
+  const std::string kPassword("Two Bits");
   store.SetCryptedString(kId, /*deprecated_key=*/"",
                          EapCredentials::kStorageCredentialEapPassword,
                          kPassword);
@@ -282,44 +287,46 @@ TEST_F(EapCredentialsTest, PopulateSupplicantProperties) {
   SetPin("xxxx");
   PopulateSupplicantProperties();
   // Test that only non-empty 802.1x properties are populated.
-  EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapIdentity));
+  EXPECT_TRUE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapIdentity));
   EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapKeyId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapKeyId));
   EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaCert));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapCaCert));
 
   // Test that CA path is set by default.
-  EXPECT_TRUE(params_.Contains<string>(WPASupplicant::kNetworkPropertyCaPath));
+  EXPECT_TRUE(
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyCaPath));
 
   // Test that hardware-backed security arguments are not set, since
   // neither key-id nor cert-id were set.
-  EXPECT_FALSE(params_.Contains<string>(WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_FALSE(
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapPin));
   EXPECT_FALSE(
       params_.Contains<uint32_t>(WPASupplicant::kNetworkPropertyEngine));
   EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEngineId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEngineId));
 
   // Test EAP version translation.  The "phase1" supplicant parameter is
   // normally empty, but it will contain a "tls_disable" flag if this
   // service requests an old TLS version.
-  EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapOuterEap));
+  EXPECT_FALSE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapOuterEap));
 
   SetTLSVersionMax("1.2");
   PopulateSupplicantProperties();
-  EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapOuterEap));
+  EXPECT_FALSE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapOuterEap));
 
   SetTLSVersionMax("1.0");
   PopulateSupplicantProperties();
-  EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapOuterEap));
-  string phase1 =
-      params_.Get<string>(WPASupplicant::kNetworkPropertyEapOuterEap);
-  EXPECT_EQ(string::npos, phase1.find("disable_tlsv1_0=1"));
-  EXPECT_NE(string::npos, phase1.find("disable_tlsv1_1=1"));
-  EXPECT_NE(string::npos, phase1.find("disable_tlsv1_2=1"));
+  EXPECT_TRUE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapOuterEap));
+  std::string phase1 =
+      params_.Get<std::string>(WPASupplicant::kNetworkPropertyEapOuterEap);
+  EXPECT_EQ(std::string::npos, phase1.find("disable_tlsv1_0=1"));
+  EXPECT_NE(std::string::npos, phase1.find("disable_tlsv1_1=1"));
+  EXPECT_NE(std::string::npos, phase1.find("disable_tlsv1_2=1"));
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNoSystemCAs) {
@@ -327,7 +334,8 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNoSystemCAs) {
   SetUseSystemCAs(false);
   PopulateSupplicantProperties();
   // Test that CA path is not set if use_system_cas is explicitly false.
-  EXPECT_FALSE(params_.Contains<string>(WPASupplicant::kNetworkPropertyCaPath));
+  EXPECT_FALSE(
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyCaPath));
 }
 
 TEST_F(EapCredentialsTest,
@@ -385,38 +393,41 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
   PopulateSupplicantProperties();
   // Test that EAP engine parameters are not set if the authentication type
   // is not one that accepts a client certificate.
-  EXPECT_FALSE(params_.Contains<string>(WPASupplicant::kNetworkPropertyEapPin));
   EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapKeyId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_FALSE(
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapKeyId));
   EXPECT_FALSE(
       params_.Contains<uint32_t>(WPASupplicant::kNetworkPropertyEngine));
   EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEngineId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEngineId));
 
   // Test that EAP engine parameters are set if key_id is set and the
   // authentication type accepts a client certificate.
   params_.Clear();
   SetEap("TLS");
   PopulateSupplicantProperties();
-  EXPECT_TRUE(params_.Contains<string>(WPASupplicant::kNetworkPropertyEapPin));
   EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapKeyId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_TRUE(
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapKeyId));
   EXPECT_TRUE(
       params_.Contains<uint32_t>(WPASupplicant::kNetworkPropertyEngine));
   EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEngineId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEngineId));
 
   // An empty EAP parameter should be considered to be possibly "TLS".
   params_.Clear();
   SetEap("");
   PopulateSupplicantProperties();
-  EXPECT_TRUE(params_.Contains<string>(WPASupplicant::kNetworkPropertyEapPin));
   EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapKeyId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_TRUE(
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapKeyId));
   EXPECT_TRUE(
       params_.Contains<uint32_t>(WPASupplicant::kNetworkPropertyEngine));
   EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEngineId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEngineId));
 
   // Test that EAP engine parameters are set if ca_cert_id is set even if the
   // authentication type does not accept a client certificate.  However,
@@ -425,31 +436,32 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
   SetEap("PEAP");
   SetCACertId("certid");
   PopulateSupplicantProperties();
-  EXPECT_TRUE(params_.Contains<string>(WPASupplicant::kNetworkPropertyEapPin));
+  EXPECT_TRUE(
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapPin));
   EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapKeyId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapKeyId));
   EXPECT_TRUE(
       params_.Contains<uint32_t>(WPASupplicant::kNetworkPropertyEngine));
   EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEngineId));
-  EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaCertId));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEngineId));
+  EXPECT_TRUE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapCaCertId));
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesPEM) {
-  const vector<string> kPemCert{"-pem-certificate-here-"};
+  const std::vector<std::string> kPemCert{"-pem-certificate-here-"};
   SetCACertPEM(kPemCert);
-  const string kPEMCertfile("/tmp/pem-cert");
-  FilePath pem_cert(kPEMCertfile);
+  const std::string kPEMCertfile("/tmp/pem-cert");
+  base::FilePath pem_cert(kPEMCertfile);
   EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
       .WillOnce(Return(pem_cert));
 
   PopulateSupplicantProperties();
   EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaCert));
-  if (params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaCert)) {
-    EXPECT_EQ(kPEMCertfile,
-              params_.Get<string>(WPASupplicant::kNetworkPropertyEapCaCert));
+      params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapCaCert));
+  if (params_.Contains<std::string>(WPASupplicant::kNetworkPropertyEapCaCert)) {
+    EXPECT_EQ(kPEMCertfile, params_.Get<std::string>(
+                                WPASupplicant::kNetworkPropertyEapCaCert));
   }
 }
 
@@ -458,7 +470,7 @@ TEST_F(EapCredentialsTest, Reset) {
   EXPECT_TRUE(GetKeyManagement().empty());
   SetAnonymousIdentity("foo");
   SetCACertId("foo");
-  SetCACertPEM(vector<string>{"foo"});
+  SetCACertPEM(std::vector<std::string>{"foo"});
   SetCertId("foo");
   SetEap("foo");
   SetIdentity("foo");
@@ -469,7 +481,7 @@ TEST_F(EapCredentialsTest, Reset) {
   SetUseSystemCAs(false);
   SetUseProactiveKeyCaching(true);
   SetUseLoginPassword(false);
-  SetSubjectAlternativeNameMatch(vector<string>{"foo"});
+  SetSubjectAlternativeNameMatch(std::vector<std::string>{"foo"});
   eap_.SetKeyManagement("foo", nullptr);
   EXPECT_FALSE(IsReset());
   EXPECT_FALSE(GetKeyManagement().empty());
@@ -479,11 +491,11 @@ TEST_F(EapCredentialsTest, Reset) {
 }
 
 TEST_F(EapCredentialsTest, SetKeyManagement) {
-  const string kKeyManagement0("foo");
+  const std::string kKeyManagement0("foo");
   eap_.SetKeyManagement(kKeyManagement0, nullptr);
   EXPECT_EQ(kKeyManagement0, GetKeyManagement());
 
-  const string kKeyManagement1("bar");
+  const std::string kKeyManagement1("bar");
   eap_.SetKeyManagement(kKeyManagement1, nullptr);
   EXPECT_EQ(kKeyManagement1, GetKeyManagement());
 
@@ -497,7 +509,7 @@ TEST_F(EapCredentialsTest, SetKeyManagement) {
 TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
   // SetEapKeyManagement
   {
-    const string kKeyManagement("foo");
+    const std::string kKeyManagement("foo");
     Error error;
     // Set to known value.
     EXPECT_TRUE(eap_.SetKeyManagement(kKeyManagement, &error));
@@ -509,7 +521,7 @@ TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
 
   // SetEapPassword
   {
-    const string kPassword("foo");
+    const std::string kPassword("foo");
     Error error;
     // Set to known value.
     EXPECT_TRUE(SetEapPassword(kPassword, &error));
@@ -521,40 +533,40 @@ TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
 }
 
 TEST_F(EapCredentialsTest, TestUseLoginPassword) {
-  const string kPasswordStr("thepassword");
+  const std::string kPasswordStr("thepassword");
   SaveLoginPassword(kPasswordStr);
 
   SetUseLoginPassword(true);
   PopulateSupplicantProperties();
 
-  EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaPassword));
-  string used_password =
-      params_.Get<string>(WPASupplicant::kNetworkPropertyEapCaPassword);
+  EXPECT_TRUE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapCaPassword));
+  std::string used_password =
+      params_.Get<std::string>(WPASupplicant::kNetworkPropertyEapCaPassword);
   EXPECT_EQ(used_password, kPasswordStr);
 }
 
 TEST_F(EapCredentialsTest, TestDontUseLoginPassword) {
-  const string kPasswordStr("thepassword");
+  const std::string kPasswordStr("thepassword");
   SaveLoginPassword(kPasswordStr);
 
   SetUseLoginPassword(false);
   PopulateSupplicantProperties();
 
-  EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaPassword));
+  EXPECT_FALSE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapCaPassword));
 }
 
 TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslation) {
-  const vector<string> subject_alternative_name_match_list(
+  const std::vector<std::string> subject_alternative_name_match_list(
       {"{\"Type\":\"EMAIL\",\"Value\":\"my_email_1\"}",
        "{\"Type\":\"EMAIL\",\"Value\":\"my_email_2\"}",
        "{\"Type\":\"EMAIL\",\"Value\":\"my;email\"}",
        "{\"Type\":\"DNS\",\"Value\":\"my_dns\"}",
        "{\"Type\":\"URI\",\"Value\":\"my_uri\"}"});
-  string expected_translated =
+  std::string expected_translated =
       "EMAIL:my_email_1;EMAIL:my_email_2;EMAIL:my;email;DNS:my_dns;URI:my_uri";
-  base::Optional<string> altsubject_match =
+  base::Optional<std::string> altsubject_match =
       EapCredentials::TranslateSubjectAlternativeNameMatch(
           subject_alternative_name_match_list);
   EXPECT_TRUE(altsubject_match.has_value());
@@ -562,9 +574,9 @@ TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslation) {
 }
 
 TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslationFailure) {
-  const vector<string> subject_alternative_name_match_list(
+  const std::vector<std::string> subject_alternative_name_match_list(
       {"{\"TYPE\":\"EMAIL\",\"Value\":\"my;email\"}"});
-  base::Optional<string> altsubject_match =
+  base::Optional<std::string> altsubject_match =
       EapCredentials::TranslateSubjectAlternativeNameMatch(
           subject_alternative_name_match_list);
   EXPECT_FALSE(altsubject_match.has_value());
@@ -574,28 +586,28 @@ TEST_F(EapCredentialsTest, TestEapInnerAuthMschapv2NoRetryFlag) {
   // If no EAP inner auth is set, no additional  mschapv2_retry flag is added.
   SetInnerEap("");
   PopulateSupplicantProperties();
-  EXPECT_FALSE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapInnerEap));
+  EXPECT_FALSE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapInnerEap));
 
   // If an EAP inner auth different than MSCHPAV2 is set, also expect no change.
   SetInnerEap("auth=MD5");
   PopulateSupplicantProperties();
-  EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapInnerEap));
+  EXPECT_TRUE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapInnerEap));
   {
     const std::string inner_eap =
-        params_.Get<string>(WPASupplicant::kNetworkPropertyEapInnerEap);
+        params_.Get<std::string>(WPASupplicant::kNetworkPropertyEapInnerEap);
     EXPECT_EQ(inner_eap, "auth=MD5");
   }
 
   // If EAP inner auth is set to MSCHAPV2, the flag should be added.
   SetInnerEap("auth=MSCHAPV2");
   PopulateSupplicantProperties();
-  EXPECT_TRUE(
-      params_.Contains<string>(WPASupplicant::kNetworkPropertyEapInnerEap));
+  EXPECT_TRUE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapInnerEap));
   {
     const std::string inner_eap =
-        params_.Get<string>(WPASupplicant::kNetworkPropertyEapInnerEap);
+        params_.Get<std::string>(WPASupplicant::kNetworkPropertyEapInnerEap);
     EXPECT_EQ(inner_eap, "auth=MSCHAPV2 mschapv2_retry=0");
   }
 }
