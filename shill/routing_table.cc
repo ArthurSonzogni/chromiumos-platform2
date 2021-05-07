@@ -36,17 +36,11 @@
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 
-using base::Bind;
-using base::FilePath;
-using base::Unretained;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRoute;
-static string ObjectID(const RoutingTable* r) {
+static std::string ObjectID(const RoutingTable* r) {
   return "(routing_table)";
 }
 }  // namespace Logging
@@ -166,9 +160,9 @@ RoutingTable* RoutingTable::GetInstance() {
 void RoutingTable::Start() {
   SLOG(this, 2) << __func__;
 
-  route_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestRoute | RTNLHandler::kRequestRule,
-                       Bind(&RoutingTable::RouteMsgHandler, Unretained(this))));
+  route_listener_.reset(new RTNLListener(
+      RTNLHandler::kRequestRoute | RTNLHandler::kRequestRule,
+      base::Bind(&RoutingTable::RouteMsgHandler, base::Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRule);
 
@@ -210,8 +204,9 @@ void RoutingTable::RegisterDevice(int interface_index,
   // Set accept_ra_rt_table to -N to cause routes created by the reception of
   // RAs to be sent to the table id (interface_index + N).
   std::string ra_rt_table = std::to_string(-kInterfaceTableIdIncrement);
-  auto path =
-      FilePath(kIpv6ProcPath).Append(link_name).Append("accept_ra_rt_table");
+  auto path = base::FilePath(kIpv6ProcPath)
+                  .Append(link_name)
+                  .Append("accept_ra_rt_table");
   int str_size = static_cast<int>(ra_rt_table.size());
   if (base::WriteFile(path, ra_rt_table.c_str(), str_size) != str_size) {
     LOG(ERROR) << "Cannot write to " << path.MaybeAsASCII();
@@ -225,8 +220,9 @@ void RoutingTable::DeregisterDevice(int interface_index,
   managed_interfaces_.erase(interface_index);
   // Set accept_ra_rt_table to 0. Note that this will *not* cause routes to be
   // moved back from the per-Device table to the main routing table.
-  auto path =
-      FilePath(kIpv6ProcPath).Append(link_name).Append("accept_ra_rt_table");
+  auto path = base::FilePath(kIpv6ProcPath)
+                  .Append(link_name)
+                  .Append("accept_ra_rt_table");
   if (!base::PathExists(path)) {
     SLOG(this, 2) << "Cannot write to " << path.MaybeAsASCII()
                   << ", likely because the interface has already went down.";
@@ -642,7 +638,7 @@ bool RoutingTable::FlushCache() {
   SLOG(this, 2) << __func__;
 
   for (auto path : kPaths) {
-    if (base::WriteFile(FilePath(path), "-1", 2) != 2) {
+    if (base::WriteFile(base::FilePath(path), "-1", 2) != 2) {
       LOG(ERROR) << base::StringPrintf("Cannot write to route flush file %s",
                                        path);
       ret = false;

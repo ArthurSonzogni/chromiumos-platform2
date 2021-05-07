@@ -7,7 +7,9 @@
 #include <sys/time.h>
 
 #include <limits>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <chromeos/dbus/service_constants.h>
 
@@ -18,13 +20,11 @@
 #include "shill/net/shill_time.h"
 #include "shill/static_ip_parameters.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kInet;
-static string ObjectID(const IPConfig* i) {
+static std::string ObjectID(const IPConfig* i) {
   return i->GetRpcIdentifier().value();
 }
 }  // namespace Logging

@@ -6,6 +6,9 @@
 
 #include <string.h>
 
+#include <string>
+#include <vector>
+
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -18,9 +21,6 @@
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
 #include "shill/store_interface.h"
-
-using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -61,10 +61,10 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
 }
 
 void StaticIPParameters::Load(const StoreInterface* storage,
-                              const string& storage_id) {
+                              const std::string& storage_id) {
   KeyValueStore args;
   for (const auto& property : kProperties) {
-    const string name(string(kConfigKeyPrefix) + property.name);
+    const std::string name(std::string(kConfigKeyPrefix) + property.name);
     switch (property.type) {
       case Property::kTypeInt32: {
         int32_t value;
@@ -75,9 +75,9 @@ void StaticIPParameters::Load(const StoreInterface* storage,
         }
       } break;
       case Property::kTypeString: {
-        string value;
+        std::string value;
         if (storage->GetString(storage_id, name, &value)) {
-          args.Set<string>(property.name, value);
+          args.Set<std::string>(property.name, value);
         } else {
           args.Remove(property.name);
         }
@@ -85,9 +85,9 @@ void StaticIPParameters::Load(const StoreInterface* storage,
       case Property::kTypeStrings: {
         // Name servers field is stored in storage as comma separated string.
         // Keep it as is to be backward compatible.
-        string value;
+        std::string value;
         if (storage->GetString(storage_id, name, &value)) {
-          vector<string> string_list = base::SplitString(
+          std::vector<std::string> string_list = base::SplitString(
               value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
           args.Set<Strings>(property.name, string_list);
         } else {
@@ -103,9 +103,9 @@ void StaticIPParameters::Load(const StoreInterface* storage,
 }
 
 void StaticIPParameters::Save(StoreInterface* storage,
-                              const string& storage_id) {
+                              const std::string& storage_id) {
   for (const auto& property : kProperties) {
-    const string name(string(kConfigKeyPrefix) + property.name);
+    const std::string name(std::string(kConfigKeyPrefix) + property.name);
     bool property_exists = false;
     switch (property.type) {
       case Property::kTypeInt32:
@@ -115,10 +115,10 @@ void StaticIPParameters::Save(StoreInterface* storage,
         }
         break;
       case Property::kTypeString:
-        if (args_.Contains<string>(property.name)) {
+        if (args_.Contains<std::string>(property.name)) {
           property_exists = true;
           storage->SetString(storage_id, name,
-                             args_.Get<string>(property.name));
+                             args_.Get<std::string>(property.name));
         }
         break;
       case Property::kTypeStrings:
@@ -141,31 +141,32 @@ void StaticIPParameters::Save(StoreInterface* storage,
   }
 }
 
-void StaticIPParameters::ApplyInt(const string& property, int32_t* value_out) {
+void StaticIPParameters::ApplyInt(const std::string& property,
+                                  int32_t* value_out) {
   saved_args_.Set<int32_t>(property, *value_out);
   if (args_.Contains<int32_t>(property)) {
     *value_out = args_.Get<int32_t>(property);
   }
 }
 
-void StaticIPParameters::ApplyString(const string& property,
-                                     string* value_out) {
-  saved_args_.Set<string>(property, *value_out);
-  if (args_.Contains<string>(property)) {
-    *value_out = args_.Get<string>(property);
+void StaticIPParameters::ApplyString(const std::string& property,
+                                     std::string* value_out) {
+  saved_args_.Set<std::string>(property, *value_out);
+  if (args_.Contains<std::string>(property)) {
+    *value_out = args_.Get<std::string>(property);
   }
 }
 
-void StaticIPParameters::ApplyStrings(const string& property,
-                                      vector<string>* value_out) {
+void StaticIPParameters::ApplyStrings(const std::string& property,
+                                      std::vector<std::string>* value_out) {
   saved_args_.Set<Strings>(property, *value_out);
   if (args_.Contains<Strings>(property)) {
     *value_out = args_.Get<Strings>(property);
   }
 }
 
-void StaticIPParameters::RestoreStrings(const string& property,
-                                        vector<string>* value_out) {
+void StaticIPParameters::RestoreStrings(const std::string& property,
+                                        std::vector<std::string>* value_out) {
   if (saved_args_.Contains<Strings>(property)) {
     *value_out = saved_args_.Get<Strings>(property);
   } else {
@@ -173,9 +174,9 @@ void StaticIPParameters::RestoreStrings(const string& property,
   }
 }
 
-void StaticIPParameters::ParseRoutes(const vector<string>& route_list,
-                                     const string& gateway,
-                                     vector<IPConfig::Route>* value_out) {
+void StaticIPParameters::ParseRoutes(const std::vector<std::string>& route_list,
+                                     const std::string& gateway,
+                                     std::vector<IPConfig::Route>* value_out) {
   IPAddress gateway_ip(gateway);
   if (gateway_ip.family() == IPAddress::kFamilyUnknown) {
     return;
@@ -196,7 +197,7 @@ void StaticIPParameters::ParseRoutes(const vector<string>& route_list,
 }
 
 void StaticIPParameters::ApplyRoutes(IPConfig::Properties* props) {
-  vector<string> saved_routes;
+  std::vector<std::string> saved_routes;
   for (const auto& route : props->routes) {
     saved_routes.push_back(route.host + "/" +
                            base::NumberToString(route.prefix));
@@ -245,13 +246,14 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
 }
 
 void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {
-  props->address = saved_args_.Lookup<string>(kAddressProperty, "");
-  props->gateway = saved_args_.Lookup<string>(kGatewayProperty, "");
+  props->address = saved_args_.Lookup<std::string>(kAddressProperty, "");
+  props->gateway = saved_args_.Lookup<std::string>(kGatewayProperty, "");
   props->mtu =
       saved_args_.Lookup<int32_t>(kMtuProperty, IPConfig::kUndefinedMTU);
   RestoreStrings(kNameServersProperty, &props->dns_servers);
   RestoreStrings(kSearchDomainsProperty, &props->domain_search);
-  props->peer_address = saved_args_.Lookup<string>(kPeerAddressProperty, "");
+  props->peer_address =
+      saved_args_.Lookup<std::string>(kPeerAddressProperty, "");
   props->subnet_prefix = saved_args_.Lookup<int32_t>(kPrefixlenProperty, 0);
   RestoreStrings(kExcludedRoutesProperty, &props->exclusion_list);
   RestoreRoutes(props);
@@ -263,7 +265,7 @@ void StaticIPParameters::ClearSavedParameters() {
 }
 
 bool StaticIPParameters::ContainsAddress() const {
-  return args_.Contains<string>(kAddressProperty) &&
+  return args_.Contains<std::string>(kAddressProperty) &&
          args_.Contains<int32_t>(kPrefixlenProperty);
 }
 

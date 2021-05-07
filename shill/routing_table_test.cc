@@ -7,6 +7,7 @@
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 
+#include <deque>
 #include <memory>
 #include <vector>
 
@@ -25,10 +26,6 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_message.h"
 
-using base::Bind;
-using base::Unretained;
-using std::deque;
-using std::vector;
 using testing::_;
 using testing::Field;
 using testing::Invoke;
@@ -50,11 +47,11 @@ class RoutingTableTest : public Test {
 
   void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
 
-  std::unordered_map<int, vector<RoutingTableEntry>>* GetRoutingTables() {
+  std::unordered_map<int, std::vector<RoutingTableEntry>>* GetRoutingTables() {
     return &routing_table_->tables_;
   }
 
-  deque<RoutingTable::Query>* GetQueries() {
+  std::deque<RoutingTable::Query>* GetQueries() {
     return &routing_table_->route_queries_;
   }
 
@@ -101,10 +98,10 @@ class RoutingTableTest : public Test {
    public:
     QueryCallbackTarget()
         : weak_ptr_factory_(this),
-          mocked_callback_(
-              Bind(&QueryCallbackTarget::MockedTarget, Unretained(this))),
-          unreached_callback_(Bind(&QueryCallbackTarget::UnreachedTarget,
-                                   weak_ptr_factory_.GetWeakPtr())) {}
+          mocked_callback_(base::Bind(&QueryCallbackTarget::MockedTarget,
+                                      base::Unretained(this))),
+          unreached_callback_(base::Bind(&QueryCallbackTarget::UnreachedTarget,
+                                         weak_ptr_factory_.GetWeakPtr())) {}
 
     MOCK_METHOD(void, MockedTarget, (int, const RoutingTableEntry&));
 
@@ -270,7 +267,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
   SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry0);
 
-  std::unordered_map<int, vector<RoutingTableEntry>>* tables =
+  std::unordered_map<int, std::vector<RoutingTableEntry>>* tables =
       GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.
@@ -543,7 +540,7 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0,
                                 entry0, 0 /* seq */, RTPROT_RA);
 
-  std::unordered_map<int, vector<RoutingTableEntry>>* tables =
+  std::unordered_map<int, std::vector<RoutingTableEntry>>* tables =
       GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.
@@ -630,7 +627,7 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry,
                                 kTestRequestSeq, RTPROT_UNSPEC);
 
-  std::unordered_map<int, vector<RoutingTableEntry>>* tables =
+  std::unordered_map<int, std::vector<RoutingTableEntry>>* tables =
       GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.

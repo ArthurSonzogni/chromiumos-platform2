@@ -5,9 +5,10 @@
 #ifndef SHILL_IPCONFIG_H_
 #define SHILL_IPCONFIG_H_
 
+#include <sys/time.h>
+
 #include <memory>
 #include <string>
-#include <sys/time.h>
 #include <vector>
 
 #include <base/callback.h>

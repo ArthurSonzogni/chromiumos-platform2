@@ -15,8 +15,6 @@
 #include "shill/mock_ipconfig.h"
 #include "shill/property_store.h"
 
-using std::string;
-using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -70,8 +68,8 @@ class StaticIPParametersTest : public Test {
   }
   // Modify an IP address string in some predictable way.  There's no need
   // for the output string to be valid from a networking perspective.
-  string VersionedAddress(const string& address, int version) {
-    string returned_address = address;
+  std::string VersionedAddress(const std::string& address, int version) {
+    std::string returned_address = address;
     CHECK(returned_address.length());
     returned_address[returned_address.length() - 1] += version;
     return returned_address;
@@ -118,36 +116,38 @@ class StaticIPParametersTest : public Test {
   }
   void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
   void ExpectPropertiesWithVersion(PropertyStore* store,
-                                   const string& property_prefix,
+                                   const std::string& property_prefix,
                                    int version) {
     KeyValueStore args;
     Error unused_error;
     EXPECT_TRUE(store->GetKeyValueStoreProperty(property_prefix + "Config",
                                                 &args, &unused_error));
     EXPECT_EQ(VersionedAddress(kAddress, version),
-              args.Get<string>(kAddressProperty));
+              args.Get<std::string>(kAddressProperty));
     EXPECT_EQ(VersionedAddress(kGateway, version),
-              args.Get<string>(kGatewayProperty));
+              args.Get<std::string>(kGatewayProperty));
     EXPECT_EQ(kMtu + version, args.Get<int32_t>(kMtuProperty));
-    vector<string> kTestNameServers({VersionedAddress(kNameServer0, version),
-                                     VersionedAddress(kNameServer1, version)});
+    std::vector<std::string> kTestNameServers(
+        {VersionedAddress(kNameServer0, version),
+         VersionedAddress(kNameServer1, version)});
     EXPECT_EQ(kTestNameServers, args.Get<Strings>(kNameServersProperty));
-    vector<string> kTestSearchDomains(
+    std::vector<std::string> kTestSearchDomains(
         {VersionedAddress(kSearchDomain0, version),
          VersionedAddress(kSearchDomain1, version)});
     EXPECT_EQ(kTestSearchDomains, args.Get<Strings>(kSearchDomainsProperty));
     EXPECT_EQ(VersionedAddress(kPeerAddress, version),
-              args.Get<string>(kPeerAddressProperty));
+              args.Get<std::string>(kPeerAddressProperty));
     EXPECT_EQ(kPrefixLen + version, args.Get<int32_t>(kPrefixlenProperty));
-    vector<string> kTestExcludedRoutes(
+    std::vector<std::string> kTestExcludedRoutes(
         {VersionedAddress(kExcludedRoute0, version),
          VersionedAddress(kExcludedRoute1, version)});
     EXPECT_EQ(kTestExcludedRoutes, args.Get<Strings>(kExcludedRoutesProperty));
-    vector<string> kTestIncludedRoutes(
+    std::vector<std::string> kTestIncludedRoutes(
         {VersionedAddress(kIncludedRoutes, version)});
     EXPECT_EQ(kTestIncludedRoutes, args.Get<Strings>(kIncludedRoutesProperty));
   }
-  void ExpectProperties(PropertyStore* store, const string& property_prefix) {
+  void ExpectProperties(PropertyStore* store,
+                        const std::string& property_prefix) {
     ExpectPropertiesWithVersion(store, property_prefix, 0);
   }
   void PopulateIPConfig() {
@@ -167,8 +167,10 @@ class StaticIPParametersTest : public Test {
   }
   void SetStaticPropertiesWithVersion(PropertyStore* store, int version) {
     KeyValueStore args;
-    args.Set<string>(kAddressProperty, VersionedAddress(kAddress, version));
-    args.Set<string>(kGatewayProperty, VersionedAddress(kGateway, version));
+    args.Set<std::string>(kAddressProperty,
+                          VersionedAddress(kAddress, version));
+    args.Set<std::string>(kGatewayProperty,
+                          VersionedAddress(kGateway, version));
     args.Set<int32_t>(kMtuProperty, kMtu + version);
     args.Set<Strings>(kNameServersProperty,
                       {VersionedAddress(kNameServer0, version),
@@ -176,8 +178,8 @@ class StaticIPParametersTest : public Test {
     args.Set<Strings>(kSearchDomainsProperty,
                       {VersionedAddress(kSearchDomain0, version),
                        VersionedAddress(kSearchDomain1, version)});
-    args.Set<string>(kPeerAddressProperty,
-                     VersionedAddress(kPeerAddress, version));
+    args.Set<std::string>(kPeerAddressProperty,
+                          VersionedAddress(kPeerAddress, version));
     args.Set<int32_t>(kPrefixlenProperty, kPrefixLen + version);
     args.Set<Strings>(kExcludedRoutesProperty,
                       {VersionedAddress(kExcludedRoute0, version),
@@ -190,8 +192,8 @@ class StaticIPParametersTest : public Test {
   }
   void SetStaticPropertiesWithoutRoute(PropertyStore* store) {
     KeyValueStore args;
-    args.Set<string>(kAddressProperty, kAddress);
-    args.Set<string>(kGatewayProperty, kGateway);
+    args.Set<std::string>(kAddressProperty, kAddress);
+    args.Set<std::string>(kGatewayProperty, kGateway);
     args.Set<int32_t>(kMtuProperty, kMtu);
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
@@ -245,7 +247,7 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
   EXPECT_FALSE(static_params_.ContainsAddress());
   static_args()->Remove("Mtu");
   IPConfig::Properties props;
-  const string kTestAddress("test_address");
+  const std::string kTestAddress("test_address");
   props.address = kTestAddress;
   const int32_t kTestMtu = 256;
   props.mtu = kTestMtu;
@@ -253,31 +255,32 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
   EXPECT_EQ(kTestAddress, props.address);
   EXPECT_EQ(kTestMtu, props.mtu);
 
-  EXPECT_FALSE(static_args()->Contains<string>("Address"));
-  EXPECT_EQ(kGateway, static_args()->Get<string>("Gateway"));
+  EXPECT_FALSE(static_args()->Contains<std::string>("Address"));
+  EXPECT_EQ(kGateway, static_args()->Get<std::string>("Gateway"));
   EXPECT_FALSE(static_args()->Contains<int32_t>("Mtu"));
-  vector<string> kTestNameServers({VersionedAddress(kNameServer0, version),
-                                   VersionedAddress(kNameServer1, version)});
+  std::vector<std::string> kTestNameServers(
+      {VersionedAddress(kNameServer0, version),
+       VersionedAddress(kNameServer1, version)});
   EXPECT_EQ(kTestNameServers, static_args()->Get<Strings>("NameServers"));
-  vector<string> kTestSearchDomains(
+  std::vector<std::string> kTestSearchDomains(
       {VersionedAddress(kSearchDomain0, version),
        VersionedAddress(kSearchDomain1, version)});
   EXPECT_EQ(kTestSearchDomains, static_args()->Get<Strings>("SearchDomains"));
   EXPECT_EQ(VersionedAddress(kPeerAddress, version),
-            static_args()->Get<string>("PeerAddress"));
+            static_args()->Get<std::string>("PeerAddress"));
   EXPECT_EQ(kPrefixLen + version, static_args()->Get<int32_t>("Prefixlen"));
-  vector<string> kTestExcludedRoutes(
+  std::vector<std::string> kTestExcludedRoutes(
       {VersionedAddress(kExcludedRoute0, version),
        VersionedAddress(kExcludedRoute1, version)});
   EXPECT_EQ(kTestExcludedRoutes, static_args()->Get<Strings>("ExcludedRoutes"));
-  vector<string> kTestIncludedRoutes(
+  std::vector<std::string> kTestIncludedRoutes(
       {VersionedAddress(kIncludedRoutes, version)});
   EXPECT_EQ(kTestIncludedRoutes, static_args()->Get<Strings>("IncludedRoutes"));
 }
 
 TEST_F(StaticIPParametersTest, Profile) {
   FakeStore store;
-  const string kID = "storage_id";
+  const std::string kID = "storage_id";
   store.SetString(kID, "StaticIP.Address", kAddress);
   store.SetString(kID, "StaticIP.Gateway", kGateway);
   store.SetInt(kID, "StaticIP.Mtu", kMtu);

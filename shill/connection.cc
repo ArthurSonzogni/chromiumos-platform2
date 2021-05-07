@@ -24,14 +24,11 @@
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kConnection;
-static string ObjectID(const Connection* c) {
+static std::string ObjectID(const Connection* c) {
   if (c == nullptr)
     return "(connection)";
   return c->interface_name();
@@ -482,7 +479,7 @@ void Connection::SetUseDNS(bool enable) {
   use_dns_ = enable;
 }
 
-void Connection::UpdateDNSServers(const vector<string>& dns_servers) {
+void Connection::UpdateDNSServers(const std::vector<std::string>& dns_servers) {
   dns_servers_ = dns_servers;
   PushDNSConfig();
 }
@@ -492,7 +489,7 @@ void Connection::PushDNSConfig() {
     return;
   }
 
-  vector<string> domain_search = dns_domain_search_;
+  auto domain_search = dns_domain_search_;
   if (domain_search.empty() && !dns_domain_name_.empty()) {
     SLOG(this, 2) << "Setting domain search to domain name "
                   << dns_domain_name_;
@@ -501,7 +498,7 @@ void Connection::PushDNSConfig() {
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
 }
 
-string Connection::GetSubnetName() const {
+std::string Connection::GetSubnetName() const {
   if (!local().IsValid()) {
     return "";
   }

@@ -19,8 +19,6 @@
 #include "shill/net/mock_time.h"
 #include "shill/static_ip_parameters.h"
 
-using base::Bind;
-using base::Unretained;
 using testing::_;
 using testing::DoAll;
 using testing::EndsWith;
@@ -172,13 +170,13 @@ TEST_F(IPConfigTest, UpdateProperties) {
 
 TEST_F(IPConfigTest, Callbacks) {
   ipconfig_->RegisterUpdateCallback(
-      Bind(&IPConfigTest::OnIPConfigUpdated, Unretained(this)));
+      base::Bind(&IPConfigTest::OnIPConfigUpdated, base::Unretained(this)));
   ipconfig_->RegisterFailureCallback(
-      Bind(&IPConfigTest::OnIPConfigFailed, Unretained(this)));
+      base::Bind(&IPConfigTest::OnIPConfigFailed, base::Unretained(this)));
   ipconfig_->RegisterRefreshCallback(
-      Bind(&IPConfigTest::OnIPConfigRefreshed, Unretained(this)));
+      base::Bind(&IPConfigTest::OnIPConfigRefreshed, base::Unretained(this)));
   ipconfig_->RegisterExpireCallback(
-      Bind(&IPConfigTest::OnIPConfigExpired, Unretained(this)));
+      base::Bind(&IPConfigTest::OnIPConfigExpired, base::Unretained(this)));
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true));
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
@@ -213,7 +211,7 @@ TEST_F(IPConfigTest, UpdatePropertiesWithDropRef) {
   // The UpdateCallback should be able to drop a reference to the
   // IPConfig object without crashing.
   ipconfig_->RegisterUpdateCallback(
-      Bind(&IPConfigTest::DropRef, Unretained(this)));
+      base::Bind(&IPConfigTest::DropRef, base::Unretained(this)));
   UpdateProperties(IPConfig::Properties());
 }
 
