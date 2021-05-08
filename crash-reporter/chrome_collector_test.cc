@@ -56,9 +56,10 @@ const char* const kCrashFormatBadValuesCommon[] = {
     "value1:10:abcdefghijvalue2:5f:12345",
     // Length not terminated
     "value1:10:abcdefghijvalue2:5",
-    // No last length. TODO(https://crbug.com/1135698): This should fail but it
-    // doesn't currently.
-    // "value1:10:abcdefghijvalue2:",
+    // No last length.
+    "value1:10:abcdefghijvalue2:",
+    // Length value missing
+    "value1:10:abcdefghijvalue2::12345",
     // Length not a number
     "value1:10:abcdefghijvalue2:five:12345",
     // Last length too short

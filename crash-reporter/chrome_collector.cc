@@ -59,7 +59,7 @@ bool GetDelimitedString(const std::string& str,
                         size_t offset,
                         std::string* substr) {
   size_t at = str.find_first_of(ch, offset);
-  if (at == std::string::npos || at == offset)
+  if (at == std::string::npos || at == offset || at == str.length() - 1)
     return false;
   *substr = str.substr(offset, at - offset);
   return true;
