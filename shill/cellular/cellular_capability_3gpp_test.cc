@@ -595,8 +595,7 @@ TEST_F(CellularCapability3gppTest, StartModemInWrongState) {
 
   EXPECT_CALL(*this, TestCallback(_)).Times(1);
   Error error;
-  cellular_->set_capability_state_for_testing(
-      Cellular::CapabilityState::kCellularStarted);
+  cellular_->set_state_for_testing(Cellular::State::kEnabled);
   StartModem(&error);
   EXPECT_TRUE(error.IsOngoing());
 
@@ -691,7 +690,7 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
   // enabled, a termination action should be added.
   cellular_->OnModemStateChanged(Cellular::kModemStateEnabled);
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::State::kEnabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kModemStarted, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateEnabled, cellular_->modem_state());
   EXPECT_FALSE(manager_.termination_actions_.IsEmpty());
 
@@ -742,7 +741,7 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
   // enabled, a termination action should be added.
   cellular_->OnModemStateChanged(Cellular::kModemStateEnabled);
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::State::kEnabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kModemStarted, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateEnabled, cellular_->modem_state());
   EXPECT_FALSE(manager_.termination_actions_.IsEmpty());
 
@@ -1840,6 +1839,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   // Got valid MDN, subscription_state_ is SubscriptionState::kUnknown
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
+
   cellular_->set_state_for_testing(Cellular::State::kRegistered);
   cellular_->SetMdn("1020304");
   capability_->subscription_state_ = SubscriptionState::kUnknown;
@@ -1856,6 +1856,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   // Got invalid MDN, subscription_state_ is SubscriptionState::kProvisioned
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
+
   cellular_->set_state_for_testing(Cellular::State::kRegistered);
   cellular_->SetMdn("0000000");
   capability_->subscription_state_ = SubscriptionState::kProvisioned;

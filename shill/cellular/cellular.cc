@@ -178,6 +178,12 @@ std::string Cellular::GetStateString(State state) {
       return "Disabled";
     case State::kEnabled:
       return "Enabled";
+    case State::kModemStarting:
+      return "ModemStarting";
+    case State::kModemStarted:
+      return "ModemStarted";
+    case State::kModemStopping:
+      return "ModemStopping";
     case State::kRegistered:
       return "Registered";
     case State::kConnected:
@@ -223,25 +229,6 @@ std::string Cellular::GetModemStateString(ModemState modem_state) {
       NOTREACHED();
   }
   return base::StringPrintf("ModemStateUnknown-%d", modem_state);
-}
-
-// static
-std::string Cellular::GetCapabilityStateString(
-    CapabilityState capability_state) {
-  switch (capability_state) {
-    case CapabilityState::kCellularStopped:
-      return "CellularStopped";
-    case CapabilityState::kCellularStarted:
-      return "CellularStarted";
-    case CapabilityState::kModemStarting:
-      return "ModemStarting";
-    case CapabilityState::kModemStarted:
-      return "ModemStarted";
-    case CapabilityState::kModemStopping:
-      return "ModemStopping";
-  }
-  return base::StringPrintf("CellularCapabilityStateUnknown-%d",
-                            capability_state);
 }
 
 Cellular::Cellular(Manager* manager,
@@ -408,16 +395,6 @@ void Cellular::SetModemState(ModemState modem_state) {
   UpdateScanning();
 }
 
-void Cellular::SetCapabilityState(CapabilityState capability_state) {
-  if (capability_state == capability_state_)
-    return;
-  SLOG(this, 1) << __func__ << ": "
-                << GetCapabilityStateString(capability_state_) << " -> "
-                << GetCapabilityStateString(capability_state);
-  capability_state_ = capability_state;
-  UpdateScanning();
-}
-
 void Cellular::HelpRegisterDerivedBool(const std::string& name,
                                        bool (Cellular::*get)(Error* error),
                                        bool (Cellular::*set)(const bool& value,
@@ -440,9 +417,9 @@ void Cellular::Start(Error* error,
 
   if (!capability_) {
     // Report success, even though a connection will not succeed until a Modem
-    // is instantiated and |cabability_| is created. Setting |capability_state_|
-    // to kCellularStarted here will cause CreateCapability to call StartModem.
-    SetCapabilityState(CapabilityState::kCellularStarted);
+    // is instantiated and |cabability_| is created. Setting |state_|
+    // to kEnabled here will cause CreateCapability to call StartModem.
+    SetState(State::kEnabled);
     LOG(WARNING) << __func__ << ": Skipping Start (no capability).";
     if (error)
       error->Reset();
@@ -457,9 +434,8 @@ void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   if (capability_) {
     StopModem(error, callback);
   } else {
-    // Modem is inhibited. Invoke the callback with no error to persist the
-    // disabled state.
-    SetCapabilityState(CapabilityState::kCellularStopped);
+    // Modem is already stopped (it crashed or is inhibited). Invoke the
+    // callback with no error to persist the disabled state.
     callback.Run(Error());
   }
 
@@ -483,7 +459,7 @@ void Cellular::StartModem(Error* error,
                           const EnabledStateChangedCallback& callback) {
   DCHECK(capability_);
   SLOG(this, 1) << __func__;
-  SetCapabilityState(CapabilityState::kModemStarting);
+  SetState(State::kModemStarting);
   capability_->StartModem(error,
                           base::Bind(&Cellular::StartModemCallback,
                                      weak_ptr_factory_.GetWeakPtr(), callback));
@@ -499,14 +475,13 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
 
   if (!error.IsSuccess()) {
     LOG(ERROR) << "StartModem failed: " << error;
-    SetCapabilityState(CapabilityState::kCellularStarted);
+    SetState(State::kEnabled);
     if (error.type() == Error::kWrongState) {
       // If the enable operation failed with Error::kWrongState, the modem is
       // in an unexpected state. This usually indicates a missing or locked
       // SIM. Invoke |callback| with no error so that the enable completes.
       // If the ModemState property later changes to 'disabled', StartModem
       // will be called again.
-      SetState(State::kEnabled);
       callback.Run(Error());
     } else {
       callback.Run(error);
@@ -514,14 +489,11 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
     return;
   }
 
-  SetCapabilityState(CapabilityState::kModemStarted);
+  SetState(State::kModemStarted);
 
-  if (state_ == State::kDisabled) {
-    SetState(State::kEnabled);
-    // Registration state updates may have been ignored while the
-    // modem was not yet marked enabled.
-    HandleNewRegistrationState();
-  }
+  // Registration state updates may have been ignored while the
+  // modem was not yet marked enabled.
+  HandleNewRegistrationState();
 
   metrics()->NotifyDeviceEnableFinished(interface_index());
 
@@ -532,7 +504,7 @@ void Cellular::StopModem(Error* error,
                          const EnabledStateChangedCallback& callback) {
   DCHECK(capability_);
   SLOG(this, 1) << __func__;
-  SetCapabilityState(CapabilityState::kModemStopping);
+  SetState(State::kModemStopping);
   capability_->StopModem(error,
                          base::Bind(&Cellular::StopModemCallback,
                                     weak_ptr_factory_.GetWeakPtr(), callback));
@@ -542,12 +514,10 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
                                  const Error& error) {
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_)
                 << " Error: " << error;
-  SetCapabilityState(CapabilityState::kCellularStopped);
+  SetState(State::kDisabled);
   // Destroy any cellular services regardless of any errors that occur during
   // the stop process since we do not know the state of the modem at this point.
   DestroyAllServices();
-  if (state_ != State::kDisabled)
-    SetState(State::kDisabled);
   if (error.type() == Error::kWrongState) {
     // ModemManager.Modem will not respond to Stop when in a failed state. Allow
     // the callback to succeed so that Shill identifies and persists Cellular as
@@ -766,18 +736,6 @@ void Cellular::OnAfterResume() {
   if (enabled_persistent()) {
     LOG(INFO) << "Restarting modem after resume.";
 
-    // If we started disabling the modem before suspend, but that
-    // suspend is still in progress, then we are not yet in
-    // State::kDisabled. That's a problem, because Cellular::Start
-    // returns immediately in that case. Hack around that by forcing
-    // |state_| here.
-    //
-    // TODO(quiche): Remove this hack. Maybe
-    // CellularCapability3gpp should generate separate
-    // notifications for Stop_Disable, and Stop_PowerDown. Then we'd
-    // update our state to State::kDisabled when Stop_Disable completes.
-    SetState(State::kDisabled);
-
     Error error;
     SetEnabledUnchecked(true, &error, base::Bind(LogRestartModemResult));
     if (error.IsSuccess()) {
@@ -919,9 +877,7 @@ void Cellular::HandleNewRegistrationState() {
   SLOG(this, 2) << __func__ << ": state = " << GetStateString(state_);
   CHECK(capability_);
   if (!capability_->IsRegistered()) {
-    if (!explicit_disconnect_ &&
-        capability_state_ != CapabilityState::kModemStopping &&
-        StateIsConnected() && service_.get()) {
+    if (!explicit_disconnect_ && StateIsConnected() && service_.get()) {
       metrics()->NotifyCellularDeviceDrop(
           capability_->GetNetworkTechnologyString(), service_->strength());
     }
@@ -937,12 +893,17 @@ void Cellular::HandleNewRegistrationState() {
   if (state_ == State::kDisabled) {
     return;
   }
-  if (state_ == State::kEnabled) {
+
+  if (state_ == State::kModemStarted) {
     SetState(State::kRegistered);
 
     // Once modem enters registered state, begin polling location:
     // registered means we've successfully connected
     StartLocationPolling();
+  }
+  if (!StateIsRegistered()) {
+    LOG(WARNING) << "Capability is registered but State="
+                 << GetStateString(state_);
   }
   UpdateServices();
 }
@@ -1059,10 +1020,8 @@ void Cellular::CreateCapability() {
 
   // If Cellular::Start has not been called, or Cellular::Stop has been called,
   // we still want to create the capability, but not call StartModem.
-  if (capability_state_ == CapabilityState::kModemStopping ||
-      capability_state_ == CapabilityState::kCellularStopped) {
+  if (state_ == State::kModemStopping || state_ == State::kDisabled)
     return;
-  }
 
   StartModem(/*error=*/nullptr, base::DoNothing());
 }
@@ -1089,14 +1048,10 @@ void Cellular::DestroyCapability() {
   }
 
   capability_.reset();
-  SetModemState(kModemStateUnknown);
 
-  if (capability_state_ != CapabilityState::kModemStopping &&
-      capability_state_ != CapabilityState::kCellularStopped) {
-    // Clear any modem starting/started/stopped state by resetting the
-    // capability state to kCellularStarted.
-    SetCapabilityState(CapabilityState::kCellularStarted);
-  }
+  if (state_ != State::kDisabled)
+    SetState(State::kEnabled);
+  SetModemState(kModemStateUnknown);
 }
 
 bool Cellular::GetConnectable(CellularService* service) const {
@@ -1165,7 +1120,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (capability_state_ != CapabilityState::kModemStarted) {
+  if (!StateIsStarted()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Connect Failed: Modem not started.");
     metrics()->NotifyCellularConnectionResult(error->type());
@@ -1386,15 +1341,14 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
     return;
   }
 
-  SLOG(this, 1) << __func__ << " State: " << GetModemStateString(new_state)
-                << " Capability State: "
-                << GetCapabilityStateString(capability_state_);
+  SLOG(this, 1) << __func__ << " State: " << GetStateString(state_)
+                << " ModemState: " << GetModemStateString(new_state);
   SetModemState(new_state);
   CHECK(capability_);
 
   if (old_modem_state >= kModemStateRegistered &&
       modem_state_ < kModemStateRegistered) {
-    if (capability_state_ == CapabilityState::kModemStarting) {
+    if (state_ == State::kModemStarting) {
       // Avoid un-registering the modem while the Capability is starting the
       // Modem to prevent unexpected spurious state changes.
       // TODO(stevenjb): Audit logs and remove or tighten this logic.
@@ -1422,7 +1376,7 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
       // When the Modem becomes disabled, Cellular is not necessarily disabled.
       // This may occur after a SIM swap or eSIM profile change. Ensure that
       // the Modem is started.
-      if (capability_state_ == CapabilityState::kCellularStarted)
+      if (state_ == State::kEnabled)
         StartModem(/*error=*/nullptr, base::DoNothing());
       break;
     case kModemStateDisabling:
@@ -1863,11 +1817,7 @@ void Cellular::ConnectToPending() {
     ConnectToPendingFailed(Service::kFailureSimLocked);
     return;
   }
-  if (capability_state_ != CapabilityState::kModemStarted) {
-    LOG(WARNING) << __func__ << ": Modem not started";
-    ConnectToPendingFailed(Service::kFailureNotRegistered);
-    return;
-  }
+
   // Normally the Modem becomes Registered immediately after becoming enabled.
   // For eSIM this is not always true so we need to wait for the Modem to
   // become registered.
@@ -1941,30 +1891,30 @@ void Cellular::ConnectToPendingCancel() {
 
 void Cellular::UpdateScanning() {
   bool scanning;
-  switch (capability_state_) {
-    case CapabilityState::kCellularStopped:
+  switch (state_) {
+    case State::kDisabled:
       scanning = false;
       break;
-    case CapabilityState::kCellularStarted:
-      // CellularStarted indicates that Cellular is enabled, but the Modem
-      // object has not been created, or was destroyed because the Modem is
-      // Inhibited or Locked, or StartModem failed.
+    case State::kEnabled:
+      // Cellular is enabled, but the Modem object has not been created, or was
+      // destroyed because the Modem is Inhibited or Locked, or StartModem
+      // failed.
       scanning = !inhibited_ && modem_state_ != kModemStateLocked &&
                  modem_state_ != kModemStateFailed;
       break;
-    case CapabilityState::kModemStarting:
-      // ModemStarting indicates that a Modem object exists but has not started.
+    case State::kModemStarting:
+    case State::kModemStopping:
       scanning = true;
       break;
-    case CapabilityState::kModemStarted:
+    case State::kModemStarted:
+    case State::kRegistered:
+    case State::kConnected:
+    case State::kLinked:
       // When the modem is started and enabling or searching, treat as scanning.
       // Also set scanning if an active scan is in progress.
       scanning = modem_state_ == kModemStateEnabling ||
                  modem_state_ == kModemStateSearching ||
                  proposed_scan_in_progress_;
-      break;
-    case CapabilityState::kModemStopping:
-      scanning = true;
       break;
   }
   SetScanning(scanning);
@@ -2335,9 +2285,9 @@ void Cellular::StopLocationPolling() {
 void Cellular::SetScanning(bool scanning) {
   if (scanning_ == scanning)
     return;
-  LOG(INFO) << __func__ << ": " << scanning << ". (Capability State: "
-            << GetCapabilityStateString(capability_state_)
-            << ", Modem State: " << GetModemStateString(modem_state_) << ")";
+  LOG(INFO) << __func__ << ": " << scanning
+            << " State: " << GetStateString(state_)
+            << " Modem State: " << GetModemStateString(modem_state_) << ")";
   if (scanning) {
     // Set Scanning=true immediately.
     scanning_clear_callback_.Cancel();
@@ -2541,6 +2491,11 @@ bool Cellular::StateIsConnected() {
 bool Cellular::StateIsRegistered() {
   return state_ == State::kRegistered || state_ == State::kConnected ||
          state_ == State::kLinked;
+}
+
+bool Cellular::StateIsStarted() {
+  return state_ == State::kModemStarted || state_ == State::kRegistered ||
+         state_ == State::kConnected || state_ == State::kLinked;
 }
 
 void Cellular::SetServiceForTesting(CellularServiceRefPtr service) {

@@ -107,7 +107,7 @@ void CellularCapabilityCdma::ReleaseProxies() {
 
 void CellularCapabilityCdma::CompleteActivation(Error* error) {
   SLOG(this, 2) << __func__;
-  if (cellular()->state() < Cellular::State::kEnabled) {
+  if (cellular()->state() == Cellular::State::kDisabled) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Unable to activate in state " +
                               Cellular::GetStateString(cellular()->state()));

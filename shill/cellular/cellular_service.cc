@@ -594,7 +594,7 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     *reason = kAutoConnSimUnselected;
     return false;
   }
-  if (cellular_->state() != Cellular::State::kRegistered) {
+  if (!cellular_->StateIsRegistered()) {
     *reason = kAutoConnNotRegistered;
     return false;
   }

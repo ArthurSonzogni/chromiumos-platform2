@@ -46,14 +46,19 @@ class Cellular : public Device,
   };
 
   enum class State {
-    // This is the initial state of the modem and indicates that the modem radio
-    // is not turned on.
+    // Initial state. No Capability exists.
     kDisabled,
-    // This state indicates that the modem radio is turned on, and it should be
-    // possible to measure signal strength.
+    // A Modem object and a corresponding Capability have been created but the
+    // Modem has not started.
     kEnabled,
-    // The modem has registered with a network and has signal quality
-    // measurements. A cellular service object is created.
+    // A Start request has been sent to the Modem.
+    kModemStarting,
+    // The Modem Start has completed.
+    kModemStarted,
+    // A Stop request has been sent to the Modem.
+    kModemStopping,
+    // The modem has registered with a network. A Cellular Service will be
+    // created if necessary and associated with this Device.
     kRegistered,
     // The modem has connected to a network.
     kConnected,
@@ -78,17 +83,6 @@ class Cellular : public Device,
     kModemStateConnected = 11,
   };
 
-  // Enum for tracking Cellular::Start/Stop and
-  // CellularCapability::Start/StopModem to support modemmanager restarts
-  // which requires reconstructing CellularCapability.
-  enum class CapabilityState {
-    kCellularStopped,
-    kCellularStarted,
-    kModemStarting,
-    kModemStarted,
-    kModemStopping,
-  };
-
   // Used in Cellular and CellularCapability3gpp to store and pass properties
   // associated with a SIM Profile.
   struct SimProperties {
@@ -108,7 +102,6 @@ class Cellular : public Device,
   // Static helper for logging.
   static std::string GetStateString(State state);
   static std::string GetModemStateString(ModemState modem_state);
-  static std::string GetCapabilityStateString(CapabilityState capability_state);
 
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/freedesktop/ModemManager1/Modem/0"). |service| is the modem
@@ -284,6 +277,10 @@ class Cellular : public Device,
   ModemState modem_state() const { return modem_state_; }
   bool allow_roaming_property() const { return allow_roaming_; }
 
+  bool StateIsConnected();
+  bool StateIsRegistered();
+  bool StateIsStarted();
+
   // DBus property getters
   const std::string& dbus_service() const { return dbus_service_; }
   const RpcIdentifier& dbus_path() const { return dbus_path_; }
@@ -360,9 +357,6 @@ class Cellular : public Device,
   CellularCapability* capability_for_testing() { return capability_.get(); }
   mm1::Mm1ProxyInterface* mm1_proxy_for_testing() { return mm1_proxy_.get(); }
   const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
-  void set_capability_state_for_testing(CapabilityState state) {
-    capability_state_ = state;
-  }
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
   void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
   void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
@@ -469,7 +463,6 @@ class Cellular : public Device,
 
   void SetState(State state);
   void SetModemState(ModemState modem_state_state);
-  void SetCapabilityState(CapabilityState capability_state);
   void SetScanning(bool scanning);
   void SetScanningProperty(bool scanning);
 
@@ -581,12 +574,8 @@ class Cellular : public Device,
                            const Error& error);
   void PollLocationTask();
 
-  bool StateIsConnected();
-  bool StateIsRegistered();
-
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
-  CapabilityState capability_state_ = CapabilityState::kCellularStopped;
 
   struct LocationInfo {
     std::string mcc;

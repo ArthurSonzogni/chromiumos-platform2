@@ -533,8 +533,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   CellularService* SetRegisteredWithService() {
     device_->set_iccid_for_testing(kIccid);
     device_->set_state_for_testing(Cellular::State::kRegistered);
-    device_->set_capability_state_for_testing(
-        Cellular::CapabilityState::kModemStarted);
     device_->set_modem_state_for_testing(Cellular::kModemStateRegistered);
     CellularService* service = SetService();
     cellular_service_provider_.LoadServicesForDevice(device_.get());
@@ -1105,26 +1103,29 @@ TEST_P(CellularTest, StorageIdentifier) {
 
 TEST_P(CellularTest, Connect) {
   Error error;
-  device_->capability_state_ = Cellular::CapabilityState::kModemStarted;
+  device_->set_state_for_testing(Cellular::State::kModemStarted);
   SetService();
   device_->set_state_for_testing(Cellular::State::kConnected);
   device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
   error.Populate(Error::kSuccess);
 
+  error.Reset();
   device_->set_state_for_testing(Cellular::State::kLinked);
   device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
 
-  device_->set_state_for_testing(Cellular::State::kEnabled);
+  error.Reset();
+  device_->set_state_for_testing(Cellular::State::kModemStarted);
   device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kNotRegistered, error.type());
 
   error.Reset();
   device_->set_state_for_testing(Cellular::State::kDisabled);
   device_->Connect(device_->service().get(), &error);
-  EXPECT_EQ(Error::kNotRegistered, error.type());
+  EXPECT_EQ(Error::kOperationFailed, error.type());
 
+  error.Reset();
   device_->set_state_for_testing(Cellular::State::kRegistered);
   device_->allow_roaming_ = false;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
@@ -1288,7 +1289,6 @@ TEST_P(CellularTest, LinkEventWontDestroyService) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection but the service object should persist.
   device_->set_state_for_testing(Cellular::State::kLinked);
-  device_->capability_state_ = Cellular::CapabilityState::kModemStarted;
   CellularService* service = SetService();
   device_->LinkEvent(0, 0);  // flags doesn't contain IFF_UP
   EXPECT_EQ(device_->state(), Cellular::State::kConnected);
@@ -1358,18 +1358,6 @@ TEST_P(CellularTest, ModemStateChangeDisable) {
 }
 #endif  // !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 
-TEST_P(CellularTest, ModemStateChangeStaleConnected) {
-  // Test to make sure that we ignore stale modem Connected state transitions.
-  // When a modem is asked to connect and before the connect completes, the
-  // modem is disabled, it may send a stale Connected state transition after
-  // it has been disabled.
-  device_->set_state_for_testing(Cellular::State::kDisabled);
-  device_->set_modem_state_for_testing(Cellular::kModemStateEnabling);
-  device_->OnModemStateChanged(Cellular::kModemStateConnected);
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::State::kDisabled, device_->state());
-}
-
 TEST_P(CellularTest, ModemStateChangeValidConnected) {
   device_->set_state_for_testing(Cellular::State::kEnabled);
   device_->set_modem_state_for_testing(Cellular::kModemStateConnecting);
@@ -1393,16 +1381,16 @@ TEST_P(CellularTest, ModemStateChangeLostRegistration) {
 
 TEST_P(CellularTest, StartModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  EXPECT_EQ(device_->state(), Cellular::State::kDisabled);
+  device_->set_state_for_testing(Cellular::State::kEnabled);
   CallStartModemCallback(Error(Error::kSuccess));
-  EXPECT_EQ(device_->state(), Cellular::State::kEnabled);
+  EXPECT_EQ(device_->state(), Cellular::State::kModemStarted);
 }
 
 TEST_P(CellularTest, StartModemCallbackFail) {
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  EXPECT_EQ(device_->state(), Cellular::State::kDisabled);
+  device_->set_state_for_testing(Cellular::State::kEnabled);
   CallStartModemCallback(Error(Error::kOperationFailed));
-  EXPECT_EQ(device_->state(), Cellular::State::kDisabled);
+  EXPECT_EQ(device_->state(), Cellular::State::kEnabled);
 }
 
 TEST_P(CellularTest, StopModemCallback) {
@@ -1467,8 +1455,7 @@ TEST_P(CellularTest, SetUseAttachApn) {
   // We have (re)enabled the modem but as the final Enable() didn't invoke its
   // callback for the reason stated above we won't reach the final
   // kModemStarted state.
-  EXPECT_EQ(device_->capability_state_,
-            Cellular::CapabilityState::kModemStarted);
+  EXPECT_EQ(device_->state(), Cellular::State::kModemStarted);
   EXPECT_TRUE(device_->use_attach_apn_);
 }
 
@@ -1949,21 +1936,20 @@ TEST_P(CellularTest, OnAfterResumeDisableInProgressWantDisabled) {
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->enabled_pending());
-  EXPECT_EQ(Cellular::State::kEnabled, device_->state());
+  EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 
   // Start disable.
   EXPECT_CALL(manager_, UpdateDevice(_));
   device_->SetEnabledPersistent(false, &error, ResultCallback());
-  EXPECT_FALSE(device_->enabled_pending());     // changes immediately
-  EXPECT_FALSE(device_->enabled_persistent());  // changes immediately
-  EXPECT_EQ(Cellular::State::kEnabled,
-            device_->state());  // changes on completion
+  EXPECT_FALSE(device_->enabled_pending());
+  EXPECT_FALSE(device_->enabled_persistent());
+  EXPECT_EQ(Cellular::State::kModemStopping, device_->state());
 
   // Resume, with disable still in progress.
   device_->OnAfterResume();
   EXPECT_FALSE(device_->enabled_pending());
   EXPECT_FALSE(device_->enabled_persistent());
-  EXPECT_EQ(Cellular::State::kEnabled, device_->state());
+  EXPECT_EQ(Cellular::State::kModemStopping, device_->state());
 
   // Finish the disable operation.
   EXPECT_CALL(*mm1_modem_proxy, Enable(false, _, _, _))
@@ -1997,27 +1983,25 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
-  EXPECT_EQ(Cellular::State::kEnabled, device_->state());
+  EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 
   // Start disable.
   device_->SetEnabled(false);
   EXPECT_FALSE(device_->enabled_pending());    // changes immediately
   EXPECT_TRUE(device_->enabled_persistent());  // no change
-  EXPECT_EQ(Cellular::State::kEnabled,
-            device_->state());  // changes on completion
+  EXPECT_EQ(Cellular::State::kModemStopping, device_->state());
 
   // Resume, with disable still in progress.
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnableReturningWrongState));
-  EXPECT_EQ(Cellular::State::kEnabled,
-            device_->state());  // disable still pending
+  EXPECT_EQ(Cellular::State::kModemStopping, device_->state());
   device_->OnAfterResume();
   EXPECT_TRUE(device_->enabled_pending());     // changes immediately
   EXPECT_TRUE(device_->enabled_persistent());  // no change
   // Note: This used to be Disabled, however changes to Start behavior set the
   // Cellular State to Enabled when a WrongState error occurs.
   // TODO(b:185517971) Investigate and improve suspend/resume behavior.
-  EXPECT_EQ(Cellular::State::kEnabled, device_->state());  // by OnAfterResume
+  EXPECT_EQ(Cellular::State::kEnabled, device_->state());
 
   // Set up state that we need.
   KeyValueStore modem_properties;
@@ -2073,7 +2057,7 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
-  EXPECT_EQ(Cellular::State::kEnabled, device_->state());
+  EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 
   // Start disable.
   ResultCallback modem_proxy_enable_callback;
@@ -2083,8 +2067,7 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   dispatcher_.DispatchPendingEvents();  // SetEnabled yields a deferred task
   EXPECT_FALSE(device_->enabled_pending());    // changes immediately
   EXPECT_TRUE(device_->enabled_persistent());  // no change
-  EXPECT_EQ(Cellular::State::kEnabled,
-            device_->state());  // changes on completion
+  EXPECT_EQ(Cellular::State::kModemStopping, device_->state());
 
   // Let the disable complete. That will trigger power-down.
   //
@@ -2104,14 +2087,14 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
 
   // Resume.
   ResultCallback new_callback;
-  EXPECT_EQ(Cellular::State::kEnabled,
-            device_->state());  // disable still pending
+  EXPECT_EQ(Cellular::State::kModemStopping, device_->state());
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(SaveArg<2>(&modem_proxy_enable_callback));
   device_->OnAfterResume();
   EXPECT_TRUE(device_->enabled_pending());     // changes immediately
   EXPECT_TRUE(device_->enabled_persistent());  // no change
-  EXPECT_EQ(Cellular::State::kDisabled, device_->state());  // by OnAfterResume
+  // OnAfterResume -> SetEnabledUnchecked -> Start
+  EXPECT_EQ(Cellular::State::kModemStarting, device_->state());
 
   // Set up state that we need.
   KeyValueStore modem_properties;
@@ -2127,7 +2110,7 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   modem_proxy_enable_callback.Run(error);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
-  EXPECT_EQ(Cellular::State::kEnabled, device_->state());
+  EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 }
 
 TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
@@ -2154,7 +2137,7 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
   modem_proxy_enable_callback.Run(error);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
-  EXPECT_EQ(Cellular::State::kEnabled, device_->state());
+  EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 }
 
 // Custom property setters should return false, and make no changes, if
