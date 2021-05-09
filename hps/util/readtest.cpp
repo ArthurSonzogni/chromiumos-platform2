@@ -14,13 +14,14 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "hps/lib/hps.h"
+#include "hps/lib/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {
 
 // No arguments, default to 200.
 // N - Number of iterations.
-int readtest(std::unique_ptr<hps::HPS> hps,
+int ReadTest(std::unique_ptr<hps::HPS> hps,
              const base::CommandLine::StringVector& args) {
   int iterations;
   switch (args.size()) {
@@ -42,7 +43,7 @@ int readtest(std::unique_ptr<hps::HPS> hps,
   }
   for (int i = 0; i < iterations; i++) {
     for (int reg = 0; reg < hps::HpsReg::kNumRegs; reg++) {
-      int result = hps->Device()->readReg(reg);
+      int result = hps->Device()->ReadReg(reg);
       if (result < 0) {
         std::cout << std::endl
                   << "Error on iteration " << i << " register " << i
@@ -62,9 +63,9 @@ int readtest(std::unique_ptr<hps::HPS> hps,
   return 0;
 }
 
-Command cmd("readtest",
-            "readtest [ iterations ] - "
-            "Test reading all registers (default 200 iterations.",
-            readtest);
+Command readtest("readtest",
+                 "readtest [ iterations ] - "
+                 "Test reading all registers (default 200 iterations.",
+                 ReadTest);
 
 }  // namespace

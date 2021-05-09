@@ -24,15 +24,15 @@ class I2CDev : public DevInterface {
   I2CDev(int bus, int address);
   ~I2CDev() {}
   int Open();
-  bool read(uint8_t cmd, uint8_t* data, uint len) override;
-  bool write(uint8_t cmd, const uint8_t* data, uint len) override;
+  bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
+  bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
 
  private:
-  bool ioc(struct i2c_msg* msg, uint count);
-  int bus;
-  int address;
-  int fd;
-  std::string name;
+  bool Ioc(struct i2c_msg* msg, size_t count);
+  int bus_;
+  int address_;
+  int fd_;
+  std::string name_;
 };
 
 }  // namespace hps

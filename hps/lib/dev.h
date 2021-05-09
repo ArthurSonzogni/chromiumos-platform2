@@ -8,11 +8,8 @@
 #ifndef HPS_LIB_DEV_H_
 #define HPS_LIB_DEV_H_
 
-#include <stdint.h>
-
-#include "hps/lib/hps_reg.h"
-
-#define RETRIES 5
+#include <cstddef>
+#include <cstdint>
 
 namespace hps {
 
@@ -23,42 +20,22 @@ class DevInterface {
    * Returns true on successful read, false on error.
    * In the event of an error, the contents may have been modified.
    */
-  virtual bool read(uint8_t cmd, uint8_t* data, uint len) = 0;
+  virtual bool Read(uint8_t cmd, uint8_t* data, size_t len) = 0;
   /*
    * Write the data to the device.
    * Returns true on successful write, false on error.
    */
-  virtual bool write(uint8_t cmd, const uint8_t* data, uint len) = 0;
+  virtual bool Write(uint8_t cmd, const uint8_t* data, size_t len) = 0;
   /*
    * Read 1 register.
    * Returns value read, or -1 for error.
    */
-  int readReg(int r) {
-    uint8_t res[2];
-
-    for (int i = 0; i < RETRIES; i++) {
-      if (this->read(I2cReg(r), res, sizeof(res))) {
-        return (static_cast<int>(res[0]) << 8) | static_cast<int>(res[1]);
-      }
-    }
-    return -1;
-  }
+  int ReadReg(int r);
   /*
    * Write 1 register.
    * Returns false on failure.
    */
-  bool writeReg(int r, uint16_t data) {
-    uint8_t buf[2];
-
-    buf[0] = data >> 8;
-    buf[1] = data & 0xFF;
-    for (int i = 0; i < RETRIES; i++) {
-      if (this->write(I2cReg(r), buf, sizeof(buf))) {
-        return true;
-      }
-    }
-    return false;
-  }
+  bool WriteReg(int r, uint16_t data);
 };
 
 }  // namespace hps

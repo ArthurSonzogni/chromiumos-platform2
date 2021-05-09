@@ -14,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "hps/lib/hps.h"
+#include "hps/lib/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {
@@ -21,7 +22,7 @@ namespace {
 // No arguments, registers 0 - 4 are dumped
 // N - dump register N
 // N - M Dump registers between N and M inclusive
-int status(std::unique_ptr<hps::HPS> hps,
+int Status(std::unique_ptr<hps::HPS> hps,
            const base::CommandLine::StringVector& args) {
   int start, end;
   switch (args.size()) {
@@ -57,7 +58,7 @@ int status(std::unique_ptr<hps::HPS> hps,
   }
   for (auto i = start; i <= end; i++) {
     std::cout << "reg " << std::dec << i << " = ";
-    auto result = hps->Device()->readReg(i);
+    auto result = hps->Device()->ReadReg(i);
     if (result < 0) {
       std::cout << "Error!" << std::endl;
     } else {
@@ -68,9 +69,9 @@ int status(std::unique_ptr<hps::HPS> hps,
   return 0;
 }
 
-Command cmd("status",
-            "status [ start [ end ] ] - "
-            "Dump status registers (default 0 5).",
-            status);
+Command status("status",
+               "status [ start [ end ] ] - "
+               "Dump status registers (default 0 5).",
+               Status);
 
 }  // namespace

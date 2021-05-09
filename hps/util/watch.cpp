@@ -16,12 +16,13 @@
 #include <base/time/time.h>
 
 #include "hps/lib/hps.h"
+#include "hps/lib/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {
 
 // Argument is feature number.
-int watch(std::unique_ptr<hps::HPS> hps,
+int Watch(std::unique_ptr<hps::HPS> hps,
           const base::CommandLine::StringVector& args) {
   int feat = 0;
   if (args.size() != 2) {
@@ -48,9 +49,9 @@ int watch(std::unique_ptr<hps::HPS> hps,
   }
 }
 
-Command watchCmd("watch",
-                 "watch feature-number - "
-                 "Poll for feature change.",
-                 watch);
+Command watch("watch",
+              "watch feature-number - "
+              "Poll for feature change.",
+              Watch);
 
 }  // namespace

@@ -15,11 +15,12 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "hps/lib/hps.h"
+#include "hps/lib/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {
 
-int download(std::unique_ptr<hps::HPS> hps,
+int Download(std::unique_ptr<hps::HPS> hps,
              const base::CommandLine::StringVector& args) {
   if (args.size() != 3) {
     std::cerr << "Arg error: ... " << args[0] << " bank-id file" << std::endl;
@@ -42,6 +43,6 @@ int download(std::unique_ptr<hps::HPS> hps,
   }
 }
 
-Command dl("dl", "dl <bank-id> <file> - Download file to hps.", download);
+Command dl("dl", "dl <bank-id> <file> - Download file to hps.", Download);
 
 }  // namespace

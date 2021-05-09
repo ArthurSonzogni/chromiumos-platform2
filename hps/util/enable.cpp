@@ -14,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "hps/lib/hps.h"
+#include "hps/lib/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {
@@ -23,7 +24,7 @@ namespace {
 // 1 - enable feature 1
 // 2 - enable feature 2
 // 3 - enable both feature 1 and 2.
-int enable(std::unique_ptr<hps::HPS> hps,
+int Enable(std::unique_ptr<hps::HPS> hps,
            const base::CommandLine::StringVector& args) {
   int feat = 0;
   if (args.size() != 2) {
@@ -48,6 +49,6 @@ Command enableCmd("enable",
                   "enable feature-mask - "
                   "Enable/disable features using bit-mask, valid values are "
                   "0, 1, 2, 3",
-                  enable);
+                  Enable);
 
 }  // namespace

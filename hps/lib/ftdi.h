@@ -19,23 +19,23 @@ namespace hps {
 
 class Ftdi : public DevInterface {
  public:
-  explicit Ftdi(uint8_t addr) : address(addr << 1) {}
+  explicit Ftdi(uint8_t addr) : address_(addr << 1) {}
   bool Init();
   void Close();
-  bool read(uint8_t cmd, uint8_t* data, uint lem) override;
-  bool write(uint8_t cmd, const uint8_t* data, uint lem) override;
+  bool Read(uint8_t cmd, uint8_t* data, size_t lem) override;
+  bool Write(uint8_t cmd, const uint8_t* data, size_t lem) override;
 
  private:
-  bool check(bool cond, const char* tag);
-  void i2c_reset();
-  bool i2c_read(std::vector<uint8_t>* data);
-  bool ft_read(size_t count, std::vector<uint8_t>* input);
-  bool ft_sendbyte(uint8_t data, std::vector<uint8_t>* b);
-  bool ft_readbyte(uint8_t* result, bool nak);
-  bool ft_get(std::vector<uint8_t>* get);
-  size_t ft_put(const std::vector<uint8_t>& output);
-  void dump();
-  uint8_t address;
+  bool Check(bool cond, const char* tag);
+  void Reset();
+  // bool I2CRead(std::vector<uint8_t>* data);
+  bool SendByte(uint8_t data, std::vector<uint8_t>* b);
+  bool ReadByte(uint8_t* result, bool nak);
+  bool GetRawBlock(size_t count, std::vector<uint8_t>* input);
+  bool GetRaw(std::vector<uint8_t>* get);
+  size_t PutRaw(const std::vector<uint8_t>& output);
+  void Dump();
+  uint8_t address_;
   struct ftdi_context context_;
   std::string descr_;
   std::string manuf_;

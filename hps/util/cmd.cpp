@@ -16,11 +16,12 @@
 #include <base/command_line.h>
 
 #include "hps/lib/hps.h"
+#include "hps/lib/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {
 
-int sendcmd(std::unique_ptr<hps::HPS> hps,
+int SendCmd(std::unique_ptr<hps::HPS> hps,
             const base::CommandLine::StringVector& args) {
   int cmd;
 
@@ -40,12 +41,12 @@ int sendcmd(std::unique_ptr<hps::HPS> hps,
 
   for (auto i = 0; i < 5; i++) {
     std::cout << "reg " << i << " = " << std::hex << std::setfill('0')
-              << std::setw(4) << hps->Device()->readReg(hps::I2cReg(i))
+              << std::setw(4) << hps->Device()->ReadReg(hps::I2cReg(i))
               << std::endl;
   }
   std::cout << "Sending cmd value " << std::hex << std::setfill('0')
             << std::setw(4) << cmd << " to register 3" << std::endl;
-  if (hps->Device()->writeReg(hps::HpsReg::kSysCmd, cmd)) {
+  if (hps->Device()->WriteReg(hps::HpsReg::kSysCmd, cmd)) {
     std::cout << "Success!" << std::endl;
   } else {
     std::cout << "Write failed!" << std::endl;
@@ -53,6 +54,6 @@ int sendcmd(std::unique_ptr<hps::HPS> hps,
   return 0;
 }
 
-Command cmd("cmd", "cmd [reset | launch ] - Send command to hps.", sendcmd);
+Command cmd("cmd", "cmd [reset | launch ] - Send command to hps.", SendCmd);
 
 }  // namespace

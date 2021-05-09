@@ -14,11 +14,12 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "hps/lib/hps.h"
+#include "hps/lib/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {
 
-int boot(std::unique_ptr<hps::HPS> hps,
+int Boot(std::unique_ptr<hps::HPS> hps,
          const base::CommandLine::StringVector& args) {
   if (args.size() != 4) {
     std::cerr << "Arg error: ... " << args[0] << " version appl spi"
@@ -37,6 +38,6 @@ int boot(std::unique_ptr<hps::HPS> hps,
   return 0;
 }
 
-Command bootcmd("boot", "boot version mcu-file spi-file - Boot module.", boot);
+Command bootcmd("boot", "boot version mcu-file spi-file - Boot module.", Boot);
 
 }  // namespace

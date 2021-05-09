@@ -43,8 +43,9 @@ static_library("fakedev") {
   deps = [ ":dev" ]
 }
 
-source_set("dev") {
+static_library("dev") {
   sources = [
+    "dev.cpp",
     "dev.h",
     "hps_reg.h",
   ]

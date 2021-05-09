@@ -18,14 +18,14 @@
  * So a typical register read is:
  *
  *   Main thread                 device thread
- * ->Device->read
- *     DevImpl->readReg
+ * ->Device->Read
+ *     DevImpl->ReadReg
  *       create event/result
  *       DevImpl->send
  *           Add msg to queue
  *               signal  - - -> DevImpl->Run
  *                                read msg from queue
- *                                DevImpl->readRegActual
+ *                                DevImpl->ReadRegActual
  *             result < - - - -
  *             event  < - - - -
  *     return result
@@ -68,7 +68,7 @@ struct Msg {
   base::WaitableEvent* sig;
   std::atomic<uint16_t>* result;
   const uint8_t* data;
-  uint length;
+  size_t length;
 };
 
 }  // namespace
@@ -95,11 +95,11 @@ class DevImpl : public base::SimpleThread {
   virtual ~DevImpl();
   virtual void Run();
   void Start(enum FakeDev::Flags flags);
-  uint16_t readReg(int r);
-  void writeReg(int r, uint16_t v) {
-    this->send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
+  uint16_t ReadReg(int r);
+  void WriteReg(int r, uint16_t v) {
+    this->Send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
   }
-  bool writeMem(int base, const uint8_t* mem, uint len);
+  bool WriteMem(int base, const uint8_t* mem, size_t len);
   // Current stage of the device.
   // The stage defines the registers and status values supported.
   enum Stage {
@@ -111,11 +111,11 @@ class DevImpl : public base::SimpleThread {
 
  private:
   void SetStage(Stage s);
-  uint16_t readRegActual(int);
-  void writeRegActual(int, uint16_t);
-  uint16_t writeMemActual(int base, const uint8_t* mem, uint len);
-  void MsgStop() { this->send(Msg(Cmd::kStop, 0, 0, nullptr, nullptr)); }
-  void send(const Msg m) {
+  uint16_t ReadRegActual(int);
+  void WriteRegActual(int, uint16_t);
+  uint16_t WriteMemActual(int base, const uint8_t* mem, size_t len);
+  void MsgStop() { this->Send(Msg(Cmd::kStop, 0, 0, nullptr, nullptr)); }
+  void Send(const Msg m) {
     base::AutoLock l(this->qlock_);
     this->q_.push_back(m);
     this->ev_.Signal();
@@ -146,6 +146,8 @@ void DevImpl::Start(enum FakeDev::Flags flags) {
 }
 
 // Switch to the stage selected, and set up any flags or config.
+// Depending on the stage, the HPS module supports different
+// registers and attributes.
 void DevImpl::SetStage(Stage s) {
   this->stage_ = s;
   switch (s) {
@@ -195,16 +197,16 @@ void DevImpl::Run() {
           return;
         case kReadReg:
           // Read a register and return the result.
-          m.result->store(this->readRegActual(m.reg));
+          m.result->store(this->ReadRegActual(m.reg));
           m.sig->Signal();
           break;
         case kWriteReg:
           // Write a register.
-          this->writeRegActual(m.reg, m.value);
+          this->WriteRegActual(m.reg, m.value);
           break;
         case kWriteMem:
           // Memory write request.
-          m.result->store(this->writeMemActual(m.reg, m.data, m.length));
+          m.result->store(this->WriteMemActual(m.reg, m.data, m.length));
           m.sig->Signal();
           // Re-enable the bank.
           // TODO(amcrae): Add delay to simulate a flash write.
@@ -218,30 +220,30 @@ void DevImpl::Run() {
   }
 }
 
-uint16_t DevImpl::readReg(int r) {
+uint16_t DevImpl::ReadReg(int r) {
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
-  this->send(Msg(Cmd::kReadReg, r, 0, &ev, &res));
+  this->Send(Msg(Cmd::kReadReg, r, 0, &ev, &res));
   ev.Wait();
   return res.load();
 }
 
 // At the start of the write, clear the bank ready bit.
 // The handler will set it again once the memory write completes.
-bool DevImpl::writeMem(int base, const uint8_t* mem, uint len) {
+bool DevImpl::WriteMem(int base, const uint8_t* mem, size_t len) {
   this->bank_.fetch_and(~(1 << base));
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
   Msg m(Cmd::kWriteMem, base, 0, &ev, &res);
   m.data = mem;
   m.length = len;
-  this->send(m);
+  this->Send(m);
   ev.Wait();
   // Device response is 1 for OK, 0 for not OK.
   return res.load() != 0;
 }
 
-uint16_t DevImpl::readRegActual(int reg) {
+uint16_t DevImpl::ReadRegActual(int reg) {
   uint16_t v = 0;
   switch (reg) {
     case HpsReg::kMagic:
@@ -303,7 +305,7 @@ uint16_t DevImpl::readRegActual(int reg) {
   return v;
 }
 
-void DevImpl::writeRegActual(int reg, uint16_t value) {
+void DevImpl::WriteRegActual(int reg, uint16_t value) {
   VLOG(2) << "Write reg " << reg << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
@@ -336,7 +338,7 @@ void DevImpl::writeRegActual(int reg, uint16_t value) {
 // Returns 1 for OK, 0 for fault.
 // TODO(amcrae): Store the memory written for each bank so
 // it can be checked against what was requested to be written.
-uint16_t DevImpl::writeMemActual(int bank, const uint8_t* data, uint len) {
+uint16_t DevImpl::WriteMemActual(int bank, const uint8_t* data, size_t len) {
   if (this->flags_ & FakeDev::Flags::kMemFail) {
     return 0;
   }
@@ -368,14 +370,14 @@ FakeDev::~FakeDev() {}
 /*
  * Read from registers.
  */
-bool FakeDev::read(uint8_t cmd, uint8_t* data, uint len) {
+bool FakeDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
   // Clear the whole buffer.
   for (int i = 0; i < len; i++) {
     data[i] = 0;
   }
   if ((cmd & 0x80) != 0) {
     // Register read.
-    uint16_t value = this->device_->readReg(cmd & 0x7F);
+    uint16_t value = this->device_->ReadReg(cmd & 0x7F);
     // Store the value of the register into the buffer.
     if (len > 0) {
       data[0] = value >> 8;
@@ -390,7 +392,7 @@ bool FakeDev::read(uint8_t cmd, uint8_t* data, uint len) {
 /*
  * Write to registers or memory.
  */
-bool FakeDev::write(uint8_t cmd, const uint8_t* data, uint len) {
+bool FakeDev::Write(uint8_t cmd, const uint8_t* data, size_t len) {
   if ((cmd & 0x80) != 0) {
     if (len != 0) {
       // Register write.
@@ -399,11 +401,11 @@ bool FakeDev::write(uint8_t cmd, const uint8_t* data, uint len) {
       if (len > 1) {
         value |= data[1];
       }
-      this->device_->writeReg(reg, value);
+      this->device_->WriteReg(reg, value);
     }
   } else if ((cmd & 0xC0) == 0) {
     // Memory write.
-    return this->device_->writeMem(cmd & 0x3F, data, len);
+    return this->device_->WriteMem(cmd & 0x3F, data, len);
   } else {
     // Unknown command.
     return false;

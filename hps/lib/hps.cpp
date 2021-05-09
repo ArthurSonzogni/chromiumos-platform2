@@ -62,16 +62,16 @@ bool HPS::Enable(uint16_t features) {
   // Only 2 features available at the moment.
   this->feat_enabled_ = features & 0x3;
   // Check the application is enabled and running.
-  if ((this->device_->readReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
+  if ((this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
     return false;
   }
   // Write the enable feature mask.
-  return this->device_->writeReg(HpsReg::kFeatEn, this->feat_enabled_);
+  return this->device_->WriteReg(HpsReg::kFeatEn, this->feat_enabled_);
 }
 
 int HPS::Result(int feature) {
   // Check the application is enabled and running.
-  if ((this->device_->readReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
+  if ((this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
     return -1;
   }
   // Check that feature is enabled.
@@ -81,10 +81,10 @@ int HPS::Result(int feature) {
   int result;
   switch (feature) {
     case 0:
-      result = this->device_->readReg(HpsReg::kF1);
+      result = this->device_->ReadReg(HpsReg::kF1);
       break;
     case 1:
-      result = this->device_->readReg(HpsReg::kF2);
+      result = this->device_->ReadReg(HpsReg::kF2);
       break;
     default:
       result = -1;
@@ -105,7 +105,7 @@ void HPS::HandleState() {
   switch (this->state_) {
     case kBoot:
       // Wait for magic number.
-      if (this->device_->readReg(HpsReg::kMagic) == kHpsMagic) {
+      if (this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic) {
         this->Go(State::kBootCheckFault);
       } else if (this->retries_++ >= 50) {
         this->Fail("Timeout waiting for boot magic number");
@@ -119,14 +119,14 @@ void HPS::HandleState() {
         break;
       }
       {
-        uint16_t status = this->device_->readReg(HpsReg::kSysStatus);
+        uint16_t status = this->device_->ReadReg(HpsReg::kSysStatus);
         if (status >= 0) {
           if (status & R2::kFault) {
             this->Fault();
           } else if (status & R2::kOK) {
             // Module has reported OK.
             // Store h/w version.
-            this->hw_rev_ = this->device_->readReg(HpsReg::kHwRev);
+            this->hw_rev_ = this->device_->ReadReg(HpsReg::kHwRev);
             this->Go(State::kBootOK);
           }
         }
@@ -140,7 +140,7 @@ void HPS::HandleState() {
       }
       // Wait for application verified or not.
       {
-        uint16_t r = this->device_->readReg(HpsReg::kSysStatus);
+        uint16_t r = this->device_->ReadReg(HpsReg::kSysStatus);
         if (r >= 0) {
           // Check if the MCU flash verified or not.
           if (r & R2::kApplNotVerified) {
@@ -150,11 +150,11 @@ void HPS::HandleState() {
           } else if (r & R2::kApplVerified) {
             // Verified, so now check the version. If it is
             // different, update it.
-            r = this->device_->readReg(HpsReg::kApplVers);
+            r = this->device_->ReadReg(HpsReg::kApplVers);
             if (r == this->appl_version_) {
               // Application is verified, launch it.
               VLOG(1) << "Launching to stage1";
-              this->device_->writeReg(HpsReg::kSysCmd, R3::kLaunch);
+              this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch);
               this->Go(State::kStage1);
             } else {
               // Versions do not match, need to update.
@@ -186,8 +186,8 @@ void HPS::HandleState() {
 
     case kStage1:
       // Wait for stage1 bit.
-      if ((this->device_->readReg(HpsReg::kMagic) == kHpsMagic) &&
-          (this->device_->readReg(HpsReg::kSysStatus) & R2::kStage1)) {
+      if ((this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic) &&
+          (this->device_->ReadReg(HpsReg::kSysStatus) & R2::kStage1)) {
         this->Go(State::kSpiVerify);
       } else if (this->retries_++ >= 50) {
         this->Fail("Timeout stage1");
@@ -200,7 +200,7 @@ void HPS::HandleState() {
         this->Fail("Timeout SPI verify");
       }
       {
-        uint16_t r = this->device_->readReg(HpsReg::kSysStatus);
+        uint16_t r = this->device_->ReadReg(HpsReg::kSysStatus);
         if (r >= 0) {
           // Check if the SPI flash verified or not.
           if (r & R2::kSpiNotVerified) {
@@ -209,7 +209,7 @@ void HPS::HandleState() {
             this->Go(State::kUpdateSpi);
           } else if (r & R2::kSpiVerified) {
             VLOG(1) << "Enabling application";
-            this->device_->writeReg(HpsReg::kSysCmd, R3::kEnable);
+            this->device_->WriteReg(HpsReg::kSysCmd, R3::kEnable);
             this->Go(State::kApplWait);
           }
         }
@@ -218,8 +218,8 @@ void HPS::HandleState() {
 
     case kApplWait:
       // Wait for application running bit.
-      if ((this->device_->readReg(HpsReg::kMagic) == kHpsMagic) &&
-          (this->device_->readReg(HpsReg::kSysStatus) & R2::kAppl)) {
+      if ((this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic) &&
+          (this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl)) {
         this->Go(State::kReady);
       } else if (this->retries_++ >= 50) {
         this->Fail("Timeout application");
@@ -249,7 +249,7 @@ void HPS::Fail(const char* msg) {
 void HPS::Reboot(const char* msg) {
   LOG(INFO) << "Rebooting: " << msg;
   // Send a reset cmd - maybe should power cycle.
-  this->device_->writeReg(HpsReg::kSysCmd, R3::kReset);
+  this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset);
   this->Go(State::kBoot);
 }
 
@@ -257,7 +257,7 @@ void HPS::Reboot(const char* msg) {
 // try to reboot the module.
 // If the count of reboots is too high, set the module as failed.
 void HPS::Fault() {
-  int errors = this->device_->readReg(HpsReg::kError);
+  int errors = this->device_->ReadReg(HpsReg::kError);
   this->Fail(base::StringPrintf("Fault: cause 0x%04x", errors).c_str());
 }
 
@@ -305,7 +305,7 @@ bool HPS::Download(int bank, const base::FilePath& source) {
     rd = file.ReadAtCurrentPos(reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
                                kBlock);
     if (rd > 0) {
-      if (!this->device_->write(I2cMemWrite(bank), buf,
+      if (!this->device_->Write(I2cMemWrite(bank), buf,
                                 rd + sizeof(uint32_t))) {
         return false;
       }
@@ -323,7 +323,7 @@ bool HPS::Download(int bank, const base::FilePath& source) {
 bool HPS::WaitForBankReady(int bank) {
   int tout = 0;
   for (;;) {
-    int result = this->device_->readReg(HpsReg::kBankReady);
+    int result = this->device_->ReadReg(HpsReg::kBankReady);
     if (result < 0) {
       return false;
     }

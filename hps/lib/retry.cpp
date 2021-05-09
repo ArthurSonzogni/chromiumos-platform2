@@ -13,9 +13,9 @@
 
 namespace hps {
 
-bool RetryDev::read(uint8_t cmd, uint8_t* data, uint len) {
+bool RetryDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
   for (int i = 0; i < this->retries_; i++) {
-    if (device_->read(cmd, data, len)) {
+    if (device_->Read(cmd, data, len)) {
       // Success!
       return true;
     }
@@ -24,9 +24,9 @@ bool RetryDev::read(uint8_t cmd, uint8_t* data, uint len) {
   return false;
 }
 
-bool RetryDev::write(uint8_t cmd, const uint8_t* data, uint len) {
+bool RetryDev::Write(uint8_t cmd, const uint8_t* data, size_t len) {
   for (int i = 0; i < this->retries_; i++) {
-    if (device_->write(cmd, data, len)) {
+    if (device_->Write(cmd, data, len)) {
       // Success!
       return true;
     }

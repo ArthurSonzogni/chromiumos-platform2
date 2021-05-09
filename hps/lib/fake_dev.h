@@ -23,8 +23,8 @@ class FakeDev : public DevInterface {
   FakeDev();
   ~FakeDev();
   // Device interface
-  bool read(uint8_t cmd, uint8_t* data, uint len) override;
-  bool write(uint8_t cmd, const uint8_t* data, uint len) override;
+  bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
+  bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
   // Flags for controlling behaviour.
   enum Flags {
     kNone = 0,
