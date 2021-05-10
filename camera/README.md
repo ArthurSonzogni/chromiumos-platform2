@@ -2,7 +2,7 @@
 
 The repository hosts the core Chrome OS platform camera components, including:
 
--   Camera Hardware Abstraction Layers (HALs) of different platforms
+-   1P Camera Hardware Abstraction Layers (HALs) of different platforms
 -   Common dependencies and libraries needed by the camera HALs
 -   [Camera HAL adapter](hal_adapter) to interface with all the camera clients
     through Mojo IPC
@@ -24,8 +24,8 @@ divided into two part:
     clients on Chrome OS to access the platform-specific camera HAL.
 
 Currently we have two major camera clients on Chrome OS: _Chrome browser_ and
-_Android container_. All the clients connect to the camera HAL adapter through
-the [**Camera Module Mojo IPC interface**](mojo/camera_common.mojom) and the
+_Android_. All the clients connect to the camera HAL adapter through the
+[**Camera Module Mojo IPC interface**](mojo/camera_common.mojom) and the
 [**Camera Device Mojo IPC interface**](mojo/camera3.mojom) to access camera
 functions. The Mojo IPC interface is very similar to the Android camera HAL v3
 APIs.
@@ -98,9 +98,12 @@ We provide the following packages that are required to build the camera HAL:
 ### Uploading the Camera HAL Source Code
 
 To add a new camera HAL for a new platform, one needs to upload the source code
-of the camera HAL to the [camera HAL directory](hal).
+of the camera HAL to the camera HAL directory ([1P](hal),
+[3P](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform/camera/hal/)).
 
-Examples: [**Intel camera HAL**](hal/intel), [**USB camera HAL**](hal/usb).
+Examples:
+[**Intel camera HAL**](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform/camera/hal/intel/),
+[**USB camera HAL**](hal/usb).
 
 ### Adding ebuild Files
 
