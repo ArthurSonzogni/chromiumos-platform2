@@ -168,7 +168,7 @@ bool KeysetManagement::GetVaultKeysets(const std::string& obfuscated,
   base::FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     base::FilePath file_name = next_path.BaseName();
-    // Scan for "master." files.
+    // Scan for "master." files. // nocheck
     if (file_name.RemoveFinalExtension().value() != kKeyFile) {
       continue;
     }
@@ -245,7 +245,7 @@ bool KeysetManagement::GetVaultKeysetLabels(
   base::FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     base::FilePath file_name = next_path.BaseName();
-    // Scan for "master." files.
+    // Scan for "master." files. // nocheck
     if (file_name.RemoveFinalExtension().value() != kKeyFile) {
       continue;
     }

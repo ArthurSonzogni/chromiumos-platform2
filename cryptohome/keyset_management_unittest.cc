@@ -474,9 +474,10 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   Credentials new_credentials(users_[0].name, new_passkey);
 
   // Use mock not to literally create a hundread files.
-  EXPECT_CALL(platform_, OpenFile(Property(&base::FilePath::value,
-                                           MatchesRegex(".*/master\\..*$")),
-                                  StrEq("wx")))
+  EXPECT_CALL(platform_,
+              OpenFile(Property(&base::FilePath::value,
+                                MatchesRegex(".*/master\\..*$")),  // nocheck
+                       StrEq("wx")))
       .WillRepeatedly(Return(nullptr));
 
   // TEST
@@ -820,7 +821,7 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
   EXPECT_CALL(platform_, DeleteFile(Property(&base::FilePath::value,
-                                             EndsWith("master.0"))))
+                                             EndsWith("master.0"))))  // nocheck
       .WillOnce(Return(false));
 
   // TEST
@@ -879,11 +880,11 @@ TEST_F(KeysetManagementTest, MoveKeysetFail) {
                                           nullptr, false, &index));
 
   const std::string kInitialFile =
-      base::StringPrintf("master.%d", kInitialKeysetIndex);
+      base::StringPrintf("master.%d", kInitialKeysetIndex);  // nocheck
   const std::string kIndexPlus2File =
-      base::StringPrintf("master.%d", index + 2);
+      base::StringPrintf("master.%d", index + 2);  // nocheck
   const std::string kIndexPlus3File =
-      base::StringPrintf("master.%d", index + 3);
+      base::StringPrintf("master.%d", index + 3);  // nocheck
 
   // Inject open failure for the slot 2.
   ON_CALL(platform_,

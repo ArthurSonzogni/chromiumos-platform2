@@ -1337,10 +1337,11 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    FilePath vault_path = FilePath("/home/.shadow")
-                              .Append(SanitizeUserNameWithSalt(
-                                  account_id, GetSystemSalt(&misc_proxy)))
-                              .Append("master.0");
+    FilePath vault_path =
+        FilePath("/home/.shadow")
+            .Append(SanitizeUserNameWithSalt(account_id,
+                                             GetSystemSalt(&misc_proxy)))
+            .Append(std::string(cryptohome::kKeyFile).append(".0"));
     brillo::Blob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
       printf("Couldn't load keyset contents: %s.\n",
@@ -1441,7 +1442,7 @@ int main(int argc, char** argv) {
       FilePath next_path;
       while (!(next_path = file_enumerator->Next()).empty()) {
         FilePath file_name = next_path.BaseName().RemoveFinalExtension();
-        // Scan for "master." files.
+        // Scan for key files matching the prefix kKeyFile.
         if (file_name.value() != cryptohome::kKeyFile)
           continue;
         brillo::Blob contents;

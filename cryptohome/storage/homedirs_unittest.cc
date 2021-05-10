@@ -431,7 +431,7 @@ TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {
 TEST_P(HomeDirsTest, AddUserTimestampToCacheEmpty) {
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  // Populate and encrypt keyset to satisfy sanity check within |Save|.
+  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
   vk.CreateRandom();
   ASSERT_TRUE(vk.Encrypt(brillo::SecureBlob("random"), users_[0].obfuscated));
   ASSERT_TRUE(
@@ -446,7 +446,7 @@ TEST_P(HomeDirsTest, AddUserTimestampToCacheEmpty) {
 TEST_P(HomeDirsTest, AddUserTimestampToCache) {
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  // Populate and encrypt keyset to satisfy sanity check within |Save|.
+  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
   vk.CreateRandom();
   constexpr char kKeyFileIndexSuffix[] = "0";
   constexpr char kKeyFileTimestampSuffix[] = "0.timestamp";

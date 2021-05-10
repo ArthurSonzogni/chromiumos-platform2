@@ -578,8 +578,8 @@ bool MountHelper::MountHomesAndDaemonStores(
     const FilePath& user_home,
     const FilePath& root_home) {
   // Bind mount user directory as a shared bind mount.
-  // This allows us to set up user mounts as slave mounts without needing to
-  // replicate that across multiple mount points.
+  // This allows us to set up user mounts as subsidiary mounts without needing
+  // to replicate that across multiple mount points.
   if (!BindAndPush(user_home, user_home, RemountOption::kShared))
     return false;
 

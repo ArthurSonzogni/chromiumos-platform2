@@ -31,8 +31,8 @@ across all VaultKeyset files without knowing all credentials at once.
 ### UserSecretStash
 
 The UserSecretStash (USS) is a future container of the user’s file system
-keys. There is one USS per user, and one master key which encrypts the
-USS. Each credential wraps the master key, as a series of intermediate keys,
+keys. There is one USS per user, and one main key which encrypts the
+USS. Each credential wraps the main key, as a series of intermediate keys,
 which allows all credentials to modify the same filesystem keys and data.
 
 ## D-Bus API Concepts
@@ -167,7 +167,7 @@ key present. In a simpler case, PasswordAuthFactor will reveal the hashed
 password sent from Chrome.
 
 Create() then derives a high entropy key from the AuthFactor's secret,
-and uses the derived key to wrap either the USS master key, or the
+and uses the derived key to wrap either the USS main key, or the
 VaultKeyset. Create() outputs the high entropy keys in the KeyBlobs object,
 which is secret and should never be persisted. Create() also outputs the
 public metadata to re-create those keys in the AuthBlockState. AuthBlockState
@@ -177,7 +177,7 @@ is serialized to disk as a protobuf.
 
 Derive consumes an AuthBlockState instance, and generates the keys previously
 created in Create(). For example, derive will run the user’s password
-through scrypt, and then give it to the TPM to unseal the USS master
+through scrypt, and then give it to the TPM to unseal the USS main
 wrapping key.
 
 ## Secret Storage in Memory

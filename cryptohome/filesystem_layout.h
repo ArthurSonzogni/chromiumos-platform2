@@ -31,8 +31,8 @@ constexpr char kDmcryptCacheContainerSuffix[] = "cache";
 constexpr char kDmcryptDataContainerSuffix[] = "data";
 
 constexpr mode_t kKeyFilePermissions = 0600;
-constexpr int kKeyFileMax = 100;  // master.0 ... master.99
-constexpr char kKeyFile[] = "master";
+constexpr int kKeyFileMax = 100;       // master.0 ... master.99 // nocheck
+constexpr char kKeyFile[] = "master";  // nocheck
 constexpr char kKeyLegacyPrefix[] = "legacy-";
 
 constexpr int kInitialKeysetIndex = 0;

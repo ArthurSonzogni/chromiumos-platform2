@@ -54,8 +54,8 @@ extern const std::vector<std::string> kDefaultExt4FormatOpts;
 extern const char kLoopPrefix[];
 
 // Decoded content of /proc/<id>/mountinfo file that has format:
-// 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=..
-// (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9)         (10)
+// 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root .. // nocheck
+// rw,errors= (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9) (10)
 struct DecodedProcMountInfo {
   // (3) The pathname of the directory in the filesystem which forms the root of
   // this mount.

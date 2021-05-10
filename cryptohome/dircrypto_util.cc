@@ -273,8 +273,8 @@ bool SetDirectoryKey(const base::FilePath& dir,
       policy.v1.contents_encryption_mode = FS_ENCRYPTION_MODE_AES_256_XTS;
       policy.v1.filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_256_CTS;
       policy.v1.flags = 0;
-      memcpy(policy.v1.master_key_descriptor, key_reference.reference.data(),
-             key_reference.reference.size());
+      memcpy(policy.v1.master_key_descriptor,  // nocheck
+             key_reference.reference.data(), key_reference.reference.size());
       break;
     case FSCRYPT_POLICY_V2:
       DCHECK_EQ(static_cast<size_t>(FSCRYPT_KEY_IDENTIFIER_SIZE),
@@ -283,8 +283,8 @@ bool SetDirectoryKey(const base::FilePath& dir,
       policy.v2.contents_encryption_mode = FS_ENCRYPTION_MODE_AES_256_XTS;
       policy.v2.filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_256_CTS;
       policy.v2.flags = FSCRYPT_POLICY_FLAGS_PAD_16;
-      memcpy(policy.v2.master_key_identifier, key_reference.reference.data(),
-             key_reference.reference.size());
+      memcpy(policy.v2.master_key_identifier,  // nocheck
+             key_reference.reference.data(), key_reference.reference.size());
       break;
     default:
       NOTREACHED() << "Invalid encryption policy version";
@@ -442,13 +442,15 @@ bool RemoveDirectoryKey(const KeyReference& key_reference,
     switch (arg.policy.version) {
       case FSCRYPT_POLICY_V1:
         ref.reference.resize(FSCRYPT_KEY_DESCRIPTOR_SIZE);
-        memcpy(ref.reference.char_data(), arg.policy.v1.master_key_descriptor,
+        memcpy(ref.reference.char_data(),
+               arg.policy.v1.master_key_descriptor,  // nocheck
                FSCRYPT_KEY_DESCRIPTOR_SIZE);
         ref.policy_version = FSCRYPT_POLICY_V1;
         break;
       case FSCRYPT_POLICY_V2:
         ref.reference.resize(FSCRYPT_KEY_IDENTIFIER_SIZE);
-        memcpy(ref.reference.char_data(), arg.policy.v2.master_key_identifier,
+        memcpy(ref.reference.char_data(),
+               arg.policy.v2.master_key_identifier,  // nocheck
                FSCRYPT_KEY_IDENTIFIER_SIZE);
         ref.policy_version = FSCRYPT_POLICY_V2;
         break;

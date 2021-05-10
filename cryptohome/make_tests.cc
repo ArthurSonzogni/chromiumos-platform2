@@ -169,8 +169,10 @@ void TestUser::FromInfo(const struct TestUserInfo* info) {
   user_vault_mount_path = vault_mount_path.Append("user");
   root_ephemeral_mount_path = ephemeral_mount_path.Append("root");
   user_ephemeral_mount_path = ephemeral_mount_path.Append("user");
-  keyset_path = base_path.Append("master.0");
-  timestamp_path = base_path.Append("master.0.timestamp");
+  keyset_path =
+      base_path.Append(std::string(cryptohome::kKeyFile).append(".0"));
+  timestamp_path = base_path.Append(
+      std::string(cryptohome::kKeyFile).append(".0.timestamp"));
   mount_prefix = brillo::cryptohome::home::GetUserPathPrefix().DirName();
   legacy_user_mount_path = FilePath("/home/chronos/user");
   user_mount_path =
@@ -208,7 +210,9 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
 
   scoped_refptr<Mount> mount = new Mount(&platform, &homedirs);
   FilePath keyset_path =
-      ShadowRoot().Append(obfuscated_username).Append("master.0");
+      ShadowRoot()
+          .Append(obfuscated_username)
+          .Append(std::string(cryptohome::kKeyFile).append(".0"));  // nocheck
   FilePath salt_path = SaltFile();
   int64_t salt_size = salt.size();
   EXPECT_CALL(platform, FileExists(salt_path)).WillRepeatedly(Return(true));
