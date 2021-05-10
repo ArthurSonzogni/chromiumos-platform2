@@ -7,14 +7,13 @@
 #include <ModemManager/ModemManager.h>
 
 #include <memory>
+#include <string>
 
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
 #include "shill/mock_control.h"
 #include "shill/testing.h"
 
-using std::string;
-using std::vector;
 using testing::_;
 using testing::ByMove;
 using testing::Return;
@@ -66,12 +65,12 @@ class CellularBearerTest : public testing::Test {
     KeyValueStore ipconfig_properties;
     ipconfig_properties.Set<uint32_t>("method", ipconfig_method);
     if (ipconfig_method == MM_BEARER_IP_METHOD_STATIC) {
-      ipconfig_properties.Set<string>("address", kIPv4Address);
-      ipconfig_properties.Set<string>("gateway", kIPv4Gateway);
+      ipconfig_properties.Set<std::string>("address", kIPv4Address);
+      ipconfig_properties.Set<std::string>("gateway", kIPv4Gateway);
       ipconfig_properties.Set<uint32_t>("prefix", kIPv4SubnetPrefix);
-      ipconfig_properties.Set<string>("dns1", kIPv4DNS[0]);
-      ipconfig_properties.Set<string>("dns2", kIPv4DNS[1]);
-      ipconfig_properties.Set<string>("dns3", kIPv4DNS[2]);
+      ipconfig_properties.Set<std::string>("dns1", kIPv4DNS[0]);
+      ipconfig_properties.Set<std::string>("dns2", kIPv4DNS[1]);
+      ipconfig_properties.Set<std::string>("dns3", kIPv4DNS[2]);
       ipconfig_properties.Set<uint32_t>("mtu", kIPv4Mtu);
     }
     return ipconfig_properties;
@@ -82,12 +81,12 @@ class CellularBearerTest : public testing::Test {
     KeyValueStore ipconfig_properties;
     ipconfig_properties.Set<uint32_t>("method", ipconfig_method);
     if (ipconfig_method == MM_BEARER_IP_METHOD_STATIC) {
-      ipconfig_properties.Set<string>("address", kIPv6Address);
-      ipconfig_properties.Set<string>("gateway", kIPv6Gateway);
+      ipconfig_properties.Set<std::string>("address", kIPv6Address);
+      ipconfig_properties.Set<std::string>("gateway", kIPv6Gateway);
       ipconfig_properties.Set<uint32_t>("prefix", kIPv6SubnetPrefix);
-      ipconfig_properties.Set<string>("dns1", kIPv6DNS[0]);
-      ipconfig_properties.Set<string>("dns2", kIPv6DNS[1]);
-      ipconfig_properties.Set<string>("dns3", kIPv6DNS[2]);
+      ipconfig_properties.Set<std::string>("dns1", kIPv6DNS[0]);
+      ipconfig_properties.Set<std::string>("dns2", kIPv6DNS[1]);
+      ipconfig_properties.Set<std::string>("dns3", kIPv6DNS[2]);
       ipconfig_properties.Set<uint32_t>("mtu", kIPv6Mtu);
     }
     return ipconfig_properties;
@@ -190,7 +189,7 @@ TEST_F(CellularBearerTest, OnPropertiesChanged) {
 
   // Update 'interface' property.
   properties.Clear();
-  properties.Set<string>(MM_BEARER_PROPERTY_INTERFACE, kDataInterface);
+  properties.Set<std::string>(MM_BEARER_PROPERTY_INTERFACE, kDataInterface);
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
   EXPECT_EQ(kDataInterface, bearer_.data_interface());
 

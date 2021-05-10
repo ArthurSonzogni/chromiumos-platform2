@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -74,11 +75,6 @@
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
 
-using base::StringPrintf;
-using std::set;
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
@@ -494,15 +490,15 @@ TEST_F(WiFiPropertyTest, SetProperty) {
     Error error;
     EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
         kBgscanMethodProperty,
-        brillo::Any(string(WPASupplicant::kNetworkBgscanMethodSimple)),
+        brillo::Any(std::string(WPASupplicant::kNetworkBgscanMethodSimple)),
         &error));
   }
 
   {
     Error error;
     EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-        kBgscanMethodProperty, brillo::Any(string("not a real scan method")),
-        &error));
+        kBgscanMethodProperty,
+        brillo::Any(std::string("not a real scan method")), &error));
   }
 }
 
@@ -511,7 +507,7 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
             WiFi::kDefaultBgscanMethod);
   EXPECT_TRUE(device_->bgscan_method_.empty());
 
-  string method;
+  std::string method;
   Error unused_error;
   EXPECT_TRUE(device_->store().GetStringProperty(kBgscanMethodProperty, &method,
                                                  &unused_error));
@@ -521,7 +517,8 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   Error error;
   EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
       kBgscanMethodProperty,
-      brillo::Any(string(WPASupplicant::kNetworkBgscanMethodLearn)), &error));
+      brillo::Any(std::string(WPASupplicant::kNetworkBgscanMethodLearn)),
+      &error));
   EXPECT_EQ(WPASupplicant::kNetworkBgscanMethodLearn, device_->bgscan_method_);
   EXPECT_TRUE(device_->store().GetStringProperty(kBgscanMethodProperty, &method,
                                                  &unused_error));
@@ -541,7 +538,7 @@ MATCHER_P(EndpointMatch, endpoint, "") {
          arg->security_mode() == endpoint->security_mode();
 }
 
-class WiFiObjectTest : public ::testing::TestWithParam<string> {
+class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
  public:
   explicit WiFiObjectTest(std::unique_ptr<EventDispatcher> dispatcher)
       : event_dispatcher_(std::move(dispatcher)),
@@ -694,7 +691,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     WiFiServiceRefPtr service_;
   };
 
-  unique_ptr<EndpointRemovalHandler> MakeEndpointRemovalHandler(
+  std::unique_ptr<EndpointRemovalHandler> MakeEndpointRemovalHandler(
       const WiFiServiceRefPtr& service) {
     return std::make_unique<EndpointRemovalHandler>(wifi_, service);
   }
@@ -705,44 +702,45 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // If "use_ssid" is true, we used the passed-in ssid, otherwise we create a
   // synthesized value for it as well.
   WiFiEndpointRefPtr MakeNewEndpoint(bool use_ssid,
-                                     string* ssid,
+                                     std::string* ssid,
                                      RpcIdentifier* path,
-                                     string* bssid) {
+                                     std::string* bssid) {
     bss_counter_++;
     if (!use_ssid) {
-      *ssid = StringPrintf("ssid%d", bss_counter_);
+      *ssid = base::StringPrintf("ssid%d", bss_counter_);
     }
-    *path = RpcIdentifier(StringPrintf("/interface/bss%d", bss_counter_));
-    *bssid = StringPrintf("00:00:00:00:00:%02x", bss_counter_);
+    *path = RpcIdentifier(base::StringPrintf("/interface/bss%d", bss_counter_));
+    *bssid = base::StringPrintf("00:00:00:00:00:%02x", bss_counter_);
     WiFiEndpointRefPtr endpoint = MakeEndpoint(*ssid, *bssid);
     EXPECT_CALL(wifi_provider_, OnEndpointAdded(EndpointMatch(endpoint)))
         .Times(1);
     return endpoint;
   }
-  WiFiEndpointRefPtr MakeEndpoint(const string& ssid, const string& bssid) {
+  WiFiEndpointRefPtr MakeEndpoint(const std::string& ssid,
+                                  const std::string& bssid) {
     return MakeEndpointWithMode(ssid, bssid, kNetworkModeInfrastructure);
   }
-  WiFiEndpointRefPtr MakeEndpointWithMode(const string& ssid,
-                                          const string& bssid,
-                                          const string& mode) {
+  WiFiEndpointRefPtr MakeEndpointWithMode(const std::string& ssid,
+                                          const std::string& bssid,
+                                          const std::string& mode) {
     return WiFiEndpoint::MakeOpenEndpoint(&control_interface_, nullptr, ssid,
                                           bssid, mode, 0, 0);
   }
-  MockWiFiServiceRefPtr MakeMockServiceWithSSID(vector<uint8_t> ssid,
+  MockWiFiServiceRefPtr MakeMockServiceWithSSID(std::vector<uint8_t> ssid,
                                                 const std::string& security) {
     return new NiceMock<MockWiFiService>(&manager_, &wifi_provider_, ssid,
                                          kModeManaged, security, false);
   }
   MockWiFiServiceRefPtr MakeMockService(const std::string& security) {
-    return MakeMockServiceWithSSID(vector<uint8_t>(1, 'a'), security);
+    return MakeMockServiceWithSSID(std::vector<uint8_t>(1, 'a'), security);
   }
   RpcIdentifier MakeNewEndpointAndService(int16_t signal_strength,
                                           uint16_t frequency,
                                           WiFiEndpointRefPtr* endpoint_ptr,
                                           MockWiFiServiceRefPtr* service_ptr) {
-    string ssid;
+    std::string ssid;
     RpcIdentifier path;
-    string bssid;
+    std::string bssid;
     WiFiEndpointRefPtr endpoint = MakeNewEndpoint(false, &ssid, &path, &bssid);
     MockWiFiServiceRefPtr service =
         MakeMockServiceWithSSID(endpoint->ssid(), endpoint->security_mode());
@@ -763,9 +761,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                                      int16_t signal_strength,
                                      uint16_t frequency,
                                      WiFiEndpointRefPtr* endpoint_ptr) {
-    string ssid(service->ssid().begin(), service->ssid().end());
+    std::string ssid(service->ssid().begin(), service->ssid().end());
     RpcIdentifier path;
-    string bssid;
+    std::string bssid;
     WiFiEndpointRefPtr endpoint = MakeNewEndpoint(true, &ssid, &path, &bssid);
     EXPECT_CALL(wifi_provider_, FindServiceForEndpoint(EndpointMatch(endpoint)))
         .WillRepeatedly(Return(service));
@@ -889,7 +887,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     MockSupplicantInterfaceProxy* proxy = GetSupplicantInterfaceProxyFromWiFi();
     return proxy ? proxy : supplicant_interface_proxy_.get();
   }
-  const string& GetSupplicantState() { return wifi_->supplicant_state_; }
+  const std::string& GetSupplicantState() { return wifi_->supplicant_state_; }
   IEEE_80211::WiFiReasonCode GetSupplicantDisconnectReason() {
     return wifi_->supplicant_disconnect_reason_;
   }
@@ -902,15 +900,15 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   bool RemoveNetwork(const RpcIdentifier& network) {
     return wifi_->RemoveNetwork(network);
   }
-  KeyValueStore CreateBSSProperties(const string& ssid,
-                                    const string& bssid,
+  KeyValueStore CreateBSSProperties(const std::string& ssid,
+                                    const std::string& bssid,
                                     int16_t signal_strength,
                                     uint16_t frequency,
                                     const char* mode);
   void RemoveBSS(const RpcIdentifier& bss_path);
   void ReportBSS(const RpcIdentifier& bss_path,
-                 const string& ssid,
-                 const string& bssid,
+                 const std::string& ssid,
+                 const std::string& bssid,
                  int16_t signal_strength,
                  uint16_t frequency,
                  const char* mode);
@@ -943,13 +941,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportCurrentBSSChanged(const RpcIdentifier& new_bss) {
     wifi_->CurrentBSSChanged(new_bss);
   }
-  void ReportStateChanged(const string& new_state) {
+  void ReportStateChanged(const std::string& new_state) {
     wifi_->StateChanged(new_state);
   }
   void ReportDisconnectReasonChanged(int32_t reason) {
     wifi_->DisconnectReasonChanged(reason);
   }
-  void ReportCurrentAuthModeChanged(const string& auth_mode) {
+  void ReportCurrentAuthModeChanged(const std::string& auth_mode) {
     wifi_->CurrentAuthModeChanged(auth_mode);
   }
   void ReportWiFiDebugScopeChanged(bool enabled) {
@@ -1038,7 +1036,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void SetIPConfig(const IPConfigRefPtr& ipconfig) {
     return wifi_->set_ipconfig(ipconfig);
   }
-  bool SetBgscanMethod(const string& method) {
+  bool SetBgscanMethod(const std::string& method) {
     Error error;
     return wifi_->mutable_store()->SetAnyProperty(kBgscanMethodProperty,
                                                   brillo::Any(method), &error);
@@ -1052,7 +1050,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->CertificationTask(properties);
   }
 
-  void ReportEAPEvent(const string& status, const string& parameter) {
+  void ReportEAPEvent(const std::string& status, const std::string& parameter) {
     wifi_->EAPEventTask(status, parameter);
   }
 
@@ -1239,7 +1237,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   static const char kSSIDName[];
 
   MockSupplicantProcessProxy* supplicant_process_proxy_;
-  unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
+  std::unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
@@ -1266,8 +1264,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return std::move(supplicant_bss_proxy_);
   }
 
-  unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
-  unique_ptr<MockSupplicantNetworkProxy> supplicant_network_proxy_;
+  std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
+  std::unique_ptr<MockSupplicantNetworkProxy> supplicant_network_proxy_;
 };
 
 const char WiFiObjectTest::kDeviceName[] = "wlan0";
@@ -1281,32 +1279,32 @@ void WiFiObjectTest::RemoveBSS(const RpcIdentifier& bss_path) {
   wifi_->BSSRemovedTask(bss_path);
 }
 
-KeyValueStore WiFiObjectTest::CreateBSSProperties(const string& ssid,
-                                                  const string& bssid,
+KeyValueStore WiFiObjectTest::CreateBSSProperties(const std::string& ssid,
+                                                  const std::string& bssid,
                                                   int16_t signal_strength,
                                                   uint16_t frequency,
                                                   const char* mode) {
   KeyValueStore bss_properties;
-  bss_properties.Set<vector<uint8_t>>(
-      "SSID", vector<uint8_t>(ssid.begin(), ssid.end()));
+  bss_properties.Set<std::vector<uint8_t>>(
+      "SSID", std::vector<uint8_t>(ssid.begin(), ssid.end()));
   {
-    string bssid_nosep;
-    vector<uint8_t> bssid_bytes;
+    std::string bssid_nosep;
+    std::vector<uint8_t> bssid_bytes;
     base::RemoveChars(bssid, ":", &bssid_nosep);
     base::HexStringToBytes(bssid_nosep, &bssid_bytes);
-    bss_properties.Set<vector<uint8_t>>("BSSID", bssid_bytes);
+    bss_properties.Set<std::vector<uint8_t>>("BSSID", bssid_bytes);
   }
   bss_properties.Set<int16_t>(WPASupplicant::kBSSPropertySignal,
                               signal_strength);
   bss_properties.Set<uint16_t>(WPASupplicant::kBSSPropertyFrequency, frequency);
-  bss_properties.Set<string>(WPASupplicant::kBSSPropertyMode, mode);
+  bss_properties.Set<std::string>(WPASupplicant::kBSSPropertyMode, mode);
 
   return bss_properties;
 }
 
 void WiFiObjectTest::ReportBSS(const RpcIdentifier& bss_path,
-                               const string& ssid,
-                               const string& bssid,
+                               const std::string& ssid,
+                               const std::string& bssid,
                                int16_t signal_strength,
                                uint16_t frequency,
                                const char* mode) {
@@ -1465,7 +1463,7 @@ TEST_F(WiFiMainTest, OnSupplicantVanishedWhileConnected) {
                        EndsWith("silently resetting current_service_.")));
   EXPECT_CALL(*manager(), DeregisterDevice(_))
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::StopWiFi));
-  unique_ptr<EndpointRemovalHandler> handler =
+  std::unique_ptr<EndpointRemovalHandler> handler =
       MakeEndpointRemovalHandler(service);
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(
@@ -1748,11 +1746,11 @@ TEST_F(WiFiMainTest, ScanCompleted) {
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(_)).Times(0);
 
   // BSSes with SSIDs that start with nullptr should be filtered.
-  ReportBSS(RpcIdentifier("bss2"), string(1, 0), "00:00:00:00:00:02", 3, 0,
+  ReportBSS(RpcIdentifier("bss2"), std::string(1, 0), "00:00:00:00:00:02", 3, 0,
             kNetworkModeInfrastructure);
 
   // BSSes with empty SSIDs should be filtered.
-  ReportBSS(RpcIdentifier("bss2"), string(), "00:00:00:00:00:02", 3, 0,
+  ReportBSS(RpcIdentifier("bss2"), std::string(), "00:00:00:00:00:02", 3, 0,
             kNetworkModeInfrastructure);
 }
 
@@ -1762,7 +1760,7 @@ TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
   RpcIdentifier bss_path;
   WiFiServiceRefPtr service(
       SetupConnectedService(RpcIdentifier(""), &endpoint, &bss_path));
-  unique_ptr<EndpointRemovalHandler> handler =
+  std::unique_ptr<EndpointRemovalHandler> handler =
       MakeEndpointRemovalHandler(service);
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(
@@ -2214,7 +2212,7 @@ TEST_F(WiFiMainTest, StopWhileConnected) {
   WiFiEndpointRefPtr endpoint;
   WiFiServiceRefPtr service(
       SetupConnectedService(RpcIdentifier(""), &endpoint, nullptr));
-  unique_ptr<EndpointRemovalHandler> handler =
+  std::unique_ptr<EndpointRemovalHandler> handler =
       MakeEndpointRemovalHandler(service);
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(
@@ -2545,8 +2543,9 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
-                      Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelInfo)),
+                Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelDebug))
       .Times(1);
   EXPECT_CALL(*service, HasRecentConnectionIssues()).WillOnce(Return(true));
@@ -2559,8 +2558,9 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   // When we disconnect from the troubled service, we should reduce the
   // level of supplicant debugging.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
-                      Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelDebug)),
+                Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelInfo))
       .Times(1);
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
@@ -2673,11 +2673,11 @@ TEST_F(WiFiMainTest, GetSuffixFromAuthMode) {
 }
 
 TEST_F(WiFiMainTest, CurrentAuthModeChanged) {
-  const string auth_mode0 = "FT-PSK";
+  const std::string auth_mode0 = "FT-PSK";
   ReportCurrentAuthModeChanged(auth_mode0);
   EXPECT_EQ(wifi().get()->supplicant_auth_mode_, auth_mode0);
 
-  const string auth_mode1 = "EAP-TLS";
+  const std::string auth_mode1 = "EAP-TLS";
   ReportCurrentAuthModeChanged(auth_mode1);
   EXPECT_EQ(wifi().get()->supplicant_auth_mode_, auth_mode1);
 }
@@ -2729,8 +2729,9 @@ MATCHER_P(WiFiAddedArgs, bgscan, "") {
              WPASupplicant::kNetworkPropertyScanSSID) &&
          arg.template Contains<uint32_t>(
              WPASupplicant::kNetworkPropertyDisableVHT) &&
-         arg.template Contains<string>(WPASupplicant::kNetworkPropertyBgscan) &&
-         arg.template Get<string>(WPASupplicant::kNetworkPropertyBgscan)
+         arg.template Contains<std::string>(
+             WPASupplicant::kNetworkPropertyBgscan) &&
+         arg.template Get<std::string>(WPASupplicant::kNetworkPropertyBgscan)
                  .empty() != bgscan;
 }
 
@@ -2766,14 +2767,17 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     EXPECT_CALL(*service, GetEndpointCount()).WillOnce(Return(1));
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
-    string config_string;
-    EXPECT_TRUE(params.Contains<string>(WPASupplicant::kNetworkPropertyBgscan));
-    config_string = params.Get<string>(WPASupplicant::kNetworkPropertyBgscan);
-    vector<string> elements = base::SplitString(
+    std::string config_string;
+    EXPECT_TRUE(
+        params.Contains<std::string>(WPASupplicant::kNetworkPropertyBgscan));
+    config_string =
+        params.Get<std::string>(WPASupplicant::kNetworkPropertyBgscan);
+    std::vector<std::string> elements = base::SplitString(
         config_string, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     EXPECT_EQ(WiFi::kDefaultBgscanMethod, elements[0]);
-    EXPECT_EQ(StringPrintf("%d", WiFi::kSingleEndpointBgscanIntervalSeconds),
-              elements[3]);
+    EXPECT_EQ(
+        base::StringPrintf("%d", WiFi::kSingleEndpointBgscanIntervalSeconds),
+        elements[3]);
   }
   {
     // 2 endpoints, default bgscan method -- background scan frequency reduced.
@@ -2781,14 +2785,16 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     EXPECT_CALL(*service, GetEndpointCount()).WillOnce(Return(2));
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
-    string config_string;
-    EXPECT_TRUE(params.Contains<string>(WPASupplicant::kNetworkPropertyBgscan));
-    config_string = params.Get<string>(WPASupplicant::kNetworkPropertyBgscan);
-    vector<string> elements = base::SplitString(
+    std::string config_string;
+    EXPECT_TRUE(
+        params.Contains<std::string>(WPASupplicant::kNetworkPropertyBgscan));
+    config_string =
+        params.Get<std::string>(WPASupplicant::kNetworkPropertyBgscan);
+    std::vector<std::string> elements = base::SplitString(
         config_string, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     ASSERT_EQ(4, elements.size());
     EXPECT_EQ(WiFi::kDefaultBgscanMethod, elements[0]);
-    EXPECT_EQ(StringPrintf("%d", WiFi::kBackgroundScanIntervalSeconds),
+    EXPECT_EQ(base::StringPrintf("%d", WiFi::kBackgroundScanIntervalSeconds),
               elements[3]);
   }
   {
@@ -2798,13 +2804,14 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     EXPECT_CALL(*service, GetEndpointCount()).Times(0);
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
-    EXPECT_TRUE(params.Contains<string>(WPASupplicant::kNetworkPropertyBgscan));
-    string config_string =
-        params.Get<string>(WPASupplicant::kNetworkPropertyBgscan);
-    vector<string> elements = base::SplitString(
+    EXPECT_TRUE(
+        params.Contains<std::string>(WPASupplicant::kNetworkPropertyBgscan));
+    std::string config_string =
+        params.Get<std::string>(WPASupplicant::kNetworkPropertyBgscan);
+    std::vector<std::string> elements = base::SplitString(
         config_string, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     ASSERT_EQ(4, elements.size());
-    EXPECT_EQ(StringPrintf("%d", WiFi::kDefaultScanIntervalSeconds),
+    EXPECT_EQ(base::StringPrintf("%d", WiFi::kDefaultScanIntervalSeconds),
               elements[3]);
   }
   {
@@ -2814,10 +2821,11 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     EXPECT_CALL(*service, GetEndpointCount()).Times(0);
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
-    string config_string;
-    EXPECT_TRUE(params.Contains<string>(WPASupplicant::kNetworkPropertyBgscan));
+    std::string config_string;
     EXPECT_TRUE(
-        params.Get<string>(WPASupplicant::kNetworkPropertyBgscan).empty());
+        params.Contains<std::string>(WPASupplicant::kNetworkPropertyBgscan));
+    EXPECT_TRUE(
+        params.Get<std::string>(WPASupplicant::kNetworkPropertyBgscan).empty());
   }
 }
 
@@ -3015,7 +3023,7 @@ TEST_F(WiFiMainTest, ScanOnDisconnectWithHidden) {
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
   SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
-  vector<uint8_t> kSSID(1, 'a');
+  std::vector<uint8_t> kSSID(1, 'a');
   ByteArrays ssids;
   ssids.push_back(kSSID);
   ExpectScanIdle();
@@ -3604,10 +3612,11 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   ASSERT_TRUE(link_statistics.Contains<uint32_t>(kTransmitRetriesProperty));
   EXPECT_EQ(kTransmitRetries,
             link_statistics.Get<uint32_t>(kTransmitRetriesProperty));
-  EXPECT_EQ(StringPrintf("%d.%d MBit/s MCS %d 40MHz", kBitrate / 10,
-                         kBitrate % 10, kMCS),
-            link_statistics.Lookup<string>(kTransmitBitrateProperty, ""));
-  EXPECT_EQ("", link_statistics.Lookup<string>(kReceiveBitrateProperty, ""));
+  EXPECT_EQ(base::StringPrintf("%d.%d MBit/s MCS %d 40MHz", kBitrate / 10,
+                               kBitrate % 10, kMCS),
+            link_statistics.Lookup<std::string>(kTransmitBitrateProperty, ""));
+  EXPECT_EQ("",
+            link_statistics.Lookup<std::string>(kReceiveBitrateProperty, ""));
 
   // New station info with VHT rate parameters.
   NewStationMessage new_vht_station;
@@ -3668,13 +3677,13 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
 
   link_statistics = GetLinkStatistics();
   {
-    string rate =
-        StringPrintf("%d.%d MBit/s VHT-MCS %d 80MHz VHT-NSS %d",
-                     kVhtBitrate / 10, kVhtBitrate % 10, kVhtMCS, kVhtNSS);
+    const auto rate = base::StringPrintf(
+        "%d.%d MBit/s VHT-MCS %d 80MHz VHT-NSS %d", kVhtBitrate / 10,
+        kVhtBitrate % 10, kVhtMCS, kVhtNSS);
+    EXPECT_EQ(rate, link_statistics.Lookup<std::string>(
+                        kTransmitBitrateProperty, ""));
     EXPECT_EQ(rate,
-              link_statistics.Lookup<string>(kTransmitBitrateProperty, ""));
-    EXPECT_EQ(rate,
-              link_statistics.Lookup<string>(kReceiveBitrateProperty, ""));
+              link_statistics.Lookup<std::string>(kReceiveBitrateProperty, ""));
   }
 }
 
@@ -3743,8 +3752,8 @@ TEST_F(WiFiMainTest, EAPCertification) {
   ReportCertification(args);
   Mock::VerifyAndClearExpectations(&log);
 
-  const string kSubject("subject");
-  args.Set<string>(WPASupplicant::kInterfacePropertySubject, kSubject);
+  const std::string kSubject("subject");
+  args.Set<std::string>(WPASupplicant::kInterfacePropertySubject, kSubject);
   EXPECT_CALL(*service, AddEAPCertification(kSubject, kDepth)).Times(1);
   ReportCertification(args);
 }
@@ -3772,8 +3781,8 @@ TEST_F(WiFiMainTest, EAPEvent) {
   EXPECT_CALL(log,
               Log(logging::LOGGING_ERROR, _, EndsWith("no current service.")));
   EXPECT_CALL(*eap_state_handler_, ParseStatus(_, _, _)).Times(0);
-  const string kEAPStatus("eap-status");
-  const string kEAPParameter("eap-parameter");
+  const std::string kEAPStatus("eap-status");
+  const std::string kEAPParameter("eap-parameter");
   ReportEAPEvent(kEAPStatus, kEAPParameter);
   Mock::VerifyAndClearExpectations(&log);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -3799,7 +3808,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
       .WillOnce(
           DoAll(SetArgPointee<2>(Service::kFailurePinMissing), Return(false)));
   // We need a real string object since it will be returned by reference below.
-  const string kEmptyPin;
+  const std::string kEmptyPin;
   EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kEmptyPin));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
@@ -3807,7 +3816,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
       .WillOnce(
           DoAll(SetArgPointee<2>(Service::kFailurePinMissing), Return(false)));
   // We need a real string object since it will be returned by reference below.
-  const string kPin("000000");
+  const std::string kPin("000000");
   EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kPin));
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
   EXPECT_CALL(
@@ -3846,8 +3855,8 @@ TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {
 
 struct BSS {
   RpcIdentifier bsspath;
-  string ssid;
-  string bssid;
+  std::string ssid;
+  std::string bssid;
   int16_t signal_strength;
   uint16_t frequency;
   const char* mode;
@@ -3863,7 +3872,7 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
       {RpcIdentifier("bssid3"), "ssid1", "02:00:00:00:00:00", 100, 0,
        kNetworkModeInfrastructure}};
   StartWiFi();
-  vector<GeolocationInfo> objects;
+  std::vector<GeolocationInfo> objects;
   EXPECT_EQ(objects.size(), 0);
 
   for (size_t i = 0; i < base::size(bsses); ++i) {
@@ -3875,9 +3884,9 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
     GeolocationInfo expected_info;
     expected_info[kGeoMacAddressProperty] = bsses[i].bssid;
     expected_info[kGeoSignalStrengthProperty] =
-        StringPrintf("%d", bsses[i].signal_strength);
-    expected_info[kGeoChannelProperty] =
-        StringPrintf("%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency));
+        base::StringPrintf("%d", bsses[i].signal_strength);
+    expected_info[kGeoChannelProperty] = base::StringPrintf(
+        "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency));
     EXPECT_EQ(expected_info, objects[i]);
   }
 }
@@ -3894,8 +3903,9 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // This unit test turns on WiFi debugging, so when we start WiFi, we should
   // check but not set the debug level if we return the "debug" level.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
-                      Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelDebug)),
+                Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
   StartWiFi();
   Mock::VerifyAndClearExpectations(process_proxy);
@@ -3903,28 +3913,30 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // If WiFi debugging is toggled and wpa_supplicant reports debugging
   // is set to some unmanaged level, WiFi should leave it alone.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelError)),
-                      Return(true)))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelError)),
-                      Return(true)))
       .WillOnce(
-          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelExcessive)),
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelError)),
                 Return(true)))
       .WillOnce(
-          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelExcessive)),
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelError)),
                 Return(true)))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelMsgDump)),
-                Return(true)))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelMsgDump)),
-                Return(true)))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelWarning)),
-                Return(true)))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelWarning)),
-                Return(true)));
+      .WillOnce(DoAll(
+          SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelExcessive)),
+          Return(true)))
+      .WillOnce(DoAll(
+          SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelExcessive)),
+          Return(true)))
+      .WillOnce(DoAll(
+          SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelMsgDump)),
+          Return(true)))
+      .WillOnce(DoAll(
+          SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelMsgDump)),
+          Return(true)))
+      .WillOnce(DoAll(
+          SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelWarning)),
+          Return(true)))
+      .WillOnce(DoAll(
+          SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelWarning)),
+          Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
   ReportWiFiDebugScopeChanged(true);
   ReportWiFiDebugScopeChanged(false);
@@ -3939,8 +3951,9 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // If WiFi debugging is turned off and wpa_supplicant reports debugging
   // is turned on, WiFi should turn supplicant debugging off.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
-                      Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelDebug)),
+                Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelInfo))
       .Times(1);
   ReportWiFiDebugScopeChanged(false);
@@ -3949,8 +3962,9 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // If WiFi debugging is turned on and wpa_supplicant reports debugging
   // is turned off, WiFi should turn supplicant debugging on.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
-                      Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelInfo)),
+                Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelDebug))
       .Times(1);
   ReportWiFiDebugScopeChanged(true);
@@ -3959,10 +3973,12 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   // If WiFi debugging is already in the correct state, it should not be
   // changed.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelDebug)),
-                      Return(true)))
-      .WillOnce(DoAll(SetArgPointee<0>(string(WPASupplicant::kDebugLevelInfo)),
-                      Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelDebug)),
+                Return(true)))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelInfo)),
+                Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
   ReportWiFiDebugScopeChanged(true);
   ReportWiFiDebugScopeChanged(false);
