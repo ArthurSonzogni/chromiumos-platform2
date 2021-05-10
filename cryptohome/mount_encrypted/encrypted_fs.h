@@ -5,7 +5,6 @@
 #ifndef CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
 #define CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
 
-#include <glib.h>
 #include <inttypes.h>
 #include <memory>
 #include <string>
