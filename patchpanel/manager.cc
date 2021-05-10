@@ -8,7 +8,6 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <stdint.h>
-#include <sys/epoll.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -20,6 +19,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -37,11 +37,6 @@
 namespace patchpanel {
 namespace {
 constexpr int kSubprocessRestartDelayMs = 900;
-
-// Time interval between epoll checks on file descriptors committed by callers
-// of patchpanel's DBus API.
-constexpr const base::TimeDelta kLifelineFdCheckInterval =
-    base::TimeDelta::FromSeconds(5);
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns nullptr, an empty response is
@@ -76,7 +71,6 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
       nd_proxy_(std::move(nd_proxy)) {
   runner_ = std::make_unique<MinijailedProcessRunner>();
   datapath_ = std::make_unique<Datapath>(runner_.get(), &firewall_);
-  lifelines_epollfd_ = epoll_create(1 /* size */);
 }
 
 std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};
@@ -269,7 +263,6 @@ void Manager::OnShutdown(int* exit_code) {
   network_monitor_svc_.reset();
   cros_svc_.reset();
   arc_svc_.reset();
-  close(lifelines_epollfd_);
   // Tear down any remaining active lifeline file descriptors.
   std::vector<int> lifeline_fds;
   for (const auto& kv : connected_namespaces_)
@@ -1078,21 +1071,10 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
 
   // Dup the client fd into our own: this guarantees that the fd number will
   // be stable and tied to the actual kernel resources used by the client.
-  base::ScopedFD local_client_fd(dup(client_fd.get()));
+  // The duped fd will be watched for read events.
+  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
   if (!local_client_fd.is_valid()) {
-    PLOG(ERROR) << "failed to dup() client fd";
-    return response;
-  }
-
-  // Add the duped fd to the epoll watcher.
-  // TODO(hugobenichi) Find a way to reuse base::FileDescriptorWatcher for
-  // listening to EPOLLHUP.
-  struct epoll_event epevent;
-  epevent.events = EPOLLIN;  // EPOLLERR | EPOLLHUP are always waited for.
-  epevent.data.fd = local_client_fd.get();
-  if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_ADD, local_client_fd.get(),
-                &epevent) != 0) {
-    PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_ADD) failed";
+    LOG(ERROR) << "Failed to create lifeline fd";
     return response;
   }
 
@@ -1112,9 +1094,8 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
-    if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_DEL, local_client_fd.get(),
-                  nullptr) != 0)
-      PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL) failed";
+    if (!DeleteLifelineFd(local_client_fd.release()))
+      LOG(ERROR) << "Failed to delete lifeline fd";
     return response;
   }
 
@@ -1135,21 +1116,48 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   int fdkey = local_client_fd.release();
   connected_namespaces_.emplace(fdkey, std::move(nsinfo));
 
-  if (connected_namespaces_.size() + dns_redirection_rules_.size() == 1) {
-    LOG(INFO) << "Starting client fds monitoring";
-    CheckLifelineFds();
-  }
-
   return response;
 }
 
-void Manager::OnLifelineFdClosed(int client_fd) {
-  // Remove the client fd dupe from the epoll watcher and close it.
-  if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_DEL, client_fd, nullptr) != 0)
-    PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL) failed";
-  if (close(client_fd) < 0)
-    PLOG(ERROR) << "close(client_fd) failed";
+int Manager::AddLifelineFd(int dbus_fd) {
+  int fd = dup(dbus_fd);
+  if (fd < 0) {
+    PLOG(ERROR) << "dup failed";
+    return -1;
+  }
 
+  lifeline_fd_controllers_[fd] = base::FileDescriptorWatcher::WatchReadable(
+      fd, base::BindRepeating(&Manager::OnLifelineFdClosed,
+                              // The callback will not outlive the object.
+                              base::Unretained(this), fd));
+
+  return fd;
+}
+
+bool Manager::DeleteLifelineFd(int dbus_fd) {
+  auto iter = lifeline_fd_controllers_.find(dbus_fd);
+  if (iter == lifeline_fd_controllers_.end()) {
+    return false;
+  }
+
+  iter->second.reset();  // Destruct the controller, which removes the callback.
+  lifeline_fd_controllers_.erase(iter);
+
+  // AddLifelineFd() calls dup(), so this function should close the fd.
+  // We still return true since at this point the FileDescriptorWatcher object
+  // has been destructed.
+  if (IGNORE_EINTR(close(dbus_fd)) < 0) {
+    PLOG(ERROR) << "close";
+  }
+
+  return true;
+}
+
+void Manager::OnLifelineFdClosed(int client_fd) {
+  // The process that requested this port has died/exited.
+  DeleteLifelineFd(client_fd);
+
+  // Remove the rules tied to the lifeline fd.
   auto connected_namespace_it = connected_namespaces_.find(client_fd);
   if (connected_namespace_it != connected_namespaces_.end()) {
     datapath_->StopRoutingNamespace(connected_namespace_it->second);
@@ -1167,29 +1175,6 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     return;
   }
   LOG(ERROR) << "No client_fd found for " << client_fd;
-}
-
-void Manager::CheckLifelineFds() {
-  int max_event = 10;
-  struct epoll_event epevents[max_event];
-  int nready =
-      epoll_wait(lifelines_epollfd_, epevents, max_event, 0 /* do not block */);
-  if (nready < 0)
-    PLOG(ERROR) << "epoll_wait(0) failed";
-
-  for (int i = 0; i < nready; i++)
-    if (epevents[i].events & (EPOLLHUP | EPOLLERR))
-      OnLifelineFdClosed(epevents[i].data.fd);
-
-  if (dns_redirection_rules_.empty() && connected_namespaces_.empty()) {
-    LOG(INFO) << "Stopping client fds monitoring";
-    return;
-  }
-
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      FROM_HERE,
-      base::Bind(&Manager::CheckLifelineFds, weak_factory_.GetWeakPtr()),
-      kLifelineFdCheckInterval);
 }
 
 bool Manager::ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request) {
@@ -1248,21 +1233,10 @@ bool Manager::RedirectDns(
     const patchpanel::SetDnsRedirectionRuleRequest& request) {
   // Dup the client fd into our own: this guarantees that the fd number will
   // be stable and tied to the actual kernel resources used by the client.
-  base::ScopedFD local_client_fd(dup(client_fd.get()));
+  // The duped fd will be watched for read events.
+  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
   if (!local_client_fd.is_valid()) {
-    PLOG(ERROR) << "failed to dup() client fd";
-    return false;
-  }
-
-  // Add the duped fd to the epoll watcher.
-  // TODO(hugobenichi) Find a way to reuse base::FileDescriptorWatcher for
-  // listening to EPOLLHUP.
-  struct epoll_event epevent;
-  epevent.events = EPOLLIN;  // EPOLLERR | EPOLLHUP are always waited for.
-  epevent.data.fd = local_client_fd.get();
-  if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_ADD, local_client_fd.get(),
-                &epevent) != 0) {
-    PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_ADD) failed";
+    LOG(ERROR) << "Failed to create lifeline fd";
     return false;
   }
 
@@ -1276,9 +1250,8 @@ bool Manager::RedirectDns(
 
   if (!datapath_->StartDnsRedirection(rule)) {
     LOG(ERROR) << "Failed to setup datapath";
-    if (epoll_ctl(lifelines_epollfd_, EPOLL_CTL_DEL, local_client_fd.get(),
-                  nullptr) != 0)
-      PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL) failed";
+    if (!DeleteLifelineFd(local_client_fd.release()))
+      LOG(ERROR) << "Failed to delete lifeline fd";
     return false;
   }
 
@@ -1286,10 +1259,6 @@ bool Manager::RedirectDns(
   int fdkey = local_client_fd.release();
   dns_redirection_rules_.emplace(fdkey, std::move(rule));
 
-  if (connected_namespaces_.size() + dns_redirection_rules_.size() == 1) {
-    LOG(INFO) << "Starting client fds monitoring";
-    CheckLifelineFds();
-  }
   return true;
 }
 

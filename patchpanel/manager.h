@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process/process_reaper.h>
@@ -167,10 +168,13 @@ class Manager final : public brillo::DBusDaemon {
       base::ScopedFD client_fd,
       const patchpanel::ConnectNamespaceRequest& request);
 
+  // Helper functions for process lifetime tracking.
+  int AddLifelineFd(int dbus_fd);
+  bool DeleteLifelineFd(int dbus_fd);
+
   // Detects if any file descriptor committed in patchpanel's DBus API has been
   // invalidated by the caller. Calls OnLifelineFdClosed for any invalid fd
   // found.
-  void CheckLifelineFds();
   void OnLifelineFdClosed(int client_fd);
 
   bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request);
@@ -238,9 +242,10 @@ class Manager final : public brillo::DBusDaemon {
   // API.
   std::map<int, DnsRedirectionRule> dns_redirection_rules_;
 
-  // epoll file descriptor for watching client fds committed through
-  // patchpanel's DBus API.
-  int lifelines_epollfd_;
+  // For each fd (process) committed through a patchpanel's DBus API, keep
+  // track of the FileDescriptorWatcher::Controller object associated with it.
+  std::map<int, std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+      lifeline_fd_controllers_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };
