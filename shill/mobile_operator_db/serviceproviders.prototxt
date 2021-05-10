@@ -12214,7 +12214,7 @@ mno {
     mobile_apn {
       apn : "online.telia.se"
       localized_name {
-        name : "Telia 3G"
+        name : "Telia"
       }
     }
   }
