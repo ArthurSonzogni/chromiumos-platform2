@@ -8,9 +8,7 @@
 #include <vector>
 
 #include <base/timer/elapsed_timer.h>
-#include <brillo/glib/object.h>
 #include <dbus/cryptohome/dbus-constants.h>
-#include <dbus/dbus-glib.h>
 #include <dbus/dbus.h>
 
 // Note that boot_lockbox_rpc.pb.h have to be included before
