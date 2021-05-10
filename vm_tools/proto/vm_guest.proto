@@ -183,6 +183,10 @@ message StartTerminaResponse {
   }
 
   MountResult mount_result = 1;
+
+  // The amount of free space on the stateful partition in bytes. -1 if unable
+  // to calculate the amount of free space (e.g. error mounting the partition).
+  int64 free_bytes = 2;
 }
 
 message SetResolvConfigRequest {

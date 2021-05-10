@@ -211,7 +211,8 @@ class Service final {
   bool StartTermina(TerminaVm* vm,
                     bool allow_privileged_containers,
                     std::string* failure_reason,
-                    vm_tools::StartTerminaResponse::MountResult* result);
+                    vm_tools::StartTerminaResponse::MountResult* result,
+                    int64_t* out_free_bytes);
 
   // Helpers for notifying cicerone and sending signals of VM started/stopped
   // events, and generating container tokens.

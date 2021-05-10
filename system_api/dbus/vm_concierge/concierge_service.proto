@@ -316,6 +316,10 @@ message StartVmResponse {
   }
 
   MountResult mount_result = 5;
+
+  // The amount of free space on the stateful partition in bytes. -1 if unable
+  // to calculate the amount of free space (e.g. error mounting the partition).
+  int64 free_bytes = 6;
 }
 
 // Message used in the signal for when a VM has started.

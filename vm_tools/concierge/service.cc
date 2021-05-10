@@ -1545,16 +1545,18 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   vm_tools::StartTerminaResponse::MountResult mount_result =
       vm_tools::StartTerminaResponse::UNKNOWN;
+  int64_t free_bytes = -1;
   // Allow untrusted VMs to have privileged containers.
   if (request.start_termina() &&
       !StartTermina(vm.get(), is_untrusted_vm /* allow_privileged_containers */,
-                    &failure_reason, &mount_result)) {
+                    &failure_reason, &mount_result, &free_bytes)) {
     response.set_failure_reason(std::move(failure_reason));
     response.set_mount_result((StartVmResponse::MountResult)mount_result);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
   response.set_mount_result((StartVmResponse::MountResult)mount_result);
+  response.set_free_bytes(free_bytes);
 
   if (!vm_token.empty() &&
       !vm->ConfigureContainerGuest(vm_token, &failure_reason)) {
@@ -2026,11 +2028,11 @@ std::unique_ptr<dbus::Response> Service::SyncVmTimes(
   return dbus_response;
 }
 
-bool Service::StartTermina(
-    TerminaVm* vm,
-    bool allow_privileged_containers,
-    string* failure_reason,
-    vm_tools::StartTerminaResponse::MountResult* result) {
+bool Service::StartTermina(TerminaVm* vm,
+                           bool allow_privileged_containers,
+                           string* failure_reason,
+                           vm_tools::StartTerminaResponse::MountResult* result,
+                           int64_t* out_free_bytes) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(result);
   LOG(INFO) << "Starting Termina-specific services";
@@ -2056,6 +2058,7 @@ bool Service::StartTermina(
   }
 
   *result = response.mount_result();
+  *out_free_bytes = response.free_bytes();
 
   return true;
 }
