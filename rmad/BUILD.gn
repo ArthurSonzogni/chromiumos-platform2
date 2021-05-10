@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":libcbi_utils",
     ":libcrossystem_utils",
     ":libdbus_service",
     ":libjson_store",
@@ -24,6 +25,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "re2",
     "vboot_host",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -54,6 +56,11 @@ static_library("libvpd_utils") {
 
 static_library("libcr50_utils") {
   sources = [ "utils/cr50_utils_impl.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+static_library("libcbi_utils") {
+  sources = [ "utils/cbi_utils_impl.cc" ]
   configs += [ ":target_defaults" ]
 }
 
@@ -115,6 +122,7 @@ if (use.test) {
       "dbus_service_test.cc",
       "rmad_interface_test.cc",
       "state_handler/state_handler_manager_test.cc",
+      "utils/fake_cbi_utils.cc",
       "utils/fake_crossystem_utils.cc",
       "utils/fake_vpd_utils.cc",
       "utils/json_store_test.cc",
