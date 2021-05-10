@@ -119,7 +119,7 @@ void FrameBuilder::LogFrameBuilderError(const std::string& message) {
   errors_->push_back(l);
 }
 
-void FrameBuilder::SaveAttrValue(Attribute* attr,
+void FrameBuilder::SaveAttrValue(const Attribute* attr,
                                  size_t index,
                                  uint8_t* tag,
                                  std::vector<uint8_t>* buf) {
@@ -203,12 +203,12 @@ void FrameBuilder::SaveAttrValue(Attribute* attr,
                          ". Default value was written instead");
 }
 
-void FrameBuilder::SaveCollection(Collection* coll,
+void FrameBuilder::SaveCollection(const Collection* coll,
                                   std::list<TagNameValue>* data_chunks) {
   // get list of all attributes
-  std::vector<Attribute*> attrs = coll->GetAllAttributes();
+  std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
-  for (Attribute* attr : attrs) {
+  for (const Attribute* attr : attrs) {
     if (attr->GetState() == AttrState::unset)
       continue;
     TagNameValue tnv;
@@ -240,12 +240,12 @@ void FrameBuilder::SaveCollection(Collection* coll,
   }
 }
 
-void FrameBuilder::SaveGroup(Collection* coll,
+void FrameBuilder::SaveGroup(const Collection* coll,
                              std::list<TagNameValue>* data_chunks) {
   // get list of all attributes
-  std::vector<Attribute*> attrs = coll->GetAllAttributes();
+  std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
-  for (Attribute* attr : attrs) {
+  for (const Attribute* attr : attrs) {
     if (attr->GetState() == AttrState::unset)
       continue;
     TagNameValue tnv;
@@ -274,14 +274,14 @@ void FrameBuilder::SaveGroup(Collection* coll,
   }
 }
 
-void FrameBuilder::BuildFrameFromPackage(Package* package) {
+void FrameBuilder::BuildFrameFromPackage(const Package* package) {
   frame_->groups_tags_.clear();
   frame_->groups_content_.clear();
   // save frame data
-  std::vector<Group*> groups = package->GetAllGroups();
-  for (Group* grp : groups) {
+  std::vector<const Group*> groups = package->GetAllGroups();
+  for (const Group* grp : groups) {
     for (size_t i = 0; true; ++i) {
-      Collection* coll = grp->GetCollection(i);
+      const Collection* coll = grp->GetCollection(i);
       if (coll == nullptr)
         break;
       frame_->groups_tags_.push_back(static_cast<uint8_t>(grp->GetName()));

@@ -29,7 +29,7 @@ class FrameBuilder {
       : frame_(frame), errors_(log) {}
 
   // Build a content of the frame from the given Package.
-  void BuildFrameFromPackage(Package* package);
+  void BuildFrameFromPackage(const Package* package);
 
   // Returns the current frame size in bytes. Call it after
   // BuildFrameFromPackage(...) to get the size of the output buffer.
@@ -50,11 +50,12 @@ class FrameBuilder {
   void LogFrameBuilderError(const std::string& message);
 
   // Main functions for building a frame.
-  void SaveGroup(Collection* coll, std::list<TagNameValue>* data_chunks);
-  void SaveCollection(Collection* coll, std::list<TagNameValue>* data_chunks);
+  void SaveGroup(const Collection* coll, std::list<TagNameValue>* data_chunks);
+  void SaveCollection(const Collection* coll,
+                      std::list<TagNameValue>* data_chunks);
 
   // Helpers for converting individual values to binary form.
-  void SaveAttrValue(Attribute* attr,
+  void SaveAttrValue(const Attribute* attr,
                      size_t index,
                      uint8_t* tag,
                      std::vector<uint8_t>* buf);
