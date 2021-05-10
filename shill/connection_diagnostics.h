@@ -14,8 +14,8 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 
+#include "shill/net/ip_address.h"
 #include "shill/portal_detector.h"
-#include "shill/refptr_types.h"
 
 namespace shill {
 
@@ -185,7 +185,11 @@ class ConnectionDiagnostics {
   static const char kIssueGatewayNeighborEntryNotConnected[];
   static const char kIssueServerNeighborEntryNotConnected[];
 
-  ConnectionDiagnostics(ConnectionRefPtr connection,
+  ConnectionDiagnostics(std::string iface_name,
+                        int iface_index,
+                        const IPAddress& ip_address,
+                        const IPAddress& gateway,
+                        const std::vector<std::string>& dns_list,
                         EventDispatcher* dispatcher,
                         Metrics* metrics,
                         const DeviceInfo* device_info,
@@ -195,8 +199,7 @@ class ConnectionDiagnostics {
 
   ~ConnectionDiagnostics();
 
-  // Starts diagnosing problems that |connection_| encounters reaching
-  // |url_string|.
+  // Starts diagnosing problems encountered when reaching |url_string|.
   bool Start(const PortalDetector::Properties& props);
 
   // Skips the portal detection initiated in ConnectionDiagnostics::Start and
@@ -242,7 +245,7 @@ class ConnectionDiagnostics {
   void ResolveTargetServerIPAddress(
       const std::vector<std::string>& dns_servers);
 
-  // Pings all the DNS servers of |connection_|.
+  // Pings all the DNS servers of |dns_list_|.
   void PingDNSServers();
 
   // Finds a route to the host at |address| by querying the kernel's routing
@@ -258,7 +261,7 @@ class ConnectionDiagnostics {
   void FindNeighborTableEntry(const IPAddress& address);
 
   // Checks for an IP collision by sending out an ARP request for the local IP
-  // address assigned to |connection_|.
+  // address |address_|.
   void CheckIpCollision();
 
   // Starts an IcmpSession with |address|. Called when we want to ping the
@@ -329,14 +332,19 @@ class ConnectionDiagnostics {
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 
-  // The connection being diagnosed.
-  ConnectionRefPtr connection_;
-
-  // Used to get the MAC address of the device associated with |connection_|.
+  // Used to get the MAC address of the device associated with the connection.
   const DeviceInfo* device_info_;
-
-  // The MAC address of device associated with |connection_|.
-  ByteString local_mac_address_;
+  // The name of the network interface associated with the connection.
+  std::string iface_name_;
+  // The index of the network interface associated with the connection.
+  int iface_index_;
+  // The IP address of the network interface to use for the diagnostic.
+  IPAddress ip_address_;
+  // The IP address of the gateway.
+  IPAddress gateway_;
+  std::vector<std::string> dns_list_;
+  // The MAC address of network interface associated with the connection.
+  ByteString mac_address_;
 
   DnsClientFactory* dns_client_factory_;
   std::unique_ptr<DnsClient> dns_client_;
@@ -348,7 +356,7 @@ class ConnectionDiagnostics {
   // when we stop diagnostics.
   std::unique_ptr<HttpUrl> target_url_;
 
-  // Used to ping multiple DNS servers in |connection_| in parallel.
+  // Used to ping multiple DNS servers in parallel.
   IcmpSessionFactory* icmp_session_factory_;
   std::map<int, std::unique_ptr<IcmpSession>>
       id_to_pending_dns_server_icmp_session_;

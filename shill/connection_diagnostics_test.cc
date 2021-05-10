@@ -16,7 +16,6 @@
 #include "shill/arp_client_test_helper.h"
 #include "shill/icmp_session.h"
 #include "shill/mock_arp_client.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
@@ -49,19 +48,25 @@ using testing::SetArgPointee;
 using testing::Test;
 
 namespace {
-const char kInterfaceName[] = "int0";
-const char kDNSServer0[] = "8.8.8.8";
-const char kDNSServer1[] = "8.8.4.4";
-const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
-const char kHttpsUrl[] = "https://www.google.com/generate_204";
+constexpr const char kInterfaceName[] = "int0";
+constexpr const int kInterfaceIndex = 4;
+constexpr const char kDNSServer0[] = "8.8.8.8";
+constexpr const char kDNSServer1[] = "8.8.4.4";
+const std::vector<std::string> kIPv4DnsList{kDNSServer0, kDNSServer1};
+const std::vector<std::string> kIPv6DnsList{
+    "2001:4860:4860::8888",
+    "2001:4860:4860::8844",
+};
+constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
+constexpr const char kHttpsUrl[] = "https://www.google.com/generate_204";
 const vector<string> kFallbackHttpUrls{
     "http://www.google.com/gen_204",
     "http://play.googleapis.com/generate_204",
 };
-const char kLocalMacAddressASCIIString[] = "123456";
-const char kArpReplySenderMacAddressASCIIString[] = "345678";
-const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
-const shill::IPAddress kIPv4LocalAddress("100.200.43.22");
+constexpr const char kDeviceMacAddressASCIIString[] = "123456";
+constexpr const char kArpReplySenderMacAddressASCIIString[] = "345678";
+const shill::IPAddress kIPv4DeviceAddress("100.200.43.22");
+const shill::IPAddress kIPv6DeviceAddress("2001:db8::3333:4444:5555");
 const shill::IPAddress kIPv4ServerAddress("8.8.8.8");
 const shill::IPAddress kIPv6ServerAddress("fe80::1aa9:5ff:7ebf:14c5");
 const shill::IPAddress kIPv4GatewayAddress("192.168.1.1");
@@ -70,7 +75,8 @@ const shill::IPAddress kIPv4ZeroAddress("0.0.0.0");
 const vector<base::TimeDelta> kEmptyResult;
 const vector<base::TimeDelta> kNonEmptyResult{
     base::TimeDelta::FromMilliseconds(10)};
-const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+constexpr const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00,
+                                             0x00, 0x00, 0x00};
 }  // namespace
 
 namespace shill {
@@ -121,7 +127,7 @@ MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
   }
 
   if (!local_ip.Equals(arg.local_ip_address())) {
-    *result_listener << "Local IP '" << arg.local_ip_address().ToString()
+    *result_listener << "Device IP '" << arg.local_ip_address().ToString()
                      << "' (expected '" << local_ip.ToString() << "').";
   }
 
@@ -131,7 +137,7 @@ MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
   }
 
   if (!local_mac.Equals(arg.local_mac_address())) {
-    *result_listener << "Local MAC '" << arg.local_mac_address().HexEncode()
+    *result_listener << "Device MAC '" << arg.local_mac_address().HexEncode()
                      << "' (expected " << local_mac.HexEncode() << ")'.";
   }
 
@@ -146,16 +152,17 @@ MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
 class ConnectionDiagnosticsTest : public Test {
  public:
   ConnectionDiagnosticsTest()
-      : interface_name_(kInterfaceName),
-        dns_servers_(kDNSServers, kDNSServers + 2),
-        local_ip_address_(kIPv4LocalAddress),
-        gateway_ipv4_address_(kIPv4GatewayAddress),
-        gateway_ipv6_address_(kIPv6GatewayAddress),
-        local_mac_address_(string(kLocalMacAddressASCIIString), false),
+      : ip_address_(kIPv4DeviceAddress),
+        gateway_(kIPv4GatewayAddress),
+        dns_list_(kIPv4DnsList),
+        local_mac_address_(string(kDeviceMacAddressASCIIString), false),
         manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
-        connection_(new NiceMock<MockConnection>(&device_info_)),
-        connection_diagnostics_(connection_,
+        connection_diagnostics_(kInterfaceName,
+                                kInterfaceIndex,
+                                kIPv4DeviceAddress,
+                                kIPv4GatewayAddress,
+                                kIPv4DnsList,
                                 &dispatcher_,
                                 &metrics_,
                                 &device_info_,
@@ -167,7 +174,7 @@ class ConnectionDiagnosticsTest : public Test {
   ~ConnectionDiagnosticsTest() override = default;
 
   void SetUp() override {
-    ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4LocalAddress.family());
+    ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4DeviceAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4ServerAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4GatewayAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6ServerAddress.family());
@@ -183,12 +190,6 @@ class ConnectionDiagnosticsTest : public Test {
         portal_detector_);  // Passes ownership
     connection_diagnostics_.routing_table_ = &routing_table_;
     connection_diagnostics_.rtnl_handler_ = &rtnl_handler_;
-    ON_CALL(*connection_, interface_name())
-        .WillByDefault(ReturnRef(interface_name_));
-    ON_CALL(*connection_, dns_servers()).WillByDefault(ReturnRef(dns_servers_));
-    ON_CALL(*connection_, gateway())
-        .WillByDefault(ReturnRef(gateway_ipv4_address_));
-    ON_CALL(*connection_, local()).WillByDefault(ReturnRef(local_ip_address_));
     connection_diagnostics_.dns_client_factory_ =
         MockDnsClientFactory::GetInstance();
     connection_diagnostics_.icmp_session_factory_ =
@@ -219,10 +220,15 @@ class ConnectionDiagnosticsTest : public Test {
   };
 
   CallbackTarget& callback_target() { return callback_target_; }
+  const IPAddress& gateway() { return gateway_; }
 
-  void UseIPv6Gateway() {
-    EXPECT_CALL(*connection_, gateway())
-        .WillRepeatedly(ReturnRef(gateway_ipv6_address_));
+  void UseIPv6() {
+    ip_address_ = kIPv6DeviceAddress;
+    gateway_ = kIPv6GatewayAddress;
+    dns_list_ = kIPv6DnsList;
+    connection_diagnostics_.ip_address_ = kIPv6DeviceAddress;
+    connection_diagnostics_.gateway_ = kIPv6GatewayAddress;
+    connection_diagnostics_.dns_list_ = kIPv6DnsList;
   }
 
   void AddExpectedEvent(ConnectionDiagnostics::Type type,
@@ -285,9 +291,8 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypePortalDetection,
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(*portal_detector_,
-                Start(props, interface_name_, local_ip_address_, dns_servers_,
-                      base::TimeDelta()))
+    EXPECT_CALL(*portal_detector_, Start(props, kInterfaceName, ip_address_,
+                                         dns_list_, base::TimeDelta()))
         .WillOnce(Return(true));
     EXPECT_FALSE(connection_diagnostics_.running());
     EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());
@@ -373,14 +378,12 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(*dns_client,
                 Start(connection_diagnostics_.target_url_->host(), _))
         .WillOnce(Return(true));
-    EXPECT_CALL(*connection_, IsIPv6())
-        .WillOnce(Return(family == IPAddress::kFamilyIPv6));
     EXPECT_CALL(
         *MockDnsClientFactory::GetInstance(),
-        CreateDnsClient(family, kInterfaceName, dns_servers_,
+        CreateDnsClient(family, kInterfaceName, dns_list_,
                         DnsClient::kDnsTimeoutMilliseconds, &dispatcher_, _))
         .WillOnce(Return(ByMove(std::move(dns_client))));
-    connection_diagnostics_.ResolveTargetServerIPAddress(dns_servers_);
+    connection_diagnostics_.ResolveTargetServerIPAddress(dns_list_);
   }
 
   void ExpectResolveTargetServerIPAddressEndSuccess(
@@ -454,9 +457,8 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
     EXPECT_CALL(routing_table_,
-                RequestRouteToHost(IsSameIPAddress(address),
-                                   connection_->interface_index(), _, _,
-                                   connection_->table_id()))
+                RequestRouteToHost(IsSameIPAddress(address), kInterfaceIndex, _,
+                                   _, kInterfaceIndex + 1000))
         .WillOnce(Return(true));
     EXPECT_CALL(
         dispatcher_,
@@ -479,7 +481,7 @@ class ConnectionDiagnosticsTest : public Test {
     } else {
       // Could be an IPv6 address, but we instrument this later with the
       // argument passed to ExpectPingHostStartSuccess.
-      gateway = gateway_ipv4_address_;
+      gateway = kIPv4GatewayAddress;
     }
 
     // Next action is either to ping the gateway, find an ARP table entry for
@@ -489,9 +491,8 @@ class ConnectionDiagnosticsTest : public Test {
     auto entry =
         RoutingTableEntry::Create(address_queried,
                                   IPAddress(address_queried.family()), gateway)
-            .SetTable(connection_->table_id());
-    connection_diagnostics_.OnRouteQueryResponse(connection_->interface_index(),
-                                                 entry);
+            .SetTable(kInterfaceIndex + 1000);
+    connection_diagnostics_.OnRouteQueryResponse(kInterfaceIndex, entry);
   }
 
   void ExpectFindRouteToHostEndFailure() {
@@ -534,7 +535,7 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultSuccess);
     RTNLMessage msg(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0, 0,
-                    connection_->interface_index(), IPAddress::kFamilyIPv6);
+                    kInterfaceIndex, IPAddress::kFamilyIPv6);
     msg.set_neighbor_status(
         RTNLMessage::NeighborStatus(NUD_REACHABLE, 0, NDA_DST));
     msg.SetAttribute(NDA_DST, address_queried.address());
@@ -561,13 +562,13 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeIPCollisionCheck,
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(device_info_, GetMacAddress(connection_->interface_index(), _))
+    EXPECT_CALL(device_info_, GetMacAddress(kInterfaceIndex, _))
         .WillOnce(DoAll(SetArgPointee<1>(local_mac_address_), Return(true)));
     EXPECT_CALL(*arp_client_, StartReplyListener()).WillOnce(Return(true));
     // We should send an ARP probe request for our own local IP address.
     EXPECT_CALL(*arp_client_,
                 TransmitRequest(IsArpRequest(
-                    kIPv4ZeroAddress, local_ip_address_, local_mac_address_,
+                    kIPv4ZeroAddress, ip_address_, local_mac_address_,
                     ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)))))
         .WillOnce(Return(true));
     EXPECT_CALL(
@@ -584,9 +585,9 @@ class ConnectionDiagnosticsTest : public Test {
     // Simulate ARP response from a sender with the same IP address as our
     // connection, directed at our local IP address and local MAC address.
     client_test_helper_->GeneratePacket(
-        ARPOP_REPLY, local_ip_address_,
+        ARPOP_REPLY, ip_address_,
         ByteString(string(kArpReplySenderMacAddressASCIIString), false),
-        local_ip_address_, local_mac_address_);
+        ip_address_, local_mac_address_);
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
                               ConnectionDiagnostics::kIssueIPCollision));
     EXPECT_CALL(callback_target(),
@@ -650,11 +651,10 @@ class ConnectionDiagnosticsTest : public Test {
                      is_success ? ConnectionDiagnostics::kResultSuccess
                                 : ConnectionDiagnostics::kResultFailure);
     if (!is_success &&
+        // If the DNS server addresses are invalid, we will not even attempt to
+        // start any ICMP sessions.
         expected_issue == ConnectionDiagnostics::kIssueDNSServersInvalid) {
-      // If the DNS server addresses are invalid, we will not even attempt to
-      // start any ICMP sessions.
-      EXPECT_CALL(*connection_, dns_servers())
-          .WillRepeatedly(ReturnRefOfCopy(vector<string>{"110.2.3", "1.5"}));
+      connection_diagnostics_.dns_list_ = {"110.2.3", "1.5"};
     } else {
       // We are either instrumenting the success case (started pinging all
       // DNS servers successfully) or the failure case where we fail to start
@@ -763,9 +763,8 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kPhaseEnd,
                      success ? ConnectionDiagnostics::kResultSuccess
                              : ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(device_info_,
-                GetMacAddressOfPeer(connection_->interface_index(),
-                                    IsSameIPAddress(address), _))
+    EXPECT_CALL(device_info_, GetMacAddressOfPeer(kInterfaceIndex,
+                                                  IsSameIPAddress(address), _))
         .WillOnce(Return(success));
     if (success) {
       const string& issue =
@@ -814,8 +813,7 @@ class ConnectionDiagnosticsTest : public Test {
       EXPECT_CALL(callback_target(),
                   ResultCallback(issue, IsEventList(expected_events_)));
       RTNLMessage msg(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
-                      0, connection_->interface_index(),
-                      IPAddress::kFamilyIPv6);
+                      0, kInterfaceIndex, IPAddress::kFamilyIPv6);
       msg.set_neighbor_status(
           RTNLMessage::NeighborStatus(NUD_FAILED, 0, NDA_DST));
       msg.SetAttribute(NDA_DST, address_queried.address());
@@ -823,18 +821,15 @@ class ConnectionDiagnosticsTest : public Test {
     }
   }
 
-  const string interface_name_;
-  const vector<string> dns_servers_;
-  const IPAddress local_ip_address_;
-  const IPAddress gateway_ipv4_address_;
-  const IPAddress gateway_ipv6_address_;
+  IPAddress ip_address_;
+  IPAddress gateway_;
+  std::vector<std::string> dns_list_;
   ByteString local_mac_address_;
   CallbackTarget callback_target_;
   MockControl control_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
-  scoped_refptr<NiceMock<MockConnection>> connection_;
   MockIOHandlerFactory io_handler_factory_;
   ConnectionDiagnostics connection_diagnostics_;
   NiceMock<MockEventDispatcher> dispatcher_;
@@ -1165,7 +1160,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_4) {
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndFailure();
-  ExpectFindRouteToHostStartSuccess(kIPv4GatewayAddress);
+  ExpectFindRouteToHostStartSuccess(gateway());
   ExpectFindRouteToHostEndFailure();
   VerifyStopped();
 }
@@ -1188,16 +1183,15 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
   ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv4GatewayAddress);
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv4GatewayAddress);
+                             gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
   VerifyStopped();
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
   // Same as above, but this time the resolved IP address of the target URL
   // is IPv6.
-  UseIPv6Gateway();
+  UseIPv6();
 
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
@@ -1212,9 +1206,8 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
   ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv6GatewayAddress);
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv6GatewayAddress);
+                             gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
   VerifyStopped();
 }
 
@@ -1236,9 +1229,8 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
   ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv4GatewayAddress);
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv4GatewayAddress);
+                             gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
   VerifyStopped();
 }
 
@@ -1265,9 +1257,8 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
   ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv4GatewayAddress);
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv4GatewayAddress);
+                             gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
   VerifyStopped();
 }
 
@@ -1294,10 +1285,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_1) {
   ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv4GatewayAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv4GatewayAddress);
-  ExpectArpTableLookupStartSuccessEndSuccess(kIPv4GatewayAddress, true);
+                             gateway());
+  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectArpTableLookupStartSuccessEndSuccess(gateway(), true);
   VerifyStopped();
 }
 
@@ -1341,10 +1331,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_1) {
   ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv4GatewayAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv4GatewayAddress);
-  ExpectArpTableLookupStartSuccessEndFailure(kIPv4GatewayAddress);
+                             gateway());
+  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectArpTableLookupStartSuccessEndFailure(gateway());
   ExpectCheckIPCollisionStartSuccess();
   ExpectCheckIPCollisionEndSuccess();
   VerifyStopped();
@@ -1390,10 +1379,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_1) {
   ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv4GatewayAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv4GatewayAddress);
-  ExpectArpTableLookupStartSuccessEndFailure(kIPv4GatewayAddress);
+                             gateway());
+  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectArpTableLookupStartSuccessEndFailure(gateway());
   ExpectCheckIPCollisionStartSuccess();
   ExpectCheckIPCollisionEndFailureGatewayArpFailed();
   VerifyStopped();
@@ -1427,7 +1415,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_1) {
   // resolved IP address fails, and we successfully get route for the IP
   // address. This address is remote, pinging the local IPv6 gateway fails,
   // and we find a neighbor table entry for the gateway. End diagnostics.
-  UseIPv6Gateway();
+  UseIPv6();
 
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
@@ -1442,11 +1430,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_1) {
   ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv6GatewayAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv6GatewayAddress);
-  ExpectNeighborTableLookupStartSuccess(kIPv6GatewayAddress);
-  ExpectNeighborTableLookupEndSuccess(kIPv6GatewayAddress, true);
+                             gateway());
+  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectNeighborTableLookupStartSuccess(gateway());
+  ExpectNeighborTableLookupEndSuccess(gateway(), true);
   VerifyStopped();
 }
 
@@ -1455,7 +1442,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_2) {
   // resolved IP address fails, we succeed in getting a route for the IP
   // address. This address is a local IPv6 address, and we find a neighbor table
   // entry for it. End diagnostics.
-  UseIPv6Gateway();
+  UseIPv6();
 
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
@@ -1480,7 +1467,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_1) {
   // address. This address is remote, pinging the local IPv6 gateway fails, and
   // we find a neighbor table entry for the gateway, but it is not marked as
   // reachable. End diagnostics.
-  UseIPv6Gateway();
+  UseIPv6();
 
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
@@ -1495,11 +1482,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_1) {
   ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
   ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
-                             kIPv6GatewayAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
-                           kIPv6GatewayAddress);
-  ExpectNeighborTableLookupStartSuccess(kIPv6GatewayAddress);
-  ExpectNeighborTableLookupEndFailureNotReachable(kIPv6GatewayAddress, true);
+                             gateway());
+  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectNeighborTableLookupStartSuccess(gateway());
+  ExpectNeighborTableLookupEndFailureNotReachable(gateway(), true);
   VerifyStopped();
 }
 
@@ -1508,7 +1494,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_2) {
   // resolved IP address fails, we succeed in getting a route for the IP
   // address. This address is a local IPv6 address, and we do not find a
   // neighbor table entry for it. End diagnostics.
-  UseIPv6Gateway();
+  UseIPv6();
 
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);

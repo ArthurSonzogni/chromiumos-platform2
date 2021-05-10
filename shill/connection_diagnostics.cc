@@ -10,7 +10,6 @@
 #include <base/check.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/connection.h"
 #include "shill/device_info.h"
 #include "shill/dns_client.h"
 #include "shill/dns_client_factory.h"
@@ -25,6 +24,7 @@
 #include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/io_handler_factory.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
@@ -127,7 +127,11 @@ const int ConnectionDiagnostics::kArpReplyTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kNeighborTableRequestTimeoutSeconds = 1;
 
 ConnectionDiagnostics::ConnectionDiagnostics(
-    ConnectionRefPtr connection,
+    std::string iface_name,
+    int iface_index,
+    const IPAddress& ip_address,
+    const IPAddress& gateway,
+    const std::vector<std::string>& dns_list,
     EventDispatcher* dispatcher,
     Metrics* metrics,
     const DeviceInfo* device_info,
@@ -137,15 +141,19 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       metrics_(metrics),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      connection_(connection),
       device_info_(device_info),
+      iface_name_(iface_name),
+      iface_index_(iface_index),
+      ip_address_(ip_address),
+      gateway_(gateway),
+      dns_list_(dns_list),
       dns_client_factory_(DnsClientFactory::GetInstance()),
       portal_detector_(new PortalDetector(
           dispatcher_,
           metrics_,
           Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
                weak_ptr_factory_.GetWeakPtr()))),
-      arp_client_(new ArpClient(connection_->interface_index())),
+      arp_client_(new ArpClient(iface_index_)),
       icmp_session_(new IcmpSession(dispatcher_)),
       icmp_session_factory_(IcmpSessionFactory::GetInstance()),
       num_dns_attempts_(0),
@@ -172,9 +180,7 @@ bool ConnectionDiagnostics::Start(const PortalDetector::Properties& props) {
     return false;
   }
 
-  if (!portal_detector_->Start(props, connection_->interface_name(),
-                               connection_->local(),
-                               connection_->dns_servers())) {
+  if (!portal_detector_->Start(props, iface_name_, ip_address_, dns_list_)) {
     Stop();
     return false;
   }
@@ -320,7 +326,7 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
         dispatcher_->PostTask(
             FROM_HERE,
             Bind(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-                 weak_ptr_factory_.GetWeakPtr(), connection_->dns_servers()));
+                 weak_ptr_factory_.GetWeakPtr(), dns_list_));
       }
       break;
     }
@@ -333,8 +339,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
 
   Error e;
   dns_client_ = dns_client_factory_->CreateDnsClient(
-      connection_->IsIPv6() ? IPAddress::kFamilyIPv6 : IPAddress::kFamilyIPv4,
-      connection_->interface_name(), dns_servers,
+      ip_address_.family(), iface_name_, dns_servers,
       DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
       Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
            weak_ptr_factory_.GetWeakPtr()));
@@ -356,7 +361,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
 void ConnectionDiagnostics::PingDNSServers() {
   SLOG(this, 3) << __func__;
 
-  if (connection_->dns_servers().empty()) {
+  if (dns_list_.empty()) {
     LOG(ERROR) << __func__ << ": no DNS servers for this connection";
     AddEventWithMessage(kTypePingDNSServers, kPhaseStart, kResultFailure,
                         "No DNS servers for this connection");
@@ -368,12 +373,12 @@ void ConnectionDiagnostics::PingDNSServers() {
   pingable_dns_servers_.clear();
   size_t num_invalid_dns_server_addr = 0;
   size_t num_failed_icmp_session_start = 0;
-  for (size_t i = 0; i < connection_->dns_servers().size(); ++i) {
+  for (size_t i = 0; i < dns_list_.size(); ++i) {
     // If we encounter any errors starting ping for any DNS server, carry on
     // attempting to ping the other DNS servers rather than failing. We only
     // need to successfully ping a single DNS server to decide whether or not
     // DNS servers can be reached.
-    IPAddress dns_server_ip_addr(connection_->dns_servers()[i]);
+    IPAddress dns_server_ip_addr(dns_list_[i]);
     if (dns_server_ip_addr.family() == IPAddress::kFamilyUnknown) {
       LOG(ERROR) << __func__
                  << ": could not parse DNS server IP address from string";
@@ -387,7 +392,7 @@ void ConnectionDiagnostics::PingDNSServers() {
             .second;
     if (emplace_success &&
         id_to_pending_dns_server_icmp_session_.at(i)->Start(
-            dns_server_ip_addr, connection_->interface_index(),
+            dns_server_ip_addr, iface_index_,
             Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
                  weak_ptr_factory_.GetWeakPtr(), i))) {
       SLOG(this, 3) << __func__ << ": pinging DNS server at "
@@ -406,10 +411,9 @@ void ConnectionDiagnostics::PingDNSServers() {
     AddEventWithMessage(
         kTypePingDNSServers, kPhaseStart, kResultFailure,
         "Could not start ping for any of the given DNS servers");
-    if (num_invalid_dns_server_addr == connection_->dns_servers().size()) {
+    if (num_invalid_dns_server_addr == dns_list_.size()) {
       ReportResultAndStop(kIssueDNSServersInvalid);
-    } else if (num_failed_icmp_session_start ==
-               connection_->dns_servers().size()) {
+    } else if (num_failed_icmp_session_start == dns_list_.size()) {
       ReportResultAndStop(kIssueInternalError);
     }
   } else {
@@ -423,9 +427,10 @@ void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
   RoutingTableEntry entry;
   route_query_callback_.Reset(Bind(&ConnectionDiagnostics::OnRouteQueryResponse,
                                    weak_ptr_factory_.GetWeakPtr()));
-  if (!routing_table_->RequestRouteToHost(
-          address, connection_->interface_index(), -1,
-          route_query_callback_.callback(), connection_->table_id())) {
+  int table_id = RoutingTable::GetInterfaceTableId(iface_index_);
+  if (!routing_table_->RequestRouteToHost(address, iface_index_, -1,
+                                          route_query_callback_.callback(),
+                                          table_id)) {
     route_query_callback_.Cancel();
     LOG(ERROR) << __func__ << ": could not request route to "
                << address.ToString();
@@ -467,14 +472,13 @@ void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
                       StringPrintf("Finding ARP table entry for %s",
                                    address.ToString().c_str()));
   ByteString target_mac_address;
-  if (device_info_->GetMacAddressOfPeer(connection_->interface_index(), address,
+  if (device_info_->GetMacAddressOfPeer(iface_index_, address,
                                         &target_mac_address)) {
     AddEventWithMessage(kTypeArpTableLookup, kPhaseEnd, kResultSuccess,
                         StringPrintf("Found ARP table entry for %s",
                                      address.ToString().c_str()));
-    ReportResultAndStop(address.Equals(connection_->gateway())
-                            ? kIssueGatewayNotResponding
-                            : kIssueServerNotResponding);
+    ReportResultAndStop(address.Equals(gateway_) ? kIssueGatewayNotResponding
+                                                 : kIssueServerNotResponding);
     return;
   }
 
@@ -520,8 +524,7 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
 void ConnectionDiagnostics::CheckIpCollision() {
   SLOG(this, 3) << __func__;
 
-  if (!device_info_->GetMacAddress(connection_->interface_index(),
-                                   &local_mac_address_)) {
+  if (!device_info_->GetMacAddress(iface_index_, &mac_address_)) {
     LOG(ERROR) << __func__ << ": could not get local MAC address";
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
                         "Could not get local MAC address");
@@ -543,8 +546,8 @@ void ConnectionDiagnostics::CheckIpCollision() {
            weak_ptr_factory_.GetWeakPtr())));
 
   // Create an 'Arp Probe' Packet.
-  ArpPacket request(IPAddress(string(kIPv4ZeroAddress)), connection_->local(),
-                    local_mac_address_,
+  ArpPacket request(IPAddress(string(kIPv4ZeroAddress)), ip_address_,
+                    mac_address_,
                     ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)));
   if (!arp_client_->TransmitRequest(request)) {
     LOG(ERROR) << __func__ << ": failed to send ARP request";
@@ -568,11 +571,10 @@ void ConnectionDiagnostics::CheckIpCollision() {
 void ConnectionDiagnostics::PingHost(const IPAddress& address) {
   SLOG(this, 3) << __func__;
 
-  Type event_type = address.Equals(connection_->gateway())
-                        ? kTypePingGateway
-                        : kTypePingTargetServer;
+  Type event_type =
+      address.Equals(gateway_) ? kTypePingGateway : kTypePingTargetServer;
   if (!icmp_session_->Start(
-          address, connection_->interface_index(),
+          address, iface_index_,
           Bind(&ConnectionDiagnostics::OnPingHostComplete,
                weak_ptr_factory_.GetWeakPtr(), event_type, address))) {
     LOG(ERROR) << __func__ << ": failed to start ICMP session with "
@@ -606,8 +608,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 
   if (IcmpSession::AnyRepliesReceived(result)) {
-    pingable_dns_servers_.push_back(
-        connection_->dns_servers()[dns_server_index]);
+    pingable_dns_servers_.push_back(dns_list_[dns_server_index]);
   }
   if (!id_to_pending_dns_server_icmp_session_.empty()) {
     SLOG(this, 3) << __func__ << ": not yet finished pinging all DNS servers";
@@ -616,14 +617,14 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
 
   if (pingable_dns_servers_.empty()) {
     // Use the first DNS server on the list and diagnose its connectivity.
-    IPAddress first_dns_server_ip_addr(connection_->dns_servers()[0]);
+    IPAddress first_dns_server_ip_addr(dns_list_[0]);
     if (first_dns_server_ip_addr.family() == IPAddress::kFamilyUnknown) {
       LOG(ERROR) << __func__ << ": could not parse DNS server IP address "
-                 << connection_->dns_servers()[0];
+                 << dns_list_[0];
       AddEventWithMessage(kTypePingDNSServers, kPhaseEnd, kResultFailure,
                           StringPrintf("Could not parse DNS "
                                        "server IP address %s",
-                                       connection_->dns_servers()[0].c_str()));
+                                       dns_list_[0].c_str()));
       ReportResultAndStop(kIssueInternalError);
       return;
     }
@@ -639,7 +640,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     return;
   }
 
-  if (pingable_dns_servers_.size() != connection_->dns_servers().size()) {
+  if (pingable_dns_servers_.size() != dns_list_.size()) {
     AddEventWithMessage(kTypePingDNSServers, kPhaseEnd, kResultSuccess,
                         "Pinged some, but not all, DNS servers successfully");
   } else {
@@ -742,7 +743,7 @@ void ConnectionDiagnostics::OnArpReplyReceived(int fd) {
     return;
   }
   // According to RFC 5227, we only check the sender's ip address.
-  if (connection_->local().Equals(packet.local_ip_address())) {
+  if (ip_address_.Equals(packet.local_ip_address())) {
     arp_reply_timeout_callback_.Cancel();
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseEnd, kResultSuccess,
                         "IP collision found");
@@ -795,7 +796,7 @@ void ConnectionDiagnostics::OnNeighborMsgReceived(
         StringPrintf("Neighbor table entry for %s is not in a connected state "
                      "(actual state = 0x%2x)",
                      address_queried.ToString().c_str(), neighbor.state));
-    ReportResultAndStop(address_queried.Equals(connection_->gateway())
+    ReportResultAndStop(address_queried.Equals(gateway_)
                             ? kIssueGatewayNeighborEntryNotConnected
                             : kIssueServerNeighborEntryNotConnected);
     return;
@@ -804,7 +805,7 @@ void ConnectionDiagnostics::OnNeighborMsgReceived(
   AddEventWithMessage(kTypeNeighborTableLookup, kPhaseEnd, kResultSuccess,
                       StringPrintf("Neighbor table entry found for %s",
                                    address_queried.ToString().c_str()));
-  ReportResultAndStop(address_queried.Equals(connection_->gateway())
+  ReportResultAndStop(address_queried.Equals(gateway_)
                           ? kIssueGatewayNotResponding
                           : kIssueServerNotResponding);
 }
@@ -816,7 +817,7 @@ void ConnectionDiagnostics::OnNeighborTableRequestTimeout(
   AddEventWithMessage(kTypeNeighborTableLookup, kPhaseEnd, kResultFailure,
                       StringPrintf("Failed to find neighbor table entry for %s",
                                    address_queried.ToString().c_str()));
-  ReportResultAndStop(address_queried.Equals(connection_->gateway())
+  ReportResultAndStop(address_queried.Equals(gateway_)
                           ? kIssueGatewayNoNeighborEntry
                           : kIssueServerNoNeighborEntry);
 }
@@ -825,7 +826,7 @@ void ConnectionDiagnostics::OnRouteQueryResponse(
     int interface_index, const RoutingTableEntry& entry) {
   SLOG(this, 3) << __func__ << "(interface " << interface_index << ")";
 
-  if (interface_index != connection_->interface_index()) {
+  if (interface_index != iface_index_) {
     SLOG(this, 3) << __func__
                   << ": route query response not meant for this interface";
     return;

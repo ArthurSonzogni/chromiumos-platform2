@@ -1427,7 +1427,9 @@ void Device::StopPortalDetection() {
 bool Device::StartConnectionDiagnosticsAfterPortalDetection(
     const PortalDetector::Result& result) {
   connection_diagnostics_.reset(new ConnectionDiagnostics(
-      connection_, dispatcher(), metrics(), manager_->device_info(),
+      connection_->interface_name(), connection_->interface_index(),
+      connection_->local(), connection_->gateway(), connection_->dns_servers(),
+      dispatcher(), metrics(), manager_->device_info(),
       Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
           manager_->GetPortalCheckHttpUrl(), result)) {
