@@ -20,24 +20,28 @@ namespace cryptohome {
 
 // List of all the possible operation types. Used to construct the correct
 // histogram while logging to UMA.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum LECredOperationType {
   LE_CRED_OP_RESET_TREE = 0,
-  LE_CRED_OP_INSERT,
-  LE_CRED_OP_CHECK,
-  LE_CRED_OP_RESET,
-  LE_CRED_OP_REMOVE,
-  LE_CRED_OP_SYNC,
+  LE_CRED_OP_INSERT = 1,
+  LE_CRED_OP_CHECK = 2,
+  LE_CRED_OP_RESET = 3,
+  LE_CRED_OP_REMOVE = 4,
+  LE_CRED_OP_SYNC = 5,
   LE_CRED_OP_MAX
 };
 
 // List of all possible actions taken within an LE Credential operation.
 // Used to construct the correct histogram while logging to UMA.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum LECredActionType {
   LE_CRED_ACTION_LOAD_FROM_DISK = 0,
-  LE_CRED_ACTION_BACKEND,
-  LE_CRED_ACTION_SAVE_TO_DISK,
-  LE_CRED_ACTION_BACKEND_GET_LOG,
-  LE_CRED_ACTION_BACKEND_REPLAY_LOG,
+  LE_CRED_ACTION_BACKEND = 1,
+  LE_CRED_ACTION_SAVE_TO_DISK = 2,
+  LE_CRED_ACTION_BACKEND_GET_LOG = 3,
+  LE_CRED_ACTION_BACKEND_REPLAY_LOG = 4,
   LE_CRED_ACTION_MAX
 };
 
@@ -51,24 +55,24 @@ enum DerivationType : int {
   // Low-entropy secrets that need brute force protection are mapped to
   // high-entropy secrets that can be obtained via a rate-limited lookup
   // enforced by the TPM/GSC.
-  kLowEntropyCredential,
+  kLowEntropyCredential = 1,
   // Protecting user data via signing cryptographic keys stored on hardware
   // tokens, rather than via passwords. The token needs to present a valid
   // signature for the generated challenge to unseal a secret seed value, which
   // is then used as a KDF passphrase for scrypt to derive the wrapping key.
   // The sealing/unsealing algorithm involves TPM/GSC capabilities for achieving
   // the security strength.
-  kSignatureChallengeProtected,
+  kSignatureChallengeProtected = 2,
   // TPM/GSC and user passkey is used to derive the wrapping keys which are
   // sealed to PCR.
-  kTpmBackedPcrBound,
+  kTpmBackedPcrBound = 3,
   // TPM/GSC and user passkey is used to derive the wrapping key.
-  kTpmBackedNonPcrBound,
+  kTpmBackedNonPcrBound = 4,
   // Deprecated state - both TPM/GSC and scrypt is being used.
-  kDoubleWrapped,
+  kDoubleWrapped = 5,
   // Secret is generated on the device and later derived by Cryptohome Recovery
   // process using data stored on the device and by Recovery Mediator service.
-  kCryptohomeRecovery,
+  kCryptohomeRecovery = 6,
   kDerivationTypeNumBuckets  // Must be the last entry.
 };
 
@@ -101,45 +105,45 @@ enum CryptohomeError {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum TimerType {
-  kAsyncMountTimer,       // Unused.
-  kSyncMountTimer,        // Unused.
-  kAsyncGuestMountTimer,  // Unused.
-  kSyncGuestMountTimer,   // Unused.
-  kTpmTakeOwnershipTimer,
-  kPkcs11InitTimer,
-  kMountExTimer,
-  kDircryptoMigrationTimer,
-  kDircryptoMinimalMigrationTimer,
-  kOOPMountOperationTimer,
-  kOOPMountCleanupTimer,
-  kSessionUnlockTimer,
-  kMountGuestExTimer,
-  kPerformEphemeralMountTimer,
-  kPerformMountTimer,
+  kAsyncMountTimer = 0,       // Unused.
+  kSyncMountTimer = 1,        // Unused.
+  kAsyncGuestMountTimer = 2,  // Unused.
+  kSyncGuestMountTimer = 3,   // Unused.
+  kTpmTakeOwnershipTimer = 4,
+  kPkcs11InitTimer = 5,
+  kMountExTimer = 6,
+  kDircryptoMigrationTimer = 7,
+  kDircryptoMinimalMigrationTimer = 8,
+  kOOPMountOperationTimer = 9,
+  kOOPMountCleanupTimer = 10,
+  kSessionUnlockTimer = 11,
+  kMountGuestExTimer = 12,
+  kPerformEphemeralMountTimer = 13,
+  kPerformMountTimer = 14,
   kNumTimerTypes  // For the number of timer types.
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum DictionaryAttackResetStatus {
-  kResetNotNecessary,
-  kResetAttemptSucceeded,
-  kResetAttemptFailed,
-  kDelegateNotAllowed,
-  kDelegateNotAvailable,
-  kCounterQueryFailed,
-  kInvalidPcr0State,
+  kResetNotNecessary = 0,
+  kResetAttemptSucceeded = 1,
+  kResetAttemptFailed = 2,
+  kDelegateNotAllowed = 3,
+  kDelegateNotAvailable = 4,
+  kCounterQueryFailed = 5,
+  kInvalidPcr0State = 6,
   kDictionaryAttackResetStatusNumBuckets
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum ChecksumStatus {
-  kChecksumOK,
-  kChecksumDoesNotExist,
-  kChecksumReadError,
-  kChecksumMismatch,
-  kChecksumOutOfSync,
+  kChecksumOK = 0,
+  kChecksumDoesNotExist = 1,
+  kChecksumReadError = 2,
+  kChecksumMismatch = 3,
+  kChecksumOutOfSync = 4,
   kChecksumStatusNumBuckets
 };
 
@@ -252,120 +256,122 @@ enum class DiskCleanupResult {
 // https://uma.googleplex.com/histograms/?histograms=Platform.Cryptohome.DeprecatedApiCalled
 enum class DeprecatedApiEvent {
   kInitializeCastKey = 0,
-  kGetBootAttribute,                                // 1
-  kSetBootAttribute,                                // 2
-  kFlushAndSignBootAttributes,                      // 3
-  kSignBootLockbox,                                 // 4
-  kVerifyBootLockbox,                               // 5
-  kFinalizeBootLockbox,                             // 6
-  kTpmIsBeingOwned,                                 // 7
-  kProxyIsMounted,                                  // 8
-  kProxyIsMountedForUser,                           // 9
-  kProxyListKeysEx,                                 // 10
-  kProxyCheckKeyEx,                                 // 11
-  kProxyRemoveKeyEx,                                // 12
-  kProxyMassRemoveKeys,                             // 13
-  kProxyGetKeyDataEx,                               // 14
-  kProxyMigrateKeyEx,                               // 15
-  kProxyAddKeyEx,                                   // 16
-  kProxyAddDataRestoreKey,                          // 17
-  kProxyRemoveEx,                                   // 18
-  kProxyGetSystemSalt,                              // 19
-  kProxyGetSanitizedUsername,                       // 20
-  kProxyMountEx,                                    // 21
-  kProxyMountGuestEx,                               // 22
-  kProxyRenameCryptohome,                           // 23
-  kProxyGetAccountDiskUsage,                        // 24
-  kProxyUnmountEx,                                  // 25
-  kProxyUpdateCurrentUserActivityTimestamp,         // 26
-  kProxyTpmIsReady,                                 // 27
-  kProxyTpmIsEnabled,                               // 28
-  kProxyTpmGetPassword,                             // 29
-  kProxyTpmIsOwned,                                 // 30
-  kProxyTpmIsBeingOwned,                            // 31
-  kProxyTpmCanAttemptOwnership,                     // 32
-  kProxyTpmClearStoredPassword,                     // 33
-  kProxyTpmIsAttestationPrepared,                   // 34
-  kProxyTpmAttestationGetEnrollmentPreparationsEx,  // 35
-  kProxyTpmVerifyAttestationData,                   // 36
-  kProxyTpmVerifyEK,                                // 37
-  kProxyTpmAttestationCreateEnrollRequest,          // 38
-  kProxyAsyncTpmAttestationCreateEnrollRequest,     // 39
-  kProxyTpmAttestationEnroll,                       // 40
-  kProxyAsyncTpmAttestationEnroll,                  // 41
-  kProxyTpmAttestationEnrollEx,                     // 42
-  kProxyAsyncTpmAttestationEnrollEx,                // 43
-  kProxyTpmAttestationCreateCertRequest,            // 44
-  kProxyAsyncTpmAttestationCreateCertRequest,       // 45
-  kProxyTpmAttestationFinishCertRequest,            // 46
-  kProxyAsyncTpmAttestationFinishCertRequest,       // 47
-  kProxyTpmAttestationGetCertificateEx,             // 48
-  kProxyAsyncTpmAttestationGetCertificateEx,        // 49
-  kProxyTpmIsAttestationEnrolled,                   // 50
-  kProxyTpmAttestationDoesKeyExist,                 // 51
-  kProxyTpmAttestationGetCertificate,               // 52
-  kProxyTpmAttestationGetPublicKey,                 // 53
-  kProxyTpmAttestationGetEnrollmentId,              // 54
-  kProxyTpmAttestationRegisterKey,                  // 55
-  kProxyTpmAttestationSignEnterpriseChallenge,      // 56
-  kProxyTpmAttestationSignEnterpriseVaChallenge,    // 57
-  kProxyTpmAttestationSignEnterpriseVaChallengeV2,  // 58
-  kProxyTpmAttestationSignSimpleChallenge,          // 59
-  kProxyTpmAttestationGetKeyPayload,                // 60
-  kProxyTpmAttestationSetKeyPayload,                // 61
-  kProxyTpmAttestationDeleteKeys,                   // 62
-  kProxyTpmAttestationDeleteKey,                    // 63
-  kProxyTpmAttestationGetEK,                        // 64
-  kProxyTpmAttestationResetIdentity,                // 65
-  kProxyTpmGetVersionStructured,                    // 66
-  kProxyPkcs11IsTpmTokenReady,                      // 67
-  kProxyPkcs11GetTpmTokenInfo,                      // 68
-  kProxyPkcs11GetTpmTokenInfoForUser,               // 69
-  kProxyPkcs11Terminate,                            // 70
-  kProxyGetStatusString,                            // 71
-  kProxyInstallAttributesGet,                       // 72
-  kProxyInstallAttributesSet,                       // 73
-  kProxyInstallAttributesCount,                     // 74
-  kProxyInstallAttributesFinalize,                  // 75
-  kProxyInstallAttributesIsReady,                   // 76
-  kProxyInstallAttributesIsSecure,                  // 77
-  kProxyInstallAttributesIsInvalid,                 // 78
-  kProxyInstallAttributesIsFirstInstall,            // 79
-  kProxySignBootLockbox,                            // 80
-  kProxyVerifyBootLockbox,                          // 81
-  kProxyFinalizeBootLockbox,                        // 82
-  kProxyGetBootAttribute,                           // 83
-  kProxySetBootAttribute,                           // 84
-  kProxyFlushAndSignBootAttributes,                 // 85
-  kProxyGetLoginStatus,                             // 86
-  kProxyGetTpmStatus,                               // 87
-  kProxyGetEndorsementInfo,                         // 88
-  kProxyInitializeCastKey,                          // 89
-  kProxyStartFingerprintAuthSession,                // 90
-  kProxyEndFingerprintAuthSession,                  // 91
-  kProxyGetWebAuthnSecret,                          // 92
-  kProxyGetFirmwareManagementParameters,            // 93
-  kProxySetFirmwareManagementParameters,            // 94
-  kProxyRemoveFirmwareManagementParameters,         // 95
-  kProxyMigrateToDircrypto,                         // 96
-  kProxyNeedsDircryptoMigration,                    // 97
-  kProxyGetSupportedKeyPolicies,                    // 98
-  kProxyIsQuotaSupported,                           // 99
-  kProxyGetCurrentSpaceForUid,                      // 100
-  kProxyGetCurrentSpaceForGid,                      // 101
-  kProxyGetCurrentSpaceForProjectId,                // 102
-  kProxySetProjectId,                               // 103
-  kProxyLockToSingleUserMountUntilReboot,           // 104
-  kProxyGetRsuDeviceId,                             // 105
-  kProxyCheckHealth,                                // 106
-  kProxyStartAuthSession,                           // 107
-  kProxyAuthenticateAuthSession,                    // 108
-  kProxyAddCredentials,                             // 109
-  kMaxValue                                         // 110
+  kGetBootAttribute = 1,
+  kSetBootAttribute = 2,
+  kFlushAndSignBootAttributes = 3,
+  kSignBootLockbox = 4,
+  kVerifyBootLockbox = 5,
+  kFinalizeBootLockbox = 6,
+  kTpmIsBeingOwned = 7,
+  kProxyIsMounted = 8,
+  kProxyIsMountedForUser = 9,
+  kProxyListKeysEx = 10,
+  kProxyCheckKeyEx = 11,
+  kProxyRemoveKeyEx = 12,
+  kProxyMassRemoveKeys = 13,
+  kProxyGetKeyDataEx = 14,
+  kProxyMigrateKeyEx = 15,
+  kProxyAddKeyEx = 16,
+  kProxyAddDataRestoreKey = 17,
+  kProxyRemoveEx = 18,
+  kProxyGetSystemSalt = 19,
+  kProxyGetSanitizedUsername = 20,
+  kProxyMountEx = 21,
+  kProxyMountGuestEx = 22,
+  kProxyRenameCryptohome = 23,
+  kProxyGetAccountDiskUsage = 24,
+  kProxyUnmountEx = 25,
+  kProxyUpdateCurrentUserActivityTimestamp = 26,
+  kProxyTpmIsReady = 27,
+  kProxyTpmIsEnabled = 28,
+  kProxyTpmGetPassword = 29,
+  kProxyTpmIsOwned = 30,
+  kProxyTpmIsBeingOwned = 31,
+  kProxyTpmCanAttemptOwnership = 32,
+  kProxyTpmClearStoredPassword = 33,
+  kProxyTpmIsAttestationPrepared = 34,
+  kProxyTpmAttestationGetEnrollmentPreparationsEx = 35,
+  kProxyTpmVerifyAttestationData = 36,
+  kProxyTpmVerifyEK = 37,
+  kProxyTpmAttestationCreateEnrollRequest = 38,
+  kProxyAsyncTpmAttestationCreateEnrollRequest = 39,
+  kProxyTpmAttestationEnroll = 40,
+  kProxyAsyncTpmAttestationEnroll = 41,
+  kProxyTpmAttestationEnrollEx = 42,
+  kProxyAsyncTpmAttestationEnrollEx = 43,
+  kProxyTpmAttestationCreateCertRequest = 44,
+  kProxyAsyncTpmAttestationCreateCertRequest = 45,
+  kProxyTpmAttestationFinishCertRequest = 46,
+  kProxyAsyncTpmAttestationFinishCertRequest = 47,
+  kProxyTpmAttestationGetCertificateEx = 48,
+  kProxyAsyncTpmAttestationGetCertificateEx = 49,
+  kProxyTpmIsAttestationEnrolled = 50,
+  kProxyTpmAttestationDoesKeyExist = 51,
+  kProxyTpmAttestationGetCertificate = 52,
+  kProxyTpmAttestationGetPublicKey = 53,
+  kProxyTpmAttestationGetEnrollmentId = 54,
+  kProxyTpmAttestationRegisterKey = 55,
+  kProxyTpmAttestationSignEnterpriseChallenge = 56,
+  kProxyTpmAttestationSignEnterpriseVaChallenge = 57,
+  kProxyTpmAttestationSignEnterpriseVaChallengeV2 = 58,
+  kProxyTpmAttestationSignSimpleChallenge = 59,
+  kProxyTpmAttestationGetKeyPayload = 60,
+  kProxyTpmAttestationSetKeyPayload = 61,
+  kProxyTpmAttestationDeleteKeys = 62,
+  kProxyTpmAttestationDeleteKey = 63,
+  kProxyTpmAttestationGetEK = 64,
+  kProxyTpmAttestationResetIdentity = 65,
+  kProxyTpmGetVersionStructured = 66,
+  kProxyPkcs11IsTpmTokenReady = 67,
+  kProxyPkcs11GetTpmTokenInfo = 68,
+  kProxyPkcs11GetTpmTokenInfoForUser = 69,
+  kProxyPkcs11Terminate = 70,
+  kProxyGetStatusString = 71,
+  kProxyInstallAttributesGet = 72,
+  kProxyInstallAttributesSet = 73,
+  kProxyInstallAttributesCount = 74,
+  kProxyInstallAttributesFinalize = 75,
+  kProxyInstallAttributesIsReady = 76,
+  kProxyInstallAttributesIsSecure = 77,
+  kProxyInstallAttributesIsInvalid = 78,
+  kProxyInstallAttributesIsFirstInstall = 79,
+  kProxySignBootLockbox = 80,
+  kProxyVerifyBootLockbox = 81,
+  kProxyFinalizeBootLockbox = 82,
+  kProxyGetBootAttribute = 83,
+  kProxySetBootAttribute = 84,
+  kProxyFlushAndSignBootAttributes = 85,
+  kProxyGetLoginStatus = 86,
+  kProxyGetTpmStatus = 87,
+  kProxyGetEndorsementInfo = 88,
+  kProxyInitializeCastKey = 89,
+  kProxyStartFingerprintAuthSession = 90,
+  kProxyEndFingerprintAuthSession = 91,
+  kProxyGetWebAuthnSecret = 92,
+  kProxyGetFirmwareManagementParameters = 93,
+  kProxySetFirmwareManagementParameters = 94,
+  kProxyRemoveFirmwareManagementParameters = 95,
+  kProxyMigrateToDircrypto = 96,
+  kProxyNeedsDircryptoMigration = 97,
+  kProxyGetSupportedKeyPolicies = 98,
+  kProxyIsQuotaSupported = 99,
+  kProxyGetCurrentSpaceForUid = 100,
+  kProxyGetCurrentSpaceForGid = 101,
+  kProxyGetCurrentSpaceForProjectId = 102,
+  kProxySetProjectId = 103,
+  kProxyLockToSingleUserMountUntilReboot = 104,
+  kProxyGetRsuDeviceId = 105,
+  kProxyCheckHealth = 106,
+  kProxyStartAuthSession = 107,
+  kProxyAuthenticateAuthSession = 108,
+  kProxyAddCredentials = 109,
+  kMaxValue
 };
 
 // List of the possible results of attempting a mount operation using the
 // out-of-process mount helper.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class OOPMountOperationResult {
   kSuccess = 0,
   kFailedToStart = 1,
@@ -377,6 +383,8 @@ enum class OOPMountOperationResult {
 
 // List of the possible results of attempting an unmount/mount clean-up
 // using the out-of-process mount helper.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class OOPMountCleanupResult {
   kSuccess = 0,
   kFailedToPoke = 1,
@@ -387,6 +395,8 @@ enum class OOPMountCleanupResult {
 
 // List of generic results of attestation-related operations. These entries
 // should not be renumbered and numeric values should never be reused.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class AttestationOpsStatus {
   kSuccess = 0,
   kFailure = 1,
@@ -396,6 +406,8 @@ enum class AttestationOpsStatus {
 
 // List of all the possible auth block types. Used to construct the correct
 // histogram while logging to UMA.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class AuthBlockType {
   kPinWeaver = 0,
   kChallengeCredential = 1,
