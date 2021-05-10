@@ -71,6 +71,8 @@ void PrintUsage() {
   puts("  --sess_* - group of options providing parameters for auth session:");
   puts("      --sess_salted");
   puts("      --sess_encrypted");
+  puts("  --index_name --index=<N> - print the name of NV index N in hex");
+  puts("                             format.");
   puts("  --ext_command_test - Runs regression tests on extended commands.");
 }
 
@@ -428,6 +430,21 @@ int KeyTestShortEcc(const TrunksFactory& factory, uint32_t handle) {
   return 0;
 }
 
+int PrintIndexNameInHex(const TrunksFactory& factory, int index) {
+  // Mask out the nv index handle so the user can either add or not add it
+  // themselves.
+  index &= trunks::HR_HANDLE_MASK;
+  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
+  std::string name;
+  trunks::TPM_RC rc = tpm_utility->GetNVSpaceName(index, &name);
+  if (rc != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting NV index name: " << trunks::GetErrorString(rc);
+    return -1;
+  }
+  printf("NV Index name: %s\n", HexEncode(name).c_str());
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -709,6 +726,11 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch("key_test_short_ecc") && cl->HasSwitch("handle")) {
     uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
     return KeyTestShortEcc(factory, handle);
+  }
+  if (cl->HasSwitch("index_name") && cl->HasSwitch("index")) {
+    uint32_t nv_index =
+        std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 16);
+    return PrintIndexNameInHex(factory, nv_index);
   }
 
   puts("Invalid options!");
