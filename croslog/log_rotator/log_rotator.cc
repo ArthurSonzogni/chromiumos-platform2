@@ -131,6 +131,7 @@ void LogRotator::CreateNewBaseFile(int max_index) {
   int mode = -1;
   uid_t uid = 0;
   gid_t gid = 0;
+  bool failed_on_stat = false;
   // Traverse the log files from newer one, and retrieve the file info.
   for (int i = 1; i < max_index; ++i) {
     const base::FilePath previous_file_path = GetFilePathWithIndex(i);
@@ -144,12 +145,19 @@ void LogRotator::CreateNewBaseFile(int max_index) {
       uid = file_info.st_uid;
       gid = file_info.st_gid;
       break;
+    } else {
+      PLOG(ERROR) << "Error on retrieving the file info: "
+                  << previous_file_path;
+      failed_on_stat = true;
     }
   }
 
   if (mode == -1) {
-    LOG(ERROR) << "Error on retriving the file info from old log files. New "
-                  "files are not created automatically.";
+    if (failed_on_stat) {
+      // Show an error only when the stat was called but failed.
+      LOG(ERROR) << "A new log file won't be created, because retrieving the "
+                    "mode from the all old files was failed.";
+    }
     return;
   }
 
