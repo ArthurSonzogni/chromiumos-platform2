@@ -20,6 +20,21 @@
 #include <shill/dbus-constants.h>
 
 namespace dns_proxy {
+namespace {
+// The DoH provider URLs that come from Chrome may be URI templates instead.
+// Per https://datatracker.ietf.org/doc/html/rfc8484#section-4.1 these will
+// include the {?dns} parameter template for GET requests. These can be safely
+// removed since any compliant server must support both GET and POST requests
+// and this services only uses POST.
+constexpr char kDNSParamTemplate[] = "{?dns}";
+std::string TrimParamTemplate(const std::string& url) {
+  const size_t pos = url.find(kDNSParamTemplate);
+  if (pos == std::string::npos) {
+    return url;
+  }
+  return url.substr(0, pos);
+}
+}  // namespace
 
 constexpr base::TimeDelta kShillPropertyAttemptDelay =
     base::TimeDelta::FromMilliseconds(200);
@@ -446,7 +461,7 @@ void Proxy::DoHConfig::set_providers(
     // no nameservers.
     const auto nameservers = value.TryGet<std::string>("");
     if (nameservers.empty()) {
-      secure_providers_.insert(endpoint);
+      secure_providers_.insert(TrimParamTemplate(endpoint));
       continue;
     }
 
@@ -455,7 +470,7 @@ void Proxy::DoHConfig::set_providers(
     for (const auto& ns :
          base::SplitString(nameservers, ",", base::TRIM_WHITESPACE,
                            base::SPLIT_WANT_NONEMPTY)) {
-      auto_providers_[ns] = endpoint;
+      auto_providers_[ns] = TrimParamTemplate(endpoint);
     }
   }
 

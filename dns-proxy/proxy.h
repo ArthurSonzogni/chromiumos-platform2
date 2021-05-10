@@ -148,6 +148,8 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, BasicDoHDisable);
   FRIEND_TEST(ProxyTest, BasicDoHAlwaysOn);
   FRIEND_TEST(ProxyTest, BasicDoHAutomatic);
+  FRIEND_TEST(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn);
+  FRIEND_TEST(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic);
   FRIEND_TEST(ProxyTest, NewResolverConfiguredWhenSet);
   FRIEND_TEST(ProxyTest, DoHModeChangingFixedNameServers);
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAlwaysOnMode);

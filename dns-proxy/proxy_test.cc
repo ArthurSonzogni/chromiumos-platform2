@@ -603,6 +603,44 @@ TEST_F(ProxyTest, BasicDoHAutomatic) {
   proxy.OnDoHProvidersChanged(props);
 }
 
+TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), true));
+  brillo::VariantDictionary props;
+  props["https://dns.google.com{?dns}"] = std::string("");
+  proxy.OnDoHProvidersChanged(props);
+}
+
+TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  shill::Client::IPConfig ipconfig;
+  ipconfig.ipv4_dns_addresses = {"8.8.4.4"};
+  proxy.UpdateNameServers(ipconfig);
+
+  EXPECT_CALL(
+      *mock_resolver,
+      SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), false));
+  brillo::VariantDictionary props;
+  props["https://dns.google.com{?dns}"] = std::string("8.8.8.8, 8.8.4.4");
+  proxy.OnDoHProvidersChanged(props);
+}
+
 TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient());
