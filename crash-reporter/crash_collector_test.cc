@@ -869,6 +869,7 @@ TEST_F(CrashCollectorTest, CheckHasCapacityStrangeNames) {
 struct MetaDataTest {
   std::string test_case_name;
   bool test_in_prog = false;
+  bool add_variations = false;
   std::string exec_name = "kernel";
   base::Optional<bool> enterprise_enrolled = false;
   std::string expected_meta;
@@ -882,6 +883,20 @@ class CrashCollectorParameterizedTest
   static constexpr char kKernelName[] = "Linux";
   static constexpr char kKernelVersion[] =
       "3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018";
+  static constexpr int kNumExperiments = 17;
+  static constexpr char kVariations[] =
+      "3ac60855-486e2a9c,63dcb6a3-f774aad2,"
+      "e706e746-e4cdf2fd,f296190c-4c073154,4442aae2-4ad60575,f690cf64-75cb33fc,"
+      "ed1d377-e1cc0f14,75f0f0a0-e1cc0f14,e2b18481-7158671e,e7e71889-e1cc0f14,"
+      "31f573d2-ca7d8d80,c559031-3d47f4f4,9a38bae3-3d47f4f4,6f3a6be-3d47f4f4,"
+      "e43d4487-3d47f4f4,c1405ec8-fb0c8ff1,dab0c6bc-3f4a17df,";
+  static constexpr char kVariationsFile[] =
+      "num-experiments=17\n"
+      "variations=3ac60855-486e2a9c,63dcb6a3-f774aad2,"
+      "e706e746-e4cdf2fd,f296190c-4c073154,4442aae2-4ad60575,f690cf64-75cb33fc,"
+      "ed1d377-e1cc0f14,75f0f0a0-e1cc0f14,e2b18481-7158671e,e7e71889-e1cc0f14,"
+      "31f573d2-ca7d8d80,c559031-3d47f4f4,9a38bae3-3d47f4f4,6f3a6be-3d47f4f4,"
+      "e43d4487-3d47f4f4,c1405ec8-fb0c8ff1,dab0c6bc-3f4a17df,\n";
   // Returns the time we want to use for the OS timestamp. Returns the
   // same value (May 3, 2020 -- basically arbitrary) every time it is run, but
   // base::Time doesn't support constexpr.
@@ -914,6 +929,12 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
         test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
                                            paths::kInProgressTestName),
                               "some.Test"));
+  }
+
+  if (test_case.add_variations) {
+    ASSERT_TRUE(test_util::CreateFile(
+        paths::GetAt(paths::kFallbackToHomeDir, paths::kVariationsListFile),
+        kVariationsFile));
   }
 
   const char kMetaFileBasename[] = "generated.meta";
@@ -1015,6 +1036,36 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
 
+  MetaDataTest variations;
+  variations.test_case_name = "Variations";
+  variations.add_variations = true;
+  variations.expected_meta = StringPrintf(
+      "upload_var_collector=mock\n"
+      "foo=bar\n"
+      "weird__key___=weird\\nvalue\n"
+      "upload_var_variations=%s\n"
+      "upload_var_num-experiments=%d\n"
+      "upload_var_channel=test\n"
+      "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_reportTimeMillis=%" PRId64
+      "\n"
+      "exec_name=kernel\n"
+      "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
+      "upload_var_cros_milestone=82\n"
+      "os_millis=%" PRId64
+      "\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
+      "payload=%s\n"
+      "done=1\n",
+      CrashCollectorParameterizedTest::kVariations,
+      CrashCollectorParameterizedTest::kNumExperiments, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      CrashCollectorParameterizedTest::kKernelName,
+      CrashCollectorParameterizedTest::kKernelVersion,
+      CrashCollectorParameterizedTest::kPayloadName);
+
   MetaDataTest no_exec_name;
   no_exec_name.test_case_name = "No_exec_name";
   no_exec_name.exec_name = "";
@@ -1091,8 +1142,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
 
-  return {base, test_in_progress, no_exec_name, enterprise_enrolled,
-          device_policy_not_loaded};
+  return {base,         test_in_progress,    variations,
+          no_exec_name, enterprise_enrolled, device_policy_not_loaded};
 }
 
 INSTANTIATE_TEST_SUITE_P(CrashCollectorInstantiation,

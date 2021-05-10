@@ -455,6 +455,9 @@ class CrashCollector {
   static bool ParseProcessTicksFromStat(base::StringPiece stat,
                                         uint64_t* ticks);
 
+  // Adds variations (experiment IDs) to crash reports. Returns true on success.
+  bool AddVariations();
+
   // Should reports always be stored in the user crash directory, or can they be
   // stored in the system directory if we are not running as "chronos"?
   const CrashDirectorySelectionMethod crash_directory_selection_method_;

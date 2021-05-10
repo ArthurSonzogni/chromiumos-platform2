@@ -348,7 +348,7 @@ bool GetCachedKeyValueDefault(const base::FilePath& base_name,
   return GetCachedKeyValue(base_name, key, kDirectories, value);
 }
 
-bool GetUserCrashDirectories(
+bool GetUserHomeDirectories(
     org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
     std::vector<base::FilePath>* directories) {
   brillo::ErrorPtr error;
@@ -363,10 +363,23 @@ bool GetUserCrashDirectories(
   }
 
   for (const auto& iter : sessions) {
-    directories->push_back(
-        paths::Get(brillo::cryptohome::home::GetHashedUserPath(iter.second)
-                       .Append("crash")
-                       .value()));
+    directories->push_back(paths::Get(
+        brillo::cryptohome::home::GetHashedUserPath(iter.second).value()));
+  }
+
+  return true;
+}
+
+bool GetUserCrashDirectories(
+    org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
+    std::vector<base::FilePath>* directories) {
+  std::vector<base::FilePath> home_directories;
+  if (!GetUserHomeDirectories(session_manager_proxy, &home_directories)) {
+    return false;
+  }
+
+  for (const auto& iter : home_directories) {
+    directories->push_back(iter.Append("crash"));
   }
 
   return true;
