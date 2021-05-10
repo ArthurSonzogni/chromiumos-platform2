@@ -25,15 +25,16 @@ class FakeDev : public DevInterface {
   // Device interface
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
-  // Flags for controlling behaviour.
-  enum Flags {
+  // Flags for controlling behaviour. Multiple flags can be set,
+  // controlling how the fake responds under test conditions.
+  enum Flags : uint32_t {
     kNone = 0,
-    kBootFault = 1 << 0,
-    kApplNotVerified = 1 << 1,
-    kSpiNotVerified = 1 << 2,
-    kWpOff = 1 << 3,
-    kMemFail = 1 << 4,
-    kSkipBoot = 1 << 5,
+    kBootFault = 1u << 0,
+    kApplNotVerified = 1u << 1,
+    kSpiNotVerified = 1u << 2,
+    kWpOff = 1u << 3,
+    kMemFail = 1u << 4,
+    kSkipBoot = 1u << 5,
   };
   void Start(enum Flags flags);
   // TODO(amcrae): Add an interface to retrieve memory data written
