@@ -94,6 +94,12 @@ bool GetCachedKeyValueDefault(const base::FilePath& base_name,
                               const std::string& key,
                               std::string* value);
 
+// Get the user home directories via D-Bus using |session_manager_proxy|.
+// Returns true on success.
+bool GetUserHomeDirectories(
+    org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
+    std::vector<base::FilePath>* directories);
+
 // Gets the user crash directories via D-Bus using |session_manager_proxy|.
 // Returns true on success.
 bool GetUserCrashDirectories(

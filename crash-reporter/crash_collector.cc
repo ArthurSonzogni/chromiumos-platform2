@@ -61,6 +61,12 @@ const char kCollectorNameKey[] = "collector";
 const char kCrashLoopModeKey[] = "crash_loop_mode";
 const char kEarlyCrashKey[] = "is_early_boot";
 const char kChannelKey[] = "channel";
+// These should be kept in sync with variations::kNumExperimentsKey and
+// variations::kExperimentListKey in the chromium repo.
+const char kVariationsKey[] = "variations";
+const char kNumExperimentsKey[] = "num-experiments";
+// Arbitrarily say we won't accept more than 1MiB for the variations file
+const int64_t kArbitraryMaxVariationsSize = 1 << 20;
 
 // Key of the lsb-release entry containing the OS version.
 const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
@@ -313,6 +319,50 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
   return true;
 }
 
+bool CarefullyReadFileToStringWithMaxSize(const base::FilePath& path,
+                                          int64_t max_size,
+                                          std::string* contents) {
+  const FilePath parent_dir = path.DirName();
+  const FilePath file = path.BaseName();
+
+  int parentfd;
+  if (!ValidatePathAndOpen(parent_dir, &parentfd)) {
+    LOG(ERROR) << "Failed to open parent dir ";
+    return false;
+  }
+  base::ScopedFD scoped_parentfd(parentfd);
+  int fd = openat(parentfd, file.value().c_str(), O_CLOEXEC | O_NOFOLLOW);
+  if (fd < 0) {
+    PLOG(ERROR) << "Failed to open " << file.value();
+    return false;
+  }
+
+  base::File f(fd);
+  base::File::Info info;
+  if (!f.GetInfo(&info)) {
+    LOG(ERROR) << "Failed to get file info: "
+               << base::File::ErrorToString(f.GetLastFileError());
+    return false;
+  }
+  int64_t size = info.size;
+  if (size > max_size) {
+    LOG(ERROR) << path.value() << " is too large (" << size
+               << " bytes, wanted at most " << max_size << ")";
+    return false;
+  }
+
+  std::vector<uint8_t> data(size);
+  // Then, read the file in to memory.
+  if (!f.ReadAtCurrentPosAndCheck(data)) {
+    LOG(ERROR) << "Failed to read variant file: "
+               << base::File::ErrorToString(f.GetLastFileError());
+    return false;
+  }
+  contents->append(data.begin(), data.end());
+
+  return true;
+}
+
 CrashCollector::CrashCollector(const std::string& collector_name,
                                const std::string& tag)
     : CrashCollector(collector_name,
@@ -360,20 +410,27 @@ void CrashCollector::Initialize(bool early) {
   }
 }
 
-void CrashCollector::SetUpDBus() {
+bool CrashCollector::TrySetUpDBus() {
   if (bus_)
-    return;
+    return true;
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
   bus_ = new dbus::Bus(options);
-  CHECK(bus_->Connect());
+  if (!bus_->Connect()) {
+    return false;
+  }
 
   session_manager_proxy_.reset(
       new org::chromium::SessionManagerInterfaceProxy(bus_));
 
   debugd_proxy_.reset(new org::chromium::debugdProxy(bus_));
+  return true;
+}
+
+void CrashCollector::SetUpDBus() {
+  CHECK(TrySetUpDBus());
 }
 
 bool CrashCollector::InMemoryFileExists(const base::FilePath& filename) const {
@@ -1297,6 +1354,10 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
 
   LOG(INFO) << "Finishing crash. Meta file: " << meta_path.value();
 
+  if (!AddVariations()) {
+    LOG(ERROR) << "Failed to add variations to report";
+  }
+
   const std::string product_version = GetProductVersion();
   std::string product_version_info =
       StringPrintf("ver=%s\n", product_version.c_str());
@@ -1500,6 +1561,61 @@ bool CrashCollector::ParseProcessTicksFromStat(base::StringPiece stat,
   constexpr size_t kStartTimePos = 19;
   return fields.size() > kStartTimePos &&
          base::StringToUint64(fields[kStartTimePos], ticks);
+}
+
+bool CrashCollector::AddVariations() {
+  std::vector<FilePath> directories;
+  if (extra_metadata_.find(kVariationsKey) != std::string::npos) {
+    // Don't add variations a second time if something (e.g. chrome) already
+    // did.
+    return true;
+  }
+
+  FilePath home_directory;
+  // In this multiprofile world, there is no one-specific user dir anymore.
+  // Ask the session manager for the active ones, then just run with the
+  // first result we get back.
+  if (!TrySetUpDBus() || !session_manager_proxy_ ||
+      !util::GetUserHomeDirectories(session_manager_proxy_.get(),
+                                    &directories) ||
+      directories.empty()) {
+    LOG(ERROR) << "Could not get user home directories, using default.";
+    home_directory = paths::Get(paths::kFallbackToHomeDir);
+  } else {
+    home_directory = directories[0];
+  }
+
+  std::string contents;
+  // TODO(mutexlox): When anomaly-detector invokes crash_reporter it cannot read
+  // this file as it's in the user's home dir. Get the info to anomaly-detector
+  // some other way.
+  base::FilePath to_read = home_directory.Append(paths::kVariationsListFile);
+  if (!CarefullyReadFileToStringWithMaxSize(
+          to_read, kArbitraryMaxVariationsSize, &contents)) {
+    LOG(ERROR) << "Couldn't read " << to_read.value();
+    return false;
+  }
+  // Validate the variations file in case a user overwrote it.
+  brillo::KeyValueStore variant_store;
+  if (!variant_store.LoadFromString(contents)) {
+    LOG(ERROR) << "Failed to load contents " << contents;
+    return false;
+  }
+  std::string num_exp;
+  if (!variant_store.GetString(kNumExperimentsKey, &num_exp)) {
+    LOG(ERROR) << "Failed to get value for " << kNumExperimentsKey
+               << " from contents " << contents;
+    return false;
+  }
+  std::string variations;
+  if (!variant_store.GetString(kVariationsKey, &variations)) {
+    LOG(ERROR) << "Failed to get value for " << kVariationsKey
+               << " from contents " << contents;
+    return false;
+  }
+  AddCrashMetaUploadData(kVariationsKey, variations);
+  AddCrashMetaUploadData(kNumExperimentsKey, num_exp);
+  return true;
 }
 
 void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,

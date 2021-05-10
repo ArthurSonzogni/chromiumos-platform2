@@ -121,6 +121,14 @@ constexpr char kClientId[] = "client_id";
 // Crash sender lock in case the sender is already running.
 constexpr char kCrashSenderLockFile[] = "/run/lock/crash_sender";
 
+// Location in the home dir (or fallback home dir) where experiment IDs are
+// written.
+constexpr char kVariationsListFile[] = ".variations-list.txt";
+
+// Fallback directory to the home dir, where we write variant-list if no one's
+// logged in.
+constexpr char kFallbackToHomeDir[] = "/home/chronos";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

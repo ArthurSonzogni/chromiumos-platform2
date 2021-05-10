@@ -243,7 +243,9 @@ class CrashCollector {
   // UID for root account.
   static const uid_t kRootUid;
 
-  // Set up D-Bus.
+  // Try to set up D-Bus, returning true on success and false on failure.
+  virtual bool TrySetUpDBus();
+  // Set up D-Bus, CHECK-failing on failure.
   virtual void SetUpDBus();
 
   // Creates a new file and returns a file descriptor to it.
@@ -454,6 +456,9 @@ class CrashCollector {
  private:
   static bool ParseProcessTicksFromStat(base::StringPiece stat,
                                         uint64_t* ticks);
+
+  // Adds variations (experiment IDs) to crash reports. Returns true on success.
+  bool AddVariations();
 
   // Should reports always be stored in the user crash directory, or can they be
   // stored in the system directory if we are not running as "chronos"?
