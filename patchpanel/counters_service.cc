@@ -37,13 +37,17 @@ constexpr LazyRE2 kChainLine = {R"(Chain (rx|tx)_(\w+).*)"};
 
 // The counter line for a defined source looks like (some spaces are deleted to
 // make it fit in one line):
-// " 5374 6172 RETURN all -- any any anywhere anywhere mark match 0x2000/0x3f00"
+// " 5374 6172 RETURN all -- * * 0.0.0.0/0 0.0.0.0/0 mark match 0x2000/0x3f00"
+// for IPv4.
+// " 5374 6172 RETURN all -- * * ::/0 ::/0 mark match 0x2000/0x3f00" for IPv6.
 // The final counter line for catching untagged traffic looks like:
-// " 5374 6172 all -- any any anywhere anywhere"
+// " 5374 6172 all -- * * 0.0.0.0/0 0.0.0.0/0" for IPv4.
+// " 5374 6172 all -- * * ::/0 ::/0" for IPv6.
 // The first two counters are captured for pkts and bytes. For lines with a mark
 // matcher, the source is also captured.
 constexpr LazyRE2 kCounterLine = {R"( *(\d+) +(\d+).*mark match (.*)/0x3f00)"};
-constexpr LazyRE2 kFinalCounterLine = {R"( *(\d+) +(\d+).*anywhere\s*)"};
+constexpr LazyRE2 kFinalCounterLine = {
+    R"( *(\d+) +(\d+).*(0.0.0.0/0|::/0)\s*)"};
 
 bool MatchCounterLine(const std::string& line,
                       uint64_t* pkts,
@@ -157,7 +161,7 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
   // Handles counters for IPv4 and IPv6 separately and returns failure if either
   // of the procession fails, since counters for only IPv4 or IPv6 are biased.
   std::string iptables_result;
-  int ret = runner_->iptables(kMangleTable, {"-L", "-x", "-v", "-w"},
+  int ret = runner_->iptables(kMangleTable, {"-L", "-x", "-v", "-n", "-w"},
                               true /*log_failures*/, &iptables_result);
   if (ret != 0 || iptables_result.empty()) {
     LOG(ERROR) << "Failed to query IPv4 counters";
@@ -169,7 +173,7 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
   }
 
   std::string ip6tables_result;
-  ret = runner_->ip6tables(kMangleTable, {"-L", "-x", "-v", "-w"},
+  ret = runner_->ip6tables(kMangleTable, {"-L", "-x", "-v", "-n", "-w"},
                            true /*log_failures*/, &ip6tables_result);
   if (ret != 0 || ip6tables_result.empty()) {
     LOG(ERROR) << "Failed to query IPv6 counters";

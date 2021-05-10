@@ -63,89 +63,172 @@ bool operator==(const CountersService::Counter lhs,
 
 namespace {
 // The following string is copied from the real output of iptables v1.6.2 by
-// `iptables -t mangle -L -x -v`. This output contains all the accounting
+// `iptables -t mangle -L -x -v -n`. This output contains all the accounting
 // chains/rules for eth0 and wlan0.
 const char kIptablesOutput[] = R"(
 Chain PREROUTING (policy ACCEPT 22785 packets, 136093545 bytes)
     pkts      bytes target     prot opt in     out     source               destination
-      18     2196 MARK       all  --  arcbr0 any     anywhere             anywhere             MARK set 0x1
-       0        0 MARK       all  --  vmtap+ any     anywhere             anywhere             MARK set 0x1
-    6526 68051766 MARK       all  --  arc_eth0 any     anywhere             anywhere             MARK set 0x1
-       9     1104 MARK       all  --  arc_wlan0 any     anywhere             anywhere             MARK set 0x1
+      18     2196 MARK       all  --  arcbr0 *     0.0.0.0/0             0.0.0.0/0             MARK set 0x1
+       0        0 MARK       all  --  vmtap+ *     0.0.0.0/0             0.0.0.0/0             MARK set 0x1
+    6526 68051766 MARK       all  --  arc_eth0 *     0.0.0.0/0             0.0.0.0/0             MARK set 0x1
+       9     1104 MARK       all  --  arc_wlan0 *     0.0.0.0/0             0.0.0.0/0             MARK set 0x1
 
 Chain INPUT (policy ACCEPT 4421 packets, 2461233 bytes)
     pkts      bytes target     prot opt in     out     source               destination
-  312491 1767147156 rx_eth0  all  --  eth0   any     anywhere             anywhere
-       0        0 rx_wlan0  all  --  wlan0  any     anywhere             anywhere
+  312491 1767147156 rx_eth0  all  --  eth0   *     0.0.0.0/0             0.0.0.0/0
+       0        0 rx_wlan0  all  --  wlan0  *     0.0.0.0/0             0.0.0.0/0
 
 Chain FORWARD (policy ACCEPT 18194 packets, 133612816 bytes)
     pkts      bytes target     prot opt in     out     source               destination
-    6511 68041668 tx_eth0  all  --  any    eth0    anywhere             anywhere
-   11683 65571148 rx_eth0  all  --  eth0   any     anywhere             anywhere
+    6511 68041668 tx_eth0  all  --  *    eth0    0.0.0.0/0             0.0.0.0/0
+   11683 65571148 rx_eth0  all  --  eth0   *     0.0.0.0/0             0.0.0.0/0
 
 Chain OUTPUT (policy ACCEPT 4574 packets, 2900995 bytes)
     pkts      bytes target     prot opt in     out     source               destination
 
 Chain POSTROUTING (policy ACCEPT 22811 packets, 136518827 bytes)
     pkts      bytes target     prot opt in     out     source               destination
-  202160 1807550291 tx_eth0  all  --  any    eth0    anywhere             anywhere             owner socket exists
-       2       96 tx_wlan0  all  --  any    wlan0   anywhere             anywhere             owner socket exists
+  202160 1807550291 tx_eth0  all  --  *    eth0    0.0.0.0/0             0.0.0.0/0             owner socket exists
+       2       96 tx_wlan0  all  --  *    wlan0   0.0.0.0/0             0.0.0.0/0             owner socket exists
 
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
-    1366   244427 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x100/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x200/0x3f00
-      20     1670 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x300/0x3f00
-     550   138402 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x400/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x500/0x3f00
-    5374   876172 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2000/0x3f00
-      39     2690 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2100/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2200/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2300/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2400/0x3f00
-       4      123            all  --  any    any     anywhere             anywhere            
+    1366   244427 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x100/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x200/0x3f00
+      20     1670 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x300/0x3f00
+     550   138402 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x500/0x3f00
+    5374   876172 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2000/0x3f00
+      39     2690 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2400/0x3f00
+       4      123            all  --  *    *     0.0.0.0/0             0.0.0.0/0
 
 Chain tx_wlan0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
-     310    57004 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x100/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x200/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x300/0x3f00
-      24     2801 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x400/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x500/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2000/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2100/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2200/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2300/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2400/0x3f00
-       0        0            all  --  any    any     anywhere             anywhere            
+     310    57004 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x100/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x200/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x300/0x3f00
+      24     2801 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x500/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2000/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2400/0x3f00
+       0        0            all  --  *    *     0.0.0.0/0             0.0.0.0/0
 
 Chain rx_eth0 (2 references)
  pkts bytes target     prot opt in     out     source               destination
-   73 11938 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x100/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x200/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x300/0x3f00
-    5   694 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x400/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x500/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2000/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2100/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2200/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2300/0x3f00
-    0     0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2400/0x3f00
-    6   345            all  --  any    any     anywhere             anywhere            
+   73 11938 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x100/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x200/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x300/0x3f00
+    5   694 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x400/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x500/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2000/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2100/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2200/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2300/0x3f00
+    0     0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2400/0x3f00
+    6   345            all  --  *    *     0.0.0.0/0             0.0.0.0/0
 
 Chain rx_wlan0 (2 references)
     pkts      bytes target     prot opt in     out     source               destination
-     153    28098 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x100/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x200/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x300/0x3f00
-       6      840 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x400/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x500/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2000/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2100/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2200/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2300/0x3f00
-       0        0 RETURN     all  --  any    any     anywhere             anywhere             mark match 0x2400/0x3f00
-       0        0            all  --  any    any     anywhere             anywhere            
+     153    28098 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x100/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x200/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x300/0x3f00
+       6      840 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x500/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2000/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *    *     0.0.0.0/0             0.0.0.0/0             mark match 0x2400/0x3f00
+       0        0            all  --  *    *     0.0.0.0/0             0.0.0.0/0
+)";
+
+const char kIp6tablesOutput[] = R"(
+Chain PREROUTING (policy ACCEPT 22785 packets, 136093545 bytes)
+    pkts      bytes target     prot opt in     out     source               destination
+      18     2196 MARK       all  --  arcbr0 *     ::/0             ::/0             MARK set 0x1
+       0        0 MARK       all  --  vmtap+ *     ::/0             ::/0             MARK set 0x1
+    6526 68051766 MARK       all  --  arc_eth0 *     ::/0             ::/0             MARK set 0x1
+       9     1104 MARK       all  --  arc_wlan0 *     ::/0             ::/0             MARK set 0x1
+
+Chain INPUT (policy ACCEPT 4421 packets, 2461233 bytes)
+    pkts      bytes target     prot opt in     out     source               destination
+  312491 1767147156 rx_eth0  all  --  eth0   *     ::/0             ::/0
+       0        0 rx_wlan0  all  --  wlan0  *     ::/0             ::/0
+
+Chain FORWARD (policy ACCEPT 18194 packets, 133612816 bytes)
+    pkts      bytes target     prot opt in     out     source               destination
+    6511 68041668 tx_eth0  all  --  *    eth0    ::/0             ::/0
+   11683 65571148 rx_eth0  all  --  eth0   *     ::/0             ::/0
+
+Chain OUTPUT (policy ACCEPT 4574 packets, 2900995 bytes)
+    pkts      bytes target     prot opt in     out     source               destination
+
+Chain POSTROUTING (policy ACCEPT 22811 packets, 136518827 bytes)
+    pkts      bytes target     prot opt in     out     source               destination
+  202160 1807550291 tx_eth0  all  --  *    eth0    ::/0             ::/0             owner socket exists
+       2       96 tx_wlan0  all  --  *    wlan0   ::/0             ::/0             owner socket exists
+
+Chain tx_eth0 (1 references)
+    pkts      bytes target     prot opt in     out     source               destination
+    1366   244427 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x100/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x200/0x3f00
+      20     1670 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x300/0x3f00
+     550   138402 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x500/0x3f00
+    5374   876172 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2000/0x3f00
+      39     2690 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2400/0x3f00
+       4      123            all  --  *    *     ::/0             ::/0
+
+Chain tx_wlan0 (1 references)
+    pkts      bytes target     prot opt in     out     source               destination
+     310    57004 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x100/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x200/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x300/0x3f00
+      24     2801 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x500/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2000/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2400/0x3f00
+       0        0            all  --  *    *     ::/0             ::/0
+
+Chain rx_eth0 (2 references)
+ pkts bytes target     prot opt in     out     source               destination
+   73 11938 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x100/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x200/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x300/0x3f00
+    5   694 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x400/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x500/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2000/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2100/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2200/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2300/0x3f00
+    0     0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2400/0x3f00
+    6   345            all  --  *    *     ::/0             ::/0
+
+Chain rx_wlan0 (2 references)
+    pkts      bytes target     prot opt in     out     source               destination
+     153    28098 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x100/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x200/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x300/0x3f00
+       6      840 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x400/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x500/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2000/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2100/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2200/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2300/0x3f00
+       0        0 RETURN     all  --  *    *     ::/0             ::/0             mark match 0x2400/0x3f00
+       0        0            all  --  *    *     ::/0             ::/0
 )";
 
 bool CompareCounters(std::map<CounterKey, Counter> expected,
@@ -419,7 +502,7 @@ TEST_F(CountersServiceTest, QueryTrafficCounters) {
   EXPECT_CALL(runner_, iptables(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>(kIptablesOutput), Return(0)));
   EXPECT_CALL(runner_, ip6tables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(kIptablesOutput), Return(0)));
+      .WillRepeatedly(DoAll(SetArgPointee<3>(kIp6tablesOutput), Return(0)));
 
   auto actual = counters_svc_->GetCounters({});
 
@@ -484,7 +567,7 @@ TEST_F(CountersServiceTest, QueryTrafficCountersWithFilter) {
   EXPECT_CALL(runner_, iptables(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>(kIptablesOutput), Return(0)));
   EXPECT_CALL(runner_, ip6tables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(kIptablesOutput), Return(0)));
+      .WillRepeatedly(DoAll(SetArgPointee<3>(kIp6tablesOutput), Return(0)));
 
   // Only counters for eth0 should be returned. eth1 should be ignored.
   auto actual = counters_svc_->GetCounters({"eth0", "eth1"});
@@ -538,13 +621,13 @@ TEST_F(CountersServiceTest, QueryTraffic_UnknownTrafficOnly) {
   const std::string unknown_ipv4_traffic_only = R"(
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
-    6511 68041668            all  --  any    any     anywhere             anywhere
+    6511 68041668            all  --  *    *     0.0.0.0/0             0.0.0.0/0
 )";
 
   const std::string unknown_ipv6_traffic_only = R"(
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
-    211 13456            all  --  any    any     anywhere             anywhere
+    211 13456            all  --  any    any     ::/0             ::/0
 )";
 
   EXPECT_CALL(runner_, iptables(_, _, _, _))
@@ -569,7 +652,7 @@ Chain tx_eth0 (1 references)
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithEmptyIPv4Output) {
-  TestBadIptablesOutput("", kIptablesOutput);
+  TestBadIptablesOutput("", kIp6tablesOutput);
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithEmptyIPv6Output) {
@@ -580,35 +663,35 @@ TEST_F(CountersServiceTest, QueryTrafficCountersWithOnlyChainName) {
   const std::string kBadOutput = R"(
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
-    6511 68041668 RETURN    all  --  any    any     anywhere             anywhere
+    6511 68041668 RETURN    all  --  *    *     0.0.0.0/0             0.0.0.0/0
 
 Chain tx_wlan0 (1 references)
 )";
-  TestBadIptablesOutput(kBadOutput, kIptablesOutput);
+  TestBadIptablesOutput(kBadOutput, kIp6tablesOutput);
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithOnlyChainNameAndHeader) {
   const std::string kBadOutput = R"(
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
-    6511 68041668 RETURN    all  --  any    any     anywhere             anywhere
+    6511 68041668 RETURN    all  --  *    *     0.0.0.0/0             0.0.0.0/0
 
 Chain tx_wlan0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
 )";
-  TestBadIptablesOutput(kBadOutput, kIptablesOutput);
+  TestBadIptablesOutput(kBadOutput, kIp6tablesOutput);
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithNotFinishedCountersLine) {
   const std::string kBadOutput = R"(
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
-    6511 68041668 RETURN    all  --  any    any     anywhere             anywhere
+    6511 68041668 RETURN    all  --  *    *     0.0.0.0/0             0.0.0.0/0
 
 Chain tx_wlan0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination    pkts      bytes target     prot opt in     out     source               destination
        0     )";
-  TestBadIptablesOutput(kBadOutput, kIptablesOutput);
+  TestBadIptablesOutput(kBadOutput, kIp6tablesOutput);
 }
 
 }  // namespace
