@@ -16,6 +16,7 @@
 #include "dns-proxy/doh_curl_client.h"
 
 using testing::_;
+using testing::ElementsAreArray;
 using testing::Return;
 
 namespace dns_proxy {
@@ -104,8 +105,8 @@ TEST_F(ResolverTest, Resolve_DNSServers) {
 
   resolver_->SetNameServers(kTestNameServers);
 
-  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
-  resolver_->Resolve(&sock_fd);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  resolver_->Resolve(sock_fd);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
@@ -115,8 +116,8 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
-  resolver_->Resolve(&sock_fd, true);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  resolver_->Resolve(sock_fd, true);
 }
 
 TEST_F(ResolverTest, CurlResult_CURLFail) {
@@ -126,10 +127,10 @@ TEST_F(ResolverTest, CurlResult_CURLFail) {
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res(CURLE_COULDNT_CONNECT, 0 /* http_code */,
                                 0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(&sock_fd), res, nullptr, 0);
+  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -140,9 +141,9 @@ TEST_F(ResolverTest, CurlResult_HTTPError) {
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res(CURLE_OK, 403 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(&sock_fd), res, nullptr, 0);
+  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
@@ -214,5 +215,55 @@ TEST_F(ResolverTest, HandleAresResult_Fail) {
   Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_DGRAM, 0);
   resolver_->HandleAresResult(static_cast<void*>(sock_fd), ARES_SUCCESS,
                               nullptr, 0);
+}
+
+TEST_F(ResolverTest, ConstructServFailResponse_ValidQuery) {
+  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                            '\x06', 'g',    'o',    'o',    'g',    'l',
+                            'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                            '\x00', '\x01', '\x00', '\x01'};
+  const char kServFailResponse[] = {
+      'J',    'G',    '\x80', '\x02', '\x00', '\x01', '\x00',
+      '\x00', '\x00', '\x00', '\x00', '\x00', '\x06', 'g',
+      'o',    'o',    'g',    'l',    'e',    '\x03', 'c',
+      'o',    'm',    '\x00', '\x00', '\x01', '\x00', '\x01'};
+  patchpanel::DnsResponse response =
+      resolver_->ConstructServFailResponse(kDnsQuery, sizeof(kDnsQuery));
+  std::vector<char> response_data(
+      response.io_buffer()->data(),
+      response.io_buffer()->data() + response.io_buffer_size());
+  EXPECT_THAT(response_data, ElementsAreArray(kServFailResponse));
+}
+
+TEST_F(ResolverTest, ConstructServFailResponse_BadLength) {
+  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                            '\x06', 'g',    'o',    'o',    'g',    'l',
+                            'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                            '\x00', '\x01', '\x00', '\x01'};
+  const char kServFailResponse[] = {'\x00', '\x00', '\x80', '\x02',
+                                    '\x00', '\x00', '\x00', '\x00',
+                                    '\x00', '\x00', '\x00', '\x00'};
+  patchpanel::DnsResponse response =
+      resolver_->ConstructServFailResponse(kDnsQuery, -1);
+  std::vector<char> response_data(
+      response.io_buffer()->data(),
+      response.io_buffer()->data() + response.io_buffer_size());
+  EXPECT_THAT(response_data, ElementsAreArray(kServFailResponse));
+}
+
+TEST_F(ResolverTest, ConstructServFailResponse_BadQuery) {
+  const char kDnsQuery[] = {'g', 'o',    'o', 'g', 'l',
+                            'e', '\x03', 'c', 'o', 'm'};
+  const char kServFailResponse[] = {'\x00', '\x00', '\x80', '\x02',
+                                    '\x00', '\x00', '\x00', '\x00',
+                                    '\x00', '\x00', '\x00', '\x00'};
+  patchpanel::DnsResponse response =
+      resolver_->ConstructServFailResponse(kDnsQuery, sizeof(kDnsQuery));
+  std::vector<char> response_data(
+      response.io_buffer()->data(),
+      response.io_buffer()->data() + response.io_buffer_size());
+  EXPECT_THAT(response_data, ElementsAreArray(kServFailResponse));
 }
 }  // namespace dns_proxy

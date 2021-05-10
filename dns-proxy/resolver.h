@@ -13,6 +13,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dns/dns_response.h>
 #include <chromeos/patchpanel/socket.h>
 
 #include "dns-proxy/ares_client.h"
@@ -127,6 +128,9 @@ class Resolver {
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
   // If |fallback| is true, force to use standard plain-text DNS.
   void Resolve(SocketFd* sock_fd, bool fallback = false);
+
+  // Create a SERVFAIL response from a DNS query |msg| of length |len|.
+  patchpanel::DnsResponse ConstructServFailResponse(const char* msg, int len);
 
  private:
   // |TCPConnection| is used to track and terminate TCP connections.

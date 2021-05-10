@@ -7,8 +7,13 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/memory/ref_counted.h>
+#include <base/optional.h>
 #include <base/rand_util.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <chromeos/patchpanel/dns/dns_protocol.h>
+#include <chromeos/patchpanel/dns/dns_query.h>
+#include <chromeos/patchpanel/dns/io_buffer.h>
 #include <chromeos/patchpanel/net_util.h>
 
 // Using directive is necessary to have the overloaded function for socket data
@@ -290,20 +295,62 @@ void Resolver::OnDNSQuery(int fd, int type) {
 }
 
 void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
-  // TODO(jasongustaman): Handle Chrome traffic separately.
   if (doh_enabled_ && !fallback) {
     if (curl_client_->Resolve(sock_fd->msg, sock_fd->len,
                               base::BindRepeating(&Resolver::HandleCurlResult,
                                                   weak_factory_.GetWeakPtr()),
-                              reinterpret_cast<void*>(sock_fd)) ||
-        always_on_doh_) {
+                              reinterpret_cast<void*>(sock_fd))) {
       return;
     }
   }
-  ares_client_->Resolve(reinterpret_cast<const unsigned char*>(sock_fd->msg),
-                        sock_fd->len,
-                        base::BindRepeating(&Resolver::HandleAresResult,
-                                            weak_factory_.GetWeakPtr()),
-                        reinterpret_cast<void*>(sock_fd));
+  if (!always_on_doh_ &&
+      ares_client_->Resolve(
+          reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
+          base::BindRepeating(&Resolver::HandleAresResult,
+                              weak_factory_.GetWeakPtr()),
+          reinterpret_cast<void*>(sock_fd))) {
+    return;
+  }
+
+  // Construct and send a response indicating that there is a failure.
+  patchpanel::DnsResponse response =
+      ConstructServFailResponse(sock_fd->msg, sock_fd->len);
+  ReplyDNS(sock_fd, reinterpret_cast<uint8_t*>(response.io_buffer()->data()),
+           response.io_buffer_size());
+  // |sock_fd| pointer must be deleted when the request associated with the
+  // pointer is done. Normally, the pointer is deleted after c-ares or CURL
+  // finish handling the request, `HandleAresResult(...)` or
+  // `HandleCurlResult(...)`. However, we need to do it here because there is an
+  // error when starting the request of c-ares or CURL resulting in no query
+  // sent to the name servers, completing the request by sending a failure
+  // response.
+  delete sock_fd;
+}
+
+patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,
+                                                            int len) {
+  // Construct a DNS query from the message buffer.
+  base::Optional<patchpanel::DnsQuery> query;
+  if (len > 0 && len <= dns_proxy::kDNSBufSize) {
+    scoped_refptr<patchpanel::IOBufferWithSize> query_buf =
+        base::MakeRefCounted<patchpanel::IOBufferWithSize>(len);
+    memcpy(query_buf->data(), msg, len);
+    query = patchpanel::DnsQuery(query_buf);
+  }
+
+  // Set the query id as 0 if the query is invalid.
+  uint16_t query_id = 0;
+  if (query.has_value() && query->Parse(len)) {
+    query_id = query->id();
+  } else {
+    query.reset();
+  }
+
+  // Returns RCODE SERVFAIL response corresponding to the query.
+  patchpanel::DnsResponse response(query_id, false /* is_authoritative */,
+                                   {} /* answers */, {} /* authority_records */,
+                                   {} /* additional_records */, query,
+                                   patchpanel::dns_protocol::kRcodeSERVFAIL);
+  return response;
 }
 }  // namespace dns_proxy
