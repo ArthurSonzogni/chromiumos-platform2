@@ -77,6 +77,7 @@ class CellularCapability3gpp : public CellularCapability {
   // modem becomes disabled.  ModemManager rejects the enable command if the
   // modem is not disabled, for example, if it is initializing instead.
   void StartModem(Error* error, const ResultCallback& callback) override;
+  void SetModemToLowPowerModeOnModemStop(bool set_low_power) override;
   void StopModem(Error* error, const ResultCallback& callback) override;
   void Reset(Error* error, const ResultCallback& callback) override;
   bool IsServiceActivationRequired() const override;
@@ -389,6 +390,7 @@ class CellularCapability3gpp : public CellularCapability {
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
   std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> profiles_;
+  bool set_modem_to_low_power_mode_on_stop_ = true;
 
   // SIM properties
   RpcIdentifier sim_path_;

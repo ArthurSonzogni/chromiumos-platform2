@@ -79,8 +79,16 @@ class CellularCapability {
   // finished.
   virtual void StartModem(Error* error, const ResultCallback& callback) = 0;
 
-  // StopModem disconnects and disables a modem asynchronously.  |callback| is
-  // invoked when this completes and the result is passed to the callback.
+  // Sets a flag to be used by |StopModem| to decide if the modem will be set
+  // to low power mode as the last step. By default, |StopModem| does set the
+  // modem to low power mode.
+  virtual void SetModemToLowPowerModeOnModemStop(bool set_low_power) = 0;
+
+  // StopModem asynchronously disconnects, disables and sets the modem to low
+  // power mode. If |SetModemToLowPowerModeOnModemStop| was called with a
+  // `false` value, |StopModem| will not set the modem to low power mode.
+  // |callback| is invoked when this completes and the result is passed to the
+  // callback.
   virtual void StopModem(Error* error, const ResultCallback& callback) = 0;
 
   // Resets the modem.

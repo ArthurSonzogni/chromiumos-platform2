@@ -344,6 +344,12 @@ void CellularCapability3gpp::EnableModemCompleted(
   callback.Run(error);
 }
 
+void CellularCapability3gpp::SetModemToLowPowerModeOnModemStop(
+    bool set_low_power) {
+  SLOG(this, 2) << __func__ << " value=" << set_low_power;
+  set_modem_to_low_power_mode_on_stop_ = set_low_power;
+}
+
 void CellularCapability3gpp::StopModem(Error* error,
                                        const ResultCallback& callback) {
   SLOG(this, 1) << __func__;
@@ -378,14 +384,18 @@ void CellularCapability3gpp::Stop_DisableCompleted(
     const ResultCallback& callback, const Error& error) {
   SLOG(this, 3) << __func__;
 
-  if (error.IsSuccess()) {
-    // The modem has been successfully disabled, but we still need to power it
-    // down.
-    Stop_PowerDown(callback);
-  } else {
-    // An error occurred; terminate the disable sequence.
+  // An error occurred; terminate the disable sequence.
+  if (!error.IsSuccess()) {
     callback.Run(error);
+    return;
   }
+
+  // The modem has been successfully disabled, but we still need to power it
+  // down.
+  if (set_modem_to_low_power_mode_on_stop_)
+    Stop_PowerDown(callback);
+  else
+    callback.Run(Error());
 }
 
 void CellularCapability3gpp::Stop_PowerDown(const ResultCallback& callback) {
