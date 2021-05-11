@@ -46,6 +46,7 @@ class CellularServiceProviderTest : public testing::Test {
   ~CellularServiceProviderTest() override = default;
 
   void SetUp() override {
+    EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
     provider_ = std::make_unique<CellularServiceProvider>(&manager_);
     provider_->Start();
     profile_ = new NiceMock<MockProfile>(&manager_);
@@ -67,7 +68,7 @@ class CellularServiceProviderTest : public testing::Test {
   CellularRefPtr CreateDevice(const std::string& imsi,
                               const std::string& iccid) {
     CellularRefPtr cellular = new Cellular(
-        &modem_info_, kTestDeviceName, kTestDeviceAddress, kTestInterfaceIndex,
+        &manager_, kTestDeviceName, kTestDeviceAddress, kTestInterfaceIndex,
         Cellular::kType3gpp, kDBusService, kDBusPath);
     if (!iccid.empty()) {
       Cellular::SimProperties sim_properties;

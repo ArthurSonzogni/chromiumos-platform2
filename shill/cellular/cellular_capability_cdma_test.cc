@@ -59,24 +59,18 @@ class CellularCapabilityCdmaTest : public testing::Test {
         sim_proxy_(new NiceMock<mm1::MockSimProxy>()),
         properties_proxy_(
             DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting()),
-        cellular_(new Cellular(&modem_info_,
-                               "",
-                               kMachineAddress,
-                               0,
-                               Cellular::kTypeCdma,
-                               "",
-                               RpcIdentifier(""))),
-        service_(new MockCellularService(&manager_, cellular_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {}
 
   ~CellularCapabilityCdmaTest() override {
-    CHECK(cellular_->HasOneRef());
-    cellular_->service_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
   void SetUp() override {
+    EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
+    cellular_ = new Cellular(&manager_, "", kMachineAddress, 0,
+                             Cellular::kTypeCdma, "", RpcIdentifier(""));
+    service_ = new MockCellularService(&manager_, cellular_);
     capability_ =
         static_cast<CellularCapabilityCdma*>(cellular_->capability_.get());
     device_adaptor_ =
@@ -87,6 +81,10 @@ class CellularCapabilityCdmaTest : public testing::Test {
   void TearDown() override {
     cellular_->SetServiceForTesting(nullptr);
     capability_ = nullptr;
+    cellular_->service_ = nullptr;
+    service_ = nullptr;
+    CHECK(cellular_->HasOneRef());
+    cellular_ = nullptr;
   }
 
   void SetService() {

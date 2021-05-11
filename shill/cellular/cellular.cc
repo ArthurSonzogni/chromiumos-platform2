@@ -244,26 +244,22 @@ std::string Cellular::GetCapabilityStateString(
                             capability_state);
 }
 
-Cellular::Cellular(ModemInfo* modem_info,
+Cellular::Cellular(Manager* manager,
                    const std::string& link_name,
                    const std::string& address,
                    int interface_index,
                    Type type,
                    const std::string& service,
                    const RpcIdentifier& path)
-    : Device(modem_info->manager(),
-             link_name,
-             address,
-             interface_index,
-             Technology::kCellular),
-      home_provider_info_(new MobileOperatorInfo(
-          modem_info->manager()->dispatcher(), "HomeProvider")),
-      serving_operator_info_(new MobileOperatorInfo(
-          modem_info->manager()->dispatcher(), "ServingOperator")),
+    : Device(
+          manager, link_name, address, interface_index, Technology::kCellular),
+      home_provider_info_(
+          new MobileOperatorInfo(manager->dispatcher(), "HomeProvider")),
+      serving_operator_info_(
+          new MobileOperatorInfo(manager->dispatcher(), "ServingOperator")),
       dbus_service_(service),
       dbus_path_(path),
       dbus_path_str_(path.value()),
-      modem_info_(modem_info),
       scanning_supported_(false),
       scanning_(false),
       polling_location_(false),
@@ -297,7 +293,7 @@ Cellular::Cellular(ModemInfo* modem_info,
 
   mm1_proxy_ = control_interface()->CreateMM1Proxy(dbus_service_);
 
-  // Create an initial Capability from |modem_info| properties.
+  // Create an initial Capability.
   CreateCapability();
 
   SLOG(this, 1) << "Cellular() " << this->link_name();
@@ -1048,7 +1044,9 @@ void Cellular::OnModemDestroyed() {
 void Cellular::CreateCapability() {
   SLOG(this, 1) << __func__;
   CHECK(!capability_);
-  capability_ = CellularCapability::Create(type_, this, modem_info_);
+  capability_ = CellularCapability::Create(
+      type_, this, manager()->control_interface(), manager()->metrics(),
+      manager()->modem_info()->pending_activation_store());
 
   home_provider_info_->AddObserver(this);
   serving_operator_info_->AddObserver(this);

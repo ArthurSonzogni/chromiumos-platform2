@@ -66,12 +66,12 @@ class TestDeviceInfo : public MockDeviceInfo {
     CellularRefPtr cellular;
     if (use_mock_) {
       cellular = new NiceMock<MockCellular>(
-          manager()->modem_info(), kLinkName, mac_address, interface_index,
+          manager(), kLinkName, mac_address, interface_index,
           Cellular::kType3gpp, kService, kPath);
     } else {
-      cellular = new Cellular(manager()->modem_info(), kLinkName, mac_address,
-                              interface_index, modem->type(), modem->service(),
-                              modem->path());
+      cellular =
+          new Cellular(manager(), kLinkName, mac_address, interface_index,
+                       modem->type(), modem->service(), modem->path());
     }
     return cellular;
   }

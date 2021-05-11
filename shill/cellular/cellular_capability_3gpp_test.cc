@@ -152,8 +152,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   void SetUp() override {
     EXPECT_CALL(*modem_proxy_, set_state_changed_callback(_))
         .Times(AnyNumber());
+    EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
 
-    cellular_ = new Cellular(&modem_info_, "", "00:01:02:03:04:05", 0,
+    cellular_ = new Cellular(&manager_, "", "00:01:02:03:04:05", 0,
                              Cellular::kType3gpp, "", RpcIdentifier(""));
     service_ = new MockCellularService(&manager_, cellular_);
     device_adaptor_ = static_cast<DeviceMockAdaptor*>(cellular_->adaptor());

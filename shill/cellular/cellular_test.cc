@@ -88,8 +88,7 @@ constexpr char kIccid[] = "1234567890000";
 class CellularPropertyTest : public PropertyStoreTest {
  public:
   CellularPropertyTest()
-      : modem_info_(control_interface(), manager()),
-        device_(new Cellular(&modem_info_,
+      : device_(new Cellular(manager(),
                              "usb0",
                              "00:01:02:03:04:05",
                              3,
@@ -100,7 +99,6 @@ class CellularPropertyTest : public PropertyStoreTest {
   ~CellularPropertyTest() { device_ = nullptr; }
 
  protected:
-  MockModemInfo modem_info_;
   CellularRefPtr device_;
 };
 
@@ -138,31 +136,28 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         manager_(&control_interface_, &dispatcher_, &metrics_),
         modem_info_(&control_interface_, &manager_),
         device_info_(&manager_),
-        dhcp_config_(new MockDHCPConfig(modem_info_.control_interface(),
-                                        kTestDeviceName)),
+        dhcp_config_(new MockDHCPConfig(&control_interface_, kTestDeviceName)),
         mm1_proxy_(new mm1::MockMm1Proxy()),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr),
-        device_(new Cellular(&modem_info_,
-                             kTestDeviceName,
-                             kTestDeviceAddress,
-                             3,
-                             GetParam(),
-                             kDBusService,
-                             kDBusPath)),
         profile_(new NiceMock<MockProfile>(&manager_)) {
     cellular_service_provider_.set_profile_for_testing(profile_);
-    PopulateProxies();
-    metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
   }
 
-  ~CellularTest() { device_ = nullptr; }
+  ~CellularTest() = default;
 
   void SetUp() override {
+    EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
+    EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
+    device_ = new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress, 3,
+                           GetParam(), kDBusService, kDBusPath);
+    PopulateProxies();
+    metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
+
     static_cast<Device*>(device_.get())->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     device_->process_manager_ = &process_manager_;
-    EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
+
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
     EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
                 GetActivationState(_, _))
@@ -176,6 +171,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   }
 
   void TearDown() override {
+    metrics_.DeregisterDevice(device_->interface_index());
     device_->DestroyIPConfig();
     device_->state_ = Cellular::kStateDisabled;
     GetCapability3gpp()->ReleaseProxies();
@@ -183,6 +179,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     // Break cycle between Cellular and CellularService.
     device_->service_ = nullptr;
     device_->SelectService(nullptr);
+    device_ = nullptr;
   }
 
   // TODO(benchan): Instead of conditionally enabling many tests for specific

@@ -34,9 +34,6 @@
 
 namespace shill {
 
-class Metrics;
-class ModemInfo;
-
 // CellularCapability3gpp handles modems using the
 // org.freedesktop.ModemManager1 DBUS interface.  This class is used for
 // all types of modems, i.e. CDMA, GSM, and LTE modems.
@@ -61,7 +58,10 @@ class CellularCapability3gpp : public CellularCapability {
 
   using SimProperties = Cellular::SimProperties;
 
-  CellularCapability3gpp(Cellular* cellular, ModemInfo* modem_info);
+  CellularCapability3gpp(Cellular* cellular,
+                         ControlInterface* control_interface,
+                         Metrics* metrics,
+                         PendingActivationStore* pending_activation_store);
   CellularCapability3gpp(const CellularCapability3gpp&) = delete;
   CellularCapability3gpp& operator=(const CellularCapability3gpp&) = delete;
 
@@ -358,9 +358,6 @@ class CellularCapability3gpp : public CellularCapability {
   void ResetAfterActivation();
   void UpdateServiceActivationState();
   void OnResetAfterActivationReply(const Error& error);
-
-  // Convenience pointer to modem_info()->manager()->metrics().
-  Metrics* metrics_;
 
   bool proxies_initialized_ = false;
   std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;

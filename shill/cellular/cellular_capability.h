@@ -18,9 +18,9 @@
 namespace shill {
 
 class CellularBearer;
-class ControlInterface;
 class Error;
-class ModemInfo;
+class Metrics;
+class PendingActivationStore;
 
 // Cellular devices instantiate subclasses of CellularCapability that
 // handle the specific modem technologies and capabilities.
@@ -52,9 +52,12 @@ class CellularCapability {
   static const int kTimeoutSetupLocation;
   static const int kTimeoutSetupSignal;
 
-  static std::unique_ptr<CellularCapability> Create(Cellular::Type type,
-                                                    Cellular* cellular,
-                                                    ModemInfo* modem_info);
+  static std::unique_ptr<CellularCapability> Create(
+      Cellular::Type type,
+      Cellular* cellular,
+      ControlInterface* control_interface,
+      Metrics* metrics,
+      PendingActivationStore* pending_activation_store);
 
   virtual ~CellularCapability();
 
@@ -227,15 +230,19 @@ class CellularCapability {
 
   Cellular* cellular() const { return cellular_; }
   ControlInterface* control_interface() const { return control_interface_; }
-  ModemInfo* modem_info() const { return modem_info_; }
+  Metrics* metrics() const { return metrics_; }
+  PendingActivationStore* pending_activation_store() const {
+    return pending_activation_store_;
+  }
 
  protected:
   // |cellular| is the parent Cellular device.
-  CellularCapability(Cellular* cellular, ModemInfo* modem_info);
+  CellularCapability(Cellular* cellular,
+                     ControlInterface* control_interface,
+                     Metrics* metrics,
+                     PendingActivationStore* pending_activation_store);
   CellularCapability(const CellularCapability&) = delete;
   CellularCapability& operator=(const CellularCapability&) = delete;
-
-  static void OnUnsupportedOperation(const char* operation, Error* error);
 
  private:
   friend class CellularCapability3gppTest;
@@ -244,7 +251,8 @@ class CellularCapability {
 
   Cellular* cellular_;
   ControlInterface* control_interface_;
-  ModemInfo* modem_info_;
+  Metrics* metrics_;
+  PendingActivationStore* pending_activation_store_;
 };
 
 }  // namespace shill

@@ -47,11 +47,12 @@ class CellularServiceTest : public testing::Test {
   void SetUp() override {
     // Many tests set service properties which call Manager.UpdateService().
     EXPECT_CALL(manager_, UpdateService(_)).Times(AnyNumber());
-    device_ = new MockCellular(&modem_info_, "usb0", kAddress, 3,
-                               Cellular::kTypeCdma, "", RpcIdentifier(""));
-
+    EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
     EXPECT_CALL(manager_, cellular_service_provider())
         .WillRepeatedly(Return(&cellular_service_provider_));
+
+    device_ = new MockCellular(&manager_, "usb0", kAddress, 3,
+                               Cellular::kTypeCdma, "", RpcIdentifier(""));
 
     // CellularService expects an IMSI and SIM ID be set in the Device.
     Cellular::SimProperties sim_properties;

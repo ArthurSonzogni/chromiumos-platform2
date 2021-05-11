@@ -11,7 +11,6 @@
 
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_service.h"
-#include "shill/cellular/modem_info.h"
 #include "shill/cellular/pending_activation_store.h"
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"
@@ -62,11 +61,21 @@ std::string GetActivationErrorString(uint32_t error) {
   }
 }
 
+void OnUnsupportedOperation(const char* operation, Error* error) {
+  std::string message("The ");
+  message.append(operation).append(" operation is not supported.");
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported, message);
+}
+
 }  // namespace
 
-CellularCapabilityCdma::CellularCapabilityCdma(Cellular* cellular,
-                                               ModemInfo* modem_info)
-    : CellularCapability3gpp(cellular, modem_info),
+CellularCapabilityCdma::CellularCapabilityCdma(
+    Cellular* cellular,
+    ControlInterface* control_interface,
+    Metrics* metrics,
+    PendingActivationStore* pending_activation_store)
+    : CellularCapability3gpp(
+          cellular, control_interface, metrics, pending_activation_store),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       cdma_1x_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       cdma_evdo_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -116,7 +125,7 @@ void CellularCapabilityCdma::ActivateAutomatic() {
   }
 
   PendingActivationStore::State state =
-      modem_info()->pending_activation_store()->GetActivationState(
+      pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierMEID, cellular()->meid());
   if (state == PendingActivationStore::kStatePending) {
     SLOG(this, 2) << "There's already a pending activation. Ignoring.";
@@ -130,7 +139,7 @@ void CellularCapabilityCdma::ActivateAutomatic() {
 
   // Mark as pending activation, so that shill can recover if anything fails
   // during OTA activation.
-  modem_info()->pending_activation_store()->SetActivationState(
+  pending_activation_store()->SetActivationState(
       PendingActivationStore::kIdentifierMEID, cellular()->meid(),
       PendingActivationStore::kStatePending);
 
@@ -149,12 +158,12 @@ void CellularCapabilityCdma::UpdatePendingActivationState() {
   SLOG(this, 2) << __func__;
   if (IsActivated()) {
     SLOG(this, 3) << "CDMA service activated. Clear store.";
-    modem_info()->pending_activation_store()->RemoveEntry(
+    pending_activation_store()->RemoveEntry(
         PendingActivationStore::kIdentifierMEID, cellular()->meid());
     return;
   }
   PendingActivationStore::State state =
-      modem_info()->pending_activation_store()->GetActivationState(
+      pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierMEID, cellular()->meid());
   if (IsActivating() && state != PendingActivationStore::kStateFailureRetry) {
     SLOG(this, 3) << "OTA activation in progress. Nothing to do.";
@@ -279,12 +288,12 @@ void CellularCapabilityCdma::OnActivateReply(const ResultCallback& callback,
   SLOG(this, 2) << __func__;
   if (error.IsSuccess()) {
     LOG(INFO) << "Activation completed successfully.";
-    modem_info()->pending_activation_store()->SetActivationState(
+    pending_activation_store()->SetActivationState(
         PendingActivationStore::kIdentifierMEID, cellular()->meid(),
         PendingActivationStore::kStateActivated);
   } else {
     LOG(ERROR) << "Activation failed with error: " << error;
-    modem_info()->pending_activation_store()->SetActivationState(
+    pending_activation_store()->SetActivationState(
         PendingActivationStore::kIdentifierMEID, cellular()->meid(),
         PendingActivationStore::kStateFailureRetry);
   }
@@ -318,7 +327,7 @@ void CellularCapabilityCdma::RegisterOnNetwork(const std::string& network_id,
 
 bool CellularCapabilityCdma::IsActivating() const {
   PendingActivationStore::State state =
-      modem_info()->pending_activation_store()->GetActivationState(
+      pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierMEID, cellular()->meid());
   return (state == PendingActivationStore::kStatePending) ||
          (state == PendingActivationStore::kStateFailureRetry) ||

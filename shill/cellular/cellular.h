@@ -30,7 +30,6 @@ namespace shill {
 class CellularCapability;
 class Error;
 class ExternalTask;
-class ModemInfo;
 class NetlinkSockDiag;
 class PPPDeviceFactory;
 class ProcessManager;
@@ -114,7 +113,7 @@ class Cellular : public Device,
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/freedesktop/ModemManager1/Modem/0"). |service| is the modem
   // mananager service name (e.g., /org/freedesktop/ModemManager1).
-  Cellular(ModemInfo* modem_info,
+  Cellular(Manager* manager,
            const std::string& link_name,
            const std::string& address,
            int interface_index,
@@ -608,8 +607,6 @@ class Cellular : public Device,
   RpcIdentifier dbus_path_;         // ModemManager.Modem
   // Used because we currently expose |dbus_path| as a string property.
   std::string dbus_path_str_;
-
-  ModemInfo* modem_info_;
 
   Stringmap home_provider_;
 

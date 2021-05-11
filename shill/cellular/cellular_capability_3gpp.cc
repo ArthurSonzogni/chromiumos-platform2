@@ -24,7 +24,6 @@
 #include "shill/cellular/cellular_pco.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
-#include "shill/cellular/modem_info.h"
 #include "shill/cellular/pending_activation_store.h"
 #include "shill/cellular/verizon_subscription_state.h"
 #include "shill/control_interface.h"
@@ -222,10 +221,13 @@ std::string RegistrationStateToString(MMModem3gppRegistrationState state) {
 
 }  // namespace
 
-CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
-                                               ModemInfo* modem_info)
-    : CellularCapability(cellular, modem_info),
-      metrics_(modem_info->manager()->metrics()),
+CellularCapability3gpp::CellularCapability3gpp(
+    Cellular* cellular,
+    ControlInterface* control_interface,
+    Metrics* metrics,
+    PendingActivationStore* pending_activation_store)
+    : CellularCapability(
+          cellular, control_interface, metrics, pending_activation_store),
       mobile_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
       weak_ptr_factory_(this) {
@@ -313,7 +315,7 @@ void CellularCapability3gpp::StartModem(Error* error,
     return;
   }
   Error local_error(Error::kOperationInitiated);
-  metrics_->NotifyDeviceEnableStarted(cellular()->interface_index());
+  metrics()->NotifyDeviceEnableStarted(cellular()->interface_index());
   modem_proxy_->Enable(true, &local_error,
                        base::Bind(&CellularCapability3gpp::EnableModemCompleted,
                                   weak_ptr_factory_.GetWeakPtr(), callback),
@@ -384,7 +386,7 @@ void CellularCapability3gpp::Stop_Disable(const ResultCallback& callback) {
     callback.Run(error);
     return;
   }
-  metrics_->NotifyDeviceDisableStarted(cellular()->interface_index());
+  metrics()->NotifyDeviceDisableStarted(cellular()->interface_index());
   modem_proxy_->Enable(
       false, &error,
       base::Bind(&CellularCapability3gpp::Stop_DisableCompleted,
@@ -448,7 +450,7 @@ void CellularCapability3gpp::Stop_PowerDownCompleted(
   // Since the disable succeeded, if power down fails, we currently fail
   // silently, i.e. we need to report the disable operation as having
   // succeeded.
-  metrics_->NotifyDeviceDisableFinished(cellular()->interface_index());
+  metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
   ReleaseProxies();
   callback.Run(Error());
 }
@@ -485,7 +487,7 @@ void CellularCapability3gpp::CompleteActivation(Error* error) {
     return;
   }
 
-  modem_info()->pending_activation_store()->SetActivationState(
+  pending_activation_store()->SetActivationState(
       PendingActivationStore::kIdentifierICCID, iccid,
       PendingActivationStore::kStatePending);
   UpdatePendingActivationState();
@@ -535,7 +537,7 @@ void CellularCapability3gpp::UpdatePendingActivationState() {
       ((subscription_state_ == SubscriptionState::kUnknown) && IsMdnValid());
 
   if (activated && !iccid.empty())
-    modem_info()->pending_activation_store()->RemoveEntry(
+    pending_activation_store()->RemoveEntry(
         PendingActivationStore::kIdentifierICCID, iccid);
 
   CellularServiceRefPtr service = cellular()->service();
@@ -553,7 +555,7 @@ void CellularCapability3gpp::UpdatePendingActivationState() {
     return;
 
   PendingActivationStore::State state =
-      modem_info()->pending_activation_store()->GetActivationState(
+      pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID, iccid);
   switch (state) {
     case PendingActivationStore::kStatePending:
@@ -562,7 +564,7 @@ void CellularCapability3gpp::UpdatePendingActivationState() {
       service->SetActivationState(kActivationStateActivating);
       if (reset_done_) {
         SLOG(this, 2) << "Post-payment activation reset complete.";
-        modem_info()->pending_activation_store()->SetActivationState(
+        pending_activation_store()->SetActivationState(
             PendingActivationStore::kIdentifierICCID, iccid,
             PendingActivationStore::kStateActivated);
       }
@@ -633,7 +635,7 @@ void CellularCapability3gpp::UpdateServiceActivationState() {
   const std::string& iccid = cellular()->iccid();
   std::string activation_state;
   PendingActivationStore::State state =
-      modem_info()->pending_activation_store()->GetActivationState(
+      pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID, iccid);
   if ((subscription_state_ == SubscriptionState::kUnknown ||
        subscription_state_ == SubscriptionState::kUnprovisioned) &&
@@ -894,10 +896,9 @@ bool CellularCapability3gpp::IsServiceActivationRequired() const {
 
   // We are in the process of activating, ignore all other clues from the
   // network and use our own knowledge about the activation state.
-  if (!iccid.empty() &&
-      modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierICCID, iccid) !=
-          PendingActivationStore::kStateUnknown)
+  if (!iccid.empty() && pending_activation_store()->GetActivationState(
+                            PendingActivationStore::kIdentifierICCID, iccid) !=
+                            PendingActivationStore::kStateUnknown)
     return false;
 
   // Network notification that the service needs to be activated.
@@ -1727,7 +1728,7 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
     } else {
       // This is not a repeated post. So, count this instance of delayed drop
       // posted.
-      metrics_->Notify3GPPRegistrationDelayedDropPosted();
+      metrics()->Notify3GPPRegistrationDelayedDropPosted();
     }
     SLOG(this, 2) << "Posted deferred registration state update";
     registration_dropped_update_callback_.Reset(base::Bind(
@@ -1742,7 +1743,7 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
       registration_dropped_update_callback_.Cancel();
       // If we cancelled the callback here, it means we had flaky network for a
       // small duration.
-      metrics_->Notify3GPPRegistrationDelayedDropCanceled();
+      metrics()->Notify3GPPRegistrationDelayedDropCanceled();
     }
     Handle3gppRegistrationChange(state, operator_code, operator_name);
   }

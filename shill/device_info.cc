@@ -40,7 +40,6 @@
 #include <chromeos/constants/vm_tools.h>
 
 #include "shill/connection.h"
-#include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_stub.h"
 #include "shill/ethernet/ethernet.h"
@@ -828,9 +827,9 @@ CellularRefPtr DeviceInfo::GetCellularDevice(int interface_index,
     return cellular;
   }
 
-  cellular = new Cellular(manager_->modem_info(), modem->link_name(),
-                          mac_address, interface_index, modem->type(),
-                          modem->service(), modem->path());
+  cellular =
+      new Cellular(manager_, modem->link_name(), mac_address, interface_index,
+                   modem->type(), modem->service(), modem->path());
   RegisterDevice(cellular);
   return cellular;
 }

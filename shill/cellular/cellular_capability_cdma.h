@@ -20,7 +20,10 @@ namespace shill {
 
 class CellularCapabilityCdma : public CellularCapability3gpp {
  public:
-  CellularCapabilityCdma(Cellular* cellular, ModemInfo* modem_info);
+  CellularCapabilityCdma(Cellular* cellular,
+                         ControlInterface* control_interface,
+                         Metrics* metrics,
+                         PendingActivationStore* pending_activation_store);
   CellularCapabilityCdma(const CellularCapabilityCdma&) = delete;
   CellularCapabilityCdma& operator=(const CellularCapabilityCdma&) = delete;
 

@@ -16,7 +16,7 @@ namespace shill {
 
 class MockCellular : public Cellular {
  public:
-  MockCellular(ModemInfo* modem_info,
+  MockCellular(Manager* manager,
                const std::string& link_name,
                const std::string& address,
                int interface_index,
