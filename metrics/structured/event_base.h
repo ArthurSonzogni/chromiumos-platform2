@@ -53,7 +53,7 @@ class BRILLO_EXPORT EventBase {
     // only the HMAC digest will be reported, so it is safe to put any value
     // here.
     std::string string_value;
-    int int_value;
+    int64_t int_value;
   };
 
   // Finalizes the event and sends it for recording. After this call, the event
@@ -72,7 +72,7 @@ class BRILLO_EXPORT EventBase {
 
   void AddStringMetric(uint64_t name_hash, const std::string& value);
 
-  void AddIntMetric(uint64_t name_hash, int value);
+  void AddIntMetric(uint64_t name_hash, int64_t value);
 
  private:
   // First 8 bytes of the MD5 hash of the following string:
