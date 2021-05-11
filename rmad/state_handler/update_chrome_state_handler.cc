@@ -12,27 +12,27 @@ UpdateChromeStateHandler::UpdateChromeStateHandler(
   ResetState();
 }
 
-RmadState::StateCase UpdateChromeStateHandler::GetNextStateCase() const {
-  if (state_.update_chrome().update() ==
-          UpdateChromeState::RMAD_UPDATE_STATE_COMPLETE ||
-      state_.update_chrome().update() ==
-          UpdateChromeState::RMAD_UPDATE_STATE_SKIP) {
-    return RmadState::StateCase::kComponentsRepair;
+BaseStateHandler::GetNextStateCaseReply
+UpdateChromeStateHandler::GetNextStateCase(const RmadState& state) {
+  if (!state.has_update_chrome()) {
+    LOG(ERROR) << "RmadState missing |update Chrome| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  // Not ready to go to next state.
-  return GetStateCase();
-}
-
-RmadErrorCode UpdateChromeStateHandler::UpdateState(const RmadState& state) {
-  CHECK(state.has_update_chrome()) << "RmadState missing update Chrome state.";
   const UpdateChromeState& update_chrome = state.update_chrome();
   if (update_chrome.update() == UpdateChromeState::RMAD_UPDATE_STATE_UNKNOWN) {
-    // TODO(gavindodd): What is correct error for unset/missing fields?
-    return RMAD_ERROR_REQUEST_INVALID;
+    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+            .state_case = GetStateCase()};
   }
-  state_ = state;
 
-  return RMAD_ERROR_OK;
+  state_ = state;
+  if (state_.update_chrome().update() ==
+      UpdateChromeState::RMAD_UPDATE_STATE_UPDATE) {
+    LOG(INFO) << "Chrome needs update. Blocking state transition.";
+    return {.error = RMAD_ERROR_TRANSITION_FAILED,
+            .state_case = GetStateCase()};
+  }
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kComponentsRepair};
 }
 
 RmadErrorCode UpdateChromeStateHandler::ResetState() {

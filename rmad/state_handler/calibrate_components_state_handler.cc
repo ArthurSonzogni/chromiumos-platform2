@@ -12,18 +12,15 @@ CalibrateComponentsStateHandler::CalibrateComponentsStateHandler(
   ResetState();
 }
 
-RmadState::StateCase CalibrateComponentsStateHandler::GetNextStateCase() const {
+BaseStateHandler::GetNextStateCaseReply
+CalibrateComponentsStateHandler::GetNextStateCase(const RmadState& state) {
+  if (!state.has_calibrate_components()) {
+    LOG(ERROR) << "RmadState missing |calibrate components| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
   // TODO(chenghan): This is currently fake.
-  return RmadState::StateCase::kProvisionDevice;
-}
-
-RmadErrorCode CalibrateComponentsStateHandler::UpdateState(
-    const RmadState& state) {
-  CHECK(state.has_calibrate_components())
-      << "RmadState missing calibrate components state.";
-
-  // Nothing to store.
-  return RMAD_ERROR_OK;
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kProvisionDevice};
 }
 
 RmadErrorCode CalibrateComponentsStateHandler::ResetState() {

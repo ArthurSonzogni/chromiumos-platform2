@@ -21,7 +21,7 @@ namespace {
 
 const base::FilePath kDefaultJsonStoreFilePath("/var/lib/rmad/state");
 constexpr char kRmadStateHistory[] = "state_history";
-const RmadState::StateCase kInitialState = RmadState::kWelcome;
+const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
 
 }  // namespace
 
@@ -51,7 +51,7 @@ bool RmadInterfaceImpl::StoreStateHistory() {
 
 void RmadInterfaceImpl::Initialize() {
   // Initialize |current state_|, |state_history_|, and |allow_abort_| flag.
-  current_state_ = RmadState::STATE_NOT_SET;
+  current_state_case_ = RmadState::STATE_NOT_SET;
   state_history_.clear();
   allow_abort_ = true;
   if (json_store_->GetReadError() != JsonStore::READ_ERROR_NO_SUCH_FILE) {
@@ -75,20 +75,20 @@ void RmadInterfaceImpl::Initialize() {
       }
     }
     if (state_history_.size() > 0) {
-      current_state_ = state_history_.back();
+      current_state_case_ = state_history_.back();
     } else {
       LOG(WARNING) << "Could not read state history from json store, reset to "
                       "initial state.";
       // TODO(gavindodd): Reset the json store so it is not read only.
-      current_state_ = kInitialState;
-      state_history_.push_back(current_state_);
+      current_state_case_ = kInitialStateCase;
+      state_history_.push_back(current_state_case_);
       StoreStateHistory();
       // TODO(gavindodd): Set to an error state or send a signal to Chrome that
       // the RMA was reset so a message can be displayed.
     }
   } else if (cr50_utils_.RoVerificationKeyPressed()) {
-    current_state_ = kInitialState;
-    state_history_.push_back(current_state_);
+    current_state_case_ = kInitialStateCase;
+    state_history_.push_back(current_state_case_);
     if (!StoreStateHistory()) {
       LOG(ERROR) << "Could not store initial state";
       // TODO(gavindodd): Set to an error state or send a signal to Chrome that
@@ -99,7 +99,8 @@ void RmadInterfaceImpl::Initialize() {
 
 void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
   GetStateReply reply;
-  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
+  auto state_handler =
+      state_handler_manager_->GetStateHandler(current_state_case_);
   if (state_handler) {
     reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
@@ -115,32 +116,35 @@ void RmadInterfaceImpl::TransitionNextState(
     const GetStateCallback& callback) {
   // TODO(chenghan): Add error replies when failed to get `state_handler`, or
   //                 failed to write `json_store_`.
-  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
+  auto state_handler =
+      state_handler_manager_->GetStateHandler(current_state_case_);
   GetStateReply reply;
 
   if (state_handler) {
-    const RmadState& state = request.state();
-    RmadErrorCode error = state_handler->UpdateState(state);
-    reply.set_error(error);
-    if (error != RMAD_ERROR_OK) {
-      // TODO(gavindodd): Error handling
-    } else {
-      RmadState::StateCase next = state_handler->GetNextStateCase();
-      if (next != current_state_) {
-        state_handler = state_handler_manager_->GetStateHandler(next);
-        CHECK(state_handler)
-            << "No registered state handler for state " << next;
-        current_state_ = next;
-        state_history_.push_back(current_state_);
-        StoreStateHistory();
-        if (!state_handler->IsRepeatable()) {
-          allow_abort_ = false;
-        }
-      } else {
-        // TODO(gavindodd): Set an error code? Could this error be fatal?
-        LOG(ERROR) << "Could not transition from state " << current_state_;
+    const auto [error, next_state_case] =
+        state_handler->GetNextStateCase(request.state());
+
+    if (next_state_case != current_state_case_) {
+      CHECK(error == RMAD_ERROR_OK)
+          << "State transition should not happen when an error occurs";
+      state_handler = state_handler_manager_->GetStateHandler(next_state_case);
+      CHECK(state_handler) << "No registered state handler for state "
+                           << next_state_case;
+      current_state_case_ = next_state_case;
+      state_history_.push_back(current_state_case_);
+      StoreStateHistory();
+      if (allow_abort_ && !state_handler->IsRepeatable()) {
+        // This is a one-way transition. |allow_abort| cannot go from false to
+        // true, unless we restart the whole RMA process.
+        allow_abort_ = false;
       }
+    } else {
+      // Error messages are logged by state handlers. We only need to make sure
+      // we don't stay in the same state without any reason.
+      CHECK(error != RMAD_ERROR_OK) << "Failed to transition without an error";
     }
+
+    reply.set_error(error);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
     // TODO(gavindodd): Set can go back by inspecting stack?
     // Add a 'repeatable' flag on state handlers?
@@ -157,7 +161,8 @@ void RmadInterfaceImpl::TransitionNextState(
 void RmadInterfaceImpl::TransitionPreviousState(
     const GetStateCallback& callback) {
   GetStateReply reply;
-  auto state_handler = state_handler_manager_->GetStateHandler(current_state_);
+  auto state_handler =
+      state_handler_manager_->GetStateHandler(current_state_case_);
   CHECK(state_handler);
   if (state_history_.size() > 1) {
     auto prev_state_handler = state_handler_manager_->GetStateHandler(
@@ -170,7 +175,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
       state_history_.pop_back();
       StoreStateHistory();
       // Get new state.
-      current_state_ = state_history_.back();
+      current_state_case_ = state_history_.back();
       // Update the state handler for the new state.
       state_handler = prev_state_handler;
       reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
@@ -193,7 +198,7 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
     // TODO(gavindodd): The json store file should be deleted and a reboot
     // triggered.
     json_store_->Clear();
-    current_state_ = RmadState::STATE_NOT_SET;
+    current_state_case_ = RmadState::STATE_NOT_SET;
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
   } else {
     DLOG(INFO) << "AbortRma: Failed to abort.";

@@ -12,18 +12,16 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
   ResetState();
 }
 
-RmadState::StateCase WriteProtectEnablePhysicalStateHandler::GetNextStateCase()
-    const {
-  // TODO(chenghan): This is currently fake.
-  return RmadState::StateCase::kFinalize;
-}
-
-RmadErrorCode WriteProtectEnablePhysicalStateHandler::UpdateState(
+BaseStateHandler::GetNextStateCaseReply
+WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
     const RmadState& state) {
-  CHECK(state.has_wp_enable_physical()) << "RmadState missing provision state.";
-
-  // Nothing to store.
-  return RMAD_ERROR_OK;
+  if (!state.has_wp_enable_physical()) {
+    LOG(ERROR) << "RmadState missing |write protection enable| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
+  // TODO(chenghan): This is currently fake.
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kFinalize};
 }
 
 RmadErrorCode WriteProtectEnablePhysicalStateHandler::ResetState() {

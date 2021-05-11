@@ -17,8 +17,7 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableComplete);
 
-  RmadState::StateCase GetNextStateCase() const override;
-  RmadErrorCode UpdateState(const RmadState& state) override;
+  GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
   RmadErrorCode ResetState() override;
 };
 

@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/write_protect_disable_method_state_handler.h"
 
+#include "base/notreached.h"
+
 namespace rmad {
 
 WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
@@ -12,34 +14,35 @@ WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
   ResetState();
 }
 
-RmadState::StateCase WriteProtectDisableMethodStateHandler::GetNextStateCase()
-    const {
-  if (state_.wp_disable_method().disable_method() ==
-      WriteProtectDisableMethodState::RMAD_WP_DISABLE_RSU) {
-    return RmadState::StateCase::kWpDisableRsu;
-  }
-  if (state_.wp_disable_method().disable_method() ==
-      WriteProtectDisableMethodState::RMAD_WP_DISABLE_PHYSICAL) {
-    return RmadState::StateCase::kWpDisablePhysical;
-  }
-  // Not ready to go to next state.
-  return GetStateCase();
-}
-
-RmadErrorCode WriteProtectDisableMethodStateHandler::UpdateState(
+BaseStateHandler::GetNextStateCaseReply
+WriteProtectDisableMethodStateHandler::GetNextStateCase(
     const RmadState& state) {
-  CHECK(state.has_wp_disable_method())
-      << "RmadState missing write protection disable method state.";
+  if (!state.has_wp_disable_method()) {
+    LOG(ERROR) << "RmadState missing |write protection disable method| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
   const WriteProtectDisableMethodState& wp_disable_method =
       state.wp_disable_method();
   if (wp_disable_method.disable_method() ==
       WriteProtectDisableMethodState::RMAD_WP_DISABLE_UNKNOWN) {
-    // TODO(gavindodd): What is correct error for unset/missing fields?
-    return RMAD_ERROR_REQUEST_INVALID;
+    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+            .state_case = GetStateCase()};
   }
-  state_ = state;
 
-  return RMAD_ERROR_OK;
+  state_ = state;
+  switch (state_.wp_disable_method().disable_method()) {
+    case WriteProtectDisableMethodState::RMAD_WP_DISABLE_RSU:
+      return {.error = RMAD_ERROR_OK,
+              .state_case = RmadState::StateCase::kWpDisableRsu};
+    case WriteProtectDisableMethodState::RMAD_WP_DISABLE_PHYSICAL:
+      return {.error = RMAD_ERROR_OK,
+              .state_case = RmadState::StateCase::kWpDisablePhysical};
+    default:
+      break;
+  }
+  NOTREACHED();
+  return {.error = RMAD_ERROR_NOT_SET,
+          .state_case = RmadState::StateCase::STATE_NOT_SET};
 }
 
 RmadErrorCode WriteProtectDisableMethodStateHandler::ResetState() {

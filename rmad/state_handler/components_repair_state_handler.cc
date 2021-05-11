@@ -12,30 +12,36 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
   ResetState();
 }
 
-RmadState::StateCase ComponentsRepairStateHandler::GetNextStateCase() const {
-  if (VerifyComponents()) {
-    return RmadState::StateCase::kDeviceDestination;
+BaseStateHandler::GetNextStateCaseReply
+ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
+  if (!state.has_components_repair()) {
+    LOG(ERROR) << "RmadState missing |select component| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  // Not ready to go to next state.
-  return GetStateCase();
-}
-
-RmadErrorCode ComponentsRepairStateHandler::UpdateState(
-    const RmadState& state) {
-  CHECK(state.has_components_repair())
-      << "RmadState missing select component state.";
   const ComponentsRepairState& components_repair = state.components_repair();
   for (int i = 0; i < components_repair.components_size(); ++i) {
-    if (const ComponentRepairState& component = components_repair.components(i);
-        component.name() == ComponentRepairState::RMAD_COMPONENT_UNKNOWN ||
-        component.repair_state() == ComponentRepairState::RMAD_REPAIR_UNKNOWN) {
-      return RMAD_ERROR_REQUEST_INVALID;
+    const ComponentRepairState& component = components_repair.components(i);
+    if (component.name() == ComponentRepairState::RMAD_COMPONENT_UNKNOWN) {
+      LOG(ERROR) << "RmadState component missing |name| argument.";
+      return {.error = RMAD_ERROR_REQUEST_INVALID,
+              .state_case = GetStateCase()};
+    }
+    if (component.repair_state() == ComponentRepairState::RMAD_REPAIR_UNKNOWN) {
+      LOG(ERROR) << "RmadState component missing |repair_state| argument.";
+      return {.error = RMAD_ERROR_REQUEST_INVALID,
+              .state_case = GetStateCase()};
     }
   }
-  // TODO(chenghan): Check |repair_state| for all the components.
-  state_ = state;
 
-  return RMAD_ERROR_OK;
+  state_ = state;
+  if (!VerifyComponents()) {
+    LOG(ERROR) << "Component verification failed.";
+    // TODO(chenghan): Create a more specific error code.
+    return {.error = RMAD_ERROR_TRANSITION_FAILED,
+            .state_case = GetStateCase()};
+  }
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kDeviceDestination};
 }
 
 RmadErrorCode ComponentsRepairStateHandler::ResetState() {

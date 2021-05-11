@@ -12,21 +12,16 @@ WriteProtectDisableCompleteStateHandler::
   ResetState();
 }
 
-RmadState::StateCase WriteProtectDisableCompleteStateHandler::GetNextStateCase()
-    const {
-  // TODO(chenghan): Implement the logic for different paths.
-  return RmadState::StateCase::kUpdateRoFirmware;
-}
-
-RmadErrorCode WriteProtectDisableCompleteStateHandler::UpdateState(
+BaseStateHandler::GetNextStateCaseReply
+WriteProtectDisableCompleteStateHandler::GetNextStateCase(
     const RmadState& state) {
-  CHECK(state.has_wp_disable_complete())
-      << "RmadState missing WP disable complete state.";
+  if (!state.has_wp_disable_complete()) {
+    LOG(ERROR) << "RmadState missing |WP disable complete| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
 
-  // There's nothing in |WriteProtectDisableCompleteState|.
-  state_ = state;
-
-  return RMAD_ERROR_OK;
+  // TODO(chenghan): Implement the logic for different paths.
+  return {.error = RMAD_ERROR_OK, RmadState::StateCase::kUpdateRoFirmware};
 }
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::ResetState() {

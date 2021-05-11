@@ -12,22 +12,20 @@ WriteProtectDisablePhysicalStateHandler::
   ResetState();
 }
 
-RmadState::StateCase WriteProtectDisablePhysicalStateHandler::GetNextStateCase()
-    const {
-  if (CheckWriteProtectionOn()) {
-    return RmadState::StateCase::kWpDisableComplete;
-  }
-  // Not ready to go to next state.
-  return GetStateCase();
-}
-
-RmadErrorCode WriteProtectDisablePhysicalStateHandler::UpdateState(
+BaseStateHandler::GetNextStateCaseReply
+WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     const RmadState& state) {
-  CHECK(state.has_wp_disable_physical())
-      << "RmadState missing physical write protection state.";
-
-  // There's nothing in |WriteProtectionDisablePhysicalState|.
-  return RMAD_ERROR_OK;
+  if (!state.has_wp_disable_physical()) {
+    LOG(ERROR) << "RmadState missing |physical write protection| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
+  if (CheckWriteProtectionOn()) {
+    LOG(ERROR) << "Write protection still enabled.";
+    return {.error = RMAD_ERROR_TRANSITION_FAILED,
+            .state_case = GetStateCase()};
+  }
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kWpDisableComplete};
 }
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::ResetState() {

@@ -17,8 +17,7 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kDeviceDestination);
   SET_REPEATABLE;
 
-  RmadState::StateCase GetNextStateCase() const override;
-  RmadErrorCode UpdateState(const RmadState& state) override;
+  GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
   RmadErrorCode ResetState() override;
 };
 

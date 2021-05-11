@@ -12,28 +12,24 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
   ResetState();
 }
 
-RmadState::StateCase DeviceDestinationStateHandler::GetNextStateCase() const {
-  if (state_.device_destination().destination() !=
-      DeviceDestinationState::RMAD_DESTINATION_UNKNOWN) {
-    return RmadState::StateCase::kWpDisableMethod;
+BaseStateHandler::GetNextStateCaseReply
+DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
+  if (!state.has_device_destination()) {
+    LOG(ERROR) << "RmadState missing |device destination| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  // Not ready to go to next state.
-  return GetStateCase();
-}
-
-RmadErrorCode DeviceDestinationStateHandler::UpdateState(
-    const RmadState& state) {
-  CHECK(state.has_device_destination())
-      << "RmadState missing device destination state.";
   const DeviceDestinationState& device_destination = state.device_destination();
   if (device_destination.destination() ==
       DeviceDestinationState::RMAD_DESTINATION_UNKNOWN) {
-    // TODO(gavindodd): What is correct error for unset/missing fields?
-    return RMAD_ERROR_REQUEST_INVALID;
+    LOG(ERROR) << "RmadState missing |destination| argument.";
+    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+            .state_case = GetStateCase()};
   }
-  state_ = state;
 
-  return RMAD_ERROR_OK;
+  // TODO(chenghan): Store this information to |json_store_|.
+  state_ = state;
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kWpDisableMethod};
 }
 
 RmadErrorCode DeviceDestinationStateHandler::ResetState() {

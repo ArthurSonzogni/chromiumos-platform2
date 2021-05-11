@@ -18,11 +18,13 @@ class MockStateHandler : public BaseStateHandler {
   virtual ~MockStateHandler() = default;
 
   MOCK_METHOD(RmadState::StateCase, GetStateCase, (), (const, override));
-  MOCK_METHOD(bool, IsRepeatable, (), (const, override));
-  MOCK_METHOD(RmadState::StateCase, GetNextStateCase, (), (const, override));
-  MOCK_METHOD(RmadErrorCode, UpdateState, (const RmadState&), (override));
-  MOCK_METHOD(RmadErrorCode, ResetState, (), (override));
   MOCK_METHOD(const RmadState&, GetState, (), (const, override));
+  MOCK_METHOD(bool, IsRepeatable, (), (const, override));
+  MOCK_METHOD(BaseStateHandler::GetNextStateCaseReply,
+              GetNextStateCase,
+              (const RmadState&),
+              (override));
+  MOCK_METHOD(RmadErrorCode, ResetState, (), (override));
 };
 
 }  // namespace rmad

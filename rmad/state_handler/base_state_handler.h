@@ -15,12 +15,22 @@ namespace rmad {
 
 class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
  public:
+  // Return value for GetNextStateCase().
+  struct GetNextStateCaseReply {
+    RmadErrorCode error;
+    RmadState::StateCase state_case;
+  };
+
   explicit BaseStateHandler(scoped_refptr<JsonStore> json_store);
   virtual ~BaseStateHandler() = default;
 
   // Returns the RmadState that the class handles. This can be declared by the
   // macro ASSIGN_STATE(state).
   virtual RmadState::StateCase GetStateCase() const = 0;
+
+  // TODO(gavindodd): How to mock this without making it virtual?
+  // Returns the RmadState proto for this state.
+  virtual const RmadState& GetState() const { return state_; }
 
   // Returns whether the state is repeatable. A state is repeatable if it can be
   // run multiple times. For instance, a state that only shows system info, or
@@ -30,23 +40,14 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // SET_REPEATABLE.
   virtual bool IsRepeatable() const { return false; }
 
-  // Store the next RmadState in the RMA flow depending on device status and
-  // user input (e.g. |json_store_| content) to |next_state|. Return true if a
-  // transition is valid, false if the device status is not eligible for a state
-  // transition (in this case |next_state| will be the same as GetStateCase()).
-  virtual RmadState::StateCase GetNextStateCase() const = 0;
+  // Return the next RmadState::StateCase in the RMA flow depending on device
+  // status and user input (e.g. |json_store_| content). If the transition
+  // fails, a corresponding RmadErrorCode is set, and |next_state_case| will be
+  // the same as GetStateCase().
+  virtual GetNextStateCaseReply GetNextStateCase(const RmadState& state) = 0;
 
-  // Validates the new state and updates the stored state, triggering any work
-  // required and updating the state as needed.
-  virtual RmadErrorCode UpdateState(const RmadState& state) = 0;
-
-  // Reset the state.
-  // Used when transitioning to the previous state.
+  // Reset the state. Used when entering or returning to the state.
   virtual RmadErrorCode ResetState() = 0;
-
-  // TODO(gavindodd): How to mock this without making it virtual?
-  // Returns the RmadState proto for this state.
-  virtual const RmadState& GetState() const { return state_; }
 
  protected:
   RmadState state_;

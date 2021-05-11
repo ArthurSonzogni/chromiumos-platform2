@@ -67,9 +67,9 @@ class RmadInterfaceImplTest : public testing::Test {
     ON_CALL(*mock_handler, GetStateCase()).WillByDefault(Return(state_case));
     ON_CALL(*mock_handler, GetState()).WillByDefault(ReturnRef(state));
     ON_CALL(*mock_handler, IsRepeatable()).WillByDefault(Return(is_repeatable));
-    ON_CALL(*mock_handler, GetNextStateCase())
-        .WillByDefault(Return(next_state));
-    ON_CALL(*mock_handler, UpdateState(_)).WillByDefault(Return(RMAD_ERROR_OK));
+    ON_CALL(*mock_handler, GetNextStateCase(_))
+        .WillByDefault(Return(BaseStateHandler::GetNextStateCaseReply{
+            .error = RMAD_ERROR_OK, .state_case = next_state}));
     return mock_handler;
   }
 

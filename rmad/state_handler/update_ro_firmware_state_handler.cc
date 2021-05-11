@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include "base/notreached.h"
+
 namespace rmad {
 
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
@@ -14,43 +16,56 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
   ResetState();
 }
 
-RmadState::StateCase UpdateRoFirmwareStateHandler::GetNextStateCase() const {
-  // TODO(chenghan): This is currently a mock.
-  if (state_.update_ro_firmware().optional() ||
-      state_.update_ro_firmware().update() ==
-          UpdateRoFirmwareState::RMAD_UPDATE_SKIP) {
-    if (IsMotherboardRepair()) {
-      return RmadState::StateCase::kRestock;
-    } else {
-      return RmadState::StateCase::kUpdateDeviceInfo;
-    }
+BaseStateHandler::GetNextStateCaseReply
+UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
+  if (!state.has_update_ro_firmware()) {
+    LOG(ERROR) << "RmadState missing |update RO firmware| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  // Not ready to go to next state.
-  return GetStateCase();
-}
-
-RmadErrorCode UpdateRoFirmwareStateHandler::UpdateState(
-    const RmadState& state) {
-  CHECK(state.has_update_ro_firmware())
-      << "RmadState missing update RO firmware state.";
   const UpdateRoFirmwareState& update_ro_firmware = state.update_ro_firmware();
+  if (update_ro_firmware.optional() != state_.update_ro_firmware().optional()) {
+    LOG(ERROR) << "RmadState |optional| argument doesn't match.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
   if (update_ro_firmware.update() ==
       UpdateRoFirmwareState::RMAD_UPDATE_FIRMWARE_UNKNOWN) {
-    // TODO(gavindodd): What is correct error for unset/missing fields?
-    return RMAD_ERROR_REQUEST_INVALID;
+    LOG(ERROR) << "RmadState missing |udpate| argument.";
+    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+            .state_case = GetStateCase()};
+  }
+  if (!update_ro_firmware.optional() &&
+      update_ro_firmware.update() == UpdateRoFirmwareState::RMAD_UPDATE_SKIP) {
+    LOG(ERROR) << "RO firmware update is mandatory.";
+    return {.error = RMAD_ERROR_REQUEST_ARGS_VIOLATION,
+            .state_case = GetStateCase()};
   }
 
-  auto new_update_ro_firmware =
-      std::make_unique<UpdateRoFirmwareState>(update_ro_firmware);
-  new_update_ro_firmware->set_update(state_.update_ro_firmware().update());
-  state_.set_allocated_update_ro_firmware(new_update_ro_firmware.release());
-
-  return RMAD_ERROR_OK;
+  state_ = state;
+  // TODO(chenghan): This is currently a mock.
+  switch (state_.update_ro_firmware().update()) {
+    case UpdateRoFirmwareState::RMAD_UPDATE_FIRMWARE_DOWNLOAD:
+      return {.error = RMAD_ERROR_TRANSITION_FAILED,
+              .state_case = GetStateCase()};
+    case UpdateRoFirmwareState::RMAD_UPDATE_FIRMWARE_RECOVERY_UTILITY:
+      return {.error = RMAD_ERROR_TRANSITION_FAILED,
+              .state_case = GetStateCase()};
+    case UpdateRoFirmwareState::RMAD_UPDATE_SKIP:
+      if (IsMotherboardRepair()) {
+        return {.error = RMAD_ERROR_OK,
+                .state_case = RmadState::StateCase::kRestock};
+      } else {
+        return {.error = RMAD_ERROR_OK,
+                .state_case = RmadState::StateCase::kUpdateDeviceInfo};
+      }
+    default:
+      break;
+  }
+  NOTREACHED();
+  return {.error = RMAD_ERROR_NOT_SET,
+          .state_case = RmadState::StateCase::STATE_NOT_SET};
 }
 
 RmadErrorCode UpdateRoFirmwareStateHandler::ResetState() {
-  // TODO(gavindodd): Set state values in the WelcomeState proto and add to
-  // json_store.
   auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
   // This is currently always optional.
   update_ro_firmware->set_optional(true);
@@ -61,7 +76,7 @@ RmadErrorCode UpdateRoFirmwareStateHandler::ResetState() {
 }
 
 bool UpdateRoFirmwareStateHandler::IsMotherboardRepair() const {
-  // TODO(chenghan): Check json_store for this info.
+  // TODO(chenghan): Check |json_store| for this info.
   return false;
 }
 

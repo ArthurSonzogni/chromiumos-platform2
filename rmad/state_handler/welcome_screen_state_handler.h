@@ -17,8 +17,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kWelcome);
   SET_REPEATABLE;
 
-  RmadState::StateCase GetNextStateCase() const override;
-  RmadErrorCode UpdateState(const RmadState& state) override;
+  GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
   RmadErrorCode ResetState() override;
 };
 

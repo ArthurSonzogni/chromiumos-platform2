@@ -12,16 +12,16 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   ResetState();
 }
 
-RmadState::StateCase ProvisionDeviceStateHandler::GetNextStateCase() const {
+BaseStateHandler::GetNextStateCaseReply
+ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
+  if (!state.has_provision_device()) {
+    LOG(ERROR) << "RmadState missing |provision| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
+
   // TODO(chenghan): This is currently fake.
-  return RmadState::StateCase::kWpEnablePhysical;
-}
-
-RmadErrorCode ProvisionDeviceStateHandler::UpdateState(const RmadState& state) {
-  CHECK(state.has_provision_device()) << "RmadState missing provision state.";
-
-  // Nothing to store.
-  return RMAD_ERROR_OK;
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kWpEnablePhysical};
 }
 
 RmadErrorCode ProvisionDeviceStateHandler::ResetState() {

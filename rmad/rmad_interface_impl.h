@@ -43,7 +43,7 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   scoped_refptr<JsonStore> json_store_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
-  RmadState::StateCase current_state_;
+  RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
   bool allow_abort_;
 

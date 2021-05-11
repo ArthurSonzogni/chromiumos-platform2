@@ -11,21 +11,23 @@ FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
   ResetState();
 }
 
-RmadState::StateCase FinalizeStateHandler::GetNextStateCase() const {
-  // TODO(chenghan): This is currently fake.
-  return RmadState::StateCase::STATE_NOT_SET;
-}
-
-RmadErrorCode FinalizeStateHandler::UpdateState(const RmadState& state) {
-  CHECK(state.has_finalize()) << "RmadState missing finalize state.";
+BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
+    const RmadState& state) {
+  if (!state.has_finalize()) {
+    LOG(ERROR) << "RmadState missing |finalize| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
   const FinalizeState& finalize = state.finalize();
   if (finalize.shutdown() == FinalizeState::RMAD_FINALIZE_UNKNOWN) {
-    // TODO(gavindodd): What is correct error for unset/missing fields?
-    return RMAD_ERROR_REQUEST_INVALID;
+    LOG(ERROR) << "RmadState missing |shutdown| argument.";
+    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+            .state_case = GetStateCase()};
   }
-  state_ = state;
 
-  return RMAD_ERROR_OK;
+  // TODO(chenghan): This is currently fake.
+  state_ = state;
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::STATE_NOT_SET};
 }
 
 RmadErrorCode FinalizeStateHandler::ResetState() {

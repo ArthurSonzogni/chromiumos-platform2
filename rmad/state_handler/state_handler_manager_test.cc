@@ -34,8 +34,9 @@ class StateHandlerManagerTest : public testing::Test {
     auto handler =
         base::MakeRefCounted<StrictMock<MockStateHandler>>(json_store_);
     EXPECT_CALL(*handler, GetStateCase()).WillRepeatedly(Return(state));
-    EXPECT_CALL(*handler, GetNextStateCase())
-        .WillRepeatedly(Return(next_state));
+    EXPECT_CALL(*handler, GetNextStateCase(_))
+        .WillRepeatedly(Return(BaseStateHandler::GetNextStateCaseReply{
+            .error = update_error, .state_case = next_state}));
 
     return handler;
   }
@@ -61,7 +62,10 @@ TEST_F(StateHandlerManagerTest, GetStateHandler) {
       state_handler_manager_->GetStateHandler(RmadState::kWelcome);
   EXPECT_TRUE(retrieve_handler.get());
   EXPECT_EQ(RmadState::kWelcome, retrieve_handler->GetStateCase());
-  EXPECT_EQ(RmadState::STATE_NOT_SET, retrieve_handler->GetNextStateCase());
+  BaseStateHandler::GetNextStateCaseReply reply =
+      retrieve_handler->GetNextStateCase(RmadState());
+  EXPECT_EQ(RMAD_ERROR_OK, reply.error);
+  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state_case);
 }
 
 TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {

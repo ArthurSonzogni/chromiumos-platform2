@@ -12,19 +12,18 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
   ResetState();
 }
 
-RmadState::StateCase UpdateDeviceInfoStateHandler::GetNextStateCase() const {
-  // TODO(chenghan): This is currently fake.
-  return RmadState::StateCase::kCalibrateComponents;
-}
-
-RmadErrorCode UpdateDeviceInfoStateHandler::UpdateState(
-    const RmadState& state) {
-  CHECK(state.has_update_device_info())
-      << "RmadState missing update device info state.";
+BaseStateHandler::GetNextStateCaseReply
+UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
+  if (!state.has_update_device_info()) {
+    LOG(ERROR) << "RmadState missing |update device info| state.";
+    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  }
   // TODO(chenghan): Validate the values.
-  state_ = state;
 
-  return RMAD_ERROR_OK;
+  state_ = state;
+  // TODO(chenghan): This is currently fake.
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kCalibrateComponents};
 }
 
 RmadErrorCode UpdateDeviceInfoStateHandler::ResetState() {
