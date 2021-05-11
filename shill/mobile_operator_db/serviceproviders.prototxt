@@ -7541,6 +7541,7 @@ mno {
       username : "685840734641020@uno.au-net.ne.jp"
       password : "KpyrR6BP"
       authentication : CHAP
+      is_attach_apn : true
     }
   }
 }
