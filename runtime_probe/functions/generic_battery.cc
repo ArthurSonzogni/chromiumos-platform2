@@ -19,7 +19,7 @@
 namespace runtime_probe {
 
 namespace {
-constexpr auto kSysfsBatteryPath = "/sys/class/power_supply/BAT*";
+constexpr auto kSysfsBatteryPath = "/sys/class/power_supply/*";
 constexpr auto kSysfsExpectedType = "Battery";
 // These keys are expected to present no matter what types of battery is:
 const std::vector<std::string> kBatteryKeys{"manufacturer", "model_name",
@@ -46,9 +46,8 @@ GenericBattery::DataType GenericBattery::EvalImpl() const {
       if (!power_supply_type)
         continue;
       if (*power_supply_type != kSysfsExpectedType) {
-        LOG(ERROR) << "power_supply_type [" << *power_supply_type
-                   << "] is not [" << kSysfsExpectedType << "] for "
-                   << battery_path.value();
+        VLOG(3) << "power_supply_type [" << *power_supply_type << "] is not ["
+                << kSysfsExpectedType << "] for " << battery_path.value();
         continue;
       }
       dict_value->SetStringKey("path", battery_path.value());
@@ -56,7 +55,7 @@ GenericBattery::DataType GenericBattery::EvalImpl() const {
       pcrecpp::RE re(R"(BAT(\d+)$)", pcrecpp::RE_Options());
       int32_t battery_index;
       if (!re.PartialMatch(battery_path.value(), &battery_index)) {
-        VLOG(1) << "Can't extract index from " << battery_path.value();
+        VLOG(3) << "Can't extract index from " << battery_path.value();
       } else {
         // The extracted index starts from 0. Shift it to start from 1.
         dict_value->SetStringKey("index",

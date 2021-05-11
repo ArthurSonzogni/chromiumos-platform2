@@ -1,0 +1,132 @@
+{
+  "ata_storage": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/block/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "cellular_network": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/run/dbus",
+    "-b",
+    "/sys/class/net/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "edid": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/drm/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "ethernet_network": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/run/dbus",
+    "-b",
+    "/sys/class/net/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "generic_battery": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/power_supply/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "generic_network": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/run/dbus",
+    "-b",
+    "/sys/class/net/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "generic_storage": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/block/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "input_device": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/bus/i2c/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "mmc_storage": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/block/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "nvme_storage": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/block/",
+    "-b",
+    "/sys/devices/platform/"
+  ],
+  "usb_camera": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/video4linux/",
+    "-b",
+    "/sys/devices/platform/",
+    "-b",
+    "/dev/"
+  ],
+  "wireless_network": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/run/dbus",
+    "-b",
+    "/sys/class/net/",
+    "-b",
+    "/sys/devices/platform/"
+  ]
+}
