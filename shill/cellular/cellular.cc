@@ -714,6 +714,7 @@ void Cellular::OnBeforeSuspend(const ResultCallback& callback) {
   LOG(INFO) << __func__;
   Error error;
   StopPPP();
+  capability_->SetModemToLowPowerModeOnModemStop(true);
   SetEnabledNonPersistent(false, &error, callback);
   if (error.IsFailure() && error.type() != Error::kInProgress) {
     // If we fail to disable the modem right away, proceed instead of wasting
@@ -767,17 +768,24 @@ void Cellular::ReAttach() {
     return;
   }
 
+  capability_->SetModemToLowPowerModeOnModemStop(false);
   Error error;
   SetEnabledNonPersistent(false, &error,
                           base::Bind(&Cellular::ReAttachOnDetachComplete,
                                      weak_ptr_factory_.GetWeakPtr()));
-  if (error.IsFailure() && error.type() != Error::kInProgress)
+  if (error.IsFailure() && error.type() != Error::kInProgress) {
     LOG(WARNING) << __func__ << " Detaching the modem failed: " << error;
+    // Reset the flag to its default value.
+    capability_->SetModemToLowPowerModeOnModemStop(true);
+  }
 }
 
 void Cellular::ReAttachOnDetachComplete(const Error&) {
   Error error;
   SLOG(this, 2) << __func__;
+  // Reset the flag to its default value.
+  capability_->SetModemToLowPowerModeOnModemStop(true);
+
   SetEnabledUnchecked(true, &error, base::Bind(LogRestartModemResult));
   if (error.IsFailure() && !error.IsOngoing())
     LOG(WARNING) << "Modem restart completed immediately.";
