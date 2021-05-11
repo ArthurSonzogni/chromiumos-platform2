@@ -22,10 +22,42 @@ pub struct EncodeCapabilities {
     pub output_formats: Vec<OutputProfile>,
 }
 
+pub struct VeaConnection {
+    // `conn_ptr` must be a valid pointer obtained from `decode_bindings::initialize_encode`.
+    conn_ptr: *mut c_void,
+}
+
+impl VeaConnection {
+    fn new(typ: VeaImplType) -> Result<Self> {
+        let impl_type = match typ {
+            VeaImplType::Fake => bindings::vea_impl_type_VEA_FAKE,
+            VeaImplType::Gavea => bindings::vea_impl_type_GAVEA,
+        };
+
+        // Safe because libvda's API is called properly.
+        match unsafe { bindings::initialize_encode(impl_type) } {
+            ptr if ptr.is_null() => Err(Error::InstanceInitFailure),
+            conn_ptr => Ok(VeaConnection { conn_ptr }),
+        }
+    }
+
+    // Returns the raw pointer to the VEA connection instance that can be passed
+    // to bindings functions that require it.
+    pub(super) fn conn_ptr(&self) -> *mut c_void {
+        self.conn_ptr
+    }
+}
+
+impl Drop for VeaConnection {
+    fn drop(&mut self) {
+        // Safe because libvda's API is called properly.
+        unsafe { bindings::deinitialize_encode(self.conn_ptr) }
+    }
+}
+
 /// Represents a libvda encode instance.
 pub struct VeaInstance {
-    // `raw_ptr` must be a valid pointer obtained from `bindings::initialize`.
-    raw_ptr: *mut c_void,
+    connection: VeaConnection,
     caps: EncodeCapabilities,
 }
 
@@ -68,20 +100,11 @@ impl Config {
 impl VeaInstance {
     /// Creates VeaInstance. `impl_type` specifies which backend will be used.
     pub fn new(impl_type: VeaImplType) -> Result<Self> {
-        let raw_impl_type = match impl_type {
-            VeaImplType::Fake => bindings::vea_impl_type_VEA_FAKE,
-            VeaImplType::Gavea => bindings::vea_impl_type_GAVEA,
-        };
-
-        // Safe because libvda's API is called properly.
-        let raw_ptr = unsafe { bindings::initialize_encode(raw_impl_type) };
-        if raw_ptr.is_null() {
-            return Err(Error::InstanceInitFailure);
-        }
+        let connection = VeaConnection::new(impl_type)?;
 
         // Get available input/output formats.
         // Safe because libvda's API is called properly.
-        let vea_caps_ptr = unsafe { bindings::get_vea_capabilities(raw_ptr) };
+        let vea_caps_ptr = unsafe { bindings::get_vea_capabilities(connection.conn_ptr()) };
         if vea_caps_ptr.is_null() {
             return Err(Error::GetCapabilitiesFailure);
         }
@@ -113,7 +136,7 @@ impl VeaInstance {
             unsafe { OutputProfile::from_raw_parts(output_formats, num_output_formats)? };
 
         Ok(Self {
-            raw_ptr,
+            connection,
             caps: EncodeCapabilities {
                 input_formats,
                 output_formats,
@@ -128,15 +151,11 @@ impl VeaInstance {
 
     /// Opens a new `Session` for a given `Config`.
     pub fn open_session(&self, config: Config) -> Result<Session> {
-        // Safe because `self.raw_ptr` is a non-NULL pointer obtained from
-        // `decode_bindings::initialize` in `VdaInstance::new`.
-        unsafe { Session::new(self.raw_ptr, config).ok_or(Error::EncodeSessionInitFailure(config)) }
-    }
-}
-
-impl Drop for VeaInstance {
-    fn drop(&mut self) {
-        // Safe because libvda's API is called properly.
-        unsafe { bindings::deinitialize_encode(self.raw_ptr) }
+        // Safe because `connection.conn_ptr()` is a non-NULL pointer obtained from
+        // `encode_bindings::initialize` in `VeaInstance::new`.
+        unsafe {
+            Session::new(self.connection.conn_ptr(), config)
+                .ok_or(Error::EncodeSessionInitFailure(config))
+        }
     }
 }
