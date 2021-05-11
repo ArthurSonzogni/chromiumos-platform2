@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/values.h>
 #include <brillo/brillo_export.h>
 
 namespace brillo {
@@ -28,6 +29,10 @@ class BRILLO_EXPORT LvmCommandRunner {
   // lvm2_log_fn to access the output of a command, we prefer to use a process.
   virtual bool RunProcess(const std::vector<std::string>& cmd,
                           std::string* output = nullptr);
+
+  // Unwraps LVM2 JSON reports into the contents stored at |key|.
+  virtual base::Optional<base::Value> UnwrapReportContents(
+      const std::string& output, const std::string& key);
 };
 
 // LVM objects are short-lived objects that represent the state of the system
@@ -86,6 +91,8 @@ class BRILLO_EXPORT Thinpool {
   }
   bool IsValid() { return !thinpool_name_.empty(); }
   bool Remove();
+  uint64_t GetTotalSpace();
+  uint64_t GetFreeSpace();
 
  private:
   std::string thinpool_name_;

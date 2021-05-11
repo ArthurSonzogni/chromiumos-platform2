@@ -21,73 +21,7 @@
 
 #include "brillo/blkdev_utils/lvm.h"
 
-#include <base/json/json_reader.h>
-
 namespace brillo {
-
-namespace {
-
-// LVM reports are structured as:
-//  {
-//      "report": [
-//          {
-//              "lv": [
-//                  {"lv_name":"foo", "vg_name":"bar", ...},
-//                  {...}
-//              ]
-//          }
-//      ]
-//  }
-//
-// Common function to fetch the underlying dictionary (assume for now
-// that the reports will be reporting just a single type (lv/vg/pv) for now).
-base::Optional<base::Value> UnwrapReportContents(const std::string& output,
-                                                 const std::string& key) {
-  auto report = base::JSONReader::Read(output);
-  base::DictionaryValue* dictionary_report;
-  if (!report || !report->is_dict() ||
-      !report->GetAsDictionary(&dictionary_report)) {
-    LOG(ERROR) << "Failed to get report as dictionary";
-    return base::nullopt;
-  }
-
-  base::ListValue* report_list;
-  if (!dictionary_report->GetList("report", &report_list)) {
-    LOG(ERROR) << "Failed to find 'report' list";
-    return base::nullopt;
-  }
-
-  if (report_list->GetSize() != 1) {
-    LOG(ERROR) << "Unexpected size: " << report_list->GetSize();
-    return base::nullopt;
-  }
-
-  base::DictionaryValue* report_dictionary;
-  if (!report_list->GetDictionary(0, &report_dictionary)) {
-    LOG(ERROR) << "Failed to find 'report' dictionary";
-    return base::nullopt;
-  }
-
-  base::ListValue* key_list;
-  if (!report_dictionary->GetList(key, &key_list)) {
-    LOG(ERROR) << "Failed to find " << key << " list";
-    return base::nullopt;
-  }
-
-  // If the list has just a single dictionary element, return it directly.
-  if (key_list && key_list->GetSize() == 1) {
-    base::DictionaryValue* key_dictionary;
-    if (!key_list->GetDictionary(0, &key_dictionary)) {
-      LOG(ERROR) << "Failed to get " << key << " dictionary";
-      return base::nullopt;
-    }
-    return key_dictionary->Clone();
-  }
-
-  return key_list->Clone();
-}
-
-}  // namespace
 
 LogicalVolumeManager::LogicalVolumeManager()
     : LogicalVolumeManager(std::make_shared<LvmCommandRunner>()) {}
@@ -108,7 +42,7 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
   }
 
   base::Optional<base::Value> report_contents =
-      UnwrapReportContents(output, "pv");
+      lvm_->UnwrapReportContents(output, "pv");
   base::DictionaryValue* pv_dictionary;
 
   if (!report_contents || !report_contents->GetAsDictionary(&pv_dictionary)) {
@@ -165,7 +99,7 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
   }
 
   base::Optional<base::Value> report_contents =
-      UnwrapReportContents(output, "lv");
+      lvm_->UnwrapReportContents(output, "lv");
   base::DictionaryValue* lv_dictionary;
 
   if (!report_contents || !report_contents->GetAsDictionary(&lv_dictionary)) {
@@ -212,7 +146,7 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
   }
 
   base::Optional<base::Value> report_contents =
-      UnwrapReportContents(output, "lv");
+      lvm_->UnwrapReportContents(output, "lv");
   base::ListValue* lv_list;
   if (!report_contents || !report_contents->GetAsList(&lv_list)) {
     LOG(ERROR) << "Failed to get report contents";

@@ -7,7 +7,15 @@
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
+using testing::DoAll;
+
 namespace brillo {
+
+namespace {
+constexpr const char kSampleReport[] =
+    "{\"report\": [ { \"%s\": [ {\"%s\":\"%s\", \"%s\":\"%s\", \"%s\":\"%s\" } "
+    "] } ] }";
+}  // namespace
 
 TEST(PhysicalVolumeTest, InvalidPhysicalVolumeTest) {
   auto lvm = std::make_shared<MockLvmCommandRunner>();
@@ -68,6 +76,21 @@ TEST(ThinpoolTest, ThinpoolSanityTest) {
   EXPECT_EQ("Bar/Foo", thinpool.GetName());
   EXPECT_TRUE(thinpool.Remove());
   EXPECT_EQ("", thinpool.GetName());
+}
+
+TEST(ThinpoolTest, ThinpoolSpaceTest) {
+  auto lvm = std::make_shared<MockLvmCommandRunner>();
+  Thinpool thinpool("foo", "bar", lvm);
+
+  std::string report =
+      base::StringPrintf(kSampleReport, "lv", "lv_name", "thinpool", "lv_size",
+                         "1000000B", "data_percent", "2.5");
+
+  EXPECT_CALL(*lvm, RunProcess(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+
+  EXPECT_EQ(thinpool.GetTotalSpace(), 1000000UL);
+  EXPECT_EQ(thinpool.GetFreeSpace(), 975000UL);
 }
 
 TEST(LogicalVolumeTest, InvalidLogicalVolumeTest) {
