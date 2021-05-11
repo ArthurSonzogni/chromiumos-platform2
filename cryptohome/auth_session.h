@@ -14,6 +14,7 @@
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_factor.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/password_verifier.h"
@@ -78,7 +79,9 @@ class AuthSession final {
       const cryptohome::AuthorizationRequest& authorization_request);
 
   // Return a const reference to FileSystemKeyset.
-  const FileSystemKeyset& file_system_keyset() { return *file_system_keyset_; }
+  const FileSystemKeyset file_system_keyset() {
+    return auth_factor_->GetFileSystemKeyset();
+  }
 
   // Transfer ownership of password verifier that can be used to verify
   // credentials during unlock.
@@ -86,13 +89,13 @@ class AuthSession final {
 
   // This function returns the current index of the keyset that was used to
   // Authenticate. This is useful during verification of challenge credentials.
-  int key_index() { return key_index_; }
+  int key_index() { return auth_factor_->GetKeyIndex(); }
 
   // This functions returns if user existed when the AuthSession was started.
   bool user_exists() { return user_exists_; }
 
   // Returns the key data with which this AuthSession is authenticated with.
-  cryptohome::KeyData current_key_data() { return current_key_data_; }
+  cryptohome::KeyData current_key_data() { return auth_factor_->GetKeyData(); }
 
   // Returns the map of Key label and KeyData that will be used as a result of
   // StartAuthSession request.
@@ -136,17 +139,7 @@ class AuthSession final {
   base::OneShotTimer timer_;
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
 
-  // Pointer to FileSystemKeyset which will be initialized when the current
-  // AuthSession is successfully authenticated.
-  // TODO(crbug.com/1171025): Replace FileSystemKeyset with intermediate key as
-  // a proof of authentication.
-  std::unique_ptr<FileSystemKeyset> file_system_keyset_;
-  std::unique_ptr<VaultKeyset> vault_keyset_;
-  // This is used by User Session to verify users credentials at unlock.
-  std::unique_ptr<PasswordVerifier> password_verifier_;
-
-  cryptohome::KeyData current_key_data_;
-  int key_index_;
+  std::unique_ptr<AuthFactor> auth_factor_;
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.

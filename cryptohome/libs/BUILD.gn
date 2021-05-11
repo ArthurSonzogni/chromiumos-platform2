@@ -211,6 +211,7 @@ static_library("libcrostpm") {
     "../le_credential_manager_impl.cc",
     "../libscrypt_compat_auth_block.cc",
     "../lockbox.cc",
+    "../password_auth_factor.cc",
     "../persistent_lookup_table.cc",
     "../pin_weaver_auth_block.cc",
     "../pkcs11_init.cc",

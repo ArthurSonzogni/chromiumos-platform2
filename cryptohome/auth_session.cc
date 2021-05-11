@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_session.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -11,6 +12,7 @@
 #include <cryptohome/scrypt_password_verifier.h>
 
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/password_auth_factor.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -72,14 +74,14 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
   if (user_exists_) {
     // Check the privileges to ensure Add is allowed.
     // Keys without extended data are considered fully privileged.
-    if (vault_keyset_->HasKeyData() &&
-        !vault_keyset_->GetKeyData().privileges().add()) {
+    if (auth_factor_->vault_keyset().HasKeyData() &&
+        !auth_factor_->vault_keyset().GetKeyData().privileges().add()) {
       LOG(WARNING) << "Add Credentials: no add() privilege";
       return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
     }
 
     return keyset_management_->AddKeyset(
-        *credentials, *vault_keyset_, request.clobber_if_exists(),
+        *credentials, auth_factor_->vault_keyset(), request.clobber_if_exists(),
         request.authorization().key().has_data() /* Has new data */);
   }
 
@@ -99,21 +101,16 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
   if (!credentials) {
     return MountErrorToCryptohomeError(code);
   }
-
-  vault_keyset_ = keyset_management_->LoadUnwrappedKeyset(*credentials, &code);
-  if (vault_keyset_ && code == MOUNT_ERROR_NONE) {
-    file_system_keyset_ = std::make_unique<FileSystemKeyset>(*vault_keyset_);
-    status_ = AuthStatus::kAuthStatusAuthenticated;
+  if (authorization_request.key().data().type() == KeyData::KEY_TYPE_PASSWORD) {
+    auth_factor_ = std::make_unique<PasswordAuthFactor>(keyset_management_);
   }
-  password_verifier_.reset(new ScryptPasswordVerifier());
-  password_verifier_->Set(credentials->passkey());
-  current_key_data_ = credentials->key_data();
-  key_index_ = vault_keyset_->GetLegacyIndex();
+
+  auth_factor_->AuthenticateAuthFactor(*credentials, &code);
   return MountErrorToCryptohomeError(code);
 }
 
 std::unique_ptr<PasswordVerifier> AuthSession::TakePasswordVerifier() {
-  return std::move(password_verifier_);
+  return auth_factor_->TakePasswordVerifier();
 }
 
 // static
