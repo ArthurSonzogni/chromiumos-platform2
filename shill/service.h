@@ -5,8 +5,6 @@
 #ifndef SHILL_SERVICE_H_
 #define SHILL_SERVICE_H_
 
-#include <time.h>
-
 #include <map>
 #include <memory>
 #include <set>
@@ -19,6 +17,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/optional.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
@@ -287,6 +286,9 @@ class Service : public base::RefCounted<Service> {
   // Records the failure mode and time. Sets the Service state to "Idle".
   // Avoids showing a failure mole in the UI.
   mockable void SetFailureSilent(ConnectFailure failure);
+
+  // Returns a TimeDelta from |time_failed_| or nullopt if unset (no failure).
+  base::Optional<base::TimeDelta> GetTimeSinceFailed() const;
 
   unsigned int serial_number() const { return serial_number_; }
   const std::string& log_name() const { return log_name_; }
@@ -964,9 +966,9 @@ class Service : public base::RefCounted<Service> {
   // Per-service DHCPProperties are supported for go/jetstream.
   std::unique_ptr<DhcpProperties> dhcp_properties_;
   Technology technology_;
-  // The time of the most recent failure. Value is 0 if the service is
-  // not currently failed.
-  time_t failed_time_;
+  // The time of the most recent failure. Value is null if the service is not
+  // currently failed.
+  base::Time failed_time_;
   // Whether or not this service has ever reached kStateConnected.
   bool has_ever_connected_;
 

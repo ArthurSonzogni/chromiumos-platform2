@@ -12,9 +12,11 @@
 
 #include <base/bind.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/run_loop.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/dhcp/mock_dhcp_properties.h"
@@ -183,6 +185,18 @@ class ServiceTest : public PropertyStoreTest {
                              const ServiceRefPtr& service1) {
     const bool kShouldCompareConnectivityState = true;
     return SortingOrderIs(service0, service1, kShouldCompareConnectivityState);
+  }
+
+  base::Optional<base::TimeDelta> GetTimeSinceFailed() {
+    // Wait 1 MS before calling GetTimeSinceFailed.
+    base::RunLoop run_loop;
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind([](base::Closure quit_closure) { quit_closure.Run(); },
+                   run_loop.QuitClosure()),
+        base::TimeDelta::FromMilliseconds(1));
+    run_loop.Run();
+    return service_->GetTimeSinceFailed();
   }
 
   NiceMock<MockManager> mock_manager_;
@@ -699,7 +713,9 @@ TEST_F(ServiceTest, State) {
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetFailure(Service::kFailureOutOfRange);
   EXPECT_TRUE(service_->IsFailed());
-  EXPECT_GT(service_->failed_time_, 0);
+  base::Optional<base::TimeDelta> time_failed = GetTimeSinceFailed();
+  ASSERT_TRUE(time_failed);
+  EXPECT_GT(*time_failed, base::TimeDelta());
   EXPECT_GT(service_->previous_error_serial_number_, 0);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_EQ(Service::kFailureOutOfRange, service_->failure());
@@ -711,7 +727,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsFailed());
-  EXPECT_EQ(service_->failed_time_, 0);
+  EXPECT_FALSE(GetTimeSinceFailed());
   EXPECT_EQ(no_error, service_->error());
   EXPECT_EQ(out_of_range_error, service_->previous_error_);
   EXPECT_GT(service_->previous_error_serial_number_, 0);
@@ -719,7 +735,9 @@ TEST_F(ServiceTest, State) {
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetFailureSilent(Service::kFailurePinMissing);
   EXPECT_TRUE(service_->IsFailed());
-  EXPECT_GT(service_->failed_time_, 0);
+  time_failed = GetTimeSinceFailed();
+  ASSERT_TRUE(time_failed);
+  EXPECT_GT(*time_failed, base::TimeDelta());
   EXPECT_GT(service_->previous_error_serial_number_, 0);
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kFailurePinMissing, service_->failure());
