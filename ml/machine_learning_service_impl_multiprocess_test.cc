@@ -187,4 +187,47 @@ TEST(WebPlatformHandwritingModel, LoadModelAndRecognize) {
   EXPECT_TRUE(prediction_callback_done);
 }
 
+// This tests, on non-supported boards, the `LoadWebPlatformHandwritingModel`
+// API does not crash.
+TEST(WebPlatformHandwritingModel, NoCrashOnNonsupportedBoards) {
+  // Skip if ondevice HWR is supported. We do not need to worry about whether
+  // asan is enabled because dlopen will not be called in the test.
+  if (ml::HandwritingLibrary::IsHandwritingLibrarySupported()) {
+    return;
+  }
+
+  // Loads a model.
+  base::RunLoop runloop;
+
+  // Sets the process to be control to test multiprocess code.
+  // Note that we need to use `kSingleProcessForTest` because the worker
+  // process' crash does not fail the unit test.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
+  mojo::Remote<MachineLearningService> ml_service;
+  auto ml_service_impl = std::make_unique<MachineLearningServiceImplForTesting>(
+      ml_service.BindNewPipeAndPassReceiver());
+
+  // Tries to load a model.
+  mojo::Remote<
+      chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>
+      recognizer;
+
+  bool model_callback_done = false;
+  auto constraint = chromeos::machine_learning::web_platform::mojom::
+      HandwritingModelConstraint::New();
+  constraint->languages.push_back("en");
+  ml_service->LoadWebPlatformHandwritingModel(
+      std::move(constraint), recognizer.BindNewPipeAndPassReceiver(),
+      base::BindLambdaForTesting([&](const LoadHandwritingModelResult result) {
+        ASSERT_EQ(result, LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+        model_callback_done = true;
+        runloop.Quit();
+      }));
+
+  runloop.Run();
+  EXPECT_TRUE(model_callback_done);
+}
+
 }  // namespace ml

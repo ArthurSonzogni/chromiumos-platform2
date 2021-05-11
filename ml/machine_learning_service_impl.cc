@@ -516,6 +516,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
     LOG(ERROR) << "Calling LoadWebPlatformHandwritingModel without Handwriting "
                   "enabled should never happen.";
     std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+    return;
   }
 
   // If it is run in the control process, spawn a worker process and forward the
