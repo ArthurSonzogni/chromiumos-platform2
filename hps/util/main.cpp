@@ -25,6 +25,7 @@
 #include "hps/lib/hps.h"
 #include "hps/lib/i2c.h"
 #include "hps/lib/retry.h"
+#include "hps/lib/uart.h"
 #include "hps/util/command.h"
 
 // Static allocation of global command list head.
@@ -37,6 +38,7 @@ int main(int argc, char* argv[]) {
   DEFINE_uint32(retry_delay, 10, "Delay in ms between retries");
   DEFINE_bool(ftdi, false, "Use FTDI connection");
   DEFINE_bool(test, false, "Use internal test fake");
+  DEFINE_string(uart, "", "Use UART connection");
   brillo::FlagHelper::Init(argc, argv, "HPS tool.");
 
   const logging::LoggingSettings ls;
@@ -60,6 +62,12 @@ int main(int argc, char* argv[]) {
     // TODO(amcrae): Allow passing error flags.
     fd->Start(hps::FakeDev::Flags::kSkipBoot);
     dev = std::move(fd);
+  } else if (!FLAGS_uart.empty()) {
+    auto uart = std::make_unique<hps::Uart>(FLAGS_uart.c_str());
+    if (!uart->Open()) {
+      return 1;
+    }
+    dev = std::move(uart);
   } else {
     auto i2c = std::make_unique<hps::I2CDev>(FLAGS_bus, FLAGS_addr);
     if (i2c->Open() < 0) {

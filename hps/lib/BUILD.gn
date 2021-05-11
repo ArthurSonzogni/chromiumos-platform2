@@ -25,6 +25,8 @@ static_library("hpslib") {
     "i2c.h",
     "retry.cpp",
     "retry.h",
+    "uart.cpp",
+    "uart.h",
   ]
 
   configs += [ ":target_defaults" ]
