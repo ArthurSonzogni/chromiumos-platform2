@@ -1,15 +1,15 @@
 # screen-capture-utils
 
-Utilities for screen capturing for dev/test
-images for working with screen capture.
+Utilities for screen capturing for dev/test images for working with screen
+capture.
 
 [TOC]
 
 ## screenshot
 
 Provides a screenshot of the current display. Useful for capturing what's on the
-display when test has failed, for example.  Not all devices are supported yet,
-so your mileage may vary.
+display when test has failed, for example. Not all devices are supported yet, so
+your mileage may vary.
 
 ## kmsvnc
 
@@ -30,8 +30,8 @@ your client, and connect through the port. Example:
 (workstation)$ ssh -L 5900:localhost:5900 DUT
 ```
 
-Then connect using a VNC client, such as [VNC Viewer for Google
-Chrome](https://chrome.google.com/webstore/detail/vnc%C2%AE-viewer-for-google-ch/iabmpiboiopbgfabjmgeedhcmjenhbla)
+Then connect using a VNC client, such as
+[VNC Viewer for Google Chrome](https://chrome.google.com/webstore/detail/vnc%C2%AE-viewer-for-google-ch/iabmpiboiopbgfabjmgeedhcmjenhbla)
 to localhost:5900. It will ask you if you want to connect unauthenticated, here
 we are relying on ssh forwarding to restrict who can connect.
 
@@ -39,14 +39,15 @@ we are relying on ssh forwarding to restrict who can connect.
 
 TODO(uekawa): set up component for crbug.
 
-For Googlers please use http://go/kmsvnc-bug to file a bug.
-Current known issues are available at http://b/hotlistid:2869886
+For Googlers please use http://go/kmsvnc-bug to file a bug. Current known issues
+are available at http://b/hotlistid:2869886
 
 ## Development notes
 
 ### Building and testing
 
-For development I typically deploy to /usr/local/ because tests expect them there.
+For development I typically deploy to /usr/local/ because tests expect them
+there.
 
 ```
 $ BOARD=rammus-arc-r

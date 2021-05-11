@@ -25,8 +25,8 @@ capability more than before.
 ## Goals
 
 Have VNC working on betty so that developers have the option of what is on the
-display, and interact.  Ideally I can see the login screen also so that I can
-log in via VNC in a similar manner to qemu VNC.
+display, and interact. Ideally I can see the login screen also so that I can log
+in via VNC in a similar manner to qemu VNC.
 
 ## Detailed Design
 
@@ -47,15 +47,15 @@ We use KMS/DRM for grabbing the current display.
 For devices that expose capability of capturing multiple planes we support
 scanning multiple planes and merging.
 
-There are three major types of boards that this code handles.  The flags
+There are three major types of boards that this code handles. The flags
 `--method=bo` or `--method=egl` would try to force which method is being used.
 
 #### non-getfb2-capable
 
-Kernel before 4.4 do not have [getfb2 ioctl
-backported](http://crrev.com/c/2001263),
-so they will use the `--method=bo`. This does not support multiple planes and
-assumes framebuffer is readable in ARGB format.
+Kernel before 4.4 do not have
+[getfb2 ioctl backported](http://crrev.com/c/2001263), so they will use the
+`--method=bo`. This does not support multiple planes and assumes framebuffer is
+readable in ARGB format.
 
 Development was done typically with caroline.
 
@@ -82,10 +82,10 @@ orientation for now.
 ### Keyboard handling
 
 The [RFB protocol](https://tools.ietf.org/html/rfc6143#section-7.5.4) follows
-the X11 protocol for keyboard handling. Upon receiving an [X11 key
-symbol](https://cgit.freedesktop.org/xorg/proto/x11proto/tree/keysymdef.h) on
-server-side, we map them back to [Linux input
-keycodes](https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v4.4/include/uapi/linux/input-event-codes.h),
+the X11 protocol for keyboard handling. Upon receiving an
+[X11 key symbol](https://cgit.freedesktop.org/xorg/proto/x11proto/tree/keysymdef.h)
+on server-side, we map them back to
+[Linux input keycodes](https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v4.4/include/uapi/linux/input-event-codes.h),
 and emit input events using a virtual keyboard device created via the Linux
 uinput module.
 
