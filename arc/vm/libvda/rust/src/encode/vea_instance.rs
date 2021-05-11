@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::os::raw::c_void;
+use std::{os::raw::c_void, rc::Rc};
 
 use super::bindings;
 use super::format::OutputProfile;
@@ -57,7 +57,7 @@ impl Drop for VeaConnection {
 
 /// Represents a libvda encode instance.
 pub struct VeaInstance {
-    connection: VeaConnection,
+    connection: Rc<VeaConnection>,
     caps: EncodeCapabilities,
 }
 
@@ -136,7 +136,7 @@ impl VeaInstance {
             unsafe { OutputProfile::from_raw_parts(output_formats, num_output_formats)? };
 
         Ok(Self {
-            connection,
+            connection: Rc::new(connection),
             caps: EncodeCapabilities {
                 input_formats,
                 output_formats,
@@ -151,11 +151,6 @@ impl VeaInstance {
 
     /// Opens a new `Session` for a given `Config`.
     pub fn open_session(&self, config: Config) -> Result<Session> {
-        // Safe because `connection.conn_ptr()` is a non-NULL pointer obtained from
-        // `encode_bindings::initialize` in `VeaInstance::new`.
-        unsafe {
-            Session::new(self.connection.conn_ptr(), config)
-                .ok_or(Error::EncodeSessionInitFailure(config))
-        }
+        Session::new(&self.connection, config).ok_or(Error::EncodeSessionInitFailure(config))
     }
 }

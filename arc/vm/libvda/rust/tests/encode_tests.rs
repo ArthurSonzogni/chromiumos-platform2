@@ -40,8 +40,6 @@ fn test_initialize_encode_session() {
     let _session = instance
         .open_session(config)
         .expect("failed to open a session");
-    // `drop(instance)` here must cause a compile error because `_session` must be dropped in
-    // advance.
 }
 
 #[test]

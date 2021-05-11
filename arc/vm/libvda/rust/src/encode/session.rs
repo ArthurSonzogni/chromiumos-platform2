@@ -2,16 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::fs::File;
 use std::io::Read;
-use std::marker::PhantomData;
 use std::mem;
-use std::os::raw::c_void;
 use std::os::unix::io::FromRawFd;
+use std::{fs::File, rc::Rc};
 
-use super::bindings;
 use super::event::*;
-use super::vea_instance::{Config, VeaInstance};
+use super::vea_instance::Config;
+use super::{bindings, VeaConnection};
 use crate::error::*;
 use crate::format::{BufferFd, FramePlane};
 
@@ -19,14 +17,12 @@ pub type VeaInputBufferId = bindings::vea_input_buffer_id_t;
 pub type VeaOutputBufferId = bindings::vea_output_buffer_id_t;
 
 /// Represents an encode session.
-pub struct Session<'a> {
+pub struct Session {
     // Pipe file to be notified encode session events.
     pipe: File,
-    vea_ptr: *mut c_void,
+    // Ensures the VEA connection remains open for as long as there are active sessions.
+    connection: Rc<VeaConnection>,
     session_ptr: *mut bindings::vea_session_info_t,
-    // `phantom` guarantees that `Session` will not outlive the lifetime of
-    // `VeaInstance` that owns `vea_ptr`.
-    phantom: PhantomData<&'a VeaInstance>,
 }
 
 fn convert_error_code(code: i32) -> Result<()> {
@@ -37,16 +33,13 @@ fn convert_error_code(code: i32) -> Result<()> {
     }
 }
 
-impl<'a> Session<'a> {
+impl Session {
     /// Creates a new `Session`.
-    ///
-    /// This function is safe if `vea_ptr` is a non-NULL pointer obtained from
-    /// `bindings::initialize_encode`.
-    pub(crate) unsafe fn new(vea_ptr: *mut c_void, config: Config) -> Option<Self> {
-        // `init_encode_session` is safe if `vea_ptr` is a non-NULL pointer from
-        // `bindings::initialize`.
-        let session_ptr: *mut bindings::vea_session_info_t =
-            bindings::init_encode_session(vea_ptr, &mut config.to_raw_config());
+    pub(super) fn new(connection: &Rc<VeaConnection>, config: Config) -> Option<Self> {
+        // Safe because `conn_ptr()` is valid and won't be invalidated by `init_encode_session()`.
+        let session_ptr: *mut bindings::vea_session_info_t = unsafe {
+            bindings::init_encode_session(connection.conn_ptr(), &mut config.to_raw_config())
+        };
 
         if session_ptr.is_null() {
             return None;
@@ -55,13 +48,14 @@ impl<'a> Session<'a> {
         // Dereferencing `session_ptr` is safe because it is a valid pointer to a FD provided by
         // libvda. We need to dup() the `event_pipe_fd` because File object close() the FD while
         // libvda also close() it when `close_encode_session` is called.
-        let pipe = File::from_raw_fd(libc::dup((*session_ptr).event_pipe_fd));
+        // Calling `from_raw_fd` here is safe because the dup'ed FD is not going to be used by
+        // anything else and `pipe` has full ownership of it.
+        let pipe = unsafe { File::from_raw_fd(libc::dup((*session_ptr).event_pipe_fd)) };
 
         Some(Session {
+            connection: Rc::clone(connection),
             pipe,
-            vea_ptr,
             session_ptr,
-            phantom: PhantomData,
         })
     }
 
@@ -179,13 +173,13 @@ impl<'a> Session<'a> {
     }
 }
 
-impl<'a> Drop for Session<'a> {
+impl Drop for Session {
     fn drop(&mut self) {
-        // Safe because `vea_ptr` and `session_ptr` are unchanged from the time `new` was called.
-        // Also, `vea_ptr` is valid because `phantom` guarantees that `VeaInstance` owning `vea_ptr`
-        // has not dropped yet.
+        // Safe because `session_ptr` is unchanged from the time `new` was called, and
+        // `connection` also guarantees that the pointer returned by `conn_ptr()` is a valid
+        // connection to a VEA instance.
         unsafe {
-            bindings::close_encode_session(self.vea_ptr, self.session_ptr);
+            bindings::close_encode_session(self.connection.conn_ptr(), self.session_ptr);
         }
     }
 }
