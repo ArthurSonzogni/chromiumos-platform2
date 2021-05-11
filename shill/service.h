@@ -287,7 +287,7 @@ class Service : public base::RefCounted<Service> {
   // Avoids showing a failure mole in the UI.
   mockable void SetFailureSilent(ConnectFailure failure);
 
-  // Returns a TimeDelta from |time_failed_| or nullopt if unset (no failure).
+  // Returns a TimeDelta from |failed_time_| or nullopt if unset (no failure).
   base::Optional<base::TimeDelta> GetTimeSinceFailed() const;
 
   unsigned int serial_number() const { return serial_number_; }
