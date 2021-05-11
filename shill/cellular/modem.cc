@@ -14,7 +14,6 @@
 
 #include "shill/cellular/cellular.h"
 #include "shill/control_interface.h"
-#include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -70,22 +69,14 @@ Modem::~Modem() {
 
 void Modem::CreateDevice(const InterfaceToProperties& properties) {
   SLOG(this, 1) << __func__;
-  dbus_properties_proxy_ =
-      device_info_->manager()->control_interface()->CreateDBusPropertiesProxy(
-          path(), service());
-  dbus_properties_proxy_->SetModemManagerPropertiesChangedCallback(base::Bind(
-      &Modem::OnModemManagerPropertiesChanged, base::Unretained(this)));
-  dbus_properties_proxy_->SetPropertiesChangedCallback(
-      base::Bind(&Modem::OnPropertiesChanged, base::Unretained(this)));
 
   uint32_t capabilities = std::numeric_limits<uint32_t>::max();
-  InterfaceToProperties::const_iterator it =
-      properties.find(MM_DBUS_INTERFACE_MODEM);
-  if (it == properties.end()) {
+  const auto iter = properties.find(MM_DBUS_INTERFACE_MODEM);
+  if (iter == properties.end()) {
     LOG(ERROR) << "Cellular device with no modem properties";
     return;
   }
-  const KeyValueStore& modem_props = it->second;
+  const KeyValueStore& modem_props = iter->second;
   if (modem_props.Contains<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES)) {
     capabilities =
         modem_props.Get<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES);
@@ -108,17 +99,13 @@ void Modem::CreateDevice(const InterfaceToProperties& properties) {
 void Modem::OnDeviceInfoAvailable(const std::string& link_name) {
   SLOG(this, 1) << __func__ << ": " << link_name
                 << " pending: " << has_pending_device_info_;
-  if (has_pending_device_info_ && link_name_ == link_name) {
-    // has_pending_device_info_ is only set if we've already been through
-    // CreateDeviceFromModemProperties() and saved our initial
-    // properties already
-    has_pending_device_info_ = false;
-    CreateDeviceFromModemProperties(initial_properties_);
-  }
-}
+  if (link_name_ != link_name || !has_pending_device_info_)
+    return;
 
-std::string Modem::GetModemInterface() const {
-  return std::string(MM_DBUS_INTERFACE_MODEM);
+  // has_pending_device_info_ is only set if we've already been through
+  // CreateDeviceFromModemProperties() and saved our initial properties.
+  has_pending_device_info_ = false;
+  CreateDeviceFromModemProperties(initial_properties_);
 }
 
 bool Modem::GetLinkName(const KeyValueStore& modem_props,
@@ -162,16 +149,16 @@ void Modem::CreateDeviceFromModemProperties(
 
   SLOG(this, 1) << __func__;
 
-  InterfaceToProperties::const_iterator properties_it =
-      properties.find(GetModemInterface());
-  if (properties_it == properties.end()) {
+  const auto iter = properties.find(std::string(MM_DBUS_INTERFACE_MODEM));
+  if (iter == properties.end()) {
     LOG(ERROR) << "Unable to find modem interface properties.";
     return;
   }
+  const KeyValueStore& modem_props = iter->second;
 
   std::string mac_address;
   int interface_index = -1;
-  if (GetLinkName(properties_it->second, &link_name_)) {
+  if (GetLinkName(modem_props, &link_name_)) {
     GetDeviceParams(&mac_address, &interface_index);
     if (interface_index < 0) {
       LOG(ERROR) << "Unable to create cellular device -- no interface index.";
@@ -203,12 +190,7 @@ void Modem::CreateDeviceFromModemProperties(
   }
 
   device_ = device_info_->GetCellularDevice(interface_index, mac_address, this);
-
-  // Give the device a chance to extract any capability-specific properties.
-  for (properties_it = properties.begin(); properties_it != properties.end();
-       ++properties_it) {
-    device_->OnPropertiesChanged(properties_it->first, properties_it->second);
-  }
+  device_->SetInitialProperties(properties);
 
   SLOG(this, 1) << "Cellular device created: " << device_->link_name()
                 << " Enabled: " << device_->enabled();
@@ -226,23 +208,9 @@ bool Modem::GetDeviceParams(std::string* mac_address, int* interface_index) {
   if (!device_info_->GetMacAddress(*interface_index, &address_bytes)) {
     return false;
   }
-
   *mac_address = address_bytes.HexEncode();
+
   return true;
-}
-
-void Modem::OnPropertiesChanged(const std::string& interface,
-                                const KeyValueStore& changed_properties) {
-  SLOG(this, 3) << __func__;
-  if (device_) {
-    device_->OnPropertiesChanged(interface, changed_properties);
-  }
-}
-
-void Modem::OnModemManagerPropertiesChanged(const std::string& interface,
-                                            const KeyValueStore& properties) {
-  SLOG(this, 3) << __func__;
-  OnPropertiesChanged(interface, properties);
 }
 
 }  // namespace shill

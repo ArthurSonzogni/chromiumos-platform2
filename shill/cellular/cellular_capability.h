@@ -14,6 +14,7 @@
 
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular.h"
+#include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 
 namespace shill {
 
@@ -63,10 +64,9 @@ class CellularCapability {
 
   virtual std::string GetTypeString() const = 0;
 
-  // Called when the modem manager has sent a property change notification
-  // signal.
-  virtual void OnPropertiesChanged(const std::string& interface,
-                                   const KeyValueStore& changed_properties) = 0;
+  // Called with the initial set of Modem properties when created.
+  virtual void SetInitialProperties(
+      const InterfaceToProperties& properties) = 0;
 
   // -------------------------------------------------------------------------
   // Modem management

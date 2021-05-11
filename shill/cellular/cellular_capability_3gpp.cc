@@ -284,23 +284,31 @@ void CellularCapability3gpp::InitProxies() {
     return;
   SLOG(this, 3) << __func__;
   proxies_initialized_ = true;
+
   modem_3gpp_proxy_ = control_interface()->CreateMM1ModemModem3gppProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
+
   modem_proxy_ = control_interface()->CreateMM1ModemProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
+  modem_proxy_->set_state_changed_callback(
+      base::Bind(&CellularCapability3gpp::OnModemStateChangedSignal,
+                 weak_ptr_factory_.GetWeakPtr()));
+
   modem_signal_proxy_ = control_interface()->CreateMM1ModemSignalProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
+
   modem_simple_proxy_ = control_interface()->CreateMM1ModemSimpleProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
 
   modem_location_proxy_ = control_interface()->CreateMM1ModemLocationProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
+
   dbus_properties_proxy_ = control_interface()->CreateDBusPropertiesProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
-
-  modem_proxy_->set_state_changed_callback(
-      base::Bind(&CellularCapability3gpp::OnModemStateChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()));
+  dbus_properties_proxy_->SetModemManagerPropertiesChangedCallback(base::Bind(
+      &CellularCapability3gpp::OnPropertiesChanged, base::Unretained(this)));
+  dbus_properties_proxy_->SetPropertiesChangedCallback(base::Bind(
+      &CellularCapability3gpp::OnPropertiesChanged, base::Unretained(this)));
 
   // |sim_proxy_| is created when |sim_path_| is known.
 }
@@ -1255,6 +1263,12 @@ std::string CellularCapability3gpp::GetRoamingStateString() const {
 
 std::string CellularCapability3gpp::GetTypeString() const {
   return AccessTechnologyToTechnologyFamily(access_technologies_);
+}
+
+void CellularCapability3gpp::SetInitialProperties(
+    const InterfaceToProperties& properties) {
+  for (const auto& iter : properties)
+    OnPropertiesChanged(iter.first, iter.second);
 }
 
 void CellularCapability3gpp::OnModemPropertiesChanged(

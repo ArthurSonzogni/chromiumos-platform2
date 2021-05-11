@@ -19,7 +19,6 @@
 
 namespace shill {
 
-class DBusPropertiesProxy;
 class DeviceInfo;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
@@ -65,7 +64,6 @@ class Modem {
  private:
   friend class ModemTest;
 
-  std::string GetModemInterface() const;
   bool GetLinkName(const KeyValueStore& properties, std::string* name) const;
 
   // Asynchronously initializes support for the modem.
@@ -79,16 +77,6 @@ class Modem {
   // |mac_address| and |interface_index| were found. Modifies
   // |interface_index| even on failure.
   bool GetDeviceParams(std::string* mac_address, int* interface_index);
-
-  void OnPropertiesChanged(const std::string& interface,
-                           const KeyValueStore& changed_properties);
-
-  void OnModemManagerPropertiesChanged(const std::string& interface,
-                                       const KeyValueStore& properties);
-
-  // A proxy to the org.freedesktop.DBusProperties interface used to obtain
-  // ModemManager.Modem properties and watch for property changes
-  std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
 
   InterfaceToProperties initial_properties_;
 

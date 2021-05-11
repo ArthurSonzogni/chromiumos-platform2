@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mm1_proxy_interface.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/device.h"
@@ -196,8 +197,8 @@ class Cellular : public Device,
   void StartLocationPolling();
   void StopLocationPolling();
 
-  mockable void OnPropertiesChanged(const std::string& interface,
-                                    const KeyValueStore& changed_properties);
+  // Called when the Modem object is created to set the initial properties.
+  void SetInitialProperties(const InterfaceToProperties& properties);
 
   // Inherited from Device.
   void Start(Error* error,

@@ -273,11 +273,6 @@ TEST_F(ModemTest, CreateDevice) {
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME);
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
-  std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy =
-      DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting();
-  EXPECT_CALL(control_, CreateDBusPropertiesProxy(kPath, kService))
-      .WillOnce(Return(ByMove(std::move(dbus_properties_proxy))));
-
   modem_->CreateDevice(properties);
   Cellular* device = modem_->device_for_testing();
   ASSERT_TRUE(device);

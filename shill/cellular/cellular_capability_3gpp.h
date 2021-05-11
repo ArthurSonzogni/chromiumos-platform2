@@ -69,8 +69,7 @@ class CellularCapability3gpp : public CellularCapability {
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
-  void OnPropertiesChanged(const std::string& interface,
-                           const KeyValueStore& changed_properties) override;
+  void SetInitialProperties(const InterfaceToProperties& properties) override;
 
   // Checks the modem state.  If the state is kModemStateDisabled, then the
   // modem is enabled.  Otherwise, the enable command is buffered until the
@@ -119,6 +118,10 @@ class CellularCapability3gpp : public CellularCapability {
   bool SetPrimarySimSlotForIccid(const std::string& iccid) override;
 
   virtual void GetProperties();
+
+  // Property change handler. Overridden by the Cdma impl to handle MODEMCDMA.
+  virtual void OnPropertiesChanged(const std::string& interface,
+                                   const KeyValueStore& changed_properties);
 
   // Location proxy methods
   void SetupLocation(uint32_t sources,

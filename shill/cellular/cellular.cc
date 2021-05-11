@@ -1397,10 +1397,9 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
-void Cellular::OnPropertiesChanged(const std::string& interface,
-                                   const KeyValueStore& changed_properties) {
+void Cellular::SetInitialProperties(const InterfaceToProperties& properties) {
   CHECK(capability_);
-  capability_->OnPropertiesChanged(interface, changed_properties);
+  capability_->SetInitialProperties(properties);
 }
 
 void Cellular::OnModemStateChanged(ModemState new_state) {
