@@ -35,6 +35,9 @@ Then connect using a VNC client, such as
 to localhost:5900. It will ask you if you want to connect unauthenticated, here
 we are relying on ssh forwarding to restrict who can connect.
 
+TODO(http://b/187650823): Update VNC Viewer recommendation with another app that
+works well as VNC Viewer for Google Chrome is unlaunched.
+
 ### Reporting bugs
 
 TODO(uekawa): set up component for crbug.
