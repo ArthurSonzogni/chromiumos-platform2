@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+  Copyright (c) 2021 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<!--
+  The interface defined in this file is used with the service name
+  "org.chromium.Hps"
+-->
+
+<node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.Hps">
+    <method name="GetFeatureResult">
+      <arg name="feature" type="u" direction="in">
+      <tp:docstring>
+        Feature to query for the result.
+        E.g. 1.
+      </tp:docstring>
+      </arg>
+      <arg name="result" type="q" direction="out">
+      <tp:docstring>
+        Result returned for the requested feature.
+      </tp:docstring>
+      </arg>
+    </method>
+  </interface>
+</node>

@@ -1,0 +1,24 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":hpsd-adaptors" ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "system_api",
+  ]
+}
+
+generate_dbus_adaptors("hpsd-adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/hpsd/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.Hps.xml" ]
+}
