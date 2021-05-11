@@ -475,6 +475,8 @@ bool GetProfile(const base::CommandLine* cl,
     *profile = cryptohome::GFSC_CERTIFICATE;
   } else if (profile_str == "jetstream") {
     *profile = cryptohome::JETSTREAM_CERTIFICATE;
+  } else if (profile_str == "soft_bind") {
+    *profile = cryptohome::SOFT_BIND_CERTIFICATE;
   } else {
     printf("Unknown certificate profile: %s.\n", profile_str.c_str());
     return false;
