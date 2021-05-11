@@ -79,7 +79,10 @@ static_library("libstate_handler") {
     "state_handler/write_protect_enable_physical_state_handler.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libjson_store" ]
+  deps = [
+    ":libcr50_utils",
+    ":libjson_store",
+  ]
 }
 
 static_library("libdbus_service") {

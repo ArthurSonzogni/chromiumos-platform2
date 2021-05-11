@@ -20,7 +20,11 @@ class Cr50Utils {
 
   // Get the RSU challenge code. Return true if successfully get the challenge
   // code, false if failed to get the challenge code.
-  virtual bool GetRsuChallenge(std::string* challenge) const = 0;
+  virtual bool GetRsuChallengeCode(std::string* challenge_code) const = 0;
+
+  // Use the unlock code to perform RSU. Return true if the unlock code is
+  // correct, false if the unlock code is rejected.
+  virtual bool PerformRsu(const std::string& unlock_code) const = 0;
 };
 
 }  // namespace rmad

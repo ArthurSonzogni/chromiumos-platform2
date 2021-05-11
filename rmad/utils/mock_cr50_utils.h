@@ -16,8 +16,12 @@ class MockCr50Utils {
 
   MOCK_METHOD(bool, RoVerificationKeyPressed, (), (const, override));
   MOCK_METHOD(bool,
-              GetRsuChallenge,
-              (std::string * challenge),
+              GetRsuChallengeCode,
+              (std::string * challenge_code),
+              (const, override));
+  MOCK_METHOD(bool,
+              PerformRsu,
+              (const std::string& unlock_code),
               (const, override));
 };
 

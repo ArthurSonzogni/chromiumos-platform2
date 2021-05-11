@@ -17,7 +17,8 @@ class Cr50UtilsImpl : public Cr50Utils {
   ~Cr50UtilsImpl() = default;
 
   bool RoVerificationKeyPressed() const override;
-  bool GetRsuChallenge(std::string* challenge) const override;
+  bool GetRsuChallengeCode(std::string* challenge_code) const override;
+  bool PerformRsu(const std::string& unlock_code) const override;
 };
 
 }  // namespace rmad
